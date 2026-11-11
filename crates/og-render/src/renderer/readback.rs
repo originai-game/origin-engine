@@ -38,12 +38,12 @@ impl Renderer {
 
     fn warm_now(&mut self) -> bool {
         deferred::warm_one(&[
-            &self.sprite_pipeline,
-            &self.msdf_pipeline,
-            &self.sprite_cover_pipeline,
-            &self.sprite_untonemapped_pipeline,
-            &self.sprite_additive_pipeline,
-            &self.sprite_glow_pipeline,
+            &self.sprite.sprite_pipeline,
+            &self.sprite.msdf_pipeline,
+            &self.sprite.sprite_cover_pipeline,
+            &self.sprite.sprite_untonemapped_pipeline,
+            &self.sprite.sprite_additive_pipeline,
+            &self.sprite.sprite_glow_pipeline,
         ]) || self.overlay.warm()
             || self.post.warm()
             || deferred::warm_one(&[&self.sky.sky_pipeline, &self.sky.sky_look_pipeline])

@@ -21,14 +21,15 @@ impl Renderer {
                     self.particles.sprite_sources[k as usize],
                     &self.particles.sprite_buffer,
                 ),
-                source => (source, &self.sprite_buffer),
+                source => (source, &self.sprite.sprite_buffer),
             };
             let array = matches!(source, RunSource::Array(..));
             if on_array != Some(array) {
                 pass.set_pipeline(match array {
-                    false => &self.sprite_glow_pipeline,
+                    false => &self.sprite.sprite_glow_pipeline,
                     true => {
                         &self
+                            .sprite
                             .sprite_arrays
                             .as_ref()
                             .expect("made before the pass")
@@ -47,7 +48,7 @@ impl Renderer {
                         .expect("made before the pass")
                         .0
                 }
-                _ => &self.white_sprite_group,
+                _ => &self.sprite.white_sprite_group,
             };
             pass.set_bind_group(1, group, &[]);
             let start = run.first as u64 * SPRITE_STRIDE;

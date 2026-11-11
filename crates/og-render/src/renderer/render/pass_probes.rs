@@ -294,7 +294,7 @@ impl Renderer {
                 // scene (every layer; sprites unlit).
                 if let Some(group) = &face_particle_groups[k] {
                     let groups = &self.cache.sprite_groups;
-                    let white = &self.white_sprite_group;
+                    let white = &self.sprite.white_sprite_group;
                     stats.draw_calls += self.particles.gpu.draw(
                         &mut pass,
                         particle_frame,

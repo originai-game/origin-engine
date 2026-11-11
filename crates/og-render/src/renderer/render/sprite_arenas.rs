@@ -173,7 +173,7 @@ impl Renderer {
         // The ranges the builds below take for the 2D particles simulated
         // in compute (`expand_sprites` writes them in the particles pass).
         let mut gpu_sprites = sprites::GpuSprites {
-            tiles: self.tiles_gpu_supported.then(Vec::new),
+            tiles: self.sprite.tiles_gpu_supported.then(Vec::new),
             ..Default::default()
         };
         let mut sprite_frame = sprites::build(

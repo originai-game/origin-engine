@@ -800,6 +800,41 @@ pub(crate) struct StripState {
     pub(crate) gpu_trails: Option<ribbons_gpu::GpuTrails>,
 }
 
+/// The sprites' resources: their samplers and layouts, pipelines (plain, additive, untonemapped, cover, glow, text), effects uniform and instance buffer, the white group, and the optional array, mesh, normal, hook and GPU tile renderers.
+pub(crate) struct SpriteState {
+    pub(crate) sprite_sampler: wgpu::Sampler,
+    pub(crate) sprite_sampler_nearest: wgpu::Sampler,
+    pub(crate) sprite_layout: wgpu::BindGroupLayout,
+    pub(crate) sprite_pipeline: Sampled<wgpu::RenderPipeline>,
+    pub(crate) sprite_additive_pipeline: Sampled<wgpu::RenderPipeline>,
+    /// Alpha-blended sprites kept out of the tone curve, and the cover
+    /// that sets the HDR alpha to 1 before the first of them
+    /// ([`UNTONEMAPPED_BLEND`]).
+    pub(crate) sprite_untonemapped_pipeline: Sampled<wgpu::RenderPipeline>,
+    pub(crate) sprite_cover_pipeline: Sampled<wgpu::RenderPipeline>,
+    pub(crate) sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
+    pub(crate) msdf_pipeline: Sampled<wgpu::RenderPipeline>,
+    pub(crate) sprite_fx_layout: wgpu::BindGroupLayout,
+    pub(crate) sprite_fx_buffer: wgpu::Buffer,
+    pub(crate) sprite_buffer: wgpu::Buffer,
+    pub(crate) white_sprite_group: wgpu::BindGroup,
+    /// The array sprite pipelines, made on the first frame that draws one.
+    pub(crate) sprite_arrays: Option<sprite_array::SpriteArrayPipelines>,
+    /// The sprite mesh pipelines and buffer, made on the first frame that draws one.
+    pub(crate) sprite_meshes: Option<sprite_mesh::SpriteMeshRenderer>,
+    pub(crate) sprite_skin_supported: bool,
+    /// The normal-mapped sprite pipelines and texture groups, made on the
+    /// first frame that draws a normal-mapped texture lit.
+    pub(crate) sprite_normals: Option<sprite_normals::SpriteNormals>,
+    /// Sprites drawn with a material shader (`sprite_hooks.rs`), made on
+    /// the first frame that draws one.
+    pub(crate) sprite_hooks: Option<sprite_hooks::SpriteHooks>,
+    pub(crate) tiles_gpu: Option<tiles_gpu::Tiles>,
+    pub(crate) tiles_gpu_supported: bool,
+    /// The sprite and strip modules, for their OIT pipelines.
+    pub(crate) sprite_shader: deferred::Module,
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;

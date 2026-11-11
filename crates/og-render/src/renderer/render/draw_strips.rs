@@ -88,7 +88,7 @@ impl Renderer {
         pass.set_bind_group(
             1,
             match texture {
-                None => &self.white_sprite_group,
+                None => &self.sprite.white_sprite_group,
                 Some(t) => self.cache.ribbon_groups[t.index()]
                     .as_ref()
                     .expect("made before the pass"),

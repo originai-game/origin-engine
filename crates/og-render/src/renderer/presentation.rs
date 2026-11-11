@@ -319,12 +319,12 @@ impl Renderer {
             &self.lights.ltc,
             &self.shadows.shadow_buffer,
             &self.lights.fx_buffer,
-            &self.sprite_fx_buffer,
+            &self.sprite.sprite_fx_buffer,
             &self.instances.skinned_buffer,
             &self.instances.prev_instance_buffer,
             &self.strips.ribbon_buffer,
             &self.instances.instance_buffer,
-            &self.sprite_buffer,
+            &self.sprite.sprite_buffer,
         ]
         .into_iter()
         .chain(&self.lights.light_buffers)

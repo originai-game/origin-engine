@@ -298,14 +298,14 @@ impl Renderer {
                 bind_group(
                     &self.device,
                     "sprite fx (view)",
-                    &self.sprite_fx_layout,
+                    &self.sprite.sprite_fx_layout,
                     &[
                         wgpu::BindingResource::TextureView(
                             slot.light_map
                                 .as_ref()
                                 .map_or(&self.default_white, |(_, v)| v),
                         ),
-                        wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                        wgpu::BindingResource::Sampler(&self.sprite.sprite_sampler),
                         slot.sprite_fx_buffer.as_entire_binding(),
                         wgpu::BindingResource::TextureView(
                             slot.light_dir.as_ref().unwrap_or(&self.post.black),

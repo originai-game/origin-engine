@@ -289,10 +289,10 @@ impl Renderer {
                             "sprite (oit)",
                             mode,
                             frame,
-                            &[&self.sprite_layout, &self.sprite_fx_layout],
+                            &[&self.sprite.sprite_layout, &self.sprite.sprite_fx_layout],
                         )
                         .clone();
-                    let shader = self.sprite_shader.get().clone();
+                    let shader = self.sprite.sprite_shader.get().clone();
                     let job = variant_job(move |_| {
                         Made::Pipeline(oit::pipeline(
                             &device,
@@ -322,7 +322,7 @@ impl Renderer {
                 }
                 Source::Ribbon | Source::Strip => {
                     let strip = source == Source::Strip;
-                    let mut rest = vec![&self.sprite_layout];
+                    let mut rest = vec![&self.sprite.sprite_layout];
                     if strip {
                         rest.push(
                             &self
@@ -371,7 +371,7 @@ impl Renderer {
                             mode,
                             frame,
                             &[
-                                &self.sprite_layout,
+                                &self.sprite.sprite_layout,
                                 &self.particles.gpu.draw_layout,
                                 &self.particles.gpu.effects.layout,
                             ],
@@ -437,7 +437,7 @@ impl Renderer {
                 current = Some(source);
             }
             let group = match run.source {
-                RunSource::Sprite(_, None) => &self.white_sprite_group,
+                RunSource::Sprite(_, None) => &self.sprite.white_sprite_group,
                 RunSource::Sprite(_, Some(t)) => self.cache.sprite_groups[t.index()]
                     .as_ref()
                     .expect("made before the pass"),
@@ -448,7 +448,8 @@ impl Renderer {
             let start = run.first as u64 * SPRITE_STRIDE;
             pass.set_vertex_buffer(
                 0,
-                self.sprite_buffer
+                self.sprite
+                    .sprite_buffer
                     .slice(start..start + run.count as u64 * SPRITE_STRIDE),
             );
             pass.draw(0..6, 0..run.count);

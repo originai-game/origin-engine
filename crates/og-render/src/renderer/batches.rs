@@ -260,13 +260,13 @@ impl Renderer {
         let Some((shader, params)) = scene.sprite_shader(m) else {
             return;
         };
-        let hooks = self.sprite_hooks.get_or_insert_with(|| {
+        let hooks = self.sprite.sprite_hooks.get_or_insert_with(|| {
             sprite_hooks::SpriteHooks::new(
                 &self.device,
                 [
                     &self.frame_layout,
-                    &self.sprite_layout,
-                    &self.sprite_fx_layout,
+                    &self.sprite.sprite_layout,
+                    &self.sprite.sprite_fx_layout,
                 ],
                 self.samples,
                 self.info.without.features(),
@@ -299,10 +299,10 @@ impl Renderer {
             filter.is_nearest(),
             filter == TextureFilter::CleanEdge,
         );
-        let normals = self.sprite_normals.get_or_insert_with(|| {
+        let normals = self.sprite.sprite_normals.get_or_insert_with(|| {
             sprite_normals::SpriteNormals::new(
                 &self.device,
-                [&self.frame_layout, &self.sprite_fx_layout],
+                [&self.frame_layout, &self.sprite.sprite_fx_layout],
                 self.samples,
             )
         });
@@ -329,9 +329,9 @@ impl Renderer {
             &[
                 wgpu::BindingResource::TextureView(&self.cache.textures[i].view),
                 wgpu::BindingResource::Sampler(if key.3 {
-                    &self.sprite_sampler_nearest
+                    &self.sprite.sprite_sampler_nearest
                 } else {
-                    &self.sprite_sampler
+                    &self.sprite.sprite_sampler
                 }),
                 buffer.as_entire_binding(),
                 wgpu::BindingResource::TextureView(&self.cache.textures[ni].view),
@@ -349,12 +349,12 @@ impl Renderer {
         let t = t?;
         scene.lighting_2d?;
         scene.texture_normal(t)?;
-        self.sprite_normals.as_ref()?.group(t.index())
+        self.sprite.sprite_normals.as_ref()?.group(t.index())
     }
 
     pub(crate) fn sprite_group(&mut self, texture: Option<TextureHandle>) -> &wgpu::BindGroup {
         let Some(t) = texture else {
-            return &self.white_sprite_group;
+            return &self.sprite.white_sprite_group;
         };
         let filter = self
             .cache
@@ -367,12 +367,12 @@ impl Renderer {
             *slot = Some(sprite_bind_group(
                 &self.device,
                 &self.queue,
-                &self.sprite_layout,
+                &self.sprite.sprite_layout,
                 &self.cache.textures[t.index()].view,
                 if filter.is_nearest() {
-                    &self.sprite_sampler_nearest
+                    &self.sprite.sprite_sampler_nearest
                 } else {
-                    &self.sprite_sampler
+                    &self.sprite.sprite_sampler
                 },
                 // sprite.wgsl's `msdf.w`: 1 samples through cleanEdge.
                 [
@@ -1514,7 +1514,7 @@ impl Renderer {
             self.cache.ribbon_groups[t.index()] = Some(sprite_bind_group(
                 &self.device,
                 &self.queue,
-                &self.sprite_layout,
+                &self.sprite.sprite_layout,
                 &self.cache.textures[t.index()].view,
                 &self.strips.ribbon_sampler,
                 [0.0; 4],

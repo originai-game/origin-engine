@@ -581,8 +581,8 @@ pub struct Renderer {
     shadows: renderer::Shadows,
     post: post::PostPasses,
     material_sampler: wgpu::Sampler,
-    sprite_sampler: wgpu::Sampler,
-    sprite_sampler_nearest: wgpu::Sampler,
+    /// The sprites' resources: their samplers and layouts, pipelines (plain, additive, untonemapped, cover, glow, text), effects uniform and instance buffer, the white group, and the optional array, mesh, normal, hook and GPU tile renderers.
+    sprite: renderer::SpriteState,
     /// The font atlases', the decal atlas's and the 2D lightmap's:
     /// trilinear, clamped, never anisotropic.
     trilinear_sampler: wgpu::Sampler,
@@ -590,7 +590,6 @@ pub struct Renderer {
     /// The sky's resources: its layout, cloud noise, parameters, aurora map, its two pipelines (the sky cube's and the procedural look's) and the live sky's capture.
     sky: renderer::SkyState,
     material_layout: wgpu::BindGroupLayout,
-    sprite_layout: wgpu::BindGroupLayout,
     /// The frame's lighting every lit pass binds: the frame uniform, the light
     /// tables and clusters, the light volumes, the IBL and environment, the
     /// decals, and the effect buffer and groups.
@@ -627,15 +626,6 @@ pub struct Renderer {
     gi_probes: Option<gi_probes::GiProbes>,
     /// Reflection probes' cubes and frame uniforms (`probes.rs`).
     probes: probes::Probes,
-    sprite_pipeline: Sampled<wgpu::RenderPipeline>,
-    sprite_additive_pipeline: Sampled<wgpu::RenderPipeline>,
-    /// Alpha-blended sprites kept out of the tone curve, and the cover
-    /// that sets the HDR alpha to 1 before the first of them
-    /// ([`UNTONEMAPPED_BLEND`]).
-    sprite_untonemapped_pipeline: Sampled<wgpu::RenderPipeline>,
-    sprite_cover_pipeline: Sampled<wgpu::RenderPipeline>,
-    sprite_glow_pipeline: Deferred<wgpu::RenderPipeline>,
-    msdf_pipeline: Sampled<wgpu::RenderPipeline>,
     /// The strips' resources: their two pipelines, shader, vertex buffer and sampler, and the CPU and GPU trails.
     strips: renderer::StripState,
     fx_layout: wgpu::BindGroupLayout,
@@ -645,8 +635,6 @@ pub struct Renderer {
     /// texture (`Renderer::fx_lean_group`). `None` with one: `fx_layout`
     /// serves them.
     fx_lean_layout: Option<wgpu::BindGroupLayout>,
-    sprite_fx_layout: wgpu::BindGroupLayout,
-    sprite_fx_buffer: wgpu::Buffer,
     palette_layout: wgpu::BindGroupLayout,
     /// Lines, points and wireframes (`lines.rs`).
     lines: lines::LineRenderer,
@@ -676,8 +664,6 @@ pub struct Renderer {
     /// texture slot and revision they were measured from.
     canvas_stats: (Option<(usize, u64)>, [f32; 2]),
     default_normal: wgpu::TextureView,
-    white_sprite_group: wgpu::BindGroup,
-    sprite_buffer: wgpu::Buffer,
     overlay: overlay::OverlayRenderer,
     /// The UI pass's pipelines, tables and layers (src/ui/pass.rs).
     ui: ui::pass::UiRenderer,
@@ -713,22 +699,7 @@ pub struct Renderer {
     /// The last frame's stylisation primitives, on or off
     /// ([`Stylise::chain_bits`]): a change resets the TAA history.
     stylise_chain: Option<u16>,
-    /// The array sprite pipelines, made on the first frame that draws one.
-    sprite_arrays: Option<sprite_array::SpriteArrayPipelines>,
-    /// The sprite mesh pipelines and buffer, made on the first frame that draws one.
-    sprite_meshes: Option<sprite_mesh::SpriteMeshRenderer>,
-    sprite_skin_supported: bool,
-    /// The normal-mapped sprite pipelines and texture groups, made on the
-    /// first frame that draws a normal-mapped texture lit.
-    sprite_normals: Option<sprite_normals::SpriteNormals>,
-    /// Sprites drawn with a material shader (`sprite_hooks.rs`), made on
-    /// the first frame that draws one.
-    sprite_hooks: Option<sprite_hooks::SpriteHooks>,
-    tiles_gpu: Option<tiles_gpu::Tiles>,
-    tiles_gpu_supported: bool,
     /// Order-independent transparency's mode, arena, resolve and
     /// pipelines (`oit.rs`).
     oit: oit::OitState,
-    /// The sprite and strip modules, for their OIT pipelines.
-    sprite_shader: deferred::Module,
 }

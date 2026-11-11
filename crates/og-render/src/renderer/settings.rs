@@ -183,11 +183,11 @@ impl Renderer {
         for p in [
             &self.sky.sky_pipeline,
             &self.sky.sky_look_pipeline,
-            &self.sprite_pipeline,
-            &self.sprite_additive_pipeline,
-            &self.sprite_untonemapped_pipeline,
-            &self.sprite_cover_pipeline,
-            &self.msdf_pipeline,
+            &self.sprite.sprite_pipeline,
+            &self.sprite.sprite_additive_pipeline,
+            &self.sprite.sprite_untonemapped_pipeline,
+            &self.sprite.sprite_cover_pipeline,
+            &self.sprite.msdf_pipeline,
         ]
         .into_iter()
         .chain(&self.strips.ribbon_pipelines)
@@ -209,14 +209,14 @@ impl Renderer {
         self.terrain.set_samples(samples);
         self.scatter.set_samples(samples);
         self.grass.set_samples(samples);
-        if let Some(a) = &self.sprite_arrays {
+        if let Some(a) = &self.sprite.sprite_arrays {
             a.set_samples(samples);
         }
         // Made as batches need them: made again at the new count.
         self.forget_lit_pipelines();
-        self.sprite_meshes = None;
-        self.sprite_normals = None;
-        self.tiles_gpu = None;
+        self.sprite.sprite_meshes = None;
+        self.sprite.sprite_normals = None;
+        self.sprite.tiles_gpu = None;
     }
 
     /// Forgets the lit pipelines, which batches make again as they need

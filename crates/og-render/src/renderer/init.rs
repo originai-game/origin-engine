@@ -64,7 +64,8 @@ impl Renderer {
     /// this device, by shader index, with the device's message: their
     /// sprites draw plain (`sprite_hooks.rs`).
     pub fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
-        self.sprite_hooks
+        self.sprite
+            .sprite_hooks
             .as_ref()
             .map_or_else(Vec::new, |h| h.errors())
     }
@@ -115,12 +116,12 @@ impl Renderer {
             fresh.shadows.compact_shadow_pipelines = self.shadows.compact_shadow_pipelines;
             fresh.sky.sky_pipeline = self.sky.sky_pipeline;
             fresh.sky.sky_look_pipeline = self.sky.sky_look_pipeline;
-            fresh.sprite_pipeline = self.sprite_pipeline;
-            fresh.sprite_additive_pipeline = self.sprite_additive_pipeline;
-            fresh.sprite_untonemapped_pipeline = self.sprite_untonemapped_pipeline;
-            fresh.sprite_cover_pipeline = self.sprite_cover_pipeline;
-            fresh.sprite_glow_pipeline = self.sprite_glow_pipeline;
-            fresh.msdf_pipeline = self.msdf_pipeline;
+            fresh.sprite.sprite_pipeline = self.sprite.sprite_pipeline;
+            fresh.sprite.sprite_additive_pipeline = self.sprite.sprite_additive_pipeline;
+            fresh.sprite.sprite_untonemapped_pipeline = self.sprite.sprite_untonemapped_pipeline;
+            fresh.sprite.sprite_cover_pipeline = self.sprite.sprite_cover_pipeline;
+            fresh.sprite.sprite_glow_pipeline = self.sprite.sprite_glow_pipeline;
+            fresh.sprite.msdf_pipeline = self.sprite.msdf_pipeline;
             fresh.strips.ribbon_pipelines = self.strips.ribbon_pipelines;
         }
         Ok(fresh)
@@ -1178,8 +1179,29 @@ impl Renderer {
             custom_posts: post_custom::CustomPosts::default(),
             post,
             material_sampler,
-            sprite_sampler,
-            sprite_sampler_nearest,
+            sprite: SpriteState {
+                sprite_sampler,
+                sprite_sampler_nearest,
+                sprite_layout,
+                sprite_pipeline,
+                sprite_additive_pipeline,
+                sprite_untonemapped_pipeline,
+                sprite_cover_pipeline,
+                sprite_glow_pipeline,
+                msdf_pipeline,
+                sprite_fx_layout,
+                sprite_fx_buffer,
+                sprite_buffer,
+                white_sprite_group,
+                sprite_arrays: None,
+                sprite_meshes: None,
+                sprite_skin_supported: sprite_skin::SkinRenderer::supported(flags),
+                sprite_normals: None,
+                sprite_hooks: None,
+                tiles_gpu: None,
+                tiles_gpu_supported: tiles_gpu::Tiles::supported(flags),
+                sprite_shader,
+            },
             trilinear_sampler,
             frame_layout,
             sky: SkyState {
@@ -1192,7 +1214,6 @@ impl Renderer {
                 sky_capture: None,
             },
             material_layout,
-            sprite_layout,
             lights: Lights {
                 frame_buffer,
                 light_buffers,
@@ -1247,12 +1268,6 @@ impl Renderer {
             grass,
             metaballs,
             gi_probes: None,
-            sprite_pipeline,
-            sprite_additive_pipeline,
-            sprite_untonemapped_pipeline,
-            sprite_cover_pipeline,
-            sprite_glow_pipeline,
-            msdf_pipeline,
             strips: StripState {
                 ribbon_pipelines,
                 ribbon_buffer,
@@ -1263,8 +1278,6 @@ impl Renderer {
             },
             fx_layout,
             fx_lean_layout,
-            sprite_fx_layout,
-            sprite_fx_buffer,
             palette_layout,
             lines,
             particles,
@@ -1287,8 +1300,6 @@ impl Renderer {
             canvas_stats: (None, [0.0; 2]),
             default_white,
             default_normal,
-            white_sprite_group,
-            sprite_buffer,
             overlay,
             ui,
             glass,
@@ -1306,15 +1317,7 @@ impl Renderer {
             gi_history: None,
             ssr,
             stylise_chain: None,
-            sprite_arrays: None,
-            sprite_meshes: None,
-            sprite_skin_supported: sprite_skin::SkinRenderer::supported(flags),
-            sprite_normals: None,
-            sprite_hooks: None,
             oit,
-            sprite_shader,
-            tiles_gpu: None,
-            tiles_gpu_supported: tiles_gpu::Tiles::supported(flags),
         })
     }
 }

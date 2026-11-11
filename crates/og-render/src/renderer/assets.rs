@@ -143,11 +143,11 @@ impl Renderer {
     /// The array sprite pipelines and the bind group of `array` (made on
     /// first use; again when the array's slot or filter changed).
     pub(crate) fn sprite_array_group(&mut self, scene: &RenderScene, array: TextureArrayHandle) {
-        if self.sprite_arrays.is_none() {
-            self.sprite_arrays = Some(sprite_array::SpriteArrayPipelines::new(
+        if self.sprite.sprite_arrays.is_none() {
+            self.sprite.sprite_arrays = Some(sprite_array::SpriteArrayPipelines::new(
                 &self.device,
                 &self.frame_layout,
-                &self.sprite_fx_layout,
+                &self.sprite.sprite_fx_layout,
                 self.samples,
                 self.info.without.features(),
             ));
@@ -164,15 +164,16 @@ impl Renderer {
             return;
         };
         let sampler = if filter.is_nearest() {
-            &self.sprite_sampler_nearest
+            &self.sprite.sprite_sampler_nearest
         } else {
-            &self.sprite_sampler
+            &self.sprite.sprite_sampler
         };
-        let group = self.sprite_arrays.as_ref().expect("made above").bind_group(
-            &self.device,
-            &gpu.texture,
-            sampler,
-        );
+        let group = self
+            .sprite
+            .sprite_arrays
+            .as_ref()
+            .expect("made above")
+            .bind_group(&self.device, &gpu.texture, sampler);
         self.cache.sprite_array_groups[i] = Some((group, filter));
     }
 
@@ -670,7 +671,7 @@ impl Renderer {
             let bind_group = sprite_bind_group(
                 &self.device,
                 &self.queue,
-                &self.sprite_layout,
+                &self.sprite.sprite_layout,
                 &gpu.view,
                 &self.trilinear_sampler,
                 // -1: a page of colour glyph pairs (foreground_mix).

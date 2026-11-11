@@ -179,7 +179,7 @@ impl Renderer {
             );
             if let Some(group) = &view_particle_groups[i] {
                 let groups = &self.cache.sprite_groups;
-                let white = &self.white_sprite_group;
+                let white = &self.sprite.white_sprite_group;
                 stats.draw_calls += self.particles.gpu.draw(
                     &mut pass,
                     particle_frame,

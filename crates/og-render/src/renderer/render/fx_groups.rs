@@ -54,11 +54,11 @@ impl Renderer {
                 bind_group(
                     &self.device,
                     label,
-                    &self.sprite_fx_layout,
+                    &self.sprite.sprite_fx_layout,
                     &[
                         wgpu::BindingResource::TextureView(light),
                         wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                        self.sprite_fx_buffer.as_entire_binding(),
+                        self.sprite.sprite_fx_buffer.as_entire_binding(),
                         wgpu::BindingResource::TextureView(dir),
                     ],
                 )

@@ -1324,7 +1324,7 @@ impl Renderer {
         .unwrap_or(&self.ui.dummy_backdrop);
         let mut draws = 0;
         let sprite_group = |t: Option<crate::TextureHandle>| match t {
-            None => &self.white_sprite_group,
+            None => &self.sprite.white_sprite_group,
             Some(t) => self.cache.sprite_groups[t.index()]
                 .as_ref()
                 .expect("made before the pass"),
@@ -1362,7 +1362,8 @@ impl Renderer {
                                 continue;
                             }
                             (
-                                self.sprite_arrays
+                                self.sprite
+                                    .sprite_arrays
                                     .as_ref()
                                     .expect("made before the pass")
                                     .overlay(kind == TargetKind::Linear),
@@ -1401,7 +1402,7 @@ impl Renderer {
                 }
                 OverlaySource::Ui(ShapeSource::Backdrop | ShapeSource::SolidBackdrop) => {
                     pass.set_pipeline(&ui.backdrop);
-                    pass.set_bind_group(1, &self.white_sprite_group, &[]);
+                    pass.set_bind_group(1, &self.sprite.white_sprite_group, &[]);
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.draw(0..6, range);
                 }
@@ -1468,7 +1469,7 @@ impl Renderer {
                         continue;
                     };
                     pass.set_pipeline(&ui.vector);
-                    pass.set_bind_group(1, &self.white_sprite_group, &[]);
+                    pass.set_bind_group(1, &self.sprite.white_sprite_group, &[]);
                     pass.set_bind_group(2, backdrop, &[]);
                     pass.set_vertex_buffer(0, mesh.vertices.slice(..));
                     pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);

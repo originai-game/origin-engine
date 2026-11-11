@@ -251,8 +251,11 @@ impl Renderer {
             0,
             bytemuck::bytes_of(&pview),
         );
-        self.queue
-            .write_buffer(&self.sprite_fx_buffer, 0, bytemuck::bytes_of(&fxp.screen));
+        self.queue.write_buffer(
+            &self.sprite.sprite_fx_buffer,
+            0,
+            bytemuck::bytes_of(&fxp.screen),
+        );
         if let Some(s) = ssr {
             self.prepare_ssr(s, cam, camera, gi_history);
         }

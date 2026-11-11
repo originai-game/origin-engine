@@ -330,7 +330,7 @@ impl Renderer {
                 return 0;
             };
             let groups = &self.cache.sprite_groups;
-            let white = &self.white_sprite_group;
+            let white = &self.sprite.white_sprite_group;
             self.particles.gpu.draw(
                 pass,
                 particle_frame,

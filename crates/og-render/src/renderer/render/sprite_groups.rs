@@ -91,17 +91,17 @@ impl Renderer {
             }
         }
         if let Some(draws) = &gpu_sprites.tiles
-            && (!draws.is_empty() || self.tiles_gpu.is_some())
+            && (!draws.is_empty() || self.sprite.tiles_gpu.is_some())
         {
             // Fork s60: the tile chunks' pipelines are drawn by the main pass.
             frame_pipelines(|| {
-                let tiles = self.tiles_gpu.get_or_insert_with(|| {
+                let tiles = self.sprite.tiles_gpu.get_or_insert_with(|| {
                     tiles_gpu::Tiles::new(
                         &self.device,
                         [
                             &self.frame_layout,
-                            &self.sprite_layout,
-                            &self.sprite_fx_layout,
+                            &self.sprite.sprite_layout,
+                            &self.sprite.sprite_fx_layout,
                         ],
                         self.samples,
                         self.info.without.features(),
@@ -112,28 +112,29 @@ impl Renderer {
                     &self.queue,
                     scene,
                     draws,
-                    self.sprite_normals
+                    self.sprite
+                        .sprite_normals
                         .as_ref()
-                        .map(|n| [&self.frame_layout, &n.layout, &self.sprite_fx_layout]),
+                        .map(|n| [&self.frame_layout, &n.layout, &self.sprite.sprite_fx_layout]),
                     self.samples,
                 );
             });
         }
         // The sprite meshes' corners (sprite_mesh.rs), lit as their layers' sprites.
         if !scene.sprite_meshes.is_empty() {
-            let corners = sprite_mesh::vertices(scene, lit, self.sprite_skin_supported);
-            let meshes = self.sprite_meshes.get_or_insert_with(|| {
+            let corners = sprite_mesh::vertices(scene, lit, self.sprite.sprite_skin_supported);
+            let meshes = self.sprite.sprite_meshes.get_or_insert_with(|| {
                 // Fork s60: drawn by the main pass, as the tiles are.
                 frame_pipelines(|| {
                     sprite_mesh::SpriteMeshRenderer::new(
                         &self.device,
                         [
                             &self.frame_layout,
-                            &self.sprite_layout,
-                            &self.sprite_fx_layout,
+                            &self.sprite.sprite_layout,
+                            &self.sprite.sprite_fx_layout,
                         ],
                         self.samples,
-                        self.sprite_skin_supported,
+                        self.sprite.sprite_skin_supported,
                         self.info.without.features(),
                     )
                 })
@@ -143,9 +144,10 @@ impl Renderer {
                     &self.device,
                     &self.queue,
                     scene,
-                    self.sprite_normals
+                    self.sprite
+                        .sprite_normals
                         .as_ref()
-                        .map(|n| [&self.frame_layout, &n.layout, &self.sprite_fx_layout]),
+                        .map(|n| [&self.frame_layout, &n.layout, &self.sprite.sprite_fx_layout]),
                     self.samples,
                 );
             }

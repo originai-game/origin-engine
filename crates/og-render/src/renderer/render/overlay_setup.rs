@@ -26,7 +26,8 @@ impl Renderer {
                 self.sprite_array_group(scene, *a);
             }
             if !arrays.is_empty() {
-                self.sprite_arrays
+                self.sprite
+                    .sprite_arrays
                     .as_mut()
                     .expect("made with the groups")
                     .make_overlay(
@@ -63,7 +64,7 @@ impl Renderer {
                 self.offscreen_linear,
                 self.out_width,
                 self.out_height,
-                &self.sprite_layout,
+                &self.sprite.sprite_layout,
             ));
         }
         glass_on

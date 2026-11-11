@@ -80,7 +80,7 @@ impl Renderer {
         grow_and_write(
             &self.device,
             &self.queue,
-            &mut self.sprite_buffer,
+            &mut self.sprite.sprite_buffer,
             "sprites",
             bytemuck::cast_slice(&sprite_frame.instances),
         );
@@ -109,7 +109,7 @@ impl Renderer {
         // (`SpriteFxFrame::light`).
         let ambient_2d = scene.lighting_2d.map_or(Vec3::ONE, |l| l.ambient);
         self.queue.write_buffer(
-            &self.sprite_fx_buffer,
+            &self.sprite.sprite_fx_buffer,
             16,
             bytemuck::bytes_of(&[
                 light_slots.count() as f32,

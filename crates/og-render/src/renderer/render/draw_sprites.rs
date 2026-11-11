@@ -24,13 +24,13 @@ impl Renderer {
                     self.particles.sprite_sources[k as usize],
                     &self.particles.sprite_buffer,
                 ),
-                source => (source, &self.sprite_buffer),
+                source => (source, &self.sprite.sprite_buffer),
             };
             // A view keeps no HDR alpha: every run is tone mapped there.
             let tone_mapped = run.tone_mapped || view;
             if !tone_mapped && !covered {
                 // The HDR alpha to 1 before the first untonemapped run.
-                pass.set_pipeline(&self.sprite_cover_pipeline);
+                pass.set_pipeline(&self.sprite.sprite_cover_pipeline);
                 pass.draw(0..3, 0..1);
                 draws += 1;
                 covered = true;
@@ -56,7 +56,11 @@ impl Renderer {
                 continue;
             }
             if let RunSource::Tiles(i) = source {
-                let tiles = self.tiles_gpu.as_ref().expect("prepared before draw");
+                let tiles = self
+                    .sprite
+                    .tiles_gpu
+                    .as_ref()
+                    .expect("prepared before draw");
                 let texture = tiles.textures[i as usize];
                 let normal = self.normal_group(scene, Some(texture));
                 pass.set_bind_group(
@@ -76,8 +80,16 @@ impl Renderer {
             if let RunSource::Mesh(i) = source {
                 let mesh = &scene.sprite_meshes[i as usize];
                 if let Some(group) = self.normal_group(scene, mesh.texture) {
-                    let normals = self.sprite_normals.as_ref().expect("made with the group");
-                    let meshes = self.sprite_meshes.as_ref().expect("made before the pass");
+                    let normals = self
+                        .sprite
+                        .sprite_normals
+                        .as_ref()
+                        .expect("made with the group");
+                    let meshes = self
+                        .sprite
+                        .sprite_meshes
+                        .as_ref()
+                        .expect("made before the pass");
                     if let Some(skin) = &meshes.skin {
                         skin.bind(pass, mesh.blend, true);
                     } else {
@@ -87,7 +99,8 @@ impl Renderer {
                     let start = run.first as u64 * sprite_mesh::MESH_STRIDE;
                     pass.set_vertex_buffer(
                         0,
-                        self.sprite_meshes
+                        self.sprite
+                            .sprite_meshes
                             .as_ref()
                             .expect("made before the pass")
                             .buffer
@@ -101,14 +114,15 @@ impl Renderer {
                 pass.set_bind_group(
                     1,
                     match mesh.texture {
-                        None => &self.white_sprite_group,
+                        None => &self.sprite.white_sprite_group,
                         Some(t) => self.cache.sprite_groups[t.index()]
                             .as_ref()
                             .expect("made before the pass"),
                     },
                     &[],
                 );
-                self.sprite_meshes
+                self.sprite
+                    .sprite_meshes
                     .as_ref()
                     .expect("made before the pass")
                     .draw(pass, mesh.blend, run.first, run.count);
@@ -117,7 +131,11 @@ impl Renderer {
                 continue;
             }
             if let RunSource::Array(blend, a) = source {
-                let arrays = self.sprite_arrays.as_ref().expect("made before the pass");
+                let arrays = self
+                    .sprite
+                    .sprite_arrays
+                    .as_ref()
+                    .expect("made before the pass");
                 pass.set_pipeline(arrays.pipeline(blend, tone_mapped));
                 let (group, _) = self.cache.sprite_array_groups[a.index()]
                     .as_ref()
@@ -138,7 +156,7 @@ impl Renderer {
             // refused them, it draws plain.
             let source = match source {
                 RunSource::Shaded(blend, t, m) => {
-                    let hooks = self.sprite_hooks.as_ref();
+                    let hooks = self.sprite.sprite_hooks.as_ref();
                     let shader = scene.sprite_shader(m).map(|(s, _)| s.index());
                     let pipeline = hooks
                         .zip(shader)
@@ -150,7 +168,7 @@ impl Renderer {
                         pass.set_bind_group(
                             1,
                             match t {
-                                None => &self.white_sprite_group,
+                                None => &self.sprite.white_sprite_group,
                                 Some(t) => self.cache.sprite_groups[t.index()]
                                     .as_ref()
                                     .expect("made before the pass"),
@@ -175,7 +193,11 @@ impl Renderer {
             if let RunSource::Sprite(blend, t) = source
                 && let Some(group) = self.normal_group(scene, t)
             {
-                let normals = self.sprite_normals.as_ref().expect("made with the group");
+                let normals = self
+                    .sprite
+                    .sprite_normals
+                    .as_ref()
+                    .expect("made with the group");
                 pass.set_pipeline(normals.sprite(blend, tone_mapped));
                 pass.set_bind_group(1, group, &[]);
                 let start = run.first as u64 * SPRITE_STRIDE;
@@ -198,7 +220,7 @@ impl Renderer {
                 | RunSource::Particles(_) => {
                     unreachable!("drawn above")
                 }
-                RunSource::Sprite(blend, None) => (false, blend, &self.white_sprite_group),
+                RunSource::Sprite(blend, None) => (false, blend, &self.sprite.white_sprite_group),
                 RunSource::Sprite(blend, Some(t)) => (
                     false,
                     blend,
@@ -215,10 +237,10 @@ impl Renderer {
             };
             if current != Some((msdf, blend, tone_mapped)) {
                 pass.set_pipeline(match (msdf, blend, tone_mapped) {
-                    (true, _, _) => &self.msdf_pipeline,
-                    (false, SpriteBlend::Alpha, false) => &self.sprite_untonemapped_pipeline,
-                    (false, SpriteBlend::Alpha, true) => &self.sprite_pipeline,
-                    (false, SpriteBlend::Additive, _) => &self.sprite_additive_pipeline,
+                    (true, _, _) => &self.sprite.msdf_pipeline,
+                    (false, SpriteBlend::Alpha, false) => &self.sprite.sprite_untonemapped_pipeline,
+                    (false, SpriteBlend::Alpha, true) => &self.sprite.sprite_pipeline,
+                    (false, SpriteBlend::Additive, _) => &self.sprite.sprite_additive_pipeline,
                 });
                 current = Some((msdf, blend, tone_mapped));
             }
