@@ -380,8 +380,10 @@ impl Ui {
     /// their targets, meta layers over the screen. Called by `end` before
     /// transforms are applied.
     pub(crate) fn world_place(&mut self) {
-        self.world_anchors();
-        self.world_panels();
+        self.layout
+            .world_anchors(&mut self.world, &self.env, &mut self.tree);
+        self.layout
+            .world_panels(&mut self.world, &self.env, &mut self.tree);
         self.world_metas();
     }
 

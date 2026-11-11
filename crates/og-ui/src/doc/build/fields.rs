@@ -1114,7 +1114,8 @@ impl Ui {
         }
         if !self.tree.building {
             self.apply_part_appearance(i);
-            self.prepare_layout_node(i);
+            self.layout
+                .prepare_layout_node(i, &self.env, &mut self.tree);
         }
     }
 }

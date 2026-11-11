@@ -202,7 +202,7 @@ impl Ui {
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         self.lay_out(vp, dpr, screen, rtl, &mut *resolve)?;
-        self.place_popover_arrows();
+        self.tree.place_popover_arrows();
         self.layout.cache.query_roots = None;
         if !self.tree.index.pending.is_empty() {
             self.tree.sync_tree(&[], &[], false);
@@ -276,7 +276,7 @@ impl Ui {
         // Breakpoint and orientation variants (docs/ui.md §2), before
         // anything is laid out: on the nodes written this frame (a retained
         // node keeps what they set; a new viewport emits it again).
-        self.apply_variants();
+        self.layout.apply_variants(&self.env, &mut self.tree);
         self.apply_part_appearances();
         self.tree
             .apply_resized(&mut self.layout, &mut self.interaction);
@@ -390,7 +390,7 @@ impl Ui {
                 self.tree.nodes[c].up = i;
             }
             // A block holding inline-level children lays them out in lines.
-            self.line_box(i, &flow);
+            self.tree.line_box(i, &flow);
             // Flex and grid items lay out in CSS `order`, then as built.
             if table.is_none() && flow.iter().any(|&c| self.tree.nodes[c].el.order != 0) {
                 og_core::sort::sort_by_key(&mut flow, |&c| self.tree.nodes[c].el.order);
@@ -410,7 +410,8 @@ impl Ui {
             n.table = table;
         }
         for k in 0..self.tree.emitted.len() {
-            self.prepare_layout_node(self.tree.emitted[k]);
+            self.layout
+                .prepare_layout_node(self.tree.emitted[k], &self.env, &mut self.tree);
         }
         // A gutter follows its node's props and last frame's scroll range.
         if whole {
@@ -429,7 +430,8 @@ impl Ui {
             }
         }
         self.content_visibility();
-        self.reuse_check();
+        self.layout
+            .reuse_check(&self.env, &mut self.out, &self.docs, &mut self.tree);
         let mut floating: Vec<usize> = self
             .tree
             .floating
@@ -878,7 +880,7 @@ impl Ui {
                 Ok(true) => {}
                 Ok(false) => break,
                 Err(error) => {
-                    self.abort_layout_queries();
+                    self.layout.abort_layout_queries(&mut self.tree);
                     self.paint.inspection = inspect::Inspection::none();
                     return Err(error);
                 }
@@ -1384,13 +1386,19 @@ impl Ui {
             (std::mem::take(&mut self.out.frame.items), Vec::new())
         } else if let Some(relevelled) = view
             .is_none()
-            .then(|| self.relevel(&trees, &tail))
+            .then(|| {
+                self.layout
+                    .relevel(&trees, &tail, &self.env, &mut self.out, &mut self.paint)
+            })
             .flatten()
         {
             relevelled
         } else if let Some(spliced) = view
             .is_none()
-            .then(|| self.splice_levels(&trees, &tail))
+            .then(|| {
+                self.layout
+                    .splice_levels(&trees, &tail, &self.env, &mut self.out, &mut self.paint)
+            })
             .flatten()
         {
             spliced
@@ -1399,7 +1407,9 @@ impl Ui {
             cmds.extend(tail.iter().cloned());
             let mut cmds: Vec<(DrawCmd, Affine)> =
                 cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let missing_glyphs = self.missing_glyphs(&cmds);
+            let missing_glyphs =
+                self.layout
+                    .missing_glyphs(&cmds, &self.env, &mut self.out, &mut self.paint);
             if let Some((_, hidden)) = &view {
                 let mut shown = vec![true; cmds.len()];
                 for r in hidden {
@@ -1455,7 +1465,7 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     /// Normalize freshly assigned presentation before measurement. Call once
     /// after replacing fields, not on already prepared scroll padding.
     /// Node `i` lays its flow out in lines while one of it is inline-level
@@ -1464,13 +1474,13 @@ impl Ui {
     /// line of its own; its authored layout comes back when none is.
     fn line_box(&mut self, i: usize, flow: &[usize]) {
         let wanted = {
-            let n = &self.tree.nodes[i];
+            let n = &self.nodes[i];
             n.el.block
                 && n.props.layout == crate::LayoutMode::Flex
                 && matches!(n.content, Content::None)
-                && flow.iter().any(|&c| self.tree.nodes[c].el.inline)
+                && flow.iter().any(|&c| self.nodes[c].el.inline)
         };
-        let n = &mut self.tree.nodes[i];
+        let n = &mut self.nodes[i];
         let ours = n.el.direction == crate::Direction::Row && n.el.wrap;
         match (wanted, n.line_box) {
             (true, saved) if saved.is_none() || !ours => {
@@ -1497,21 +1507,21 @@ impl Ui {
         // allows, hidden while no side faces it. A context menu (opened at
         // a point) draws none: its corner is at the point, as a desktop's
         // and a game's context menus are.
-        for k in 0..self.tree.floating.len() {
-            let f = self.tree.floating[k];
-            let n = &self.tree.nodes[f];
+        for k in 0..self.floating.len() {
+            let f = self.floating[k];
+            let n = &self.nodes[f];
             let Some((size, color)) = n.arrow else {
                 continue;
             };
             let a = match n.anchor_point {
                 Some([x, y]) => Rect::new(x, y, 0.0, 0.0),
-                None => match self.tree.nodes.get(n.anchor) {
+                None => match self.nodes.get(n.anchor) {
                     Some(a) => a.rect,
                     None => continue,
                 },
             };
             let (b, placed, point) = (n.rect, n.anchor_placed, n.anchor_point);
-            self.tree.nodes[f].shapes.retain(|s| {
+            self.nodes[f].shapes.retain(|s| {
                 !matches!(s, crate::layout::Shape::Bar { part, .. }
                     if part.component == "Popover" && part.part == "arrow")
             });
@@ -1529,7 +1539,7 @@ impl Ui {
                 crate::anchor::PlacedSide::Left => (b.right(), along(b.y, b.height, ay)),
             };
             let (bx, by) = b.center();
-            self.tree.nodes[f].shapes.push(crate::layout::Shape::Bar {
+            self.nodes[f].shapes.push(crate::layout::Shape::Bar {
                 part: crate::dress::PartRef::of("Popover", "arrow", None),
                 frame: crate::layout::Frame::centered(cx - bx, cy - by, size, size),
                 angle: std::f32::consts::FRAC_PI_4,
@@ -1539,32 +1549,37 @@ impl Ui {
     }
 }
 
-impl Ui {
-    pub(crate) fn prepare_layout_node(&mut self, i: usize) {
-        let node = &mut self.tree.nodes[i];
+impl crate::ui::Layout {
+    pub(crate) fn prepare_layout_node(
+        &mut self,
+        i: usize,
+        env: &crate::ui::Env,
+        tree: &mut crate::ui::Tree,
+    ) {
+        let node = &mut tree.nodes[i];
         if let Content::Text(text) = &mut node.content
-            && self.env.theme.art.display_min > 0.0
+            && env.theme.art.display_min > 0.0
             && text.font == crate::FontRole::Display
-            && text.step.size < self.env.theme.art.display_min
+            && text.step.size < env.theme.art.display_min
         {
             text.font = crate::FontRole::Body;
         }
         if !matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
             match &mut node.content {
                 Content::Text(text) if text.step.uppercase => {
-                    text.text = og_i18n::text::uppercase(&text.text, &self.env.locale);
+                    text.text = og_i18n::text::uppercase(&text.text, &env.locale);
                 }
                 Content::Rich(rich) => {
                     for span in &mut rich.spans {
                         if span.step.uppercase && span.atom.is_none() {
-                            span.text = og_i18n::text::uppercase(&span.text, &self.env.locale);
+                            span.text = og_i18n::text::uppercase(&span.text, &env.locale);
                         }
                     }
                 }
                 _ => {}
             }
         }
-        crate::layout::snap_pixel_text(&mut self.tree.nodes[i..i + 1], &self.env.fonts);
+        crate::layout::snap_pixel_text(&mut tree.nodes[i..i + 1], &env.fonts);
     }
 
     /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each
@@ -1579,22 +1594,24 @@ impl Ui {
         &mut self,
         trees: &[(DrawCmd, Affine)],
         tail: &[(DrawCmd, Affine)],
+        env: &crate::ui::Env,
+        out: &mut crate::ui::Out,
+        paint: &mut crate::ui::Paint,
     ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
-        let prev = std::mem::take(&mut self.paint.cache.prev_cmds);
-        if self.paint.cache.levels.is_none()
-            || self.paint.cache.aligned.len() != self.paint.cache.aligned_kept
-            || self.paint.cache.shifted_out
-            || self.out.frame.unit != self.env.unit
-            || trees.len() != self.paint.cache.prev_len
-            || tail.len() != self.paint.cache.last_tail.len()
+        let prev = std::mem::take(&mut paint.cache.prev_cmds);
+        if paint.cache.levels.is_none()
+            || paint.cache.aligned.len() != paint.cache.aligned_kept
+            || paint.cache.shifted_out
+            || out.frame.unit != env.unit
+            || trees.len() != paint.cache.prev_len
+            || tail.len() != paint.cache.last_tail.len()
         {
             return None;
         }
         let total = trees.len() + tail.len();
         let mut changed = Vec::new();
         let mut at = 0;
-        let gaps = self
-            .paint
+        let gaps = paint
             .cache
             .aligned
             .iter()
@@ -1611,7 +1628,7 @@ impl Ui {
             }
             at = at.max(end);
         }
-        for (k, (now, was)) in tail.iter().zip(&self.paint.cache.last_tail).enumerate() {
+        for (k, (now, was)) in tail.iter().zip(&paint.cache.last_tail).enumerate() {
             if now != was {
                 changed.push(trees.len() + k);
             }
@@ -1626,17 +1643,17 @@ impl Ui {
                 bake(c.clone(), *m)
             })
             .collect();
-        self.paint.kept_spans.clear();
-        let missing_glyphs = self.missing_glyphs(&baked);
-        let mut items = std::mem::take(&mut self.out.frame.items);
+        paint.kept_spans.clear();
+        let missing_glyphs = self.missing_glyphs(&baked, env, out, paint);
+        let mut items = std::mem::take(&mut out.frame.items);
         let replaced = changed
             .into_iter()
             .zip(baked)
             .map(|(p, (c, m))| (p, c, m))
             .collect();
-        let levels = self.paint.cache.levels.as_mut().expect("checked");
-        if !levels.update(&mut items, replaced, self.env.unit) {
-            self.out.frame.items = items;
+        let levels = paint.cache.levels.as_mut().expect("checked");
+        if !levels.update(&mut items, replaced, env.unit) {
+            out.frame.items = items;
             return None;
         }
         #[cfg(debug_assertions)]
@@ -1644,7 +1661,7 @@ impl Ui {
             let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.env.unit);
+            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), env.unit);
             assert!(
                 fresh == items,
                 "the frame's items levelled again differ from levelling it afresh"
@@ -1662,18 +1679,21 @@ impl Ui {
         &mut self,
         trees: &[(DrawCmd, Affine)],
         tail: &[(DrawCmd, Affine)],
+        env: &crate::ui::Env,
+        out: &mut crate::ui::Out,
+        paint: &mut crate::ui::Paint,
     ) -> Option<(Vec<DrawItem>, MissingGlyphs)> {
-        if self.paint.cache.copied.is_empty() || self.out.frame.unit != self.env.unit {
+        if paint.cache.copied.is_empty() || out.frame.unit != env.unit {
             return None;
         }
-        let levels = self.paint.cache.levels.as_mut()?;
+        let levels = paint.cache.levels.as_mut()?;
         let mut from: Vec<Option<(usize, (f32, f32))>> = vec![None; trees.len()];
-        for &(start, was, len, delta) in &self.paint.cache.copied {
+        for &(start, was, len, delta) in &paint.cache.copied {
             for k in 0..len {
                 from[start + k] = Some((was + k, delta));
             }
         }
-        let same_tail = tail.len() == self.paint.cache.last_tail.len();
+        let same_tail = tail.len() == paint.cache.last_tail.len();
         let mut fresh = Vec::new();
         let mut next = Vec::with_capacity(trees.len() + tail.len());
         for (p, (c, m)) in trees.iter().enumerate() {
@@ -1700,9 +1720,9 @@ impl Ui {
             });
         }
         for (k, c) in tail.iter().enumerate() {
-            next.push(if same_tail && *c == self.paint.cache.last_tail[k] {
+            next.push(if same_tail && *c == paint.cache.last_tail[k] {
                 crate::draw::Spliced {
-                    from: Some(self.paint.cache.prev_len + k),
+                    from: Some(paint.cache.prev_len + k),
                     delta: (0.0, 0.0),
                     cmd: None,
                 }
@@ -1716,20 +1736,20 @@ impl Ui {
                 }
             });
         }
-        let old = std::mem::take(&mut self.out.frame.items);
-        let items = levels.splice(old, next, self.env.unit);
+        let old = std::mem::take(&mut out.frame.items);
+        let items = levels.splice(old, next, env.unit);
         if items.is_none() {
-            self.paint.cache.levels = None;
+            paint.cache.levels = None;
         }
         let items = items?;
-        self.paint.kept_spans.clear();
-        let missing_glyphs = self.missing_glyphs(&fresh);
+        paint.kept_spans.clear();
+        let missing_glyphs = self.missing_glyphs(&fresh, env, out, paint);
         #[cfg(debug_assertions)]
         if bounded::checking() {
             let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), self.env.unit);
+            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), env.unit);
             assert!(
                 fresh == items,
                 "the frame's items spliced from last frame's differ from levelling it afresh"
@@ -1741,9 +1761,12 @@ impl Ui {
     fn missing_glyphs(
         &mut self,
         cmds: &[(DrawCmd, Affine)],
+        env: &crate::ui::Env,
+        ui_out: &mut crate::ui::Out,
+        paint: &mut crate::ui::Paint,
     ) -> Vec<(og_draw::FontHandle, Vec<char>)> {
         let mut out: Vec<(og_draw::FontHandle, Vec<char>)> = Vec::new();
-        let kept = std::mem::take(&mut self.paint.kept_spans);
+        let kept = std::mem::take(&mut paint.kept_spans);
         let mut spans = kept.iter().peekable();
         for (at, (c, _)) in cmds.iter().enumerate() {
             while spans.next_if(|r| r.end <= at).is_some() {}
@@ -1757,14 +1780,14 @@ impl Ui {
             let DrawCmd::Text { font, text, .. } = c else {
                 continue;
             };
-            let Some(face) = self.env.fonts.face(*font) else {
+            let Some(face) = env.fonts.face(*font) else {
                 continue;
             };
             for ch in text.chars() {
                 if ch.is_whitespace()
                     || ch.is_control()
                     || face.metrics.has(ch)
-                    || !self.out.glyphs_missed.insert((*font, ch))
+                    || !ui_out.glyphs_missed.insert((*font, ch))
                 {
                     continue;
                 }
@@ -1774,7 +1797,7 @@ impl Ui {
                 }
             }
         }
-        self.paint.kept_spans = kept;
+        paint.kept_spans = kept;
         out
     }
 }

@@ -198,13 +198,12 @@ impl Ui {
     }
 }
 
-impl Ui {
-    pub(crate) fn abort_layout_queries(&mut self) {
-        self.layout.cache.query_roots = None;
-        self.tree.invalidation.epoch += 1;
-        self.layout.cache.measurements.pending.clear();
-        self.layout
-            .cache
+impl crate::ui::Layout {
+    pub(crate) fn abort_layout_queries(&mut self, tree: &mut crate::ui::Tree) {
+        self.cache.query_roots = None;
+        tree.invalidation.epoch += 1;
+        self.cache.measurements.pending.clear();
+        self.cache
             .measurements
             .watched
             .values_mut()
