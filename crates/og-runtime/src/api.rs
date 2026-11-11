@@ -343,11 +343,19 @@ fn spawn_source(source: &str) -> Option<std::sync::Arc<str>> {
 /// `world.spawn` inside a system: queued, applied when the system returns
 /// (its id is usable at once); every component it gets must be among the
 /// system's writes.
-fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Result<Entity, String> {
-    let d = spawn_desc("world.spawn", desc)?;
+fn spawn_in_system(
+    eng: &Engine,
+    f: &super::engine::Frame,
+    call: &str,
+    desc: &Value,
+) -> Result<Entity, String> {
+    let d = spawn_desc(call, desc)?;
     let name = d.name;
-    if !name.is_empty() && eng.state.borrow().names.contains_key(&name) {
-        return Err(format!("an entity named '{name}' already exists"));
+    if !name.is_empty() {
+        let st = eng.state.borrow();
+        if st.names.contains_key(&name) || st.held_names.contains(&name) {
+            return Err(format!("an entity named '{name}' already exists"));
+        }
     }
     let mut components = Vec::new();
     if !d.bare {
@@ -370,14 +378,14 @@ fn spawn_in_system(eng: &Engine, f: &super::engine::Frame, desc: &Value) -> Resu
             let cause = if !access {
                 None
             } else if reason.ends_with("access to 'og.Parent'") {
-                Some("world.spawn with parent writes og.Parent; add og.Parent to the system's writes")
+                Some("with parent writes og.Parent; add og.Parent to the system's writes")
             } else if reason.ends_with("access to 'og.Transform'") {
-                Some("world.spawn writes og.Transform unless the desc says bare: true; add og.Transform to the system's writes")
+                Some("writes og.Transform unless the desc says bare: true; add og.Transform to the system's writes")
             } else {
                 None
             };
             match cause {
-                Some(c) => format!("{reason} ({c})"),
+                Some(c) => format!("{reason} ({call} {c})"),
                 None => reason,
             }
         })?;
@@ -400,7 +408,7 @@ pub fn og_world_spawn(world: u32, desc: Option<String>) -> Result<serde_json::Va
         return (|| {
             let eng = engine(world)?;
             let desc = parse(desc.as_deref())?;
-            spawn_in_system(&eng, f, &desc).map(entity_number)
+            spawn_in_system(&eng, f, "world.spawn", &desc).map(entity_number)
         })();
     }
     (|| {
@@ -504,12 +512,6 @@ pub fn og_world_has(world: u32, entity_id: f64, comp: String) -> bool {
         Ok(id) => w.components_of(e).is_ok_and(|c| c.contains(&id)),
         Err(_) => false,
     }
-}
-
-fn in_system(what: &str) -> String {
-    format!(
-        "{what} inside a system needs og-ecs SystemContext packed-byte access (requested from Core); do it in a command, or through the system's views"
-    )
 }
 
 pub fn og_world_insert(
@@ -855,61 +857,161 @@ pub fn og_world_emit(world: u32, event: String, payload: String) -> Result<(), S
     })()
 }
 
+/// A ready asset `world.instantiate` places: its index and its scene
+/// (none: a glTF).
+fn instantiable(
+    eng: &Engine,
+    asset: f64,
+) -> Result<(usize, Option<og_bundle::runtime::SceneDesc>), String> {
+    let i = index_of(asset).ok_or_else(|| format!("{asset} is not an asset handle"))?;
+    let a = eng.assets.borrow();
+    let entry = a
+        .entries
+        .get(i)
+        .ok_or_else(|| format!("asset {asset} is not alive"))?;
+    match (&entry.status, &entry.payload) {
+        (Status::Pending, _) => Err(format!(
+            "{} is still loading; instantiate it once og.load.status says ready",
+            entry.path
+        )),
+        (Status::Failed(e), _) => Err(e.clone()),
+        (_, Payload::Scene(s)) => Ok((i, Some((**s).clone()))),
+        (_, Payload::Gltf { .. }) => Ok((i, None)),
+        _ => Err(format!("{} is a bundle, not a scene or a glTF", entry.path)),
+    }
+}
+
+/// What follows an instance's root: the scene's entities under it, or the
+/// glTF's og.Model on it and its lights. Refused, the root goes with what
+/// spawned.
+fn fill_instance(
+    eng: &Engine,
+    root: Entity,
+    asset: f64,
+    index: usize,
+    scene: Option<&og_bundle::runtime::SceneDesc>,
+) -> Result<(), String> {
+    let filled = (|| match scene {
+        Some(s) => assets::spawn_scene(eng, s, Some(root)).map(|_| ()),
+        None => {
+            let (layout, id) = component(eng, "og.Model")?;
+            let fields = eng
+                .assets
+                .borrow()
+                .model_shadows(index)
+                .model_fields(asset as u64);
+            let bytes = layout.encode(None, Some(&fields))?;
+            before_structural(eng);
+            eng.world()?.insert_bytes(root, id, &bytes).map_err(err)?;
+            assets::spawn_lights(eng, index, root)
+        }
+    })();
+    if filled.is_err() {
+        let _ = og_world_despawn(eng.id, root.to_bits() as f64);
+    }
+    filled
+}
+
+/// An instance a system asked for, until its deferred placement runs: the
+/// scene's names are held for it. Dropped unrun (the system failed, and its
+/// commands were discarded with the root), the names are free again and the
+/// root's own name is forgotten.
+struct Unplaced {
+    engine: u32,
+    names: Vec<String>,
+    /// The root, until it is placed.
+    root: Option<Entity>,
+}
+
+impl Drop for Unplaced {
+    fn drop(&mut self) {
+        let Ok(eng) = engine(self.engine) else { return };
+        let Ok(mut st) = eng.state.try_borrow_mut() else {
+            return;
+        };
+        for n in &self.names {
+            st.held_names.remove(n);
+        }
+        drop(st);
+        if let Some(root) = self.root {
+            forget_name(&eng, root);
+        }
+    }
+}
+
+/// `world.instantiate` inside a system. The root is spawned as
+/// `world.spawn` spawns one there: queued, its id usable at once, with
+/// og.Transform (and og.Parent, given a parent) among the system's writes.
+/// What follows it is placed on the whole world when the system returns,
+/// right after the root (og-ecs `SystemContext::defer`), so it needs no
+/// writes of the system, and the systems after it this tick, and a
+/// snapshot they take, have the scene. The scene's names are held from the
+/// call on: a second instance of it in the same system is refused here,
+/// as between ticks. What can still fail then (a sub-scene or a prefab
+/// that does not load) takes the root with it and is a warning in the
+/// engine log, since the call has answered.
+fn instantiate_in_system(
+    eng: &Engine,
+    f: &super::engine::Frame,
+    asset: f64,
+    desc: &Value,
+) -> Result<Entity, String> {
+    let (index, scene) = instantiable(eng, asset)?;
+    let names = match &scene {
+        Some(s) => {
+            let root = spawn_desc("world.instantiate", desc)?.name;
+            assets::names_free(eng, s, &root)?
+        }
+        None => Vec::new(),
+    };
+    let root = spawn_in_system(eng, f, "world.instantiate", desc)?;
+    eng.state
+        .borrow_mut()
+        .held_names
+        .extend(names.iter().cloned());
+    let mut unplaced = Unplaced {
+        engine: eng.id,
+        names,
+        root: Some(root),
+    };
+    let id = eng.id;
+    // SAFETY: the frame is published while its system runs.
+    unsafe { f.ctx() }.defer(move |_| {
+        // The root is in the world, and the names are the scene's to take.
+        unplaced.root = None;
+        drop(unplaced);
+        // The step's borrow of the world is not used here: the scene goes
+        // in through the engine, as it does between ticks.
+        let Ok(eng) = engine(id) else { return Ok(()) };
+        if let Err(e) = fill_instance(&eng, root, asset, index, scene.as_ref()) {
+            let tick = eng.world().map_or(0, |w| w.time().tick);
+            eng.state.borrow_mut().log.push(json!({
+                "tick": tick, "warning": true,
+                "text": format!("world.instantiate: {e}; its root (entity {}) is despawned", root.to_bits()),
+            }));
+        }
+        // Into the world now, not at the next probe call: a snapshot a
+        // later system takes this tick has the scene's names.
+        rprobe::flush_names(&eng);
+        Ok(())
+    });
+    Ok(root)
+}
+
 pub fn og_world_instantiate(
     world: u32,
     asset: f64,
     desc: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    if running(world).is_some() {
-        return Err(in_system("world.instantiate"));
-    }
     (|| {
         let eng = engine(world)?;
         let desc = parse(desc.as_deref())?;
-        let i = index_of(asset).ok_or_else(|| format!("{asset} is not an asset handle"))?;
-        let scene = {
-            let a = eng.assets.borrow();
-            let entry = a
-                .entries
-                .get(i)
-                .ok_or_else(|| format!("asset {asset} is not alive"))?;
-            match (&entry.status, &entry.payload) {
-                (Status::Pending, _) => {
-                    return Err(format!(
-                        "{} is still loading; instantiate it once og.load.status says ready",
-                        entry.path
-                    ));
-                }
-                (Status::Failed(e), _) => return Err(e.clone()),
-                (_, Payload::Scene(s)) => Some(s.clone()),
-                (_, Payload::Gltf { .. }) => None,
-                _ => return Err(format!("{} is a bundle, not a scene or a glTF", entry.path)),
-            }
-        };
-        let root = spawn(&eng, "world.instantiate", &desc)?;
-        match scene {
-            Some(s) => {
-                if let Err(e) = assets::spawn_scene(&eng, &s, Some(root)) {
-                    let _ = og_world_despawn(world, root.to_bits() as f64);
-                    return Err(e);
-                }
-            }
-            None => {
-                let (layout, id) = component(&eng, "og.Model")?;
-                let fields = eng
-                    .assets
-                    .borrow()
-                    .model_shadows(i)
-                    .model_fields(asset as u64);
-                let bytes = layout.encode(None, Some(&fields))?;
-                before_structural(&eng);
-                eng.world()?.insert_bytes(root, id, &bytes).map_err(err)?;
-                if let Err(e) = assets::spawn_lights(&eng, i, root) {
-                    let _ = og_world_despawn(world, root.to_bits() as f64);
-                    return Err(e);
-                }
-            }
+        if let Some(f) = running(world) {
+            return instantiate_in_system(&eng, f, asset, &desc).map(entity_number);
         }
+        let (index, scene) = instantiable(&eng, asset)?;
+        let root = spawn(&eng, "world.instantiate", &desc)?;
+        fill_instance(&eng, root, asset, index, scene.as_ref())?;
         Ok(entity_number(root))
     })()
 }

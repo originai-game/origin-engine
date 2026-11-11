@@ -1660,6 +1660,39 @@ pub(crate) fn spawn_scene(
     spawn_placed(eng, scene, Placement::Under(root))
 }
 
+/// The names `scene`'s entities take, each free: not an entity's, not
+/// held for a scene a system is placing (`world.instantiate` there), not
+/// `root` (the name its root is about to take, or none) and not twice in
+/// the scene. A prefab's own blob (og.load.prefab) spawns unnamed, since it
+/// is placed many times: it takes none.
+pub(crate) fn names_free(
+    eng: &Engine,
+    scene: &SceneDesc,
+    root: &str,
+) -> Result<Vec<String>, String> {
+    if scene.prefabs.first() == Some(&scene.id) {
+        return Ok(Vec::new());
+    }
+    let st = eng.state.borrow();
+    let mut seen = std::collections::BTreeSet::new();
+    for e in &scene.entities {
+        if e.name.is_empty() {
+            continue;
+        }
+        if st.names.contains_key(&e.name)
+            || st.held_names.contains(&e.name)
+            || e.name == root
+            || !seen.insert(e.name.clone())
+        {
+            return Err(format!(
+                "{}: an entity named '{}' already exists; instantiate the scene under a root, or rename it in the scene",
+                scene.id, e.name
+            ));
+        }
+    }
+    Ok(seen.into_iter().collect())
+}
+
 /// [`spawn_scene`] with a [`Placement`]. An entity with a sub-scene
 /// (`scene "<id>"`) gets it spawned under it, or, when it is a world cell
 /// (`og.StreamCell`), its `scene` set to the sub-scene's handle for the
@@ -1696,22 +1729,8 @@ pub(crate) fn spawn_part(
     // A prefab's own blob (og.load.prefab) spawns unnamed: it is placed
     // many times.
     let prefab = scene.prefabs.first() == Some(&scene.id);
-    if !prefab && spawned.is_empty() {
-        let st = eng.state.borrow();
-        let mut seen = std::collections::BTreeSet::new();
-        for e in &scene.entities {
-            if e.name.is_empty() {
-                continue;
-            }
-            if st.names.contains_key(&e.name) || !seen.insert(e.name.clone()) {
-                return Err(format!(
-                    "{}: an entity named '{}' already exists; instantiate the scene under a root, or rename it in the scene",
-                    scene.id, e.name
-                ));
-            }
-        }
-    }
     if spawned.is_empty() {
+        names_free(eng, scene, "")?;
         super::timeline::register_scene_paths(eng.id, &scene.paths);
     }
     let layouts = eng.state.borrow().layouts.clone();

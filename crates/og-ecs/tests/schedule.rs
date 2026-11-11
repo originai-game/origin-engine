@@ -180,3 +180,56 @@ fn commands_after_a_despawn_in_the_same_batch() {
         assert_eq!(w.time().tick, 0);
     }
 }
+
+#[test]
+fn deferred_work_runs_in_order_with_the_commands_around_it() {
+    // The closure sees the spawn queued before it and not the one after;
+    // the next system sees what it wrote.
+    let mut w = world();
+    w.add_system(SystemDesc::new("first").write::<Position>(), |ctx| {
+        let e = ctx.spawn((Position { p: Vec3::X },))?;
+        ctx.defer(move |world| {
+            assert_eq!(world.get::<Position>(e)?.p, Vec3::X);
+            let placed: usize = world
+                .query(&QueryDesc::new().read::<Position>())?
+                .map(|a| a.len())
+                .sum();
+            assert_eq!(placed, 1, "the spawn queued after is not placed yet");
+            // A write outside the system's declaration: the closure has
+            // the whole world.
+            world.resource_mut::<Score>()?.points = 7;
+            Ok(())
+        });
+        ctx.spawn((Position { p: Vec3::Y },))?;
+        Ok(())
+    })
+    .unwrap();
+    w.add_system(SystemDesc::new("second").read::<Score>(), |ctx| {
+        assert_eq!(ctx.resource::<Score>()?.points, 7);
+        Ok(())
+    })
+    .unwrap();
+    w.step().unwrap();
+    assert_eq!(w.entity_count(), 2);
+    assert_eq!(w.time().tick, 1);
+
+    // An Err stops the tick as a failed command does: what was queued
+    // before it is applied, the rest dropped.
+    let mut w = world();
+    w.add_system(SystemDesc::new("fails").write::<Position>(), |ctx| {
+        ctx.spawn((Position { p: Vec3::X },))?;
+        ctx.defer(|_| Err(og_core::Error::new(ErrorKind::Invalid, "no")));
+        ctx.spawn((Position { p: Vec3::Y },))?;
+        Ok(())
+    })
+    .unwrap();
+    let err = w.step().unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::Invalid);
+    assert!(
+        err.reason().starts_with("tick 0, system 'fails': "),
+        "{}",
+        err.reason()
+    );
+    assert_eq!(w.entity_count(), 1);
+    assert_eq!(w.time().tick, 0);
+}

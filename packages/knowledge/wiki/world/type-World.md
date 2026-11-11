@@ -639,6 +639,8 @@ Spawn a loaded scene, prefab or glTF asset into the world: a root entity from th
 
 Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.
 
+Inside a system the root is spawned as world.spawn spawns one there, and what is under it is in the world when the system returns.
+
 ```ts
 World.instantiate(asset: Asset, desc?: SpawnDesc): Result<Entity>
 ```
@@ -656,6 +658,7 @@ Binding symbol `og_world_instantiate` · publish builds: kept
 fn instantiate {
   doc "Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root."
   doc "Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns."
+  doc "Inside a system the root is spawned as world.spawn spawns one there, and what is under it is in the world when the system returns."
   param asset Asset "A ready asset from og.load."
   param desc SpawnDesc "Name, parent and transform of the root entity."
   returns Result.Entity "The root entity, or why it was refused (an asset still loading, a failed asset)."
@@ -698,7 +701,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `world` line 401</sub>
+<sub>Module `world` line 402</sub>
 
 <a id="member-World-openSave"></a>
 
@@ -726,7 +729,7 @@ fn openSave {
 }
 ```
 
-<sub>Module `world` line 411</sub>
+<sub>Module `world` line 412</sub>
 
 <a id="member-World-restore"></a>
 
@@ -759,4 +762,4 @@ fn restore {
 }
 ```
 
-<sub>Module `world` line 417</sub>
+<sub>Module `world` line 418</sub>

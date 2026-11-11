@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "World.instantiate",
+      "summary": "world.instantiate works inside a system. The root is spawned as world.spawn spawns one there (og.Transform, and og.Parent for a parented root, among the system's writes; its id usable at once), and the scene's entities, or the glTF's og.Model and lights, are in the world when the system returns: the systems after it in the same tick, and a save they take, have them. A second instance of the same named scene in one system is refused at the call, as between ticks. It was refused with \"world.instantiate inside a system needs og-ecs SystemContext packed-byte access\"."
+    }
+  ]
+}

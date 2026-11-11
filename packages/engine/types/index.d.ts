@@ -1915,6 +1915,7 @@ export interface World {
   /**
    * Spawn a loaded scene, prefab or glTF asset into the world: a root entity from the desc, then (for a scene or prefab) every entity under it with its components (a scene's with their names, a prefab's unnamed, each with an og.PrefabLink to it), or (for a glTF) a Model on the root.
    * Scene entity names must be free: a name already in use refuses the whole instantiation before anything spawns.
+   * Inside a system the root is spawned as world.spawn spawns one there, and what is under it is in the world when the system returns.
    *
    * @param asset A ready asset from og.load.
    * @param desc Name, parent and transform of the root entity.

@@ -50,6 +50,8 @@ mod insert_ranges;
 #[cfg(not(feature = "publish"))]
 #[path = "../inspector.rs"]
 mod inspector;
+#[path = "../instantiate_in_system.rs"]
+mod instantiate_in_system;
 #[path = "../invariants.rs"]
 mod invariants;
 #[path = "../material_arrays.rs"]
