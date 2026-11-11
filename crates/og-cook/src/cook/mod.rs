@@ -496,9 +496,9 @@ pub fn cook_project_with_texture_cache(
         mut ignored,
         mut early_errors,
         mut consumed,
-    } = scan_sources(assets_dir, &cook_index)?;
+    } = scan_sources(assets_dir, &cook_index, threads)?;
     laps.lap("scan");
-    let imported = import(&mut sources, &mut consumed, texture_cache);
+    let imported = import(&mut sources, &mut consumed, texture_cache, threads);
     laps.lap("import");
     let Resolved {
         known,
@@ -524,7 +524,7 @@ pub fn cook_project_with_texture_cache(
         groups,
         group_of,
         pack_faces,
-    } = group(&sources, &known, &mut early_errors);
+    } = group(&sources, &known, &mut early_errors, threads);
     laps.lap("group");
     let schemas: BTreeMap<String, Schema> = options
         .schemas
@@ -586,7 +586,7 @@ pub fn cook_project_with_texture_cache(
             parsed_refs,
             ..
         },
-    ) = plan(&cx, early_errors);
+    ) = plan(&cx, early_errors, threads);
     laps.lap("plan");
     let project_key = project_key(&cook_index, &sources, texture_cache);
     let results = execute(
@@ -614,8 +614,15 @@ pub fn cook_project_with_texture_cache(
     laps.lap("write");
     pack(&cx, &groups, &mut written, &mut reports)?;
     laps.lap("pack");
-    let (removed, warnings, before_code) =
-        finish(&cx, &old, written, &parsed_refs, &mut reports, &log)?;
+    let (removed, warnings, before_code) = finish(
+        &cx,
+        &old,
+        written,
+        &parsed_refs,
+        &mut reports,
+        &log,
+        threads,
+    )?;
     laps.lap("finish");
     let (conformed, warnings) = diagnose(
         &cx,
@@ -651,6 +658,32 @@ pub fn cook_project_with_texture_cache(
     laps.lap("save");
     report.stages = laps.stages;
     Ok(report)
+}
+
+/// `f` of every item, on up to `threads` threads; the answers in the
+/// items' order. For the cook's work that is one file's alone (reading it,
+/// hashing it, parsing it), which a project has thousands of.
+fn each<T: Sync, R: Send>(items: &[T], threads: usize, f: impl Fn(&T) -> R + Sync) -> Vec<R> {
+    let threads = threads.min(items.len());
+    if threads < 2 {
+        return items.iter().map(f).collect();
+    }
+    let done: Vec<Mutex<Option<R>>> = items.iter().map(|_| Mutex::new(None)).collect();
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(item) = items.get(i) else { break };
+                    *done[i].lock().expect("no poisoning") = Some(f(item));
+                }
+            });
+        }
+    });
+    done.into_iter()
+        .map(|r| r.into_inner().expect("no poisoning").expect("every item"))
+        .collect()
 }
 
 /// Times the cook's stages, each from the end of the one before.

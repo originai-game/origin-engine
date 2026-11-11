@@ -58,6 +58,7 @@ type Out<'a> = (String, &'static str, u64, Work<'a>);
 pub(super) fn plan<'a>(
     cx: &Cx<'a>,
     early_errors: Vec<EarlyError>,
+    threads: usize,
 ) -> (Vec<Planned<'a>>, PlanState) {
     let Cx {
         sources,
@@ -106,31 +107,38 @@ pub(super) fn plan<'a>(
             } else {
                 output_file(&id)
             };
-            // Up to date: the manifest's stamp and file agree, and the file
-            // still holds the type and schema version the loader expects
-            // today (a schema change without a cooker bump would otherwise
-            // keep a blob the loader refuses).
-            let want = format::expected_header(ty);
-            let fresh = old_outputs.get(id.as_str()).is_some_and(|o| {
-                o.stamp == st
-                    && o.ty == ty
-                    && std::fs::read(cooked_dir.join(&o.file)).is_ok_and(|b| {
-                        b.len() as u64 == o.bytes
-                            && hash_bytes(&b) == o.hash
-                            && og_blob::Blob::parse(&b, &file).is_ok_and(|blob| {
-                                let h = blob.header();
-                                want == Some((h.type_hash, h.schema_version))
-                            })
-                    })
-            });
             plan.push(Planned {
                 source: si,
                 id,
                 file,
                 ty,
                 stamp: st,
-                work: (!fresh).then_some(work),
+                work: Some(work),
             });
+        }
+    }
+    // Up to date: the manifest's stamp and file agree, and the file still
+    // holds the type and schema version the loader expects today (a schema
+    // change without a cooker bump would otherwise keep a blob the loader
+    // refuses). Each output's file is read for it, all at once.
+    let fresh = each(&plan, threads, |p| {
+        let want = format::expected_header(p.ty);
+        old_outputs.get(p.id.as_str()).is_some_and(|o| {
+            o.stamp == p.stamp
+                && o.ty == p.ty
+                && std::fs::read(cooked_dir.join(&o.file)).is_ok_and(|b| {
+                    b.len() as u64 == o.bytes
+                        && hash_bytes(&b) == o.hash
+                        && og_blob::Blob::parse(&b, &p.file).is_ok_and(|blob| {
+                            let h = blob.header();
+                            want == Some((h.type_hash, h.schema_version))
+                        })
+                })
+        })
+    });
+    for (p, fresh) in plan.iter_mut().zip(fresh) {
+        if fresh {
+            p.work = None;
         }
     }
     (plan, state)
