@@ -124,6 +124,60 @@ pub(crate) struct TrackedJoint {
     second: rp::RigidBodyHandle,
 }
 
+/// What the tracked joints hold that [`Sim`]'s own bytes leave out
+/// (og.Joint's breakForce and breakTorque are serde-skipped, so a world
+/// without a breakable joint saves as before): the two as bits, by joint
+/// entity, for the joints with either. Without it a restored world's
+/// record of such a joint differs from its component, which the next sync
+/// takes for an edit and wakes its bodies for.
+pub(crate) fn joint_section(joints: &IdMap<u64, TrackedJoint>) -> Option<(u16, Vec<u8>)> {
+    let list: Vec<(u64, [u32; 2])> = joints
+        .iter()
+        .filter(|(_, t)| t.joint.break_force != 0.0 || t.joint.break_torque != 0.0)
+        .map(|(&e, t)| {
+            (
+                e,
+                [
+                    t.joint.break_force.to_bits(),
+                    t.joint.break_torque.to_bits(),
+                ],
+            )
+        })
+        .collect();
+    if list.is_empty() {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    crate::encode(&mut bytes, &list).expect("joints serialize into memory");
+    Some((super::sim::EXT_JOINTS, bytes))
+}
+
+/// Puts [`joint_section`]'s values back on the restored joints.
+pub(crate) fn restore_joint_section(
+    joints: &mut IdMap<u64, TrackedJoint>,
+    sections: &[(u16, &[u8])],
+) -> Result<()> {
+    use bincode::Options;
+    for &(tag, bytes) in sections {
+        if tag != super::sim::EXT_JOINTS {
+            continue;
+        }
+        let list: Vec<(u64, [u32; 2])> = crate::codec().deserialize(bytes).map_err(|e| {
+            Error::new(
+                ErrorKind::Parse,
+                format!("the physics block's joint section does not decode: {e}"),
+            )
+        })?;
+        for (e, [force, torque]) in list {
+            if let Some(t) = joints.get_mut(&e) {
+                t.joint.break_force = f32::from_bits(force);
+                t.joint.break_torque = f32::from_bits(torque);
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Moves the joints anchored to the world (no `other`) by `s.d`: the
 /// ground body's frame of each, and the og.Joint it was built from (whose
 /// `otherAnchor` the shift moves the same way).

@@ -269,3 +269,51 @@ fn a_pen_sleeps_deterministically_and_restores_mid_sleep() {
     d.restore(&slept).unwrap();
     assert_eq!(pen_run(&mut d, 600, 900), third);
 }
+
+#[test]
+fn a_sleeping_pair_on_a_breakable_joint_stays_asleep_through_a_restore() {
+    // The og.physics block does not carry a joint's breakForce (its bytes
+    // are those of a world without one), so a restored world's record of
+    // the joint differs from its component. Taking that for an edit wakes
+    // the pair, and the restored world leaves the one it was saved from.
+    let pair = || {
+        let (mut w, p) = support::world(
+            Physics {
+                sleep_ticks: 30,
+                ..Physics::default()
+            },
+            1,
+        );
+        support::enable_lazy(&mut w);
+        floor(&mut w);
+        let boxes = [-0.6, 0.6].map(|x| {
+            spawn_body(
+                &mut w,
+                at(x, 0.5, 0.0),
+                RigidBody::dynamic(),
+                Collider::cuboid(Vec3::splat(0.5)),
+            )
+        });
+        w.insert(
+            boxes[0],
+            Joint {
+                kind: JOINT_FIXED,
+                other: boxes[1].to_bits(),
+                break_force: 1.0e6,
+                ..Joint::default()
+            },
+        )
+        .unwrap();
+        (w, p)
+    };
+    let (mut a, _pa) = pair();
+    pen_run(&mut a, 0, 300);
+    assert_eq!(asleep(&a), 2, "the pair rests asleep by tick 300");
+    let slept = a.snapshot();
+    let after = pen_run(&mut a, 300, 360);
+    assert_eq!(after.2, 0, "nothing wakes the pair");
+
+    let (mut b, _pb) = pair();
+    b.restore(&slept).unwrap();
+    assert_eq!(pen_run(&mut b, 300, 360), after);
+}

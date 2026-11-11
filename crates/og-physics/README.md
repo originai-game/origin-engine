@@ -465,7 +465,9 @@ substep (an impulse, `apply_force`, which `apply_pushes` applies as one)
 does not count; a load held through the step does. A broken joint is
 skipped by `sync_joints` until its component says otherwise. The
 breaking fields are `#[serde(skip)]` in `TrackedJoint`, so they are not in
-the block's bincode.
+the block's bincode; the joints with either are in trailer tag 8
+(`ext::joint_section`), so a restored joint's record equals its component
+and the next sync does not take it for an edit and wake its bodies.
 
 `og.ContactHook`, once registered, is read into `Scene::hooks` per collider entity (`get_bytes`, not a query, since the system's queries are fixed at install); `sim::sync_hooks` turns
 rapier's active hooks on for the colliders of hooked entities (and off

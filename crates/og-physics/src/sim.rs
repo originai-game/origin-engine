@@ -164,6 +164,8 @@ pub(crate) const EXT_VEHICLES: u16 = 4;
 pub(crate) const EXT_SOFTS: u16 = 5;
 pub(crate) const EXT_GARMENTS: u16 = 6;
 pub(crate) const EXT_FIELDS: u16 = 7;
+/// The joints' part, kept with them ([`ext::joint_section`]), not in [`SimExt`].
+pub(crate) const EXT_JOINTS: u16 = 8;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -303,6 +305,19 @@ pub(crate) struct Sim {
 }
 
 impl Sim {
+    /// The block's extension sections: [`SimExt`]'s, then the joints'.
+    pub(crate) fn sections(&self) -> Vec<(u16, Vec<u8>)> {
+        let mut out = self.ext.sections();
+        out.extend(ext::joint_section(&self.joints));
+        out
+    }
+
+    /// Takes the extension sections a save held.
+    pub(crate) fn restore_sections(&mut self, sections: &[(u16, &[u8])]) -> Result<()> {
+        self.ext = SimExt::from_sections(sections)?;
+        ext::restore_joint_section(&mut self.joints, sections)
+    }
+
     /// Whether this is the 2D profile (points stay in their entity's plane).
     pub(crate) fn flat(&self) -> bool {
         super::DIM == 2

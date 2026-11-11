@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Joint",
+      "summary": "A world restored from a snapshot or a save no longer wakes the sleeping bodies of a joint with breakForce or breakTorque: the save now carries the two, so the restored world goes on tick for tick as the one it was saved from (a rollback, a rejoin and a loaded save had left it for the ticks the pair took to fall asleep again). Saves of worlds without a breakable joint are byte for byte what they were."
+    }
+  ]
+}
