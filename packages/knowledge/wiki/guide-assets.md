@@ -83,7 +83,9 @@ Missing or corrupt cache content causes a recook.
 
 The project's `.og/cook-index` records file stats and BLAKE3 content hashes.
 Unchanged inputs and outputs reuse the previous cook result without reading source
-bytes. A changed project is planned again; unchanged scanned sources can read from
+bytes. A source or cooked file written in the same timestamp tick as the cook
+that saw it is compared by content on the next cook, so an edit made straight
+after a cook is cooked even when it keeps the file's size and times. A changed project is planned again; unchanged scanned sources can read from
 the content store. Video projects and models with external dependencies outside
 `assets/` are planned again. Removing the index forces a full source check.
 Neither cache changes FNV world hashes, schema hashes, in-blob stamps, or the

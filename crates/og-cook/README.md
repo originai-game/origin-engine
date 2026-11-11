@@ -75,9 +75,16 @@ and manifest path. Unchanged project outputs remain `cooked: false`.
 
 The per-project `.og/cook-index` records file size, timestamps, file identity and
 BLAKE3 content hash. An unchanged cook reuses its report without reading source
-bytes. Changed projects are planned again, with unchanged scanned sources read
-from the content store when available. Video projects and models with dependencies
-outside `assets/` are replanned. The index and shared store are never shipped.
+bytes. A stat proves a file unchanged only when the file last changed before the
+cook's clock, the time the project's filesystem gives a file written at that
+moment: file times advance in ticks, and a same-length rewrite in the tick of the
+last change keeps the stat. A source or cooked output whose stat is not older
+than the clock is racy. A racy source's content hash is taken as the cook opens,
+before it is read, and a racy output's as the index is saved; the next cook
+compares them, and drops what has settled since. A racy stat is never recorded
+as a scanned source's entry. Changed projects are planned again, with unchanged
+scanned sources read from the content store when available. Video projects and
+models with dependencies outside `assets/` are replanned. The index and shared store are never shipped.
 
 This is a disposable, trusted local cache, not an authenticated artifact store.
 Eviction drops unreferenced contents first, then the oldest actions and their

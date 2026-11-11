@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook, og dev",
+      "summary": "An edit made in the same timestamp tick as the cook before it (4 ms on ext4, up to 2 s on FAT) that kept the file's length left its size and times as they were, so the next cook, and og cook --watch and og dev's reload, reused the old result. A source or cooked file last written in the tick a cook saw it in is now compared by content on the next cook. Cooked bytes are unchanged; a .og/cook-index written by an earlier version is rebuilt on the first cook."
+    }
+  ]
+}

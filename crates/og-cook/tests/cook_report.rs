@@ -233,3 +233,66 @@ fn the_report_times_each_stage_and_an_unchanged_cook_only_the_index() {
     );
     assert_eq!(cook(), ["index"]);
 }
+
+/// A source rewritten in the timestamp tick it was last written in, at the
+/// same length, keeps its size and times, and the cook after it still cooks it.
+/// File times advance in ticks (4 ms on ext4), so a cook and an edit both fit
+/// in one.
+///
+/// Ways this could fail: the index trusts an equal stat that was taken in the
+/// tick of the file's last change (before 2026-11-11, which missed this
+/// rewrite 300 times of 300); a racy input's hash is taken after the cook read
+/// the file instead of before. The same rewrite of a cooked output is
+/// `texture_cache::identical_outputs_share_a_file_and_survive_canonical_changes`.
+#[test]
+fn a_rewrite_that_leaves_the_stat_unchanged_is_still_cooked() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-racy");
+    let _ = std::fs::remove_dir_all(&root);
+    let table = root.join("assets/en.ogt");
+    std::fs::create_dir_all(table.parent().unwrap()).unwrap();
+    let text = |word: &str| {
+        format!("type strings\nversion 1\n---\nlocale \"en\"\nbase true\nstring \"a\" \"{word}\"\n")
+    };
+    let seen = |path: &std::path::Path| {
+        let m = std::fs::metadata(path).unwrap();
+        (m.len(), m.modified().unwrap())
+    };
+    let cook = || {
+        let r =
+            og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+                .unwrap();
+        assert!(r.ok(), "{:?}", r.errors());
+        r.assets.iter().flat_map(|a| &a.outputs).any(|o| o.cooked)
+    };
+    let tick = root.join("tick");
+    let mut raced = 0;
+    for round in 0..40 {
+        // Start at a tick's edge, so the cook and the rewrite fit in the rest of it.
+        std::fs::write(&tick, "").unwrap();
+        let edge = seen(&tick);
+        while seen(&tick) == edge {
+            std::fs::write(&tick, "").unwrap();
+        }
+        let (first, second) = if round % 2 == 0 {
+            ("one", "two")
+        } else {
+            ("two", "one")
+        };
+        std::fs::write(&table, text(first)).unwrap();
+        let before = seen(&table);
+        cook();
+        std::fs::write(&table, text(second)).unwrap();
+        if seen(&table) != before {
+            continue;
+        }
+        raced += 1;
+        assert!(cook(), "round {round}: the rewrite was not cooked");
+        assert!(!cook(), "round {round}: an unchanged project cooked again");
+        if raced == 8 {
+            return;
+        }
+    }
+    if raced == 0 {
+        eprintln!("unchecked: this filesystem's file times never repeated across a cook");
+    }
+}
