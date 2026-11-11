@@ -1324,7 +1324,7 @@ impl Ui {
         self.state.kill = kill;
         self.state.composition = composition;
         if clipboard.is_some() {
-            self.clipboard = clipboard;
+            self.out.clipboard = clipboard;
         }
         if out.left {
             self.state.focus = 0;

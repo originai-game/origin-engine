@@ -519,7 +519,7 @@ impl Ui {
             .any(|l| l.screen == screen && l.mount.is_none())
             && let Err(e) = self.push_screen(screen, Value::Null)
         {
-            self.warnings.push(format!("Ui::screen: {e}"));
+            self.out.warnings.push(format!("Ui::screen: {e}"));
             return DocResponse::default();
         }
         if !vm.is_null() {
@@ -559,7 +559,7 @@ impl Ui {
         if !self.docs.retained.is_empty()
             && let Err(error) = self.build_retained_documents(env)
         {
-            self.warnings.push(error);
+            self.out.warnings.push(error);
         }
         self.docs.built_tick = tick;
         // The covers still opening over layers that have left.
@@ -618,7 +618,7 @@ impl Ui {
                 }
             };
             if let Err(e) = done {
-                self.warnings.push(e);
+                self.out.warnings.push(e);
             }
         }
         // Layers draw in stack order, whoever built them first.
@@ -1197,7 +1197,8 @@ mod tests {
 
     /// The frame's solid red shapes (the shared element), on the screen.
     fn reds(ui: &Ui) -> Vec<crate::layout::Rect> {
-        ui.frame
+        ui.out
+            .frame
             .items
             .iter()
             .filter_map(|it| match &it.cmd {
@@ -1262,7 +1263,11 @@ mod tests {
             let mut seen = Vec::new();
             for _ in 0..ui.ticks_for(400.0) + 3 {
                 step(&mut ui, InputFrame::default());
-                seen.push((reds(&ui), ui.frame.warnings.clone(), ui.layer_stack().len()));
+                seen.push((
+                    reds(&ui),
+                    ui.out.frame.warnings.clone(),
+                    ui.layer_stack().len(),
+                ));
             }
             (before, seen)
         };
@@ -1380,6 +1385,7 @@ mod tests {
                 step(&mut ui);
             }
             let cuts: Vec<((f32, f32), (f32, f32))> = ui
+                .out
                 .frame
                 .items
                 .iter()
@@ -1457,8 +1463,13 @@ mod tests {
             for _ in 0..=ui_ticks(400.0) / 2 {
                 step(&mut ui);
             }
-            assert!(ui.frame.warnings.is_empty(), "{:?}", ui.frame.warnings);
+            assert!(
+                ui.out.frame.warnings.is_empty(),
+                "{:?}",
+                ui.out.frame.warnings
+            );
             let cuts: Vec<((f32, f32), (f32, f32))> = ui
+                .out
                 .frame
                 .items
                 .iter()

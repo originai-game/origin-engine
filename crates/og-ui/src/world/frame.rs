@@ -363,7 +363,8 @@ impl Ui {
     /// template's timeline over its lifetime and leaves the pool after it.
     pub fn spawn_mass(&mut self, h: MassHandle, instance: UiMassInstance) {
         let Some((_, t, _)) = self.world.templates.get(h.0 as usize) else {
-            self.warnings
+            self.out
+                .warnings
                 .push(format!("spawn_mass: no template {}; define it first", h.0));
             return;
         };
@@ -386,7 +387,8 @@ impl Ui {
     /// nameplate, a status icon: rebuilt every tick with its values).
     pub fn push_mass(&mut self, h: MassHandle, instance: UiMassInstance) {
         if self.world.templates.get(h.0 as usize).is_none() {
-            self.warnings
+            self.out
+                .warnings
                 .push(format!("push_mass: no template {}; define it first", h.0));
             return;
         }

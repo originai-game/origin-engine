@@ -695,7 +695,7 @@ impl Ui {
             } else {
                 name.as_str()
             };
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "view-transition-name '{name}' is on two elements of the {view} view: the view transition is skipped (each name names one element)"
             ));
             self.state.view_transition = Some(Running {

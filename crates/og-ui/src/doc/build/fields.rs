@@ -954,7 +954,7 @@ impl Ui {
         let mut warn = Vec::new();
         let mut decor = self.box_decor(source.document, r, &mut el, source.kind, &mut warn);
         for w in warn {
-            self.warnings.push(format!("line {}: {w}", source.line));
+            self.out.warnings.push(format!("line {}: {w}", source.line));
         }
         let mut el = Self::sized(r, Self::item_of(r, el));
         // A clip's reference box from the laid-out box: its insets from

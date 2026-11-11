@@ -658,7 +658,7 @@ impl crate::Ui {
     pub fn semantics(&mut self, s: &Semantics) -> bool {
         let i = self.last_closed;
         if i >= self.nodes.len() {
-            self.warnings.push(
+            self.out.warnings.push(
                 "semantics with no element before it: call ui.semantics() right after the element"
                     .into(),
             );
@@ -669,7 +669,7 @@ impl crate::Ui {
             Some(r) => match ROLES.iter().find(|&&k| k == r) {
                 Some(&k) => Some(k),
                 None => {
-                    self.warnings.push(format!(
+                    self.out.warnings.push(format!(
                         "semantics: '{r}' is not a role; take one of {}",
                         ROLES.join(", ")
                     ));

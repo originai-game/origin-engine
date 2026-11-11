@@ -37,3 +37,25 @@ pub(crate) struct Env {
     pub(crate) file_picker: bool,
     pub(crate) toast_anchor: Anchor,
 }
+
+/// The frame's output: what the host takes after it (the frame, warnings, events, feedback, clipboard) and its counts.
+#[derive(Clone, Debug)]
+pub(crate) struct Out {
+    pub(crate) frame: UiFrame,
+    pub(crate) warnings: Vec<String>,
+    /// The (face, character) pairs [`UiFrame::missing_glyphs`] named.
+    pub(crate) glyphs_missed: std::collections::BTreeSet<(og_draw::FontHandle, char)>,
+    /// This frame's motion events (into `UiFrame::events`).
+    pub(crate) events: Vec<UiEvent>,
+    /// UI events the style gives a sound or a haptic, not yet taken by the
+    /// host ([`Ui::take_feedback`]), each with where it is in a rising
+    /// cascade (0–1; NaN: a random pitch in the event's range).
+    pub(crate) feedback: Vec<(crate::tokens::SoundEvent, f32, crate::tokens::Feedback)>,
+    /// The haptic patterns played since the host last took them
+    /// ([`Ui::take_haptics`]).
+    pub(crate) haptic_out: Vec<crate::tokens::Haptic>,
+    /// Text a copy or cut took, for the host's clipboard ([`Ui::take_clipboard`]).
+    pub(crate) clipboard: Option<String>,
+    /// This frame's counts (into `UiFrame::stats`).
+    pub(crate) stats: LayoutStats,
+}

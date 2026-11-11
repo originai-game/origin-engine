@@ -272,7 +272,7 @@ impl Ui {
             let p = self.nodes[i].props.clone();
             let Some(t) = self.node_at(&p.anchor_to, i) else {
                 let at = self.path_of(i);
-                self.warnings.push(format!(
+                self.out.warnings.push(format!(
                     "'{at}' is anchored to '{}', which is not on screen: anchorTo takes a full path (Hud/Coins) or a sibling's id",
                     p.anchor_to
                 ));
@@ -708,7 +708,7 @@ impl Ui {
                 self.nodes[i].inherit_layout(previous, k.clean[i]);
             }
         }
-        self.stats = LayoutStats {
+        self.out.stats = LayoutStats {
             rebuilt,
             bindings: self.docs.retained.evaluated as u32,
             reconciled: self.docs.retained.reconciled as u32,
@@ -747,7 +747,7 @@ impl Ui {
     pub fn props_mut(&mut self) -> Option<&mut Props> {
         let i = self.last_closed;
         if i == NONE || i >= self.nodes.len() {
-            self.warnings.push(
+            self.out.warnings.push(
                 "props with no element before it: call ui.props() right after the element".into(),
             );
             return None;

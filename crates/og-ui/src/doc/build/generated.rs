@@ -193,7 +193,9 @@ impl Ui {
         match crate::doc::spans::style_of(&body, self.theme(), self.fonts()) {
             Ok(style) => style,
             Err(error) => {
-                self.warnings.push(format!("generated content: {error}"));
+                self.out
+                    .warnings
+                    .push(format!("generated content: {error}"));
                 crate::TextSpanStyle::default()
             }
         }

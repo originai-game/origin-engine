@@ -429,7 +429,7 @@ impl Ui {
             && input.keys.contains(&crate::input::UiKey::KeyC)
             && let Some(text) = self.selected_text().filter(|t| !t.is_empty())
         {
-            self.clipboard = Some(text);
+            self.out.clipboard = Some(text);
         }
     }
 

@@ -122,7 +122,7 @@ impl Ui {
                 Ok(draw) => {
                     self.part_draws.insert(i, draw);
                 }
-                Err(errors) => self.warnings.extend(errors),
+                Err(errors) => self.out.warnings.extend(errors),
             }
         }
         self.part_changed.extend(

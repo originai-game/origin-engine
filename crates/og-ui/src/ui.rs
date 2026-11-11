@@ -476,9 +476,6 @@ pub struct Ui {
     pub(crate) stack: Vec<usize>,
     pub(crate) floating: Vec<usize>,
     pub(crate) last_closed: usize,
-    pub(crate) warnings: Vec<String>,
-    /// The (face, character) pairs [`UiFrame::missing_glyphs`] named.
-    pub(crate) glyphs_missed: std::collections::BTreeSet<(og_draw::FontHandle, char)>,
     /// The trees' membership, keys and features (`tree`).
     pub(crate) tree: tree::TreeIndex,
     /// The frame's orders and each feature's nodes (`visit`).
@@ -489,7 +486,6 @@ pub struct Ui {
     pub(crate) kept_spans: Vec<std::ops::Range<usize>>,
     pub(crate) building: bool,
     pub(crate) state: State,
-    pub(crate) frame: UiFrame,
     /// The last frame's inspection, made when asked for (`inspect`).
     pub(crate) inspection: inspect::Inspection,
     /// Last frame's layers and draws while this frame is built, for
@@ -516,14 +512,7 @@ pub struct Ui {
     /// Text a control keeps between ticks while it is open (a dropdown's
     /// filter), by key: names of the frame's UI, dropped when it closes.
     pub(crate) kept_texts: crate::id::KeyMap<String>,
-    /// UI events the style gives a sound or a haptic, not yet taken by the
-    /// host ([`Ui::take_feedback`]), each with where it is in a rising
-    /// cascade (0–1; NaN: a random pitch in the event's range).
-    pub(crate) feedback: Vec<(crate::tokens::SoundEvent, f32, crate::tokens::Feedback)>,
     pub(crate) css_sounds: std::collections::BTreeMap<String, u64>,
-    /// The haptic patterns played since the host last took them
-    /// ([`Ui::take_haptics`]).
-    pub(crate) haptic_out: Vec<crate::tokens::Haptic>,
     /// Global CSS part rules in cascade order and their at-rule descriptors.
     pub(crate) part_rules: Vec<crate::doc::StyleRule>,
     pub(crate) part_sheet: crate::doc::at_rules::Sheet,
@@ -545,8 +534,6 @@ pub struct Ui {
     /// This frame's draws of elements with CSS box decorations: their
     /// draw or dressing with the decorations over it.
     pub(crate) decor_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
-    /// Text a copy or cut took, for the host's clipboard ([`Ui::take_clipboard`]).
-    pub(crate) clipboard: Option<String>,
     /// The keys of the text elements last painted with a selection.
     pub(crate) selected: Vec<u64>,
     /// The focused text control this frame (into [`UiFrame::text_input`]).
@@ -567,8 +554,6 @@ pub struct Ui {
     pub(crate) timelines: std::collections::BTreeMap<u64, (String, Timeline)>,
     /// Plays asked for this tick, flattened at `end`.
     pub(crate) pending_plays: Vec<crate::motion::run::PendingPlay>,
-    /// This frame's motion events (into `UiFrame::events`).
-    pub(crate) events: Vec<UiEvent>,
     /// Last frame's drop targets and dragged elements: their paths, and the
     /// tags each target takes.
     pub(crate) drop_paths: IdMap<u64, String>,
@@ -583,8 +568,6 @@ pub struct Ui {
     pub(crate) paint_cache: crate::layout::PaintCache,
     /// The motion pass's memory between ticks.
     pub(crate) motion_cache: crate::layout::MotionCache,
-    /// This frame's counts (into `UiFrame::stats`).
-    pub(crate) stats: LayoutStats,
     /// The map of the element whose commands are being made: a nine-slice
     /// is cut at its size on the screen, its corners kept crisp.
     drawing: Affine,
@@ -603,6 +586,8 @@ pub struct Ui {
     pub(crate) world: crate::world::WorldUi,
     /// Configuration: the theme, fonts, viewport and locale every stage reads.
     pub(crate) env: Env,
+    /// The frame's output: what the host takes after it (the frame, warnings, events, feedback, clipboard) and its counts.
+    pub(crate) out: Out,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).

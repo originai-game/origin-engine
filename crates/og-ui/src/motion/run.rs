@@ -1162,7 +1162,7 @@ impl Ui {
         events.extend(css_events);
         self.state.motion = m;
         self.motion_cache.motion_moving = moving;
-        self.events.extend(events);
+        self.out.events.extend(events);
         for (key, name) in starts {
             self.start_play(
                 key,
@@ -1221,7 +1221,7 @@ impl Ui {
         if path.is_empty() {
             let i = self.last_closed;
             if i == crate::layout::NONE {
-                self.warnings.push(
+                self.out.warnings.push(
                     "play with no element before it: build the element first or pass its path"
                         .into(),
                 );
@@ -1417,7 +1417,7 @@ impl Ui {
 
     /// This frame's motion events (last tick's, while building).
     pub fn events(&self) -> &[UiEvent] {
-        &self.frame.events
+        &self.out.frame.events
     }
 }
 

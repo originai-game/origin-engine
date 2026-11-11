@@ -117,7 +117,7 @@ impl Ui {
         };
         let row_key = b.eval(key);
         let Some(row_key) = row_key.as_str().filter(|key| !key.is_empty()) else {
-            self.warnings.push(format!(
+            self.out.warnings.push(format!(
                 "{}:{}: each key must be a nonempty string",
                 b.doc.source, n.line
             ));

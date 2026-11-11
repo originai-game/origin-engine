@@ -338,6 +338,6 @@ panel { width: 10px; height: 10px; }
         assert_eq!(size(&ui, main), (10.0, 21.0));
         frame(&mut ui, 640.0);
         assert_eq!(size(&ui, main), (40.0, 21.0));
-        assert!(ui.warnings.is_empty(), "{:?}", ui.warnings);
+        assert!(ui.out.warnings.is_empty(), "{:?}", ui.out.warnings);
     }
 }

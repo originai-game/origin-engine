@@ -58,15 +58,22 @@ impl Ui {
             stack: Vec::new(),
             floating: Vec::new(),
             last_closed: NONE,
-            warnings: Vec::new(),
-            glyphs_missed: Default::default(),
+            out: Out {
+                frame: UiFrame::default(),
+                warnings: Vec::new(),
+                glyphs_missed: Default::default(),
+                events: Vec::new(),
+                feedback: Vec::new(),
+                haptic_out: Vec::new(),
+                clipboard: None,
+                stats: LayoutStats::default(),
+            },
             kept_spans: Vec::new(),
             tree: Default::default(),
             orders: Default::default(),
             semantics: Default::default(),
             building: false,
             state: State::default(),
-            frame: UiFrame::default(),
             inspection: Default::default(),
             prev_floating: Vec::new(),
             prev_draws: Default::default(),
@@ -80,9 +87,7 @@ impl Ui {
             button_ink: Vec::new(),
             scopes: Vec::new(),
             kept_texts: Default::default(),
-            feedback: Vec::new(),
             css_sounds: Default::default(),
-            haptic_out: Vec::new(),
             part_rules,
             part_sheet,
             root_tokens: Vec::new(),
@@ -91,7 +96,6 @@ impl Ui {
             part_draws: Default::default(),
             part_changed: Default::default(),
             decor_draws: Default::default(),
-            clipboard: None,
             selected: Vec::new(),
             text_target: None,
             cover: None,
@@ -101,7 +105,6 @@ impl Ui {
             texts: Default::default(),
             timelines: Default::default(),
             pending_plays: Vec::new(),
-            events: Vec::new(),
             drop_paths: IdMap::new(),
             drag_paths: IdMap::new(),
             drop_accepts: IdMap::new(),
@@ -109,7 +112,6 @@ impl Ui {
             invalidation: Default::default(),
             paint_cache: Default::default(),
             motion_cache: Default::default(),
-            stats: LayoutStats::default(),
             drawing: Affine::IDENTITY,
             draws: Default::default(),
             dressable: Default::default(),
@@ -279,7 +281,8 @@ impl Ui {
     /// The path of the control pad `pad`'s focus is on in the last frame
     /// (pad 0: the shared focus), or `""`.
     pub fn focus_path(&self, pad: u32) -> &str {
-        self.frame
+        self.out
+            .frame
             .focus_paths
             .get(pad as usize)
             .map_or("", String::as_str)
@@ -482,7 +485,7 @@ impl Ui {
 
     /// The last completed frame.
     pub fn frame(&self) -> &UiFrame {
-        &self.frame
+        &self.out.frame
     }
 
     /// The input of the frame being built.
@@ -521,7 +524,7 @@ impl Ui {
             input.down = false;
         }
         if self.building {
-            self.warnings.push(
+            self.out.warnings.push(
                 "begin without end: the previous frame was dropped; call ui.end() once per tick"
                     .into(),
             );
@@ -557,7 +560,7 @@ impl Ui {
             .map(|(&i, d)| (i, d.clone()))
             .collect();
         self.dressable.retain(|&i| persistent[i]);
-        self.warnings.clear();
+        self.out.warnings.clear();
         self.last_closed = NONE;
         self.building = true;
 
@@ -684,21 +687,21 @@ impl Ui {
         let f = self.css_feedback(key, event);
         let heard = f.sounds[..usize::from(f.count)].iter().any(|s| *s != 0);
         if heard || f.haptic.count > 0 {
-            self.feedback.push((event, rise, f));
+            self.out.feedback.push((event, rise, f));
         }
     }
 
     /// Adds a warning to the frame being built (a host's refused call),
     /// reported with the frame's own.
     pub fn warn(&mut self, message: impl Into<String>) {
-        self.warnings.push(message.into());
+        self.out.warnings.push(message.into());
     }
 
     /// Text a copy (Ctrl or Cmd with C) or cut (with X) took from a text
     /// control's selection since the last call: the host puts it on the
     /// clipboard (the browser shell does on the page's copy event).
     pub fn take_clipboard(&mut self) -> Option<String> {
-        self.clipboard.take()
+        self.out.clipboard.take()
     }
 
     /// The feedback of the events queued since the last call, oldest first;
@@ -710,7 +713,7 @@ impl Ui {
     /// choices come from the UI state's own random stream, so a replay of
     /// the same input plays the same sounds.
     pub fn take_feedback(&mut self) -> Vec<FeedbackPlay> {
-        let queued = std::mem::take(&mut self.feedback);
+        let queued = std::mem::take(&mut self.out.feedback);
         let mut out = Vec::with_capacity(queued.len());
         for (event, rise, f) in queued {
             let n = usize::from(f.count);
@@ -751,8 +754,8 @@ impl Ui {
                 p.low *= self.env.haptics;
                 p.high *= self.env.haptics;
             }
-            if haptic.count > 0 && self.haptic_out.len() < 16 {
-                self.haptic_out.push(haptic);
+            if haptic.count > 0 && self.out.haptic_out.len() < 16 {
+                self.out.haptic_out.push(haptic);
             }
             out.push(FeedbackPlay {
                 event,
@@ -769,7 +772,7 @@ impl Ui {
     /// player's strength, for the host to run (pad rumble; a phone's
     /// vibration): the frame answer's `haptics`.
     pub fn take_haptics(&mut self) -> Vec<crate::tokens::Haptic> {
-        std::mem::take(&mut self.haptic_out)
+        std::mem::take(&mut self.out.haptic_out)
     }
 
     /// The version 1 events of the last frames that have a sound, oldest

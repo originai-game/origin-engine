@@ -259,7 +259,7 @@ impl Ui {
     pub fn shake(&mut self, desc: ShakeDesc) {
         let anchor = self.last_closed;
         if anchor == NONE {
-            self.warnings.push(
+            self.out.warnings.push(
                 "shake with no element before it: call ui.shake() right after the element".into(),
             );
             return;

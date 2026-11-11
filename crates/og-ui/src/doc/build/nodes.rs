@@ -42,7 +42,7 @@ impl Ui {
                         self.build_node(b, child, None);
                     }
                 } else if !optional {
-                    self.warnings.push(format!(
+                    self.out.warnings.push(format!(
                         "{}:{}: supply content '{name}' at mount",
                         doc.source, n.line
                     ));
@@ -70,7 +70,7 @@ impl Ui {
             }
             NodeKind::Use(comp) => {
                 let Some(cdoc) = self.docs.docs.get(comp).cloned() else {
-                    self.warnings.push(format!(
+                    self.out.warnings.push(format!(
                         "{}:{}: no component '{comp}' (load its document)",
                         doc.source, n.line
                     ));
@@ -132,7 +132,7 @@ impl Ui {
                     self.structure_matches(&doc, s)
                 });
                 self.docs.component_root = self.docs.structure.any;
-                self.warnings.extend(
+                self.out.warnings.extend(
                     rp.cascade
                         .diagnostics
                         .iter()
@@ -207,7 +207,7 @@ impl Ui {
         r.ordinal = self.ordinal_of(n, &r, |filter, item_values| {
             self.structure_ordinal(filter, item_values)
         });
-        self.warnings.extend(
+        self.out.warnings.extend(
             r.cascade
                 .diagnostics
                 .iter()
@@ -685,7 +685,7 @@ impl Ui {
                     let spans = match spans {
                         Ok(spans) => spans,
                         Err(error) => {
-                            self.warnings.push(format!(
+                            self.out.warnings.push(format!(
                                 "{}:{}: {path}.spans: expected TextSpan[]: {error}",
                                 doc.source, n.line
                             ));
@@ -1054,7 +1054,7 @@ impl Ui {
             }
             "file" => {
                 if !self.env.file_picker {
-                    self.warnings.push(format!(
+                    self.out.warnings.push(format!(
                         "{}:{}: <input type=\"file\"> needs a host file picker, which this host lacks (og.ui.filePicker is false); take files in a TS system",
                         doc.source, n.line
                     ));
@@ -1343,7 +1343,8 @@ impl Ui {
                 resp = self.build_touch_control(kind, id.as_str(), &r, &styled);
             }
             other => {
-                self.warnings
+                self.out
+                    .warnings
                     .push(format!("{}:{}: '{other}' is not built", doc.source, n.line));
                 self.accent = None;
                 return None;
