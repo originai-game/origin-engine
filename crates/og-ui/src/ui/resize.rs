@@ -103,9 +103,10 @@ impl crate::ui::Tree {
         true
     }
 
-    /// Before layout: the sizes the user gave resizable elements, on the
-    /// nodes written this frame and on the one a drag moved (written again
-    /// for it). Nothing while no element was ever resized.
+    /// Before layout: the sizes the user gave resizable elements, noted on
+    /// the nodes written this frame and on the one a drag moved (written
+    /// again for it) for the element layout uses (`Node::derived`).
+    /// Nothing while no element was ever resized.
     pub(super) fn apply_resized(
         &mut self,
         layout: &mut crate::ui::Layout,
@@ -125,18 +126,12 @@ impl crate::ui::Tree {
         for k in 0..self.emitted.len() {
             let i = self.emitted[k];
             let n = &mut self.nodes[i];
-            if n.el.resize == 0 {
-                continue;
-            }
-            let Some(size) = interaction.state.resized.get(&n.key) else {
-                continue;
-            };
-            if let Some(w) = size[0].filter(|_| n.el.resize & RESIZE_X != 0) {
-                n.el.width = crate::Size::Fixed(w);
-            }
-            if let Some(h) = size[1].filter(|_| n.el.resize & RESIZE_Y != 0) {
-                n.el.height = crate::Size::Fixed(h);
-            }
+            let axes = n.el.resize;
+            let size = interaction.state.resized.get(&n.key);
+            n.layout.resized = [
+                size.and_then(|s| s[0].filter(|_| axes & RESIZE_X != 0)),
+                size.and_then(|s| s[1].filter(|_| axes & RESIZE_Y != 0)),
+            ];
         }
     }
 

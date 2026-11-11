@@ -580,6 +580,9 @@ pub(crate) struct LayoutBox {
     /// The viewport its breakpoint and orientation variants were matched
     /// against when it was written (`None`: it has none).
     pub media: Option<Media>,
+    /// The width and height the user gave it by its resize handle (CSS
+    /// `resize`), as of when it was written (`Tree::apply_resized`).
+    pub resized: [Option<f32>; 2],
     /// The inline size its container variants were last matched at.
     pub query_w: Option<f32>,
     /// One of its children in the flow aligns by its own baseline
@@ -695,6 +698,7 @@ impl Default for LayoutBox {
             gutter: 0.0,
             placement: None,
             media: None,
+            resized: [None; 2],
             query_w: None,
             baseline_items: false,
             table: None,
@@ -899,9 +903,10 @@ impl Node {
     }
 
     /// The element layout uses, from the authored one: its breakpoint and
-    /// orientation variants, the line box it lays inline children out in,
-    /// its scroll bar's gutter, with `placed` the box placement fixed, and
-    /// its container variants at the size they were last matched at.
+    /// orientation variants, the size the user resized it to, the line box
+    /// it lays inline children out in, its scroll bar's gutter, with
+    /// `placed` the box placement fixed, and its container variants at the
+    /// size they were last matched at.
     pub(crate) fn derived(&self, placed: bool) -> Element {
         let mut u = self.el;
         if let Some(m) = self.layout.media {
@@ -910,6 +915,12 @@ impl Node {
                     crate::layout::patch_box(&mut u, &v.set);
                 }
             }
+        }
+        if let Some(w) = self.layout.resized[0] {
+            u.width = Size::Fixed(w);
+        }
+        if let Some(h) = self.layout.resized[1] {
+            u.height = Size::Fixed(h);
         }
         if self.layout.line_box.is_some() {
             u.direction = Direction::Row;
