@@ -267,7 +267,7 @@ impl Ui {
                 top: Some(0.0),
                 ..Default::default()
             };
-            self.tree.nodes[i].el.part = Some(
+            self.tree.el_mut(i).part = Some(
                 crate::dress::PartRef {
                     part: "button",
                     ..base
@@ -458,8 +458,8 @@ impl Ui {
         let radius = (ew * ew / 4.0 + eh * eh / 4.0) / eh;
         let half = ((ew / 2.0) / radius).clamp(-1.0, 1.0).asin();
         let thick = (s * 0.09).max(1.0);
+        self.tree.el_mut(j).part = Some(part);
         let n = &mut self.tree.nodes[j];
-        n.el.part = Some(part);
         n.shapes.clear();
         for (dy, mid) in [
             (radius - eh / 2.0, -FRAC_PI_2),
@@ -541,8 +541,8 @@ impl Ui {
         let color = if r.hovered { p.ink } else { p.ink_muted };
         let s = (w.min(h) * 0.32).max(6.0);
         let thick = (s * 0.16).max(1.0);
+        self.tree.el_mut(j).part = Some(part);
         let n = &mut self.tree.nodes[j];
-        n.el.part = Some(part);
         n.shapes.clear();
         for angle in [std::f32::consts::FRAC_PI_4, -std::f32::consts::FRAC_PI_4] {
             n.shapes.push(Shape::Bar {
@@ -562,7 +562,7 @@ impl Ui {
     /// a persistent part box filling it: the box takes the part's CSS and
     /// draws the icon; the button keeps its input and semantics.
     fn control_part(&mut self, j: usize, name: &'static str) {
-        let element = self.tree.nodes[j].el;
+        let element = *self.tree.nodes[j].el;
         let part = element.part.expect("a dressed text control button");
         let shapes = std::mem::take(&mut self.tree.nodes[j].shapes);
         let slot = self.tree.write_part(
@@ -712,9 +712,11 @@ impl Ui {
         ]
         .iter()
         .any(|name| r.has(name));
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
+        let el = n.el.write(build);
         if !declared {
-            n.el.padding = Insets {
+            el.padding = Insets {
                 top: (padding.top - border[0]).max(0.0),
                 right: (padding.right - border[1]).max(0.0),
                 bottom: (padding.bottom - border[2]).max(0.0),
@@ -724,17 +726,17 @@ impl Ui {
         if !r.has("background")
             && let Some(ground) = background
         {
-            n.el.background = Some(ground);
+            el.background = Some(ground);
         }
         if let Some(radius) = written {
-            n.el.radius = radius;
+            el.radius = radius;
             if let Some(decor) = &mut n.decor {
                 decor.radius = Some(radius);
             }
         } else if !r.has("radius") {
             // Inside a host's border, its inner curve (CSS Backgrounds 3 §4.3).
             let inset = border.iter().copied().fold(0.0_f32, f32::max);
-            n.el.radius = (radius - inset).max(0.0);
+            el.radius = (radius - inset).max(0.0);
         }
         n.props.flow = flow;
         if !r.has("position") && border != [0.0; 4] {
@@ -767,15 +769,16 @@ impl Ui {
         bare: bool,
     ) {
         let Some(slot) = frame.filter(|_| !bare) else {
-            let n = &mut self.tree.nodes[i];
-            n.el.background = None;
-            n.el.part = None;
+            let el = self.tree.el_mut(i);
+            el.background = None;
+            el.part = None;
             return;
         };
         let p = self.env.theme.palette;
         let key = self.tree.nodes[i].key;
         let f = self.spring_to(child_key(key, "focus"), if focused { 1.0 } else { 0.0 });
         let ground = mix_srgba(p.control, p.panel, f.clamp(0.0, 1.0));
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
         let part = base
             .flag_if(focused, "focused")
@@ -783,11 +786,12 @@ impl Ui {
             .flag_if(n.disabled, "disabled");
         // The host keeps the part's states for its focus ring; its frame
         // box (`Ui::field_frame`) paints the ground.
-        n.el.part = Some(part);
-        n.el.background = None;
+        let el = n.el.write(build);
+        el.part = Some(part);
+        el.background = None;
         n.content_slot = slot;
         let frame = &mut self.tree.nodes[slot];
-        frame.el.background = Some(ground);
+        frame.el.write(build).background = Some(ground);
         let part_box = frame.part_box.as_mut().expect("frame part");
         part_box.reference = part;
         part_box.element.background = Some(ground);

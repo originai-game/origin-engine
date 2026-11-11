@@ -560,10 +560,10 @@ impl Ui {
         );
         let part_slot = d.part_node.then(|| {
             let owner = *self.tree.stack.last().unwrap();
-            let element = self.tree.nodes[owner].el;
-            self.tree.nodes[owner].el.padding = Insets::default();
-            self.tree.nodes[owner].el.background = None;
-            self.tree.nodes[owner].el.radius = 0.0;
+            let element = *self.tree.nodes[owner].el;
+            self.tree.el_mut(owner).padding = Insets::default();
+            self.tree.el_mut(owner).background = None;
+            self.tree.el_mut(owner).radius = 0.0;
             let slot = self.tree.write_part(
                 owner,
                 part,

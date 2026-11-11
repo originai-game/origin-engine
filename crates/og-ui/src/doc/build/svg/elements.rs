@@ -359,7 +359,7 @@ impl Ui {
         let i = self.tree.last_closed;
         // Its anchor places it, so it keeps its text's width (a centred
         // label in a column would take the column's).
-        self.tree.nodes[i].el.width = width;
+        self.tree.el_mut(i).width = width;
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;

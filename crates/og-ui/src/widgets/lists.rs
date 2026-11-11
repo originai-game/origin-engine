@@ -351,8 +351,8 @@ impl Ui {
             ..VisualState::default()
         };
         let k = usize::from(selected);
+        self.tree.el_mut(i).background = Some(rest[k]);
         let n = &mut self.tree.nodes[i];
-        n.el.background = Some(rest[k]);
         n.props.states = vec![
             StateGroup {
                 name: "selection".into(),
@@ -644,7 +644,7 @@ impl Ui {
             [hover, lifted(0.18)],
             [p.control_strong, p.selection],
         );
-        if let Some(part) = self.tree.nodes[i].el.part.as_mut() {
+        if let Some(part) = self.tree.el_mut(i).part.as_mut() {
             *part = part
                 .flag_if(r.pressed, "pressed")
                 .flag_if(r.hovered && !r.pressed, "hover")

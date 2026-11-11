@@ -23,8 +23,8 @@ impl Ui {
         } else {
             desc.width
         };
-        self.tree.nodes[i].el.width = width;
-        self.tree.nodes[i].el.padding = Insets::default();
+        self.tree.el_mut(i).width = width;
+        self.tree.el_mut(i).padding = Insets::default();
         self.tree.draws.remove(&i);
         let ink = self.content_ink();
         // Borrowed, not copied: a label is the most frequent element.
@@ -99,7 +99,7 @@ impl Ui {
             .filter(|_| scrolled && !in_control)
         {
             let reach = (dx.abs() + blur / 2.0).ceil();
-            let pad = &mut self.tree.nodes[i].el.padding;
+            let pad = &mut self.tree.el_mut(i).padding;
             if dx > 0.0 {
                 pad.right = pad.right.max(reach);
             } else if dx < 0.0 {
@@ -222,7 +222,7 @@ impl Ui {
         amounts: (f32, f32),
         press: f32,
     ) {
-        self.tree.nodes[i].el = self.button_box(desc);
+        *self.tree.el_mut(i) = self.button_box(desc);
         self.tree.nodes[i].disabled = desc.disabled;
         let width = self.tree.nodes[i].el.width;
         let key = self.tree.nodes[i].key;
@@ -261,9 +261,11 @@ impl Ui {
         if let Some(top) = self.front.button_ink.last_mut().filter(|(at, _)| *at == i) {
             top.1 = fg;
         }
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.el.part = Some(part);
-        n.el.frame = None;
+        let el = n.el.write(build);
+        el.part = Some(part);
+        el.frame = None;
         n.content = if text.is_empty() {
             Content::None
         } else {
@@ -281,12 +283,13 @@ impl Ui {
             interactive: false,
             background: None,
             part: None,
-            ..n.el
+            ..*n.el
         };
-        n.el.padding = Insets::default();
-        n.el.gap = 0.0;
-        n.el.background = None;
-        n.el.radius = 0.0;
+        let el = n.el.write(build);
+        el.padding = Insets::default();
+        el.gap = 0.0;
+        el.background = None;
+        el.radius = 0.0;
         let slot = self.tree.write_part(i, part, ("base", 0), element, content);
         self.tree.nodes[i].content_slot = slot;
     }
@@ -299,7 +302,7 @@ impl Ui {
     }
 
     pub(crate) fn apply_image(&mut self, i: usize, desc: ImageDesc) {
-        self.tree.nodes[i].el = Element {
+        *self.tree.el_mut(i) = Element {
             width: desc.width,
             height: desc.height,
             aspect: desc.aspect.max(0.0),

@@ -42,7 +42,7 @@ impl Ui {
             .part_host(self.tree.nodes[part.owner].key)
             .and_then(|host| self.docs.host.docs.get(&host.document))
             .cloned();
-        self.tree.nodes[i].el = part.element;
+        *self.tree.el_mut(i) = part.element;
         self.apply_box_fields(
             i,
             &r,

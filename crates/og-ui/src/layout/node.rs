@@ -1,5 +1,8 @@
 use super::*;
 
+mod authored;
+pub(crate) use authored::Authored;
+
 /// Extra drawing of a widget, in its own frame, after its background.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Shape {
@@ -844,7 +847,9 @@ pub(crate) struct Node {
     pub layout: LayoutBox,
     /// What its last write changed (`Layout::reuse_check`).
     pub changed: Changed,
-    pub el: Element,
+    /// Its element as authored: layout reads it and lays out
+    /// [`LayoutBox::used`].
+    pub el: Authored,
     pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
     /// The semantic owner of a detached widget surface's CSS parts.
     /// Placement anchors alone do not imply shared CSS ownership.
@@ -950,7 +955,7 @@ impl Node {
     /// `placed` the box placement fixed, and its container variants at the
     /// size they were last matched at.
     pub(crate) fn derived(&self, placed: bool) -> Element {
-        let mut u = self.el;
+        let mut u = *self.el;
         if let Some(m) = self.layout.media {
             for v in &self.props.variants {
                 if !v.when.container && m.matches(&v.when) {
@@ -1031,7 +1036,7 @@ impl Node {
             up: parent,
             ordered_children: Vec::new(),
             changed: Changed::NEW,
-            el,
+            el: Authored::new(el),
             part_host: None,
             part_source: NONE,
             part_box: None,

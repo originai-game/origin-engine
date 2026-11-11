@@ -154,11 +154,11 @@ impl Ui {
                 {
                     let el = Ui::box_of(
                         &rp,
-                        self.tree.nodes[last].el,
+                        *self.tree.nodes[last].el,
                         self.style.em_of(&rp, &self.env),
                     );
                     let props = self.props_of(b, n, self.tree.nodes[last].key, &rp, &mut built);
-                    self.tree.nodes[last].el = el;
+                    *self.tree.el_mut(last) = el;
                     if props != Props::default() {
                         self.tree.nodes[last].props = props;
                     }
