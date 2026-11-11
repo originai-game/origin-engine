@@ -607,7 +607,7 @@ impl Ui {
         self.orders.ends = ends;
         self.orders.reuse = reuse;
         self.paint_cache.reused_all =
-            reused_roots && same_roots && !self.kept.fresh && !self.kept.whole;
+            reused_roots && same_roots && !self.invalidation.fresh && !self.invalidation.whole;
         self.paint_cache.prev_cmds = last;
         for commit in self.part_commits.take().into_values() {
             self.commit_styles(&commit);
@@ -833,7 +833,7 @@ impl Ui {
         let mut r = std::mem::take(&mut self.orders.reuse);
         r.begin(n);
         // The bounded frame's check paints its whole twin afresh.
-        if self.kept.fresh || self.kept.whole || self.tree.all_restructured {
+        if self.invalidation.fresh || self.invalidation.whole || self.tree.all_restructured {
             let o = &mut self.orders;
             o.volatile.clear();
             o.ringed.clear();

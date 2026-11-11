@@ -65,9 +65,9 @@ impl Ui {
         self.render_slots.remove(&(old.key, old.parent));
         // Its parent derives its children without it.
         if old.parent != NONE {
-            self.kept.rederive.push(old.parent);
+            self.invalidation.rederive.push(old.parent);
         }
-        self.kept.forced.remove(&i);
+        self.invalidation.forced.remove(&i);
         let mut vacant = Node::new(0, String::new(), NONE, Element::default());
         vacant.hidden = true;
         let old = std::mem::replace(&mut self.nodes[i], vacant);
@@ -211,7 +211,7 @@ impl Ui {
             self.nodes[i].part_box = Some(part);
             self.nodes[i].el = element;
             self.nodes[i].content = content;
-            self.kept.rederive.push(owner);
+            self.invalidation.rederive.push(owner);
             return i;
         }
         let mut node = Node::new(key, id, owner, element);

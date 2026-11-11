@@ -235,16 +235,8 @@ pub(crate) struct LayoutCache {
     pub prev: std::collections::HashMap<usize, Node>,
     /// Per node: its own layout inputs and child size contributions are unchanged.
     pub clean: Vec<bool>,
-    /// Fonts, theme, direction or pixel ratio changed: nothing is clean.
-    pub epoch: u64,
-    pub prev_epoch: u64,
     /// Nodes laid out this frame (the rest kept their layout).
     pub laid_out: u32,
-    /// The theme, direction and pixel ratio last frame drew with: a change
-    /// makes nothing clean.
-    pub sig: Option<(crate::Theme, og_i18n::Direction, f32)>,
-    /// This frame keeps nothing (`epoch` or `sig` changed).
-    pub fresh: bool,
     pub measurements: crate::ui::settlement::Measurements,
     pub query_roots: Option<std::collections::BTreeSet<usize>>,
     /// Nodes whose laid-out size changed since they were last laid out.
@@ -263,24 +255,38 @@ pub(crate) struct LayoutCache {
     /// Per node: laid out this frame (`laid` lists them, once each).
     pub laid_mark: Vec<bool>,
     pub laid: Vec<usize>,
+    /// Last frame's scroll containers: their offsets move their children.
+    pub scrollers: Vec<usize>,
+    /// Nodes `clean` holds false for (set true again next frame).
+    pub unclean: Vec<usize>,
+    /// Anchor-positioned nodes `position-visibility` showed or hid this
+    /// frame (visited again).
+    pub anchor_toggled: Vec<usize>,
+}
+
+/// What the frame may keep from the last: whether nothing is kept, and
+/// the nodes whose layout or children it makes again.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Invalidation {
+    /// Fonts, theme, direction or pixel ratio changed: nothing is clean.
+    pub epoch: u64,
+    pub prev_epoch: u64,
+    /// The theme, direction and pixel ratio last frame drew with: a change
+    /// makes nothing clean.
+    pub sig: Option<(crate::Theme, og_i18n::Direction, f32)>,
+    /// This frame keeps nothing (`epoch` or `sig` changed).
+    pub fresh: bool,
     /// Nodes laid out whole every frame: what the frame moves after
     /// layout (a baseline row, an anchored or screen-placed element, a
     /// placement's box) is made again from their layout, never on top of
     /// last frame's.
     pub forced: std::collections::BTreeSet<usize>,
-    /// Last frame's scroll containers: their offsets move their children.
-    pub scrollers: Vec<usize>,
     /// Nodes whose children are derived again this frame (a child left).
     pub rederive: Vec<usize>,
     /// Nodes whose placement box was restored this frame.
     pub restored: Vec<usize>,
-    /// Nodes `clean` holds false for (set true again next frame).
-    pub unclean: Vec<usize>,
     /// Asks for `full` on every frame (the bounded walk's check).
     pub whole: bool,
-    /// Anchor-positioned nodes `position-visibility` showed or hid this
-    /// frame (visited again).
-    pub anchor_toggled: Vec<usize>,
 }
 
 /// The motion pass's memory between ticks: what it visits again and the

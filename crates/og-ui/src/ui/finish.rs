@@ -226,9 +226,9 @@ impl Ui {
         ) -> Result<Vec<usize>, settlement::SettlementError>,
     ) -> Result<&UiFrame, settlement::SettlementError> {
         #[cfg(debug_assertions)]
-        if self.building && !self.kept.whole && bounded::checking() {
+        if self.building && !self.invalidation.whole && bounded::checking() {
             let mut twin = self.clone();
-            twin.kept.whole = true;
+            twin.invalidation.whole = true;
             let whole = twin.end_frame(&mut resolve).is_ok();
             let bounded = self.end_frame(&mut resolve).map(|_| ());
             assert_eq!(
@@ -273,7 +273,7 @@ impl Ui {
             if let Some((width, height, padding)) = self.nodes[i].authored_box.take() {
                 let el = &mut self.nodes[i].el;
                 (el.width, el.height, el.padding) = (width, height, padding);
-                self.kept.restored.push(i);
+                self.invalidation.restored.push(i);
             }
         }
         // Breakpoint and orientation variants (docs/ui.md §2), before
@@ -285,15 +285,15 @@ impl Ui {
         // Hidden slots (a closed dialog, a finished transition) take no room.
         // A node's lists follow from its built children and their own
         // props: derived again where those were written or a child left.
-        let whole = self.kept.whole
-            || self.kept.epoch != self.kept.prev_epoch
-            || self.kept.sig != Some((self.theme, self.direction, self.viewport.dpr()));
+        let whole = self.invalidation.whole
+            || self.invalidation.epoch != self.invalidation.prev_epoch
+            || self.invalidation.sig != Some((self.theme, self.direction, self.viewport.dpr()));
         let derive: Vec<usize> = if whole {
             (0..self.nodes.len()).collect()
         } else {
             let mut d: Vec<usize> = std::iter::once(0)
                 .chain(self.emitted.iter().flat_map(|&i| [i, self.nodes[i].parent]))
-                .chain(self.kept.rederive.iter().copied())
+                .chain(self.invalidation.rederive.iter().copied())
                 .filter(|&i| i < self.nodes.len())
                 .collect();
             // A box that hands its children on (`display: contents`, a
@@ -1071,8 +1071,9 @@ impl Ui {
             _ => None,
         };
         self.orders.hit_inputs = Some((touch_min, screen));
-        let mut hits_changed =
-            hit_seeds.is_none() || self.kept.fresh || std::mem::take(&mut self.orders.hits_moved);
+        let mut hits_changed = hit_seeds.is_none()
+            || self.invalidation.fresh
+            || std::mem::take(&mut self.orders.hits_moved);
         let hit_seeds = hit_seeds.unwrap_or_else(|| order.clone());
         for i in hit_seeds {
             if self.orders.pos[i] != u32::MAX {
