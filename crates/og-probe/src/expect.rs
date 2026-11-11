@@ -551,7 +551,7 @@ impl Probe {
                     fail(&mut r, format!("no live entity '{id}'"));
                     return Ok(self.record(r));
                 };
-                let seen = self.seen_now(world);
+                let seen = self.host.seen_now(world);
                 let Some(seen) = seen else {
                     r.status = Status::Unchecked;
                     r.reason = "this host has no scene view to describe the frame".into();
@@ -656,10 +656,10 @@ impl Probe {
                 tolerance,
             } => {
                 r.expected = json!({"color": format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]), "tolerance": tolerance});
-                let Some(image) = self.expect_frame(world, &mut r) else {
+                let Some(image) = self.host.expect_frame(world, &mut r) else {
                     return Ok(self.record(r));
                 };
-                let scale = self.css_scale(world, &image);
+                let scale = self.host.css_scale(world, &image);
                 let x0 = ((rect[0] * scale).floor().max(0.0) as u32).min(image.width);
                 let y0 = ((rect[1] * scale).floor().max(0.0) as u32).min(image.height);
                 let x1 = (((rect[0] + rect[2]) * scale).ceil().max(0.0) as u32).min(image.width);
@@ -714,7 +714,9 @@ impl Probe {
                         return Ok(self.record(r));
                     }
                 };
-                let Some(image) = self.frame_rgba_sized(world, &mut r, wanted.width, wanted.height)
+                let Some(image) =
+                    self.host
+                        .frame_rgba_sized(world, &mut r, wanted.width, wanted.height)
                 else {
                     return Ok(self.record(r));
                 };
@@ -817,7 +819,9 @@ impl Probe {
     pub fn take_expectations(&mut self) -> Vec<ExpectResult> {
         std::mem::take(&mut self.checks.expectations)
     }
+}
 
+impl crate::probe::state::Host {
     /// The frame at the target's size, or `None` with the result marked
     /// unchecked (no renderer) or failed (no frame).
     fn expect_frame(&mut self, world: &World, r: &mut ExpectResult) -> Option<Rgba> {
@@ -831,7 +835,7 @@ impl Probe {
         width: u32,
         height: u32,
     ) -> Option<Rgba> {
-        let Some(capture) = self.host.capture.as_mut().filter(|c| c.has_renderer()) else {
+        let Some(capture) = self.capture.as_mut().filter(|c| c.has_renderer()) else {
             r.status = Status::Unchecked;
             r.reason = "no renderer, frame unchecked".into();
             return None;
