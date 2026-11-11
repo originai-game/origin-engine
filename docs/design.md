@@ -2776,6 +2776,10 @@ decision list the video producer (§10.3) plays.
 - `og run --trace out.json`: Chrome trace format, per tick a span per
   system, per render pass, per load and cook event, lanes as threads;
   `ProbeTimings` has `systems[]` and `passes[]` (name, ms) for the live probe.
+- `og run --profile out.cpuprofile|out.md`: bun's sampling CPU profile of
+  the game process (native host only, never the resident session's
+  process), locations in the game's `src/` files; `.md` is the same
+  profile as hot-function and call-tree tables.
 - Scene write-back: probe `save_scene` and command `save_scene[:path]`:
   the entities that came from the scene and the tuned resources written
   back to the scene's `.ogt` text, line-based, keeping comments and order,

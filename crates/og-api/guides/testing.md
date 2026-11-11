@@ -173,6 +173,12 @@ it once. Read state before guessing at it:
   closures, objects in a query loop) is the usual reason it does not.
 - The probe's timings (`ProbeTimings`) split CPU and GPU by pass. Find the
   pass that grew before changing anything.
+- `og run --profile out.md` samples the game's TypeScript while it runs
+  and writes the hot functions by self time and the call tree, each with
+  its `src/` file and line (`out.cpuprofile` instead opens in Chrome's and
+  VS Code's profile views). Time inside the engine shows on the binding
+  that called it. Run enough ticks for the samples to mean something: at
+  one sample a millisecond, a system needs a few hundred ticks to show.
 - First frame on a phone over 4G within 2 s for a small game: a large
   first scene, fonts for every language at once and uncompressed textures
   are the usual causes. Stream what the first screen does not show.
