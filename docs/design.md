@@ -1873,7 +1873,10 @@ Each host carries rooms its own way:
   serves rooms by URL path. `og run --room ws://127.0.0.1:P/<room>`
   connects through og-net's client on a thread of its own and joins
   `<room>` before the first tick; the run pumps the link around every
-  frame. `--latency MS --jitter MS --loss PCT --seed N` make the relay a bad
+  frame. The relay itself serves `ws://`; one put behind a TLS proxy is
+  reached as `wss://<host>/<room>` (port 443 unless named), the client's
+  TLS being rustls on ring with the roots webpki-roots carries, so it
+  asks nothing of the system's certificate store. `--latency MS --jitter MS --loss PCT --seed N` make the relay a bad
   network (every frame held, unreliable sends dropped and reordered).
 - **On the web.** The Worker posts the engine's ops to the page and delivers
   the page's events; the shell's `RoomHost` maps them onto the Player's

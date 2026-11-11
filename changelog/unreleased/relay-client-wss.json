@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "net",
+      "summary": "og run --room reaches a relay behind TLS: `wss://<host>/<room>` (port 443 unless named) beside `ws://`. The certificate is checked against the public roots the engine carries (webpki-roots), not the system's store, so a self-signed or private-CA relay is refused; og relay itself still serves ws:// and wants a TLS proxy in front."
+    }
+  ]
+}

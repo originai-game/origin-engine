@@ -20,7 +20,7 @@ fn json_str(s: &str) -> String {
 }
 
 /// Connect an engine's rooms to a relay (`ws://host:port/<room>` joins that
-/// room at once). A Result.
+/// room at once; `wss://` reaches one behind TLS). A Result.
 #[napi(js_name = "og_node_room_connect")]
 pub fn og_node_room_connect(engine: u32, url: String) -> String {
     match RelayClient::connect(&url) {

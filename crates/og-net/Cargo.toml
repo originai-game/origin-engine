@@ -8,12 +8,21 @@ description = "Origin Engine networking: the room protocol, deterministic lockst
 
 [features]
 default = []
-# The native relay (`og relay`) and its client (`og run --room`). Ignored on wasm32.
-ws = ["dep:tungstenite"]
+# The native relay (`og relay`) and its client (`og run --room`, which also
+# reaches a relay behind TLS: `wss://`). Ignored on wasm32.
+ws = ["dep:tungstenite", "dep:rustls", "dep:webpki-roots"]
 
 [dependencies]
 og-core = { path = "../og-core" }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"], optional = true }
+tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"], optional = true }
+# The client's TLS (`wss://`): rustls on ring, trusting Mozilla's roots as
+# webpki-roots carries them, so it needs nothing of the system it runs on.
+rustls = { version = "0.23", default-features = false, features = ["std", "ring"], optional = true }
+webpki-roots = { version = "1", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+# The client's `wss://` test makes its relay's certificate.
+rcgen = { version = "0.14", default-features = false, features = ["ring"] }

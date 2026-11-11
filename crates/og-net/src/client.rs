@@ -1,7 +1,9 @@
 //! The relay's client: one WebSocket to `og relay` on a thread of its own,
 //! ops in and events out through queues, so the engine's thread never
 //! blocks on the network. `og run --room ws://127.0.0.1:P/<room>` connects
-//! with the room in the path: the relay joins it at once.
+//! with the room in the path: the relay joins it at once. A relay behind a
+//! TLS proxy is reached as `wss://host/<room>` (rustls, trusting the roots
+//! webpki-roots carries; `og relay` itself serves `ws://`).
 //!
 //! A lost connection is mended here (crate::protocol's contract): the
 //! thread connects again for `RECONNECT_WINDOW_MS`, asks again what was
@@ -11,6 +13,7 @@
 use crate::protocol::{
     self, MAX_FRAME, PING_MS, RECONNECT_FIRST_MS, RECONNECT_MAX_MS, RECONNECT_WINDOW_MS, SILENT_MS,
 };
+use rustls::{ClientConfig, RootCertStore};
 use serde_json::{Value, json};
 use std::io;
 use std::net::{TcpStream, ToSocketAddrs};
@@ -19,10 +22,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
-use tungstenite::Message;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::protocol::WebSocketConfig;
 use tungstenite::stream::MaybeTlsStream;
+use tungstenite::{Connector, Message};
 
 type Socket = tungstenite::WebSocket<MaybeTlsStream<TcpStream>>;
 
@@ -50,7 +53,8 @@ enum Op {
 
 impl RelayClient {
     /// Connects (the handshake happens here, so a wrong URL is an error at
-    /// once). `url` is `ws://host:port/` or `ws://host:port/<room>`.
+    /// once). `url` is `ws://host:port/` or `ws://host:port/<room>`, or
+    /// `wss://` for a relay behind TLS (port 443 unless named).
     pub fn connect(url: &str) -> Result<RelayClient, String> {
         RelayClient::connect_for(url, Duration::from_millis(RECONNECT_WINDOW_MS))
     }
@@ -58,22 +62,39 @@ impl RelayClient {
     /// As [`RelayClient::connect`], trying for `window` to get a lost
     /// connection back.
     fn connect_for(url: &str, window: Duration) -> Result<RelayClient, String> {
-        if !url.starts_with("ws://") {
+        let roots = RootCertStore::from_iter(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+        RelayClient::connect_trusting(url, window, roots)
+    }
+
+    /// As [`RelayClient::connect_for`], with the roots a `wss://` relay's
+    /// certificate must lead to.
+    fn connect_trusting(
+        url: &str,
+        window: Duration,
+        roots: RootCertStore,
+    ) -> Result<RelayClient, String> {
+        let Some(scheme) = ["ws://", "wss://"].into_iter().find(|s| url.starts_with(s)) else {
             return Err(format!(
-                "'{url}' is not a relay URL: write ws://127.0.0.1:<port>/<room> (og relay prints its port)"
+                "'{url}' is not a relay URL: write ws://127.0.0.1:<port>/<room> (og relay prints its port), or wss://<host>/<room> for a relay behind TLS"
             ));
-        }
-        let socket = dial(url).map_err(|e| {
-            format!("cannot reach the relay at {url} ({e}); start one with `og relay`")
+        };
+        let tls = match scheme {
+            "wss://" => Some(tls(roots)?),
+            _ => None,
+        };
+        let socket = dial(url, tls.as_ref()).map_err(|e| match scheme {
+            "wss://" => format!("cannot reach the relay at {url} ({e})"),
+            _ => format!("cannot reach the relay at {url} ({e}); start one with `og relay`"),
         })?;
         // The relay without the room: a new connection asks for its room
         // itself, under the name this peer had.
-        let authority = url["ws://".len()..].split('/').next().unwrap_or_default();
-        let room = url["ws://".len() + authority.len()..].trim_matches('/');
+        let authority = url[scheme.len()..].split('/').next().unwrap_or_default();
+        let room = url[scheme.len() + authority.len()..].trim_matches('/');
         let (ops, ops_rx) = mpsc::channel::<Op>();
         let (events_tx, events) = mpsc::channel::<Value>();
         let mut link = Link {
-            base: format!("ws://{authority}/"),
+            base: format!("{scheme}{authority}/"),
+            tls,
             events: events_tx,
             asked: None,
             room: None,
@@ -132,11 +153,28 @@ impl Drop for RelayClient {
     }
 }
 
-/// One connection: reach the host and shake hands, each within [`DIAL`].
-fn dial(url: &str) -> Result<Socket, String> {
+/// The TLS a `wss://` relay is reached with: rustls on ring, its certificate
+/// checked against `roots`.
+fn tls(roots: RootCertStore) -> Result<Arc<ClientConfig>, String> {
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    Ok(Arc::new(
+        ClientConfig::builder_with_provider(provider)
+            .with_safe_default_protocol_versions()
+            .map_err(|e| e.to_string())?
+            .with_root_certificates(roots)
+            .with_no_client_auth(),
+    ))
+}
+
+/// One connection: reach the host and shake hands (TLS's first, with `tls`,
+/// for a `wss://` URL), each within [`DIAL`].
+fn dial(url: &str, tls: Option<&Arc<ClientConfig>>) -> Result<Socket, String> {
     let request = url.into_client_request().map_err(|e| e.to_string())?;
     let host = request.uri().host().unwrap_or_default().to_string();
-    let port = request.uri().port_u16().unwrap_or(80);
+    let port = request
+        .uri()
+        .port_u16()
+        .unwrap_or(if tls.is_some() { 443 } else { 80 });
     let mut last = format!("'{host}' has no address");
     let addrs = (host.as_str(), port)
         .to_socket_addrs()
@@ -157,13 +195,20 @@ fn dial(url: &str) -> Result<Socket, String> {
         let config = WebSocketConfig::default()
             .max_frame_size(Some(MAX_FRAME))
             .max_message_size(Some(MAX_FRAME));
-        match tungstenite::client::client_with_config(
+        let connector = tls.map_or(Connector::Plain, |c| Connector::Rustls(c.clone()));
+        match tungstenite::client_tls_with_config(
             request.clone(),
-            MaybeTlsStream::Plain(stream),
+            stream,
             Some(config),
+            Some(connector),
         ) {
             Ok((socket, _)) => {
-                if let MaybeTlsStream::Plain(s) = socket.get_ref() {
+                let tcp = match socket.get_ref() {
+                    MaybeTlsStream::Plain(s) => Some(s),
+                    MaybeTlsStream::Rustls(s) => Some(s.get_ref()),
+                    _ => None,
+                };
+                if let Some(s) = tcp {
                     let _ = s.set_read_timeout(Some(Duration::from_millis(1)));
                     let _ = s.set_write_timeout(None);
                 }
@@ -190,6 +235,8 @@ struct Room {
 struct Link {
     /// The relay's URL without a room.
     base: String,
+    /// What a `wss://` relay is reached with.
+    tls: Option<Arc<ClientConfig>>,
     events: Sender<Value>,
     /// The create, join or quick the relay has not answered yet.
     asked: Option<Value>,
@@ -331,7 +378,7 @@ impl Link {
                 ops.try_iter().for_each(|op| self.op_away(op));
                 thread::sleep(Duration::from_millis(5));
             }
-            if let Ok(mut socket) = dial(&self.base) {
+            if let Ok(mut socket) = dial(&self.base, self.tls.as_ref()) {
                 ops.try_iter().for_each(|op| self.op_away(op));
                 self.resume(&mut socket);
                 return Some(socket);
@@ -347,7 +394,7 @@ impl Link {
                 return None;
             }
             match ops.recv_timeout(Duration::from_millis(20)) {
-                Ok(Op::Ask(v)) => match dial(&self.base) {
+                Ok(Op::Ask(v)) => match dial(&self.base, self.tls.as_ref()) {
                     Ok(mut socket) => {
                         self.asked = Some(v);
                         self.resume(&mut socket);
@@ -607,6 +654,99 @@ mod tests {
             self.stop.store(true, Ordering::Relaxed);
             self.cut();
         }
+    }
+
+    /// A relay behind TLS, as much of one as a client's first words need:
+    /// it shakes hands under `localhost`'s certificate, says `joined` to
+    /// every connection, sends back what it is sent, and drops the
+    /// connection that sends `bye`. Returns its port and the certificate.
+    fn tls_relay() -> (u16, rustls::pki_types::CertificateDer<'static>) {
+        use rustls::pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
+        let made = rcgen::generate_simple_self_signed(vec!["localhost".to_string()]).unwrap();
+        let cert = made.cert.der().clone();
+        let key = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(made.signing_key.serialize_der()));
+        let provider = Arc::new(rustls::crypto::ring::default_provider());
+        let config = Arc::new(
+            rustls::ServerConfig::builder_with_provider(provider)
+                .with_safe_default_protocol_versions()
+                .unwrap()
+                .with_no_client_auth()
+                .with_single_cert(vec![cert.clone()], key)
+                .unwrap(),
+        );
+        let listener = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        thread::spawn(move || {
+            for tcp in listener.incoming().flatten() {
+                let config = config.clone();
+                thread::spawn(move || {
+                    let conn = rustls::ServerConnection::new(config).unwrap();
+                    let stream = rustls::StreamOwned::new(conn, tcp);
+                    // A client that does not trust the certificate ends here.
+                    let Ok(mut ws) = tungstenite::accept(stream) else {
+                        return;
+                    };
+                    let joined = Event::Joined {
+                        room: "arena".into(),
+                        peer: 0,
+                        peers: vec![(0, String::new())],
+                    };
+                    let _ = ws.send(Message::text(joined.to_json().to_string()));
+                    while let Ok(m) = ws.read() {
+                        let Message::Text(t) = m else { continue };
+                        let op: Value = serde_json::from_str(&t).unwrap();
+                        if op["data"] == "bye" {
+                            return;
+                        }
+                        if op["op"] == "send" {
+                            let back = json!({ "type": "message", "from": 0, "data": op["data"] });
+                            let _ = ws.send(Message::text(back.to_string()));
+                        }
+                    }
+                });
+            }
+        });
+        (port, cert)
+    }
+
+    #[test]
+    fn a_relay_behind_tls_is_reached_as_wss_and_only_under_a_trusted_certificate() {
+        let (port, cert) = tls_relay();
+        let url = format!("wss://localhost:{port}/arena");
+        let mut roots = RootCertStore::empty();
+        roots.add(cert).unwrap();
+        let window = Duration::from_millis(RECONNECT_WINDOW_MS);
+        let c = RelayClient::connect_trusting(&url, window, roots).unwrap();
+        assert!(matches!(
+            &until(&c, 1)[0],
+            Event::Joined { room, peer: 0, .. } if room == "arena"
+        ));
+        // Both ways through TLS, past the 1 ms read timeout the thread polls with.
+        let big = "x".repeat(200_000);
+        c.send(&protocol::send(None, None, &Payload::Json(json!(big))));
+        assert_eq!(
+            until(&c, 1),
+            [Event::Message {
+                from: 0,
+                channel: None,
+                payload: Payload::Json(json!(big)),
+            }]
+        );
+        // A lost connection is mended through TLS too.
+        c.send(&protocol::send(None, None, &Payload::Json(json!("bye"))));
+        assert!(matches!(&until(&c, 1)[0], Event::Joined { .. }));
+        c.send(&protocol::send(None, None, &Payload::Json(json!("again"))));
+        assert!(matches!(&until(&c, 1)[0], Event::Message { .. }));
+        // The roots a client ships with do not know this certificate.
+        let e = RelayClient::connect(&url).err().unwrap();
+        assert!(
+            e.contains("cannot reach the relay") && e.contains("UnknownIssuer"),
+            "{e}"
+        );
+        // Without TLS the same port answers nothing a WebSocket reads.
+        assert!(RelayClient::connect(&format!("ws://localhost:{port}/arena")).is_err());
+        let e = RelayClient::connect("https://localhost/").err().unwrap();
+        assert!(e.contains("wss://"), "{e}");
     }
 
     #[test]
