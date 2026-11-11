@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "number arguments (every binding that reads a float field)",
+      "summary": "A NaN passed in a number field now reaches the engine as NaN instead of reading as the field's default (the wire writes NaN as null), so og.render.light2dAt and every binding that checks finiteness refuse it again. An absent field still takes its default; integer, boolean and string fields are unchanged."
+    }
+  ]
+}

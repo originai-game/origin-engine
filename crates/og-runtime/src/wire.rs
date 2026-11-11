@@ -3,8 +3,12 @@
 //! here), so a field's name, type and default are the IDL's and a binding
 //! that reads a field the IDL does not declare fails to build.
 //!
-//! The rules every reader follows: an absent or `null` value takes its
-//! default; a value of the wrong JSON type, an integer that is not whole or
+//! The rules every reader follows: an absent value takes its default; a
+//! `null` field takes its default too, except in a float field (`f32`,
+//! `f64` and the float members of vectors, quaternions and colours), where
+//! it reads as NaN: JSON.stringify writes a JavaScript NaN as `null`, so the
+//! binding sees what the game passed and its own finiteness check decides;
+//! a value of the wrong JSON type, an integer that is not whole or
 //! is out of range, an unknown enum variant or union tag is refused with
 //! the path of the field (`desc.origin.x: expected a number, got "1"`);
 //! fields the IDL does not declare are ignored.
@@ -36,6 +40,11 @@ pub trait FromJson: Sized {
         let _ = v;
         true
     }
+    /// A field present as `null`: its default, except for a float, where
+    /// `null` is how the wire carries a JavaScript NaN.
+    fn from_null(default: Self) -> Self {
+        default
+    }
 }
 
 /// The JSON argument `text` (absent, empty or `null`: the default) read as
@@ -65,10 +74,12 @@ pub fn at(segment: &str, e: String) -> String {
     }
 }
 
-/// Field `key` of `o`, or `default` when it is absent or `null`.
+/// Field `key` of `o`: `default` when it is absent, [`FromJson::from_null`]
+/// of it when it is `null`.
 pub fn field<T: FromJson>(o: &Map<String, Value>, key: &str, default: T) -> Result<T, String> {
     match o.get(key) {
-        None | Some(Value::Null) => Ok(default),
+        None => Ok(default),
+        Some(Value::Null) => Ok(T::from_null(default)),
         Some(v) => T::from_json_over(v, default).map_err(|e| at(key, e)),
     }
 }
@@ -154,6 +165,9 @@ impl FromJson for f32 {
     fn reads(v: &Value) -> bool {
         v.is_number()
     }
+    fn from_null(_: Self) -> Self {
+        f32::NAN
+    }
     fn from_json(v: &Value) -> Result<Self, String> {
         number(v).map(|n| n as f32)
     }
@@ -162,6 +176,9 @@ impl FromJson for f32 {
 impl FromJson for f64 {
     fn reads(v: &Value) -> bool {
         v.is_number()
+    }
+    fn from_null(_: Self) -> Self {
+        f64::NAN
     }
     fn from_json(v: &Value) -> Result<Self, String> {
         number(v)

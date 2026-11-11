@@ -5,7 +5,10 @@
 //! reads is the IDL's and a mismatch is a build error.
 //!
 //! The readers implement og-runtime's `wire::FromJson`. Their rules, the
-//! same for every type: an absent or `null` field takes its default; a
+//! same for every type: an absent field takes its default, and so does a
+//! `null` one, except a float field (`f32`, `f64`, the float members of
+//! vectors, quaternions and colours), where `null` reads as NaN, the form
+//! JSON.stringify gives a JavaScript NaN; a
 //! present field of the wrong JSON type, an integer out of range or not
 //! whole, or an unknown enum variant or union tag is refused, naming the
 //! field's path; fields the IDL does not declare are ignored.
