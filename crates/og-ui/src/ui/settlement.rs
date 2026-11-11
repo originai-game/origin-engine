@@ -80,6 +80,16 @@ impl LayoutInputs {
     }
 }
 
+/// Container queries across a frame's layout passes: the measurements
+/// they watch and, while a settlement reruns layout, the roots it lays out
+/// again (`None`: all of them). The layout stage's own, apart from its
+/// reuse cache.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct ContainerQueries {
+    pub(crate) measurements: Measurements,
+    pub(crate) query_roots: Option<std::collections::BTreeSet<usize>>,
+}
+
 impl Measurements {
     pub(crate) fn watch(&mut self, key: u64) {
         self.watched.entry(key).or_insert(None);
@@ -118,12 +128,12 @@ impl Ui {
     /// Registers an actual layout node, not a document selector index. The
     /// subscription's first layout publishes even a zero-sized content box.
     pub fn watch_layout_container(&mut self, key: u64) {
-        self.layout.cache.measurements.watch(key);
+        self.layout.queries.measurements.watch(key);
     }
 
     /// Removes a native layout subscription and any unpublished measurement.
     pub fn unwatch_layout_container(&mut self, key: u64) {
-        self.layout.cache.measurements.unwatch(key);
+        self.layout.queries.measurements.unwatch(key);
     }
 
     pub(crate) fn settle_layout_queries(
@@ -135,7 +145,7 @@ impl Ui {
             &[ContainerMeasurement],
         ) -> Result<Vec<usize>, SettlementError>,
     ) -> Result<bool, SettlementError> {
-        let changes = self.layout.cache.measurements.take();
+        let changes = self.layout.queries.measurements.take();
         // Placement temporarily fixes floating dimensions and adds safe-area
         // padding. Resolvers patch authored inputs, not those derived values.
         inputs.swap(&mut self.tree.nodes);
@@ -193,17 +203,17 @@ impl Ui {
         // Popovers depend on anchors and HUD groups avoid each other. Their
         // placement must settle too, even if their own styles did not change.
         roots.extend(self.tree.floating.iter().copied());
-        self.layout.cache.query_roots = Some(roots);
+        self.layout.queries.query_roots = Some(roots);
         Ok(true)
     }
 }
 
 impl crate::ui::Layout {
     pub(crate) fn abort_layout_queries(&mut self, tree: &mut crate::ui::Tree) {
-        self.cache.query_roots = None;
+        self.queries.query_roots = None;
         tree.invalidation.epoch += 1;
-        self.cache.measurements.pending.clear();
-        self.cache
+        self.queries.measurements.pending.clear();
+        self.queries
             .measurements
             .watched
             .values_mut()

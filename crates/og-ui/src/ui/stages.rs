@@ -124,6 +124,9 @@ pub(crate) struct Layout {
     /// Last frame's input hash of each element and its subtree, with its
     /// layout, for reuse (docs/ui.md §2).
     pub(crate) cache: crate::layout::LayoutCache,
+    /// Container queries: the measurements watched and the roots a
+    /// settlement lays out again.
+    pub(crate) queries: settlement::ContainerQueries,
     /// Slots whose box placement replaced (floating sizes, a modal's safe
     /// padding): their authored box comes back before the next layout.
     pub(crate) layout_mutated: Vec<usize>,
