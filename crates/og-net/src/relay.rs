@@ -15,6 +15,12 @@
 //! numbered in the order they asked) and each hears `joined` with all of
 //! them; nobody else can join it by id. A peer that waited `timeoutMs`
 //! hears an `error` with code `timeout`; a `leave` takes it out of the queue.
+//! Their `joined` carries the room's `key`: a matched peer whose connection
+//! was lost joins again with it (`join`'s `key`), as a new peer number.
+//!
+//! A connection that says nothing is asked (a ping after `PING_MS`), and
+//! one silent for `SILENT_MS` is closed and its peer leaves: a peer whose
+//! network went away without a word does not hold its place in the room.
 //!
 //! Order is the contract lockstep rests on: one thread reads each peer's
 //! frames and hands each recipient its copy through that recipient's own
@@ -32,6 +38,7 @@
 
 use crate::protocol::{
     self, Event, LOCKSTEP_CHANNEL, MAX_CAPACITY, MAX_ENGINE_MESSAGE, MAX_FRAME, MAX_MESSAGE,
+    PING_MS, SILENT_MS,
 };
 use og_core::IdMap;
 use serde_json::{Value, json};
@@ -124,6 +131,35 @@ struct Room {
     capacity: u32,
     next_peer: u32,
     peers: IdMap<u32, PeerConn>,
+    /// A quick play room's key (a join with it is one of its matched peers
+    /// coming back); empty for a room anyone joins by id.
+    key: String,
+}
+
+/// A key nobody guesses: the standard library's per-process random hasher
+/// keys, drawn anew for each.
+fn new_key() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    let draw = || {
+        std::collections::hash_map::RandomState::new()
+            .build_hasher()
+            .finish()
+    };
+    format!("{:016x}{:016x}", draw(), draw())
+}
+
+/// The `joined` event, with the room's key when it has one.
+fn joined(room: &str, peer: u32, peers: Vec<(u32, String)>, key: &str) -> String {
+    let mut v = Event::Joined {
+        room: room.to_string(),
+        peer,
+        peers,
+    }
+    .to_json();
+    if !key.is_empty() {
+        v["key"] = json!(key);
+    }
+    v.to_string()
 }
 
 /// A room made by quick play: only its matched peers are in it.
@@ -280,7 +316,18 @@ impl Peer {
         let _ = self.tx.send((Instant::now(), rooms.seq, frame));
     }
 
-    fn join(&mut self, op: &str, room: &str, name: &str, make: Option<u32>) {
+    /// Joins `room`, making it with capacity `make` (a create), or as a
+    /// join by id: of any room but quick play's, which takes only a join
+    /// with its `key`.
+    fn join(
+        &mut self,
+        op: &str,
+        room: &str,
+        name: &str,
+        make: Option<u32>,
+        key: &str,
+        was: Option<u32>,
+    ) {
         if let Some((r, _)) = &self.at {
             return self.reply(error(
                 op,
@@ -291,18 +338,26 @@ impl Peer {
         if self.queued.is_some() {
             return self.reply(error(op, "invalid", "waiting for quick play: leave first"));
         }
-        if make.is_none() && room.starts_with(QUICK_PREFIX) {
+        let mut rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
+        if make.is_none()
+            && room.starts_with(QUICK_PREFIX)
+            && !rooms
+                .rooms
+                .get(room)
+                .is_some_and(|r| !key.is_empty() && r.key == key)
+        {
+            drop(rooms);
             return self.reply(error(
                 op,
                 "full",
                 format!("room '{room}' is quick play's: only its matched peers are in it"),
             ));
         }
-        let mut rooms = self.rooms.lock().unwrap_or_else(|p| p.into_inner());
         let state = rooms.rooms.entry(room.to_string()).or_insert_with(|| Room {
             capacity: make.unwrap_or(JOIN_CAPACITY),
             next_peer: 0,
             peers: IdMap::new(),
+            key: String::new(),
         });
         if state.peers.len() as u32 >= state.capacity {
             let cap = state.capacity;
@@ -315,6 +370,8 @@ impl Peer {
         }
         let peer = state.next_peer;
         state.next_peer += 1;
+        // A number this room gave, whose holder is gone: else it is not said.
+        let was = was.filter(|w| *w < peer && !state.peers.contains_key(w));
         let others: Vec<u32> = state.peers.keys().copied().collect();
         state.peers.insert(
             peer,
@@ -331,18 +388,13 @@ impl Peer {
             .collect();
         let count = peers.len();
         // Under the lock, so every peer hears joins and messages in one order.
-        let joined = Event::Joined {
-            room: room.to_string(),
-            peer,
-            peers,
-        }
-        .to_json()
-        .to_string();
+        let joined = joined(room, peer, peers, &state.key);
         rooms.seq += 1;
         let _ = self.tx.send((Instant::now(), rooms.seq, joined));
         let joined = Event::PeerJoined {
             peer,
             name: name.to_string(),
+            was,
         }
         .to_json()
         .to_string();
@@ -463,17 +515,12 @@ impl Peer {
             capacity: players,
             next_peer: players,
             peers: IdMap::new(),
+            key: new_key(),
         };
         for (i, w) in group.into_iter().enumerate() {
             let peer = i as u32;
             *w.placed.lock().unwrap_or_else(|p| p.into_inner()) = Some((id.clone(), peer));
-            let joined = Event::Joined {
-                room: id.clone(),
-                peer,
-                peers: peers.clone(),
-            }
-            .to_json()
-            .to_string();
+            let joined = joined(&id, peer, peers.clone(), &room.key);
             rooms.seq += 1;
             let _ = w.tx.send((now, rooms.seq, joined));
             room.peers.insert(
@@ -567,7 +614,7 @@ impl Peer {
                         }
                     }
                 };
-                self.join("create", &id, &name, Some(capacity));
+                self.join("create", &id, &name, Some(capacity), "", None);
             }
             "join" => {
                 let room = v["room"].as_str().unwrap_or_default().to_string();
@@ -578,7 +625,14 @@ impl Peer {
                         format!("'{room}' is not a room id: 1 to 64 of letters, digits, '.', '_' and '-'"),
                     ));
                 }
-                self.join("join", &room, &name, None);
+                self.join(
+                    "join",
+                    &room,
+                    &name,
+                    None,
+                    v["key"].as_str().unwrap_or_default(),
+                    v["was"].as_u64().and_then(|w| u32::try_from(w).ok()),
+                );
             }
             "leave" => {
                 self.leave("asked");
@@ -697,7 +751,7 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
     let room = path.trim_matches('/').to_string();
     if !room.is_empty() {
         if protocol::valid_room(&room) {
-            peer.join("join", &room, "", None);
+            peer.join("join", &room, "", None, "", None);
         } else {
             peer.reply(error(
                 "join",
@@ -707,11 +761,22 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
         }
     }
     let mut unread = false;
+    // When this connection last said anything, and when it was last asked.
+    let (mut heard, mut asked) = (Instant::now(), Instant::now());
     let why = loop {
         if stop.load(Ordering::Relaxed) {
             break "the relay stopped";
         }
         peer.expire();
+        let quiet = heard.elapsed();
+        if quiet >= Duration::from_millis(SILENT_MS) {
+            break "it fell silent";
+        }
+        if quiet.min(asked.elapsed()) >= Duration::from_millis(PING_MS) {
+            asked = Instant::now();
+            let _ = socket.write(Message::Ping(Default::default()));
+            let _ = socket.flush();
+        }
         let mut wrote = false;
         held.extend(rx.try_iter());
         held.sort_by_key(|q| (q.0, q.1));
@@ -726,7 +791,11 @@ fn connection(stream: TcpStream, rooms: Shared, stop: Arc<AtomicBool>, log: Send
         if wrote && socket.flush().is_err() {
             break "the connection failed";
         }
-        match socket.read() {
+        let read = socket.read();
+        if read.is_ok() {
+            heard = Instant::now();
+        }
+        match read {
             Ok(Message::Text(text)) => peer.op(text.as_str()),
             Ok(Message::Close(_)) => break "it closed the connection",
             Ok(_) => {}

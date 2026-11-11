@@ -1843,6 +1843,19 @@ or `none`). The wire shapes are og-net's protocol
   21).
 - **Peers.** A room numbers its peers in join order from 0 and never reuses
   a number.
+- **A lost connection.** The relay's clients mend it, the native one and
+  `relayRooms` alike: they connect again (250 ms, then twice as long up to
+  4 s, for 30 s) and ask again what was unanswered, or join the room they
+  were in again under the name they had, naming the number they had
+  (`was`). The engine hears `joined` once more with a new peer number, the
+  other peers `peer_left` and a `peer_joined` that carries `was` (said only
+  for a number the room gave whose holder is gone), and lockstep gives that
+  peer's seat back (below). Sends made meanwhile are lost. `left` comes only when the window passes or the
+  room refuses. A quick play room is joined by id only with the key its
+  `joined` carried, so a matched peer returns and nobody else walks in.
+  Either end pings a connection silent for 3 s and gives up one silent for
+  10 s, so a dead link is noticed without the system's TCP timeout (a
+  browser cannot ping; the relay's ping covers a page).
 - **Ordering.** Messages from one sender arrive in the order sent, and its
   departure after its last message. Lockstep's agreement on a leaver's last
   input rests on this.
@@ -2058,9 +2071,12 @@ the room. It rests on §2.4's determinism and snapshot.
   peer, and the seat's input is empty from then on (a game may hand it to a
   bot). Wall time decides only when a peer is reported and dropped. A
   dropped peer that comes back holds its world and asks again; with
-  `rejoin` (default) the authority gives it back its seat (or a newcomer of
-  the same name gets it) from a snapshot, from a tick past every input the
+  `rejoin` (default) the authority gives it back its seat (or a newcomer
+  that was that peer before its connection was lost, or has its name,
+  gets it) from a snapshot, from a tick past every input the
   authority has sent, and `og.SeatRejoined` arrives at one tick everywhere.
+  A newcomer is admitted once the drops being agreed are done, so one back
+  before its old seat emptied still finds it.
   Both seat events are hashed and lazily registered. Each input message
   names the seat changes its sender knows, so one that overtook an `admit`
   or a `drop` waits for the resend.

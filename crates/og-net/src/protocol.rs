@@ -5,7 +5,10 @@
 //!
 //! ```text
 //! { op: "create", name?, capacity? }      a new room; joined (or error) answers
-//! { op: "join", room, name? }             an existing room (the relay makes it on first join)
+//! { op: "join", room, name?, key?, was? }   an existing room (the relay makes it on first
+//!                                         join); `key` is a quick play room's, from its
+//!                                         `joined`; `was` is the number this peer had in
+//!                                         the room before it lost its connection
 //! { op: "quick", mode?, players?, timeoutMs?, name? }   quick play: a new room of `players`
 //!                                         peers waiting for the same mode; joined once it
 //!                                         fills, error `timeout` after timeoutMs (0: never)
@@ -17,8 +20,9 @@
 //! relay to a client:
 //!
 //! ```text
-//! { type: "joined", room, peer, peers: [{ peer, name }] }   this peer is in (peers include it)
-//! { type: "peer_joined", peer, name }
+//! { type: "joined", room, peer, peers: [{ peer, name }], key? }   this peer is in (peers
+//!                                           include it); `key` is the relay's, for its client
+//! { type: "peer_joined", peer, name, was? }   `was`: the number it had in this room before
 //! { type: "peer_left", peer }               after every message that peer sent
 //! { type: "message", from, channel?, data? | bytes? }
 //! { type: "left", reason? }                 roomLeave done, or the host lost the room
@@ -34,6 +38,18 @@
 //! game as og.RoomMessage. A `send` marked `unreliable` may be dropped or
 //! overtake others (lockstep's inputs, which the next message repeats); a
 //! host free to deliver it reliably may.
+//!
+//! A lost connection is the client's to mend (the native client and the web
+//! relay provider alike): it connects again, waiting `RECONNECT_FIRST_MS`
+//! and then twice as long each time up to `RECONNECT_MAX_MS`, for
+//! `RECONNECT_WINDOW_MS`. Back, it asks again what was unanswered, or joins
+//! the room it was in again under the name it had, naming the number it
+//! had (`was`, and a quick play room's `key`): the engine hears `joined`
+//! once more, with this peer's new number, and the other peers `peer_left`
+//! and a `peer_joined` that carries `was`, by which lockstep gives it its
+//! own seat back. The relay passes on a `was` only when that number was
+//! given in the room and its holder is gone. What it sent meanwhile is lost. Only when the window passes, or the room refuses it, does the
+//! engine hear `left`.
 
 use crate::base64;
 use serde_json::{Value, json};
@@ -50,6 +66,17 @@ pub const MAX_ENGINE_MESSAGE: usize = 16 << 20;
 /// carries it, and lets the relay read a message somewhat too large and
 /// answer `too_large` instead of losing the connection.
 pub const MAX_FRAME: usize = 2 * MAX_ENGINE_MESSAGE;
+/// A connection silent this long is asked for a sign of life (a WebSocket
+/// ping, which every client answers), by the relay and by its client.
+pub const PING_MS: u64 = 3_000;
+/// A connection silent this long is lost: the relay drops its peer, the
+/// client connects again.
+pub const SILENT_MS: u64 = 10_000;
+/// A client's first wait before it connects again, the longest wait (each
+/// is twice the one before), and how long it tries before the room is lost.
+pub const RECONNECT_FIRST_MS: u64 = 250;
+pub const RECONNECT_MAX_MS: u64 = 4_000;
+pub const RECONNECT_WINDOW_MS: u64 = 30_000;
 /// The most peers a room takes.
 pub const MAX_CAPACITY: u32 = 16;
 
@@ -104,6 +131,17 @@ pub fn join(room: &str, name: &str) -> Value {
     json!({ "op": "join", "room": room, "name": name })
 }
 
+/// A join by the peer that was number `was` in `room` and lost its
+/// connection: with the room's `key` when its `joined` carried one.
+pub fn rejoin(room: &str, name: &str, key: Option<&str>, was: u32) -> Value {
+    let mut v = join(room, name);
+    v["was"] = json!(was);
+    if let Some(k) = key {
+        v["key"] = json!(k);
+    }
+    v
+}
+
 /// Quick play's longest wait, and its default.
 pub const QUICK_TIMEOUT_MAX_MS: u32 = 600_000;
 pub const QUICK_TIMEOUT_MS: u32 = 30_000;
@@ -139,6 +177,9 @@ pub enum Event {
     PeerJoined {
         peer: u32,
         name: String,
+        /// The number this peer had in the room before it lost its
+        /// connection, when it came back.
+        was: Option<u32>,
     },
     PeerLeft {
         peer: u32,
@@ -187,6 +228,7 @@ impl Event {
             "peer_joined" => Event::PeerJoined {
                 peer: peer_of(v, "peer")?,
                 name: text(v, "name"),
+                was: peer_of(v, "was").ok(),
             },
             "peer_left" => Event::PeerLeft {
                 peer: peer_of(v, "peer")?,
@@ -214,8 +256,12 @@ impl Event {
                 "type": "joined", "room": room, "peer": peer,
                 "peers": peers.iter().map(|(p, n)| json!({ "peer": p, "name": n })).collect::<Vec<_>>(),
             }),
-            Event::PeerJoined { peer, name } => {
-                json!({ "type": "peer_joined", "peer": peer, "name": name })
+            Event::PeerJoined { peer, name, was } => {
+                let mut v = json!({ "type": "peer_joined", "peer": peer, "name": name });
+                if let Some(was) = was {
+                    v["was"] = json!(was);
+                }
+                v
             }
             Event::PeerLeft { peer } => json!({ "type": "peer_left", "peer": peer }),
             Event::Message {
@@ -258,6 +304,12 @@ mod tests {
             Event::PeerJoined {
                 peer: 2,
                 name: "c".into(),
+                was: None,
+            },
+            Event::PeerJoined {
+                peer: 3,
+                name: String::new(),
+                was: Some(1),
             },
             Event::PeerLeft { peer: 0 },
             Event::Message {

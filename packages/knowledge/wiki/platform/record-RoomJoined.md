@@ -6,7 +6,7 @@ Module [`platform`](../platform.md) · [index](../index.md)
 
 ### `og.RoomJoined` (event)
 
-roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
+roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. It arrives again, ok true with a new peer number, when the host took the room back after a lost connection. With ok false the engine is in no room and `reason` says why.
 
 Token `og.RoomJoined`, registered under the schema name `og.RoomJoined`; its value type is `RoomJoined`.
 
@@ -20,7 +20,7 @@ Token `og.RoomJoined`, registered under the schema name `og.RoomJoined`; its val
 
 ```ogt
 event RoomJoined {
-  doc "roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why."
+  doc "roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. It arrives again, ok true with a new peer number, when the host took the room back after a lost connection. With ok false the engine is in no room and `reason` says why."
   field ok bool "Whether this engine is in the room now."
   field room String "The room's id (at most 63 bytes); empty when not ok."
   field peer u32 "This engine's peer number."

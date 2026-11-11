@@ -294,7 +294,7 @@ pub fn og_room_deliver(engine: u32, event: String) -> bool {
                     json!({ "ok": true, "room": room, "peer": peer, "peers": count, "reason": "" }),
                 ));
             }
-            Event::PeerJoined { peer, name } => {
+            Event::PeerJoined { peer, name, .. } => {
                 n.peers.insert(peer, name);
                 let count = n.peers.len();
                 n.pending

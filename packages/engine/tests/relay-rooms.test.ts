@@ -5,17 +5,20 @@
 // opens go first and in order, a room joined by the URL's path reaches the
 // engine before it sent any op, one peer's messages reach the other in order
 // with its departure after the last of them (close() sends what is queued
-// first), binary and non-JSON frames are ignored, a lost relay is a `left`
-// and an unreachable one answers the join `offline`. With an `og` (OG_BIN or
+// first), binary and non-JSON frames are ignored, a lost connection is
+// mended (the peer is back in its room under its name, an unanswered ask is
+// asked again, what was sent meanwhile is lost), a relay that stays away is
+// a `left` once the window passed and a later ask tries it again, and an
+// unreachable one answers the join `offline`. With an `og` (OG_BIN or
 // native/), the same provider is checked against the real `og relay`,
-// including its 64 KiB limit.
+// including its 64 KiB limit and a quick play room taking its peer back.
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { relayRooms, type RelayRooms } from "../src/web/relay-rooms.ts";
+import { relayRooms, type RelayRooms, type SocketFactory } from "../src/web/relay-rooms.ts";
 import { ogBin } from "./support/og-bin.ts";
 
-type Socket = { data: { path: string; room?: string; peer?: number }; send(text: string | Uint8Array): void; close(code?: number): void };
+type Socket = { data: { path: string; room?: string; peer?: number; name?: string }; send(text: string | Uint8Array): void; close(code?: number): void };
 declare const Bun: {
   serve(options: {
     port: number;
@@ -32,15 +35,17 @@ function standInRelay() {
   const ops: unknown[] = [];
   let created = 0;
   const event = (ws: Socket, e: unknown) => ws.send(JSON.stringify(e));
-  const join = (ws: Socket, op: string, room: string) => {
+  const live = new Set<Socket>();
+  const join = (ws: Socket, op: string, room: string, name = "") => {
     const r = rooms.get(room) ?? { next: 0, peers: new Map() };
     rooms.set(room, r);
     const peer = r.next++;
-    for (const other of r.peers.values()) event(other, { type: "peer_joined", peer, name: "" });
+    for (const other of r.peers.values()) event(other, { type: "peer_joined", peer, name });
     r.peers.set(peer, ws);
     ws.data.room = room;
     ws.data.peer = peer;
-    event(ws, { type: "joined", room, peer, peers: [...r.peers.keys()].map((p) => ({ peer: p, name: "" })) });
+    ws.data.name = name;
+    event(ws, { type: "joined", room, peer, peers: [...r.peers].map(([p, s]) => ({ peer: p, name: s.data.name ?? "" })) });
     void op;
   };
   const leave = (ws: Socket) => {
@@ -58,6 +63,7 @@ function standInRelay() {
     },
     websocket: {
       open(ws) {
+        live.add(ws);
         const room = ws.data.path.replace(/^\/+|\/+$/g, "");
         if (room === "binary") {
           ws.send(new Uint8Array([1, 2, 3]));
@@ -71,7 +77,7 @@ function standInRelay() {
         const op = JSON.parse(text) as Record<string, unknown>;
         ops.push(op);
         if (op["op"] === "create") join(ws, "create", `room-${++created}`);
-        else if (op["op"] === "join") join(ws, "join", String(op["room"]));
+        else if (op["op"] === "join") join(ws, "join", String(op["room"]), String(op["name"] ?? ""));
         else if (op["op"] === "leave") {
           leave(ws);
           event(ws, { type: "left", reason: "left" });
@@ -83,11 +89,16 @@ function standInRelay() {
         }
       },
       close(ws) {
+        live.delete(ws);
         leave(ws);
       },
     },
   });
-  return { url: `ws://127.0.0.1:${server.port}`, ops, stop: () => server.stop(true) };
+  /** Ends every connection whose path is not `keep`, as a relay that restarts does. */
+  const cut = (keep: string) => {
+    for (const ws of [...live]) if (ws.data.path !== keep) ws.close(1012);
+  };
+  return { url: `ws://127.0.0.1:${server.port}`, ops, cut, stop: () => server.stop(true) };
 }
 
 /** The events a provider delivered, and a wait for the n-th. */
@@ -124,7 +135,7 @@ test("ops wait for the socket in order; a path's room arrives before any op; mes
     expect((await hb.until(1))[0]).toMatchObject({ type: "joined", room: "arena", peer: 1 });
     expect(relay.ops.slice(0, 4)).toEqual([{ op: "join", room: "arena", name: "b" }, { op: "send", data: { early: 0 } }, { op: "send", data: { early: 1 } }, { op: "send", data: { early: 2 } }]);
     await ha.until(5);
-    expect(ha.got.slice(1, 5)).toEqual([{ type: "peer_joined", peer: 1, name: "" }, ...[0, 1, 2].map((i) => ({ type: "message", from: 1, data: { early: i } }))]);
+    expect(ha.got.slice(1, 5)).toEqual([{ type: "peer_joined", peer: 1, name: "b" }, ...[0, 1, 2].map((i) => ({ type: "message", from: 1, data: { early: i } }))]);
     // 200 messages and bytes on the engine's channel, then close(): a hears them all, then b's departure.
     b.handle(Array.from({ length: 200 }, (_, i) => ({ op: "send", data: i })), hb.deliver);
     b.handle([{ op: "send", to: 0, channel: "og.lockstep", bytes: "AQID" }], hb.deliver);
@@ -153,12 +164,16 @@ test("binary and non-JSON frames are ignored; a relay that closes is a left; an 
     expect(await hj.until(1)).toEqual([{ type: "left", reason: "after junk" }]);
     junk.close();
 
-    const kicked = relayRooms(`${relay.url}/kick`);
+    // With no window to try again in, a relay that closes is the room lost at once; a later ask tries it once more.
+    const kicked = relayRooms(`${relay.url}/kick`, { reconnectMs: 0 });
     const hk = listen(kicked);
     kicked.attach!(hk.deliver);
-    expect(await hk.until(1)).toEqual([{ type: "left", reason: "the relay closed the connection" }]);
-    kicked.handle([{ op: "create" }], hk.deliver);
-    expect(hk.got[1]).toMatchObject({ type: "error", op: "create", code: "offline" });
+    expect(await hk.until(1)).toEqual([{ type: "error", op: "join", code: "offline", message: expect.stringContaining("the relay closed the connection") }]);
+    expect(kicked.state).toBe("closed");
+    kicked.handle([{ op: "send", data: "lost" }, { op: "create" }], hk.deliver);
+    expect(kicked.state).toBe("connecting");
+    expect((await hk.until(2))[1]).toMatchObject({ type: "joined", room: "room-1", peer: 0 });
+    kicked.close();
   } finally {
     relay.stop();
   }
@@ -173,6 +188,55 @@ test("binary and non-JSON frames are ignored; a relay that closes is a left; an 
   ]);
   expect(String(got[0]!["message"])).toContain("cannot reach the relay");
   expect(() => relayRooms("http://127.0.0.1:1/")).toThrow("is not a relay URL");
+});
+
+test("a lost connection is mended: the peer is back in its room under its name, an unanswered ask is asked again; a relay that stays away is a left", async () => {
+  const relay = standInRelay();
+  try {
+    const a = relayRooms(`${relay.url}/watch`);
+    const ha = listen(a);
+    a.handle([{ op: "leave" }, { op: "join", room: "arena", name: "ann" }], ha.deliver);
+    await ha.until(3);
+    const b = relayRooms(`${relay.url}/`, { reconnectMs: 1000 });
+    const hb = listen(b);
+    b.handle([{ op: "join", room: "arena", name: "bob" }], hb.deliver);
+    expect((await hb.until(1))[0]).toMatchObject({ type: "joined", room: "arena", peer: 1 });
+    await ha.until(4);
+    const seen = relay.ops.length;
+
+    relay.cut("/watch");
+    // While it is away: a send is lost, an ask is refused (the engine is in its room), and nothing says `left`.
+    await new Promise((r) => setTimeout(r, 20));
+    expect(b.state).toBe("connecting");
+    b.handle([{ op: "send", data: "lost" }, { op: "create" }], hb.deliver);
+    expect(hb.got[1]).toMatchObject({ type: "error", op: "create", code: "offline" });
+    expect((await hb.until(3))[2]).toEqual({ type: "joined", room: "arena", peer: 2, peers: [{ peer: 0, name: "ann" }, { peer: 2, name: "bob" }] });
+    expect(b.state).toBe("open");
+    expect(relay.ops.slice(seen)).toEqual([{ op: "join", room: "arena", name: "bob", was: 1 }]);
+    expect((await ha.until(6)).slice(4)).toEqual([{ type: "peer_left", peer: 1 }, { type: "peer_joined", peer: 2, name: "bob" }]);
+    b.handle([{ op: "send", data: "back" }], hb.deliver);
+    expect((await ha.until(7))[6]).toEqual({ type: "message", from: 2, data: "back" });
+
+    // A leave while it is away is a `left` at once, and the ask after it is the one the new connection makes.
+    relay.cut("/watch");
+    await new Promise((r) => setTimeout(r, 20));
+    b.handle([{ op: "leave" }, { op: "join", room: "lobby", name: "bob" }], hb.deliver);
+    expect(hb.got[3]).toEqual({ type: "left", reason: "left" });
+    expect((await hb.until(5))[4]).toMatchObject({ type: "joined", room: "lobby", peer: 0 });
+    expect((await ha.until(8))[7]).toEqual({ type: "peer_left", peer: 2 });
+    a.close();
+
+    // The relay stays away: the room is lost once the window passed, and not before the provider tried again.
+    relay.stop();
+    const at = Date.now();
+    expect((await hb.until(6))[5]).toEqual({ type: "left", reason: "the relay closed the connection" });
+    expect(Date.now() - at).toBeGreaterThanOrEqual(250);
+    expect(b.state).toBe("closed");
+    b.handle([{ op: "quick", mode: "duel" }], hb.deliver);
+    expect((await hb.until(7))[6]).toMatchObject({ type: "error", op: "quick", code: "offline" });
+  } finally {
+    relay.stop();
+  }
 });
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -211,6 +275,52 @@ test.skipIf(!og)("against the real og relay: two pages meet by create and join, 
     expect(got[1]).toEqual({ type: "peer_joined", peer: 1, name: "b" });
     expect(got.slice(2, 52).map((e) => e["data"])).toEqual(Array.from({ length: 50 }, (_, i) => i));
     expect(got[52]).toEqual({ type: "peer_left", peer: 1 });
+    a.close();
+  } finally {
+    p.kill();
+  }
+});
+
+test.skipIf(!og)("against the real og relay: a quick play room takes its matched page back after a lost connection, and nobody without its key", async () => {
+  const p = Bun.spawn([og!, "relay", "--port", "0"], { cwd: repo, stdout: "pipe", stderr: "pipe" });
+  try {
+    const reader = p.stdout.getReader();
+    let text = "";
+    while (!/:(\d+)\//.test(text)) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error(`og relay exited: ${text}`);
+      text += new TextDecoder().decode(value);
+    }
+    const url = `ws://127.0.0.1:${/:(\d+)\//.exec(text)![1]}/`;
+    const a = relayRooms(url);
+    const ha = listen(a);
+    a.handle([{ op: "quick", mode: "duel", players: 2, name: "ann" }], ha.deliver);
+    // b's sockets are kept, so the test can end one under it.
+    const sockets: Array<{ close(code?: number): void }> = [];
+    const Kept = class extends (globalThis as unknown as { WebSocket: SocketFactory }).WebSocket {
+      constructor(u: string) {
+        super(u);
+        sockets.push(this);
+      }
+    } as SocketFactory;
+    const b = relayRooms(url, { WebSocket: Kept });
+    const hb = listen(b);
+    b.handle([{ op: "quick", mode: "duel", players: 2, name: "bob" }], hb.deliver);
+    const first = (await hb.until(1))[0]!;
+    expect(first).toMatchObject({ type: "joined", peer: 1 });
+    expect(String(first["room"])).toMatch(/^quick-duel-\d+$/);
+    await ha.until(1);
+    sockets[0]!.close();
+    expect((await hb.until(2))[1]).toMatchObject({ type: "joined", room: first["room"], peer: 2, peers: [{ peer: 0, name: "ann" }, { peer: 2, name: "bob" }] });
+    expect((await ha.until(3)).slice(1)).toEqual([{ type: "peer_left", peer: 1 }, { type: "peer_joined", peer: 2, name: "bob", was: 1 }]);
+    b.close();
+    await ha.until(4);
+    // The place is free again, and a stranger who knows the room's id and a player's name still gets none.
+    const c = relayRooms(url);
+    const hc = listen(c);
+    c.handle([{ op: "join", room: String(first["room"]), name: "bob" }], hc.deliver);
+    expect((await hc.until(1))[0]).toMatchObject({ type: "error", op: "join", code: "full" });
+    c.close();
     a.close();
   } finally {
     p.kill();

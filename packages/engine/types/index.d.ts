@@ -24258,7 +24258,7 @@ export interface RoomMessageData {
 }
 
 /**
- * roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
+ * roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. It arrives again, ok true with a new peer number, when the host took the room back after a lost connection. With ok false the engine is in no room and `reason` says why.
  *
  * The payload of the `RoomJoined` event (token `og.RoomJoined`).
  */
@@ -30543,7 +30543,7 @@ export interface Lockstep {
    */
   stallTimeout: number;
   /**
-   * Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's.
+   * Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's.
    *
    * @default true
    */
@@ -35490,7 +35490,7 @@ export declare namespace og {
    */
   const PlatformGrants: ResourceType<{ readonly ids: ListSpec<"u32"> }, PlatformGrants>;
   /**
-   * roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.
+   * roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. It arrives again, ok true with a new peer number, when the host took the room back after a lost connection. With ok false the engine is in no room and `reason` says why.
    */
   const RoomJoined: EventType<RoomJoined>;
   /** Another peer joined this engine's room. */

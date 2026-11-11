@@ -918,14 +918,20 @@ path is joined as it opens (a Play link needs none: the engine joins the
 link's room). Each op is one text frame, in order, those made while it
 opens sent first; each text frame is one event, in order, and binary or
 non-JSON frames are ignored. The relay holds the limits (64 KiB a game's
-message, 16 MiB an engine channel's, `too_large` past them). There is no
-reconnect: a lost relay is a `left` event and the room is gone; a later
-`create`, `join` or `quick`, and those that waited for a relay that never
-answered, are refused `offline`. `close()` sends what is queued first. A
+message, 16 MiB an engine channel's, `too_large` past them). A lost
+connection is mended as the native client mends it (docs/design.md §2.8):
+`relayRooms(url, { reconnectMs })` connects again for `reconnectMs`
+(default 30 000; 0 never) and takes its room back under its name, a `joined`
+with a new peer number; `state` reads `connecting` meanwhile, and a `create`,
+`join` or `quick` made then while in a room is refused `offline`. When the
+window passes or the room refuses, the room is a `left` event (an
+unanswered ask `offline`), and each later ask dials once more. `close()`
+sends what is queued first. A
 page on https reaches only a `wss://` relay (`og relay` serves `ws://`;
 put a TLS proxy in front). roomInfo's `host` reads `relay`. Tests:
 `tests/relay-rooms.test.ts` (a stand-in relay, and the real `og relay`
-when an `og` is built).
+when an `og` is built), and `tests/rooms.test.ts` for a lockstep room
+whose wire is cut mid-match.
 
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 

@@ -43440,7 +43440,7 @@
     "RoomJoined": {
       "x-og-kind": "event",
       "x-og-module": "platform",
-      "description": "roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. With ok false the engine is in no room and `reason` says why.",
+      "description": "roomCreate, roomJoin or quickPlay finished, or the host put this engine in a room (`og run --room`, a Play link to a room): sent at the start of the tick after the host answered. It arrives again, ok true with a new peer number, when the host took the room back after a lost connection. With ok false the engine is in no room and `reason` says why.",
       "type": "object",
       "properties": {
         "ok": {
@@ -53717,7 +53717,7 @@
         },
         "rejoin": {
           "type": "boolean",
-          "description": "Whether a dropped player that comes back (or a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's.",
+          "description": "Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's.",
           "default": true
         },
         "maxPrediction": {

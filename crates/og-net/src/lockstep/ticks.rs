@@ -105,11 +105,19 @@ impl Lockstep {
         }
         if self.authority() == Some(me) {
             let run = self.run.as_ref().expect("running");
+            // A newcomer waits for the seats being emptied: one that is a
+            // player back after a lost connection may be here before its
+            // old seat's drop is agreed, and would find it taken.
+            let settled = self.proposals.is_empty()
+                && run.seats.iter().all(|h| {
+                    h.last()
+                        .is_none_or(|l| l.until.is_some() || self.peers.contains_key(&l.peer))
+                });
             let newcomers: Vec<u32> = self
                 .peers
                 .keys()
                 .copied()
-                .filter(|p| !run.admitted.contains(p) && !self.held_back.contains(p))
+                .filter(|p| settled && !run.admitted.contains(p) && !self.held_back.contains(p))
                 .collect();
             if !newcomers.is_empty() {
                 // A newcomer gets a confirmed world: this one when every
@@ -198,20 +206,20 @@ impl Lockstep {
     fn admit(&mut self, peer: u32, tick: u64, at: u64, bytes: &[u8]) {
         let run = self.run.as_mut().expect("running");
         let name = self.names.get(&peer).cloned().unwrap_or_default();
+        let was = self.was.get(&peer).copied();
         let free = |h: &Vec<Hold>| h.last().is_none_or(|h| h.until.is_some());
         // With rejoin, a returning player takes back the seat it held (the
-        // same peer, or a newcomer of the same name), else the first free
-        // one; without, only a seat nobody held yet.
+        // same peer, the peer it was before its connection was lost, or a
+        // newcomer of the same name), else the first free one; without,
+        // only a seat nobody held yet.
         let free = if run.rejoin {
-            run.seats
-                .iter()
-                .position(|h| {
-                    free(h)
-                        && h.last().is_some_and(|l| {
-                            l.peer == peer
-                                || (!name.is_empty() && self.names.get(&l.peer) == Some(&name))
-                        })
-                })
+            let held = |by: &dyn Fn(&Hold) -> bool| {
+                run.seats
+                    .iter()
+                    .position(|h| free(h) && h.last().is_some_and(by))
+            };
+            held(&|l| l.peer == peer || was == Some(l.peer))
+                .or_else(|| held(&|l| !name.is_empty() && self.names.get(&l.peer) == Some(&name)))
                 .or_else(|| run.seats.iter().position(free))
         } else {
             run.seats.iter().position(Vec::is_empty)

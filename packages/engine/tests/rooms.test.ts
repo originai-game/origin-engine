@@ -2,8 +2,11 @@
 // relay` and two `og run --room` processes. The lockstep input fixture, each
 // process on its own scripted bot, hashes the same at tick 600; a game whose
 // system reads Math.random() is caught: og.Desync names the first divergent
-// tick and `dump_desync` the component and field.
+// tick and `dump_desync` the component and field. A peer whose connection is
+// cut in the middle of a run comes back by itself (og-net's client), takes
+// its seat back from the room's world, and both end on one hash.
 import { expect, test } from "bun:test";
+import * as net from "node:net";
 import { dirname, join } from "node:path";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,6 +25,13 @@ declare const Bun: {
 };
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+
+/** The part of node:net a TCP wire between a peer and the relay needs (src/env.d.ts declares only what the engine uses). */
+type Tcp = { on(event: "data" | "error" | "close", listener: (data: Uint8Array) => void): Tcp; write(data: Uint8Array): void; destroy(): void };
+const tcp = net as unknown as {
+  createServer(listener: (socket: Tcp) => void): { listen(port: number, host: string, done: () => void): void; address(): { port: number }; close(): void };
+  connect(port: number, host: string): Tcp;
+};
 
 /** `og relay --port 0` (with `shaping`: --latency, --jitter, --loss, --seed), and the port it printed. */
 async function relay(shaping: string[] = []): Promise<{ port: number; stop: () => void }> {
@@ -264,6 +274,57 @@ test("quick play matches two engines of one mode in a room of their own; a third
   expect(c!.room.state).toBe("none");
   expect(c!.lockstep.running).toBe(false);
 }, 300_000);
+
+test("a peer whose connection is cut comes back by itself, takes its seat back from the room's world, and both end on one hash", async () => {
+  const r = await relay();
+  // The second peer reaches the relay through a wire the test cuts once, 200 frames in (near tick 200 of 600).
+  let frames = 0;
+  let cuts = 0;
+  const wire = tcp.createServer((down) => {
+    const up = tcp.connect(r.port, "127.0.0.1");
+    const end = () => (down.destroy(), up.destroy());
+    down.on("data", (d) => {
+      up.write(d);
+      if (cuts === 0 && ++frames === 200) {
+        cuts = 1;
+        end();
+      }
+    });
+    up.on("data", (d) => down.write(d));
+    for (const s of [down, up]) s.on("error", end).on("close", end);
+  });
+  await new Promise<void>((done) => wire.listen(0, "127.0.0.1", done));
+  try {
+    // Paced (no --headless): the peer left alone must still be running when the other is back, a quarter of a second later.
+    const run = async (port: number, bot: string) => {
+      const p = Bun.spawn([ogBin(), "run", "tests/fixtures/lockstep-room", "--no-render", "--json", "--room", `ws://127.0.0.1:${port}/mend`, "--ticks", "600", "--setup", bot], { cwd: repo, stdout: "pipe", stderr: "pipe" });
+      const [code, out, err] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
+      if (code !== 0) throw new Error(`og run exited ${code}: ${err}${out}`);
+      return JSON.parse(out.trim().split("\n").pop()!) as Summary & { lockstep: { seats: { seat: number; peer: number; until: number | null }[] } };
+    };
+    const first = run(r.port, "bot:1:tick");
+    await new Promise((done) => setTimeout(done, 300));
+    const [a, b] = await Promise.all([first, run(wire.address().port, "bot:2:tick")]);
+    expect(cuts).toBe(1);
+    // The room gave it a new number; the seat it held is its own again.
+    expect([a.lockstep.peer, b.lockstep.peer]).toEqual([0, 2]);
+    for (const s of [a, b]) {
+      expect(s.tick).toBe(600);
+      expect(s.lockstep.running).toBe(true);
+      expect(s.lockstep.desync).toBeNull();
+      expect(s.lockstep.seats.filter((h) => h.until === null).map((h) => [h.seat, h.peer])).toEqual([[0, 0], [1, 2]]);
+      expect(s.facts!.drops).toBe(1);
+      expect(s.facts!.rejoins).toBe(1);
+    }
+    expect(b.facts!.droppedAt).toBe(a.facts!.droppedAt);
+    expect(b.facts!.rejoinedAt).toBe(a.facts!.rejoinedAt);
+    expect(a.confirmedHash).not.toBeNull();
+    expect(b.confirmedHash).toBe(a.confirmedHash);
+  } finally {
+    wire.close();
+    r.stop();
+  }
+}, 120_000);
 
 // Wall time decides this one: a 2.5 s SIGSTOP against a 0.8 s stallTimeout,
 // both peers paced at 60 Hz. A loaded machine slips the pacing and the test
