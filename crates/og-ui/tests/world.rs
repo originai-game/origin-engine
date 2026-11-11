@@ -15,7 +15,7 @@
 
 use crate::support::*;
 use og_core::glam::{Quat, Vec2, Vec3};
-use og_render::{Overlay, UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate};
+use og_draw::{Overlay, UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate};
 use og_ui::*;
 
 const W: f32 = 1280.0;

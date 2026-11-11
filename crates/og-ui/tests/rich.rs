@@ -18,20 +18,13 @@
 
 use crate::support;
 
-use og_render::{ColorSpace, Mips, RenderScene, TextureData};
 use og_ui::*;
 use support::*;
 
 fn rich_ui() -> Ui {
-    let mut scene = RenderScene::new();
-    let font = add_test_font(&mut scene);
-    let icons = scene.add_texture(TextureData {
-        width: 2,
-        height: 2,
-        rgba: vec![255; 16],
-        color_space: ColorSpace::Srgb,
-        mips: Mips::None,
-    });
+    let mut handles = Handles::default();
+    let font = handles.test_font();
+    let icons = handles.texture();
     let mut ui = ui_with_font(font);
     ui.set_icons(IconAtlas {
         texture: Some(icons),
@@ -409,18 +402,10 @@ fn italic_underline_strike_and_outline_keep_their_span() {
 
 #[test]
 fn a_registered_picture_and_an_actions_glyph_draw_inline() {
-    let mut scene = RenderScene::new();
-    let font = add_test_font(&mut scene);
-    let tex = |scene: &mut RenderScene| {
-        scene.add_texture(TextureData {
-            width: 2,
-            height: 2,
-            rgba: vec![255; 16],
-            color_space: ColorSpace::Srgb,
-            mips: Mips::None,
-        })
-    };
-    let (portrait, icons) = (tex(&mut scene), tex(&mut scene));
+    let mut handles = Handles::default();
+    let font = handles.test_font();
+    let tex = |handles: &mut Handles| handles.texture();
+    let (portrait, icons) = (tex(&mut handles), tex(&mut handles));
     let mut ui = ui_with_font(font);
     ui.set_icons(IconAtlas {
         texture: Some(icons),
@@ -452,7 +437,7 @@ fn a_registered_picture_and_an_actions_glyph_draw_inline() {
         for _ in 0..2 {
             step(ui, InputFrame::default(), markup, Size::Fixed(560.0));
         }
-        let images: Vec<(Option<og_render::TextureHandle>, Rect)> = ui
+        let images: Vec<(Option<og_draw::TextureHandle>, Rect)> = ui
             .frame()
             .items
             .iter()

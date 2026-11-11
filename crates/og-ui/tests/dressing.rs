@@ -8,7 +8,7 @@ use og_ui::*;
 
 #[test]
 fn tabs_and_select_parts_keep_boxes_states_and_host_input() {
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.set_part_css(
         "tabs::part(track) { background: #123456; padding: 5px; }
          tabs::part(indicator) { background: #654321; height: 7px; }
@@ -642,7 +642,7 @@ fn stepper_part_css_pads_borders_and_states_its_boxes() {
 
 #[test]
 fn choice_parts_have_independent_css_layout_and_paint() {
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.set_part_css(r#"
 input { color: #d3b517; font-size: 21px; }
 input[type=checkbox]::part(box) { width: 34px; height: 30px; background: #fb0307; translate: 7px 0; opacity: 0.5; border: none; transition: none; }
@@ -749,7 +749,7 @@ fn button_parts_keep_separate_boxes_and_host_event_ownership() {
         ui.begin(input, Viewport::new(600.0, 400.0));
         ui.end();
     };
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.define_document(
         UiDocument::parse(
             "part-box.svelte",
@@ -872,9 +872,9 @@ fn registry_parts_on_text_hosts_are_boxes_and_hosts_accept_color() {
 
 #[test]
 fn host_font_and_color_reach_button_ink_and_divider_output() {
-    let mut scene = og_render::RenderScene::new();
-    let body = add_test_font(&mut scene);
-    let display = add_test_font(&mut scene);
+    let mut handles = Handles::default();
+    let body = handles.test_font();
+    let display = handles.test_font();
     let body_handle = body.handle.unwrap();
     let display_handle = display.handle.unwrap();
     let mut ui = Ui::new(UiDesc {
@@ -1024,7 +1024,7 @@ input.poem::part(placeholder) {
   color: #7f8c8d;
 }
 "##;
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.set_part_css(css).unwrap();
     let lg = TypeStep {
         size: 24.0,
@@ -1171,17 +1171,11 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
         } else {
             ""
         });
-        let mut scene = og_render::RenderScene::new();
+        let mut handles = Handles::default();
         let mut fonts = ui.fonts().clone();
-        fonts.body = add_test_font(&mut scene);
+        fonts.body = handles.test_font();
         ui.set_fonts(fonts);
-        let texture = scene.add_texture(og_render::TextureData {
-            width: 2,
-            height: 2,
-            rgba: vec![255; 16],
-            color_space: og_render::ColorSpace::Srgb,
-            mips: og_render::Mips::None,
-        });
+        let texture = handles.texture();
         let mut theme = *ui.theme();
         theme.art.atlas = Some(texture);
         theme.art.flourish = Some(og_ui::style_file::Ornament {
@@ -1383,7 +1377,7 @@ fn a_draw_strokes_over_its_elements_background() {
             order(&|c| matches!(c, DrawCmd::Quad { .. })).expect("the background quad");
         let rim = order(&|c| {
             matches!(c, DrawCmd::Shape { shape, .. }
-                if matches!(shape.mode, og_render::UiMode::Stroke(_)))
+                if matches!(shape.mode, og_draw::UiMode::Stroke(_)))
         })
         .expect("the rim");
         assert!(
@@ -1513,7 +1507,7 @@ fn a_document_part_takes_its_dressing_classes_and_states() {
 #[test]
 fn a_kit_text_part_takes_its_ink_and_step() {
     use og_ui::reactive::SourceId;
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.set_part_css(concat!(
         "span::part(name) { color: #c0392b; font-size: 24px; }\n",
         "span.ally::part(name) { color: #2e86de; }\n",
@@ -1834,7 +1828,7 @@ fn default_css_glass_uses_css_filters_and_material_fallbacks() {
         panic!("one material applies the filter exactly once");
     };
     let (mode, _) = glass.resolve(*blur, *saturation, *brightness, [0.0; 4], false, ui.theme());
-    let og_render::UiMode::Backdrop {
+    let og_draw::UiMode::Backdrop {
         blur: actual_blur,
         saturation: actual_saturation,
         glass: material,
@@ -1852,7 +1846,7 @@ fn default_css_glass_uses_css_filters_and_material_fallbacks() {
     let mut reduced = *ui.theme();
     reduced.reduced_transparency = true;
     let (mode, tint) = glass.resolve(*blur, *saturation, *brightness, [0.0; 4], false, &reduced);
-    assert!(matches!(mode, og_render::UiMode::Backdrop { blur: 0.0, glass, .. } if glass.solid));
+    assert!(matches!(mode, og_draw::UiMode::Backdrop { blur: 0.0, glass, .. } if glass.solid));
     assert_eq!(tint[3], 1.0);
 }
 
@@ -2076,7 +2070,7 @@ fn progress_part_keyframes_advance_without_host_changes() {
 /// border and state rules did not move the text or reach the buttons.
 #[test]
 fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.set_part_css(
         "input::part(frame) { padding: 0 11px; border: 2px solid #123456; background: #00ff00; }
          input::part(frame):focus-visible { background: #0000ff; }
@@ -2231,7 +2225,7 @@ fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
 /// moved by the frame's border.
 #[test]
 fn undressed_text_frames_keep_the_hosts_box_and_inset() {
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     let mut value = "Hello".to_string();
     let mut invalid = "Bad".to_string();
     for _ in 0..3 {

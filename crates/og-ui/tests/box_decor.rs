@@ -28,7 +28,7 @@
 
 use crate::support::{Doc, both};
 use og_core::glam::Vec2;
-use og_render::{UiAlign, UiMode};
+use og_draw::{UiAlign, UiMode};
 use og_ui::*;
 
 fn lin(hex: &str) -> [f32; 4] {
@@ -82,7 +82,7 @@ fn borders_pad_the_box_and_outlines_take_no_room() {
 
 /// Element `id`'s paint commands from the last frame, in order: those whose
 /// box or clip lies on its rectangle.
-fn shapes(ui: &Ui) -> Vec<og_render::UiShape> {
+fn shapes(ui: &Ui) -> Vec<og_draw::UiShape> {
     ui.frame()
         .items
         .iter()
@@ -117,7 +117,7 @@ fn decorations_paint_in_css_order_over_any_draw() {
             let e = d.get(id);
             Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0)
         };
-        let stroke = |sh: &og_render::UiShape| match sh.mode {
+        let stroke = |sh: &og_draw::UiShape| match sh.mode {
             UiMode::Stroke(st) => Some(st),
             _ => None,
         };
@@ -128,7 +128,7 @@ fn decorations_paint_in_css_order_over_any_draw() {
             .expect("A's border");
         assert_eq!(stroke(a).unwrap().align, UiAlign::Inside);
         assert_eq!(a.half, Vec2::new(25.0, 15.0));
-        assert!(matches!(a.paint, og_render::UiPaint::Solid(c) if close(c, lin("#ff0000"))));
+        assert!(matches!(a.paint, og_draw::UiPaint::Solid(c) if close(c, lin("#ff0000"))));
         // C: its outline outside a box grown by the offset, in its text
         // colour (currentColor), dashed: dashes and gaps about three
         // widths long, fitted to each side.
@@ -144,9 +144,9 @@ fn decorations_paint_in_css_order_over_any_draw() {
             st.dash
         );
         assert_eq!(c.half, Vec2::new(22.0, 12.0));
-        assert!(matches!(c.paint, og_render::UiPaint::Solid(k) if close(k, lin("#00ff00"))));
+        assert!(matches!(c.paint, og_draw::UiPaint::Solid(k) if close(k, lin("#00ff00"))));
         // S: outer shadow, then its background, then the inset shadow.
-        let mine: Vec<&og_render::UiShape> = s.iter().filter(|x| x.center == at("S")).collect();
+        let mine: Vec<&og_draw::UiShape> = s.iter().filter(|x| x.center == at("S")).collect();
         let shadow = mine
             .iter()
             .position(|x| matches!(x.mode, UiMode::Shadow { offset, blur, .. } if offset == Vec2::new(0.0, 4.0) && blur == 12.0))
@@ -155,7 +155,7 @@ fn decorations_paint_in_css_order_over_any_draw() {
             .iter()
             .position(|x| {
                 matches!(x.mode, UiMode::Fill)
-                    && matches!(x.paint, og_render::UiPaint::Solid(k) if close(k, lin("#3366ff")))
+                    && matches!(x.paint, og_draw::UiPaint::Solid(k) if close(k, lin("#3366ff")))
             })
             .expect("S's background, drawn with its shadows");
         let inset = mine
@@ -164,7 +164,7 @@ fn decorations_paint_in_css_order_over_any_draw() {
             .expect("S's inset shadow");
         assert!(shadow < fill && fill < inset, "{shadow} {fill} {inset}");
         // The button keeps its dressed plate under its border.
-        let btn: Vec<&og_render::UiShape> = s.iter().filter(|x| x.center == at("Btn")).collect();
+        let btn: Vec<&og_draw::UiShape> = s.iter().filter(|x| x.center == at("Btn")).collect();
         assert!(
             btn.iter()
                 .any(|x| stroke(x).is_some_and(|st| st.width == 2.0))
@@ -223,7 +223,7 @@ fn border_radius_rounds_a_dressed_button() {
             s.iter()
                 .filter(|x| x.center == at && matches!(x.mode, UiMode::Fill))
                 .find_map(|x| match x.geometry {
-                    og_render::UiGeometry::Rect { radii, .. } => Some(radii),
+                    og_draw::UiGeometry::Rect { radii, .. } => Some(radii),
                     _ => None,
                 })
                 .or_else(|| {
@@ -268,9 +268,9 @@ fn corners_take_css_radii_and_shapes() {
             s.iter()
                 .filter(|x| x.center == at && matches!(x.mode, UiMode::Fill) == fill)
                 .find_map(|x| match x.geometry {
-                    og_render::UiGeometry::Rect {
+                    og_draw::UiGeometry::Rect {
                         radii,
-                        corner: og_render::UiCorner::Css(c),
+                        corner: og_draw::UiCorner::Css(c),
                     } => Some((radii, c)),
                     _ => None,
                 })

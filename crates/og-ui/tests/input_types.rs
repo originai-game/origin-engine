@@ -171,7 +171,7 @@ impl Rig {
 
 #[test]
 fn number_options_wrap_and_step_without_rewriting_formatted_text() {
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     let mut value = "1".to_string();
     let mut desc = FieldDesc {
         input_type: InputType::Number,

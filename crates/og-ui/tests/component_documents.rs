@@ -60,7 +60,7 @@ fn documents() -> (Vec<(String, UiDocument, Value)>, Messages) {
 }
 
 /// The built-in styles' icon sheet names (8 × 4) on texture `texture`.
-fn icons(texture: Option<og_render::TextureHandle>) -> IconAtlas {
+fn icons(texture: Option<og_draw::TextureHandle>) -> IconAtlas {
     IconAtlas {
         texture,
         columns: 8,
@@ -103,7 +103,7 @@ fn component_documents_build_from_their_fixtures() {
                 ui.define_document(d.clone());
             }
             ui.set_world_view(Some(view(width, height)));
-            ui.set_icons(icons(og_render::TextureHandle::from_slot(1)));
+            ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
             let mut props = props.clone();
             for _ in 0..4 {
                 ui.begin(InputFrame::default(), Viewport::new(width, height));
@@ -137,7 +137,7 @@ fn ground_mark_documents_reach_the_renderer_as_draped_grounds() {
             ui.component("Preview", &doc.name, &mut props, &messages);
             ui.end();
         }
-        let mut overlay = og_render::Overlay::new(width, height, 1.0);
+        let mut overlay = og_draw::Overlay::new(width, height, 1.0);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
         let grounds = overlay
             .ui

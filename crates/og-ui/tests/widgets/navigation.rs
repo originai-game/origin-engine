@@ -113,8 +113,8 @@ fn pads_beyond_the_first_move_their_own_focus_and_press() {
             .items
             .iter()
             .any(|i| matches!(&i.cmd, DrawCmd::Shape { shape, .. }
-                if matches!(shape.mode, og_render::UiMode::Stroke(_))
-                    && shape.paint == og_render::UiPaint::Solid(info))),
+                if matches!(shape.mode, og_draw::UiMode::Stroke(_))
+                    && shape.paint == og_draw::UiPaint::Solid(info))),
         "pad 1's ring is drawn in its player colour"
     );
     // A restore before the presses replays them identically.

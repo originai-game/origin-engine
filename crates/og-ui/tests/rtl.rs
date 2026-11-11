@@ -145,7 +145,7 @@ fn paragraphs_order_their_runs_by_the_bidi_algorithm() {
 /// while rich text measured it shaped word by word.
 #[test]
 fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
-    use og_render::{Glyph, MsdfFont, RenderScene};
+    use og_draw::{Glyph, MsdfFont};
     const LINE: &str = "تُفتح البوابة عند الفجر. هل أنت مستعد للعبور؟";
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -155,7 +155,7 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
         std::fs::read(path).expect("the kit's Arabic font"),
     ))
     .expect("a font rustybuzz reads");
-    let glyph = |key: og_render::GlyphKey, advance: f32| Glyph {
+    let glyph = |key: og_draw::GlyphKey, advance: f32| Glyph {
         key,
         advance,
         plane_bounds: [0.0, -0.2, advance, 0.8],
@@ -173,14 +173,8 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
             glyphs.push(glyph(g.key(), g.advance));
         }
     }
-    let mut scene = RenderScene::new();
-    let atlas = scene.add_texture(og_render::TextureData {
-        width: 1,
-        height: 1,
-        rgba: vec![255; 4],
-        color_space: og_render::ColorSpace::Linear,
-        mips: og_render::Mips::None,
-    });
+    let mut handles = crate::support::Handles::default();
+    let atlas = handles.texture();
     let msdf = MsdfFont {
         atlas,
         distance_range: 4.0,
@@ -192,7 +186,7 @@ fn an_arabic_line_is_drawn_as_wide_as_it_was_laid_out() {
     };
     let metrics = FontMetrics::from_msdf(&msdf).with_file(Some(file));
     let font = UiFont {
-        handle: Some(scene.add_font(msdf)),
+        handle: Some(handles.font_handle()),
         metrics,
     };
     // The whole line, shaped: none of its letters drawn as written.

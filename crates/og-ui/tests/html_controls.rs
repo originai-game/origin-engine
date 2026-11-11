@@ -422,7 +422,7 @@ fn meter_regions_follow_the_html_rules() {
                         && shape.center.x < hp.x + hp.width =>
                 {
                     match shape.paint {
-                        og_render::UiPaint::Solid(c) => Some(c),
+                        og_draw::UiPaint::Solid(c) => Some(c),
                         _ => None,
                     }
                 }
@@ -652,8 +652,7 @@ dialog { width: 200px; }
     let want = Srgba::rgb(0x33, 0x66, 0x99).linear();
     let scrim = rig.ui.frame().items.iter().any(|it| match &it.cmd {
         DrawCmd::Shape { shape, .. } => {
-            shape.half.x >= 399.0
-                && matches!(shape.paint, og_render::UiPaint::Solid(c) if c == want)
+            shape.half.x >= 399.0 && matches!(shape.paint, og_draw::UiPaint::Solid(c) if c == want)
         }
         _ => false,
     });

@@ -209,7 +209,7 @@ fn a_meter_trail_follows_a_drop_by_tick_and_replays_identically() {
                 DrawCmd::Quad { rect, .. } => Some(rect.width),
                 // The track and the fill are parts drawn through the UI
                 // pass: their fills (not their shadows or strokes).
-                DrawCmd::Shape { shape, .. } if shape.mode == og_render::UiMode::Fill => {
+                DrawCmd::Shape { shape, .. } if shape.mode == og_draw::UiMode::Fill => {
                     Some(shape.half.x * 2.0)
                 }
                 _ => None,

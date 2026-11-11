@@ -85,9 +85,8 @@ fn build(ui: &mut Ui, value: &mut String, area: &mut String) {
 
 impl Rig {
     fn new(value: &str, area: &str) -> Rig {
-        let mut scene = og_render::RenderScene::new();
         let mut rig = Rig {
-            ui: ui_with_font(add_test_font(&mut scene)),
+            ui: ui_with_font(test_font()),
             value: value.into(),
             area: area.into(),
             vp: Viewport::new(800.0, 600.0),

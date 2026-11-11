@@ -91,12 +91,51 @@ pub fn add_test_font(scene: &mut RenderScene) -> UiFont {
     with_test_font(|files| add_font(scene, files))
 }
 
+/// The font and texture handles a scene would give, in a scene's order,
+/// for tests that render nothing: what the UI lays out and the commands
+/// it builds take a font's metrics and handles to name, never an atlas.
+#[derive(Default)]
+pub struct Handles {
+    textures: usize,
+    fonts: usize,
+}
+
+impl Handles {
+    pub fn texture(&mut self) -> og_draw::TextureHandle {
+        self.textures += 1;
+        og_draw::TextureHandle::from_index(self.textures - 1)
+    }
+
+    pub fn font_handle(&mut self) -> og_draw::FontHandle {
+        self.fonts += 1;
+        og_draw::FontHandle::from_index(self.fonts - 1)
+    }
+
+    /// The MSDF font of `files` as a UI font (its atlas takes a texture
+    /// handle, as it does in a scene).
+    pub fn font(&mut self, files: &FontFiles) -> UiFont {
+        let (_, metrics) = msdf_font(files, self.texture());
+        UiFont {
+            handle: Some(self.font_handle()),
+            metrics,
+        }
+    }
+
+    pub fn test_font(&mut self) -> UiFont {
+        with_test_font(|files| self.font(files))
+    }
+}
+
+/// The MSDF test font under the first handle a scene gives.
+pub fn test_font() -> UiFont {
+    Handles::default().test_font()
+}
+
 /// The test font's metrics with nothing to draw with (tests without a renderer).
 pub fn test_font_metrics() -> UiFont {
-    let mut scene = RenderScene::new();
     UiFont {
         handle: None,
-        ..add_test_font(&mut scene)
+        ..test_font()
     }
 }
 

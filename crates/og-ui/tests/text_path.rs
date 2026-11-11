@@ -60,7 +60,7 @@ fn frame(css: &str, text: &str) -> Ui {
         "<meta name=\"component\" content=\"tp\">\n<column id=\"Root\"><p id=\"Ring\">{text}</p></column>\n<style>\n#Root {{ padding: 20px; }}\n#Ring {{ {css} }}\n</style>"
     );
     // A font with a handle: glyphs are drawn, not only measured.
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.define_document(UiDocument::parse("ui/tp.svelte", &doc).expect("parses"));
     for _ in 0..2 {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
@@ -116,7 +116,7 @@ fn each_glyph_sits_on_the_circle_turned_to_it() {
     // Centred text in a column keeps the circle's box (a centred line
     // takes the column's width; a circle would centre off its text).
     let doc = "<meta name=\"component\" content=\"tp\">\n<column id=\"Root\"><p id=\"Ring\">ABCDEFGH</p></column>\n<style>\n#Root { width: 600px; }\n#Ring { -og-text-path: circle(100px); text-align: center; }\n</style>";
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.define_document(UiDocument::parse("ui/tp.svelte", doc).expect("parses"));
     ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
     ui.component("T", "tp", &mut json!({}), &bind::NoEnv);

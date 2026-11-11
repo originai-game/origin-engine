@@ -233,8 +233,7 @@ fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
         "</style>",
         "p::selection { color: #ff0000; text-decoration: underline #00ff00; text-shadow: 2px 2px #0000ff; }\n</style>",
     );
-    let mut scene = og_render::RenderScene::new();
-    let mut rig = Rig::with(&doc, desktop(), true, add_test_font(&mut scene));
+    let mut rig = Rig::with(&doc, desktop(), true, test_font());
     rig.presses(rig.point("Second", 0.05, 0.5), 2);
     assert_eq!(rig.selected(), "Second");
     let e = rig.el("Second");
@@ -309,8 +308,7 @@ p { writing-mode: vertical-rl; height: 200px; margin: 0; }
 #J { text-align: justify; }
 p::selection { color: #ff0000; }
 </style>"#;
-    let mut scene = og_render::RenderScene::new();
-    let mut rig = Rig::with(doc, desktop(), true, add_test_font(&mut scene));
+    let mut rig = Rig::with(doc, desktop(), true, test_font());
     let e = rig.el("V");
     assert!(e.width > e.height / 10.0, "wraps into columns: {e:?}");
     // Its first line is its rightmost column; a press a little down it
@@ -394,8 +392,7 @@ fn a_vertical_rich_paragraph_selects_down_its_columns() {
 p { writing-mode: vertical-rl; height: 200px; margin: 0; }
 p::selection { color: #ff0000; text-decoration: underline #00ff00; text-shadow: 2px 2px #0000ff; }
 </style>"#;
-    let mut scene = og_render::RenderScene::new();
-    let mut rig = Rig::with(doc, desktop(), true, add_test_font(&mut scene));
+    let mut rig = Rig::with(doc, desktop(), true, test_font());
     let e = rig.el("V");
     assert_eq!(e.kind, "richtext");
     rig.presses(rig.point("V", 0.9, 0.02), 2);

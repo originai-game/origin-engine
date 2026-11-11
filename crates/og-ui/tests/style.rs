@@ -4,18 +4,12 @@
 
 use crate::support;
 
-use og_render::{ColorSpace, Mips, RenderScene, TextureData, TextureHandle};
+use og_draw::TextureHandle;
 use og_ui::*;
 use support::*;
 
 fn atlas() -> TextureHandle {
-    RenderScene::new().add_texture(TextureData {
-        width: 2,
-        height: 2,
-        rgba: vec![255; 16],
-        color_space: ColorSpace::Srgb,
-        mips: Mips::None,
-    })
+    Handles::default().texture()
 }
 
 fn screen(ui: &mut Ui, disabled: bool) {

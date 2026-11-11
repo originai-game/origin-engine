@@ -127,8 +127,7 @@ fn every_button_role_reads_at_4_5_to_1_on_its_fill_in_both_themes_and_every_stat
         for (ground_name, panel, ground) in grounds {
             for (label, _) in ROLES {
                 for state in ["rest", "hovered", "pressed"] {
-                    let mut scene = og_render::RenderScene::new();
-                    let mut ui = ui_with_font(add_test_font(&mut scene));
+                    let mut ui = ui_with_font(test_font());
                     ui.set_theme(theme);
                     let vp = Viewport::new(800.0, 600.0);
                     let step = |ui: &mut Ui, input: InputFrame| {
@@ -208,8 +207,7 @@ fn every_tab_label_reads_at_3_to_1_selected_or_not_in_both_themes() {
     let mut failing = Vec::new();
     for (theme_name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
         let p = theme.palette;
-        let mut scene = og_render::RenderScene::new();
-        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut ui = ui_with_font(test_font());
         ui.set_theme(theme);
         let vp = Viewport::new(800.0, 600.0);
         for _ in 0..120 {

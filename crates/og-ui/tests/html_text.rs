@@ -944,12 +944,7 @@ p { margin: 0; }
 #Cut { width: 120px; white-space: nowrap; overflow: hidden; text-overflow: " >>"; }
 </style>"#;
     for mounted in [false, true] {
-        let d = &mut Doc::with_font(
-            text,
-            &[],
-            mounted,
-            add_test_font(&mut og_render::RenderScene::new()),
-        );
+        let d = &mut Doc::with_font(text, &[], mounted, test_font());
         let lines = |id: &str| -> Vec<(String, f32)> {
             let r = d.get(id);
             let mut out: Vec<(f32, String, f32)> = d

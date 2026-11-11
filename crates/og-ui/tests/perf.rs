@@ -17,7 +17,7 @@
 //!   40-frame raid HUD, ms a tick against the element count; no budget.
 
 use crate::support::*;
-use og_render::Overlay;
+use og_draw::Overlay;
 use og_ui::*;
 use std::path::PathBuf;
 
@@ -385,8 +385,7 @@ fn perf_scaling_inventory_table_and_raid_hud() {
 fn perf_ui_change_budgets() {
     release_only();
     for scenario in ["idle", "one-label", "scroll-1000"] {
-        let mut scene = og_render::RenderScene::new();
-        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut ui = ui_with_font(test_font());
         let mut samples = Vec::new();
         let mut max_first = 0;
         let mut commands = 0;
@@ -522,8 +521,7 @@ fn perf_ui_retained_change_budgets() {
         "fling-1000",
         "row-999",
     ] {
-        let mut scene = og_render::RenderScene::new();
-        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let mut ui = ui_with_font(test_font());
         let mut inputs = BTreeMap::new();
         let list = matches!(scenario, "scroll-1000" | "fling-1000" | "row-999");
         let text = if list {

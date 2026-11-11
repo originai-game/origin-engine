@@ -63,9 +63,8 @@ fn build(ui: &mut Ui, value: &mut String, area: &mut String) -> (Response, Respo
 
 impl Rig {
     fn new(value: &str) -> Rig {
-        let mut scene = og_render::RenderScene::new();
         Rig {
-            ui: ui_with_font(add_test_font(&mut scene)),
+            ui: ui_with_font(test_font()),
             value: value.into(),
             area: String::new(),
             vp: Viewport::new(800.0, 600.0),
@@ -138,8 +137,7 @@ fn an_auto_fit_label_shrinks_by_type_steps_then_cuts() {
     // A title at xl in a 160 px column: a short one keeps xl, a longer one
     // takes the largest smaller step it fits at (never one it would also
     // fit at a step up), and one too long even at meta is meta and cut.
-    let mut scene = og_render::RenderScene::new();
-    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let mut ui = ui_with_font(test_font());
     let ramp = ui.theme().type_ramp;
     let (xl, meta) = (ramp.xl, ramp.meta);
     let texts = [
@@ -223,8 +221,7 @@ fn an_auto_fit_label_shrinks_by_type_steps_then_cuts() {
 
 #[test]
 fn labels_cut_with_an_ellipsis_where_they_do_not_fit() {
-    let mut scene = og_render::RenderScene::new();
-    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let mut ui = ui_with_font(test_font());
     let long = "A label far too long for the narrow column it sits in";
     let step = |ui: &mut Ui| {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));

@@ -230,13 +230,7 @@ fn root_relative_text_sizes_follow_the_root_not_the_parent() {
     for mounted in [false, true] {
         for scale in [1.0, 1.5] {
             let source = r#"<meta name="component" content="t"><div><p id="Root">Root</p><p id="Parent">Parent</p><p id="Short">Short</p></div><style>div { font-size: 10px; } p { margin: 0; } #Root { font-size: 1.75rem; } #Parent { font-size: 1.75em; } #Short { font: 1.75rem/2 sans-serif; }</style>"#;
-            let mut scene = og_render::RenderScene::new();
-            let mut d = Doc::with_font(
-                source,
-                &[],
-                mounted,
-                crate::support::add_test_font(&mut scene),
-            );
+            let mut d = Doc::with_font(source, &[], mounted, crate::support::test_font());
             let mut theme = *d.ui.theme();
             theme.type_ramp.body.size = 14.0;
             theme.text_scale = scale;
@@ -280,13 +274,8 @@ fn scene_text_shadows_follow_the_font_size() {
                 let source = format!(
                     r#"<meta name="component" content="t"><div><p id="Ink">Scene ink</p></div><style>div {{ font: 10px/2 sans-serif; --case-font: 12px/1.5 sans-serif; }} #Ink {{ margin: 0; {font}; color: #f5f5f7; {style} }}</style>"#
                 );
-                let mut scene = og_render::RenderScene::new();
-                let d = Doc::with_font(
-                    &source,
-                    &[],
-                    mounted,
-                    crate::support::add_test_font(&mut scene),
-                );
+                let mut handles = crate::support::Handles::default();
+                let d = Doc::with_font(&source, &[], mounted, handles.test_font());
                 assert!(
                     d.ui.frame().warnings.is_empty(),
                     "{:?}",
@@ -313,7 +302,7 @@ fn scene_text_shadows_follow_the_font_size() {
             );
         }
     }
-    assert!(refused(r#"<meta name="component" content="t"><span>Text</span><style>span { -og-on-scene: true; }</style>"#).contains("-og-on-scene"));
+    assert!(refused(r#"<meta name="component" content="t"><span>Text</span><style>span { -og-on-handles: true; }</style>"#).contains("-og-on-handles"));
 }
 
 #[test]
@@ -323,13 +312,7 @@ fn fit_min_measures_text_with_a_literal_or_authored_step() {
             let source = format!(
                 r#"<meta name="component" content="t"><p id="Title">The hidden treasures of the drowned bell tower</p><style>#Title {{ width: 100px; margin: 0; font: 48px/1.2 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; --floor: caption; {minimum} }}</style>"#
             );
-            let mut scene = og_render::RenderScene::new();
-            let mut d = Doc::with_font(
-                &source,
-                &[],
-                mounted,
-                crate::support::add_test_font(&mut scene),
-            );
+            let mut d = Doc::with_font(&source, &[], mounted, crate::support::test_font());
             d.step(InputFrame::default());
             let text: Vec<_> =
                 d.ui.frame()
@@ -2072,13 +2055,7 @@ fn core_controls_choose_step_hold_and_report() {
         ("qty", json!("2")),
         ("lv", json!("20")),
     ];
-    let mut scene = og_render::RenderScene::new();
-    let d = &mut Doc::with_font(
-        text,
-        &stores,
-        true,
-        crate::support::add_test_font(&mut scene),
-    );
+    let d = &mut Doc::with_font(text, &stores, true, crate::support::test_font());
     for _ in 0..5 {
         d.step(InputFrame::default());
     }
@@ -2587,13 +2564,7 @@ button { width: 200px; }
 #Menu > button { width: stretch; }
 </style>"#;
     for mounted in [false, true] {
-        let mut scene = og_render::RenderScene::new();
-        let d = &Doc::with_font(
-            text,
-            &[],
-            mounted,
-            crate::support::add_test_font(&mut scene),
-        );
+        let d = &Doc::with_font(text, &[], mounted, crate::support::test_font());
         let mid = label_x(d, "Mid", "Mid");
         let start = label_x(d, "Start", "Start");
         assert!(mid > 60.0, "centred by default: {mid}");

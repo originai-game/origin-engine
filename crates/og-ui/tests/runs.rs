@@ -48,7 +48,6 @@
 use crate::support;
 
 use og_i18n::Direction;
-use og_render::RenderScene;
 use og_ui::shape::FontFile;
 use og_ui::*;
 use std::sync::Arc;
@@ -62,7 +61,7 @@ struct Faces {
 
 /// The test face cut to ASCII (the role's), the whole face, and the kit's
 /// Arabic file (fixed metrics: every shaped form is drawable).
-fn faces(scene: &mut RenderScene) -> Faces {
+fn faces(handles: &mut Handles) -> Faces {
     let (png, json, csv) = test_font_files();
     let ascii: String = csv
         .lines()
@@ -74,22 +73,16 @@ fn faces(scene: &mut RenderScene) -> Faces {
         })
         .map(|l| format!("{l}\n"))
         .collect();
-    let latin = add_font(
-        scene,
-        &FontFiles {
-            png: &png,
-            json: &json,
-            csv: &ascii,
-        },
-    );
-    let cjk = add_font(
-        scene,
-        &FontFiles {
-            png: &png,
-            json: &json,
-            csv: &csv,
-        },
-    );
+    let latin = handles.font(&FontFiles {
+        png: &png,
+        json: &json,
+        csv: &ascii,
+    });
+    let cjk = handles.font(&FontFiles {
+        png: &png,
+        json: &json,
+        csv: &csv,
+    });
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf"
@@ -114,7 +107,7 @@ fn runs(m: &FontMetrics, text: &str) -> Vec<u8> {
 }
 
 /// The text commands of a frame: (text, font, x, baseline).
-fn commands(frame: &UiFrame) -> Vec<(String, og_render::FontHandle, f32, f32)> {
+fn commands(frame: &UiFrame) -> Vec<(String, og_draw::FontHandle, f32, f32)> {
     frame
         .items
         .iter()
@@ -133,8 +126,8 @@ fn commands(frame: &UiFrame) -> Vec<(String, og_render::FontHandle, f32, f32)> {
 
 #[test]
 fn a_styles_cjk_companion_draws_its_chinese() {
-    let mut scene = RenderScene::new();
-    let f = faces(&mut scene);
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
     // The style's body and display companions as the engine ships them: an
     // atlas without the Chinese (ASCII here) and the font file, whose
     // glyphs render at run time.
@@ -157,19 +150,16 @@ fn a_styles_cjk_companion_draws_its_chinese() {
         })
         .map(|l| format!("{l}\n"))
         .collect();
-    let companion = |scene: &mut RenderScene| {
-        let mut c = add_font(
-            scene,
-            &FontFiles {
-                png: &png,
-                json: &json,
-                csv: &ascii,
-            },
-        );
+    let companion = |handles: &mut Handles| {
+        let mut c = handles.font(&FontFiles {
+            png: &png,
+            json: &json,
+            csv: &ascii,
+        });
         c.metrics = c.metrics.clone().with_file(Some(file.clone()));
         c
     };
-    let (text_cjk, title_cjk) = (companion(&mut scene), companion(&mut scene));
+    let (text_cjk, title_cjk) = (companion(&mut handles), companion(&mut handles));
     assert!(!text_cjk.metrics.in_atlas('原') && text_cjk.metrics.has('原'));
     let mut fonts = Fonts {
         body: f.latin.clone(),
@@ -215,8 +205,8 @@ fn a_styles_cjk_companion_draws_its_chinese() {
 
 #[test]
 fn a_weight_and_a_locale_pick_the_styles_real_faces() {
-    let mut scene = RenderScene::new();
-    let f = faces(&mut scene);
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
     let (png, json, csv) = test_font_files();
     let ascii: String = csv
         .lines()
@@ -230,14 +220,11 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
         .collect();
     // Each face its own handle: Latin ones cut to ASCII, CJK ones whole.
     let mut face = |csv: &str| {
-        add_font(
-            &mut scene,
-            &FontFiles {
-                png: &png,
-                json: &json,
-                csv,
-            },
-        )
+        handles.font(&FontFiles {
+            png: &png,
+            json: &json,
+            csv,
+        })
     };
     let (bold, italic) = (face(&ascii), face(&ascii));
     let (sc, ja, ja_bold) = (face(&csv), face(&csv), face(&csv));
@@ -404,7 +391,7 @@ fn a_weight_and_a_locale_pick_the_styles_real_faces() {
             .map(|c| (c.0, c.1))
             .collect::<Vec<_>>()
     };
-    let go = |h: Option<og_render::FontHandle>| ("Go".to_string(), h.unwrap());
+    let go = |h: Option<og_draw::FontHandle>| ("Go".to_string(), h.unwrap());
     fonts.cjk_locale = CjkLocale::Hans;
     assert_eq!(drawn(fonts), [go(bold.handle)]);
     assert_eq!(drawn(one), [go(f.latin.handle), go(f.latin.handle)]);
@@ -422,8 +409,8 @@ fn fonts(f: &Faces) -> Fonts {
 
 #[test]
 fn an_arabic_run_is_shaped_with_its_own_font() {
-    let mut scene = RenderScene::new();
-    let f = faces(&mut scene);
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
     let fonts = fonts(&f);
     let m = &fonts.for_text(FontRole::Body, "Level 3 مرحبا").metrics;
     let glyphs = m.visual("Level 3 مرحبا", Direction::Ltr, 0.0);
@@ -458,8 +445,8 @@ fn an_arabic_run_is_shaped_with_its_own_font() {
 
 #[test]
 fn named_fonts_keep_runtime_fallback_glyphs_beside_digits() {
-    let mut scene = RenderScene::new();
-    let f = faces(&mut scene);
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
     let file = FontFile::new(Arc::new(
         std::fs::read(concat!(
             env!("CARGO_MANIFEST_DIR"),
@@ -508,8 +495,8 @@ fn named_fonts_keep_runtime_fallback_glyphs_beside_digits() {
 
 #[test]
 fn ordered_named_families_preserve_primary_glyphs_and_inherit() {
-    let mut scene = RenderScene::new();
-    let f = faces(&mut scene);
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
     for (markup, css, digit) in [
         (
             "<div><p>原3点</p></div>",
@@ -601,8 +588,8 @@ fn ordered_named_families_preserve_primary_glyphs_and_inherit() {
 
 #[test]
 fn a_font_face_family_takes_its_faces_by_weight_and_range() {
-    let mut scene = RenderScene::new();
-    let f = faces(&mut scene);
+    let mut handles = Handles::default();
+    let f = faces(&mut handles);
     let face = |family: &str, weight: u16, font: &UiFont, range: &[(u32, u32)]| FamilyFace {
         family: family.into(),
         document: "t".into(),
@@ -661,7 +648,7 @@ fn a_font_face_family_takes_its_faces_by_weight_and_range() {
     // Each character from the face whose unicode-range has it.
     let m = &fonts.for_text(family("Split"), "Go 原点").metrics;
     let font = fonts.for_text(family("Split"), "Go 原点");
-    let drawn: Vec<(char, Option<og_render::FontHandle>)> = m
+    let drawn: Vec<(char, Option<og_draw::FontHandle>)> = m
         .visual("Go 原点", Direction::Ltr, 0.0)
         .iter()
         .map(|g| (g.ch, font.handle_of(g.font)))

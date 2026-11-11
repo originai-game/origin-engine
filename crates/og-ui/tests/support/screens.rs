@@ -273,6 +273,45 @@ pub struct FontFiles<'a> {
     pub csv: &'a str,
 }
 
+/// The MSDF test font's glyph table over `atlas`, and the UI metrics of it
+/// with the font's own ascender and descender.
+pub fn msdf_font(
+    files: &FontFiles,
+    atlas: og_draw::TextureHandle,
+) -> (og_draw::MsdfFont, FontMetrics) {
+    let json: serde_json::Value = serde_json::from_str(files.json).expect("font json parses");
+    let number = |a: &str, b: &str| json[a][b].as_f64().unwrap_or_else(|| panic!("{a}.{b}")) as f32;
+    let mut glyphs = Vec::new();
+    for line in files.csv.lines().filter(|l| !l.trim().is_empty()) {
+        let f: Vec<f32> = line
+            .split(',')
+            .map(|v| v.trim().parse().expect("number"))
+            .collect();
+        // -yorigin top: plane bounds left, top, right, bottom with y down.
+        glyphs.push(og_draw::Glyph {
+            key: char::from_u32(f[0] as u32).expect("codepoint").into(),
+            advance: f[1],
+            plane_bounds: [f[2], -f[5], f[4], -f[3]],
+            atlas_bounds: [f[6], f[7], f[8], f[9]],
+        });
+    }
+    let font = og_draw::MsdfFont {
+        atlas,
+        distance_range: number("atlas", "distanceRange"),
+        foreground: false,
+        silhouette: false,
+        line_height: number("metrics", "lineHeight"),
+        glyphs,
+        kerning: Vec::new(),
+    };
+    // yOrigin top: the JSON's ascender is negative, its descender positive.
+    let metrics = FontMetrics::from_msdf(&font).with_extents(
+        -number("metrics", "ascender"),
+        -number("metrics", "descender"),
+    );
+    (font, metrics)
+}
+
 /// A Ui with the test font's metrics (and handle when one is given).
 pub fn ui_with_font(font: UiFont) -> Ui {
     Ui::new(UiDesc {

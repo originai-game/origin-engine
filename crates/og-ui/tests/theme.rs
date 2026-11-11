@@ -95,7 +95,7 @@ fn default_css_is_generated_from_the_design_tokens() {
 /// in the test and not on the screen.
 #[test]
 fn the_tokens_glass_tints_are_og_renders_presets() {
-    use og_render::{UiGlassStyle, UiGlassWeight};
+    use og_draw::{UiGlassStyle, UiGlassWeight};
     let t = tokens();
     for (dark, scheme) in [(false, &t["color"]), (true, &t["dark"]["color"])] {
         for (weight, key) in [
@@ -142,7 +142,7 @@ fn the_tokens_glass_tints_are_og_renders_presets() {
 fn the_default_css_puts_glass_on_floating_chrome_only() {
     use og_ui::paint::Effect;
     let ui = og_ui::Ui::new(Default::default());
-    let glass = |sel: &str| -> Option<og_render::UiGlassWeight> {
+    let glass = |sel: &str| -> Option<og_draw::UiGlassWeight> {
         ui.resolve_part(&PartRef::parse(sel, None).unwrap(), [100.0, 40.0])
             .unwrap()
             .effects
@@ -152,7 +152,7 @@ fn the_default_css_puts_glass_on_floating_chrome_only() {
                 _ => None,
             })
     };
-    use og_render::UiGlassWeight::{Regular, Thick};
+    use og_draw::UiGlassWeight::{Regular, Thick};
     for s in ["panel.glass::part(frame)", "tooltip::part(frame)"] {
         assert_eq!(glass(s), Some(Thick), "{s}");
     }
@@ -207,10 +207,10 @@ fn the_default_css_puts_glass_on_floating_chrome_only() {
 /// wins, and the text scale multiplies over the unit.
 #[test]
 fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
-    use crate::support::{add_test_font, ui_with_font};
+    use crate::support::{test_font, ui_with_font};
     use og_ui::{ButtonDesc, DrawCmd, InputFrame, Size, Theme, Viewport};
     let frame = |vp: Viewport, configure: &dyn Fn(&mut Theme), input: InputFrame| {
-        let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+        let mut ui = ui_with_font(test_font());
         let mut t = *ui.theme();
         configure(&mut t);
         ui.set_theme(t);
@@ -308,10 +308,10 @@ fn the_unit_zooms_the_whole_ui_on_a_mouse_surface() {
 /// the origin (a clip scaled about its own centre cut the rows' fills).
 #[test]
 fn a_zoomed_scroll_view_clips_where_it_stands() {
-    use crate::support::{add_test_font, ui_with_font};
+    use crate::support::{test_font, ui_with_font};
     use og_ui::{ButtonDesc, EmitDesc, InputFrame, ScrollDesc, Size, Viewport};
     let clips = |vp: Viewport| {
-        let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+        let mut ui = ui_with_font(test_font());
         for _ in 0..2 {
             ui.begin(InputFrame::default(), vp);
             ui.scroll(
@@ -329,7 +329,7 @@ fn a_zoomed_scroll_view_clips_where_it_stands() {
             );
             ui.end();
         }
-        let mut overlay = og_render::Overlay::new(vp.width, vp.height, 0.0);
+        let mut overlay = og_draw::Overlay::new(vp.width, vp.height, 0.0);
         ui.frame().emit(&EmitDesc::default(), &mut overlay);
         overlay
             .ui

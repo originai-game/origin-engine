@@ -288,20 +288,14 @@ fn cursors_apply_only_inside_clip_paths() {
 
 #[test]
 fn images_take_object_fit_position_and_inherited_image_rendering() {
-    struct Env(og_render::TextureHandle);
+    struct Env(og_draw::TextureHandle);
     impl bind::Env for Env {
-        fn texture(&self, _: f64) -> Option<og_render::TextureHandle> {
+        fn texture(&self, _: f64) -> Option<og_draw::TextureHandle> {
             Some(self.0)
         }
     }
-    let mut scene = og_render::RenderScene::new();
-    let t = scene.add_texture(og_render::TextureData {
-        width: 2,
-        height: 2,
-        rgba: vec![255; 16],
-        color_space: og_render::ColorSpace::Srgb,
-        mips: og_render::Mips::None,
-    });
+    let mut handles = Handles::default();
+    let t = handles.texture();
     let doc = r#"<meta name="component" content="im">
 <div id="Root"><img id="Pic" src={1} alt="" /><img id="Plain" src={1} alt="" /></div>
 <style>
@@ -323,7 +317,7 @@ fn images_take_object_fit_position_and_inherited_image_rendering() {
         .iter()
         .filter_map(|i| match &i.cmd {
             DrawCmd::Shape { shape, .. } => match &shape.paint {
-                og_render::UiPaint::Image(im) => Some(*im),
+                og_draw::UiPaint::Image(im) => Some(*im),
                 _ => None,
             },
             _ => None,
@@ -334,7 +328,7 @@ fn images_take_object_fit_position_and_inherited_image_rendering() {
     // stretched image (not a shape).
     assert_eq!(images.len(), 1, "{images:?}");
     let im = images[0];
-    assert_eq!(im.fit, og_render::UiFit::Contain);
+    assert_eq!(im.fit, og_draw::UiFit::Contain);
     assert_eq!(
         (im.focal, im.offset),
         (Vec2::new(1.0, 0.0), Vec2::new(-10.0, 0.0))

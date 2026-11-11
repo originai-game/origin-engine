@@ -22,18 +22,12 @@ use support::*;
 
 #[test]
 fn image_urls_resolve_files_not_atlas_names_or_handles() {
-    use og_render::*;
-    let mut scene = RenderScene::new();
+    use og_draw::UiPaint;
+    let mut handles = Handles::default();
     let mut ui = ui_with_font(test_font_metrics());
     let mut textures = Vec::new();
     for name in ["coin.svg", "7", "atlas"] {
-        let texture = scene.add_texture(TextureData {
-            width: 1,
-            height: 1,
-            rgba: vec![255; 4],
-            color_space: ColorSpace::Srgb,
-            mips: Mips::None,
-        });
+        let texture = handles.texture();
         ui.define_texture(&format!("ui/{name}"), texture);
         textures.push(texture);
     }
@@ -94,18 +88,12 @@ div { width: 8px; height: 8px; }
 
 #[test]
 fn image_sets_reselect_on_density_changes() {
-    use og_render::*;
-    let mut scene = RenderScene::new();
+    use og_draw::UiPaint;
+    let mut handles = Handles::default();
     let mut ui = ui_with_font(test_font_metrics());
     let mut textures = Vec::new();
-    for (name, size) in [("low.png", 8), ("high.png", 16)] {
-        let texture = scene.add_texture(TextureData {
-            width: size,
-            height: size,
-            rgba: vec![255; (size * size * 4) as usize],
-            color_space: ColorSpace::Srgb,
-            mips: Mips::None,
-        });
+    for name in ["low.png", "high.png"] {
+        let texture = handles.texture();
         ui.define_texture(&format!("ui/{name}"), texture);
         textures.push(texture);
     }

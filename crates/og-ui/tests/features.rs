@@ -12,7 +12,7 @@
 //!   proportional figures, so a timer changes width as it ticks →
 //!   `tabular_figures_hold_a_width_without_the_feature`
 
-use og_render::{Glyph, GlyphKey, MsdfFont, TextureHandle};
+use og_draw::{Glyph, GlyphKey, MsdfFont, TextureHandle};
 use og_ui::shape::{Features, FontFile};
 use og_ui::*;
 use std::sync::Arc;

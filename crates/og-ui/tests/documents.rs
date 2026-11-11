@@ -283,8 +283,7 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
             vm.clone(),
         );
         for width in [390.0, 1280.0] {
-            let mut scene = og_render::RenderScene::new();
-            let mut ui = ui_with_font(add_test_font(&mut scene));
+            let mut ui = ui_with_font(test_font());
             ui.define_document(doc.clone());
             ui.push_screen(name, vm.clone()).unwrap();
             for _ in 0..30 {
@@ -471,7 +470,7 @@ fn inline_bindings_and_inheritance_are_isolated_from_author_variables() {
 #HiddenColor { color: var(--og-v-color, #00ff00); }
 @layer overrides { #Important { width: 93px !important; } }
 </style>"#;
-    let mut ui = ui_with_font(add_test_font(&mut og_render::RenderScene::new()));
+    let mut ui = ui_with_font(test_font());
     ui.define_document(UiDocument::parse("isolated.svelte", source).unwrap());
     ui.push_screen("isolated", json!({"width":"138px", "color":"#0000ff"}))
         .unwrap();
@@ -1013,7 +1012,7 @@ fn chest() -> std::sync::Arc<og_ui::rive::Artboard> {
                     paths: vec![2],
                     paints: vec![3],
                     hidden: false,
-                    blend: og_render::UiBlend::Normal,
+                    blend: og_draw::UiBlend::Normal,
                 },
                 Values {
                     x: 25.0,
@@ -1038,7 +1037,7 @@ fn chest() -> std::sync::Arc<og_ui::rive::Artboard> {
                 "fill",
                 1,
                 Kind::Fill {
-                    rule: og_render::UiFillRule::NonZero,
+                    rule: og_draw::UiFillRule::NonZero,
                     shader: 4,
                     visible: true,
                 },
@@ -1104,7 +1103,7 @@ fn a_rive_frame_plays_draws_names_its_objects_and_is_saved() {
             .iter()
             .filter_map(|it| match &it.cmd {
                 DrawCmd::Shape { shape, .. }
-                    if matches!(shape.geometry, og_render::UiGeometry::Path(_)) =>
+                    if matches!(shape.geometry, og_draw::UiGeometry::Path(_)) =>
                 {
                     Some(shape.center.x)
                 }
@@ -1539,7 +1538,7 @@ fn rive_frames_and_hidden_elements_change_fields_not_builds() {
             .count();
         let lid = ui.frame().items.iter().find_map(|it| match &it.cmd {
             DrawCmd::Shape { shape, .. }
-                if matches!(shape.geometry, og_render::UiGeometry::Path(_)) =>
+                if matches!(shape.geometry, og_draw::UiGeometry::Path(_)) =>
             {
                 Some(shape.center.x)
             }

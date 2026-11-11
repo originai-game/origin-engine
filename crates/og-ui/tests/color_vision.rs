@@ -15,7 +15,7 @@
 
 use crate::support;
 
-use og_render::ColorVision;
+use og_draw::ColorVision;
 use og_ui::reactive::SourceId;
 use og_ui::*;
 use serde_json::json;
@@ -138,14 +138,8 @@ og-icon::part(image) { color: #c0392b; }
 og-icon::part(secondary) { color: #2980b9; }
 </style>"##;
     for mounted in [false, true] {
-        let mut scene = og_render::RenderScene::new();
-        let texture = scene.add_texture(og_render::TextureData {
-            width: 2,
-            height: 1,
-            rgba: vec![255; 8],
-            color_space: og_render::ColorSpace::Srgb,
-            mips: og_render::Mips::None,
-        });
+        let mut handles = Handles::default();
+        let texture = handles.texture();
         let mut ui = ui_with_font(test_font_metrics());
         ui.set_icons(IconAtlas {
             texture: Some(texture),

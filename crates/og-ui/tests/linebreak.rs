@@ -22,9 +22,8 @@ use support::*;
 
 #[test]
 fn rich_soft_hyphens_reserve_the_styled_glyph_at_a_break() {
-    let mut scene = og_render::RenderScene::new();
     let mut font = crate::features::font("Inter-Display.ttf");
-    font.handle = add_test_font(&mut scene).handle;
+    font.handle = test_font().handle;
     let m = font.metrics.clone();
     let mut ui = ui_with_font(font);
     let mut step = ui.theme().type_ramp.body;
@@ -95,13 +94,13 @@ fn rich_soft_hyphens_reserve_the_styled_glyph_at_a_break() {
 #[test]
 #[ignore = "scaling measurement: run alone with --nocapture"]
 fn long_kerned_line_measurement_is_not_quadratic() {
-    use og_render::{Glyph, Kern, MsdfFont, TextureHandle};
+    use og_draw::{Glyph, Kern, MsdfFont, TextureHandle};
     use std::time::Instant;
     // Every CJK character is a break unit. Summed isolated advances exceed
     // the box, but the kerned line fits: the old fits_whole loop reshaped
     // each growing prefix here. No OpenType file or layout cache hides it.
     let font = UiFont {
-        handle: Some(og_render::FontHandle::from_bits(1)),
+        handle: Some(og_draw::FontHandle::from_bits(1)),
         metrics: FontMetrics::from_msdf(&MsdfFont {
             atlas: TextureHandle::from_slot(1).unwrap(),
             distance_range: 4.0,

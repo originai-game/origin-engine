@@ -820,8 +820,7 @@ fn vertical_align_places_inline_boxes_as_css_does() {
 #Part::part(lift) { vertical-align: 6px; }
 </style>"#;
     for mounted in [false, true] {
-        let mut scene = og_render::RenderScene::new();
-        let font = crate::support::add_test_font(&mut scene);
+        let font = crate::support::test_font();
         let d = Doc::with_font(text, &[], mounted, font);
         let base = |t: &str| {
             d.ui.frame()
@@ -1415,9 +1414,8 @@ fn a_shaped_rich_paragraph_breaks_beside_a_float() {
 p { margin: 0; }
 #F { float: left; width: 150px; height: 20px; }
 </style>"#;
-    let mut scene = og_render::RenderScene::new();
     let mut font = crate::features::font("Inter-Display.ttf");
-    font.handle = crate::support::add_test_font(&mut scene).handle;
+    font.handle = crate::support::test_font().handle;
     let mut d = Doc::with_font(text, &[], false, font);
     d.step(InputFrame::default());
     let texts: Vec<String> =
@@ -1573,9 +1571,8 @@ fn a_rich_paragraph_runs_down_a_vertical_element() {
 #V { writing-mode: vertical-rl; height: 120px; }
 p { margin: 0; }
 </style>"#;
-    let mut scene = og_render::RenderScene::new();
     let mut font = crate::features::font("Inter-Display.ttf");
-    font.handle = crate::support::add_test_font(&mut scene).handle;
+    font.handle = crate::support::test_font().handle;
     let mut d = Doc::with_font(text, &[], false, font);
     d.step(InputFrame::default());
     let p = d.get("P");
@@ -1618,9 +1615,8 @@ fn an_upright_rich_paragraph_breaks_by_its_vertical_advances() {
 #V { writing-mode: vertical-rl; text-orientation: upright; height: 120px; }
 p { margin: 0; }
 </style>"#;
-    let mut scene = og_render::RenderScene::new();
     let mut font = crate::features::font("Inter-Display.ttf");
-    font.handle = crate::support::add_test_font(&mut scene).handle;
+    font.handle = crate::support::test_font().handle;
     let mut d = Doc::with_font(text, &[], false, font);
     d.step(InputFrame::default());
     let p = d.get("P");
@@ -1660,9 +1656,8 @@ p {{ margin: 0; }}
 #F {{ float: left; width: 120px; height: 20px; }}
 </style>"#
     );
-    let mut scene = og_render::RenderScene::new();
     let mut font = crate::features::font("NotoSansHebrew-subset.ttf");
-    font.handle = crate::support::add_test_font(&mut scene).handle;
+    font.handle = crate::support::test_font().handle;
     let mut d = Doc::with_font(&text, &[], false, font);
     d.step(InputFrame::default());
     let p = d.get("P");
