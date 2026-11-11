@@ -347,304 +347,19 @@ impl Ui {
         let container = schema::kind(kind).is_some_and(|k| k.container)
             && (kind != "button" || !n.children.is_empty());
         if container {
-            // A dialog's or a disclosure's `open`: the bound store's, else the
-            // literal's until the player toggles it (kept as widget memory).
-            let open_now = |ui: &mut Ui| -> bool {
-                let literal = r.flag("open");
-                if bound(n, "open") {
-                    literal
-                } else {
-                    ui.memory(
-                        &format!("{}~doc-open", id.as_str()),
-                        f64::from(u8::from(literal)),
-                    ) > 0.0
-                }
-            };
-            let dialog = crate::widgets::DialogDesc {
-                modal: r.flag("modal"),
-                name: r.str("name").unwrap_or_default().to_string(),
-                width: r.size("width"),
-                backdrop: None,
-                closedby: match r.str("closedby") {
-                    Some("any") => crate::widgets::ClosedBy::Any,
-                    Some("closerequest") => crate::widgets::ClosedBy::CloseRequest,
-                    Some("none") => crate::widgets::ClosedBy::None,
-                    _ => crate::widgets::ClosedBy::Auto,
-                },
-                bare: r.str("appearance") == Some("none"),
-            };
-            let mut opened: Option<bool> = None;
-            // A spotlight's callout layer, open (closed by `close`).
-            let mut spot = false;
-            // A closed dialog or disclosure builds no content (HTML renders
-            // none): opened, its controls are built fresh and take input.
-            let mut shows_content = true;
-            match kind {
-                "dialog" if open_now(self) && r.str("spotlight").is_some() => {
-                    let target = r.str("spotlight").unwrap_or_default();
-                    let (shade, anchored) =
-                        self.open_spotlight(id.as_str(), (key, &path), target, &r);
-                    spot = anchored;
-                    if shade.clicked && r.str("closedby") == Some("any") {
-                        opened = Some(false);
-                    }
-                }
-                "dialog" => {
-                    let open = open_now(self);
-                    let out = self.open_dialog(id.as_str(), open, &dialog);
-                    // `::backdrop` styles the scrim, the panel's parent.
-                    if dialog.modal
-                        && let Some(backdrop) = self.pseudo_node(b, &r, &path, "backdrop")
-                    {
-                        let scrim = self.tree.nodes[self.parent()].parent;
-                        self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
-                    }
-                    shows_content = out.visible;
-                    if out.dismissed {
-                        opened = Some(false);
-                    }
-                    if dialog.modal
-                        && let Some(d) = r.str("dataDetents")
-                        && self.sheet(
-                            id.as_str(),
-                            d,
-                            r.str("dataEdge")
-                                .and_then(|e| super::gestures::sheet_edge(e).ok())
-                                .unwrap_or_default(),
-                            open,
-                        )
-                    {
-                        opened = Some(false);
-                    }
-                }
-                "details" => {
-                    let mut open = open_now(self);
-                    // An exclusive accordion (`<details name>`): the open one
-                    // of its name in this mount is widget memory; another
-                    // open one closes.
-                    let group = r
-                        .str("exclusive")
-                        .filter(|g| !g.is_empty())
-                        .map(|g| crate::id::child_key(crate::id::child_key(0, &b.mount), g));
-                    let holder = group.map_or(0, |g| self.anim(g).h);
-                    let closing = open && holder != 0 && holder != key;
-                    open &= !closing;
-                    let out = self.open_details(
-                        id.as_str(),
-                        &crate::widgets::DetailsDesc {
-                            summary: r.str("summary").unwrap_or_default().to_string(),
-                            open,
-                            disabled: r.flag("disabled"),
-                            width: r.size("width"),
-                        },
-                    );
-                    shows_content = out.open;
-                    if out.toggled || closing {
-                        opened = Some(out.open);
-                    }
-                    if let Some(g) = group {
-                        let now = if out.open {
-                            key
-                        } else if holder == key {
-                            0
-                        } else {
-                            holder
-                        };
-                        if now != holder || (out.open && !self.has_anim(g)) {
-                            self.set_anim(
-                                g,
-                                crate::ui::Anim {
-                                    h: now,
-                                    ..Default::default()
-                                },
-                            );
-                        }
-                        // The others of its name build again next tick, and close.
-                        if out.toggled && out.open {
-                            let name = r.str("exclusive").unwrap_or_default();
-                            self.interaction.actions.pending.push(details_action(name));
-                        }
-                    }
-                }
-                "button" => {
-                    resp = self.open_button(id.as_str(), r.button_desc());
-                }
-                "panel" => {
-                    self.open_panel(
-                        id.as_str(),
-                        crate::ui::PanelDesc {
-                            row: false,
-                            ..Default::default()
-                        },
-                    );
-                }
-                "scroll" => {
-                    self.open_scroll(
-                        id.as_str(),
-                        crate::ui::ScrollDesc {
-                            width: Size::grow(),
-                            height: Size::grow(),
-                            ..Default::default()
-                        },
-                    );
-                }
-                "list" | "cells" => {
-                    let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-                    if b.cached.is_some() {
-                        build_children(self, b, Some(props.clone()));
-                    } else {
-                        self.build_virtual(b, n, kind, &id, &r, props.clone(), &path);
-                    }
-                    b.inherited = inherited;
-                    let at = self.tree.last_closed;
-                    if at != NONE && at < self.tree.nodes.len() && self.tree.nodes[at].key == key {
-                        // Settlement replaces the box the list was opened with;
-                        // its window and stride follow on the next build.
-                        let mut fields =
-                            fields::RenderFields::capture(self, key, at, kind, resp, props, None);
-                        fields.unstyle_virtual();
-                        self.note_render_fields(key, fields);
-                    }
-                    self.note_built(built);
-                    self.fire(b, n, key, &path, resp);
-                    return Some(path);
-                }
-                _ => {
-                    self.open(
-                        id.as_str(),
-                        Element {
-                            direction: match kind {
-                                "row" => Direction::Row,
-                                _ => Direction::Column,
-                            },
-                            ..Element::default()
-                        },
-                    );
-                }
-            }
-            let fields =
-                fields::RenderFields::capture(self, key, self.parent(), kind, resp, props, None);
-            self.apply_document_fields(&doc, n, &r, &fields);
-            self.note_render_fields(key, fields);
-            // A content button feeds og-input's action as a text one does.
-            if kind == "button" && r.has("dataOgTouch") {
-                self.note_touch_button(&r);
-            }
-            if kind == "box"
-                && n.selector_tag.as_deref() == Some("li")
-                && let Some(marker) = r.str("markerType")
-            {
-                // `::marker { content }` replaces the list style's text;
-                // its color inks either.
-                let (content, ink) = self.marker_override(b, n, &r);
-                let style = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1));
-                let inside = r.str("markerPosition") == Some("inside");
-                // `list-style-image`: the picture stands for the marker.
-                let picture = r
-                    .str("markerImage")
-                    .and_then(|v| crate::doc::lists::image(v).ok().flatten());
-                if let Some(name) = picture.filter(|_| content.is_none()) {
-                    let text = if inside { "\u{FFFC}\u{a0}" } else { "\u{FFFC}" };
-                    let span = crate::TextSpan {
-                        name: "marker".into(),
-                        position: 0,
-                        length: 1,
-                        properties: Default::default(),
-                    };
-                    let style = crate::TextSpanStyle {
-                        atom: Some(crate::rich::InlineAtom::Image(name)),
-                        ..Default::default()
-                    };
-                    self.rich_text_spans(
-                        "Marker",
-                        text,
-                        std::slice::from_ref(&span),
-                        crate::RichTextDesc::default(),
-                        |_| style.clone(),
-                    );
-                } else {
-                    match content {
-                        Some(Some(text)) => self.list_marker(&path, "decimal", &text, inside, ink),
-                        Some(None) => {}
-                        None => {
-                            if let Some(text) = style {
-                                self.list_marker(&path, marker, &text, inside, ink);
-                            }
-                        }
-                    }
-                }
-            }
-            if let Some(id) = r.str("rive") {
-                let at = self.parent();
-                self.play_rive(at, id, &path);
-            }
-            if r.has("emitter") || r.has("meta") || self.world.kept_effects.contains_key(&key) {
-                let at = self.parent();
-                self.world_effects(b, n, &r, at, &path);
-            }
-            if kind == "slot" {
-                let at = self.parent();
-                self.docs.host.slots.insert(path.clone(), at);
-                let short = format!("{}/{}", b.mount, n.id);
-                self.docs.host.slots.entry(short).or_insert(at);
-            }
-            self.note_built(built);
-            if shows_content {
-                // Its filters' `feImage`s of elements, as its first children.
-                let at = self.parent();
-                let css = self.tree.nodes[at]
-                    .decor
-                    .as_ref()
-                    .and_then(|d| d.css.as_ref());
-                let images = css.is_some_and(|c| {
-                    crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters)
-                        .iter()
-                        .any(|u| !u.filter.elements.is_empty())
-                });
-                if images && let Some(c) = css.cloned() {
-                    let uses = crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters);
-                    {
-                        self.build_element_images(
-                            b,
-                            n,
-                            &r.cascade.computed,
-                            &uses,
-                            super::svg::ImageSpace::Css,
-                        );
-                    }
-                }
-                let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
-                self.generated_box(b, n, &r, &path, true);
-                build_children(self, b, None);
-                self.generated_box(b, n, &r, &path, false);
-                b.inherited = inherited;
-            }
-            match kind {
-                "dialog" if spot => {
-                    self.close();
-                }
-                "dialog" => self.close_dialog(&dialog),
-                "details" => self.close_details(),
-                "button" => self.close_button(),
-                _ => resp = self.close(),
-            }
-            if let Some(open) = opened {
-                self.docs.host.happened.push(When::Toggle);
-                if kind == "dialog" && !open {
-                    self.docs.host.happened.push(When::Close);
-                }
-                if !bound(n, "open") {
-                    self.remember(
-                        &format!("{}~doc-open", id.as_str()),
-                        f64::from(u8::from(open)),
-                    );
-                }
-                self.write_back(b, n, "open", json!(open));
-            }
-            self.popover_invoker(b, &r, key, resp);
-            self.hold(key, n, &r, self.tree.last_closed);
-            self.fire(b, n, key, &path, resp);
-            return Some(path);
+            return self.doc_container(
+                b,
+                n,
+                &doc,
+                kind,
+                &id,
+                path,
+                key,
+                &r,
+                props,
+                built,
+                build_children,
+            );
         }
         // Keep the widget's intrinsic box separate from CSS-owned fields.
         // Settlement can replace those fields without processing its input again.
@@ -875,6 +590,328 @@ impl Ui {
         self.hold(key, n, &styled, last);
         self.fire(b, n, key, &path, resp);
         Some(path)
+    }
+
+    /// A container element and its content: a dialog, a disclosure, a
+    /// spotlight, a button with content and the rest.
+    #[allow(
+        clippy::too_many_arguments,
+        clippy::ptr_arg,
+        clippy::needless_borrow,
+        clippy::needless_return
+    )]
+    fn doc_container(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        doc: &UiDocument,
+        kind: &'static str,
+        id: &String,
+        path: String,
+        key: u64,
+        r: &Resolved,
+        props: Props,
+        built: Built,
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+    ) -> Option<String> {
+        let mut resp = crate::ui::Response::default();
+        // A dialog's or a disclosure's `open`: the bound store's, else the
+        // literal's until the player toggles it (kept as widget memory).
+        let open_now = |ui: &mut Ui| -> bool {
+            let literal = r.flag("open");
+            if bound(n, "open") {
+                literal
+            } else {
+                ui.memory(
+                    &format!("{}~doc-open", id.as_str()),
+                    f64::from(u8::from(literal)),
+                ) > 0.0
+            }
+        };
+        let dialog = crate::widgets::DialogDesc {
+            modal: r.flag("modal"),
+            name: r.str("name").unwrap_or_default().to_string(),
+            width: r.size("width"),
+            backdrop: None,
+            closedby: match r.str("closedby") {
+                Some("any") => crate::widgets::ClosedBy::Any,
+                Some("closerequest") => crate::widgets::ClosedBy::CloseRequest,
+                Some("none") => crate::widgets::ClosedBy::None,
+                _ => crate::widgets::ClosedBy::Auto,
+            },
+            bare: r.str("appearance") == Some("none"),
+        };
+        let mut opened: Option<bool> = None;
+        // A spotlight's callout layer, open (closed by `close`).
+        let mut spot = false;
+        // A closed dialog or disclosure builds no content (HTML renders
+        // none): opened, its controls are built fresh and take input.
+        let mut shows_content = true;
+        match kind {
+            "dialog" if open_now(self) && r.str("spotlight").is_some() => {
+                let target = r.str("spotlight").unwrap_or_default();
+                let (shade, anchored) = self.open_spotlight(id.as_str(), (key, &path), target, &r);
+                spot = anchored;
+                if shade.clicked && r.str("closedby") == Some("any") {
+                    opened = Some(false);
+                }
+            }
+            "dialog" => {
+                let open = open_now(self);
+                let out = self.open_dialog(id.as_str(), open, &dialog);
+                // `::backdrop` styles the scrim, the panel's parent.
+                if dialog.modal
+                    && let Some(backdrop) = self.pseudo_node(b, &r, &path, "backdrop")
+                {
+                    let scrim = self.tree.nodes[self.parent()].parent;
+                    self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
+                }
+                shows_content = out.visible;
+                if out.dismissed {
+                    opened = Some(false);
+                }
+                if dialog.modal
+                    && let Some(d) = r.str("dataDetents")
+                    && self.sheet(
+                        id.as_str(),
+                        d,
+                        r.str("dataEdge")
+                            .and_then(|e| super::gestures::sheet_edge(e).ok())
+                            .unwrap_or_default(),
+                        open,
+                    )
+                {
+                    opened = Some(false);
+                }
+            }
+            "details" => {
+                let mut open = open_now(self);
+                // An exclusive accordion (`<details name>`): the open one
+                // of its name in this mount is widget memory; another
+                // open one closes.
+                let group = r
+                    .str("exclusive")
+                    .filter(|g| !g.is_empty())
+                    .map(|g| crate::id::child_key(crate::id::child_key(0, &b.mount), g));
+                let holder = group.map_or(0, |g| self.anim(g).h);
+                let closing = open && holder != 0 && holder != key;
+                open &= !closing;
+                let out = self.open_details(
+                    id.as_str(),
+                    &crate::widgets::DetailsDesc {
+                        summary: r.str("summary").unwrap_or_default().to_string(),
+                        open,
+                        disabled: r.flag("disabled"),
+                        width: r.size("width"),
+                    },
+                );
+                shows_content = out.open;
+                if out.toggled || closing {
+                    opened = Some(out.open);
+                }
+                if let Some(g) = group {
+                    let now = if out.open {
+                        key
+                    } else if holder == key {
+                        0
+                    } else {
+                        holder
+                    };
+                    if now != holder || (out.open && !self.has_anim(g)) {
+                        self.set_anim(
+                            g,
+                            crate::ui::Anim {
+                                h: now,
+                                ..Default::default()
+                            },
+                        );
+                    }
+                    // The others of its name build again next tick, and close.
+                    if out.toggled && out.open {
+                        let name = r.str("exclusive").unwrap_or_default();
+                        self.interaction.actions.pending.push(details_action(name));
+                    }
+                }
+            }
+            "button" => {
+                resp = self.open_button(id.as_str(), r.button_desc());
+            }
+            "panel" => {
+                self.open_panel(
+                    id.as_str(),
+                    crate::ui::PanelDesc {
+                        row: false,
+                        ..Default::default()
+                    },
+                );
+            }
+            "scroll" => {
+                self.open_scroll(
+                    id.as_str(),
+                    crate::ui::ScrollDesc {
+                        width: Size::grow(),
+                        height: Size::grow(),
+                        ..Default::default()
+                    },
+                );
+            }
+            "list" | "cells" => {
+                let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
+                if b.cached.is_some() {
+                    build_children(self, b, Some(props.clone()));
+                } else {
+                    self.build_virtual(b, n, kind, &id, &r, props.clone(), &path);
+                }
+                b.inherited = inherited;
+                let at = self.tree.last_closed;
+                if at != NONE && at < self.tree.nodes.len() && self.tree.nodes[at].key == key {
+                    // Settlement replaces the box the list was opened with;
+                    // its window and stride follow on the next build.
+                    let mut fields =
+                        fields::RenderFields::capture(self, key, at, kind, resp, props, None);
+                    fields.unstyle_virtual();
+                    self.note_render_fields(key, fields);
+                }
+                self.note_built(built);
+                self.fire(b, n, key, &path, resp);
+                return Some(path);
+            }
+            _ => {
+                self.open(
+                    id.as_str(),
+                    Element {
+                        direction: match kind {
+                            "row" => Direction::Row,
+                            _ => Direction::Column,
+                        },
+                        ..Element::default()
+                    },
+                );
+            }
+        }
+        let fields =
+            fields::RenderFields::capture(self, key, self.parent(), kind, resp, props, None);
+        self.apply_document_fields(&doc, n, &r, &fields);
+        self.note_render_fields(key, fields);
+        // A content button feeds og-input's action as a text one does.
+        if kind == "button" && r.has("dataOgTouch") {
+            self.note_touch_button(&r);
+        }
+        if kind == "box"
+            && n.selector_tag.as_deref() == Some("li")
+            && let Some(marker) = r.str("markerType")
+        {
+            // `::marker { content }` replaces the list style's text;
+            // its color inks either.
+            let (content, ink) = self.marker_override(b, n, &r);
+            let style = crate::doc::lists::marker(marker, r.ordinal.unwrap_or(1));
+            let inside = r.str("markerPosition") == Some("inside");
+            // `list-style-image`: the picture stands for the marker.
+            let picture = r
+                .str("markerImage")
+                .and_then(|v| crate::doc::lists::image(v).ok().flatten());
+            if let Some(name) = picture.filter(|_| content.is_none()) {
+                let text = if inside { "\u{FFFC}\u{a0}" } else { "\u{FFFC}" };
+                let span = crate::TextSpan {
+                    name: "marker".into(),
+                    position: 0,
+                    length: 1,
+                    properties: Default::default(),
+                };
+                let style = crate::TextSpanStyle {
+                    atom: Some(crate::rich::InlineAtom::Image(name)),
+                    ..Default::default()
+                };
+                self.rich_text_spans(
+                    "Marker",
+                    text,
+                    std::slice::from_ref(&span),
+                    crate::RichTextDesc::default(),
+                    |_| style.clone(),
+                );
+            } else {
+                match content {
+                    Some(Some(text)) => self.list_marker(&path, "decimal", &text, inside, ink),
+                    Some(None) => {}
+                    None => {
+                        if let Some(text) = style {
+                            self.list_marker(&path, marker, &text, inside, ink);
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(id) = r.str("rive") {
+            let at = self.parent();
+            self.play_rive(at, id, &path);
+        }
+        if r.has("emitter") || r.has("meta") || self.world.kept_effects.contains_key(&key) {
+            let at = self.parent();
+            self.world_effects(b, n, &r, at, &path);
+        }
+        if kind == "slot" {
+            let at = self.parent();
+            self.docs.host.slots.insert(path.clone(), at);
+            let short = format!("{}/{}", b.mount, n.id);
+            self.docs.host.slots.entry(short).or_insert(at);
+        }
+        self.note_built(built);
+        if shows_content {
+            // Its filters' `feImage`s of elements, as its first children.
+            let at = self.parent();
+            let css = self.tree.nodes[at]
+                .decor
+                .as_ref()
+                .and_then(|d| d.css.as_ref());
+            let images = css.is_some_and(|c| {
+                crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters)
+                    .iter()
+                    .any(|u| !u.filter.elements.is_empty())
+            });
+            if images && let Some(c) = css.cloned() {
+                let uses = crate::paint::filter_uses(&c.effects, c.layer.as_ref(), &c.filters);
+                {
+                    self.build_element_images(
+                        b,
+                        n,
+                        &r.cascade.computed,
+                        &uses,
+                        super::svg::ImageSpace::Css,
+                    );
+                }
+            }
+            let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
+            self.generated_box(b, n, &r, &path, true);
+            build_children(self, b, None);
+            self.generated_box(b, n, &r, &path, false);
+            b.inherited = inherited;
+        }
+        match kind {
+            "dialog" if spot => {
+                self.close();
+            }
+            "dialog" => self.close_dialog(&dialog),
+            "details" => self.close_details(),
+            "button" => self.close_button(),
+            _ => resp = self.close(),
+        }
+        if let Some(open) = opened {
+            self.docs.host.happened.push(When::Toggle);
+            if kind == "dialog" && !open {
+                self.docs.host.happened.push(When::Close);
+            }
+            if !bound(n, "open") {
+                self.remember(
+                    &format!("{}~doc-open", id.as_str()),
+                    f64::from(u8::from(open)),
+                );
+            }
+            self.write_back(b, n, "open", json!(open));
+        }
+        self.popover_invoker(b, &r, key, resp);
+        self.hold(key, n, &r, self.tree.last_closed);
+        self.fire(b, n, key, &path, resp);
+        return Some(path);
     }
 
     /// The document's `label` element.
