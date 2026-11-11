@@ -512,6 +512,102 @@ fn round(v: f64, digits: i32) -> f64 {
     (v * k).round() / k
 }
 
+impl crate::probe::state::Host {
+    /// `expect:region`: the mean colour of a rect of the frame (CSS px).
+    fn expect_region(
+        &mut self,
+        world: &World,
+        rect: [f32; 4],
+        color: [u8; 3],
+        tolerance: f32,
+        r: &mut ExpectResult,
+    ) {
+        r.expected = json!({"color": format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]), "tolerance": tolerance});
+        let Some(image) = self.expect_frame(world, r) else {
+            return;
+        };
+        let scale = self.css_scale(world, &image);
+        let x0 = ((rect[0] * scale).floor().max(0.0) as u32).min(image.width);
+        let y0 = ((rect[1] * scale).floor().max(0.0) as u32).min(image.height);
+        let x1 = (((rect[0] + rect[2]) * scale).ceil().max(0.0) as u32).min(image.width);
+        let y1 = (((rect[1] + rect[3]) * scale).ceil().max(0.0) as u32).min(image.height);
+        if x1 <= x0 || y1 <= y0 {
+            fail(r, "the region is outside the frame".into());
+            return;
+        }
+        let mut sum = [0f64; 3];
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let o = ((y * image.width + x) * 4) as usize;
+                for (c, total) in sum.iter_mut().enumerate() {
+                    *total += f64::from(image.pixels[o + c]);
+                }
+            }
+        }
+        let n = f64::from((x1 - x0) * (y1 - y0));
+        let mean = sum.map(|s| (s / n).round() as u8);
+        r.observed = json!({"color": format!("#{:02x}{:02x}{:02x}", mean[0], mean[1], mean[2])});
+        let off = (0..3)
+            .map(|c| (f32::from(mean[c]) - f32::from(color[c])).abs())
+            .fold(0.0, f32::max);
+        if off > tolerance {
+            fail(
+                r,
+                format!("the region's mean colour is {off} off in a channel"),
+            );
+        }
+    }
+
+    /// `expect:frame`: the frame against a reference file, by RMSE.
+    fn expect_reference(
+        &mut self,
+        world: &World,
+        reference: String,
+        limit: f64,
+        r: &mut ExpectResult,
+    ) {
+        r.expected = json!({"reference": reference, "rmse": format!("<= {limit}")});
+        let reference_png = match self.reader.as_ref() {
+            Some(read) => read(&reference),
+            None => None,
+        };
+        let Some(bytes) = reference_png else {
+            fail(
+                r,
+                format!("cannot read the reference '{reference}' (a path in the project)"),
+            );
+            return;
+        };
+        let wanted = match decode_png(&bytes) {
+            Ok(img) => img,
+            Err(e) => {
+                fail(r, format!("{reference}: {e}"));
+                return;
+            }
+        };
+        let Some(image) = self.frame_rgba_sized(world, r, wanted.width, wanted.height) else {
+            return;
+        };
+        match rmse(&image, &wanted) {
+            None => fail(r, "the frame and the reference differ in size".into()),
+            Some(v) => {
+                r.observed = json!({"rmse": round(v, 3)});
+                if v > limit {
+                    fail(
+                        r,
+                        format!("the frame is {} RMSE from {reference}", round(v, 3)),
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn fail(r: &mut ExpectResult, reason: String) {
+    r.status = Status::Fail;
+    r.reason = reason;
+}
+
 impl Probe {
     /// Evaluates one expectation now (`expect` member; an `expect:` step).
     /// `Err` is a malformed expectation (nothing was evaluated).
@@ -540,25 +636,29 @@ impl Probe {
             observed: Value::Null,
             reason: String::new(),
         };
-        let fail = |r: &mut ExpectResult, reason: String| {
-            r.status = Status::Fail;
-            r.reason = reason;
-        };
+        self.evaluate(world, parsed, &mut r);
+        Ok(self.record(r))
+    }
+
+    /// Evaluates `parsed` on the world as it is into `r`, which opens as a
+    /// pass: its expected and observed values, and the status and reason
+    /// when it fails or cannot be checked.
+    fn evaluate(&mut self, world: &mut World, parsed: Expect, r: &mut ExpectResult) {
         match parsed {
             Expect::Within { id, bounds } if bounds.len() == 4 => {
                 r.expected = json!({"x": bounds[0], "y": bounds[1], "width": bounds[2], "height": bounds[3]});
                 let Some(e) = self.names.resolve(world, &id) else {
-                    fail(&mut r, format!("no live entity '{id}'"));
-                    return Ok(self.record(r));
+                    fail(r, format!("no live entity '{id}'"));
+                    return;
                 };
                 let seen = self.host.seen_now(world);
                 let Some(seen) = seen else {
                     r.status = Status::Unchecked;
                     r.reason = "this host has no scene view to describe the frame".into();
-                    return Ok(self.record(r));
+                    return;
                 };
                 match seen.entities.iter().find(|s| s.entity == e) {
-                    None => fail(&mut r, format!("'{id}' shows no pixel in the frame")),
+                    None => fail(r, format!("'{id}' shows no pixel in the frame")),
                     Some(s) => {
                         let [x, y, w, h] = s.rect;
                         r.observed = json!({"x": round(x.into(), 2), "y": round(y.into(), 2), "width": round(w.into(), 2), "height": round(h.into(), 2)});
@@ -569,10 +669,7 @@ impl Probe {
                             && x + w <= bounds[0] + bounds[2] + slack
                             && y + h <= bounds[1] + bounds[3] + slack;
                         if !inside {
-                            fail(
-                                &mut r,
-                                format!("'{id}'s visible box leaves the expected box"),
-                            );
+                            fail(r, format!("'{id}'s visible box leaves the expected box"));
                         }
                     }
                 }
@@ -582,12 +679,12 @@ impl Probe {
                 let e = match self.names.resolve(world, &id) {
                     Some(e) => e,
                     None => {
-                        fail(&mut r, format!("no live entity '{id}'"));
-                        return Ok(self.record(r));
+                        fail(r, format!("no live entity '{id}'"));
+                        return;
                     }
                 };
                 match self.position_of(world, e) {
-                    Err(reason) => fail(&mut r, reason),
+                    Err(reason) => fail(r, reason),
                     Ok(p) => {
                         r.observed = json!([
                             round(p[0].into(), 4),
@@ -596,10 +693,7 @@ impl Probe {
                         ]);
                         let inside = (0..3).all(|i| p[i] >= bounds[i] && p[i] <= bounds[i + 3]);
                         if !inside {
-                            fail(
-                                &mut r,
-                                format!("'{id}'s Transform.position is outside the box"),
-                            );
+                            fail(r, format!("'{id}'s Transform.position is outside the box"));
                         }
                     }
                 }
@@ -607,8 +701,8 @@ impl Probe {
             Expect::Event { name, count } => {
                 r.expected = count.map_or(json!(">= 1"), |c| json!(c));
                 if world.id_by_name(&name).is_err() {
-                    fail(&mut r, format!("no event type '{name}' is registered"));
-                    return Ok(self.record(r));
+                    fail(r, format!("no event type '{name}' is registered"));
+                    return;
                 }
                 let seen = self.checks.events_seen(&name);
                 r.observed = json!(seen);
@@ -618,7 +712,7 @@ impl Probe {
                 };
                 if !ok {
                     fail(
-                        &mut r,
+                        r,
                         format!("{seen} {name} event(s) were sent since the script began"),
                     );
                 }
@@ -636,7 +730,7 @@ impl Probe {
                             .collect();
                         r.observed = json!(texts);
                         fail(
-                            &mut r,
+                            r,
                             format!(
                                 "no UI element shows it ({} elements; `dump_ui` lists them)",
                                 elements.len()
@@ -649,88 +743,14 @@ impl Probe {
                 rect,
                 color,
                 tolerance,
-            } => {
-                r.expected = json!({"color": format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]), "tolerance": tolerance});
-                let Some(image) = self.host.expect_frame(world, &mut r) else {
-                    return Ok(self.record(r));
-                };
-                let scale = self.host.css_scale(world, &image);
-                let x0 = ((rect[0] * scale).floor().max(0.0) as u32).min(image.width);
-                let y0 = ((rect[1] * scale).floor().max(0.0) as u32).min(image.height);
-                let x1 = (((rect[0] + rect[2]) * scale).ceil().max(0.0) as u32).min(image.width);
-                let y1 = (((rect[1] + rect[3]) * scale).ceil().max(0.0) as u32).min(image.height);
-                if x1 <= x0 || y1 <= y0 {
-                    fail(&mut r, "the region is outside the frame".into());
-                    return Ok(self.record(r));
-                }
-                let mut sum = [0f64; 3];
-                for y in y0..y1 {
-                    for x in x0..x1 {
-                        let o = ((y * image.width + x) * 4) as usize;
-                        for (c, total) in sum.iter_mut().enumerate() {
-                            *total += f64::from(image.pixels[o + c]);
-                        }
-                    }
-                }
-                let n = f64::from((x1 - x0) * (y1 - y0));
-                let mean = sum.map(|s| (s / n).round() as u8);
-                r.observed =
-                    json!({"color": format!("#{:02x}{:02x}{:02x}", mean[0], mean[1], mean[2])});
-                let off = (0..3)
-                    .map(|c| (f32::from(mean[c]) - f32::from(color[c])).abs())
-                    .fold(0.0, f32::max);
-                if off > tolerance {
-                    fail(
-                        &mut r,
-                        format!("the region's mean colour is {off} off in a channel"),
-                    );
-                }
-            }
+            } => self.host.expect_region(world, rect, color, tolerance, r),
             Expect::Frame {
                 reference,
                 rmse: limit,
-            } => {
-                r.expected = json!({"reference": reference, "rmse": format!("<= {limit}")});
-                let reference_png = match self.host.reader.as_ref() {
-                    Some(read) => read(&reference),
-                    None => None,
-                };
-                let Some(bytes) = reference_png else {
-                    fail(
-                        &mut r,
-                        format!("cannot read the reference '{reference}' (a path in the project)"),
-                    );
-                    return Ok(self.record(r));
-                };
-                let wanted = match decode_png(&bytes) {
-                    Ok(img) => img,
-                    Err(e) => {
-                        fail(&mut r, format!("{reference}: {e}"));
-                        return Ok(self.record(r));
-                    }
-                };
-                let Some(image) =
-                    self.host
-                        .frame_rgba_sized(world, &mut r, wanted.width, wanted.height)
-                else {
-                    return Ok(self.record(r));
-                };
-                match rmse(&image, &wanted) {
-                    None => fail(&mut r, "the frame and the reference differ in size".into()),
-                    Some(v) => {
-                        r.observed = json!({"rmse": round(v, 3)});
-                        if v > limit {
-                            fail(
-                                &mut r,
-                                format!("the frame is {} RMSE from {reference}", round(v, 3)),
-                            );
-                        }
-                    }
-                }
-            }
+            } => self.host.expect_reference(world, reference, limit, r),
             Expect::State { path, op, value } => {
                 let facts = self.host.facts(world);
-                check_path(&mut r, &facts, "state().facts", "facts.", &path, op, &value);
+                check_path(r, &facts, "state().facts", "facts.", &path, op, &value);
             }
             Expect::Timings { path, op, value } => {
                 // What the renderer measures, without one: unchecked.
@@ -740,11 +760,11 @@ impl Probe {
                 {
                     r.status = Status::Unchecked;
                     r.reason = "no renderer, timings.".to_string() + &path + " unchecked";
-                    return Ok(self.record(r));
+                    return;
                 }
                 let state = self.state(world);
                 check_path(
-                    &mut r,
+                    r,
                     &state["timings"],
                     "state().timings",
                     "timings.",
@@ -760,14 +780,14 @@ impl Probe {
                 value,
             } => {
                 let Some(e) = self.names.resolve(world, &id) else {
-                    fail(&mut r, format!("no live entity '{id}'"));
-                    return Ok(self.record(r));
+                    fail(r, format!("no live entity '{id}'"));
+                    return;
                 };
                 // The renderer's observation (render.lod), without one: unchecked.
                 if !self.host.has_renderer() && path.split('.').next() == Some("render") {
                     r.status = Status::Unchecked;
                     r.reason = format!("no renderer, {path} unchecked");
-                    return Ok(self.record(r));
+                    return;
                 }
                 let mut dump = self.dump_entity(world, e);
                 // `og.Transform.position` as well as `components.og.Transform...`.
@@ -783,7 +803,7 @@ impl Probe {
                     Rhs::Path(p) => dump_path(&dump, p),
                 };
                 check_value(
-                    &mut r,
+                    r,
                     at,
                     rhs,
                     &format!("dump_entity of '{id}'"),
@@ -794,7 +814,6 @@ impl Probe {
                 );
             }
         }
-        Ok(self.record(r))
     }
 
     fn record(&mut self, r: ExpectResult) -> ExpectResult {
