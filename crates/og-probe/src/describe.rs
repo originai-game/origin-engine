@@ -18,28 +18,6 @@ fn rect(r: [f32; 4]) -> Value {
     json!({"x": round(r[0], 2), "y": round(r[1], 2), "width": round(r[2], 2), "height": round(r[3], 2)})
 }
 
-impl crate::probe::state::Host {
-    /// The rects the UI draws opaque over the frame (`UiElement::opaque`).
-    pub(crate) fn ui_cover(&self, world: &World) -> Vec<[f32; 4]> {
-        self.ui
-            .as_ref()
-            .map(|ui| {
-                ui.elements(world)
-                    .iter()
-                    .filter(|e| e.opaque && e.width > 0.0 && e.height > 0.0)
-                    .map(|e| [e.x, e.y, e.width, e.height])
-                    .collect()
-            })
-            .unwrap_or_default()
-    }
-
-    /// The scene view's frame with the UI's opaque rects hiding what they cover.
-    pub(crate) fn seen_now(&mut self, world: &World) -> Option<crate::Seen> {
-        let cover = self.ui_cover(world);
-        self.scene_view.as_mut().and_then(|v| v.seen(world, &cover))
-    }
-}
-
 impl Probe {
     /// `describe`: what the frame at the current tick shows, as data
     /// (IDL `probe.Description`). Entities are nearest first (`order` 0),
@@ -209,5 +187,27 @@ impl Probe {
                 v
             })
             .collect()
+    }
+}
+
+impl crate::probe::state::Host {
+    /// The rects the UI draws opaque over the frame (`UiElement::opaque`).
+    pub(crate) fn ui_cover(&self, world: &World) -> Vec<[f32; 4]> {
+        self.ui
+            .as_ref()
+            .map(|ui| {
+                ui.elements(world)
+                    .iter()
+                    .filter(|e| e.opaque && e.width > 0.0 && e.height > 0.0)
+                    .map(|e| [e.x, e.y, e.width, e.height])
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// The scene view's frame with the UI's opaque rects hiding what they cover.
+    pub(crate) fn seen_now(&mut self, world: &World) -> Option<crate::Seen> {
+        let cover = self.ui_cover(world);
+        self.scene_view.as_mut().and_then(|v| v.seen(world, &cover))
     }
 }

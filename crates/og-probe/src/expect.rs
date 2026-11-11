@@ -512,102 +512,6 @@ fn round(v: f64, digits: i32) -> f64 {
     (v * k).round() / k
 }
 
-impl crate::probe::state::Host {
-    /// `expect:region`: the mean colour of a rect of the frame (CSS px).
-    fn expect_region(
-        &mut self,
-        world: &World,
-        rect: [f32; 4],
-        color: [u8; 3],
-        tolerance: f32,
-        r: &mut ExpectResult,
-    ) {
-        r.expected = json!({"color": format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]), "tolerance": tolerance});
-        let Some(image) = self.expect_frame(world, r) else {
-            return;
-        };
-        let scale = self.css_scale(world, &image);
-        let x0 = ((rect[0] * scale).floor().max(0.0) as u32).min(image.width);
-        let y0 = ((rect[1] * scale).floor().max(0.0) as u32).min(image.height);
-        let x1 = (((rect[0] + rect[2]) * scale).ceil().max(0.0) as u32).min(image.width);
-        let y1 = (((rect[1] + rect[3]) * scale).ceil().max(0.0) as u32).min(image.height);
-        if x1 <= x0 || y1 <= y0 {
-            fail(r, "the region is outside the frame".into());
-            return;
-        }
-        let mut sum = [0f64; 3];
-        for y in y0..y1 {
-            for x in x0..x1 {
-                let o = ((y * image.width + x) * 4) as usize;
-                for (c, total) in sum.iter_mut().enumerate() {
-                    *total += f64::from(image.pixels[o + c]);
-                }
-            }
-        }
-        let n = f64::from((x1 - x0) * (y1 - y0));
-        let mean = sum.map(|s| (s / n).round() as u8);
-        r.observed = json!({"color": format!("#{:02x}{:02x}{:02x}", mean[0], mean[1], mean[2])});
-        let off = (0..3)
-            .map(|c| (f32::from(mean[c]) - f32::from(color[c])).abs())
-            .fold(0.0, f32::max);
-        if off > tolerance {
-            fail(
-                r,
-                format!("the region's mean colour is {off} off in a channel"),
-            );
-        }
-    }
-
-    /// `expect:frame`: the frame against a reference file, by RMSE.
-    fn expect_reference(
-        &mut self,
-        world: &World,
-        reference: String,
-        limit: f64,
-        r: &mut ExpectResult,
-    ) {
-        r.expected = json!({"reference": reference, "rmse": format!("<= {limit}")});
-        let reference_png = match self.reader.as_ref() {
-            Some(read) => read(&reference),
-            None => None,
-        };
-        let Some(bytes) = reference_png else {
-            fail(
-                r,
-                format!("cannot read the reference '{reference}' (a path in the project)"),
-            );
-            return;
-        };
-        let wanted = match decode_png(&bytes) {
-            Ok(img) => img,
-            Err(e) => {
-                fail(r, format!("{reference}: {e}"));
-                return;
-            }
-        };
-        let Some(image) = self.frame_rgba_sized(world, r, wanted.width, wanted.height) else {
-            return;
-        };
-        match rmse(&image, &wanted) {
-            None => fail(r, "the frame and the reference differ in size".into()),
-            Some(v) => {
-                r.observed = json!({"rmse": round(v, 3)});
-                if v > limit {
-                    fail(
-                        r,
-                        format!("the frame is {} RMSE from {reference}", round(v, 3)),
-                    );
-                }
-            }
-        }
-    }
-}
-
-fn fail(r: &mut ExpectResult, reason: String) {
-    r.status = Status::Fail;
-    r.reason = reason;
-}
-
 impl Probe {
     /// Evaluates one expectation now (`expect` member; an `expect:` step).
     /// `Err` is a malformed expectation (nothing was evaluated).
@@ -815,27 +719,27 @@ impl Probe {
             }
         }
     }
-}
 
-impl crate::probe::state::Checks {
-    fn record(
-        &mut self,
-        out: &mut crate::probe::state::Out,
-        timeline: &mut crate::probe::timeline::Recorder,
-        r: ExpectResult,
-    ) -> ExpectResult {
-        // An invariant's evaluation, every tick: its result is the caller's alone.
-        if self.quiet {
-            return r;
+    /// Every `invariant:` step, after tick `ran`: a failure is recorded as a
+    /// violation at `ran` (the tick whose systems produced the state, as
+    /// og.assert and the default invariants number it) with the observed value.
+    #[cfg(not(feature = "publish"))]
+    pub(crate) fn check_invariants(&mut self, world: &mut og_ecs::World, ran: u64) {
+        if self.checks.invariants.is_empty() {
+            return;
         }
-        out.note(r.tick, r.status == Status::Fail, r.line());
-        timeline.expect(&r);
-        self.expectations.push(r.clone());
-        r
+        let invariants = std::mem::take(&mut self.checks.invariants);
+        self.checks.quiet = true;
+        for args in &invariants {
+            let Ok(r) = self.expect_args(world, args, None) else {
+                continue;
+            };
+            self.checks.invariant_checked(ran, r);
+        }
+        self.checks.quiet = false;
+        self.checks.invariants = invariants;
     }
-}
 
-impl Probe {
     /// Every expectation evaluated since the last call, in order.
     pub fn take_expectations(&mut self) -> Vec<ExpectResult> {
         std::mem::take(&mut self.checks.expectations)
@@ -843,6 +747,95 @@ impl Probe {
 }
 
 impl crate::probe::state::Host {
+    /// `expect:region`: the mean colour of a rect of the frame (CSS px).
+    fn expect_region(
+        &mut self,
+        world: &World,
+        rect: [f32; 4],
+        color: [u8; 3],
+        tolerance: f32,
+        r: &mut ExpectResult,
+    ) {
+        r.expected = json!({"color": format!("#{:02x}{:02x}{:02x}", color[0], color[1], color[2]), "tolerance": tolerance});
+        let Some(image) = self.expect_frame(world, r) else {
+            return;
+        };
+        let scale = self.css_scale(world, &image);
+        let x0 = ((rect[0] * scale).floor().max(0.0) as u32).min(image.width);
+        let y0 = ((rect[1] * scale).floor().max(0.0) as u32).min(image.height);
+        let x1 = (((rect[0] + rect[2]) * scale).ceil().max(0.0) as u32).min(image.width);
+        let y1 = (((rect[1] + rect[3]) * scale).ceil().max(0.0) as u32).min(image.height);
+        if x1 <= x0 || y1 <= y0 {
+            fail(r, "the region is outside the frame".into());
+            return;
+        }
+        let mut sum = [0f64; 3];
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let o = ((y * image.width + x) * 4) as usize;
+                for (c, total) in sum.iter_mut().enumerate() {
+                    *total += f64::from(image.pixels[o + c]);
+                }
+            }
+        }
+        let n = f64::from((x1 - x0) * (y1 - y0));
+        let mean = sum.map(|s| (s / n).round() as u8);
+        r.observed = json!({"color": format!("#{:02x}{:02x}{:02x}", mean[0], mean[1], mean[2])});
+        let off = (0..3)
+            .map(|c| (f32::from(mean[c]) - f32::from(color[c])).abs())
+            .fold(0.0, f32::max);
+        if off > tolerance {
+            fail(
+                r,
+                format!("the region's mean colour is {off} off in a channel"),
+            );
+        }
+    }
+
+    /// `expect:frame`: the frame against a reference file, by RMSE.
+    fn expect_reference(
+        &mut self,
+        world: &World,
+        reference: String,
+        limit: f64,
+        r: &mut ExpectResult,
+    ) {
+        r.expected = json!({"reference": reference, "rmse": format!("<= {limit}")});
+        let reference_png = match self.reader.as_ref() {
+            Some(read) => read(&reference),
+            None => None,
+        };
+        let Some(bytes) = reference_png else {
+            fail(
+                r,
+                format!("cannot read the reference '{reference}' (a path in the project)"),
+            );
+            return;
+        };
+        let wanted = match decode_png(&bytes) {
+            Ok(img) => img,
+            Err(e) => {
+                fail(r, format!("{reference}: {e}"));
+                return;
+            }
+        };
+        let Some(image) = self.frame_rgba_sized(world, r, wanted.width, wanted.height) else {
+            return;
+        };
+        match rmse(&image, &wanted) {
+            None => fail(r, "the frame and the reference differ in size".into()),
+            Some(v) => {
+                r.observed = json!({"rmse": round(v, 3)});
+                if v > limit {
+                    fail(
+                        r,
+                        format!("the frame is {} RMSE from {reference}", round(v, 3)),
+                    );
+                }
+            }
+        }
+    }
+
     /// The frame at the target's size, or `None` with the result marked
     /// unchecked (no renderer) or failed (no frame).
     fn expect_frame(&mut self, world: &World, r: &mut ExpectResult) -> Option<Rgba> {
@@ -886,6 +879,22 @@ impl crate::probe::state::Host {
 }
 
 impl crate::probe::state::Checks {
+    fn record(
+        &mut self,
+        out: &mut crate::probe::state::Out,
+        timeline: &mut crate::probe::timeline::Recorder,
+        r: ExpectResult,
+    ) -> ExpectResult {
+        // An invariant's evaluation, every tick: its result is the caller's alone.
+        if self.quiet {
+            return r;
+        }
+        out.note(r.tick, r.status == Status::Fail, r.line());
+        timeline.expect(&r);
+        self.expectations.push(r.clone());
+        r
+    }
+
     /// Events of `name` counted since the script that asked began.
     fn events_seen(&self, name: &str) -> u64 {
         let total = self.events.get(name).map_or(0, |w| w.total);
@@ -916,6 +925,11 @@ impl crate::probe::state::Checks {
             }
         }
     }
+}
+
+fn fail(r: &mut ExpectResult, reason: String) {
+    r.status = Status::Fail;
+    r.reason = reason;
 }
 
 /// One watched event type's count.
