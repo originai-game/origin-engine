@@ -6,6 +6,10 @@ mod sprite_pipelines;
 use sprite_pipelines::{SpritePipelinesInputs, SpritePipelinesOutputs};
 mod layouts;
 use layouts::{LayoutsInputs, LayoutsOutputs};
+mod samplers;
+use samplers::{SamplersAndShadowMapsInputs, SamplersAndShadowMapsOutputs};
+mod uniforms;
+use uniforms::{UniformBuffersInputs, UniformBuffersOutputs};
 impl Renderer {
     /// Times each render-graph pass's CPU encoding with `clock` (ms) and,
     /// where the device has timestamp queries, its GPU time
@@ -403,141 +407,39 @@ impl Renderer {
         });
         // What the OIT state could make (oit.rs), read by the frame.
         info.transparency = oit.mode;
-        // Samplers and fixed-size targets.
-        let material_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("material"),
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            // Filter grazing-angle footprints along both axes, where the
-            // device filters anisotropically: the sprites' rule
-            // (RenderInfo::sprite_anisotropy), so a software rasterizer,
-            // whose anisotropic filter sampled every texture black, stays at 1.
-            anisotropy_clamp: info.sprite_anisotropy,
-            ..Default::default()
-        });
-        // Sprites and the UI's images filter anisotropically where the
-        // device can (RenderInfo::sprite_anisotropy): a nine-slice's middle
-        // squeezed along one axis reads its mip level by the other one.
-        let sprite_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("sprite"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            anisotropy_clamp: info.sprite_anisotropy,
-            ..Default::default()
-        });
-        // Trilinear and clamped: the font atlases (an MSDF distance field
-        // averaged along a squeezed axis loses its edge: the ink spreads and
-        // thins), the decal atlas and the 2D lightmap (sampled as the
-        // surfaces under them are, by the material sampler's filter).
-        let trilinear_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("trilinear"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Linear,
-            ..Default::default()
-        });
-        let sprite_sampler_nearest = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("sprite (nearest)"),
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Nearest,
-            min_filter: wgpu::FilterMode::Nearest,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-            ..Default::default()
-        });
-        // The default quality's cascades; a frame that asks another count
-        // makes the array again (`fit_shelter_layer`).
-        let cascade_map = ShadowMap::new(
-            &device,
-            "cascades",
+        // Samplers and shadow maps (init/samplers.rs).
+        let SamplersAndShadowMapsOutputs {
+            material_sampler,
+            sprite_sampler,
+            trilinear_sampler,
+            sprite_sampler_nearest,
+            cascade_map,
+            local_map,
+        } = Self::samplers_and_shadow_maps(SamplersAndShadowMapsInputs {
+            device: &device,
+            info: &info,
             shadow_size,
-            cascades.min(crate::RenderQuality::default().shadow_cascades),
-            wgpu::TextureFormat::R32Float,
-        );
-        // Twelve layers to begin with; a frame that needs more grows it
-        // (`grow_local_shadows`).
-        let local_map = ShadowMap::new(
-            &device,
-            "local shadows",
-            LOCAL_SHADOW_SIZE,
-            shadows::INITIAL_LOCAL_LAYERS
-                .min(shadows::capacity(
-                    info.shadowed_lights as usize,
-                    info.point_shadows,
-                ))
-                .max(1) as u32,
-            LOCAL_SHADOW_FORMAT,
-        );
-
-        // Uniforms.
-        let frame_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("frame"),
-            size: std::mem::size_of::<frame::FrameUniform>() as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+            cascades,
         });
-        let light_buffers = clusters::buffers(&device);
-        let ltc = area::ltc_buffer(&device, &queue);
-        let caustic_grid = water::caustic_buffer(&device);
-        let volumetric =
-            volumetric::Volumetric::new(&device, info.volumetric, info.without.features());
-        // One set per planar reflection the renderer draws (none without
-        // the 3D world).
-        let slots = 0..info.planar_reflections;
-        let reflection_light_buffers: Vec<_> =
-            slots.clone().map(|_| clusters::buffers(&device)).collect();
-        let reflection_buffer: Vec<_> = slots
-            .clone()
-            .map(|_| {
-                device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("frame (planar reflection)"),
-                    size: std::mem::size_of::<frame::FrameUniform>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                })
-            })
-            .collect();
-        let reflection_clusters: Vec<_> = slots
-            .clone()
-            .map(|_| clusters::ClusterBuilder::default())
-            .collect();
-        let reflection_fx_buffer: Vec<_> = slots
-            .map(|_| {
-                device.create_buffer(&wgpu::BufferDescriptor {
-                    label: Some("fx (planar reflection)"),
-                    size: std::mem::size_of::<fx::FxUniform>() as u64,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    mapped_at_creation: false,
-                })
-            })
-            .collect();
-        let shadow_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("shadow passes"),
-            size: SHADOW_SLOT_STRIDE * SHADOW_SLOTS as u64,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
+        // Uniform buffers (init/uniforms.rs).
+        let UniformBuffersOutputs {
+            frame_buffer,
+            light_buffers,
+            ltc,
+            caustic_grid,
+            volumetric,
+            reflection_light_buffers,
+            reflection_buffer,
+            reflection_clusters,
+            reflection_fx_buffer,
+            shadow_buffer,
+            shadow_bind_group,
+        } = Self::uniform_buffers(UniformBuffersInputs {
+            device: &device,
+            queue: &queue,
+            info: &info,
+            shadow_bind_layout: &shadow_bind_layout,
         });
-        let shadow_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("shadow"),
-            layout: &shadow_bind_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                    buffer: &shadow_buffer,
-                    offset: 0,
-                    size: wgpu::BufferSize::new(std::mem::size_of::<ShadowPassUniform>() as u64),
-                }),
-            }],
-        });
-
         // Pipelines.
         // Parsed when the first pipeline that uses them is made
         // (deferred.rs): a frame compiles only what it draws.
