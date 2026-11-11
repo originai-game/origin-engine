@@ -126,6 +126,8 @@ mod culling_plan;
 use culling_plan::{PlanCullingInputs, PlanCullingOutputs};
 mod camera_lists;
 use camera_lists::{PlanCameraListsInputs, PlanCameraListsOutputs};
+mod pass_list;
+use pass_list::PassListInputs;
 mod setup;
 
 impl Renderer {
@@ -359,27 +361,7 @@ impl Renderer {
             )?;
         }
         // The frame's effects and its depth prepass (effects.rs).
-        let FrameEffects {
-            ao,
-            gi,
-            ao_target,
-            contact,
-            bent,
-            outline,
-            dof,
-            motion_blur,
-            screen_blur,
-            god_rays,
-            lens_flare,
-            flare_sources_on,
-            fluids_3d,
-            depth_bands,
-            ssr,
-            custom_posts,
-            motion_read,
-            ui_depth,
-            prepass,
-        } = self.decide_effects(DecideEffectsInputs {
+        let effects = self.decide_effects(DecideEffectsInputs {
             scene,
             cam: &cam,
             batches: &batches,
@@ -392,6 +374,27 @@ impl Renderer {
             particle_frame: &particle_frame,
             scene_water,
         });
+        let FrameEffects {
+            ao,
+            gi,
+            ao_target,
+            contact,
+            bent,
+            outline: _,
+            dof,
+            motion_blur,
+            screen_blur,
+            god_rays,
+            lens_flare,
+            flare_sources_on,
+            fluids_3d,
+            depth_bands,
+            ssr,
+            custom_posts: _,
+            motion_read,
+            ui_depth,
+            prepass,
+        } = effects;
         plans.ssr = ssr;
         // What the frame will draw with beyond its batches starts compiling
         // on worker threads before the batches' pipelines (deferred.rs):
@@ -966,10 +969,6 @@ impl Renderer {
                 prepass,
             });
         let slot = (self.frame_index % 2) as usize;
-        // The frame's passes, compiled into the render graph (cached while
-        // the pass list stays the same).
-        let auto_exposure = matches!(camera.exposure, Exposure::Auto { .. });
-        let bloom = post_fx.bloom.is_some_and(|b| b.intensity > 0.0) || glow;
         let gtao = match ao.map(|a| a.method) {
             Some(AoMethod::Gtao) => true,
             Some(AoMethod::Ssao | AoMethod::Screen) => false,
@@ -984,60 +983,28 @@ impl Renderer {
             frame: &particle_frame,
             sprites: &gpu_sprites,
         });
-        let passes = schedule::frame_passes(
-            &schedule::PassDecisions {
-                live_sky: plans.live_sky.is_some(),
-                gi_probes: plans.gi_probes.is_some(),
-                cascades: cascades.len() as u32,
-                shelter: shelter_redraw,
-                local_shadows: &local_shadows,
-                prepass,
-                ao: gi.map(|g| g.resolution).or(ao.map(|a| a.resolution)),
-                contact,
-                particles: plans.particles.is_some(),
-                light_2d: plans.light_2d.is_some(),
-                metaballs: plans.metaballs.is_some(),
-                fluid_3d: fluids_3d,
-                probes: !probe_frame.due.is_empty(),
-                reflections: reflections.len() as u8,
-                views: view_plans.len() as u32,
-                froxels: plans.volumetric.is_some(),
-                ssr: ssr.is_some(),
-                depth_bands: depth_bands.is_some(),
-                glow,
-                outline,
-                outline_outside: scene.stylise.material.outline_place
-                    != crate::OutlinePlace::Inside,
-                taa,
-                taa_sharpen: self.post.taa_sharpen > 0.0,
-                dof: dof.is_some(),
-                motion_blur: motion_blur.is_some(),
-                screen_blur: screen_blur.is_some(),
-                custom_posts: custom_posts.len() as u32,
-                god_rays: god_rays.is_some(),
-                auto_exposure,
-                adapt: camera.exposure.adaptation().is_some(),
-                bloom,
-                bloom_levels: {
-                    let (pw, ph) = self.history_size();
-                    post::bloom_levels(pw, ph)
-                },
-                lens_flare: lens_flare.is_some(),
-                flare_sources: flare_sources_on,
-                smaa_t2x,
-                paint: st.paint.is_some_and(|p| p.paints()),
-                watercolor: st.paint.is_some_and(|p| p.watercolor.active()),
-                lines: st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some(),
-                lens: lens.is_some(),
-                quantize: st.quantize.is_some(),
-                fxaa: self.info.antialias == Antialias::Fxaa,
-                smaa: self.info.antialias == Antialias::Smaa,
-                // Under TAAU the frame after TAA is already the output's size.
-                upscale: self.history_size() != (self.out_width, self.out_height),
-            },
-            self.info.caps,
-        );
-        self.post.ensure_chain(&self.device, &passes);
+        // The frame's passes, compiled into the render graph (cached while
+        // the pass list stays the same; pass_list.rs).
+        let passes = self.plan_pass_list(PassListInputs {
+            scene,
+            camera: &camera,
+            effects: &effects,
+            live_sky: plans.live_sky.is_some(),
+            gi_probes: plans.gi_probes.is_some(),
+            particles: plans.particles.is_some(),
+            light_2d: plans.light_2d.is_some(),
+            metaballs: plans.metaballs.is_some(),
+            froxels: plans.volumetric.is_some(),
+            cascades: cascades.len() as u32,
+            shelter_redraw,
+            local_shadows: &local_shadows,
+            probes: !probe_frame.due.is_empty(),
+            reflections: reflections.len() as u8,
+            views: view_plans.len() as u32,
+            glow,
+            taa,
+            smaa_t2x,
+        });
         // The stylise passes' parameters, palette and canvas.
         let palette_view = st
             .quantize
@@ -2260,9 +2227,9 @@ impl Renderer {
             gi_copy,
         });
         plans.glow = glow.then_some(sprite_frame.glow_runs.as_slice());
-        plans.custom_post = (!custom_posts.is_empty()).then(|| CustomPostPlan {
+        plans.custom_post = (!effects.custom_posts.is_empty()).then(|| CustomPostPlan {
             scene,
-            posts: &custom_posts,
+            posts: &effects.custom_posts,
         });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
