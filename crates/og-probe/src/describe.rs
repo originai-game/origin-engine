@@ -25,7 +25,8 @@ impl Probe {
     /// `pass` and `camera` are null.
     /// The rects the UI draws opaque over the frame (`UiElement::opaque`).
     pub(crate) fn ui_cover(&self, world: &World) -> Vec<[f32; 4]> {
-        self.ui
+        self.host
+            .ui
             .as_ref()
             .map(|ui| {
                 ui.elements(world)
@@ -40,7 +41,10 @@ impl Probe {
     /// The scene view's frame with the UI's opaque rects hiding what they cover.
     pub(crate) fn seen_now(&mut self, world: &World) -> Option<crate::Seen> {
         let cover = self.ui_cover(world);
-        self.scene_view.as_mut().and_then(|v| v.seen(world, &cover))
+        self.host
+            .scene_view
+            .as_mut()
+            .and_then(|v| v.seen(world, &cover))
     }
 
     pub fn describe(&mut self, world: &World) -> Value {
@@ -67,6 +71,7 @@ impl Probe {
             entities = self.shown_entities(world, &seen.entities, &shows);
         }
         let ui: Vec<Value> = self
+            .host
             .ui
             .as_ref()
             .map(|ui| {
@@ -82,9 +87,9 @@ impl Probe {
                     .collect()
             })
             .unwrap_or_default();
-        let surface = match self.ui.as_ref().and_then(|ui| ui.surface(world)) {
+        let surface = match self.host.ui.as_ref().and_then(|ui| ui.surface(world)) {
             Some((w, h, dpr)) => json!({"width": w, "height": h, "dpr": dpr}),
-            None => match self.capture.as_ref().map(|c| c.target_size()) {
+            None => match self.host.capture.as_ref().map(|c| c.target_size()) {
                 Some((w, h)) if w > 0 => json!({"width": w, "height": h, "dpr": 1}),
                 _ => Value::Null,
             },
@@ -112,7 +117,7 @@ impl Probe {
     /// placed a prefab.
     fn prefab_instances(&self, world: &World) -> Vec<Value> {
         const LINK: &str = "og.PrefabLink";
-        let Some(writer) = self.scene_writer.as_ref() else {
+        let Some(writer) = self.host.scene_writer.as_ref() else {
             return Vec::new();
         };
         let Ok(id) = world.id_by_name(LINK) else {

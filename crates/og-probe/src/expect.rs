@@ -626,6 +626,7 @@ impl Probe {
             Expect::UiText { query } => {
                 r.expected = json!(query);
                 let elements = self
+                    .host
                     .ui
                     .as_ref()
                     .map(|u| u.elements(world))
@@ -695,7 +696,7 @@ impl Probe {
                 rmse: limit,
             } => {
                 r.expected = json!({"reference": reference, "rmse": format!("<= {limit}")});
-                let reference_png = match self.reader.as_ref() {
+                let reference_png = match self.host.reader.as_ref() {
                     Some(read) => read(&reference),
                     None => None,
                 };
@@ -731,12 +732,12 @@ impl Probe {
                 }
             }
             Expect::State { path, op, value } => {
-                let facts = self.facts.as_ref().map_or(Value::Null, |f| f(world));
+                let facts = self.host.facts.as_ref().map_or(Value::Null, |f| f(world));
                 check_path(&mut r, &facts, "state().facts", "facts.", &path, op, &value);
             }
             Expect::Timings { path, op, value } => {
                 // What the renderer measures, without one: unchecked.
-                if !self.capture.as_ref().is_some_and(|c| c.has_renderer())
+                if !self.host.capture.as_ref().is_some_and(|c| c.has_renderer())
                     && ["triangles", "render", "passes"]
                         .contains(&path.split('.').next().unwrap_or(""))
                 {
@@ -766,7 +767,7 @@ impl Probe {
                     return Ok(self.record(r));
                 };
                 // The renderer's observation (render.lod), without one: unchecked.
-                if !self.capture.as_ref().is_some_and(|c| c.has_renderer())
+                if !self.host.capture.as_ref().is_some_and(|c| c.has_renderer())
                     && path.split('.').next() == Some("render")
                 {
                     r.status = Status::Unchecked;
@@ -830,7 +831,7 @@ impl Probe {
         width: u32,
         height: u32,
     ) -> Option<Rgba> {
-        let Some(capture) = self.capture.as_mut().filter(|c| c.has_renderer()) else {
+        let Some(capture) = self.host.capture.as_mut().filter(|c| c.has_renderer()) else {
             r.status = Status::Unchecked;
             r.reason = "no renderer, frame unchecked".into();
             return None;
