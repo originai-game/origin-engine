@@ -128,3 +128,16 @@ reported with its line and left as it is.
 `--check` writes nothing, lists the files that would change, and exits 1
 when there are any. `--json` returns `files`, `check`, `changed`, and
 `errors`.
+
+## 7. Name an OGT file for its type
+
+Every OGT asset has the same extension, so its name can say what it is:
+`<name>.<type>.ogt`, with the word on its `type` line (`level1.scene.ogt`,
+`hero.flipbook.ogt`). A glob such as `*.scene.ogt` then finds every scene
+without opening a file. The name is optional and decides nothing: the `type`
+line does, and the asset id is the path as written, name and all.
+
+A cook warns when the last part of a name is a type the file does not cook
+as (`menu.prefab.ogt` holding a scene). Any other last part is free
+(`sparks.emitter.ogt`). Rename an existing file with `og assets mv`, which
+rewrites the references to it.

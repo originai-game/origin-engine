@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og cook",
+      "summary": "An `.ogt` asset may say its type in its name, `<name>.<type>.ogt` (`level1.scene.ogt`, `hero.flipbook.ogt`), so a glob finds every file of a type without opening one. The name is optional and decides nothing: the `type` line does, and the asset id is the path as written. The cook now warns when the last part of a name is a type the file does not cook as (\"named as a prefab (.prefab.ogt) and cooked as a scene\"); any other last part is free. Existing names keep working unchanged; `og assets mv` renames one and rewrites its references. The assets guide's section 7 describes the convention."
+    }
+  ]
+}
