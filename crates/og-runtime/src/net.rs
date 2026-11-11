@@ -32,7 +32,8 @@ use super::{ok_void, parse, refuse};
 use og_core::IdMap;
 use og_ecs::{QueryDesc, SystemDesc, World};
 use og_net::protocol::{self, Event, LOCKSTEP_CHANNEL, MAX_MESSAGE, Payload};
-use og_net::{Config, Gate, Lockstep, Snapshot};
+use og_net::state::shared_hash;
+use og_net::{Config, Gate, Lockstep};
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, VecDeque};
@@ -941,11 +942,6 @@ pub fn og_net_final_hash(world: u32, tick: f64) -> String {
             .flatten();
         json!(h.map(|h| format!("{h:016x}"))).to_string()
     })
-}
-
-/// The shared hash of a world snapshot, hex.
-fn shared_hash(snapshot: &[u8]) -> Result<u64, String> {
-    Snapshot::decode(snapshot).map(|s| s.shared_hash())
 }
 
 /// The world's snapshot bytes (og-ecs's format), mid-tick or between

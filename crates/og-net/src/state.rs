@@ -535,6 +535,181 @@ impl Snapshot {
     }
 }
 
+/// A type as [`shared_hash`] reads it: its name and where its fields' sizes
+/// are in the table's list.
+struct HashedType<'a> {
+    name: &'a str,
+    fields: std::ops::Range<usize>,
+    /// Packed size in bytes.
+    size: usize,
+}
+
+/// The archetypes section. With a hasher, every live entity's id bits and
+/// its components (type index, packed bytes) in storage order, each row's
+/// fields gathered from their columns; without one, only read. Returns the
+/// number of rows.
+fn hash_rows(
+    r: &mut Reader<'_>,
+    types: &[HashedType<'_>],
+    sizes: &[usize],
+    mut h: Option<&mut StableHasher>,
+) -> Result<usize, String> {
+    let mut rows = 0;
+    // One archetype's components (type, first column) and columns (the
+    // bytes of every row's field, the field's size).
+    let mut stored: Vec<(usize, usize)> = Vec::new();
+    let mut columns: Vec<(&[u8], usize)> = Vec::new();
+    let arch_count = r.count(8)?;
+    for _ in 0..arch_count {
+        let k = r.count(4)?;
+        stored.clear();
+        for _ in 0..k {
+            let t = r.u32()?;
+            if t >= types.len() {
+                return Err(format!("snapshot: type index {t} out of range"));
+            }
+            stored.push((t, 0));
+        }
+        let count = r.count(8)?;
+        let entities = r.take(count * 8)?;
+        columns.clear();
+        for (t, first) in &mut stored {
+            *first = columns.len();
+            for &size in &sizes[types[*t].fields.clone()] {
+                columns.push((r.take(count * size)?, size));
+            }
+        }
+        rows += count;
+        let Some(h) = h.as_deref_mut() else { continue };
+        for i in 0..count {
+            h.write(&entities[i * 8..(i + 1) * 8]);
+            for (c, &(t, first)) in stored.iter().enumerate() {
+                h.write_u32(t as u32);
+                let end = stored.get(c + 1).map_or(columns.len(), |next| next.1);
+                for &(column, size) in &columns[first..end] {
+                    h.write(&column[i * size..(i + 1) * size]);
+                }
+            }
+        }
+    }
+    Ok(rows)
+}
+
+/// [`Snapshot::shared_hash`] of a snapshot's bytes, read in place: the same
+/// value as decoding it first, without building the entities (what lockstep
+/// hashes after every tick). Refuses what [`Snapshot::decode`] refuses.
+pub fn shared_hash(bytes: &[u8]) -> Result<u64, String> {
+    fn text(bytes: &[u8]) -> Result<&str, String> {
+        std::str::from_utf8(bytes).map_err(|_| "snapshot: text is not UTF-8".into())
+    }
+    let mut r = Reader { buf: bytes, pos: 0 };
+    if r.take(4)? != MAGIC {
+        return Err("not a world snapshot".into());
+    }
+    let format = r.u32()? as u32;
+    if !(2..=4).contains(&format) {
+        return Err(format!(
+            "snapshot format {format}: lockstep reads formats 2 to 4, which carry their field tables"
+        ));
+    }
+    let mut h = StableHasher::new();
+    let n = r.count(12)?;
+    let mut types = Vec::with_capacity(n);
+    let mut sizes = Vec::new();
+    h.write_u32(n as u32);
+    for _ in 0..n {
+        let name = text(r.sized()?)?;
+        h.write_str(name);
+        h.write_u64(r.u64()?);
+        let _version = r.u32()?;
+        let fields = r.count(12)?;
+        let first = sizes.len();
+        for _ in 0..fields {
+            let fname = text(r.sized()?)?;
+            let tname = text(r.sized()?)?;
+            let ty = FieldType::parse(tname)
+                .ok_or_else(|| format!("snapshot: '{name}.{fname}' has type '{tname}'"))?;
+            sizes.push(ty.size());
+            for _ in 0..r.count(4)? {
+                text(r.sized()?)?;
+            }
+        }
+        types.push(HashedType {
+            name,
+            fields: first..sizes.len(),
+            size: sizes[first..].iter().sum(),
+        });
+    }
+    let type_at = |i: usize| -> Result<&HashedType<'_>, String> {
+        types
+            .get(i)
+            .ok_or_else(|| format!("snapshot: type index {i} out of range"))
+    };
+    let slots = r.count(5)?;
+    h.write_u32(slots as u32);
+    for slot in r.take(slots * 5)?.as_chunks::<5>().0 {
+        h.write(&slot[..4]);
+        h.write(&[u8::from(slot[4] == 1)]);
+    }
+    let free = r.count(4)?;
+    h.write_u32(free as u32);
+    h.write(r.take(free * 4)?);
+    // The row count leads the rows, and only the archetypes hold it.
+    let at = r.pos;
+    let rows = hash_rows(&mut r, &types, &sizes, None)?;
+    r.pos = at;
+    h.write_u32(rows as u32);
+    hash_rows(&mut r, &types, &sizes, Some(&mut h))?;
+    for _ in 0..r.count(8)? {
+        let name = type_at(r.u32()?)?.name;
+        let value = r.sized()?;
+        if SESSION_RESOURCES.contains(&name) {
+            continue;
+        }
+        h.write_str(name);
+        h.write(value);
+    }
+    for _ in 0..r.count(12)? {
+        let ty = type_at(r.u32()?)?;
+        let shared = !SESSION_EVENTS.contains(&ty.name);
+        if shared {
+            h.write_str(ty.name);
+        }
+        // The events delivered this tick, then those for the next.
+        for _ in 0..2 {
+            let k = r.count(ty.size)?;
+            let list = r.take(k * ty.size)?;
+            if shared {
+                h.write_u32(k as u32);
+                h.write(list);
+            }
+        }
+    }
+    for _ in 0..r.count(12)? {
+        h.write_u64(r.u64()?);
+        h.write_str(text(r.sized()?)?);
+    }
+    if format >= 3 {
+        for _ in 0..r.count(8)? {
+            let name = text(r.sized()?)?;
+            let block = r.sized()?;
+            if SESSION_BLOCKS.contains(&name) {
+                continue;
+            }
+            h.write_str(name);
+            h.write_u64(block.len() as u64);
+            h.write(block);
+        }
+    }
+    if format == 4 {
+        h.write_str(text(r.sized()?)?);
+    }
+    if r.pos != bytes.len() {
+        return Err(format!("snapshot: {} trailing bytes", bytes.len() - r.pos));
+    }
+    Ok(h.finish())
+}
+
 fn f32_at(b: &[u8], i: usize) -> f32 {
     f32::from_le_bytes(b[i * 4..i * 4 + 4].try_into().expect("4 bytes"))
 }
@@ -912,5 +1087,175 @@ mod tests {
         let half = 0.5f32.to_le_bytes();
         let one = og_core::pack_list(ty, &[&half]).unwrap();
         assert_eq!(field_json(&FieldSchema::new("w", ty), &one), json!([0.5]));
+    }
+
+    /// `s` as og-ecs writes it (the module docs' format), every row of a
+    /// run of equal component sets as one archetype.
+    fn encode(s: &Snapshot) -> Vec<u8> {
+        fn u32_(out: &mut Vec<u8>, v: usize) {
+            out.extend_from_slice(&(v as u32).to_le_bytes());
+        }
+        fn sized(out: &mut Vec<u8>, b: &[u8]) {
+            u32_(out, b.len());
+            out.extend_from_slice(b);
+        }
+        let mut out = MAGIC.to_vec();
+        u32_(&mut out, s.format as usize);
+        u32_(&mut out, s.types.len());
+        for t in &s.types {
+            sized(&mut out, t.name.as_bytes());
+            out.extend_from_slice(&t.hash.to_le_bytes());
+            u32_(&mut out, t.schema.version as usize);
+            u32_(&mut out, t.schema.fields.len());
+            for f in &t.schema.fields {
+                sized(&mut out, f.name.as_bytes());
+                sized(&mut out, f.ty.name().as_bytes());
+                u32_(&mut out, f.variants.len());
+                for v in &f.variants {
+                    sized(&mut out, v.as_bytes());
+                }
+            }
+        }
+        u32_(&mut out, s.slots.len());
+        for (generation, alive) in &s.slots {
+            u32_(&mut out, *generation as usize);
+            out.push(u8::from(*alive));
+        }
+        u32_(&mut out, s.free.len());
+        for f in &s.free {
+            u32_(&mut out, *f as usize);
+        }
+        let stored = |r: &Row| r.components.iter().map(|c| c.0).collect::<Vec<_>>();
+        let archetypes: Vec<&[Row]> = s.rows.chunk_by(|a, b| stored(a) == stored(b)).collect();
+        u32_(&mut out, archetypes.len());
+        for rows in archetypes {
+            let types = stored(&rows[0]);
+            u32_(&mut out, types.len());
+            for t in &types {
+                u32_(&mut out, *t);
+            }
+            u32_(&mut out, rows.len());
+            for r in rows {
+                out.extend_from_slice(&r.entity.to_le_bytes());
+            }
+            for (c, t) in types.iter().enumerate() {
+                let layout = &s.types[*t].layout;
+                for f in 0..layout.field_count() {
+                    for r in rows {
+                        out.extend_from_slice(&r.components[c].1[layout.range(f)]);
+                    }
+                }
+            }
+        }
+        u32_(&mut out, s.resources.len());
+        for (t, b) in &s.resources {
+            u32_(&mut out, *t);
+            sized(&mut out, b);
+        }
+        u32_(&mut out, s.events.len());
+        for q in &s.events {
+            u32_(&mut out, q.ty);
+            for list in [&q.current, &q.pending] {
+                u32_(&mut out, list.len());
+                for e in list {
+                    out.extend_from_slice(e);
+                }
+            }
+        }
+        u32_(&mut out, s.names.len());
+        for (e, name) in &s.names {
+            out.extend_from_slice(&e.to_le_bytes());
+            sized(&mut out, name.as_bytes());
+        }
+        if s.format >= 3 {
+            u32_(&mut out, s.blocks.len());
+            for (name, b) in &s.blocks {
+                sized(&mut out, name.as_bytes());
+                sized(&mut out, b);
+            }
+        }
+        if let Some(system) = &s.resume {
+            sized(&mut out, system.as_bytes());
+        }
+        out
+    }
+
+    /// [`world`] with what the hash treats specially: an archetype of two
+    /// rows with two components (three columns), a dead slot with its free
+    /// index, a peer's own resource, event queue and state block beside
+    /// shared ones, and the system a mid-tick snapshot was taken in.
+    fn busy() -> Snapshot {
+        let mut s = world();
+        s.format = 4;
+        s.types.extend([
+            ty("og.Input", &["keys"]),
+            ty("Hit", &["a", "b"]),
+            ty("og.KeyDown", &["key"]),
+        ]);
+        s.slots = vec![(0, true), (3, false), (1, true), (0, true)];
+        s.free = vec![1];
+        s.rows.push(Row {
+            entity: 2 | 1 << 32,
+            components: vec![(0, floats(&[6.0, 7.0])), (1, floats(&[8.0]))],
+        });
+        s.rows.push(Row {
+            entity: 3,
+            components: vec![(1, floats(&[9.0]))],
+        });
+        s.resources.push((3, floats(&[11.0])));
+        s.events = vec![
+            Queue {
+                ty: 4,
+                current: vec![floats(&[1.0, 2.0])],
+                pending: vec![floats(&[3.0, 4.0]), floats(&[5.0, 6.0])],
+            },
+            Queue {
+                ty: 5,
+                current: vec![floats(&[13.0])],
+                pending: vec![],
+            },
+        ];
+        s.blocks.push(("og.ui".into(), vec![4, 5]));
+        s.resume = Some("Apply".into());
+        s
+    }
+
+    #[test]
+    fn the_hash_read_from_the_bytes_is_the_decoded_snapshots() {
+        for s in [world(), busy()] {
+            let bytes = encode(&s);
+            // The bytes are the snapshot: decoding gives it back.
+            let read = Snapshot::decode(&bytes).expect("a snapshot");
+            assert_eq!(format!("{read:?}"), format!("{s:?}"));
+            assert_eq!(shared_hash(&bytes), Ok(s.shared_hash()));
+        }
+        // Each peer's own session is left out, and nothing else.
+        let hash = |s: &Snapshot| shared_hash(&encode(s)).expect("a snapshot");
+        let base = busy();
+        let mut own = busy();
+        own.resources[1].1 = floats(&[12.0]);
+        own.events[1].current.clear();
+        own.blocks[1].1 = vec![6];
+        assert_eq!(hash(&own), hash(&base));
+        let moved: [fn(&mut Snapshot); 6] = [
+            |s| s.rows[2].components[0].1 = floats(&[6.0, 7.5]),
+            |s| s.rows.swap(1, 2),
+            |s| s.slots[1].0 = 4,
+            |s| s.events[0].pending.truncate(1),
+            |s| s.blocks[0].1[2] = 0,
+            |s| s.resume = Some("Submit".into()),
+        ];
+        for (i, change) in moved.iter().enumerate() {
+            let mut s = busy();
+            change(&mut s);
+            assert_eq!(shared_hash(&encode(&s)), Ok(s.shared_hash()), "change {i}");
+            assert_ne!(hash(&s), hash(&base), "change {i}");
+        }
+        // What decode refuses is refused.
+        let bytes = encode(&base);
+        assert!(shared_hash(&bytes[..bytes.len() - 1]).is_err());
+        let mut long = bytes.clone();
+        long.push(0);
+        assert!(shared_hash(&long).is_err());
     }
 }
