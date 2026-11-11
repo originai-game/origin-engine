@@ -109,40 +109,6 @@ impl Renderer {
         !(self.clusters.skip_rects && matches!(light.kind, LightKind::Rect { .. }))
     }
 
-    /// The probe GI's frame (gi_probes.rs): off where the quality's GI
-    /// switch or a 2D build says so. The probe buffer grows to hold its
-    /// probes before the frame groups that bind it are made.
-    fn prepare_gi_probes(&mut self, scene: &RenderScene) {
-        let desc = scene
-            .post
-            .gi_probes
-            .filter(|_| WORLD_3D && scene.quality.global_illumination)
-            // A renderer made without the probe GI (RenderDesc::without).
-            .filter(|_| !self.info.without.contains(LitFeatures::GI));
-        let Some(desc) = desc else {
-            if let Some(g) = &mut self.gi_probes {
-                g.disable();
-            }
-            return;
-        };
-        let region = crate::lightmap::PROBE_CAPACITY;
-        let g = self
-            .gi_probes
-            .get_or_insert_with(|| crate::gi_probes::GiProbes::new(&self.device));
-        let need = region + crate::gi_probes::region_vec4s(&desc);
-        if self
-            .lightmaps
-            .ensure_capacity(&self.device, &self.queue, need)
-        {
-            // The groups binding the buffer: the frame's and the effect
-            // passes' (the screen GI reads the probes).
-            self.environment = None;
-            self.graph.invalidate();
-            g.restart();
-        }
-        g.prepare(&self.device, &self.queue, scene, desc, region);
-    }
-
     pub(super) fn prepare_frame_probes(
         &mut self,
         scene: &RenderScene,

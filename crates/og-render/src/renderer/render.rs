@@ -49,7 +49,12 @@ mod camera;
 
 mod draw_ctx;
 mod schedule;
+use schedule::PassDesc;
+mod pass;
+use pass::{EncodeCx, FramePlans, Pass};
+mod pass_gi_probes;
 use draw_ctx::DrawCtx;
+use pass_gi_probes::GiProbesPass;
 mod setup;
 
 impl Renderer {
@@ -90,6 +95,8 @@ impl Renderer {
             self.offscreen_submissions.pop_front();
         }
         self.sync(scene)?;
+        // What the frame plans for each of its passes (pass.rs).
+        let mut plans = FramePlans::default();
         // The wind field's steps since the last tick drawn (wind_field.rs):
         // its grid is what every vegetation pass below reads it by, its
         // lean cap what their culling bounds widen by.
@@ -2923,10 +2930,11 @@ impl Renderer {
         self.shelter_key = shelter.as_ref().map(|s| s.2);
         let st = &scene.stylise;
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
+        plans.gi_probes = GiProbesPass::plan(&self.gi_probes);
         let passes = schedule::frame_passes(
             &schedule::PassDecisions {
                 live_sky: self.sky_capture.is_some(),
-                gi_probes: self.gi_probes.as_ref().is_some_and(|g| g.due()),
+                gi_probes: plans.gi_probes.is_some(),
                 cascades: cascades.len() as u32,
                 shelter: shelter_redraw,
                 local_shadows: &local_shadows,
@@ -4203,6 +4211,13 @@ impl Renderer {
             let q0 = encoder.used();
             let _span = pass.redrawn().then(FrameSpan::open);
             match pass {
+                _ if plans.encode(
+                    pass,
+                    &mut EncodeCx {
+                        ctx: &ctx,
+                        encoder: &mut encoder,
+                    },
+                ) => {}
                 FramePass::Cascade(i) => ctx.shadow_pass(
                     &mut encoder,
                     &self.cascade_map.layers[i as usize],
@@ -4330,29 +4345,6 @@ impl Renderer {
                         ambient,
                     );
                     stats.draw_calls += (lights_2d > 0) as u32;
-                }
-                FramePass::GiProbes => {
-                    let g = self.gi_probes.as_ref().expect("planned with it");
-                    let ibl = self.ibl.views();
-                    let frame = crate::volumetric::bind_at(
-                        &self.device,
-                        "gi probes frame",
-                        &g.frame_layout,
-                        &[
-                            (0, self.frame_buffer.as_entire_binding()),
-                            (3, wgpu::BindingResource::TextureView(&ibl.irradiance)),
-                            (4, wgpu::BindingResource::TextureView(&ibl.prefiltered)),
-                            (6, wgpu::BindingResource::Sampler(&ibl.sampler)),
-                            (7, self.light_buffers[0].as_entire_binding()),
-                            (10, self.lightmaps.probe_buffer.as_entire_binding()),
-                        ],
-                    );
-                    g.record(
-                        &self.device,
-                        &mut encoder,
-                        &frame,
-                        &self.lightmaps.probe_buffer,
-                    );
                 }
                 FramePass::LiveSky => {
                     let c = self.sky_capture.as_ref().expect("planned with it");
