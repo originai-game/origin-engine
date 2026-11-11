@@ -32,8 +32,15 @@ pub(crate) const WIND: PreGraphDesc = PreGraphDesc {
     needs: Caps::COMPUTE,
 };
 
+/// The visual bodies' and the visual fluids' steps (visual_sim.rs,
+/// visual_fluid.rs): simulated in compute, drawn from storage.
+pub(crate) const VISUAL: PreGraphDesc = PreGraphDesc {
+    name: "visual simulation",
+    needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
+};
+
 /// The passes before the graph, in the frame encoder's order.
-pub(crate) const PRE_GRAPH: &[PreGraphDesc] = &[CROWD_CULL, WIND];
+pub(crate) const PRE_GRAPH: &[PreGraphDesc] = &[CROWD_CULL, WIND, VISUAL];
 
 /// Encodes the pass `desc` with `encode` where `caps` has its needs, the
 /// encoder checking what it opens against them (`Encoder::expect`), and

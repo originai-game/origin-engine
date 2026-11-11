@@ -4025,16 +4025,18 @@ impl Renderer {
             self.wind_field.encode(e);
             self.trample.encode(e);
         });
-        if let Some(pipelines) = &self.visual {
-            for mesh in &self.cache.meshes {
-                if let Some(v) = mesh.surface.as_ref().and_then(|s| s.visual.as_ref()) {
-                    pipelines.encode(&mut encoder, v, false);
+        pre_graph(&mut encoder, self.info.caps, pre_graph::VISUAL, |e| {
+            if let Some(pipelines) = &self.visual {
+                for mesh in &self.cache.meshes {
+                    if let Some(v) = mesh.surface.as_ref().and_then(|s| s.visual.as_ref()) {
+                        pipelines.encode(e, v, false);
+                    }
                 }
             }
-        }
-        if let Some(fluids) = &self.visual_fluids {
-            fluids.encode(&mut encoder);
-        }
+            if let Some(fluids) = &self.visual_fluids {
+                fluids.encode(e);
+            }
+        });
         if let Some(pipelines) = &self.surfaces {
             for mesh in &self.cache.meshes {
                 if let Some(surface) = &mesh.surface {
