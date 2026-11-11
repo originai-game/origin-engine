@@ -58,29 +58,6 @@ impl Renderer {
         (upscale, grid_offset)
     }
 
-    /// The frame's screen-space reflections (ssr.rs): a perspective 3D
-    /// camera's only, as an orthographic view reflects nothing it shows.
-    pub(in crate::renderer) fn frame_ssr(
-        &self,
-        scene: &RenderScene,
-    ) -> Option<ssr::ScreenSpaceReflections> {
-        let perspective = matches!(scene.camera.projection, Projection::Perspective { .. });
-        scene
-            .post
-            .ssr
-            .filter(|s| {
-                WORLD_3D
-                    && self.runs(FramePass::Ssr)
-                    && perspective
-                    && scene.quality.ssr
-                    && s.intensity > 0.0
-            })
-            .map(|s| ssr::ScreenSpaceReflections {
-                steps: scene.quality.ssr_steps(s.steps),
-                ..s
-            })
-    }
-
     /// Says once for each lit feature the renderer was made without
     /// (RenderDesc::without) that the scene uses it, so it is not drawn.
     fn warn_without(&mut self, scene: &RenderScene) {

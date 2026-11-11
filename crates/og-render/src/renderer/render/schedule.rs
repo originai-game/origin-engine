@@ -57,11 +57,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
         needs: Caps::MRT,
     },
     VolumetricPass::DESC,
-    PassDesc {
-        pass: FramePass::Ssr,
-        name: "ssr",
-        needs: Caps::COMPUTE,
-    },
+    SsrPass::DESC,
 ];
 
 impl FramePass {

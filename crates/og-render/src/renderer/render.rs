@@ -59,6 +59,8 @@ mod pass_live_sky;
 use pass_live_sky::LiveSkyPass;
 mod pass_volumetric;
 use pass_volumetric::VolumetricPass;
+mod pass_ssr;
+use pass_ssr::SsrPass;
 mod setup;
 
 impl Renderer {
@@ -361,7 +363,8 @@ impl Renderer {
         let ink_depth = scene.stylise.depth_edges();
         // Screen-space reflections, traced through the prepass before the
         // main pass (ssr.rs).
-        let ssr = self.frame_ssr(scene);
+        plans.ssr = self.frame_ssr(scene);
+        let ssr = plans.ssr;
         // Custom post passes (post_custom.rs) that compiled; they read the
         // prepass's depth and normals.
         let custom_posts = self.custom_posts.prepare(&self.device, scene);
@@ -2900,20 +2903,7 @@ impl Renderer {
             contact: contact_rows,
         });
         if let Some(s) = &ssr {
-            self.ssr.prepare(
-                &self.device,
-                &self.queue,
-                s,
-                (self.width, self.height),
-                &ssr::SsrCamera {
-                    view: cam.view,
-                    view_proj: cam.view_proj,
-                    near: camera.near,
-                    far: camera.far,
-                },
-                self.phase(),
-                gi_history_valid,
-            );
+            self.prepare_ssr(s, &cam, &camera, gi_history_valid);
         }
         let slot = (self.frame_index % 2) as usize;
         let taa_blend = taa && self.taa_history.is_some();
@@ -4217,6 +4207,7 @@ impl Renderer {
                         ctx: &ctx,
                         encoder: &mut encoder,
                         sky_group,
+                        slot,
                     },
                 ) => {}
                 FramePass::Cascade(i) => ctx.shadow_pass(
@@ -4510,23 +4501,6 @@ impl Renderer {
                             write,
                         ],
                         self.history_size(),
-                    );
-                }
-                FramePass::Ssr => {
-                    // The previous frame's lit image: TAA's history, or
-                    // without TAA the main pass's copy (`gi-write`).
-                    let prev = match (&self.persistent.history, &self.persistent.gi) {
-                        (Some(h), _) if taa => &h[1 - slot],
-                        (_, Some((_, g))) if !taa => &g[1 - slot],
-                        _ => &self.post.black,
-                    };
-                    self.ssr.encode(
-                        &self.device,
-                        &mut encoder,
-                        self.graph.view("lindepth"),
-                        self.graph.view("gbuffer"),
-                        prev,
-                        self.phase(),
                     );
                 }
                 post_pass => {

@@ -15,6 +15,8 @@ pub(super) struct EncodeCx<'a, 'f> {
     pub encoder: &'a mut Encoder,
     /// The sky pipelines' group.
     pub sky_group: &'f wgpu::BindGroup,
+    /// This frame's slot of the two-frame histories.
+    pub slot: usize,
 }
 
 /// A kind of frame pass.
@@ -71,4 +73,5 @@ passes! {
     live_sky: pass_live_sky::LiveSkyPass => FramePass::LiveSky,
     gi_probes: pass_gi_probes::GiProbesPass => FramePass::GiProbes,
     volumetric: pass_volumetric::VolumetricPass => FramePass::Volumetric,
+    ssr: pass_ssr::SsrPass => FramePass::Ssr,
 }
