@@ -256,13 +256,9 @@ pub struct Probe {
     triangles: u64,
     /// What a run hands back to the host: output files and log lines.
     pub(crate) out: state::Out,
-    pointer: (f32, f32),
-    target_missed: bool,
-    /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
-    stamp: f32,
+    /// The input being injected: where the pointer is and when in the tick.
+    pub(crate) inject: state::Inject,
     sweeping: Option<SweepJob>,
-    /// The host's input filter ([`Probe::set_input_filter`]).
-    filter: Option<InputFilterFn>,
 }
 
 /// The host's tick gate: asked before every tick the clock takes (a frame's
@@ -488,7 +484,12 @@ impl Probe {
             systems_ms: Vec::new(),
             passes_ms: Vec::new(),
             gpu_passes_ms: Vec::new(),
-            stamp: 0.0,
+            inject: state::Inject {
+                stamp: 0.0,
+                pointer: (0.0, 0.0),
+                target_missed: false,
+                filter: None,
+            },
             commands: state::Commands {
                 registered: BTreeMap::new(),
                 inbox: Inbox::default(),
@@ -518,10 +519,7 @@ impl Probe {
                 gets: (u64::MAX, 0),
                 written: BTreeMap::new(),
             },
-            pointer: (0.0, 0.0),
-            target_missed: false,
             sweeping: None,
-            filter: None,
         })
     }
 
@@ -604,7 +602,7 @@ impl Probe {
     /// The host's input filter ([`InputFilterFn`]): an event it takes never
     /// reaches the world.
     pub fn set_input_filter(&mut self, filter: InputFilterFn) {
-        self.filter = Some(filter);
+        self.inject.filter = Some(filter);
     }
 
     /// Whether the gate holds the next tick. A gate that moved `Time`
@@ -1018,9 +1016,9 @@ impl Probe {
             match self.schedule.queue.remove(&key).expect("present") {
                 Queued::Step(step, within) => {
                     // A step run late happened that many ticks earlier.
-                    self.stamp = (within - (now - key.0) as f32).max(-1.0);
+                    self.inject.stamp = (within - (now - key.0) as f32).max(-1.0);
                     self.execute(world, step);
-                    self.stamp = 0.0;
+                    self.inject.stamp = 0.0;
                 }
                 Queued::Inject(event) => {
                     if !self.deliver(world, &event) {
@@ -1140,12 +1138,12 @@ impl Probe {
     }
 
     fn deliver(&mut self, world: &mut World, event: &InjectedInput) -> bool {
-        let taken = self.filter.as_mut().is_some_and(|f| f(world, event));
-        let accepted = taken || self.host.input.inject_at(world, event, self.stamp);
+        let taken = self.inject.filter.as_mut().is_some_and(|f| f(world, event));
+        let accepted = taken || self.host.input.inject_at(world, event, self.inject.stamp);
         if accepted {
             match event {
                 InjectedInput::Pointer { x, y, id: 0, .. } | InjectedInput::Wheel { x, y, .. } => {
-                    self.pointer = (*x, *y);
+                    self.inject.pointer = (*x, *y);
                 }
                 InjectedInput::Pointer { .. }
                 | InjectedInput::Key { .. }
@@ -1165,7 +1163,7 @@ impl Probe {
         action: PointerAction,
         button: PointerButton,
     ) -> Result<(), String> {
-        let (x, y) = self.pointer;
+        let (x, y) = self.inject.pointer;
         let event = InjectedInput::Pointer {
             action,
             x,

@@ -33,8 +33,8 @@ impl Probe {
         out.extend_from_slice(MAGIC);
         out.extend_from_slice(&VERSION.to_le_bytes());
         out.extend_from_slice(&world.time().tick.to_le_bytes());
-        out.extend_from_slice(&self.pointer.0.to_le_bytes());
-        out.extend_from_slice(&self.pointer.1.to_le_bytes());
+        out.extend_from_slice(&self.inject.pointer.0.to_le_bytes());
+        out.extend_from_slice(&self.inject.pointer.1.to_le_bytes());
         out.extend_from_slice(&bytes);
         out
     }
@@ -63,7 +63,7 @@ impl Probe {
                 world.time().tick
             )));
         }
-        self.pointer = (x, y);
+        self.inject.pointer = (x, y);
         self.schedule.queue.retain(|&(at, _), _| at >= tick);
         self.schedule.shot = None;
         if let Some(c) = self.host.capture.as_mut() {
@@ -105,7 +105,7 @@ mod tests {
         assert_eq!(b.time().tick, 40);
         assert_eq!(b.world_hash(), a.world_hash());
         assert_eq!(
-            pb.pointer,
+            pb.inject.pointer,
             (30.0, 40.0),
             "the pointer the leader's steps left"
         );
