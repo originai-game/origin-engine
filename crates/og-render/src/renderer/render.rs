@@ -96,6 +96,8 @@ mod probe_lists;
 use probe_lists::{PlanProbeListsInputs, PlanProbeListsOutputs};
 mod view_lists;
 use view_lists::{PlanViewListsInputs, PlanViewListsOutputs};
+mod world_prepare;
+use world_prepare::{PrepareWorldInputs, PrepareWorldOutputs};
 mod setup;
 
 impl Renderer {
@@ -1151,101 +1153,22 @@ impl Renderer {
             particle_frame: &particle_frame,
             cull_n,
         });
-        // Terrains: new or edited data uploaded, this frame's clipmap levels.
-        let prev_view_proj = match self.history.prev_view_proj {
-            Some(vp) if !scene.camera_cut => vp,
-            _ => cam.view_proj,
-        };
-        let textures = &self.cache.textures;
-        let arrays = &self.cache.texture_arrays;
-        let terrain_draws = if !WORLD_3D {
-            Vec::new()
-        } else {
-            self.terrain.prepare(
-                &self.device,
-                &self.queue,
-                scene,
-                camera.position,
-                camera.far,
-                self.height,
-                cam.view_proj,
-                prev_view_proj,
-                |h| textures.get(h.index()).map(|t| &t.view),
-                |h| {
-                    arrays
-                        .get(h.index())
-                        .and_then(Option::as_ref)
-                        .filter(|a| a.generation == h.generation())
-                        .map(|a| &a.texture)
-                },
-            )?
-        };
-        let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
-        // The variants the prepare made (holes, layer arrays), and stamps.
-        for d in &terrain_draws {
-            d.passes
-                .start(d.features, prepass, d.cast_shadows, !d.stamps.is_empty());
-        }
-        // Scattered copies: the chunks this frame needs built, what to draw.
-        let mut scatter_batches = if !WORLD_3D {
-            scatter::ScatterBatches::default()
-        } else {
-            let materials = &self.cache.materials;
-            let meshes = &self.cache.meshes;
-            self.scatter.prepare(
-                &self.device,
-                &self.queue,
-                scene,
-                camera.position,
-                cam.view_proj,
-                prev_view_proj,
-                self.phase(),
-                (
-                    self.wind_field.grid(),
-                    self.wind_field.lean_cap(),
-                    self.trample.grid(),
-                ),
-                |m| materials.get(m).map(|g| g.side),
-                |m| {
-                    meshes.get(m).filter(|g| g.index_count > 0).map(|g| {
-                        let (r, top) = g
-                            .bounds
-                            .map_or((1.0, 1.0), |(c, e)| (c.length() + e.length(), c.y + e.y));
-                        (r, top, g.index_count)
-                    })
-                },
-                |m| materials.get(m).and_then(|g| g.shader),
-                |sh| scene.shaders()[sh].hooks_wgsl(),
-                (
-                    &Self::crowd_card_inputs(&crowd_frame, &cpu_cards.0),
-                    &cpu_cards.1,
-                ),
-                (&self.terrain, &terrain_draws),
-            )
-        };
-        // Grass: this frame's fields planned over the drawn terrains (grass.rs).
-        let grass_frame = if !WORLD_3D {
-            grass::GrassFrame::default()
-        } else {
-            self.grass.prepare(
-                &self.device,
-                &self.queue,
-                scene,
-                &self.terrain,
-                &terrain_draws,
-                grass::GrassView {
-                    camera: camera.position,
-                    frame: &cam,
-                    prev_view_proj,
-                    height: self.height,
-                    wind_grid: self.wind_field.grid(),
-                    trample: self.trample.grid(),
-                },
-                &view_frustum,
-                &|h| textures.get(h.index()).map(|t| &t.view),
-            )
-        };
-
+        // Terrains, scattered copies and grass (world_prepare.rs).
+        let PrepareWorldOutputs {
+            prev_view_proj,
+            terrain_draws,
+            terrain_casters,
+            mut scatter_batches,
+            grass_frame,
+        } = self.prepare_world(PrepareWorldInputs {
+            scene,
+            camera: &camera,
+            cam: &cam,
+            view_frustum: &view_frustum,
+            prepass,
+            crowd_frame: &crowd_frame,
+            cpu_cards: &cpu_cards,
+        })?;
         // The directional light's cascades.
         let light = &scene.light;
         let to_light = light.direction_to_light.normalize_or(Vec3::Y);
