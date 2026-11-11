@@ -133,7 +133,15 @@ impl Ui {
             crate::id::KeySet::with_capacity_and_hasher(m.channels.len(), Default::default());
 
         let (overrides, mut events) = self.step_plays(&mut m, now, tps, reduced);
-        self.step_gestures(&mut m, &mut touched, now);
+        self.style.step_gestures(
+            &mut m,
+            &mut touched,
+            now,
+            &self.env,
+            &mut self.out,
+            &mut self.interaction,
+            &mut self.tree,
+        );
 
         // Each element: states, channels, entrance, FLIP.
         // The nodes that animate their layout, by node (FLIP is relative to
@@ -603,21 +611,29 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// Drags and pinches.
-    fn step_gestures(&mut self, m: &mut MotionState, touched: &mut crate::id::KeySet, now: u64) {
+    #[allow(clippy::too_many_arguments)]
+    fn step_gestures(
+        &mut self,
+        m: &mut MotionState,
+        touched: &mut crate::id::KeySet,
+        now: u64,
+        env: &crate::ui::Env,
+        ui_out: &mut crate::ui::Out,
+        interaction: &mut crate::ui::Interaction,
+        tree: &mut crate::ui::Tree,
+    ) {
         // Drags and pinches.
-        for k in 0..self.tree.orders.with(feat::GESTURE).len() {
-            let i = self.tree.orders.with(feat::GESTURE)[k];
-            let n = &self.tree.nodes[i];
+        for k in 0..tree.orders.with(feat::GESTURE).len() {
+            let i = tree.orders.with(feat::GESTURE)[k];
+            let n = &tree.nodes[i];
             if n.props.drag.is_none() && n.props.pinch.is_none() {
                 continue;
             }
             let key = n.key;
-            let out = self
-                .interaction
-                .run_gesture(i, m, &self.env, &mut self.out, &self.tree);
-            self.tree.nodes[i].gesture = out;
+            let out = interaction.run_gesture(i, m, env, ui_out, tree);
+            tree.nodes[i].gesture = out;
             touched.insert(channel_key(key, DRAG_X));
             touched.insert(channel_key(key, DRAG_Y));
         }
