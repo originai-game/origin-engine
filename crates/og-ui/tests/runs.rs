@@ -475,7 +475,7 @@ fn named_fonts_keep_runtime_fallback_glyphs_beside_digits() {
     assert!(fallback.metrics.has('原'));
     assert!(!fallback.metrics.in_atlas('原'));
     let source = r#"<meta name="component" content="t"><p>原3点</p><style>p { font-family: Brand; }</style>"#;
-    crate::html_text::both(source, &[], |d| {
+    crate::support::both(source, &[], |d| {
         d.ui.set_fonts(Fonts {
             families: vec![FamilyFace {
                 family: "Brand".into(),
@@ -558,7 +558,7 @@ fn ordered_named_families_preserve_primary_glyphs_and_inherit() {
         ),
     ] {
         let source = format!("<meta name=\"component\" content=\"t\">{markup}<style>{css}</style>");
-        crate::html_text::both(&source, &[], |d| {
+        crate::support::both(&source, &[], |d| {
             d.ui.set_fonts(Fonts {
                 body: f.latin.clone(),
                 mono: Some(f.cjk.clone()),
@@ -700,7 +700,7 @@ p { width: max-content; }
 #Comma { font-family: 'Face, Wide', monospace; }
 #Run::part(w) { font-family: Undeclared, "Wide Face", monospace; }
 </style>"#;
-    crate::html_text::both(text, &[], |d| {
+    crate::support::both(text, &[], |d| {
         d.ui.set_fonts(Fonts {
             body: UiFont::unrendered(0.5),
             mono: Some(UiFont::unrendered(1.0)),

@@ -26,7 +26,7 @@
 //!   or `scrollbar-color` not inherited →
 //!   `a_wheel_stops_at_snap_stop_always_and_scrollbar_color_inherits`
 
-use crate::html_text::{Doc, both};
+use crate::support::{Doc, both};
 use og_core::glam::Vec2;
 use og_render::{UiAlign, UiMode};
 use og_ui::*;

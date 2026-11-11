@@ -4,8 +4,12 @@
 //! browser tiers (crates/og-tests-web) compile too.
 #![allow(dead_code)]
 
+mod doc;
 mod scenes;
 
+// Not every binary that includes this support mounts documents.
+#[allow(unused_imports)]
+pub(crate) use doc::{Doc, both, id_text};
 use og_render::RenderScene;
 use og_ui::*;
 pub use scenes::*;

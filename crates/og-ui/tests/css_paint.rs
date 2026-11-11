@@ -746,7 +746,7 @@ fn flex_ratios_absolute_fades_and_state_border_images_render() {
 #Border { width: 240px; height: 64px; border: 12px solid transparent; border-image: linear-gradient(red, red) 12 / 12px; }
 #Border:hover { border-image-source: linear-gradient(lime, lime); }
 </style>"##;
-    let mut d = crate::html_text::Doc::with_font(text, &[], true, add_test_font(&mut scene));
+    let mut d = crate::support::Doc::with_font(text, &[], true, add_test_font(&mut scene));
     d.viewport = Viewport::new(240.0, 392.0);
     d.step(InputFrame::default());
     d.step(InputFrame {

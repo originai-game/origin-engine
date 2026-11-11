@@ -451,8 +451,8 @@ fn focus_within_follows_real_focus_between_retained_ancestors() {
 #Nested:focus-within { width: 160px; }
 button { width: 80px; height: 40px; }
 </style>"#;
-    let mut d = crate::html_text::Doc::new(text, &[], true);
-    let widths = |d: &crate::html_text::Doc| {
+    let mut d = crate::support::Doc::new(text, &[], true);
+    let widths = |d: &crate::support::Doc| {
         [
             d.get("Left").width,
             d.get("Nested").width,

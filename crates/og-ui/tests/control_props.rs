@@ -32,7 +32,7 @@
 //!   inheriting its parent's `text-align` (HTML's sheet centres it), or a
 //!   `<menu>` item's label centred → `a_button_label_takes_text_align`
 
-use crate::html_text::{Doc, both};
+use crate::support::{Doc, both};
 
 use og_core::glam::Vec2;
 use og_ui::*;

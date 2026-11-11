@@ -69,7 +69,7 @@
 //!   floats not mirrored whole in a right-to-left block →
 //!   `floats_take_their_sides_from_the_direction`
 
-use crate::html_text::{Doc, both};
+use crate::support::{Doc, both};
 use og_core::glam::Vec2;
 use og_ui::{ImageAlpha, InputFrame};
 

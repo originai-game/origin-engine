@@ -16,7 +16,7 @@
 //!   to the HUD band on an ultrawide (or narrowing a 16:9 surface), or not
 //!   following UiDesc.hudMaxAspect → `safe_area_insets_clear_the_hosts_covered_control`
 
-use crate::html_text::{Doc, both};
+use crate::support::{Doc, both};
 use og_ui::*;
 use serde_json::json;
 

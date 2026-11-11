@@ -16,7 +16,7 @@
 //!   resize moved, `max-width` ignored, or `resize` applied with overflow
 //!   visible → `a_resize_handle_drags_the_size_onto_the_element`
 
-use crate::html_text::{Doc, both};
+use crate::support::{Doc, both};
 use og_ui::InputFrame;
 use serde_json::json;
 

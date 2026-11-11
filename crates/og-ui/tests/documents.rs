@@ -195,7 +195,7 @@ fn invalid_media_queries_report_document_location_and_fix() {
 
 #[test]
 fn forced_input_density_drives_media_queries_and_retained_updates() {
-    use crate::html_text::Doc;
+    use crate::support::Doc;
     let source = r#"<meta name="component" content="t">
 <column><div id="Pointer"></div><div id="Hover"></div><div id="Pad"></div><input type="number" value="3" /></column>
 <style>
@@ -418,7 +418,7 @@ fn boolean_attribute_selectors_follow_svelte_presence() {
 #Checked { height: 24px; min-height: 0; }
 #Checked:default { height: 40px; }
 </style>"#;
-    crate::html_text::both(source, &[("on", json!(false))], |d| {
+    crate::support::both(source, &[("on", json!(false))], |d| {
         assert!(d.el("Shown").is_some(), "false hidden is absent");
         assert!(d.el("Hidden").is_none(), "true hidden is present");
         assert_eq!(
@@ -1587,9 +1587,9 @@ fn view_timelines_follow_the_subject_through_its_scroller() {
 #Card { height: 50px; width: 100px; animation: slide linear both; animation-timeline: view(); }
 @keyframes slide { from { translate: 0 0; width: 20px; } to { translate: 150px 0; width: 170px; } }
 </style>"#;
-    crate::html_text::both(text, &[], |d| {
+    crate::support::both(text, &[], |d| {
         let b = d.get("Box");
-        let settle = |d: &mut crate::html_text::Doc| {
+        let settle = |d: &mut crate::support::Doc| {
             for _ in 0..40 {
                 d.step(InputFrame::hover(b.x + 10.0, b.y + 10.0));
             }
