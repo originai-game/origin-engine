@@ -46,7 +46,7 @@ impl Probe {
             .as_mut()?
             .capture(world, desc.width, desc.height)?;
         let image = decode_png(&frame.png).ok()?;
-        let css_scale = self.surface_scale(world, image.width);
+        let css_scale = self.host.surface_scale(world, image.width);
         let mut image = image.fit(desc.fit);
         let scale = css_scale * image.width as f32 / frame.width.max(1) as f32;
 

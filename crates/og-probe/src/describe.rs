@@ -18,15 +18,10 @@ fn rect(r: [f32; 4]) -> Value {
     json!({"x": round(r[0], 2), "y": round(r[1], 2), "width": round(r[2], 2), "height": round(r[3], 2)})
 }
 
-impl Probe {
-    /// `describe`: what the frame at the current tick shows, as data
-    /// (IDL `probe.Description`). Entities are nearest first (`order` 0),
-    /// then by id; without a scene view the entity list is empty and
-    /// `pass` and `camera` are null.
+impl crate::probe::state::Host {
     /// The rects the UI draws opaque over the frame (`UiElement::opaque`).
     pub(crate) fn ui_cover(&self, world: &World) -> Vec<[f32; 4]> {
-        self.host
-            .ui
+        self.ui
             .as_ref()
             .map(|ui| {
                 ui.elements(world)
@@ -41,14 +36,17 @@ impl Probe {
     /// The scene view's frame with the UI's opaque rects hiding what they cover.
     pub(crate) fn seen_now(&mut self, world: &World) -> Option<crate::Seen> {
         let cover = self.ui_cover(world);
-        self.host
-            .scene_view
-            .as_mut()
-            .and_then(|v| v.seen(world, &cover))
+        self.scene_view.as_mut().and_then(|v| v.seen(world, &cover))
     }
+}
 
+impl Probe {
+    /// `describe`: what the frame at the current tick shows, as data
+    /// (IDL `probe.Description`). Entities are nearest first (`order` 0),
+    /// then by id; without a scene view the entity list is empty and
+    /// `pass` and `camera` are null.
     pub fn describe(&mut self, world: &World) -> Value {
-        let seen = self.seen_now(world);
+        let seen = self.host.seen_now(world);
         let mut entities = Vec::new();
         let mut views = Vec::new();
         if let Some(seen) = &seen {

@@ -524,13 +524,13 @@ impl Probe {
                 "tick": world.time().tick,
                 "width": frame.width,
                 "height": frame.height,
-                "scale": self.surface_scale(world, frame.width),
+                "scale": self.host.surface_scale(world, frame.width),
                 "region": Value::Null,
                 "png": base64::encode(&frame.png),
             }));
         }
         let image = crate::frame::decode_png(&frame.png).ok()?;
-        let mut scale = self.surface_scale(world, image.width);
+        let mut scale = self.host.surface_scale(world, image.width);
         let image = match region {
             Some([x, y, w, h]) => {
                 let r =
@@ -550,11 +550,13 @@ impl Probe {
             "png": base64::encode(&fitted.png()),
         }))
     }
+}
 
+impl state::Host {
     /// Frame pixels per CSS pixel of the play surface for a frame
     /// `width` pixels wide: 1 without a UI module that knows the surface.
     pub(crate) fn surface_scale(&self, world: &World, width: u32) -> f32 {
-        match self.host.ui.as_ref().and_then(|u| u.surface(world)) {
+        match self.ui.as_ref().and_then(|u| u.surface(world)) {
             Some((w, _, _)) if w > 0.0 => width as f32 / w,
             _ => 1.0,
         }
@@ -566,21 +568,23 @@ impl Probe {
             hash: world.world_hash(),
             world: bytes,
             tick: world.time().tick,
-            render: self.host.capture.as_mut().map_or(0, |c| c.save_state()),
+            render: self.capture.as_mut().map_or(0, |c| c.save_state()),
         }
     }
 
     fn load(&mut self, world: &mut World, saved: &Saved) -> og_core::Result<()> {
-        if let Some(c) = self.host.capture.as_ref() {
+        if let Some(c) = self.capture.as_ref() {
             c.validate_restore(saved.render)?;
         }
         world.restore(&saved.world)?;
-        if let Some(c) = self.host.capture.as_mut() {
+        if let Some(c) = self.capture.as_mut() {
             c.restore_state(saved.render);
         }
         Ok(())
     }
+}
 
+impl Probe {
     /// `sweep`: per value, restore the snapshot taken at the call, patch,
     /// advance (no command steps run) and capture; the world is restored
     /// afterwards. `None` for an unknown entity or parameter, a refused
@@ -611,13 +615,14 @@ impl Probe {
         {
             return Ok(None);
         }
-        let saved = self.save(world);
+        let saved = self.host.save(world);
         let result = if deferred {
             self.sweep_deferred(world, e, desc, &saved)
         } else {
             self.sweep_values(world, e, desc, &saved)
         };
-        self.load(world, &saved)
+        self.host
+            .load(world, &saved)
             .map_err(|err| fault("sweep could not restore the world", err))?;
         result
     }
@@ -631,7 +636,7 @@ impl Probe {
     ) -> og_core::Result<Option<Value>> {
         let mut frames = Vec::with_capacity(desc.values.len());
         for value in &desc.values {
-            self.load(world, saved)?;
+            self.host.load(world, saved)?;
             if self
                 .write_field(world, e, &desc.parameter, value, true)
                 .is_err()
@@ -677,9 +682,9 @@ impl Probe {
                 return Ok(Some(json!({ "frames": job.frames })));
             };
             match &job.waiting {
-                Some(at) => self.load(world, at)?,
+                Some(at) => self.host.load(world, at)?,
                 None => {
-                    self.load(world, saved)?;
+                    self.host.load(world, saved)?;
                     if self
                         .write_field(world, e, &desc.parameter, value, true)
                         .is_err()
@@ -689,7 +694,7 @@ impl Probe {
                     for _ in 0..desc.steps {
                         self.tick_once(world)?;
                     }
-                    job.waiting = Some(self.save(world));
+                    job.waiting = Some(self.host.save(world));
                     job.polls = 0;
                 }
             }
@@ -861,7 +866,7 @@ impl Probe {
 
     /// `snapshot`: the whole world, kept in this process.
     pub fn snapshot(&mut self, world: &World) -> Value {
-        let saved = self.save(world);
+        let saved = self.host.save(world);
         let id = format!("s{}", self.saves.next_snapshot);
         self.saves.next_snapshot += 1;
         let presentation = self
@@ -898,7 +903,7 @@ impl Probe {
         else {
             return false;
         };
-        let ok = self.load(world, &saved).is_ok();
+        let ok = self.host.load(world, &saved).is_ok();
         if ok {
             self.clock.quit = false;
         }
