@@ -375,7 +375,7 @@ pub(crate) fn stamp(eng: &Engine, desc: &Value) -> Result<Value, String> {
         )
     })?;
     let next = {
-        let log = log_of(eng.id);
+        let log = log_of(eng);
         let log = log.lock().expect("the edit log");
         log.edits
             .iter()
@@ -392,7 +392,7 @@ pub(crate) fn unstamp(eng: &Engine, data: f64, stamp: u32) -> Result<Value, Stri
     let i = index_of(eng, data)?;
     let id = terrain_id(&eng.render.borrow().terrain, i);
     let samples = {
-        let shared = log_of(eng.id);
+        let shared = log_of(eng);
         let mut log = shared.lock().expect("the edit log");
         let k = log
             .edits

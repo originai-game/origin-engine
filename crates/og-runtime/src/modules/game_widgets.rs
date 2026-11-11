@@ -218,38 +218,32 @@ pub fn og_ui_tick() -> u32 {
 
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
     let v = wire::arg::<Option<wire::Viewport>>(Some(&viewport), "viewport").unwrap_or_default();
-    let set = PREVIEW.with(|p| {
-        let mut p = p.borrow_mut();
-        if let Some(v) = v {
-            let (a, c) = (v.safe_area, v.covered.unwrap_or_default());
-            let n = |x: Option<f32>| x.unwrap_or(0.0);
-            p.insert(
-                world,
-                Viewport {
-                    width: v.width.max(1.0),
-                    height: v.height.max(1.0),
-                    dpr: v.dpr,
-                    safe_area: Insets {
-                        left: a.left,
-                        top: a.top,
-                        right: a.right,
-                        bottom: a.bottom,
-                    },
-                    small: [n(v.small_width), n(v.small_height)],
-                    large: [n(v.large_width), n(v.large_height)],
-                    coarse_pointer: v.coarse_pointer,
-                    reduced_motion: v.reduced_motion.unwrap_or(false),
-                    high_contrast: v.high_contrast.unwrap_or(false),
-                    reduced_transparency: v.reduced_transparency.unwrap_or(false),
-                    mac_keys: v.mac_keys.unwrap_or(false),
-                    covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
-                },
-            );
-        } else {
-            p.remove(&world);
+    let set = v.map(|v| {
+        let (a, c) = (v.safe_area, v.covered.unwrap_or_default());
+        let n = |x: Option<f32>| x.unwrap_or(0.0);
+        Viewport {
+            width: v.width.max(1.0),
+            height: v.height.max(1.0),
+            dpr: v.dpr,
+            safe_area: Insets {
+                left: a.left,
+                top: a.top,
+                right: a.right,
+                bottom: a.bottom,
+            },
+            small: [n(v.small_width), n(v.small_height)],
+            large: [n(v.large_width), n(v.large_height)],
+            coarse_pointer: v.coarse_pointer,
+            reduced_motion: v.reduced_motion.unwrap_or(false),
+            high_contrast: v.high_contrast.unwrap_or(false),
+            reduced_transparency: v.reduced_transparency.unwrap_or(false),
+            mac_keys: v.mac_keys.unwrap_or(false),
+            covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
         }
-        p.get(&world).copied()
     });
+    if let Ok(eng) = engine(world) {
+        eng.modules.ui.preview.set(set);
+    }
     // The screen overlay (screen sprites and texts, the UI) is laid on the
     // previewed CSS surface too: a capture at 2 device pixels per CSS pixel
     // drew the UI at 1 in the corner of its frame when a screen sprite (a

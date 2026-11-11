@@ -50,12 +50,11 @@ pub(super) struct Shared {
     pub(super) ops: Vec<(u64, Op)>,
 }
 
-thread_local! {
-    static SHARED: RefCell<IdMap<u32, Arc<Mutex<Shared>>>> = const { RefCell::new(IdMap::new()) };
-}
-
+/// Engine `engine`'s runs (fresh ones for an engine that is gone).
 pub(super) fn shared(engine: u32) -> Arc<Mutex<Shared>> {
-    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
+    crate::engine::engine(engine)
+        .map(|e| e.modules.timeline.playback.clone())
+        .unwrap_or_default()
 }
 
 fn has_timeline(eng: &Engine, e: Entity) -> Result<u64, String> {
@@ -326,10 +325,11 @@ pub(crate) fn register_records(
 /// before og.anim) and the og.timeline state block.
 pub(crate) fn install(
     world: &mut World,
-    engine_id: u32,
+    mount: crate::engine::Mount<'_>,
     layouts: &BTreeMap<String, Layout>,
     ui: &og_ui::SharedUi,
 ) -> Result<(), String> {
+    let engine_id = mount.id;
     let err = |e: Error| e.reason().to_string();
     let get = |n: &str| -> Result<(SchemaId, Layout), String> {
         let id = world.id_by_name(n).map_err(err)?;
@@ -371,7 +371,7 @@ pub(crate) fn install(
             move |ctx| path_system(ctx, engine_id, &rec),
         )
         .map_err(err)?;
-    let sh = shared(engine_id);
+    let sh = mount.modules.timeline.playback.clone();
     *lock(&sh) = Shared::default();
     let rec = r.clone();
     let ui = ui.clone();

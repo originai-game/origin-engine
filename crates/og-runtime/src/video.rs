@@ -29,7 +29,6 @@ use super::wire::{self, ToJson, VideoCapabilities, VideoInfo};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use serde_json::{Value, json};
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
@@ -59,20 +58,25 @@ struct Clip {
 
 type Clips = Arc<Mutex<IdMap<u64, Clip>>>;
 
-thread_local! {
-    /// Each engine's loaded videos, by Video handle (kept across a reload).
-    static CLIPS: RefCell<IdMap<u32, Clips>> = const { RefCell::new(IdMap::new()) };
-    static MEDIA: RefCell<IdMap<u32, Media>> = const { RefCell::new(IdMap::new()) };
+/// og.video on one engine: its loaded videos, by Video handle (kept across
+/// a reload), and the state of the players and sounds its documents name,
+/// as the last tick left them (presentation: documents read it).
+#[derive(Default)]
+pub(crate) struct ModuleState {
+    clips: Clips,
+    media: Arc<Mutex<Media>>,
 }
 
 /// The state of `player` for a document ([`og_ui::bind::Env::media`]).
 pub(crate) fn media_state(engine: u32, player: u64) -> Option<(og_ui::bind::MediaState, f64)> {
-    MEDIA.with(|m| {
-        m.borrow()
-            .get(&engine)
-            .and_then(|m| m.get(&player))
-            .copied()
-    })
+    let eng = super::engine::engine(engine).ok()?;
+    let media = eng
+        .modules
+        .video
+        .media
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    media.get(&player).copied()
 }
 
 /// Sends a frame's `<video>` and `<audio>` requests as og.MediaIntent.
@@ -176,8 +180,8 @@ struct MediaLayouts {
     intent: Option<Layout>,
 }
 
-fn clips(engine: u32) -> Clips {
-    CLIPS.with(|c| c.borrow_mut().entry(engine).or_default().clone())
+fn clips(eng: &super::engine::Engine) -> Clips {
+    eng.modules.video.clips.clone()
 }
 
 /// A loaded video in the render state (by Video handle index).
@@ -312,15 +316,17 @@ fn record(
 /// its type table and hash; until then the system has nothing to play.
 pub(crate) fn install(
     world: &mut World,
-    engine_id: u32,
+    mount: super::engine::Mount<'_>,
     layouts: &BTreeMap<String, Layout>,
 ) -> Result<(), String> {
+    let engine_id = mount.id;
     let player = layouts
         .get(PLAYER)
         .cloned()
         .ok_or_else(|| format!("{PLAYER} has no layout"))?;
     let audio = record(world, layouts, AUDIO)?;
-    let shared = clips(engine_id);
+    let shared = mount.modules.video.clips.clone();
+    let media = mount.modules.video.media.clone();
     let player = MediaLayouts {
         player,
         intent: layouts.get(MEDIA_INTENT).cloned(),
@@ -332,7 +338,7 @@ pub(crate) fn install(
                 writes: vec![AUDIO.into()],
                 ..Default::default()
             },
-            move |ctx| run(ctx, engine_id, &shared, &player, &audio),
+            move |ctx| run(ctx, engine_id, &shared, &media, &player, &audio),
         )
         .map_err(|e| e.reason().to_string())
 }
@@ -351,6 +357,7 @@ fn run(
     ctx: &mut SystemContext<'_>,
     engine_id: u32,
     shared: &Mutex<IdMap<u64, Clip>>,
+    media_out: &Mutex<Media>,
     layouts: &MediaLayouts,
     audio: &(SchemaId, Layout),
 ) -> og_core::Result<()> {
@@ -368,13 +375,10 @@ fn run(
         }
     }
     let publish = |media: Media| {
-        MEDIA.with(|m| {
-            let mut m = m.borrow_mut();
-            let all = m.entry(engine_id).or_default();
-            // A sound keeps its last state between the ticks it is named.
-            all.retain(|_, (s, _)| s.duration == 0.0);
-            all.extend(media);
-        });
+        let mut all = media_out.lock().unwrap_or_else(|e| e.into_inner());
+        // A sound keeps its last state between the ticks it is named.
+        all.retain(|_, (s, _)| s.duration == 0.0);
+        all.extend(media);
     };
     let Ok(id) = ctx.id_by_name(PLAYER) else {
         publish(media);
@@ -794,18 +798,15 @@ fn load_video(eng: &Engine, path: &str) -> Result<VideoInfo, String> {
         stream,
     });
     rs.video_player = player;
-    clips(eng.id)
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .insert(
-            video,
-            Clip {
-                fps: meta.fps,
-                frames: meta.frames,
-                seconds: f64::from(meta.frames) / f64::from(meta.fps),
-                sound,
-            },
-        );
+    clips(eng).lock().unwrap_or_else(|e| e.into_inner()).insert(
+        video,
+        Clip {
+            fps: meta.fps,
+            frames: meta.frames,
+            seconds: f64::from(meta.frames) / f64::from(meta.fps),
+            sound,
+        },
+    );
     Ok(info)
 }
 

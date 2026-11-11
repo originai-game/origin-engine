@@ -28,7 +28,7 @@
 //! neither the system nor the block, so its saves and hash are unchanged.
 
 use super::codec::{Layout, RecordKind};
-use super::engine::{Engine, engine, queued_structural, running};
+use super::engine::{Engine, Mount, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState};
 use super::wire::{self, Carve2dDesc, Explosion2dDesc, Fill2dDesc, Fracture2dDesc};
 use super::{ok, ok_void, refuse};
@@ -39,7 +39,6 @@ use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc,
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -152,17 +151,10 @@ struct Shared {
     epoch: u64,
 }
 
-thread_local! {
-    static SHARED: RefCell<og_core::IdMap<u32, Arc<Mutex<Shared>>>> = const { RefCell::new(og_core::IdMap::new()) };
-}
-
-fn shared(engine: u32) -> Arc<Mutex<Shared>> {
-    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
-}
-
-fn existing(engine: u32) -> Option<Arc<Mutex<Shared>>> {
-    SHARED.with(|s| s.borrow().get(&engine).cloned())
-}
+/// og.destruction2d on one engine: the state its world's block saves,
+/// shared with its system, its calls and extraction.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState(Arc<Mutex<Shared>>);
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
@@ -641,7 +633,7 @@ const WRITES: [&str; 4] = ["og.Transform", "og.RigidBody", "og.Velocity", "og.Co
 
 /// Registers the `og.destruction2d` system and its state block once every
 /// one of [`RECORDS`] is (super::lazy registers them one after another).
-pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
+pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()> {
     if world.systems().contains(&SYSTEM) || RECORDS.iter().any(|n| world.id_by_name(n).is_err()) {
         return Ok(());
     }
@@ -668,9 +660,10 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
         velocity: layout("og.Velocity", C)?,
         collider: layout("og.Collider", C)?,
     };
-    let sh = shared(engine_id);
+    let sh = mount.modules.destruction2d.0.clone();
     lock(&sh).state = State::default();
     let state = sh.clone();
+    let destruction = mount.modules.destruction.clone();
     let s = |v: &[&str]| v.iter().map(|n| n.to_string()).collect::<Vec<_>>();
     world.add_system(
         SystemDesc {
@@ -683,7 +676,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
             }],
             ..Default::default()
         },
-        move |ctx| run(ctx, engine_id, &state, &ls),
+        move |ctx| run(ctx, &destruction, &state, &ls),
     )?;
     if world.systems().contains(&"og.physics") {
         world.move_system_before(SYSTEM, "og.physics")?;
@@ -744,11 +737,11 @@ fn quat_of(t: &Value) -> Quat {
 
 fn run(
     ctx: &mut SystemContext<'_>,
-    engine_id: u32,
+    destruction: &super::destruction::ModuleState,
     sh: &Mutex<Shared>,
     l: &Ls,
 ) -> og_core::Result<()> {
-    let physics = super::destruction::physics(engine_id);
+    let physics = super::destruction::physics(destruction);
     let tick = ctx.time().tick;
     let mut rows = Vec::new();
     for a in ctx.query(0)? {
@@ -1330,7 +1323,7 @@ struct Drawable<'a> {
 
 /// Draws every terrain and piece as a sprite of its cells.
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
-    let Some(sh) = existing(rs.engine) else {
+    let Ok(sh) = engine(rs.engine).map(|e| e.modules.destruction2d.0.clone()) else {
         return;
     };
     let g = lock(&sh);
@@ -1497,8 +1490,8 @@ fn size(r: f32, key: &str) -> Result<f32, String> {
     }
 }
 
-fn queue(world: u32, op: Op) {
-    lock(&shared(world)).state.ops.push(op);
+fn queue(eng: &Engine, op: Op) {
+    lock(&eng.modules.destruction2d.0).state.ops.push(op);
 }
 
 pub fn og_destruction_carve2d(world: u32, entity: f64, desc: Option<String>) -> String {
@@ -1507,7 +1500,7 @@ pub fn og_destruction_carve2d(world: u32, entity: f64, desc: Option<String>) -> 
         let entity = terrain_of(&eng, entity)?;
         let d: Carve2dDesc = wire::arg(desc.as_deref(), "desc")?;
         queue(
-            world,
+            &eng,
             Op::Carve {
                 entity,
                 point: point2(d.point)?,
@@ -1524,7 +1517,7 @@ pub fn og_destruction_fill2d(world: u32, entity: f64, desc: Option<String>) -> S
         let entity = terrain_of(&eng, entity)?;
         let d: Fill2dDesc = wire::arg(desc.as_deref(), "desc")?;
         queue(
-            world,
+            &eng,
             Op::Fill {
                 entity,
                 point: point2(d.point)?,
@@ -1556,7 +1549,7 @@ pub fn og_destruction_explode2d(world: u32, desc: Option<String>) -> String {
             None => eng.world()?.systems().contains(&SYSTEM),
         };
         if registered {
-            queue(world, op);
+            queue(&eng, op);
         }
         Ok(())
     })())
@@ -1574,7 +1567,7 @@ pub fn og_destruction_fracture2d(world: u32, entity: f64, desc: Option<String>) 
         }
         let d: Fracture2dDesc = wire::arg(desc.as_deref(), "desc")?;
         queue(
-            world,
+            &eng,
             Op::Fracture {
                 entity: e.to_bits(),
                 pieces: d.pieces.clamp(1, 256),
@@ -1589,8 +1582,7 @@ pub fn og_destruction_cell2d(world: u32, entity: f64, point: String) -> String {
         let eng = engine(world)?;
         let key = terrain_of(&eng, entity)?;
         let p = point2(wire::arg(Some(&point), "point")?)?;
-        let sh = shared(world);
-        let g = lock(&sh);
+        let g = lock(&eng.modules.destruction2d.0);
         let t = g.state.terrains.get(&key).ok_or_else(|| {
             format!("entity {key}'s og.PixelTerrain is not filled yet (the tick after it is added)")
         })?;

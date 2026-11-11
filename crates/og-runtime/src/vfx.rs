@@ -20,7 +20,6 @@ use og_render::{
     TrailStyle,
 };
 use serde_json::{Value, json};
-use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
 pub(crate) const COMPONENT: &str = "og.Vfx";
@@ -85,13 +84,9 @@ pub(crate) struct Loaded {
 /// og.vfx system and extraction.
 pub(crate) type Registry = Arc<Mutex<Vec<Arc<Loaded>>>>;
 
-thread_local! {
-    static SHARED: RefCell<og_core::IdMap<u32, Registry>> = const { RefCell::new(og_core::IdMap::new()) };
-}
-
-pub(crate) fn shared(engine: u32) -> Registry {
-    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
-}
+/// og.vfx on one engine: the effects its world loaded.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState(Registry);
 
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
@@ -189,7 +184,7 @@ fn link(eng: &super::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
 /// `og.load.vfx`: its load index, loading what it names once.
 pub(crate) fn load(eng: &super::engine::Engine, path: &str) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
-    let registry = shared(eng.id);
+    let registry = eng.modules.vfx.0.clone();
     if let Some(i) = lock(&registry).iter().position(|l| l.id == id) {
         return Ok(i);
     }
@@ -214,8 +209,9 @@ pub(crate) fn load(eng: &super::engine::Engine, path: &str) -> Result<usize, Str
 }
 
 fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
+    let registry = super::engine::engine(engine).map(|e| e.modules.vfx.0.clone());
     index(&json!(asset))
-        .and_then(|i| lock(&shared(engine)).get(i).cloned())
+        .and_then(|i| lock(registry.as_ref().ok()?).get(i).cloned())
         .ok_or_else(|| format!("{asset} is not a vfx loaded in this world (og.load.vfx)"))
 }
 
@@ -391,7 +387,8 @@ fn spawned(world: &World, name: &str) -> og_core::Result<(SchemaId, Layout)> {
 
 /// Registers og.vfx on a world that names og.Vfx or og.VfxEvent
 /// (`super::lazy`), after every system scheduled so far.
-pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
+pub(crate) fn enable(world: &mut World, mount: super::engine::Mount<'_>) -> og_core::Result<()> {
+    let engine_id = mount.id;
     if world.systems().contains(&SYSTEM) || world.id_by_name(COMPONENT).is_err() {
         return Ok(());
     }
@@ -414,7 +411,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
         .ok()
         .and_then(|e| e.state.borrow().feel.clone())
         .map(|f| f.shared);
-    let registry = shared(engine_id);
+    let registry = mount.modules.vfx.0.clone();
     let names = [COMPONENT, "og.Parent"];
     world.add_system(
         SystemDesc {

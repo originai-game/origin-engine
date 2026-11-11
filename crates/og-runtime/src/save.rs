@@ -37,11 +37,10 @@
 //! ([`after_tick`]); elsewhere it applies at once. Either way the next
 //! tick delivers og.WorldRestored ([`before_tick`]).
 
-use super::engine::{Engine, engine, running};
+use super::engine::{Engine, HANDLES, engine, running};
 use super::wire::{SaveRecord, SaveType, ToJson};
 use og_ecs::{SnapshotEdit, TypeValues, World};
 use serde_json::{Value, json};
-use std::cell::RefCell;
 
 const PREFIX: &str = "og-save:";
 const MAGIC: &[u8; 4] = b"OGSV";
@@ -465,16 +464,12 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
 
 /// An open save: its engine, the snapshot opened for editing, the tick it
 /// was taken at, and the game's save version it is at.
-struct Open {
+pub(crate) struct Open {
     engine: u32,
     edit: SnapshotEdit,
     tick: u64,
     version: u32,
     ui: Option<super::presentation::UiCheckpoint>,
-}
-
-thread_local! {
-    static OPEN: RefCell<Vec<Option<Open>>> = const { RefCell::new(Vec::new()) };
 }
 
 /// `World.openSave`: the save with the engine's migrations applied, open
@@ -500,8 +495,8 @@ pub fn og_world_open_save(world: u32, save: String) -> String {
         version: s.version,
         ui: s.ui,
     };
-    let handle = OPEN.with(|o| {
-        let mut o = o.borrow_mut();
+    let handle = HANDLES.with(|h| {
+        let o = &mut h.borrow_mut().saves;
         match o.iter().position(Option::is_none) {
             Some(i) => {
                 o[i] = Some(open);
@@ -517,8 +512,8 @@ pub fn og_world_open_save(world: u32, save: String) -> String {
 }
 
 fn with_open<T>(handle: u32, f: impl FnOnce(&mut Open) -> Result<T, String>) -> Result<T, String> {
-    OPEN.with(|o| {
-        let mut o = o.borrow_mut();
+    HANDLES.with(|h| {
+        let o = &mut h.borrow_mut().saves;
         let open = (handle as usize)
             .checked_sub(1)
             .and_then(|i| o.get_mut(i))
@@ -737,14 +732,13 @@ pub fn og_save_edit_text(edit: u32) -> String {
 
 /// `SaveEdit.close`.
 pub fn og_save_edit_close(edit: u32) {
-    OPEN.with(|o| {
-        if let Some(slot) = (edit as usize)
+    // Taken out of the table before it is dropped.
+    let slot = HANDLES.with(|h| {
+        (edit as usize)
             .checked_sub(1)
-            .and_then(|i| o.borrow_mut().get_mut(i).map(Option::take))
-        {
-            drop(slot);
-        }
+            .and_then(|i| h.borrow_mut().saves.get_mut(i).map(Option::take))
     });
+    drop(slot);
 }
 
 /// The probe's end-of-tick hook: a restore asked for during the tick.

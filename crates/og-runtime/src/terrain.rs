@@ -84,19 +84,14 @@ pub(crate) struct EditLog {
 
 pub(crate) type SharedLog = Arc<std::sync::Mutex<EditLog>>;
 
-thread_local! {
-    /// Each engine's edit log (its worlds' og.terrain blocks share it).
-    static LOGS: std::cell::RefCell<IdMap<u32, SharedLog>> = const { std::cell::RefCell::new(IdMap::new()) };
-}
+/// og.terrain on one engine: its edit log (its worlds' og.terrain blocks
+/// share it).
+#[derive(Default)]
+pub(crate) struct ModuleState(SharedLog);
 
-/// Engine `id`'s edit log.
-pub(crate) fn log_of(id: u32) -> SharedLog {
-    LOGS.with(|l| l.borrow_mut().entry(id).or_default().clone())
-}
-
-/// The engine is gone.
-pub(crate) fn retire(id: u32) {
-    LOGS.with(|l| l.borrow_mut().remove(&id));
+/// An engine's edit log.
+pub(crate) fn log_of(eng: &Engine) -> SharedLog {
+    eng.modules.terrain.0.clone()
 }
 
 /// The probe's `terrain_stream:<stream|resident>[:<MiB>]`: `resident`
@@ -225,8 +220,8 @@ const TERRAIN_SYSTEM: &str = "og.terrain";
 
 /// The og.terrain system (front: before physics steps) and the edit log's
 /// state block.
-pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
-    let log = log_of(engine_id);
+pub(crate) fn mount(world: &mut World, mount: super::engine::Mount<'_>) -> Result<(), String> {
+    let (engine_id, log) = (mount.id, mount.modules.terrain.0.clone());
     world
         .add_state_block(TERRAIN_SYSTEM, Box::new(TerrainBlock(log)))
         .map_err(|e| e.reason().to_string())?;
@@ -244,7 +239,7 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
 /// After a restore: every terrain back as cooked, then the restored edits.
 pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
     let edits = {
-        let shared = log_of(eng.id);
+        let shared = log_of(eng);
         let mut log = shared.lock().expect("the edit log");
         if !log.replay {
             return Ok(());
@@ -1056,7 +1051,7 @@ fn edit(eng: &Engine, i: usize, b: &Value, log: bool) -> Result<TerrainEdit, Str
         };
         if log {
             let id = terrain_id(&eng.render.borrow().terrain, i);
-            log_of(eng.id)
+            log_of(eng)
                 .lock()
                 .expect("the edit log")
                 .edits

@@ -22,6 +22,8 @@ mod tick;
 #[cfg(not(feature = "publish"))]
 pub(crate) use tick::advance_probe;
 pub use tick::{advance, answer_call, call_rpc, frame, take_log, take_outputs};
+mod module_state;
+pub(crate) use module_state::{Modules, Mount};
 mod resources;
 use crate::{
     anim, api, art, assets, atmosphere, codec, e6, extract, feel, fx, i18n, interpolate, look,
@@ -235,8 +237,21 @@ pub(crate) struct Handles {
     pub timelines: Table<crate::feel::TimelineRef>,
     /// Spatial indexes (world.spatial), retired with the views.
     pub spatial: Table<(u32, og_ecs::SpatialHash)>,
+    /// Saves open for the game's migrations (World.openSave, SaveEdit),
+    /// by handle less one; a closed one's slot is reused.
+    pub saves: Vec<Option<crate::save::Open>>,
 }
 
+// The runtime's process roots: what the host ABI holds before, across and
+// between engines, never the state of one engine (that is `Engine`, its
+// world and its modules' `Modules`). The game's declarations (made before
+// any engine), the host's hooks, the live engines, the handles interface
+// objects carry (views, queries, streams, open saves: a member names only
+// its object's handle), and the running system's frame. Besides these,
+// `modules` (the engine whose UI frame is open), `resources` (the layout
+// epoch every engine's resource handles carry), `trace` (process
+// profiling, before an engine exists) and two memo caches keyed by their
+// inputs (`seabed`, `modules::ui_desc`) are the only thread-locals.
 thread_local! {
     pub(crate) static HANDLES: RefCell<Handles> = RefCell::new(Handles::default());
     pub(crate) static HOOKS: RefCell<Option<Rc<dyn Hooks>>> = RefCell::new(None);

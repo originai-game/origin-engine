@@ -693,15 +693,16 @@ pub(crate) fn mesh_of(data: &og_render::MeshData) -> MeshDesc {
 
 // ── ui: the game widget set ─────────────────────────────────────────────────
 
-thread_local! {
-    /// Viewports set by og.ui.previewViewport, by engine: they win over the host's.
-    static PREVIEW: std::cell::RefCell<og_core::IdMap<u32, Viewport>> =
-        const { std::cell::RefCell::new(og_core::IdMap::new()) };
+/// The UI on one engine: the viewport og.ui.previewViewport set, which
+/// wins over the host's.
+#[derive(Default)]
+pub(crate) struct ModuleState {
+    preview: Cell<Option<Viewport>>,
 }
 
 /// The previewed viewport of an engine, when one is set.
 fn preview_of(engine_id: u32) -> Option<Viewport> {
-    PREVIEW.with(|p| p.borrow().get(&engine_id).copied())
+    engine(engine_id).ok()?.modules.ui.preview.get()
 }
 
 #[cfg(test)]
@@ -781,15 +782,6 @@ mod tests {
             v["macKeys"].as_bool(),
             Some(cfg!(target_os = "macos")),
             "{v}"
-        );
-        let set = Viewport {
-            mac_keys: false,
-            ..Viewport::new(800.0, 600.0)
-        };
-        PREVIEW.with(|p| p.borrow_mut().insert(u32::MAX - 1, set));
-        assert!(
-            !viewport_of(u32::MAX - 1).mac_keys,
-            "a set viewport is kept"
         );
     }
 }

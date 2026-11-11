@@ -5,14 +5,13 @@
 use super::engine::{Engine, engine};
 use super::wire::{self, LocaleInfo};
 use super::{parse, refuse};
-use og_core::IdMap;
 use og_i18n::{Arg, Catalog, StringTable};
 use serde_json::{Value, json};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Default)]
-struct State {
+pub(crate) struct State {
     catalog: Catalog,
     /// Font paths of the active chain, as last applied to the UI.
     fonts: Vec<String>,
@@ -28,12 +27,16 @@ struct State {
     pending: Vec<String>,
 }
 
-thread_local! {
-    static STATES: RefCell<IdMap<u32, State>> = const { RefCell::new(IdMap::new()) };
-}
+/// og.i18n on one engine: its string tables, the active locale and its
+/// fonts.
+pub(crate) type ModuleState = RefCell<State>;
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut State) -> T) -> T {
-    STATES.with(|s| f(s.borrow_mut().entry(engine).or_default()))
+    match super::engine::engine(engine) {
+        Ok(eng) => f(&mut eng.modules.i18n.borrow_mut()),
+        // An engine that is gone, or not made yet, has none: a fresh one.
+        Err(_) => f(&mut State::default()),
+    }
 }
 
 /// Adds a document's or a dialogue's authored strings to the base table.
@@ -107,9 +110,9 @@ pub(crate) fn message(engine: u32, key: &str) -> Option<String> {
 }
 
 /// The host's locale at creation (`og run --locale`, the browser's language).
-pub(crate) fn request(engine: u32, locale: &str) {
+pub(crate) fn request(eng: &Engine, locale: &str) {
     if !locale.trim().is_empty() {
-        with(engine, |s| s.catalog.request(&[locale]));
+        eng.modules.i18n.borrow_mut().catalog.request(&[locale]);
     }
 }
 
@@ -292,13 +295,11 @@ pub(crate) fn resolve_missing(
 /// the first frame again until none is left, so a boot never shows a
 /// locale's text missing while its pack is fetched.
 pub fn fonts_pending() -> u32 {
-    let (faces, engines): (u32, Vec<u32>) = STATES.with(|s| {
-        let s = s.borrow();
-        (
-            s.values().map(|st| st.pending.len() as u32).sum(),
-            s.keys().copied().collect(),
-        )
-    });
+    let engines = super::engine::engine_ids();
+    let faces: u32 = engines
+        .iter()
+        .map(|&id| with(id, |s| s.pending.len() as u32))
+        .sum();
     // And their glyphs still rendering: the first frame shows the text whole.
     faces
         + engines
@@ -394,10 +395,6 @@ pub fn og_i18n_t(world: u32, key: String, args: Option<String>) -> String {
 
 pub fn og_i18n_has(world: u32, key: String) -> bool {
     with(world, |s| s.catalog.has(&key))
-}
-
-pub(crate) fn retire(engine: u32) {
-    STATES.with(|s| s.borrow_mut().remove(&engine));
 }
 
 pub fn og_i18n_format_number(world: u32, value: f64, format: Option<String>) -> String {

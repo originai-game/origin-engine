@@ -25,7 +25,7 @@
 //! neither the system nor the block, so its saves and hash are unchanged.
 
 use super::codec::{Layout, RecordKind};
-use super::engine::{Engine, engine};
+use super::engine::{Engine, Mount, engine};
 use super::wire::{
     self, DamageDesc, DestructibleInfo, DestructibleMaterial, DestructionCapabilities,
     ExplosionDesc,
@@ -38,7 +38,6 @@ use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc,
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -178,29 +177,28 @@ enum Op {
     },
 }
 
-thread_local! {
-    static SHARED: RefCell<og_core::IdMap<u32, Arc<Mutex<State>>>> = const { RefCell::new(og_core::IdMap::new()) };
-    static ASSETS: RefCell<og_core::IdMap<u32, Arc<Mutex<Assets>>>> = const { RefCell::new(og_core::IdMap::new()) };
-}
-
 /// The fracture assets of an engine's loaded models, by asset handle.
 type Assets = BTreeMap<u64, Arc<FractureAsset>>;
 
-thread_local! {
-    /// Each engine's physics, for the scene queries the system makes
-    /// (what a loose island rests on).
-    static PHYSICS: RefCell<BTreeMap<u32, og_physics::PhysicsSystem>> =
-        const { RefCell::new(BTreeMap::new()) };
+/// og.destruction on one engine: the state its world's block saves (shared
+/// with its system and its calls), its models' fracture assets, and the
+/// physics its system queries (what a loose island rests on), set with the
+/// world's.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState {
+    state: Arc<Mutex<State>>,
+    assets: Arc<Mutex<Assets>>,
+    physics: Arc<Mutex<Option<og_physics::PhysicsSystem>>>,
 }
 
 /// The physics an engine's destruction queries (made with its world).
-pub(crate) fn set_physics(engine: u32, physics: &og_physics::PhysicsSystem) {
-    PHYSICS.with(|m| m.borrow_mut().insert(engine, physics.clone()));
+pub(crate) fn set_physics(m: &ModuleState, physics: &og_physics::PhysicsSystem) {
+    *lock(&m.physics) = Some(physics.clone());
 }
 
 /// The physics of an engine (og.destruction2d registers its meshes there).
-pub(crate) fn physics(engine: u32) -> Option<og_physics::PhysicsSystem> {
-    PHYSICS.with(|m| m.borrow().get(&engine).cloned())
+pub(crate) fn physics(m: &ModuleState) -> Option<og_physics::PhysicsSystem> {
+    lock(&m.physics).clone()
 }
 
 /// How often (in ticks) a loose island at rest is solved on what holds it.
@@ -386,12 +384,9 @@ fn supports_of(
     out
 }
 
-fn shared(engine: u32) -> Arc<Mutex<State>> {
-    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
-}
-
-fn assets(engine: u32) -> Arc<Mutex<Assets>> {
-    ASSETS.with(|s| s.borrow_mut().entry(engine).or_default().clone())
+/// Engine `id`'s og.destruction.
+fn module(id: u32) -> Result<ModuleState, String> {
+    Ok(crate::engine::engine(id)?.modules.destruction.clone())
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -433,7 +428,7 @@ pub(crate) fn load_asset(eng: &Engine, id: &str, index: usize) -> Result<(), Str
             .bundle_for(id)
             .is_ok_and(|(b, _)| b.output(&blob).is_ok());
         if !has {
-            lock(&assets_of(eng)).remove(&handle);
+            lock(&eng.modules.destruction.assets).remove(&handle);
             return Ok(());
         }
         let (bytes, bundle) = assets.blob(&blob)?;
@@ -457,12 +452,8 @@ pub(crate) fn load_asset(eng: &Engine, id: &str, index: usize) -> Result<(), Str
             super::modules::set_mesh(eng, hull_handle(handle, i as u32), mesh)?;
         }
     }
-    lock(&assets_of(eng)).insert(handle, Arc::new(a));
+    lock(&eng.modules.destruction.assets).insert(handle, Arc::new(a));
     Ok(())
-}
-
-fn assets_of(eng: &Engine) -> Arc<Mutex<Assets>> {
-    assets(eng.id)
 }
 
 // ── the system ───────────────────────────────────────────────────────────────
@@ -501,7 +492,7 @@ const WRITES: [&str; 6] = [
 
 /// Registers the `og.destruction` system and its state block once every
 /// one of [`RECORDS`] is (super::lazy registers them one after another).
-pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
+pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()> {
     if world.systems().contains(&SYSTEM) || RECORDS.iter().any(|n| world.id_by_name(n).is_err()) {
         return Ok(());
     }
@@ -538,9 +529,9 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
         collision: layout("og.CollisionStarted", E)?,
         physics: layout("og.Physics", R)?,
     };
-    let sh = shared(engine_id);
-    *lock(&sh) = State::default();
-    let (state, assets) = (sh.clone(), assets(engine_id));
+    let m = mount.modules.destruction.clone();
+    *lock(&m.state) = State::default();
+    let sh = m.state.clone();
     let s = |v: &[&str]| v.iter().map(|n| n.to_string()).collect::<Vec<_>>();
     world.add_system(
         SystemDesc {
@@ -553,7 +544,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
             }],
             ..Default::default()
         },
-        move |ctx| run(ctx, engine_id, &state, &assets, &ls),
+        move |ctx| run(ctx, &m, &ls),
     )?;
     if world.systems().contains(&"og.physics") {
         world.move_system_before(SYSTEM, "og.physics")?;
@@ -686,13 +677,7 @@ fn relative(root: &Pose, child: &Pose) -> Pose {
     )
 }
 
-fn run(
-    ctx: &mut SystemContext<'_>,
-    engine: u32,
-    state: &Mutex<State>,
-    assets: &Mutex<Assets>,
-    l: &Ls,
-) -> og_core::Result<()> {
+fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<()> {
     let time = ctx.time();
     let tick = time.tick;
     let dt = time.dt.max(1e-6);
@@ -700,8 +685,8 @@ fn run(
     let res = l.resource.1.decode(&ctx.resource_bytes(l.resource.0)?);
     let debris_volume = num(&res, "debrisVolume", 0.004);
     let gravity = v3(&l.physics.1.decode(&ctx.resource_bytes(l.physics.0)?)["gravity"]);
-    let assets = lock(assets).clone();
-    let mut guard = lock(state);
+    let assets = lock(&m.assets).clone();
+    let mut guard = lock(&m.state);
     let st = &mut *guard;
     let alive = |ctx: &SystemContext<'_>, b: u64| b != 0 && ctx.is_alive(Entity::from_bits(b));
 
@@ -1069,9 +1054,7 @@ fn run(
         // between piers into a flat arch, which loose masonry never holds:
         // its corners crush): it crumbles, into its pieces.
         if tick.is_multiple_of(REST_EVERY)
-            && let Some(q) = PHYSICS
-                .with(|m| m.borrow().get(&engine).cloned())
-                .and_then(|ph| ph.tick_query().ok())
+            && let Some(q) = physics(m).and_then(|ph| ph.tick_query().ok())
         {
             let held = p.inst.dirty;
             for isl in islands_of(&p.inst).into_iter().filter(|i| !i.anchored) {
@@ -2022,13 +2005,11 @@ fn spread(hull: &[Vec3], n: usize) -> Vec<Vec3> {
 
 /// Engine `engine`'s fractured props.
 pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
-    let st = SHARED.with(|s| s.borrow().get(&engine).cloned());
-    let Some(st) = st else {
+    let Ok(m) = module(engine) else {
         return Vec::new();
     };
-    let assets = assets(engine);
-    let assets = lock(&assets);
-    let st = lock(&st);
+    let assets = lock(&m.assets);
+    let st = lock(&m.state);
     st.props
         .iter()
         .filter(|(_, p)| p.fractured)
@@ -2171,7 +2152,7 @@ pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> S
             amount: radius(d.amount, "amount")?,
             impulse: point(d.impulse, "desc.impulse")?,
         };
-        lock(&shared(world)).ops.push(op);
+        lock(&eng.modules.destruction.state).ops.push(op);
         Ok(())
     })())
 }
@@ -2189,7 +2170,7 @@ pub fn og_destruction_explode(world: u32, desc: Option<String>) -> String {
         };
         // A world with no destructible has nothing to break.
         if eng.world()?.systems().contains(&SYSTEM) {
-            lock(&shared(world)).ops.push(op);
+            lock(&eng.modules.destruction.state).ops.push(op);
         }
         Ok(())
     })())
@@ -2199,7 +2180,7 @@ pub fn og_destruction_fracture(world: u32, entity: f64) -> String {
     wire_void((|| {
         let eng = engine(world)?;
         let target = destructible_of(&eng, Entity::from_bits(entity as u64), false)?;
-        lock(&shared(world)).ops.push(Op::Fracture {
+        lock(&eng.modules.destruction.state).ops.push(Op::Fracture {
             entity: target.to_bits(),
         });
         Ok(())
@@ -2213,15 +2194,15 @@ pub fn og_destruction_info(world: u32, entity: f64) -> String {
         let model = record(&eng, "og.Model", e)
             .ok_or_else(|| format!("entity {} has no og.Model", e.to_bits()))?;
         let asset = bits(&model, "asset");
-        let a = lock(&assets(world)).get(&asset).cloned().ok_or_else(|| {
+        let m = &eng.modules.destruction;
+        let a = lock(&m.assets).get(&asset).cloned().ok_or_else(|| {
             format!(
                 "entity {}'s og.Model is not loaded, or was not cooked with a `fracture` block",
                 e.to_bits()
             )
         })?;
         let (inst, debris, crumbs) = {
-            let sh = shared(world);
-            let st = lock(&sh);
+            let st = lock(&m.state);
             let inst = st
                 .props
                 .get(&e.to_bits())

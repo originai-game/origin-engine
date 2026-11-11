@@ -7,6 +7,7 @@
 //! once its lazy records are registered, so a world without them is the
 //! same in both builds; naming one is refused.
 
+use super::engine::Mount;
 use super::extract::{Hierarchy, RenderState};
 use og_ecs::World;
 
@@ -17,9 +18,13 @@ pub(crate) const DETACHED: &str = "og.PixelDetached";
 pub(crate) const RECORDS: [&str; 3] = [TERRAIN, PIECE, DETACHED];
 
 /// A lazy record of the module was named: refused.
-pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
-    super::destruction::enable(world, engine_id)
+pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()> {
+    super::destruction::enable(world, mount)
 }
+
+/// og.destruction2d on one engine: nothing here.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState;
 
 pub(crate) fn extract(_world: &World, _rs: &mut RenderState, _h: &mut Hierarchy) {}
 

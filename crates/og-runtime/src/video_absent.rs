@@ -32,7 +32,10 @@ const AUDIO: &str = "og.AudioSource";
 pub(crate) const MEDIA_INTENT: &str = "og.MediaIntent";
 
 /// Lazy og.VideoPlayer or og.MediaIntent was named: refused.
-pub(crate) fn refuse_lazy(_world: &mut World, _engine: u32) -> og_core::Result<()> {
+pub(crate) fn refuse_lazy(
+    _world: &mut World,
+    _mount: super::engine::Mount<'_>,
+) -> og_core::Result<()> {
     Err(og_core::Error::new(og_core::ErrorKind::Invalid, ABSENT))
 }
 
@@ -51,11 +54,15 @@ pub(crate) fn send_media(
     Err(ABSENT.to_string())
 }
 
+/// og.video on one engine: nothing here.
+#[derive(Default)]
+pub(crate) struct ModuleState;
+
 /// The og.video system as the full module schedules it (its name and
 /// declarations), running nothing.
 pub(crate) fn install(
     world: &mut World,
-    _engine_id: u32,
+    _mount: super::engine::Mount<'_>,
     _layouts: &BTreeMap<String, Layout>,
 ) -> Result<(), String> {
     world

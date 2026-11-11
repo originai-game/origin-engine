@@ -21,14 +21,14 @@ use std::collections::{BTreeMap, BTreeSet};
 /// A document an engine loaded: its asset id and its cooked output's hash,
 /// and the Rive artboards it plays with theirs.
 #[derive(Clone, Debug)]
-struct Loaded {
+pub(crate) struct Loaded {
     id: String,
     hash: u64,
     rive: Vec<(String, u64)>,
 }
 
 #[derive(Default)]
-struct Docs {
+pub(crate) struct Docs {
     loaded: Vec<Loaded>,
     /// The resources the documents read (their Capitalised roots).
     roots: BTreeSet<String>,
@@ -38,12 +38,16 @@ struct Docs {
     styles: BTreeMap<usize, u64>,
 }
 
-thread_local! {
-    static DOCS: RefCell<BTreeMap<u32, Docs>> = const { RefCell::new(BTreeMap::new()) };
-}
+/// The documents on one engine: what it loaded, and the resources they
+/// read as of the last tick's end.
+pub(crate) type ModuleState = RefCell<Docs>;
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut Docs) -> T) -> T {
-    DOCS.with(|d| f(d.borrow_mut().entry(engine).or_default()))
+    match crate::engine::engine(engine) {
+        Ok(eng) => f(&mut eng.modules.docs.borrow_mut()),
+        // An engine that is gone, or not made yet, has none: a fresh one.
+        Err(_) => f(&mut Docs::default()),
+    }
 }
 
 /// The host side of a binding: the resources, the language, string

@@ -40,16 +40,18 @@ pub(crate) const RECORDS: [&str; 7] = [
 /// The og.story system's name (the full module's).
 pub(crate) const SYSTEM: &str = "og.story";
 
-pub(crate) fn retire(_engine: u32) {}
+/// og.story on one engine: nothing here.
+#[derive(Default)]
+pub(crate) struct ModuleState;
 
 /// og.Story was registered: refused, there is no story to attach.
-pub(crate) fn attach(_engine: u32, _world: &mut World) -> Result<(), String> {
+pub(crate) fn attach(_mount: super::engine::Mount<'_>, _world: &mut World) -> Result<(), String> {
     Err(ABSENT.to_string())
 }
 
 /// The og.story system as the full module schedules it (its name and
 /// declarations), running nothing.
-pub(crate) fn mount(world: &mut World, _engine_id: u32) -> Result<(), String> {
+pub(crate) fn mount(world: &mut World, _mount: super::engine::Mount<'_>) -> Result<(), String> {
     world
         .add_system(
             SystemDesc::new(SYSTEM).write::<og_audio::AudioSource>(),

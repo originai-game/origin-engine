@@ -183,20 +183,19 @@ fn focus(eng: &Engine, world: &World, origin: &Value) -> Result<Option<Vec3>, St
     Ok(camera.map(|c| vec3(&c["position"])))
 }
 
-thread_local! {
-    /// Per engine, the last warning logged (not world state: the log's).
-    static WARNED: std::cell::RefCell<og_core::IdMap<u32, String>> =
-        const { std::cell::RefCell::new(og_core::IdMap::new()) };
-}
+/// og.WorldOrigin on one engine: the last warning it logged (not world
+/// state: the log's).
+#[derive(Default)]
+pub(crate) struct ModuleState(std::cell::RefCell<String>);
 
 /// A warning in the engine's log, once until another one replaces it.
 fn warn_once(eng: &Engine, tick: u64, text: String) {
-    let fresh = WARNED.with(|w| {
-        let mut w = w.borrow_mut();
-        let same = w.get(&eng.id).is_some_and(|t| *t == text);
-        w.insert(eng.id, text.clone());
+    let fresh = {
+        let mut last = eng.modules.origin.0.borrow_mut();
+        let same = *last == text;
+        *last = text.clone();
         !same
-    });
+    };
     if fresh {
         eng.state
             .borrow_mut()

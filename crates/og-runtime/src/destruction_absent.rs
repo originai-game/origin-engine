@@ -12,7 +12,7 @@
 //! restored into props that cannot break. A model's prefractured chunks
 //! (`<model>#fracture`) are not read.
 
-use super::engine::Engine;
+use super::engine::{Engine, Mount};
 use og_ecs::World;
 use serde_json::json;
 
@@ -27,13 +27,17 @@ pub(crate) const RESOURCE: &str = "og.Destruction";
 pub(crate) const RECORDS: [&str; 4] = [DESTRUCTIBLE, CHUNK, FRACTURED, RESOURCE];
 
 /// A lazy record of the module was named: refused.
-pub(crate) fn enable(_world: &mut World, _engine_id: u32) -> og_core::Result<()> {
+pub(crate) fn enable(_world: &mut World, _mount: Mount<'_>) -> og_core::Result<()> {
     Err(og_core::Error::new(og_core::ErrorKind::Invalid, ABSENT))
 }
 
 /// The physics the 2D half registers its meshes with (only ever asked by
 /// destruction2d, which this feature leaves out with it).
-pub(crate) fn set_physics(_engine: u32, _physics: &og_physics::PhysicsSystem) {}
+pub(crate) fn set_physics(_m: &ModuleState, _physics: &og_physics::PhysicsSystem) {}
+
+/// og.destruction on one engine: nothing here.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState;
 
 /// A model's prefractured chunks: not read here.
 pub(crate) fn load_asset(_eng: &Engine, _id: &str, _index: usize) -> Result<(), String> {
