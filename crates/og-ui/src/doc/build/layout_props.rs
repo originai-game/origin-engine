@@ -643,10 +643,10 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// The size of an em for `r`'s element: its type step's, else the body's.
-    pub(super) fn em_of(&self, r: &Resolved) -> f32 {
-        let mut ramp = self.env.theme.type_ramp;
+    pub(super) fn em_of(&self, r: &Resolved, env: &crate::ui::Env) -> f32 {
+        let mut ramp = env.theme.type_ramp;
         let body = ramp.body.size;
         if let Some(s) = r.text.as_ref().and_then(|t| t.size) {
             return s;

@@ -134,7 +134,7 @@ impl Ui {
             },
             world: Default::default(),
         };
-        ui.write_theme_tokens(desc.theme);
+        ui.style.write_theme_tokens(desc.theme, &ui.env);
         ui.read_theme_tokens();
         ui
     }
@@ -393,7 +393,7 @@ impl Ui {
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
-        self.write_theme_tokens(theme);
+        self.style.write_theme_tokens(theme, &self.env);
         self.env.configured = theme;
         self.env.theme = effective_theme(theme, &self.env.viewport);
         self.read_theme_tokens();

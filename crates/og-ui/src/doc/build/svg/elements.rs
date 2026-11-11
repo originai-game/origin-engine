@@ -604,7 +604,7 @@ impl Ui {
             direction: Direction::Column,
             ..Element::default()
         };
-        let mut el = Self::box_of(r, el, self.em_of(r));
+        let mut el = Self::box_of(r, el, self.style.em_of(r, &self.env));
         el.width = Size::px(w);
         el.height = Size::px(h);
         self.open(id, el);
@@ -717,7 +717,7 @@ impl Ui {
             el.width = Size::px(vb[2]);
             el.height = Size::px(vb[3]);
         }
-        let mut el = Self::box_of(r, el, self.em_of(r));
+        let mut el = Self::box_of(r, el, self.style.em_of(r, &self.env));
         if kind != "svg" {
             el.width = Size::grow();
             el.height = Size::grow();

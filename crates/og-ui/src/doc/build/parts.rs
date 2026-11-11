@@ -45,6 +45,7 @@ impl Ui {
         };
         let r = self.part_values(&reference, Some(self.tree.nodes[i].key));
         let document = self
+            .tree
             .part_host(self.tree.nodes[part.owner].key)
             .and_then(|host| self.docs.host.docs.get(&host.document))
             .cloned();
@@ -130,7 +131,7 @@ impl Ui {
         let text_style = match &self.tree.nodes[i].content {
             crate::layout::Content::Text(text) => {
                 Some(r.part_text(&self.env.theme, text.step, &|name| {
-                    self.family_declared(name)
+                    self.style.family_declared(name, &self.env)
                 }))
             }
             _ => None,
@@ -290,7 +291,7 @@ impl Ui {
     }
 
     pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
-        let host = key.and_then(|k| self.part_host(k));
+        let host = key.and_then(|k| self.tree.part_host(k));
         let document = host.and_then(|h| self.docs.host.docs.get(&h.document));
         let mut rules = std::borrow::Cow::Borrowed(&self.style.part_rules);
         let mut sheet = std::borrow::Cow::Borrowed(&self.style.part_sheet);
@@ -400,7 +401,7 @@ impl Ui {
                 theme: &self.env.theme,
                 current: self.env.theme.palette.ink,
                 step: body,
-                declared: &|name| self.family_declared(name),
+                declared: &|name| self.style.family_declared(name, &self.env),
             });
             inherited = (*global.computed).clone();
             if let Some(host) = host {
@@ -558,15 +559,14 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     fn part_host(&self, key: u64) -> Option<&PartHost> {
         let mut i = self
-            .tree
             .index
             .find(key)
-            .or_else(|| self.tree.nodes.iter().rposition(|n| n.key == key))?;
+            .or_else(|| self.nodes.iter().rposition(|n| n.key == key))?;
         loop {
-            let node = &self.tree.nodes[i];
+            let node = &self.nodes[i];
             if let Some(host) = &node.part_host {
                 return Some(host);
             }

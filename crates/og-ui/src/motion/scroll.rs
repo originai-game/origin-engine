@@ -9,7 +9,6 @@
 
 use super::css::CssAnimation;
 use crate::layout::NONE;
-use crate::ui::Ui;
 
 /// What drives an animation's time (`animation-timeline`).
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -441,21 +440,27 @@ impl CssAnimation {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// Animation `a` of node `i`'s progress through its range (`None`:
     /// its timeline is inactive or `none`).
-    pub(crate) fn timeline_progress(&self, i: usize, a: &CssAnimation) -> Option<f32> {
+    pub(crate) fn timeline_progress(
+        &self,
+        i: usize,
+        a: &CssAnimation,
+        interaction: &crate::ui::Interaction,
+        tree: &crate::ui::Tree,
+    ) -> Option<f32> {
         let none = [Inset::default(); 2];
         let (scroller, subject, axis, inset) = match &a.timeline {
             AnimationTimeline::Document | AnimationTimeline::None => return None,
             AnimationTimeline::Scroll { source, axis } => {
                 let s = match source {
-                    ScrollSource::Own => Some(i).filter(|&i| self.tree.nodes[i].scrolls()),
-                    ScrollSource::Nearest => self.scroll_ancestor(i),
+                    ScrollSource::Own => Some(i).filter(|&i| tree.nodes[i].scrolls()),
+                    ScrollSource::Nearest => tree.scroll_ancestor(i),
                     ScrollSource::Root => {
                         let mut out = None;
                         let mut at = i;
-                        while let Some(s) = self.scroll_ancestor(at) {
+                        while let Some(s) = tree.scroll_ancestor(at) {
                             out = Some(s);
                             at = s;
                         }
@@ -465,15 +470,15 @@ impl Ui {
                 (s?, None, *axis, none)
             }
             AnimationTimeline::View { axis, inset } => {
-                (self.scroll_ancestor(i)?, Some(i), *axis, *inset)
+                (tree.scroll_ancestor(i)?, Some(i), *axis, *inset)
             }
             AnimationTimeline::Named(name) => {
-                let (d, t) = self.named_timeline(i, name)?;
+                let (d, t) = tree.named_timeline(i, name)?;
                 if t.view {
-                    (self.scroll_ancestor(d)?, Some(d), t.axis, t.inset)
+                    (tree.scroll_ancestor(d)?, Some(d), t.axis, t.inset)
                 } else {
                     (
-                        Some(d).filter(|&d| self.tree.nodes[d].scrolls())?,
+                        Some(d).filter(|&d| tree.nodes[d].scrolls())?,
                         None,
                         t.axis,
                         none,
@@ -481,12 +486,11 @@ impl Ui {
                 }
             }
         };
-        let s = &self.tree.nodes[scroller];
+        let s = &tree.nodes[scroller];
         let pad = s.el.padding;
         let (offset, max, start, port) = if axis.horizontal() {
             let max = s.max_scroll_x();
-            let at = self
-                .interaction
+            let at = interaction
                 .state
                 .scroll_x
                 .get(&s.key)
@@ -500,13 +504,7 @@ impl Ui {
             )
         } else {
             let max = s.max_scroll();
-            let at = self
-                .interaction
-                .state
-                .scroll
-                .get(&s.key)
-                .copied()
-                .unwrap_or(0.0);
+            let at = interaction.state.scroll.get(&s.key).copied().unwrap_or(0.0);
             (
                 at.clamp(0.0, max),
                 max,
@@ -517,7 +515,7 @@ impl Ui {
         // Laid out at this offset: its place in the content is where it is
         // plus the offset.
         let subject = subject.map(|j| {
-            let r = self.tree.nodes[j].rect;
+            let r = tree.nodes[j].rect;
             if axis.horizontal() {
                 (r.x - start + offset, r.width)
             } else {
@@ -534,14 +532,14 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Tree {
     fn scroll_ancestor(&self, i: usize) -> Option<usize> {
-        let mut p = self.tree.nodes[i].parent;
+        let mut p = self.nodes[i].parent;
         while p != NONE {
-            if self.tree.nodes[p].scrolls() {
+            if self.nodes[p].scrolls() {
                 return Some(p);
             }
-            p = self.tree.nodes[p].parent;
+            p = self.nodes[p].parent;
         }
         None
     }
@@ -551,7 +549,7 @@ impl Ui {
     /// declaration in that ancestor's subtree (none, or several: inactive).
     fn named_timeline(&self, i: usize, name: &str) -> Option<(usize, &NamedTimeline)> {
         let declares = |j: usize| {
-            self.tree.nodes[j]
+            self.nodes[j]
                 .props
                 .timelines
                 .iter()
@@ -563,7 +561,7 @@ impl Ui {
             if let Some(t) = declares(at) {
                 return Some((at, t));
             }
-            let n = &self.tree.nodes[at];
+            let n = &self.nodes[at];
             if n.props
                 .timeline_scope
                 .iter()
@@ -578,7 +576,7 @@ impl Ui {
                         }
                         found = Some((j, t));
                     }
-                    stack.extend(self.tree.nodes[j].children.iter().rev().copied());
+                    stack.extend(self.nodes[j].children.iter().rev().copied());
                 }
                 return found;
             }

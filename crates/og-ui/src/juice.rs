@@ -458,15 +458,23 @@ impl Ui {
     }
 }
 
-impl Ui {
+impl crate::ui::Style {
     /// Bursts a timeline's events started, drawn on their elements.
-    pub(crate) fn apply_bursts(&mut self, order: &[usize]) {
-        if self.interaction.state.motion.bursts.is_empty() {
+    pub(crate) fn apply_bursts(
+        &mut self,
+        order: &[usize],
+        world: &mut crate::world::WorldUi,
+        env: &crate::ui::Env,
+        paint: &mut crate::ui::Paint,
+        interaction: &crate::ui::Interaction,
+        tree: &crate::ui::Tree,
+    ) {
+        if interaction.state.motion.bursts.is_empty() {
             return;
         }
-        let bursts = self.interaction.state.motion.bursts.clone();
+        let bursts = interaction.state.motion.bursts.clone();
         for &i in order {
-            let key = self.tree.nodes[i].key;
+            let key = tree.nodes[i].key;
             for b in bursts.iter().filter(|b| b.key == key) {
                 let desc = BurstDesc {
                     count: b.count,
@@ -475,14 +483,7 @@ impl Ui {
                     duration_ms: b.duration_ms,
                     ..BurstDesc::default()
                 };
-                self.paint.burst_particles(
-                    i,
-                    &desc,
-                    b.since,
-                    &mut self.world,
-                    &self.env,
-                    &self.tree,
-                );
+                paint.burst_particles(i, &desc, b.since, world, env, tree);
             }
         }
     }

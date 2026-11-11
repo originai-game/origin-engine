@@ -268,7 +268,10 @@ impl Ui {
                 .enumerate()
                 .any(|(x, a)| {
                     !a.timeline.ticks()
-                        && self.timeline_progress(i, a) != last.get(x).copied().flatten()
+                        && self
+                            .style
+                            .timeline_progress(i, a, &self.interaction, &self.tree)
+                            != last.get(x).copied().flatten()
                 });
             if moved {
                 restyle.push(i);

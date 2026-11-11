@@ -205,7 +205,7 @@ impl Ui {
                 frame: Some(crate::style_file::StylePart::Panel),
                 ..Element::default()
             },
-            self.em_of(r),
+            self.style.em_of(r, &self.env),
         );
         // Keyed and named as the element itself (as a world layer is), so
         // its content's keys are the ones a retained document gives it.
