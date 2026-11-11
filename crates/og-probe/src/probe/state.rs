@@ -70,3 +70,13 @@ pub(crate) struct Out {
     /// it, suffixed, with a warning naming both ([`Probe::emit`]).
     pub(super) written: BTreeMap<String, (f64, String)>,
 }
+
+/// The input being injected: where the pointer is and when in the tick.
+pub(crate) struct Inject {
+    pub(super) pointer: (f32, f32),
+    pub(super) target_missed: bool,
+    /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
+    pub(super) stamp: f32,
+    /// The host's input filter ([`Probe::set_input_filter`]).
+    pub(super) filter: Option<InputFilterFn>,
+}

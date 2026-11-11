@@ -136,15 +136,15 @@ impl Probe {
                     find_by_text(&elements, &target)
                 };
                 let Some(element) = found else {
-                    self.target_missed = true;
+                    self.inject.target_missed = true;
                     return Err(format!(
                         "target not found: '{target}' ({} UI elements; `dump_ui` lists them); the next touch_start/touch_end are skipped",
                         elements.len()
                     ));
                 };
-                self.target_missed = false;
+                self.inject.target_missed = false;
                 let (x, y) = element.center();
-                self.pointer = (x, y);
+                self.inject.pointer = (x, y);
                 self.pointer_event(world, PointerAction::Move, PointerButton::None)
             }
             "touch_move" => {
@@ -152,14 +152,14 @@ impl Probe {
                 let [x, y] = xy[..] else {
                     return Err("write `touch_move:x,y` with two numbers".into());
                 };
-                self.target_missed = false;
-                self.pointer = (x, y);
+                self.inject.target_missed = false;
+                self.inject.pointer = (x, y);
                 self.pointer_event(world, PointerAction::Move, PointerButton::None)
             }
             "touch_start" | "touch_end" => {
-                if self.target_missed {
+                if self.inject.target_missed {
                     if step.action == "touch_end" {
-                        self.target_missed = false;
+                        self.inject.target_missed = false;
                     }
                     return Err("skipped: the last touch target was not found".into());
                 }
@@ -175,7 +175,7 @@ impl Probe {
                 let [dx, dy] = d[..] else {
                     return Err("write `mouse_move:dx,dy` with two numbers".into());
                 };
-                let (x, y) = self.pointer;
+                let (x, y) = self.inject.pointer;
                 let event = InjectedInput::Pointer {
                     action: PointerAction::Move,
                     x,
@@ -212,7 +212,7 @@ impl Probe {
                 let [dx, dy] = d[..] else {
                     return Err("write `scroll:dx,dy` with two numbers".into());
                 };
-                let (x, y) = self.pointer;
+                let (x, y) = self.inject.pointer;
                 let event = InjectedInput::Wheel {
                     x,
                     y,
