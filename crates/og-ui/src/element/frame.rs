@@ -27,148 +27,6 @@ fn painted(n: &Node) -> bool {
 }
 
 impl Ui {
-    /// Where node `i`'s first line of text sits (its baseline, CSS px), if
-    /// it or its first descendant in the flow has text.
-    fn first_baseline(&self, i: usize) -> Option<f32> {
-        let n = &self.tree.nodes[i];
-        match &n.content {
-            Content::Text(tc) => {
-                let line = n.lines.first()?;
-                let m = &self
-                    .env
-                    .fonts
-                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
-                    .0
-                    .metrics;
-                let lh = tc.line_height();
-                let inner = n.rect.inset(&n.el.padding);
-                let block = lh * n.lines.len() as f32;
-                let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
-                Some(m.baseline(&line.text, top, lh, tc.step.size))
-            }
-            Content::Rich(_) => {
-                let l = n.rich_lines.first()?;
-                // A first line floats moved down (`Node::wrap_lines`).
-                let drop = n.wrap_lines.first().map_or(0.0, |w| w[1]);
-                Some(n.rect.y + n.el.padding.top + drop + l.baseline)
-            }
-            _ => n.children.iter().find_map(|&c| self.first_baseline(c)),
-        }
-    }
-
-    /// Rows with `Cross::Baseline`: each child moved down so their first
-    /// baselines meet (per line of a wrapping row). A vertical element's
-    /// rows are its lines down the page: their items move across, from
-    /// its block-start side, so their central baselines meet.
-    pub(crate) fn align_baselines(&mut self, order: &[usize]) {
-        use crate::layout::Cross;
-        for &i in order {
-            let n = &self.tree.nodes[i];
-            if !crate::ui::visit::baseline_row(n)
-                || n.el.direction != crate::layout::Direction::Row
-                || n.props.layout != LayoutMode::Flex
-                || n.children.is_empty()
-            {
-                continue;
-            }
-            let parent = n.el.cross;
-            // Across a vertical line: +1 from a left block-start, -1 from
-            // a right one (`Element::vertical`'s sides).
-            let across =
-                n.el.vertical
-                    .filter(|s| s[0] % 2 == 1)
-                    .map(|s| if s[0] == 3 { 1.0 } else { -1.0 });
-            let kids = n.children.clone();
-            let lines = if n.el.wrap && !n.rows.is_empty() {
-                n.rows.clone()
-            } else {
-                vec![(0, kids.len())]
-            };
-            // A line's first-baseline items share their first baselines, and
-            // its last-baseline ones their last (CSS Box Alignment §9.3).
-            // A line whose line box holds a `vertical-align` was placed by
-            // layout (`Node::inline_rows`), its baselines with it.
-            let held: Vec<bool> = (0..lines.len())
-                .map(|r| n.inline_rows.get(r).copied().flatten().is_some())
-                .collect();
-            for (s, e, last) in lines
-                .into_iter()
-                .zip(held)
-                .filter(|&(_, held)| !held)
-                .flat_map(|((s, e), _)| [(s, e, false), (s, e, true)])
-            {
-                let want = if last {
-                    Cross::LastBaseline
-                } else {
-                    Cross::Baseline
-                };
-                let bs: Vec<Option<f32>> = kids[s..e]
-                    .iter()
-                    .map(|&c| {
-                        if self.tree.nodes[c].el.align_self.unwrap_or(parent) != want {
-                            None
-                        } else if let Some(dir) = across {
-                            self.tree.central_baseline(c, last).map(|x| dir * x)
-                        } else if last {
-                            self.layout.last_baseline(c, &self.env, &self.tree)
-                        } else {
-                            self.first_baseline(c)
-                        }
-                    })
-                    .collect();
-                let Some(max) = bs.iter().flatten().copied().reduce(f32::max) else {
-                    continue;
-                };
-                // Where it draws only: a clean row keeps its children's
-                // laid-out places into the next frame, and a shift kept
-                // there was made again on top of itself every frame (a
-                // slider's label and its value in two faces, 0.38 px
-                // apart, sank 14 px a second).
-                for (&c, b) in kids[s..e].iter().zip(bs) {
-                    if let Some(b) = b {
-                        match across {
-                            Some(dir) => self.tree.shift_subtree(c, dir * (max - b), 0.0, false),
-                            None => self.tree.shift_subtree(c, 0.0, max - b, false),
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// The node a path names: a full path, else one relative to `from`'s parent.
-    pub(crate) fn node_at(&self, path: &str, from: usize) -> Option<usize> {
-        crate::ui::node_in(&self.tree.index, &self.tree.nodes, path, from)
-    }
-
-    /// Anchored elements onto their targets' rectangles.
-    pub(crate) fn place_anchored(&mut self, order: &[usize]) {
-        for &i in order {
-            if self.tree.nodes[i].props.position != Position::Anchored {
-                continue;
-            }
-            let p = self.tree.nodes[i].props.clone();
-            let Some(t) = self.node_at(&p.anchor_to, i) else {
-                let at = self.tree.path_of(i);
-                self.out.warnings.push(format!(
-                    "'{at}' is anchored to '{}', which is not on screen: anchorTo takes a full path (Hud/Coins) or a sibling's id",
-                    p.anchor_to
-                ));
-                continue;
-            };
-            // Its target's box before a right-to-left mirror, as laid out
-            // this frame or kept from the last.
-            let tr = self.tree.nodes[t].laid_rect;
-            let n = &self.tree.nodes[i];
-            let (ax, ay) = p.anchor_at.fractions();
-            let (ox, oy) = p.anchor_self.fractions();
-            let x = tr.x + ax * tr.width - ox * n.rect.width + p.insets.start.unwrap_or(0.0);
-            let y = tr.y + ay * tr.height - oy * n.rect.height + p.insets.top.unwrap_or(0.0);
-            let (dx, dy) = (x - n.rect.x, y - n.rect.y);
-            self.tree.shift_subtree(i, dx, dy, true);
-        }
-    }
-
     /// Overlaps nothing declared (docs/ui.md §2): an absolute, anchored
     /// or floating-group element over another element's drawing, and
     /// siblings in the flow over each other.
@@ -407,6 +265,152 @@ impl Ui {
             }
         }
         out
+    }
+}
+
+impl Ui {
+    /// Where node `i`'s first line of text sits (its baseline, CSS px), if
+    /// it or its first descendant in the flow has text.
+    fn first_baseline(&self, i: usize) -> Option<f32> {
+        let n = &self.tree.nodes[i];
+        match &n.content {
+            Content::Text(tc) => {
+                let line = n.lines.first()?;
+                let m = &self
+                    .env
+                    .fonts
+                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
+                    .0
+                    .metrics;
+                let lh = tc.line_height();
+                let inner = n.rect.inset(&n.el.padding);
+                let block = lh * n.lines.len() as f32;
+                let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
+                Some(m.baseline(&line.text, top, lh, tc.step.size))
+            }
+            Content::Rich(_) => {
+                let l = n.rich_lines.first()?;
+                // A first line floats moved down (`Node::wrap_lines`).
+                let drop = n.wrap_lines.first().map_or(0.0, |w| w[1]);
+                Some(n.rect.y + n.el.padding.top + drop + l.baseline)
+            }
+            _ => n.children.iter().find_map(|&c| self.first_baseline(c)),
+        }
+    }
+
+    /// Rows with `Cross::Baseline`: each child moved down so their first
+    /// baselines meet (per line of a wrapping row). A vertical element's
+    /// rows are its lines down the page: their items move across, from
+    /// its block-start side, so their central baselines meet.
+    pub(crate) fn align_baselines(&mut self, order: &[usize]) {
+        use crate::layout::Cross;
+        for &i in order {
+            let n = &self.tree.nodes[i];
+            if !crate::ui::visit::baseline_row(n)
+                || n.el.direction != crate::layout::Direction::Row
+                || n.props.layout != LayoutMode::Flex
+                || n.children.is_empty()
+            {
+                continue;
+            }
+            let parent = n.el.cross;
+            // Across a vertical line: +1 from a left block-start, -1 from
+            // a right one (`Element::vertical`'s sides).
+            let across =
+                n.el.vertical
+                    .filter(|s| s[0] % 2 == 1)
+                    .map(|s| if s[0] == 3 { 1.0 } else { -1.0 });
+            let kids = n.children.clone();
+            let lines = if n.el.wrap && !n.rows.is_empty() {
+                n.rows.clone()
+            } else {
+                vec![(0, kids.len())]
+            };
+            // A line's first-baseline items share their first baselines, and
+            // its last-baseline ones their last (CSS Box Alignment §9.3).
+            // A line whose line box holds a `vertical-align` was placed by
+            // layout (`Node::inline_rows`), its baselines with it.
+            let held: Vec<bool> = (0..lines.len())
+                .map(|r| n.inline_rows.get(r).copied().flatten().is_some())
+                .collect();
+            for (s, e, last) in lines
+                .into_iter()
+                .zip(held)
+                .filter(|&(_, held)| !held)
+                .flat_map(|((s, e), _)| [(s, e, false), (s, e, true)])
+            {
+                let want = if last {
+                    Cross::LastBaseline
+                } else {
+                    Cross::Baseline
+                };
+                let bs: Vec<Option<f32>> = kids[s..e]
+                    .iter()
+                    .map(|&c| {
+                        if self.tree.nodes[c].el.align_self.unwrap_or(parent) != want {
+                            None
+                        } else if let Some(dir) = across {
+                            self.tree.central_baseline(c, last).map(|x| dir * x)
+                        } else if last {
+                            self.layout.last_baseline(c, &self.env, &self.tree)
+                        } else {
+                            self.first_baseline(c)
+                        }
+                    })
+                    .collect();
+                let Some(max) = bs.iter().flatten().copied().reduce(f32::max) else {
+                    continue;
+                };
+                // Where it draws only: a clean row keeps its children's
+                // laid-out places into the next frame, and a shift kept
+                // there was made again on top of itself every frame (a
+                // slider's label and its value in two faces, 0.38 px
+                // apart, sank 14 px a second).
+                for (&c, b) in kids[s..e].iter().zip(bs) {
+                    if let Some(b) = b {
+                        match across {
+                            Some(dir) => self.tree.shift_subtree(c, dir * (max - b), 0.0, false),
+                            None => self.tree.shift_subtree(c, 0.0, max - b, false),
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Anchored elements onto their targets' rectangles.
+    pub(crate) fn place_anchored(&mut self, order: &[usize]) {
+        for &i in order {
+            if self.tree.nodes[i].props.position != Position::Anchored {
+                continue;
+            }
+            let p = self.tree.nodes[i].props.clone();
+            let Some(t) = self.node_at(&p.anchor_to, i) else {
+                let at = self.tree.path_of(i);
+                self.out.warnings.push(format!(
+                    "'{at}' is anchored to '{}', which is not on screen: anchorTo takes a full path (Hud/Coins) or a sibling's id",
+                    p.anchor_to
+                ));
+                continue;
+            };
+            // Its target's box before a right-to-left mirror, as laid out
+            // this frame or kept from the last.
+            let tr = self.tree.nodes[t].laid_rect;
+            let n = &self.tree.nodes[i];
+            let (ax, ay) = p.anchor_at.fractions();
+            let (ox, oy) = p.anchor_self.fractions();
+            let x = tr.x + ax * tr.width - ox * n.rect.width + p.insets.start.unwrap_or(0.0);
+            let y = tr.y + ay * tr.height - oy * n.rect.height + p.insets.top.unwrap_or(0.0);
+            let (dx, dy) = (x - n.rect.x, y - n.rect.y);
+            self.tree.shift_subtree(i, dx, dy, true);
+        }
+    }
+}
+
+impl Ui {
+    /// The node a path names: a full path, else one relative to `from`'s parent.
+    pub(crate) fn node_at(&self, path: &str, from: usize) -> Option<usize> {
+        crate::ui::node_in(&self.tree.index, &self.tree.nodes, path, from)
     }
 }
 
