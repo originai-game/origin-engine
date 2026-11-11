@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui documents",
+      "summary": "A document's <joystick action>, <dpad action> and <button data-og-touch> drive their actions on a mouse or pad surface above 720p (a desktop window, a scripted og run or playtest at 1920x1080) and under a pinned og-ui unit: their input zones are where the controls are drawn, not their layout before the surface's scale, so a press on the drawn control (touch_move_to:Stick, touch_start) reaches its action."
+    }
+  ]
+}
