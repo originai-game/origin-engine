@@ -1,18 +1,6 @@
 use super::*;
 
 impl Ui {
-    /// The size of an em for `r`'s element: its type step's, else the body's.
-    pub(super) fn em_of(&self, r: &Resolved) -> f32 {
-        let mut ramp = self.env.theme.type_ramp;
-        let body = ramp.body.size;
-        if let Some(s) = r.text.as_ref().and_then(|t| t.size) {
-            return s;
-        }
-        r.str("step")
-            .and_then(|name| crate::style_file::ramp_step(&mut ramp, name))
-            .map_or(body, |s| s.size)
-    }
-
     /// The box of an element from its props, over `base`; `em` sizes its
     /// em margins.
     pub(super) fn box_of(r: &Resolved, mut el: Element, em: f32) -> Element {
@@ -652,5 +640,19 @@ impl Ui {
             p.states.push(group);
         }
         p
+    }
+}
+
+impl Ui {
+    /// The size of an em for `r`'s element: its type step's, else the body's.
+    pub(super) fn em_of(&self, r: &Resolved) -> f32 {
+        let mut ramp = self.env.theme.type_ramp;
+        let body = ramp.body.size;
+        if let Some(s) = r.text.as_ref().and_then(|t| t.size) {
+            return s;
+        }
+        r.str("step")
+            .and_then(|name| crate::style_file::ramp_step(&mut ramp, name))
+            .map_or(body, |s| s.size)
     }
 }

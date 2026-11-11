@@ -289,29 +289,6 @@ impl Ui {
         })
     }
 
-    fn part_host(&self, key: u64) -> Option<&PartHost> {
-        let mut i = self
-            .tree
-            .index
-            .find(key)
-            .or_else(|| self.tree.nodes.iter().rposition(|n| n.key == key))?;
-        loop {
-            let node = &self.tree.nodes[i];
-            if let Some(host) = &node.part_host {
-                return Some(host);
-            }
-            let parent = if node.part_source != NONE {
-                node.part_source
-            } else {
-                node.parent
-            };
-            if parent == NONE {
-                return None;
-            }
-            i = parent;
-        }
-    }
-
     pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
         let host = key.and_then(|k| self.part_host(k));
         let document = host.and_then(|h| self.docs.host.docs.get(&h.document));
@@ -578,5 +555,30 @@ impl Ui {
         let period = u64::from(self.ticks_for(ms));
         let phase = (self.interaction.state.tick % period) as f32 / period as f32;
         animation.map_or(phase, |a| a.ease.apply(phase))
+    }
+}
+
+impl Ui {
+    fn part_host(&self, key: u64) -> Option<&PartHost> {
+        let mut i = self
+            .tree
+            .index
+            .find(key)
+            .or_else(|| self.tree.nodes.iter().rposition(|n| n.key == key))?;
+        loop {
+            let node = &self.tree.nodes[i];
+            if let Some(host) = &node.part_host {
+                return Some(host);
+            }
+            let parent = if node.part_source != NONE {
+                node.part_source
+            } else {
+                node.parent
+            };
+            if parent == NONE {
+                return None;
+            }
+            i = parent;
+        }
     }
 }

@@ -459,45 +459,6 @@ impl Ui {
         (c != p::CssPaint::default()).then_some(c)
     }
 
-    /// A label's CSS `text-wrap-style` and `text-overflow: <string>`.
-    pub(super) fn css_text_content(&mut self, i: usize, r: &Resolved) {
-        use crate::layout::WrapStyle;
-        let style = match r.text.as_deref().and_then(|t| t.wrap_style.as_deref()) {
-            Some("balance") => WrapStyle::Balance,
-            Some("pretty") => WrapStyle::Pretty,
-            _ => WrapStyle::Auto,
-        };
-        let cut = r
-            .str("ellipsisText")
-            .filter(|s| !s.is_empty())
-            .map(str::to_owned);
-        if let crate::layout::Content::Text(t) = &mut self.tree.nodes[i].content {
-            t.wrap_style = style;
-            t.cut = cut;
-        }
-    }
-
-    /// An `<image>`'s CSS `object-fit`, `object-position` and
-    /// `image-rendering`, checked when the CSS was lowered.
-    pub(super) fn object_fit(&mut self, i: usize, r: &Resolved) {
-        let (at, nearest) = r.object_css();
-        let fit = match r.str("fit") {
-            Some("contain") => og_draw::UiFit::Contain,
-            Some("cover") => og_draw::UiFit::Cover,
-            Some("none") => og_draw::UiFit::None,
-            Some("scaleDown") => og_draw::UiFit::ScaleDown,
-            _ => og_draw::UiFit::Fill,
-        };
-        if let crate::layout::Content::Image { object, .. } = &mut self.tree.nodes[i].content {
-            *object = crate::layout::ObjectFit {
-                fit,
-                focal: at.map_or([0.5; 2], |a| a[0]),
-                offset: at.map_or([0.0; 2], |a| a[1]),
-                nearest,
-            };
-        }
-    }
-
     pub(super) fn apply_document_fields(
         &mut self,
         doc: &crate::doc::UiDocument,
@@ -1116,6 +1077,47 @@ impl Ui {
             self.apply_part_appearance(i);
             self.layout
                 .prepare_layout_node(i, &self.env, &mut self.tree);
+        }
+    }
+}
+
+impl Ui {
+    /// A label's CSS `text-wrap-style` and `text-overflow: <string>`.
+    pub(super) fn css_text_content(&mut self, i: usize, r: &Resolved) {
+        use crate::layout::WrapStyle;
+        let style = match r.text.as_deref().and_then(|t| t.wrap_style.as_deref()) {
+            Some("balance") => WrapStyle::Balance,
+            Some("pretty") => WrapStyle::Pretty,
+            _ => WrapStyle::Auto,
+        };
+        let cut = r
+            .str("ellipsisText")
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned);
+        if let crate::layout::Content::Text(t) = &mut self.tree.nodes[i].content {
+            t.wrap_style = style;
+            t.cut = cut;
+        }
+    }
+
+    /// An `<image>`'s CSS `object-fit`, `object-position` and
+    /// `image-rendering`, checked when the CSS was lowered.
+    pub(super) fn object_fit(&mut self, i: usize, r: &Resolved) {
+        let (at, nearest) = r.object_css();
+        let fit = match r.str("fit") {
+            Some("contain") => og_draw::UiFit::Contain,
+            Some("cover") => og_draw::UiFit::Cover,
+            Some("none") => og_draw::UiFit::None,
+            Some("scaleDown") => og_draw::UiFit::ScaleDown,
+            _ => og_draw::UiFit::Fill,
+        };
+        if let crate::layout::Content::Image { object, .. } = &mut self.tree.nodes[i].content {
+            *object = crate::layout::ObjectFit {
+                fit,
+                focal: at.map_or([0.5; 2], |a| a[0]),
+                offset: at.map_or([0.0; 2], |a| a[1]),
+                nearest,
+            };
         }
     }
 }

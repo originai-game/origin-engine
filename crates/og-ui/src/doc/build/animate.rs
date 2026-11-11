@@ -407,7 +407,9 @@ impl Ui {
             running,
         }))
     }
+}
 
+impl Ui {
     /// Keeps what [`Ui::animate_values`] found; a running element builds
     /// again next frame.
     pub(crate) fn commit_styles(&mut self, commit: &StyleCommit) {
