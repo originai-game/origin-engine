@@ -102,9 +102,19 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         };
         return match write_types(&p.root) {
-            Ok(n) => {
-                println!("og ui types: {n} document(s) typed in {TYPES_DIR}/");
-                ExitCode::SUCCESS
+            Ok(typed) => {
+                for u in &typed.untyped {
+                    eprintln!("og ui types: {}", u.line());
+                }
+                println!(
+                    "og ui types: {} document(s) typed in {TYPES_DIR}/",
+                    typed.documents
+                );
+                if typed.untyped.is_empty() {
+                    ExitCode::SUCCESS
+                } else {
+                    ExitCode::FAILURE
+                }
             }
             Err(e) => {
                 eprintln!("og ui types: {e}");
@@ -711,17 +721,76 @@ fn migrate(args: &[&str]) -> ExitCode {
 /// document, a `/` in its name a `.`.
 pub const TYPES_DIR: &str = ".og/types/ui";
 
+/// What [`write_types`] did: how many documents it typed, and those it
+/// could not type because they do not parse.
+pub struct Typed {
+    pub documents: usize,
+    pub untyped: Vec<Untyped>,
+}
+
+/// A document that does not parse: the cook refuses it with the same error.
+pub struct Untyped {
+    /// The document, relative to the project (`assets/ui/shop.svelte`).
+    pub file: String,
+    /// Where its first error is, 1-based; none for one without a place.
+    pub at: Option<(u32, u32)>,
+    pub message: String,
+}
+
+impl Untyped {
+    /// `assets/ui/shop.svelte(3,1): error OG9102: <message>`, as a checker prints a diagnostic.
+    pub fn line(&self) -> String {
+        let (line, col) = self.at.unwrap_or((1, 1));
+        format!(
+            "{}({line},{col}): error OG{UNTYPED_CODE}: {}",
+            self.file, self.message
+        )
+    }
+}
+
+/// The code of a document that does not parse in `og check`'s diagnostics.
+pub const UNTYPED_CODE: u32 = 9102;
+
+/// The stylesheets a document's `@import`s name, read from `assets/` as
+/// the cook reads them. One that cannot be read is left out: the parse
+/// then names the `@import` that lacks it.
+fn document_imports(assets: &Path, id: &str, text: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut pending: Vec<(String, String)> = og_ui::UiDocument::imports(text)
+        .into_iter()
+        .map(|path| (id.to_string(), path))
+        .collect();
+    while let Some((from, path)) = pending.pop() {
+        let rel = og_ui::doc::at_rules::resolve(&from, &path);
+        if out.iter().any(|(p, _)| *p == rel) || rel.split('/').any(|c| c == ".." || c.is_empty()) {
+            continue;
+        }
+        let Ok(css) = std::fs::read_to_string(assets.join(&rel)) else {
+            continue;
+        };
+        pending.extend(
+            og_ui::UiDocument::imports(&css)
+                .into_iter()
+                .map(|path| (rel.clone(), path)),
+        );
+        out.push((rel, css));
+    }
+    out
+}
+
 /// Write the `.d.ts` of every screen and component document under the
 /// project's `assets/` (og_ui::doc::types), leaving a file as it is when
 /// it reads the same and removing those whose document is gone. A
-/// document that does not parse is skipped with a note: its errors are the
-/// cook's to report. Answers how many it typed.
-pub fn write_types(root: &Path) -> Result<usize, String> {
+/// document that does not parse is not typed and is answered in
+/// [`Typed::untyped`] with its first error, which is the cook's as well:
+/// `og check` and `og ui types` fail on it.
+pub fn write_types(root: &Path) -> Result<Typed, String> {
     let assets = root.join("assets");
     let mut files = Vec::new();
     collect_files(&assets, "svelte", &mut files);
     files.sort();
     let mut docs = Vec::new();
+    let mut untyped = Vec::new();
     for f in &files {
         let Ok(text) = std::fs::read_to_string(f) else {
             continue;
@@ -731,17 +800,31 @@ pub fn write_types(root: &Path) -> Result<usize, String> {
             .unwrap_or(f)
             .to_string_lossy()
             .replace('\\', "/");
-        match og_ui::UiDocument::parse(&id, &text) {
+        let imports = document_imports(&assets, &id, &text);
+        match og_ui::UiDocument::parse_with_imports(&id, &text, imports) {
             Ok(d) => docs.push(d),
-            Err(e) => eprintln!(
-                "og ui types: {id} is not typed: {}",
-                e.first().map(String::as_str).unwrap_or("it does not parse")
-            ),
+            Err(e) => {
+                let first = e.first().map(String::as_str).unwrap_or("it does not parse");
+                // An error reads `<id>:<line>:<col>: <message>`.
+                let placed = first.strip_prefix(&format!("{id}:")).and_then(|rest| {
+                    let (line, rest) = rest.split_once(':')?;
+                    let (col, message) = rest.split_once(": ")?;
+                    Some(((line.parse().ok()?, col.parse().ok()?), message))
+                });
+                untyped.push(Untyped {
+                    file: format!("assets/{id}"),
+                    at: placed.map(|(at, _)| at),
+                    message: placed.map_or(first, |(_, message)| message).to_string(),
+                });
+            }
         }
     }
     let dir = root.join(TYPES_DIR);
     if docs.is_empty() && !dir.is_dir() {
-        return Ok(0);
+        return Ok(Typed {
+            documents: 0,
+            untyped,
+        });
     }
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     let components: std::collections::BTreeMap<&str, &og_ui::UiDocument> = docs
@@ -766,7 +849,10 @@ pub fn write_types(root: &Path) -> Result<usize, String> {
             let _ = std::fs::remove_file(e.path());
         }
     }
-    Ok(docs.len())
+    Ok(Typed {
+        documents: docs.len(),
+        untyped,
+    })
 }
 
 fn collect_files(dir: &Path, extension: &str, out: &mut Vec<std::path::PathBuf>) {

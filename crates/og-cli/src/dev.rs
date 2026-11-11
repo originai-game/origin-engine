@@ -786,8 +786,15 @@ pub fn run(args: &[&str]) -> ExitCode {
         let documents = changes.iter().any(|c| {
             c.starts_with(p.root.join("assets")) && c.extension().is_some_and(|e| e == "ogt")
         });
-        if documents && let Err(e) = crate::ui::write_types(&p.root) {
-            eprintln!("og dev: {e}");
+        if documents {
+            match crate::ui::write_types(&p.root) {
+                Ok(typed) => {
+                    for u in &typed.untyped {
+                        eprintln!("og dev: {}", u.line());
+                    }
+                }
+                Err(e) => eprintln!("og dev: {e}"),
+            }
         }
         // A source change is checked beside the rebuild; other assets are not.
         if (documents

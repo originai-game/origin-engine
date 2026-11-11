@@ -642,6 +642,79 @@ export default og.game({
     );
 }
 
+/// `og check` fails on a UI document that does not parse, naming the
+/// document, its line and the error the cook refuses it with, and
+/// `og ui types` exits non-zero on it; a document whose stylesheet is an
+/// `@import` beside it parses as it does in the cook.
+///
+/// Ways it could fail: the error printed as a note beside "og check: ok"
+/// (the cook then refuses what the check passed), or an `@import` read as
+/// "not supplied" because only the cook read the sheet.
+#[test]
+fn og_check_fails_on_a_document_that_does_not_parse() {
+    let dir = scratch_root();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::create_dir_all(dir.join("assets/ui")).unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.ts"),
+        "import { og } from \"@origingame/engine\";\nexport default og.game({});\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("assets/ui/theme.css"), "#Go { color: red; }\n").unwrap();
+    std::fs::write(
+        dir.join("assets/ui/imports.svelte"),
+        "<meta name='screen' content='imports'>\n<column id='Root'><button id='Go'>Go</button></column>\n<style>\n@import \"theme.css\";\n</style>\n",
+    )
+    .unwrap();
+    let check = || og().args(["check", "--json"]).arg(&dir).output().unwrap();
+    let out = check();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+
+    std::fs::write(
+        dir.join("assets/ui/game.svelte"),
+        "<meta name='screen' content='game'>\n<column id='Box'><button id='Go'>Go</button></column>\n<style>\n#Box button::part(base) { }\n</style>\n",
+    )
+    .unwrap();
+    let out = check();
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out));
+    let report: serde_json::Value =
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|e| panic!("{e}: {}", text(&out)));
+    assert_eq!(report["ok"], false, "{report}");
+    let found: Vec<_> = report["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| {
+            (
+                d["file"].as_str().unwrap(),
+                d["line"].as_u64().unwrap(),
+                d["code"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(found, [("assets/ui/game.svelte", 4, 9102)], "{report}");
+    assert!(
+        report["diagnostics"][0]["message"]
+            .as_str()
+            .unwrap()
+            .starts_with("#Box button::part(base): "),
+        "{report}"
+    );
+    let types = og().args(["ui", "types"]).arg(&dir).output().unwrap();
+    assert_eq!(types.status.code(), Some(1), "{}", text(&types));
+    assert!(
+        text(&types).contains("assets/ui/game.svelte(4,1): error OG9102: "),
+        "{}",
+        text(&types)
+    );
+    assert!(dir.join(".og/types/ui/imports.d.ts").is_file());
+}
+
 /// `og ui slots --json` gives each art slot its whole generation spec:
 /// the kind's facts (transparency, legible size), the multi-cell split,
 /// the nine-slice insets and the set it is drawn with, whose reference is
