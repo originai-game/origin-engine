@@ -87,6 +87,9 @@ impl Ui {
             .keys()
             .map(|&k| (k, self.interaction.hit(k).map(|h| h.rect)))
             .collect();
+        // The frame is laid out in og-ui units; the action map's pointers
+        // are the surface's CSS px, as the probe's elements are.
+        let unit = self.frame().unit.max(1.0);
         for (key, rect) in rects {
             let z = self
                 .docs
@@ -95,7 +98,7 @@ impl Ui {
                 .get_mut(&key)
                 .expect("a zone just listed");
             let r = rect.unwrap_or_default();
-            let at = [r.x, r.y, r.width, r.height];
+            let at = [r.x, r.y, r.width, r.height].map(|v| v * unit);
             if [z.x, z.y, z.width, z.height] != at {
                 [z.x, z.y, z.width, z.height] = at;
                 changed = true;
@@ -205,7 +208,16 @@ mod tests {
     }
 
     fn frame_on(ui: &mut Ui, p: Pointers, coarse: bool) -> Option<Vec<og_input::ControlZone>> {
-        let mut vp = Viewport::new(800.0, 480.0);
+        frame_at(ui, p, coarse, [800.0, 480.0])
+    }
+
+    fn frame_at(
+        ui: &mut Ui,
+        p: Pointers,
+        coarse: bool,
+        size: [f32; 2],
+    ) -> Option<Vec<og_input::ControlZone>> {
+        let mut vp = Viewport::new(size[0], size[1]);
         vp.coarse_pointer = coarse;
         ui.begin(
             InputFrame {
@@ -316,5 +328,93 @@ mod tests {
         let fine = frame_on(&mut ui, Pointers::default(), false).expect("zones changed");
         let left: Vec<&str> = fine.iter().map(|z| z.action.as_str()).collect();
         assert_eq!(left, ["jump"]);
+    }
+
+    /// A mouse or pad surface above 720p lays the frame out in og-ui
+    /// units and draws it larger (a desktop window, a scripted run); the
+    /// zones are where the controls are drawn, so a press on a control's
+    /// centre as the probe reports it (`touch_move_to:Stick`) drives its
+    /// action.
+    ///
+    /// Ways it could fail: zones left in units (a press on the drawn stick
+    /// misses its zone and the action never reads), or scaled twice.
+    #[test]
+    fn zones_are_where_the_controls_are_drawn_on_a_scaled_surface() {
+        // Shown on a fine pointer too: no `@media (pointer: fine)` rule.
+        const HUD: &str = r#"
+<meta name="component" content="hud">
+<div id="Root">
+  <joystick id="Stick" action="move"/>
+  <button id="Jump" data-og-touch="jump">Jump</button>
+</div>
+<style>
+  #Root { padding: 0; width: 100%; height: 100%; }
+  #Stick { position: absolute; left: 32px; bottom: 32px; width: 160px; }
+  #Jump { position: absolute; right: 32px; bottom: 40px; width: 80px; height: 80px; }
+</style>
+"#;
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("hud.svelte", HUD).unwrap());
+        ui.mount_document(
+            SourceId::new("test", "hud"),
+            "hud",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let size = [1920.0, 1080.0];
+        let mut zones = None;
+        for _ in 0..4 {
+            zones = frame_at(&mut ui, Pointers::default(), false, size).or(zones);
+        }
+        let zones = zones.expect("zones handed over");
+        assert_eq!(ui.frame().unit, 1.5, "1080p is 1.5 units of 720p");
+        let elements = ui.probe_elements();
+        let drawn = |id: &str| {
+            let e = elements.iter().find(|e| e.id == id).unwrap();
+            (e.x, e.y, e.width, e.height)
+        };
+        for (id, action) in [("Stick", "move"), ("Jump", "jump")] {
+            let z = zones.iter().find(|z| z.action == action).unwrap();
+            assert_eq!((z.x, z.y, z.width, z.height), drawn(id), "{id}");
+        }
+        // A finger on the stick, pushed half its radius right, and one on
+        // the button, at the drawn centres.
+        let (x, y, w, h) = drawn("Stick");
+        let centre = Vec2::new(x + w / 2.0, y + h / 2.0);
+        let pushed = centre + Vec2::new(w / 4.0, 0.0);
+        let (x, y, w, h) = drawn("Jump");
+        let on_jump = Vec2::new(x + w / 2.0, y + h / 2.0);
+        let held = [(1, on_jump, on_jump), (2, centre, pushed)];
+        let mut map = ActionMap::new();
+        for (name, kind) in [("move", ActionKind::Axis2), ("jump", ActionKind::Button)] {
+            map.define(ActionDesc {
+                name: name.into(),
+                kind,
+                ..ActionDesc::default()
+            })
+            .unwrap();
+        }
+        map.set_surface(og_input::Surface {
+            width: size[0],
+            height: size[1],
+            coarse: false,
+        });
+        map.set_zones(zones);
+        map.sample(
+            &Default::default(),
+            &pointers(&held, 0b110),
+            &Default::default(),
+            1,
+            1.0 / 60.0,
+        );
+        let m = map.state("move").unwrap();
+        let want = (0.5 - 0.15) / 0.85;
+        assert!(
+            (m.vector.x - want).abs() < 1e-4 && m.vector.y.abs() < 1e-4,
+            "{m:?}"
+        );
+        assert!(map.state("jump").unwrap().down);
     }
 }
