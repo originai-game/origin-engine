@@ -126,6 +126,10 @@ struct Seen {
     events: Vec<(u32, String, String)>,
     /// (tick, the `mark` command's arguments).
     marks: Vec<(u32, Vec<String>)>,
+    /// Entities Watch plays the next time it runs (og.timeline.play from
+    /// inside a system), and what each call answered.
+    play: Vec<f64>,
+    answers: Vec<Value>,
 }
 
 struct Game(Rc<RefCell<Seen>>);
@@ -135,6 +139,12 @@ impl Hooks for Game {
         let w = call.engine;
         if call.kind == 0 && call.id == WATCH {
             let tick = og_world_get_tick(w);
+            let play = std::mem::take(&mut self.0.borrow_mut().play);
+            for e in play {
+                let answer = og_runtime::host_impl::answer(og_timeline_play(w, e));
+                let answer = serde_json::from_str(&answer).unwrap();
+                self.0.borrow_mut().answers.push(answer);
+            }
             for name in [
                 "og.TimelineStarted",
                 "og.TimelineMarker",
@@ -319,6 +329,54 @@ fn seeking_to_4s_hashes_as_playing_to_4s() {
     };
     assert_eq!(marks(&a), vec!["early", "late"]);
     assert_eq!(marks(&b), vec!["late"]);
+}
+
+/// og.timeline.play's doc: systems may call it, and it takes effect at this
+/// tick's og.timeline. Watch does not read og.Timeline, so the call cannot
+/// look at the entity's component: it is queued, and og.timeline applies it.
+///
+/// Ways it could fail: the call reaches for the whole world, which a system
+/// never has (refused with "not available while a system runs", as it was);
+/// the play lands a tick late, so the world differs from one played before
+/// the tick; a play on an entity without og.Timeline is dropped in silence.
+#[test]
+fn a_system_plays_a_timeline_at_this_ticks_og_timeline() {
+    // Played from inside Watch on the second tick.
+    let a = start();
+    a.seen.borrow_mut().play = vec![a.timeline];
+    frame(a.engine, 60);
+    assert_eq!(a.seen.borrow().answers, vec![json!({ "ok": true })]);
+    // Played from outside, before that tick.
+    let b = start();
+    value(og_runtime::host_impl::answer(og_timeline_play(
+        b.engine, b.timeline,
+    )));
+    frame(b.engine, 60);
+    let (ta, _) = state(&a);
+    assert_eq!(ta["playing"], json!(true), "{ta}");
+    assert_eq!(ta, state(&b).0);
+    assert_eq!(hash(a.engine), hash(b.engine));
+
+    // "box" has no og.Timeline: the system's call is queued all the same,
+    // and og.timeline says once that nothing plays. A dead entity is
+    // refused at the call. (The hooks are the last started run's: `b`.)
+    let the_box: f64 = og_world_find(b.engine, "box".into()).parse().unwrap();
+    og_runtime::og_engine_take_log(b.engine);
+    b.seen.borrow_mut().play = vec![the_box, 123_456.0];
+    frame(b.engine, 1);
+    let answers = b.seen.borrow().answers.clone();
+    assert_eq!(answers.len(), 2, "{answers:?}");
+    assert_eq!(answers[0], json!({ "ok": true }));
+    assert_eq!(answers[1]["ok"], json!(false), "{answers:?}");
+    assert!(
+        answers[1]["reason"].as_str().unwrap().contains("not alive"),
+        "{answers:?}"
+    );
+    let log = og_runtime::og_engine_take_log(b.engine);
+    assert!(
+        log.contains("has no og.Timeline: nothing plays"),
+        "the engine log names the play that found no timeline: {log}"
+    );
 }
 
 #[test]
