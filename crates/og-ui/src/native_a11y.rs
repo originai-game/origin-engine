@@ -480,7 +480,7 @@ impl Bridge {
         }
         let focus = self
             .by_key
-            .get(&ui.state.focus)
+            .get(&ui.interaction.state.focus)
             .copied()
             .filter(|id| self.previous.contains_key(id))
             .unwrap_or(ROOT);
@@ -550,12 +550,12 @@ pub(crate) struct Input {
 impl Ui {
     /// Called between ticks by the native host, never from its socket thread.
     pub fn queue_accessibility(&mut self, request: Request) {
-        self.native_input.pending.push(request);
+        self.interaction.native_input.pending.push(request);
     }
 
     pub(crate) fn apply_native_accessibility(&mut self) {
-        self.native_input.values.clear();
-        for request in std::mem::take(&mut self.native_input.pending) {
+        self.interaction.native_input.values.clear();
+        for request in std::mem::take(&mut self.interaction.native_input.pending) {
             let key = crate::id::key_of_path(&request.path);
             let Some(node) = self.a11y().nodes.iter().find(|n| n.path == request.path) else {
                 continue;
@@ -572,8 +572,10 @@ impl Ui {
                 | Action::ScrollDown
                 | Action::ScrollLeft
                 | Action::ScrollRight => {
-                    if self.state.scope != 0
-                        && self.hit(key).is_none_or(|h| h.scope != self.state.scope)
+                    if self.interaction.state.scope != 0
+                        && self
+                            .hit(key)
+                            .is_none_or(|h| h.scope != self.interaction.state.scope)
                     {
                         continue;
                     }
@@ -599,10 +601,10 @@ impl Ui {
             };
             self.apply_a11y(&[(act, request.path)]);
             if request.action == Action::SetValue
-                && self.state.focus == key
+                && self.interaction.state.focus == key
                 && let Some(data) = request.data
             {
-                self.native_input.values.insert(key, data);
+                self.interaction.native_input.values.insert(key, data);
             }
         }
     }
@@ -615,7 +617,7 @@ impl Ui {
         max: f32,
         step: f32,
     ) -> bool {
-        let number = match self.native_input.values.remove(&key) {
+        let number = match self.interaction.native_input.values.remove(&key) {
             Some(ActionData::NumericValue(v)) => v,
             Some(ActionData::Value(v)) => match v.parse::<f64>() {
                 Ok(v) => v,

@@ -462,7 +462,7 @@ impl Ui {
                         // The others of its name build again next tick, and close.
                         if out.toggled && out.open {
                             let name = r.str("exclusive").unwrap_or_default();
-                            self.actions.pending.push(details_action(name));
+                            self.interaction.actions.pending.push(details_action(name));
                         }
                     }
                 }

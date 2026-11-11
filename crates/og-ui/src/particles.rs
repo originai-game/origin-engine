@@ -293,7 +293,7 @@ impl Ui {
 
     /// Spawns this tick's particles and makes each emitter's batch.
     pub(crate) fn world_particles(&mut self, tick: u32) {
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let reduced = self.env.theme.reduced_motion;
         let accent = self.env.theme.palette.primary;
         let tps = self.env.ticks_per_second as f32;

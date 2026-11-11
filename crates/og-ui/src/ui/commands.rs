@@ -8,7 +8,7 @@ impl Ui {
     /// the panel's own entrance (inert while it moves) has played, where it
     /// is drawn, not when its place in the cascade has.
     pub(super) fn apply_stagger(&mut self, order: &[usize]) {
-        let now = self.state.tick as f32;
+        let now = self.interaction.state.tick as f32;
         let (reduced, distance) = (self.env.theme.reduced_motion, self.env.theme.space.lg);
         for &i in order {
             let Some(st) = self.nodes[i].stagger else {
@@ -55,10 +55,11 @@ impl Ui {
 
     /// The clock's first tick, kept for the lifetime of its semantic owner.
     pub(crate) fn since(&mut self, owner: u64, key: u64) -> u64 {
-        self.state
+        self.interaction
+            .state
             .clocks
             .entry(key)
-            .or_insert((owner, self.state.tick))
+            .or_insert((owner, self.interaction.state.tick))
             .1
     }
 
@@ -304,7 +305,7 @@ impl Ui {
         self.paint.cache.shifted_out = false;
         self.paint.cache.copied.clear();
         let mut cmds: Vec<(DrawCmd, Affine)> = Vec::with_capacity(last.len());
-        let ghosts = std::mem::take(&mut self.state.motion.ghosts);
+        let ghosts = std::mem::take(&mut self.interaction.state.motion.ghosts);
         let mut drawn = vec![false; ghosts.len()];
         self.paint.cache.named.clear();
         let mut frozen: IdMap<u64, crate::motion::state::Frozen> = IdMap::new();
@@ -602,8 +603,8 @@ impl Ui {
                 self.ghost_commands(ghost, &mut cmds);
             }
         }
-        self.state.motion.ghosts = ghosts;
-        self.state.motion.frozen = frozen;
+        self.interaction.state.motion.ghosts = ghosts;
+        self.interaction.state.motion.frozen = frozen;
         self.nest_named();
         // The same trees as last frame, each drawn whole as it was.
         let same_roots = self.orders.roots == self.paint.cache.last_roots;
@@ -867,18 +868,14 @@ impl Ui {
             .iter()
             .map(|g| g.frozen.parent)
             .chain(self.world.marks.keys().copied())
-            .chain(
-                self.state
-                    .motion
-                    .part_styles
-                    .iter()
-                    .filter_map(|(&key, styles)| {
-                        styles
-                            .values()
-                            .any(|s| s.running || !s.runs.is_empty())
-                            .then_some(key)
-                    }),
-            );
+            .chain(self.interaction.state.motion.part_styles.iter().filter_map(
+                |(&key, styles)| {
+                    styles
+                        .values()
+                        .any(|s| s.running || !s.runs.is_empty())
+                        .then_some(key)
+                },
+            ));
         for key in keyed {
             if let Some(&i) = self.tree.by_key.get(&key) {
                 volatile.insert(i);
@@ -1149,6 +1146,7 @@ impl Ui {
         let r = sn.rect;
         let max_y = sn.max_scroll();
         let off_y = self
+            .interaction
             .state
             .scroll
             .get(&sn.key)
@@ -1157,6 +1155,7 @@ impl Ui {
             .clamp(0.0, max_y);
         let max_x = sn.max_scroll_x();
         let off_x = self
+            .interaction
             .state
             .scroll_x
             .get(&sn.key)
@@ -1281,7 +1280,13 @@ impl Ui {
             let inner_w = sn.w - sn.el.padding.horizontal();
             let track = sn.rect;
             let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
-            let off = self.state.scroll_x.get(&sn.key).copied().unwrap_or(0.0);
+            let off = self
+                .interaction
+                .state
+                .scroll_x
+                .get(&sn.key)
+                .copied()
+                .unwrap_or(0.0);
             let x = crate::scroll::bar_start(track.x, track.width, bar_w, off, max_x);
             let h = thick;
             let y = track.bottom() - h - t.space.xxs;
@@ -1298,6 +1303,7 @@ impl Ui {
             let track = sn.rect;
             let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
             let off = self
+                .interaction
                 .state
                 .scroll
                 .get(&sn.key)

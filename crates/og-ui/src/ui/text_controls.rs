@@ -110,7 +110,7 @@ impl Ui {
         let mut r = self.respond(key);
         r.changed |= cleared || stepped;
         // Only the real focus edits; a forced one (the probe's) only shows.
-        if self.state.focus == key {
+        if self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, padding);
             let inner = self.hit(key).map(|h| h.full.inset(&inset));
             let e = self.edit(
@@ -131,7 +131,7 @@ impl Ui {
             );
             r.changed = e.changed || cleared || stepped;
             r.submitted = e.submitted;
-            r.focused = self.state.focus == key;
+            r.focused = self.interaction.state.focus == key;
         }
         let focused = r.focused;
         let invalid = desc.invalid
@@ -185,9 +185,10 @@ impl Ui {
         let mut edit = self.edit_view(key, focused, value, composition, false);
         edit.placeholder = placeholder;
         if let Some(target) = self
+            .interaction
             .text_target
             .as_mut()
-            .filter(|t| focused && self.state.focus == key && t.rect.width > 0.0)
+            .filter(|t| focused && self.interaction.state.focus == key && t.rect.width > 0.0)
         {
             target.input_type = desc.input_type;
             target.inputmode = desc.inputmode.unwrap_or(desc.input_type.default_mode());
@@ -236,9 +237,9 @@ impl Ui {
     ) -> bool {
         let [width, height, inset] = geometry;
         let now = self.seconds();
-        let mut accelerated = self.input.shift;
-        let mut direction = if self.state.focus == self.nodes[owner].key {
-            -f64::from(self.nav.adjust_y)
+        let mut accelerated = self.interaction.input.shift;
+        let mut direction = if self.interaction.state.focus == self.nodes[owner].key {
+            -f64::from(self.interaction.nav.adjust_y)
         } else {
             0.0
         };
@@ -831,7 +832,7 @@ impl Ui {
         let key = self.nodes[i].key;
         let mut r = self.respond(key);
         // Only the real focus edits; a forced one (the probe's) only shows.
-        if self.state.focus == key {
+        if self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, pad);
             let inner = self.hit(key).map(|h| h.full.inset(&inset));
             let e = self.edit(
@@ -852,7 +853,7 @@ impl Ui {
             );
             r.changed = e.changed;
             r.submitted = e.submitted;
-            r.focused = self.state.focus == key;
+            r.focused = self.interaction.state.focus == key;
         }
         let focused = r.focused;
         let (shown, composition) = self.shown_text(value, focused);
@@ -860,9 +861,10 @@ impl Ui {
         edit.placeholder = shown.is_empty();
         let invalid = desc.invalid || desc.constraints.fails(crate::InputType::Text, value);
         if let Some(target) = self
+            .interaction
             .text_target
             .as_mut()
-            .filter(|_| focused && self.state.focus == key)
+            .filter(|_| focused && self.interaction.state.focus == key)
         {
             target.readonly = desc.readonly;
         }
@@ -984,14 +986,14 @@ impl Ui {
     /// A text control's text as shown: its value with the composition (if
     /// focused and composing) at the caret, and the composition's range.
     fn shown_text(&self, value: &str, focused: bool) -> (String, Option<(usize, usize)>) {
-        if !focused || self.state.composition.is_empty() {
+        if !focused || self.interaction.state.composition.is_empty() {
             return (value.to_string(), None);
         }
-        let at = self.state.caret.min(value.chars().count());
+        let at = self.interaction.state.caret.min(value.chars().count());
         let mut out: String = value.chars().take(at).collect();
-        out.push_str(&self.state.composition);
+        out.push_str(&self.interaction.state.composition);
         out.extend(value.chars().skip(at));
-        let n = self.state.composition.chars().count();
+        let n = self.interaction.state.composition.chars().count();
         (out, Some((at, at + n)))
     }
 
@@ -1009,8 +1011,8 @@ impl Ui {
             return crate::layout::EditView::default();
         }
         let len = value.chars().count();
-        let caret = self.state.caret.min(len);
-        let anchor = self.state.anchor.min(len);
+        let caret = self.interaction.state.caret.min(len);
+        let anchor = self.interaction.state.anchor.min(len);
         let (a, b) = (caret.min(anchor), caret.max(anchor));
         let n = composition.map_or(0, |(s, e)| e - s);
         if let Some(h) = self.hit(key) {
@@ -1020,7 +1022,7 @@ impl Ui {
                 .position(|n| n.key == key)
                 .map(|i| self.path_of(i))
                 .unwrap_or_default();
-            self.text_target = Some(TextTarget {
+            self.interaction.text_target = Some(TextTarget {
                 path,
                 rect: h.full,
                 multiline,
@@ -1034,9 +1036,9 @@ impl Ui {
             caret: caret + n,
             selection: (a, b),
             composition,
-            scroll: self.state.edit_scroll,
+            scroll: self.interaction.state.edit_scroll,
             caret_on: self.caret_shown(),
-            upstream: self.state.caret_upstream && n == 0,
+            upstream: self.interaction.state.caret_upstream && n == 0,
             placeholder: false,
         }
     }

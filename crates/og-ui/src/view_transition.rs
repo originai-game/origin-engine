@@ -588,8 +588,8 @@ impl Ui {
     /// style the groups. Reduced motion starts none (unless the style
     /// keeps motion).
     pub(crate) fn start_view_transition(&mut self, screen: &str, joining: bool) {
-        let tick = self.state.tick;
-        if let Some(r) = &mut self.state.view_transition
+        let tick = self.interaction.state.tick;
+        if let Some(r) = &mut self.interaction.state.view_transition
             && r.since == tick
         {
             if joining {
@@ -597,7 +597,7 @@ impl Ui {
             }
             return;
         }
-        self.state.view_transition = None;
+        self.interaction.state.view_transition = None;
         if self.env.theme.reduced_motion
             && self.env.theme.motion.reduced != crate::motion::Reduced::Keep
         {
@@ -617,7 +617,7 @@ impl Ui {
                 cmds: image(last, n, named),
             })
             .collect();
-        self.state.view_transition = Some(Running {
+        self.interaction.state.view_transition = Some(Running {
             since: tick,
             screen: screen.to_string(),
             old,
@@ -628,7 +628,8 @@ impl Ui {
     /// Whether the view transition that started at `since` was skipped:
     /// its layers end theirs at once.
     pub(crate) fn view_transition_skipped(&self, since: u64) -> bool {
-        self.state
+        self.interaction
+            .state
             .view_transition
             .as_ref()
             .is_some_and(|r| r.skipped && r.since == since)
@@ -639,7 +640,7 @@ impl Ui {
     /// part draw (left out of the frame's items). `None` when none runs
     /// (or it has just ended).
     pub(crate) fn view_transition_frame(&mut self, trees: &[(DrawCmd, Affine)]) -> Option<Groups> {
-        let run = self.state.view_transition.take()?;
+        let run = self.interaction.state.view_transition.take()?;
         if run.skipped {
             // Kept while its layers may still read it.
             if self
@@ -650,7 +651,7 @@ impl Ui {
                 .iter()
                 .any(|l| l.since == run.since)
             {
-                self.state.view_transition = Some(run);
+                self.interaction.state.view_transition = Some(run);
             }
             return None;
         }
@@ -660,7 +661,7 @@ impl Ui {
             .docs
             .get(&run.screen)
             .and_then(|d| d.layer.transition.clone())?;
-        let t = self.state.tick.saturating_sub(run.since) as f32 * 1000.0
+        let t = self.interaction.state.tick.saturating_sub(run.since) as f32 * 1000.0
             / self.env.ticks_per_second.max(1) as f32;
         // The new view: this frame's shared elements but a leaving layer's.
         let leaving: Vec<String> = self
@@ -708,7 +709,7 @@ impl Ui {
             self.out.warnings.push(format!(
                 "view-transition-name '{name}' is on two elements of the {view} view: the view transition is skipped (each name names one element)"
             ));
-            self.state.view_transition = Some(Running {
+            self.interaction.state.view_transition = Some(Running {
                 skipped: true,
                 old: Vec::new(),
                 ..run
@@ -783,7 +784,7 @@ impl Ui {
             })
             .map(|n| n.range.clone())
             .collect();
-        self.state.view_transition = Some(run);
+        self.interaction.state.view_transition = Some(run);
         Some((tail, hidden))
     }
 }

@@ -160,7 +160,7 @@ impl Ui {
     /// Answers the layer's serial.
     pub fn push_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
         if let Some(a) = self.active_layer() {
-            self.docs.host.layers.layers[a].focus = self.state.focus;
+            self.docs.host.layers.layers[a].focus = self.interaction.state.focus;
         }
         self.insert_screen(screen, vm, None)
     }
@@ -284,7 +284,7 @@ impl Ui {
         };
         let (mut since, leaving, serial) = (l.since, l.leaving, l.serial);
         if since == STARTS {
-            since = self.state.tick;
+            since = self.interaction.state.tick;
             let screen = l.screen.clone();
             self.docs.host.layers.layers[k].since = since;
             self.start_view_transition(&screen, !leaving);
@@ -299,7 +299,7 @@ impl Ui {
             self.docs.host.layers.layers[k].since = 0;
             return (true, Vec::new());
         }
-        let t = self.state.tick.saturating_sub(since) as f32 * 1000.0
+        let t = self.interaction.state.tick.saturating_sub(since) as f32 * 1000.0
             / self.env.ticks_per_second.max(1) as f32;
         let (covers, plays): (Vec<_>, Vec<_>) = vt.old.iter().cloned().partition(is_cover);
         if leaving {
@@ -315,7 +315,7 @@ impl Ui {
                     opening,
                     vt.color,
                     vt.image.clone(),
-                    self.state.tick,
+                    self.interaction.state.tick,
                 ));
             }
             return (false, Vec::new());
@@ -396,7 +396,7 @@ impl Ui {
         }
         if let Some(screen) = screen {
             if let Some(a) = self.active_layer() {
-                self.docs.host.layers.layers[a].focus = self.state.focus;
+                self.docs.host.layers.layers[a].focus = self.interaction.state.focus;
             }
             let _ = self.insert_screen(screen, Value::Null, Some(mount.clone()));
         }
@@ -561,7 +561,7 @@ impl Ui {
     /// changes triggers asked for. `end` calls it (with no host) when the
     /// host did not.
     pub fn build_layers(&mut self, env: &dyn Env) {
-        let tick = self.state.tick;
+        let tick = self.interaction.state.tick;
         if self.docs.host.built_tick == tick {
             return;
         }
@@ -706,7 +706,7 @@ impl Ui {
         let Some(info) = infos.get(k).cloned() else {
             return (None, Vec::new());
         };
-        let tick = self.state.tick;
+        let tick = self.interaction.state.tick;
         let layer = self.docs.host.layers.layers[k].clone();
         self.docs.host.layers.layers[k].built = tick;
         self.docs.host.layers.layers[k].was_top = info.active;
@@ -808,14 +808,14 @@ impl Ui {
         let spec = &info.spec;
         let mut events = Vec::new();
         // Back: the topmost scope takes it (as a dialog does).
-        if info.active && self.nav.back && self.state.scope == key {
+        if info.active && self.interaction.nav.back && self.interaction.state.scope == key {
             match &spec.back {
                 Back::Pop => {
-                    self.nav.back = false;
+                    self.interaction.nav.back = false;
                     self.docs.host.ops.push(LayerOp::Pop(layer.serial));
                 }
                 Back::Emit(name) => {
-                    self.nav.back = false;
+                    self.interaction.nav.back = false;
                     events.push(DocEvent {
                         mount,
                         path: path.to_string(),
@@ -835,7 +835,7 @@ impl Ui {
             let declared = (!spec.focus.is_empty())
                 .then(|| crate::id::key_of_path(&format!("{path}/{}", spec.focus)));
             if let Some(f) = remembered.or(declared) {
-                self.request_focus = f;
+                self.interaction.request_focus = f;
             }
         }
         events

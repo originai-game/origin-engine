@@ -42,7 +42,7 @@ impl Ui {
         };
         let memory = crate::id::child_key(key, "~reveal");
         let hash = og_core::hash::hash_bytes(text.as_bytes());
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let mut a = self.anim(memory);
         let fresh = !self.has_anim(memory) || a.h != hash;
         if fresh {

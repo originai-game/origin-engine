@@ -169,10 +169,10 @@ impl Ui {
             // Last tick's box: where a held press maps to a colour.
             let bounds = ui.last_bounds(square_key);
             let mut drag = ui.has_anim(drag_key) && ui.anim(drag_key).h != 0;
-            if ui.input.pressed && ui.state.hot == square_key {
+            if ui.interaction.input.pressed && ui.interaction.state.hot == square_key {
                 drag = true;
             }
-            if !ui.input.down {
+            if !ui.interaction.input.down {
                 drag = false;
             }
             ui.set_anim(
@@ -183,7 +183,7 @@ impl Ui {
                 },
             );
             if drag && let Some(rect) = bounds {
-                let p = ui.input.pointer;
+                let p = ui.interaction.input.pointer;
                 s = ((p.x - rect.x) / rect.width.max(1.0)).clamp(0.0, 1.0);
                 v = 1.0 - ((p.y - rect.y) / rect.height.max(1.0)).clamp(0.0, 1.0);
                 changed = true;

@@ -99,7 +99,7 @@ impl crate::Ui {
 
     /// Seed the checkpointed presentation random stream from the engine seed.
     pub fn seed_feedback(&mut self, seed: u64) {
-        self.state.feedback_rng = seed ^ 0x9e37_79b9_7f4a_7c15;
+        self.interaction.state.feedback_rng = seed ^ 0x9e37_79b9_7f4a_7c15;
     }
 
     /// Replace the active pack without retaining a previous pack's rules.

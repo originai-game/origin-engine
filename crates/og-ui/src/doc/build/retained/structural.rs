@@ -495,7 +495,7 @@ impl RetainedHost {
                 }
                 self.topology.remove(&id).expect("mounted element topology");
                 self.by_key.remove(&id.key);
-                ui.state.virtual_lists.remove(&id.key);
+                ui.interaction.state.virtual_lists.remove(&id.key);
                 self.dirty.remove(&id);
                 for readers in &mut self.media {
                     readers.remove(&id);
@@ -531,8 +531,11 @@ impl RetainedHost {
             if let CollectionEdit::Patch { key, .. } = &edit {
                 if let Some(readers) = self.collections.get(&change.source) {
                     for id in readers {
-                        if let Some(list) =
-                            ui.state.virtual_lists.get_mut(&self.each[id].parent.key)
+                        if let Some(list) = ui
+                            .interaction
+                            .state
+                            .virtual_lists
+                            .get_mut(&self.each[id].parent.key)
                         {
                             list.invalidate(std::slice::from_ref(key));
                         }

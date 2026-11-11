@@ -38,9 +38,25 @@ impl Ui {
                 file_picker: false,
                 toast_anchor: Anchor::Bottom,
             },
-            input: InputFrame::default(),
-            #[cfg(not(target_arch = "wasm32"))]
-            native_input: Default::default(),
+            interaction: Interaction {
+                input: InputFrame::default(),
+                #[cfg(not(target_arch = "wasm32"))]
+                native_input: Default::default(),
+                state: State::default(),
+                nav: NavFrame::default(),
+                nav_on: true,
+                players: 1,
+                vcursor: None,
+                request_focus: 0,
+                gesture: false,
+                resize_moved: None,
+                text_target: None,
+                selected: Vec::new(),
+                drop_paths: IdMap::new(),
+                drag_paths: IdMap::new(),
+                drop_accepts: IdMap::new(),
+                actions: Default::default(),
+            },
             nodes: Vec::new(),
             kinds: Vec::new(),
             prev_kinds: Default::default(),
@@ -86,15 +102,9 @@ impl Ui {
             orders: Default::default(),
             semantics: Default::default(),
             building: false,
-            state: State::default(),
             prev_floating: Vec::new(),
-            nav: NavFrame::default(),
             touched: Default::default(),
-            nav_on: true,
-            players: 1,
-            vcursor: None,
             hud_editor_key: 0,
-            request_focus: 0,
             button_ink: Vec::new(),
             scopes: Vec::new(),
             kept_texts: Default::default(),
@@ -109,15 +119,8 @@ impl Ui {
                 pending_plays: Vec::new(),
                 motion: Default::default(),
             },
-            selected: Vec::new(),
-            text_target: None,
             cover: None,
-            gesture: false,
-            resize_moved: None,
             accent: None,
-            drop_paths: IdMap::new(),
-            drag_paths: IdMap::new(),
-            drop_accepts: IdMap::new(),
             invalidation: Default::default(),
             draws: Default::default(),
             dressable: Default::default(),
@@ -125,7 +128,6 @@ impl Ui {
                 host: Default::default(),
                 reactive: Default::default(),
             },
-            actions: Default::default(),
             world: Default::default(),
         };
         ui.write_theme_tokens(desc.theme);
@@ -232,12 +234,12 @@ impl Ui {
 
     /// Frames begun so far: the UI's clock.
     pub fn tick(&self) -> u64 {
-        self.state.tick
+        self.interaction.state.tick
     }
 
     /// The UI's clock in seconds (frames over the tick rate).
     pub fn seconds(&self) -> f64 {
-        self.state.tick as f64 / f64::from(self.env.ticks_per_second)
+        self.interaction.state.tick as f64 / f64::from(self.env.ticks_per_second)
     }
 
     pub fn ticks_per_second(&self) -> u32 {
@@ -254,7 +256,7 @@ impl Ui {
     /// (an open dialog or menu turns it on while it is open). Takes effect
     /// from the next tick.
     pub fn set_navigation(&mut self, on: bool) {
-        self.nav_on = on;
+        self.interaction.nav_on = on;
     }
 
     /// Local multiplayer: how many players this screen takes. Pads 1 to
@@ -264,7 +266,7 @@ impl Ui {
     /// focus with the keyboard and the pointer. 1 by default; declared every
     /// tick, like [`Ui::set_navigation`], and read from the next.
     pub fn set_players(&mut self, count: u32) {
-        self.players = count.clamp(1, 4);
+        self.interaction.players = count.clamp(1, 4);
     }
 
     /// The last frame's accessibility tree: each element with a role, its
@@ -273,7 +275,7 @@ impl Ui {
     /// after [`Ui::set_navigation`]`(false)`, unless a dialog is open (a
     /// dialog's controls are always walked).
     pub fn navigation(&self) -> bool {
-        !self.state.nav_off || self.state.scope != 0
+        !self.interaction.state.nav_off || self.interaction.state.scope != 0
     }
 
     /// What element `i` tells the accessibility tree: role, name,
@@ -303,13 +305,14 @@ impl Ui {
     /// the focus lands (a game asking each tick until it sees the focus)
     /// lands on that same first control.
     pub fn navigate(&mut self, nav: Nav) {
-        let entering = self.state.focus == 0 && !matches!(nav, Nav::Activate | Nav::Back);
-        self.state.pending.push((nav, entering));
+        let entering =
+            self.interaction.state.focus == 0 && !matches!(nav, Nav::Activate | Nav::Back);
+        self.interaction.state.pending.push((nav, entering));
     }
 
     /// The key of the focused control (0: none).
     pub fn focused_key(&self) -> u64 {
-        self.state.focus
+        self.interaction.state.focus
     }
 
     /// Whether the host opens a file picker: `<input type="file">` builds
@@ -330,7 +333,7 @@ impl Ui {
     /// group's arrow keys moving the focus with the choice, a list opening
     /// at its chosen option. Called again in the frame, the last one wins.
     pub fn set_focus(&mut self, path: &str) {
-        self.request_focus = crate::id::key_of_path(path);
+        self.interaction.request_focus = crate::id::key_of_path(path);
     }
 
     /// Escape or gamepad B this tick, not taken by a dialog or menu: true
@@ -340,10 +343,10 @@ impl Ui {
     /// is built this tick (a HUD drawn under pause): og-ui's rule, the
     /// topmost dialog or menu closes. A locked dialog lets it through.
     pub fn back(&mut self) -> bool {
-        if self.state.scope != 0 && !self.state.scope_locked {
+        if self.interaction.state.scope != 0 && !self.interaction.state.scope_locked {
             return false;
         }
-        std::mem::take(&mut self.nav.back)
+        std::mem::take(&mut self.interaction.nav.back)
     }
 
     /// The widget memory of `key`, marked as used this frame.
@@ -352,16 +355,21 @@ impl Ui {
         if let Some(owned) = self.owning.last_mut() {
             owned.memories.push(key);
         }
-        self.state.anims.get(&key).copied().unwrap_or_default()
+        self.interaction
+            .state
+            .anims
+            .get(&key)
+            .copied()
+            .unwrap_or_default()
     }
 
     pub(crate) fn has_anim(&self, key: u64) -> bool {
-        self.state.anims.contains_key(&key)
+        self.interaction.state.anims.contains_key(&key)
     }
 
     pub(crate) fn set_anim(&mut self, key: u64, a: Anim) {
         self.touched.insert(key);
-        let old = self.state.anims.insert(key, a);
+        let old = self.interaction.state.anims.insert(key, a);
         if let Some(owned) = self.owning.last_mut() {
             owned.memories.push(key);
             owned.moved |= old != Some(a);
@@ -498,7 +506,7 @@ impl Ui {
 
     /// The input of the frame being built.
     pub fn input(&self) -> &InputFrame {
-        &self.input
+        &self.interaction.input
     }
 
     /// Starts a frame whose root is a column over the whole viewport, padded by the safe area.
@@ -526,7 +534,7 @@ impl Ui {
         // under it, two touches scroll or zoom what is under them.
         let grabbed = self.scroll_input(&input);
         // A press on a resize handle holds the pointer while it drags.
-        if self.gesture || self.resize_input(&input) {
+        if self.interaction.gesture || self.resize_input(&input) {
             input.pressed = false;
             input.released = false;
             input.down = false;
@@ -573,17 +581,20 @@ impl Ui {
         self.last_closed = NONE;
         self.building = true;
 
-        self.state.tick += 1;
+        self.interaction.state.tick += 1;
         // A Rive player whose element was not built last tick is gone.
-        let tick = self.state.tick;
-        self.state.rive.retain(|_, s| s.built + 1 >= tick);
-        self.nav = NavFrame::default();
+        let tick = self.interaction.state.tick;
+        self.interaction
+            .state
+            .rive
+            .retain(|_, s| s.built + 1 >= tick);
+        self.interaction.nav = NavFrame::default();
         self.touched.clear();
-        self.request_focus = 0;
+        self.interaction.request_focus = 0;
         self.scopes.clear();
-        self.nav_on = true;
-        self.players = 1;
-        self.vcursor = None;
+        self.interaction.nav_on = true;
+        self.interaction.players = 1;
+        self.interaction.vcursor = None;
         self.hud_editor_key = 0;
         self.cover = None;
         // A pointer on a world panel is moved onto the panel's layout.
@@ -595,7 +606,7 @@ impl Ui {
         // Hit test against last frame's rectangles, topmost first.
         let p = input.pointer;
         let hot = if input.pointer_inside {
-            crate::ui::pick_hit(&self.state.hits, p.x, p.y, |h| {
+            crate::ui::pick_hit(&self.interaction.state.hits, p.x, p.y, |h| {
                 !h.has(HIT_OFFSCREEN)
                     && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
                     && (!h.has(crate::ui::HIT_SHAPE) || self.shape_hit(h, p.x, p.y))
@@ -604,34 +615,37 @@ impl Ui {
             0
         };
         let hot = grabbed.unwrap_or(hot);
-        self.state.hover_ticks = if hot != 0 && hot == self.state.hot {
-            self.state.hover_ticks.saturating_add(1)
+        self.interaction.state.hover_ticks = if hot != 0 && hot == self.interaction.state.hot {
+            self.interaction.state.hover_ticks.saturating_add(1)
         } else {
             0
         };
-        if hot != 0 && hot != self.state.hot && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
+        if hot != 0
+            && hot != self.interaction.state.hot
+            && self.hit(hot).is_some_and(|h| h.has(HIT_NAV))
+        {
             self.feedback_at(hot, crate::tokens::SoundEvent::Hover);
         }
         if input.pressed && grabbed.is_none() && self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
             self.feedback_at(hot, crate::tokens::SoundEvent::Press);
         }
-        self.state.hot = hot;
-        self.state.focus_click = None;
+        self.interaction.state.hot = hot;
+        self.interaction.state.focus_click = None;
         if input.pressed {
-            self.state.active = hot;
+            self.interaction.state.active = hot;
             let text = self.hit(hot).is_some_and(|h| h.has(HIT_TEXT));
             if text {
-                self.state.focus = hot;
-                self.state.focus_click = Some(p.x);
+                self.interaction.state.focus = hot;
+                self.interaction.state.focus_click = Some(p.x);
             } else if self.hit(hot).is_some_and(|h| h.has(HIT_NAV)) {
                 // A pressed control takes focus without the ring (as :focus-visible).
-                self.state.focus = hot;
+                self.interaction.state.focus = hot;
             } else {
                 // A control that takes no focus gives it to the focusable one
                 // around it (a grid's item, its grid), as a click does on the web.
-                self.state.focus = self.hit(hot).map_or(0, |h| h.owner);
+                self.interaction.state.focus = self.hit(hot).map_or(0, |h| h.owner);
             }
-            self.state.focus_visible = false;
+            self.interaction.state.focus_visible = false;
         }
         if grabbed.is_none() {
             self.select_input(&input, hot);
@@ -644,15 +658,15 @@ impl Ui {
         #[cfg(not(target_arch = "wasm32"))]
         self.apply_native_accessibility();
         self.apply_pads(&input);
-        self.state.pointer = p;
+        self.interaction.state.pointer = p;
         // Once a world has a typed-text stream, key presses type nothing.
         if input.typed_stream {
-            self.state.typed_stream = true;
-        } else if self.state.typed_stream {
+            self.interaction.state.typed_stream = true;
+        } else if self.interaction.state.typed_stream {
             input.text.clear();
         }
-        self.input = input;
-        self.text_target = None;
+        self.interaction.input = input;
+        self.interaction.text_target = None;
 
         let mut el = root;
         el.width = Size::Fixed(viewport.width);
@@ -728,24 +742,24 @@ impl Ui {
             let n = usize::from(f.count);
             let mut next = || {
                 // xorshift64*, seeded on first use.
-                let mut x = self.state.feedback_rng;
+                let mut x = self.interaction.state.feedback_rng;
                 if x == 0 {
                     x = 0x9e37_79b9_7f4a_7c15;
                 }
                 x ^= x >> 12;
                 x ^= x << 25;
                 x ^= x >> 27;
-                self.state.feedback_rng = x;
+                self.interaction.state.feedback_rng = x;
                 (x.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 40) as f32 / (1u64 << 24) as f32
             };
             let mut sound = 0;
             if n > 0 {
-                let last = usize::from(self.state.feedback_last[event.index()]);
+                let last = usize::from(self.interaction.state.feedback_last[event.index()]);
                 let mut k = ((next() * n as f32) as usize).min(n - 1);
                 if n > 1 && k == last {
                     k = (k + 1 + ((next() * (n - 1) as f32) as usize).min(n - 2)) % n;
                 }
-                self.state.feedback_last[event.index()] = k as u8;
+                self.interaction.state.feedback_last[event.index()] = k as u8;
                 sound = f.sounds[k];
             }
             let range = |r: [f32; 2], t: f32| r[0] + (r[1] - r[0]) * t;

@@ -130,14 +130,14 @@ impl Ui {
             (rect.width * dpr).round().max(1.0) as u32,
             (rect.height * dpr).round().max(1.0) as u32,
         );
-        let p = self.input.pointer;
+        let p = self.interaction.input.pointer;
         let (lx, ly) = hit.inv.apply(p.x, p.y);
         let inside = rect.contains(lx, ly);
         if r.pressed {
             out.drag = p - self.world.last_pointer;
         }
-        if inside && self.input.pointer_inside {
-            out.wheel = self.input.wheel;
+        if inside && self.interaction.input.pointer_inside {
+            out.wheel = self.interaction.input.wheel;
             let at = Vec2::new(
                 (lx - rect.x) / rect.width.max(1e-6),
                 (ly - rect.y) / rect.height.max(1e-6),

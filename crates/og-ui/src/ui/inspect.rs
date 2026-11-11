@@ -195,8 +195,9 @@ impl Ui {
     /// The controls keys and pads reach on the last frame's screen, in
     /// the order navigation walks them.
     fn reach(&self) -> Vec<u64> {
-        let top = self.state.scope;
-        self.state
+        let top = self.interaction.state.scope;
+        self.interaction
+            .state
             .hits
             .iter()
             .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (top == 0 || h.scope == top))
@@ -208,7 +209,7 @@ impl Ui {
         if reach.contains(&key) {
             states.push("focusable".to_owned());
         }
-        if key != 0 && key == self.state.focus {
+        if key != 0 && key == self.interaction.state.focus {
             states.push("focused".to_owned());
         }
     }
@@ -270,7 +271,7 @@ impl Ui {
         crate::a11y::A11yTree {
             focused: tree
                 .iter()
-                .find(|(k, _)| *k != 0 && *k == self.state.focus)
+                .find(|(k, _)| *k != 0 && *k == self.interaction.state.focus)
                 .map_or(String::new(), |(_, n)| n.path.clone()),
             nodes: tree.into_iter().map(|(_, n)| n).collect(),
             focus_order,
@@ -561,7 +562,12 @@ impl Ui {
                 if let Some(crate::paint::RiveDraw(player)) =
                     self.draws.get(&i).and_then(|d| d.rive.as_ref())
                 {
-                    let board = self.state.rive.get(&n.key).map_or("", |s| s.board.as_str());
+                    let board = self
+                        .interaction
+                        .state
+                        .rive
+                        .get(&n.key)
+                        .map_or("", |s| s.board.as_str());
                     let file = board.split_once('#').map_or(board, |(f, _)| f);
                     let at = n.world.map_rect(&n.rect);
                     for e in player.elements([at.x, at.y, at.width, at.height]) {

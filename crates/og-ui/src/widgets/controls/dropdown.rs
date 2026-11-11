@@ -185,7 +185,7 @@ impl Ui {
         let shut_key = format!("{id}~shut");
         let field_key = format!("{id}~field");
         if focused {
-            self.remember(&field_key, f64::from_bits(self.state.focus));
+            self.remember(&field_key, f64::from_bits(self.interaction.state.focus));
         }
         let was_open = self.memory(&open_key, 0.0) > 0.0;
         let shut = self.memory(&shut_key, 0.0) > 0.0 && !typed;
@@ -206,9 +206,9 @@ impl Ui {
         let mut chosen = None;
         let mut on_option = false;
         // Back while it is open closes it and leaves the field focused.
-        let dismissed = open && self.nav.back;
+        let dismissed = open && self.interaction.nav.back;
         if dismissed {
-            self.nav.back = false;
+            self.interaction.nav.back = false;
         }
         // An anchored layer that is no focus scope: the focus stays in the
         // field while the player types (a combobox), and Down reaches it.
@@ -277,7 +277,7 @@ impl Ui {
             });
             let back = self.memory(&field_key, 0.0).to_bits();
             if back != 0 {
-                self.request_focus = back;
+                self.interaction.request_focus = back;
             }
         }
         self.remember(
@@ -713,7 +713,7 @@ impl Ui {
             // A pick or Back gives the focus back to the trigger (the list
             // took it by request, so no scope return was kept); a press
             // elsewhere leaves it where it lands.
-            if was_open && !open && (picked.is_some() || !self.input.pressed) {
+            if was_open && !open && (picked.is_some() || !self.interaction.input.pressed) {
                 self.set_focus(&trig_path);
             }
         }

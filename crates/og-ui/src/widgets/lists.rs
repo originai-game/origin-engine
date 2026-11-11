@@ -61,7 +61,7 @@ impl Ui {
     /// changes arrive through open_keyed_list/grid's authoritative key slice.
     pub fn invalidate_keyed_items(&mut self, id: impl Into<Id>, keys: &[String]) {
         let key = self.key_for(id.into().as_str());
-        if let Some(v) = self.state.virtual_lists.get_mut(&key) {
+        if let Some(v) = self.interaction.state.virtual_lists.get_mut(&key) {
             v.invalidate(keys);
         }
     }
@@ -90,7 +90,13 @@ impl Ui {
         };
         let key = self.key_for(id.as_str());
         let view = self.view_height(key, desc.height) - desc.padding.vertical();
-        let off = self.state.scroll.get(&key).copied().unwrap_or(0.0);
+        let off = self
+            .interaction
+            .state
+            .scroll
+            .get(&key)
+            .copied()
+            .unwrap_or(0.0);
         let stride = row + desc.gap;
         let count = desc.count;
         let first = ((off / stride).floor().max(0.0) as u32)
@@ -107,7 +113,7 @@ impl Ui {
                 self.keyed_range(key, keys, 1, row, desc.gap, width, view, false);
             (range.first, range.last, top, rest)
         } else {
-            self.state.virtual_lists.remove(&key);
+            self.interaction.state.virtual_lists.remove(&key);
             (
                 first,
                 last,
@@ -171,8 +177,15 @@ impl Ui {
             };
             Some((key, n.rect.height))
         }
-        let old = self.state.scroll.get(&container).copied().unwrap_or(0.0);
+        let old = self
+            .interaction
+            .state
+            .scroll
+            .get(&container)
+            .copied()
+            .unwrap_or(0.0);
         let mut v = self
+            .interaction
             .state
             .virtual_lists
             .remove(&container)
@@ -208,7 +221,7 @@ impl Ui {
             old,
         );
         drop(measurements);
-        self.state.scroll.insert(container, off);
+        self.interaction.state.scroll.insert(container, off);
         let range = v.range(off);
         let top = v.offset(range.first as usize) - gap;
         let rest = if (range.last as usize) < keys.keys().len() {
@@ -216,7 +229,7 @@ impl Ui {
         } else {
             -1.0
         };
-        self.state.virtual_lists.insert(container, v);
+        self.interaction.state.virtual_lists.insert(container, v);
         (range, top, rest)
     }
 
@@ -255,6 +268,7 @@ impl Ui {
         let list = self.parent();
         let h = self.nodes[list].aux[0];
         let keyed = self
+            .interaction
             .state
             .virtual_lists
             .get(&self.nodes[list].key)
@@ -364,13 +378,16 @@ impl Ui {
         let key = self.nodes[item].key;
         let mut a = self.anim(ckey);
         let mut dropped = None;
-        if self.input.pressed && self.state.active == key {
+        if self.interaction.input.pressed && self.interaction.state.active == key {
             a.h = u64::from(index) + 1;
-        } else if self.input.released && a.h > 0 {
-            if self.state.hot == key && self.state.active != key && self.state.active != 0 {
+        } else if self.interaction.input.released && a.h > 0 {
+            if self.interaction.state.hot == key
+                && self.interaction.state.active != key
+                && self.interaction.state.active != 0
+            {
                 dropped = Some((a.h - 1) as u32);
             }
-        } else if !self.input.down && !self.input.released {
+        } else if !self.interaction.input.down && !self.interaction.input.released {
             a.h = 0;
         }
         self.set_anim(ckey, a);
@@ -381,12 +398,18 @@ impl Ui {
     fn drop_target(&self, container: usize, item: usize) -> bool {
         let ckey = self.nodes[container].key;
         let key = self.nodes[item].key;
-        let a = self.state.anims.get(&ckey).copied().unwrap_or_default();
+        let a = self
+            .interaction
+            .state
+            .anims
+            .get(&ckey)
+            .copied()
+            .unwrap_or_default();
         a.h > 0
-            && self.input.down
-            && self.state.hot == key
-            && self.state.active != key
-            && self.state.active != 0
+            && self.interaction.input.down
+            && self.interaction.state.hot == key
+            && self.interaction.state.active != key
+            && self.interaction.state.active != 0
     }
 
     /// The index of the list or grid item a held press started on (a drag
@@ -394,8 +417,15 @@ impl Ui {
     pub fn dragging(&mut self, id: impl Into<Id>) -> Option<u32> {
         let id = id.into();
         let key = self.key_for(id.as_str());
-        let a = self.state.anims.get(&key).copied().unwrap_or_default();
-        (self.input.down && a.h > 0 && self.state.active != 0).then(|| (a.h - 1) as u32)
+        let a = self
+            .interaction
+            .state
+            .anims
+            .get(&key)
+            .copied()
+            .unwrap_or_default();
+        (self.interaction.input.down && a.h > 0 && self.interaction.state.active != 0)
+            .then(|| (a.h - 1) as u32)
     }
 
     /// A virtualised list built by `row(ui, index)` for the rows in view;
@@ -491,7 +521,13 @@ impl Ui {
             )
         };
         let view = self.view_height(key, desc.height) - desc.padding.vertical();
-        let off = self.state.scroll.get(&key).copied().unwrap_or(0.0);
+        let off = self
+            .interaction
+            .state
+            .scroll
+            .get(&key)
+            .copied()
+            .unwrap_or(0.0);
         let stride = ch + gap;
         let rows = desc.count.div_ceil(columns);
         let first_row = ((off / stride).floor().max(0.0) as u32)
@@ -508,7 +544,7 @@ impl Ui {
                 self.keyed_range(key, keys, columns as usize, ch, gap, cw, view, true);
             (range.first, range.last, top, rest)
         } else {
-            self.state.virtual_lists.remove(&key);
+            self.interaction.state.virtual_lists.remove(&key);
             (
                 (first_row * columns).min(desc.count),
                 (last_row * columns).min(desc.count),
@@ -552,6 +588,7 @@ impl Ui {
         let grid = self.parent();
         let [cw, ch, _] = self.nodes[grid].aux;
         let keyed = self
+            .interaction
             .state
             .virtual_lists
             .get(&self.nodes[grid].key)

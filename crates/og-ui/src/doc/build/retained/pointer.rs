@@ -63,7 +63,15 @@ impl RetainedHost {
         extra: serde_json::Map<String, Value>,
         events: &mut Vec<DocEvent>,
     ) {
-        self.dispatch_at(ui, env, key, when, ui.input.pointer, extra, events);
+        self.dispatch_at(
+            ui,
+            env,
+            key,
+            when,
+            ui.interaction.input.pointer,
+            extra,
+            events,
+        );
     }
 
     /// [`Self::dispatch`] with the point at `p` (screen CSS px).
@@ -114,11 +122,11 @@ impl RetainedHost {
 
     /// The tick's drag, drop, pointer and wheel events.
     pub(super) fn input_events(&mut self, ui: &Ui, env: &dyn Env, events: &mut Vec<DocEvent>) {
-        let input = &ui.input;
-        let (hot, active) = (ui.state.hot, ui.state.active);
+        let input = &ui.interaction.input;
+        let (hot, active) = (ui.interaction.state.hot, ui.interaction.state.active);
         let moved = [input.pointer.x, input.pointer.y] != self.pointer.pointer;
         // Drag and drop: the held element's gesture against last tick's.
-        let gesture = |k: u64| ui.state.motion.gestures.get(&k).copied();
+        let gesture = |k: u64| ui.interaction.state.motion.gestures.get(&k).copied();
         let now = (active != 0)
             .then(|| gesture(active))
             .flatten()

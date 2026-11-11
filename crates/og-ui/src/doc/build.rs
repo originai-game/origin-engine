@@ -576,6 +576,7 @@ impl Ui {
     /// Apply a part's presentation with the same values documents use.
     pub(crate) fn apply_part_appearances(&mut self) {
         let moving: Vec<_> = self
+            .interaction
             .state
             .motion
             .part_styles

@@ -574,7 +574,7 @@ impl Ui {
             return 0.0;
         }
         let period = u64::from(self.ticks_for(ms));
-        let phase = (self.state.tick % period) as f32 / period as f32;
+        let phase = (self.interaction.state.tick % period) as f32 / period as f32;
         animation.map_or(phase, |a| a.ease.apply(phase))
     }
 }

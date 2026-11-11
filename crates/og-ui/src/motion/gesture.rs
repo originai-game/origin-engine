@@ -63,15 +63,15 @@ impl Ui {
     pub(crate) fn run_gesture(&mut self, i: usize, m: &mut MotionState) -> [f32; 4] {
         let n = &self.nodes[i];
         let key = n.key;
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second;
         let tokens = self.env.theme.motion;
         let drag = n.props.drag.clone();
         let pinch = n.props.pinch;
         let size = Vec2::new(n.rect.width, n.rect.height);
-        let input = self.input.clone();
+        let input = self.interaction.input.clone();
         let p = input.pointer;
-        let held_here = self.state.active == key;
+        let held_here = self.interaction.state.active == key;
         let mut g = m.gestures.get(&key).copied().unwrap_or(Gesture {
             snapped: -1,
             scale: 1.0,
@@ -148,13 +148,14 @@ impl Ui {
                     cy.velocity = g.velocity.y;
                     // The drop target under the pointer that takes it.
                     g.over = self
+                        .interaction
                         .state
                         .hits
                         .iter()
                         .rev()
                         .find(|h| h.key != key && h.has(HIT_DROP) && h.contains(p.x, p.y))
                         .filter(|h| {
-                            let accept = self.drop_accepts.get(&h.key);
+                            let accept = self.interaction.drop_accepts.get(&h.key);
                             accept.is_none_or(|a| a.is_empty() || a.contains(&spec.tag))
                         })
                         .map_or(0, |h| h.key);
@@ -258,7 +259,12 @@ impl Ui {
                     }
                     if g.over != 0 {
                         g.dropped_on = g.over;
-                        let target = self.drop_paths.get(&g.over).cloned().unwrap_or_default();
+                        let target = self
+                            .interaction
+                            .drop_paths
+                            .get(&g.over)
+                            .cloned()
+                            .unwrap_or_default();
                         self.out.events.push(UiEvent {
                             kind: "drop".into(),
                             name: target,
@@ -336,8 +342,8 @@ impl Ui {
     /// Places element `key`'s drag at rest at `offset` (a sheet opening at
     /// its first detent), as if a release had settled it there.
     pub(crate) fn seed_drag(&mut self, key: u64, offset: Vec2) {
-        let now = self.state.tick;
-        let m = &mut self.state.motion;
+        let now = self.interaction.state.tick;
+        let m = &mut self.interaction.state.motion;
         let g = m.gestures.entry(key).or_insert(Gesture {
             snapped: -1,
             scale: 1.0,
@@ -368,13 +374,19 @@ impl Ui {
     }
 
     pub(crate) fn gesture_of(&self, key: u64) -> GestureInfo {
-        let m = &self.state.motion;
+        let m = &self.interaction.state.motion;
         let g = m.gestures.get(&key).copied().unwrap_or(Gesture {
             snapped: -1,
             scale: 1.0,
             ..Gesture::default()
         });
-        let path = |k: u64| self.drop_paths.get(&k).cloned().unwrap_or_default();
+        let path = |k: u64| {
+            self.interaction
+                .drop_paths
+                .get(&k)
+                .cloned()
+                .unwrap_or_default()
+        };
         let source = m
             .gestures
             .iter()
@@ -395,11 +407,17 @@ impl Ui {
             dropped_on: path(g.dropped_on),
             hovering: m.gestures.values().any(|s| s.over == key && s.dragging),
             received: source
-                .map(|k| self.drag_paths.get(&k).cloned().unwrap_or_default())
+                .map(|k| {
+                    self.interaction
+                        .drag_paths
+                        .get(&k)
+                        .cloned()
+                        .unwrap_or_default()
+                })
                 .unwrap_or_default(),
-            tapped: key != 0 && (self.nav.tapped == key || self.tapped_by_keys(key)),
-            double_tapped: key != 0 && self.nav.double_tapped == key,
-            long_pressed: key != 0 && self.nav.long_pressed == key,
+            tapped: key != 0 && (self.interaction.nav.tapped == key || self.tapped_by_keys(key)),
+            double_tapped: key != 0 && self.interaction.nav.double_tapped == key,
+            long_pressed: key != 0 && self.interaction.nav.long_pressed == key,
             long_press: self.long_press_progress(key),
         }
     }

@@ -66,7 +66,7 @@ impl Ui {
             "pressed"
         } else if r.hovered {
             "hover"
-        } else if r.focused && self.state.focus_visible {
+        } else if r.focused && self.interaction.state.focus_visible {
             "focused"
         } else {
             "normal"
@@ -268,11 +268,11 @@ impl Ui {
     /// node, and everything. Answers the animated nodes it visited.
     pub(crate) fn run_motion(&mut self, seeds: Option<&[usize]>) -> Vec<usize> {
         let whole = seeds.is_none();
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second;
         let tokens = self.env.theme.motion;
         let reduced = self.env.theme.reduced_motion;
-        let mut m = std::mem::take(&mut self.state.motion);
+        let mut m = std::mem::take(&mut self.interaction.state.motion);
         // Last step's asks were taken by this frame's build.
         self.style.motion.timeline_restyle.clear();
         let mut touched =
@@ -1163,7 +1163,7 @@ impl Ui {
             }
         }
         events.extend(css_events);
-        self.state.motion = m;
+        self.interaction.state.motion = m;
         self.style.motion.motion_moving = moving;
         self.out.events.extend(events);
         for (key, name) in starts {
@@ -1182,8 +1182,8 @@ impl Ui {
 
     /// Queues a play on element `key` (flattened at the next `end`).
     pub(crate) fn start_play(&mut self, key: u64, choreo: Choreo, desc: PlayDesc) -> u32 {
-        self.state.motion.next_play += 1;
-        let id = self.state.motion.next_play;
+        self.interaction.state.motion.next_play += 1;
+        let id = self.interaction.state.motion.next_play;
         self.style.pending_plays.push(PendingPlay {
             id,
             root: key,
@@ -1266,7 +1266,7 @@ impl Ui {
             p.at_ms
         } else {
             p.at_ms
-                + self.state.tick.saturating_sub(p.start) as f32 * 1000.0
+                + self.interaction.state.tick.saturating_sub(p.start) as f32 * 1000.0
                     / self.env.ticks_per_second as f32
                     * p.speed
         }
@@ -1286,12 +1286,19 @@ impl Ui {
             p.desc.reverse = tmp.reverse;
             return true;
         }
-        let now = self.state.tick;
-        let Some(k) = self.state.motion.plays.iter().position(|p| p.id == id) else {
+        let now = self.interaction.state.tick;
+        let Some(k) = self
+            .interaction
+            .state
+            .motion
+            .plays
+            .iter()
+            .position(|p| p.id == id)
+        else {
             return false;
         };
-        let at = self.play_now(&self.state.motion.plays[k]);
-        f(&mut self.state.motion.plays[k], at, now);
+        let at = self.play_now(&self.interaction.state.motion.plays[k]);
+        f(&mut self.interaction.state.motion.plays[k], at, now);
         true
     }
 
@@ -1343,14 +1350,20 @@ impl Ui {
     /// Stops a play: its elements go back to their own values (on their
     /// motion, if they have one).
     pub fn stop(&mut self, play: u32) -> bool {
-        let had = self.style.pending_plays.len() + self.state.motion.plays.len();
+        let had = self.style.pending_plays.len() + self.interaction.state.motion.plays.len();
         self.style.pending_plays.retain(|p| p.id != play);
-        self.state.motion.plays.retain(|p| p.id != play);
-        had != self.style.pending_plays.len() + self.state.motion.plays.len()
+        self.interaction.state.motion.plays.retain(|p| p.id != play);
+        had != self.style.pending_plays.len() + self.interaction.state.motion.plays.len()
     }
 
     pub fn play_info(&self, play: u32) -> Option<PlayInfo> {
-        let p = self.state.motion.plays.iter().find(|p| p.id == play)?;
+        let p = self
+            .interaction
+            .state
+            .motion
+            .plays
+            .iter()
+            .find(|p| p.id == play)?;
         Some(PlayInfo {
             at_ms: self.play_now(p),
             length_ms: p.length_ms,
@@ -1366,10 +1379,14 @@ impl Ui {
         let gk = group_key(crate::id::key_of_path(path), group);
         match state {
             Some(s) => {
-                self.state.motion.forced.insert(gk, s.to_owned());
+                self.interaction
+                    .state
+                    .motion
+                    .forced
+                    .insert(gk, s.to_owned());
             }
             None => {
-                self.state.motion.forced.remove(&gk);
+                self.interaction.state.motion.forced.remove(&gk);
             }
         }
     }
@@ -1377,7 +1394,12 @@ impl Ui {
     /// The state a group of the element at `path` is in (last frame).
     pub fn visual_state(&self, path: &str, group: &str) -> Option<String> {
         let gk = group_key(crate::id::key_of_path(path), group);
-        self.state.motion.groups.get(&gk).map(|g| g.state.clone())
+        self.interaction
+            .state
+            .motion
+            .groups
+            .get(&gk)
+            .map(|g| g.state.clone())
     }
 
     /// Any number on a spring or an ease (docs/ui.md §3.1: every value is
@@ -1398,7 +1420,7 @@ impl Ui {
         transition: Transition,
         from: Option<f32>,
     ) -> f32 {
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second;
         let tokens = self.env.theme.motion;
         let t = if self.env.theme.reduced_motion {
@@ -1408,11 +1430,17 @@ impl Ui {
         };
         let (kind, mode) = pack(&t, &tokens);
         self.style.motion.widget_channels.push(key);
-        let ch = self.state.motion.channels.entry(key).or_insert_with(|| {
-            let mut c = Channel::at(from.unwrap_or(target), now.saturating_sub(1));
-            c.stepped = now.saturating_sub(1);
-            c
-        });
+        let ch = self
+            .interaction
+            .state
+            .motion
+            .channels
+            .entry(key)
+            .or_insert_with(|| {
+                let mut c = Channel::at(from.unwrap_or(target), now.saturating_sub(1));
+                c.stepped = now.saturating_sub(1);
+                c
+            });
         if ch.target != target || ch.kind != kind {
             ch.retarget(target, kind, mode, now);
         }
@@ -1429,8 +1457,8 @@ impl Ui {
     /// Shared elements' places this tick (where the next screen's element
     /// with the same key morphs from).
     pub(crate) fn record_matches(&mut self, order: &[usize]) {
-        let now = self.state.tick;
-        let m = &mut self.state.motion;
+        let now = self.interaction.state.tick;
+        let m = &mut self.interaction.state.motion;
         for &i in order {
             let n = &self.nodes[i];
             if n.props.match_key.is_empty() {
@@ -1451,30 +1479,30 @@ impl Ui {
 
     /// Drop targets and dragged elements of this frame, by key.
     pub(crate) fn note_drag_and_drop(&mut self, order: &[usize]) {
-        self.drop_paths.clear();
-        self.drag_paths.clear();
-        self.drop_accepts.clear();
+        self.interaction.drop_paths.clear();
+        self.interaction.drag_paths.clear();
+        self.interaction.drop_accepts.clear();
         for &i in order {
             let n = &self.nodes[i];
             if let Some(d) = &n.props.drop {
                 let key = n.key;
                 let accept = d.accept.clone();
                 let path = self.path_of(i);
-                self.drop_paths.insert(key, path);
-                self.drop_accepts.insert(key, accept);
+                self.interaction.drop_paths.insert(key, path);
+                self.interaction.drop_accepts.insert(key, accept);
             }
             if self.nodes[i].props.drag.is_some() {
                 let key = self.nodes[i].key;
                 let path = self.path_of(i);
-                self.drag_paths.insert(key, path);
+                self.interaction.drag_paths.insert(key, path);
             }
         }
     }
 
     /// Elements in states or moving, and leaving ones, for `dump_ui`.
     pub(crate) fn motion_dump_of(&self, order: &[usize]) -> Vec<MotionDump> {
-        let m = &self.state.motion;
-        let now = self.state.tick;
+        let m = &self.interaction.state.motion;
+        let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second;
         let names = |c: usize| -> &'static str {
             match c {

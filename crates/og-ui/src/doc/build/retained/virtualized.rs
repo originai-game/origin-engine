@@ -94,7 +94,8 @@ impl RetainedHost {
         }
         self.scrollers.insert(
             element.context.node.clone(),
-            ui.state
+            ui.interaction
+                .state
                 .scroll
                 .get(&element.context.node.key)
                 .copied()
@@ -102,8 +103,9 @@ impl RetainedHost {
         );
         // Each row's materialization: on screen, or in the overscan.
         let shown: Vec<Materialization> = {
-            let list = &ui.state.virtual_lists[&element.context.node.key];
+            let list = &ui.interaction.state.virtual_lists[&element.context.node.key];
             let offset = ui
+                .interaction
                 .state
                 .scroll
                 .get(&element.context.node.key)

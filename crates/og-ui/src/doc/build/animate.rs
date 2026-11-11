@@ -98,12 +98,13 @@ impl Ui {
         };
         let previous = match target {
             StyleTarget::Part(key, name) => self
+                .interaction
                 .state
                 .motion
                 .part_styles
                 .get(&key)
                 .and_then(|s| s.get(name)),
-            _ => self.state.motion.styles.get(&key),
+            _ => self.interaction.state.motion.styles.get(&key),
         };
         let styled = |name: &str| {
             (part || crate::doc::motion::channels(name).is_none())
@@ -148,7 +149,7 @@ impl Ui {
         if previous.is_none() && !has_styles && !transitioned {
             return None;
         }
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second;
         let reduced = self.env.theme.reduced_motion;
         let get = |values: &[(String, String, usize)], name: &str| {
@@ -214,7 +215,7 @@ impl Ui {
                 let runs = if part {
                     previous.map_or(&[][..], |p| p.animations.as_slice())
                 } else {
-                    &self.state.motion.css
+                    &self.interaction.state.motion.css
                 };
                 let ticks = runs
                     .iter()
@@ -412,7 +413,8 @@ impl Ui {
     pub(crate) fn commit_styles(&mut self, commit: &StyleCommit) {
         match (commit.target, &commit.state) {
             (StyleTarget::Part(key, name), Some(state)) => {
-                self.state
+                self.interaction
+                    .state
                     .motion
                     .part_styles
                     .entry(key)
@@ -420,17 +422,21 @@ impl Ui {
                     .insert(name.into(), state.clone());
             }
             (StyleTarget::Part(key, name), None) => {
-                if let Some(styles) = self.state.motion.part_styles.get_mut(&key) {
+                if let Some(styles) = self.interaction.state.motion.part_styles.get_mut(&key) {
                     styles.remove(name);
                 }
             }
             (StyleTarget::Element(key), Some(state)) => {
-                if self.state.motion.styles.get(&key) != Some(state) {
-                    self.state.motion.styles.insert(key, state.clone());
+                if self.interaction.state.motion.styles.get(&key) != Some(state) {
+                    self.interaction
+                        .state
+                        .motion
+                        .styles
+                        .insert(key, state.clone());
                 }
             }
             (StyleTarget::Element(key), None) => {
-                self.state.motion.styles.remove(&key);
+                self.interaction.state.motion.styles.remove(&key);
             }
         }
         if commit.running

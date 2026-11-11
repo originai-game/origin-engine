@@ -241,7 +241,7 @@ impl Ui {
     /// press there would otherwise land on): a scroll container or panel
     /// behind it, or nothing.
     pub(crate) fn select_hit_at(&self, p: Vec2, hot: u64) -> Option<u64> {
-        let hits = &self.state.hits;
+        let hits = &self.interaction.state.hits;
         let above = hits.iter().rposition(|h| h.key == hot).map_or(0, |k| k + 1);
         hits[above..]
             .iter()
@@ -270,7 +270,8 @@ impl Ui {
     fn select_drag_target(&self, p: Vec2) -> Option<u64> {
         let off = |a: f32, lo: f32, hi: f32| (lo - a).max(a - hi).max(0.0);
         self.select_hit_at(p, 0).or_else(|| {
-            self.state
+            self.interaction
+                .state
                 .hits
                 .iter()
                 .filter(|h| h.has(HIT_SELECT) && !h.has(HIT_OFFSCREEN))
@@ -322,12 +323,12 @@ impl Ui {
     /// drag extends, a press anywhere else clears; Ctrl or Cmd+C copies.
     pub(crate) fn select_input(&mut self, input: &crate::input::InputFrame, hot: u64) {
         let p = input.pointer;
-        let tick = self.state.tick;
+        let tick = self.interaction.state.tick;
         let coarse = self.env.viewport.coarse_pointer;
         let hold = crate::edit::click_ticks(self.env.ticks_per_second);
-        let mut press = self.state.select_press;
+        let mut press = self.interaction.state.select_press;
         let held_key = self
-            .hit(self.state.active)
+            .hit(self.interaction.state.active)
             .filter(|h| h.has(HIT_SELECT))
             .map(|h| h.key);
         let mut start = None;
@@ -348,8 +349,8 @@ impl Ui {
             match at.filter(|_| !coarse) {
                 Some(key) => start = Some((key, press.count)),
                 None => {
-                    if self.state.selection.is_some() {
-                        self.state.selection = None;
+                    if self.interaction.state.selection.is_some() {
+                        self.interaction.state.selection = None;
                     }
                 }
             }
@@ -369,12 +370,12 @@ impl Ui {
         } else {
             press.long = false;
         }
-        self.state.select_press = press;
+        self.interaction.state.select_press = press;
         if let Some((key, count)) = start {
             if let Some((k, t)) = self.select_point(key, press.at) {
                 let (a, b) = self.select_unit(key, &t, count, k);
                 let extend = input.shift && count == 1 && !coarse;
-                self.state.selection = Some(match self.state.selection {
+                self.interaction.state.selection = Some(match self.interaction.state.selection {
                     Some(s) if extend => Selection {
                         focus: (key, k),
                         unit: 1,
@@ -388,12 +389,12 @@ impl Ui {
                     },
                 });
                 // The press is the text's: nothing behind it scrolls or drags.
-                self.state.active = key;
+                self.interaction.state.active = key;
             }
         } else if input.down
             && !input.pressed
             && held_key.is_some()
-            && let Some(mut s) = self.state.selection
+            && let Some(mut s) = self.interaction.state.selection
             && let Some(key) = self.select_drag_target(p)
             && let Some((k, t)) = self.select_point(key, p)
         {
@@ -414,7 +415,7 @@ impl Ui {
             } else {
                 s.focus = (key, k);
             }
-            self.state.selection = Some(s);
+            self.interaction.state.selection = Some(s);
         }
         let mac = self.env.viewport.mac_keys;
         let shortcut = if mac {
@@ -423,7 +424,9 @@ impl Ui {
             input.ctrl || input.meta
         };
         // A focused text control copies its own selection.
-        let editing = self.hit(self.state.focus).is_some_and(|h| h.has(HIT_TEXT));
+        let editing = self
+            .hit(self.interaction.state.focus)
+            .is_some_and(|h| h.has(HIT_TEXT));
         if shortcut
             && !editing
             && input.keys.contains(&crate::input::UiKey::KeyC)
@@ -436,7 +439,7 @@ impl Ui {
     /// The selected elements and their ranges, in the trees' order: the
     /// selectable texts from the selection's first end to its last.
     pub(crate) fn selected_ranges(&self) -> Vec<(usize, (u32, u32))> {
-        let Some(s) = self.state.selection else {
+        let Some(s) = self.interaction.state.selection else {
             return Vec::new();
         };
         let (Some(ia), Some(ib)) = (self.tree.find(s.anchor.0), self.tree.find(s.focus.0)) else {
@@ -515,14 +518,14 @@ impl Ui {
     /// the nodes whose range changed (to be painted again); a selection
     /// whose element left the trees is dropped.
     pub(crate) fn mark_selection(&mut self) -> Vec<usize> {
-        if let Some(s) = self.state.selection
+        if let Some(s) = self.interaction.state.selection
             && (self.tree.find(s.anchor.0).is_none() || self.tree.find(s.focus.0).is_none())
         {
-            self.state.selection = None;
+            self.interaction.state.selection = None;
         }
         let now = self.selected_ranges();
         let mut changed = Vec::new();
-        let last = std::mem::take(&mut self.selected);
+        let last = std::mem::take(&mut self.interaction.selected);
         for &key in &last {
             if let Some(i) = self.tree.find(key)
                 && !now.iter().any(|&(j, _)| j == i)
@@ -536,7 +539,7 @@ impl Ui {
                 self.nodes[i].selected = Some(r);
                 changed.push(i);
             }
-            self.selected.push(self.nodes[i].key);
+            self.interaction.selected.push(self.nodes[i].key);
         }
         changed
     }
@@ -594,7 +597,7 @@ impl Ui {
     /// The selection as the probe reads it (`dump_ui`'s `selection`):
     /// its text and its ends' paths and characters, `null` with none.
     pub(crate) fn selection_json(&self) -> serde_json::Value {
-        let Some(s) = self.state.selection else {
+        let Some(s) = self.interaction.state.selection else {
             return serde_json::Value::Null;
         };
         let path = |k: u64| self.tree.find(k).map(|i| self.path_of(i));

@@ -163,7 +163,7 @@ impl Ui {
     /// and a drag moves it, two touches or the wheel scale it, and with no
     /// virtual cursor pad 0's left stick moves the selected one.
     pub fn set_hud_edit(&mut self, on: bool) {
-        let hud = &mut self.state.hud;
+        let hud = &mut self.interaction.state.hud;
         hud.edit = on;
         hud.drag = None;
         if !on {
@@ -173,12 +173,12 @@ impl Ui {
 
     /// Whose layout this screen shows and edits (0 to 3; kept until changed).
     pub fn set_hud_player(&mut self, player: u32) {
-        self.state.hud.player = player.min(3) as u8;
+        self.interaction.state.hud.player = player.min(3) as u8;
     }
 
     /// The edit mode as the last frame left it.
     pub fn hud_edit(&self) -> HudEditInfo {
-        let hud = &self.state.hud;
+        let hud = &self.interaction.state.hud;
         let player = usize::from(hud.player);
         HudEditInfo {
             on: hud.edit,
@@ -189,7 +189,7 @@ impl Ui {
                 .copied()
                 .unwrap_or_default(),
             keys: hud.targets.iter().map(|t| t.key.clone()).collect(),
-            changed: hud.changed != 0 && hud.changed == self.state.tick,
+            changed: hud.changed != 0 && hud.changed == self.interaction.state.tick,
         }
     }
 
@@ -197,7 +197,7 @@ impl Ui {
     /// scaled or faded element's key with its `x`, `y`, `scale` and
     /// `opacity`.
     pub fn hud_layout(&self, player: u32) -> String {
-        let l = &self.state.hud.layouts[player.min(3) as usize];
+        let l = &self.interaction.state.hud.layouts[player.min(3) as usize];
         let m: Map<String, Value> = l.iter().map(|(k, p)| (k.clone(), p.to_json())).collect();
         Value::Object(m).to_string()
     }
@@ -215,19 +215,19 @@ impl Ui {
                 .ok_or_else(|| format!("hud layout: '{k}' is not a placement"))?;
             out.insert(k.clone(), p);
         }
-        self.state.hud.layouts[player.min(3) as usize] = out;
+        self.interaction.state.hud.layouts[player.min(3) as usize] = out;
         Ok(())
     }
 
     /// Selects an element to edit by its key (empty: none).
     pub fn hud_select(&mut self, key: &str) {
-        self.state.hud.selected = key.to_owned();
+        self.interaction.state.hud.selected = key.to_owned();
     }
 
     /// Steps the selected element's size and opacity (each -1, 0 or +1
     /// step: a tenth larger or smaller, a tenth more or less opaque).
     pub fn hud_step(&mut self, scale: i32, opacity: i32) {
-        let hud = &self.state.hud;
+        let hud = &self.interaction.state.hud;
         let Some(t) = hud.targets.iter().find(|t| t.key == hud.selected).cloned() else {
             return;
         };
@@ -241,7 +241,7 @@ impl Ui {
     /// where it was laid out.
     pub fn hud_reset(&mut self, key: &str) {
         let now = self.hud_now();
-        let hud = &mut self.state.hud;
+        let hud = &mut self.interaction.state.hud;
         let player = usize::from(hud.player);
         if key == "*" {
             hud.layouts[player].clear();
@@ -259,12 +259,13 @@ impl Ui {
     /// The tick of the frame being built, or of the one about to begin
     /// (the edit mode's input runs before `begin` counts it).
     fn hud_now(&self) -> u64 {
-        self.state.tick + u64::from(!self.building)
+        self.interaction.state.tick + u64::from(!self.building)
     }
 
     /// The topmost customisable element of last frame under `p`.
     fn hud_target_at(&self, p: Vec2) -> Option<HudTarget> {
-        self.state
+        self.interaction
+            .state
             .hud
             .targets
             .iter()
@@ -274,7 +275,7 @@ impl Ui {
     }
 
     fn placement(&self, key: &str) -> HudPlacement {
-        let hud = &self.state.hud;
+        let hud = &self.interaction.state.hud;
         hud.layouts[usize::from(hud.player)]
             .get(key)
             .copied()
@@ -285,7 +286,7 @@ impl Ui {
         let (w, h) = (self.env.viewport.width, self.env.viewport.height);
         let p = p.limited(t, w, h);
         let now = self.hud_now();
-        let hud = &mut self.state.hud;
+        let hud = &mut self.interaction.state.hud;
         let l = &mut hud.layouts[usize::from(hud.player)];
         if p == HudPlacement::default() {
             l.remove(&t.key);
@@ -301,22 +302,23 @@ impl Ui {
     /// stick moves the selected one. Run on the input in units before the
     /// hit test; presses on the editor panel pass.
     pub(crate) fn hud_edit_input(&mut self, input: &mut InputFrame) {
-        if !self.state.hud.edit {
+        if !self.interaction.state.hud.edit {
             return;
         }
         let p = input.pointer;
-        let over_editor = self.state.hud.editor.contains(p.x, p.y);
+        let over_editor = self.interaction.state.hud.editor.contains(p.x, p.y);
         let mut took = false;
         if input.pressed && input.pointer_inside && !over_editor {
             if let Some(t) = self.hud_target_at(p) {
-                self.state.hud.selected = t.key.clone();
-                self.state.hud.drag = Some((p, self.placement(&t.key), 0.0));
+                self.interaction.state.hud.selected = t.key.clone();
+                self.interaction.state.hud.drag = Some((p, self.placement(&t.key), 0.0));
                 self.sound(crate::style_file::UiSound::Press);
                 took = true;
             }
-        } else if let Some((start, from, spread0)) = self.state.hud.drag {
-            let sel = self.state.hud.selected.clone();
+        } else if let Some((start, from, spread0)) = self.interaction.state.hud.drag {
+            let sel = self.interaction.state.hud.selected.clone();
             let t = self
+                .interaction
                 .state
                 .hud
                 .targets
@@ -334,7 +336,7 @@ impl Ui {
                     0.0
                 };
                 let spread0 = if spread > 0.0 && spread0 <= 0.0 {
-                    self.state.hud.drag = Some((start, from, spread));
+                    self.interaction.state.hud.drag = Some((start, from, spread));
                     spread
                 } else {
                     spread0
@@ -346,14 +348,14 @@ impl Ui {
                     to.scale *= spread / spread0;
                 }
                 let (w, h) = (self.env.viewport.width, self.env.viewport.height);
-                let hud = &mut self.state.hud;
+                let hud = &mut self.interaction.state.hud;
                 let to = to.limited(&t, w, h);
                 let l = &mut hud.layouts[usize::from(hud.player)];
                 l.insert(t.key.clone(), to);
             } else {
-                self.state.hud.drag = None;
-                self.state.hud.changed = self.hud_now();
-                let hud = &mut self.state.hud;
+                self.interaction.state.hud.drag = None;
+                self.interaction.state.hud.changed = self.hud_now();
+                let hud = &mut self.interaction.state.hud;
                 hud.layouts[usize::from(hud.player)].retain(|_, p| *p != HudPlacement::default());
             }
             took = true;
@@ -363,7 +365,7 @@ impl Ui {
             && !over_editor
             && let Some(t) = self.hud_target_at(p)
         {
-            self.state.hud.selected = t.key.clone();
+            self.interaction.state.hud.selected = t.key.clone();
             let mut to = self.placement(&t.key);
             to.scale *= 0.998f32.powf(input.wheel.y);
             self.place(&t, to);
@@ -371,9 +373,10 @@ impl Ui {
         }
         // With no virtual cursor, pad 0's stick moves the selected element.
         let stick = input.gamepad.stick;
-        if self.state.vcursor.desc.is_none() && stick.length() > 0.2 {
-            let sel = self.state.hud.selected.clone();
+        if self.interaction.state.vcursor.desc.is_none() && stick.length() > 0.2 {
+            let sel = self.interaction.state.hud.selected.clone();
             if let Some(t) = self
+                .interaction
                 .state
                 .hud
                 .targets
@@ -446,7 +449,7 @@ impl Ui {
                 spec: spec.clone(),
             });
         }
-        let hud = &mut self.state.hud;
+        let hud = &mut self.interaction.state.hud;
         hud.targets = targets;
         hud.editor = editor;
         if !hud.selected.is_empty() && !hud.targets.iter().any(|t| t.key == hud.selected) {
@@ -458,7 +461,7 @@ impl Ui {
     /// customisable element, the selected one's in the focus colour with
     /// its corners marked.
     pub(crate) fn hud_edit_commands(&self, cmds: &mut Vec<DrawCmd>) {
-        let hud = &self.state.hud;
+        let hud = &self.interaction.state.hud;
         if !hud.edit {
             return;
         }

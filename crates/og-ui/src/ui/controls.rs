@@ -148,10 +148,10 @@ impl Ui {
         let key = self.nodes[i].key;
         if desc.autofocus
             && !desc.disabled
-            && self.state.scope == 0
-            && !self.state.hits.iter().any(|h| h.key == key)
+            && self.interaction.state.scope == 0
+            && !self.interaction.state.hits.iter().any(|h| h.key == key)
         {
-            self.request_focus = key;
+            self.interaction.request_focus = key;
         }
         let amounts = if desc.disabled {
             (0.0, 0.0)
@@ -369,7 +369,7 @@ impl Ui {
         let step = |ui: &mut Ui, name: &str, spring: crate::theme::Spring, target: f32| -> f32 {
             let k = child_key(key, name);
             let spec = crate::motion::SpringSpec::from_theme(spring);
-            let fresh = !ui.state.motion.channels.contains_key(&k);
+            let fresh = !ui.interaction.state.motion.channels.contains_key(&k);
             let from = if fresh && target != 0.0 {
                 Some(0.0)
             } else {
@@ -391,7 +391,7 @@ impl Ui {
         );
         let key = child_key(key, "motion");
         let mut a = self.anim(key);
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         if refused {
             a.t = now;
             a.b = 1.0;

@@ -47,15 +47,16 @@ impl Ui {
     /// size. Answers whether the pointer is the handle's this tick.
     pub(crate) fn resize_input(&mut self, input: &crate::input::InputFrame) -> bool {
         let p = input.pointer;
-        if input.pressed && input.pointer_inside && self.state.thumb.is_none() {
+        if input.pressed && input.pointer_inside && self.interaction.state.thumb.is_none() {
             let top = self
+                .interaction
                 .state
                 .hits
                 .iter()
                 .rev()
                 .find(|h| h.rect.contains(p.x, p.y) && h.flags & HIT_PASS == 0)
                 .map(|h| h.key);
-            self.state.resizing = top.and_then(|k| {
+            self.interaction.state.resizing = top.and_then(|k| {
                 self.orders
                     .with(visit::feat::RESIZE)
                     .iter()
@@ -69,16 +70,22 @@ impl Ui {
                     })
             });
         }
-        let Some(r) = self.state.resizing else {
+        let Some(r) = self.interaction.state.resizing else {
             return false;
         };
         if !(input.down || input.pressed) {
-            self.state.resizing = None;
+            self.interaction.state.resizing = None;
             return true;
         }
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let d = p - r.from;
-        let mut size = self.state.resized.get(&r.key).copied().unwrap_or([None; 2]);
+        let mut size = self
+            .interaction
+            .state
+            .resized
+            .get(&r.key)
+            .copied()
+            .unwrap_or([None; 2]);
         if r.axes & RESIZE_X != 0 {
             let dx = if rtl { -d.x } else { d.x };
             size[0] = Some((r.size[0] + dx).max(0.0));
@@ -86,9 +93,9 @@ impl Ui {
         if r.axes & RESIZE_Y != 0 {
             size[1] = Some((r.size[1] + d.y).max(0.0));
         }
-        if self.state.resized.get(&r.key) != Some(&size) {
-            self.state.resized.insert(r.key, size);
-            self.resize_moved = Some(r.key);
+        if self.interaction.state.resized.get(&r.key) != Some(&size) {
+            self.interaction.state.resized.insert(r.key, size);
+            self.interaction.resize_moved = Some(r.key);
         }
         true
     }
@@ -97,10 +104,10 @@ impl Ui {
     /// nodes written this frame and on the one a drag moved (written again
     /// for it). Nothing while no element was ever resized.
     pub(super) fn apply_resized(&mut self) {
-        if self.state.resized.is_empty() {
+        if self.interaction.state.resized.is_empty() {
             return;
         }
-        if let Some(key) = self.resize_moved.take()
+        if let Some(key) = self.interaction.resize_moved.take()
             && let Some(i) = self.tree.find(key)
             && !self.emitted.contains(&i)
         {
@@ -114,7 +121,7 @@ impl Ui {
             if n.el.resize == 0 {
                 continue;
             }
-            let Some(size) = self.state.resized.get(&n.key) else {
+            let Some(size) = self.interaction.state.resized.get(&n.key) else {
                 continue;
             };
             if let Some(w) = size[0].filter(|_| n.el.resize & RESIZE_X != 0) {

@@ -199,7 +199,7 @@ impl Ui {
         if cands.iter().any(|h| h.key == target) {
             return Some(target);
         }
-        let g = self.state.groups.get(&target)?;
+        let g = self.interaction.state.groups.get(&target)?;
         if g.spec.memory && g.last != 0 && cands.iter().any(|h| h.key == g.last) {
             return Some(g.last);
         }
@@ -219,7 +219,7 @@ impl Ui {
         let mut g = to.group;
         let mut pick = k;
         while g != 0 {
-            let Some(gs) = self.state.groups.get(&g) else {
+            let Some(gs) = self.interaction.state.groups.get(&g) else {
                 break;
             };
             if self.in_group(from.group, g) {
@@ -238,14 +238,14 @@ impl Ui {
     pub(crate) fn step_focus(&self, cands: &[Hit], i: usize, nav: Nav) -> Option<u64> {
         let from = cands[i];
         if let Some(slot) = link_slot(nav)
-            && let Some(links) = self.state.nav_links.get(&from.key)
+            && let Some(links) = self.interaction.state.nav_links.get(&from.key)
             && links[slot] != 0
             && let Some(k) = self.land(links[slot], cands)
         {
             return Some(k);
         }
         if let Some((container, index)) = self.virtual_item(from.key) {
-            let v = &self.state.virtual_lists[&container];
+            let v = &self.interaction.state.virtual_lists[&container];
             let delta = match nav {
                 Nav::Down => v.columns as isize,
                 Nav::Up => -(v.columns as isize),
@@ -308,7 +308,13 @@ impl Ui {
             if level == 0 {
                 return None;
             }
-            let g = self.state.groups.get(&level).copied().unwrap_or_default();
+            let g = self
+                .interaction
+                .state
+                .groups
+                .get(&level)
+                .copied()
+                .unwrap_or_default();
             if g.spec.wrap
                 && let Some(k) = neighbour_in(&from.full, &set, nav, true)
             {
@@ -323,9 +329,9 @@ impl Ui {
         // Moves queued while the focus was on nothing: the first puts it on
         // the first control (a move from nothing does); the rest, and all of
         // them once the focus is somewhere, are spent.
-        let mut entered = self.state.focus != 0;
+        let mut entered = self.interaction.state.focus != 0;
         let mut out = Vec::new();
-        for (nav, entering) in std::mem::take(&mut self.state.pending) {
+        for (nav, entering) in std::mem::take(&mut self.interaction.state.pending) {
             if entering {
                 if entered {
                     continue;
@@ -335,9 +341,11 @@ impl Ui {
             // From nothing, Next lands on the first control (Prev would on the last).
             out.push(if entering { Nav::Next } else { nav });
         }
-        let editing = self.hit(self.state.focus).is_some_and(|h| h.has(HIT_TEXT));
+        let editing = self
+            .hit(self.interaction.state.focus)
+            .is_some_and(|h| h.has(HIT_TEXT));
         let lines = self
-            .hit(self.state.focus)
+            .hit(self.interaction.state.focus)
             .is_some_and(|h| h.has(HIT_MULTILINE));
         for k in &input.keys {
             let nav = match k {
@@ -368,7 +376,7 @@ impl Ui {
             if g.pressed & bit != 0 && !from_keys.contains(&nav) {
                 out.push(nav);
                 if nav == Nav::Activate {
-                    self.nav.pad0 = true;
+                    self.interaction.nav.pad0 = true;
                 }
             }
         }
@@ -382,14 +390,14 @@ impl Ui {
         } else {
             1 + if s.y > 0.0 { Nav::Down } else { Nav::Up }.index()
         };
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         if dir == 0 {
-            self.state.stick = (0, 0);
-        } else if self.state.stick.0 != dir {
-            self.state.stick = (dir, now);
+            self.interaction.state.stick = (0, 0);
+        } else if self.interaction.state.stick.0 != dir {
+            self.interaction.state.stick = (dir, now);
             out.extend(Nav::from_index(dir - 1).filter(|n| !from_keys.contains(n)));
         } else {
-            let held = now - self.state.stick.1;
+            let held = now - self.interaction.state.stick.1;
             let delay = u64::from(self.ticks_for(self.theme().durations_ms.slow));
             let every = u64::from(self.ticks_for(self.theme().durations_ms.fast));
             if held >= delay && (held - delay).is_multiple_of(every) {
@@ -401,8 +409,9 @@ impl Ui {
 
     /// The focusable controls of last frame in reading order, inside the open scope.
     pub(crate) fn focusables(&self) -> Vec<Hit> {
-        let scope = self.state.scope;
-        self.state
+        let scope = self.interaction.state.scope;
+        self.interaction
+            .state
             .hits
             .iter()
             .filter(|h| h.has(HIT_NAV | HIT_TEXT) && (scope == 0 || h.scope == scope))
@@ -422,7 +431,7 @@ impl Ui {
             return cands;
         }
         let region = cands.iter().any(|h| h.player == own);
-        let dialog = self.state.scope != 0;
+        let dialog = self.interaction.state.scope != 0;
         cands.retain(|h| h.player == own || (h.player == 0 && (!region || dialog)));
         cands
     }
@@ -462,26 +471,26 @@ impl Ui {
                 ]
                 .map(|p| crate::id::key_of_path(&p));
                 if spin && self.focusables().iter().any(|h| buttons.contains(&h.key)) {
-                    let (k, n) = self.nav.spin;
-                    self.nav.spin = (key, if k == key { n + step } else { step });
+                    let (k, n) = self.interaction.nav.spin;
+                    self.interaction.nav.spin = (key, if k == key { n + step } else { step });
                 }
                 continue;
             };
-            if self.state.focus != key {
+            if self.interaction.state.focus != key {
                 self.sound(crate::style_file::UiSound::Hover);
             }
-            self.state.focus = key;
-            self.state.focus_visible = true;
+            self.interaction.state.focus = key;
+            self.interaction.state.focus_visible = true;
             match act {
                 A11yAct::Focus => {}
                 A11yAct::Activate if hit.has(HIT_NAV) => {
-                    self.nav.activate = key;
+                    self.interaction.nav.activate = key;
                     self.sound(crate::style_file::UiSound::Press);
                 }
                 // A text control's activation is its focus: it edits.
                 A11yAct::Activate => {}
-                A11yAct::Increment if hit.has(HIT_ADJUST) => self.nav.adjust += 1,
-                A11yAct::Decrement if hit.has(HIT_ADJUST) => self.nav.adjust -= 1,
+                A11yAct::Increment if hit.has(HIT_ADJUST) => self.interaction.nav.adjust += 1,
+                A11yAct::Decrement if hit.has(HIT_ADJUST) => self.interaction.nav.adjust -= 1,
                 A11yAct::Increment | A11yAct::Decrement => {}
             }
             self.scroll_into_view(key);
@@ -502,10 +511,10 @@ impl Ui {
         if input.keys.is_empty() && input.text.is_empty() {
             return;
         }
-        if (!self.state.nav_off || self.state.scope != 0)
-            && let Some((container, mut index)) = self.virtual_item(self.state.focus)
+        if (!self.interaction.state.nav_off || self.interaction.state.scope != 0)
+            && let Some((container, mut index)) = self.virtual_item(self.interaction.state.focus)
         {
-            let v = &self.state.virtual_lists[&container];
+            let v = &self.interaction.state.virtual_lists[&container];
             let mut moved = false;
             for key in &input.keys {
                 index = match key {
@@ -517,20 +526,20 @@ impl Ui {
                 moved = true;
             }
             if moved && let Some(key) = v.keys.get(index) {
-                self.state.focus =
+                self.interaction.state.focus =
                     crate::id::child_key(container, &crate::virtualize::item_id(key, v.grid));
-                self.state.focus_visible = true;
-                self.scroll_into_view(self.state.focus);
+                self.interaction.state.focus_visible = true;
+                self.scroll_into_view(self.interaction.state.focus);
                 return;
             }
         }
-        let Some(from) = self.hit(self.state.focus).copied() else {
+        let Some(from) = self.hit(self.interaction.state.focus).copied() else {
             return;
         };
         if from.group == 0 || from.has(HIT_TEXT | HIT_ADJUST) {
             return;
         }
-        if self.state.nav_off && self.state.scope == 0 {
+        if self.interaction.state.nav_off && self.interaction.state.scope == 0 {
             return;
         }
         let cands: Vec<Hit> = self
@@ -580,12 +589,12 @@ impl Ui {
                     Some(j)
                 }
                 UiKey::Up | UiKey::Down | UiKey::Left | UiKey::Right => {
-                    self.state.typeahead.0.clear();
+                    self.interaction.state.typeahead.0.clear();
                     continue;
                 }
                 _ => continue,
             };
-            self.state.typeahead.0.clear();
+            self.interaction.state.typeahead.0.clear();
         }
         let typed: String = input
             .text
@@ -601,8 +610,8 @@ impl Ui {
                     && TYPE_SELECT_ROLES.contains(&crate::a11y::role_of(self.kinds[i].0, n))
             });
         if listy && !typed.is_empty() && !input.ctrl && !input.meta {
-            let tick = self.state.tick;
-            let (buffer, at) = &mut self.state.typeahead;
+            let tick = self.interaction.state.tick;
+            let (buffer, at) = &mut self.interaction.state.typeahead;
             if tick.saturating_sub(*at) > u64::from(self.env.ticks_per_second) {
                 buffer.clear();
             }
@@ -651,10 +660,10 @@ impl Ui {
         if let Some(j) = to
             && cands[j].key != from.key
         {
-            self.state.focus = cands[j].key;
-            self.state.focus_visible = true;
+            self.interaction.state.focus = cands[j].key;
+            self.interaction.state.focus_visible = true;
             self.sound(crate::style_file::UiSound::Hover);
-            self.scroll_into_view(self.state.focus);
+            self.scroll_into_view(self.interaction.state.focus);
         }
     }
 
@@ -662,19 +671,22 @@ impl Ui {
         if intents.is_empty() {
             return;
         }
-        let enabled = !self.state.nav_off || self.state.scope != 0;
+        let enabled = !self.interaction.state.nav_off || self.interaction.state.scope != 0;
         let mut moved = false;
         for &nav in intents {
             match nav {
                 Nav::Back => {
-                    self.nav.back = true;
+                    self.interaction.nav.back = true;
                     continue;
                 }
                 _ if !enabled => continue,
                 Nav::Activate => {
-                    if self.hit(self.state.focus).is_some_and(|h| h.has(HIT_NAV)) {
-                        self.nav.activate = self.state.focus;
-                        self.state.focus_visible = true;
+                    if self
+                        .hit(self.interaction.state.focus)
+                        .is_some_and(|h| h.has(HIT_NAV))
+                    {
+                        self.interaction.nav.activate = self.interaction.state.focus;
+                        self.interaction.state.focus_visible = true;
                         // A key or the pad's A presses as a pointer does, and sounds the same.
                         self.sound(crate::style_file::UiSound::Press);
                     }
@@ -686,32 +698,34 @@ impl Ui {
             if cands.is_empty() {
                 continue;
             }
-            self.state.focus_visible = true;
-            let before = self.state.focus;
-            let current = cands.iter().position(|h| h.key == self.state.focus);
+            self.interaction.state.focus_visible = true;
+            let before = self.interaction.state.focus;
+            let current = cands
+                .iter()
+                .position(|h| h.key == self.interaction.state.focus);
             let adjustable = current.is_some_and(|i| cands[i].has(HIT_ADJUST));
             // The arrows the focused element claims (Element::arrows).
             let claim = current.map_or(0, |i| (cands[i].flags >> crate::ui::HIT_CLAIM_SHIFT) as u8);
             let claimed = |bit: u8| claim & bit != 0;
             let next = match (nav, current) {
                 (Nav::Left | Nav::Right, Some(_)) if adjustable => {
-                    self.nav.adjust += if nav == Nav::Right { 1 } else { -1 };
+                    self.interaction.nav.adjust += if nav == Nav::Right { 1 } else { -1 };
                     None
                 }
                 (Nav::Left, Some(_)) if claimed(crate::ui::ARROW_LEFT) => {
-                    self.nav.adjust -= 1;
+                    self.interaction.nav.adjust -= 1;
                     None
                 }
                 (Nav::Right, Some(_)) if claimed(crate::ui::ARROW_RIGHT) => {
-                    self.nav.adjust += 1;
+                    self.interaction.nav.adjust += 1;
                     None
                 }
                 (Nav::Up, Some(_)) if claimed(crate::ui::ARROW_UP) => {
-                    self.nav.adjust_y -= 1;
+                    self.interaction.nav.adjust_y -= 1;
                     None
                 }
                 (Nav::Down, Some(_)) if claimed(crate::ui::ARROW_DOWN) => {
-                    self.nav.adjust_y += 1;
+                    self.interaction.nav.adjust_y += 1;
                     None
                 }
                 (Nav::Next, None) => Some(cands[0].key),
@@ -720,7 +734,7 @@ impl Ui {
                 (dir, Some(i)) => self.step_focus(&cands, i, dir),
             };
             if let Some(k) = next {
-                self.state.focus = k;
+                self.interaction.state.focus = k;
                 moved = true;
                 if k != before {
                     // Focus reaching a control by key or pad sounds as the pointer reaching it.
@@ -729,7 +743,7 @@ impl Ui {
             }
         }
         if moved {
-            self.scroll_into_view(self.state.focus);
+            self.scroll_into_view(self.interaction.state.focus);
         }
     }
 
@@ -757,7 +771,7 @@ impl Ui {
         } else {
             1 + if s.y > 0.0 { Nav::Down } else { Nav::Up }.index()
         };
-        let now = self.state.tick;
+        let now = self.interaction.state.tick;
         if dir == 0 {
             *stick = (0, 0);
         } else if stick.0 != dir {
@@ -780,18 +794,18 @@ impl Ui {
     /// surface's centre, and presses the one under it with A. Back and
     /// adjusting (a slider's left and right) are pad 0's.
     pub(crate) fn apply_pads(&mut self, input: &InputFrame) {
-        let players = usize::from(self.state.players.clamp(1, 4));
+        let players = usize::from(self.interaction.state.players.clamp(1, 4));
         for k in 1..players {
-            let mut stick = self.state.pad_stick[k - 1];
+            let mut stick = self.interaction.state.pad_stick[k - 1];
             let intents = self.pad_intents(input.extra_pads[k - 1], &mut stick);
-            self.state.pad_stick[k - 1] = stick;
+            self.interaction.state.pad_stick[k - 1] = stick;
             for nav in intents {
-                let focus = self.state.pad_focus[k - 1];
+                let focus = self.interaction.state.pad_focus[k - 1];
                 match nav {
                     Nav::Back => continue,
                     Nav::Activate => {
                         if self.hit(focus).is_some_and(|h| h.has(HIT_NAV)) {
-                            self.nav.pad_activate[k - 1] = focus;
+                            self.interaction.nav.pad_activate[k - 1] = focus;
                             self.sound(crate::style_file::UiSound::Press);
                         }
                         continue;
@@ -825,7 +839,7 @@ impl Ui {
                     (dir, Some(i)) => self.step_focus(&cands, i, dir),
                 };
                 if let Some(next) = next.filter(|&n| n != focus) {
-                    self.state.pad_focus[k - 1] = next;
+                    self.interaction.state.pad_focus[k - 1] = next;
                     self.sound(crate::style_file::UiSound::Hover);
                     self.scroll_into_view(next);
                 }
@@ -891,21 +905,32 @@ impl Ui {
 
     /// Scrolls the containers around `key` so it is in their view.
     fn virtual_item(&self, key: u64) -> Option<(u64, usize)> {
-        self.state.virtual_lists.iter().find_map(|(&container, v)| {
-            v.keys
-                .iter()
-                .position(|k| {
-                    crate::id::child_key(container, &crate::virtualize::item_id(k, v.grid)) == key
-                })
-                .map(|i| (container, i))
-        })
+        self.interaction
+            .state
+            .virtual_lists
+            .iter()
+            .find_map(|(&container, v)| {
+                v.keys
+                    .iter()
+                    .position(|k| {
+                        crate::id::child_key(container, &crate::virtualize::item_id(k, v.grid))
+                            == key
+                    })
+                    .map(|i| (container, i))
+            })
     }
 
     fn scroll_into_view(&mut self, key: u64) {
         if let Some((container, index)) = self.virtual_item(key) {
-            let off = self.state.scroll.get(&container).copied().unwrap_or(0.0);
-            let next = self.state.virtual_lists[&container].reveal(index, off);
-            self.state.scroll.insert(container, next);
+            let off = self
+                .interaction
+                .state
+                .scroll
+                .get(&container)
+                .copied()
+                .unwrap_or(0.0);
+            let next = self.interaction.state.virtual_lists[&container].reveal(index, off);
+            self.interaction.state.scroll.insert(container, next);
             return;
         }
         let Some(h) = self.hit(key).copied() else {

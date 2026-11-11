@@ -166,7 +166,7 @@ impl Ui {
     fn note_relevance(&mut self) {
         let vp = self.env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-        let focus = self.tree.find(self.state.focus);
+        let focus = self.tree.find(self.interaction.state.focus);
         for k in 0..self.orders.with(visit::feat::SKIPS).len() {
             let i = self.orders.with(visit::feat::SKIPS)[k];
             if i >= self.nodes.len() || !self.tree.has(i) {
@@ -450,8 +450,8 @@ impl Ui {
         loop {
             let mut layout_inputs =
                 settlement::LayoutInputs::new(&self.layout.cache.measurements, part_geometry);
-            let scroll = self.state.scroll.clone();
-            let scroll_x = self.state.scroll_x.clone();
+            let scroll = self.interaction.state.scroll.clone();
+            let scroll_x = self.interaction.state.scroll_x.clone();
             let offset = |k: u64| {
                 (
                     scroll_x.get(&k).copied().unwrap_or(0.0),
@@ -986,17 +986,22 @@ impl Ui {
             bounded::compare_tree(self, &order);
         }
         let present = |k: &u64| self.tree.find(*k);
-        self.state
+        self.interaction
+            .state
             .scroll
             .retain(|k, _| present(k).is_some_and(|i| self.nodes[i].el.scroll));
-        self.state.virtual_lists.retain(|k, _| present(k).is_some());
-        for (k, v) in self.state.scroll.iter_mut() {
+        self.interaction
+            .state
+            .virtual_lists
+            .retain(|k, _| present(k).is_some());
+        for (k, v) in self.interaction.state.scroll.iter_mut() {
             *v = v.clamp(0.0, present(k).map_or(0.0, |i| self.nodes[i].max_scroll()));
         }
-        self.state
+        self.interaction
+            .state
             .scroll_x
             .retain(|k, _| present(k).is_some_and(|i| self.nodes[i].el.scroll_x));
-        for (k, v) in self.state.scroll_x.iter_mut() {
+        for (k, v) in self.interaction.state.scroll_x.iter_mut() {
             *v = v.clamp(
                 0.0,
                 present(k).map_or(0.0, |i| self.nodes[i].max_scroll_x()),
@@ -1005,40 +1010,43 @@ impl Ui {
         // Each scroll container's ranges and bar lengths, as drawn.
         self.layout.cache.scrollers = self.orders.drawn(visit::feat::SCROLLS);
         let min_bar = self.env.theme.space.xl;
-        self.state.scroll_info = IdMap::from_iter(self.layout.cache.scrollers.iter().map(|&i| {
-            let n = &self.nodes[i];
-            let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
-            let bar = Vec2::new(
-                crate::scroll::bar_len(
-                    n.rect.width,
-                    n.w - n.el.padding.horizontal(),
-                    n.content_w,
-                    min_bar,
-                ),
-                crate::scroll::bar_len(
-                    n.rect.height,
-                    n.h - n.el.padding.vertical(),
-                    n.content_h,
-                    min_bar,
-                ),
-            );
-            (n.key, crate::scroll::ScrollInfo { range, bar })
-        }));
-        if let Some((k, _)) = self.state.fling
+        self.interaction.state.scroll_info =
+            IdMap::from_iter(self.layout.cache.scrollers.iter().map(|&i| {
+                let n = &self.nodes[i];
+                let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
+                let bar = Vec2::new(
+                    crate::scroll::bar_len(
+                        n.rect.width,
+                        n.w - n.el.padding.horizontal(),
+                        n.content_w,
+                        min_bar,
+                    ),
+                    crate::scroll::bar_len(
+                        n.rect.height,
+                        n.h - n.el.padding.vertical(),
+                        n.content_h,
+                        min_bar,
+                    ),
+                );
+                (n.key, crate::scroll::ScrollInfo { range, bar })
+            }));
+        if let Some((k, _)) = self.interaction.state.fling
             && self.tree.find(k).is_none()
         {
-            self.state.fling = None;
+            self.interaction.state.fling = None;
         }
-        if !self.input.down || self.tree.find(self.state.active).is_none() {
-            self.state.active = 0;
+        if !self.interaction.input.down || self.tree.find(self.interaction.state.active).is_none() {
+            self.interaction.state.active = 0;
         }
         let touched = std::mem::take(&mut self.touched);
         let retained = &self.docs.host.retained;
-        self.state
+        self.interaction
+            .state
             .anims
             .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
         let tree = &self.tree;
-        self.state
+        self.interaction
+            .state
             .clocks
             .retain(|_, (owner, _)| tree.find(*owner).is_some() || retained.owns(*owner));
         self.docs
@@ -1085,8 +1093,8 @@ impl Ui {
             }
         }
         let o = &self.orders;
-        if hits_changed || self.state.hits.is_empty() {
-            self.state.hits = o
+        if hits_changed || self.interaction.state.hits.is_empty() {
+            self.interaction.state.hits = o
                 .hit_nodes
                 .iter()
                 .flat_map(|&i| o.hit_of[i].iter().copied())
@@ -1095,7 +1103,7 @@ impl Ui {
         self.out
             .warnings
             .extend(o.hit_nodes.iter().filter_map(|&i| o.warn_of[i].clone()));
-        let hits = std::mem::take(&mut self.state.hits);
+        let hits = std::mem::take(&mut self.interaction.state.hits);
         // The topmost scope open (not leaving).
         let (top_scope, top_locked) = o
             .drawn(visit::feat::SCOPE)
@@ -1117,10 +1125,12 @@ impl Ui {
                 .find(|h| h.scope == scope && h.has(HIT_NAV) && !h.has(HIT_OFFSCREEN))
                 .map_or(0, |h| h.key)
         };
-        if self.request_focus != 0 && hits.iter().any(|h| h.key == self.request_focus) {
-            self.state.focus = self.request_focus;
+        if self.interaction.request_focus != 0
+            && hits.iter().any(|h| h.key == self.interaction.request_focus)
+        {
+            self.interaction.state.focus = self.interaction.request_focus;
         }
-        if top_scope != self.state.scope {
+        if top_scope != self.interaction.state.scope {
             let inside = |f: u64| {
                 if top_scope == 0 {
                     f != 0 && alive(f)
@@ -1131,15 +1141,16 @@ impl Ui {
             // Back to a scope it opened over (the base, a menu under its
             // submenu): the focus it had there, else that scope's first.
             let back_to = self
+                .interaction
                 .state
                 .focus_returns
                 .iter()
                 .rposition(|&(s, _)| s == top_scope);
             if let Some(k) = back_to {
-                let (_, back) = self.state.focus_returns[k];
-                self.state.focus_returns.truncate(k);
-                if !inside(self.state.focus) {
-                    self.state.focus = if inside(back) {
+                let (_, back) = self.interaction.state.focus_returns[k];
+                self.interaction.state.focus_returns.truncate(k);
+                if !inside(self.interaction.state.focus) {
+                    self.interaction.state.focus = if inside(back) {
                         back
                     } else if top_scope != 0 {
                         first_in(top_scope)
@@ -1148,19 +1159,23 @@ impl Ui {
                     };
                 }
             } else if top_scope != 0 {
-                if !inside(self.state.focus) {
+                if !inside(self.interaction.state.focus) {
                     // Entries of scopes no longer on screen are dropped; one
                     // that replaced another (the old one gone) opened over
                     // what that one had.
                     let on_screen = |s: u64| s == 0 || hits.iter().any(|h| h.scope == s);
-                    self.state.focus_returns.retain(|&(s, _)| on_screen(s));
-                    if on_screen(self.state.scope) {
-                        self.state
+                    self.interaction
+                        .state
+                        .focus_returns
+                        .retain(|&(s, _)| on_screen(s));
+                    if on_screen(self.interaction.state.scope) {
+                        self.interaction
+                            .state
                             .focus_returns
-                            .push((self.state.scope, self.state.focus));
+                            .push((self.interaction.state.scope, self.interaction.state.focus));
                     }
-                    let req = self.request_focus;
-                    self.state.focus =
+                    let req = self.interaction.request_focus;
+                    self.interaction.state.focus =
                         if req != 0 && hits.iter().any(|h| h.key == req && h.scope == top_scope) {
                             req
                         } else {
@@ -1168,43 +1183,44 @@ impl Ui {
                         };
                 }
             } else {
-                self.state.focus_returns.clear();
+                self.interaction.state.focus_returns.clear();
             }
         }
-        if !alive(self.state.focus) {
-            self.state.focus = 0;
+        if !alive(self.interaction.state.focus) {
+            self.interaction.state.focus = 0;
         }
         // Pads 1 to 3: a focus whose control left is dropped; one outside a
         // scope that opened moves to its first control.
         for k in 0..3 {
-            let f = self.state.pad_focus[k];
+            let f = self.interaction.state.pad_focus[k];
             let inside =
                 |f: u64| top_scope == 0 || hits.iter().any(|h| h.key == f && h.scope == top_scope);
-            if (k as u32) + 1 >= self.players {
-                self.state.pad_focus[k] = 0;
+            if (k as u32) + 1 >= self.interaction.players {
+                self.interaction.state.pad_focus[k] = 0;
             } else if f != 0 && (!alive(f) || !inside(f)) {
-                self.state.pad_focus[k] = if top_scope != 0 {
+                self.interaction.state.pad_focus[k] = if top_scope != 0 {
                     first_in(top_scope)
                 } else {
                     0
                 };
             }
         }
-        self.state.players = self.players as u8;
-        self.state.vcursor.desc = self.vcursor;
-        self.state.scope = top_scope;
-        self.state.scope_locked = top_locked;
-        self.state.nav_off = !self.nav_on;
-        self.state.hits = hits;
+        self.interaction.state.players = self.interaction.players as u8;
+        self.interaction.state.vcursor.desc = self.interaction.vcursor;
+        self.interaction.state.scope = top_scope;
+        self.interaction.state.scope_locked = top_locked;
+        self.interaction.state.nav_off = !self.interaction.nav_on;
+        self.interaction.state.hits = hits;
         self.note_groups();
         self.note_taps();
-        let (cursor, cursor_images) =
-            if self.state.vcursor.shown && self.state.vcursor.desc.is_some() {
-                // The pad's cursor is drawn; the system's is hidden.
-                (crate::Cursor::None, Vec::new())
-            } else {
-                self.resolve_cursor(&order)
-            };
+        let (cursor, cursor_images) = if self.interaction.state.vcursor.shown
+            && self.interaction.state.vcursor.desc.is_some()
+        {
+            // The pad's cursor is drawn; the system's is hidden.
+            (crate::Cursor::None, Vec::new())
+        } else {
+            self.resolve_cursor(&order)
+        };
 
         // A button narrower than an ornament's span is `[narrow]`, laid
         // out: a style draws it plain (fantasy's hairline and bevel, no
@@ -1236,13 +1252,15 @@ impl Ui {
                     let b = [3, 0, 1, 2].map(|k| decor.borders[k].map_or(0.0, |b| b.width));
                     (
                         [
-                            self.state
+                            self.interaction
+                                .state
                                 .scroll_x
                                 .get(&n.key)
                                 .copied()
                                 .unwrap_or(0.0)
                                 .clamp(0.0, n.max_scroll_x()),
-                            self.state
+                            self.interaction
+                                .state
                                 .scroll
                                 .get(&n.key)
                                 .copied()
@@ -1365,10 +1383,10 @@ impl Ui {
         self.paint.cache.last_tail = tail;
         let mut focus_paths: [String; 4] = Default::default();
         let focused = [
-            self.state.focus,
-            self.state.pad_focus[0],
-            self.state.pad_focus[1],
-            self.state.pad_focus[2],
+            self.interaction.state.focus,
+            self.interaction.state.pad_focus[0],
+            self.interaction.state.pad_focus[1],
+            self.interaction.state.pad_focus[2],
         ];
         for (slot, key) in focused.into_iter().enumerate() {
             if key != 0
@@ -1394,7 +1412,7 @@ impl Ui {
             warnings: std::mem::take(&mut self.out.warnings),
             missing_glyphs,
             focus_paths,
-            text_input: self.text_target.take(),
+            text_input: self.interaction.text_target.take(),
             events: std::mem::take(&mut self.out.events),
             grounds: std::mem::take(&mut self.world.grounds),
             stats: LayoutStats {

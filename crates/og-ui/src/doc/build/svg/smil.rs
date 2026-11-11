@@ -120,12 +120,13 @@ pub(in crate::doc::build) fn animate(
         .unwrap_or([0.0, 0.0, DEFAULT_SIZE[0], DEFAULT_SIZE[1]]);
     let tps = ui.ticks_per_second().max(1) as f32;
     let start = ui
+        .interaction
         .state
         .anims
         .get(&smil_clock(path))
-        .map_or(ui.state.tick, |a| a.t);
+        .map_or(ui.interaction.state.tick, |a| a.t);
     let still = ui.theme().reduced_motion;
-    let now = ui.state.tick.saturating_sub(start) as f32 / tps;
+    let now = ui.interaction.state.tick.saturating_sub(start) as f32 / tps;
     let mut running = false;
     let mut values: Vec<(String, String)> = Vec::new();
     let mut motion: Option<String> = None;
