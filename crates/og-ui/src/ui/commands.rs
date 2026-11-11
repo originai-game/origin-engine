@@ -16,14 +16,19 @@ impl Ui {
     fn world_step(&mut self, i: usize) -> bool {
         let before = {
             let n = &self.tree.nodes[i];
-            (n.world, n.alpha, n.inert, n.plane.clone())
+            (
+                n.placed.world,
+                n.placed.alpha,
+                n.placed.inert,
+                n.placed.plane.clone(),
+            )
         };
         let parent = self.tree.nodes[i].parent;
         let (alpha, inert, pw) = if parent == NONE {
             (1.0, false, Affine::IDENTITY)
         } else {
             let p = &self.tree.nodes[parent];
-            (p.alpha, p.inert, p.world)
+            (p.placed.alpha, p.placed.inert, p.placed.world)
         };
         // The 3D space its parent gives it: the parent's plane, and the
         // parent's `perspective` (about its perspective-origin).
@@ -35,16 +40,16 @@ impl Ui {
                 s.perspective
                     .map(|_| s.perspective_matrix(&reference_box(p, s.transform_box)))
             });
-            (p.plane.as_deref().cloned(), persp)
+            (p.placed.plane.as_deref().cloned(), persp)
         };
 
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let n = &mut self.tree.nodes[i];
         let shown = !n.anchor_placed.hidden;
-        n.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
-        n.scale = 1.0;
-        n.inert = inert || n.sampled.inert || !shown;
-        let r = n.rect;
+        n.placed.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
+        n.placed.scale = 1.0;
+        n.placed.inert = inert || n.sampled.inert || !shown;
+        let r = n.placed.rect;
         let (cx, cy) = r.center();
         let mut local = Affine::IDENTITY;
         let [fx, fy, fsx, fsy] = n.flip;
@@ -52,7 +57,7 @@ impl Ui {
             local = Affine::translate(fx, fy).mul(&Affine::scale(fsx, fsy).about(r.x, r.y));
         }
         let [hx, hy, hs, ho] = n.custom;
-        n.alpha *= ho.clamp(0.0, 1.0);
+        n.placed.alpha *= ho.clamp(0.0, 1.0);
         if hx != 0.0 || hy != 0.0 || hs != 1.0 {
             local = local
                 .mul(&Affine::translate(hx, hy))
@@ -64,8 +69,8 @@ impl Ui {
             local = local.mul(&Affine::translate(gx, gy)).mul(&turn);
         }
         if let Some(f) = n.fx {
-            n.alpha *= f.alpha;
-            n.inert |= f.inert;
+            n.placed.alpha *= f.alpha;
+            n.placed.inert |= f.inert;
             if f.dx != 0.0 || f.dy != 0.0 || f.scale != 1.0 {
                 local = local
                     .mul(&Affine::translate(f.dx, f.dy))
@@ -100,8 +105,8 @@ impl Ui {
             local = local.mul(&t.matrix(&r));
         }
         if space.is_none() && ppersp.is_none() && pplane.is_none() {
-            n.plane = None;
-            n.world = if local.is_identity() {
+            n.placed.plane = None;
+            n.placed.world = if local.is_identity() {
                 pw
             } else {
                 pw.mul(&local)
@@ -127,7 +132,7 @@ impl Ui {
             let m = t3::mul(&base, &local4);
             let preserve = space.as_ref().is_some_and(|s| s.preserve_3d);
             let root = !t3::is_flat(&m);
-            n.plane = (into != NONE || root || preserve).then(|| {
+            n.placed.plane = (into != NONE || root || preserve).then(|| {
                 Box::new(t3::Plane {
                     into,
                     m,
@@ -147,17 +152,17 @@ impl Ui {
             let onto = if into == NONE {
                 Affine::IDENTITY
             } else {
-                self.tree.nodes[into].world
+                self.tree.nodes[into].placed.world
             };
             let n = &mut self.tree.nodes[i];
-            n.world = onto.mul(&t3::project(&m));
-            if let Some(p) = n.plane.as_deref_mut()
+            n.placed.world = onto.mul(&t3::project(&m));
+            if let Some(p) = n.placed.plane.as_deref_mut()
                 && p.root
                 && space.as_ref().is_some_and(|s| s.backface_hidden)
             {
                 // Seen from behind: its corners wind the other way on
                 // the screen (CSS Transforms 2 §6.3).
-                let w = n.world;
+                let w = n.placed.world;
                 let c = [
                     (r.x, r.y),
                     (r.right(), r.y),
@@ -178,47 +183,57 @@ impl Ui {
             }
         }
         let n = &mut self.tree.nodes[i];
-        n.screen = n.world.map_rect(&r);
+        n.placed.screen = n.placed.world.map_rect(&r);
         // A transformed scroll container's clip moves with it: made from
         // the clip layout gave (mirrored right to left), so a node layout
         // left out is not moved twice.
-        let src = self.tree.nodes[i].clip_src;
-        if src != NONE && !self.tree.nodes[src].world.is_identity() {
-            let w = self.tree.nodes[src].world;
+        let src = self.tree.nodes[i].placed.clip_src;
+        if src != NONE && !self.tree.nodes[src].placed.world.is_identity() {
+            let w = self.tree.nodes[src].placed.world;
             let mut c = self.tree.nodes[i].laid_clip;
             if self.env.direction == og_i18n::Direction::Rtl {
                 c.x = self.env.viewport.width - c.x - c.width;
             }
-            self.tree.nodes[i].clip = w.map_rect(&c);
+            self.tree.nodes[i].placed.clip = w.map_rect(&c);
         }
         // Its clip in the space its layer draws in: a scroll container's
         // in the same layer, else none (an outer clip cuts the composite).
-        if self.tree.nodes[i].plane.is_some() {
-            let into = self.tree.nodes[i].plane.as_ref().map_or(NONE, |p| p.into);
+        if self.tree.nodes[i].placed.plane.is_some() {
+            let into = self.tree.nodes[i]
+                .placed
+                .plane
+                .as_ref()
+                .map_or(NONE, |p| p.into);
             let clip = if src == NONE {
                 INFINITE
             } else if into == NONE {
-                self.tree.nodes[i].clip
+                self.tree.nodes[i].placed.clip
             } else if src == into {
                 self.tree.nodes[src].laid_clip
             } else {
-                match self.tree.nodes[src].plane.as_deref() {
+                match self.tree.nodes[src].placed.plane.as_deref() {
                     Some(sp) if sp.into == into && !sp.root => {
                         crate::transform3d::project(&sp.m).map_rect(&self.tree.nodes[src].laid_clip)
                     }
                     _ => INFINITE,
                 }
             };
-            if let Some(p) = self.tree.nodes[i].plane.as_deref_mut() {
+            if let Some(p) = self.tree.nodes[i].placed.plane.as_deref_mut() {
                 p.clip = clip;
             }
         }
         let n = &self.tree.nodes[i];
-        if n.plane.as_ref().is_some_and(|p| p.root) {
+        if n.placed.plane.as_ref().is_some_and(|p| p.root) {
             self.world.planes.insert(n.key);
         }
         let n = &self.tree.nodes[i];
-        before != (n.world, n.alpha, n.inert, n.plane.clone())
+        before
+            != (
+                n.placed.world,
+                n.placed.alpha,
+                n.placed.inert,
+                n.placed.plane.clone(),
+            )
     }
 
     /// The frame's draw commands with their maps (docs/ui.md §2): each
@@ -268,8 +283,8 @@ impl Ui {
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
             rect: part_rect(n, press_scale),
             radius: n.sampled.radius,
-            clip: n.clip,
-            alpha: n.alpha,
+            clip: n.placed.clip,
+            alpha: n.placed.alpha,
         };
         let mut k = 0;
         while k < order.len() {
@@ -363,14 +378,15 @@ impl Ui {
                 reused_roots = false;
             }
             let n = &self.tree.nodes[i];
-            let world = n.plane.as_ref().map_or(n.world, |p| p.draw());
+            let world = n.placed.plane.as_ref().map_or(n.placed.world, |p| p.draw());
             // Its clip where its commands draw: a 3D plane's in its layer.
-            let draw_clip = match n.plane.as_deref() {
+            let draw_clip = match n.placed.plane.as_deref() {
                 Some(p) if p.root => INFINITE,
                 Some(p) => p.clip,
-                None => n.clip,
+                None => n.placed.clip,
             };
             let plane = n
+                .placed
                 .plane
                 .as_deref()
                 .filter(|p| p.root)
@@ -594,8 +610,8 @@ impl Ui {
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
             rect: part_rect(n, press_scale),
             radius: n.sampled.radius,
-            clip: n.clip,
-            alpha: n.alpha,
+            clip: n.placed.clip,
+            alpha: n.placed.alpha,
         };
         {
             while let Some(&(j, first, end, _, pos)) = open.last() {
@@ -619,13 +635,13 @@ impl Ui {
                         &self.interaction,
                         &self.tree,
                     );
-                    let w = self.tree.nodes[j].world;
+                    let w = self.tree.nodes[j].placed.world;
                     cmds.extend(fades.into_iter().map(|c| (c, w)));
                 }
                 if self.tree.nodes[j].scrolls() && !self.tree.nodes[j].el.hide_bars {
                     let mut bars = Vec::new();
                     self.scroll_bar_commands(j, &mut bars);
-                    let w = self.tree.nodes[j].world;
+                    let w = self.tree.nodes[j].placed.world;
                     cmds.extend(bars.into_iter().map(|c| (c, w)));
                 }
                 // CSS `resize`: its handle over everything it drew.
@@ -634,10 +650,10 @@ impl Ui {
                 {
                     let mut grip = Vec::new();
                     self.tree.resizer_commands(j, &mut grip, &self.env);
-                    let w = self.tree.nodes[j].world;
+                    let w = self.tree.nodes[j].placed.world;
                     cmds.extend(grip.into_iter().map(|c| (c, w)));
                 }
-                let w = self.tree.nodes[j].world;
+                let w = self.tree.nodes[j].placed.world;
                 if let Some(d) = self.paint.draw_of(j, &self.tree) {
                     let at = placed(&self.tree.nodes[j]);
                     let hidden = self.tree.orders.hidden_of.get(j) == Some(&true)
@@ -660,7 +676,7 @@ impl Ui {
                     cmds.append(ring);
                     false
                 });
-                if let Some(p) = self.tree.nodes[j].plane.as_deref()
+                if let Some(p) = self.tree.nodes[j].placed.plane.as_deref()
                     && p.root
                     && !p.preserve
                 {
@@ -671,7 +687,7 @@ impl Ui {
                 }
                 let nj = &self.tree.nodes[j];
                 if nj.props.exit.is_some() || !nj.props.match_key.is_empty() {
-                    let inv = nj.world.invert().unwrap_or(Affine::IDENTITY);
+                    let inv = nj.placed.world.invert().unwrap_or(Affine::IDENTITY);
                     let parent = if nj.parent == NONE {
                         0
                     } else {
@@ -685,9 +701,9 @@ impl Ui {
                                 .filter(|(c, _)| !matches!(c, DrawCmd::World(_)))
                                 .map(|(c, m)| (c.clone(), inv.mul(m)))
                                 .collect(),
-                            rect: nj.rect,
-                            world: nj.world,
-                            alpha: nj.alpha,
+                            rect: nj.placed.rect,
+                            world: nj.placed.world,
+                            alpha: nj.placed.alpha,
                             parent: if self.tree.index.by_key.contains_key(&parent) {
                                 parent
                             } else {
@@ -716,28 +732,28 @@ impl Ui {
                     let (begin, end) = glitch_layer(
                         key,
                         g * strength,
-                        nj.screen.height,
+                        nj.placed.screen.height,
                         self.env.ticks_per_second,
-                        nj.rect,
-                        nj.clip,
+                        nj.placed.rect,
+                        nj.placed.clip,
                     );
                     // Every later command moves one place: no span is kept.
                     self.paint.kept_spans.retain(|r| r.end <= first);
                     self.paint.cache.aligned.retain(|r| r.end <= first);
                     shift_named(&mut self.paint.cache.named, first);
-                    cmds.insert(first, (begin, nj.world));
-                    cmds.push((end, nj.world));
+                    cmds.insert(first, (begin, nj.placed.world));
+                    cmds.push((end, nj.placed.world));
                 }
                 // A blurring subtree (Svelte's `blur` transition) draws
                 // through a blur layer, as CSS `filter: blur()` does.
                 let nj = &self.tree.nodes[j];
                 if nj.sampled.blur > 0.0 {
-                    let (begin, end) = blur_layer(nj.sampled.blur, nj.rect, nj.clip);
+                    let (begin, end) = blur_layer(nj.sampled.blur, nj.placed.rect, nj.placed.clip);
                     self.paint.kept_spans.retain(|r| r.end <= first);
                     self.paint.cache.aligned.retain(|r| r.end <= first);
                     shift_named(&mut self.paint.cache.named, first);
-                    cmds.insert(first, (begin, nj.world));
-                    cmds.push((end, nj.world));
+                    cmds.insert(first, (begin, nj.placed.world));
+                    cmds.push((end, nj.placed.world));
                 }
                 // A shared element of a view transition: where its drawing
                 // is in this frame's list (crate::view_transition).
@@ -755,12 +771,12 @@ impl Ui {
                         group: nj.props.view_transition_group.clone(),
                         parent: None,
                         range: first..cmds.len(),
-                        screen: nj.screen,
+                        screen: nj.placed.screen,
                         inset: crate::view_transition::border_inset(nj),
                         inherited: if nj.parent == NONE {
                             1.0
                         } else {
-                            self.tree.nodes[nj.parent].alpha
+                            self.tree.nodes[nj.parent].placed.alpha
                         },
                     });
                 }
@@ -1027,7 +1043,7 @@ impl Ui {
             self.part_commands_at(
                 Some(sn.key),
                 &part,
-                values.part_rect(rect, sn.rect).snapped(dpr),
+                values.part_rect(rect, sn.placed.rect).snapped(dpr),
                 Some(values.color("color").unwrap_or(p.control_strong)),
                 t.radius.bar,
                 1.0,
@@ -1038,7 +1054,7 @@ impl Ui {
         let max_x = sn.max_scroll_x();
         if max_x > 0.0 {
             let inner_w = sn.w - sn.el.padding.horizontal();
-            let track = sn.rect;
+            let track = sn.placed.rect;
             let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
             let off = self
                 .interaction
@@ -1060,7 +1076,7 @@ impl Ui {
         let max = sn.max_scroll();
         if max > 0.0 {
             let inner_h = sn.h - sn.el.padding.vertical();
-            let track = sn.rect;
+            let track = sn.placed.rect;
             let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
             let off = self
                 .interaction
@@ -1194,7 +1210,7 @@ impl crate::ui::Paint {
         let reach = sn.el.fade;
         let into = sn.el.fade_into.unwrap_or(env.theme.palette.panel);
         let clip = tree.scroll_clip(s);
-        let r = sn.rect;
+        let r = sn.placed.rect;
         let max_y = sn.max_scroll();
         let off_y = interaction
             .state
@@ -1275,7 +1291,7 @@ impl crate::ui::Paint {
                 rect,
                 radius: 0.0,
                 clip,
-                alpha: sn.alpha * k,
+                alpha: sn.placed.alpha * k,
             };
             cmds.extend(draw.enter(&env.theme, &at));
         }
@@ -1309,7 +1325,7 @@ impl crate::ui::Tree {
                 .nodes
                 .iter()
                 .find(|n| n.key == g.morph_to)
-                .map(|n| n.screen);
+                .map(|n| n.placed.screen);
             match to {
                 Some(to) => Affine::rect_to_rect(&f.world.map_rect(&f.rect), &to).mul(&f.world),
                 None => f.world,
@@ -1351,13 +1367,14 @@ impl crate::ui::Tree {
 
     fn scroll_clip(&self, s: usize) -> Rect {
         let sn = &self.nodes[s];
-        if sn.world.is_identity() {
-            sn.clip.intersect(&sn.rect)
+        if sn.placed.world.is_identity() {
+            sn.placed.clip.intersect(&sn.placed.rect)
         } else {
-            sn.world
+            sn.placed
+                .world
                 .invert()
-                .map_or(sn.clip, |inv| inv.map_rect(&sn.clip))
-                .intersect(&sn.rect)
+                .map_or(sn.placed.clip, |inv| inv.map_rect(&sn.placed.clip))
+                .intersect(&sn.placed.rect)
         }
     }
 }
@@ -1847,7 +1864,7 @@ const INFINITE: Rect = Rect {
 
 /// The box `transform-box` names: its border box or its content box.
 fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -> Rect {
-    let r = n.rect;
+    let r = n.placed.rect;
     match b {
         crate::transform3d::TransformBox::BorderBox => r,
         crate::transform3d::TransformBox::ContentBox => {
@@ -1907,14 +1924,15 @@ impl crate::ui::Layout {
         let keys: Vec<u64> = world.planes.iter().copied().collect();
         for key in keys {
             let found = tree.index.find(key).filter(|&i| {
-                tree.nodes[i].key == key && tree.nodes[i].plane.as_ref().is_some_and(|p| p.root)
+                tree.nodes[i].key == key
+                    && tree.nodes[i].placed.plane.as_ref().is_some_and(|p| p.root)
             });
             let Some(i) = found else {
                 world.planes.remove(&key);
                 continue;
             };
             let n = &tree.nodes[i];
-            let p = n.plane.as_deref().expect("a plane root");
+            let p = n.placed.plane.as_deref().expect("a plane root");
             if p.hidden {
                 continue;
             }
@@ -1923,13 +1941,13 @@ impl crate::ui::Layout {
             // The screen (or the space it is laid onto) to its layer: rows
             // b, with a ray the drape meets at w = 1 (og_draw::UiGround).
             let mut b = inv.rows();
-            let (cx, cy) = n.rect.center();
+            let (cx, cy) = n.placed.rect.center();
             let (sx, sy) = map.apply(cx, cy);
             let w = b[2][0] * sx + b[2][1] * sy + b[2][2];
             if w < 0.0 {
                 b = b.map(|r| r.map(|v| -v));
             }
-            let r = n.rect;
+            let r = n.placed.rect;
             let corner = |x: f32, y: f32| {
                 let w = map.g * x + map.h * y + map.i;
                 (w > 1e-6).then(|| {

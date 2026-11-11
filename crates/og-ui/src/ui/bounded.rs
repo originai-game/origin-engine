@@ -88,7 +88,13 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
             format!(
                 "{:?}",
                 (
-                    (n.rect, n.clip, n.world, n.screen, n.alpha),
+                    (
+                        n.placed.rect,
+                        n.placed.clip,
+                        n.placed.world,
+                        n.placed.screen,
+                        n.placed.alpha
+                    ),
                     (n.x, n.y, n.w, n.h, &n.lines, n.content_h, n.content_w),
                     (&n.children, &n.out),
                 )

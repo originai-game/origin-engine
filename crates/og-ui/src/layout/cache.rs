@@ -402,13 +402,13 @@ impl DrawSig {
 
     pub(crate) fn of(n: &Node) -> Self {
         Self {
-            rect: n.rect,
-            clip: n.clip,
-            alpha: n.alpha,
-            world: n.world,
+            rect: n.placed.rect,
+            clip: n.placed.clip,
+            alpha: n.placed.alpha,
+            world: n.placed.world,
             ring: n.ring,
             pad_rings: n.pad_rings,
-            scale: n.scale,
+            scale: n.placed.scale,
             sampled: n.sampled,
             selected: n.selected,
         }
@@ -418,15 +418,15 @@ impl DrawSig {
 /// Everything an element's own commands are made from is as last frame
 /// (its ancestors' fills are checked by the caller, up the tree).
 pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
-    a.rect == b.rect
-        && a.clip == b.clip
-        && a.alpha == b.alpha
-        && a.world == b.world
+    a.placed.rect == b.placed.rect
+        && a.placed.clip == b.placed.clip
+        && a.placed.alpha == b.placed.alpha
+        && a.placed.world == b.placed.world
         && a.ring == b.ring
         && a.pad_rings == b.pad_rings
         && a.heading == b.heading
         && a.disabled == b.disabled
-        && a.scale == b.scale
+        && a.placed.scale == b.placed.scale
         && a.sampled == b.sampled
         && a.el == b.el
         && a.content == b.content
@@ -797,7 +797,7 @@ pub(crate) fn layout(
     if let Some(f) = &frames {
         super::writing::settle(nodes, f);
     }
-    nodes[root].clip = clip;
+    nodes[root].placed.clip = clip;
     let mut k = 0;
     while k < order.len() {
         let i = order[k];
@@ -810,17 +810,17 @@ pub(crate) fn layout(
             if p.el.scroll || p.el.scroll_x {
                 (p.laid_clip.intersect(&p.laid_rect), n.up)
             } else {
-                (p.laid_clip, p.clip_src)
+                (p.laid_clip, p.placed.clip_src)
             }
         };
-        if parent_clip != nodes[i].laid_clip || src != nodes[i].clip_src {
+        if parent_clip != nodes[i].laid_clip || src != nodes[i].placed.clip_src {
             kept.open(nodes, &mut order, &mut opened, k);
         }
-        nodes[i].clip = parent_clip;
+        nodes[i].placed.clip = parent_clip;
         nodes[i].laid_clip = parent_clip;
-        nodes[i].clip_src = src;
-        nodes[i].rect = rect.snapped(dpr);
-        nodes[i].laid_rect = nodes[i].rect;
+        nodes[i].placed.clip_src = src;
+        nodes[i].placed.rect = rect.snapped(dpr);
+        nodes[i].laid_rect = nodes[i].placed.rect;
         nodes[i].laid_xy = [nodes[i].x, nodes[i].y];
         kept.lay(i);
         if nodes[i].layout_size != [nodes[i].w, nodes[i].h] {
@@ -884,7 +884,7 @@ mod text_cache {
             .filter(|n| matches!(n.content, Content::Text(_)))
             .map(|n| {
                 let lines = n.lines.iter().map(|l| (l.text.clone(), l.width));
-                (lines.collect(), n.rect)
+                (lines.collect(), n.placed.rect)
             })
             .collect()
     }

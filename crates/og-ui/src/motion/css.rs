@@ -860,7 +860,10 @@ mod document_tests {
             let i = (0..ui.tree.nodes.len())
                 .find(|&i| ui.tree.path_of(i) == "m/Card")
                 .unwrap();
-            (ui.tree.nodes[i].rect.width, ui.tree.nodes[i].rect.height)
+            (
+                ui.tree.nodes[i].placed.rect.width,
+                ui.tree.nodes[i].placed.rect.height,
+            )
         };
         size(&mut ui, false, false);
         for j in 0..3 {
@@ -918,7 +921,7 @@ mod document_tests {
                 .unwrap();
             let k = (j as f32 / 6.0).min(1.0);
             assert!(close(v[OPACITY], k), "opacity at {j}: {}", v[OPACITY]);
-            let w = ui.tree.nodes[i].rect.width;
+            let w = ui.tree.nodes[i].placed.rect.width;
             assert!((w - (10.0 + 30.0 * k)).abs() <= 0.5, "width at {j}: {w}");
         }
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);

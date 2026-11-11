@@ -499,8 +499,8 @@ impl crate::ui::Style {
             (
                 at.clamp(0.0, max),
                 max,
-                s.rect.x + pad.left,
-                s.rect.width - pad.horizontal(),
+                s.placed.rect.x + pad.left,
+                s.placed.rect.width - pad.horizontal(),
             )
         } else {
             let max = s.max_scroll();
@@ -508,14 +508,14 @@ impl crate::ui::Style {
             (
                 at.clamp(0.0, max),
                 max,
-                s.rect.y + pad.top,
-                s.rect.height - pad.vertical(),
+                s.placed.rect.y + pad.top,
+                s.placed.rect.height - pad.vertical(),
             )
         };
         // Laid out at this offset: its place in the content is where it is
         // plus the offset.
         let subject = subject.map(|j| {
-            let r = tree.nodes[j].rect;
+            let r = tree.nodes[j].placed.rect;
             if axis.horizontal() {
                 (r.x - start + offset, r.width)
             } else {

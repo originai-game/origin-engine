@@ -117,7 +117,7 @@ impl crate::ui::Ui {
     pub(crate) fn paint_clip(&self, n: &Node) -> Rect {
         match &self.paint.ctx {
             Some(c) if std::ptr::eq(n, &self.tree.nodes[c.node]) => c.clip,
-            _ => n.clip,
+            _ => n.placed.clip,
         }
     }
 }

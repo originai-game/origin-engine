@@ -16,7 +16,7 @@ fn covers(decl: &str, path: &str) -> bool {
 
 /// It draws something of its own.
 fn painted(n: &Node) -> bool {
-    !n.rect.is_empty()
+    !n.placed.rect.is_empty()
         && (n.el.background.is_some()
             || !matches!(n.content, Content::None)
             || !matches!(
@@ -73,14 +73,14 @@ impl crate::ui::Layout {
                     n.props.transform
                 };
                 if !transform.is_identity() {
-                    m = transform.matrix(&n.rect).mul(&m);
+                    m = transform.matrix(&n.placed.rect).mul(&m);
                 }
                 j = n.parent;
             }
             if m.is_identity() {
-                tree.nodes[i].rect
+                tree.nodes[i].placed.rect
             } else {
-                m.map_rect(&tree.nodes[i].rect)
+                m.map_rect(&tree.nodes[i].placed.rect)
             }
         };
         // What of a node a scroll leaves in view: its rectangle cut by every
@@ -289,7 +289,7 @@ impl crate::ui::Layout {
                     .0
                     .metrics;
                 let lh = tc.line_height();
-                let inner = n.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.el.padding);
                 let block = lh * n.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                 Some(m.baseline(&line.text, top, lh, tc.step.size))
@@ -298,7 +298,7 @@ impl crate::ui::Layout {
                 let l = n.rich_lines.first()?;
                 // A first line floats moved down (`Node::wrap_lines`).
                 let drop = n.wrap_lines.first().map_or(0.0, |w| w[1]);
-                Some(n.rect.y + n.el.padding.top + drop + l.baseline)
+                Some(n.placed.rect.y + n.el.padding.top + drop + l.baseline)
             }
             _ => n
                 .children
@@ -418,9 +418,9 @@ impl crate::ui::Layout {
             let n = &tree.nodes[i];
             let (ax, ay) = p.anchor_at.fractions();
             let (ox, oy) = p.anchor_self.fractions();
-            let x = tr.x + ax * tr.width - ox * n.rect.width + p.insets.start.unwrap_or(0.0);
-            let y = tr.y + ay * tr.height - oy * n.rect.height + p.insets.top.unwrap_or(0.0);
-            let (dx, dy) = (x - n.rect.x, y - n.rect.y);
+            let x = tr.x + ax * tr.width - ox * n.placed.rect.width + p.insets.start.unwrap_or(0.0);
+            let y = tr.y + ay * tr.height - oy * n.placed.rect.height + p.insets.top.unwrap_or(0.0);
+            let (dx, dy) = (x - n.placed.rect.x, y - n.placed.rect.y);
             tree.shift_subtree(i, dx, dy, true);
         }
     }
@@ -472,7 +472,7 @@ impl crate::ui::Layout {
                     .0
                     .metrics;
                 let lh = tc.line_height();
-                let inner = n.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.el.padding);
                 let block = lh * n.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                 let top = top + lh * (n.lines.len() - 1) as f32;
@@ -482,7 +482,7 @@ impl crate::ui::Layout {
                 let (last, before) = n.rich_lines.split_last()?;
                 let above: f32 = before.iter().map(|l| l.height).sum();
                 let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]);
-                Some(n.rect.y + n.el.padding.top + above + drop + last.baseline)
+                Some(n.placed.rect.y + n.el.padding.top + above + drop + last.baseline)
             }
             _ => n
                 .children
@@ -510,13 +510,13 @@ impl crate::ui::Tree {
                 n.x += dx;
                 n.y += dy;
             }
-            n.rect.x += dx;
-            n.rect.y += dy;
+            n.placed.rect.x += dx;
+            n.placed.rect.y += dy;
             n.laid_rect.x += dx;
             n.laid_rect.y += dy;
-            if n.clip_src != NONE && inside.contains(&n.clip_src) {
-                n.clip.x += dx;
-                n.clip.y += dy;
+            if n.placed.clip_src != NONE && inside.contains(&n.placed.clip_src) {
+                n.placed.clip.x += dx;
+                n.placed.clip.y += dy;
                 n.laid_clip.x += dx;
                 n.laid_clip.y += dy;
             }
@@ -540,7 +540,7 @@ impl crate::ui::Tree {
                 };
                 n.lines.first()?;
                 let lh = tc.line_height();
-                let inner = n.rect.inset(&n.el.padding);
+                let inner = n.placed.rect.inset(&n.el.padding);
                 let off = ((inner.width - lh * n.lines.len() as f32) / 2.0).max(0.0);
                 Some(if v.mode.block_rl() {
                     inner.right() - off - (k as f32 + 0.5) * lh

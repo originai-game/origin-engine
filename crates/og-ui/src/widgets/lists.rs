@@ -31,12 +31,12 @@ impl Ui {
             return None;
         }
         self.previous_child(key)
-            .map(|i| self.tree.nodes[i].rect)
+            .map(|i| self.tree.nodes[i].placed.rect)
             .or_else(|| {
                 self.tree
                     .previous_nodes(&self.layout)
                     .find(|n| n.key == key)
-                    .map(|n| n.rect)
+                    .map(|n| n.placed.rect)
             })
     }
 
@@ -181,7 +181,7 @@ impl Ui {
             } else {
                 id.into()
             };
-            Some((key, n.rect.height))
+            Some((key, n.placed.rect.height))
         }
         let old = self
             .interaction

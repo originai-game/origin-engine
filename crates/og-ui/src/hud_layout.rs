@@ -622,7 +622,7 @@ impl crate::ui::Interaction {
             k => tree
                 .index
                 .find(k)
-                .map_or(Rect::default(), |i| tree.nodes[i].screen),
+                .map_or(Rect::default(), |i| tree.nodes[i].placed.screen),
         };
         for &i in order {
             let n = &tree.nodes[i];
@@ -632,7 +632,7 @@ impl crate::ui::Interaction {
             let pw = if n.parent == crate::layout::NONE {
                 crate::Affine::IDENTITY
             } else {
-                tree.nodes[n.parent].world
+                tree.nodes[n.parent].placed.world
             };
             targets.push(HudTarget {
                 key: if spec.key.is_empty() {
@@ -640,8 +640,8 @@ impl crate::ui::Interaction {
                 } else {
                     spec.key.clone()
                 },
-                base: pw.map_rect(&n.rect),
-                shown: n.screen,
+                base: pw.map_rect(&n.placed.rect),
+                shown: n.placed.screen,
                 spec: spec.clone(),
             });
         }

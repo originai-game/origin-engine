@@ -174,7 +174,7 @@ impl crate::ui::Layout {
         for (e, a) in anchors.iter().enumerate() {
             let n = &tree.nodes[a.node];
             let key = n.key;
-            let r = n.rect;
+            let r = n.placed.rect;
             let d = &a.desc;
             let mut info = AnchorInfo {
                 scale: 1.0,
@@ -392,7 +392,7 @@ impl crate::ui::Layout {
             let s = *s;
             seen.push(pl.key);
             let node = anchors[pl.entry].node;
-            let r = tree.nodes[node].rect;
+            let r = tree.nodes[node].placed.rect;
             let px = r.x + pl.pivot.0 * r.width;
             let py = r.y + pl.pivot.1 * r.height;
             let at = pl.at + Vec2::new(s.dx, s.dy);
@@ -521,7 +521,7 @@ impl crate::ui::Layout {
                         }],
                         leave: vec![DrawCmd::EndLayer {
                             geometry: None,
-                            rect: tree.nodes[p.node].rect,
+                            rect: tree.nodes[p.node].placed.rect,
                             opacity: 1.0,
                             blend: og_draw::UiBlend::Normal,
                             clip: all,
@@ -535,7 +535,7 @@ impl crate::ui::Layout {
                     let (vp, unit) = (env.viewport, env.unit.max(1e-6));
                     let q = q * rotation;
                     let (hx, hy) = (size.x / 2.0, size.y / 2.0);
-                    let r = tree.nodes[p.node].rect;
+                    let r = tree.nodes[p.node].placed.rect;
                     let rect = Rect::new(r.x * unit, r.y * unit, r.width * unit, r.height * unit);
                     let world = |x: f32, y: f32, z: f32| center + q * Vec3::new(x, y, z);
                     let seen = |p: Vec3| {
@@ -607,7 +607,7 @@ impl crate::ui::Layout {
                     Marks {
                         enter: vec![DrawCmd::World(Box::new(WorldCmd::BeginPanel {
                             target,
-                            rect: tree.nodes[p.node].rect,
+                            rect: tree.nodes[p.node].placed.rect,
                         }))],
                         leave: vec![DrawCmd::World(Box::new(WorldCmd::EndPanel))],
                     },
@@ -618,7 +618,7 @@ impl crate::ui::Layout {
             {
                 hits.push(PanelHit {
                     key,
-                    rect: tree.nodes[p.node].rect,
+                    rect: tree.nodes[p.node].placed.rect,
                     center,
                     rotation: q * rotation,
                     size,

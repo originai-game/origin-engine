@@ -292,7 +292,7 @@ impl Ui {
         };
         let owner = match up {
             NONE => 0,
-            u if nodes[u].nav && !nodes[u].inert => nodes[u].key,
+            u if nodes[u].nav && !nodes[u].placed.inert => nodes[u].key,
             u => o.owner_of[u],
         };
         let scope = if n.scope { n.key } else { ps };
@@ -316,7 +316,7 @@ impl Ui {
             pg
         };
         let gesture = match n.props.gestures.filter(|g| g.any()) {
-            Some(_) if !n.inert => n.key,
+            Some(_) if !n.placed.inert => n.key,
             _ => pr,
         };
         // `user-select`: its own, else its parent's; a control's subtree
@@ -430,10 +430,10 @@ impl Ui {
             if (o.hidden_of[i] && !shown_or_svg) || o.skip_of[i] != 0 {
                 break 'node;
             }
-            let visible = n.screen.intersect(&n.clip);
+            let visible = n.placed.screen.intersect(&n.placed.clip);
             // Scrolled or clipped out of view: not on screen, not listed. A
             // zero-size element (an empty spacer) is listed where it sits.
-            let (r, c) = (&n.screen, &n.clip);
+            let (r, c) = (&n.placed.screen, &n.placed.clip);
             let outside =
                 r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
             // A control laid out past the screen's edge with no scroller to
@@ -442,12 +442,12 @@ impl Ui {
             if n.el.interactive
                 && o.scroller_of[i] == 0
                 && !r.is_empty()
-                && !n.inert
-                && !crate::world::off_screen(&n.rect)
+                && !n.placed.inert
+                && !crate::world::off_screen(&n.placed.rect)
             {
                 // Where layout put it: a transform's move (a card thrown
                 // off by a swipe) is not a layout that does not fit.
-                let r = &n.rect;
+                let r = &n.placed.rect;
                 let cut = (screen.x - r.x)
                     .max(r.right() - screen.right())
                     .max(screen.y - r.y)
@@ -520,28 +520,28 @@ impl Ui {
             let control = flags & (HIT_POINTER | HIT_TEXT) != 0 && !n.backdrop;
             let (sx, sy) = if control && touch_min > 0.0 {
                 (
-                    slop.max((touch_min - n.rect.width) / 2.0),
-                    slop.max((touch_min - n.rect.height) / 2.0),
+                    slop.max((touch_min - n.placed.rect.width) / 2.0),
+                    slop.max((touch_min - n.placed.rect.height) / 2.0),
                 )
             } else {
                 (slop, slop)
             };
             let reach = Rect::new(
-                n.rect.x - sx,
-                n.rect.y - sy,
-                n.rect.width + 2.0 * sx,
-                n.rect.height + 2.0 * sy,
+                n.placed.rect.x - sx,
+                n.placed.rect.y - sy,
+                n.placed.rect.width + 2.0 * sx,
+                n.placed.rect.height + 2.0 * sy,
             );
             let reaches = sx > 0.0 || sy > 0.0;
-            let transformed = !n.world.is_identity();
+            let transformed = !n.placed.world.is_identity();
             let inv = if transformed {
-                n.world.invert().unwrap_or(Affine::IDENTITY)
+                n.placed.world.invert().unwrap_or(Affine::IDENTITY)
             } else {
                 Affine::IDENTITY
             };
             let hit = |rect: Rect, flags: u16| {
                 let rect = if reaches {
-                    n.world.map_rect(&reach).intersect(&n.clip)
+                    n.placed.world.map_rect(&reach).intersect(&n.placed.clip)
                 } else {
                     rect
                 };
@@ -555,7 +555,7 @@ impl Ui {
                     owner: o.owner_of[i],
                     inv,
                     local: reach,
-                    clip: n.clip,
+                    clip: n.placed.clip,
                     group: o.group_of[i],
                     gesture: o.gesture_of[i],
                     player: o.player_of[i],
@@ -563,18 +563,18 @@ impl Ui {
             };
             if outside || (visible.is_empty() && !r.is_empty()) {
                 // Navigation can still reach a control just out of a list's view.
-                if n.nav && !n.inert && o.scroller_of[i] != 0 {
+                if n.nav && !n.placed.inert && o.scroller_of[i] != 0 {
                     hits.push(hit(*r, (flags & (HIT_NAV | HIT_ADJUST)) | HIT_OFFSCREEN));
                 }
                 break 'node;
             }
-            if (!visible.is_empty() || reaches) && flags != 0 && !n.inert {
+            if (!visible.is_empty() || reaches) && flags != 0 && !n.placed.inert {
                 hits.push(hit(visible, flags));
             }
             // CSS `resize`: its handle, a hit of its own over it.
-            if n.el.resize != 0 && !n.inert && !pass && !transformed {
+            if n.el.resize != 0 && !n.placed.inert && !pass && !transformed {
                 let rtl = self.env.direction == og_i18n::Direction::Rtl;
-                let g = super::resize::grip_rect(n, rtl).intersect(&n.clip);
+                let g = super::resize::grip_rect(n, rtl).intersect(&n.placed.clip);
                 if !g.is_empty() {
                     hits.push(Hit {
                         key: super::resize::grip_key(n.key),
@@ -587,10 +587,10 @@ impl Ui {
                 }
             }
             // A rich text's links are controls of their own.
-            if !n.links.is_empty() && !n.inert {
+            if !n.links.is_empty() && !n.placed.inert {
                 for (l, lr) in self.rich_links(i) {
-                    let lr = n.world.map_rect(&lr);
-                    let shown = lr.intersect(&n.clip);
+                    let lr = n.placed.world.map_rect(&lr);
+                    let shown = lr.intersect(&n.placed.clip);
                     if shown.is_empty() {
                         continue;
                     }
@@ -604,7 +604,7 @@ impl Ui {
                         owner: o.owner_of[i],
                         inv: Affine::IDENTITY,
                         local: shown,
-                        clip: n.clip,
+                        clip: n.placed.clip,
                         group: o.group_of[i],
                         gesture: o.gesture_of[i],
                         player: o.player_of[i],
@@ -706,7 +706,7 @@ impl crate::ui::Tree {
         else {
             return true;
         };
-        let r = &self.nodes[i].rect;
+        let r = &self.nodes[i].placed.rect;
         let (lx, ly) = if h.inv.is_identity() {
             (x, y)
         } else {

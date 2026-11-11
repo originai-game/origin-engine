@@ -571,7 +571,7 @@ impl Ui {
                                 .tree
                                 .nodes
                                 .get(self.tree.nodes[f].anchor)
-                                .map_or(safe, |n| n.rect),
+                                .map_or(safe, |n| n.placed.rect),
                         };
                         let popover = float == Float::Popover;
                         let x = if popover {
@@ -823,11 +823,11 @@ impl Ui {
             // A node layout left out is mirrored as it was last frame.
             for k in 0..self.layout.cache.laid.len() {
                 let i = self.layout.cache.laid[k];
-                let r = &mut self.tree.nodes[i].rect;
+                let r = &mut self.tree.nodes[i].placed.rect;
                 r.x = vp.width - r.x - r.width;
                 // Its clip too (a scroll container's box, laid out left to right): unmirrored, it
                 // would cut away the content of a scroller off the surface's centre line.
-                let c = &mut self.tree.nodes[i].clip;
+                let c = &mut self.tree.nodes[i].placed.clip;
                 c.x = vp.width - c.x - c.width;
             }
             for &i in sampled {
@@ -953,13 +953,13 @@ impl Ui {
                 let range = Vec2::new(n.max_scroll_x(), n.max_scroll());
                 let bar = Vec2::new(
                     crate::scroll::bar_len(
-                        n.rect.width,
+                        n.placed.rect.width,
                         n.w - n.el.padding.horizontal(),
                         n.content_w,
                         min_bar,
                     ),
                     crate::scroll::bar_len(
-                        n.rect.height,
+                        n.placed.rect.height,
                         n.h - n.el.padding.vertical(),
                         n.content_h,
                         min_bar,
@@ -1053,7 +1053,7 @@ impl Ui {
             .drawn(visit::feat::SCOPE)
             .into_iter()
             .rev()
-            .filter(|&i| i != order[0] && !self.tree.nodes[i].inert)
+            .filter(|&i| i != order[0] && !self.tree.nodes[i].placed.inert)
             .map(|i| (self.tree.nodes[i].key, self.tree.nodes[i].locked))
             .next()
             .unwrap_or((0, false));
@@ -1192,7 +1192,7 @@ impl Ui {
             let i = self.tree.orders.with(visit::feat::BUTTON_PART)[k];
             let n = &mut self.tree.nodes[i];
             if let Some(p) = n.el.part.as_mut()
-                && n.rect.width < NARROW_BUTTON
+                && n.placed.rect.width < NARROW_BUTTON
             {
                 *p = p.flag("narrow");
             }
@@ -1212,7 +1212,7 @@ impl Ui {
             let i = self.tree.orders.with(visit::feat::DECOR)[k];
             if let Some(decor) = &self.tree.nodes[i].decor {
                 let n = &self.tree.nodes[i];
-                let r = n.rect;
+                let r = n.placed.rect;
                 // A scroller's content as a `local` layer's area: its
                 // scrolled padding box.
                 let scroll = n.scrolls().then(|| {
@@ -1474,10 +1474,10 @@ impl crate::ui::Layout {
             }
             let (mx, my) = (vp.width * 0.5, vp.height * 0.5);
             let near = Rect::new(
-                n.screen.x - mx,
-                n.screen.y - my,
-                n.screen.width + 2.0 * mx,
-                n.screen.height + 2.0 * my,
+                n.placed.screen.x - mx,
+                n.placed.screen.y - my,
+                n.placed.screen.width + 2.0 * mx,
+                n.placed.screen.height + 2.0 * my,
             );
             let mut holds_focus = false;
             let mut at = focus.unwrap_or(NONE);
@@ -1488,7 +1488,7 @@ impl crate::ui::Layout {
                 }
                 at = tree.nodes[at].parent;
             }
-            let far = !holds_focus && !near.overlaps(&n.clip.intersect(&screen));
+            let far = !holds_focus && !near.overlaps(&n.placed.clip.intersect(&screen));
             tree.nodes[i].cv_far = far;
         }
     }
@@ -1578,11 +1578,11 @@ impl crate::ui::Tree {
             let a = match n.anchor_point {
                 Some([x, y]) => Rect::new(x, y, 0.0, 0.0),
                 None => match self.nodes.get(n.anchor) {
-                    Some(a) => a.rect,
+                    Some(a) => a.placed.rect,
                     None => continue,
                 },
             };
-            let (b, placed, point) = (n.rect, n.anchor_placed, n.anchor_point);
+            let (b, placed, point) = (n.placed.rect, n.anchor_placed, n.anchor_point);
             self.nodes[f].shapes.retain(|s| {
                 !matches!(s, crate::layout::Shape::Bar { part, .. }
                     if part.component == "Popover" && part.part == "arrow")

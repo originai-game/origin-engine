@@ -497,6 +497,43 @@ pub(crate) struct PartBox {
     pub intrinsic_props: crate::element::Props,
 }
 
+/// Where the frame places a node: its map to the screen, its bounds,
+/// clip and visibility there. Layout writes it; paint, hits and the
+/// probe read it.
+#[derive(Clone, Debug)]
+pub(crate) struct Placed {
+    /// Where it is drawn: its map from layout to screen (its transforms and
+    /// its ancestors'), and its box's bounds there.
+    pub world: crate::element::Affine,
+    pub screen: Rect,
+    /// Its place in a 3D space (`None`: drawn flat by `world`).
+    pub plane: Option<Box<crate::transform3d::Plane>>,
+    // Computed by the frame.
+    pub alpha: f32,
+    pub scale: f32,
+    pub inert: bool,
+    /// The scroll container whose clip applies (NONE: the screen).
+    pub clip_src: usize,
+    pub clip: Rect,
+    pub rect: Rect,
+}
+
+impl Default for Placed {
+    fn default() -> Self {
+        Self {
+            plane: None,
+            world: crate::element::Affine::IDENTITY,
+            screen: Rect::default(),
+            alpha: 1.0,
+            scale: 1.0,
+            inert: false,
+            clip_src: NONE,
+            clip: Rect::default(),
+            rect: Rect::default(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Node {
     pub key: u64,
@@ -602,12 +639,8 @@ pub(crate) struct Node {
     pub min_content: [f32; 2],
     /// A grid's resolved tracks and its children's cells.
     pub grid: Option<GridLayout>,
-    /// Where it is drawn: its map from layout to screen (its transforms and
-    /// its ancestors'), and its box's bounds there.
-    pub world: crate::element::Affine,
-    pub screen: Rect,
-    /// Its place in a 3D space (`None`: drawn flat by `world`).
-    pub plane: Option<Box<crate::transform3d::Plane>>,
+    /// Where the frame places and draws it (layout writes it, paint reads it).
+    pub placed: Placed,
     /// Layout animation's offset and scale this tick (x, y, sx, sy).
     pub flip: [f32; 4],
     /// A drag's offset and a pinch's scale and turn (x, y, scale, radians).
@@ -621,12 +654,6 @@ pub(crate) struct Node {
     /// its parent's centre (right to left the mirror flips that offset,
     /// and the draw moves it back where its view box shows it).
     pub fit: [f32; 4],
-    // Computed by the frame.
-    pub alpha: f32,
-    pub scale: f32,
-    pub inert: bool,
-    /// The scroll container whose clip applies (NONE: the screen).
-    pub clip_src: usize,
     // Computed.
     pub pref_w: f32,
     pub min_w: f32,
@@ -661,8 +688,6 @@ pub(crate) struct Node {
     pub links: Vec<String>,
     /// A wrapping row's lines: ranges of `children`.
     pub rows: Vec<(usize, usize)>,
-    pub clip: Rect,
-    pub rect: Rect,
     /// Constraints and parent-relative position of the cached layout.
     pub layout_size: [f32; 2],
     pub layout_offset: [f32; 2],
@@ -811,17 +836,11 @@ impl Node {
             caret: None,
             out: Vec::new(),
             grid: None,
-            plane: None,
-            world: crate::element::Affine::IDENTITY,
-            screen: Rect::default(),
+            placed: Placed::default(),
             flip: [0.0, 0.0, 1.0, 1.0],
             gesture: [0.0, 0.0, 1.0, 0.0],
             custom: [0.0, 0.0, 1.0, 1.0],
             fit: [1.0, 0.0, 0.0, 0.0],
-            alpha: 1.0,
-            scale: 1.0,
-            inert: false,
-            clip_src: NONE,
             pref_w: 0.0,
             min_w: 0.0,
             pref_h: 0.0,
@@ -837,8 +856,6 @@ impl Node {
             rich_lines: Vec::new(),
             links: Vec::new(),
             rows: Vec::new(),
-            clip: Rect::default(),
-            rect: Rect::default(),
             layout_size: [0.0; 2],
             layout_offset: [0.0; 2],
             layout_step: None,

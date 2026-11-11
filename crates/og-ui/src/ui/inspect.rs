@@ -52,7 +52,7 @@ impl Ui {
                         != "vacant"
             })
             .and_then(|(_, n)| {
-                let (r, c) = (&n.screen, &n.clip);
+                let (r, c) = (&n.placed.screen, &n.placed.clip);
                 let outside =
                     r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
                 let shown = r.intersect(c);
@@ -225,7 +225,7 @@ impl Ui {
     /// (an empty spacer) is on screen where it sits.
     fn offscreen(&self, i: usize) -> bool {
         let n = &self.tree.nodes[i];
-        let (r, c) = (&n.screen, &n.clip);
+        let (r, c) = (&n.placed.screen, &n.placed.clip);
         let outside = r.x > c.right() || r.right() < c.x || r.y > c.bottom() || r.bottom() < c.y;
         outside || (r.intersect(c).is_empty() && !r.is_empty())
     }
@@ -310,7 +310,7 @@ impl Ui {
         {
             return None;
         }
-        let r = &n.screen;
+        let r = &n.placed.screen;
         let range = crate::a11y::range_of(n);
         let (live, atomic) = crate::a11y::live_of(role, n.a11y.live, n.a11y.atomic);
         if self.offscreen(i) {
@@ -471,8 +471,8 @@ impl Ui {
         };
         let at = self.tree.path_of(i);
         for (l, lr) in self.rich_links(i) {
-            let lr = n.world.map_rect(&lr);
-            if lr.intersect(&n.clip).is_empty() {
+            let lr = n.placed.world.map_rect(&lr);
+            if lr.intersect(&n.placed.clip).is_empty() {
                 continue;
             }
             let text: String = rc
@@ -520,8 +520,8 @@ impl Ui {
                 if !role.is_empty() {
                     self.mark(&reach, n.key, &mut states);
                 }
-                let r = &n.screen;
-                let visible = n.screen.intersect(&n.clip);
+                let r = &n.placed.screen;
+                let visible = n.placed.screen.intersect(&n.placed.clip);
                 let parent = if n.parent == NONE {
                     self.tree
                         .nodes
@@ -559,7 +559,7 @@ impl Ui {
                     // Its fill, solid and at full opacity, covers its box (a
                     // rounded corner's few pixels aside).
                     opaque: n.sampled.background.is_some_and(|bg| bg.alpha >= 0.999)
-                        && n.alpha >= 0.999,
+                        && n.placed.alpha >= 0.999,
                     x: visible.x,
                     y: visible.y,
                     width: visible.width,
@@ -578,10 +578,10 @@ impl Ui {
                         .get(&n.key)
                         .map_or("", |s| s.board.as_str());
                     let file = board.split_once('#').map_or(board, |(f, _)| f);
-                    let at = n.world.map_rect(&n.rect);
+                    let at = n.placed.world.map_rect(&n.placed.rect);
                     for e in player.elements([at.x, at.y, at.width, at.height]) {
                         let b = Rect::new(e.bounds[0], e.bounds[1], e.bounds[2], e.bounds[3]);
-                        let shown = b.intersect(&n.clip);
+                        let shown = b.intersect(&n.placed.clip);
                         parts.push(None);
                         let mut detail = serde_json::Map::new();
                         detail.insert(
@@ -619,8 +619,8 @@ impl Ui {
                         unreachable!("links come from rich text")
                     };
                     for (l, lr) in self.rich_links(i) {
-                        let lr = n.world.map_rect(&lr);
-                        let shown = lr.intersect(&n.clip);
+                        let lr = n.placed.world.map_rect(&lr);
+                        let shown = lr.intersect(&n.placed.clip);
                         if shown.is_empty() {
                             continue;
                         }

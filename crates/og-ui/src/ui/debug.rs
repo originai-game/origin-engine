@@ -77,10 +77,10 @@ impl Ui {
         let ui = self.finished();
         let i = ui.tree.index.by_key.get(&key).copied()?;
         let n = ui.tree.nodes.get(i)?;
-        let r = n.screen;
+        let r = n.placed.screen;
         // A margin's percentage reads its parent's content width.
         let basis = ui.tree.nodes.get(n.parent).map_or(r.width, |p| {
-            p.screen.width - p.el.padding.left - p.el.padding.right
+            p.placed.screen.width - p.el.padding.left - p.el.padding.right
         });
         let [mt, mr, mb, ml] = n.el.margin.map(|m| m.of(basis));
         let line = |k: usize| {

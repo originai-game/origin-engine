@@ -845,7 +845,7 @@ impl Ui {
         let Content::Rich(rc) = &n.content else {
             return Vec::new();
         };
-        let sk = n.scale;
+        let sk = n.placed.scale;
         let inner = self.tree.rich_inner(i);
         if let Some(v) = self.tree.rich_vertical(i) {
             return self
@@ -936,7 +936,7 @@ impl Ui {
         let n = &self.tree.nodes[i];
         let t = self.paint_theme();
         let p = &t.palette;
-        let alpha = n.alpha;
+        let alpha = n.placed.alpha;
         let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
         let clip = self.paint_clip(n);
@@ -969,13 +969,13 @@ impl Ui {
         for piece in self.rich_pieces(i) {
             let (k, text, r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
             let s = &rc.spans[k];
-            let size = s.step.size * n.scale;
+            let size = s.step.size * n.placed.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
             let hot = link_key.is_some_and(|lk| self.interaction.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
             if let Some(Atom::Image(im)) = &s.atom {
                 // A picture in its own colours, one em tall on the baseline.
-                let h = s.step.size * n.scale;
+                let h = s.step.size * n.placed.scale;
                 cmds.push(DrawCmd::Image {
                     rect: Rect::new(
                         r.x + h * 0.05,
@@ -993,7 +993,7 @@ impl Ui {
             }
             if let Some(Atom::Cap(label)) = &s.atom {
                 // A key cap: a soft rounded plate in the ink, its name on it.
-                let em = s.step.size * n.scale;
+                let em = s.step.size * n.placed.scale;
                 let (m, pad) = (CAP_MARGIN * em, CAP_PAD * em);
                 let plate = Rect::new(
                     r.x + m,
@@ -1029,7 +1029,7 @@ impl Ui {
                 continue;
             }
             if let Some(Atom::Icon(cell)) = &s.atom {
-                let side = s.step.size * n.scale;
+                let side = s.step.size * n.placed.scale;
                 match *cell {
                     crate::ui::IconCell::Glyph(font, ch) => {
                         // An icon set's glyph: its em square where a cell would be.
@@ -1077,7 +1077,7 @@ impl Ui {
             // right, so small text whose field is thin is bold too: a
             // device pixel in the text's units (an SVG's text is laid out
             // in its view box's and scaled).
-            let w = &n.world;
+            let w = &n.placed.world;
             let device = dpr * (w.a * w.d - w.b * w.c).abs().sqrt().max(1e-3);
             let smear = if s.synth.bold { 1.0 / device } else { 0.0 };
             let weight = if s.synth.bold {
@@ -1242,7 +1242,7 @@ impl Ui {
                     };
                     let fx = og_draw::UiTextEffects {
                         outline: s.outline.map(|(w, oc)| og_draw::UiTextOutline {
-                            width: w * n.scale,
+                            width: w * n.placed.scale,
                             color: oc.fade(alpha).linear(),
                             align: og_draw::UiAlign::Outside,
                         }),
@@ -1267,12 +1267,12 @@ impl Ui {
             let d = s.decoration.clone().unwrap_or_default();
             let th = d
                 .thickness
-                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.scale);
+                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.placed.scale);
             let ink = d.color.unwrap_or(color).fade(alpha).linear();
             let mut rule =
                 |y: f32| decoration_line(r.x, r.width, y, th, d.style, ink, clip, dpr, cmds);
             if link_key.is_some() || s.underline {
-                let off = d.offset.map_or(size * 0.12, |o| o * n.scale);
+                let off = d.offset.map_or(size * 0.12, |o| o * n.placed.scale);
                 let under = if d.under { size * 0.1 } else { 0.0 };
                 rule(baseline + off + under);
             }
@@ -1346,7 +1346,7 @@ impl Ui {
         v: crate::layout::flow::VerticalText,
     ) -> (Vec<(usize, DrawnPiece)>, Vec<(f32, f32)>) {
         let n = &self.tree.nodes[i];
-        let sk = n.scale;
+        let sk = n.placed.scale;
         let inner = self.tree.rich_inner(i);
         let from_bottom = self.rich_from_bottom(i, v);
         let mut out = Vec::new();
@@ -1475,7 +1475,7 @@ impl Ui {
                 .for_styled(s.font, s.weight, s.italic, &piece.text)
                 .0;
             let r = piece.rect;
-            let size = s.step.size * n.scale;
+            let size = s.step.size * n.placed.scale;
             let run = self.span_run(
                 i,
                 s,
@@ -1528,7 +1528,7 @@ impl Ui {
         use crate::draw::DrawCmd;
         let n = &self.tree.nodes[i];
         let p = &self.paint_theme().palette;
-        let (alpha, dpr, clip) = (n.alpha, self.env.viewport.dpr(), self.paint_clip(n));
+        let (alpha, dpr, clip) = (n.placed.alpha, self.env.viewport.dpr(), self.paint_clip(n));
         let from_bottom = self.rich_from_bottom(i, v);
         // The player's selection: each line's selected stretch, merged,
         // filled under the text, its column a line wide.
@@ -1578,7 +1578,7 @@ impl Ui {
             let s = &rc.spans[piece.span];
             let r = piece.rect;
             let mid = piece.baseline;
-            let em = s.step.size * n.scale;
+            let em = s.step.size * n.placed.scale;
             let link_key = s.link.as_deref().map(|l| child_key(n.key, l));
             let hot = link_key.is_some_and(|lk| self.interaction.state.hot == lk);
             let color = if hot { p.primary_hover } else { s.color };
@@ -1714,7 +1714,7 @@ impl Ui {
             // An outline from the distance field, as across.
             if let Some((w, oc)) = s.outline {
                 let outline = Some(og_draw::UiTextOutline {
-                    width: w * n.scale,
+                    width: w * n.placed.scale,
                     color: oc.fade(alpha).linear(),
                     align: og_draw::UiAlign::Outside,
                 });
@@ -1775,8 +1775,11 @@ impl Ui {
                     sel.shadows.as_ref().map(|list| {
                         list.iter()
                             .map(|(o, blur, c)| og_draw::UiTextShadow {
-                                offset: og_core::glam::Vec2::new(o[0] * n.scale, o[1] * n.scale),
-                                blur: blur * n.scale,
+                                offset: og_core::glam::Vec2::new(
+                                    o[0] * n.placed.scale,
+                                    o[1] * n.placed.scale,
+                                ),
+                                blur: blur * n.placed.scale,
                                 color: c.fade(alpha * s.color.alpha).linear(),
                             })
                             .collect()
@@ -1826,7 +1829,7 @@ impl Ui {
                     if let Some(d) = &sel.decoration {
                         let th = d
                             .thickness
-                            .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.scale);
+                            .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.placed.scale);
                         let lc = d.color.unwrap_or(ink).fade(alpha).linear();
                         let (y0, y1) = (band.y.max(r.y), band.bottom().min(r.bottom()));
                         let mut rule = |x: f32| {
@@ -1843,7 +1846,10 @@ impl Ui {
                             )
                         };
                         if d.underline {
-                            rule(mid - size * 0.5 - d.offset.map_or(size * 0.12, |o| o * n.scale));
+                            rule(
+                                mid - size * 0.5
+                                    - d.offset.map_or(size * 0.12, |o| o * n.placed.scale),
+                            );
                         }
                         if d.overline {
                             rule(mid + size * 0.6);
@@ -1857,7 +1863,7 @@ impl Ui {
             let d = s.decoration.clone().unwrap_or_default();
             let th = d
                 .thickness
-                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.scale);
+                .map_or((size * 0.07).max(1.0 / dpr), |t| t * n.placed.scale);
             let ink = d.color.unwrap_or(color).fade(alpha).linear();
             let mut rule = |x: f32| {
                 cmds.push(DrawCmd::Quad {
@@ -1868,7 +1874,7 @@ impl Ui {
                 })
             };
             if link_key.is_some() || s.underline {
-                let off = d.offset.map_or(size * 0.12, |o| o * n.scale);
+                let off = d.offset.map_or(size * 0.12, |o| o * n.placed.scale);
                 rule(mid - size * 0.5 - off);
             }
             if d.overline {
@@ -1890,12 +1896,12 @@ impl crate::ui::Tree {
     /// Rich node `i`'s content box.
     fn rich_inner(&self, i: usize) -> Rect {
         let n = &self.nodes[i];
-        let (sk, pad) = (n.scale, n.el.padding);
+        let (sk, pad) = (n.placed.scale, n.el.padding);
         Rect::new(
-            n.rect.x + pad.left * sk,
-            n.rect.y + pad.top * sk,
-            n.rect.width - pad.horizontal() * sk,
-            n.rect.height - pad.vertical() * sk,
+            n.placed.rect.x + pad.left * sk,
+            n.placed.rect.y + pad.top * sk,
+            n.placed.rect.width - pad.horizontal() * sk,
+            n.placed.rect.height - pad.vertical() * sk,
         )
     }
 }

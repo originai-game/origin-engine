@@ -264,7 +264,7 @@ impl crate::ui::Interaction {
         for &i in o.with(crate::ui::visit::feat::RECOGNIZER) {
             let n = &tree.nodes[i];
             if let Some(spec) = n.props.gestures.filter(GestureSpec::any)
-                && !n.inert
+                && !n.placed.inert
             {
                 recognizers.insert(n.key, (spec, around(i, &o.gesture_of)));
             }
@@ -355,7 +355,7 @@ impl crate::ui::Tree {
         sub.into_iter()
             .find(|&o| {
                 let m: &Node = &self.nodes[o];
-                (m.nav || m.focusable) && !m.inert
+                (m.nav || m.focusable) && !m.placed.inert
             })
             .map_or(0, |o| self.nodes[o].key)
     }
@@ -544,30 +544,30 @@ impl crate::ui::Tree {
                 _ => None,
             };
             if i == 0
-                || n.inert
+                || n.placed.inert
                 || pointer == PointerEvents::None
                 || self.orders.skip_of[i] != 0
                 || (self.orders.hidden_of[i] && !svg.is_some_and(|s| s & SvgPointer::VISIBLE == 0))
-                || !n.clip.contains(p.x, p.y)
+                || !n.placed.clip.contains(p.x, p.y)
             {
                 return false;
             }
-            let Some(inv) = n.world.invert() else {
+            let Some(inv) = n.placed.world.invert() else {
                 return false;
             };
             let (x, y) = inv.apply(p.x, p.y);
-            if !n.rect.contains(x, y) {
+            if !n.placed.rect.contains(x, y) {
                 return false;
             }
             let mut parent = n.parent;
             while parent != NONE {
                 let ancestor = &self.nodes[parent];
                 if ancestor.decor.as_ref().is_some_and(|d| d.clip) {
-                    let Some(inv) = ancestor.world.invert() else {
+                    let Some(inv) = ancestor.placed.world.invert() else {
                         return false;
                     };
                     let (x, y) = inv.apply(p.x, p.y);
-                    if !ancestor.rect.contains(x, y) {
+                    if !ancestor.placed.rect.contains(x, y) {
                         return false;
                     }
                 }
@@ -577,8 +577,8 @@ impl crate::ui::Tree {
                 bits & SvgPointer::BOX != 0
                     || paint.draw_of(i, self).is_some_and(|d| {
                         d.covers(
-                            [n.rect.width, n.rect.height],
-                            Vec2::new(x - n.rect.x, y - n.rect.y),
+                            [n.placed.rect.width, n.placed.rect.height],
+                            Vec2::new(x - n.placed.rect.x, y - n.placed.rect.y),
                             bits,
                         )
                     })

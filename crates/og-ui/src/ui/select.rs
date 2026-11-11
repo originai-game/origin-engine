@@ -141,7 +141,7 @@ impl Ui {
         if let Some(v) = tc.vertical {
             // Down vertical lines: each cluster's stretch along y, a
             // bottom-up one with its caret at its bottom.
-            let lines = self.vertical_lines(i, tc, v, n.rect, n.clip, None);
+            let lines = self.vertical_lines(i, tc, v, n.placed.rect, n.placed.clip, None);
             let up =
                 self.text_flow(i).0 != (v.mode == crate::layout::flow::WritingMode::SidewaysLr);
             let mut start = 0u32;
@@ -156,7 +156,7 @@ impl Ui {
                 .collect();
             return Some(TextLines {
                 lines,
-                column: Some(tc.line_height() * n.scale),
+                column: Some(tc.line_height() * n.placed.scale),
             });
         }
         let font = self
@@ -165,11 +165,11 @@ impl Ui {
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
         let m = &font.metrics;
-        let sk = n.scale;
+        let sk = n.placed.scale;
         let size = tc.step.size * sk;
         let lh = tc.line_height() * sk;
         let pad = n.el.padding;
-        let rect = n.rect;
+        let rect = n.placed.rect;
         let inner = Rect::new(
             rect.x + pad.left * sk,
             rect.y + pad.top * sk,
@@ -220,6 +220,7 @@ impl Ui {
         let i = self.tree.index.find(key)?;
         let t = self.text_lines(i)?;
         let (x, y) = self.tree.nodes[i]
+            .placed
             .world
             .invert()
             .unwrap_or(Affine::IDENTITY)
@@ -388,12 +389,12 @@ impl Ui {
                 x,
                 top,
                 line_h: lh,
-                size: tc.step.size * n.scale,
+                size: tc.step.size * n.placed.scale,
                 tracking: tc.tracking(),
                 first: first as usize,
                 edit: &edit,
                 clip,
-                alpha: n.alpha,
+                alpha: n.placed.alpha,
                 under: true,
                 caret_here: false,
             },

@@ -75,7 +75,7 @@ impl Ui {
             let values = self.part_values(&part, Some(n.key));
             match self.part_draw_values(
                 &values,
-                [n.rect.width, n.rect.height],
+                [n.placed.rect.width, n.placed.rect.height],
                 n.sampled.background,
                 self.tree.draws.get(&i),
             ) {
@@ -118,8 +118,13 @@ impl Ui {
                 .or_else(|| node.el.frame.map(StylePart::part_ref))
             {
                 let values = self.part_values(&part, Some(node.key));
-                self.part_draw_values(&values, [node.rect.width, node.rect.height], fill, None)
-                    .unwrap_or_default()
+                self.part_draw_values(
+                    &values,
+                    [node.placed.rect.width, node.placed.rect.height],
+                    fill,
+                    None,
+                )
+                .unwrap_or_default()
             } else {
                 crate::paint::ElementDraw {
                     fills: fill
@@ -135,7 +140,7 @@ impl Ui {
                     decor.over(
                         Some(&draw),
                         crate::doc::paint_css::LayerFrame {
-                            size: [node.rect.width, node.rect.height],
+                            size: [node.placed.rect.width, node.placed.rect.height],
                             viewport: [self.env.viewport.width, self.env.viewport.height],
                             ..Default::default()
                         },

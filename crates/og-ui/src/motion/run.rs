@@ -807,12 +807,12 @@ impl crate::ui::Tree {
         // FLIP: from its last laid-out rectangle to this one (relative to
         // the nearest ancestor that animates its layout too).
         if let Some(lm) = self.nodes[i].props.layout_motion {
-            let rect = self.nodes[i].rect;
+            let rect = self.nodes[i].placed.rect;
             let mut up = self.nodes[i].parent;
             let mut origin = (0.0, 0.0);
             while up != crate::layout::NONE {
                 if flip_rel.contains(&up) {
-                    let pr = self.nodes[up].rect;
+                    let pr = self.nodes[up].placed.rect;
                     origin = (pr.x, pr.y);
                     break;
                 }
@@ -894,7 +894,7 @@ impl crate::ui::Tree {
             if prev.key == key || prev.tick + 1 < now || self.index.by_key.contains_key(&prev.key) {
                 continue;
             }
-            let rect = self.nodes[i].rect;
+            let rect = self.nodes[i].placed.rect;
             let t = self.nodes[i]
                 .props
                 .layout_motion
@@ -1040,7 +1040,7 @@ impl crate::ui::Style {
                 let centre = |k: u64| {
                     present
                         .get(&k)
-                        .map_or((0.0, 0.0), |&i| tree.nodes[i].rect.center())
+                        .map_or((0.0, 0.0), |&i| tree.nodes[i].placed.rect.center())
                 };
                 let pts: Vec<(f32, f32)> = keys.iter().map(|&k| centre(k)).collect();
                 let metric: Vec<f32> = match *from {
@@ -1714,7 +1714,7 @@ impl Ui {
                 name_hash(&n.props.match_key),
                 Matched {
                     key: n.key,
-                    rect: n.screen,
+                    rect: n.placed.screen,
                     radius: n.sampled.radius,
                     tick: now,
                 },

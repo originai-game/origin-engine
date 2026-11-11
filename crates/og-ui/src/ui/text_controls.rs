@@ -633,12 +633,12 @@ impl Ui {
         };
         if s.part_box.is_none()
             || s.key != child_key(h.key, "::part(frame)#0")
-            || h.rect.width <= 0.0
-            || s.rect.width <= 0.0
+            || h.placed.rect.width <= 0.0
+            || s.placed.rect.width <= 0.0
         {
             return fallback;
         }
-        let (hr, sr, p) = (h.rect, s.rect, s.el.padding);
+        let (hr, sr, p) = (h.placed.rect, s.placed.rect, s.el.padding);
         Insets {
             top: sr.y - hr.y + p.top,
             right: hr.right() - sr.right() + p.right,
@@ -1070,7 +1070,9 @@ impl Ui {
             self.part_commands_at(
                 Some(key),
                 &part,
-                values.part_rect(rect, self.tree.nodes[i].rect).snapped(dpr),
+                values
+                    .part_rect(rect, self.tree.nodes[i].placed.rect)
+                    .snapped(dpr),
                 Some(values.color("color").unwrap_or(color)),
                 0.0,
                 mk.alpha,
@@ -1160,7 +1162,7 @@ impl Ui {
             return;
         }
         let m = &font.metrics;
-        let sk = n.scale;
+        let sk = n.placed.scale;
         let size = step.size * sk;
         let lh = line_height * sk;
         let tracking = crate::layout::step_tracking(&step, shown);
@@ -1181,7 +1183,7 @@ impl Ui {
             .rposition(|l| l.0 <= edit.caret && edit.caret <= l.1)
             .unwrap_or(0);
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
-        let alpha = n.alpha;
+        let alpha = n.placed.alpha;
         for (li, &(a, b)) in lines.iter().enumerate() {
             let top = inner.y + li as f32 * lh - edit.scroll * sk;
             if top + lh < inner.y - lh || top > inner.bottom() + lh {

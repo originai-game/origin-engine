@@ -108,8 +108,8 @@ pub(crate) fn border_inset(n: &crate::layout::Node) -> [f32; 4] {
         if layout > 0.0 { screen / layout } else { 1.0 }
     };
     let (kx, ky) = (
-        scale(n.screen.width, n.rect.width),
-        scale(n.screen.height, n.rect.height),
+        scale(n.placed.screen.width, n.placed.rect.width),
+        scale(n.placed.screen.height, n.placed.rect.height),
     );
     let w = |k: usize| d.borders[k].map_or(0.0, |l| l.width);
     [w(3) * kx, w(0) * ky, w(1) * kx, w(2) * ky]

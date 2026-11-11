@@ -139,7 +139,7 @@ impl crate::ui::Interaction {
         let tokens = env.theme.motion;
         let drag = n.props.drag.clone();
         let pinch = n.props.pinch;
-        let size = Vec2::new(n.rect.width, n.rect.height);
+        let size = Vec2::new(n.placed.rect.width, n.placed.rect.height);
         let input = self.input.clone();
         let p = input.pointer;
         let held_here = self.state.active == key;

@@ -330,7 +330,10 @@ panel { width: 10px; height: 10px; }
         let i = (0..ui.tree.nodes.len())
             .find(|&i| ui.tree.path_of(i) == path)
             .unwrap_or_else(|| panic!("no {path}"));
-        (ui.tree.nodes[i].rect.width, ui.tree.nodes[i].rect.height)
+        (
+            ui.tree.nodes[i].placed.rect.width,
+            ui.tree.nodes[i].placed.rect.height,
+        )
     }
 
     #[test]

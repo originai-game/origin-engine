@@ -9,7 +9,7 @@ impl Ui {
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = self.paint_theme();
         let n = &self.tree.nodes[i];
-        let rect = n.rect;
+        let rect = n.placed.rect;
         let ring = |player: usize, outline: bool| {
             use crate::paint::Placed;
             let mut part = n
@@ -40,9 +40,9 @@ impl Ui {
                         .radius
                 }),
                 clip: self.paint_clip(n),
-                alpha: n.alpha,
+                alpha: n.placed.alpha,
             };
-            if n.clip_src != NONE && self.paint.map().is_identity() {
+            if n.placed.clip_src != NONE && self.paint.map().is_identity() {
                 let outside = draw
                     .borders
                     .as_ref()
@@ -58,9 +58,10 @@ impl Ui {
                 .fold(0.0_f32, f32::max)
                     + outside;
                 at.clip = n
+                    .placed
                     .clip
                     .outset(reach)
-                    .intersect(&self.tree.nodes[n.clip_src].clip);
+                    .intersect(&self.tree.nodes[n.placed.clip_src].placed.clip);
             }
             let mut commands = draw.enter(t, &at);
             commands.extend(draw.children(&at));
@@ -102,9 +103,9 @@ impl Ui {
     fn background_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = self.paint_theme();
         let n = &self.tree.nodes[i];
-        let rect = n.rect;
+        let rect = n.placed.rect;
         let clip = self.paint_clip(n);
-        let alpha = n.alpha;
+        let alpha = n.placed.alpha;
         let quad = |rect: Rect, radius: f32, color: Srgba| DrawCmd::Quad {
             rect,
             radius,
@@ -162,10 +163,10 @@ impl Ui {
         let t = self.paint_theme();
         let p = &t.palette;
         let n = &self.tree.nodes[i];
-        let rect = n.rect;
+        let rect = n.placed.rect;
         let clip = self.paint_clip(n);
         let dpr = self.env.viewport.dpr();
-        let alpha = n.alpha;
+        let alpha = n.placed.alpha;
         let part = n.el.part.or_else(|| n.el.frame.map(StylePart::part_ref));
         let ornament_tint = part.and_then(|p| {
             self.part_values(&p, Some(n.key))
@@ -242,7 +243,7 @@ impl Ui {
                     .0;
                 if font.handle.is_some() {
                     let m = &font.metrics;
-                    let sk = n.scale;
+                    let sk = n.placed.scale;
                     let size = tc.step.size * sk;
                     let lh = tc.line_height() * sk;
                     let pad = n.el.padding;
@@ -579,7 +580,7 @@ impl Ui {
                                     values.color("color").map(Srgba::linear).or(ornament_tint);
                                 self.paint.ornament(
                                     o,
-                                    values.part_rect(rect, n.rect),
+                                    values.part_rect(rect, n.placed.rect),
                                     flip,
                                     false,
                                     tint,
@@ -704,14 +705,14 @@ impl Ui {
     fn shape_commands(&self, n: &Node, cmds: &mut Vec<DrawCmd>) {
         let t = self.paint_theme();
         let clip = self.paint_clip(n);
-        let alpha = n.alpha;
+        let alpha = n.placed.alpha;
         let dpr = self.env.viewport.dpr();
         for shape in &n.shapes {
             match shape {
                 Shape::Part { frame, part, fill } => {
                     let r = self
                         .part_values(part, Some(n.key))
-                        .part_rect(frame.resolve(&n.rect), n.rect);
+                        .part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
                     if !r.is_empty() {
                         self.part_commands(
                             Some(n.key),
@@ -731,7 +732,7 @@ impl Ui {
                     color,
                 } => {
                     let values = self.part_values(part, Some(n.key));
-                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let r = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
                     if !r.is_empty() {
                         self.part_commands_at(
                             Some(n.key),
@@ -750,7 +751,7 @@ impl Ui {
                     radius,
                     color,
                 } => {
-                    let r = frame.resolve(&n.rect);
+                    let r = frame.resolve(&n.placed.rect);
                     if r.is_empty() {
                         continue;
                     }
@@ -768,7 +769,7 @@ impl Ui {
                     color,
                 } => {
                     let values = self.part_values(part, Some(n.key));
-                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let r = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
                     let color = values.color("color").unwrap_or(*color);
                     let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     cmds.push(DrawCmd::Bar {
@@ -787,7 +788,7 @@ impl Ui {
                     color,
                 } => {
                     let values = self.part_values(part, Some(n.key));
-                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let r = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
                     let color = values.color("color").unwrap_or(*color);
                     let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     cmds.push(DrawCmd::Half {
@@ -808,7 +809,7 @@ impl Ui {
                 } => {
                     use crate::paint::{Cap, ElementDraw, Paint, Placed, ShapeKind};
                     let values = self.part_values(part, Some(n.key));
-                    let rect = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let rect = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
                     let color = values.color("color").unwrap_or(*color);
                     let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     let draw = ElementDraw {
@@ -840,7 +841,7 @@ impl Ui {
                 } => {
                     let values = self.part_values(part, Some(n.key));
                     cmds.push(DrawCmd::Image {
-                        rect: values.part_rect(frame.resolve(&n.rect), n.rect),
+                        rect: values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect),
                         texture: Some(*texture),
                         uv: *uv,
                         color: values
@@ -864,19 +865,19 @@ impl Ui {
                     let color = values.color("color").unwrap_or(*color);
                     let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     let step = &values.part_type(t, *step);
-                    let clip = clip.intersect(&within.resolve(&n.rect));
+                    let clip = clip.intersect(&within.resolve(&n.placed.rect));
                     let f = self.env.fonts.for_text(*font, text);
                     if f.handle.is_none() {
                         continue;
                     }
                     let m = &f.metrics;
-                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let r = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
                     // A pixel font on its grid (crate::layout::snap_pixel_text).
-                    let size = m.pixel_size(step.size * n.scale);
+                    let size = m.pixel_size(step.size * n.placed.scale);
                     let tracking = m.pixel_tracking(crate::layout::step_tracking(step, text));
                     let features = crate::layout::text_features(step, *font);
                     let w = m.measure_with(text, size, tracking, features);
-                    let lh = step.line_height * n.scale;
+                    let lh = step.line_height * n.placed.scale;
                     let x = r.x + (r.width - w) / 2.0;
                     let ly = r.y + (r.height - lh) / 2.0;
                     let baseline = m.baseline(text, ly, lh, size);
@@ -916,7 +917,7 @@ impl Ui {
                     color,
                 } => {
                     let values = self.part_values(part, Some(n.key));
-                    let r = values.part_rect(frame.resolve(&n.rect), n.rect);
+                    let r = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
                     let color = values.color("color").unwrap_or(*color);
                     let alpha = alpha * values.num("opacity").unwrap_or(1.0);
                     let size = r.width.min(r.height);
@@ -949,11 +950,12 @@ impl Ui {
 /// shrunk by the theme's press scale as far into the press as it is.
 pub(super) fn part_rect(n: &crate::layout::Node, press_scale: f32) -> Rect {
     match (n.el.part, &n.widget) {
-        (Some(p), Widget::Button { .. }) if p.press > 0.0 => {
-            n.rect.scaled(1.0 - (1.0 - press_scale) * p.press.min(1.0))
-        }
-        (None, Widget::Button { pressed: true, .. }) => n.rect.scaled(press_scale),
-        _ => n.rect,
+        (Some(p), Widget::Button { .. }) if p.press > 0.0 => n
+            .placed
+            .rect
+            .scaled(1.0 - (1.0 - press_scale) * p.press.min(1.0)),
+        (None, Widget::Button { pressed: true, .. }) => n.placed.rect.scaled(press_scale),
+        _ => n.placed.rect,
     }
 }
 
@@ -987,7 +989,7 @@ impl Ui {
             return;
         }
         let m = &font.metrics;
-        let sk = n.scale;
+        let sk = n.placed.scale;
         let size = tc.step.size * sk;
         let tracking = tc.tracking();
         let pad = n.el.padding;
@@ -1008,7 +1010,7 @@ impl Ui {
         let dpr = self.env.viewport.dpr();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
-        let color = n.sampled.ink.fade(n.alpha).linear();
+        let color = n.sampled.ink.fade(n.placed.alpha).linear();
         let offset = if tp.percent {
             tp.offset * walk.length
         } else {
@@ -1243,7 +1245,7 @@ impl Ui {
             .for_styled(tc.font, tc.step.weight, false, &tc.text)
             .0;
         let m = &font.metrics;
-        let sk = n.scale;
+        let sk = n.placed.scale;
         let size = tc.step.size * sk;
         let lh = tc.line_height() * sk;
         let tracking = tc.tracking();
@@ -1259,13 +1261,13 @@ impl Ui {
         let t = self.paint_theme();
         let role = tc.font.effect_index();
         let weight = t.art.text_weights[role] * sk / dpr + tc.emphasis * size;
-        let color = n.sampled.ink.fade(n.alpha).linear();
+        let color = n.sampled.ink.fade(n.placed.alpha).linear();
         // A style's text glow: the font's distance field, under the glyphs.
         let glow = t.art.text_glows[role].map(|g| {
             let c = g
                 .ink
                 .color(&t.palette)
-                .fade(g.alpha * n.sampled.ink.alpha * n.alpha);
+                .fade(g.alpha * n.sampled.ink.alpha * n.placed.alpha);
             (c.linear(), TEXT_GLOW_REACH * g.size * sk)
         });
         let (rtl, para) = self.text_flow(i);
@@ -1494,7 +1496,7 @@ impl Ui {
             return;
         }
         let m = &font.metrics;
-        let (sk, alpha, dpr) = (n.scale, n.alpha, self.env.viewport.dpr());
+        let (sk, alpha, dpr) = (n.placed.scale, n.placed.alpha, self.env.viewport.dpr());
         let size = tc.step.size * sk;
         let lh = tc.line_height() * sk;
         let mut drawn = Vec::new();
@@ -1715,7 +1717,7 @@ impl Ui {
             return;
         }
         let n = &self.tree.nodes[i];
-        let (alpha, dpr) = (n.alpha, self.env.viewport.dpr());
+        let (alpha, dpr) = (n.placed.alpha, self.env.viewport.dpr());
         let fill = self
             .docs
             .host
@@ -1730,7 +1732,7 @@ impl Ui {
             self.part_commands_at(
                 Some(n.key),
                 &part,
-                values.part_rect(r, n.rect).snapped(dpr),
+                values.part_rect(r, n.placed.rect).snapped(dpr),
                 Some(values.color("color").unwrap_or(fill)),
                 0.0,
                 alpha,

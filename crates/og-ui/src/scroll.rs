@@ -973,13 +973,13 @@ impl crate::ui::Tree {
 fn snapport(n: &crate::layout::Node) -> crate::layout::Rect {
     let pad = n.el.padding;
     let (w, h) = (
-        (n.rect.width - pad.horizontal()).max(0.0),
-        (n.rect.height - pad.vertical()).max(0.0),
+        (n.placed.rect.width - pad.horizontal()).max(0.0),
+        (n.placed.rect.height - pad.vertical()).max(0.0),
     );
     let [t, r, b, l] = n.el.scroll_css.padding_px(w, h);
     crate::layout::Rect::new(
-        n.rect.x + pad.left + l,
-        n.rect.y + pad.top + t,
+        n.placed.rect.x + pad.left + l,
+        n.placed.rect.y + pad.top + t,
         (w - l - r).max(0.0),
         (h - t - b).max(0.0),
     )
@@ -990,7 +990,7 @@ fn snapport(n: &crate::layout::Node) -> crate::layout::Rect {
 /// centre, 3 end).
 fn snap_delta(axis: usize, align: u8, n: &crate::layout::Node, view: crate::layout::Rect) -> f32 {
     let [mt, mr, mb, ml] = n.el.scroll_css.margin;
-    let r = n.rect;
+    let r = n.placed.rect;
     let (lo, len, vlo, vlen) = if axis == 0 {
         (r.x - ml, r.width + ml + mr, view.x, view.width)
     } else {

@@ -35,7 +35,7 @@ pub(crate) fn grip_key(key: u64) -> u64 {
 
 /// The handle's rectangle on node `n`'s box (its bottom end corner).
 pub(crate) fn grip_rect(n: &Node, rtl: bool) -> Rect {
-    let r = n.rect;
+    let r = n.placed.rect;
     let s = GRIP.min(r.width).min(r.height);
     let x = if rtl { r.x } else { r.right() - s };
     Rect::new(x, r.bottom() - s, s, s)
@@ -162,7 +162,7 @@ impl crate::ui::Tree {
                     rect: Rect::new(cx, cy, dot, dot).snapped(dpr),
                     radius: dot / 2.0,
                     color,
-                    clip: n.clip,
+                    clip: n.placed.clip,
                 });
             }
         }

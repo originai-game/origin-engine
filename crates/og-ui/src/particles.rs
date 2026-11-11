@@ -316,7 +316,7 @@ impl crate::ui::Paint {
         for e in &emitters {
             live.push(e.key);
             let n = &tree.nodes[e.node];
-            let (rect, world, clip) = (n.rect, n.world, n.clip);
+            let (rect, world, clip) = (n.placed.rect, n.placed.world, n.placed.clip);
             let d = &e.desc;
             let life = ((if d.lifetime_ms > 0.0 {
                 d.lifetime_ms
