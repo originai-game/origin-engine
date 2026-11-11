@@ -17,14 +17,13 @@ use super::wire::{
     ToJson,
 };
 use super::{ok_void, parse, refuse};
-use og_core::{IdMap, Rng};
+use og_core::Rng;
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use og_story::{Dialogue, Event, Library, Quest, Story, Val, Wait};
 use serde_json::{Map, Value, json};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// The story's resource.
 pub(crate) const STORY: &str = "og.Story";
@@ -48,7 +47,7 @@ pub(crate) const RECORDS: [&str; 7] = [
 pub(crate) const SYSTEM: &str = "og.story";
 
 #[derive(Default)]
-struct Rt {
+pub(crate) struct Rt {
     lib: Library,
     story: Option<Story>,
     /// Voice clips by asset path: their og.audio sound handles.
@@ -79,17 +78,20 @@ fn uses_shots(lib: &Library) -> bool {
     })
 }
 
-thread_local! {
-    static STORIES: RefCell<IdMap<u32, Rt>> = const { RefCell::new(IdMap::new()) };
+/// og.story on one engine: its stories, their runtime and the story state
+/// its world's block saves, shared with the block.
+pub(crate) type ModuleState = Arc<Mutex<Rt>>;
+
+fn lock(m: &Mutex<Rt>) -> std::sync::MutexGuard<'_, Rt> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut Rt) -> T) -> T {
-    STORIES.with(|s| f(s.borrow_mut().entry(engine).or_default()))
-}
-
-/// The engine is gone.
-pub(crate) fn retire(engine: u32) {
-    STORIES.with(|s| s.borrow_mut().remove(&engine));
+    match super::engine::engine(engine) {
+        Ok(eng) => f(&mut lock(&eng.modules.story)),
+        // An engine that is gone has none: a fresh one.
+        Err(_) => f(&mut Rt::default()),
+    }
 }
 
 /// A story for a world that had none in its save (a fresh one on seed 0's
@@ -98,11 +100,11 @@ fn fresh() -> Story {
     Story::new(Rng::new(0).fork("story"))
 }
 
-struct StoryBlock(u32);
+struct StoryBlock(ModuleState);
 
 impl StateBlock for StoryBlock {
     fn save(&self, out: &mut Vec<u8>) {
-        with(self.0, |rt| rt.story.get_or_insert_with(fresh).save(out));
+        lock(&self.0).story.get_or_insert_with(fresh).save(out);
     }
     fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
         Story::load(bytes)
@@ -113,7 +115,7 @@ impl StateBlock for StoryBlock {
         let story = decoded
             .and_then(|d| d.downcast::<Story>().ok())
             .map_or_else(fresh, |s| *s);
-        with(self.0, |rt| rt.story = Some(story));
+        lock(&self.0).story = Some(story);
     }
 
     /// A story's state is its variables and choices: nothing in the world.
@@ -124,7 +126,8 @@ impl StateBlock for StoryBlock {
 /// for a world whose game names it): its resource at zero, the story
 /// seeded from og.Rng's fork "story" if the engine has none, and the
 /// state block.
-pub(crate) fn attach(engine: u32, world: &mut World) -> Result<(), String> {
+pub(crate) fn attach(mount: super::engine::Mount<'_>, world: &mut World) -> Result<(), String> {
+    let engine = mount.id;
     let err = |e: og_core::Error| e.reason().to_string();
     let id = world.id_by_name(STORY).map_err(err)?;
     if !world.has_resource_id(id) {
@@ -143,14 +146,16 @@ pub(crate) fn attach(engine: u32, world: &mut World) -> Result<(), String> {
         .resource::<Rng>()
         .map(|r| r.fork("story"))
         .unwrap_or_else(|_| Rng::new(0).fork("story"));
-    with(engine, |rt| {
+    {
+        let mut rt = lock(&mount.modules.story);
         if rt.story.is_none() {
             rt.story = Some(Story::new(seed));
         }
         // A new world: what the loaded stories read is granted afresh.
         rt.granted.clear();
-    });
-    match world.add_state_block(SYSTEM, Box::new(StoryBlock(engine))) {
+    }
+    let block = StoryBlock(mount.modules.story.clone());
+    match world.add_state_block(SYSTEM, Box::new(block)) {
         Err(e) if e.reason().contains("already added") => {}
         r => r.map_err(err)?,
     }
@@ -272,7 +277,8 @@ fn walk(v: &Value, fields: &str) -> Option<Val> {
 /// choice timers, counts the events objectives count, settles barks, starts
 /// and stops voices, sends the events the story queued since the last run
 /// and writes og.Story's counters.
-pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
+pub(crate) fn mount(world: &mut World, mount: super::engine::Mount<'_>) -> Result<(), String> {
+    let engine_id = mount.id;
     world
         .add_system(
             SystemDesc::new(SYSTEM).write::<og_audio::AudioSource>(),

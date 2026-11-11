@@ -390,7 +390,7 @@ pub fn og_motion_look_at(world: u32, entity: f64, desc: Option<String>) -> Strin
                 time: Envelope::new(length, blend),
             })
         };
-        let sh = shared(world);
+        let sh = shared(&eng);
         let mut goals = lock(&sh);
         let p = &mut goals.agents.entry(e.to_bits()).or_default().performance;
         if let Some(mut old) = p.look.take() {
@@ -486,7 +486,7 @@ pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> String 
                 time: Envelope::new(total, blend),
             })
         };
-        let sh = shared(world);
+        let sh = shared(&eng);
         let mut goals = lock(&sh);
         let p = &mut goals.agents.entry(e.to_bits()).or_default().performance;
         if let Some(mut old) = p.reaction.take() {

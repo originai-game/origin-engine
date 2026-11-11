@@ -606,7 +606,10 @@ impl Reloader for RuntimeReloader {
         let mut a = assemble(
             game as u32,
             seed,
-            self.engine,
+            crate::engine::Mount {
+                id: self.engine,
+                modules: &eng.modules,
+            },
             profile,
             project.as_ref(),
             previous,

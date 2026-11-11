@@ -152,11 +152,12 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
 pub(crate) fn assemble(
     game: u32,
     seed: Option<u32>,
-    engine_id: u32,
+    mount: super::Mount<'_>,
     profile: u32,
     project: Option<&ProjectGame>,
     previous: Option<(&og_ui::SharedUi, og_audio::AudioLink)>,
 ) -> Result<Assembled, String> {
+    let engine_id = mount.id;
     bump_layout_epoch();
     let (decl, others, records, errors, all_systems, all_hooks, commands) = DECL.with(|d| {
         let d = d.borrow();
@@ -355,8 +356,8 @@ pub(crate) fn assemble(
         .filter(|n| world.id_by_name(n).is_ok())
         .cloned()
         .collect();
-    super::terrain::mount(&mut world, engine_id)?;
-    super::e6::mount_front(&mut world, engine_id, profile, &physics, &record_names)?;
+    super::terrain::mount(&mut world, mount)?;
+    super::e6::mount_front(&mut world, mount, profile, &physics, &record_names)?;
 
     // State machines, before the systems bound to them.
     for state in &game.states {
@@ -554,11 +555,11 @@ pub(crate) fn assemble(
         .map(|l| l.schema.clone())
         .collect();
     let feel = super::feel::install_front(&mut world, &components)?;
-    super::video::install(&mut world, engine_id, &layouts)?;
+    super::video::install(&mut world, mount, &layouts)?;
     crate::weather::install(&mut world, &layouts)?;
     // og.path and og.timeline after tweens, before og-anim (an animation
     // track sets players) and physics.
-    super::timeline::install(&mut world, engine_id, &layouts, &ui)?;
+    super::timeline::install(&mut world, mount, &layouts, &ui)?;
     let contract = project.is_some_and(|p| p.look.is_some());
     let anim = super::anim::install(&mut world, super::art::step_default(contract, &layouts))?;
     let feel_records = super::feel::Records::of(&world, &layouts)?;
@@ -570,8 +571,8 @@ pub(crate) fn assemble(
         &physics,
         profile,
     )?;
-    super::e6::mount_back(&mut world, engine_id, profile, &physics)?;
-    crate::destruction::set_physics(engine_id, &physics);
+    super::e6::mount_back(&mut world, mount, profile, &physics)?;
+    crate::destruction::set_physics(&mount.modules.destruction, &physics);
     let mounted = super::modules::mount_back(
         &mut world,
         engine_id,
@@ -582,7 +583,7 @@ pub(crate) fn assemble(
     )?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
     for name in lazy_named {
-        crate::lazy::enable(&mut world, engine_id, name)?;
+        crate::lazy::enable(&mut world, mount, name)?;
     }
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
     Ok(Assembled {
@@ -687,7 +688,12 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         Some(text) => Some(project_game(text)?),
         None => None,
     };
-    let mut a = assemble(game, seed, engine_id, profile, project.as_ref(), None)?;
+    let modules = super::Modules::default();
+    let mount = super::Mount {
+        id: engine_id,
+        modules: &modules,
+    };
+    let mut a = assemble(game, seed, mount, profile, project.as_ref(), None)?;
     let probe = a.probe.take().expect("assemble makes a probe");
     let state = State {
         layouts: a.layouts,
@@ -768,6 +774,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
             root: options["root"].as_str().unwrap_or_default().to_string(),
             ..Assets::default()
         }),
+        modules,
     });
     {
         let (camera, settings, draw) = extract_layouts(&engine);
@@ -781,12 +788,12 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     rprobe::install(&engine, a.game.facts)?;
     {
         let mut probe = engine.probe.borrow_mut();
-        super::e6::commit(engine_id, probe.inbox());
-        super::timeline::commit(engine_id, probe.inbox());
+        super::e6::commit(&engine, probe.inbox());
+        super::timeline::commit(&engine, probe.inbox());
         register_module_actions(&mut probe, engine_id);
     }
     // The host's locale (og run --locale, the browser's language).
-    super::i18n::request(engine_id, options["locale"].as_str().unwrap_or(""));
+    super::i18n::request(&engine, options["locale"].as_str().unwrap_or(""));
     ENGINES.with(|e| e.borrow_mut().push(Some(engine.clone())));
     #[cfg(not(feature = "publish"))]
     rprobe::set_reloader(&engine);
@@ -922,9 +929,6 @@ pub fn destroy(id: u32) -> bool {
     }
     before_structural(&eng);
     og_audio::retire_link(id);
-    super::e6::retire(id);
-    super::timeline::retire(id);
-    crate::invariants::forget(id);
     ENGINES.with(|e| {
         if let Some(slot) = e.borrow_mut().get_mut(id as usize) {
             *slot = None;

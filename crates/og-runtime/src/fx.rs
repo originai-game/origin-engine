@@ -2025,7 +2025,7 @@ pub(crate) fn load_emitter(eng: &super::engine::Engine, path: &str) -> Result<us
     eng.render.borrow_mut().fx.loading.pop();
     let (emitter, array) = parsed.map_err(|e| format!("{id}: {e}"))?;
     let mut rs = eng.render.borrow_mut();
-    let host = super::particle_events::shared(eng.id);
+    let host = super::particle_events::shared(eng);
     rs.fx.host = Some(host.clone());
     // An emitter that sends events: the tick simulates its systems.
     let definition = (!emitter.events.is_empty()).then(|| {

@@ -102,7 +102,7 @@ pub(crate) fn update(eng: &Engine) {
                 if matches!(s.groups[i].state, State::Loading | State::Resident) {
                     unload.push(s.groups[i].desc.name.clone());
                 }
-                set_state(s, eng.id, i, State::Unloaded, tick, "");
+                set_state(s, &eng.modules.stream, i, State::Unloaded, tick, "");
             }
         }
     }
@@ -139,7 +139,7 @@ pub(crate) fn update(eng: &Engine) {
                 unload.push(s.groups[i].desc.name.clone());
                 set_state(
                     s,
-                    eng.id,
+                    &eng.modules.stream,
                     i,
                     State::Queued,
                     tick,
@@ -158,7 +158,7 @@ pub(crate) fn update(eng: &Engine) {
             let need = s.groups[i].desc.memory;
             if need > budget {
                 let why = format!("needs {need} B, more than the budget of {budget} B");
-                set_state(s, eng.id, i, State::Failed, tick, &why);
+                set_state(s, &eng.modules.stream, i, State::Failed, tick, &why);
                 continue;
             }
             // Room is made from the lowest-priority admitted groups below it.
@@ -178,7 +178,7 @@ pub(crate) fn update(eng: &Engine) {
             if free < need {
                 set_state(
                     s,
-                    eng.id,
+                    &eng.modules.stream,
                     i,
                     State::Queued,
                     tick,
@@ -189,9 +189,9 @@ pub(crate) fn update(eng: &Engine) {
             for j in evict {
                 unload.push(s.groups[j].desc.name.clone());
                 let why = format!("evicted for '{}'", s.groups[i].desc.name);
-                set_state(s, eng.id, j, State::Queued, tick, &why);
+                set_state(s, &eng.modules.stream, j, State::Queued, tick, &why);
             }
-            set_state(s, eng.id, i, State::Loading, tick, "");
+            set_state(s, &eng.modules.stream, i, State::Loading, tick, "");
             let used = s.used();
             s.peak = s.peak.max(used);
         }
@@ -217,7 +217,7 @@ pub(crate) fn update(eng: &Engine) {
                 let s = &mut a.stream;
                 if let Some(i) = s.find(&name) {
                     s.groups[i].loads += 1;
-                    set_state(s, eng.id, i, State::Resident, tick, "");
+                    set_state(s, &eng.modules.stream, i, State::Resident, tick, "");
                 }
             }
             // A texture still being transcoded: the next update finishes it.
@@ -228,7 +228,7 @@ pub(crate) fn update(eng: &Engine) {
                 let s = &mut a.stream;
                 if let Some(i) = s.find(&name) {
                     s.groups[i].files.clear();
-                    set_state(s, eng.id, i, State::Failed, tick, &e);
+                    set_state(s, &eng.modules.stream, i, State::Failed, tick, &e);
                 }
             }
         }
@@ -459,7 +459,14 @@ fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
                         s.groups[i].files = files.into_iter().collect();
                         return;
                     }
-                    Err(e) => set_state(s, eng.id, i, State::Failed, tick, &format!("{path}: {e}")),
+                    Err(e) => set_state(
+                        s,
+                        &eng.modules.stream,
+                        i,
+                        State::Failed,
+                        tick,
+                        &format!("{path}: {e}"),
+                    ),
                 }
             }
             // Textures the host put before the pack failed go with it.

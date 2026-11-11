@@ -10,17 +10,17 @@
 //! ([`og_ecs::World::grant`]): `enable` registers the module's own Rust
 //! type (the same layout) and widens its system's declarations.
 
-use crate::engine::Engine;
+use crate::engine::{Engine, Mount};
 use og_core::Reflect;
 use og_ecs::World;
 
 /// One lazily registered record and what its module does when it is.
 pub(crate) struct Lazy {
     pub name: &'static str,
-    /// Grants the record to its module on `world` of the engine whose id
-    /// it is given (a module with per-engine state, og.motion, adds its
+    /// Grants the record to its module on `world` of the engine it is
+    /// mounted on (a module with per-engine state, og.motion, adds its
     /// state block here).
-    pub enable: fn(&mut World, u32) -> og_core::Result<()>,
+    pub enable: fn(&mut World, Mount<'_>) -> og_core::Result<()>,
 }
 
 /// Every lazily registered engine record.
@@ -479,7 +479,11 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
             st.names_by_id.push(name.to_string());
         }
     }
-    (lazy.enable)(world, eng.id).map_err(|e| format!("{name}: {}", e.reason()))?;
+    let mount = Mount {
+        id: eng.id,
+        modules: &eng.modules,
+    };
+    (lazy.enable)(world, mount).map_err(|e| format!("{name}: {}", e.reason()))?;
     // og.WorldOrigin is on once named: the resource at its defaults.
     if name == crate::origin::RESOURCE && !world.has_resource_id(id) {
         let bytes = layout.encode(None, None)?;
@@ -488,10 +492,10 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
             .map_err(|e| e.reason().to_string())?;
     }
     if name == crate::story::STORY {
-        crate::story::attach(eng.id, world)?;
+        crate::story::attach(mount, world)?;
     }
     if name == crate::stream::cells::CELL {
-        crate::stream::cells::attach(eng.id, world)?;
+        crate::stream::cells::attach(mount, world)?;
     }
     for partner in with_partners(lazy.name) {
         if partner != lazy.name {
@@ -543,15 +547,15 @@ fn ensure_deferred(eng: &Engine, world: &mut World, name: &str) -> Result<(), St
 
 /// Runs lazy record `name`'s module grant on a world that has registered
 /// it (assembly, once the modules are mounted).
-pub(crate) fn enable(world: &mut World, engine: u32, name: &str) -> Result<(), String> {
+pub(crate) fn enable(world: &mut World, mount: Mount<'_>, name: &str) -> Result<(), String> {
     match LAZY.iter().find(|l| l.name == name) {
         Some(l) => {
-            (l.enable)(world, engine).map_err(|e| format!("{name}: {}", e.reason()))?;
+            (l.enable)(world, mount).map_err(|e| format!("{name}: {}", e.reason()))?;
             if name == crate::story::STORY {
-                crate::story::attach(engine, world)?;
+                crate::story::attach(mount, world)?;
             }
             if name == crate::stream::cells::CELL {
-                crate::stream::cells::attach(engine, world)?;
+                crate::stream::cells::attach(mount, world)?;
             }
             Ok(())
         }

@@ -43,7 +43,6 @@ use og_timeline::eval::{self, crossed};
 use og_timeline::{CameraMode, Path, PathDesc, PathKind, Timeline, Track, TransitionKind};
 use serde_json::{Value, json};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -176,12 +175,20 @@ pub(crate) struct MaterialBase {
     pub params: Vec<(String, [f32; 4])>,
 }
 
-thread_local! {
-    static REGISTRIES: RefCell<IdMap<u32, Arc<Mutex<Registry>>>> = const { RefCell::new(IdMap::new()) };
+/// og.path and og.timeline on one engine: the registry of its paths and
+/// timelines (an asset of the engine, kept across a reload), and the runs
+/// its world's block saves, shared with its systems and its calls.
+#[derive(Default)]
+pub(crate) struct ModuleState {
+    registry: Arc<Mutex<Registry>>,
+    playback: Arc<Mutex<playback::Shared>>,
 }
 
+/// Engine `engine`'s registry (a fresh one for an engine that is gone).
 fn registry(engine: u32) -> Arc<Mutex<Registry>> {
-    REGISTRIES.with(|r| r.borrow_mut().entry(engine).or_default().clone())
+    super::engine::engine(engine)
+        .map(|e| e.modules.timeline.registry.clone())
+        .unwrap_or_default()
 }
 
 impl Registry {
@@ -213,12 +220,8 @@ pub(crate) fn path_of(engine: u32, h: u64) -> Option<Arc<Path>> {
 }
 
 /// The engine's probe inbox, for event keys (the engine was assembled).
-pub(crate) fn commit(engine: u32, inbox: og_probe::Inbox) {
-    lock(&registry(engine)).inbox = Some(inbox);
-}
-
-pub(crate) fn retire(engine: u32) {
-    REGISTRIES.with(|r| r.borrow_mut().remove(&engine));
+pub(crate) fn commit(eng: &Engine, inbox: og_probe::Inbox) {
+    lock(&eng.modules.timeline.registry).inbox = Some(inbox);
 }
 
 /// A spawned scene's named paths (a later scene's path of the same name

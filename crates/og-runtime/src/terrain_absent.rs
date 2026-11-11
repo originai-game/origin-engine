@@ -33,7 +33,9 @@ pub(crate) struct TerrainState {
     pub scatter_issues: std::collections::BTreeMap<u64, String>,
 }
 
-pub(crate) fn retire(_id: u32) {}
+/// og.terrain on one engine: nothing here.
+#[derive(Default)]
+pub(crate) struct ModuleState;
 
 /// The id pass's heights: no terrain is drawn here.
 pub(crate) fn id_heights(_rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option<f32> {
@@ -81,7 +83,7 @@ impl og_ecs::StateBlock for TerrainBlock {
 
 /// The edit log's state block (the world's state is the same here as in the
 /// full build); the og.terrain system has nothing to replay, so none.
-pub(crate) fn mount(world: &mut World, _engine_id: u32) -> Result<(), String> {
+pub(crate) fn mount(world: &mut World, _mount: super::engine::Mount<'_>) -> Result<(), String> {
     world
         .add_state_block("og.terrain", Box::new(TerrainBlock))
         .map_err(|e| e.reason().to_string())

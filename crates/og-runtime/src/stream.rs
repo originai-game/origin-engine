@@ -74,8 +74,8 @@ use og_render::{
     TextureSource,
 };
 use serde_json::{Value, json};
-use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 
 /// The system's name in the schedule (before the game's systems).
 pub const STREAM_SYSTEM: &str = "og.stream";
@@ -281,9 +281,14 @@ struct Retained {
     bytes: u64,
 }
 
-thread_local! {
-    static EVENTS: RefCell<IdMap<u32, Vec<StreamEvent>>> = const { RefCell::new(IdMap::new()) };
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
+
+/// og.stream on one engine: the group transitions made since the last
+/// tick, which its system sends as og.StreamEvent at the next one.
+#[derive(Default)]
+pub(crate) struct ModuleState(Arc<Mutex<Vec<StreamEvent>>>);
 
 impl Streams {
     fn budget(&self) -> u64 {
@@ -393,7 +398,14 @@ fn camera(eng: &Engine) -> Option<glam::Vec3> {
     ))
 }
 
-fn set_state(s: &mut Streams, engine: u32, i: usize, state: State, tick: u64, reason: &str) {
+fn set_state(
+    s: &mut Streams,
+    events: &ModuleState,
+    i: usize,
+    state: State,
+    tick: u64,
+    reason: &str,
+) {
     let g = &mut s.groups[i];
     if g.state == state {
         // The same state for another reason: no change to send.
@@ -412,11 +424,9 @@ fn set_state(s: &mut Streams, engine: u32, i: usize, state: State, tick: u64, re
         s.log.remove(0);
     }
     if let Ok(group) = Str64::new(&name) {
-        EVENTS.with(|e| {
-            e.borrow_mut().entry(engine).or_default().push(StreamEvent {
-                group,
-                state: state as u32,
-            })
+        lock(&events.0).push(StreamEvent {
+            group,
+            state: state as u32,
         });
     }
 }
@@ -436,7 +446,8 @@ fn push(eng: &Engine, group: &str, slot: Slot) {
 // ── the system, the probe and the IDL ───────────────────────────────────
 
 /// Registers og.StreamEvent and the og.stream system (front).
-pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
+pub(crate) fn mount(world: &mut World, mount: crate::engine::Mount<'_>) -> Result<(), String> {
+    let pending = mount.modules.stream.0.clone();
     world
         .register::<StreamEvent>()
         .map_err(|e| e.reason().to_string())?;
@@ -444,7 +455,7 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
         .add_system(
             SystemDesc::new(STREAM_SYSTEM).write::<StreamEvent>(),
             move |ctx| {
-                let events = EVENTS.with(|e| e.borrow_mut().remove(&engine_id).unwrap_or_default());
+                let events = std::mem::take(&mut *lock(&pending));
                 for ev in events {
                     ctx.send(ev)?;
                 }
@@ -452,10 +463,6 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
             },
         )
         .map_err(|e| e.reason().to_string())
-}
-
-pub(crate) fn retire(engine: u32) {
-    EVENTS.with(|e| e.borrow_mut().remove(&engine));
 }
 
 fn trigger_json(t: &StreamTrigger) -> Value {

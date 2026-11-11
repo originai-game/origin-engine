@@ -134,7 +134,7 @@ enum SlotOp {
 }
 
 #[derive(Default)]
-struct Platform {
+pub(crate) struct Platform {
     next: u32,
     outbox: Vec<u32>,
     inbox: Vec<(u32, Value)>,
@@ -157,12 +157,15 @@ struct Platform {
     next_notice: u32,
 }
 
-thread_local! {
-    static PLATFORMS: RefCell<IdMap<u32, Platform>> = const { RefCell::new(IdMap::new()) };
-}
+/// og.platform on one engine: its calls, answers and notices.
+pub(crate) type ModuleState = RefCell<Platform>;
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut Platform) -> T) -> T {
-    PLATFORMS.with(|p| f(p.borrow_mut().entry(engine).or_default()))
+    match super::engine::engine(engine) {
+        Ok(eng) => f(&mut eng.modules.platform.borrow_mut()),
+        // An engine that is gone, or not made yet, has none: a fresh one.
+        Err(_) => f(&mut Platform::default()),
+    }
 }
 
 /// The tick a call is made at: the running system's, or the world's.
@@ -1048,7 +1051,8 @@ pub fn og_platform_set_host(engine: u32, info: String) {
 // ── the system and the probe ─────────────────────────────────────────────
 
 /// Registers og.PlatformAnswered and the og.platform system (front).
-pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
+pub(crate) fn mount(world: &mut World, mount: super::engine::Mount<'_>) -> Result<(), String> {
+    let engine_id = mount.id;
     world
         .register::<PlatformAnswered>()
         .map_err(|e| e.reason().to_string())?;
@@ -1153,10 +1157,6 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
             },
         )
         .map_err(|e| e.reason().to_string())
-}
-
-pub(crate) fn retire(engine: u32) {
-    PLATFORMS.with(|p| p.borrow_mut().remove(&engine));
 }
 
 /// `dump_platform`'s JSON: the host, its capabilities and every call.

@@ -234,6 +234,8 @@ pub(crate) struct Engine {
     /// The run's assertions (the probe's, shared): the game's og.assert
     /// calls reach it while a system runs, when the probe is busy.
     pub assertions: Rc<RefCell<og_probe::assertions::Assertions>>,
+    /// Each runtime module's state on this engine.
+    pub modules: super::Modules,
 }
 
 impl Engine {

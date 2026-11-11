@@ -26,7 +26,6 @@ use og_ecs::{Entity, SchemaId, World};
 use og_probe::assertions::{Origin, Seen};
 use serde_json::{Value, json};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 
 /// og.assert's bounds resource.
 pub(crate) const BOUNDS: &str = "og.WorldBounds";
@@ -49,7 +48,7 @@ struct RecordCheck {
 }
 
 #[derive(Default)]
-struct Plan {
+pub(crate) struct Plan {
     /// (layouts, registered types) the plan was made for.
     made_for: (usize, usize),
     records: Vec<RecordCheck>,
@@ -62,9 +61,8 @@ struct Plan {
     restores: u64,
 }
 
-thread_local! {
-    static PLANS: RefCell<BTreeMap<u32, Plan>> = RefCell::default();
-}
+/// The default invariants on one engine: what they check and since when.
+pub(crate) type ModuleState = RefCell<Plan>;
 
 /// Whether a field of `schema` holds an entity: the IDL's column for an
 /// engine record (a module's derived layout reads every u64 as one), the
@@ -256,9 +254,9 @@ pub(crate) fn after_tick(eng: &Engine, world: &World) {
     let layouts = eng.state.borrow().layouts.len();
     let mut failures: Vec<(String, String, Seen)> = Vec::new();
     let mut values = 0u64;
-    let fields = PLANS.with(|plans| {
-        let mut plans = plans.borrow_mut();
-        let plan = plans.entry(eng.id).or_default();
+    let fields = {
+        let mut plan = eng.modules.invariants.borrow_mut();
+        let plan = &mut *plan;
         let made_for = (layouts, world.type_count());
         if plan.made_for != made_for {
             make_plan(eng, world, plan);
@@ -350,7 +348,7 @@ pub(crate) fn after_tick(eng: &Engine, world: &World) {
         plan.structural = world.structural_changes();
         plan.restores = world.restores();
         plan.fields
-    });
+    };
     let mut a = eng.assertions.borrow_mut();
     for (name, location, seen) in failures {
         a.fail(Origin::Default, &name, &location, tick, seen);
@@ -421,11 +419,6 @@ fn bounds(
             }
         }
     });
-}
-
-/// An engine's plan, forgotten when it is destroyed.
-pub(crate) fn forget(engine: u32) {
-    PLANS.with(|p| p.borrow_mut().remove(&engine));
 }
 
 /// `og.assert.record`: a game's assertion call, recorded into the run's

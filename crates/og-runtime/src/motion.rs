@@ -27,7 +27,7 @@ pub(crate) mod present;
 pub use performance::{og_motion_look_at, og_motion_react};
 
 use super::codec::{Layout, RecordKind};
-use super::engine::{Engine, engine};
+use super::engine::{Engine, Mount, engine};
 use super::wire::{
     self, FaceGoalDesc, JumpGoalDesc, MotionBackend, MotionCapabilities, MotionGoalKind,
     MotionStatus, PlaceGoalDesc, PoseGoalDesc, WalkGoalDesc,
@@ -40,7 +40,6 @@ use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc,
 use og_motion::library::{POSES, index as pose_index};
 use serde_json::{Value, json};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -176,12 +175,14 @@ pub(crate) struct Goals {
     pub agents: BTreeMap<u64, Agent>,
 }
 
-thread_local! {
-    static SHARED: RefCell<og_core::IdMap<u32, Arc<Mutex<Goals>>>> = const { RefCell::new(og_core::IdMap::new()) };
-}
+/// og.motion on one engine: the goals its world's block saves, shared
+/// with its system and its calls.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState(Arc<Mutex<Goals>>);
 
-pub(crate) fn shared(engine: u32) -> Arc<Mutex<Goals>> {
-    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
+/// An engine's og.motion goals.
+pub(crate) fn shared(eng: &Engine) -> Arc<Mutex<Goals>> {
+    eng.modules.motion.0.clone()
 }
 
 pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -542,7 +543,8 @@ fn landing_in(
 /// Registers og.MotionAgent's module on a world that names it (`super::lazy`):
 /// the `og.motion` system, after every system scheduled so far, and its
 /// state block.
-pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
+pub(crate) fn enable(world: &mut World, mount: Mount<'_>) -> og_core::Result<()> {
+    let engine_id = mount.id;
     if world.systems().contains(&SYSTEM) {
         return Ok(());
     }
@@ -556,7 +558,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
     let agent = layout(world, AGENT)?;
     let transform = layout(world, "og.Transform")?;
     let controller = layout(world, "og.CharacterController")?;
-    let sh = shared(engine_id);
+    let sh = mount.modules.motion.0.clone();
     *lock(&sh) = Goals::default();
     let state = sh.clone();
     world.add_system(
@@ -1022,7 +1024,7 @@ fn queue<T: wire::FromJson + Default>(
                 "the goal's heading or duration is not a finite, non-negative number".into(),
             );
         }
-        lock(&shared(world))
+        lock(&shared(&eng))
             .agents
             .entry(e.to_bits())
             .or_default()
@@ -1177,7 +1179,7 @@ pub fn og_motion_clear(world: u32, entity: f64) -> String {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         agent_of(&eng, e)?;
-        if let Some(a) = lock(&shared(world)).agents.get_mut(&e.to_bits()) {
+        if let Some(a) = lock(&shared(&eng)).agents.get_mut(&e.to_bits()) {
             a.queue.clear();
             a.speed = 0.0;
             if let Some(c) = a.current.take() {
@@ -1196,7 +1198,7 @@ pub fn og_motion_status(world: u32, entity: f64) -> String {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         agent_of(&eng, e)?;
-        let goals = shared(world);
+        let goals = shared(&eng);
         let goals = lock(&goals);
         let a = goals.agents.get(&e.to_bits()).cloned().unwrap_or_default();
         let (goal, pose, target, heading, elapsed) = match a.current {
@@ -1314,7 +1316,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
         Err(e) => return json!({ "error": e }),
     };
     present::settle(&eng);
-    let goals = lock(&shared(engine_id)).clone();
+    let goals = lock(&shared(&eng)).clone();
     let entities = eng
         .world()
         .ok()

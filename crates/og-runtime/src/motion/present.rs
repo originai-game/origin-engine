@@ -2139,7 +2139,7 @@ fn take(eng: &Engine, tick: u64, dt: f32) {
         return;
     }
     let agents = seen(eng);
-    let goals = lock(&shared(eng.id)).clone();
+    let goals = lock(&shared(eng)).clone();
     let sys = eng.state.borrow().anim.clone();
     // og.anim's pose where `fallback` may draw it: an agent looking or reacting.
     let poses = sys.map_or_else(BTreeMap::new, |sys| {

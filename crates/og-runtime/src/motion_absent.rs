@@ -17,6 +17,7 @@
 //! presentation hash taken without the module equals one taken with it
 //! for a game that never uses og.motion.
 
+use super::engine::Mount;
 use og_ecs::World;
 use serde_json::{Value, json};
 
@@ -26,9 +27,13 @@ pub(crate) const ABSENT: &str = "og.motion is not built into this engine: og-run
 pub(crate) const AGENT: &str = "og.MotionAgent";
 
 /// og.MotionAgent was named: refused.
-pub(crate) fn enable(_world: &mut World, _engine_id: u32) -> og_core::Result<()> {
+pub(crate) fn enable(_world: &mut World, _mount: Mount<'_>) -> og_core::Result<()> {
     Err(og_core::Error::new(og_core::ErrorKind::Invalid, ABSENT))
 }
+
+/// og.motion on one engine: nothing here.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState;
 
 /// The probe commands the full module registers, answering [`ABSENT`].
 pub(crate) fn register_commands(probe: &mut og_probe::Probe, _engine: u32) {

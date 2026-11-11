@@ -102,7 +102,7 @@ struct Message {
 }
 
 #[derive(Default)]
-struct Net {
+pub(crate) struct Net {
     host: String,
     /// The room a Play link named (`?room=<id>`, og_room_set_host's `join`),
     /// once the engine asked to join it.
@@ -158,12 +158,15 @@ impl Shape {
     }
 }
 
-thread_local! {
-    static NETS: RefCell<IdMap<u32, Net>> = const { RefCell::new(IdMap::new()) };
-}
+/// og.net on one engine: its room, lockstep session and messages.
+pub(crate) type ModuleState = RefCell<Net>;
 
 fn with<T>(engine: u32, f: impl FnOnce(&mut Net) -> T) -> T {
-    NETS.with(|n| f(n.borrow_mut().entry(engine).or_default()))
+    match super::engine::engine(engine) {
+        Ok(eng) => f(&mut eng.modules.net.borrow_mut()),
+        // An engine that is gone, or not made yet, has none: a fresh one.
+        Err(_) => f(&mut Net::default()),
+    }
 }
 
 /// Lockstep's messages become `send` ops; its notes go to the engine's log.
@@ -1020,10 +1023,8 @@ fn config(eng: &Engine, world: &World) -> Config {
 /// Whether lockstep (or rollback) runs on this engine now: its world is
 /// shared with the room's other peers.
 pub(crate) fn session_running(engine: u32) -> bool {
-    NETS.with(|n| {
-        n.try_borrow()
-            .is_ok_and(|n| n.get(&engine).is_some_and(|n| n.ls.running()))
-    })
+    super::engine::engine(engine)
+        .is_ok_and(|eng| eng.modules.net.try_borrow().is_ok_and(|n| n.ls.running()))
 }
 
 pub(crate) fn gate(engine: u32, world: &mut World) -> bool {
@@ -1158,7 +1159,8 @@ fn send(
 }
 
 /// Mounts the og.net system (front, after og.platform).
-pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
+pub(crate) fn mount(world: &mut World, mount: super::engine::Mount<'_>) -> Result<(), String> {
+    let engine_id = mount.id;
     let mut desc = SystemDesc::new(NET_SYSTEM);
     for w in [
         JOINED,
@@ -1337,10 +1339,6 @@ pub(crate) fn mount(world: &mut World, engine_id: u32) -> Result<(), String> {
             Ok(())
         })
         .map_err(|e| e.reason().to_string())
-}
-
-pub(crate) fn retire(engine: u32) {
-    NETS.with(|n| n.borrow_mut().remove(&engine));
 }
 
 /// `dump_desync`.

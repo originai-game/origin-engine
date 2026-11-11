@@ -11,9 +11,9 @@
 //! game retargeted). og.ai's game commands go to the probe's inbox and run
 //! at the start of the next tick, as a scripted command would.
 
+use super::engine::Mount;
 #[cfg(feature = "ai")]
 use og_ai::{AiSystem, Behaviours};
-use og_core::IdMap;
 use og_ecs::{Entity, World};
 #[cfg(feature = "nav")]
 use og_nav::{NavSystem, Plane, SharedNavs};
@@ -41,13 +41,13 @@ pub(crate) struct Modules {
     pub profile: u32,
 }
 
-thread_local! {
-    static MODULES: RefCell<IdMap<u32, Modules>> = const { RefCell::new(IdMap::new()) };
-}
+/// og.nav and og.ai on one engine.
+pub(crate) type ModuleState = RefCell<Modules>;
 
-/// Runs `f` with an engine's modules.
+/// Runs `f` with an engine's modules (none for an engine that is gone).
 pub(crate) fn with<T>(engine: u32, f: impl FnOnce(&mut Modules) -> T) -> Option<T> {
-    MODULES.with(|m| m.borrow_mut().get_mut(&engine).map(f))
+    let eng = super::engine::engine(engine).ok()?;
+    Some(f(&mut eng.modules.e6.borrow_mut()))
 }
 
 #[cfg(feature = "nav")]
@@ -115,29 +115,30 @@ pub(crate) fn occluder(physics: &PhysicsSystem) -> og_audio::Occluder {
 /// resource the world has (what a behaviour's checks may read).
 pub(crate) fn mount_front(
     world: &mut World,
-    engine: u32,
+    mount: Mount<'_>,
     profile: u32,
     physics: &PhysicsSystem,
     records: &[String],
 ) -> Result<(), String> {
-    super::platform::mount(world, engine)?;
-    super::stream::mount(world, engine)?;
-    super::net::mount(world, engine)?;
-    super::story::mount(world, engine)?;
-    MODULES.with(|m| m.borrow_mut().entry(engine).or_default().profile = profile);
-    mount_ai(world, engine, profile, physics, records)
+    super::platform::mount(world, mount)?;
+    super::stream::mount(world, mount)?;
+    super::net::mount(world, mount)?;
+    super::story::mount(world, mount)?;
+    mount.modules.e6.borrow_mut().profile = profile;
+    mount_ai(world, mount, profile, physics, records)
 }
 
 /// og.ai over og-ai.
 #[cfg(feature = "ai")]
 fn mount_ai(
     world: &mut World,
-    engine: u32,
+    mount: Mount<'_>,
     profile: u32,
     physics: &PhysicsSystem,
     records: &[String],
 ) -> Result<(), String> {
-    let behaviours = MODULES.with(|m| m.borrow_mut().entry(engine).or_default().behaviours.clone());
+    let engine = mount.id;
+    let behaviours = mount.modules.e6.borrow().behaviours.clone();
     let p = physics.clone();
     let sight: og_ai::SightRay = Arc::new(move |o, d, max, mask, ex| {
         ray(&p, o, d, max, mask, ex).map(|h| (h.distance, h.entity))
@@ -158,7 +159,7 @@ fn mount_ai(
         },
     )
     .map_err(|e| e.reason().to_string())?;
-    MODULES.with(|m| m.borrow_mut().entry(engine).or_default().pending_ai = Some(ai));
+    mount.modules.e6.borrow_mut().pending_ai = Some(ai);
     Ok(())
 }
 
@@ -167,7 +168,7 @@ fn mount_ai(
 #[cfg(not(feature = "ai"))]
 fn mount_ai(
     world: &mut World,
-    _engine: u32,
+    _mount: Mount<'_>,
     _profile: u32,
     _physics: &PhysicsSystem,
     records: &[String],
@@ -179,7 +180,7 @@ fn mount_ai(
 #[cfg(not(feature = "nav"))]
 pub(crate) fn mount_back(
     world: &mut World,
-    _engine: u32,
+    _mount: Mount<'_>,
     _profile: u32,
     _physics: &PhysicsSystem,
 ) -> Result<(), String> {
@@ -190,11 +191,11 @@ pub(crate) fn mount_back(
 #[cfg(feature = "nav")]
 pub(crate) fn mount_back(
     world: &mut World,
-    engine: u32,
+    mount: Mount<'_>,
     profile: u32,
     physics: &PhysicsSystem,
 ) -> Result<(), String> {
-    let navs = MODULES.with(|m| m.borrow_mut().entry(engine).or_default().navs.clone());
+    let navs = mount.modules.e6.borrow().navs.clone();
     let p = physics.clone();
     let avoid: og_nav::Raycaster = Arc::new(move |o, d, max, mask, ex| {
         ray(&p, o, d, max, mask, ex).map(|h| (h.distance, h.normal))
@@ -209,14 +210,15 @@ pub(crate) fn mount_back(
         },
     )
     .map_err(|e| e.reason().to_string())?;
-    MODULES.with(|m| m.borrow_mut().entry(engine).or_default().pending_nav = Some(nav));
+    mount.modules.e6.borrow_mut().pending_nav = Some(nav);
     Ok(())
 }
 
 /// The world assembled last is the one that runs: its systems become the
 /// engine's, and its probe's inbox takes og.ai's commands.
-pub(crate) fn commit(engine: u32, inbox: og_probe::Inbox) {
-    with(engine, |m| {
+pub(crate) fn commit(eng: &super::engine::Engine, inbox: og_probe::Inbox) {
+    {
+        let m = &mut *eng.modules.e6.borrow_mut();
         #[cfg(feature = "nav")]
         {
             m.nav = m.pending_nav.take().or(m.nav.take());
@@ -226,7 +228,7 @@ pub(crate) fn commit(engine: u32, inbox: og_probe::Inbox) {
             m.ai = m.pending_ai.take().or(m.ai.take());
         }
         m.inbox = Some(inbox);
-    });
+    }
 }
 
 /// After a reload: the rebuilt world's systems when it was swapped in.
@@ -262,17 +264,6 @@ pub(crate) fn take_warnings(engine: u32) -> Vec<String> {
         let _ = engine;
         Vec::new()
     }
-}
-
-/// The engine is gone.
-pub(crate) fn retire(engine: u32) {
-    MODULES.with(|m| m.borrow_mut().remove(&engine));
-    super::platform::retire(engine);
-    super::net::retire(engine);
-    super::stream::retire(engine);
-    super::terrain::retire(engine);
-    super::i18n::retire(engine);
-    super::story::retire(engine);
 }
 
 /// The dump actions (`dump_ai:<entity>[:path]`, `dump_nav:<entity>[:path]`),

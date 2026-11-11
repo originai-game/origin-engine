@@ -23,7 +23,6 @@ use og_render::{
 };
 use serde_json::{Value, json};
 use std::any::Any;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -61,12 +60,14 @@ pub(crate) struct HostedSystem {
     pub world: bool,
 }
 
-thread_local! {
-    static SHARED: RefCell<og_core::IdMap<u32, Arc<Mutex<Hosted>>>> = const { RefCell::new(og_core::IdMap::new()) };
-}
+/// og.particles on one engine: the systems its world's block saves,
+/// shared with its system and the effects that host them.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState(Arc<Mutex<Hosted>>);
 
-pub(crate) fn shared(engine: u32) -> Arc<Mutex<Hosted>> {
-    SHARED.with(|s| s.borrow_mut().entry(engine).or_default().clone())
+/// An engine's hosted particle systems.
+pub(crate) fn shared(eng: &crate::engine::Engine) -> Arc<Mutex<Hosted>> {
+    eng.modules.particles.0.clone()
 }
 
 pub(crate) fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -94,7 +95,7 @@ struct Records {
 /// Registers og.ParticleEvent's module on a world that names it
 /// (`super::lazy`): the `og.particles` system, after every system scheduled
 /// so far, and its state block.
-pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
+pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_core::Result<()> {
     if world.systems().contains(&SYSTEM) {
         return Ok(());
     }
@@ -122,7 +123,7 @@ pub(crate) fn enable(world: &mut World, engine_id: u32) -> og_core::Result<()> {
             });
         }
     }
-    let state = shared(engine_id);
+    let state = mount.modules.particles.0.clone();
     lock(&state).systems.clear();
     let sh = state.clone();
     world.add_system(

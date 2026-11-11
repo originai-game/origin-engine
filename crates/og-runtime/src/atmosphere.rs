@@ -239,29 +239,35 @@ pub(crate) fn derive(
     }
 }
 
+/// A river's path handle and its width's and speed's bits.
+type RiverKey = (u64, u32, u32);
+
+/// The water on one engine: its rivers by [`RiverKey`], the newest last.
+#[derive(Default)]
+pub(crate) struct ModuleState {
+    rivers: std::cell::RefCell<Vec<(RiverKey, Arc<og_core::river::River>)>>,
+}
+
 /// An og.Water's river (og.Water.river: its path sampled every metre or so,
 /// riverWidth and riverSpeed), the one record the tick drifts floaters with
 /// and the renderer draws: made once per path, width and speed (the same
 /// `Arc` frame after frame, so the renderer keeps its ribbon). None without
 /// a live path.
 pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_core::river::River>> {
-    type Key = (u32, u64, u32, u32);
-    thread_local! {
-        static RIVERS: std::cell::RefCell<Vec<(Key, Arc<og_core::river::River>)>> =
-            const { std::cell::RefCell::new(Vec::new()) };
-    }
+    let eng = super::engine::engine(engine).ok()?;
+    let rivers = &eng.modules.atmosphere.rivers;
     let handle = v["river"].as_f64().filter(|h| *h != 0.0)? as u64;
     let (width, speed) = (
         f(v, "riverWidth", 6.0).max(0.0),
         f(v, "riverSpeed", 1.5).max(0.0),
     );
-    let key = (engine, handle, width.to_bits(), speed.to_bits());
-    if let Some(r) = RIVERS.with(|c| {
-        c.borrow()
-            .iter()
-            .find(|(k, _)| *k == key)
-            .map(|(_, r)| r.clone())
-    }) {
+    let key = (handle, width.to_bits(), speed.to_bits());
+    if let Some(r) = rivers
+        .borrow()
+        .iter()
+        .find(|(k, _)| *k == key)
+        .map(|(_, r)| r.clone())
+    {
         return Some(r);
     }
     let path = super::timeline::path_of(engine, handle)?;
@@ -273,13 +279,11 @@ pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_core::river::Riv
         .map(|i| path.sample(i as f32 / (n - 1) as f32).position)
         .collect();
     let river = Arc::new(og_core::river::River::new(&points, width, speed)?);
-    RIVERS.with(|c| {
-        let mut c = c.borrow_mut();
-        if c.len() >= 64 {
-            c.remove(0);
-        }
-        c.push((key, river.clone()));
-    });
+    let mut c = rivers.borrow_mut();
+    if c.len() >= 64 {
+        c.remove(0);
+    }
+    c.push((key, river.clone()));
     Some(river)
 }
 

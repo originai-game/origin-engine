@@ -430,28 +430,27 @@ fn reach_of(v: &Value, held: bool) -> f32 {
     }
 }
 
-thread_local! {
-    /// Each engine's og.cells store, the one its world's block holds.
-    static STORES: std::cell::RefCell<og_core::IdMap<u32, cell_store::Shared>> =
-        const { std::cell::RefCell::new(og_core::IdMap::new()) };
-}
+/// og.cells on one engine: the store its world's block holds (none until
+/// the cell's records are registered).
+#[derive(Default)]
+pub(crate) struct ModuleState(std::cell::RefCell<Option<cell_store::Shared>>);
 
 /// The world's og.cells store (added with the cell's records).
 fn store(eng: &Engine) -> Option<cell_store::Shared> {
-    STORES.with(|s| s.borrow().get(&eng.id).cloned())
+    eng.modules.cells.0.borrow().clone()
 }
 
-/// Adds the og.cells state block to `world` (engine `engine`'s, whose
-/// cell records were just registered) with a store of its own, keeping
-/// the one it has.
-pub(crate) fn attach(engine: u32, world: &mut World) -> Result<(), String> {
+/// Adds the og.cells state block to `world` (the engine's it is mounted
+/// on, whose cell records were just registered) with a store of its own,
+/// keeping the one it has.
+pub(crate) fn attach(mount: crate::engine::Mount<'_>, world: &mut World) -> Result<(), String> {
     let shared = cell_store::Shared::default();
     match world.add_state_block(
         cell_store::BLOCK,
         Box::new(cell_store::Block(shared.clone())),
     ) {
         Ok(()) => {
-            STORES.with(|s| s.borrow_mut().insert(engine, shared));
+            *mount.modules.cells.0.borrow_mut() = Some(shared);
             Ok(())
         }
         Err(e) if e.reason().contains("already added") => Ok(()),
