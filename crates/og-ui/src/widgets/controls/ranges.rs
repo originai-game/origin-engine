@@ -427,7 +427,7 @@ impl Ui {
             hit_slop: self.tree.nodes[host].props.hit_slop,
             ..Props::default()
         };
-        self.tree.nodes[host].props = placed;
+        *self.tree.props_mut(host) = placed;
     }
 
     /// A part-node control's CSS border drawn inside the widget's own

@@ -614,7 +614,7 @@ impl Ui {
             if tone != Tone::Neutral {
                 let dot = t.space.sm;
                 let c = self.tone_dot(tone);
-                self.tree.nodes[i].shapes.push(Shape::DressedRect {
+                self.tree.shapes_mut(i).push(Shape::DressedRect {
                     part: crate::dress::PartRef::of("Toast", "indicator", None)
                         .attr("tone", tone.name()),
                     frame: Frame {
@@ -770,7 +770,7 @@ impl Ui {
                     },
                 ];
                 for frame in edges {
-                    self.tree.nodes[hole].shapes.push(Shape::DressedRect {
+                    self.tree.shapes_mut(hole).push(Shape::DressedRect {
                         part: crate::doc::schema::parts::SPOTLIGHT_EDGE.reference(None),
                         frame,
                         radius: 0.0,

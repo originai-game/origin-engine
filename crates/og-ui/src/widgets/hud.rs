@@ -358,8 +358,9 @@ impl Ui {
                 clip: Frame::FULL,
             });
         }
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.shapes = shapes;
+        *n.shapes.write(build) = shapes;
         n.probe_text = desc.label.clone();
         n.a11y.value = Some(if remaining <= 0.0 {
             "ready".into()
@@ -418,8 +419,9 @@ impl Ui {
         let half = 0.5 / s.zoom;
         let (fx0, fy0) = (s.center.x - half, s.center.y - half);
         let (fx1, fy1) = (s.center.x + half, s.center.y + half);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.content = Content::Image {
+        *n.content.write(build) = Content::Image {
             texture: desc.texture,
             uv: [
                 u0 + (u1 - u0) * fx0,
@@ -548,7 +550,7 @@ impl Ui {
             font: FontRole::Body,
             clip: Frame::FULL,
         });
-        self.tree.nodes[i].shapes = shapes;
+        *self.tree.shapes_mut(i) = shapes;
         if !desc.label.is_empty() {
             self.label(
                 "Zone",

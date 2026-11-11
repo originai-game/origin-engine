@@ -141,17 +141,17 @@ impl Ui {
             };
             match (desc.portrait, icon) {
                 (Some((tex, uv)), _) => {
-                    ui.tree.nodes[s].content = Content::Image {
+                    *ui.tree.content_mut(s) = Content::Image {
                         texture: Some(tex),
                         uv,
                         tint: Srgba::WHITE,
                         object: Default::default(),
                     };
                 }
-                (None, Some(shape)) => ui.tree.nodes[s].shapes.push(shape),
+                (None, Some(shape)) => ui.tree.shapes_mut(s).push(shape),
                 (None, None) => {
                     let initial: String = desc.speaker.chars().take(1).collect();
-                    ui.tree.nodes[s].shapes.push(Shape::Text {
+                    ui.tree.shapes_mut(s).push(Shape::Text {
                         part: crate::dress::PartRef::of("Dialogue", "initial", None),
                         frame: Frame::FULL,
                         text: initial,
@@ -213,7 +213,7 @@ impl Ui {
                 ((now / self.ticks_for(t.durations_ms.slow) as u64) % 2) as f32 * 2.0
             };
             for side in [-1.0f32, 1.0] {
-                self.tree.nodes[i].shapes.push(Shape::Bar {
+                self.tree.shapes_mut(i).push(Shape::Bar {
                     part: crate::dress::PartRef::of("Dialogue", "continue", None)
                         .attr("side", if side < 0.0 { "left" } else { "right" }),
                     frame: Frame {
@@ -270,7 +270,7 @@ impl Ui {
         );
         // One translucent ring the thumb rests in, not a plate.
         self.set_draw_dressable(touch_disc(tok("hud", 0.42), tok("lineStrong", 0.55), 2.0));
-        self.tree.nodes[i].props.customize = desc.customize;
+        self.tree.props_mut(i).customize = desc.customize;
         self.tree.nodes[i].disabled = desc.disabled;
         let key = self.tree.nodes[i].key;
         let mut out = JoystickResponse::default();
@@ -314,10 +314,11 @@ impl Ui {
             radius: d,
             color,
         };
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
         let (kx, ky) = (kx * travel, ky * travel);
         // The knob: a drop, a rim, its face in the knob's colour, a sheen.
-        n.shapes.push(disc(
+        n.shapes.write(build).push(disc(
             "shadow",
             kx,
             ky + 2.0,
@@ -325,8 +326,9 @@ impl Ui {
             p.shadow.fade(0.45),
         ));
         n.shapes
+            .write(build)
             .push(disc("rim", kx, ky, knob + 2.0, p.line_strong.fade(0.8)));
-        n.shapes.push(disc(
+        n.shapes.write(build).push(disc(
             "knob",
             kx,
             ky,
@@ -337,7 +339,7 @@ impl Ui {
                 p.knob.mix(p.hud, 0.25).fade(0.92)
             },
         ));
-        n.shapes.push(disc(
+        n.shapes.write(build).push(disc(
             "sheen",
             kx,
             ky - knob * 0.16,
@@ -351,7 +353,7 @@ impl Ui {
         if out.active && (kx != 0.0 || ky != 0.0) {
             let lean = (kx * kx + ky * ky).sqrt() / travel.max(1e-3);
             let sweep = 0.4 * std::f32::consts::PI;
-            n.shapes.push(Shape::Arc {
+            n.shapes.write(build).push(Shape::Arc {
                 part: crate::dress::PartRef::of("Joystick", "direction", None)
                     .flag_if(out.active, "active")
                     .flag_if(desc.disabled, "disabled"),
@@ -438,7 +440,7 @@ impl Ui {
         // One round pad with four directions on it (a controller's cross
         // under the thumb), not four keys.
         self.set_draw_dressable(touch_disc(tok("hud", 0.42), tok("lineStrong", 0.55), 2.0));
-        self.tree.nodes[pad].props.customize = desc.customize;
+        self.tree.props_mut(pad).customize = desc.customize;
         self.tree.nodes[pad].disabled = desc.disabled;
         let key = self.tree.nodes[pad].key;
         let mut out = DpadResponse::default();
@@ -487,10 +489,11 @@ impl Ui {
                 _ => out.right,
             };
             let ink = if held { p.on_primary } else { p.ink.fade(0.85) };
+            let build = self.tree.build();
             let n = &mut self.tree.nodes[i];
             if held {
                 // The held direction lights under its chevron.
-                n.shapes.push(Shape::DressedRect {
+                n.shapes.write(build).push(Shape::DressedRect {
                     part: crate::dress::PartRef::of("Dpad", "indicator", None)
                         .flag("pressed")
                         .attr("direction", name),
@@ -507,7 +510,7 @@ impl Ui {
             for side in [-1.0f32, 1.0] {
                 let back = *angle + side * 3.0 * FRAC_PI_4;
                 let (ox, oy) = (tip.0 + cos(back) * len * 0.5, tip.1 + sin(back) * len * 0.5);
-                n.shapes.push(Shape::Bar {
+                n.shapes.write(build).push(Shape::Bar {
                     part: crate::dress::PartRef::of("Dpad", "chevron", None)
                         .flag_if(held, "pressed")
                         .attr("direction", name)
@@ -580,7 +583,7 @@ impl Ui {
                 ..Element::default()
             },
         );
-        self.tree.nodes[i].props.customize = desc.customize.clone();
+        self.tree.props_mut(i).customize = desc.customize.clone();
         self.tree.nodes[i].disabled = desc.disabled;
         let key = self.tree.nodes[i].key;
         let mut r = if desc.disabled {
@@ -719,16 +722,17 @@ impl Ui {
         );
         self.tree.draws.insert(i, face);
         self.tree.dressable.insert(i);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
         n.widget = Widget::Button {
             pressed: r.pressed,
             press: if r.pressed { 1.0 } else { 0.0 },
         };
         n.probe_text = text.to_owned();
-        n.shapes.extend(ring.into_iter().flatten());
+        n.shapes.write(build).extend(ring.into_iter().flatten());
         match icon {
-            Some(s) => n.shapes.push(s),
-            None => n.shapes.push(Shape::Text {
+            Some(s) => n.shapes.write(build).push(s),
+            None => n.shapes.write(build).push(Shape::Text {
                 part: crate::dress::PartRef::of("ActionButton", "label", None)
                     .flag_if(desc.disabled, "disabled")
                     .flag_if(r.pressed, "pressed"),

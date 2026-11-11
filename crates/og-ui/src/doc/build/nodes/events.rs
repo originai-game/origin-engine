@@ -143,7 +143,7 @@ impl Ui {
             crate::layout::Frame::left(0.0, frac)
         };
         let radius = self.tree.nodes[at].el.radius;
-        self.tree.nodes[at].shapes.push(crate::layout::Shape::Rect {
+        self.tree.shapes_mut(at).push(crate::layout::Shape::Rect {
             frame,
             radius,
             color,

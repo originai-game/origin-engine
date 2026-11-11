@@ -182,7 +182,7 @@ impl Ui {
         // Its place in the tree, as a modal dialog's: a retained document
         // finds the element's node by its id under its parent.
         let at = self.layer_place(&crate::Id::from(id), key);
-        self.tree.nodes[at].props.position = crate::element::Position::Absolute;
+        self.tree.props_mut(at).position = crate::element::Position::Absolute;
         let found = self
             .tree
             .nodes

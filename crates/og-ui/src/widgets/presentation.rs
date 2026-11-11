@@ -65,8 +65,9 @@ impl Ui {
         let el = self.tree.el_mut(i);
         el.background = Some(bg);
         el.part = Some(part);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.content = Content::Text(c);
+        *n.content.write(build) = Content::Text(c);
         n.probe_text = text.to_owned();
         n.a11y.selected = Some(desc.selected);
         r
@@ -145,8 +146,9 @@ impl Ui {
         c.wrap = false;
         c.align = TextAlign::Center;
         self.tree.el_mut(i).background = Some(bg);
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.content = Content::Text(c);
+        *n.content.write(build) = Content::Text(c);
         n.probe_text = text.to_owned();
     }
 
@@ -278,7 +280,7 @@ impl Ui {
                 let x = -band + phase * (1.0 + band);
                 let (a, b) = (x.max(0.0), (x + band).min(1.0));
                 if b > a {
-                    self.tree.nodes[i].shapes.push(Shape::DressedRect {
+                    self.tree.shapes_mut(i).push(Shape::DressedRect {
                         part: sheen,
                         frame: Frame::left(a, b),
                         radius: 0.0,
@@ -321,7 +323,7 @@ impl Ui {
                 (s / 2.0 - dot / 2.0) * sin(ang),
             );
             let age = (head - k).rem_euclid(8) as f32;
-            self.tree.nodes[i].shapes.push(Shape::DressedRect {
+            self.tree.shapes_mut(i).push(Shape::DressedRect {
                 part: dot_part.attr(
                     "age",
                     ["0", "1", "2", "3", "4", "5", "6", "7"][age as usize],
@@ -347,7 +349,7 @@ impl Ui {
             height: Size::Fixed(size),
             ..Element::default()
         };
-        self.tree.nodes[i].shapes.clear();
+        self.tree.shapes_mut(i).clear();
         for (part, name, tint) in std::iter::once((
             crate::doc::schema::parts::ICON_IMAGE,
             name,
@@ -361,7 +363,7 @@ impl Ui {
             )
         })) {
             match self.icon_shape(part.reference(None), name, Frame::FULL, tint) {
-                Some(shape) => self.tree.nodes[i].shapes.push(shape),
+                Some(shape) => self.tree.shapes_mut(i).push(shape),
                 None => self.out.warnings.push(format!(
                     "icon '{name}' is in neither the icon atlas nor UiDesc.fallbackIcons; add it to one of them"
                 )),
@@ -399,7 +401,7 @@ impl Ui {
             aspect,
             ..Element::default()
         };
-        self.tree.nodes[i].shapes.clear();
+        self.tree.shapes_mut(i).clear();
         let token = |n: &str, a: f32| ColorRef::Token {
             name: n.to_string(),
             alpha: a,
@@ -523,9 +525,9 @@ impl Ui {
                 frame,
                 ink,
             ) {
-                Some(shape) => self.tree.nodes[i].shapes.push(shape),
+                Some(shape) => self.tree.shapes_mut(i).push(shape),
                 // No icon set: a disc, the shape of a subject.
-                None => self.tree.nodes[i].shapes.push(Shape::DressedRect {
+                None => self.tree.shapes_mut(i).push(Shape::DressedRect {
                     part: crate::dress::PartRef::of("ArtSlot", "placeholder", None),
                     frame,
                     radius: 9999.0,
@@ -534,7 +536,7 @@ impl Ui {
             }
             if named {
                 let step = self.type_step(crate::tokens::TypeRole::Caption);
-                self.tree.nodes[i].shapes.push(Shape::Text {
+                self.tree.shapes_mut(i).push(Shape::Text {
                     part: crate::dress::PartRef::of("ArtSlot", "label", None),
                     frame: Frame {
                         fy: 0.72,

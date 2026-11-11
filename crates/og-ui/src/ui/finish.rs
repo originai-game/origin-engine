@@ -1571,7 +1571,7 @@ impl crate::ui::Tree {
         let n = &self.nodes[i];
         let wanted = (n.el.block
             && n.layout_mode() == crate::LayoutMode::Flex
-            && matches!(n.content, Content::None)
+            && matches!(*n.content, Content::None)
             && flow.iter().any(|&c| self.nodes[c].el.inline))
         .then_some(n.el.direction);
         let n = &mut self.nodes[i];
@@ -1627,14 +1627,20 @@ impl crate::ui::Tree {
 }
 
 impl crate::ui::Layout {
+    /// Prepares a written node's text for layout, as the build ends: a
+    /// display text under the art's least size set in the body font,
+    /// uppercase steps applied, a pixel font's sizes on its grid. A
+    /// normalisation of the content the build wrote, so it writes it with
+    /// the build's proof; layout proper never does.
     pub(crate) fn prepare_layout_node(
         &mut self,
         i: usize,
         env: &crate::ui::Env,
         tree: &mut crate::ui::Tree,
     ) {
+        let build = tree.build();
         let node = &mut tree.nodes[i];
-        if let Content::Text(text) = &mut node.content
+        if let Content::Text(text) = node.content.write(build)
             && env.theme.art.display_min > 0.0
             && text.font == crate::FontRole::Display
             && text.step.size < env.theme.art.display_min
@@ -1642,7 +1648,7 @@ impl crate::ui::Layout {
             text.font = crate::FontRole::Body;
         }
         if !matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
-            match &mut node.content {
+            match node.content.write(build) {
                 Content::Text(text) if text.step.uppercase => {
                     text.text = og_i18n::text::uppercase(&text.text, &env.locale);
                 }
@@ -1656,7 +1662,7 @@ impl crate::ui::Layout {
                 _ => {}
             }
         }
-        crate::layout::snap_pixel_text(&mut tree.nodes[i..i + 1], &env.fonts);
+        crate::layout::snap_pixel_text(&mut tree.nodes[i..i + 1], &env.fonts, build);
     }
 
     /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each

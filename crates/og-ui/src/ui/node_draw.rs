@@ -215,7 +215,7 @@ impl Ui {
         if matches!(n.widget, Widget::TextArea { .. }) {
             self.text_area_commands(i, rect, clip, cmds);
         }
-        match &n.content {
+        match &*n.content {
             Content::Text(_) if matches!(n.widget, Widget::TextArea { .. }) => {}
             // A framed text control's frame draws its text (`Ui::field_frame`).
             Content::Text(_) if self.framed_text(i) => {}

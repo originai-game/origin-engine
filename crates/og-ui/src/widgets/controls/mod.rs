@@ -613,7 +613,7 @@ impl Ui {
                 .as_mut()
                 .unwrap()
                 .intrinsic_props = props;
-            self.tree.nodes[node].props.hit_slop = slop;
+            self.tree.props_mut(node).hit_slop = slop;
         } else {
             self.set_props(props);
         }

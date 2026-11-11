@@ -491,7 +491,7 @@ impl Ui {
                 if !name.is_empty() {
                     names.insert(node.key, name.to_lowercase());
                 }
-                if let crate::layout::Content::Rich(rich) = &node.content {
+                if let crate::layout::Content::Rich(rich) = &*node.content {
                     for link in &node.layout.links {
                         let text: String = rich
                             .spans

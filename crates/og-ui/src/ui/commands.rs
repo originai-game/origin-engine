@@ -904,7 +904,7 @@ impl Ui {
             let up = node.parent;
             let own = !volatile.contains(&i)
                 && !self.tree.draws.contains_key(&i)
-                && !matches!(node.content, Content::Rich(_))
+                && !matches!(*node.content, Content::Rich(_))
                 && if written(i) {
                     // A node written again: as it was drawn last frame.
                     self.tree.replaced.get(&i).is_some_and(|b| {
@@ -926,7 +926,7 @@ impl Ui {
                 (0.0, 0.0)
             } else if !written(i)
                 && !self.tree.draws.contains_key(&i)
-                && !matches!(node.content, Content::Rich(_))
+                && !matches!(*node.content, Content::Rich(_))
                 && let Some(Some((k, old))) = self.paint.cache.sigs.get(i)
                 && *k == node.key
                 && let Some(d) = crate::layout::DrawSig::of(node).moved_from(old)
@@ -1133,7 +1133,7 @@ impl crate::ui::Paint {
                     let n = &tree.nodes[j];
                     n.children.is_empty()
                         && !matches!(n.widget, Widget::Spacer)
-                        && (!matches!(n.content, Content::None)
+                        && (!matches!(*n.content, Content::None)
                             || n.layout.used.background.is_some()
                             || !matches!(n.widget, Widget::None)
                             || n.drawn_shapes().next().is_some())

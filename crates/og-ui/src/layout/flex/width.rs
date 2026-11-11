@@ -114,14 +114,14 @@ fn fits(t: UsedText<'_>, fonts: &dyn Metrics, width: f32) -> bool {
 
 pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     if nodes[i].layout_mode() == LayoutMode::Grid
-        && matches!(nodes[i].content, Content::None)
+        && matches!(*nodes[i].content, Content::None)
         && !nodes[i].layout.cv_skip
     {
         place_grid(nodes, i);
     }
     let n = &nodes[i];
     let fonts = measure.fonts;
-    let (pref, min) = match &n.content {
+    let (pref, min) = match &*n.content {
         // Size containment: sized as if empty, or as its
         // `contain-intrinsic-width` says (CSS Containment 2 §3.1).
         _ if let Some(w) = n.contained_size(0) => (w, w),
@@ -280,7 +280,7 @@ pub(crate) fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch:
 /// box displayed `inline-*`, a text that is not block-level, or an image.
 pub(in crate::layout) fn inline_level(n: &Node) -> bool {
     n.layout.used.inline
-        || match n.content {
+        || match *n.content {
             Content::Text(_) | Content::Rich(_) => !n.layout.used.block,
             Content::Image { .. } => true,
             Content::None => false,
@@ -313,7 +313,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
     }
     let fonts = measure.fonts;
     // An auto-fit label: the largest of its steps its text fits at this width.
-    if let Content::Text(t) = &nodes[i].content
+    if let Content::Text(t) = &*nodes[i].content
         && !t.fit.is_empty()
     {
         let width = inner + 0.5;
@@ -347,7 +347,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
         nodes[i].layout.wrap_lines.clear();
         return;
     }
-    if let Content::Rich(rc) = &nodes[i].content {
+    if let Content::Rich(rc) = &*nodes[i].content {
         let v = nodes[i].rich_vertical();
         let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(inner + 0.5), v);
         nodes[i].layout.rich_lines = lines;

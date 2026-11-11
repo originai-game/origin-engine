@@ -43,7 +43,7 @@ pub const RIGHT: u8 = 2;
 pub(crate) fn container(n: &Node) -> bool {
     n.layout.used.block
         && n.layout_mode() == LayoutMode::Flex
-        && matches!(n.content, Content::None)
+        && matches!(*n.content, Content::None)
         && n.layout.used.multicol.is_none()
 }
 
@@ -617,7 +617,7 @@ fn place(
 /// A text whose lines floats shorten (an auto-fit, cut or path text keeps
 /// its lines).
 fn wraps(n: &Node) -> bool {
-    matches!(&n.content, Content::Text(t) if t.fit.is_empty() && !t.ellipsis && t.max_lines == 0)
+    matches!(&*n.content, Content::Text(t) if t.fit.is_empty() && !t.ellipsis && t.max_lines == 0)
         && n.props.text_path.is_none()
         && n.widget == Widget::None
 }
@@ -722,7 +722,7 @@ fn text(
 
 /// A rich text whose lines floats shorten.
 fn rich_wraps(n: &Node) -> bool {
-    matches!(&n.content, Content::Rich(rc) if rc.wrap)
+    matches!(&*n.content, Content::Rich(rc) if rc.wrap)
         && n.props.text_path.is_none()
         && n.widget == Widget::None
 }
@@ -742,7 +742,7 @@ fn rich(
     was: bool,
 ) {
     let n = &nodes[k];
-    let Content::Rich(rc) = &n.content else {
+    let Content::Rich(rc) = &*n.content else {
         return;
     };
     let [ml, mr] = n.layout.margin_x;

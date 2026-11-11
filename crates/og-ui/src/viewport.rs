@@ -102,7 +102,7 @@ impl Ui {
             },
         );
         if let Some(t) = desc.texture {
-            self.tree.nodes[i].content = Content::Image {
+            *self.tree.content_mut(i) = Content::Image {
                 texture: Some(t),
                 uv: [0.0, 0.0, 1.0, 1.0],
                 tint: Srgba::WHITE,

@@ -34,8 +34,9 @@ impl Ui {
         let fit = desc.fit_min.map_or_else(Vec::new, |min| {
             crate::style_file::fit_steps(&t.type_ramp, step, min)
         });
+        let build = self.tree.build();
         let n = &mut self.tree.nodes[i];
-        n.content = Content::Text(TextContent {
+        *n.content.write(build) = Content::Text(TextContent {
             text: text.to_owned(),
             step,
             color: desc.color.unwrap_or(if desc.on_scene {
@@ -265,7 +266,7 @@ impl Ui {
         let el = n.el.write(build);
         el.part = Some(part);
         el.frame = None;
-        n.content = if text.is_empty() {
+        *n.content.write(build) = if text.is_empty() {
             Content::None
         } else {
             Content::Text(content)
@@ -275,7 +276,7 @@ impl Ui {
             press,
         };
         n.probe_text = text.to_owned();
-        let content = std::mem::replace(&mut n.content, Content::None);
+        let content = std::mem::replace(n.content.write(build), Content::None);
         let element = Element {
             width: Size::grow(),
             height: Size::grow(),
@@ -307,7 +308,7 @@ impl Ui {
             aspect: desc.aspect.max(0.0),
             ..Element::default()
         };
-        self.tree.nodes[i].content = Content::Image {
+        *self.tree.content_mut(i) = Content::Image {
             texture: desc.texture,
             uv: desc.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]),
             tint: desc.tint.unwrap_or(Srgba::WHITE),
@@ -389,7 +390,7 @@ impl Ui {
             Content::None,
         );
         self.tree.nodes[i].content_slot = slot;
-        self.tree.nodes[slot].shapes = shapes;
+        *self.tree.shapes_mut(slot) = shapes;
         slot
     }
 
