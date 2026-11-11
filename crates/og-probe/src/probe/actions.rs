@@ -185,10 +185,7 @@ impl state::Inject {
                     }
                     joined.clone()
                 };
-                let elements = match &host.ui {
-                    Some(ui) => ui.elements(world),
-                    None => Vec::new(),
-                };
+                let elements = host.elements(world);
                 let found = if step.action == "touch_move_to" {
                     find_by_id(&elements, &target)
                 } else {
@@ -319,10 +316,7 @@ impl state::Inject {
                 let (x, y) = match numbers(&target).ok().as_deref() {
                     Some(&[x, y]) => (x, y),
                     _ => {
-                        let elements = match &host.ui {
-                            Some(ui) => ui.elements(world),
-                            None => Vec::new(),
-                        };
+                        let elements = host.elements(world);
                         let element = find_by_id(&elements, &target).ok_or_else(|| {
                             format!("touch target not found: '{target}' (x,y or a UI id)")
                         })?;

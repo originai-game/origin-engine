@@ -626,15 +626,7 @@ impl Probe {
     /// rendered, a WAV in base64 with its rate, frames, peak and RMS; `None`
     /// without audio or before anything was rendered.
     pub fn listen(&mut self, world: &World, seconds: f32) -> Option<Value> {
-        let h = (self.host.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
-        Some(json!({
-            "tick": world.time().tick,
-            "rate": h.rate,
-            "frames": h.frames,
-            "peak": h.peak,
-            "rms": h.rms,
-            "wav": base64::encode(&h.wav),
-        }))
+        self.host.listen(world, seconds)
     }
 
     /// Gives `memory` the host's figures ([`MemoryFn`]).
@@ -651,7 +643,7 @@ impl Probe {
     /// `memory`: what the engine holds (`ProbeMemory`); `None` from a host
     /// that gave no figures.
     pub fn memory(&self, world: &World) -> Option<Value> {
-        self.host.memory.as_ref().map(|f| f(world))
+        self.host.memory(world)
     }
 
     /// The last tick's timings for `state().timings`, measured by the host.
@@ -978,6 +970,26 @@ impl Probe {
         let bytes = world.get_bytes(e, tid).map_err(|e| e.reason().to_owned())?;
         let range = Layout::of(schema).range(fi);
         Ok(og_core::bytemuck::pod_read_unaligned::<[f32; 3]>(&bytes[range]).into())
+    }
+}
+
+impl state::Host {
+    /// [`Probe::listen`].
+    pub(super) fn listen(&mut self, world: &World, seconds: f32) -> Option<Value> {
+        let h = (self.listen.as_ref()?)(seconds.clamp(0.0, 2.0))?;
+        Some(json!({
+            "tick": world.time().tick,
+            "rate": h.rate,
+            "frames": h.frames,
+            "peak": h.peak,
+            "rms": h.rms,
+            "wav": base64::encode(&h.wav),
+        }))
+    }
+
+    /// [`Probe::memory`].
+    pub(super) fn memory(&self, world: &World) -> Option<Value> {
+        self.memory.as_ref().map(|f| f(world))
     }
 }
 

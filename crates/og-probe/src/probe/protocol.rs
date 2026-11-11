@@ -257,17 +257,9 @@ impl Probe {
             "tick": world.time().tick,
             "paused": self.clock.paused,
             "seed": seed,
-            "timings": {
-                "step": self.stats.step_ms,
-                "render": self.stats.render_ms,
-                "frameMs": self.stats.step_ms + self.stats.render_ms,
-                "systems": self.stats.systems_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
-                "triangles": self.stats.triangles,
-                "passes": self.stats.passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
-                "gpuPasses": self.stats.gpu_passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
-            },
+            "timings": self.stats.timings(),
             "entities": entities,
-            "facts": self.host.facts.as_ref().map_or(Value::Null, |f| f(world)),
+            "facts": self.host.facts(world),
         })
     }
 
@@ -562,7 +554,7 @@ impl state::Host {
         }
     }
 
-    fn save(&mut self, world: &World) -> Saved {
+    pub(super) fn save(&mut self, world: &World) -> Saved {
         let bytes = world.snapshot();
         Saved {
             hash: world.world_hash(),
@@ -572,7 +564,7 @@ impl state::Host {
         }
     }
 
-    fn load(&mut self, world: &mut World, saved: &Saved) -> og_core::Result<()> {
+    pub(super) fn load(&mut self, world: &mut World, saved: &Saved) -> og_core::Result<()> {
         if let Some(c) = self.capture.as_ref() {
             c.validate_restore(saved.render)?;
         }
@@ -594,7 +586,7 @@ impl Probe {
     /// again": each call with the same description on the same world goes
     /// on from the frames it has, and the last answers them all.
     pub fn sweep(&mut self, world: &mut World, desc: &SweepDesc) -> og_core::Result<Option<Value>> {
-        if !self.host.capture.as_ref().is_some_and(|c| c.has_renderer()) {
+        if !self.host.has_renderer() {
             return Ok(None);
         }
         let Some(e) = self.names.resolve(world, &desc.id) else {
@@ -667,16 +659,7 @@ impl Probe {
         saved: &Saved,
     ) -> og_core::Result<Option<Value>> {
         let from = (saved.tick, saved.hash);
-        let mut job = match self.saves.sweeping.take() {
-            Some(job) if job.desc == *desc && job.from == from => job,
-            _ => SweepJob {
-                desc: desc.clone(),
-                from,
-                frames: Vec::with_capacity(desc.values.len()),
-                waiting: None,
-                polls: 0,
-            },
-        };
+        let mut job = self.saves.sweep_job(desc, from);
         loop {
             let Some(value) = desc.values.get(job.frames.len()) else {
                 return Ok(Some(json!({ "frames": job.frames })));
@@ -866,27 +849,7 @@ impl Probe {
 
     /// `snapshot`: the whole world, kept in this process.
     pub fn snapshot(&mut self, world: &World) -> Value {
-        let saved = self.host.save(world);
-        let id = format!("s{}", self.saves.next_snapshot);
-        self.saves.next_snapshot += 1;
-        let presentation = self
-            .host
-            .capture
-            .as_ref()
-            .and_then(|c| c.presentation_hash())
-            .map_or_else(String::new, |h| format!("{h:016x}"));
-        let info = json!({
-            "id": id,
-            "tick": saved.tick,
-            "hash": format!("{:016x}", saved.hash),
-            "bytes": saved.world.len(),
-            "presentation": presentation,
-        });
-        self.saves.snapshots.push_back((id, saved));
-        while self.saves.snapshots.len() > MAX_SNAPSHOTS {
-            self.saves.snapshots.pop_front();
-        }
-        info
+        self.saves.snapshot(&mut self.host, world)
     }
 
     /// `restore`: a snapshot this process took; `false` for an unknown id
@@ -894,13 +857,7 @@ impl Probe {
     /// A `quit` that ran is undone with it: the restored world is from
     /// before it, and its ticks play again (`og run --forks`).
     pub fn restore(&mut self, world: &mut World, id: &str) -> bool {
-        let Some(saved) = self
-            .saves
-            .snapshots
-            .iter()
-            .find(|(sid, _)| sid == id)
-            .map(|(_, s)| s.clone())
-        else {
+        let Some(saved) = self.saves.find(id) else {
             return false;
         };
         let ok = self.host.load(world, &saved).is_ok();

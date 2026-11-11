@@ -392,3 +392,88 @@ impl Inject {
         }
     }
 }
+
+impl Host {
+    /// Whether a renderer draws this run's frames.
+    pub(crate) fn has_renderer(&self) -> bool {
+        self.capture.as_ref().is_some_and(|c| c.has_renderer())
+    }
+
+    /// The game's facts (`state().facts`); null without the hook.
+    pub(crate) fn facts(&self, world: &World) -> Value {
+        self.facts.as_ref().map_or(Value::Null, |f| f(world))
+    }
+
+    /// The UI's elements; none without a UI.
+    pub(crate) fn elements(&self, world: &World) -> Vec<crate::hooks::UiElement> {
+        match &self.ui {
+            Some(ui) => ui.elements(world),
+            None => Vec::new(),
+        }
+    }
+}
+
+impl Stats {
+    /// `state().timings` (IDL `ProbeTimings`).
+    pub(super) fn timings(&self) -> Value {
+        json!({
+            "step": self.step_ms,
+            "render": self.render_ms,
+            "frameMs": self.step_ms + self.render_ms,
+            "systems": self.systems_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+            "triangles": self.triangles,
+            "passes": self.passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+            "gpuPasses": self.gpu_passes_ms.iter().map(|(name, ms)| json!({"name": name, "ms": ms})).collect::<Vec<_>>(),
+        })
+    }
+}
+
+impl Saves {
+    /// [`Probe::snapshot`]: the world, with the renderer's state beside it,
+    /// kept under the next id.
+    pub(super) fn snapshot(&mut self, host: &mut Host, world: &World) -> Value {
+        let saved = host.save(world);
+        let id = format!("s{}", self.next_snapshot);
+        self.next_snapshot += 1;
+        let presentation = host
+            .capture
+            .as_ref()
+            .and_then(|c| c.presentation_hash())
+            .map_or_else(String::new, |h| format!("{h:016x}"));
+        let info = json!({
+            "id": id,
+            "tick": saved.tick,
+            "hash": format!("{:016x}", saved.hash),
+            "bytes": saved.world.len(),
+            "presentation": presentation,
+        });
+        self.snapshots.push_back((id, saved));
+        while self.snapshots.len() > MAX_SNAPSHOTS {
+            self.snapshots.pop_front();
+        }
+        info
+    }
+
+    /// The snapshot kept under `id`.
+    pub(super) fn find(&self, id: &str) -> Option<Saved> {
+        self.snapshots
+            .iter()
+            .find(|(sid, _)| sid == id)
+            .map(|(_, s)| s.clone())
+    }
+
+    /// The sweep in flight when it is `desc` from the world at `from` (its
+    /// tick and hash), which goes on from the frames it has; else a new one.
+    pub(super) fn sweep_job(&mut self, desc: &SweepDesc, from: (u64, u64)) -> SweepJob {
+        match self.sweeping.take() {
+            Some(job) if job.desc == *desc && job.from == from => job,
+            _ => SweepJob {
+                desc: desc.clone(),
+                from,
+                frames: Vec::with_capacity(desc.values.len()),
+                waiting: None,
+                polls: 0,
+            },
+        }
+    }
+}
