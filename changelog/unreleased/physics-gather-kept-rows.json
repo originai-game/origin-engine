@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "physics: reading the colliders and bodies each tick",
+      "summary": "The step (and the recording og.physics queries read inside a tick) keeps the og.Collider and og.RigidBody rows it decoded, per archetype, and decodes an archetype's again only after something wrote that component there, instead of decoding every row every tick. The scene it steps is put together from them in the same order, so no tick changes. A level of 20,000 static colliders under 64 bodies, native release, one thread: the read 2.5 ms to 0.3 ms a tick, the physics system 4.8 ms to 2.6 ms; 5,000 bodies in a pen: 1.4 ms to 0.5 ms."
+    }
+  ]
+}

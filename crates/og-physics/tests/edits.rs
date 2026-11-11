@@ -7,10 +7,13 @@
 //! rapier body keeps its own copy; a static collider moved by game code
 //! stays where it was; a mesh re-registered with new geometry keeps the old
 //! shape, or one re-registered unchanged disturbs the simulation; a restore
-//! into a world that has run on keeps the newer rapier state.
+//! into a world that has run on keeps the newer rapier state; the step
+//! reads a collider or a body as it decoded it a tick ago, after game code
+//! wrote it, another took its row, or a restore put an older one there.
 
 use crate::support;
 
+use og_core::Reflect;
 use og_core::glam::Vec3;
 use og_ecs::{Entity, World};
 use og_physics::*;
@@ -127,4 +130,88 @@ fn a_restore_into_a_world_that_ran_on_continues_from_the_snapshot() {
         end,
         "the rewound world replays the same 90 ticks"
     );
+}
+
+/// Beside some of the ledges below, so they are in a second archetype.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+struct Prop {}
+
+/// The step keeps the colliders and bodies it decoded for as long as
+/// nothing writes them. After each kind of write, the world that kept them
+/// runs on as a world that never had any does: one built now and restored
+/// from its snapshot. Every write here leaves each archetype's row count
+/// where it was, so only the write itself can tell the step.
+#[test]
+fn what_the_step_kept_of_colliders_and_bodies_does_not_outlive_a_write() {
+    let build = || {
+        let (mut w, p) = world(Physics::default(), 18);
+        w.register::<Prop>().unwrap();
+        (w, p)
+    };
+    let (mut w, _p) = build();
+    floor(&mut w);
+    let ledge = Collider::cuboid(Vec3::new(2.0, 0.5, 2.0));
+    let x = |i: usize| i as f32 * 3.0 - 10.5;
+    let mut ledges = Vec::new();
+    let mut boxes = Vec::new();
+    for i in 0..8 {
+        let t = at(x(i), 2.0, 0.0);
+        ledges.push(if i % 2 == 0 {
+            spawn_static(&mut w, t, ledge)
+        } else {
+            w.spawn((t, ledge, Prop {})).unwrap()
+        });
+        boxes.push(spawn_body(
+            &mut w,
+            at(x(i), 2.6, 0.0),
+            RigidBody::dynamic(),
+            Collider::cuboid(Vec3::splat(0.6)),
+        ));
+    }
+    run(&mut w, 30);
+    let settled = w.snapshot();
+    let y = |w: &World, e: Entity| transform(w, e).position.y;
+    assert!((y(&w, boxes[2]) - 2.55).abs() < 0.02, "on its ledge");
+
+    let check = |w: &mut World, what: &str| {
+        let (mut fresh, _p) = build();
+        fresh.restore(&w.snapshot()).unwrap();
+        run(w, 20);
+        run(&mut fresh, 20);
+        assert!(w.snapshot() == fresh.snapshot(), "after {what}");
+    };
+    check(&mut w, "nothing");
+
+    // A static collider set in place: the box on it falls through it.
+    w.insert(
+        ledges[2],
+        Collider {
+            sensor: true,
+            ..ledge
+        },
+    )
+    .unwrap();
+    check(&mut w, "a ledge was made a sensor");
+    assert!(y(&w, boxes[2]) < 2.4, "fell through the sensor");
+
+    // A static despawned (the last row takes its place) and another
+    // spawned: the same number of rows, none where it was.
+    w.despawn(ledges[0]).unwrap();
+    spawn_static(&mut w, at(x(0), 4.0, 0.0), Collider::sphere(0.5));
+    check(&mut w, "a ledge was replaced");
+
+    // One static into the second archetype, one out of it.
+    w.insert(ledges[4], Prop {}).unwrap();
+    w.remove::<Prop>(ledges[1]).unwrap();
+    check(&mut w, "two ledges changed archetype");
+
+    // A body set in place, and its collider.
+    w.insert(boxes[6], RigidBody::fixed()).unwrap();
+    w.insert(boxes[5], Collider::sphere(0.3)).unwrap();
+    check(&mut w, "a body and a body's collider were set");
+
+    // A restore: every row count as now, the rows of 30 ticks in.
+    w.restore(&settled).unwrap();
+    check(&mut w, "a restore");
+    assert!((y(&w, boxes[2]) - 2.55).abs() < 0.02, "on its ledge again");
 }

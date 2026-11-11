@@ -17,6 +17,7 @@ use og_core::{Layout, Reflect, Result};
 use og_ecs::{
     ArchetypeView, Entity, FieldRef, QueryDesc, QueryIter, SchemaId, SystemContext, World,
 };
+use std::sync::{Mutex, MutexGuard};
 
 /// The engine's transform component, which physics reads and writes by name
 /// (it registers the schema, never a Rust type, so the engine's own Rust
@@ -242,8 +243,10 @@ pub(crate) struct Ids {
     t_position: FieldRef,
     t_quaternion: FieldRef,
     t_scale: FieldRef,
+    body: SchemaId,
     body_fields: Vec<FieldRef>,
     body_layout: Layout,
+    collider: SchemaId,
     collider_fields: Vec<FieldRef>,
     collider_layout: Layout,
     v_linear: FieldRef,
@@ -262,6 +265,8 @@ pub(crate) struct Ids {
     hook_layout: Layout,
     wheel_layout: Layout,
     soft_layout: Layout,
+    /// What the gathers of the tick keep from one to the next.
+    kept: Mutex<Kept>,
 }
 
 fn fields_of<T: Reflect>(world: &World) -> Result<(Vec<FieldRef>, Layout)> {
@@ -278,8 +283,8 @@ impl Ids {
     /// Registers every physics type, in a fixed order.
     pub fn register(world: &mut World) -> Result<Ids> {
         let transform: SchemaId = world.register_schema(Transform::schema())?;
-        world.register::<RigidBody>()?;
-        world.register::<Collider>()?;
+        let body = world.register::<RigidBody>()?;
+        let collider = world.register::<Collider>()?;
         world.register::<Velocity>()?;
         world.register::<crate::Physics>()?;
         world.register::<crate::Contact>()?;
@@ -312,8 +317,10 @@ impl Ids {
             t_position: world.field_by_id(transform, "position")?,
             t_quaternion: world.field_by_id(transform, "quaternion")?,
             t_scale: world.field_by_id(transform, "scale")?,
+            body,
             body_fields,
             body_layout,
+            collider,
             collider_fields,
             collider_layout,
             v_linear: world.field::<Velocity>("linear")?,
@@ -332,7 +339,31 @@ impl Ids {
             hook_layout: Layout::of(&ContactHook::schema()),
             wheel_layout: Layout::of(&VehicleWheel::schema()),
             soft_layout: Layout::of(&SoftBody::schema()),
+            kept: Mutex::default(),
         })
+    }
+
+    /// The og.Collider rows of `a`, archetype `at` of its query ([`Kept::rows`]).
+    fn colliders<'k>(
+        &self,
+        kept: &'k mut Vec<KeptRows<Collider>>,
+        at: usize,
+        a: &ArchetypeView<'_>,
+    ) -> Result<&'k [Collider]> {
+        Kept::rows(
+            kept,
+            at,
+            a,
+            self.collider,
+            &self.collider_fields,
+            &self.collider_layout,
+        )
+    }
+
+    /// What a gather inside a system reuses and renews ([`Kept`]).
+    pub fn kept(&self) -> MutexGuard<'_, Kept> {
+        // A gather that panicked left its slot unstamped (`Kept::rows`).
+        self.kept.lock().unwrap_or_else(|e| e.into_inner())
     }
 }
 
@@ -487,6 +518,69 @@ fn read_rows<T: Reflect + Send>(
     Ok(out)
 }
 
+/// The rows of one component in one archetype as a gather decoded them,
+/// with the write stamp of their columns then ([`ArchetypeView::written`]).
+struct KeptRows<T> {
+    written: Option<u64>,
+    rows: Vec<T>,
+}
+
+impl<T> Default for KeptRows<T> {
+    fn default() -> Self {
+        KeptRows {
+            written: None,
+            rows: Vec::new(),
+        }
+    }
+}
+
+/// The colliders and bodies a gather decoded, by query and by archetype in
+/// the query's order, for the next gather to reuse where nothing wrote the
+/// component's columns since: most colliders of a level never change, and
+/// decoding them was most of the gather. Only what a row decodes to is
+/// kept; the scene is put together from it every time, in the same order,
+/// so a scene made with rows kept is the scene made without. Not world
+/// state: a restore stamps every column again, so nothing kept outlives it.
+///
+/// For gathers inside a system only (a write through a view taken outside
+/// one is not stamped when it lands, see [`ArchetypeView::written`]); the
+/// gather outside the tick starts from an empty one.
+#[derive(Default)]
+pub(crate) struct Kept {
+    bodies: Vec<KeptRows<RigidBody>>,
+    body_colliders: Vec<KeptRows<Collider>>,
+    static_colliders: Vec<KeptRows<Collider>>,
+    /// Q_CHARACTERS' archetypes, then Q_PLATFORMERS'.
+    controller_colliders: Vec<KeptRows<Collider>>,
+}
+
+impl Kept {
+    /// Every row of component `id` (`fields`, `layout`) in `a`, archetype
+    /// `at` of its query: the rows kept when the columns have the stamp
+    /// they had when those were decoded, decoded and kept otherwise.
+    fn rows<'k, T: Reflect + Send>(
+        kept: &'k mut Vec<KeptRows<T>>,
+        at: usize,
+        a: &ArchetypeView<'_>,
+        id: SchemaId,
+        fields: &[FieldRef],
+        layout: &Layout,
+    ) -> Result<&'k [T]> {
+        if kept.len() <= at {
+            kept.resize_with(at + 1, KeptRows::default);
+        }
+        let slot = &mut kept[at];
+        let written = a.written(id);
+        if written.is_none() || slot.written != written || slot.rows.len() != a.len() {
+            // Unstamped first: a decode that fails keeps nothing.
+            slot.written = None;
+            slot.rows = read_rows(a, fields, layout)?;
+            slot.written = written;
+        }
+        Ok(&slot.rows)
+    }
+}
+
 /// A sparse map by entity index, valid for one tick (live entities have
 /// distinct indices).
 struct ByEntity<T>(Vec<Option<T>>);
@@ -594,18 +688,20 @@ fn ancestor_body(
 
 /// Reads the scene through the system's queries (`q(i)` is query `i` of
 /// [`QUERIES`]); `get` reads the transforms of the parents soft bodies
-/// hang from.
+/// hang from. `kept` is what the last gather decoded, reused where the
+/// columns were not written since and renewed where they were.
 pub(crate) fn gather<'w>(
     q: &dyn Fn(usize) -> Result<QueryIter<'w>>,
     get: GetBytes<'_>,
     lazy: LazyIds,
     ids: &Ids,
+    kept: &mut Kept,
 ) -> Result<Scene> {
     let mut colliders = ByEntity::new();
-    for a in q(Q_BODY_COLLIDERS)? {
-        let rows: Vec<Collider> = read_rows(&a, &ids.collider_fields, &ids.collider_layout)?;
+    for (at, a) in q(Q_BODY_COLLIDERS)?.enumerate() {
+        let rows = ids.colliders(&mut kept.body_colliders, at, &a)?;
         for (e, c) in a.entities().iter().zip(rows) {
-            colliders.insert(*e, c);
+            colliders.insert(*e, *c);
         }
     }
     let mut velocities = ByEntity::new();
@@ -636,13 +732,20 @@ pub(crate) fn gather<'w>(
         }
     }
     let mut scene = Scene::default();
-    for a in q(Q_BODIES)? {
+    for (at, a) in q(Q_BODIES)?.enumerate() {
         scene.bodies.reserve(a.len());
         let position = a.read::<Vec3>(ids.t_position)?;
         let quaternion = a.read::<Quat>(ids.t_quaternion)?;
         let scale = a.read::<Vec3>(ids.t_scale)?;
-        let bodies: Vec<RigidBody> = read_rows(&a, &ids.body_fields, &ids.body_layout)?;
-        for (row, (e, body)) in a.entities().iter().zip(bodies).enumerate() {
+        let bodies = Kept::rows(
+            &mut kept.bodies,
+            at,
+            &a,
+            ids.body,
+            &ids.body_fields,
+            &ids.body_layout,
+        )?;
+        for (row, (e, body)) in a.entities().iter().zip(bodies.iter().copied()).enumerate() {
             let control = controls.get(*e);
             scene.bodies.push(Body {
                 entity: *e,
@@ -668,13 +771,14 @@ pub(crate) fn gather<'w>(
             });
         }
     }
+    let mut controllers = 0;
     for (index, character) in [(Q_CHARACTERS, true), (Q_PLATFORMERS, false)] {
         for a in q(index)? {
             let position = a.read::<Vec3>(ids.t_position)?;
             let quaternion = a.read::<Quat>(ids.t_quaternion)?;
             let scale = a.read::<Vec3>(ids.t_scale)?;
-            let colliders: Vec<Collider> =
-                read_rows(&a, &ids.collider_fields, &ids.collider_layout)?;
+            let colliders = ids.colliders(&mut kept.controller_colliders, controllers, &a)?;
+            controllers += 1;
             let control: Vec<Control> = if character {
                 ids.character
                     .read::<CharacterController>(&a)?
@@ -727,12 +831,12 @@ pub(crate) fn gather<'w>(
         }
     }
     let mut joined = false;
-    for a in q(Q_STATIC_COLLIDERS)? {
+    for (at, a) in q(Q_STATIC_COLLIDERS)?.enumerate() {
         let position = a.read::<Vec3>(ids.t_position)?;
         let quaternion = a.read::<Quat>(ids.t_quaternion)?;
         let scale = a.read::<Vec3>(ids.t_scale)?;
-        let rows: Vec<Collider> = read_rows(&a, &ids.collider_fields, &ids.collider_layout)?;
-        for (row, (e, collider)) in a.entities().iter().zip(rows).enumerate() {
+        let rows = ids.colliders(&mut kept.static_colliders, at, &a)?;
+        for (row, (e, collider)) in a.entities().iter().zip(rows.iter().copied()).enumerate() {
             let own = (position[row], quaternion[row], scale[row]);
             if any_parent
                 && let Some((i, (p, r, s))) = ancestor_body(*e, own, &parents, &joinable, get, ids)
