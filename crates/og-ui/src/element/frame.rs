@@ -2,7 +2,7 @@ use super::*;
 
 // ── The element model's part of the frame ──────────────────────────────────
 
-use crate::layout::{Content, Float, NONE, Node, preorder, width_in};
+use crate::layout::{Content, Float, NONE, Node, preorder};
 use crate::ui::Ui;
 
 /// Whether `path` is `decl` or inside it (an ancestor path covers its subtree).
@@ -434,28 +434,29 @@ impl crate::ui::Tree {
 }
 
 impl crate::ui::Layout {
-    /// Applies each element's breakpoint and orientation variants (the
-    /// container ones wait for its width, in layout).
+    /// Matches each written element's breakpoint and orientation variants
+    /// against the viewport (the container ones wait for its width, in
+    /// layout): their box part is in the element layout uses
+    /// ([`Node::derived`]), the rest is set on the node.
     pub(crate) fn apply_variants(&mut self, env: &crate::ui::Env, tree: &mut crate::ui::Tree) {
         let vp = env.viewport;
-        let bp = vp.breakpoint();
-        let portrait = vp.height >= vp.width;
+        let media = crate::layout::Media {
+            breakpoint: vp.breakpoint(),
+            portrait: vp.height >= vp.width,
+            width: vp.width,
+        };
         for k in 0..tree.emitted.len() {
             let i = tree.emitted[k];
-            if tree.nodes[i].props.variants.is_empty() {
+            let n = &mut tree.nodes[i];
+            if n.props.variants.is_empty() {
+                n.layout.media = None;
                 continue;
             }
-            let vs = tree.nodes[i].props.variants.clone();
+            n.layout.media = Some(media);
+            n.derive_used();
+            let vs = n.props.variants.clone();
             for v in vs.iter().filter(|v| !v.when.container) {
-                let q = &v.when;
-                let ok = (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
-                    && q.orientation
-                        .is_none_or(|o| (o == Orientation::Portrait) == portrait)
-                    && width_in(vp.width, q);
-                if ok {
-                    let n = &mut tree.nodes[i];
-                    crate::layout::patch_box(&mut n.el, &v.set);
-                    n.derive_used();
+                if media.matches(&v.when) {
                     crate::layout::patch_style(n, &v.set);
                 }
             }

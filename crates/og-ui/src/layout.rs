@@ -38,8 +38,9 @@ use grid::{grid_columns, grid_intrinsic, grid_rows, place_grid};
 pub use multicol::Multicol;
 use node::truncate_lines;
 pub(crate) use node::{
-    Content, EditView, NONE, Node, ObjectFit, PartBox, PartGeometry, Placement, Shape, Stagger,
-    TextContent, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking, text_features,
+    Content, EditView, Media, NONE, Node, ObjectFit, PartBox, PartGeometry, Placement, Shape,
+    Stagger, TextContent, Widget, WrapStyle, ellipsis_of, snap_pixel_text, step_tracking,
+    text_features,
 };
 pub use node::{Family, FontRole};
 
