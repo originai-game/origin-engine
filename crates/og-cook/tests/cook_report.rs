@@ -204,3 +204,32 @@ fn css_pack_cooks_svg_images_as_regular_texture_assets() {
         );
     }
 }
+
+/// Each stage of the cook is timed in the order it ran, and a cook the
+/// index finds unchanged runs, and lists, only `index`.
+///
+/// Ways this could fail: a stage is left out of the list or timed twice; the
+/// unchanged cook returns the stages its index saved from the cook before.
+#[test]
+fn the_report_times_each_stage_and_an_unchanged_cook_only_the_index() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-stages");
+    let _ = std::fs::remove_dir_all(&root);
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/sprite-2d");
+    support::copy_dir(&fixture.join("assets"), &root.join("assets"));
+    let cook = || {
+        let r =
+            og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+                .unwrap();
+        assert!(r.ok(), "{:?}", r.errors());
+        assert!(r.stages.iter().all(|s| s.ms.is_finite() && s.ms >= 0.0));
+        r.stages.into_iter().map(|s| s.name).collect::<Vec<_>>()
+    };
+    assert_eq!(
+        cook(),
+        [
+            "index", "project", "scan", "import", "resolve", "contract", "group", "plan",
+            "execute", "assemble", "write", "pack", "finish", "diagnose", "save"
+        ]
+    );
+    assert_eq!(cook(), ["index"]);
+}

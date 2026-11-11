@@ -151,6 +151,7 @@ mod tests {
             warnings: vec![],
             conform: vec![],
             elapsed_ms: 6.0,
+            stages: vec![],
         };
         let e = cook_events(&report, 1010.0, 1000.0);
         let spans: Vec<(&str, u64, i64, i64)> = e
