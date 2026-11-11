@@ -105,4 +105,5 @@ passes! {
     prepass: pass_prepass::PrepassPass => FramePass::Prepass,
     main: pass_main::MainPass => FramePass::Main,
     glow: pass_glow::GlowPass => FramePass::Glow,
+    custom_post: pass_custom_post::CustomPostPass => FramePass::CustomPost(_),
 }

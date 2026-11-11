@@ -78,6 +78,8 @@ use pass_shadows::{
 };
 mod pass_glow;
 use pass_glow::GlowPass;
+mod pass_custom_post;
+use pass_custom_post::{CustomPostPass, CustomPostPlan};
 mod setup;
 
 impl Renderer {
@@ -4389,6 +4391,10 @@ impl Renderer {
             gi_copy,
         });
         plans.glow = glow.then_some(sprite_frame.glow_runs.as_slice());
+        plans.custom_post = (!custom_posts.is_empty()).then(|| CustomPostPlan {
+            scene,
+            posts: &custom_posts,
+        });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4417,25 +4423,6 @@ impl Renderer {
                         slot,
                     },
                 ) => {}
-                FramePass::CustomPost(i) => {
-                    let (read, write) = self.graph.custom_post_views(&self.persistent, i, slot);
-                    let lit = self.graph.custom_post_views(&self.persistent, 0, slot).0;
-                    stats.draw_calls += self.custom_posts.encode(
-                        &self.device,
-                        &self.queue,
-                        &mut encoder,
-                        scene,
-                        custom_posts[i as usize],
-                        [
-                            read,
-                            lit,
-                            self.graph.view("lindepth"),
-                            self.graph.view("gbuffer"),
-                            write,
-                        ],
-                        self.history_size(),
-                    );
-                }
                 post_pass => {
                     let post_output = match (&self.glass_targets, routed) {
                         (Some(g), true) => &g.source_view,
