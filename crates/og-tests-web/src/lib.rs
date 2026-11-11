@@ -1,6 +1,6 @@
 //! og-tests' gfx scenes, and og-ui's reference scenes (`og-ui/<name>`,
-//! crates/og-ui/tests/support/scenes.rs, the file og-ui's own gfx tests
-//! build them with), in a browser (docs/ci.md §Browser reference tiers).
+//! crates/og-ui/tests/support/scenes.rs over the screens of `screens.rs`,
+//! the files og-ui's own gfx tests build them with), in a browser (docs/ci.md §Browser reference tiers).
 //!
 //! One scene at a time: [`og_gfx_open`] builds it and a renderer on WebGPU,
 //! [`og_gfx_render`] draws frames to the renderer's offscreen target exactly
@@ -17,12 +17,17 @@
 //! comparison and the timing are the runner's
 //! (`packages/engine/tests/web/reference-gfx.ts`).
 
-// og-ui's reference scenes, as og-ui's tests build them (`text_scenes`
-// reaches `super::scenes`, as it does in og-tests-cooked's `support`).
+// og-ui's reference scenes, as og-ui's tests build them (`scenes` reaches
+// `super::screens`, and `text_scenes` `super::scenes`, as they do in
+// og-tests-cooked's `support`).
 #[cfg(target_arch = "wasm32")]
-#[allow(dead_code)]
+#[allow(dead_code, unused_imports)]
 #[path = "../../og-ui/tests/support/scenes.rs"]
 mod scenes;
+#[cfg(target_arch = "wasm32")]
+#[allow(dead_code)]
+#[path = "../../og-ui/tests/support/screens.rs"]
+mod screens;
 #[cfg(target_arch = "wasm32")]
 #[allow(dead_code)]
 #[path = "../../og-tests-cooked/tests/support/text_scenes.rs"]

@@ -1,11 +1,12 @@
 //! The sample screen every og-ui integration test drives, the MSDF test font
 //! and the reference-frame comparison (og-tests' tolerance rules). The
-//! screens and reference scenes themselves are in `scenes.rs`, which the
-//! browser tiers (crates/og-tests-web) compile too.
+//! screens are in `screens.rs` and the render scenes of them in
+//! `scenes.rs`, which the browser tiers (crates/og-tests-web) compile too.
 #![allow(dead_code)]
 
 mod doc;
 mod scenes;
+mod screens;
 
 // Not every binary that includes this support mounts documents.
 #[allow(unused_imports)]
