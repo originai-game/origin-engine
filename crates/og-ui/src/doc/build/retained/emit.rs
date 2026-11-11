@@ -79,6 +79,17 @@ impl RetainedHost {
                 .run_in
                 .as_ref()
                 .is_none_or(|entered| !entered.same_state(&ui.docs.host.run));
+        // Input reached its control: the behaviour runs on the node it
+        // holds. An element that does more with a tick than its control
+        // (a tooltip, a hold, a world effect) builds again as before.
+        let behaves = self.behave.remove(identity)
+            && !self.emit.contains(identity)
+            && !element.volatile
+            && !run_moved
+            && (self.behaves_in_place(ui, identity) || {
+                self.emit.insert(identity.clone());
+                false
+            });
         if !in_place
             && !element.volatile
             && !run_moved
@@ -95,6 +106,16 @@ impl RetainedHost {
                 ui.docs.host.run.replay(&element.run_events);
                 ui.docs.host.run.reads += u64::from(element.run_reads);
             }
+            if behaves {
+                self.behave_in_place(ui, identity, slot, env, events, writes);
+            }
+            return Ok(());
+        }
+        if in_place
+            && behaves
+            && let Some(slot) = element.slot
+        {
+            self.behave_in_place(ui, identity, slot, env, events, writes);
             return Ok(());
         }
         // Written in place, outside the tree walk: the run as it entered.
@@ -238,6 +259,120 @@ impl RetainedHost {
         result
     }
 
+    /// Whether element `identity`'s tick is its control's alone: the
+    /// behaviour then runs on the node it holds ([`Self::behave_in_place`]).
+    /// What else an element's emission does with a tick keeps it emitted:
+    /// a tooltip or a context menu's popover, a hold's count and fill, a
+    /// touch button's feed, world effects, a Rive frame.
+    fn behaves_in_place(&self, ui: &Ui, identity: &MountedNode) -> bool {
+        let e = &self.elements[identity];
+        let Some(resolved) = e.resolved.as_ref() else {
+            return false;
+        };
+        let r = &resolved.values;
+        let n = &e.document.nodes[e.index];
+        ui.has_control(identity.key)
+            && e.slot
+                .is_some_and(|slot| ui.tree.holds(slot, identity.key, e.parent_slot))
+            && e.record
+                .render_fields
+                .iter()
+                .any(|(key, _)| *key == resolved.key)
+            && (!r.has("visible") || r.flag("visible"))
+            && !["popover", "title", "contextmenu", "dataHold", "dataOgTouch"]
+                .iter()
+                .any(|name| r.has(name))
+            && !n.props.iter().any(|p| p.name() == "dataHold")
+            && !n.triggers.iter().any(|t| t.when == When::Hold)
+            && !r.has("emitter")
+            && !r.has("meta")
+            && !ui.world.declared.kept_effects.contains_key(&identity.key)
+            && r.str("rive").is_none()
+    }
+
+    /// Runs the control of element `identity` on the node it holds in
+    /// `slot` for this tick's input: its behaviour's answer is recorded in
+    /// the element's render fields and presented under its CSS, and its
+    /// events fire, where its emission would have run. No node is written
+    /// again and nothing is resolved or evaluated.
+    fn behave_in_place(
+        &mut self,
+        ui: &mut Ui,
+        identity: &MountedNode,
+        slot: usize,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) {
+        if !self.on_action.is_empty() {
+            self.built_now.insert(identity.clone());
+        }
+        let mut e = self.elements.remove(identity).expect("mounted element");
+        // Built before: not appearing; and among this frame's elements,
+        // as one built is.
+        ui.docs.host.seen.insert(identity.key);
+        ui.docs.host.seen_now.insert(identity.key);
+        ui.tree.owning.push(Default::default());
+        let resolved = e.resolved.as_ref().expect("resolved mount");
+        let values = &resolved.values;
+        let node = &e.document.nodes[e.index];
+        let mut b = e.build(env, values.cascade.computed.clone());
+        ui.tree.update_in_place(slot, &mut ui.layout);
+        ui.front.accent = values.text.as_deref().and_then(|t| t.accent);
+        let output = ui.dispatch_control(slot);
+        ui.front.accent = None;
+        let at = e
+            .record
+            .render_fields
+            .iter()
+            .position(|(key, _)| *key == resolved.key)
+            .expect("a control's render fields");
+        let mut fields = e.record.render_fields[at].1.clone();
+        fields.set_output(output);
+        ui.apply_document_fields(&e.document, node, values, &fields);
+        ui.tree.last_closed = slot;
+        ui.popover_invoker(&b, values, identity.key, output.response);
+        ui.fire(&mut b, node, identity.key, &resolved.path, output.response);
+        events.extend(std::mem::take(&mut b.events));
+        let written = std::mem::take(&mut b.writes);
+        drop(b);
+        writes.extend(
+            written
+                .into_iter()
+                .map(|(path, value)| (e.context.clone(), path, value)),
+        );
+        e.record.render_fields[at].1 = fields;
+        let owned = ui.tree.owning.pop().expect("pushed");
+        // Its memories, and whether they are in motion, as an emission
+        // leaves them.
+        self.forget_memories(&e.memories);
+        for &key in &owned.memories {
+            *self.memories.entry(key).or_default() += 1;
+        }
+        e.memories = owned.memories;
+        e.volatile = owned.moved;
+        if owned.moved {
+            self.volatile.insert(identity.clone());
+        } else {
+            self.volatile.remove(identity);
+        }
+        if owned.restyle {
+            self.animated.insert(identity.clone());
+        } else {
+            self.animated.remove(identity);
+        }
+        // A part box it had not written before is its own.
+        for &i in &owned.slots {
+            if !e.owned.contains(&i) {
+                e.owned.push(i);
+                let key = ui.tree.nodes[i].key;
+                e.keys.push(key);
+                self.owner_of.insert(key, identity.clone());
+            }
+        }
+        self.elements.insert(identity.clone(), e);
+    }
+
     /// Writes again, into the slots they hold, the elements whose parents
     /// were not built this frame: their ancestors' nodes stay as they are.
     pub(super) fn emit_in_place(
@@ -290,9 +425,21 @@ impl RetainedHost {
                 at = self.topology.parent(&parent).cloned();
             }
         }
+        // A control without the node its behaviour runs on is built.
+        let unheld: Vec<MountedNode> = self
+            .behave
+            .iter()
+            .filter(|identity| !holds(self, identity))
+            .cloned()
+            .collect();
+        for identity in unheld {
+            self.behave.remove(&identity);
+            self.emit.insert(identity);
+        }
         let mut pending: Vec<(usize, MountedNode)> = self
             .emit
             .iter()
+            .chain(self.behave.difference(&self.emit))
             .map(|identity| {
                 let mut depth = 0;
                 let mut at = self.topology.parent(identity);
@@ -305,7 +452,7 @@ impl RetainedHost {
             .collect();
         pending.sort();
         for (_, identity) in pending {
-            if !self.emit.contains(&identity) {
+            if !self.emit.contains(&identity) && !self.behave.contains(&identity) {
                 continue;
             }
             let element = &self.elements[&identity];
@@ -427,6 +574,7 @@ impl RetainedHost {
         self.volatile.remove(identity);
         self.animated.remove(identity);
         self.emit.remove(identity);
+        self.behave.remove(identity);
         self.scrollers.remove(identity);
     }
 }

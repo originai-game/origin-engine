@@ -1,5 +1,11 @@
 use super::*;
 
+/// The element kinds built as controls (`crate::control`): input reaches
+/// their behaviour without building them again.
+fn control_kind(node: &DocNode) -> bool {
+    matches!(node.kind, NodeKind::Element("button"))
+}
+
 impl RetainedHost {
     /// Marks what this frame's interaction, clock and frame-wide inputs
     /// require to be built again, before anything is emitted.
@@ -59,9 +65,21 @@ impl RetainedHost {
         // A forced state is drawn by its element's widget: it builds again.
         input.extend(self.forced_keys(ui));
         input.retain(|&key| key != 0);
+        // Input reaches a control element's behaviour where its node
+        // stands; any other element builds again to answer it.
+        let elements = &self.elements;
+        let control = |owner: &MountedNode| {
+            elements
+                .get(owner)
+                .is_some_and(|e| control_kind(&e.document.nodes[e.index]))
+        };
         for key in input.iter().chain(&self.input) {
             if let Some(owner) = self.owner_of.get(key) {
-                self.emit.insert(owner.clone());
+                if control(owner) {
+                    self.behave.insert(owner.clone());
+                } else {
+                    self.emit.insert(owner.clone());
+                }
             }
         }
         self.last_input = std::mem::replace(&mut self.input, input);
@@ -82,7 +100,11 @@ impl RetainedHost {
         // geometry (a narrow button, a list measuring its rows).
         for slot in std::mem::take(&mut ui.layout.cache.resized) {
             if let Some(owner) = self.owner_of.get(&ui.tree.nodes[slot].key) {
-                self.emit.insert(owner.clone());
+                if control(owner) {
+                    self.behave.insert(owner.clone());
+                } else {
+                    self.emit.insert(owner.clone());
+                }
             }
         }
         self.emit.extend(self.volatile.iter().cloned());

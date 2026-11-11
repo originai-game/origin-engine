@@ -161,6 +161,10 @@ pub struct RetainedHost {
     built_tick: Option<u64>,
     /// Elements whose render nodes must be written again this frame.
     emit: BTreeSet<MountedNode>,
+    /// Control elements this frame's input reaches: their control's
+    /// behaviour runs on the node they hold, without writing it again
+    /// ([`RetainedHost::behave_in_place`]).
+    behave: BTreeSet<MountedNode>,
     /// Elements built every frame ([`ElementInstance::volatile`]).
     volatile: BTreeSet<MountedNode>,
     /// Elements resolved again every frame: their SMIL animations play.
@@ -458,6 +462,7 @@ impl RetainedHost {
         }
         self.elements.retain(|node, _| &node.mount != mount);
         self.emit.retain(|node| &node.mount != mount);
+        self.behave.retain(|node| &node.mount != mount);
         self.volatile.retain(|node| &node.mount != mount);
         self.animated.retain(|node| &node.mount != mount);
         self.on_action.retain(|_, listeners| {

@@ -126,15 +126,16 @@ impl Ui {
             },
         );
         let step = |ui: &mut Ui, name: &str, glyph: &str| {
-            ui.button(
+            ui.button_element(
                 name,
-                glyph,
-                ButtonDesc {
+                ButtonModel {
+                    text: glyph.to_owned(),
                     variant: ButtonVariant::Ghost,
                     disabled: disabled || count < 2,
-                    ..ButtonDesc::default()
+                    ..ButtonModel::default()
                 },
             )
+            .response
             .clicked
         };
         let back = step(self, "Prev", "‹");

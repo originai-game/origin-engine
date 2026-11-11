@@ -382,16 +382,21 @@ mod tests {
                         ..Default::default()
                     },
                 );
-                ui.apply_button(
+                ui.set_control(
                     button,
-                    "Confirm",
-                    ButtonDesc {
+                    crate::control::Control::Button(crate::control::ButtonModel {
+                        text: "Confirm".into(),
+                        variant: desc.variant,
                         width: Some(Size::Fixed(width)),
-                        ..desc
+                        ..Default::default()
+                    }),
+                );
+                ui.present_control(
+                    button,
+                    &crate::control::ControlOutput {
+                        response,
+                        ..Default::default()
                     },
-                    response,
-                    (0.0, 0.0),
-                    0.0,
                 );
                 assert_eq!(ui.save_state(), before);
                 assert_eq!(ui.clone().take_feedback(), feedback);

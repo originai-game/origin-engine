@@ -147,14 +147,16 @@ impl Ui {
                 },
             );
             let label = if paused { "Play" } else { "Pause" };
-            resp = self.button(
-                "Play",
-                label,
-                ButtonDesc {
-                    disabled: player == 0.0,
-                    ..ButtonDesc::default()
-                },
-            );
+            resp = self
+                .button_element(
+                    "Play",
+                    ButtonModel {
+                        text: label.to_owned(),
+                        disabled: player == 0.0,
+                        ..ButtonModel::default()
+                    },
+                )
+                .response;
             if resp.clicked {
                 self.docs.write_back(b, n, "paused", json!(!paused));
                 self.docs.host.media_ops.push(MediaOp {

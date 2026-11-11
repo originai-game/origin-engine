@@ -46,14 +46,16 @@ impl Ui {
                 }
             }
             let shown = if on { "…".to_string() } else { cap };
-            let resp = self.button(
-                id,
-                &shown,
-                crate::ButtonDesc {
-                    size: crate::ControlSize::Small,
-                    ..crate::ButtonDesc::default()
-                },
-            );
+            let resp = self
+                .button_element(
+                    id,
+                    ButtonModel {
+                        text: shown,
+                        size: crate::ControlSize::Small,
+                        ..ButtonModel::default()
+                    },
+                )
+                .response;
             if resp.clicked {
                 self.remember(&capturing, 1.0);
             }

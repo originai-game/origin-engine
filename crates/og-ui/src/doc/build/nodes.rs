@@ -381,7 +381,9 @@ impl Ui {
             }
             "button" => {
                 let text = text_of(&r, b);
-                resp = self.button(id.as_str(), &text, r.button_desc());
+                resp = self
+                    .button_element(id.as_str(), r.button_model(&text))
+                    .response;
             }
             "art" => {
                 texture = self.doc_art(b, &id, &path, &r);
@@ -753,7 +755,9 @@ impl Ui {
                 (opened, shows_content) = self.doc_details(b, id, key, r, &open_now, opened);
             }
             "button" => {
-                resp = self.open_button(id.as_str(), r.button_desc());
+                resp = self
+                    .open_button_element(id.as_str(), r.button_model(""))
+                    .response;
             }
             "panel" => {
                 self.open_panel(
@@ -920,7 +924,7 @@ impl Ui {
             }
             "dialog" => self.close_dialog(&dialog),
             "details" => self.close_details(),
-            "button" => self.close_button(),
+            "button" => self.close_button_element(),
             _ => resp = self.close(),
         }
         if let Some(open) = opened {
@@ -1400,7 +1404,9 @@ impl Ui {
             _ if !chosen.is_empty() => chosen.to_string(),
             _ => FILE_LABEL.to_string(),
         };
-        let resp = self.button(id.as_str(), &text, r.button_desc());
+        let resp = self
+            .button_element(id.as_str(), r.button_model(&text))
+            .response;
         if resp.clicked && !r.flag("disabled") {
             b.event(
                 path,

@@ -682,3 +682,112 @@ dialog { width: 200px; }
         .join("\n");
     assert!(err.contains("apart"), "{bad}: {err}");
 }
+
+/// Input on a mounted document's button runs its control on the node it
+/// holds: hovering, pressing, releasing and activating it by key build no
+/// element again and evaluate no binding, while the button still shows
+/// each state, its click still fires its handler once, and a bound
+/// control beside it still writes its store.
+///
+/// Ways it could fail: the hovered, pressed or focused button's element
+/// emitted again each tick (as every control was), the states no longer
+/// drawn (the frame not moving on hover or press), the click lost or fired
+/// twice, or a content button left on the old path.
+#[test]
+fn input_on_a_mounted_button_builds_no_element_again() {
+    use crate::html_text::Doc;
+    use og_core::glam::Vec2;
+    use serde_json::json;
+    let mut d = Doc::new(
+        r#"<meta name="component" content="t">
+<column id="Root" gap="8" padding="12">
+  <button id="Go" onclick={go}>Go</button>
+  <button id="Buy" variant="primary" onclick={buy}><text id="Word">Buy</text></button>
+  <label><input type="checkbox" switch id="On" bind:checked={$on}> On</label>
+</column>"#,
+        &[("on", json!(false))],
+        true,
+    );
+    let pointer = |p: Vec2, down: bool, pressed: bool, released: bool| InputFrame {
+        pointer: p,
+        pointer_inside: true,
+        down,
+        pressed,
+        released,
+        ..Default::default()
+    };
+    let centre = |d: &Doc, id: &str| {
+        let e = d.get(id);
+        Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0)
+    };
+    let away = Vec2::new(700.0, 800.0);
+    for _ in 0..4 {
+        d.step(pointer(away, false, false, false));
+    }
+    for (id, handler) in [("Go", "go"), ("Buy", "buy")] {
+        let p = centre(&d, id);
+        let rest = d.ui.frame().items.clone();
+        d.events.clear();
+        let mut frames = Vec::new();
+        for (what, input) in [
+            ("hover", pointer(p, false, false, false)),
+            ("hover", pointer(p, false, false, false)),
+            ("press", pointer(p, true, true, false)),
+            ("held", pointer(p, true, false, false)),
+            ("release", pointer(p, false, false, true)),
+            ("after", pointer(p, false, false, false)),
+            ("leave", pointer(away, false, false, false)),
+            ("left", pointer(away, false, false, false)),
+        ] {
+            d.step(input);
+            let stats = d.ui.frame().stats;
+            assert_eq!(
+                (stats.bindings, stats.reconciled),
+                (0, 0),
+                "{id} {what}: {stats:?}"
+            );
+            frames.push(d.ui.frame().items.clone());
+        }
+        assert!(frames[1] != rest, "{id}: hover is drawn");
+        assert!(frames[3] != frames[1], "{id}: the press is drawn");
+        let fired: Vec<_> = d
+            .events
+            .iter()
+            .filter(|e| e.name == handler || e.kind == "click")
+            .map(|e| (e.kind.as_str(), e.name.as_str()))
+            .collect();
+        assert_eq!(fired, [("click", id), ("emit", handler)], "{id}");
+    }
+    // By key: the focus on the first button, Enter activates it.
+    d.events.clear();
+    d.focus = Some(d.get("Go").path);
+    for (what, input) in [
+        ("focus", InputFrame::default()),
+        ("focused", InputFrame::default()),
+        (
+            "enter",
+            InputFrame {
+                keys: vec![UiKey::Enter],
+                keys_pressed: vec!["Enter"],
+                ..Default::default()
+            },
+        ),
+        ("after", InputFrame::default()),
+    ] {
+        d.step(input);
+        let stats = d.ui.frame().stats;
+        assert_eq!(
+            (stats.bindings, stats.reconciled),
+            (0, 0),
+            "key {what}: {stats:?}"
+        );
+    }
+    assert!(d.ui.focus_path(0).ends_with("Go"), "{}", d.ui.focus_path(0));
+    assert_eq!(d.events.iter().filter(|e| e.name == "go").count(), 1);
+    // The switch beside them still writes its store.
+    let p = centre(&d, "On");
+    d.step(pointer(p, true, true, false));
+    d.step(pointer(p, false, false, true));
+    d.step(InputFrame::default());
+    assert_eq!(d.read("on"), json!(true));
+}

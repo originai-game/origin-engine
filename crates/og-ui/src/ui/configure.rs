@@ -118,6 +118,7 @@ impl Ui {
                 hud_editor_key: 0,
                 cover: None,
             },
+            controls: Default::default(),
             style: Style {
                 part_rules,
                 part_sheet,
@@ -566,6 +567,7 @@ impl Ui {
         // The style's atlas at the density this surface draws at.
         self.env.theme.art.atlas = self.env.configured.art.atlas_for(viewport.dpr());
         self.out.warnings.clear();
+        self.controls.sweep(&self.tree);
         self.tree.begin(&mut self.layout, &mut self.paint);
         self.interaction.begin();
         self.front.begin();

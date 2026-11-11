@@ -110,25 +110,18 @@ impl Ui {
 
     /// A capsule button with a label. `clicked` is a press and a release inside it.
     pub fn button(&mut self, id: impl Into<Id>, text: &str, desc: ButtonDesc) -> Response {
-        let i = self.leaf("button", id.into(), Element::default());
-        self.button_at(i, text, desc)
-    }
-
-    /// A button holding content (a document's `<button><icon/>Buy<badge/></button>`):
-    /// the children built until [`Ui::close_button`] lie in a row in its
-    /// frame, its states and its press; text and icons in it without a
-    /// colour of their own take its ink.
-    pub(crate) fn open_button(&mut self, id: impl Into<Id>, desc: ButtonDesc) -> Response {
-        let i = self.push("button", id.into(), Element::default());
-        self.tree.stack.push(i);
-        self.front.button_ink.push((i, self.env.theme.palette.ink));
-        self.button_at(i, "", desc)
-    }
-
-    /// Closes a button opened with [`Ui::open_button`].
-    pub(crate) fn close_button(&mut self) {
-        self.front.button_ink.pop();
-        self.close();
+        let model = crate::control::ButtonModel {
+            text: text.to_owned(),
+            variant: desc.variant,
+            size: desc.size,
+            disabled: desc.disabled,
+            width: desc.width,
+            autofocus: desc.autofocus,
+            square: desc.square,
+            align: desc.align,
+            part: desc.part,
+        };
+        self.button_element(id, model).response
     }
 
     /// The ink a text or icon without its own colour takes: its button's

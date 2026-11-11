@@ -61,6 +61,22 @@ impl RenderFields {
 }
 
 impl RenderFields {
+    /// What its control's behaviour last answered: what it is presented from.
+    pub(super) fn output(&self) -> ControlOutput {
+        ControlOutput {
+            response: self.response,
+            amounts: self.amounts,
+            press: self.press,
+        }
+    }
+
+    /// Records its control's answer to a tick it was not built in.
+    pub(super) fn set_output(&mut self, output: ControlOutput) {
+        self.response = output.response;
+        self.amounts = output.amounts;
+        self.press = output.press;
+    }
+
     /// A list or grid opens with its styled width, height, padding and gap;
     /// its baseline is the box without them.
     pub(super) fn unstyle_virtual(&mut self) {
@@ -543,14 +559,8 @@ impl Ui {
                 }
             }
             "button" => {
-                self.apply_button(
-                    i,
-                    &base.text,
-                    r.button_desc(),
-                    base.response,
-                    base.amounts,
-                    base.press,
-                );
+                self.set_control(i, Control::Button(r.button_model(&base.text)));
+                self.present_control(i, &base.output());
                 // A button holding elements (a row of an icon, a name and
                 // its detail) grows to fit them, its control height the
                 // least it takes, as an HTML button does.
@@ -1344,8 +1354,9 @@ impl Resolved {
         Some((span, style))
     }
 
-    pub(super) fn button_desc(&self) -> ButtonDesc {
-        ButtonDesc {
+    pub(super) fn button_model(&self, text: &str) -> ButtonModel {
+        ButtonModel {
+            text: text.to_owned(),
             variant: match self.str("variant") {
                 Some("primary") => ButtonVariant::Primary,
                 Some("quiet") => ButtonVariant::Quiet,

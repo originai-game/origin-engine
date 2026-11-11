@@ -463,6 +463,8 @@ pub struct Ui {
     pub(crate) tree: Tree,
     /// The immediate front end's memory: widget memories used, kept texts, button inks, the control accent, the HUD editor and the screen cover.
     pub(crate) front: Front,
+    /// The controls of the nodes that live (`crate::control`).
+    pub(crate) controls: crate::control::Controls,
 }
 
 /// One UI event's feedback as the host plays it ([`Ui::take_feedback`]).
