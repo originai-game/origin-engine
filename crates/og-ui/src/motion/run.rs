@@ -330,7 +330,7 @@ impl Ui {
             // own; a channel off its target (or waiting out a delay) too.
             // A scroll-driven animation is visited when its timeline moves
             // (`Ui::frame_seeds`), not every tick.
-            let mut busy = has_override
+            let busy = has_override
                 || props.animations.iter().any(|a| a.timeline.ticks())
                 || props.layout_motion.is_some();
             let mut node_groups = Vec::new();
@@ -339,339 +339,68 @@ impl Ui {
             let mut target = base;
             // Per channel: the transition a state change gives it this tick.
             let mut moved_by: [Option<Transition>; CHANNELS] = [None; CHANNELS];
-            let groups = self.tree.nodes[i].props.states.clone();
-            for g in &groups {
-                let cur = self.state_of(i, g, &m);
-                let gk = group_key(key, &g.name);
-                touched.insert(gk);
-                node_groups.push(gk);
-                let prev = m.groups.get(&gk).map(|s| s.state.clone());
-                let changed = prev.as_ref().is_some_and(|p| *p != cur);
-                if prev.is_none() || changed {
-                    m.groups.insert(
-                        gk,
-                        GroupState {
-                            state: cur.clone(),
-                            since: now,
-                        },
-                    );
-                }
-                if changed {
-                    let prev = prev.clone().unwrap_or_default();
-                    if let Some(s) = g.states.iter().find(|s| s.name == prev)
-                        && !s.on_exit.is_empty()
-                    {
-                        starts.push((key, s.on_exit.clone()));
-                    }
-                    if let Some(s) = g.states.iter().find(|s| s.name == cur)
-                        && !s.on_enter.is_empty()
-                    {
-                        starts.push((key, s.on_enter.clone()));
-                    }
-                }
-                if changed {
-                    let t = g
-                        .transition(prev.as_deref().unwrap_or(""), &cur)
-                        .or(self.tree.nodes[i].props.motion)
-                        .unwrap_or_default();
-                    // Every value the group's states touch moves with it, to
-                    // the new state's or back to the element's own.
-                    for s in &g.states {
-                        for &(prop, _) in &s.values {
-                            for &c in prop.channels() {
-                                moved_by[c] = Some(t);
-                            }
-                        }
-                    }
-                }
-                if let Some(st) = g.states.iter().find(|s| s.name == cur) {
-                    for &(prop, v) in &st.values {
-                        for &c in prop.channels() {
-                            target[c] = v;
-                        }
-                    }
-                }
-            }
+            let groups = self.step_states(
+                i,
+                key,
+                &mut m,
+                &mut touched,
+                &mut node_groups,
+                &mut starts,
+                &mut moved_by,
+                &mut target,
+                now,
+            );
             let enter = self.tree.nodes[i].props.enter.clone();
             let entering = enter.is_some() && !m.seen.contains_key(&key);
             if enter.is_some() {
                 m.seen.entry(key).or_insert(now);
             }
-            let motion = self.tree.nodes[i].props.motion;
-            let css_transitions = self.tree.nodes[i].props.transitions.clone();
-            let mut row = target;
-            for c in 0..CHANNELS {
-                let ck = channel_key(key, c);
-                let stepped = Prop::stepped(c);
-                // A state group's own transition, then CSS `transition`.
-                let css = super::css::transition_for(&css_transitions, c)
-                    .filter(|_| moved_by[c].is_none());
-                let mut tr = moved_by[c].or(css.map(|t| t.transition)).or(motion);
-                // Whole ticks, rounded up; no delay is no tick.
-                let delay = css.filter(|t| t.delay_ms != 0.0).map_or(0, |t| {
-                    crate::style::Theme::ticks(t.delay_ms.abs(), tps) as i64
-                        * if t.delay_ms < 0.0 { -1 } else { 1 }
-                });
-                if reduced {
-                    tr = tr.map(|t| match fallback {
-                        Reduced::Keep => t,
-                        Reduced::None => Transition::Instant,
-                        Reduced::Fade if fades(c) => Transition::Tween {
-                            duration_ms: tokens.reduced_ms,
-                            ease: super::Ease::Linear,
-                        },
-                        Reduced::Fade => Transition::Instant,
-                    });
-                }
-                let ov = overrides
-                    .iter()
-                    .rev()
-                    .find(|o| o.0 == key && o.1 == c)
-                    .map(|o| o.2);
-                match m.channels.get_mut(&ck) {
-                    Some(ch) => {
-                        touched.insert(ck);
-                        if let Some(v) = ov {
-                            *ch = Channel::at(v, now);
-                            row[c] = v;
-                            continue;
-                        }
-                        if ch.target != target[c] {
-                            let (kind, mode) = pack(&tr.unwrap_or(Transition::Instant), &tokens);
-                            // A negative delay starts partway through.
-                            let since = (now as i64 + delay).max(0);
-                            ch.retarget(target[c], kind, mode, since as u64);
-                        }
-                        row[c] = ch.step(now, tps, stepped);
-                        busy |= !ch.settled() || now < ch.since;
-                    }
-                    None => {
-                        if let Some(v) = ov {
-                            if animated {
-                                m.channels.insert(ck, Channel::at(v, now));
-                                touched.insert(ck);
-                            }
-                            row[c] = v;
-                            continue;
-                        }
-                        let from = enter.as_ref().filter(|_| entering).and_then(|e| {
-                            e.values
-                                .iter()
-                                .rev()
-                                .find(|(p, _)| p.channels().contains(&c))
-                                .map(|&(_, v)| (v, e))
-                        });
-                        if let Some((v, e)) = from {
-                            let t = if reduced {
-                                match fallback {
-                                    Reduced::Keep => e.transition,
-                                    Reduced::Fade if fades(c) => Transition::Tween {
-                                        duration_ms: tokens.reduced_ms,
-                                        ease: super::Ease::Linear,
-                                    },
-                                    _ => Transition::Instant,
-                                }
-                            } else {
-                                e.transition
-                            };
-                            let mut ch = Channel::at(v, now);
-                            let (kind, mode) = pack(&t, &tokens);
-                            let delay = crate::style::Theme::ticks(e.delay_ms, tps) as u64;
-                            let delay = if e.delay_ms > 0.0 { delay } else { 0 };
-                            ch.retarget(target[c], kind, mode, now + delay);
-                            ch.stepped = now.saturating_sub(1);
-                            row[c] = ch.step(now, tps, stepped);
-                            busy |= !ch.settled() || now < ch.since;
-                            m.channels.insert(ck, ch);
-                            touched.insert(ck);
-                        } else if let Some(&(_, v)) = css.and(
-                            self.tree.nodes[i]
-                                .props
-                                .starting
-                                .iter()
-                                .rev()
-                                .find(|(p, _)| p.channels().contains(&c)),
-                        ) {
-                            // `@starting-style`: the first style's
-                            // before-change value, moved by its transition.
-                            let mut ch = Channel::at(v, now);
-                            let (kind, mode) = pack(&tr.unwrap_or(Transition::Instant), &tokens);
-                            ch.retarget(target[c], kind, mode, (now as i64 + delay).max(0) as u64);
-                            ch.stepped = now.saturating_sub(1);
-                            row[c] = ch.step(now, tps, stepped);
-                            busy |= !ch.settled() || now < ch.since;
-                            m.channels.insert(ck, ch);
-                            touched.insert(ck);
-                        } else if tr.is_some() || moved_by[c].is_some() || !groups.is_empty() {
-                            m.channels.insert(ck, Channel::at(target[c], now));
-                            touched.insert(ck);
-                        }
-                    }
-                }
-            }
-            // CSS animations: over the channels' values, later entries win.
-            let animations = self.tree.nodes[i].props.animations.clone();
-            let scrolled = animations.iter().any(|a| !a.timeline.ticks());
-            let mut progress: Vec<Option<f32>> = vec![None; animations.len()];
-            let mut styled = false;
-            for (index, a) in animations.iter().enumerate() {
-                let Some(frames) = self.docs.host.keyframes.get(&a.name).cloned() else {
-                    continue;
-                };
-                if !a.timeline.ticks() {
-                    // Its time is its timeline's progress (no run, no
-                    // events: scrolling back and forth is not playback).
-                    let p = self.timeline_progress(i, a);
-                    progress[index] = p;
-                    styled |= !frames.styles.is_empty();
-                    if let Some(p) = p {
-                        let (b, active) = a.on_progress(p);
-                        for (c, v) in b.sample_active(&frames, active, &row, false).values {
-                            row[c] = v;
-                        }
-                    }
-                    continue;
-                }
-                let nth = animations[..index]
-                    .iter()
-                    .filter(|b| b.name == a.name)
-                    .count() as u32;
-                let at = match m
-                    .css
-                    .iter()
-                    .position(|r| r.element == key && r.name == a.name && r.index == nth)
-                {
-                    Some(at) => at,
-                    None => {
-                        m.css.push(super::css::CssRun {
-                            element: key,
-                            index: nth,
-                            name: a.name.clone(),
-                            ticks: 0,
-                            stepped: now,
-                            last_ms: -a.delay_ms - 1e-3,
-                        });
-                        m.css.len() - 1
-                    }
-                };
-                let run = &mut m.css[at];
-                if run.stepped != now {
-                    run.stepped = now;
-                    if !a.paused {
-                        run.ticks += 1;
-                    }
-                }
-                let sample = a.sample(&frames, run.ticks, tps, &row, reduced);
-                for (c, v) in sample.values {
-                    row[c] = v;
-                }
-                if !(reduced && a.iterations.is_infinite()) {
-                    for kind in a.passed(&frames, run.last_ms, sample.active_ms) {
-                        match kind {
-                            EventKind::Sound { name, pitch } => css_events.push(UiEvent {
-                                kind: "sound".into(),
-                                name: name.clone(),
-                                target: self.path_of(i),
-                                pitch: *pitch,
-                                ..UiEvent::default()
-                            }),
-                            // `-og-burst` in a keyframe: silenced under
-                            // reduced motion, presentation only.
-                            EventKind::Burst {
-                                count,
-                                radius,
-                                color,
-                                duration_ms,
-                            } if !reduced => css_bursts.push(BurstRun {
-                                key: self.tree.nodes[i].key,
-                                since: now,
-                                count: *count,
-                                radius: *radius,
-                                color: *color,
-                                duration_ms: *duration_ms,
-                            }),
-                            _ => {}
-                        }
-                    }
-                }
-                run.last_ms = sample.active_ms;
-            }
-            if scrolled {
-                let old = self.style.motion.timelines.insert(key, progress.clone());
-                if styled && old.as_ref() != Some(&progress) {
-                    self.style.motion.timeline_restyle.push(key);
-                }
-            } else {
-                self.style.motion.timelines.remove(&key);
-            }
+            let (mut row, busy) = self.step_channels(
+                i,
+                key,
+                &groups,
+                &moved_by,
+                target,
+                &overrides,
+                animated,
+                &mut m,
+                &mut touched,
+                busy,
+                fallback,
+                entering,
+                &enter,
+                now,
+                tps,
+                tokens,
+                reduced,
+            );
+            self.step_animations(
+                i,
+                key,
+                &mut row,
+                &mut m,
+                &mut css_events,
+                &mut css_bursts,
+                now,
+                tps,
+                reduced,
+            );
             if row != base {
                 write_values(&mut self.tree.nodes[i], &row);
             }
 
-            // FLIP: from its last laid-out rectangle to this one (relative to
-            // the nearest ancestor that animates its layout too).
-            if let Some(lm) = self.tree.nodes[i].props.layout_motion {
-                let rect = self.tree.nodes[i].rect;
-                let mut up = self.tree.nodes[i].parent;
-                let mut origin = (0.0, 0.0);
-                while up != crate::layout::NONE {
-                    if flip_rel.contains(&up) {
-                        let pr = self.tree.nodes[up].rect;
-                        origin = (pr.x, pr.y);
-                        break;
-                    }
-                    up = self.tree.nodes[up].parent;
-                }
-                let rel = Rect::new(
-                    rect.x - origin.0,
-                    rect.y - origin.1,
-                    rect.width,
-                    rect.height,
-                );
-                flip_rel.insert(i);
-                let t = if reduced && fallback != Reduced::Keep {
-                    Transition::Instant
-                } else {
-                    lm
-                };
-                let (kind, mode) = pack(&t, &tokens);
-                let keys = [FLIP_X, FLIP_Y, FLIP_SX, FLIP_SY].map(|c| channel_key(key, c));
-                if let Some(prev) = m.flip.get(&key).copied()
-                    && prev != rel
-                {
-                    let get = |m: &MotionState, k: u64, d: f32| {
-                        m.channels.get(&k).copied().unwrap_or(Channel::at(d, now))
-                    };
-                    let (mut cx, mut cy) = (get(&m, keys[0], 0.0), get(&m, keys[1], 0.0));
-                    let (mut sx, mut sy) = (get(&m, keys[2], 1.0), get(&m, keys[3], 1.0));
-                    // Where it shows now, kept: the offset takes up the move.
-                    cx.value += prev.x - rel.x;
-                    cy.value += prev.y - rel.y;
-                    if rel.width > 0.0 {
-                        sx.value *= prev.width / rel.width;
-                    }
-                    if rel.height > 0.0 {
-                        sy.value *= prev.height / rel.height;
-                    }
-                    cx.retarget(0.0, kind, mode, now);
-                    cy.retarget(0.0, kind, mode, now);
-                    sx.retarget(1.0, kind, mode, now);
-                    sy.retarget(1.0, kind, mode, now);
-                    for (k, ch) in keys.iter().zip([cx, cy, sx, sy]) {
-                        m.channels.insert(*k, ch);
-                    }
-                }
-                m.flip.insert(key, rel);
-                touched.insert(key);
-                let mut out = [0.0, 0.0, 1.0, 1.0];
-                for (o, k) in out.iter_mut().zip(keys) {
-                    if let Some(ch) = m.channels.get_mut(&k) {
-                        *o = ch.step(now, tps, false);
-                        touched.insert(k);
-                    }
-                }
-                self.tree.nodes[i].flip = out;
-            }
+            self.step_flip(
+                i,
+                key,
+                &mut m,
+                &mut touched,
+                &mut flip_rel,
+                fallback,
+                now,
+                tps,
+                tokens,
+                reduced,
+            );
             if busy {
                 moving.push(i);
             }
@@ -729,6 +458,410 @@ impl Ui {
             );
         }
         visited
+    }
+
+    /// A node's state groups: their states now, the plays they start, the
+    /// transition each moved channel takes and the values they set; the
+    /// groups are handed back.
+    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    fn step_states(
+        &mut self,
+        i: usize,
+        key: u64,
+        m: &mut MotionState,
+        touched: &mut crate::id::KeySet,
+        node_groups: &mut Vec<u64>,
+        starts: &mut Vec<(u64, String)>,
+        moved_by: &mut [Option<Transition>; CHANNELS],
+        target: &mut [f32; CHANNELS],
+        now: u64,
+    ) -> Vec<super::StateGroup> {
+        let groups = self.tree.nodes[i].props.states.clone();
+        for g in &groups {
+            let cur = self.state_of(i, g, &m);
+            let gk = group_key(key, &g.name);
+            touched.insert(gk);
+            node_groups.push(gk);
+            let prev = m.groups.get(&gk).map(|s| s.state.clone());
+            let changed = prev.as_ref().is_some_and(|p| *p != cur);
+            if prev.is_none() || changed {
+                m.groups.insert(
+                    gk,
+                    GroupState {
+                        state: cur.clone(),
+                        since: now,
+                    },
+                );
+            }
+            if changed {
+                let prev = prev.clone().unwrap_or_default();
+                if let Some(s) = g.states.iter().find(|s| s.name == prev)
+                    && !s.on_exit.is_empty()
+                {
+                    starts.push((key, s.on_exit.clone()));
+                }
+                if let Some(s) = g.states.iter().find(|s| s.name == cur)
+                    && !s.on_enter.is_empty()
+                {
+                    starts.push((key, s.on_enter.clone()));
+                }
+            }
+            if changed {
+                let t = g
+                    .transition(prev.as_deref().unwrap_or(""), &cur)
+                    .or(self.tree.nodes[i].props.motion)
+                    .unwrap_or_default();
+                // Every value the group's states touch moves with it, to
+                // the new state's or back to the element's own.
+                for s in &g.states {
+                    for &(prop, _) in &s.values {
+                        for &c in prop.channels() {
+                            moved_by[c] = Some(t);
+                        }
+                    }
+                }
+            }
+            if let Some(st) = g.states.iter().find(|s| s.name == cur) {
+                for &(prop, v) in &st.values {
+                    for &c in prop.channels() {
+                        target[c] = v;
+                    }
+                }
+            }
+        }
+        groups
+    }
+
+    /// A node's channels: each one's transition, delay and value this tick;
+    /// the values and whether any is still moving.
+    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    fn step_channels(
+        &mut self,
+        i: usize,
+        key: u64,
+        groups: &[super::StateGroup],
+        moved_by: &[Option<Transition>; CHANNELS],
+        target: [f32; CHANNELS],
+        overrides: &[(u64, usize, f32)],
+        animated: bool,
+        m: &mut MotionState,
+        touched: &mut crate::id::KeySet,
+        mut busy: bool,
+        fallback: Reduced,
+        entering: bool,
+        enter: &Option<super::PresenceSpec>,
+        now: u64,
+        tps: u32,
+        tokens: crate::motion::MotionTokens,
+        reduced: bool,
+    ) -> ([f32; CHANNELS], bool) {
+        let motion = self.tree.nodes[i].props.motion;
+        let css_transitions = self.tree.nodes[i].props.transitions.clone();
+        let mut row = target;
+        for c in 0..CHANNELS {
+            let ck = channel_key(key, c);
+            let stepped = Prop::stepped(c);
+            // A state group's own transition, then CSS `transition`.
+            let css =
+                super::css::transition_for(&css_transitions, c).filter(|_| moved_by[c].is_none());
+            let mut tr = moved_by[c].or(css.map(|t| t.transition)).or(motion);
+            // Whole ticks, rounded up; no delay is no tick.
+            let delay = css.filter(|t| t.delay_ms != 0.0).map_or(0, |t| {
+                crate::style::Theme::ticks(t.delay_ms.abs(), tps) as i64
+                    * if t.delay_ms < 0.0 { -1 } else { 1 }
+            });
+            if reduced {
+                tr = tr.map(|t| match fallback {
+                    Reduced::Keep => t,
+                    Reduced::None => Transition::Instant,
+                    Reduced::Fade if fades(c) => Transition::Tween {
+                        duration_ms: tokens.reduced_ms,
+                        ease: super::Ease::Linear,
+                    },
+                    Reduced::Fade => Transition::Instant,
+                });
+            }
+            let ov = overrides
+                .iter()
+                .rev()
+                .find(|o| o.0 == key && o.1 == c)
+                .map(|o| o.2);
+            match m.channels.get_mut(&ck) {
+                Some(ch) => {
+                    touched.insert(ck);
+                    if let Some(v) = ov {
+                        *ch = Channel::at(v, now);
+                        row[c] = v;
+                        continue;
+                    }
+                    if ch.target != target[c] {
+                        let (kind, mode) = pack(&tr.unwrap_or(Transition::Instant), &tokens);
+                        // A negative delay starts partway through.
+                        let since = (now as i64 + delay).max(0);
+                        ch.retarget(target[c], kind, mode, since as u64);
+                    }
+                    row[c] = ch.step(now, tps, stepped);
+                    busy |= !ch.settled() || now < ch.since;
+                }
+                None => {
+                    if let Some(v) = ov {
+                        if animated {
+                            m.channels.insert(ck, Channel::at(v, now));
+                            touched.insert(ck);
+                        }
+                        row[c] = v;
+                        continue;
+                    }
+                    let from = enter.as_ref().filter(|_| entering).and_then(|e| {
+                        e.values
+                            .iter()
+                            .rev()
+                            .find(|(p, _)| p.channels().contains(&c))
+                            .map(|&(_, v)| (v, e))
+                    });
+                    if let Some((v, e)) = from {
+                        let t = if reduced {
+                            match fallback {
+                                Reduced::Keep => e.transition,
+                                Reduced::Fade if fades(c) => Transition::Tween {
+                                    duration_ms: tokens.reduced_ms,
+                                    ease: super::Ease::Linear,
+                                },
+                                _ => Transition::Instant,
+                            }
+                        } else {
+                            e.transition
+                        };
+                        let mut ch = Channel::at(v, now);
+                        let (kind, mode) = pack(&t, &tokens);
+                        let delay = crate::style::Theme::ticks(e.delay_ms, tps) as u64;
+                        let delay = if e.delay_ms > 0.0 { delay } else { 0 };
+                        ch.retarget(target[c], kind, mode, now + delay);
+                        ch.stepped = now.saturating_sub(1);
+                        row[c] = ch.step(now, tps, stepped);
+                        busy |= !ch.settled() || now < ch.since;
+                        m.channels.insert(ck, ch);
+                        touched.insert(ck);
+                    } else if let Some(&(_, v)) = css.and(
+                        self.tree.nodes[i]
+                            .props
+                            .starting
+                            .iter()
+                            .rev()
+                            .find(|(p, _)| p.channels().contains(&c)),
+                    ) {
+                        // `@starting-style`: the first style's
+                        // before-change value, moved by its transition.
+                        let mut ch = Channel::at(v, now);
+                        let (kind, mode) = pack(&tr.unwrap_or(Transition::Instant), &tokens);
+                        ch.retarget(target[c], kind, mode, (now as i64 + delay).max(0) as u64);
+                        ch.stepped = now.saturating_sub(1);
+                        row[c] = ch.step(now, tps, stepped);
+                        busy |= !ch.settled() || now < ch.since;
+                        m.channels.insert(ck, ch);
+                        touched.insert(ck);
+                    } else if tr.is_some() || moved_by[c].is_some() || !groups.is_empty() {
+                        m.channels.insert(ck, Channel::at(target[c], now));
+                        touched.insert(ck);
+                    }
+                }
+            }
+        }
+        (row, busy)
+    }
+
+    /// A node's CSS animations, over its channels' values: later entries
+    /// win.
+    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    fn step_animations(
+        &mut self,
+        i: usize,
+        key: u64,
+        row: &mut [f32; CHANNELS],
+        m: &mut MotionState,
+        css_events: &mut Vec<UiEvent>,
+        css_bursts: &mut Vec<BurstRun>,
+        now: u64,
+        tps: u32,
+        reduced: bool,
+    ) {
+        // CSS animations: over the channels' values, later entries win.
+        let animations = self.tree.nodes[i].props.animations.clone();
+        let scrolled = animations.iter().any(|a| !a.timeline.ticks());
+        let mut progress: Vec<Option<f32>> = vec![None; animations.len()];
+        let mut styled = false;
+        for (index, a) in animations.iter().enumerate() {
+            let Some(frames) = self.docs.host.keyframes.get(&a.name).cloned() else {
+                continue;
+            };
+            if !a.timeline.ticks() {
+                // Its time is its timeline's progress (no run, no
+                // events: scrolling back and forth is not playback).
+                let p = self.timeline_progress(i, a);
+                progress[index] = p;
+                styled |= !frames.styles.is_empty();
+                if let Some(p) = p {
+                    let (b, active) = a.on_progress(p);
+                    for (c, v) in b.sample_active(&frames, active, &row, false).values {
+                        row[c] = v;
+                    }
+                }
+                continue;
+            }
+            let nth = animations[..index]
+                .iter()
+                .filter(|b| b.name == a.name)
+                .count() as u32;
+            let at = match m
+                .css
+                .iter()
+                .position(|r| r.element == key && r.name == a.name && r.index == nth)
+            {
+                Some(at) => at,
+                None => {
+                    m.css.push(super::css::CssRun {
+                        element: key,
+                        index: nth,
+                        name: a.name.clone(),
+                        ticks: 0,
+                        stepped: now,
+                        last_ms: -a.delay_ms - 1e-3,
+                    });
+                    m.css.len() - 1
+                }
+            };
+            let run = &mut m.css[at];
+            if run.stepped != now {
+                run.stepped = now;
+                if !a.paused {
+                    run.ticks += 1;
+                }
+            }
+            let sample = a.sample(&frames, run.ticks, tps, &row, reduced);
+            for (c, v) in sample.values {
+                row[c] = v;
+            }
+            if !(reduced && a.iterations.is_infinite()) {
+                for kind in a.passed(&frames, run.last_ms, sample.active_ms) {
+                    match kind {
+                        EventKind::Sound { name, pitch } => css_events.push(UiEvent {
+                            kind: "sound".into(),
+                            name: name.clone(),
+                            target: self.path_of(i),
+                            pitch: *pitch,
+                            ..UiEvent::default()
+                        }),
+                        // `-og-burst` in a keyframe: silenced under
+                        // reduced motion, presentation only.
+                        EventKind::Burst {
+                            count,
+                            radius,
+                            color,
+                            duration_ms,
+                        } if !reduced => css_bursts.push(BurstRun {
+                            key: self.tree.nodes[i].key,
+                            since: now,
+                            count: *count,
+                            radius: *radius,
+                            color: *color,
+                            duration_ms: *duration_ms,
+                        }),
+                        _ => {}
+                    }
+                }
+            }
+            run.last_ms = sample.active_ms;
+        }
+        if scrolled {
+            let old = self.style.motion.timelines.insert(key, progress.clone());
+            if styled && old.as_ref() != Some(&progress) {
+                self.style.motion.timeline_restyle.push(key);
+            }
+        } else {
+            self.style.motion.timelines.remove(&key);
+        }
+    }
+
+    /// FLIP: from a node's last laid-out rectangle to this one, relative
+    /// to the nearest ancestor that animates its layout too.
+    #[allow(clippy::too_many_arguments, clippy::needless_borrow)]
+    fn step_flip(
+        &mut self,
+        i: usize,
+        key: u64,
+        m: &mut MotionState,
+        touched: &mut crate::id::KeySet,
+        flip_rel: &mut std::collections::HashSet<usize>,
+        fallback: Reduced,
+        now: u64,
+        tps: u32,
+        tokens: crate::motion::MotionTokens,
+        reduced: bool,
+    ) {
+        // FLIP: from its last laid-out rectangle to this one (relative to
+        // the nearest ancestor that animates its layout too).
+        if let Some(lm) = self.tree.nodes[i].props.layout_motion {
+            let rect = self.tree.nodes[i].rect;
+            let mut up = self.tree.nodes[i].parent;
+            let mut origin = (0.0, 0.0);
+            while up != crate::layout::NONE {
+                if flip_rel.contains(&up) {
+                    let pr = self.tree.nodes[up].rect;
+                    origin = (pr.x, pr.y);
+                    break;
+                }
+                up = self.tree.nodes[up].parent;
+            }
+            let rel = Rect::new(
+                rect.x - origin.0,
+                rect.y - origin.1,
+                rect.width,
+                rect.height,
+            );
+            flip_rel.insert(i);
+            let t = if reduced && fallback != Reduced::Keep {
+                Transition::Instant
+            } else {
+                lm
+            };
+            let (kind, mode) = pack(&t, &tokens);
+            let keys = [FLIP_X, FLIP_Y, FLIP_SX, FLIP_SY].map(|c| channel_key(key, c));
+            if let Some(prev) = m.flip.get(&key).copied()
+                && prev != rel
+            {
+                let get = |m: &MotionState, k: u64, d: f32| {
+                    m.channels.get(&k).copied().unwrap_or(Channel::at(d, now))
+                };
+                let (mut cx, mut cy) = (get(&m, keys[0], 0.0), get(&m, keys[1], 0.0));
+                let (mut sx, mut sy) = (get(&m, keys[2], 1.0), get(&m, keys[3], 1.0));
+                // Where it shows now, kept: the offset takes up the move.
+                cx.value += prev.x - rel.x;
+                cy.value += prev.y - rel.y;
+                if rel.width > 0.0 {
+                    sx.value *= prev.width / rel.width;
+                }
+                if rel.height > 0.0 {
+                    sy.value *= prev.height / rel.height;
+                }
+                cx.retarget(0.0, kind, mode, now);
+                cy.retarget(0.0, kind, mode, now);
+                sx.retarget(1.0, kind, mode, now);
+                sy.retarget(1.0, kind, mode, now);
+                for (k, ch) in keys.iter().zip([cx, cy, sx, sy]) {
+                    m.channels.insert(*k, ch);
+                }
+            }
+            m.flip.insert(key, rel);
+            touched.insert(key);
+            let mut out = [0.0, 0.0, 1.0, 1.0];
+            for (o, k) in out.iter_mut().zip(keys) {
+                if let Some(ch) = m.channels.get_mut(&k) {
+                    *o = ch.step(now, tps, false);
+                    touched.insert(k);
+                }
+            }
+            self.tree.nodes[i].flip = out;
+        }
     }
 
     /// Plays: those asked for this tick flattened, then each one's values
