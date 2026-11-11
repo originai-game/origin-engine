@@ -300,8 +300,13 @@ fn models(
         .as_ref()
         .is_none_or(|s| on(s, "bakedLighting", true));
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
+    // The models' parts and their lightmapped ones, lent to the rows until
+    // the end of this read: a row borrows its model's parts and copies them
+    // only to change them (a variant's materials, wind copies), where every
+    // row copied them each frame. Nothing below reads either through `rs`.
+    let models = std::mem::take(&mut rs.models);
+    let lightmapped_parts = std::mem::take(&mut rs.baked.overrides);
     let layouts = &rs.draw;
-    let models = &rs.models;
     // Models: posed by og-anim when the entity has a Skeleton.
     let posed = super::fx::skeletons(world, rs.draw.fx.skeleton.as_ref(), &mut rs.fx);
     // GPU crowds (og.CrowdAnimation): the world's time of this frame,
@@ -322,12 +327,19 @@ fn models(
     // by offset, the fields resolved once a frame: decoding each row to
     // JSON was about a third of Lantern Vale's extraction
     // (the former test sample
-    type Row = (u64, u64, Parts, super::fx::ModelLook, f32, f32);
+    type Row<'a> = (
+        u64,
+        u64,
+        std::borrow::Cow<'a, Parts>,
+        super::fx::ModelLook,
+        f32,
+        f32,
+    );
     let model_rows = layouts
         .model
         .as_ref()
         .map(|layout| column_rows(world, layout));
-    let model_parts: Vec<Row> = match (&layouts.model, &model_rows) {
+    let model_parts: Vec<Row<'_>> = match (&layouts.model, &model_rows) {
         (Some(layout), Some(rows)) => {
             let slot = |key| FieldSlot::of(layout, key);
             let (visible, lod_bias, asset) = (slot("visible"), slot("lodBias"), slot("asset"));
@@ -362,14 +374,15 @@ fn models(
                     };
                     // A static model with a bake draws its lightmapped parts.
                     let lightmapped = (baked && on(&is_static, false))
-                        .then(|| rs.baked.overrides.get(&e))
+                        .then(|| lightmapped_parts.get(&e))
                         .flatten();
                     // A lightmapped model keeps still: its light was baked where it stands.
                     let sway = match lightmapped {
                         Some(_) => 0.0,
                         None => num(&sway, 0.0).max(0.0),
                     };
-                    let mut parts = lightmapped.or_else(|| models.get(&asset))?.clone();
+                    let mut parts =
+                        std::borrow::Cow::Borrowed(lightmapped.or_else(|| models.get(&asset))?);
                     // KHR_materials_variants: the variant's material on every
                     // part (the parts the model's own; -1 keeps the glTF's).
                     let v = v.num(&variant).unwrap_or(-1.0);
@@ -379,7 +392,7 @@ fn models(
                             .and_then(|i| i.part_variants.get(v as usize))
                             .filter(|m| m.len() == parts.len())
                     {
-                        for (p, &m) in parts.iter_mut().zip(mats) {
+                        for (p, &m) in parts.to_mut().iter_mut().zip(mats) {
                             p.1 = m;
                         }
                     }
@@ -575,7 +588,7 @@ fn models(
         if sway > 0.0
             && let Some(&top) = rs.wind.tops.get(&asset)
         {
-            for p in parts.iter_mut() {
+            for p in parts.to_mut().iter_mut() {
                 p.1 = rs.wind.material(&mut rs.scene, p.1, sway, top);
             }
         }
@@ -641,6 +654,8 @@ fn models(
     }
     rs.model_lods = model_lods;
     rs.lod_drawn = drawn;
+    rs.models = models;
+    rs.baked.overrides = lightmapped_parts;
 }
 
 /// og.Mesh rows.
