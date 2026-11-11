@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "net",
+      "summary": "og relay and og run --room carry an engine message up to its 16 MiB limit (a late joiner's world snapshot): its WebSocket frame, about 22.4 MiB as base64, was over the 16 MiB frame both ends read, so the sender lost its connection. A larger one is answered with the error too_large; a frame over 32 MiB is answered so too, and then its connection is closed."
+    }
+  ]
+}
