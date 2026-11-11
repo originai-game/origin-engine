@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og check",
+      "summary": "The determinism lint runs for every game, not only one that sets og.Lockstep, and reports more: Math.random and crypto.randomUUID, Date.now, performance.now and new Date(), setTimeout, setInterval and requestAnimationFrame (OG9006), Math's approximated functions and ** with a non-integer exponent, and what reaches outside the host ABI: fetch, WebSocket, XMLHttpRequest, EventSource, navigator.sendBeacon, localStorage, sessionStorage and indexedDB (OG9005). Each is a warning naming its replacement (og.Time, og.Rng, math, og.platform, og.load) and never fails the check; a line that only draws keeps it with // og-ok (// lockstep-ok still works). The JSON event is still lockstep-lint and gains lockstep: whether the game sets og.Lockstep."
+    }
+  ]
+}

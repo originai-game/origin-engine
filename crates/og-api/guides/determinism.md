@@ -32,6 +32,18 @@ lockstep. A game keeps it by keeping these rules:
   particle's position, the camera's interpolated frame). Gameplay that
   needs a position reads the simulated one.
 
+`og check` reports where a game's sources use what these rules exclude:
+`Math.random`, `crypto.randomUUID`, `Date.now()`, `performance.now()`,
+`new Date()`, `setTimeout` and `setInterval`, Math's approximated
+functions and `**` with a non-integer exponent, and what leaves the game
+without the engine (`fetch`, `WebSocket`, `localStorage`, `indexedDB`).
+Nothing hides these from game code, so the report is the only notice. A
+finding is a warning with its replacement and never fails the check. Fix
+it wherever a system that changes the world runs the line; a line that
+only draws (a wobble in a shader parameter, a clock on the HUD) keeps it
+with an `// og-ok` comment. Saves, scores, rooms and anything on a
+network go through og.platform; a file goes through og.load.
+
 `og test` with `runs: 2` (or more) replays the script in fresh processes
 and lists every end hash: equal hashes are the check. Run it on any game
 that saves, replays or plays online.
@@ -76,9 +88,9 @@ Every peer runs the whole world; only inputs and hashes cross the room.
 - Inputs act `inputDelay` ticks after they are submitted. Design for it:
   local feedback (a sound, a flash) may react at once from the
   presentation, the simulation may not.
-- `og check` warns on every call that differs between peers (Math's
-  approximated functions, `Math.random`, the clock). Fix each; mark a
-  line that only draws with a `// lockstep-ok` comment.
+- The findings of §1's `og check` report part the peers here, not only a
+  replay: fix each one a system that changes the world can reach; mark a
+  line that only draws with `// og-ok` (`// lockstep-ok` reads the same).
 - With rollback, systems run again for re-simulated ticks: effects that
   leave the world (sounds, particles, haptics) check og.net.resimulating
   or come from events the engine deduplicates.
