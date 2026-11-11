@@ -71,12 +71,12 @@ world.set(feet, og.AudioEvent, { trigger: true });   // the engine resets it
 - Doppler treats a move at or past the speed of sound within one tick as a
   teleport and shifts nothing, and holds the shift within a factor of 3.
 
-| Spatial | Typical |
-|---|---|
-| `refDistance` | 1 m for a voice or a footstep, 3 to 5 m for an engine or an explosion |
-| `maxDistance` | 30 to 50 m indoors, 100 to 300 m outdoors |
-| `rolloffFactor` | 1; 0.5 for sounds that must carry |
-| `dopplerFactor` | 1 physical; 0.3 to 0.5 for arcade vehicles that should not warble |
+| AudioSource | Value | Source |
+|---|---|---|
+| `refDistance` | 1 m | engine default (Web Audio PannerNode's too) |
+| `maxDistance` | 100 m | engine default |
+| `rolloffFactor` | 1 | engine default (Web Audio PannerNode's too) |
+| `dopplerFactor` | 1: physical; 0 off | engine default |
 
 <a id="guide-audio-3"></a>
 ### `audio §3` Music and beats
@@ -114,12 +114,9 @@ world.set(feet, og.AudioEvent, { trigger: true });   // the engine resets it
   a child of a moving room moves with it. Outside every zone the reverb is
   og.Audio's `reverbRoom` and `reverbDamping` and the bus's send.
 
-| Room | `room` | `damping` | `send` |
+| ReverbZone | `room` | `damping` | `send` |
 |---|---|---|---|
-| small room | 0.3 to 0.5 | 0.5 | 0.2 to 0.3 |
-| hall, church | 0.85 to 0.95 | 0.3 | 0.5 |
-| cave | 0.9 | 0.15 | 0.6 |
-| open air | 0.1 to 0.2 | 0.7 | 0.05 to 0.1 |
+| engine default | 0.85 | 0.3 | 0.5 |
 
 <a id="guide-audio-5"></a>
 ### `audio §5` The web's first-input unlock
@@ -145,12 +142,15 @@ then the oldest, with og.SoundEnded reason SOUND_CULLED; a source with
 `virtualize` goes silent instead and is heard again from where it would be
 once it stands within the cap.
 
-| Sound | `priority` | Voice handling |
+| Field | Value | Source |
 |---|---|---|
-| dialogue, music stems, the player's own actions | 200 to 255 | never culled in practice |
-| enemies' attacks, pickups | 128 (the default) | |
-| ambience beds, distant loops | 64 to 100 | `virtualize`, so they resume in place |
-| footsteps, debris, shell casings | 0 to 64 | an og.AudioEvent with `maxVoices` 2 to 4 and `cooldown` |
+| og.Audio `maxVoices` | 32, at most 256 | engine default and limit |
+| AudioSource `priority` | 128; higher is kept longer | engine default |
+
+Raise `priority` on what must never drop (dialogue, the player's own
+actions), give loops that should resume in place `virtualize`, and cap
+rapid one-shots (footsteps, debris) with an og.AudioEvent's `maxVoices`
+and `cooldown`.
 
 - The mixer's sinc resampler (the default) costs more per voice than
   `linear`; keep it unless a profile shows the mixer, and switch to linear

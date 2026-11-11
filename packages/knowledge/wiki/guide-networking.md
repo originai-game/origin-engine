@@ -14,7 +14,7 @@ The API: `og api show net`; rooms are og.platform's (`og api show platform`).
 | a late input | holds the world until it arrives | the tick runs on a prediction (the player's last input) and is re-run when the real input differs |
 | feel at 100 ms | every input lags by `inputDelay` | local input answers within `inputDelay`, others snap when corrected |
 | cost | one world per tick | a snapshot per unconfirmed tick and up to `maxPrediction` ticks re-run in a frame |
-| choose for | RTS, turn-based, co-op, many units, up to 16 seats | fighting, sports, action with 2 to 4 players |
+| choose for | RTS, turn-based, co-op, many units; at most 16 seats (engine limit) | fighting, sports, action with few players |
 
 - Both modes keep the same seats, inputs and hashes. Set og.Lockstep's
   `mode` before the room starts; the authority's is the room's.
@@ -81,15 +81,14 @@ const Send = defineSystem("Send", { reads: [og.Input], writes: [] }, (q, time, w
   to cross the room. Local feedback (a sound, a flash, an animation start)
   may react at once from the presentation; the simulation may not.
 
-| Connection | Round trip | `inputDelay` at 60 Hz | `maxPrediction` (rollback) |
-|---|---|---|---|
-| same machine, LAN | under 10 ms | 2 (33 ms) | 8 |
-| same region | 20 to 60 ms | 3 to 4 | 8 |
-| across a continent | 60 to 120 ms | 4 to 6 | 8 to 12 |
-| intercontinental | over 150 ms | 6 to 10 | 12 to 15; lockstep feels sluggish |
+| og.Lockstep | Value | Source |
+|---|---|---|
+| `inputDelay` | 2 ticks (33 ms at 60 Hz) | engine default |
+| `maxPrediction` | 8 ticks (133 ms at 60 Hz) | engine default |
+| `players` | at most 16 | engine limit |
 
-  In rollback, `maxPrediction` 8 (133 ms) covers most internet latency on
-  top of `inputDelay`. A lower delay feels better and rolls back more.
+  An input delay must cover the room's round trip, or lockstep waits and
+  rollback corrects more; a lower delay feels better and rolls back more.
 
 <a id="guide-networking-4"></a>
 ### `networking §4` Rollback
