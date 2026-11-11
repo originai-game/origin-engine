@@ -228,7 +228,6 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
 }
 
 /// Lowers `display`: whether the element is shown, and how.
-#[allow(clippy::needless_return)]
 fn lower_display(value: &str) -> Result<Vec<Part>, String> {
     let word = match value.trim() {
         "none" => {
@@ -239,14 +238,14 @@ fn lower_display(value: &str) -> Result<Vec<Part>, String> {
         }
         v => display_word(v)?,
     };
-    return Ok(vec![
+    Ok(vec![
         e("visible", vec![Value::Word("true".into())]),
         e("display", vec![Value::Word(word.into())]),
-    ]);
+    ])
 }
 
 /// Lowers a bound declaration: the whole value is the binding.
-#[allow(clippy::needless_return, clippy::ptr_arg)]
+#[allow(clippy::ptr_arg)]
 fn lower_bind(name: &str, a: &Vec<Vec<Tok>>, state: bool) -> Result<Vec<Part>, String> {
     let src = match a.as_slice() {
         [v] => match v.as_slice() {
@@ -270,7 +269,7 @@ fn lower_bind(name: &str, a: &Vec<Vec<Tok>>, state: bool) -> Result<Vec<Part>, S
                 .ok_or_else(|| format!("'{n}' is not a property"))?,
         }
     };
-    return Ok(vec![e(prop, vec![Value::Word("bind".into()), src])]);
+    Ok(vec![e(prop, vec![Value::Word("bind".into()), src])])
 }
 
 /// Lowers `"scale"`.
