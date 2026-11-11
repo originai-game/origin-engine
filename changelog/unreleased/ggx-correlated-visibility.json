@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"standardMaterial roughness (specular)","summary":"Specular on rough surfaces was dark at grazing angles: the lights used a separable Smith term with a roughness remap, and the image-based light's BRDF table another separable one. Both now use the height-correlated Smith visibility for alpha = roughness squared, as the anisotropic lobe already did, so rough surfaces seen or lit at a low angle are brighter, from the lights by up to 1/0.35 at roughness 0.78 and from the environment by up to 1.45; every lit frame changes a little, smooth surfaces seen head-on the least."}
+  ]
+}

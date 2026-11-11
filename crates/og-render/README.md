@@ -167,7 +167,10 @@ a pass still reads.
    were culled to), the point and spot lights of the fragment's cluster
    ([Forward+](#forward); inverse square windowed to the range, smooth
    spot cone), split-sum IBL, emissive, alpha mask, normal maps in the
-   vertex tangent frame. Shadow lookups are bilinear PCF with explicit
+   vertex tangent frame. The specular lobe is GGX with the
+   height-correlated Smith visibility for alpha = roughness² and no
+   roughness remap (`ggx.wgsl`, one function for the lights and for the
+   BRDF LUT's integral, so direct and image-based specular agree). Shadow lookups are bilinear PCF with explicit
    compares on `textureLoad`. **Shadow bias works at any scale:** the
    normal offset and the depth bias are in world units proportional to the
    cascade's texel size (the depth bias then converted to that cascade's

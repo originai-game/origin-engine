@@ -25,8 +25,12 @@ use crate::ibl::SHEEN_WGSL;
 /// instance buffers ([`instances::GpuTransform`]); `mul_point`: how the
 /// points it moves are projected.
 pub(crate) const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
+/// The GGX specular visibility, one function for direct light
+/// ([`LIGHTING_WGSL`]) and for the BRDF table of the image-based light
+/// (`ibl::ibl_source`).
+pub(crate) const GGX_WGSL: &str = wgsl!("ggx.wgsl");
 /// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
-pub(crate) const LIGHTING_WGSL: &str = wgsl!("lighting.wgsl");
+pub(crate) const LIGHTING_WGSL: &str = concat!(wgsl!("ggx.wgsl"), wgsl!("lighting.wgsl"));
 /// Rain, puddles and snow on lit surfaces (weather.rs), after
 /// lighting.wgsl, in the standard, physical and terrain lit modules.
 pub(crate) const WEATHER_SURFACE_WGSL: &str = wgsl!("weather_surface.wgsl");
