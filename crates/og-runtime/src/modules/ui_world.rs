@@ -14,7 +14,6 @@ use og_render::{
     UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiOcclusion,
     UiParticleShape,
 };
-use og_ui::WorldOcclusion;
 
 /// What the UI's end reads to place world-space UI.
 pub(crate) struct Feed {
@@ -92,70 +91,50 @@ impl Feed {
 
 // ── reading descs ───────────────────────────────────────────────────────────
 
-fn v2(v: &Value, d: Vec2) -> Vec2 {
-    if !v.is_object() {
-        return d;
-    }
-    Vec2::new(f(v, "x", d.x), f(v, "y", d.y))
-}
-
+use crate::wire::{self, MassKind, MassTemplateDesc, ToJson};
 use og_core::glam::Vec2;
 
-fn linear(theme: &Theme, v: &Value, d: [f32; 4]) -> [f32; 4] {
-    paint(theme, v).map_or(d, |c| c.linear())
+fn linear(theme: &Theme, p: &Option<wire::Paint>, d: [f32; 4]) -> [f32; 4] {
+    p.as_ref()
+        .and_then(|p| paint(theme, &p.to_json()))
+        .map_or(d, |c| c.linear())
 }
 
-fn occlusion(d: &Value) -> WorldOcclusion {
-    match d["occlusion"].as_str() {
-        Some("fade") => WorldOcclusion::Fade {
-            alpha: f(d, "occludedAlpha", 0.25).clamp(0.0, 1.0),
-        },
-        Some("hide") => WorldOcclusion::Hide,
-        _ => WorldOcclusion::None,
-    }
+/// `key` of the desc `raw`: the typed `value` when given, else `default`
+/// (the IDL's Vector2 has no default of its own: the zero vector).
+fn given(raw: &Value, key: &str, value: Vec2, default: Vec2) -> Vec2 {
+    if raw[key].is_null() { default } else { value }
 }
 
 fn template(
     theme: &Theme,
     eng: Option<&Engine>,
-    d: &Value,
+    raw: &Value,
 ) -> Result<(UiMassTemplate, UiMassSpace), String> {
-    let kind = match d["kind"].as_str() {
-        Some("text") => UiMassKind::Text {
-            strings: d["strings"]
-                .as_array()
-                .map(|a| {
-                    a.iter()
-                        .filter_map(|s| s.as_str().map(String::from))
-                        .collect()
-                })
-                .unwrap_or_default(),
+    let d: MassTemplateDesc = wire::value(raw, "desc")?;
+    let kind = match d.kind {
+        MassKind::Text => UiMassKind::Text {
+            strings: d.strings.clone(),
         },
-        Some("bar") => UiMassKind::Bar {
-            back: linear(theme, &d["barBack"], [0.02, 0.02, 0.03, 0.85]),
-            ghost: linear(theme, &d["barGhost"], [1.0, 0.9, 0.9, 1.0]),
-            radius: f(d, "barRadius", 0.0).max(0.0),
+        MassKind::Bar => UiMassKind::Bar {
+            back: linear(theme, &d.bar_back, [0.02, 0.02, 0.03, 0.85]),
+            ghost: linear(theme, &d.bar_ghost, [1.0, 0.9, 0.9, 1.0]),
+            radius: d.bar_radius.max(0.0),
         },
-        Some("icon") => UiMassKind::Icon {
-            frames: d["frames"]
-                .as_array()
-                .map(|a| {
-                    let n: Vec<f32> = a
-                        .iter()
-                        .filter_map(|x| x.as_f64())
-                        .map(|x| x as f32)
-                        .collect();
-                    n.as_chunks::<4>().0.to_vec()
-                })
-                .unwrap_or_default(),
+        MassKind::Icon => UiMassKind::Icon {
+            frames: d.frames.as_chunks::<4>().0.to_vec(),
         },
-        Some("particle") => UiMassKind::Particle {
-            shape: particle_shape(&d["particleShape"]),
+        MassKind::Particle => UiMassKind::Particle {
+            shape: match d.particle_shape {
+                wire::ParticleShape::Circle => UiParticleShape::Circle,
+                wire::ParticleShape::Diamond => UiParticleShape::Diamond,
+                wire::ParticleShape::Square => UiParticleShape::Square,
+            },
         },
-        _ => UiMassKind::Number {
-            decimals: d["decimals"].as_u64().unwrap_or(0).min(6) as u32,
-            plus: d["plus"].as_bool().unwrap_or(false),
-            compact: d["compact"].as_bool().unwrap_or(false),
+        MassKind::Number => UiMassKind::Number {
+            decimals: d.decimals.min(6),
+            plus: d.plus,
+            compact: d.compact,
         },
     };
     let size = match kind {
@@ -164,83 +143,69 @@ fn template(
         UiMassKind::Icon { .. } => Vec2::splat(32.0),
         UiMassKind::Particle { .. } => Vec2::splat(8.0),
     };
-    let font = d["font"]
-        .as_f64()
-        .and_then(|h| eng.and_then(|e| super::ui_font(e, h).ok()))
+    let font = d
+        .font
+        .and_then(|h| eng.and_then(|e| super::ui_font(e, h as f64).ok()))
         .and_then(|f| f.handle);
-    let keys = d["keys"]
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .map(|k| Ok(UiMassKey {
-                    t: f(k, "t", 0.0).clamp(0.0, 1.0),
-                    offset: Vec2::new(f(k, "offsetX", 0.0), f(k, "offsetY", 0.0)),
-                    scale: f(k, "scale", 1.0).max(0.0),
-                    alpha: f(k, "alpha", 1.0).clamp(0.0, 1.0),
-                    ease: match &k["ease"] {
-                        Value::Null => og_tween::Ease::Linear,
-                        Value::String(text) => og_tween::Ease::from_text(text).ok_or_else(|| format!("invalid mass ease '{text}': expected a GSAP name, cubic-bezier(x1,y1,x2,y2) with four finite controls and x in [0,1], or steps(n[,position]) with positive integer n and start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)"))?,
-                        value => return Err(format!("mass ease {value} must be a timing string")),
-                    },
-                }))
-                .collect::<Result<Vec<_>, String>>()
-        })
-        .transpose()?.unwrap_or_default();
+    let keys = d
+        .keys
+        .iter()
+        .map(|k| Ok(UiMassKey {
+            t: k.t.clamp(0.0, 1.0),
+            offset: Vec2::new(k.offset_x, k.offset_y),
+            scale: k.scale.max(0.0),
+            alpha: k.alpha.clamp(0.0, 1.0),
+            ease: og_tween::Ease::from_text(&k.ease).ok_or_else(|| format!("invalid mass ease '{}': expected a GSAP name, cubic-bezier(x1,y1,x2,y2) with four finite controls and x in [0,1], or steps(n[,position]) with positive integer n and start/end/jump-start/jump-end/jump-none/jump-both (jump-none requires n > 1)", k.ease))?,
+        }))
+        .collect::<Result<Vec<_>, String>>()?;
     let t = UiMassTemplate {
         kind,
         font,
-        texture: texture_of(&d["texture"]),
-        size: v2(&d["size"], size),
-        pivot: v2(&d["pivot"], Vec2::new(0.5, 0.5)),
-        lifetime: d["lifetime"].as_u64().unwrap_or(0) as u32,
+        texture: texture_of(d.texture),
+        size: given(raw, "size", d.size, size),
+        pivot: given(raw, "pivot", d.pivot, Vec2::new(0.5, 0.5)),
+        lifetime: d.lifetime,
         keys,
-        drift: f(d, "drift", 0.0),
-        gravity: f(d, "gravity", 0.0),
-        drag: d["drag"].as_bool().unwrap_or(false),
+        drift: d.drift,
+        gravity: d.gravity,
+        drag: d.drag,
         distance: Vec3::new(
-            f(d, "reference", 0.0).max(0.0),
-            f(d, "minScale", 0.25).max(0.0),
-            f(d, "maxScale", 4.0).max(0.0),
+            d.reference.max(0.0),
+            d.min_scale.max(0.0),
+            d.max_scale.max(0.0),
         ),
-        occlusion: match occlusion(d) {
-            WorldOcclusion::Fade { alpha } => UiOcclusion::Fade { alpha },
-            WorldOcclusion::Hide => UiOcclusion::Hide,
-            WorldOcclusion::None => UiOcclusion::None,
+        occlusion: match d.occlusion {
+            wire::WorldOcclusion::Fade => UiOcclusion::Fade {
+                alpha: d.occluded_alpha.clamp(0.0, 1.0),
+            },
+            wire::WorldOcclusion::Hide => UiOcclusion::Hide,
+            wire::WorldOcclusion::None => UiOcclusion::None,
         },
-        outline: paint(theme, &d["outline"])
-            .map(|c| (f(d, "outlineWidth", 2.0).max(0.0), c.linear())),
+        outline: d
+            .outline
+            .as_ref()
+            .and_then(|p| paint(theme, &p.to_json()))
+            .map(|c| (d.outline_width.max(0.0), c.linear())),
     };
-    let space = match d["space"].as_str() {
-        Some("screen") => UiMassSpace::Screen,
-        _ => UiMassSpace::World,
+    let space = match d.space {
+        wire::MassSpace::Screen => UiMassSpace::Screen,
+        wire::MassSpace::World => UiMassSpace::World,
     };
     Ok((t, space))
 }
 
-fn particle_shape(v: &Value) -> UiParticleShape {
-    match v.as_str() {
-        Some("circle") => UiParticleShape::Circle,
-        Some("diamond") => UiParticleShape::Diamond,
-        _ => UiParticleShape::Square,
-    }
-}
-
 fn instances(theme: &Theme, text: &str) -> Vec<UiMassInstance> {
-    let list: Vec<Value> = serde_json::from_str(text).unwrap_or_default();
+    let list: Vec<wire::MassInstance> = wire::arg(Some(text), "instances").unwrap_or_default();
     list.iter()
-        .map(|i| {
-            let p = vec3(&i["position"], Vec3::ZERO);
-            let vel = v2(&i["velocity"], Vec2::ZERO);
-            UiMassInstance {
-                position: p.to_array(),
-                value: i["value"].as_f64().unwrap_or(0.0) as f32,
-                color: linear(theme, &i["color"], [1.0; 4]),
-                seed: i["seed"].as_u64().unwrap_or(0) as u32,
-                scale: f(i, "scale", 1.0).max(0.0),
-                aux: [0.0, 0.0, f(i, "ghost", 0.0), 0.0],
-                velocity: [vel.x, vel.y, f(i, "spin", 0.0), f(i, "rotation", 0.0)],
-                ..Default::default()
-            }
+        .map(|i| UiMassInstance {
+            position: i.position.to_array(),
+            value: i.value as f32,
+            color: linear(theme, &i.color, [1.0; 4]),
+            seed: i.seed,
+            scale: i.scale.max(0.0),
+            aux: [0.0, 0.0, i.ghost, 0.0],
+            velocity: [i.velocity.x, i.velocity.y, i.spin, i.rotation],
+            ..Default::default()
         })
         .collect()
 }
@@ -248,7 +213,10 @@ fn instances(theme: &Theme, text: &str) -> Vec<UiMassInstance> {
 // ── og.ui's members ─────────────────────────────────────────────────────────
 
 pub fn og_ui_define_mass(name: String, desc: Option<String>) -> String {
-    let d = desc_of(desc);
+    let d = match parse(desc.as_deref()) {
+        Ok(d) => d,
+        Err(e) => return crate::refuse(e),
+    };
     let eng = ui_engine().and_then(|id| engine(id).ok());
     with_ui("og.ui.defineMass", |ui| {
         let theme = *ui.theme();

@@ -1,4 +1,5 @@
 use super::*;
+use crate::wire;
 
 /// A UI with the theme and fonts of `previous` (a hot reload keeps them).
 pub(crate) fn new_ui(
@@ -71,7 +72,9 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
         let d = merged_ui_desc(&eng.state.borrow().ui_desc, parse(desc.as_deref())?)?;
-        let style = match d["style"].as_f64() {
+        // The merged desc (patch semantics are the merge's), read whole.
+        let u: wire::UiDesc = wire::value(&d, "desc")?;
+        let style = match u.style.map(|h| h as f64) {
             Some(h) => {
                 let i = super::assets::index_of(h)
                     .ok_or_else(|| format!("style: {h} is not a UI style"))?;
@@ -89,75 +92,71 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             }
             None => None,
         };
-        let scheme = match d["scheme"].as_str() {
-            Some("light") => Scheme::Light,
-            _ => Scheme::Dark,
+        let scheme = match u.scheme {
+            wire::Scheme::Light => Scheme::Light,
+            wire::Scheme::Dark => Scheme::Dark,
         };
         let mut theme = Theme::new(scheme);
-        if d["contrast"].as_str() == Some("high") {
+        if u.contrast == wire::Contrast::High {
             theme = theme.to_high_contrast();
         }
-        if d["primaryColor"].is_object() {
-            let c = &d["primaryColor"];
-            let ch = |k: &str| (f(c, k, 1.0).clamp(0.0, 1.0) * 255.0).round() as u8;
-            theme = theme.with_primary(Srgba::rgb(ch("r"), ch("g"), ch("b")));
+        if let Some(c) = &u.primary_color {
+            // A channel left out is 1.
+            let raw = &d["primaryColor"];
+            let ch = |k: &str, x: f32| {
+                let x = if raw[k].is_null() { 1.0 } else { x };
+                (x.clamp(0.0, 1.0) * 255.0).round() as u8
+            };
+            theme = theme.with_primary(Srgba::rgb(ch("r", c.r), ch("g", c.g), ch("b", c.b)));
         }
-        theme.reduced_motion = d["reducedMotion"].as_bool().unwrap_or(false);
-        theme.reduced_transparency = d["reducedTransparency"].as_bool().unwrap_or(false);
-        theme.color_vision = d["colorVision"]
-            .as_str()
-            .and_then(og_render::ColorVision::from_name)
-            .unwrap_or_default();
-        theme.color_vision_filter = match d["colorVisionFilter"].as_str() {
-            Some("simulate") => og_render::ColorVisionFilter::Simulate,
-            _ => og_render::ColorVisionFilter::Correct,
+        theme.reduced_motion = u.reduced_motion;
+        theme.reduced_transparency = u.reduced_transparency;
+        theme.color_vision =
+            og_render::ColorVision::from_name(u.color_vision.as_str()).unwrap_or_default();
+        theme.color_vision_filter = match u.color_vision_filter {
+            wire::ColorVisionFilter::Simulate => og_render::ColorVisionFilter::Simulate,
+            wire::ColorVisionFilter::Correct => og_render::ColorVisionFilter::Correct,
         };
-        theme.color_vision_strength = d["colorVisionStrength"]
-            .as_f64()
-            .map_or(1.0, |v| v.clamp(0.0, 1.0) as f32);
-        theme.text_scale = d["textScale"].as_f64().map_or(1.0, |v| v as f32);
-        theme.unit_pin = d["unitScale"].as_f64().map_or(0.0, |v| {
-            if v > 0.0 {
-                v.clamp(1.0, 2.0) as f32
-            } else {
-                0.0
-            }
-        });
-        theme.density = d["density"]
-            .as_str()
-            .and_then(DensityMode::from_name)
-            .unwrap_or_default();
-        let sounds = &d["sounds"];
-        if sounds.is_object() {
+        theme.color_vision_strength = u.color_vision_strength.clamp(0.0, 1.0);
+        theme.text_scale = u.text_scale;
+        theme.unit_pin = if u.unit_scale > 0.0 {
+            u.unit_scale.clamp(1.0, 2.0)
+        } else {
+            0.0
+        };
+        theme.density = DensityMode::from_name(u.density.as_str()).unwrap_or_default();
+        if let Some(sounds) = &u.sounds {
             for e in og_ui::UiSound::ALL {
-                if let Some(h) = sounds[e.name()].as_f64() {
-                    theme.art.sounds[e as usize] = h as u64;
+                let given = match e {
+                    og_ui::UiSound::Hover => sounds.hover,
+                    og_ui::UiSound::Press => sounds.press,
+                    og_ui::UiSound::Open => sounds.open,
+                    og_ui::UiSound::Close => sounds.close,
+                    og_ui::UiSound::Success => sounds.success,
+                    og_ui::UiSound::Error => sounds.error,
+                };
+                if let Some(h) = given {
+                    theme.art.sounds[e as usize] = h;
                     let f = &mut theme.tokens.feedback[e.event().index()];
                     f.sounds = [0; og_ui::tokens::SET_SOUNDS];
-                    f.sounds[0] = h as u64;
-                    f.count = u8::from(h != 0.0);
+                    f.sounds[0] = h;
+                    f.count = u8::from(h != 0);
                 }
             }
         }
-        let font = |key: &str| -> Result<Option<UiFont>, String> {
-            match d[key].as_f64() {
-                None => Ok(None),
-                Some(h) => ui_font(&eng, h).map(Some),
-            }
+        let font = |h: Option<u64>| -> Result<Option<UiFont>, String> {
+            h.map(|h| ui_font(&eng, h as f64)).transpose()
         };
         let fonts = Fonts {
-            body: font("font")?.unwrap_or_default(),
-            display: font("displayFont")?,
-            mono: font("monoFont")?,
-            rounded: font("roundedFont")?,
-            fallbacks: match d["fallbackFonts"].as_array() {
-                Some(list) => list
-                    .iter()
-                    .filter_map(Value::as_f64)
-                    .map(|h| ui_font(&eng, h))
-                    .collect::<Result<Vec<_>, _>>()?,
-                None => Vec::new(),
-            },
+            body: font(u.font)?.unwrap_or_default(),
+            display: font(u.display_font)?,
+            mono: font(u.mono_font)?,
+            rounded: font(u.rounded_font)?,
+            fallbacks: u
+                .fallback_fonts
+                .iter()
+                .map(|&h| ui_font(&eng, h as f64))
+                .collect::<Result<Vec<_>, _>>()?,
             fallback: None,
             cjk: None,
             cjk_display: None,
@@ -176,12 +175,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             .ok_or("this engine has no UI")?;
         // A game's atlas (`icons`), else the style's; under either, the
         // set that draws the names it lacks (`fallbackIcons`).
-        let atlas_of = |field: &str| -> Result<Option<IconAtlas>, String> {
-            let icons = &d[field];
-            if !icons.is_object() {
+        let atlas_of = |field: &str,
+                        icons: &Option<wire::IconAtlasDesc>|
+         -> Result<Option<IconAtlas>, String> {
+            let Some(icons) = icons else {
                 return Ok(None);
-            }
-            let texture = match icons["texture"].as_f64() {
+            };
+            let texture = match icons.texture.map(|t| t as f64) {
                 Some(t) => {
                     let rs = eng.render.borrow();
                     let i = super::assets::index_of(t)
@@ -196,7 +196,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             };
             // An icon set (an `.ogt` of `type icons`, loaded as a font):
             // distance-field glyphs, named by the set.
-            let set = match icons["font"].as_f64() {
+            let set = match icons.font.map(|h| h as f64) {
                 Some(h) => {
                     let i = super::assets::index_of(h)
                         .ok_or_else(|| format!("{field}.font: {h} is not a font"))?;
@@ -224,27 +224,20 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 },
                 None => IconAtlas {
                     texture,
-                    columns: icons["columns"].as_u64().unwrap_or(1).max(1) as u32,
-                    rows: icons["rows"].as_u64().unwrap_or(1).max(1) as u32,
-                    names: icons["names"]
-                        .as_array()
-                        .map(|a| {
-                            a.iter()
-                                .map(|n| n.as_str().unwrap_or_default().to_string())
-                                .collect()
-                        })
-                        .unwrap_or_default(),
+                    columns: icons.columns.max(1),
+                    rows: icons.rows.max(1),
+                    names: icons.names.clone(),
                     ..IconAtlas::default()
                 },
             }))
         };
-        let mut atlas = atlas_of("icons")?.unwrap_or_default();
-        atlas.fallback = atlas_of("fallbackIcons")?.map(Box::new);
+        let mut atlas = atlas_of("icons", &u.icons)?.unwrap_or_default();
+        atlas.fallback = atlas_of("fallbackIcons", &u.fallback_icons)?.map(Box::new);
         // Pictures rich text draws inline by name ([img=…]).
         let mut images = std::collections::BTreeMap::new();
-        for im in d["images"].as_array().into_iter().flatten() {
-            let name = im["name"].as_str().unwrap_or_default();
-            let Some(t) = im["texture"].as_f64() else {
+        for im in &u.images {
+            let name = im.name.as_str();
+            let Some(t) = im.texture.map(|t| t as f64) else {
                 continue;
             };
             if name.is_empty() {
@@ -257,14 +250,8 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
                 .textures
                 .get(i)
                 .ok_or_else(|| format!("images.{name}.texture: texture {t} is not alive"))?;
-            let uv = match im["uv"].as_array() {
-                Some(a) if a.len() == 4 => {
-                    let v = |k: usize| a[k].as_f64().unwrap_or(0.0) as f32;
-                    [v(0), v(1), v(2), v(3)]
-                }
-                _ => [0.0, 0.0, 1.0, 1.0],
-            };
-            let aspect = im["aspect"].as_f64().map_or(1.0, |a| a as f32);
+            let uv = im.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]);
+            let aspect = im.aspect;
             images.insert(
                 name.to_string(),
                 og_ui::InlineImage {
@@ -316,12 +303,12 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> String {
             ui.set_css_sounds(Default::default());
             ui.set_style_name("");
         }
-        ui.set_toast_anchor(anchor_of(&d["toastAnchor"]).unwrap_or(Anchor::Bottom));
-        ui.set_hud_max_aspect(
-            d["hudMaxAspect"]
-                .as_f64()
-                .map_or(og_ui::HUD_MAX_ASPECT, |a| a as f32),
+        ui.set_toast_anchor(
+            u.toast_anchor
+                .and_then(|a| anchor_of(&Value::from(a.as_str())))
+                .unwrap_or(Anchor::Bottom),
         );
+        ui.set_hud_max_aspect(u.hud_max_aspect);
         drop(ui);
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;

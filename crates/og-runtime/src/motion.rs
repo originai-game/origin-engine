@@ -28,6 +28,7 @@ pub use performance::{og_motion_look_at, og_motion_react};
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
+use super::wire::{self, FaceGoalDesc, JumpGoalDesc, PlaceGoalDesc, PoseGoalDesc, WalkGoalDesc};
 use super::{ok, ok_void, parse, refuse};
 use glam::{Quat, Vec3};
 use og_core::math::{atan2, sin_cos};
@@ -975,11 +976,8 @@ fn agent_of(eng: &Engine, e: Entity) -> Result<Settings, String> {
     Ok(Settings::of(&layout.decode(&bytes)))
 }
 
-fn pose_named(desc: &Value) -> Result<u32, String> {
-    let name = desc["pose"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .unwrap_or("idle");
+fn pose_named(pose: &str) -> Result<u32, String> {
+    let name = if pose.is_empty() { "idle" } else { pose };
     pose_index(name).map(|i| i as u32).ok_or_else(|| {
         format!(
             "'{name}' is not a pose of the motion library: {}",
@@ -988,9 +986,7 @@ fn pose_named(desc: &Value) -> Result<u32, String> {
     })
 }
 
-fn finite(v: &Value, what: &str) -> Result<Vec3, String> {
-    let n = |k: &str| v[k].as_f64().unwrap_or(0.0) as f32;
-    let p = Vec3::new(n("x"), n("y"), n("z"));
+fn finite(p: Vec3, what: &str) -> Result<Vec3, String> {
     if p.is_finite() {
         Ok(p)
     } else {
@@ -998,23 +994,26 @@ fn finite(v: &Value, what: &str) -> Result<Vec3, String> {
     }
 }
 
-fn number(desc: &Value, key: &str, default: f32) -> f32 {
-    desc[key].as_f64().map_or(default, |v| v as f32)
+/// `key` of the desc `raw` when it is given (not absent or null): the
+/// typed `value` read from it.
+fn given(raw: &Value, key: &str, value: f32) -> Option<f32> {
+    (!raw[key].is_null()).then_some(value)
 }
 
-/// Queues a goal made from the parsed desc (and the agent's settings).
-fn queue(
+/// Queues a goal made from the desc, read as `T` (and its raw JSON, for
+/// fields whose absence means something), and the agent's settings.
+fn queue<T: wire::FromJson + Default>(
     world: u32,
     entity: f64,
     desc: Option<String>,
-    make: impl FnOnce(&Value, &Settings) -> Result<Goal, String>,
+    make: impl FnOnce(T, &Value, &Settings) -> Result<Goal, String>,
 ) -> String {
     wire_void((|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         let s = agent_of(&eng, e)?;
-        let desc = parse(desc.as_deref())?;
-        let goal = make(&desc, &s)?;
+        let raw = parse(desc.as_deref())?;
+        let goal = make(wire::value(&raw, "desc")?, &raw, &s)?;
         if !goal.heading.is_finite() || !goal.duration.is_finite() || goal.duration < 0.0 {
             return Err(
                 "the goal's heading or duration is not a finite, non-negative number".into(),
@@ -1041,13 +1040,13 @@ fn need_drive(s: &Settings, what: &str) -> Result<(), String> {
 }
 
 pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
-    queue(world, entity, desc, |d, _| {
+    queue(world, entity, desc, |d: PoseGoalDesc, _, _| {
         Ok(Goal {
             kind: Kind::Pose,
-            pose: pose_named(d)?,
+            pose: pose_named(&d.pose)?,
             target: Vec3::ZERO,
             heading: 0.0,
-            duration: number(d, "duration", 1.5),
+            duration: d.duration,
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
@@ -1059,14 +1058,14 @@ pub fn og_motion_pose(world: u32, entity: f64, desc: Option<String>) -> String {
 }
 
 pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String {
-    queue(world, entity, desc, |d, s| {
+    queue(world, entity, desc, |d: PlaceGoalDesc, _, s| {
         need_drive(s, "place")?;
         Ok(Goal {
             kind: Kind::Place,
-            pose: pose_named(d)?,
-            target: finite(&d["position"], "desc.position")?,
-            heading: number(d, "heading", 0.0),
-            duration: number(d, "duration", 1.5),
+            pose: pose_named(&d.pose)?,
+            target: finite(d.position, "desc.position")?,
+            heading: d.heading,
+            duration: d.duration,
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
@@ -1078,14 +1077,14 @@ pub fn og_motion_place(world: u32, entity: f64, desc: Option<String>) -> String 
 }
 
 pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
-    queue(world, entity, desc, |d, s| {
+    queue(world, entity, desc, |d: FaceGoalDesc, _, s| {
         need_drive(s, "face")?;
         Ok(Goal {
             kind: Kind::Face,
             pose: 0,
             target: Vec3::ZERO,
-            heading: number(d, "heading", 0.0),
-            duration: number(d, "duration", 0.8),
+            heading: d.heading,
+            duration: d.duration,
             speed: 0.0,
             arrival_heading: None,
             deceleration: 0.0,
@@ -1097,15 +1096,14 @@ pub fn og_motion_face(world: u32, entity: f64, desc: Option<String>) -> String {
 }
 
 pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> String {
-    queue(world, entity, desc, |d, s| {
+    queue(world, entity, desc, |d: WalkGoalDesc, raw, s| {
         need_drive(s, "walkTo")?;
-        let speed = number(d, "speed", 1.4);
+        let speed = d.speed;
         if !(speed.is_finite() && speed > 0.0) {
             return Err(format!("desc.speed {speed} is not a positive speed"));
         }
-        let arrival_heading = d["arrivalHeading"].as_f64().map(|h| h as f32);
-        let deceleration = number(d, "deceleration", 3.0);
-        let acceleration = number(d, "acceleration", 0.0);
+        let arrival_heading = given(raw, "arrivalHeading", d.arrival_heading);
+        let (deceleration, acceleration) = (d.deceleration, d.acceleration);
         if arrival_heading.is_some_and(|h| !h.is_finite())
             || !deceleration.is_finite()
             || deceleration < 0.0
@@ -1118,8 +1116,8 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
         }
         Ok(Goal {
             kind: Kind::WalkTo,
-            pose: pose_named(d)?,
-            target: finite(&d["position"], "desc.position")?,
+            pose: pose_named(&d.pose)?,
+            target: finite(d.position, "desc.position")?,
             heading: 0.0,
             duration: 0.0,
             speed: speed.min(10.0),
@@ -1141,13 +1139,10 @@ pub fn og_motion_walk_to(world: u32, entity: f64, desc: Option<String>) -> Strin
 }
 
 pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> String {
-    queue(world, entity, desc, |d, s| {
+    queue(world, entity, desc, |d: JumpGoalDesc, raw, s| {
         need_drive(s, "jump")?;
-        let height = number(d, "height", 0.5);
-        let distance = number(d, "distance", 0.0);
-        let prepare = number(d, "prepare", 0.25);
-        let recover = number(d, "recover", 0.35);
-        let heading = d["heading"].as_f64().map(|h| h as f32);
+        let (height, distance, prepare, recover) = (d.height, d.distance, d.prepare, d.recover);
+        let heading = given(raw, "heading", d.heading);
         if !(height.is_finite() && (0.0..=5.0).contains(&height))
             || !(distance.is_finite() && (0.0..=20.0).contains(&distance))
             || !(prepare.is_finite() && prepare >= 0.0)
@@ -1160,7 +1155,7 @@ pub fn og_motion_jump(world: u32, entity: f64, desc: Option<String>) -> String {
         }
         Ok(Goal {
             kind: Kind::Jump,
-            pose: pose_named(d)?,
+            pose: pose_named(&d.pose)?,
             target: Vec3::ZERO,
             heading: 0.0,
             duration: recover,

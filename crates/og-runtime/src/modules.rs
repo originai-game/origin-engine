@@ -29,9 +29,8 @@ pub use ui_desc::{
     og_ui_set_focus, og_ui_theme, og_ui_viewport,
 };
 pub(crate) use ui_desc::{anchor_of, step, texture_of, ui_engine, with_ui};
-use ui_desc::{f, insets, paint, rect_json, tone, ui_rect};
+use ui_desc::{insets, paint, rect_json, ui_rect};
 mod widgets;
-use widgets::desc_of;
 pub(crate) use widgets::emit;
 mod game_widgets;
 use crate::{art, assets, extract};
@@ -62,7 +61,7 @@ pub use motion::{
 };
 
 use super::engine::{Engine, engine, running};
-use super::{ok, ok_void, parse, refuse};
+use super::{ok, ok_void, parse, refuse, wire};
 use og_core::glam::Vec3;
 use og_ecs::{Entity, SystemDesc, World};
 use og_physics::{
@@ -425,48 +424,30 @@ fn viewport_json(v: &Viewport, hud_max_aspect: f32) -> Value {
 
 // ── physics ─────────────────────────────────────────────────────────────────
 
-fn vec3(v: &Value, d: Vec3) -> Vec3 {
-    if !v.is_object() {
-        return d;
-    }
-    let n = |k: &str, x: f32| v[k].as_f64().map_or(x, |f| f as f32);
-    Vec3::new(n("x", d.x), n("y", d.y), n("z", d.z))
-}
-
-fn quat(v: &Value) -> og_core::glam::Quat {
-    if !v.is_object() {
-        return og_core::glam::Quat::IDENTITY;
-    }
-    let n = |k: &str, x: f32| v[k].as_f64().map_or(x, |f| f as f32);
-    og_core::glam::Quat::from_xyzw(n("x", 0.0), n("y", 0.0), n("z", 0.0), n("w", 1.0))
-}
-
 fn v3(v: Vec3) -> Value {
     json!({ "x": v.x, "y": v.y, "z": v.z })
 }
 
-fn filter(v: &Value) -> Result<QueryFilter, String> {
-    let exclude = match v["exclude"].as_f64() {
-        Some(n) if n >= 1.0 && n.fract() == 0.0 => Some(Entity::from_bits(n as u64)),
-        Some(n) => return Err(format!("filter.exclude: {n} is not an entity")),
-        None => None,
+/// og-physics' filter for a QueryFilter; an `exclude` of 0 names no entity.
+fn filter(f: wire::QueryFilter) -> Result<QueryFilter, String> {
+    let exclude = match f.exclude {
+        Some(0) => return Err("filter.exclude: 0 is not an entity".into()),
+        e => e.map(Entity::from_bits),
     };
     Ok(QueryFilter {
-        mask: v["mask"].as_u64().unwrap_or(0) as u32,
-        include_sensors: v["includeSensors"].as_bool().unwrap_or(false),
+        mask: f.mask,
+        include_sensors: f.include_sensors,
         exclude,
     })
 }
 
-fn shape(v: &Value) -> ShapeDesc {
-    let d = ShapeDesc::default();
-    let n = |k: &str, x: f32| v[k].as_f64().map_or(x, |f| f as f32);
+fn shape(s: wire::ShapeDesc) -> ShapeDesc {
     ShapeDesc {
-        shape: v["shape"].as_u64().map_or(d.shape, |s| s as u32),
-        size: vec3(&v["size"], d.size),
-        radius: n("radius", d.radius),
-        height: n("height", d.height),
-        mesh: v["mesh"].as_f64().map_or(d.mesh, |m| m as u64),
+        shape: s.shape,
+        size: s.size,
+        radius: s.radius,
+        height: s.height,
+        mesh: s.mesh,
     }
 }
 
@@ -488,12 +469,12 @@ fn query(world: u32) -> Result<PhysicsQuery, String> {
 
 pub fn og_physics_raycast(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
-        let d = parse(desc.as_deref())?;
+        let d: wire::RaycastDesc = wire::arg(desc.as_deref(), "desc")?;
         let desc = RaycastDesc {
-            origin: vec3(&d["origin"], Vec3::ZERO),
-            direction: vec3(&d["direction"], Vec3::NEG_Y),
-            max_distance: d["maxDistance"].as_f64().unwrap_or(0.0) as f32,
-            filter: filter(&d["filter"])?,
+            origin: d.origin,
+            direction: d.direction,
+            max_distance: d.max_distance,
+            filter: filter(d.filter)?,
         };
         let hit = query(world)?.raycast(&desc).map_err(err)?;
         let mut text = String::with_capacity(160);
@@ -556,14 +537,14 @@ fn float_text(x: f32, out: &mut String) {
 
 pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
-        let d = parse(desc.as_deref())?;
+        let d: wire::RaycastAllDesc = wire::arg(desc.as_deref(), "desc")?;
         let ray = RaycastDesc {
-            origin: vec3(&d["origin"], Vec3::ZERO),
-            direction: vec3(&d["direction"], Vec3::NEG_Y),
-            max_distance: d["maxDistance"].as_f64().unwrap_or(0.0) as f32,
-            filter: filter(&d["filter"])?,
+            origin: d.origin,
+            direction: d.direction,
+            max_distance: d.max_distance,
+            filter: filter(d.filter)?,
         };
-        let max_hits = d["maxHits"].as_u64().unwrap_or(0).min(u64::from(u32::MAX)) as u32;
+        let max_hits = d.max_hits;
         let hits = query(world)?
             .raycast_all(&og_physics::RaycastAllDesc { ray, max_hits })
             .map_err(err)?;
@@ -586,12 +567,12 @@ pub fn og_physics_raycast_all(world: u32, desc: Option<String>) -> String {
 
 pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
-        let d = parse(desc.as_deref())?;
+        let d: wire::ProjectPointDesc = wire::arg(desc.as_deref(), "desc")?;
         let desc = og_physics::ProjectPointDesc {
-            point: vec3(&d["point"], Vec3::ZERO),
-            max_distance: d["maxDistance"].as_f64().unwrap_or(0.0) as f32,
-            solid: d["solid"].as_bool().unwrap_or(true),
-            filter: filter(&d["filter"])?,
+            point: d.point,
+            max_distance: d.max_distance,
+            solid: d.solid,
+            filter: filter(d.filter)?,
         };
         let p = query(world)?.project_point(&desc).map_err(err)?;
         Ok(p.map_or(Value::Null, |p| {
@@ -609,14 +590,14 @@ pub fn og_physics_project_point(world: u32, desc: Option<String>) -> String {
 
 pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
-        let d = parse(desc.as_deref())?;
+        let d: wire::ShapeCastDesc = wire::arg(desc.as_deref(), "desc")?;
         let desc = ShapeCastDesc {
-            shape: shape(&d["shape"]),
-            position: vec3(&d["position"], Vec3::ZERO),
-            rotation: quat(&d["rotation"]),
-            direction: vec3(&d["direction"], Vec3::NEG_Y),
-            max_distance: d["maxDistance"].as_f64().unwrap_or(0.0) as f32,
-            filter: filter(&d["filter"])?,
+            shape: shape(d.shape),
+            position: d.position,
+            rotation: d.rotation,
+            direction: d.direction,
+            max_distance: d.max_distance,
+            filter: filter(d.filter)?,
         };
         let hit = query(world)?.shape_cast(&desc).map_err(err)?;
         Ok(hit.map_or(Value::Null, |h| {
@@ -631,12 +612,12 @@ pub fn og_physics_shape_cast(world: u32, desc: Option<String>) -> String {
 
 pub fn og_physics_overlap(world: u32, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
-        let d = parse(desc.as_deref())?;
+        let d: wire::OverlapDesc = wire::arg(desc.as_deref(), "desc")?;
         let desc = OverlapDesc {
-            shape: shape(&d["shape"]),
-            position: vec3(&d["position"], Vec3::ZERO),
-            rotation: quat(&d["rotation"]),
-            filter: filter(&d["filter"])?,
+            shape: shape(d.shape),
+            position: d.position,
+            rotation: d.rotation,
+            filter: filter(d.filter)?,
         };
         let hits = query(world)?.overlap(&desc).map_err(err)?;
         Ok(json!(hits.iter().map(|e| e.to_bits()).collect::<Vec<_>>()))
@@ -681,22 +662,11 @@ pub(crate) fn set_baked_trimesh(eng: &Engine, handle: u64, bytes: Vec<u8>) -> Re
 pub fn og_physics_set_mesh(world: u32, mesh: f64, desc: Option<String>) -> String {
     let answer = (|| -> Result<_, String> {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
+        let d: wire::MeshDesc = wire::arg(desc.as_deref(), "desc")?;
         if mesh.fract() != 0.0 || !(0.0..9_007_199_254_740_992.0).contains(&mesh) {
             return Err(format!("{mesh} is not a geometry handle"));
         }
-        let positions: Vec<Vec3> = d["positions"]
-            .as_array()
-            .map(|a| a.iter().map(|p| vec3(p, Vec3::ZERO)).collect())
-            .unwrap_or_default();
-        let flat: Vec<u32> = d["indices"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(|i| i.as_u64().map(|n| n as u32))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let (positions, flat) = (d.positions, d.indices);
         if !flat.len().is_multiple_of(3) {
             return Err(format!(
                 "MeshDesc.indices holds {} numbers: triangles are triples",

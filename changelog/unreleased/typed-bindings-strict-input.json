@@ -60,6 +60,23 @@
         "og.i18n.formatDate",
         "og.procgen.noise"
       ]
+    },
+    {
+      "member": "og.physics, og.motion, og.destruction, og.terrain and og.ui",
+      "change": "Its arguments are read by types generated from the IDL. A field of the wrong JSON type, a fractional or out-of-range whole number, or an unknown enum name or union kind used to fall back to a default or be truncated silently; it is now refused with the field's path, the value it got and what was expected (`desc.blocked[1].max.y: expected a number, got true`). Unknown scheme, density, colour vision, toast anchor and tone, timeline prop, repeat, motion token and mass kind names, and unknown timeline action, key ease, choreo or transition kinds are refused (a binding with no Result then uses its whole default); a timeline action without a kind is refused; images[].uv that is not four numbers and a string filter.exclude are refused; seeds, counts and maxHits out of range are refused instead of truncated; a malformed defineMass desc is refused. Absent and null fields take the IDL defaults; a partial object (`color: { r: 0 }`) fills the rest from its field's default.",
+      "fix": "Pass each field as the IDL types it: numbers as numbers, whole numbers in range for u32, i32 and handle fields, enums and union kinds by their names, lists and objects where the IDL says so. Omit a field (or pass null) for its default.",
+      "find": [
+        "og.physics.castRay",
+        "og.physics.overlap",
+        "og.motion.walkTo",
+        "og.destruction.damage",
+        "og.terrain.edit",
+        "og.ui.configure",
+        "og.ui.toast",
+        "og.ui.play",
+        "og.ui.defineTimeline",
+        "og.ui.defineMass"
+      ]
     }
   ]
 }

@@ -355,8 +355,7 @@ fn target(
     Ok((h, asset, map))
 }
 
-fn bounded(d: &Value, key: &str, default: f32, max: f32) -> Result<f32, String> {
-    let v = number(d, key, default);
+fn bounded(v: f32, key: &str, max: f32) -> Result<f32, String> {
     if v.is_finite() && v >= 0.0 && v <= max {
         Ok(v)
     } else {
@@ -369,23 +368,25 @@ pub fn og_motion_look_at(world: u32, entity: f64, desc: Option<String>) -> Strin
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         let s = agent_of(&eng, e)?;
-        let d = parse(desc.as_deref())?;
-        let blend = bounded(&d, "blend", 0.2, f32::MAX)?;
-        let look = if d["target"].is_null() {
+        let raw = parse(desc.as_deref())?;
+        let d: wire::LookAtDesc = wire::value(&raw, "desc")?;
+        let blend = bounded(d.blend, "blend", f32::MAX)?;
+        // No target ends the look.
+        let look = if raw["target"].is_null() {
             None
         } else {
             let (_, asset, map) = target(&eng, e, &s)?;
             look_chain(&asset, &map)?;
-            let duration = bounded(&d, "duration", 2.0, f32::MAX)?;
+            let duration = bounded(d.duration, "duration", f32::MAX)?;
             let length = duration + 2.0 * blend;
             if !length.is_finite() {
                 return Err("look duration plus blending is too long".into());
             }
             Some(Look {
-                target: finite(&d["target"], "desc.target")?.to_array(),
-                max_yaw: bounded(&d, "maxYaw", 1.92, std::f32::consts::PI)?,
-                max_pitch: bounded(&d, "maxPitch", 0.6, std::f32::consts::FRAC_PI_2)?,
-                weight: bounded(&d, "weight", 1.0, 1.0)?,
+                target: finite(d.target, "desc.target")?.to_array(),
+                max_yaw: bounded(d.max_yaw, "maxYaw", std::f32::consts::PI)?,
+                max_pitch: bounded(d.max_pitch, "maxPitch", std::f32::consts::FRAC_PI_2)?,
+                weight: bounded(d.weight, "weight", 1.0)?,
                 time: Envelope::new(length, blend),
             })
         };
@@ -406,9 +407,9 @@ pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> String 
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
         let s = agent_of(&eng, e)?;
-        let d = parse(desc.as_deref())?;
-        let blend = bounded(&d, "blend", 0.2, f32::MAX)?;
-        let path = d["action"].as_str().unwrap_or("");
+        let d: wire::ReactionDesc = wire::arg(desc.as_deref(), "desc")?;
+        let blend = bounded(d.blend, "blend", f32::MAX)?;
+        let path = d.action.as_str();
         let reaction = if path.is_empty() {
             None
         } else {
@@ -468,15 +469,15 @@ pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> String 
                 hand_target = (dst[th].rotation.inverse() * src[sh].rotation * hand_target * ratio)
                     / dst[th].scale;
             }
-            let duration = bounded(&d, "duration", 1.0, f32::MAX)?;
+            let duration = bounded(d.duration, "duration", f32::MAX)?;
             let total = action.hold_start + duration + length - action.hold_end;
             if !total.is_finite() {
                 return Err("reaction duration is too long".into());
             }
             Some(Reaction {
                 clip: retargeted["clip"].as_f64().unwrap() as u64,
-                direction: finite(&d["direction"], "desc.direction")?.to_array(),
-                strength: bounded(&d, "strength", 1.0, 1.0)?,
+                direction: finite(d.direction, "desc.direction")?.to_array(),
+                strength: bounded(d.strength, "strength", 1.0)?,
                 hold_start: action.hold_start,
                 hold_end: action.hold_end,
                 duration,

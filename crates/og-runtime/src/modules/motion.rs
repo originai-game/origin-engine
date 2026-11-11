@@ -1,151 +1,125 @@
 //! `og.ui`'s motion (docs/ui.md §3.1): the JSON of `UiTimeline`, `Choreo`
 //! and `Transition` read into og-ui's types, and the calls that take them.
 
-use super::{f, paint, with_ui};
+use super::{paint, with_ui};
+use crate::wire::{self, ToJson};
 use og_ui::{
     Choreo, Ease, EventKind, Key, KeyEase, MotionToken, PlayDesc, Prop, Repeat, SpringSpec,
     StaggerFrom, Theme, Timeline, TimelineEvent, TimelineTrack, Transition,
 };
 use serde_json::{Value, json};
 
-fn list(v: &Value) -> &[Value] {
-    v.as_array().map_or(&[], Vec::as_slice)
+fn spring(s: &wire::SpringSpec) -> SpringSpec {
+    SpringSpec::new(s.duration_ms, s.bounce)
 }
 
-fn string(v: &Value) -> String {
-    v.as_str().unwrap_or_default().to_owned()
-}
-
-fn strings(v: &Value) -> Vec<String> {
-    list(v)
-        .iter()
-        .filter_map(|s| s.as_str().map(str::to_owned))
-        .collect()
-}
-
-fn prop(v: &Value) -> Option<Prop> {
-    Prop::from_name(v.as_str()?)
-}
-
-fn spring(v: &Value) -> SpringSpec {
-    SpringSpec::new(f(v, "durationMs", 350.0), f(v, "bounce", 0.0))
-}
-
-fn ease(v: &Value, bezier: &Value) -> Option<Ease> {
-    if !list(bezier).is_empty() {
-        let [a, b, c, d] = list(bezier) else {
+/// An ease: four bezier controls when given, else a named ease (empty:
+/// ease-out); `None` for an invalid one.
+fn ease(name: &str, bezier: &[f32]) -> Option<Ease> {
+    if !bezier.is_empty() {
+        let &[a, b, c, d] = bezier else {
             return None;
         };
-        let curve = Ease::CubicBezier([
-            a.as_f64()? as f32,
-            b.as_f64()? as f32,
-            c.as_f64()? as f32,
-            d.as_f64()? as f32,
-        ]);
+        let curve = Ease::CubicBezier([a, b, c, d]);
         return curve.is_valid().then_some(curve);
     }
-    if v.is_null() {
+    if name.is_empty() {
         Some(Ease::CubicBezier(og_ui::theme::EASE_OUT))
     } else {
-        Ease::from_text(v.as_str()?)
+        Ease::from_text(name)
     }
 }
 
-fn token(v: &Value) -> MotionToken {
-    v.as_str()
-        .and_then(MotionToken::from_name)
-        .unwrap_or(MotionToken::Ui)
-}
-
-/// A `Transition` union; `None` for null or an unknown kind.
-pub(crate) fn transition(v: &Value) -> Option<Transition> {
-    Some(match v["kind"].as_str()? {
-        "instant" => Transition::Instant,
-        "spring" => Transition::Spring(spring(v)),
-        "tween" => Transition::Tween {
-            duration_ms: f(v, "durationMs", 200.0),
-            ease: ease(&v["ease"], &v["bezier"])?,
+/// A `Transition` union; `None` for an invalid ease.
+pub(crate) fn transition(t: &wire::Transition) -> Option<Transition> {
+    Some(match t {
+        wire::Transition::Instant(_) => Transition::Instant,
+        wire::Transition::Spring(s) => Transition::Spring(spring(s)),
+        wire::Transition::Tween(t) => Transition::Tween {
+            duration_ms: t.duration_ms,
+            ease: ease(&t.ease, &t.bezier)?,
         },
-        "token" => Transition::Token(token(&v["token"])),
-        _ => return None,
+        wire::Transition::Token(t) => {
+            Transition::Token(MotionToken::from_name(t.token.as_str()).unwrap_or(MotionToken::Ui))
+        }
     })
 }
 
-fn key_ease(v: &Value) -> Option<KeyEase> {
-    Some(match v["kind"].as_str() {
-        Some("linear") => KeyEase::Linear,
-        Some("ease") => KeyEase::Ease(ease(&v["ease"], &Value::Null)?),
-        Some("bezier") => KeyEase::Ease(ease(&Value::Null, &v["bezier"])?),
-        Some("spring") => KeyEase::Spring(spring(v)),
-        Some("hold") => KeyEase::Hold,
-        _ => KeyEase::default(),
+fn key_ease(e: &Option<wire::KeyEase>) -> Option<KeyEase> {
+    Some(match e {
+        None => KeyEase::default(),
+        Some(wire::KeyEase::Linear(_)) => KeyEase::Linear,
+        Some(wire::KeyEase::Ease(e)) => KeyEase::Ease(ease(&e.ease, &[])?),
+        Some(wire::KeyEase::Bezier(b)) => KeyEase::Ease(ease("", &b.bezier)?),
+        Some(wire::KeyEase::Spring(s)) => KeyEase::Spring(spring(s)),
+        Some(wire::KeyEase::Hold(_)) => KeyEase::Hold,
     })
 }
 
-fn event_kind(theme: &Theme, v: &Value) -> Option<EventKind> {
-    Some(match v["kind"].as_str()? {
-        "sound" => EventKind::Sound {
-            name: string(&v["name"]),
-            pitch: f(v, "playbackRate", 1.0),
+fn event_kind(theme: &Theme, a: &wire::TimelineAction) -> EventKind {
+    match a {
+        wire::TimelineAction::Sound(e) => EventKind::Sound {
+            name: e.name.clone(),
+            pitch: e.playback_rate,
         },
-        "haptic" => EventKind::Haptic(string(&v["name"])),
-        "burst" => EventKind::Burst {
-            count: v["count"].as_u64().map_or(0, |n| n as u32),
-            radius: f(v, "radius", 0.0),
-            color: paint(theme, &json!({ "color": v["color"] })),
+        wire::TimelineAction::Haptic(e) => EventKind::Haptic(e.name.clone()),
+        wire::TimelineAction::Burst(e) => EventKind::Burst {
+            count: e.count,
+            radius: e.radius,
+            color: paint(
+                theme,
+                &json!({ "color": e.color.as_ref().map(ToJson::to_json) }),
+            ),
             duration_ms: 0.0,
         },
-        "state" => EventKind::State {
-            group: string(&v["group"]),
-            state: string(&v["state"]),
+        wire::TimelineAction::State(e) => EventKind::State {
+            group: e.group.clone(),
+            state: e.state.clone(),
         },
-        "callback" => EventKind::Callback(string(&v["name"])),
-        _ => return None,
-    })
+        wire::TimelineAction::Callback(e) => EventKind::Callback(e.name.clone()),
+    }
 }
 
 /// A `UiTimeline` desc.
-pub(crate) fn timeline(theme: &Theme, d: &Value) -> Timeline {
+pub(crate) fn timeline(theme: &Theme, d: &wire::UiTimeline) -> Timeline {
     Timeline {
-        tracks: list(&d["tracks"])
+        tracks: d
+            .tracks
             .iter()
             .filter_map(|t| {
                 Some(TimelineTrack {
-                    target: string(&t["target"]),
-                    prop: prop(&t["prop"])?,
-                    keys: list(&t["keys"])
+                    target: t.target.clone(),
+                    prop: Prop::from_name(t.prop.as_str())?,
+                    keys: t
+                        .keys
                         .iter()
                         .filter_map(|k| {
                             Some(Key {
-                                at_ms: f(k, "atMs", 0.0),
-                                value: f(k, "value", 0.0),
-                                ease: key_ease(&k["ease"])?,
+                                at_ms: k.at_ms,
+                                value: k.value,
+                                ease: key_ease(&k.ease)?,
                             })
                         })
                         .collect(),
                 })
             })
             .collect(),
-        events: list(&d["events"])
+        events: d
+            .events
             .iter()
-            .filter_map(|e| {
-                Some(TimelineEvent {
-                    at_ms: f(e, "atMs", 0.0),
-                    target: string(&e["target"]),
-                    kind: event_kind(theme, &e["action"])?,
-                })
+            .map(|e| TimelineEvent {
+                at_ms: e.at_ms,
+                target: e.target.clone(),
+                kind: event_kind(theme, &e.action),
             })
             .collect(),
-        labels: list(&d["labels"])
-            .iter()
-            .map(|l| (string(&l["name"]), f(l, "atMs", 0.0)))
-            .collect(),
-        duration_ms: f(d, "durationMs", 0.0),
+        labels: d.labels.iter().map(|l| (l.name.clone(), l.at_ms)).collect(),
+        duration_ms: d.duration_ms,
     }
 }
 
-fn stagger_from(v: &Value) -> StaggerFrom {
-    match v.as_str().unwrap_or("start") {
+fn stagger_from(s: &str) -> StaggerFrom {
+    match s {
         "end" => StaggerFrom::End,
         "center" => StaggerFrom::Center,
         s => match s.split_once(',') {
@@ -159,53 +133,53 @@ fn stagger_from(v: &Value) -> StaggerFrom {
 }
 
 /// A `Choreo` union.
-pub(crate) fn choreo(v: &Value) -> Option<Choreo> {
-    let steps = |v: &Value| list(&v["steps"]).iter().filter_map(choreo).collect();
-    Some(match v["kind"].as_str()? {
-        "play" => Choreo::Play {
-            timeline: string(&v["timeline"]),
-            target: string(&v["target"]),
-            delay_ms: f(v, "delayMs", 0.0),
+pub(crate) fn choreo(c: &wire::Choreo) -> Choreo {
+    let steps = |s: &[wire::Choreo]| s.iter().map(choreo).collect();
+    match c {
+        wire::Choreo::Play(p) => Choreo::Play {
+            timeline: p.timeline.clone(),
+            target: p.target.clone(),
+            delay_ms: p.delay_ms,
         },
-        "sequence" => Choreo::Sequence(steps(v)),
-        "parallel" => Choreo::Parallel(steps(v)),
-        "stagger" => Choreo::Stagger {
-            timeline: string(&v["timeline"]),
-            targets: strings(&v["targets"]),
-            step_ms: f(v, "stepMs", 0.0),
-            cap_ms: f(v, "capMs", 0.0),
-            from: stagger_from(&v["from"]),
+        wire::Choreo::Sequence(s) => Choreo::Sequence(steps(&s.steps)),
+        wire::Choreo::Parallel(s) => Choreo::Parallel(steps(&s.steps)),
+        wire::Choreo::Stagger(s) => Choreo::Stagger {
+            timeline: s.timeline.clone(),
+            targets: s.targets.clone(),
+            step_ms: s.step_ms,
+            cap_ms: s.cap_ms,
+            from: stagger_from(&s.from),
         },
-        "cascade" => Choreo::Cascade {
-            steps: steps(v),
-            on: string(&v["on"]),
+        wire::Choreo::Cascade(c) => Choreo::Cascade {
+            steps: steps(&c.steps),
+            on: c.on.clone(),
         },
-        _ => return None,
-    })
-}
-
-fn play_desc(d: &Value) -> PlayDesc {
-    PlayDesc {
-        reverse: d["reverse"].as_bool().unwrap_or(false),
-        repeat: match d["repeat"].as_str() {
-            Some("loop") => Repeat::Loop,
-            Some("pingPong") => Repeat::PingPong,
-            _ => Repeat::Once,
-        },
-        speed: f(d, "speed", 0.0),
-        from_ms: f(d, "fromMs", 0.0),
-        from_label: string(&d["fromLabel"]),
-        hold: d["hold"].as_bool().unwrap_or(false),
-        decorative: d["decorative"].as_bool().unwrap_or(false),
     }
 }
 
-fn parse(s: &str) -> Value {
-    serde_json::from_str(s).unwrap_or(Value::Null)
+fn play_desc(d: &wire::PlayDesc) -> PlayDesc {
+    PlayDesc {
+        reverse: d.reverse,
+        repeat: match d.repeat {
+            wire::Repeat::Loop => Repeat::Loop,
+            wire::Repeat::PingPong => Repeat::PingPong,
+            wire::Repeat::Once => Repeat::Once,
+        },
+        speed: d.speed,
+        from_ms: d.from_ms,
+        from_label: d.from_label.clone(),
+        hold: d.hold,
+        decorative: d.decorative,
+    }
+}
+
+/// A PlayDesc argument; a refused one is the default.
+fn play_arg(desc: Option<String>) -> PlayDesc {
+    play_desc(&wire::arg(desc.as_deref(), "desc").unwrap_or_default())
 }
 
 pub fn og_ui_define_timeline(name: String, timeline_desc: Option<String>) {
-    let d = super::desc_of(timeline_desc);
+    let d: wire::UiTimeline = wire::arg(timeline_desc.as_deref(), "timeline").unwrap_or_default();
     with_ui("og.ui.defineTimeline", |ui| {
         let t = timeline(ui.theme(), &d);
         ui.define_timeline(&name, t)
@@ -213,17 +187,20 @@ pub fn og_ui_define_timeline(name: String, timeline_desc: Option<String>) {
 }
 
 pub fn og_ui_play(path: String, choreo_desc: String, desc: Option<String>) -> u32 {
-    let d = super::desc_of(desc);
-    let Some(c) = choreo(&parse(&choreo_desc)) else {
+    let Ok(c) = wire::arg::<Option<wire::Choreo>>(Some(&choreo_desc), "choreo") else {
         return 0;
     };
-    with_ui("og.ui.play", |ui| ui.play(&path, c, play_desc(&d))).unwrap_or(0)
+    let Some(c) = c.as_ref().map(choreo) else {
+        return 0;
+    };
+    let d = play_arg(desc);
+    with_ui("og.ui.play", |ui| ui.play(&path, c, d)).unwrap_or(0)
 }
 
 pub fn og_ui_play_timeline(path: String, timeline: String, desc: Option<String>) -> u32 {
-    let d = super::desc_of(desc);
+    let d = play_arg(desc);
     with_ui("og.ui.playTimeline", |ui| {
-        ui.play_timeline(&path, &timeline, play_desc(&d))
+        ui.play_timeline(&path, &timeline, d)
     })
     .unwrap_or(0)
 }
@@ -261,9 +238,9 @@ pub fn og_ui_play_info(play: u32) -> String {
 }
 
 pub fn og_ui_force_state(path: String, group: String, state: String) {
-    let s = parse(&state);
+    let s = wire::arg::<Option<String>>(Some(&state), "state").unwrap_or_default();
     with_ui("og.ui.forceState", |ui| {
-        ui.force_state(&path, &group, s.as_str())
+        ui.force_state(&path, &group, s.as_deref())
     });
 }
 
@@ -274,7 +251,11 @@ pub fn og_ui_visual_state(path: String, group: String) -> String {
 }
 
 pub fn og_ui_animate(id: String, target: f64, transition_desc: String) -> f64 {
-    let t = transition(&parse(&transition_desc)).unwrap_or_default();
+    let t = wire::arg::<Option<wire::Transition>>(Some(&transition_desc), "transition")
+        .ok()
+        .flatten()
+        .and_then(|t| transition(&t))
+        .unwrap_or_default();
     with_ui("og.ui.animate", |ui| ui.animate(&id, target as f32, t)).map_or(target, f64::from)
 }
 
@@ -340,14 +321,19 @@ mod tests {
 
     #[test]
     fn a_choreography_nests() {
-        let c = choreo(&parse(
-            r#"{ "kind": "sequence", "steps": [
+        let c = choreo(
+            &wire::arg(
+                Some(
+                    r#"{ "kind": "sequence", "steps": [
                 { "kind": "play", "timeline": "in" },
                 { "kind": "stagger", "timeline": "pop", "stepMs": 60, "capMs": 300, "from": "center" },
                 { "kind": "cascade", "on": "count", "steps": [{ "kind": "play", "timeline": "a" }] }
             ] }"#,
-        ))
-        .expect("a choreo");
+                ),
+                "choreo",
+            )
+            .expect("a choreo"),
+        );
         let Choreo::Sequence(steps) = c else {
             panic!("{c:?}")
         };
@@ -363,9 +349,6 @@ mod tests {
         assert!(
             matches!(&steps[2], Choreo::Cascade { on, steps } if on == "count" && steps.len() == 1)
         );
-        assert_eq!(
-            stagger_from(&json!("10, 20")),
-            StaggerFrom::Point(10.0, 20.0)
-        );
+        assert_eq!(stagger_from("10, 20"), StaggerFrom::Point(10.0, 20.0));
     }
 }

@@ -12,7 +12,8 @@
 use super::engine::{Engine, engine, running};
 use super::extract::RenderState;
 use super::fx::{f, rows};
-use super::{ok, ok_void, parse, refuse};
+use super::wire::{self, RagdollRigDesc};
+use super::{ok, ok_void, refuse};
 use glam::{Mat4, Quat, Vec3};
 use og_ecs::{Entity, World};
 use og_physics::{PhysicsSystem, RagdollBone, RagdollRig};
@@ -74,7 +75,7 @@ fn readout<T>(
 fn push(
     world: u32,
     e: f64,
-    value: &str,
+    (name, value): (&str, &str),
     point: Option<&str>,
     apply: impl FnOnce(&PhysicsSystem, Entity, Vec3, Option<Vec3>) -> og_core::Result<()>,
 ) -> String {
@@ -98,11 +99,10 @@ fn push(
                 e.to_bits()
             ));
         }
-        let vector = vec3_of(&parse(Some(value))?, Vec3::ZERO);
-        let point = match point {
-            Some(p) => Some(vec3_of(&parse(Some(p))?, Vec3::ZERO)),
-            None => None,
-        };
+        let vector: Vec3 = wire::arg(Some(value), name)?;
+        let point = point
+            .map(|p| wire::arg::<Vec3>(Some(p), "point"))
+            .transpose()?;
         apply(&p, e, vector, point).map_err(|e| e.to_string())
     })();
     match answer {
@@ -112,9 +112,13 @@ fn push(
 }
 
 pub fn og_physics_apply_force(world: u32, e: f64, force: String, point: Option<String>) -> String {
-    push(world, e, &force, point.as_deref(), |p, e, v, at| {
-        p.apply_force(e, v, at)
-    })
+    push(
+        world,
+        e,
+        ("force", &force),
+        point.as_deref(),
+        |p, e, v, at| p.apply_force(e, v, at),
+    )
 }
 
 pub fn og_physics_apply_impulse(
@@ -123,17 +127,23 @@ pub fn og_physics_apply_impulse(
     impulse: String,
     point: Option<String>,
 ) -> String {
-    push(world, e, &impulse, point.as_deref(), |p, e, v, at| {
-        p.apply_impulse(e, v, at)
-    })
+    push(
+        world,
+        e,
+        ("impulse", &impulse),
+        point.as_deref(),
+        |p, e, v, at| p.apply_impulse(e, v, at),
+    )
 }
 
 pub fn og_physics_apply_torque(world: u32, e: f64, torque: String) -> String {
-    push(world, e, &torque, None, |p, e, v, _| p.apply_torque(e, v))
+    push(world, e, ("torque", &torque), None, |p, e, v, _| {
+        p.apply_torque(e, v)
+    })
 }
 
 pub fn og_physics_apply_torque_impulse(world: u32, e: f64, torque: String) -> String {
-    push(world, e, &torque, None, |p, e, v, _| {
+    push(world, e, ("torque", &torque), None, |p, e, v, _| {
         p.apply_torque_impulse(e, v)
     })
 }
@@ -545,24 +555,8 @@ pub(crate) struct KeptRig {
     pub joints: Vec<i32>,
 }
 
-fn vec3_of(v: &Value, default: Vec3) -> Vec3 {
-    if !v.is_object() {
-        return default;
-    }
-    Vec3::new(
-        v["x"].as_f64().unwrap_or(0.0) as f32,
-        v["y"].as_f64().unwrap_or(0.0) as f32,
-        v["z"].as_f64().unwrap_or(0.0) as f32,
-    )
-}
-
-fn quat_of(v: &Value) -> Quat {
-    let q = Quat::from_xyzw(
-        v["x"].as_f64().unwrap_or(0.0) as f32,
-        v["y"].as_f64().unwrap_or(0.0) as f32,
-        v["z"].as_f64().unwrap_or(0.0) as f32,
-        v["w"].as_f64().unwrap_or(0.0) as f32,
-    );
+/// A rotation as a rig keeps it: a zero quaternion is the identity.
+fn unit(q: Quat) -> Quat {
     if q.length_squared() < 1e-12 {
         Quat::IDENTITY
     } else {
@@ -571,31 +565,31 @@ fn quat_of(v: &Value) -> Quat {
 }
 
 /// A RagdollRigDesc into a kept rig.
-fn rig_of(d: &Value) -> Result<KeptRig, String> {
-    let bones = d["bones"].as_array().cloned().unwrap_or_default();
+fn rig_of(d: RagdollRigDesc) -> Result<KeptRig, String> {
+    let bones = d.bones;
     if bones.is_empty() {
         return Err("a ragdoll rig needs at least one bone".into());
     }
     let mut rig = RagdollRig::default();
     let mut joints = Vec::with_capacity(bones.len());
     for (i, b) in bones.iter().enumerate() {
-        let parent = b["parent"].as_i64().unwrap_or(-1);
-        if parent >= i as i64 {
+        let parent = b.parent;
+        if i64::from(parent) >= i as i64 {
             return Err(format!(
                 "bone {i}: its parent ({parent}) must come before it"
             ));
         }
         rig.bones.push(RagdollBone {
             parent: (parent >= 0).then_some(parent as u32),
-            rest: (vec3_of(&b["position"], Vec3::ZERO), quat_of(&b["rotation"])),
-            length: b["length"].as_f64().map_or(0.25, |l| l as f32),
-            axis: vec3_of(&b["axis"], Vec3::Y),
+            rest: (b.position, unit(b.rotation)),
+            length: b.length,
+            axis: b.axis,
         });
-        joints.push(b["joint"].as_i64().unwrap_or(-1) as i32);
+        joints.push(b.joint);
     }
     Ok(KeptRig {
         rig,
-        skeleton: d["skeleton"].as_f64().unwrap_or(0.0) as u64,
+        skeleton: d.skeleton,
         joints,
     })
 }
@@ -605,7 +599,7 @@ pub fn og_physics_set_ragdoll_rig(world: u32, e: f64, desc: Option<String>) -> S
         let eng = engine(world)?;
         let p = physics(&eng)?;
         let e = entity(e)?;
-        let kept = rig_of(&parse(desc.as_deref())?)?;
+        let kept = rig_of(wire::arg(desc.as_deref(), "desc")?)?;
         p.set_ragdoll_rig(e, kept.rig.clone())
             .map_err(|err| err.reason().to_string())?;
         eng.render.borrow_mut().atmo.rigs.insert(e.to_bits(), kept);

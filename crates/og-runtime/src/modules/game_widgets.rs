@@ -1,4 +1,5 @@
 use super::*;
+use crate::wire;
 
 pub fn og_ui_bounds(path: String) -> String {
     let b = with_ui("og.ui.bounds", |ui| {
@@ -27,14 +28,14 @@ pub(super) fn ui_of(world: u32) -> Option<SharedUi> {
 }
 
 pub fn og_ui_toast(world: u32, text: String, desc: Option<String>) -> u32 {
-    let d = desc_of(desc);
+    let d: wire::ToastDesc = wire::arg(desc.as_deref(), "desc").unwrap_or_default();
     let Some(ui) = ui_of(world) else { return 0 };
     let mut ui = ui.lock();
     ui.toast(
         &text,
         ToastDesc {
-            tone: tone(&d["tone"]),
-            duration_ms: f(&d, "durationMs", 0.0),
+            tone: Tone::from_index(d.tone as u8),
+            duration_ms: d.duration_ms,
         },
     )
 }
@@ -92,12 +93,12 @@ pub fn og_ui_set_players(count: u32) {
 }
 
 pub fn og_ui_set_virtual_cursor(desc: String) {
-    let d: Value = serde_json::from_str(&desc).unwrap_or(Value::Null);
-    let desc = d.is_object().then(|| og_ui::VirtualCursorDesc {
-        speed: f(&d, "speed", 0.0),
-        accel: f(&d, "accel", 0.0),
-        magnet: f(&d, "magnet", 0.0),
-        scroll: f(&d, "scroll", 0.0),
+    let d = wire::arg::<Option<wire::VirtualCursorDesc>>(Some(&desc), "desc").unwrap_or_default();
+    let desc = d.map(|d| og_ui::VirtualCursorDesc {
+        speed: d.speed,
+        accel: d.accel,
+        magnet: d.magnet,
+        scroll: d.scroll,
     });
     with_ui("og.ui.setVirtualCursor", |ui| ui.set_virtual_cursor(desc));
 }
@@ -191,26 +192,35 @@ pub fn og_ui_tick() -> u32 {
 }
 
 pub fn og_ui_preview_viewport(world: u32, viewport: String) {
-    let v = parse(Some(&viewport)).unwrap_or(Value::Null);
+    let raw = parse(Some(&viewport)).unwrap_or(Value::Null);
+    let v = wire::value::<Option<wire::Viewport>>(&raw, "viewport").unwrap_or_default();
+    // An absent width or height is a 1280 × 720 surface's.
+    let or = |key: &str, x: f32, d: f32| if raw[key].is_null() { d } else { x };
     let set = PREVIEW.with(|p| {
         let mut p = p.borrow_mut();
-        if v.is_object() {
-            let num = |k: &str, d: f64| v[k].as_f64().unwrap_or(d) as f32;
+        if let Some(v) = v {
+            let (a, c) = (v.safe_area, v.covered.unwrap_or_default());
+            let n = |x: Option<f32>| x.unwrap_or(0.0);
             p.insert(
                 world,
                 Viewport {
-                    width: num("width", 1280.0).max(1.0),
-                    height: num("height", 720.0).max(1.0),
-                    dpr: num("dpr", 1.0),
-                    safe_area: insets(&v["safeArea"]),
-                    small: [num("smallWidth", 0.0), num("smallHeight", 0.0)],
-                    large: [num("largeWidth", 0.0), num("largeHeight", 0.0)],
-                    coarse_pointer: v["coarsePointer"].as_bool().unwrap_or(false),
-                    reduced_motion: v["reducedMotion"].as_bool().unwrap_or(false),
-                    high_contrast: v["highContrast"].as_bool().unwrap_or(false),
-                    reduced_transparency: v["reducedTransparency"].as_bool().unwrap_or(false),
-                    mac_keys: v["macKeys"].as_bool().unwrap_or(false),
-                    covered: ui_rect(&v["covered"]),
+                    width: or("width", v.width, 1280.0).max(1.0),
+                    height: or("height", v.height, 720.0).max(1.0),
+                    dpr: v.dpr,
+                    safe_area: Insets {
+                        left: a.left,
+                        top: a.top,
+                        right: a.right,
+                        bottom: a.bottom,
+                    },
+                    small: [n(v.small_width), n(v.small_height)],
+                    large: [n(v.large_width), n(v.large_height)],
+                    coarse_pointer: v.coarse_pointer,
+                    reduced_motion: v.reduced_motion.unwrap_or(false),
+                    high_contrast: v.high_contrast.unwrap_or(false),
+                    reduced_transparency: v.reduced_transparency.unwrap_or(false),
+                    mac_keys: v.mac_keys.unwrap_or(false),
+                    covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
                 },
             );
         } else {

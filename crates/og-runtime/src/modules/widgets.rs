@@ -1,9 +1,3 @@
-use super::*;
-
-pub(super) fn desc_of(desc: Option<String>) -> Value {
-    parse(desc.as_deref()).unwrap_or(Value::Null)
-}
-
 // ── ui: drawing over the frame ──────────────────────────────────────────────
 
 /// Hands the UI's last frame to the render scene's overlay: screen-space

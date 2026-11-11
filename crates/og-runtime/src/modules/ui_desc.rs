@@ -464,18 +464,6 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
     })
 }
 
-pub(super) fn tone(v: &Value) -> Tone {
-    match v.as_str() {
-        Some("success") => Tone::Success,
-        Some("warn") => Tone::Warn,
-        Some("danger") => Tone::Danger,
-        Some("info") => Tone::Info,
-        Some("primary") => Tone::Primary,
-        Some("inverse") => Tone::Inverse,
-        _ => Tone::Neutral,
-    }
-}
-
 pub(crate) fn anchor_of(v: &Value) -> Option<Anchor> {
     Some(match v.as_str()? {
         "topLeft" => Anchor::TopLeft,
@@ -500,8 +488,8 @@ pub(crate) fn ui_engine() -> Option<u32> {
     BUILDING.with(Cell::get).or_else(|| LAST.with(Cell::get))
 }
 
-pub(crate) fn texture_of(v: &Value) -> Option<og_render::TextureHandle> {
-    let t = v.as_f64()?;
+pub(crate) fn texture_of(t: Option<u64>) -> Option<og_render::TextureHandle> {
+    let t = t? as f64;
     let eng = engine(ui_engine()?).ok()?;
     let rs = eng.render.borrow();
     super::assets::index_of(t).and_then(|i| rs.textures.get(i).copied())

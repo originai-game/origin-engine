@@ -590,38 +590,30 @@ pub fn og_ui_paused(world: u32) -> bool {
 
 // ── og.ui: actions and glyphs ───────────────────────────────────────────────
 
-fn strings(v: &Value) -> Vec<String> {
-    v.as_array()
-        .map(|a| {
-            a.iter()
-                .filter_map(|s| s.as_str().map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 pub fn og_ui_define_action(world: u32, desc: String) -> String {
-    let d = match parse(Some(&desc)) {
+    let d: crate::wire::UiActionDesc = match crate::wire::arg(Some(&desc), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    let name = d["name"].as_str().unwrap_or_default().to_string();
-    if name.is_empty() {
+    if d.name.is_empty() {
         return refuse("an action has a name");
     }
-    let trigger = match d["trigger"].as_str() {
-        Some("release") => ActionTrigger::Release,
-        Some("hold") => ActionTrigger::Hold(d["holdMs"].as_f64().unwrap_or(500.0) as f32),
-        _ => ActionTrigger::Press,
+    let trigger = match d.trigger {
+        crate::wire::UiActionTrigger::Release => ActionTrigger::Release,
+        // A hold of 0 is 500 ms.
+        crate::wire::UiActionTrigger::Hold => {
+            ActionTrigger::Hold(if d.hold_ms == 0.0 { 500.0 } else { d.hold_ms })
+        }
+        crate::wire::UiActionTrigger::Press => ActionTrigger::Press,
     };
     let desc = ActionDesc {
-        name,
-        keys: strings(&d["keys"]),
-        buttons: strings(&d["buttons"]),
+        name: d.name,
+        keys: d.keys,
+        buttons: d.buttons,
         trigger,
-        toggle: d["toggle"].as_bool().unwrap_or(false),
-        label: d["label"].as_str().unwrap_or_default().to_string(),
-        action: d["action"].as_str().unwrap_or_default().to_string(),
+        toggle: d.toggle,
+        label: d.label,
+        action: d.action.unwrap_or_default(),
     };
     match on_ui(world, |ui| ui.define_action(desc)) {
         Ok(()) => ok_void(),

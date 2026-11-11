@@ -20,6 +20,7 @@
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{color, f, kept_rows, on, u};
+use super::wire::{self, TerrainBrush, TerrainLayerDesc, TerrainSampleDesc, TerrainStampDesc};
 use super::{ok, parse, refuse};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
@@ -486,17 +487,22 @@ pub(crate) fn placement(origin: &Value, quaternion: &Value, scale: &Value) -> Ma
         f(quaternion, "z", 0.0),
         f(quaternion, "w", 0.0),
     );
-    let q = if q.length_squared() > 1e-12 {
-        q.normalize()
-    } else {
-        Quat::IDENTITY
-    };
     let s = if scale.is_object() {
         Vec3::new(f(scale, "x", 1.0), f(scale, "y", 1.0), f(scale, "z", 1.0))
     } else {
         Vec3::ONE
     };
-    Mat4::from_scale_rotation_translation(s, q, v3(origin))
+    placed(v3(origin), q, s)
+}
+
+/// [`placement`] from read values: a zero quaternion is the identity.
+fn placed(origin: Vec3, q: Quat, scale: Vec3) -> Mat4 {
+    let q = if q.length_squared() > 1e-12 {
+        q.normalize()
+    } else {
+        Quat::IDENTITY
+    };
+    Mat4::from_scale_rotation_translation(scale, q, origin)
 }
 
 /// Metres across the terrain's surface per metre of its own space (the mean
@@ -736,12 +742,12 @@ pub fn og_terrain_sample(world: u32, desc: Option<String>) -> String {
     wire((|| {
         let eng = engine(world)?;
         replay_if_restored(&eng)?;
-        let d = parse(desc.as_deref())?;
-        let i = index_of(&eng, d["data"].as_f64().unwrap_or(0.0))?;
+        let d: TerrainSampleDesc = wire::arg(desc.as_deref(), "desc")?;
+        let i = index_of(&eng, d.data as f64)?;
         let rs = eng.render.borrow();
         let t = &rs.terrain.loaded[i];
-        let m = placement(&d["origin"], &d["quaternion"], &d["scale"]);
-        let (p, inside) = local(t.size(), m, f(&d, "x", 0.0), f(&d, "z", 0.0));
+        let m = placed(d.origin, d.quaternion, d.scale);
+        let (p, inside) = local(t.size(), m, d.x, d.z);
         let (h, n) = t.with_sampler(|s| s(p));
         let n = (Mat3::from_mat4(m).inverse().transpose() * n).normalize_or(Vec3::Y);
         let surface = m.transform_point3(Vec3::new(p.x, h, p.y));
@@ -765,10 +771,10 @@ pub fn og_terrain_bounds(
     wire((|| {
         let eng = engine(world)?;
         let i = index_of(&eng, data)?;
-        let m = placement(
-            &parse(origin.as_deref())?,
-            &parse(quaternion.as_deref())?,
-            &parse(scale.as_deref())?,
+        let m = placed(
+            wire::arg(origin.as_deref(), "origin")?,
+            wire::arg(quaternion.as_deref(), "quaternion")?,
+            wire::arg::<Option<Vec3>>(scale.as_deref(), "scale")?.unwrap_or(Vec3::ONE),
         );
         let rs = eng.render.borrow();
         let t = &rs.terrain.loaded[i];
@@ -788,10 +794,6 @@ pub fn og_terrain_bounds(
     })())
 }
 
-const MODES: [&str; 7] = [
-    "raise", "lower", "flatten", "smooth", "paint", "hole", "fill",
-];
-
 /// The brush's weight at distance `d` from its centre: 1 inside the
 /// unfaded part, smoothly to 0 at the radius.
 fn weight(d: f32, radius: f32, falloff: f32) -> f32 {
@@ -810,20 +812,15 @@ fn weight(d: f32, radius: f32, falloff: f32) -> f32 {
 /// Applies a brush to a terrain's data; answers the samples it touched
 /// and the rectangle of the terrain's space it can have changed.
 pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, Vec2), String> {
-    let mode = match &brush["mode"] {
-        Value::String(s) => MODES
-            .iter()
-            .position(|m| m == s)
-            .ok_or_else(|| format!("TerrainBrush.mode '{s}' is not one of {}", MODES.join(", ")))?,
-        Value::Null => 0,
-        other => return Err(format!("TerrainBrush.mode {other} is not a mode")),
-    };
-    let m = placement(&brush["origin"], &brush["quaternion"], &brush["scale"]);
+    let b: TerrainBrush = wire::value(brush, "brush")?;
+    // raise, lower, flatten, smooth, paint, hole, fill.
+    let mode = b.mode as usize;
+    let m = placed(b.origin, b.quaternion, b.scale);
     let (along, up) = scales(m);
-    let world_center = v3(&brush["center"]);
+    let world_center = b.center;
     let center = m.inverse().transform_point3(world_center);
-    let world_radius = f(brush, "radius", 8.0);
-    let world_strength = f(brush, "strength", 1.0);
+    let world_radius = b.radius;
+    let world_strength = b.strength;
     // In the terrain's space: the radius across it, raise and lower up it.
     let radius = world_radius / along;
     let strength = if mode <= 1 {
@@ -831,7 +828,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
     } else {
         world_strength
     };
-    let falloff = f(brush, "falloff", 0.5);
+    let falloff = b.falloff;
     if !(world_radius > 0.0 && radius.is_finite() && world_strength >= 0.0 && strength.is_finite())
     {
         return Err("TerrainBrush.radius must be positive and strength at least 0".into());
@@ -856,7 +853,7 @@ pub(crate) fn apply(t: &mut LoadedTerrain, brush: &Value) -> Result<(u32, Vec2, 
         ));
     }
     if mode == 4 {
-        let layer = u(brush, "layer", 0);
+        let layer = b.layer;
         if layer as usize >= t.layers.len().max(1)
             || layer as usize >= og_render::MAX_TERRAIN_LAYERS
         {
@@ -1095,7 +1092,11 @@ pub fn og_terrain_edit(world: u32, data: f64, brush: Option<String>) -> String {
 pub fn og_terrain_stamp(world: u32, desc: Option<String>) -> String {
     wire((|| {
         let eng = engine(world)?;
-        stamp::stamp(&eng, &parse(desc.as_deref())?)
+        let d = parse(desc.as_deref())?;
+        // Read through the IDL's type to refuse a wrong field; the stamp
+        // and its log keep the desc as given.
+        wire::value::<TerrainStampDesc>(&d, "desc")?;
+        stamp::stamp(&eng, &d)
     })())
 }
 
@@ -1142,7 +1143,7 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
     match (|| -> Result<(), String> {
         let eng = engine(world)?;
         let i = index_of(&eng, data)?;
-        let v = parse(layer.as_deref())?;
+        let v: TerrainLayerDesc = wire::arg(layer.as_deref(), "layer")?;
         let mut rs = eng.render.borrow_mut();
         let t = &mut rs.terrain.loaded[i];
         let count = t.layers.len();
@@ -1155,21 +1156,21 @@ pub fn og_terrain_set_layer(world: u32, data: f64, index: u32, layer: Option<Str
             normal: l.normal,
             albedo_layer: l.albedo_layer,
             normal_layer: l.normal_layer,
-            color: color(&v["color"], Vec3::ONE),
-            roughness: f(&v, "roughness", 0.9).clamp(0.04, 1.0),
-            tile: f(&v, "tile", 4.0).max(0.01),
-            triplanar: on(&v, "triplanar", false),
-            normal_strength: f(&v, "normalStrength", 1.0),
-            slope: [f(&v, "slopeMin", 0.0), f(&v, "slopeMax", 90.0)],
-            slope_fade: f(&v, "slopeFade", 4.0).max(0.0),
-            altitude: [f(&v, "altitudeMin", -1.0e6), f(&v, "altitudeMax", 1.0e6)],
-            altitude_fade: f(&v, "altitudeFade", 4.0).max(0.0),
-            project_slope: f(&v, "projectSlope", 0.0).clamp(0.0, 90.0),
-            anti_tiling: f(&v, "antiTiling", 0.0).clamp(0.0, 1.0),
-            height_contrast: f(&v, "heightContrast", 0.0).clamp(0.0, 1.0),
-            macro_variation: f(&v, "macroVariation", 0.0).clamp(0.0, 1.0),
-            displacement: f(&v, "displacement", 0.0).clamp(0.0, 4.0),
-            cell_variation: f(&v, "cellVariation", 0.0).clamp(0.0, 1.0),
+            color: Vec3::new(v.color.r, v.color.g, v.color.b),
+            roughness: v.roughness.clamp(0.04, 1.0),
+            tile: v.tile.max(0.01),
+            triplanar: v.triplanar,
+            normal_strength: v.normal_strength,
+            slope: [v.slope_min, v.slope_max],
+            slope_fade: v.slope_fade.max(0.0),
+            altitude: [v.altitude_min, v.altitude_max],
+            altitude_fade: v.altitude_fade.max(0.0),
+            project_slope: v.project_slope.clamp(0.0, 90.0),
+            anti_tiling: v.anti_tiling.clamp(0.0, 1.0),
+            height_contrast: v.height_contrast.clamp(0.0, 1.0),
+            macro_variation: v.macro_variation.clamp(0.0, 1.0),
+            displacement: v.displacement.clamp(0.0, 4.0),
+            cell_variation: v.cell_variation.clamp(0.0, 1.0),
         };
         Ok(())
     })() {

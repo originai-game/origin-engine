@@ -26,7 +26,8 @@
 
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
-use super::{ok, ok_void, parse, refuse};
+use super::wire::{self, DamageDesc, ExplosionDesc};
+use super::{ok, ok_void, refuse};
 use glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind};
 use og_destruct::{Damage, FractureAsset, Instance, Material, Support, stress::StressLimits};
@@ -2136,8 +2137,7 @@ fn destructible_of(eng: &Engine, e: Entity, chunks: bool) -> Result<Entity, Stri
     ))
 }
 
-fn point(v: &Value, what: &str) -> Result<[f32; 3], String> {
-    let p = v3(v);
+fn point(p: Vec3, what: &str) -> Result<[f32; 3], String> {
     if p.is_finite() {
         Ok(p.to_array())
     } else {
@@ -2145,8 +2145,7 @@ fn point(v: &Value, what: &str) -> Result<[f32; 3], String> {
     }
 }
 
-fn radius(d: &Value, key: &str, default: f32) -> Result<f32, String> {
-    let r = num(d, key, default);
+fn radius(r: f32, key: &str) -> Result<f32, String> {
     if r.is_finite() && r >= 0.0 {
         Ok(r)
     } else {
@@ -2160,14 +2159,14 @@ pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> S
     wire_void((|| {
         let eng = engine(world)?;
         let target = destructible_of(&eng, Entity::from_bits(entity as u64), true)?;
-        let d = parse(desc.as_deref())?;
+        let d: DamageDesc = wire::arg(desc.as_deref(), "desc")?;
         let op = Op::Damage {
             entity: target.to_bits(),
-            point: point(&d["point"], "desc.point")?,
-            radius: radius(&d, "radius", 0.4)?.max(1e-3),
-            inner: radius(&d, "innerRadius", 0.1)?,
-            amount: radius(&d, "amount", 500.0)?,
-            impulse: point(&d["impulse"], "desc.impulse")?,
+            point: point(d.point, "desc.point")?,
+            radius: radius(d.radius, "radius")?.max(1e-3),
+            inner: radius(d.inner_radius, "innerRadius")?,
+            amount: radius(d.amount, "amount")?,
+            impulse: point(d.impulse, "desc.impulse")?,
         };
         lock(&shared(world)).ops.push(op);
         Ok(())
@@ -2177,13 +2176,13 @@ pub fn og_destruction_damage(world: u32, entity: f64, desc: Option<String>) -> S
 pub fn og_destruction_explode(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
+        let d: ExplosionDesc = wire::arg(desc.as_deref(), "desc")?;
         let op = Op::Explode {
-            point: point(&d["point"], "desc.point")?,
-            radius: radius(&d, "radius", 3.0)?.max(1e-3),
-            inner: radius(&d, "innerRadius", 0.5)?,
-            damage: radius(&d, "damage", 3000.0)?,
-            impulse: radius(&d, "impulse", 2000.0)?,
+            point: point(d.point, "desc.point")?,
+            radius: radius(d.radius, "radius")?.max(1e-3),
+            inner: radius(d.inner_radius, "innerRadius")?,
+            damage: radius(d.damage, "damage")?,
+            impulse: radius(d.impulse, "impulse")?,
         };
         // A world with no destructible has nothing to break.
         if eng.world()?.systems().contains(&SYSTEM) {

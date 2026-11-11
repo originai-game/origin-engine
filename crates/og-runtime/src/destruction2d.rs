@@ -30,7 +30,8 @@
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState};
-use super::{ok, ok_void, parse, refuse};
+use super::wire::{self, Carve2dDesc, Explosion2dDesc, Fill2dDesc, Fracture2dDesc};
+use super::{ok, ok_void, refuse};
 use glam::{DVec2, Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind};
 use og_destruct::terrain2d::{BEDROCK, Cell, PixelTerrain};
@@ -1478,17 +1479,15 @@ fn terrain_of(eng: &Engine, entity: f64) -> Result<u64, String> {
     }
 }
 
-fn point2(v: &Value) -> Result<[f32; 2], String> {
-    let p = v3(v);
+fn point2(p: Vec3) -> Result<[f32; 2], String> {
     if p.is_finite() {
         Ok([p.x, p.y])
     } else {
-        Err(format!("the point {v} is not finite"))
+        Err(format!("the point {p} is not finite"))
     }
 }
 
-fn size(d: &Value, key: &str, default: f32) -> Result<f32, String> {
-    let r = num(d, key, default);
+fn size(r: f32, key: &str) -> Result<f32, String> {
     if r.is_finite() && r >= 0.0 {
         Ok(r)
     } else {
@@ -1506,13 +1505,13 @@ pub fn og_destruction_carve2d(world: u32, entity: f64, desc: Option<String>) -> 
     wire_void((|| {
         let eng = engine(world)?;
         let entity = terrain_of(&eng, entity)?;
-        let d = parse(desc.as_deref())?;
+        let d: Carve2dDesc = wire::arg(desc.as_deref(), "desc")?;
         queue(
             world,
             Op::Carve {
                 entity,
-                point: point2(&d["point"])?,
-                radius: size(&d, "radius", 1.0)?,
+                point: point2(d.point)?,
+                radius: size(d.radius, "radius")?,
             },
         );
         Ok(())
@@ -1523,14 +1522,14 @@ pub fn og_destruction_fill2d(world: u32, entity: f64, desc: Option<String>) -> S
     wire_void((|| {
         let eng = engine(world)?;
         let entity = terrain_of(&eng, entity)?;
-        let d = parse(desc.as_deref())?;
+        let d: Fill2dDesc = wire::arg(desc.as_deref(), "desc")?;
         queue(
             world,
             Op::Fill {
                 entity,
-                point: point2(&d["point"])?,
-                radius: size(&d, "radius", 1.0)?,
-                bedrock: d["bedrock"].as_bool().unwrap_or(false),
+                point: point2(d.point)?,
+                radius: size(d.radius, "radius")?,
+                bedrock: d.bedrock,
             },
         );
         Ok(())
@@ -1540,13 +1539,13 @@ pub fn og_destruction_fill2d(world: u32, entity: f64, desc: Option<String>) -> S
 pub fn og_destruction_explode2d(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
+        let d: Explosion2dDesc = wire::arg(desc.as_deref(), "desc")?;
         let op = Op::Explode {
-            point: point2(&d["point"])?,
-            radius: size(&d, "radius", 1.5)?,
-            debris: size(&d, "debris", 0.4)?,
-            cells: uint(&d, "pieceCells", 24).max(4),
-            speed: size(&d, "speed", 8.0)?,
+            point: point2(d.point)?,
+            radius: size(d.radius, "radius")?,
+            debris: size(d.debris, "debris")?,
+            cells: d.piece_cells.max(4),
+            speed: size(d.speed, "speed")?,
         };
         // A world with no pixel terrain (its records, registered with
         // og.destruction2d, unknown) has nothing to blow up. Inside a
@@ -1573,12 +1572,12 @@ pub fn og_destruction_fracture2d(world: u32, entity: f64, desc: Option<String>) 
                 e.to_bits()
             ));
         }
-        let d = parse(desc.as_deref())?;
+        let d: Fracture2dDesc = wire::arg(desc.as_deref(), "desc")?;
         queue(
             world,
             Op::Fracture {
                 entity: e.to_bits(),
-                pieces: uint(&d, "pieces", 8).clamp(1, 256),
+                pieces: d.pieces.clamp(1, 256),
             },
         );
         Ok(())
@@ -1589,7 +1588,7 @@ pub fn og_destruction_cell2d(world: u32, entity: f64, point: String) -> String {
     let r = (|| -> Result<u32, String> {
         let eng = engine(world)?;
         let key = terrain_of(&eng, entity)?;
-        let p = point2(&parse(Some(&point))?)?;
+        let p = point2(wire::arg(Some(&point), "point")?)?;
         let sh = shared(world);
         let g = lock(&sh);
         let t = g.state.terrains.get(&key).ok_or_else(|| {
