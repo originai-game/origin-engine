@@ -28,68 +28,6 @@ fn skipped(nodes: &[Node], i: usize) -> bool {
 }
 
 impl Ui {
-    /// Normalize freshly assigned presentation before measurement. Call once
-    /// after replacing fields, not on already prepared scroll padding.
-    /// Node `i` lays its flow out in lines while one of it is inline-level
-    /// (CSS 2 §9.4.2): a block becomes a wrapping row whose lines align on
-    /// their baseline and by its `text-align`, a block-level child on a
-    /// line of its own; its authored layout comes back when none is.
-    fn line_box(&mut self, i: usize, flow: &[usize]) {
-        let wanted = {
-            let n = &self.tree.nodes[i];
-            n.el.block
-                && n.props.layout == crate::LayoutMode::Flex
-                && matches!(n.content, Content::None)
-                && flow.iter().any(|&c| self.tree.nodes[c].el.inline)
-        };
-        let n = &mut self.tree.nodes[i];
-        let ours = n.el.direction == crate::Direction::Row && n.el.wrap;
-        match (wanted, n.line_box) {
-            (true, saved) if saved.is_none() || !ours => {
-                n.line_box = Some((n.el.direction, n.el.wrap, n.el.cross, n.el.align));
-                n.el.direction = crate::Direction::Row;
-                n.el.wrap = true;
-                n.el.cross = crate::Cross::Baseline;
-                n.el.align = n.el.line_align;
-            }
-            (false, Some((direction, wrap, cross, align))) => {
-                if ours {
-                    (n.el.direction, n.el.wrap, n.el.cross, n.el.align) =
-                        (direction, wrap, cross, align);
-                }
-                n.line_box = None;
-            }
-            _ => {}
-        }
-    }
-
-    pub(crate) fn prepare_layout_node(&mut self, i: usize) {
-        let node = &mut self.tree.nodes[i];
-        if let Content::Text(text) = &mut node.content
-            && self.env.theme.art.display_min > 0.0
-            && text.font == crate::FontRole::Display
-            && text.step.size < self.env.theme.art.display_min
-        {
-            text.font = crate::FontRole::Body;
-        }
-        if !matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
-            match &mut node.content {
-                Content::Text(text) if text.step.uppercase => {
-                    text.text = og_i18n::text::uppercase(&text.text, &self.env.locale);
-                }
-                Content::Rich(rich) => {
-                    for span in &mut rich.spans {
-                        if span.step.uppercase && span.atom.is_none() {
-                            span.text = og_i18n::text::uppercase(&span.text, &self.env.locale);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        crate::layout::snap_pixel_text(&mut self.tree.nodes[i..i + 1], &self.env.fonts);
-    }
-
     /// A vertical scroller's bar gutter on its right padding, as its last
     /// frame's range needs it: replaced, never added again, so a retained
     /// scroller that is not built again keeps one gutter.
@@ -949,53 +887,6 @@ impl Ui {
         Ok(())
     }
 
-    fn place_popover_arrows(&mut self) {
-        // Popovers' arrows (`::-og-arrow`): a square turned 45° across the
-        // edge facing the anchor, over the anchor's middle where the box
-        // allows, hidden while no side faces it. A context menu (opened at
-        // a point) draws none: its corner is at the point, as a desktop's
-        // and a game's context menus are.
-        for k in 0..self.tree.floating.len() {
-            let f = self.tree.floating[k];
-            let n = &self.tree.nodes[f];
-            let Some((size, color)) = n.arrow else {
-                continue;
-            };
-            let a = match n.anchor_point {
-                Some([x, y]) => Rect::new(x, y, 0.0, 0.0),
-                None => match self.tree.nodes.get(n.anchor) {
-                    Some(a) => a.rect,
-                    None => continue,
-                },
-            };
-            let (b, placed, point) = (n.rect, n.anchor_placed, n.anchor_point);
-            self.tree.nodes[f].shapes.retain(|s| {
-                !matches!(s, crate::layout::Shape::Bar { part, .. }
-                    if part.component == "Popover" && part.part == "arrow")
-            });
-            let (Some(side), false, None) = (placed.side, placed.hidden, point) else {
-                continue;
-            };
-            // Kept a side's length in from the corners.
-            let along =
-                |lo: f32, len: f32, at: f32| at.clamp(lo + size, (lo + len - size).max(lo + size));
-            let (ax, ay) = a.center();
-            let (cx, cy) = match side {
-                crate::anchor::PlacedSide::Bottom => (along(b.x, b.width, ax), b.y),
-                crate::anchor::PlacedSide::Top => (along(b.x, b.width, ax), b.bottom()),
-                crate::anchor::PlacedSide::Right => (b.x, along(b.y, b.height, ay)),
-                crate::anchor::PlacedSide::Left => (b.right(), along(b.y, b.height, ay)),
-            };
-            let (bx, by) = b.center();
-            self.tree.nodes[f].shapes.push(crate::layout::Shape::Bar {
-                part: crate::dress::PartRef::of("Popover", "arrow", None),
-                frame: crate::layout::Frame::centered(cx - bx, cy - by, size, size),
-                angle: std::f32::consts::FRAC_PI_4,
-                color,
-            });
-        }
-    }
-
     /// Samples the style, mirrors right to left, then shakes, staggers and
     /// motion; what may change this frame (`None`: everything) and what
     /// motion moved.
@@ -1561,6 +1452,119 @@ impl Ui {
             }
         }
         focus_paths
+    }
+}
+
+impl Ui {
+    /// Normalize freshly assigned presentation before measurement. Call once
+    /// after replacing fields, not on already prepared scroll padding.
+    /// Node `i` lays its flow out in lines while one of it is inline-level
+    /// (CSS 2 §9.4.2): a block becomes a wrapping row whose lines align on
+    /// their baseline and by its `text-align`, a block-level child on a
+    /// line of its own; its authored layout comes back when none is.
+    fn line_box(&mut self, i: usize, flow: &[usize]) {
+        let wanted = {
+            let n = &self.tree.nodes[i];
+            n.el.block
+                && n.props.layout == crate::LayoutMode::Flex
+                && matches!(n.content, Content::None)
+                && flow.iter().any(|&c| self.tree.nodes[c].el.inline)
+        };
+        let n = &mut self.tree.nodes[i];
+        let ours = n.el.direction == crate::Direction::Row && n.el.wrap;
+        match (wanted, n.line_box) {
+            (true, saved) if saved.is_none() || !ours => {
+                n.line_box = Some((n.el.direction, n.el.wrap, n.el.cross, n.el.align));
+                n.el.direction = crate::Direction::Row;
+                n.el.wrap = true;
+                n.el.cross = crate::Cross::Baseline;
+                n.el.align = n.el.line_align;
+            }
+            (false, Some((direction, wrap, cross, align))) => {
+                if ours {
+                    (n.el.direction, n.el.wrap, n.el.cross, n.el.align) =
+                        (direction, wrap, cross, align);
+                }
+                n.line_box = None;
+            }
+            _ => {}
+        }
+    }
+
+    fn place_popover_arrows(&mut self) {
+        // Popovers' arrows (`::-og-arrow`): a square turned 45° across the
+        // edge facing the anchor, over the anchor's middle where the box
+        // allows, hidden while no side faces it. A context menu (opened at
+        // a point) draws none: its corner is at the point, as a desktop's
+        // and a game's context menus are.
+        for k in 0..self.tree.floating.len() {
+            let f = self.tree.floating[k];
+            let n = &self.tree.nodes[f];
+            let Some((size, color)) = n.arrow else {
+                continue;
+            };
+            let a = match n.anchor_point {
+                Some([x, y]) => Rect::new(x, y, 0.0, 0.0),
+                None => match self.tree.nodes.get(n.anchor) {
+                    Some(a) => a.rect,
+                    None => continue,
+                },
+            };
+            let (b, placed, point) = (n.rect, n.anchor_placed, n.anchor_point);
+            self.tree.nodes[f].shapes.retain(|s| {
+                !matches!(s, crate::layout::Shape::Bar { part, .. }
+                    if part.component == "Popover" && part.part == "arrow")
+            });
+            let (Some(side), false, None) = (placed.side, placed.hidden, point) else {
+                continue;
+            };
+            // Kept a side's length in from the corners.
+            let along =
+                |lo: f32, len: f32, at: f32| at.clamp(lo + size, (lo + len - size).max(lo + size));
+            let (ax, ay) = a.center();
+            let (cx, cy) = match side {
+                crate::anchor::PlacedSide::Bottom => (along(b.x, b.width, ax), b.y),
+                crate::anchor::PlacedSide::Top => (along(b.x, b.width, ax), b.bottom()),
+                crate::anchor::PlacedSide::Right => (b.x, along(b.y, b.height, ay)),
+                crate::anchor::PlacedSide::Left => (b.right(), along(b.y, b.height, ay)),
+            };
+            let (bx, by) = b.center();
+            self.tree.nodes[f].shapes.push(crate::layout::Shape::Bar {
+                part: crate::dress::PartRef::of("Popover", "arrow", None),
+                frame: crate::layout::Frame::centered(cx - bx, cy - by, size, size),
+                angle: std::f32::consts::FRAC_PI_4,
+                color,
+            });
+        }
+    }
+}
+
+impl Ui {
+    pub(crate) fn prepare_layout_node(&mut self, i: usize) {
+        let node = &mut self.tree.nodes[i];
+        if let Content::Text(text) = &mut node.content
+            && self.env.theme.art.display_min > 0.0
+            && text.font == crate::FontRole::Display
+            && text.step.size < self.env.theme.art.display_min
+        {
+            text.font = crate::FontRole::Body;
+        }
+        if !matches!(node.widget, Widget::Field(_) | Widget::TextArea { .. }) {
+            match &mut node.content {
+                Content::Text(text) if text.step.uppercase => {
+                    text.text = og_i18n::text::uppercase(&text.text, &self.env.locale);
+                }
+                Content::Rich(rich) => {
+                    for span in &mut rich.spans {
+                        if span.step.uppercase && span.atom.is_none() {
+                            span.text = og_i18n::text::uppercase(&span.text, &self.env.locale);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        crate::layout::snap_pixel_text(&mut self.tree.nodes[i..i + 1], &self.env.fonts);
     }
 
     /// [`UiFrame::missing_glyphs`] of a frame's commands: read from each
