@@ -499,12 +499,8 @@ fn fingerprint(bundle: &Bundle, output: &ManifestOutput, source: Option<&Source>
     }
 }
 
-pub(super) fn build(
-    root: &Path,
-    manifest: &Manifest,
-    sources: &[Source],
-    parsed_refs: &BTreeMap<String, BTreeSet<String>>,
-) -> Result<Index, CookError> {
+/// The ids a source or an output is loaded as, by its name.
+fn known(manifest: &Manifest) -> BTreeMap<String, BTreeSet<String>> {
     let mut known: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     for source in &manifest.assets {
         for output in &source.outputs {
@@ -518,6 +514,18 @@ pub(super) fn build(
                 .insert(output.id.clone());
         }
     }
+    known
+}
+
+/// The index of the project's assets and `project.ogt`, before its code is
+/// read ([`add_code`]).
+pub(super) fn build(
+    root: &Path,
+    manifest: &Manifest,
+    sources: &[Source],
+    parsed_refs: &BTreeMap<String, BTreeSet<String>>,
+) -> Result<Index, CookError> {
+    let known = known(manifest);
     let old = Index::read(root).unwrap_or_default();
     let mut fingerprints: BTreeMap<_, _> = old
         .assets
@@ -621,6 +629,20 @@ pub(super) fn build(
         index.roots.extend(refs.iter().cloned());
         index.users.insert("project.ogt".into(), refs);
     }
+    index.assets.sort_by(|a, b| a.id.cmp(&b.id));
+    Ok(index)
+}
+
+/// Adds what the project's code loads to an index built without it: each
+/// file's references, the roots they make and its computed loads. Code is
+/// the one input read here and nowhere else in the cook, so a change to
+/// code alone redoes only this.
+pub(super) fn add_code(
+    root: &Path,
+    manifest: &Manifest,
+    index: &mut Index,
+) -> Result<(), CookError> {
+    let known = known(manifest);
     for path in game_typescript(root).map_err(CookError)? {
         let source = path
             .strip_prefix(root)
@@ -665,6 +687,5 @@ pub(super) fn build(
         index.roots.extend(refs.iter().cloned());
         index.users.insert(source, refs);
     }
-    index.assets.sort_by(|a, b| a.id.cmp(&b.id));
-    Ok(index)
+    Ok(())
 }

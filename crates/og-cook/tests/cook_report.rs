@@ -234,6 +234,80 @@ fn the_report_times_each_stage_and_an_unchanged_cook_only_the_index() {
     assert_eq!(cook(), ["index"]);
 }
 
+/// A cook after a change to code alone does again only what reads code
+/// (`code`), and leaves the asset index and the publish plan as the whole
+/// cook of the same project writes them.
+///
+/// Ways this could fail: the cook answers its last report and the index
+/// keeps the code's old references, or keeps them beside the new ones; the
+/// next cook does not find the project unchanged; code that starts to use
+/// og.motion, whose pack the manifest names, is answered without the whole
+/// cook.
+#[test]
+fn a_change_to_code_alone_redoes_only_what_reads_code() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("og-cook-code-only");
+    let _ = std::fs::remove_dir_all(&root);
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/sprite-2d");
+    support::copy_dir(&fixture.join("assets"), &root.join("assets"));
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    let cook = || {
+        let r =
+            og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+                .unwrap();
+        assert!(r.ok(), "{:?}", r.errors());
+        r.stages.into_iter().map(|s| s.name).collect::<Vec<_>>()
+    };
+    let written = || {
+        (
+            std::fs::read_to_string(root.join("cooked/.assets.ogt")).unwrap(),
+            std::fs::read_to_string(root.join(".og/publish-assets.json")).unwrap(),
+        )
+    };
+    let index = || og_cook::cook::assets::Index::read(&root).unwrap();
+    let texture = "sprites/slime.png".to_string();
+
+    std::fs::write(
+        root.join("src/game.ts"),
+        format!("og.load.texture(w, \"{texture}\");"),
+    )
+    .unwrap();
+    assert_eq!(cook().len(), 15, "the first cook is a whole one");
+    assert!(index().roots.contains(&texture));
+
+    // The reference goes and a computed load comes.
+    std::fs::write(
+        root.join("src/game.ts"),
+        "og.load.texture(w, `absent/${name}.png`);",
+    )
+    .unwrap();
+    assert_eq!(cook(), ["index", "code", "save"]);
+    let after = index();
+    assert!(!after.roots.contains(&texture), "{:?}", after.roots);
+    assert_eq!(after.computed.len(), 1);
+    assert_eq!(after.computed[0].prefix, "absent/");
+    let fast = written();
+    assert_eq!(cook(), ["index"]);
+    std::fs::remove_file(root.join(".og/cook-index")).unwrap();
+    assert_eq!(
+        cook().len(),
+        15,
+        "without its index the cook is a whole one"
+    );
+    assert_eq!(written(), fast);
+
+    // A new file is code too, and og.motion is the whole cook's.
+    std::fs::write(
+        root.join("src/more.ts"),
+        format!("og.load.texture(w, \"{texture}\");"),
+    )
+    .unwrap();
+    assert_eq!(cook(), ["index", "code", "save"]);
+    assert!(index().roots.contains(&texture));
+    std::fs::write(root.join("src/more.ts"), "og.motion.capabilities();").unwrap();
+    assert_eq!(cook().len(), 15);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 /// A source rewritten in the timestamp tick it was last written in, at the
 /// same length, keeps its size and times, and the cook after it still cooks it.
 /// File times advance in ticks (4 ms on ext4), so a cook and an edit both fit

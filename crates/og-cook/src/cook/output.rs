@@ -386,7 +386,8 @@ pub(super) fn pack(
 
 /// Writes the manifest, the motion model, the asset index, the publish plan,
 /// the cook times and the conform log, and deletes what is no longer an
-/// output. Returns the motion model's warnings.
+/// output. Returns what it deleted, the motion model's warnings and what it
+/// held before it read the project's code.
 pub(super) fn finish(
     cx: &Cx,
     old: &Manifest,
@@ -394,7 +395,7 @@ pub(super) fn finish(
     parsed_refs: &BTreeMap<String, BTreeSet<String>>,
     reports: &mut [AssetReport],
     log: &ConformLog,
-) -> Result<(Vec<String>, Vec<String>), CookError> {
+) -> Result<(Vec<String>, Vec<String>, BeforeCode), CookError> {
     let Cx {
         root,
         sources,
@@ -408,7 +409,8 @@ pub(super) fn finish(
     // og.motion's model, for a project whose code uses it (in the manifest,
     // outside its outputs: never in the boot bundle).
     let mut motion_warnings = Vec::new();
-    manifest.motion = motion::cook(root, cooked_dir, &mut keep, &mut motion_warnings)?;
+    let uses_motion = motion::uses_motion(root);
+    manifest.motion = motion::cook(uses_motion, cooked_dir, &mut keep, &mut motion_warnings)?;
     let mut removed = Vec::new();
     let old_files = old
         .outputs()
@@ -430,7 +432,14 @@ pub(super) fn finish(
         std::fs::write(&manifest_path, &text)
             .map_err(|e| CookError(format!("{}: {e}", manifest_path.display())))?;
     }
-    let index = assets::build(root, &manifest, sources, parsed_refs)?;
+    let mut index = assets::build(root, &manifest, sources, parsed_refs)?;
+    let before_code = BeforeCode {
+        uses_motion,
+        roots: index.roots.clone(),
+        users: index.users.clone(),
+        computed: index.computed.clone(),
+    };
+    assets::add_code(root, &manifest, &mut index)?;
     index.write(cooked_dir)?;
     index.write_publish_plan(root, &manifest)?;
     // Each asset's cook time: this run's (its outputs' summed) when it
@@ -471,7 +480,51 @@ pub(super) fn finish(
         std::fs::write(&path, times.to_text())
             .map_err(|e| CookError(format!("{}: {e}", path.display())))?;
     }
-    Ok((removed, motion_warnings))
+    Ok((removed, motion_warnings, before_code))
+}
+
+/// What a cook holds once everything but the project's code is read: the
+/// asset index's roots, users and computed loads without the code's, and
+/// whether the code used og.motion. Code is read by the asset index and
+/// the motion pack alone, so a cook after a change to code alone starts
+/// from this ([`cook_code`]).
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub(super) struct BeforeCode {
+    uses_motion: bool,
+    roots: BTreeSet<String>,
+    users: BTreeMap<String, BTreeSet<String>>,
+    computed: Vec<assets::ComputedLoad>,
+}
+
+/// The cook after a change to code alone: the asset index and the publish
+/// plan are written again from the last cook's manifest and assets, which
+/// are as they were. `false` when it cannot answer and the whole cook must:
+/// the code uses og.motion, or did (its model is read from outside the
+/// project, and the manifest names it), or the last cook's files do not
+/// read back.
+pub(super) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookError> {
+    let cooked_dir = root.join("cooked");
+    let (Some(manifest), Ok(last)) = (
+        std::fs::read_to_string(cooked_dir.join(MANIFEST))
+            .ok()
+            .and_then(|t| Manifest::parse(&t).ok()),
+        assets::Index::read(root),
+    ) else {
+        return Ok(false);
+    };
+    if before.uses_motion || motion::uses_motion(root) {
+        return Ok(false);
+    }
+    let mut index = assets::Index {
+        assets: last.assets,
+        roots: before.roots.clone(),
+        users: before.users.clone(),
+        computed: before.computed.clone(),
+    };
+    assets::add_code(root, &manifest, &mut index)?;
+    index.write(&cooked_dir)?;
+    index.write_publish_plan(root, &manifest)?;
+    Ok(true)
 }
 
 /// The cook's warnings and the art contract's entries: diagnostics describe
@@ -692,6 +745,7 @@ pub(super) fn diagnose(
 pub(super) fn save(
     cook_index: &index::Index,
     report: &Report,
+    before_code: BeforeCode,
     sources: &[Source],
     assets_dir: &Path,
     texture_cache: Option<&Path>,
@@ -712,7 +766,7 @@ pub(super) fn save(
                 })
             })
     });
-    cook_index.save(report, bounded);
+    cook_index.save(report, bounded.then_some(before_code));
     if let Some(path) = texture_cache {
         let _ = cache::Store::new(path.to_owned()).gc_if_due(cache::max_bytes());
     }

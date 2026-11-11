@@ -7,7 +7,7 @@
 //! file's last change is racy: it is never trusted alone, and the file, a
 //! source or a cooked output, is compared by content until a later cook sees it
 //! settled.
-use super::{CookOptions, Report, cache};
+use super::{BeforeCode, CookOptions, Report, cache};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -116,6 +116,9 @@ struct Saved {
     /// and is dropped.
     racy: BTreeMap<PathBuf, String>,
     report: Option<Report>,
+    /// What the checkpointed cook held before it read the project's code.
+    #[serde(default)]
+    before_code: Option<BeforeCode>,
 }
 
 pub(super) struct Index {
@@ -220,10 +223,34 @@ impl Index {
         }
     }
 
+    /// The checkpointed cook's report, when nothing it read or wrote has
+    /// changed since.
     pub fn unchanged(&self) -> Option<Report> {
+        self.checkpoint(|_| false)
+    }
+
+    /// The checkpointed cook's report and what it held before it read the
+    /// project's code, when code is all that has changed since: the asset
+    /// tree and `project.ogt` are as they were, and so is what was written.
+    pub fn only_code_changed(&self) -> Option<(Report, BeforeCode)> {
+        let report = self.checkpoint(|path| {
+            !path.starts_with(self.root.join("assets")) && path != self.root.join("project.ogt")
+        })?;
+        let before = self.saved.lock().expect("index lock").before_code.clone()?;
+        Some((report, before))
+    }
+
+    /// The checkpointed cook's report as a cook that did nothing answers
+    /// it, when the options and what was written are as they were, and so
+    /// is every input but those `code` names.
+    fn checkpoint(&self, code: impl Fn(&Path) -> bool) -> Option<Report> {
         let mut saved = self.saved.lock().expect("index lock");
+        let now = self.inputs.as_ref()?;
         if saved.options != self.options
-            || self.inputs.as_ref()? != &saved.inputs
+            || !now
+                .iter()
+                .filter(|(path, _)| !code(path))
+                .eq(saved.inputs.iter().filter(|(path, _)| !code(path)))
             || outputs(&self.root).ok()? != saved.outputs
         {
             return None;
@@ -234,6 +261,10 @@ impl Index {
         }
         // An equal racy stat proves nothing; the content decides.
         for (path, was) in &saved.racy {
+            // Code that may differ is read again, whatever its stat says.
+            if saved.inputs.contains_key(path) && code(path) {
+                continue;
+            }
             let now = match self.racy.get(path) {
                 Some(now) => now.clone(),
                 None => hash(path).ok()?,
@@ -339,15 +370,18 @@ impl Index {
         ))
     }
 
-    /// Do not checkpoint sources with dependencies outside the watched asset
-    /// tree. They still use content-addressed actions, but must be planned again.
-    pub fn save(&self, report: &Report, bounded: bool) {
+    /// Checkpoints a cook that held `before_code` before it read the
+    /// project's code. `None` for a cook whose sources have dependencies
+    /// outside the watched asset tree: they still use content-addressed
+    /// actions, but must be planned again.
+    pub fn save(&self, report: &Report, before_code: Option<BeforeCode>) {
         let mut saved = self.saved.lock().expect("index lock");
         saved.report = None;
+        saved.before_code = None;
         // The clock comes before the outputs' stats here: nothing reads an
         // output again, so a rewrite between the two must show in the stat.
         if report.ok()
-            && bounded
+            && let Some(before_code) = before_code
             && let Some(before) = &self.inputs
             && inputs(&self.root).ok().as_ref() == Some(before)
             && let Some(clock) = clock(&self.root)
@@ -361,6 +395,7 @@ impl Index {
             saved.racy = racy;
             saved.outputs = outputs;
             saved.report = Some(report.clone());
+            saved.before_code = Some(before_code);
         }
         if let Ok(bytes) = serde_json::to_vec(&*saved) {
             let _ = cache::atomic_write(&self.path, &bytes);
