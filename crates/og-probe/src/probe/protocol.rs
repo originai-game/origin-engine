@@ -312,7 +312,7 @@ impl Probe {
     /// the host's event timestamp.
     pub fn input_at(&mut self, world: &mut World, event: &InjectedInput, at: f32) -> bool {
         self.inject.stamp = at;
-        let accepted = self.deliver(world, event);
+        let accepted = self.inject.deliver(world, &mut *self.host.input, event);
         self.inject.stamp = 0.0;
         self.timeline
             .input(world.time().tick, &event.to_json(), accepted);
