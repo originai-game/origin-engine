@@ -532,15 +532,10 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             Err(e) => failed.push(format!("og dev: {e} (the old style stays)")),
         }
     }
-    if changed || eng.state.borrow().ui_desc["style"].as_f64().is_some() {
-        let r: Value = serde_json::from_str(&crate::host_impl::answer(super::og_ui_configure(
-            eng.id,
-            Some("{}".into()),
-        )))
-        .unwrap_or(Value::Null);
-        if r["ok"] == json!(false) {
-            failed.push(format!("og dev: the style did not apply: {}", r["error"]));
-        }
+    if (changed || eng.state.borrow().ui_desc["style"].as_f64().is_some())
+        && let Err(reason) = super::og_ui_configure(eng.id, Some("{}".into()))
+    {
+        failed.push(format!("og dev: the style did not apply: {reason}"));
     }
     failed
 }

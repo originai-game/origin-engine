@@ -167,7 +167,11 @@ pub(crate) fn hp(e: u32, name: &str) -> f64 {
 }
 
 fn link(e: u32, name: &str) -> Value {
-    serde_json::from_str(&og_world_prefab_of(e, find(e, name))).unwrap()
+    serde_json::from_str(&og_runtime::host_impl::json(og_world_prefab_of(
+        e,
+        find(e, name),
+    )))
+    .unwrap()
 }
 
 #[test]
@@ -190,7 +194,7 @@ fn a_save_of_an_instanced_world_restores_where_no_prefab_was_placed_and_goes_on_
     // A session that has loaded nothing and never placed a prefab.
     let b = engine(&root);
     assert_eq!(
-        og_world_prefab_of(b, 1.0),
+        og_runtime::host_impl::json(og_world_prefab_of(b, 1.0)),
         "null",
         "no og.PrefabLink before"
     );

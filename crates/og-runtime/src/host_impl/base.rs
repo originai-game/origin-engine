@@ -189,7 +189,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_world_set_state(world, name, value))
             }
             fn og_world_prefab_of(&self, world: u32, entity: f64) -> String {
-                $crate::og_world_prefab_of(world, entity)
+                $crate::host_impl::json($crate::og_world_prefab_of(world, entity))
             }
             fn og_world_name_of(&self, world: u32, entity: f64) -> String {
                 $crate::og_world_name_of(world, entity)

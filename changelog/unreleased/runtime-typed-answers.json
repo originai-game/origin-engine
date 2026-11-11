@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og dev (a style that fails to apply on reload)",
+      "summary": "The message \"og dev: the style did not apply: …\" now names the reason og.ui.configure refused the style; it printed null."
+    }
+  ]
+}
