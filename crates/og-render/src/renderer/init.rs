@@ -16,6 +16,10 @@ mod strips;
 use strips::{StripPipelinesInputs, StripPipelinesOutputs};
 mod adapter;
 use adapter::{AdapterPlanInputs, AdapterPlanOutputs};
+mod world_sims;
+use world_sims::{WorldSimsInputs, WorldSimsOutputs};
+mod world_ground;
+use world_ground::{WorldGroundInputs, WorldGroundOutputs};
 impl Renderer {
     /// Times each render-graph pass's CPU encoding with `clock` (ms) and,
     /// where the device has timestamp queries, its GPU time
@@ -416,43 +420,25 @@ impl Renderer {
             sky_shader: &sky_shader,
             samples,
         });
-        let surfaces = ribbons_gpu::GpuTrails::supported(flags)
-            .then(|| surface::SurfacePipelines::new(&device));
-        let garments = surfaces
-            .as_ref()
-            .map(|_| crate::garment_gpu::Pipelines::new(&device));
-        let visual = surfaces
-            .as_ref()
-            .map(|_| crate::visual_sim::VisualPipelines::new(&device));
-        let visual_fluids = surfaces
-            .as_ref()
-            .map(|_| crate::visual_fluid::VisualFluids::new(&device));
-        let water = water::WaterRenderer::new(
-            &device,
-            &frame_layout,
-            &off.leave_out(FRAME_WGSL.to_string()),
-            &off.leave_out(LIGHTING_WGSL.to_string()),
+        // The world's simulations, water and fluids (init/world_sims.rs).
+        let WorldSimsOutputs {
+            surfaces,
+            garments,
+            visual,
+            visual_fluids,
+            water,
+            vegetation_compute,
+            wind_field,
+            trample,
+            metaballs,
+            fluid3d,
+        } = Self::world_sims(WorldSimsInputs {
+            device: &device,
+            flags,
+            frame_layout: &frame_layout,
+            off,
             samples,
-            flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS),
-            off.contains(crate::pipeline_features::Features::CAUSTICS),
-        );
-        // The vegetation's wind field (G2), simulated where compute runs.
-        let vegetation_compute = WORLD_3D && flags.contains(wgpu::DownlevelFlags::COMPUTE_SHADERS);
-        let wind_field = crate::wind_field::WindFieldSim::new(&device, vegetation_compute);
-        // The grass trample map (G3), pressed where compute runs.
-        let trample = crate::trample::Trample::new(&device, vegetation_compute);
-        let metaballs = metaballs::MetaballRenderer::new(
-            &device,
-            &frame_layout,
-            &off.leave_out(FRAME_WGSL.to_string()),
-            samples,
-        );
-        let fluid3d = fluid3d::Fluid3dRenderer::new(
-            &device,
-            &frame_layout,
-            &off.leave_out(fluid_shared_source()),
-            samples,
-        );
+        });
         // The sprites' pipelines (init/sprite_pipelines.rs).
         let SpritePipelinesOutputs {
             additive,
@@ -546,51 +532,27 @@ impl Renderer {
             )
         };
         let default_normal = solid_texture(&device, &queue, [128, 128, 255, 255]);
-        let terrain = terrain::TerrainRenderer::new(
-            &device,
-            &queue,
-            terrain::TerrainPipelines {
-                frame_layout: &frame_layout,
-                shadow_layout: &shadow_bind_layout,
-                frame_wgsl: FRAME_WGSL,
-                lighting_wgsl: LIGHTING_WGSL,
-                light_tables_wgsl: &clusters::wgsl(),
-                off,
-                samples,
-                white: default_white.clone(),
-                flat_normal: default_normal.clone(),
-            },
-        );
-        let scatter = scatter::ScatterRenderer::new(
-            &device,
-            &queue,
-            scatter::ScatterPipelines {
-                frame_layout: &frame_layout,
-                material_layout: &material_layout,
-                shadow_layout: &shadow_bind_layout,
-                fx_layout: &fx_layout,
-                lit_wgsl: Box::new(move |hooks: &str| off.leave_out(scatter_lit_source(hooks))),
-                shadow_wgsl: scatter_shadow_source(),
-                samples,
-                wind_field: wind_field.lean_view.clone(),
-                trample: trample.view.clone(),
-                compute: vegetation_compute,
-                indirect_per_draw: info.indirect_per_draw,
-            },
-        );
-        let grass = grass::GrassRenderer::new(
-            &device,
-            &queue,
-            grass::GrassPipelines {
-                frame_layout: &frame_layout,
-                shadow_layout: &shadow_bind_layout,
-                fx_layout: &fx_layout,
-                samples,
-                wind_field: wind_field.lean_view.clone(),
-                trample: trample.view.clone(),
-                off,
-            },
-        );
+        // The terrain, scatter and grass (init/world_ground.rs).
+        let WorldGroundOutputs {
+            terrain,
+            scatter,
+            grass,
+        } = Self::world_ground(WorldGroundInputs {
+            device: &device,
+            queue: &queue,
+            frame_layout: &frame_layout,
+            shadow_bind_layout: &shadow_bind_layout,
+            material_layout: &material_layout,
+            fx_layout: &fx_layout,
+            off,
+            samples,
+            default_white: &default_white,
+            default_normal: &default_normal,
+            vegetation_compute,
+            info: &info,
+            wind_field: &wind_field,
+            trample: &trample,
+        });
         let vertex_buffer = |label: &str, size: u64| {
             device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some(label),
