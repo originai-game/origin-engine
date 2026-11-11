@@ -1,0 +1,22 @@
+{
+  "breaking": [
+    {
+      "member": "og.render",
+      "change": "Its arguments are read by types generated from the IDL. A field of the wrong JSON type, a fractional or out-of-range whole number, or an unknown enum name or union kind used to fall back to a default or be truncated silently; it is now refused with the field's path, the value it got and what was expected (`desc.blocked[1].max.y: expected a number, got true`). Unknown side, align, facing and blend names, render-target formats other than ldr or hdr, and uv, slice or clip lists that are not four numbers are refused; a negative mapLayer, width, height or segment count is refused instead of clamped; a malformed setMaterialShader argument no longer clears the shader. og.render.light2dAt reads a point without x or y as 0 instead of refusing it. Absent and null fields take the IDL defaults; a partial object (`color: { r: 0 }`) fills the rest from its field's default.",
+      "fix": "Pass each field as the IDL types it: numbers as numbers, whole numbers in range for u32, i32 and handle fields, enums and union kinds by their names, lists and objects where the IDL says so. Omit a field (or pass null) for its default.",
+      "find": [
+        "og.render.sprite",
+        "og.render.text",
+        "og.render.ribbon",
+        "og.render.standardMaterial",
+        "og.render.updateMaterial",
+        "og.render.renderTarget",
+        "og.render.setDisplay",
+        "og.render.setMaterialShader",
+        "og.render.lines",
+        "og.render.csgGeometry",
+        "og.render.light2dAt"
+      ]
+    }
+  ]
+}

@@ -15,29 +15,22 @@ pub(crate) fn material(
     arrays: &[super::assets::LoadedArray],
 ) -> Result<og_render::StandardMaterial, String> {
     let mut m = base;
-    let num = |k: &str| desc[k].as_f64().map(|v| v as f32);
-    let flag = |k: &str| desc[k].as_bool().map(u32::from);
-    let rgb = |k: &str| {
-        let c = &desc[k];
-        c.is_object().then(|| {
-            glam::Vec3::new(
-                c["r"].as_f64().unwrap_or(0.0) as f32,
-                c["g"].as_f64().unwrap_or(0.0) as f32,
-                c["b"].as_f64().unwrap_or(0.0) as f32,
-            )
-        })
-    };
-    let tex = |k: &str| -> Result<Option<u32>, String> {
-        match desc.get(k) {
-            None => Ok(None),
-            Some(Value::Null) => Ok(Some(0)),
-            Some(v) => {
-                let t = v.as_f64().unwrap_or(-1.0);
-                index_of(t)
-                    .and_then(|i| textures.get(i))
-                    .map(|h| Some(h.slot()))
-                    .ok_or_else(|| format!("{k}: texture {t} is not alive"))
-            }
+    let t: wire::StandardMaterialDesc = wire::value(desc, "desc")?;
+    // Patch: only the fields the desc names (not null) change.
+    let given = |k: &str| desc.get(k).is_some_and(|v| !v.is_null());
+    let num = |k: &str, v: f32| given(k).then_some(v);
+    let flag = |k: &str, v: bool| given(k).then_some(u32::from(v));
+    let rgb = |k: &str, c: &wire::Color| given(k).then(|| glam::Vec3::new(c.r, c.g, c.b));
+    let vec2 = |k: &str, v: glam::Vec2| given(k).then_some(v);
+    // A texture field the desc names: null clears it (slot 0).
+    let tex = |k: &str, h: Option<u64>| -> Result<Option<u32>, String> {
+        match (desc.get(k), h) {
+            (None, _) => Ok(None),
+            (Some(_), None) => Ok(Some(0)),
+            (Some(_), Some(t)) => index_of(t as f64)
+                .and_then(|i| textures.get(i))
+                .map(|h| Some(h.slot()))
+                .ok_or_else(|| format!("{k}: texture {t} is not alive")),
         }
     };
     macro_rules! set {
@@ -47,136 +40,173 @@ pub(crate) fn material(
             }
         };
     }
-    set!(color, rgb("color"));
-    set!(map, tex("map")?);
-    set!(metalness, num("metalness"));
-    set!(metalnessMap, tex("metalnessMap")?);
-    set!(roughness, num("roughness"));
-    set!(roughnessMap, tex("roughnessMap")?);
-    set!(normalMap, tex("normalMap")?);
-    set!(aoMap, tex("aoMap")?);
-    set!(emissive, rgb("emissive"));
-    set!(emissiveIntensity, num("emissiveIntensity"));
-    set!(emissiveMap, tex("emissiveMap")?);
-    set!(opacity, num("opacity"));
-    set!(transparent, flag("transparent"));
-    set!(alphaTest, num("alphaTest"));
+    set!(color, rgb("color", &t.color));
+    set!(map, tex("map", t.map)?);
+    set!(metalness, num("metalness", t.metalness));
+    set!(metalnessMap, tex("metalnessMap", t.metalness_map)?);
+    set!(roughness, num("roughness", t.roughness));
+    set!(roughnessMap, tex("roughnessMap", t.roughness_map)?);
+    set!(normalMap, tex("normalMap", t.normal_map)?);
+    set!(aoMap, tex("aoMap", t.ao_map)?);
+    set!(emissive, rgb("emissive", &t.emissive));
     set!(
-        side,
-        desc["side"].as_str().map(|s| match s {
-            "back" => 1,
-            "double" => 2,
-            _ => 0,
-        })
+        emissiveIntensity,
+        num("emissiveIntensity", t.emissive_intensity)
     );
-    set!(flatShading, flag("flatShading"));
-    set!(wireframe, flag("wireframe"));
-    set!(alphaToCoverage, flag("alphaToCoverage"));
-    set!(paintDetail, num("paintDetail"));
-    set!(weathering, num("weathering"));
-    set!(wireframeAngle, num("wireframeAngle"));
-    set!(wireframeColor, rgb("wireframeColor"));
-    if let Some(v) = desc["foliage"]["translucency"].as_f64() {
-        m.foliage.x = v as f32;
+    set!(emissiveMap, tex("emissiveMap", t.emissive_map)?);
+    set!(opacity, num("opacity", t.opacity));
+    set!(transparent, flag("transparent", t.transparent));
+    set!(alphaTest, num("alphaTest", t.alpha_test));
+    set!(side, given("side").then_some(t.side as u32));
+    set!(flatShading, flag("flatShading", t.flat_shading));
+    set!(wireframe, flag("wireframe", t.wireframe));
+    set!(
+        alphaToCoverage,
+        flag("alphaToCoverage", t.alpha_to_coverage)
+    );
+    set!(paintDetail, num("paintDetail", t.paint_detail));
+    set!(weathering, num("weathering", t.weathering));
+    set!(wireframeAngle, num("wireframeAngle", t.wireframe_angle));
+    set!(wireframeColor, rgb("wireframeColor", &t.wireframe_color));
+    // Patch within foliage too: only the members it names.
+    let foliage = |k: &str| desc["foliage"].get(k).is_some_and(|v| !v.is_null());
+    if foliage("translucency") {
+        m.foliage.x = t.foliage.translucency;
     }
-    if let Some(v) = desc["foliage"]["domeNormals"].as_f64() {
-        m.foliage.y = v as f32;
+    if foliage("domeNormals") {
+        m.foliage.y = t.foliage.dome_normals;
     }
-    set!(envMapIntensity, num("envMapIntensity"));
-    let vec2 = |k: &str, fallback: glam::Vec2| {
-        let v = &desc[k];
-        v.is_object().then(|| {
-            glam::Vec2::new(
-                v["x"].as_f64().map_or(fallback.x, |x| x as f32),
-                v["y"].as_f64().map_or(fallback.y, |y| y as f32),
-            )
-        })
-    };
-    set!(normalScale, vec2("normalScale", glam::Vec2::ONE));
-    set!(aoMapIntensity, num("aoMapIntensity"));
-    set!(unlit, flag("unlit"));
-    set!(styled, flag("styled"));
-    set!(toon, flag("toon"));
-    set!(gradientMap, tex("gradientMap")?);
-    set!(rimColor, rgb("rimColor"));
-    set!(rimIntensity, num("rimIntensity"));
-    set!(rimPower, num("rimPower"));
-    set!(flashColor, rgb("flashColor"));
-    set!(flash, num("flash"));
-    set!(dissolve, num("dissolve"));
-    set!(dissolveMap, tex("dissolveMap")?);
-    set!(dissolveEdgeColor, rgb("dissolveEdgeColor"));
-    set!(dissolveEdgeWidth, num("dissolveEdgeWidth"));
-    set!(dissolveScale, num("dissolveScale"));
-    set!(outlineColor, rgb("outlineColor"));
-    set!(outlineWidth, num("outlineWidth"));
-    set!(clearcoat, num("clearcoat"));
-    set!(clearcoatRoughness, num("clearcoatRoughness"));
-    set!(clearcoatMap, tex("clearcoatMap")?);
-    set!(clearcoatRoughnessMap, tex("clearcoatRoughnessMap")?);
-    set!(clearcoatNormalMap, tex("clearcoatNormalMap")?);
+    set!(envMapIntensity, num("envMapIntensity", t.env_map_intensity));
+    set!(normalScale, vec2("normalScale", t.normal_scale));
+    set!(aoMapIntensity, num("aoMapIntensity", t.ao_map_intensity));
+    set!(unlit, flag("unlit", t.unlit));
+    set!(styled, flag("styled", t.styled));
+    set!(toon, flag("toon", t.toon));
+    set!(gradientMap, tex("gradientMap", t.gradient_map)?);
+    set!(rimColor, rgb("rimColor", &t.rim_color));
+    set!(rimIntensity, num("rimIntensity", t.rim_intensity));
+    set!(rimPower, num("rimPower", t.rim_power));
+    set!(flashColor, rgb("flashColor", &t.flash_color));
+    set!(flash, num("flash", t.flash));
+    set!(dissolve, num("dissolve", t.dissolve));
+    set!(dissolveMap, tex("dissolveMap", t.dissolve_map)?);
+    set!(
+        dissolveEdgeColor,
+        rgb("dissolveEdgeColor", &t.dissolve_edge_color)
+    );
+    set!(
+        dissolveEdgeWidth,
+        num("dissolveEdgeWidth", t.dissolve_edge_width)
+    );
+    set!(dissolveScale, num("dissolveScale", t.dissolve_scale));
+    set!(outlineColor, rgb("outlineColor", &t.outline_color));
+    set!(outlineWidth, num("outlineWidth", t.outline_width));
+    set!(clearcoat, num("clearcoat", t.clearcoat));
+    set!(
+        clearcoatRoughness,
+        num("clearcoatRoughness", t.clearcoat_roughness)
+    );
+    set!(clearcoatMap, tex("clearcoatMap", t.clearcoat_map)?);
+    set!(
+        clearcoatRoughnessMap,
+        tex("clearcoatRoughnessMap", t.clearcoat_roughness_map)?
+    );
+    set!(
+        clearcoatNormalMap,
+        tex("clearcoatNormalMap", t.clearcoat_normal_map)?
+    );
     set!(
         clearcoatNormalScale,
-        vec2("clearcoatNormalScale", glam::Vec2::ONE)
+        vec2("clearcoatNormalScale", t.clearcoat_normal_scale)
     );
-    set!(sheen, num("sheen"));
-    set!(sheenColor, rgb("sheenColor"));
-    set!(sheenRoughness, num("sheenRoughness"));
-    set!(sheenColorMap, tex("sheenColorMap")?);
-    set!(sheenRoughnessMap, tex("sheenRoughnessMap")?);
-    set!(transmission, num("transmission"));
-    set!(transmissionMap, tex("transmissionMap")?);
-    set!(thickness, num("thickness"));
-    set!(thicknessMap, tex("thicknessMap")?);
-    set!(attenuationDistance, num("attenuationDistance"));
-    set!(attenuationColor, rgb("attenuationColor"));
-    set!(ior, num("ior"));
-    set!(iridescence, num("iridescence"));
-    set!(iridescenceIOR, num("iridescenceIOR"));
+    set!(sheen, num("sheen", t.sheen));
+    set!(sheenColor, rgb("sheenColor", &t.sheen_color));
+    set!(sheenRoughness, num("sheenRoughness", t.sheen_roughness));
+    set!(sheenColorMap, tex("sheenColorMap", t.sheen_color_map)?);
+    set!(
+        sheenRoughnessMap,
+        tex("sheenRoughnessMap", t.sheen_roughness_map)?
+    );
+    set!(transmission, num("transmission", t.transmission));
+    set!(transmissionMap, tex("transmissionMap", t.transmission_map)?);
+    set!(thickness, num("thickness", t.thickness));
+    set!(thicknessMap, tex("thicknessMap", t.thickness_map)?);
+    set!(
+        attenuationDistance,
+        num("attenuationDistance", t.attenuation_distance)
+    );
+    set!(
+        attenuationColor,
+        rgb("attenuationColor", &t.attenuation_color)
+    );
+    set!(ior, num("ior", t.ior));
+    set!(iridescence, num("iridescence", t.iridescence));
+    set!(iridescenceIOR, num("iridescenceIOR", t.iridescence_ior));
     set!(
         iridescenceThicknessRange,
-        vec2("iridescenceThicknessRange", glam::Vec2::new(100.0, 400.0))
+        vec2("iridescenceThicknessRange", t.iridescence_thickness_range)
     );
-    set!(iridescenceMap, tex("iridescenceMap")?);
-    set!(iridescenceThicknessMap, tex("iridescenceThicknessMap")?);
-    set!(anisotropy, num("anisotropy"));
-    set!(anisotropyRotation, num("anisotropyRotation"));
-    set!(anisotropyMap, tex("anisotropyMap")?);
+    set!(iridescenceMap, tex("iridescenceMap", t.iridescence_map)?);
+    set!(
+        iridescenceThicknessMap,
+        tex("iridescenceThicknessMap", t.iridescence_thickness_map)?
+    );
+    set!(anisotropy, num("anisotropy", t.anisotropy));
+    set!(
+        anisotropyRotation,
+        num("anisotropyRotation", t.anisotropy_rotation)
+    );
+    set!(anisotropyMap, tex("anisotropyMap", t.anisotropy_map)?);
     // Each slot's uv transform (KHR_texture_transform, three.js Texture.offset/repeat/rotation).
-    set!(mapOffset, vec2("mapOffset", glam::Vec2::ZERO));
-    set!(mapRepeat, vec2("mapRepeat", glam::Vec2::ONE));
-    set!(mapRotation, num("mapRotation"));
+    set!(mapOffset, vec2("mapOffset", t.map_offset));
+    set!(mapRepeat, vec2("mapRepeat", t.map_repeat));
+    set!(mapRotation, num("mapRotation", t.map_rotation));
     set!(
         metalnessMapOffset,
-        vec2("metalnessMapOffset", glam::Vec2::ZERO)
+        vec2("metalnessMapOffset", t.metalness_map_offset)
     );
     set!(
         metalnessMapRepeat,
-        vec2("metalnessMapRepeat", glam::Vec2::ONE)
+        vec2("metalnessMapRepeat", t.metalness_map_repeat)
     );
-    set!(metalnessMapRotation, num("metalnessMapRotation"));
-    set!(normalMapOffset, vec2("normalMapOffset", glam::Vec2::ZERO));
-    set!(normalMapRepeat, vec2("normalMapRepeat", glam::Vec2::ONE));
-    set!(normalMapRotation, num("normalMapRotation"));
+    set!(
+        metalnessMapRotation,
+        num("metalnessMapRotation", t.metalness_map_rotation)
+    );
+    set!(
+        normalMapOffset,
+        vec2("normalMapOffset", t.normal_map_offset)
+    );
+    set!(
+        normalMapRepeat,
+        vec2("normalMapRepeat", t.normal_map_repeat)
+    );
+    set!(
+        normalMapRotation,
+        num("normalMapRotation", t.normal_map_rotation)
+    );
     set!(
         emissiveMapOffset,
-        vec2("emissiveMapOffset", glam::Vec2::ZERO)
+        vec2("emissiveMapOffset", t.emissive_map_offset)
     );
     set!(
         emissiveMapRepeat,
-        vec2("emissiveMapRepeat", glam::Vec2::ONE)
+        vec2("emissiveMapRepeat", t.emissive_map_repeat)
     );
-    set!(emissiveMapRotation, num("emissiveMapRotation"));
-    set!(aoMapOffset, vec2("aoMapOffset", glam::Vec2::ZERO));
-    set!(aoMapRepeat, vec2("aoMapRepeat", glam::Vec2::ONE));
-    set!(aoMapRotation, num("aoMapRotation"));
-    let array = |k: &str| -> Result<Option<u32>, String> {
-        match desc.get(k) {
-            None => Ok(None),
-            Some(Value::Null) => Ok(Some(0)),
-            Some(v) => {
-                let a = v.as_f64().unwrap_or(-1.0);
-                let loaded = index_of(a)
+    set!(
+        emissiveMapRotation,
+        num("emissiveMapRotation", t.emissive_map_rotation)
+    );
+    set!(aoMapOffset, vec2("aoMapOffset", t.ao_map_offset));
+    set!(aoMapRepeat, vec2("aoMapRepeat", t.ao_map_repeat));
+    set!(aoMapRotation, num("aoMapRotation", t.ao_map_rotation));
+    // A texture-array field the desc names: null clears it (slot 0).
+    let array = |k: &str, h: Option<u64>| -> Result<Option<u32>, String> {
+        match (desc.get(k), h) {
+            (None, _) => Ok(None),
+            (Some(_), None) => Ok(Some(0)),
+            (Some(_), Some(a)) => {
+                let loaded = index_of(a as f64)
                     .and_then(|i| arrays.get(i))
                     .ok_or_else(|| format!("{k}: texture array {a} is not loaded in this world"))?;
                 let h = loaded.handle.ok_or_else(|| {
@@ -189,11 +219,13 @@ pub(crate) fn material(
             }
         }
     };
-    let layer = |k: &str| desc[k].as_f64().map(|v| v.max(0.0) as u32);
-    set!(mapArray, array("mapArray")?);
-    set!(mapLayer, layer("mapLayer"));
-    set!(normalMapArray, array("normalMapArray")?);
-    set!(normalMapLayer, layer("normalMapLayer"));
+    set!(mapArray, array("mapArray", t.map_array)?);
+    set!(mapLayer, given("mapLayer").then_some(t.map_layer));
+    set!(normalMapArray, array("normalMapArray", t.normal_map_array)?);
+    set!(
+        normalMapLayer,
+        given("normalMapLayer").then_some(t.normal_map_layer)
+    );
     Ok(m)
 }
 
@@ -331,11 +363,11 @@ pub fn og_render_snap_camera(world: u32) {
 pub fn og_render_text(world: u32, desc: Option<String>) -> String {
     result_void((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let Some(font) = d["font"].as_f64() else {
+        let d: wire::TextDesc = wire::arg(desc.as_deref(), "desc")?;
+        let Some(font) = d.font else {
             return Ok(());
         };
-        let fi = index_of(font).ok_or_else(|| format!("{font} is not a font handle"))?;
+        let fi = index_of(font as f64).ok_or_else(|| format!("{font} is not a font handle"))?;
         let render = eng
             .assets
             .borrow()
@@ -344,42 +376,30 @@ pub fn og_render_text(world: u32, desc: Option<String>) -> String {
             .map(|f| f.render)
             .ok_or_else(|| format!("font {font} is not alive"))?;
         let tick = og_world_get_tick(world) as u64;
-        let num = |v: &Value, k: &str, def: f64| v[k].as_f64().unwrap_or(def) as f32;
-        let c = &d["color"];
         let mut rs = eng.render.borrow_mut();
         new_frame(&mut rs, tick);
-        let text = d["text"].as_str().unwrap_or_default().to_string();
+        let text = d.text;
         // Its missing glyphs warned of now, on the CPU, renderer or not.
         if let Some(missing) = crate::glyphs::lacking(&mut rs, render, &text) {
             drop(rs);
             crate::glyphs::warn_missing(&eng, tick, vec![missing]);
             rs = eng.render.borrow_mut();
         }
-        let size = num(&d, "size", 1.0);
-        let rotation = num(&d, "rotation", 0.0);
-        let position = vec3(&d["position"]);
-        let color = [
-            num(c, "r", 1.0),
-            num(c, "g", 1.0),
-            num(c, "b", 1.0),
-            num(&d, "opacity", 1.0),
-        ];
-        let layer = d["layer"].as_i64().unwrap_or(0) as i32;
-        let screen = d["screen"].as_bool().unwrap_or(false);
-        let clip = clip_of(&d["clip"]);
-        let outline = num(&d, "outline", 0.0).clamp(0.0, 1.0);
-        let oc = &d["outlineColor"];
-        let outline_color = [
-            num(oc, "r", 0.0),
-            num(oc, "g", 0.0),
-            num(oc, "b", 0.0),
-            color[3],
-        ];
-        let facing = super::feel::facing_named(d["facing"].as_str());
-        let shift = match d["align"].as_str() {
-            Some("center") => 0.5,
-            Some("end") => 1.0,
-            _ => 0.0,
+        let size = d.size;
+        let rotation = d.rotation;
+        let position = d.position;
+        let color = [d.color.r, d.color.g, d.color.b, d.opacity];
+        let layer = d.layer;
+        let screen = d.screen;
+        let clip = d.clip;
+        let outline = d.outline.clamp(0.0, 1.0);
+        let oc = &d.outline_color;
+        let outline_color = [oc.r, oc.g, oc.b, color[3]];
+        let facing = super::feel::facing_named(Some(d.facing.as_str()));
+        let shift = match d.align {
+            wire::TextAlign::Start => 0.0,
+            wire::TextAlign::Center => 0.5,
+            wire::TextAlign::End => 1.0,
         };
         // Unaligned, or a faced world text, which the renderer aligns about
         // its point in its own plane (`og_render::TextFacing::align`).
@@ -459,62 +479,66 @@ pub(crate) fn add_geometry(
 /// A geometry desc's `uvRepeat` applied (og_render::shapes::repeat_uv).
 pub(crate) fn uv_repeat(d: &Value, mesh: &mut og_render::MeshData) -> Result<(), String> {
     let r = &d["uvRepeat"];
-    let axis = |k: &str| -> Result<f32, String> {
-        let v = r[k].as_f64().unwrap_or(1.0);
+    let axis = |k: &str| r[k].as_f64().unwrap_or(1.0) as f32;
+    repeat_uv(glam::Vec2::new(axis("x"), axis("y")), mesh)
+}
+
+/// A geometry desc's typed `uvRepeat` applied (og_render::shapes::repeat_uv).
+fn repeat_uv(r: glam::Vec2, mesh: &mut og_render::MeshData) -> Result<(), String> {
+    for (k, v) in [("x", r.x), ("y", r.y)] {
         if !v.is_finite() {
             return Err(format!("uvRepeat.{k} must be finite, got {v}"));
         }
-        Ok(v as f32)
-    };
-    og_render::shapes::repeat_uv(mesh, glam::Vec2::new(axis("x")?, axis("y")?));
+    }
+    og_render::shapes::repeat_uv(mesh, r);
     Ok(())
 }
 
-fn size_of(d: &Value, key: &str, default: f64) -> Result<f32, String> {
-    let v = d[key].as_f64().unwrap_or(default);
+/// A geometry desc's size field `v`, checked.
+fn size_of(key: &str, v: f32) -> Result<f32, String> {
     if !(v.is_finite() && v >= 0.0) {
         return Err(format!("{key} must be finite and at least 0, got {v}"));
     }
-    Ok(v as f32)
+    Ok(v)
 }
 
 pub fn og_render_box_geometry(world: u32, desc: Option<String>) -> String {
     result((|| {
-        let d = parse(desc.as_deref())?;
+        let d: wire::BoxGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let size = glam::Vec3::new(
-            size_of(&d, "width", 1.0)?,
-            size_of(&d, "height", 1.0)?,
-            size_of(&d, "depth", 1.0)?,
+            size_of("width", d.width)?,
+            size_of("height", d.height)?,
+            size_of("depth", d.depth)?,
         );
         let mut mesh = og_render::shapes::cuboid(size);
-        uv_repeat(&d, &mut mesh)?;
+        repeat_uv(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, true)
     })())
 }
 
 pub fn og_render_plane_geometry(world: u32, desc: Option<String>) -> String {
     result((|| {
-        let d = parse(desc.as_deref())?;
+        let d: wire::PlaneGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
         let mut mesh =
-            og_render::shapes::plane_xy(size_of(&d, "width", 1.0)?, size_of(&d, "height", 1.0)?);
-        uv_repeat(&d, &mut mesh)?;
+            og_render::shapes::plane_xy(size_of("width", d.width)?, size_of("height", d.height)?);
+        repeat_uv(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, true)
     })())
 }
 
 pub fn og_render_sphere_geometry(world: u32, desc: Option<String>) -> String {
     result((|| {
-        let d = parse(desc.as_deref())?;
-        let radius = size_of(&d, "radius", 1.0)?;
-        let seg = d["widthSegments"].as_u64().unwrap_or(32).clamp(3, 512) as u32;
-        let rings = d["heightSegments"].as_u64().unwrap_or(16).clamp(2, 512) as u32;
+        let d: wire::SphereGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
+        let radius = size_of("radius", d.radius)?;
+        let seg = d.width_segments.clamp(3, 512);
+        let rings = d.height_segments.clamp(2, 512);
         let mut mesh = og_render::shapes::sphere(seg, rings);
         for v in &mut mesh.vertices {
             for c in &mut v.position {
                 *c *= radius * 2.0;
             }
         }
-        uv_repeat(&d, &mut mesh)?;
+        repeat_uv(d.uv_repeat, &mut mesh)?;
         add_geometry(world, mesh, false)
     })())
 }
@@ -527,13 +551,6 @@ fn new_frame(rs: &mut super::extract::RenderState, tick: u64) {
         rs.fx.ribbons.clear();
         rs.texts_tick = tick;
     }
-}
-
-/// A `clip` field: `[x, y, width, height]`, or none.
-fn clip_of(v: &Value) -> Option<[f32; 4]> {
-    let a = v.as_array().filter(|a| a.len() == 4)?;
-    let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
-    Some([n(0), n(1), n(2), n(3)])
 }
 
 /// A loaded font's layout metrics (its first page carries every advance)
@@ -557,23 +574,22 @@ fn font_metrics(
 pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
     result_void((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let num = |v: &Value, k: &str, def: f64| v[k].as_f64().unwrap_or(def) as f32;
+        let d: wire::SpriteDesc = wire::arg(desc.as_deref(), "desc")?;
         let tick = og_world_get_tick(world) as u64;
         let mut rs = eng.render.borrow_mut();
-        let texture = match d["texture"].as_f64() {
+        let texture = match d.texture {
             None => None,
             Some(t) => Some(
-                index_of(t)
+                index_of(t as f64)
                     .and_then(|i| rs.textures.get(i).copied())
                     .ok_or_else(|| format!("texture {t} is not alive"))?,
             ),
         };
         // A layer of a texture array in place of the texture (world or screen).
-        let array = match d["array"].as_f64() {
+        let array = match d.array {
             None => None,
             Some(a) => {
-                let loaded = index_of(a)
+                let loaded = index_of(a as f64)
                     .and_then(|i| rs.texture_arrays.get(i))
                     .ok_or_else(|| format!("texture array {a} is not loaded in this world"))?;
                 let handle = loaded.handle.ok_or_else(|| {
@@ -582,73 +598,43 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                         loaded.id
                     )
                 })?;
-                let layer = d["arrayLayer"].as_f64().unwrap_or(0.0);
-                if !(layer >= 0.0 && layer.fract() == 0.0 && layer < f64::from(loaded.layers)) {
+                let layer = d.array_layer;
+                if layer >= loaded.layers {
                     return Err(format!(
                         "arrayLayer {layer}: {} has layers 0 to {}",
                         loaded.id,
                         loaded.layers - 1
                     ));
                 }
-                Some((handle, layer as u32, loaded.size))
+                Some((handle, layer, loaded.size))
             }
         };
-        let uv = d["uv"]
-            .as_array()
-            .filter(|a| a.len() == 4)
-            .map(|a| {
-                let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
-                [n(0), n(1), n(2), n(3)]
-            })
-            .unwrap_or([0.0, 0.0, 1.0, 1.0]);
-        let c = &d["color"];
-        let anchor = &d["anchor"];
+        let uv = d.uv.unwrap_or([0.0, 0.0, 1.0, 1.0]);
+        let c = &d.color;
         new_frame(&mut rs, tick);
-        let fc = &d["flashColor"];
-        let flash = [
-            if fc.is_object() {
-                num(fc, "r", 1.0)
-            } else {
-                1.0
-            },
-            if fc.is_object() {
-                num(fc, "g", 1.0)
-            } else {
-                1.0
-            },
-            if fc.is_object() {
-                num(fc, "b", 1.0)
-            } else {
-                1.0
-            },
-            num(&d, "flash", 0.0).clamp(0.0, 1.0),
-        ];
+        let fc = &d.flash_color;
+        let flash = [fc.r, fc.g, fc.b, d.flash.clamp(0.0, 1.0)];
         let sprite = og_render::Sprite {
             texture,
-            position: vec3(&d["position"]),
-            size: glam::Vec2::new(num(&d, "width", 1.0), num(&d, "height", 1.0)),
-            anchor: glam::Vec2::new(num(anchor, "x", 0.5), num(anchor, "y", 0.5)),
-            rotation: num(&d, "rotation", 0.0),
-            color: [
-                num(c, "r", 1.0),
-                num(c, "g", 1.0),
-                num(c, "b", 1.0),
-                num(&d, "opacity", 1.0),
-            ],
+            position: d.position,
+            size: glam::Vec2::new(d.width, d.height),
+            anchor: d.anchor,
+            rotation: d.rotation,
+            color: [c.r, c.g, c.b, d.opacity],
             uv_rect: uv,
-            layer: d["layer"].as_i64().unwrap_or(0) as i32,
+            layer: d.layer,
             clip: None,
         };
         // Flips swap the region's edges; a nine-slice becomes its pieces.
         let mut sprite = sprite;
-        if d["flipX"].as_bool().unwrap_or(false) {
+        if d.flip_x {
             sprite.uv_rect.swap(0, 2);
         }
-        if d["flipY"].as_bool().unwrap_or(false) {
+        if d.flip_y {
             sprite.uv_rect.swap(1, 3);
         }
-        let screen = d["screen"].as_bool().unwrap_or(false);
-        let order = if d["sortY"].as_bool().unwrap_or(false) {
+        let screen = d.screen;
+        let order = if d.sort_y {
             if screen {
                 sprite.position.y
             } else {
@@ -661,22 +647,14 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
             Some((.., size)) => Some(size),
             None => texture.and_then(|t| rs.scene.texture_size(t)),
         };
-        let pieces = match (d["slice"].as_array(), size) {
-            (Some(a), Some(size)) if a.len() == 4 => {
-                let n = |i: usize| a[i].as_f64().unwrap_or(0.0) as f32;
-                og_render::nine_slice(
-                    &sprite,
-                    [n(0), n(1), n(2), n(3)],
-                    size,
-                    num(&d, "sliceScale", 0.0625),
-                )
-            }
+        let pieces = match (d.slice, size) {
+            (Some(slice), Some(size)) => og_render::nine_slice(&sprite, slice, size, d.slice_scale),
             _ => vec![sprite],
         };
         let facing = if screen {
             og_render::SpriteFacing::None
         } else {
-            super::feel::facing_named(d["facing"].as_str())
+            super::feel::facing_named(Some(d.facing.as_str()))
         };
         // A faced nine-slice turns as one panel about the sprite's anchor.
         let one_panel = facing != og_render::SpriteFacing::None && pieces.len() > 1;
@@ -688,16 +666,16 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
                     piece
                 },
                 flash,
-                glow: num(&d, "glow", 0.0).max(0.0),
-                additive: d["blend"].as_str() == Some("additive"),
-                cast_shadow: i == 0 && d["castShadow"].as_bool().unwrap_or(false),
+                glow: d.glow.max(0.0),
+                additive: d.blend == wire::SpriteBlend::Additive,
+                cast_shadow: i == 0 && d.cast_shadow,
                 screen,
-                clip: clip_of(&d["clip"]),
+                clip: d.clip,
                 order,
                 array: array.map(|(h, layer, _)| (h, layer)),
-                drop_shadow: num(&d, "dropShadow", 0.0).clamp(0.0, 1.0),
-                drop_shadow_height: num(&d, "dropShadowHeight", 0.0),
-                tone_mapped: d["toneMapped"].as_bool().unwrap_or(true),
+                drop_shadow: d.drop_shadow.clamp(0.0, 1.0),
+                drop_shadow_height: d.drop_shadow_height,
+                tone_mapped: d.tone_mapped,
                 facing,
             });
         }
@@ -708,24 +686,16 @@ pub fn og_render_sprite(world: u32, desc: Option<String>) -> String {
 pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
     result_void((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let num = |v: &Value, k: &str, def: f64| v[k].as_f64().unwrap_or(def) as f32;
-        let points: Vec<og_render::RibbonPoint> = d["points"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|p| {
-                        let c = &p["color"];
-                        let rgb = |k: &str| if c.is_object() { num(c, k, 1.0) } else { 1.0 };
-                        og_render::RibbonPoint {
-                            position: vec3(&p["position"]),
-                            width: num(p, "width", 0.1),
-                            color: [rgb("r"), rgb("g"), rgb("b"), num(p, "opacity", 1.0)],
-                        }
-                    })
-                    .collect()
+        let d: wire::RibbonDesc = wire::arg(desc.as_deref(), "desc")?;
+        let points: Vec<og_render::RibbonPoint> = d
+            .points
+            .iter()
+            .map(|p| og_render::RibbonPoint {
+                position: p.position,
+                width: p.width,
+                color: [p.color.r, p.color.g, p.color.b, p.opacity],
             })
-            .unwrap_or_default();
+            .collect();
         if points.len() < 2 {
             return Err(format!(
                 "a ribbon needs at least two points, got {}",
@@ -734,15 +704,15 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
         }
         let tick = og_world_get_tick(world) as u64;
         let mut rs = eng.render.borrow_mut();
-        let texture = match d["texture"].as_f64() {
+        let texture = match d.texture {
             None => None,
             Some(t) => Some(
-                index_of(t)
+                index_of(t as f64)
                     .and_then(|i| rs.textures.get(i).copied())
                     .ok_or_else(|| format!("texture {t} is not alive"))?,
             ),
         };
-        let tile = num(&d, "uvTile", 0.0);
+        let tile = d.uv_tile;
         new_frame(&mut rs, tick);
         rs.fx.ribbons.push(og_render::Ribbon {
             points,
@@ -752,7 +722,7 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
             } else {
                 og_render::RibbonUv::Stretch
             },
-            blend: if d["blend"].as_str() == Some("alpha") {
+            blend: if d.blend == wire::StripBlend::Alpha {
                 og_render::ParticleBlend::Alpha
             } else {
                 og_render::ParticleBlend::Additive
@@ -766,11 +736,11 @@ pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
 pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
     result((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let font = d["font"]
-            .as_f64()
+        let d: wire::TextMeasureDesc = wire::arg(desc.as_deref(), "desc")?;
+        let font = d
+            .font
             .ok_or("TextMeasureDesc.font is null: load one with og.load.font")?;
-        let fi = index_of(font).ok_or_else(|| format!("{font} is not a font handle"))?;
+        let fi = index_of(font as f64).ok_or_else(|| format!("{font} is not a font handle"))?;
         let render = eng
             .assets
             .borrow()
@@ -778,8 +748,8 @@ pub fn og_render_measure_text(world: u32, desc: Option<String>) -> String {
             .get(fi)
             .map(|f| f.render)
             .ok_or_else(|| format!("font {font} is not alive"))?;
-        let size = d["size"].as_f64().unwrap_or(1.0) as f32;
-        let text = d["text"].as_str().unwrap_or_default();
+        let size = d.size;
+        let text = d.text.as_str();
         let rs = eng.render.borrow();
         let (metrics, line_height) = font_metrics(&rs, render)?;
         let lines: Vec<&str> = text.split('\n').collect();

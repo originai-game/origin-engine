@@ -23,7 +23,7 @@
 
 use super::engine::engine;
 use super::extract::RenderState;
-use super::{ok_void, refuse};
+use super::{ok_void, refuse, wire};
 use og_render::{AutoQuality, AutoQualityBounds, FrameSample, QualityPreset};
 use serde_json::{Value, json};
 
@@ -84,13 +84,6 @@ impl Default for Settings {
     }
 }
 
-fn scale(v: &Value, default: f32) -> f32 {
-    // A value left out keeps `default`, the settings' value now.
-    v.as_f64()
-        .map_or(default, |x| x as f32)
-        .clamp(og_render::MIN_RENDER_SCALE, og_render::MAX_RENDER_SCALE)
-}
-
 impl Settings {
     /// A `DisplaySettings` desc over `base` (the settings now): fields left
     /// out (or null) keep `base`'s values, but `quality: null`, which is the
@@ -100,64 +93,84 @@ impl Settings {
         if !d.is_object() && !d.is_null() {
             return Err(format!("display settings are an object, not {d}"));
         }
-        let frame_cap = match &d["frameCap"] {
-            Value::Null => base.frame_cap,
-            Value::String(s) => FRAME_CAPS.iter().position(|c| c == s).ok_or_else(|| {
-                format!("'{s}' is not a frame cap (auto, display, fps60 or fps30)")
-            })?,
-            Value::Number(n) => n
-                .as_u64()
-                .map_or(0, |i| i as usize)
-                .min(FRAME_CAPS.len() - 1),
-            other => return Err(format!("frameCap {other} is not a frame cap")),
+        // Hand read: frameCap, quality and powerPreference as an index,
+        // which the IDL's enums (names) do not hold; the typed read takes
+        // the rest.
+        let mut typed = d.clone();
+        let mut index = |k: &str| match typed.get(k) {
+            Some(Value::Number(n)) => {
+                let n = n.as_u64();
+                typed.as_object_mut().map(|o| o.remove(k));
+                Some(n)
+            }
+            _ => None,
         };
-        let quality = match d.get("quality") {
+        let (cap_index, quality_index, power_index) = (
+            index("frameCap"),
+            index("quality"),
+            index("powerPreference"),
+        );
+        let t: wire::DisplaySettings = wire::value(&typed, "settings")?;
+        // Patch: a field left out (or null) keeps `base`'s value.
+        let given = |k: &str| d.get(k).is_some_and(|v| !v.is_null());
+        let frame_cap = match cap_index {
+            Some(i) => i.map_or(0, |i| i as usize).min(FRAME_CAPS.len() - 1),
+            None if given("frameCap") => t.frame_cap as usize,
+            None => base.frame_cap,
+        };
+        // `quality: null` is the game's own quality.
+        let quality = match quality_index {
+            Some(i) => i.and_then(|i| PRESETS.get(i as usize)).map(|(_, p)| *p),
+            None if d.get("quality").is_some() => t.quality.map(|q| PRESETS[q as usize].1),
             None => base.quality,
-            Some(Value::Null) => None,
-            Some(Value::String(q)) => Some(
-                PRESETS
-                    .iter()
-                    .find(|(n, _)| n == q)
-                    .map(|(_, p)| *p)
-                    .ok_or_else(|| {
-                        format!("'{q}' is not a graphics preset (low, medium or high; null is the game's)")
-                    })?,
-            ),
-            Some(Value::Number(n)) => n
-                .as_u64()
-                .and_then(|i| PRESETS.get(i as usize))
-                .map(|(_, p)| *p),
-            Some(other) => return Err(format!("quality {other} is not a graphics preset")),
         };
-        let low_power = match &d["powerPreference"] {
-            Value::Null => base.low_power,
-            Value::String(p) => match POWER.iter().position(|x| x == p) {
-                Some(i) => i == 1,
-                None => {
-                    return Err(format!(
-                        "'{p}' is not a power preference (highPerformance or lowPower)"
-                    ));
-                }
-            },
-            Value::Number(n) => n.as_u64() == Some(1),
-            other => return Err(format!("powerPreference {other} is not a power preference")),
+        let low_power = match power_index {
+            Some(i) => i == Some(1),
+            None if given("powerPreference") => {
+                t.power_preference == wire::PowerPreference::LowPower
+            }
+            None => base.low_power,
         };
-        let flag = |k: &str, default: bool| d[k].as_bool().unwrap_or(default);
+        let scale = |v: f32| v.clamp(og_render::MIN_RENDER_SCALE, og_render::MAX_RENDER_SCALE);
         Ok(Settings {
             frame_cap,
             quality,
             low_power,
-            fullscreen: flag("fullscreen", base.fullscreen),
-            battery_saver: flag("batterySaver", base.battery_saver),
-            render_scale: scale(&d["renderScale"], base.render_scale),
-            cloth_subdivisions: d["clothSubdivisions"]
-                .as_f64()
-                .map_or(base.cloth_subdivisions, |x| x.clamp(0.0, 8.0) as u32),
-            auto_quality: flag("autoQuality", base.auto_quality),
-            auto_min_scale: scale(&d["autoMinScale"], base.auto_min_scale),
-            auto_preset_steps: d["autoPresetSteps"]
-                .as_f64()
-                .map_or(base.auto_preset_steps, |x| x.clamp(0.0, 2.0) as u8),
+            fullscreen: if given("fullscreen") {
+                t.fullscreen
+            } else {
+                base.fullscreen
+            },
+            battery_saver: if given("batterySaver") {
+                t.battery_saver
+            } else {
+                base.battery_saver
+            },
+            render_scale: scale(if given("renderScale") {
+                t.render_scale
+            } else {
+                base.render_scale
+            }),
+            cloth_subdivisions: if given("clothSubdivisions") {
+                t.cloth_subdivisions.min(8)
+            } else {
+                base.cloth_subdivisions
+            },
+            auto_quality: if given("autoQuality") {
+                t.auto_quality
+            } else {
+                base.auto_quality
+            },
+            auto_min_scale: scale(if given("autoMinScale") {
+                t.auto_min_scale
+            } else {
+                base.auto_min_scale
+            }),
+            auto_preset_steps: if given("autoPresetSteps") {
+                t.auto_preset_steps.min(2) as u8
+            } else {
+                base.auto_preset_steps
+            },
         })
     }
 

@@ -12,7 +12,7 @@
 
 use super::engine::{engine, running};
 use super::fx::{color, f, on, variant};
-use super::{ok, parse, refuse};
+use super::{ok, refuse};
 use glam::{Quat, Vec2, Vec3};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::{Value, json};
@@ -326,8 +326,7 @@ fn gather(
 pub fn og_render_light2d_at(world: u32, point: String, layers: Option<u32>) -> String {
     let answer = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let p = parse(Some(&point))?;
-        let at = Vec2::new(f(&p, "x", f32::NAN), f(&p, "y", f32::NAN));
+        let at: Vec2 = super::wire::arg(Some(&point), "point")?;
         if !at.is_finite() {
             return Err("light2dAt: the point must be finite { x, y }".into());
         }

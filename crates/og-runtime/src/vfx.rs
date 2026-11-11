@@ -262,40 +262,46 @@ pub fn og_vfx_info(world: u32, asset: f64) -> String {
 
 pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
     wire((|| {
-        let d: Value = match desc.as_deref() {
-            Some(t) => serde_json::from_str(t).map_err(|e| e.to_string())?,
-            None => json!({}),
-        };
-        let asset = d["asset"].as_f64().unwrap_or(0.0);
+        let raw = super::parse(desc.as_deref())?;
+        let d: super::wire::VfxSpawnDesc = super::wire::value(&raw, "desc")?;
+        let given = |k: &str| raw.get(k).is_some_and(|v| !v.is_null());
+        let asset = d.asset as f64;
         loaded(world, asset)?;
         let mut spawn = serde_json::Map::new();
-        for (from, to) in [
-            ("position", "position"),
-            ("rotation", "quaternion"),
-            ("parent", "parent"),
-        ] {
-            if let Some(v) = d.get(from).filter(|v| !v.is_null()) {
-                spawn.insert(to.into(), v.clone());
-            }
+        if given("position") {
+            let p = d.position;
+            spawn.insert("position".into(), json!({ "x": p.x, "y": p.y, "z": p.z }));
+        }
+        if given("rotation") {
+            let q = d.rotation;
+            spawn.insert(
+                "quaternion".into(),
+                json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w }),
+            );
+        }
+        if let Some(parent) = d.parent {
+            spawn.insert("parent".into(), json!(parent));
         }
         let e = answer(&super::api::og_world_spawn(
             world,
             Some(Value::Object(spawn).to_string()),
         ))?;
         let bits = e.as_u64().ok_or("world.spawn answered no entity")?;
-        let seed = match d["seed"].as_u64().unwrap_or(0) {
+        let seed = match d.seed {
             0 => (splitmix(bits) as u32).max(1),
-            s => s as u32,
+            s => s,
         };
         let mut v = json!({
             "asset": asset,
             "seed": seed,
             "startTick": super::api::og_world_get_tick(world),
         });
-        for k in ["scale", "tint"] {
-            if let Some(x) = d.get(k).filter(|x| !x.is_null()) {
-                v[k] = x.clone();
-            }
+        if given("scale") {
+            v["scale"] = json!(d.scale);
+        }
+        if given("tint") {
+            let t = &d.tint;
+            v["tint"] = json!({ "r": t.r, "g": t.g, "b": t.b });
         }
         answer(&super::api::og_world_insert(
             world,

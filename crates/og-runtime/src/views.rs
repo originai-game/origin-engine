@@ -58,15 +58,27 @@ pub(crate) struct ViewState {
 pub fn og_render_render_target(world: u32, desc: Option<String>) -> String {
     let r = (|| -> Result<Value, String> {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let side = |k: &str| d[k].as_f64().map_or(512, |x| x.max(1.0) as u32);
-        let (width, height) = (side("width"), side("height"));
-        let format = match &d["format"] {
-            Value::String(s) if s == "hdr" => og_render::TargetFormat::Rgba16Float,
-            Value::Number(n) if n.as_u64() == Some(1) => og_render::TargetFormat::Rgba16Float,
-            _ => og_render::TargetFormat::Rgba8,
+        let mut raw = parse(desc.as_deref())?;
+        // Hand read: `format` as an index (1 is hdr), which the IDL's
+        // RenderTargetFormat (a name) does not hold.
+        let index = match raw.get("format") {
+            Some(Value::Number(n)) => Some(n.as_u64() == Some(1)),
+            _ => None,
         };
-        let depth = on(&d, "depth", false);
+        if index.is_some()
+            && let Some(o) = raw.as_object_mut()
+        {
+            o.remove("format");
+        }
+        let d: super::wire::RenderTargetDesc = super::wire::value(&raw, "desc")?;
+        let (width, height) = (d.width.max(1), d.height.max(1));
+        let hdr = index.unwrap_or(d.format == super::wire::RenderTargetFormat::Hdr);
+        let format = if hdr {
+            og_render::TargetFormat::Rgba16Float
+        } else {
+            og_render::TargetFormat::Rgba8
+        };
+        let depth = d.depth;
         let mut rs = eng.render.borrow_mut();
         let max = max_target_size(&rs);
         if width > max || height > max {
@@ -163,8 +175,9 @@ pub fn og_render_set_post_param(world: u32, post: f64, name: String, value: Stri
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let value: Vec<f32> = match serde_json::from_str::<Value>(&value) {
-            Ok(Value::Array(a)) => a.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32).collect(),
+            // Hand read: a bare number, which the IDL's List.f32 does not hold.
             Ok(Value::Number(n)) => vec![n.as_f64().unwrap_or(0.0) as f32],
+            Ok(v @ Value::Array(_)) => super::wire::value(&v, "value")?,
             _ => return Err("value is a list of numbers".into()),
         };
         let mut rs = eng.render.borrow_mut();

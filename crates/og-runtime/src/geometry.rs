@@ -15,8 +15,9 @@ use super::api::{add_geometry, uv_repeat};
 use super::assets::{self, index_of};
 use super::engine::{Engine, engine, running};
 use super::extract::{Hierarchy, RenderState};
+use super::wire;
 use super::{ok, ok_void, parse, refuse};
-use glam::{DVec2, DVec3, Mat4, Quat, Vec3};
+use glam::{DVec2, DVec3, Mat4, Quat, Vec2, Vec3};
 use og_ecs::World;
 use og_render::geometry::{self as geo, Bvh};
 use og_render::{LineLayer, LineMode, Lines, MeshHandle, Points, debug};
@@ -376,28 +377,12 @@ fn num(v: &Value, k: &str, d: f32) -> f32 {
     v[k].as_f64().map_or(d, |x| x as f32)
 }
 
-fn uint(v: &Value, k: &str, d: u32, min: u32) -> u32 {
-    v[k].as_u64().map_or(d, |x| x.min(1 << 16) as u32).max(min)
-}
-
 fn flag(v: &Value, k: &str, d: bool) -> bool {
     v[k].as_bool().unwrap_or(d)
 }
 
-fn vec3(v: &Value) -> Vec3 {
-    Vec3::new(num(v, "x", 0.0), num(v, "y", 0.0), num(v, "z", 0.0))
-}
-
-fn quat(v: &Value) -> Quat {
-    if !v.is_object() {
-        return Quat::IDENTITY;
-    }
-    let q = Quat::from_xyzw(
-        num(v, "x", 0.0),
-        num(v, "y", 0.0),
-        num(v, "z", 0.0),
-        num(v, "w", 1.0),
-    );
+/// `q` normalised; a zero quaternion is the identity.
+fn unit(q: Quat) -> Quat {
     if q.length_squared() < 1e-12 {
         Quat::IDENTITY
     } else {
@@ -417,75 +402,36 @@ fn rgba(v: &Value, d: [f32; 3], alpha: f32) -> [f32; 4] {
     [r, g, b, alpha]
 }
 
-/// A list of Vector3, every one finite.
-fn points_of(v: &Value, key: &str) -> Result<Vec<Vec3>, String> {
-    let list = v[key].as_array().map(Vec::as_slice).unwrap_or_default();
-    let out: Vec<Vec3> = list.iter().map(vec3).collect();
-    if out.iter().any(|p| !p.is_finite()) {
-        return Err(format!("{key} holds a point that is not finite"));
-    }
-    Ok(out)
+fn color4(c: &wire::Color, alpha: f32) -> [f32; 4] {
+    [c.r, c.g, c.b, alpha]
 }
 
-fn colors_of(v: &Value, n: usize, alpha: f32) -> Result<Vec<[f32; 4]>, String> {
-    let list = v["colors"]
-        .as_array()
-        .map(Vec::as_slice)
-        .unwrap_or_default();
+/// `points`, every one finite.
+fn finite_points(points: Vec<Vec3>, key: &str) -> Result<Vec<Vec3>, String> {
+    if points.iter().any(|p| !p.is_finite()) {
+        return Err(format!("{key} holds a point that is not finite"));
+    }
+    Ok(points)
+}
+
+fn colors_of(list: &[wire::Color], n: usize, alpha: f32) -> Result<Vec<[f32; 4]>, String> {
     if !list.is_empty() && list.len() != n {
         return Err(format!(
             "colors holds {} colours for {n} points: give one per point or none",
             list.len()
         ));
     }
-    Ok(list.iter().map(|c| rgba(c, [1.0; 3], alpha)).collect())
+    Ok(list.iter().map(|c| color4(c, alpha)).collect())
 }
 
-/// A Float32Array attribute (a plain array on the wire; the TypeScript
-/// runtime converts typed arrays).
-fn floats(d: &Value, key: &str) -> Result<Option<Vec<f32>>, String> {
-    match &d[key] {
-        Value::Null => Ok(None),
-        Value::Array(a) => a
-            .iter()
-            .map(|x| {
-                x.as_f64()
-                    .map(|f| f as f32)
-                    .ok_or_else(|| format!("{key} holds something that is not a number"))
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .map(Some),
-        _ => Err(format!("{key} is not an array of numbers")),
-    }
-}
-
-fn mesh_of_desc(d: &Value) -> Result<og_render::MeshData, String> {
-    let positions = floats(d, "positions")?.unwrap_or_default();
-    let normals = floats(d, "normals")?;
-    let uvs = floats(d, "uvs")?;
-    let colors = floats(d, "colors")?;
-    let tangents = floats(d, "tangents")?;
-    let indices: Option<Vec<u32>> = match &d["indices"] {
-        Value::Null => None,
-        Value::Array(a) => Some(
-            a.iter()
-                .map(|x| {
-                    x.as_u64()
-                        .filter(|&i| i <= u64::from(u32::MAX))
-                        .map(|i| i as u32)
-                        .ok_or("indices holds something that is not an unsigned integer")
-                })
-                .collect::<Result<Vec<_>, _>>()?,
-        ),
-        _ => return Err("indices is not an array of numbers".into()),
-    };
+fn mesh_of_desc(d: &wire::BufferGeometryDesc) -> Result<og_render::MeshData, String> {
     geo::buffer_geometry(&geo::BufferAttributes {
-        positions: &positions,
-        normals: normals.as_deref(),
-        uvs: uvs.as_deref(),
-        colors: colors.as_deref(),
-        tangents: tangents.as_deref(),
-        indices: indices.as_deref(),
+        positions: &d.positions,
+        normals: d.normals.as_deref(),
+        uvs: d.uvs.as_deref(),
+        colors: d.colors.as_deref(),
+        tangents: d.tangents.as_deref(),
+        indices: d.indices.as_deref(),
     })
 }
 
@@ -581,31 +527,32 @@ fn queue(rs: &mut RenderState, tick: u64) -> &mut GeoState {
 pub fn og_render_lines(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let points = points_of(&d, "points")?;
+        let d: wire::LinesDesc = wire::arg(desc.as_deref(), "desc")?;
+        let points = finite_points(d.points, "points")?;
         if points.len() < 2 {
             return Err(format!(
                 "lines need at least two points, got {}",
                 points.len()
             ));
         }
-        let alpha = num(&d, "opacity", 1.0).clamp(0.0, 1.0);
-        let colors = colors_of(&d, points.len(), alpha)?;
-        let screen = flag(&d, "screen", false);
+        let alpha = d.opacity.clamp(0.0, 1.0);
+        let colors = colors_of(&d.colors, points.len(), alpha)?;
+        let screen = d.screen;
         let lines = Lines {
             colors,
-            color: rgba(&d["color"], [1.0; 3], alpha),
-            mode: line_mode(&d["mode"]),
-            width: size(&d, "width", 1.0)?,
-            world_width: flag(&d, "worldUnits", false) && !screen,
-            depth_test: flag(&d, "depthTest", true) && !screen,
+            color: color4(&d.color, alpha),
+            mode: match d.mode {
+                wire::LineMode::Strip => LineMode::Strip,
+                wire::LineMode::Segments => LineMode::Segments,
+                wire::LineMode::Loop => LineMode::Loop,
+            },
+            width: size(d.width, "width")?,
+            world_width: d.world_units && !screen,
+            depth_test: d.depth_test && !screen,
             screen,
-            dashed: flag(&d, "dashed", false).then(|| {
-                (
-                    num(&d, "dashSize", 3.0).max(0.0),
-                    num(&d, "gapSize", 1.0).max(0.0),
-                )
-            }),
+            dashed: d
+                .dashed
+                .then(|| (d.dash_size.max(0.0), d.gap_size.max(0.0))),
             layer: if screen {
                 LineLayer::Overlay
             } else {
@@ -623,18 +570,18 @@ pub fn og_render_lines(world: u32, desc: Option<String>) -> String {
 pub fn og_render_points(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        let positions = points_of(&d, "points")?;
-        let alpha = num(&d, "opacity", 1.0).clamp(0.0, 1.0);
-        let colors = colors_of(&d, positions.len(), alpha)?;
-        let screen = flag(&d, "screen", false);
+        let d: wire::PointsDesc = wire::arg(desc.as_deref(), "desc")?;
+        let positions = finite_points(d.points, "points")?;
+        let alpha = d.opacity.clamp(0.0, 1.0);
+        let colors = colors_of(&d.colors, positions.len(), alpha)?;
+        let screen = d.screen;
         let points = Points {
             positions,
             colors,
-            color: rgba(&d["color"], [1.0; 3], alpha),
-            size: size(&d, "size", 1.0)?,
-            size_attenuation: flag(&d, "sizeAttenuation", true) && !screen,
-            depth_test: flag(&d, "depthTest", true) && !screen,
+            color: color4(&d.color, alpha),
+            size: size(d.size, "size")?,
+            size_attenuation: d.size_attenuation && !screen,
+            depth_test: d.depth_test && !screen,
             screen,
             layer: if screen {
                 LineLayer::Overlay
@@ -770,27 +717,25 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
 pub fn og_render_raycast(world: u32, ray: String, desc: Option<String>) -> String {
     wire((|| {
         let eng = engine(world)?;
-        let r = parse(Some(&ray))?;
-        let d = parse(desc.as_deref())?;
-        let origin = vec3(&r["origin"]);
-        let dir = vec3(&r["direction"]);
+        let r: wire::Ray = wire::arg(Some(&ray), "ray")?;
+        let d: wire::RaycastGeometryDesc = wire::arg(desc.as_deref(), "desc")?;
+        let (origin, dir) = (r.origin, r.direction);
         if !origin.is_finite() || !dir.is_finite() || dir.length_squared() < 1e-20 {
             return Err(
                 "the ray's origin and direction must be finite and its direction not zero".into(),
             );
         }
         let dir = dir.normalize();
-        let max = num(&d, "maxDistance", 0.0);
+        let max = d.max_distance;
         let max = if max > 0.0 && max.is_finite() {
             max
         } else {
             f32::INFINITY
         };
-        let first = flag(&d, "first", false);
-        let invisible = flag(&d, "invisible", false);
+        let (first, invisible) = (d.first, d.invisible);
         // Three.js layers: a mesh is tested when its mask shares a bit
         // (`super::views`).
-        let layers = d["layers"].as_u64().map_or(1, |x| x as u32);
+        let layers = d.layers;
         let list: Rc<Vec<Target>> = if running(eng.id).is_some() {
             let mut rs = eng.render.borrow_mut();
             let GeoState {
@@ -874,15 +819,15 @@ struct DrawDesc {
 }
 
 fn draw_desc(eng: &Engine, desc: Option<String>) -> DrawDesc {
-    let d = parse(desc.as_deref()).unwrap_or(Value::Null);
-    let w = num(&d, "width", 2.0);
+    let d: wire::DebugDrawDesc = wire::arg(desc.as_deref(), "desc").unwrap_or_default();
+    let w = d.width;
     DrawDesc {
-        color: rgba(&d["color"], [1.0, 1.0, 0.0], 1.0),
+        color: color4(&d.color, 1.0),
         width: if w.is_finite() { w.max(0.0) } else { 2.0 },
         // Drawn at the frame after the tick that asked (its world reads
         // the next tick), and `duration` ticks past it.
-        until: tick(eng) + 1 + d["duration"].as_u64().unwrap_or(0),
-        rotation: quat(&d["rotation"]),
+        until: tick(eng) + 1 + u64::from(d.duration),
+        rotation: unit(d.rotation),
     }
 }
 
@@ -897,7 +842,7 @@ fn draw(world: u32, desc: Option<String>, shape: impl FnOnce(&DrawDesc) -> Vec<L
 }
 
 fn arg_vec3(text: &str) -> Vec3 {
-    vec3(&parse(Some(text)).unwrap_or(Value::Null))
+    wire::arg(Some(text), "point").unwrap_or_default()
 }
 
 pub fn og_debug_line(world: u32, from: String, to: String, desc: Option<String>) {

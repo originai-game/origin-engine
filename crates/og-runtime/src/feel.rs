@@ -91,7 +91,7 @@ fn v2_of<R: Rec + ?Sized, K: Key + ?Sized>(v: &R, key: &K, default: Vec2) -> Vec
     Vec2::new(lane("x", default.x), lane("y", default.y))
 }
 
-/// `rgb(&v[key], default)` of a record read in place.
+/// Colour field `key` of a record read in place, `default`'s lanes where absent.
 fn rgb_of<R: Rec + ?Sized, K: Key + ?Sized>(v: &R, key: &K, default: Vec3) -> Vec3 {
     let lane = |l: &str, d: f32| v.lane(key, l).map_or(d, |x| x as f32);
     Vec3::new(
@@ -707,8 +707,8 @@ pub fn og_camera_punch(world: u32, amount: f64) -> String {
 }
 
 pub fn og_camera_kick(world: u32, direction: String, distance: f64) -> String {
-    let d = match parse(Some(&direction)) {
-        Ok(v) => v3(&v, Vec3::ZERO),
+    let d: Vec3 = match super::wire::arg(Some(&direction), "direction") {
+        Ok(v) => v,
         Err(e) => return refuse(e),
     };
     if !distance.is_finite() || !d.is_finite() {
@@ -1072,9 +1072,9 @@ fn put_bytes(out: &mut Vec<u8>, b: &[u8]) {
 
 pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
     wire_void(engine(world).and_then(|eng| {
-        let d = parse(desc.as_deref())?;
-        let text = d["text"].as_str().unwrap_or_default().to_string();
-        let font = match d["font"].as_f64() {
+        let d: super::wire::FloatingTextDesc = super::wire::arg(desc.as_deref(), "desc")?;
+        let text = d.text;
+        let font = match d.font {
             None => {
                 let has_ui = eng.render.borrow().ui.as_ref().is_some_and(|u| u.lock().fonts().body.handle.is_some());
                 if !has_ui {
@@ -1083,7 +1083,7 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
                 u32::MAX
             }
             Some(h) => {
-                let i = super::assets::index_of(h).ok_or_else(|| format!("{h} is not a font handle"))?;
+                let i = super::assets::index_of(h as f64).ok_or_else(|| format!("{h} is not a font handle"))?;
                 if i >= eng.render.borrow().fonts.len() {
                     return Err(format!("font {h} is not alive"));
                 }
@@ -1102,8 +1102,8 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
             }
         };
         crate::glyphs::warn_missing(&eng, tick, missing);
-        let crit = on(&d, "crit", false);
-        let scale = if crit { f(&d, "critScale", 1.6).max(1.0) } else { 1.0 };
+        let crit = d.crit;
+        let scale = if crit { d.crit_scale.max(1.0) } else { 1.0 };
         let feel = feel_of(&eng)?;
         let mut sh = lock(&feel.shared);
         // The drift: a hash of the spawn count, so equal runs drift equally.
@@ -1114,19 +1114,19 @@ pub fn og_render_floating_text(world: u32, desc: Option<String>) -> String {
         sh.floating.push(Floating {
             text,
             font,
-            position: v3(&d["position"], Vec3::ZERO),
-            drift: unit * f(&d, "spread", 0.3).max(0.0),
+            position: d.position,
+            drift: unit * d.spread.max(0.0),
             start: elapsed,
-            size: f(&d, "size", 0.5).max(0.0) * scale,
-            color: rgb(&d["color"], Vec3::ONE),
-            outline: f(&d, "outline", 0.6).clamp(0.0, 1.0),
-            outline_color: rgb(&d["outlineColor"], Vec3::new(0.02, 0.02, 0.03)),
-            rise: f(&d, "rise", 1.0),
-            lifetime: f(&d, "lifetime", 0.8).max(0.05),
-            fade: f(&d, "fade", 0.4).clamp(0.0, 1.0),
-            pop: f(&d, "pop", 0.4).max(0.0) * if crit { 1.5 } else { 1.0 },
-            layer: d["layer"].as_i64().unwrap_or(100) as i32,
-            facing: facing_named(d["facing"].as_str()),
+            size: d.size.max(0.0) * scale,
+            color: Vec3::new(d.color.r, d.color.g, d.color.b),
+            outline: d.outline.clamp(0.0, 1.0),
+            outline_color: Vec3::new(d.outline_color.r, d.outline_color.g, d.outline_color.b),
+            rise: d.rise,
+            lifetime: d.lifetime.max(0.05),
+            fade: d.fade.clamp(0.0, 1.0),
+            pop: d.pop.max(0.0) * if crit { 1.5 } else { 1.0 },
+            layer: d.layer,
+            facing: facing_named(Some(d.facing.as_str())),
         });
         Ok(())
     }))

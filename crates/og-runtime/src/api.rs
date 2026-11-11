@@ -8,7 +8,7 @@ use super::engine::{
     engine, queued_structural, running, world_query_views,
 };
 use super::probe::{self as rprobe, NameOp, with_probe};
-use super::{ok, ok_void, parse, refuse};
+use super::{ok, ok_void, parse, refuse, wire};
 use og_core::reflect::Reflect;
 use og_core::{Rng, Time};
 use og_ecs::{Entity, QueryDesc, World};

@@ -1288,15 +1288,15 @@ pub fn og_render_shader_material(world: u32, shader: f64, desc: Option<String>) 
 pub fn og_render_set_material_shader(world: u32, material: f64, shader: String) -> String {
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
-        let shader: Value = serde_json::from_str(&shader).unwrap_or(Value::Null);
+        let shader: Option<u64> = super::wire::arg(Some(&shader), "shader")?;
         let mut rs = eng.render.borrow_mut();
         let h = super::assets::index_of(material)
             .and_then(|i| rs.materials.get(i).copied())
             .ok_or_else(|| format!("material {material} is not alive"))?;
-        let s = match shader.as_f64() {
+        let s = match shader {
             None => None,
             Some(handle) => Some(
-                super::assets::index_of(handle)
+                super::assets::index_of(handle as f64)
                     .and_then(|i| rs.atmo.shaders.get(i).copied())
                     .ok_or_else(|| format!("shader {handle} is not loaded in this world"))?,
             ),
@@ -1321,8 +1321,9 @@ pub fn og_render_set_shader_param(
     let r = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let value: Vec<f32> = match serde_json::from_str::<Value>(&value) {
-            Ok(Value::Array(a)) => a.iter().map(|x| x.as_f64().unwrap_or(0.0) as f32).collect(),
+            // Hand read: a bare number, which the IDL's List.f32 does not hold.
             Ok(Value::Number(n)) => vec![n.as_f64().unwrap_or(0.0) as f32],
+            Ok(v @ Value::Array(_)) => super::wire::value(&v, "value")?,
             _ => return Err("value is a list of numbers".into()),
         };
         let mut rs = eng.render.borrow_mut();
