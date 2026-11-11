@@ -2,7 +2,7 @@
   "fixed": [
     {
       "member": "UI: the cost of resolving a control's parts",
-      "summary": "A part of a control (a field's caret, a slider's thumb, a date input's segments) resolved the `:root` cascade of the installed part CSS again on every read, several times a part each frame. The UI now keeps that cascade for the installed style and the media context it matched under, and computes it again when the part CSS, the style pack, the theme tokens or the media context change. No cascade result changes: every kept value equalled a fresh one across the og-ui and og-runtime suites."
+      "summary": "A part of a control (a field's caret, a slider's thumb, a date input's segments) resolved the `:root` cascade of the installed part CSS again on every read, several times a part each frame. The UI now keeps that cascade for the installed style and the media context it matched under, and computes it again when the part CSS, the style pack, the theme tokens or the media context change. A `transition` or `animation` shorthand written with `var()` is expanded once for each substituted text, not once for each of its longhands on every read. No cascade result changes: every kept value equalled a fresh one across the og-ui and og-runtime suites."
     }
   ]
 }

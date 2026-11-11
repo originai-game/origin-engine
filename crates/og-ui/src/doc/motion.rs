@@ -245,17 +245,44 @@ fn expand_shorthand(
 
 /// Extract one cascade-winning longhand after its shorthand substitutes.
 pub(crate) fn substituted(shorthand: &str, name: &str, source: String) -> Result<String, String> {
-    let names = if shorthand == "transition" {
+    substituted_longhands(shorthand, &source)?
+        .iter()
+        .find(|(longhand, _)| longhand == name)
+        .map(|(_, value)| value.clone())
+        .ok_or_else(|| format!("{shorthand} has no {name} longhand"))
+}
+
+/// The longhands (name, value) of a substituted shorthand, kept by its
+/// text: the cascade asks once for each longhand of every element that
+/// resolves the shorthand, each frame.
+fn substituted_longhands(shorthand: &str, source: &str) -> Result<Longhands, String> {
+    use std::collections::HashMap;
+    use std::sync::{Arc, Mutex, OnceLock};
+    type Cache = Mutex<[HashMap<String, Result<Longhands, String>>; 2]>;
+    static CACHE: OnceLock<Cache> = OnceLock::new();
+    let cache = CACHE.get_or_init(Default::default);
+    let transition = shorthand == "transition";
+    if let Some(hit) = cache.lock().expect("shorthand cache")[usize::from(transition)].get(source) {
+        return hit.clone();
+    }
+    let names = if transition {
         &TRANSITION[..]
     } else {
         &ANIMATION[..]
     };
-    expand_shorthand(declaration(shorthand, source, false)?, names, &|_| true)?
-        .into_iter()
-        .find(|d| d.name == name)
-        .map(|d| d.source)
-        .ok_or_else(|| format!("{shorthand} has no {name} longhand"))
+    let longhands = declaration(shorthand, source.to_owned(), false)
+        .and_then(|d| expand_shorthand(d, names, &|_| true))
+        .map(|list| Arc::new(list.into_iter().map(|d| (d.name, d.source)).collect()));
+    let mut cache = cache.lock().expect("shorthand cache");
+    let kept = &mut cache[usize::from(transition)];
+    if kept.len() >= 256 {
+        kept.clear();
+    }
+    kept.insert(source.to_owned(), longhands.clone());
+    longhands
 }
+
+type Longhands = std::sync::Arc<Vec<(String, String)>>;
 
 /// `animation-range` (`<start> <end>?`: an omitted end is the start's
 /// range name at 100%, or `normal`), `scroll-timeline` and `view-timeline`
