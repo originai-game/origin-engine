@@ -130,7 +130,11 @@ mod pass_list;
 use pass_list::PassListInputs;
 mod stylise_frame;
 use stylise_frame::{PrepareFrameStyliseInputs, PrepareFrameStyliseOutputs};
+mod fsr_frame;
 mod post_resources;
+use fsr_frame::PrepareFsrInputs;
+mod ui_upload;
+use ui_upload::UploadUiInputs;
 mod setup;
 
 impl Renderer {
@@ -1085,97 +1089,21 @@ impl Renderer {
                 (palette_view, canvas_view, &self.conformed.1, stylise_key),
             )
             .map_err(|e| RenderError::Graph(e.to_string()))?;
-        // FSR 3.1 in TAA's place (post/fsr.rs), where the quality asks for
-        // it and the frame is not supersampled.
-        let post_size = self.history_size();
-        let fsr = taa
-            && self.info.caps.contains(Caps::COMPUTE)
-            && scene.quality.upscaler == crate::Upscaler::Fsr3
-            && self.width <= post_size.0
-            && self.height <= post_size.1;
-        let no_reactive = self.post.no_reactive.clone();
-        match self.graph.fsr_views(&no_reactive, &self.persistent, slot) {
-            Some((color, depth, prepass_views, reveal, output, previous_output, sharpened))
-                if fsr =>
-            {
-                let frame = post::fsr::FsrFrame {
-                    render: (self.width, self.height),
-                    upscale: post_size,
-                    jitter: self.taa_jitter(),
-                    phases: frame::jitter_phases((self.width, self.height), post_size),
-                    inv_view_proj: cam.jittered_view_proj.inverse(),
-                    view_proj: cam.view_proj,
-                    prev_view_proj: self.history.taa_history.unwrap_or(cam.view_proj),
-                    proj: cam.proj,
-                    reset: self.history.taa_history.is_none(),
-                    still: self
-                        .history
-                        .taa_history
-                        .is_none_or(|p| still_camera(&p, &cam.view_proj)),
-                    tick: scene.tick,
-                    tick_rate: scene.tick_rate,
-                    sharpness: self.post.taa_sharpen,
-                    color,
-                    depth,
-                    prepass: prepass_views,
-                    reveal,
-                    output,
-                    previous_output,
-                    sharpened,
-                };
-                self.post.fsr.prepare(&self.queue, &frame);
-            }
-            _ => self.post.fsr.release(),
-        }
-        // The UI's tables and groups: after the graph, whose view depth
-        // occluders and mass elements read.
-        if let (Some(of), Some(o), Some(u)) = (&overlay_frame, &scene.overlay, ui_uniform) {
-            let textures = &self.cache.textures;
-            let backdrop = self.glass_targets.as_ref().filter(|_| glass_on).map(|g| {
-                (
-                    &g.pyramid_view,
-                    &g.behind_view,
-                    &g.source_view,
-                    !self.output_format.is_srgb() && self.output_format != HDR_FORMAT,
-                )
-            });
-            let depth = self
-                .graph
-                .try_view("lindepth")
-                .unwrap_or(&self.post.far_depth);
-            let scale = overlay::OverlayRenderer::scale(self.out_height, o).max(1e-6);
-            let camera = ui::mass::MassCameraGpu {
-                view_proj: cam.view_proj.to_cols_array_2d(),
-                eye: scene
-                    .camera
-                    .position
-                    .extend(f32::from(u8::from(cam.orthographic)))
-                    .to_array(),
-                forward: cam.forward.extend(0.0).to_array(),
-                css: [
-                    self.out_width as f32 / scale,
-                    self.out_height as f32 / scale,
-                    o.ui.tick_fraction.clamp(0.0, 1.0),
-                    0.0,
-                ],
-                tick: [o.ui.tick, 0, 0, 0],
-            };
-            self.ui.upload(
-                &self.device,
-                &self.queue,
-                &self.overlay.layout,
-                scene,
-                of,
-                u,
-                backdrop,
-                |t| textures.get(t.index()).map(|g| g.view.clone()),
-                |i| textures.get(i).map(|g| g.view.clone()),
-                depth,
-                camera,
-                &self.mips,
-            );
-        }
-
+        // FSR in TAA's place (fsr_frame.rs).
+        let fsr = self.prepare_fsr(PrepareFsrInputs {
+            scene,
+            cam: &cam,
+            taa,
+            slot,
+        });
+        // The UI's tables and groups (ui_upload.rs).
+        self.upload_ui(UploadUiInputs {
+            scene,
+            cam: &cam,
+            overlay_frame: &overlay_frame,
+            ui_uniform,
+            glass_on,
+        });
         // Fork s70: a covered surface's frame ends prepared: its passes would
         // only be decoded and validated by the browser's GPU process for a
         // canvas nobody sees.
