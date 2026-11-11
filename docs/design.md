@@ -98,9 +98,6 @@ platforms. Ray tracing. Networking engines beyond the platform SDK's rooms.
 - **Formats below features.** The cooked formats (`.ogb` layouts, their
   type hashes and readers) live in crates below the renderer, so the cook
   and the bundle reader do not link a feature crate for its types.
-- **Files have one subject.** A source file past about 2,000 lines is split
-  by subject into a directory module, verbatim (`AGENTS.md` §Streams and
-  landing); generated files are exempt.
 
 `og check` type-checks game code with tsrs (the Rust port of TypeScript 7),
 a pinned binary `og` runs as a child process and never links: from

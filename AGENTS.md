@@ -87,8 +87,12 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Structure rules** (`docs/design.md` §2.1): a runtime module is an
   optional feature with an absent stand-in that keeps the world's bytes; a
   binding is written once for every host; cooked formats sit below feature
-  crates; a hand-written file past about 2,000 lines is split by subject.
-  A tier is a capability set, never a reduced copy (§2.6 Tiers).
+  crates. A tier is a capability set, never a reduced copy (§2.6 Tiers).
+- **Structure before size.** A refactor exists to make the structure clear:
+  state grouped by the stage or subject that owns it, a pipeline as named
+  steps with explicit data between them, a boundary carried by types. Files
+  follow that structure. No file is split because of its line count, and
+  no stream is opened for a purely mechanical split.
 - **wgpu as published.** Never vendored or patched; work around it in
   og-render or og-host-web.
 - **Rendering never blocks the engine thread on the web.** Engine in a Worker
@@ -247,8 +251,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   captures to the art runner, who reviews the look against commercial games;
   the integrator lands it once approved. A failure found later goes back to its branch as
   a fix-forward commit.
-- A file split moves code verbatim (only `mod`, `use` and visibility edits)
-  and is reviewed with `git diff --color-moved`.
+- A file moves only when the structure it follows has changed; the move is
+  its own commit, verbatim (only `mod`, `use` and visibility edits), and is
+  reviewed with `git diff --color-moved`.
 - Reports carry their numbers and frame paths; evidence is committed only when
   a test reads it. Every change a game sees, and every break with its fix,
   is recorded in the same commit as one new fragment in
