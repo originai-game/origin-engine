@@ -89,16 +89,18 @@ impl Renderer {
             return true;
         }
         let key = (Side::Front, false, false);
-        if !self.shadow_pipelines.contains_key(&key) {
+        if !self.shadows.shadow_pipelines.contains_key(&key) {
             let p = shadow_pipeline(
                 &self.device,
-                &self.shadow_layouts,
-                &self.shadow_shader,
+                &self.shadows.shadow_layouts,
+                &self.shadows.shadow_shader,
                 key,
                 false,
                 false,
             );
-            self.shadow_pipelines.insert(key, Deferred::new(|| p));
+            self.shadows
+                .shadow_pipelines
+                .insert(key, Deferred::new(|| p));
             return true;
         }
         false

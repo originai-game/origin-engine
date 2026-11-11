@@ -495,10 +495,11 @@ impl Renderer {
     fn ensure_local_shadow_pipelines(&self) {
         let array = self.array_maps.iter().flat_map(|a| a.shadow.values());
         for set in self
+            .shadows
             .shadow_pipelines
             .values()
             .chain(self.cache.hook_shadow_pipelines.values())
-            .chain(self.compact_shadow_pipelines.values())
+            .chain(self.shadows.compact_shadow_pipelines.values())
             .chain(array)
         {
             set.local();
@@ -547,10 +548,10 @@ impl Renderer {
                         self.cache.hook_shadow_pipelines.insert(k, set);
                     }
                     Slot::CompactShadow(k) => {
-                        self.compact_shadow_pipelines.insert(k, set);
+                        self.shadows.compact_shadow_pipelines.insert(k, set);
                     }
                     Slot::Shadow(k) => {
-                        self.shadow_pipelines.insert(k, set);
+                        self.shadows.shadow_pipelines.insert(k, set);
                     }
                     _ => unreachable!("a shadow slot"),
                 }
@@ -612,8 +613,8 @@ impl Renderer {
         let samples = self.samples;
         let pbr = &(self.pbr_layout.clone(), self.pbr_skinned_layout.clone());
         let pbr_shader = &self.pbr_shader;
-        let shadow_shader = &self.shadow_shader;
-        let shadow_layouts = &self.shadow_layouts;
+        let shadow_shader = &self.shadows.shadow_shader;
+        let shadow_layouts = &self.shadows.shadow_layouts;
         let mut jobs: Vec<(Slot, Work)> = Vec::new();
         let all = batches
             .iter()
@@ -887,7 +888,7 @@ impl Renderer {
                     add_job!(
                         jobs,
                         Slot::CompactShadow(b.side),
-                        self.compact_shadow_pipelines.contains_key(&b.side),
+                        self.shadows.compact_shadow_pipelines.contains_key(&b.side),
                         {
                             let (d, layouts, module, side) = (
                                 device.clone(),
@@ -936,7 +937,7 @@ impl Renderer {
             add_job!(
                 jobs,
                 Slot::Shadow(key),
-                self.shadow_pipelines.contains_key(&key),
+                self.shadows.shadow_pipelines.contains_key(&key),
                 {
                     let (d, layouts, module) = (
                         device.clone(),

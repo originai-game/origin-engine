@@ -627,6 +627,42 @@ pub(crate) struct Lights {
     pub(crate) fx_groups: Option<FxGroups>,
 }
 
+/// The shadow passes' state: the cascade and local shadow arrays, their
+/// uniforms, pipelines and caches, the shelter map's key and the light
+/// cookies.
+pub(crate) struct Shadows {
+    pub(crate) cascade_map: ShadowMap,
+    pub(crate) local_map: ShadowMap,
+    /// The cascades' side at [`RenderQuality::shadow_map_scale`] 1 (the
+    /// [`RenderDesc`]'s, clamped); [`RenderInfo::shadow_map_size`] is the
+    /// side drawn now.
+    pub(crate) full_shadow_size: u32,
+    /// The local lights' layers' side now ([`LOCAL_SHADOW_SIZE`] at scale 1).
+    pub(crate) local_shadow_size: u32,
+    pub(crate) shadow_buffer: wgpu::Buffer,
+    pub(crate) shadow_bind_group: wgpu::BindGroup,
+    /// Shadow layouts: plain, with the material (dissolve), skinned.
+    pub(crate) shadow_layouts: [wgpu::PipelineLayout; 3],
+    pub(crate) shadow_shader: deferred::Module,
+    pub(crate) shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
+    /// The shadow pipelines of compact casters (lean, from the compact
+    /// vertices) by side.
+    pub(crate) compact_shadow_pipelines: HashMap<Side, Deferred<ShadowSet>>,
+    /// What the shadow layers keep from frame to frame (`shadow_cache.rs`),
+    /// and per shadow slot the texture a layer's static casters are kept
+    /// in while dynamic ones are drawn over it.
+    pub(crate) shadow_cache: shadow_cache::ShadowCache,
+    pub(crate) shadow_cache_maps: Vec<Option<CachedShadow>>,
+    /// What the cache keys each sorted instance on, kept across frames.
+    pub(crate) shadow_hashes: shadow_cache::InstanceHashes,
+    /// What the weather occlusion map in the cascade array's last layer
+    /// was last drawn from (`weather::shelter_key`; `None`: not drawn
+    /// since the array was made).
+    pub(crate) shelter_key: Option<u64>,
+    /// Light cookies in the local shadow array's last layers.
+    pub(crate) cookies: area::Cookies,
+}
+
 #[cfg(test)]
 mod foliage_layout_tests {
     use super::*;

@@ -857,18 +857,18 @@ impl Renderer {
         let shelter = !self.info.without.contains(LitFeatures::SURFACE_WEATHER)
             && scene.surface_weather.is_some_and(|w| w.shelter > 0.0);
         let wanted = self.frame_cascades(scene) + u32::from(shelter);
-        if self.cascade_map.layers.len() as u32 == wanted {
+        if self.shadows.cascade_map.layers.len() as u32 == wanted {
             return;
         }
-        self.cascade_map = ShadowMap::new(
+        self.shadows.cascade_map = ShadowMap::new(
             &self.device,
             "cascades",
             self.info.shadow_map_size,
             wanted,
             wgpu::TextureFormat::R32Float,
         );
-        self.shelter_key = None;
-        self.shadow_cache.forget_layers();
+        self.shadows.shelter_key = None;
+        self.shadows.shadow_cache.forget_layers();
         self.lights.environment = None;
     }
 
@@ -891,7 +891,7 @@ impl Renderer {
         // Cookies take layers past every shadow layer there can be
         // (area.rs), so the array grows to the full capacity with them.
         let cookies = area::Cookies::layers(scene) as usize;
-        if self.local_map.layers.len() >= capacity + cookies {
+        if self.shadows.local_map.layers.len() >= capacity + cookies {
             return;
         }
         // Every shadowed light of the scene's, within the frame's budget.
@@ -911,17 +911,17 @@ impl Renderer {
         } else {
             shadows::grown_layers(&wanted, lights, self.info.point_shadows, capacity)
         };
-        if needed <= self.local_map.layers.len() {
+        if needed <= self.shadows.local_map.layers.len() {
             return;
         }
-        self.local_map = ShadowMap::new(
+        self.shadows.local_map = ShadowMap::new(
             &self.device,
             "local shadows",
-            self.local_shadow_size,
+            self.shadows.local_shadow_size,
             needed as u32,
             LOCAL_SHADOW_FORMAT,
         );
-        self.shadow_cache.forget_layers();
+        self.shadows.shadow_cache.forget_layers();
         self.lights.environment = None;
     }
 
@@ -1066,8 +1066,8 @@ impl Renderer {
         let ibl = self.lights.ibl.views();
         let entries = [
             self.lights.frame_buffer.as_entire_binding(),
-            wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
-            wgpu::BindingResource::TextureView(&self.local_map.array_view),
+            wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
+            wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
             wgpu::BindingResource::TextureView(&ibl.irradiance),
             wgpu::BindingResource::TextureView(&ibl.prefiltered),
             wgpu::BindingResource::TextureView(&ibl.brdf_lut),

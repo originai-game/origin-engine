@@ -1302,8 +1302,8 @@ impl crate::Renderer {
                     &self.frame_layout,
                     &[
                         slot.frame_buffer.as_entire_binding(),
-                        wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
-                        wgpu::BindingResource::TextureView(&self.local_map.array_view),
+                        wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
+                        wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
                         wgpu::BindingResource::TextureView(&ibl.irradiance),
                         wgpu::BindingResource::TextureView(&ibl.prefiltered),
                         wgpu::BindingResource::TextureView(&ibl.brdf_lut),

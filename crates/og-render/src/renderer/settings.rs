@@ -124,29 +124,29 @@ impl Renderer {
     pub(crate) fn apply_quality(&mut self, q: &RenderQuality) {
         let max = self.device.limits().max_texture_dimension_2d;
         let cascade = q.shadow_side(
-            self.full_shadow_size,
-            max.min(self.full_shadow_size.max(4096)),
+            self.shadows.full_shadow_size,
+            max.min(self.shadows.full_shadow_size.max(4096)),
         );
         let local = q.shadow_side(LOCAL_SHADOW_SIZE, max);
-        if (cascade, local) != (self.info.shadow_map_size, self.local_shadow_size) {
+        if (cascade, local) != (self.info.shadow_map_size, self.shadows.local_shadow_size) {
             self.info.shadow_map_size = cascade;
-            self.local_shadow_size = local;
+            self.shadows.local_shadow_size = local;
             // The array keeps its layers (the weather occlusion map's,
             // if any, last).
-            self.cascade_map = ShadowMap::new(
+            self.shadows.cascade_map = ShadowMap::new(
                 &self.device,
                 "cascades",
                 cascade,
-                self.cascade_map.layers.len() as u32,
+                self.shadows.cascade_map.layers.len() as u32,
                 wgpu::TextureFormat::R32Float,
             );
-            self.shelter_key = None;
-            self.shadow_cache.forget_layers();
-            self.local_map = ShadowMap::new(
+            self.shadows.shelter_key = None;
+            self.shadows.shadow_cache.forget_layers();
+            self.shadows.local_map = ShadowMap::new(
                 &self.device,
                 "local shadows",
                 local,
-                self.local_map.layers.len() as u32,
+                self.shadows.local_map.layers.len() as u32,
                 LOCAL_SHADOW_FORMAT,
             );
             // The frame groups bind them: ensure_environment makes them again.

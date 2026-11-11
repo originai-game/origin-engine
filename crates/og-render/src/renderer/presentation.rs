@@ -297,10 +297,10 @@ impl Renderer {
                 .map(view_bytes)
                 .sum::<u64>()
             + self.post.fsr.bytes();
-        let shadows = texture_bytes(&self.cascade_map.texture)
-            + texture_bytes(&self.local_map.texture)
-            + view_bytes(&self.cascade_map.depth)
-            + view_bytes(&self.local_map.depth);
+        let shadows = texture_bytes(&self.shadows.cascade_map.texture)
+            + texture_bytes(&self.shadows.local_map.texture)
+            + view_bytes(&self.shadows.cascade_map.depth)
+            + view_bytes(&self.shadows.local_map.depth);
         let render_targets = targets.iter().map(|t| t.bytes).sum::<u64>()
             + persistent
             + self.graph.target_bytes()
@@ -317,7 +317,7 @@ impl Renderer {
         let buffers = [
             &self.lights.frame_buffer,
             &self.lights.ltc,
-            &self.shadow_buffer,
+            &self.shadows.shadow_buffer,
             &self.lights.fx_buffer,
             &self.sprite_fx_buffer,
             &self.instances.skinned_buffer,

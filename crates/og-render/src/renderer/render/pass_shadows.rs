@@ -25,7 +25,7 @@ impl Pass for CascadePass {
     type Plan<'f> = CascadePlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.cascade_map
+        &r.shadows.cascade_map
     }
 
     fn encode<'f>(
@@ -73,7 +73,7 @@ impl Pass for ShelterPass {
     type Plan<'f> = ShelterPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.cascade_map
+        &r.shadows.cascade_map
     }
 
     fn encode<'f>(
@@ -120,7 +120,7 @@ impl Pass for LocalFacePass {
     type Plan<'f> = LocalFacePlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
-        &r.local_map
+        &r.shadows.local_map
     }
 
     fn encode<'f>(

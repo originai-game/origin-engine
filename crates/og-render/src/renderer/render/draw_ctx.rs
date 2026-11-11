@@ -663,7 +663,7 @@ impl<'f> DrawCtx<'f> {
             // do the meshlet, skinned, terrain and scatter casters.
             pass.set_bind_group(
                 0,
-                &r.shadow_bind_group,
+                &r.shadows.shadow_bind_group,
                 &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
             );
             for &shadow in targets {
@@ -690,7 +690,7 @@ impl<'f> DrawCtx<'f> {
         };
         // The layer and its cache texture (and both depths), one way.
         let copy = |encoder: &mut crate::Encoder, into_cache: bool| {
-            let cache = r.shadow_cache_maps[slot]
+            let cache = r.shadows.shadow_cache_maps[slot]
                 .as_ref()
                 .expect("made for its plan");
             let (array, layer, depth_texture) = target;

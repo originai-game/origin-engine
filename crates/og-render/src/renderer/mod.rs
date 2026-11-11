@@ -15,7 +15,7 @@ mod readback;
 mod render;
 pub(crate) use render::Particles;
 mod resources;
-pub(crate) use resources::Lights;
+pub(crate) use resources::{Lights, Shadows};
 mod settings;
 mod shader_source;
 mod uploads;

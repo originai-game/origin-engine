@@ -108,11 +108,11 @@ impl Renderer {
         .await?;
         if self.samples == fresh.samples {
             fresh.pbr_pipelines = self.pbr_pipelines;
-            fresh.shadow_pipelines = self.shadow_pipelines;
+            fresh.shadows.shadow_pipelines = self.shadows.shadow_pipelines;
             fresh.prepass_pipelines = self.prepass_pipelines;
             fresh.lean_pipelines = self.lean_pipelines;
             fresh.lean_prepass_pipelines = self.lean_prepass_pipelines;
-            fresh.compact_shadow_pipelines = self.compact_shadow_pipelines;
+            fresh.shadows.compact_shadow_pipelines = self.shadows.compact_shadow_pipelines;
             fresh.sky_pipeline = self.sky_pipeline;
             fresh.sky_look_pipeline = self.sky_look_pipeline;
             fresh.sprite_pipeline = self.sprite_pipeline;
@@ -1145,7 +1145,23 @@ impl Renderer {
                 meshlet: None,
                 culling_counts: false,
             },
-            shelter_key: None,
+            shadows: Shadows {
+                cascade_map,
+                local_map,
+                full_shadow_size: shadow_size,
+                local_shadow_size: LOCAL_SHADOW_SIZE,
+                shadow_buffer,
+                shadow_bind_group,
+                shadow_layouts,
+                shadow_shader,
+                shadow_pipelines: HashMap::new(),
+                compact_shadow_pipelines: HashMap::new(),
+                shadow_cache: Default::default(),
+                shadow_cache_maps: Vec::new(),
+                shadow_hashes: Default::default(),
+                shelter_key: None,
+                cookies: area::Cookies::default(),
+            },
             probes: probes::Probes::default(),
             instances: InstanceRecords {
                 sorted: instances::SortedInstances::default(),
@@ -1161,10 +1177,6 @@ impl Renderer {
             views: views::Views::default(),
             custom_posts: post_custom::CustomPosts::default(),
             post,
-            cascade_map,
-            local_map,
-            full_shadow_size: shadow_size,
-            local_shadow_size: LOCAL_SHADOW_SIZE,
             material_sampler,
             sprite_sampler,
             sprite_sampler_nearest,
@@ -1196,29 +1208,22 @@ impl Renderer {
                 fx_buffer,
                 fx_groups: None,
             },
-            cookies: area::Cookies::default(),
             volumetric,
             reflection_buffer,
             reflection_fx_buffer,
             reflection_light_buffers,
             reflection_clusters,
-            shadow_buffer,
-            shadow_bind_group,
             pbr_layout,
             pbr_skinned_layout,
             pbr_shader,
-            shadow_layouts,
             shadow_bind_layout,
-            shadow_shader,
             frame_features: crate::pipeline_features::Features::ALL,
             capturing: false,
             pbr_pipelines: HashMap::new(),
             plain_effects: false,
-            shadow_pipelines: HashMap::new(),
             prepass_pipelines: HashMap::new(),
             lean_pipelines: HashMap::new(),
             lean_prepass_pipelines: HashMap::new(),
-            compact_shadow_pipelines: HashMap::new(),
             stylise_object: None,
             sky_pipeline,
             sky_look_pipeline,
@@ -1261,9 +1266,6 @@ impl Renderer {
                 taa_history_frames: 0,
                 drawn_origin: Vec3::ZERO,
             },
-            shadow_cache: Default::default(),
-            shadow_cache_maps: Vec::new(),
-            shadow_hashes: Default::default(),
             warned_planar: false,
             warned_without: LitFeatures::NONE,
             mips,

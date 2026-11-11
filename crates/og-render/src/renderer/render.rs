@@ -1012,7 +1012,7 @@ impl Renderer {
             let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
             // Hashed again only where an instance or its mesh's or
             // material's revision changed (shadow_cache.rs `InstanceHashes`).
-            let hashes = self.shadow_hashes.update(
+            let hashes = self.shadows.shadow_hashes.update(
                 (sorted as usize).min(submission.len()),
                 (sorted_serial, sorted_changed.as_deref()),
                 meshes.iter().map(|m| m.revision),
@@ -1045,7 +1045,7 @@ impl Renderer {
                         || moves(b),
                 })
                 .collect();
-            self.shadow_cache.split(
+            self.shadows.shadow_cache.split(
                 scene.instances.len(),
                 &info,
                 &submission[..sorted as usize],
@@ -1059,7 +1059,7 @@ impl Renderer {
         let shelter = scene
             .surface_weather
             .as_ref()
-            .filter(|_| self.cascade_map.layers.len() as u32 > self.frame_cascades(scene))
+            .filter(|_| self.shadows.cascade_map.layers.len() as u32 > self.frame_cascades(scene))
             .and_then(|w| {
                 let (view_proj, cell) = weather::shelter_view(w, camera.position, scene.origin)?;
                 let frustum = Frustum::from_view_proj(view_proj);
@@ -1078,7 +1078,12 @@ impl Renderer {
                         .map(|(s, _)| *s),
                     scene.terrains.len(),
                 );
-                Some((view_proj, frustum, key, self.shelter_key != Some(key)))
+                Some((
+                    view_proj,
+                    frustum,
+                    key,
+                    self.shadows.shelter_key != Some(key),
+                ))
             });
         let shelter_redraw = shelter.as_ref().is_some_and(|s| s.3);
         // The passes this frame can cull at most: the camera, the
@@ -1753,7 +1758,7 @@ impl Renderer {
                     scene.origin,
                     shadow_size,
                 );
-                self.shadow_cache.plan(
+                self.shadows.shadow_cache.plan(
                     i,
                     key,
                     &c.frustum,
@@ -1874,13 +1879,13 @@ impl Renderer {
                 max_shadowed: self.info.shadowed_lights.min(scene.quality.shadowed_lights) as usize,
                 rect_shadows: scene.quality.rect_shadows,
                 point: self.info.point_shadows,
-                shadow_size: self.local_shadow_size,
+                shadow_size: self.shadows.local_shadow_size,
             },
         );
         debug_assert!(
             local_shadows
                 .last()
-                .is_none_or(|ls| ls.layer + ls.faces.len() <= self.local_map.layers.len())
+                .is_none_or(|ls| ls.layer + ls.faces.len() <= self.shadows.local_map.layers.len())
         );
         // The contact lights (frame.rs `contact_lights`): their view-space
         // positions for the contact pass, and in their records' shadow
@@ -1908,17 +1913,22 @@ impl Renderer {
         // Cookies in the local shadow array past its shadow layers (area.rs).
         let cookie_base =
             shadows::capacity(self.info.shadowed_lights as usize, self.info.point_shadows) as u32;
-        if !scene.light_cookies.is_empty() && self.local_map.layers.len() as u32 > cookie_base {
+        if !scene.light_cookies.is_empty()
+            && self.shadows.local_map.layers.len() as u32 > cookie_base
+        {
             let textures = &self.cache.textures;
-            self.cookies.prepare(
+            self.shadows.cookies.prepare(
                 &self.device,
                 &self.queue,
                 scene,
-                (&self.local_map.texture, &self.local_map.layers),
+                (
+                    &self.shadows.local_map.texture,
+                    &self.shadows.local_map.layers,
+                ),
                 cookie_base,
                 |h| textures.get(h.index()).map(|t| &t.view),
             );
-            self.cookies.patch(
+            self.shadows.cookies.patch(
                 scene,
                 &self.lights.clusters.kept,
                 &mut lights_gpu,
@@ -1992,11 +2002,11 @@ impl Renderer {
                 let key = crate::shadow_cache::view_key(
                     &vp.to_cols_array_2d(),
                     ls.position.extend(ls.range).to_array(),
-                    local_paraboloid(ls.paraboloid, face, self.local_shadow_size),
+                    local_paraboloid(ls.paraboloid, face, self.shadows.local_shadow_size),
                     scene.origin,
-                    self.local_shadow_size,
+                    self.shadows.local_shadow_size,
                 );
-                let plan = self.shadow_cache.plan(
+                let plan = self.shadows.shadow_cache.plan(
                     CASCADES + layer,
                     key,
                     f,
@@ -2046,7 +2056,7 @@ impl Renderer {
         self.visibility.cull_inside = cull_inside;
         // The cache textures this frame's plans copy through, made at their
         // layer's side on first need.
-        let local_side = self.local_shadow_size;
+        let local_side = self.shadows.local_shadow_size;
         let copied = cascade_plans
             .iter()
             .enumerate()
@@ -2059,14 +2069,17 @@ impl Renderer {
             )
             .filter(|(_, p, _, _)| p.save || p.restore);
         for (slot, _, side, format) in copied {
-            if self.shadow_cache_maps.len() <= slot {
-                self.shadow_cache_maps.resize_with(slot + 1, || None);
+            if self.shadows.shadow_cache_maps.len() <= slot {
+                self.shadows
+                    .shadow_cache_maps
+                    .resize_with(slot + 1, || None);
             }
-            if self.shadow_cache_maps[slot]
+            if self.shadows.shadow_cache_maps[slot]
                 .as_ref()
                 .is_none_or(|c| c.size != side)
             {
-                self.shadow_cache_maps[slot] = Some(CachedShadow::new(&self.device, side, format));
+                self.shadows.shadow_cache_maps[slot] =
+                    Some(CachedShadow::new(&self.device, side, format));
             }
         }
 
@@ -2473,7 +2486,7 @@ impl Renderer {
             ],
             view_forward: cam
                 .forward
-                .extend(1.0 / self.local_shadow_size as f32)
+                .extend(1.0 / self.shadows.local_shadow_size as f32)
                 .to_array(),
             cascade_view_proj: [[[0.0; 4]; 4]; CASCADES],
             cascade_bias: [[0.0; 4]; CASCADES],
@@ -2595,7 +2608,11 @@ impl Renderer {
                     view_proj: vp.to_cols_array_2d(),
                     light: ls.position.extend(ls.range).to_array(),
                     time: shadow_time,
-                    paraboloid: local_paraboloid(ls.paraboloid, face, self.local_shadow_size),
+                    paraboloid: local_paraboloid(
+                        ls.paraboloid,
+                        face,
+                        self.shadows.local_shadow_size,
+                    ),
                     foliage_wind: uniform.foliage_wind[0],
                 };
             }
@@ -2612,7 +2629,7 @@ impl Renderer {
                 view_proj.z_axis.to_array(),
                 view_proj.w_axis.to_array(),
                 [
-                    self.cascade_map.layers.len() as f32,
+                    self.shadows.cascade_map.layers.len() as f32,
                     weather::DRIP_EDGE / texel,
                     side,
                     // 5 cm along the fall, in the map's depth.
@@ -2658,8 +2675,11 @@ impl Renderer {
             self.queue
                 .write_buffer(&self.reflection_buffer[k], 0, bytemuck::bytes_of(&u));
         }
-        self.queue
-            .write_buffer(&self.shadow_buffer, 0, bytemuck::cast_slice(&shadow_slots));
+        self.queue.write_buffer(
+            &self.shadows.shadow_buffer,
+            0,
+            bytemuck::cast_slice(&shadow_slots),
+        );
 
         // The sun on screen, for god rays.
         let sun_clip = cam.view_proj * (camera.position + to_light * camera.far * 0.5).extend(1.0);
@@ -2952,7 +2972,7 @@ impl Renderer {
             Some(AoMethod::Ssao | AoMethod::Screen) => false,
             _ => true,
         };
-        self.shelter_key = shelter.as_ref().map(|s| s.2);
+        self.shadows.shelter_key = shelter.as_ref().map(|s| s.2);
         let st = &scene.stylise;
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
         plans.live_sky = LiveSkyPass::plan(&self.sky_capture);
@@ -3560,8 +3580,8 @@ impl Renderer {
                             b: &wgpu::TextureView| {
                 let mut entries = vec![
                     uniform,
-                    wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
-                    wgpu::BindingResource::TextureView(&self.local_map.array_view),
+                    wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
+                    wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
                     wgpu::BindingResource::TextureView(a),
                     wgpu::BindingResource::TextureView(b),
                     wgpu::BindingResource::TextureView(&ibl.brdf_lut),
@@ -3595,8 +3615,8 @@ impl Renderer {
                     &self.frame_layout,
                     &[
                         self.probes.binding(k),
-                        wgpu::BindingResource::TextureView(&self.cascade_map.array_view),
-                        wgpu::BindingResource::TextureView(&self.local_map.array_view),
+                        wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
+                        wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
                         wgpu::BindingResource::TextureView(a),
                         wgpu::BindingResource::TextureView(b),
                         wgpu::BindingResource::TextureView(&ibl.brdf_lut),
@@ -4147,7 +4167,7 @@ impl Renderer {
             .iter()
             .map(|b| match b.shader {
                 Some(sh) => self.cache.hook_shadow_pipelines[&(sh, b.side, true)].get(),
-                None => self.shadow_pipelines[&(b.side, true, b.dissolve)].get(),
+                None => self.shadows.shadow_pipelines[&(b.side, true, b.dissolve)].get(),
             })
             .collect();
         let prepass_skinned: Vec<&wgpu::RenderPipeline> = if prepass {
@@ -4750,7 +4770,7 @@ impl Renderer {
         if matches!(target, RenderTarget::Offscreen) {
             self.offscreen_submissions.push_back(_submission);
         }
-        self.shadow_cache.submitted();
+        self.shadows.shadow_cache.submitted();
         if let Some(arena) = self
             .oit
             .arena

@@ -29,8 +29,8 @@ impl Pass for LiveSkyPass {
                 &r.frame_layout,
                 &[
                     uniform,
-                    wgpu::BindingResource::TextureView(&r.cascade_map.array_view),
-                    wgpu::BindingResource::TextureView(&r.local_map.array_view),
+                    wgpu::BindingResource::TextureView(&r.shadows.cascade_map.array_view),
+                    wgpu::BindingResource::TextureView(&r.shadows.local_map.array_view),
                     wgpu::BindingResource::TextureView(&ibl.irradiance),
                     wgpu::BindingResource::TextureView(&ibl.prefiltered),
                     wgpu::BindingResource::TextureView(&ibl.brdf_lut),

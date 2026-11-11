@@ -144,8 +144,10 @@ impl Renderer {
                                 &self.array_maps.as_ref().expect("an array batch").shadow
                                     [&(batch.side, batch.dissolve)]
                             }
-                            None if batch.compact => &self.compact_shadow_pipelines[&batch.side],
-                            None => &self.shadow_pipelines[&key.0],
+                            None if batch.compact => {
+                                &self.shadows.compact_shadow_pipelines[&batch.side]
+                            }
+                            None => &self.shadows.shadow_pipelines[&key.0],
                         }
                         .get()
                         .get(shadow),

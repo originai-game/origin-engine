@@ -575,19 +575,11 @@ pub struct Renderer {
     /// Visibility: where instances are culled, and the GPU culling, indirect
     /// draws and meshlets every view registers into.
     visibility: renderer::Visibility,
-    /// What the weather occlusion map in the cascade array's last layer
-    /// was last drawn from (`weather::shelter_key`; `None`: not drawn
-    /// since the array was made).
-    shelter_key: Option<u64>,
+    /// The shadow passes' state: the cascade and local shadow arrays, their
+    /// uniforms, pipelines and caches, the shelter map's key and the light
+    /// cookies.
+    shadows: renderer::Shadows,
     post: post::PostPasses,
-    cascade_map: ShadowMap,
-    local_map: ShadowMap,
-    /// The cascades' side at [`RenderQuality::shadow_map_scale`] 1 (the
-    /// [`RenderDesc`]'s, clamped); [`RenderInfo::shadow_map_size`] is the
-    /// side drawn now.
-    full_shadow_size: u32,
-    /// The local lights' layers' side now ([`LOCAL_SHADOW_SIZE`] at scale 1).
-    local_shadow_size: u32,
     material_sampler: wgpu::Sampler,
     sprite_sampler: wgpu::Sampler,
     sprite_sampler_nearest: wgpu::Sampler,
@@ -609,8 +601,6 @@ pub struct Renderer {
     /// tables and clusters, the light volumes, the IBL and environment, the
     /// decals, and the effect buffer and groups.
     lights: renderer::Lights,
-    /// Light cookies in the local shadow array's last layers.
-    cookies: area::Cookies,
     /// Volumetric fog (made on first use).
     volumetric: volumetric::Volumetric,
     /// Per planar reflection slot, as many as [`RenderInfo::planar_reflections`] (0: the one material shaders read
@@ -621,17 +611,12 @@ pub struct Renderer {
     /// Its cluster table and references, over the main view's light records.
     reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
     reflection_clusters: Vec<clusters::ClusterBuilder>,
-    shadow_buffer: wgpu::Buffer,
-    shadow_bind_group: wgpu::BindGroup,
     pbr_layout: wgpu::PipelineLayout,
     pbr_skinned_layout: wgpu::PipelineLayout,
     /// Parsed when the first lit pipeline is made (deferred.rs).
     pbr_shader: deferred::Module,
-    /// Shadow layouts: plain, with the material (dissolve), skinned.
-    shadow_layouts: [wgpu::PipelineLayout; 3],
     /// The shadow pass's slot (group 0 of every caster's pipeline).
     shadow_bind_layout: wgpu::BindGroupLayout,
-    shadow_shader: deferred::Module,
     /// Lit pipelines, each made when a batch first needs it (or by
     /// [`Renderer::warm`]).
     /// The features this frame's lit passes draw with
@@ -646,7 +631,6 @@ pub struct Renderer {
     /// shader (screen-space AO or GI, decals: `prepare_frame_pipelines`):
     /// the variant [`Renderer::warm`] makes for plain materials.
     plain_effects: bool,
-    shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
     /// Prepass pipelines by (side, skinned).
     prepass_pipelines:
         HashMap<(Side, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
@@ -655,9 +639,6 @@ pub struct Renderer {
     /// Their prepass pipelines by (side, derivatives, compact).
     lean_prepass_pipelines:
         HashMap<(Side, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
-    /// The shadow pipelines of compact casters (lean, from the compact
-    /// vertices) by side.
-    compact_shadow_pipelines: HashMap<Side, Deferred<ShadowSet>>,
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     stylise_object: Option<stylise_object::ObjectPass>,
@@ -717,13 +698,6 @@ pub struct Renderer {
     /// What the frame carries to the next: the previous camera, clock and
     /// wind (motion vectors), TAA's history, and the origin it is in.
     history: renderer::history::FrameHistory,
-    /// What the shadow layers keep from frame to frame (`shadow_cache.rs`),
-    /// and per shadow slot the texture a layer's static casters are kept
-    /// in while dynamic ones are drawn over it.
-    shadow_cache: shadow_cache::ShadowCache,
-    shadow_cache_maps: Vec<Option<CachedShadow>>,
-    /// What the cache keys each sorted instance on, kept across frames.
-    shadow_hashes: shadow_cache::InstanceHashes,
     /// A second water surface asked for a planar reflection the renderer
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.

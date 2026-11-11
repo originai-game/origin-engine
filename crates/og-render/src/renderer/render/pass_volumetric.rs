@@ -24,8 +24,8 @@ impl Pass for VolumetricPass {
             &r.device,
             cx.encoder,
             &r.lights.frame_buffer,
-            &r.cascade_map.array_view,
-            &r.local_map.array_view,
+            &r.shadows.cascade_map.array_view,
+            &r.shadows.local_map.array_view,
             [
                 &r.lights.light_buffers[0],
                 &r.lights.light_buffers[1],
