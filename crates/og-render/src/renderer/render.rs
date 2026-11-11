@@ -128,6 +128,8 @@ mod camera_lists;
 use camera_lists::{PlanCameraListsInputs, PlanCameraListsOutputs};
 mod pass_list;
 use pass_list::PassListInputs;
+mod stylise_frame;
+use stylise_frame::{PrepareFrameStyliseInputs, PrepareFrameStyliseOutputs};
 mod setup;
 
 impl Renderer {
@@ -1005,63 +1007,17 @@ impl Renderer {
             taa,
             smaa_t2x,
         });
-        // The stylise passes' parameters, palette and canvas.
-        let palette_view = st
-            .quantize
-            .and_then(|q| q.palette)
-            .and_then(|p| self.cache.palettes.get(p.index()))
-            .and_then(Option::as_ref)
-            .unwrap_or(&self.default_white);
-        let canvas_view = st
-            .paint
-            .and_then(|p| p.canvas)
-            .and_then(|t| self.cache.textures.get(t.index()))
-            .map_or(&self.default_white, |g| &g.view);
-        let (colors, revision) = scene.conformed_colors();
-        if revision != self.conformed.0 {
-            let (size, bytes) = crate::stylise::conformed_table(colors);
-            self.conformed = (
-                revision,
-                crate::post::texture_with_data(
-                    &self.device,
-                    &self.queue,
-                    size,
-                    wgpu::TextureFormat::R32Uint,
-                    &bytes,
-                ),
-            );
-        }
-        let stylise_key = {
-            // The slot's revision too: a palette added in a freed slot is
-            // another texture under the same index.
-            let p = st.quantize.and_then(|q| q.palette).map_or(u64::MAX, |p| {
-                let revision = self.cache.palette_revisions.get(p.index()).copied();
-                p.index() as u64 ^ revision.unwrap_or(0).rotate_left(24)
+        // The stylise passes' table, key and uniform (stylise_frame.rs).
+        let PrepareFrameStyliseOutputs { stylise_key } =
+            self.prepare_frame_stylise(PrepareFrameStyliseInputs {
+                scene,
+                camera: &camera,
+                cam: &cam,
+                upscale,
+                grid_offset,
+                lens,
+                prepass,
             });
-            let c = st
-                .paint
-                .and_then(|p| p.canvas)
-                .map_or(u64::MAX, |t| t.index() as u64);
-            scene.id() ^ p.rotate_left(16) ^ c.rotate_left(40) ^ self.conformed.0.rotate_left(56)
-        };
-        // The canvas's mean height and spread, measured once per texture
-        // revision: the wash reads the paper's relief about them.
-        if let Some(t) = st.paint.and_then(|p| p.canvas) {
-            let key = Some((t.index(), scene.texture_revision(t.index())));
-            if key != self.canvas_stats.0 {
-                self.canvas_stats = (key, scene.texture(t).map_or([0.0; 2], canvas_stats));
-            }
-        }
-        self.write_frame_stylise_uniform(
-            st,
-            scene,
-            (&camera, &cam),
-            upscale,
-            grid_offset,
-            lens,
-            prepass,
-            self.canvas_stats.1,
-        );
         let lightmap_scale = scene
             .lighting_2d
             .map_or(0.5, |l| l.resolution.clamp(0.25, 1.0));
@@ -1146,6 +1102,18 @@ impl Renderer {
                 self.transmission = Some((texture, view, chain));
             }
         }
+        // The stylise passes' palette and canvas.
+        let palette_view = st
+            .quantize
+            .and_then(|q| q.palette)
+            .and_then(|p| self.cache.palettes.get(p.index()))
+            .and_then(Option::as_ref)
+            .unwrap_or(&self.default_white);
+        let canvas_view = st
+            .paint
+            .and_then(|p| p.canvas)
+            .and_then(|t| self.cache.textures.get(t.index()))
+            .map_or(&self.default_white, |g| &g.view);
         self.graph
             .prepare(
                 &self.device,
