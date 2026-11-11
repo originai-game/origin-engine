@@ -196,7 +196,9 @@ impl Ui {
         self.layout.cache.query_roots = Some(roots);
         Ok(true)
     }
+}
 
+impl Ui {
     pub(crate) fn abort_layout_queries(&mut self) {
         self.layout.cache.query_roots = None;
         self.tree.invalidation.epoch += 1;

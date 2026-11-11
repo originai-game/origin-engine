@@ -112,6 +112,34 @@ fn declutter(
 }
 
 impl Ui {
+    pub(super) fn world_metas(&mut self) {
+        let metas = std::mem::take(&mut self.world.metas);
+        let vp = self.env.viewport;
+        let seconds = self.seconds() as f32;
+        for (i, m) in &metas {
+            let pulse = if m.pulse_hz > 0.0 {
+                let s = og_core::math::sin(seconds * m.pulse_hz * std::f32::consts::TAU);
+                1.0 - m.pulse_depth.clamp(0.0, 1.0) * (0.5 - 0.5 * s)
+            } else {
+                1.0
+            };
+            let alpha = (m.intensity * pulse).clamp(0.0, 1.0);
+            let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
+            let cmds = meta_cmds(&m.kind, screen, alpha);
+            let key = self.tree.nodes[*i].key;
+            self.world.marks.insert(
+                key,
+                Marks {
+                    enter: cmds,
+                    leave: Vec::new(),
+                },
+            );
+        }
+        self.world.metas = metas;
+    }
+}
+
+impl Ui {
     pub(super) fn world_anchors(&mut self) {
         let vp = self.env.viewport;
         let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
@@ -591,32 +619,6 @@ impl Ui {
         self.world.grounds = grounds;
     }
 
-    pub(super) fn world_metas(&mut self) {
-        let metas = std::mem::take(&mut self.world.metas);
-        let vp = self.env.viewport;
-        let seconds = self.seconds() as f32;
-        for (i, m) in &metas {
-            let pulse = if m.pulse_hz > 0.0 {
-                let s = og_core::math::sin(seconds * m.pulse_hz * std::f32::consts::TAU);
-                1.0 - m.pulse_depth.clamp(0.0, 1.0) * (0.5 - 0.5 * s)
-            } else {
-                1.0
-            };
-            let alpha = (m.intensity * pulse).clamp(0.0, 1.0);
-            let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-            let cmds = meta_cmds(&m.kind, screen, alpha);
-            let key = self.tree.nodes[*i].key;
-            self.world.marks.insert(
-                key,
-                Marks {
-                    enter: cmds,
-                    leave: Vec::new(),
-                },
-            );
-        }
-        self.world.metas = metas;
-    }
-
     /// The order with world anchors and meta layers drawn (and hit) under
     /// the screen's own elements: right after the root, before its children.
     pub(crate) fn world_order(&self, order: &mut Vec<usize>) {
@@ -651,7 +653,9 @@ impl Ui {
         out.extend_from_slice(&rest[1..]);
         *order = out;
     }
+}
 
+impl Ui {
     /// What a node's commands are wrapped in (an occlusion test, a panel's
     /// target, an edge arrow, a meta layer's paint, particles).
     pub(crate) fn world_marks(&self, key: u64) -> Option<&Marks> {

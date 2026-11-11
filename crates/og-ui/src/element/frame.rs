@@ -27,60 +27,6 @@ fn painted(n: &Node) -> bool {
 }
 
 impl Ui {
-    /// Applies each element's breakpoint and orientation variants (the
-    /// container ones wait for its width, in layout).
-    pub(crate) fn apply_variants(&mut self) {
-        let vp = self.env.viewport;
-        let bp = vp.breakpoint();
-        let portrait = vp.height >= vp.width;
-        for k in 0..self.tree.emitted.len() {
-            let i = self.tree.emitted[k];
-            if self.tree.nodes[i].props.variants.is_empty() {
-                continue;
-            }
-            let vs = self.tree.nodes[i].props.variants.clone();
-            for v in vs.iter().filter(|v| !v.when.container) {
-                let q = &v.when;
-                let ok = (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
-                    && q.orientation
-                        .is_none_or(|o| (o == Orientation::Portrait) == portrait)
-                    && width_in(vp.width, q);
-                if ok {
-                    apply_patch(&mut self.tree.nodes[i], &v.set);
-                }
-            }
-        }
-    }
-
-    /// Moves node `i` and its subtree by `(dx, dy)` (with the clips its own
-    /// scroll containers make). With `layout` its laid-out position moves
-    /// too, which a clean subtree keeps into the next frame; without it only
-    /// where it draws, so a move made again each frame does not add up.
-    pub(crate) fn shift_subtree(&mut self, i: usize, dx: f32, dy: f32, layout: bool) {
-        if dx == 0.0 && dy == 0.0 {
-            return;
-        }
-        let sub = preorder(&self.tree.nodes, i);
-        let inside: std::collections::BTreeSet<usize> = sub.iter().copied().collect();
-        for &j in &sub {
-            let n = &mut self.tree.nodes[j];
-            if layout {
-                n.x += dx;
-                n.y += dy;
-            }
-            n.rect.x += dx;
-            n.rect.y += dy;
-            n.laid_rect.x += dx;
-            n.laid_rect.y += dy;
-            if n.clip_src != NONE && inside.contains(&n.clip_src) {
-                n.clip.x += dx;
-                n.clip.y += dy;
-                n.laid_clip.x += dx;
-                n.laid_clip.y += dy;
-            }
-        }
-    }
-
     /// Where node `i`'s first line of text sits (its baseline, CSS px), if
     /// it or its first descendant in the flow has text.
     fn first_baseline(&self, i: usize) -> Option<f32> {
@@ -107,74 +53,6 @@ impl Ui {
                 Some(n.rect.y + n.el.padding.top + drop + l.baseline)
             }
             _ => n.children.iter().find_map(|&c| self.first_baseline(c)),
-        }
-    }
-
-    /// Where node `i`'s last line of text sits, if it or its last
-    /// descendant in the flow with text has one.
-    fn last_baseline(&self, i: usize) -> Option<f32> {
-        let n = &self.tree.nodes[i];
-        match &n.content {
-            Content::Text(tc) => {
-                let line = n.lines.last()?;
-                let m = &self
-                    .env
-                    .fonts
-                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
-                    .0
-                    .metrics;
-                let lh = tc.line_height();
-                let inner = n.rect.inset(&n.el.padding);
-                let block = lh * n.lines.len() as f32;
-                let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
-                let top = top + lh * (n.lines.len() - 1) as f32;
-                Some(m.baseline(&line.text, top, lh, tc.step.size))
-            }
-            Content::Rich(_) => {
-                let (last, before) = n.rich_lines.split_last()?;
-                let above: f32 = before.iter().map(|l| l.height).sum();
-                let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]);
-                Some(n.rect.y + n.el.padding.top + above + drop + last.baseline)
-            }
-            _ => n.children.iter().rev().find_map(|&c| self.last_baseline(c)),
-        }
-    }
-
-    /// Where node `i`'s first (`last`) line of text has its central
-    /// baseline across a vertical line: the middle of its first (last)
-    /// column, physical x. A vertical line's dominant baseline is central
-    /// (CSS Writing Modes 4 §4.2); a horizontal text in it (an orthogonal
-    /// flow) has none.
-    fn central_baseline(&self, i: usize, last: bool) -> Option<f32> {
-        let n = &self.tree.nodes[i];
-        match &n.content {
-            Content::Text(tc) => {
-                let v = tc.vertical?;
-                let k = if last {
-                    n.lines.len().checked_sub(1)?
-                } else {
-                    0
-                };
-                n.lines.first()?;
-                let lh = tc.line_height();
-                let inner = n.rect.inset(&n.el.padding);
-                let off = ((inner.width - lh * n.lines.len() as f32) / 2.0).max(0.0);
-                Some(if v.mode.block_rl() {
-                    inner.right() - off - (k as f32 + 0.5) * lh
-                } else {
-                    inner.x + off + (k as f32 + 0.5) * lh
-                })
-            }
-            Content::None if last => n
-                .children
-                .iter()
-                .rev()
-                .find_map(|&c| self.central_baseline(c, last)),
-            Content::None => n
-                .children
-                .iter()
-                .find_map(|&c| self.central_baseline(c, last)),
-            _ => None,
         }
     }
 
@@ -529,6 +407,132 @@ impl Ui {
             }
         }
         out
+    }
+}
+
+impl Ui {
+    /// Applies each element's breakpoint and orientation variants (the
+    /// container ones wait for its width, in layout).
+    pub(crate) fn apply_variants(&mut self) {
+        let vp = self.env.viewport;
+        let bp = vp.breakpoint();
+        let portrait = vp.height >= vp.width;
+        for k in 0..self.tree.emitted.len() {
+            let i = self.tree.emitted[k];
+            if self.tree.nodes[i].props.variants.is_empty() {
+                continue;
+            }
+            let vs = self.tree.nodes[i].props.variants.clone();
+            for v in vs.iter().filter(|v| !v.when.container) {
+                let q = &v.when;
+                let ok = (q.breakpoints.is_empty() || q.breakpoints.contains(&bp))
+                    && q.orientation
+                        .is_none_or(|o| (o == Orientation::Portrait) == portrait)
+                    && width_in(vp.width, q);
+                if ok {
+                    apply_patch(&mut self.tree.nodes[i], &v.set);
+                }
+            }
+        }
+    }
+
+    /// Where node `i`'s last line of text sits, if it or its last
+    /// descendant in the flow with text has one.
+    fn last_baseline(&self, i: usize) -> Option<f32> {
+        let n = &self.tree.nodes[i];
+        match &n.content {
+            Content::Text(tc) => {
+                let line = n.lines.last()?;
+                let m = &self
+                    .env
+                    .fonts
+                    .for_styled(tc.font, tc.step.weight, false, &tc.text)
+                    .0
+                    .metrics;
+                let lh = tc.line_height();
+                let inner = n.rect.inset(&n.el.padding);
+                let block = lh * n.lines.len() as f32;
+                let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
+                let top = top + lh * (n.lines.len() - 1) as f32;
+                Some(m.baseline(&line.text, top, lh, tc.step.size))
+            }
+            Content::Rich(_) => {
+                let (last, before) = n.rich_lines.split_last()?;
+                let above: f32 = before.iter().map(|l| l.height).sum();
+                let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]);
+                Some(n.rect.y + n.el.padding.top + above + drop + last.baseline)
+            }
+            _ => n.children.iter().rev().find_map(|&c| self.last_baseline(c)),
+        }
+    }
+}
+
+impl Ui {
+    /// Moves node `i` and its subtree by `(dx, dy)` (with the clips its own
+    /// scroll containers make). With `layout` its laid-out position moves
+    /// too, which a clean subtree keeps into the next frame; without it only
+    /// where it draws, so a move made again each frame does not add up.
+    pub(crate) fn shift_subtree(&mut self, i: usize, dx: f32, dy: f32, layout: bool) {
+        if dx == 0.0 && dy == 0.0 {
+            return;
+        }
+        let sub = preorder(&self.tree.nodes, i);
+        let inside: std::collections::BTreeSet<usize> = sub.iter().copied().collect();
+        for &j in &sub {
+            let n = &mut self.tree.nodes[j];
+            if layout {
+                n.x += dx;
+                n.y += dy;
+            }
+            n.rect.x += dx;
+            n.rect.y += dy;
+            n.laid_rect.x += dx;
+            n.laid_rect.y += dy;
+            if n.clip_src != NONE && inside.contains(&n.clip_src) {
+                n.clip.x += dx;
+                n.clip.y += dy;
+                n.laid_clip.x += dx;
+                n.laid_clip.y += dy;
+            }
+        }
+    }
+
+    /// Where node `i`'s first (`last`) line of text has its central
+    /// baseline across a vertical line: the middle of its first (last)
+    /// column, physical x. A vertical line's dominant baseline is central
+    /// (CSS Writing Modes 4 §4.2); a horizontal text in it (an orthogonal
+    /// flow) has none.
+    fn central_baseline(&self, i: usize, last: bool) -> Option<f32> {
+        let n = &self.tree.nodes[i];
+        match &n.content {
+            Content::Text(tc) => {
+                let v = tc.vertical?;
+                let k = if last {
+                    n.lines.len().checked_sub(1)?
+                } else {
+                    0
+                };
+                n.lines.first()?;
+                let lh = tc.line_height();
+                let inner = n.rect.inset(&n.el.padding);
+                let off = ((inner.width - lh * n.lines.len() as f32) / 2.0).max(0.0);
+                Some(if v.mode.block_rl() {
+                    inner.right() - off - (k as f32 + 0.5) * lh
+                } else {
+                    inner.x + off + (k as f32 + 0.5) * lh
+                })
+            }
+            Content::None if last => n
+                .children
+                .iter()
+                .rev()
+                .find_map(|&c| self.central_baseline(c, last)),
+            Content::None => n
+                .children
+                .iter()
+                .find_map(|&c| self.central_baseline(c, last)),
+            _ => None,
+        }
     }
 }
 
