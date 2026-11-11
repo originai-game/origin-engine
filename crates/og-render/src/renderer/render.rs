@@ -904,8 +904,14 @@ impl Renderer {
             frame: &particle_frame,
             sprites: &arenas.gpu_sprites,
         });
+        // The 2D light map's size, its directions target and the light
+        // pass's plan (pass_light_2d.rs).
+        let (light_2d, lightmap_size, lightdir_on) =
+            self.plan_light_2d(scene, &arenas.light_slots, uploads.lights_2d);
+        plans.light_2d = light_2d;
         // The frame's passes, compiled into the render graph (cached while
-        // the pass list stays the same; pass_list.rs).
+        // the pass list stays the same; pass_list.rs). It selects passes by
+        // their plans, so every plan it reads is made above.
         let passes = self.plan_pass_list(PassListInputs {
             scene,
             camera: &camera,
@@ -937,11 +943,6 @@ impl Renderer {
                 lens,
                 prepass: effects.prepass,
             });
-        // The 2D light map's size, its directions target and the light
-        // pass's plan (pass_light_2d.rs).
-        let (light_2d, lightmap_size, lightdir_on) =
-            self.plan_light_2d(scene, &arenas.light_slots, uploads.lights_2d);
-        plans.light_2d = light_2d;
         // The colour adjustments' table and the transmission's scene copy
         // (post_resources.rs).
         let adjusted = self.prepare_colour_lut(scene);
