@@ -230,66 +230,6 @@ impl Orders {
 }
 
 impl Ui {
-    /// What this frame may change, before its passes: the nodes written,
-    /// laid out or put back, those that entered a tree or whose parent's
-    /// children changed, those the frame's own passes wrote last frame,
-    /// those still moving after last frame's motion, and those a pass
-    /// moves every frame (drags, shared elements, world anchors, layers);
-    /// and of them, those whose style may change (`restyle`): sampled
-    /// again and moved by motion. A node only laid out or moved among its
-    /// siblings keeps its sampled style (made from what was written).
-    pub(super) fn frame_seeds(&self) -> (Vec<usize>, Vec<usize>) {
-        let o = &self.tree.orders;
-        let mut restyle: Vec<usize> = self
-            .tree
-            .emitted
-            .iter()
-            .chain(&o.wrote_last)
-            .chain(&self.style.motion.motion_moving)
-            .chain(&self.layout.cache.anchor_toggled)
-            .chain(o.with(feat::GESTURE))
-            .chain(o.with(feat::MATCH))
-            .chain(o.with(feat::WORLD))
-            .copied()
-            .collect();
-        for &k in &self.tree.index.moved_keys {
-            restyle.extend(self.tree.index.by_key.get(&k).copied());
-        }
-        // Scroll-driven animations whose timeline moved (a scroll, a
-        // layout change of the scroller or the subject).
-        for (k, last) in &self.style.motion.timelines {
-            let Some(&i) = self.tree.index.by_key.get(k) else {
-                continue;
-            };
-            let moved = self.tree.nodes[i]
-                .props
-                .animations
-                .iter()
-                .enumerate()
-                .any(|(x, a)| {
-                    !a.timeline.ticks()
-                        && self
-                            .style
-                            .timeline_progress(i, a, &self.interaction, &self.tree)
-                            != last.get(x).copied().flatten()
-                });
-            if moved {
-                restyle.push(i);
-            }
-        }
-        let mut seeds = restyle.clone();
-        seeds.extend(self.layout.cache.laid.iter().chain(&self.tree.floating));
-        for &p in &self.tree.index.restructured {
-            seeds.extend_from_slice(&self.tree.nodes[p].ordered_children);
-        }
-        for list in [&mut restyle, &mut seeds] {
-            list.retain(|&i| i < self.tree.nodes.len() && self.tree.index.has(i));
-            list.sort_unstable();
-            list.dedup();
-        }
-        (seeds, restyle)
-    }
-
     /// Visits the nodes from `seeds` down in drawing order: `step` makes
     /// a node's frame state again and answers whether its children's
     /// changes with it. `None` visits every node in `order`.
@@ -459,28 +399,6 @@ impl Ui {
             (o.skip_of[i], o.skip_in[i]),
         ) = new;
         old != new
-    }
-
-    /// Whether a point on an SVG shape's hit ([`HIT_SHAPE`]) is on the
-    /// geometry its `pointer-events` names.
-    pub(crate) fn shape_hit(&self, h: &Hit, x: f32, y: f32) -> bool {
-        let Some(i) = self.tree.index.find(h.key) else {
-            return false;
-        };
-        let (crate::element::PointerEvents::Svg(bits), Some(d)) = (
-            self.tree.orders.pointer_of[i],
-            self.paint.draw_of(i, &self.tree),
-        ) else {
-            return true;
-        };
-        let r = &self.tree.nodes[i].rect;
-        let (lx, ly) = if h.inv.is_identity() {
-            (x, y)
-        } else {
-            h.inv.apply(x, y)
-        };
-        let local = og_core::glam::Vec2::new(lx - r.x, ly - r.y);
-        d.covers([r.width, r.height], local, bits.0)
     }
 
     /// Node `i`'s hits (none for the screen's root) and the warning its
@@ -711,6 +629,90 @@ impl Ui {
             }
         }
         true
+    }
+}
+
+impl Ui {
+    /// What this frame may change, before its passes: the nodes written,
+    /// laid out or put back, those that entered a tree or whose parent's
+    /// children changed, those the frame's own passes wrote last frame,
+    /// those still moving after last frame's motion, and those a pass
+    /// moves every frame (drags, shared elements, world anchors, layers);
+    /// and of them, those whose style may change (`restyle`): sampled
+    /// again and moved by motion. A node only laid out or moved among its
+    /// siblings keeps its sampled style (made from what was written).
+    pub(super) fn frame_seeds(&self) -> (Vec<usize>, Vec<usize>) {
+        let o = &self.tree.orders;
+        let mut restyle: Vec<usize> = self
+            .tree
+            .emitted
+            .iter()
+            .chain(&o.wrote_last)
+            .chain(&self.style.motion.motion_moving)
+            .chain(&self.layout.cache.anchor_toggled)
+            .chain(o.with(feat::GESTURE))
+            .chain(o.with(feat::MATCH))
+            .chain(o.with(feat::WORLD))
+            .copied()
+            .collect();
+        for &k in &self.tree.index.moved_keys {
+            restyle.extend(self.tree.index.by_key.get(&k).copied());
+        }
+        // Scroll-driven animations whose timeline moved (a scroll, a
+        // layout change of the scroller or the subject).
+        for (k, last) in &self.style.motion.timelines {
+            let Some(&i) = self.tree.index.by_key.get(k) else {
+                continue;
+            };
+            let moved = self.tree.nodes[i]
+                .props
+                .animations
+                .iter()
+                .enumerate()
+                .any(|(x, a)| {
+                    !a.timeline.ticks()
+                        && self
+                            .style
+                            .timeline_progress(i, a, &self.interaction, &self.tree)
+                            != last.get(x).copied().flatten()
+                });
+            if moved {
+                restyle.push(i);
+            }
+        }
+        let mut seeds = restyle.clone();
+        seeds.extend(self.layout.cache.laid.iter().chain(&self.tree.floating));
+        for &p in &self.tree.index.restructured {
+            seeds.extend_from_slice(&self.tree.nodes[p].ordered_children);
+        }
+        for list in [&mut restyle, &mut seeds] {
+            list.retain(|&i| i < self.tree.nodes.len() && self.tree.index.has(i));
+            list.sort_unstable();
+            list.dedup();
+        }
+        (seeds, restyle)
+    }
+
+    /// Whether a point on an SVG shape's hit ([`HIT_SHAPE`]) is on the
+    /// geometry its `pointer-events` names.
+    pub(crate) fn shape_hit(&self, h: &Hit, x: f32, y: f32) -> bool {
+        let Some(i) = self.tree.index.find(h.key) else {
+            return false;
+        };
+        let (crate::element::PointerEvents::Svg(bits), Some(d)) = (
+            self.tree.orders.pointer_of[i],
+            self.paint.draw_of(i, &self.tree),
+        ) else {
+            return true;
+        };
+        let r = &self.tree.nodes[i].rect;
+        let (lx, ly) = if h.inv.is_identity() {
+            (x, y)
+        } else {
+            h.inv.apply(x, y)
+        };
+        let local = og_core::glam::Vec2::new(lx - r.x, ly - r.y);
+        d.covers([r.width, r.height], local, bits.0)
     }
 }
 
