@@ -601,7 +601,9 @@ impl Ui {
 
         (overrides, events)
     }
+}
 
+impl Ui {
     /// Drags and pinches.
     fn step_gestures(&mut self, m: &mut MotionState, touched: &mut crate::id::KeySet, now: u64) {
         // Drags and pinches.
