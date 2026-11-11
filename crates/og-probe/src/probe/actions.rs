@@ -4,15 +4,39 @@ use super::*;
 
 impl Probe {
     pub(super) fn action(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        match step.action.as_str() {
+            #[cfg(not(feature = "publish"))]
+            "screenshot" | "listen" => self.capture_step(world, step),
+            "touch_move_to" | "move_to_text" | "touch_move" | "touch_start" | "touch_end"
+            | "mouse_move" | "pointer_lock" | "scroll" | "touch" => self.pointer_step(world, step),
+            "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" => {
+                self.key_step(world, step)
+            }
+            "teleport" | "frame_entity" | "set" | "seed" => self.world_step(world, step),
+            #[cfg(not(feature = "publish"))]
+            "describe" | "expect" | "invariant" | "apply_prefab" | "revert_prefab"
+            | "save_scene" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => {
+                self.report_step(world, step)
+            }
+            "pause" | "resume" | "advance" | "quit" => self.clock_step(world, step),
+            // A publish build runs the actions that change the world (input,
+            // set, teleport, the clock, registered commands: what og.ai's
+            // commands and a timeline's event keys reach); the ones that only
+            // observe it for a tool are not built in.
+            #[cfg(feature = "publish")]
+            "screenshot" | "listen" | "describe" | "expect" | "save_scene" | "apply_prefab"
+            | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => Err(
+                format!("`{}` is not built into a publish build", step.action),
+            ),
+            _ => self.registered_step(world, step),
+        }
+    }
+
+    /// `screenshot` and `listen`: what the renderer and the mixer made, as outputs.
+    #[cfg(not(feature = "publish"))]
+    fn capture_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
         let tick = world.time().tick;
         let args = &step.args;
-        let arg = |i: usize, usage: &str| -> Result<&str, String> {
-            args.get(i)
-                .map(String::as_str)
-                .filter(|a| !a.is_empty())
-                .ok_or_else(|| format!("missing argument; write `{usage}`"))
-        };
-        let joined = args.join(":");
         match step.action.as_str() {
             #[cfg(not(feature = "publish"))]
             "screenshot" => {
@@ -117,6 +141,21 @@ impl Probe {
                 );
                 Ok(())
             }
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// The pointer's actions: the mouse, the wheel, the lock and the touches.
+    fn pointer_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let args = &step.args;
+        let arg = |i: usize, usage: &str| -> Result<&str, String> {
+            args.get(i)
+                .map(String::as_str)
+                .filter(|a| !a.is_empty())
+                .ok_or_else(|| format!("missing argument; write `{usage}`"))
+        };
+        let joined = args.join(":");
+        match step.action.as_str() {
             "touch_move_to" | "move_to_text" => {
                 let target = if step.action == "touch_move_to" {
                     arg(0, "touch_move_to:<ui id>")?.to_owned()
@@ -290,6 +329,22 @@ impl Probe {
                     Err(format!("the input layer refused touch {id}"))
                 }
             }
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// The pad's, the keys' and the text's actions, and `intent`.
+    fn key_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let tick = world.time().tick;
+        let args = &step.args;
+        let arg = |i: usize, usage: &str| -> Result<&str, String> {
+            args.get(i)
+                .map(String::as_str)
+                .filter(|a| !a.is_empty())
+                .ok_or_else(|| format!("missing argument; write `{usage}`"))
+        };
+        let joined = args.join(":");
+        match step.action.as_str() {
             "gamepad" => {
                 let usage = "gamepad:<a+b+...|->[@pad][:lx,ly[,rx,ry]][:lt,rt]";
                 let (first, pad) = match arg(0, usage)?.split_once('@') {
@@ -477,6 +532,21 @@ impl Probe {
                     Err("the input layer refused the text (no og.TextInput in this world)".into())
                 }
             }
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// The actions that write the world: `teleport`, `frame_entity`, `set`, `seed`.
+    fn world_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let args = &step.args;
+        let arg = |i: usize, usage: &str| -> Result<&str, String> {
+            args.get(i)
+                .map(String::as_str)
+                .filter(|a| !a.is_empty())
+                .ok_or_else(|| format!("missing argument; write `{usage}`"))
+        };
+        let joined = args.join(":");
+        match step.action.as_str() {
             "teleport" => {
                 let id = arg(0, "teleport:<entity>:x,y,z")?;
                 let e = self.entity_of(world, id)?;
@@ -543,6 +613,40 @@ impl Probe {
                     .insert_resource_bytes(cid, &bytes)
                     .map_err(|e| e.reason().to_owned())
             }
+            "set" => {
+                let (target, text) = joined.split_once('=').ok_or_else(|| {
+                    "write `set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>`"
+                        .to_string()
+                })?;
+                self.tune(world, target, text)
+            }
+            "seed" => {
+                let seed: u32 = arg(0, "seed:<n>")?
+                    .trim()
+                    .parse()
+                    .map_err(|_| "the seed is a whole number in [0, 4294967295]".to_owned())?;
+                *world
+                    .resource_mut::<Rng>()
+                    .map_err(|e| e.reason().to_owned())? = Rng::new(seed);
+                Ok(())
+            }
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// The actions that observe the world for a tool: the dumps, `describe`,
+    /// `get`, `help`, the expectations and the scene's write-back.
+    #[cfg(not(feature = "publish"))]
+    fn report_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let tick = world.time().tick;
+        let args = &step.args;
+        let arg = |i: usize, usage: &str| -> Result<&str, String> {
+            args.get(i)
+                .map(String::as_str)
+                .filter(|a| !a.is_empty())
+                .ok_or_else(|| format!("missing argument; write `{usage}`"))
+        };
+        match step.action.as_str() {
             #[cfg(not(feature = "publish"))]
             "describe" => {
                 let value = self.describe(world);
@@ -723,13 +827,6 @@ impl Probe {
                 );
                 Ok(())
             }
-            "set" => {
-                let (target, text) = joined.split_once('=').ok_or_else(|| {
-                    "write `set:<entity>.<component>.<field>=<value> or set:<Resource>.<field>=<value>`"
-                        .to_string()
-                })?;
-                self.tune(world, target, text)
-            }
             #[cfg(not(feature = "publish"))]
             "get" => {
                 let usage = "get:<Resource>[.<field>] or get:<entity>[.<component>[.<field>]]";
@@ -774,16 +871,40 @@ impl Probe {
                 );
                 Ok(())
             }
-            "seed" => {
-                let seed: u32 = arg(0, "seed:<n>")?
-                    .trim()
-                    .parse()
-                    .map_err(|_| "the seed is a whole number in [0, 4294967295]".to_owned())?;
-                *world
-                    .resource_mut::<Rng>()
-                    .map_err(|e| e.reason().to_owned())? = Rng::new(seed);
+            #[cfg(not(feature = "publish"))]
+            "help" => {
+                let mut text = String::new();
+                for info in self.help() {
+                    let origin = if info.core { "" } else { " (registered)" };
+                    text.push_str(&format!("{}{origin}\n    {}\n", info.usage, info.doc));
+                }
+                self.out
+                    .note(tick, false, format!("help: {} actions", self.help().len()));
+                self.out.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: "help".into(),
+                        path: output_path(args.first())?,
+                        payload: Payload::Text(text),
+                    },
+                );
                 Ok(())
             }
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// The clock's actions: `pause`, `resume`, `advance`, `quit`.
+    fn clock_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let args = &step.args;
+        let arg = |i: usize, usage: &str| -> Result<&str, String> {
+            args.get(i)
+                .map(String::as_str)
+                .filter(|a| !a.is_empty())
+                .ok_or_else(|| format!("missing argument; write `{usage}`"))
+        };
+        match step.action.as_str() {
             "pause" => {
                 self.clock.paused = true;
                 self.clock.script_paused = true;
@@ -821,62 +942,39 @@ impl Probe {
                 self.clock.quit = true;
                 Ok(())
             }
-            #[cfg(not(feature = "publish"))]
-            "help" => {
-                let mut text = String::new();
-                for info in self.help() {
-                    let origin = if info.core { "" } else { " (registered)" };
-                    text.push_str(&format!("{}{origin}\n    {}\n", info.usage, info.doc));
-                }
-                self.out
-                    .note(tick, false, format!("help: {} actions", self.help().len()));
+            _ => unreachable!("`action` sends this family's names only"),
+        }
+    }
+
+    /// A registered action: a module's or a game's command, or a dump.
+    fn registered_step(&mut self, world: &mut World, step: &CommandStep) -> Result<(), String> {
+        let tick = world.time().tick;
+        let args = &step.args;
+        let name = step.action.as_str();
+        let Some(registered) = self.commands.registered.get(name) else {
+            return Err(format!(
+                "unknown action '{name}', skipped; `help` lists the actions"
+            ));
+        };
+        match registered.handler.clone() {
+            Handler::Act(handler) => handler(world, args),
+            Handler::Dump(handler, path_arg) => {
+                let (head, path) = if args.len() > path_arg {
+                    (&args[..path_arg], output_path(args.get(path_arg))?)
+                } else {
+                    (&args[..], None)
+                };
+                let value = handler(world, head)?;
                 self.out.emit(
                     step.at,
                     Output {
                         tick,
-                        action: "help".into(),
-                        path: output_path(args.first())?,
-                        payload: Payload::Text(text),
+                        action: name.to_owned(),
+                        path,
+                        payload: Payload::Json(value),
                     },
                 );
                 Ok(())
-            }
-            // A publish build runs the actions that change the world (input,
-            // set, teleport, the clock, registered commands: what og.ai's
-            // commands and a timeline's event keys reach); the ones that only
-            // observe it for a tool are not built in.
-            #[cfg(feature = "publish")]
-            "screenshot" | "listen" | "describe" | "expect" | "save_scene" | "apply_prefab"
-            | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => Err(
-                format!("`{}` is not built into a publish build", step.action),
-            ),
-            name => {
-                let Some(registered) = self.commands.registered.get(name) else {
-                    return Err(format!(
-                        "unknown action '{name}', skipped; `help` lists the actions"
-                    ));
-                };
-                match registered.handler.clone() {
-                    Handler::Act(handler) => handler(world, args),
-                    Handler::Dump(handler, path_arg) => {
-                        let (head, path) = if args.len() > path_arg {
-                            (&args[..path_arg], output_path(args.get(path_arg))?)
-                        } else {
-                            (&args[..], None)
-                        };
-                        let value = handler(world, head)?;
-                        self.out.emit(
-                            step.at,
-                            Output {
-                                tick,
-                                action: name.to_owned(),
-                                path,
-                                payload: Payload::Json(value),
-                            },
-                        );
-                        Ok(())
-                    }
-                }
             }
         }
     }
