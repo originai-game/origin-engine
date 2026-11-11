@@ -129,7 +129,7 @@ impl Ui {
         {
             let w = line.width;
             let rtl = self.env.direction == og_i18n::Direction::Rtl;
-            for &[x, y, h] in &n.col_rules {
+            for &[x, y, h] in &n.layout.col_rules {
                 let x = rect.x + if rtl { rect.width - x } else { x } - w / 2.0;
                 let color = if m.current { t.palette.ink } else { line.color };
                 let y = rect.y + y;
@@ -255,8 +255,8 @@ impl Ui {
                     );
                     // Lines shortened around floats (`Node::wrap_lines`):
                     // the last one's drop adds to the block.
-                    let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]) * sk;
-                    let block = lh * n.lines.len() as f32 + drop;
+                    let drop = n.layout.wrap_lines.last().map_or(0.0, |w| w[1]) * sk;
+                    let block = lh * n.layout.lines.len() as f32 + drop;
                     let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                     // Text overflows its own box (a snapped edge must not eat a glyph)
                     // except in a field, which scrolls its text and clips.
@@ -271,13 +271,13 @@ impl Ui {
                     let mut field_x = inner.x;
                     // The first character of each line, for its selection.
                     let mut first = 0u32;
-                    for (k, line) in n.lines.iter().enumerate() {
+                    for (k, line) in n.layout.lines.iter().enumerate() {
                         // A line a column break moved (`Node::frag`).
                         let [fx, fy] = n.frag_at(k);
                         // Right to left, start is the right edge.
                         let (rtl, para) = self.text_flow(i);
                         // Its line box: the room floats leave it, or its box.
-                        let (bx, bw, dy) = match n.wrap_lines.get(k) {
+                        let (bx, bw, dy) = match n.layout.wrap_lines.get(k) {
                             Some(&[dx, dy, w]) if rtl => {
                                 (inner.x + inner.width - (dx + w) * sk, w * sk, dy * sk)
                             }
@@ -364,7 +364,7 @@ impl Ui {
                         // takes the free room at its spaces.
                         let spaces = line.text.chars().filter(|c| *c == ' ').count();
                         let justify = tc.align == TextAlign::Justify
-                            && k + 1 < n.lines.len()
+                            && k + 1 < n.layout.lines.len()
                             && spaces > 0
                             && free > 0.0
                             && !tc.text.contains(&format!("{}\n", line.text));
@@ -1284,7 +1284,7 @@ impl Ui {
         // The inline start is the bottom in `sideways-lr`, and the other
         // end right to left.
         let from_bottom = rtl != up_line;
-        let block = lh * n.lines.len() as f32;
+        let block = lh * n.layout.lines.len() as f32;
         let off = ((inner.width - block) / 2.0).max(0.0);
         let emit = |x: f32,
                     baseline: f32,
@@ -1324,8 +1324,8 @@ impl Ui {
             }
         };
         let drawn = font.handle.is_some();
-        let mut out = Vec::with_capacity(n.lines.len());
-        for (k, line) in n.lines.iter().enumerate() {
+        let mut out = Vec::with_capacity(n.layout.lines.len());
+        for (k, line) in n.layout.lines.iter().enumerate() {
             let mut line_cmds = Vec::new();
             let mut glyphs = Vec::new();
             let col = if v.mode.block_rl() {
@@ -1356,7 +1356,7 @@ impl Ui {
             let spaces = line.text.chars().filter(|c| *c == ' ').count();
             let justify = tc.align == TextAlign::Justify
                 && !v.combine
-                && k + 1 < n.lines.len()
+                && k + 1 < n.layout.lines.len()
                 && free > 0.0
                 && !tc.text.contains(&format!("{}\n", line.text));
             let uprights = if justify && spaces == 0 {
@@ -1566,7 +1566,7 @@ impl Ui {
             }
         };
         let mut first = 0u32;
-        for (line, (glyphs, text)) in drawn.iter().zip(lines.iter().zip(&n.lines)) {
+        for (line, (glyphs, text)) in drawn.iter().zip(lines.iter().zip(&n.layout.lines)) {
             let count = text.text.chars().count() as u32;
             // Its selected runs down the line, physical (top, bottom).
             let mut runs: Vec<(f32, f32)> = Vec::new();

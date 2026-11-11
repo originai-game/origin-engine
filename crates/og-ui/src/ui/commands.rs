@@ -45,7 +45,7 @@ impl Ui {
 
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let n = &mut self.tree.nodes[i];
-        let shown = !n.anchor_placed.hidden;
+        let shown = !n.layout.anchor_placed.hidden;
         n.placed.alpha = alpha * n.sampled.opacity.clamp(0.0, 1.0) * f32::from(u8::from(shown));
         n.placed.scale = 1.0;
         n.placed.inert = inert || n.sampled.inert || !shown;
@@ -80,7 +80,7 @@ impl Ui {
         if n.props.view_place.is_some() {
             // Laid out unscaled at its anchor: scaled by the view box's fit
             // about it (moved back into place first, right to left).
-            let [k, fx, ay, off] = n.fit;
+            let [k, fx, ay, off] = n.layout.fit;
             let ax = fx * r.width;
             let dx = if rtl { 2.0 * (off - ax) + r.width } else { 0.0 };
             let fit = Affine::scale(k, k)
@@ -190,7 +190,7 @@ impl Ui {
         let src = self.tree.nodes[i].placed.clip_src;
         if src != NONE && !self.tree.nodes[src].placed.world.is_identity() {
             let w = self.tree.nodes[src].placed.world;
-            let mut c = self.tree.nodes[i].laid_clip;
+            let mut c = self.tree.nodes[i].layout.laid_clip;
             if self.env.direction == og_i18n::Direction::Rtl {
                 c.x = self.env.viewport.width - c.x - c.width;
             }
@@ -209,12 +209,11 @@ impl Ui {
             } else if into == NONE {
                 self.tree.nodes[i].placed.clip
             } else if src == into {
-                self.tree.nodes[src].laid_clip
+                self.tree.nodes[src].layout.laid_clip
             } else {
                 match self.tree.nodes[src].placed.plane.as_deref() {
-                    Some(sp) if sp.into == into && !sp.root => {
-                        crate::transform3d::project(&sp.m).map_rect(&self.tree.nodes[src].laid_clip)
-                    }
+                    Some(sp) if sp.into == into && !sp.root => crate::transform3d::project(&sp.m)
+                        .map_rect(&self.tree.nodes[src].layout.laid_clip),
                     _ => INFINITE,
                 }
             };
@@ -994,7 +993,7 @@ impl Ui {
         let volatile = node.props.exit.is_some()
             || !node.props.match_key.is_empty()
             || !node.props.view_transition_name.is_empty()
-            || !node.links.is_empty()
+            || !node.layout.links.is_empty()
             || node.fx.is_some_and(|f| f.glitch > 0.0)
             || node.sampled.blur > 0.0
             || node.decor.as_ref().is_some_and(|d| d.fixed())
@@ -1053,9 +1052,10 @@ impl Ui {
         };
         let max_x = sn.max_scroll_x();
         if max_x > 0.0 {
-            let inner_w = sn.w - sn.el.padding.horizontal();
+            let inner_w = sn.layout.w - sn.el.padding.horizontal();
             let track = sn.placed.rect;
-            let bar_w = crate::scroll::bar_len(track.width, inner_w, sn.content_w, t.space.xl);
+            let bar_w =
+                crate::scroll::bar_len(track.width, inner_w, sn.layout.content_w, t.space.xl);
             let off = self
                 .interaction
                 .state
@@ -1075,9 +1075,9 @@ impl Ui {
         }
         let max = sn.max_scroll();
         if max > 0.0 {
-            let inner_h = sn.h - sn.el.padding.vertical();
+            let inner_h = sn.layout.h - sn.el.padding.vertical();
             let track = sn.placed.rect;
-            let bar_h = (track.height * inner_h / sn.content_h).max(t.space.xl);
+            let bar_h = (track.height * inner_h / sn.layout.content_h).max(t.space.xl);
             let off = self
                 .interaction
                 .state

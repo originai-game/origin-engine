@@ -534,6 +534,175 @@ impl Default for Placed {
     }
 }
 
+/// What layout computes for a node: its sizes, its place in its parent,
+/// its lines, rows, tracks and floats, and what the layout cache keeps.
+#[derive(Clone, Debug)]
+pub(crate) struct LayoutBox {
+    /// The scroll gutter added to its right padding (`Ui::apply_gutter`).
+    pub gutter: f32,
+    /// Its authored width, height and padding while placement replaced
+    /// them for one frame (`Ui::layout_mutated`).
+    pub authored_box: Option<(Size, Size, Insets)>,
+    /// One of its children in the flow aligns by its own baseline
+    /// (`align-self: baseline`).
+    pub baseline_items: bool,
+    /// A table's cells and the boxes of its rows, groups and columns.
+    pub table: Option<crate::layout::Table>,
+    /// It holds inline-level children and lays them out in lines (CSS 2
+    /// §9.4.2): its authored direction, wrap, cross and align, kept to put
+    /// back when it no longer does.
+    pub line_box: Option<(Direction, bool, Cross, Align)>,
+    /// Its content's least width and height, padding included, before its
+    /// own size applies (a flex item's automatic minimum, CSS Flexbox §4.5).
+    pub min_content: [f32; 2],
+    /// A grid's resolved tracks and its children's cells.
+    pub grid: Option<GridLayout>,
+    /// Its view-box fit ([`crate::element::ViewPlace`]), written by layout
+    /// where it places it: the scale, the anchor across its box (a
+    /// fraction) and down it (CSS px), and its anchor's offset across from
+    /// its parent's centre (right to left the mirror flips that offset,
+    /// and the draw moves it back where its view box shows it).
+    pub fit: [f32; 4],
+    pub pref_w: f32,
+    pub min_w: f32,
+    pub pref_h: f32,
+    pub min_h: f32,
+    pub w: f32,
+    pub h: f32,
+    pub x: f32,
+    pub y: f32,
+    pub content_h: f32,
+    /// Its outer top and bottom margins after collapsing (CSS 2 §8.3.1):
+    /// each the largest positive and the most negative margin of the set
+    /// that adjoins that edge, its own and those collapsed through it.
+    pub margin_sets: [(f32, f32); 2],
+    /// Its first child's top and its last child's bottom margin collapse
+    /// through its own edge: inside, that edge has none.
+    pub collapse_in: [bool; 2],
+    /// An empty block in a block's flow: its top and bottom margins adjoin
+    /// and collapse together with its neighbours' (CSS 2 §8.3.1).
+    pub through: bool,
+    /// Its left and right margins as laid out, `auto` ones resolved.
+    pub margin_x: [f32; 2],
+    /// The content's width (its children's extent), for horizontal scrolling.
+    pub content_w: f32,
+    pub lines: Vec<Line>,
+    /// A rich text's lines.
+    pub rich_lines: Vec<crate::rich::RichLine>,
+    /// A rich text's links, by id, in order.
+    pub links: Vec<String>,
+    /// A wrapping row's lines: ranges of `children`.
+    pub rows: Vec<(usize, usize)>,
+    /// Constraints and parent-relative position of the cached layout.
+    pub layout_size: [f32; 2],
+    pub layout_offset: [f32; 2],
+    pub layout_step: Option<TypeStep>,
+    /// What layout last gave it before the frame moved it (a right-to-left
+    /// mirror, a transformed scroller's clip): its place, its box (with a
+    /// baseline or anchor shift) and its clip.
+    pub laid_xy: [f32; 2],
+    pub laid_rect: Rect,
+    pub laid_clip: Rect,
+    /// Where anchor positioning put it this frame (CSS Anchor
+    /// Positioning 1): the position option that won, the side of its
+    /// anchor it sits on, and whether `position-visibility` hides it.
+    pub anchor_placed: crate::anchor::Placed,
+    /// A multi-column container's used column count and width.
+    pub cols: (usize, f32),
+    /// A multi-column container's rules between columns, from its box's
+    /// top left: each one's middle x, its top and its length.
+    pub col_rules: Vec<[f32; 3]>,
+    /// A text a column break splits: from each line on, how far its lines
+    /// move from where its box puts them (into the next column).
+    pub frag: Vec<(u32, [f32; 2])>,
+    /// A sticky box's edges of its scrollport it is held to this frame
+    /// (bits of `doc::media::scroll::TOP` …).
+    pub stuck: u8,
+    /// It skips its contents this frame (`content-visibility: hidden`, or
+    /// `auto` far from the screen): they are not laid out, drawn or hit.
+    pub cv_skip: bool,
+    /// A `content-visibility: auto` element was far from the screen when
+    /// last laid out (it skips its contents from the next frame).
+    pub cv_far: bool,
+    /// Its content box's size when it last laid its contents out, for
+    /// `contain-intrinsic-size: auto` (CSS Sizing 4 §5.1).
+    pub remembered: Option<[f32; 2]>,
+    /// A float's border box from its parent's content box.
+    pub float_at: [f32; 2],
+    /// The room put above it in its parent's flow to clear floats (or to
+    /// move a box that does not overlap floats below them).
+    pub clearance: f32,
+    /// A text whose lines are shortened around floats: per line, its
+    /// shift right and down from where its box puts it and the width its
+    /// line box has.
+    pub wrap_lines: Vec<[f32; 3]>,
+    /// A block formatting context root: the bottom of its floats below its
+    /// content box's top (its height holds them).
+    pub float_h: f32,
+    /// Floats narrowed or moved it, or shortened its lines, last layout.
+    pub beside: bool,
+    /// A block laying out lines that hold a box with a `vertical-align`:
+    /// per line, its height as its line box holds them (CSS 2.1 §10.8);
+    /// `None` (or empty): the line is its tallest child's height.
+    pub inline_rows: Vec<Option<f32>>,
+    /// Its border box's top below its line's top, in such a line.
+    pub inline_y: f32,
+}
+
+impl Default for LayoutBox {
+    fn default() -> Self {
+        Self {
+            gutter: 0.0,
+            authored_box: None,
+            baseline_items: false,
+            table: None,
+            line_box: None,
+            min_content: [0.0; 2],
+            grid: None,
+            fit: [1.0, 0.0, 0.0, 0.0],
+            pref_w: 0.0,
+            min_w: 0.0,
+            pref_h: 0.0,
+            min_h: 0.0,
+            w: 0.0,
+            h: 0.0,
+            x: 0.0,
+            y: 0.0,
+            content_h: 0.0,
+            margin_sets: [(0.0, 0.0); 2],
+            collapse_in: [false; 2],
+            through: false,
+            margin_x: [0.0; 2],
+            content_w: 0.0,
+            lines: Vec::new(),
+            rich_lines: Vec::new(),
+            links: Vec::new(),
+            rows: Vec::new(),
+            layout_size: [0.0; 2],
+            layout_offset: [0.0; 2],
+            layout_step: None,
+            laid_xy: [f32::NAN; 2],
+            laid_rect: Rect::default(),
+            laid_clip: Rect::default(),
+            anchor_placed: crate::anchor::Placed::default(),
+            cols: (1, 0.0),
+            col_rules: Vec::new(),
+            frag: Vec::new(),
+            stuck: 0,
+            cv_skip: false,
+            cv_far: false,
+            remembered: None,
+            float_at: [0.0; 2],
+            clearance: 0.0,
+            wrap_lines: Vec::new(),
+            float_h: 0.0,
+            beside: false,
+            inline_rows: Vec::new(),
+            inline_y: 0.0,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Node {
     pub key: u64,
@@ -546,11 +715,8 @@ pub(crate) struct Node {
     pub built_children: Vec<usize>,
     /// Sibling order before the flow/out-of-flow partition, independent of slots.
     pub ordered_children: Vec<usize>,
-    /// The scroll gutter added to its right padding (`Ui::apply_gutter`).
-    pub gutter: f32,
-    /// Its authored width, height and padding while placement replaced
-    /// them for one frame (`Ui::layout_mutated`).
-    pub authored_box: Option<(Size, Size, Insets)>,
+    /// What layout computes and keeps for it ([`LayoutBox`]).
+    pub layout: LayoutBox,
     pub el: Element,
     pub part_host: Option<std::sync::Arc<crate::doc::build::PartHost>>,
     /// The semantic owner of a detached widget surface's CSS parts.
@@ -622,23 +788,9 @@ pub(crate) struct Node {
     /// `children` holds the ones in the flow once the frame ends, in CSS
     /// `order`.
     pub out: Vec<usize>,
-    /// One of its children in the flow aligns by its own baseline
-    /// (`align-self: baseline`).
-    pub baseline_items: bool,
     /// The node it lays out in: its parent, else the box its parent's
     /// `display: contents` (or a table's rows) hands it to.
     pub up: usize,
-    /// A table's cells and the boxes of its rows, groups and columns.
-    pub table: Option<crate::layout::Table>,
-    /// It holds inline-level children and lays them out in lines (CSS 2
-    /// §9.4.2): its authored direction, wrap, cross and align, kept to put
-    /// back when it no longer does.
-    pub line_box: Option<(Direction, bool, Cross, Align)>,
-    /// Its content's least width and height, padding included, before its
-    /// own size applies (a flex item's automatic minimum, CSS Flexbox §4.5).
-    pub min_content: [f32; 2],
-    /// A grid's resolved tracks and its children's cells.
-    pub grid: Option<GridLayout>,
     /// Where the frame places and draws it (layout writes it, paint reads it).
     pub placed: Placed,
     /// Layout animation's offset and scale this tick (x, y, sx, sy).
@@ -648,109 +800,19 @@ pub(crate) struct Node {
     /// The player's HUD placement (`crate::hud_layout`): offset, scale and
     /// opacity (x, y, scale, opacity).
     pub custom: [f32; 4],
-    /// Its view-box fit ([`crate::element::ViewPlace`]), written by layout
-    /// where it places it: the scale, the anchor across its box (a
-    /// fraction) and down it (CSS px), and its anchor's offset across from
-    /// its parent's centre (right to left the mirror flips that offset,
-    /// and the draw moves it back where its view box shows it).
-    pub fit: [f32; 4],
     // Computed.
-    pub pref_w: f32,
-    pub min_w: f32,
-    pub pref_h: f32,
-    pub min_h: f32,
-    pub w: f32,
-    pub h: f32,
-    pub x: f32,
-    pub y: f32,
-    pub content_h: f32,
-    /// Its outer top and bottom margins after collapsing (CSS 2 §8.3.1):
-    /// each the largest positive and the most negative margin of the set
-    /// that adjoins that edge, its own and those collapsed through it.
-    pub margin_sets: [(f32, f32); 2],
-    /// Its first child's top and its last child's bottom margin collapse
-    /// through its own edge: inside, that edge has none.
-    pub collapse_in: [bool; 2],
-    /// An empty block in a block's flow: its top and bottom margins adjoin
-    /// and collapse together with its neighbours' (CSS 2 §8.3.1).
-    pub through: bool,
-    /// Its left and right margins as laid out, `auto` ones resolved.
-    pub margin_x: [f32; 2],
-    /// The content's width (its children's extent), for horizontal scrolling.
-    pub content_w: f32,
-    pub lines: Vec<Line>,
     /// The characters of its text the player selected (`user-select`),
     /// `[start, end)` over its lines joined by one break each.
     pub selected: Option<(u32, u32)>,
-    /// A rich text's lines.
-    pub rich_lines: Vec<crate::rich::RichLine>,
-    /// A rich text's links, by id, in order.
-    pub links: Vec<String>,
-    /// A wrapping row's lines: ranges of `children`.
-    pub rows: Vec<(usize, usize)>,
-    /// Constraints and parent-relative position of the cached layout.
-    pub layout_size: [f32; 2],
-    pub layout_offset: [f32; 2],
-    pub layout_step: Option<TypeStep>,
-    /// What layout last gave it before the frame moved it (a right-to-left
-    /// mirror, a transformed scroller's clip): its place, its box (with a
-    /// baseline or anchor shift) and its clip.
-    pub laid_xy: [f32; 2],
-    pub laid_rect: Rect,
-    pub laid_clip: Rect,
-    /// Where anchor positioning put it this frame (CSS Anchor
-    /// Positioning 1): the position option that won, the side of its
-    /// anchor it sits on, and whether `position-visibility` hides it.
-    pub anchor_placed: crate::anchor::Placed,
     /// A popover opened at a point (`contextmenu`): its implicit anchor is
     /// that zero-size point rather than its anchor node.
     pub anchor_point: Option<[f32; 2]>,
     /// A popover's `::-og-arrow`: its side and colour, drawn on the side of
     /// its box facing its anchor once it is placed.
     pub arrow: Option<(f32, Srgba)>,
-    /// A multi-column container's used column count and width.
-    pub cols: (usize, f32),
-    /// A multi-column container's rules between columns, from its box's
-    /// top left: each one's middle x, its top and its length.
-    pub col_rules: Vec<[f32; 3]>,
-    /// A text a column break splits: from each line on, how far its lines
-    /// move from where its box puts them (into the next column).
-    pub frag: Vec<(u32, [f32; 2])>,
-    /// A sticky box's edges of its scrollport it is held to this frame
-    /// (bits of `doc::media::scroll::TOP` …).
-    pub stuck: u8,
-    /// It skips its contents this frame (`content-visibility: hidden`, or
-    /// `auto` far from the screen): they are not laid out, drawn or hit.
-    pub cv_skip: bool,
-    /// A `content-visibility: auto` element was far from the screen when
-    /// last laid out (it skips its contents from the next frame).
-    pub cv_far: bool,
-    /// Its content box's size when it last laid its contents out, for
-    /// `contain-intrinsic-size: auto` (CSS Sizing 4 §5.1).
-    pub remembered: Option<[f32; 2]>,
     /// Its floated children (CSS 2 §9.5): out of the flow, in
     /// `ordered_children`, placed by [`crate::layout::float`].
     pub floats: Vec<usize>,
-    /// A float's border box from its parent's content box.
-    pub float_at: [f32; 2],
-    /// The room put above it in its parent's flow to clear floats (or to
-    /// move a box that does not overlap floats below them).
-    pub clearance: f32,
-    /// A text whose lines are shortened around floats: per line, its
-    /// shift right and down from where its box puts it and the width its
-    /// line box has.
-    pub wrap_lines: Vec<[f32; 3]>,
-    /// A block formatting context root: the bottom of its floats below its
-    /// content box's top (its height holds them).
-    pub float_h: f32,
-    /// Floats narrowed or moved it, or shortened its lines, last layout.
-    pub beside: bool,
-    /// A block laying out lines that hold a box with a `vertical-align`:
-    /// per line, its height as its line box holds them (CSS 2.1 §10.8);
-    /// `None` (or empty): the line is its tallest child's height.
-    pub inline_rows: Vec<Option<f32>>,
-    /// Its border box's top below its line's top, in such a line.
-    pub inline_y: f32,
 }
 
 impl Node {
@@ -791,14 +853,9 @@ impl Node {
             parent,
             children: Vec::new(),
             built_children: Vec::new(),
-            baseline_items: false,
+            layout: LayoutBox::default(),
             up: parent,
-            table: None,
-            line_box: None,
-            min_content: [0.0; 2],
             ordered_children: Vec::new(),
-            gutter: 0.0,
-            authored_box: None,
             el,
             part_host: None,
             part_source: NONE,
@@ -835,101 +892,66 @@ impl Node {
             accent: None,
             caret: None,
             out: Vec::new(),
-            grid: None,
             placed: Placed::default(),
             flip: [0.0, 0.0, 1.0, 1.0],
             gesture: [0.0, 0.0, 1.0, 0.0],
             custom: [0.0, 0.0, 1.0, 1.0],
-            fit: [1.0, 0.0, 0.0, 0.0],
-            pref_w: 0.0,
-            min_w: 0.0,
-            pref_h: 0.0,
-            min_h: 0.0,
-            w: 0.0,
-            h: 0.0,
-            x: 0.0,
-            y: 0.0,
-            content_h: 0.0,
-            content_w: 0.0,
-            lines: Vec::new(),
             selected: None,
-            rich_lines: Vec::new(),
-            links: Vec::new(),
-            rows: Vec::new(),
-            layout_size: [0.0; 2],
-            layout_offset: [0.0; 2],
-            layout_step: None,
-            margin_sets: [(0.0, 0.0); 2],
-            collapse_in: [false; 2],
-            through: false,
-            margin_x: [0.0; 2],
-            laid_xy: [f32::NAN; 2],
-            laid_rect: Rect::default(),
-            laid_clip: Rect::default(),
-            anchor_placed: crate::anchor::Placed::default(),
             anchor_point: None,
             arrow: None,
-            cols: (1, 0.0),
-            col_rules: Vec::new(),
-            frag: Vec::new(),
-            stuck: 0,
-            cv_skip: false,
-            cv_far: false,
-            remembered: None,
             floats: Vec::new(),
-            float_at: [0.0; 2],
-            clearance: 0.0,
-            wrap_lines: Vec::new(),
-            float_h: 0.0,
-            beside: false,
-            inline_rows: Vec::new(),
-            inline_y: 0.0,
         }
     }
 
     /// Immediate builders import their prior layout once. Retained nodes
     /// already own these outputs; layout never needs a second tree.
     pub(crate) fn inherit_layout(&mut self, previous: &Self, clean: bool) {
-        self.w = previous.w;
-        self.h = previous.h;
-        self.x = previous.x;
-        self.y = previous.y;
-        self.layout_size = previous.layout_size;
-        self.layout_offset = previous.layout_offset;
-        self.fit = previous.fit;
-        self.laid_xy = previous.laid_xy;
-        self.laid_rect = previous.laid_rect;
-        self.anchor_placed = previous.anchor_placed;
-        self.cols = previous.cols;
-        self.col_rules.clone_from(&previous.col_rules);
-        self.frag.clone_from(&previous.frag);
-        self.stuck = previous.stuck;
-        self.laid_clip = previous.laid_clip;
-        self.float_at = previous.float_at;
-        self.inline_y = previous.inline_y;
+        self.layout.w = previous.layout.w;
+        self.layout.h = previous.layout.h;
+        self.layout.x = previous.layout.x;
+        self.layout.y = previous.layout.y;
+        self.layout.layout_size = previous.layout.layout_size;
+        self.layout.layout_offset = previous.layout.layout_offset;
+        self.layout.fit = previous.layout.fit;
+        self.layout.laid_xy = previous.layout.laid_xy;
+        self.layout.laid_rect = previous.layout.laid_rect;
+        self.layout.anchor_placed = previous.layout.anchor_placed;
+        self.layout.cols = previous.layout.cols;
+        self.layout.col_rules.clone_from(&previous.layout.col_rules);
+        self.layout.frag.clone_from(&previous.layout.frag);
+        self.layout.stuck = previous.layout.stuck;
+        self.layout.laid_clip = previous.layout.laid_clip;
+        self.layout.float_at = previous.layout.float_at;
+        self.layout.inline_y = previous.layout.inline_y;
         if !clean {
             return;
         }
-        self.pref_w = previous.pref_w;
-        self.min_w = previous.min_w;
-        self.pref_h = previous.pref_h;
-        self.min_h = previous.min_h;
-        self.content_w = previous.content_w;
-        self.content_h = previous.content_h;
-        self.lines.clone_from(&previous.lines);
-        self.wrap_lines.clone_from(&previous.wrap_lines);
-        self.clearance = previous.clearance;
-        self.float_h = previous.float_h;
-        self.beside = previous.beside;
-        self.inline_rows.clone_from(&previous.inline_rows);
-        self.rich_lines.clone_from(&previous.rich_lines);
-        self.rows.clone_from(&previous.rows);
-        self.grid.clone_from(&previous.grid);
-        self.layout_step = previous.layout_step;
-        self.margin_sets = previous.margin_sets;
-        self.collapse_in = previous.collapse_in;
-        self.through = previous.through;
-        self.margin_x = previous.margin_x;
+        self.layout.pref_w = previous.layout.pref_w;
+        self.layout.min_w = previous.layout.min_w;
+        self.layout.pref_h = previous.layout.pref_h;
+        self.layout.min_h = previous.layout.min_h;
+        self.layout.content_w = previous.layout.content_w;
+        self.layout.content_h = previous.layout.content_h;
+        self.layout.lines.clone_from(&previous.layout.lines);
+        self.layout
+            .wrap_lines
+            .clone_from(&previous.layout.wrap_lines);
+        self.layout.clearance = previous.layout.clearance;
+        self.layout.float_h = previous.layout.float_h;
+        self.layout.beside = previous.layout.beside;
+        self.layout
+            .inline_rows
+            .clone_from(&previous.layout.inline_rows);
+        self.layout
+            .rich_lines
+            .clone_from(&previous.layout.rich_lines);
+        self.layout.rows.clone_from(&previous.layout.rows);
+        self.layout.grid.clone_from(&previous.layout.grid);
+        self.layout.layout_step = previous.layout.layout_step;
+        self.layout.margin_sets = previous.layout.margin_sets;
+        self.layout.collapse_in = previous.layout.collapse_in;
+        self.layout.through = previous.layout.through;
+        self.layout.margin_x = previous.layout.margin_x;
     }
 
     /// Its content size along `axis` (0 across) under size containment:
@@ -942,19 +964,20 @@ impl Node {
             crate::layout::Contain::SIZE_W,
             crate::layout::Contain::SIZE_H,
         ][axis];
-        if !self.cv_skip && !c.has(bit) {
+        if !self.layout.cv_skip && !c.has(bit) {
             return None;
         }
         let (auto, len) = c.intrinsic[axis];
-        Some(match self.remembered {
-            Some(r) if auto && self.cv_skip => r[axis],
+        Some(match self.layout.remembered {
+            Some(r) if auto && self.layout.cv_skip => r[axis],
             _ => len.unwrap_or(0.0),
         })
     }
 
     /// How far a column break moved line `k` of its text ([`Node::frag`]).
     pub(crate) fn frag_at(&self, k: usize) -> [f32; 2] {
-        self.frag
+        self.layout
+            .frag
             .iter()
             .rev()
             .find(|f| f.0 as usize <= k)
@@ -966,7 +989,7 @@ impl Node {
         if !self.el.scroll {
             return 0.0;
         }
-        (self.content_h - (self.h - self.el.padding.vertical())).max(0.0)
+        (self.layout.content_h - (self.layout.h - self.el.padding.vertical())).max(0.0)
     }
 
     /// The horizontal scroll range: how far the content overflows the inner width.
@@ -974,7 +997,7 @@ impl Node {
         if !self.el.scroll_x {
             return 0.0;
         }
-        (self.content_w - (self.w - self.el.padding.horizontal())).max(0.0)
+        (self.layout.content_w - (self.layout.w - self.el.padding.horizontal())).max(0.0)
     }
 
     /// Scrolls either way.

@@ -348,8 +348,8 @@ impl Ui {
                 .map(|i| &self.tree.nodes[i])
                 .filter(|n| n.key == key && n.scrolls())
         }?;
-        let view_width = (n.w - n.el.padding.horizontal()).max(0.0);
-        let view_height = (n.h - n.el.padding.vertical()).max(0.0);
+        let view_width = (n.layout.w - n.el.padding.horizontal()).max(0.0);
+        let view_height = (n.layout.h - n.el.padding.vertical()).max(0.0);
         let at = self.interaction.offset(key);
         Some(ScrollState {
             offset_x: at.x.clamp(0.0, n.max_scroll_x()),
@@ -357,12 +357,12 @@ impl Ui {
             view_width,
             view_height,
             content_width: if n.el.scroll_x {
-                n.content_w
+                n.layout.content_w
             } else {
                 view_width
             },
             content_height: if n.el.scroll {
-                n.content_h
+                n.layout.content_h
             } else {
                 view_height
             },
@@ -692,7 +692,7 @@ impl crate::ui::Interaction {
                 0
             };
         }
-        flags |= u16::from(n.stuck) << STUCK.trailing_zeros();
+        flags |= u16::from(n.layout.stuck) << STUCK.trailing_zeros();
         let align = n.el.snap_align;
         let mut p = n.parent;
         while align != 0 && p != crate::layout::NONE {

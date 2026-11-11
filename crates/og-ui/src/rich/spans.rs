@@ -273,10 +273,10 @@ impl Ui {
             align: desc.align,
             wrap: !desc.nowrap,
         });
-        node.links.clear();
+        node.layout.links.clear();
         for r in &node_runs_links(&node.content) {
-            if !node.links.contains(r) {
-                node.links.push(r.clone());
+            if !node.layout.links.contains(r) {
+                node.layout.links.push(r.clone());
             }
         }
     }

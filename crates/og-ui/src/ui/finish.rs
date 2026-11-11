@@ -8,8 +8,8 @@ pub(crate) const TOUCH_TARGET: f32 = 44.0;
 /// frame (restored at the next `end`).
 fn authored_box(nodes: &mut [Node], mutated: &mut Vec<usize>, i: usize) {
     let n = &mut nodes[i];
-    if n.authored_box.is_none() {
-        n.authored_box = Some((n.el.width, n.el.height, n.el.padding));
+    if n.layout.authored_box.is_none() {
+        n.layout.authored_box = Some((n.el.width, n.el.height, n.el.padding));
         mutated.push(i);
     }
 }
@@ -19,7 +19,7 @@ fn authored_box(nodes: &mut [Node], mutated: &mut Vec<usize>, i: usize) {
 fn skipped(nodes: &[Node], i: usize) -> bool {
     let mut at = nodes[i].up;
     while at != NONE && at < nodes.len() {
-        if nodes[at].cv_skip {
+        if nodes[at].layout.cv_skip {
             return true;
         }
         at = nodes[at].up;
@@ -157,7 +157,7 @@ impl Ui {
         // A retained node placement resized last frame lays out from its
         // authored box again (a written node is authored afresh).
         for i in std::mem::take(&mut self.layout.layout_mutated) {
-            if let Some((width, height, padding)) = self.tree.nodes[i].authored_box.take() {
+            if let Some((width, height, padding)) = self.tree.nodes[i].layout.authored_box.take() {
                 let el = &mut self.tree.nodes[i].el;
                 (el.width, el.height, el.padding) = (width, height, padding);
                 self.tree.invalidation.restored.push(i);
@@ -246,7 +246,7 @@ impl Ui {
                 n.children.clear();
                 n.out.clear();
                 n.floats.clear();
-                n.table = None;
+                n.layout.table = None;
                 continue;
             }
             let shown = crate::layout::shown_children(&self.tree.nodes, i);
@@ -296,8 +296,8 @@ impl Ui {
             n.children = flow;
             n.out = out;
             n.floats = floats;
-            n.baseline_items = baseline_items;
-            n.table = table;
+            n.layout.baseline_items = baseline_items;
+            n.layout.table = table;
         }
         for k in 0..self.tree.emitted.len() {
             self.layout
@@ -548,7 +548,7 @@ impl Ui {
                     &mut self.layout.cache,
                     &mut self.layout.queries,
                 );
-                let (w, h) = (self.tree.nodes[f].w, self.tree.nodes[f].h);
+                let (w, h) = (self.tree.nodes[f].layout.w, self.tree.nodes[f].layout.h);
                 let (x, y) = match float {
                     Float::Anchored { anchor, dx, dy, .. } => {
                         let (ax, ay) = anchor.fractions();
@@ -592,7 +592,7 @@ impl Ui {
                             y = y.min(safe.bottom() - h).max(safe.y);
                         }
                         // The side it sits on, for its arrow.
-                        self.tree.nodes[f].anchor_placed.side = if y >= a.bottom() - 0.5 {
+                        self.tree.nodes[f].layout.anchor_placed.side = if y >= a.bottom() - 0.5 {
                             Some(crate::anchor::PlacedSide::Bottom)
                         } else if y + h <= a.y + 0.5 {
                             Some(crate::anchor::PlacedSide::Top)
@@ -679,7 +679,7 @@ impl Ui {
                     }
                     let box_of = |j: usize| {
                         let n = &self.tree.nodes[j];
-                        Rect::new(n.x, n.y, n.w, n.h)
+                        Rect::new(n.layout.x, n.layout.y, n.layout.w, n.layout.h)
                     };
                     // The last element in tree order by that name, not inside
                     // it (§2.3); no name: its default anchor, else its
@@ -739,13 +739,17 @@ impl Ui {
                         _ => screen,
                     };
                     let authored = n
+                        .layout
                         .authored_box
                         .map_or([n.el.width, n.el.height], |(w, h, _)| [w, h]);
                     let frame = crate::anchor::Frame {
                         cb,
                         anchor: &anchor,
                         size: authored,
-                        content: [(n.pref_w, n.min_w), (n.pref_h, n.min_h)],
+                        content: [
+                            (n.layout.pref_w, n.layout.min_w),
+                            (n.layout.pref_h, n.layout.min_h),
+                        ],
                     };
                     let (r, mut placed) = crate::anchor::resolve(&spec, &frame);
                     // `anchors-visible`: hidden while its default anchor is
@@ -754,13 +758,14 @@ impl Ui {
                         && let Some(a) = default
                     {
                         let a = &self.tree.nodes[a];
-                        placed.hidden = a.hidden || !a.laid_clip.overlaps(&a.laid_rect);
+                        placed.hidden =
+                            a.hidden || !a.layout.laid_clip.overlaps(&a.layout.laid_rect);
                     }
-                    if placed.hidden != self.tree.nodes[i].anchor_placed.hidden {
+                    if placed.hidden != self.tree.nodes[i].layout.anchor_placed.hidden {
                         self.layout.cache.anchor_toggled.push(i);
                     }
                     let here = box_of(i);
-                    self.tree.nodes[i].anchor_placed = placed;
+                    self.tree.nodes[i].layout.anchor_placed = placed;
                     if r == here {
                         continue;
                     }
@@ -954,14 +959,14 @@ impl Ui {
                 let bar = Vec2::new(
                     crate::scroll::bar_len(
                         n.placed.rect.width,
-                        n.w - n.el.padding.horizontal(),
-                        n.content_w,
+                        n.layout.w - n.el.padding.horizontal(),
+                        n.layout.content_w,
                         min_bar,
                     ),
                     crate::scroll::bar_len(
                         n.placed.rect.height,
-                        n.h - n.el.padding.vertical(),
-                        n.content_h,
+                        n.layout.h - n.el.padding.vertical(),
+                        n.layout.content_h,
                         min_bar,
                     ),
                 );
@@ -1236,8 +1241,10 @@ impl Ui {
                                 .clamp(0.0, n.max_scroll()),
                         ],
                         [
-                            (r.width - b[0] - b[2]).max(n.content_w + p[0] - b[0] + p[2] - b[2]),
-                            (r.height - b[1] - b[3]).max(n.content_h + p[1] - b[1] + p[3] - b[3]),
+                            (r.width - b[0] - b[2])
+                                .max(n.layout.content_w + p[0] - b[0] + p[2] - b[2]),
+                            (r.height - b[1] - b[3])
+                                .max(n.layout.content_h + p[1] - b[1] + p[3] - b[3]),
                         ],
                     )
                 });
@@ -1384,11 +1391,11 @@ impl crate::ui::Layout {
         // `scrollbar-gutter: stable both-edges`: the same room at the start.
         let both = node.el.scroll_css.gutter == 2;
         let node = &mut tree.nodes[i];
-        node.el.padding.right += gutter - node.gutter;
+        node.el.padding.right += gutter - node.layout.gutter;
         if both {
-            node.el.padding.left += gutter - node.gutter;
+            node.el.padding.left += gutter - node.layout.gutter;
         }
-        node.gutter = gutter;
+        node.layout.gutter = gutter;
     }
 }
 
@@ -1414,9 +1421,10 @@ impl crate::ui::Layout {
         for k in 0..tree.emitted.len() {
             let i = tree.emitted[k];
             if let Some(p) = self.cache.prev.get(&i) {
-                let (skip, far, remembered) = (p.cv_skip, p.cv_far, p.remembered);
+                let (skip, far, remembered) =
+                    (p.layout.cv_skip, p.layout.cv_far, p.layout.remembered);
                 let n = &mut tree.nodes[i];
-                (n.cv_skip, n.cv_far, n.remembered) = (skip, far, remembered);
+                (n.layout.cv_skip, n.layout.cv_far, n.layout.remembered) = (skip, far, remembered);
             }
         }
         let mut at: Vec<usize> = tree.orders.with(visit::feat::SKIPS).to_vec();
@@ -1430,11 +1438,11 @@ impl crate::ui::Layout {
             let n = &mut tree.nodes[i];
             let v = n.el.contain.visibility;
             if v != Cv::Auto {
-                n.cv_far = false;
+                n.layout.cv_far = false;
             }
-            let skip = v == Cv::Hidden || (v == Cv::Auto && n.cv_far);
-            if skip != n.cv_skip {
-                n.cv_skip = skip;
+            let skip = v == Cv::Hidden || (v == Cv::Auto && n.layout.cv_far);
+            if skip != n.layout.cv_skip {
+                n.layout.cv_skip = skip;
                 self.cache.relayout.push(i);
             }
         }
@@ -1461,12 +1469,12 @@ impl crate::ui::Layout {
                 continue;
             }
             let n = &tree.nodes[i];
-            if !n.cv_skip {
+            if !n.layout.cv_skip {
                 let size = [
-                    (n.w - n.el.padding.horizontal()).max(0.0),
-                    (n.h - n.el.padding.vertical()).max(0.0),
+                    (n.layout.w - n.el.padding.horizontal()).max(0.0),
+                    (n.layout.h - n.el.padding.vertical()).max(0.0),
                 ];
-                tree.nodes[i].remembered = Some(size);
+                tree.nodes[i].layout.remembered = Some(size);
             }
             let n = &tree.nodes[i];
             if n.el.contain.visibility != crate::layout::ContentVisibility::Auto {
@@ -1489,7 +1497,7 @@ impl crate::ui::Layout {
                 at = tree.nodes[at].parent;
             }
             let far = !holds_focus && !near.overlaps(&n.placed.clip.intersect(&screen));
-            tree.nodes[i].cv_far = far;
+            tree.nodes[i].layout.cv_far = far;
         }
     }
 
@@ -1513,6 +1521,7 @@ impl crate::ui::Layout {
             {
                 focus_paths[slot] = tree.path_of(i);
                 if let Some(l) = tree.nodes[i]
+                    .layout
                     .links
                     .iter()
                     .find(|l| child_key(tree.nodes[i].key, l) == key)
@@ -1544,9 +1553,9 @@ impl crate::ui::Tree {
         };
         let n = &mut self.nodes[i];
         let ours = n.el.direction == crate::Direction::Row && n.el.wrap;
-        match (wanted, n.line_box) {
+        match (wanted, n.layout.line_box) {
             (true, saved) if saved.is_none() || !ours => {
-                n.line_box = Some((n.el.direction, n.el.wrap, n.el.cross, n.el.align));
+                n.layout.line_box = Some((n.el.direction, n.el.wrap, n.el.cross, n.el.align));
                 n.el.direction = crate::Direction::Row;
                 n.el.wrap = true;
                 n.el.cross = crate::Cross::Baseline;
@@ -1557,7 +1566,7 @@ impl crate::ui::Tree {
                     (n.el.direction, n.el.wrap, n.el.cross, n.el.align) =
                         (direction, wrap, cross, align);
                 }
-                n.line_box = None;
+                n.layout.line_box = None;
             }
             _ => {}
         }
@@ -1582,7 +1591,7 @@ impl crate::ui::Tree {
                     None => continue,
                 },
             };
-            let (b, placed, point) = (n.placed.rect, n.anchor_placed, n.anchor_point);
+            let (b, placed, point) = (n.placed.rect, n.layout.anchor_placed, n.anchor_point);
             self.nodes[f].shapes.retain(|s| {
                 !matches!(s, crate::layout::Shape::Bar { part, .. }
                     if part.component == "Popover" && part.part == "arrow")

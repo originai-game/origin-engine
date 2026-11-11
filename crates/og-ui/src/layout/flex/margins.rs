@@ -23,7 +23,7 @@ pub(in crate::layout) fn margin_basis(nodes: &[Node], i: usize) -> f32 {
     if p == NONE || p >= nodes.len() {
         return 0.0;
     }
-    (nodes[p].w - nodes[p].el.padding.horizontal()).max(0.0)
+    (nodes[p].layout.w - nodes[p].el.padding.horizontal()).max(0.0)
 }
 
 /// Node `i`'s collapsed outer margins, and whether its first child's top
@@ -59,7 +59,7 @@ pub(in crate::layout) fn collapse_margins(nodes: &mut [Node], i: usize) {
         && n.el.padding.top == 0.0
         && n.el.padding.bottom == 0.0
         && n.out.is_empty()
-        && ((flows && n.children.iter().all(|&c| nodes[c].through)) || empty_text);
+        && ((flows && n.children.iter().all(|&c| nodes[c].layout.through)) || empty_text);
     let basis = margin_basis(nodes, i);
     let edge = |m: crate::layout::Margin| margin_set(m.of(basis));
     let mut sets = [edge(n.el.margin[0]), edge(n.el.margin[2])];
@@ -77,8 +77,8 @@ pub(in crate::layout) fn collapse_margins(nodes: &mut [Node], i: usize) {
     let chain = |kids: &mut dyn Iterator<Item = &usize>, side: usize| {
         let mut set = (0.0, 0.0);
         for &c in kids {
-            set = joined(set, nodes[c].margin_sets[side]);
-            if !nodes[c].through {
+            set = joined(set, nodes[c].layout.margin_sets[side]);
+            if !nodes[c].layout.through {
                 break;
             }
         }
@@ -93,9 +93,9 @@ pub(in crate::layout) fn collapse_margins(nodes: &mut [Node], i: usize) {
     if through {
         sets = [joined(sets[0], sets[1]); 2];
     }
-    nodes[i].margin_sets = sets;
-    nodes[i].collapse_in = collapse_in;
-    nodes[i].through = through;
+    nodes[i].layout.margin_sets = sets;
+    nodes[i].layout.collapse_in = collapse_in;
+    nodes[i].layout.through = through;
 }
 
 /// The room a column's margins and gaps take around its children: before
@@ -113,26 +113,26 @@ pub(in crate::layout) fn column_spacing(nodes: &[Node], i: usize) -> (f32, Vec<f
     // the column's own top edge.
     let mut run = (0.0, 0.0);
     let mut used = 0.0;
-    let mut outside = n.collapse_in[0];
+    let mut outside = n.layout.collapse_in[0];
     let mut before = Vec::with_capacity(kids.len());
     for (j, &c) in kids.iter().enumerate() {
         let k = &nodes[c];
         let gap = if j > 0 { n.el.main_gap() } else { 0.0 };
         if n.el.block {
-            let set = joined(run, k.margin_sets[0]);
+            let set = joined(run, k.layout.margin_sets[0]);
             let total = if outside { 0.0 } else { span(set) };
-            before.push(gap + total - used + k.clearance);
-            if k.through {
+            before.push(gap + total - used + k.layout.clearance);
+            if k.layout.through {
                 (run, used) = (set, total);
             } else {
-                (run, used, outside) = (k.margin_sets[1], 0.0, false);
+                (run, used, outside) = (k.layout.margin_sets[1], 0.0, false);
             }
         } else {
-            before.push(gap + span(run) + span(k.margin_sets[0]));
-            run = k.margin_sets[1];
+            before.push(gap + span(run) + span(k.layout.margin_sets[0]));
+            run = k.layout.margin_sets[1];
         }
     }
-    let trail = if n.collapse_in[1] {
+    let trail = if n.layout.collapse_in[1] {
         0.0
     } else if outside {
         // Every child collapsed through the top edge.
@@ -172,7 +172,7 @@ pub(in crate::layout) fn place_sides(n: &Node, basis: f32, free: f32) -> [f32; 2
 
 /// The room a child's own vertical margins take across a row.
 pub(super) fn cross_margins(n: &Node) -> f32 {
-    span(n.margin_sets[0]) + span(n.margin_sets[1])
+    span(n.layout.margin_sets[0]) + span(n.layout.margin_sets[1])
 }
 
 /// The room its own vertical margins take in a grid row.

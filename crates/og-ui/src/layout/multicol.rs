@@ -98,7 +98,7 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
         let (top, bottom) = (tops[k], tops[k] + h(n));
         let forced = k > 0 && (after || n.el.breaks & BREAK_BEFORE != 0);
         after = n.el.breaks & BREAK_AFTER != 0;
-        let lines = n.lines.len();
+        let lines = n.layout.lines.len();
         let lh = match &n.content {
             Content::Text(t) if n.el.breaks & AVOID_INSIDE == 0 && !n.el.scroll => t.line_height(),
             _ => 0.0,
@@ -270,7 +270,7 @@ pub(crate) fn height(
                     })
                     .collect();
                 let p = pieces(nodes, &kids[r], &tops, h);
-                balance(&p, n.cols.0.max(1), limit(n), m.fill_auto).1
+                balance(&p, n.layout.cols.0.max(1), limit(n), m.fill_auto).1
             }
         };
     }
@@ -284,13 +284,13 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
     let Some(m) = nodes[i].el.multicol else {
         return;
     };
-    let (cols, w) = nodes[i].cols;
+    let (cols, w) = nodes[i].layout.cols;
     let kids = nodes[i].children.clone();
-    let x0 = nodes[i].x + nodes[i].el.padding.left;
+    let x0 = nodes[i].layout.x + nodes[i].el.padding.left;
     let limit = limit(&nodes[i]);
     let mut rules = Vec::new();
     for &c in &kids {
-        nodes[c].frag.clear();
+        nodes[c].layout.frag.clear();
     }
     // Each run starts where the flow put its first child, moved up by what
     // the runs above it saved.
@@ -298,15 +298,15 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
     for run in runs(nodes, &kids) {
         let r = match run {
             Err(c) => {
-                nodes[kids[c]].y -= saved;
+                nodes[kids[c]].layout.y -= saved;
                 continue;
             }
             Ok(r) => r,
         };
         let run = &kids[r];
-        let top = nodes[run[0]].y;
-        let tops: Vec<f32> = run.iter().map(|&c| nodes[c].y - top).collect();
-        let p = pieces(nodes, run, &tops, &|n: &Node| n.h);
+        let top = nodes[run[0]].layout.y;
+        let tops: Vec<f32> = run.iter().map(|&c| nodes[c].layout.y - top).collect();
+        let p = pieces(nodes, run, &tops, &|n: &Node| n.layout.h);
         let (starts, tallest) = balance(&p, cols.max(1), limit, m.fill_auto);
         // Each child's move (dx, dy), from the column its first piece is in.
         let mut moved: Vec<Option<[f32; 2]>> = vec![None; run.len()];
@@ -320,30 +320,30 @@ pub(crate) fn place(nodes: &mut [Node], i: usize) {
                     // A text's lines from the top of this column on.
                     Some(first) if j == 0 && piece.line > 0 => {
                         let d = [shift[0] - first[0], shift[1] - first[1]];
-                        nodes[c].frag.push((piece.line as u32, d));
+                        nodes[c].layout.frag.push((piece.line as u32, d));
                     }
                     Some(_) => {}
                 }
             }
             if k > 0 {
                 // A rule in the middle of the gap, from the box's origin.
-                let x = x0 + k as f32 * (w + m.gap) - m.gap / 2.0 - nodes[i].x;
-                rules.push([x, top - saved - nodes[i].y, tallest]);
+                let x = x0 + k as f32 * (w + m.gap) - m.gap / 2.0 - nodes[i].layout.x;
+                rules.push([x, top - saved - nodes[i].layout.y, tallest]);
             }
         }
         for (k, &c) in run.iter().enumerate() {
             let [dx, dy] = moved[k].unwrap_or([0.0, -saved]);
-            nodes[c].x += dx;
-            nodes[c].y += dy;
+            nodes[c].layout.x += dx;
+            nodes[c].layout.y += dy;
             // A split text's box is its first fragment.
-            if let Some(&(line, _)) = nodes[c].frag.first()
+            if let Some(&(line, _)) = nodes[c].layout.frag.first()
                 && let Some(q) = p.iter().find(|q| q.kid == k && q.line == line as usize)
             {
-                nodes[c].h = q.top - tops[k];
+                nodes[c].layout.h = q.top - tops[k];
             }
         }
         let flow = p.last().map_or(0.0, |q| q.bottom);
         saved += flow - tallest;
     }
-    nodes[i].col_rules = rules;
+    nodes[i].layout.col_rules = rules;
 }

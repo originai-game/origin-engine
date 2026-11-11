@@ -58,7 +58,7 @@ fn joins(nodes: &[Node], i: usize) -> bool {
         && p < nodes.len()
         && container(n)
         && container(&nodes[p])
-        && n.line_box.map_or(n.el.direction, |l| l.0) == Direction::Column
+        && n.layout.line_box.map_or(n.el.direction, |l| l.0) == Direction::Column
         && n.el.float == FloatSide::None
         && !n.props.out_of_flow()
         && !n.el.bfc
@@ -100,10 +100,10 @@ impl Outside {
                 .map_or([0.0; 4], |d| d.borders.map(|b| b.map_or(0.0, |b| b.width))),
             GeoBox::Content => physical([p.top, p.right, p.bottom, p.left]),
             GeoBox::Margin => physical([
-                -span(n.margin_sets[0]),
-                -n.margin_x[1],
-                -span(n.margin_sets[1]),
-                -n.margin_x[0],
+                -span(n.layout.margin_sets[0]),
+                -n.layout.margin_x[1],
+                -span(n.layout.margin_sets[1]),
+                -n.layout.margin_x[0],
             ]),
         };
         let radius = if n.el.radius > 0.0 {
@@ -112,9 +112,9 @@ impl Outside {
             0.0
         };
         let (w, h) = if vertical.is_some() {
-            (n.pref_h, n.w)
+            (n.layout.pref_h, n.layout.w)
         } else {
-            (n.w, n.pref_h)
+            (n.layout.w, n.layout.pref_h)
         };
         let ShapeKind::Path {
             points, contours, ..
@@ -130,7 +130,7 @@ impl Outside {
                 None => (p.x, p.y),
             };
             if self.rtl {
-                x = n.w - x;
+                x = n.layout.w - x;
             }
             [x + offset[0], y + offset[1]]
         };
@@ -304,12 +304,12 @@ struct Context<'m, 'a> {
 fn needs(nodes: &[Node], c: usize) -> bool {
     let n = &nodes[c];
     !n.floats.is_empty()
-        || !n.wrap_lines.is_empty()
+        || !n.layout.wrap_lines.is_empty()
         || n.children.iter().any(|&k| {
             let k_n = &nodes[k];
-            k_n.beside
-                || k_n.clearance != 0.0
-                || !k_n.wrap_lines.is_empty()
+            k_n.layout.beside
+                || k_n.layout.clearance != 0.0
+                || !k_n.layout.wrap_lines.is_empty()
                 || (joins(nodes, k) && needs(nodes, k))
         })
 }
@@ -326,8 +326,8 @@ pub(crate) fn flow(
     let root = container(&nodes[i]) && !joins(nodes, i);
     if !root || !needs(nodes, i) {
         // A context it no longer roots holds no floats of its own.
-        if nodes[i].float_h != 0.0 {
-            nodes[i].float_h = 0.0;
+        if nodes[i].layout.float_h != 0.0 {
+            nodes[i].layout.float_h = 0.0;
             size_h(nodes, i);
         }
         return;
@@ -339,7 +339,7 @@ pub(crate) fn flow(
     };
     walk(nodes, i, 0.0, 0.0, &mut cx);
     let bottom = cx.floats.iter().map(|f| f.y + f.h).fold(0.0, f32::max);
-    nodes[i].float_h = bottom;
+    nodes[i].layout.float_h = bottom;
     size_h(nodes, i);
     cx.touched.push(i);
 }
@@ -347,10 +347,10 @@ pub(crate) fn flow(
 /// Container `c`'s flow with its content box at `(ox, oy)` in the root's.
 fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>) {
     let n = &nodes[c];
-    let inner = (n.w - n.el.padding.horizontal()).max(0.0);
+    let inner = (n.layout.w - n.el.padding.horizontal()).max(0.0);
     let (x0, x1) = (ox, ox + inner);
     let floats = n.floats.clone();
-    if n.line_box.is_some() {
+    if n.layout.line_box.is_some() {
         // Each float where it is in the content: before which of the
         // boxes in lines it comes.
         let (kids, order) = (&n.children, &n.ordered_children);
@@ -368,7 +368,7 @@ fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>
     }
     let kids = nodes[c].children.clone();
     for &k in &kids {
-        nodes[k].clearance = 0.0;
+        nodes[k].layout.clearance = 0.0;
         baseline(nodes, c, k, inner, cx);
     }
     let (lead, between, _) = column_spacing(nodes, c);
@@ -389,14 +389,14 @@ fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>
         }
         let clear = (cleared(&cx.floats, nodes[k].el.clear) - top).max(0.0);
         let mut at = top + clear;
-        let was = nodes[k].beside;
-        nodes[k].beside = false;
+        let was = nodes[k].layout.beside;
+        nodes[k].layout.beside = false;
         if joins(nodes, k) {
             let kx = child_x(nodes, c, k, x0, inner);
             let pad = nodes[k].el.padding;
             walk(nodes, k, kx + pad.left, at + pad.top, cx);
             size_h(nodes, k);
-            nodes[k].beside = !cx.floats.is_empty();
+            nodes[k].layout.beside = !cx.floats.is_empty();
         } else if wraps(&nodes[k]) {
             text(nodes, k, x0, inner, at, cx, was);
         } else if rich_wraps(&nodes[k]) {
@@ -404,9 +404,9 @@ fn walk(nodes: &mut [Node], c: usize, ox: f32, oy: f32, cx: &mut Context<'_, '_>
         } else {
             at = beside(nodes, k, x0, x1, at, cx);
         }
-        nodes[k].clearance = at - top;
+        nodes[k].layout.clearance = at - top;
         cx.touched.push(k);
-        y = at + nodes[k].pref_h;
+        y = at + nodes[k].layout.pref_h;
         j += 1;
     }
     for f in pending {
@@ -430,14 +430,14 @@ fn baseline(nodes: &mut [Node], c: usize, k: usize, inner: f32, cx: &mut Context
     let stretch = !el.wrap && n.el.align_self.unwrap_or(el.cross) == Cross::Stretch;
     let w = cross_size(n, 0, basis, inner, stretch);
     let w = match n.el.width {
-        Size::Fit { .. } if el.scroll_x => w.max(n.pref_w),
+        Size::Fit { .. } if el.scroll_x => w.max(n.layout.pref_w),
         _ => w,
     };
-    if !wraps(n) && w != n.w {
+    if !wraps(n) && w != n.layout.w {
         relayout(nodes, k, w, cx);
     }
-    nodes[k].w = w;
-    nodes[k].margin_x = place_sides(&nodes[k], inner, fill - w);
+    nodes[k].layout.w = w;
+    nodes[k].layout.margin_x = place_sides(&nodes[k], inner, fill - w);
 }
 
 /// Where container `c` puts child `k`'s border box across (as
@@ -445,7 +445,7 @@ fn baseline(nodes: &mut [Node], c: usize, k: usize, inner: f32, cx: &mut Context
 fn child_x(nodes: &[Node], c: usize, k: usize, x0: f32, inner: f32) -> f32 {
     let el = nodes[c].el;
     let n = &nodes[k];
-    let [ml, mr] = n.margin_x;
+    let [ml, mr] = n.layout.margin_x;
     if n.el.margin[1].auto || n.el.margin[3].auto {
         return x0 + ml;
     }
@@ -454,7 +454,7 @@ fn child_x(nodes: &[Node], c: usize, k: usize, x0: f32, inner: f32) -> f32 {
         + cross_offset(
             n.el.align_self.unwrap_or(el.cross),
             inner - ml - mr,
-            n.w,
+            n.layout.w,
             safe,
         )
 }
@@ -471,9 +471,9 @@ fn place(
     cx: &mut Context<'_, '_>,
 ) {
     let n = &nodes[f];
-    let [ml, mr] = n.margin_x;
-    let (mt, mb) = (span(n.margin_sets[0]), span(n.margin_sets[1]));
-    let (w, h) = (n.w + ml + mr, n.pref_h + mt + mb);
+    let [ml, mr] = n.layout.margin_x;
+    let (mt, mb) = (span(n.layout.margin_sets[0]), span(n.layout.margin_sets[1]));
+    let (w, h) = (n.layout.w + ml + mr, n.layout.pref_h + mt + mb);
     let left = n.el.float != FloatSide::Right;
     // No higher than an earlier float (rule 5), below those it clears.
     let mut y = y
@@ -503,7 +503,7 @@ fn place(
         contour,
         margin,
     });
-    nodes[f].float_at = [x - origin.0 + ml, y - origin.1 + mt];
+    nodes[f].layout.float_at = [x - origin.0 + ml, y - origin.1 + mt];
     cx.touched.push(f);
 }
 
@@ -530,7 +530,7 @@ fn text(
 ) {
     let n = &nodes[k];
     let Content::Text(t) = &n.content else { return };
-    let [ml, mr] = n.margin_x;
+    let [ml, mr] = n.layout.margin_x;
     let pad = n.el.padding;
     let fill = (inner - ml - mr).max(0.0);
     let (tx0, tx1) = (x0 + ml + pad.left, x0 + ml + fill - pad.right);
@@ -599,15 +599,15 @@ fn text(
         }
     }
     if narrowed || drop > 0.0 {
-        nodes[k].w = fill;
-        nodes[k].margin_x = [ml, mr];
-        nodes[k].lines = lines;
-        nodes[k].wrap_lines = shifts;
-        nodes[k].beside = true;
+        nodes[k].layout.w = fill;
+        nodes[k].layout.margin_x = [ml, mr];
+        nodes[k].layout.lines = lines;
+        nodes[k].layout.wrap_lines = shifts;
+        nodes[k].layout.beside = true;
         size_h(nodes, k);
-    } else if was || !nodes[k].wrap_lines.is_empty() {
+    } else if was || !nodes[k].layout.wrap_lines.is_empty() {
         // Clear of floats: its lines as its width breaks them.
-        nodes[k].wrap_lines.clear();
+        nodes[k].layout.wrap_lines.clear();
         distribute_w(nodes, k, cx.measure);
         size_h(nodes, k);
     }
@@ -638,7 +638,7 @@ fn rich(
     let Content::Rich(rc) = &n.content else {
         return;
     };
-    let [ml, mr] = n.margin_x;
+    let [ml, mr] = n.layout.margin_x;
     let pad = n.el.padding;
     let fill = (inner - ml - mr).max(0.0);
     let (tx0, tx1) = (x0 + ml + pad.left, x0 + ml + fill - pad.right);
@@ -676,15 +676,15 @@ fn rich(
         .map(|[l, d, w]| [l - tx0, d, w])
         .collect();
     if narrowed || drop > 0.0 {
-        nodes[k].w = fill;
-        nodes[k].margin_x = [ml, mr];
-        nodes[k].rich_lines = lines;
-        nodes[k].wrap_lines = shifts;
-        nodes[k].beside = true;
+        nodes[k].layout.w = fill;
+        nodes[k].layout.margin_x = [ml, mr];
+        nodes[k].layout.rich_lines = lines;
+        nodes[k].layout.wrap_lines = shifts;
+        nodes[k].layout.beside = true;
         size_h(nodes, k);
-    } else if was || !nodes[k].wrap_lines.is_empty() {
+    } else if was || !nodes[k].layout.wrap_lines.is_empty() {
         // Clear of floats: its lines as its width breaks them.
-        nodes[k].wrap_lines.clear();
+        nodes[k].layout.wrap_lines.clear();
         distribute_w(nodes, k, cx.measure);
         size_h(nodes, k);
     }
@@ -876,7 +876,7 @@ fn span_lines(
 
 /// A float's margin box's width.
 fn float_w(n: &Node) -> f32 {
-    n.w + n.margin_x[0] + n.margin_x[1]
+    n.layout.w + n.layout.margin_x[0] + n.layout.margin_x[1]
 }
 
 /// Line-box container `c` with its content box from `x0` to `x1` and its
@@ -911,7 +911,8 @@ fn lines(
         .map(|k| k > 0 && !(inline_level(&nodes[kids[k]]) && inline_level(&nodes[kids[k - 1]])))
         .collect();
     let outer = |k: usize| base[k] + sides[k];
-    let tall = |nodes: &[Node], k: usize| nodes[kids[k]].pref_h + cross_room(&nodes[kids[k]]);
+    let tall =
+        |nodes: &[Node], k: usize| nodes[kids[k]].layout.pref_h + cross_room(&nodes[kids[k]]);
     let (mut rows, mut shifts) = (Vec::new(), Vec::new());
     let (mut s, mut y, mut drop, mut narrowed) = (0, top, 0.0f32, false);
     // Floats that did not fit on the line they came on: at the next one's top.
@@ -931,7 +932,7 @@ fn lines(
             // Below the earlier floats it clears.
             let clear = (cleared(&cx.floats, nodes[k].el.clear) - y).max(0.0);
             (drop, y) = (drop + clear, y + clear);
-            let w0 = nodes[k].w;
+            let w0 = nodes[k].layout.w;
             size_row(
                 nodes,
                 &kids[s..s + 1],
@@ -942,36 +943,37 @@ fn lines(
                 inner,
                 inner,
             );
-            let was = nodes[k].beside;
-            nodes[k].beside = false;
-            let at = y + span(nodes[k].margin_sets[0]);
+            let was = nodes[k].layout.beside;
+            nodes[k].layout.beside = false;
+            let at = y + span(nodes[k].layout.margin_sets[0]);
             if joins(nodes, k) || wraps(&nodes[k]) || rich_wraps(&nodes[k]) {
-                if nodes[k].w != w0 {
-                    let w = nodes[k].w;
+                if nodes[k].layout.w != w0 {
+                    let w = nodes[k].layout.w;
                     relayout(nodes, k, w, cx);
                 }
-                let [ml, _] = nodes[k].margin_x;
+                let [ml, _] = nodes[k].layout.margin_x;
                 let pad = nodes[k].el.padding;
                 if joins(nodes, k) {
                     walk(nodes, k, x0 + ml + pad.left, at + pad.top, cx);
                     size_h(nodes, k);
-                    nodes[k].beside = !cx.floats.is_empty();
+                    nodes[k].layout.beside = !cx.floats.is_empty();
                 } else {
                     // `text` and `rich` lay it out at its margins in the line box.
-                    let margins = nodes[k].margin_x;
+                    let margins = nodes[k].layout.margin_x;
                     if wraps(&nodes[k]) {
                         text(nodes, k, x0, inner, at, cx, was);
                     } else {
                         rich(nodes, k, x0, inner, at, cx, was);
                     }
-                    nodes[k].margin_x = margins;
+                    nodes[k].layout.margin_x = margins;
                 }
-                narrowed |= nodes[k].beside;
+                narrowed |= nodes[k].layout.beside;
                 rows.push((s, s + 1));
                 shifts.push([0.0, drop, inner]);
-                nodes[c].rows.clone_from(&rows);
+                nodes[c].layout.rows.clone_from(&rows);
                 inline_rows(nodes, c, cx.measure);
                 let lh = nodes[c]
+                    .layout
                     .inline_rows
                     .get(rows.len() - 1)
                     .copied()
@@ -981,7 +983,7 @@ fn lines(
                 s += 1;
                 continue;
             }
-            nodes[k].w = w0;
+            nodes[k].layout.w = w0;
         }
         // The room beside the line as tall as the boxes it holds; a float
         // that comes on it and fits beside what it holds so far is placed
@@ -1025,7 +1027,7 @@ fn lines(
         }
         narrowed |= next.is_some();
         let line = &kids[s..e];
-        let was: Vec<f32> = line.iter().map(|&k| nodes[k].w).collect();
+        let was: Vec<f32> = line.iter().map(|&k| nodes[k].layout.w).collect();
         size_row(
             nodes,
             line,
@@ -1037,17 +1039,18 @@ fn lines(
             avail,
         );
         for (&k, w0) in line.iter().zip(was) {
-            if nodes[k].w != w0 {
-                let w = nodes[k].w;
+            if nodes[k].layout.w != w0 {
+                let w = nodes[k].layout.w;
                 relayout(nodes, k, w, cx);
             }
         }
         rows.push((s, e));
         shifts.push([l - x0, drop, avail]);
         // Its height as its line box holds it (`inline_rows`).
-        nodes[c].rows.clone_from(&rows);
+        nodes[c].layout.rows.clone_from(&rows);
         inline_rows(nodes, c, cx.measure);
         let lh = nodes[c]
+            .layout
             .inline_rows
             .get(rows.len() - 1)
             .copied()
@@ -1069,13 +1072,13 @@ fn lines(
             cx,
         );
     }
-    nodes[c].rows = rows;
+    nodes[c].layout.rows = rows;
     inline_rows(nodes, c, cx.measure);
     if narrowed || drop > 0.0 {
-        nodes[c].wrap_lines = shifts;
-        nodes[c].beside = true;
+        nodes[c].layout.wrap_lines = shifts;
+        nodes[c].layout.beside = true;
     } else {
-        nodes[c].wrap_lines.clear();
+        nodes[c].layout.wrap_lines.clear();
     }
     size_h(nodes, c);
     cx.touched.push(c);
@@ -1096,13 +1099,13 @@ fn beside(
     cx: &mut Context<'_, '_>,
 ) -> f32 {
     let n = &nodes[k];
-    let [ml, mr] = n.margin_x;
-    let w0 = n.w;
+    let [ml, mr] = n.layout.margin_x;
+    let w0 = n.layout.w;
     let fill = (x1 - x0 - ml - mr).max(0.0);
     // A box that fills the line narrows to the room; another keeps its width.
     let fills = w0 >= fill - 0.01;
-    let need = if fills { n.min_w } else { w0 };
-    let h = n.pref_h;
+    let need = if fills { n.layout.min_w } else { w0 };
+    let h = n.layout.pref_h;
     let mut y = top;
     loop {
         let (l, r, next) = room(&cx.floats, y, y + h, x0, x1);
@@ -1117,24 +1120,24 @@ fn beside(
             // sides as it mirrors its content: the room is swapped so the
             // box mirrors whole.
             let up = nodes[k].up;
-            nodes[k].margin_x = if up != NONE && nodes[up].el.flip {
+            nodes[k].layout.margin_x = if up != NONE && nodes[up].el.flip {
                 [x1 - br, bl - x0]
             } else {
                 [bl - x0, x1 - br]
             };
-            nodes[k].beside = true;
+            nodes[k].layout.beside = true;
             return y;
         }
         y = b;
     }
-    nodes[k].beside = y != top;
+    nodes[k].layout.beside = y != top;
     y
 }
 
 /// Lays subtree `k` out again at width `w`: its widths, then its heights
 /// (with the floats of the contexts in it).
 fn relayout(nodes: &mut [Node], k: usize, w: f32, cx: &mut Context<'_, '_>) {
-    nodes[k].w = w;
+    nodes[k].layout.w = w;
     let order = preorder(nodes, k);
     for &j in &order {
         distribute_w(nodes, j, cx.measure);

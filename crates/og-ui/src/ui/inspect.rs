@@ -419,7 +419,7 @@ impl Ui {
             let mut stack = vec![root];
             while let Some(j) = stack.pop() {
                 let n = &self.tree.nodes[j];
-                if n.float == Float::World || !n.links.is_empty() {
+                if n.float == Float::World || !n.layout.links.is_empty() {
                     return None;
                 }
                 if j != at && named(j) {
@@ -463,7 +463,7 @@ impl Ui {
     /// A rich text's links: nodes of their own under its node.
     fn link_nodes(&self, i: usize, parent: String, tree: &mut Vec<(u64, crate::a11y::A11yNode)>) {
         let n = &self.tree.nodes[i];
-        if n.links.is_empty() {
+        if n.layout.links.is_empty() {
             return;
         }
         let Content::Rich(rc) = &n.content else {
@@ -614,7 +614,7 @@ impl Ui {
                     }
                 }
                 // A rich text's links: children for the probe.
-                if !n.links.is_empty() {
+                if !n.layout.links.is_empty() {
                     let Content::Rich(rc) = &n.content else {
                         unreachable!("links come from rich text")
                     };

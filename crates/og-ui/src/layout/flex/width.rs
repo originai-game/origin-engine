@@ -115,7 +115,7 @@ fn fits(t: &TextContent, fonts: &dyn Metrics, width: f32) -> bool {
 pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Measure<'_>) {
     if nodes[i].props.layout == LayoutMode::Grid
         && matches!(nodes[i].content, Content::None)
-        && !nodes[i].cv_skip
+        && !nodes[i].layout.cv_skip
     {
         place_grid(nodes, i);
     }
@@ -150,8 +150,8 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
         Content::None if n.props.layout == LayoutMode::Stack => {
             let kids = || n.children.iter().map(|&c| &nodes[c]);
             (
-                kids().map(|c| c.pref_w).fold(0.0, f32::max),
-                kids().map(|c| c.min_w).fold(0.0, f32::max),
+                kids().map(|c| c.layout.pref_w).fold(0.0, f32::max),
+                kids().map(|c| c.layout.min_w).fold(0.0, f32::max),
             )
         }
         Content::None if n.props.layout == LayoutMode::Grid => grid_intrinsic(nodes, i, true),
@@ -161,12 +161,12 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
             match n.el.direction {
                 // Lines: its widest run of inline-level children, or its
                 // widest block-level one (each on a line of its own).
-                Direction::Row if n.line_box.is_some() => {
+                Direction::Row if n.layout.line_box.is_some() => {
                     let gap = n.el.main_gap();
                     let (mut pref, mut run, mut count) = (0.0f32, 0.0f32, 0usize);
                     for &c in &n.children {
                         let k = &nodes[c];
-                        let w = k.pref_w + side_margins(k);
+                        let w = k.layout.pref_w + side_margins(k);
                         if inline_level(k) {
                             run += w + if count > 0 { gap } else { 0.0 };
                             count += 1;
@@ -175,29 +175,34 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
                             (run, count) = (0.0, 0);
                         }
                     }
-                    let min = kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max);
+                    let min = kids
+                        .map(|c| c.layout.min_w + side_margins(c))
+                        .fold(0.0, f32::max);
                     (pref.max(run), min)
                 }
                 Direction::Row => {
                     let gap = n.el.main_gap();
                     let pref = kids
                         .clone()
-                        .map(|c| c.pref_w + side_margins(c))
+                        .map(|c| c.layout.pref_w + side_margins(c))
                         .sum::<f32>()
                         + gaps(gap, k);
                     let min = if n.el.wrap {
-                        kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max)
+                        kids.map(|c| c.layout.min_w + side_margins(c))
+                            .fold(0.0, f32::max)
                     } else {
-                        kids.map(|c| c.min_w + side_margins(c)).sum::<f32>() + gaps(gap, k)
+                        kids.map(|c| c.layout.min_w + side_margins(c)).sum::<f32>() + gaps(gap, k)
                     };
                     (pref, min)
                 }
                 Direction::Column => {
                     let pref = kids
                         .clone()
-                        .map(|c| c.pref_w + side_margins(c))
+                        .map(|c| c.layout.pref_w + side_margins(c))
                         .fold(0.0, f32::max);
-                    let min = kids.map(|c| c.min_w + side_margins(c)).fold(0.0, f32::max);
+                    let min = kids
+                        .map(|c| c.layout.min_w + side_margins(c))
+                        .fold(0.0, f32::max);
                     match n.el.multicol {
                         Some(m) => super::multicol::intrinsic(&m, pref, min),
                         None => (pref, min),
@@ -213,8 +218,12 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
     } else {
         let f = n.floats.iter().map(|&c| &nodes[c]);
         (
-            pref + f.clone().map(|c| c.pref_w + side_margins(c)).sum::<f32>(),
-            f.map(|c| c.min_w + side_margins(c)).fold(min, f32::max),
+            pref + f
+                .clone()
+                .map(|c| c.layout.pref_w + side_margins(c))
+                .sum::<f32>(),
+            f.map(|c| c.layout.min_w + side_margins(c))
+                .fold(min, f32::max),
         )
     };
     // A fixed height and an aspect ratio give the width.
@@ -237,18 +246,18 @@ pub(in crate::layout) fn size_w(nodes: &mut [Node], i: usize, measure: &mut Meas
     let (p, m) = apply_size(n.el.width, pad + pref, pad + min);
     let (cp, cm) = (pad + pref, pad + min);
     let el = n.el;
-    nodes[i].min_content[0] = cm;
-    nodes[i].pref_w = el.bounded(0, None, cp, cm, p);
-    nodes[i].min_w = el.bounded(0, None, cp, cm, m);
+    nodes[i].layout.min_content[0] = cm;
+    nodes[i].layout.pref_w = el.bounded(0, None, cp, cm, p);
+    nodes[i].layout.min_w = el.bounded(0, None, cp, cm, m);
 }
 
 /// A child's width across a column (or height across a row), within its
 /// bounds against `basis` (the parent's inner size, its percentages' basis).
 pub(crate) fn cross_size(n: &Node, axis: usize, inner: f32, basis: f32, stretch: bool) -> f32 {
     let (size, pref, min) = if axis == 0 {
-        (n.el.width, n.pref_w, n.min_w)
+        (n.el.width, n.layout.pref_w, n.layout.min_w)
     } else {
-        (n.el.height, n.pref_h, n.min_h)
+        (n.el.height, n.layout.pref_h, n.layout.min_h)
     };
     let v = match size {
         Size::Grow { .. } => {
@@ -279,9 +288,9 @@ pub(in crate::layout) fn inline_level(n: &Node) -> bool {
 /// Node `c`'s size along `axis` held to its bounds against `basis`.
 pub(in crate::layout) fn clamp_to(n: &Node, axis: usize, basis: Option<f32>, v: f32) -> f32 {
     let (pref, min) = if axis == 0 {
-        (n.pref_w, n.min_w)
+        (n.layout.pref_w, n.layout.min_w)
     } else {
-        (n.pref_h, n.min_h)
+        (n.layout.pref_h, n.layout.min_h)
     };
     n.el.bounded(axis, basis, pref, min, v)
 }
@@ -291,7 +300,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
     // its frame's width (a vertical element's height). Its patch sets the
     // physical sides and axes.
     if nodes[i].props.variants.iter().any(|v| v.when.container) {
-        let w = nodes[i].w;
+        let w = nodes[i].layout.w;
         let variants = nodes[i].props.variants.clone();
         for v in variants.iter().filter(|v| v.when.container) {
             if width_in(w, &v.when) {
@@ -299,11 +308,11 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
             }
         }
     }
-    let inner = (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0);
+    let inner = (nodes[i].layout.w - nodes[i].el.padding.horizontal()).max(0.0);
     // Out of the flow: sized against the parent's box.
-    let outer = nodes[i].w;
+    let outer = nodes[i].layout.w;
     for c in nodes[i].out.clone() {
-        nodes[c].w = out_size(&nodes[c], 0, outer, outer);
+        nodes[c].layout.w = out_size(&nodes[c], 0, outer, outer);
     }
     let fonts = measure.fonts;
     // An auto-fit label: the largest of its steps its text fits at this width.
@@ -339,15 +348,15 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
                 }
                 lines
             });
-        nodes[i].lines = lines;
-        nodes[i].wrap_lines.clear();
+        nodes[i].layout.lines = lines;
+        nodes[i].layout.wrap_lines.clear();
         return;
     }
     if let Content::Rich(rc) = &nodes[i].content {
         let v = nodes[i].rich_vertical();
         let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(inner + 0.5), v);
-        nodes[i].rich_lines = lines;
-        nodes[i].wrap_lines.clear();
+        nodes[i].layout.rich_lines = lines;
+        nodes[i].layout.wrap_lines.clear();
         return;
     }
     let el = nodes[i].el;
@@ -355,8 +364,8 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
     for c in nodes[i].floats.clone() {
         let n = &nodes[c];
         let fill = (inner - n.el.margin[1].of(inner) - n.el.margin[3].of(inner)).max(0.0);
-        nodes[c].w = cross_size(n, 0, fill, inner, false);
-        nodes[c].margin_x = place_sides(&nodes[c], inner, 0.0);
+        nodes[c].layout.w = cross_size(n, 0, fill, inner, false);
+        nodes[c].layout.margin_x = place_sides(&nodes[c], inner, 0.0);
     }
     let kids = nodes[i].children.clone();
     if kids.is_empty() {
@@ -373,7 +382,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
                     }
                     _ => cross_size(n, 0, inner, inner, el.cross == Cross::Stretch),
                 };
-                nodes[c].w = w;
+                nodes[c].layout.w = w;
             }
             return;
         }
@@ -389,7 +398,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
             // width, a spanning one at the whole.
             let col = el.multicol.map(|m| super::multicol::used(&m, inner));
             if let Some(cols) = col {
-                nodes[i].cols = cols;
+                nodes[i].layout.cols = cols;
             }
             for &c in &kids {
                 let n = &nodes[c];
@@ -409,11 +418,11 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
                 let w = cross_size(n, 0, basis, inner, stretch);
                 // In a horizontal scroller a fitting child keeps its width.
                 let w = match n.el.width {
-                    Size::Fit { .. } if el.scroll_x => w.max(n.pref_w),
+                    Size::Fit { .. } if el.scroll_x => w.max(n.layout.pref_w),
                     _ => w,
                 };
-                nodes[c].w = w;
-                nodes[c].margin_x = place_sides(&nodes[c], inner, fill - w);
+                nodes[c].layout.w = w;
+                nodes[c].layout.margin_x = place_sides(&nodes[c], inner, fill - w);
             }
         }
         Direction::Row if !el.wrap => {
@@ -425,7 +434,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
             let sizes = main_sizes(nodes, &kids, true, inner, avail, !el.scroll_x);
             let free = avail - sizes.iter().sum::<f32>();
             for (&c, w) in kids.iter().zip(sizes) {
-                nodes[c].w = w;
+                nodes[c].layout.w = w;
             }
             line_sides(nodes, &kids, inner, free);
         }
@@ -443,7 +452,7 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
                 // snapped a fraction under its children's sum keeps them
                 // on one line, over by less than half a pixel.
                 // In lines, a block-level child is a line of its own.
-                let forced = nodes[i].line_box.is_some()
+                let forced = nodes[i].layout.line_box.is_some()
                     && k > start
                     && (!inline_level(&nodes[kids[k]]) || !inline_level(&nodes[kids[k - 1]]));
                 if k > start && (forced || used + gap + b > inner + 0.5) {
@@ -469,8 +478,8 @@ pub(in crate::layout) fn distribute_w(nodes: &mut [Node], i: usize, measure: &mu
                 );
             }
             // Its lines as its width breaks them: floats shorten them again.
-            nodes[i].wrap_lines.clear();
-            nodes[i].rows = rows;
+            nodes[i].layout.wrap_lines.clear();
+            nodes[i].layout.rows = rows;
         }
     }
 }
@@ -488,8 +497,8 @@ pub(crate) fn row_bases(nodes: &[Node], kids: &[usize], inner: f32) -> (Vec<f32>
             } else {
                 let w =
                     n.el.width
-                        .definite(n.pref_w, n.min_w, Some(inner))
-                        .unwrap_or_else(|| n.pref_w.min(inner).max(n.min_w));
+                        .definite(n.layout.pref_w, n.layout.min_w, Some(inner))
+                        .unwrap_or_else(|| n.layout.pref_w.min(inner).max(n.layout.min_w));
                 clamp_to(n, 0, Some(inner), w)
             };
             (w, n.el.margin[1].of(inner) + n.el.margin[3].of(inner))
@@ -537,7 +546,7 @@ pub(in crate::layout) fn size_row(
     };
     let free = avail - sizes.iter().sum::<f32>();
     for (&c, w) in line.iter().zip(sizes) {
-        nodes[c].w = w;
+        nodes[c].layout.w = w;
     }
     line_sides(nodes, line, inner, free);
 }
@@ -557,6 +566,6 @@ fn line_sides(nodes: &mut [Node], line: &[usize], basis: f32, free: f32) {
     for &c in line {
         let [l, r] = [nodes[c].el.margin[3], nodes[c].el.margin[1]];
         let side = |m: crate::layout::Margin| if m.auto { each } else { m.of(basis) };
-        nodes[c].margin_x = [side(l), side(r)];
+        nodes[c].layout.margin_x = [side(l), side(r)];
     }
 }

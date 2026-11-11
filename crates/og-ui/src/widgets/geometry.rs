@@ -21,8 +21,8 @@ impl Ui {
                 } => {
                     let [track, knob, mark, tick] = [track, knob, mark, tick]
                         .map(|key| self.tree.index.find(key).expect("owned switch part"));
-                    let t = self.tree.nodes[track].laid_rect;
-                    let k = self.tree.nodes[knob].laid_rect;
+                    let t = self.tree.nodes[track].layout.laid_rect;
+                    let k = self.tree.nodes[knob].layout.laid_rect;
                     let current = [t.width, t.height, k.width, k.height];
                     if measured == Some(current) {
                         continue;

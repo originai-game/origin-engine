@@ -321,14 +321,14 @@ impl Flow {
 /// is its horizontal scroll offset.
 pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
     let n = &nodes[i];
-    let inner = (n.w - n.el.padding.horizontal()).max(0.0);
+    let inner = (n.layout.w - n.el.padding.horizontal()).max(0.0);
     let width = if n.el.scroll_x {
-        inner.max(n.content_w)
+        inner.max(n.layout.content_w)
     } else {
         inner
     };
-    let x0 = n.x + n.el.padding.left - sx;
-    let basis = n.w;
+    let x0 = n.layout.x + n.el.padding.left - sx;
+    let basis = n.layout.w;
     let free = |c: &super::Node| {
         !c.props.out_of_flow()
             || (c.props.insets.start.is_none()
@@ -352,12 +352,12 @@ pub(super) fn flip_children(nodes: &mut [super::Node], i: usize, sx: f32) {
         let [ml, mr] = if k.props.out_of_flow() {
             [k.el.margin[3].of(basis), k.el.margin[1].of(basis)]
         } else {
-            k.margin_x
+            k.layout.margin_x
         };
-        nodes[c].x = 2.0 * x0 + width - k.x - k.w - mr + ml;
+        nodes[c].layout.x = 2.0 * x0 + width - k.layout.x - k.layout.w - mr + ml;
     }
     let pl = nodes[i].el.padding.left;
-    for r in &mut nodes[i].col_rules {
+    for r in &mut nodes[i].layout.col_rules {
         r[0] = 2.0 * pl + width - r[0];
     }
 }

@@ -374,7 +374,7 @@ fn definite_inner(n: &Node, axis: usize) -> (Option<f32>, Option<f32>) {
 /// Places a grid's children in its cells (CSS Grid §8.5) for `avail`,
 /// the inner size per axis (`None`: not yet known).
 pub(super) fn place_grid(nodes: &mut [Node], i: usize) {
-    if nodes[i].table.is_some() {
+    if nodes[i].layout.table.is_some() {
         place_table(nodes, i);
         return;
     }
@@ -669,7 +669,7 @@ fn place_at(nodes: &mut [Node], i: usize, avail: [Option<f32>; 2], min: [Option<
         reps,
         ..GridLayout::default()
     };
-    nodes[i].grid = Some(layout);
+    nodes[i].layout.grid = Some(layout);
 }
 
 /// The size of implicit or explicit track `k` along `axis`.
@@ -1121,13 +1121,18 @@ fn size_tracks(
 fn contribution(k: &Node, axis: usize) -> (f32, f32, f32) {
     let (pref, min, m, scrolls) = if axis == 0 {
         (
-            k.pref_w,
-            k.min_w,
+            k.layout.pref_w,
+            k.layout.min_w,
             super::flex::side_margins(k),
             k.el.scroll_x,
         )
     } else {
-        (k.pref_h, k.min_h, super::flex::cross_room(k), k.el.scroll)
+        (
+            k.layout.pref_h,
+            k.layout.min_h,
+            super::flex::cross_room(k),
+            k.el.scroll,
+        )
     };
     let least = if scrolls { 0.0 } else { min };
     (least + m, min + m, pref.max(min) + m)
@@ -1138,7 +1143,7 @@ fn contribution(k: &Node, axis: usize) -> (f32, f32, f32) {
 /// auto items in every track they could take.
 fn grid_items(nodes: &[Node], i: usize, axis: usize) -> Vec<Item> {
     let n = &nodes[i];
-    let Some(g) = &n.grid else {
+    let Some(g) = &n.layout.grid else {
         return Vec::new();
     };
     let masonry = (0..2).any(|a| kind(nodes, i, a) == Template::Masonry);
@@ -1146,7 +1151,7 @@ fn grid_items(nodes: &[Node], i: usize, axis: usize) -> Vec<Item> {
     let mut out = Vec::new();
     for (&c, &(col, row, cs, rs)) in n.children.iter().zip(&g.cells) {
         let (s, span) = if axis == 0 { (col, cs) } else { (row, rs) };
-        if kind(nodes, c, axis) == Template::Subgrid && nodes[c].grid.is_some() {
+        if kind(nodes, c, axis) == Template::Subgrid && nodes[c].layout.grid.is_some() {
             let pad = &nodes[c].el.padding;
             let (lo, hi) = if axis == 0 {
                 (pad.left, pad.right)
@@ -1209,7 +1214,7 @@ fn grid_items(nodes: &[Node], i: usize, axis: usize) -> Vec<Item> {
 
 fn defs(nodes: &[Node], i: usize, axis: usize) -> Vec<Track> {
     let n = &nodes[i];
-    let g = n.grid.as_ref().unwrap();
+    let g = n.layout.grid.as_ref().unwrap();
     let count = if axis == 0 { g.ncols } else { g.nrows };
     (0..count)
         .map(|k| track_def(&n.props.grid, g, axis, k))
@@ -1226,7 +1231,7 @@ fn masonry_pack(
     size: &dyn Fn(&Node) -> f32,
 ) -> (Vec<(usize, f32)>, f32) {
     let n = &nodes[i];
-    let g = n.grid.as_ref().unwrap();
+    let g = n.layout.grid.as_ref().unwrap();
     let a = 1 - m;
     let tracks = if a == 0 { g.ncols } else { g.nrows }.max(1);
     let gap = g.gap(m);
@@ -1274,7 +1279,7 @@ fn masonry_pack(
 /// A grid's preferred and least size along one axis.
 pub(super) fn grid_intrinsic(nodes: &[Node], i: usize, horizontal: bool) -> (f32, f32) {
     let n = &nodes[i];
-    let Some(g) = &n.grid else {
+    let Some(g) = &n.layout.grid else {
         return (0.0, 0.0);
     };
     let axis = usize::from(!horizontal);
@@ -1355,7 +1360,7 @@ fn subgrid_tracks(
 ) -> Option<(Vec<f32>, Vec<f32>)> {
     let n = &nodes[i];
     let p = n.up;
-    let pg = nodes[p].grid.as_ref()?;
+    let pg = nodes[p].layout.grid.as_ref()?;
     let at = nodes[p].children.iter().position(|&c| c == i)?;
     let &(col, row, cs, rs) = pg.cells.get(at)?;
     let (s, span) = if axis == 0 { (col, cs) } else { (row, rs) };
@@ -1365,17 +1370,20 @@ fn subgrid_tracks(
         return None;
     }
     let (pad_lo, m_lo) = if axis == 0 {
-        (n.el.padding.left, n.margin_x[0])
+        (n.el.padding.left, n.layout.margin_x[0])
     } else {
-        (n.el.padding.top, n.margin_sets[0].0 + n.margin_sets[0].1)
+        (
+            n.el.padding.top,
+            n.layout.margin_sets[0].0 + n.layout.margin_sets[0].1,
+        )
     };
     let origin = starts[s] + m_lo + pad_lo;
     let mut sz: Vec<f32> = sizes[s..s + span].to_vec();
     let mut st: Vec<f32> = starts[s..s + span].iter().map(|v| v - origin).collect();
     let inner = if axis == 0 {
-        n.w - n.el.padding.horizontal()
+        n.layout.w - n.el.padding.horizontal()
     } else {
-        n.h - n.el.padding.vertical()
+        n.layout.h - n.el.padding.vertical()
     };
     // The edge tracks lose what its padding and margins take.
     if let Some(f) = sz.first_mut() {
@@ -1396,7 +1404,7 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
     // An auto repetition count that depended on this size places again.
     let changed = {
         let n = &nodes[i];
-        let g = n.grid.as_ref().unwrap();
+        let g = n.layout.grid.as_ref().unwrap();
         let gap = g.gap(axis);
         n.props.grid.lines[axis].repeat.is_some()
             && kind(nodes, i, axis) == Template::Tracks
@@ -1407,10 +1415,10 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
         let mut avail = [None, None];
         avail[axis] = Some(inner);
         avail[1 - axis] = other;
-        let keep = nodes[i].grid.clone().unwrap();
+        let keep = nodes[i].layout.grid.clone().unwrap();
         place_at(nodes, i, avail, [None, None]);
         // The other axis keeps the sizes it already resolved.
-        if let Some(g) = nodes[i].grid.as_mut()
+        if let Some(g) = nodes[i].layout.grid.as_mut()
             && axis == 1
         {
             g.cols = keep.cols;
@@ -1419,7 +1427,7 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
     }
     let kind_here = kind(nodes, i, axis);
     let n = &nodes[i];
-    let g = n.grid.as_ref().unwrap();
+    let g = n.layout.grid.as_ref().unwrap();
     let gap = g.gap(axis);
     let collapsed = g.collapsed[axis].clone();
     let count = if axis == 0 { g.ncols } else { g.nrows };
@@ -1441,7 +1449,7 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
         }
     };
     {
-        let g = nodes[i].grid.as_mut().unwrap();
+        let g = nodes[i].layout.grid.as_mut().unwrap();
         if axis == 0 {
             g.cols = sizes;
         } else {
@@ -1451,7 +1459,7 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
     }
     // Each child's size in its area (CSS Grid §11.3, Box Alignment §6).
     let kids = nodes[i].children.clone();
-    let g = nodes[i].grid.clone().unwrap();
+    let g = nodes[i].layout.grid.clone().unwrap();
     let justify_items = nodes[i].el.justify_items;
     let align_items = nodes[i].props.grid.align_items;
     for (k, &c) in kids.iter().enumerate() {
@@ -1477,16 +1485,18 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
             let [l, r] = [kn.el.margin[3], kn.el.margin[1]];
             let fill = (area - l.of(area) - r.of(area)).max(0.0);
             let w = match kn.el.width {
-                _ if kind_here == Template::Masonry => kn.pref_w.min(fill).max(kn.min_w),
+                _ if kind_here == Template::Masonry => {
+                    kn.layout.pref_w.min(fill).max(kn.layout.min_w)
+                }
                 Size::Fit { .. } if l.auto || r.auto || !stretch => {
-                    kn.pref_w.min(fill).max(kn.min_w)
+                    kn.layout.pref_w.min(fill).max(kn.layout.min_w)
                 }
                 Size::Fit { .. } | Size::Grow { .. } => {
                     let (lo, hi) = kn.el.width.bounds();
                     fill.clamp(lo, hi)
                 }
                 size => size
-                    .definite(kn.pref_w, kn.min_w, Some(area))
+                    .definite(kn.layout.pref_w, kn.layout.min_w, Some(area))
                     .unwrap_or(fill),
             };
             let w = super::flex::clamp_to(kn, 0, Some(area), w);
@@ -1499,43 +1509,43 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
                 (false, true) => [l.of(area), free],
                 (false, false) => [l.of(area), r.of(area)],
             };
-            nodes[c].w = w;
-            nodes[c].margin_x = sides;
+            nodes[c].layout.w = w;
+            nodes[c].layout.margin_x = sides;
         } else {
             let around = super::flex::cross_room(kn);
             let fill = (area - around).max(0.0);
             let auto_margin = kn.el.margin[0].auto || kn.el.margin[2].auto;
             let h = match kn.el.height {
-                _ if kind_here == Template::Masonry => kn.pref_h,
+                _ if kind_here == Template::Masonry => kn.layout.pref_h,
                 Size::Fit { .. } if auto_margin || !stretch => {
-                    kn.pref_h.min(fill).max(kn.min_h.min(fill))
+                    kn.layout.pref_h.min(fill).max(kn.layout.min_h.min(fill))
                 }
                 Size::Fit { .. } | Size::Grow { .. } => {
                     let (lo, hi) = kn.el.height.bounds();
                     fill.clamp(lo, hi)
                 }
                 size => size
-                    .definite(kn.pref_h, kn.min_h, Some(area))
+                    .definite(kn.layout.pref_h, kn.layout.min_h, Some(area))
                     .unwrap_or(fill),
             };
-            nodes[c].h = super::flex::clamp_to(kn, 1, Some(area), h);
+            nodes[c].layout.h = super::flex::clamp_to(kn, 1, Some(area), h);
         }
         // A subgrid child sizes its tracks again from these.
         if kind(nodes, c, axis) == Template::Subgrid {
-            nodes[c].layout_size[axis] = f32::NAN;
+            nodes[c].layout.layout_size[axis] = f32::NAN;
         }
     }
     // Masonry: pack along this axis now its items have their sizes.
     if kind_here == Template::Masonry {
         let outer = |k: &Node| {
             if axis == 0 {
-                k.w + k.margin_x[0] + k.margin_x[1]
+                k.layout.w + k.layout.margin_x[0] + k.layout.margin_x[1]
             } else {
-                k.h + super::flex::cross_room(k)
+                k.layout.h + super::flex::cross_room(k)
             }
         };
         let (packed, _) = masonry_pack(nodes, i, axis, &outer);
-        let g = nodes[i].grid.as_mut().unwrap();
+        let g = nodes[i].layout.grid.as_mut().unwrap();
         g.masonry = packed.iter().map(|p| p.1).collect();
         for (cell, (t, _)) in g.cells.iter_mut().zip(packed) {
             if axis == 0 {
@@ -1549,14 +1559,14 @@ fn resolve_axis(nodes: &mut [Node], i: usize, axis: usize, inner: f32) {
 
 /// Resolves a grid's columns at its inner width and sizes its children.
 pub(super) fn grid_columns(nodes: &mut [Node], i: usize, inner: f32) {
-    if nodes[i].grid.is_some() {
+    if nodes[i].layout.grid.is_some() {
         resolve_axis(nodes, i, 0, inner);
     }
 }
 
 /// Resolves a grid's rows at its inner height and sizes its children.
 pub(super) fn grid_rows(nodes: &mut [Node], i: usize, inner: f32) {
-    if nodes[i].grid.is_some() {
+    if nodes[i].layout.grid.is_some() {
         resolve_axis(nodes, i, 1, inner);
     }
 }
@@ -1565,7 +1575,7 @@ pub(super) fn grid_rows(nodes: &mut [Node], i: usize, inner: f32) {
 /// (x, y, width, height, justify, align); `None` past the cells.
 pub(super) fn areas_of(nodes: &[Node], i: usize) -> Vec<Option<(Rect, Cross, Cross)>> {
     let n = &nodes[i];
-    let Some(g) = &n.grid else {
+    let Some(g) = &n.layout.grid else {
         return Vec::new();
     };
     let masonry = [kind(nodes, i, 0), kind(nodes, i, 1)].map(|k| k == Template::Masonry);
@@ -1578,7 +1588,7 @@ pub(super) fn areas_of(nodes: &[Node], i: usize) -> Vec<Option<(Rect, Cross, Cro
             let (x0, cw) = if masonry[0] {
                 (
                     g.masonry.get(k).copied().unwrap_or(0.0),
-                    kn.w + kn.margin_x[0] + kn.margin_x[1],
+                    kn.layout.w + kn.layout.margin_x[0] + kn.layout.margin_x[1],
                 )
             } else {
                 g.span(0, col, cs)
@@ -1586,7 +1596,7 @@ pub(super) fn areas_of(nodes: &[Node], i: usize) -> Vec<Option<(Rect, Cross, Cro
             let (y0, rh) = if masonry[1] {
                 (
                     g.masonry.get(k).copied().unwrap_or(0.0),
-                    kn.h + super::flex::cross_room(kn),
+                    kn.layout.h + super::flex::cross_room(kn),
                 )
             } else {
                 g.span(1, row, rs)
@@ -1813,7 +1823,7 @@ pub(crate) fn derive_table(nodes: &[Node], kids: &[usize]) -> (Vec<usize>, Vec<u
 /// least its column box's width), the cells where the table put them.
 fn place_table(nodes: &mut [Node], i: usize) {
     let n = &nodes[i];
-    let Some(t) = &n.table else { return };
+    let Some(t) = &n.layout.table else { return };
     let gap = [
         n.el.gaps[0].unwrap_or(n.el.gap),
         n.el.gaps[1].unwrap_or(n.el.gap),
@@ -1842,13 +1852,13 @@ fn place_table(nodes: &mut [Node], i: usize) {
         collapsed: [vec![false; t.ncols], vec![false; t.nrows.max(1)]],
         ..GridLayout::default()
     };
-    nodes[i].grid = Some(layout);
+    nodes[i].layout.grid = Some(layout);
 }
 
 /// Places a table's row, group and column boxes over their slots, in its
 /// content box at `(x, y)`.
 pub(super) fn place_table_parts(nodes: &mut [Node], i: usize, x: f32, y: f32) {
-    let (Some(t), Some(g)) = (&nodes[i].table, &nodes[i].grid) else {
+    let (Some(t), Some(g)) = (&nodes[i].layout.table, &nodes[i].layout.grid) else {
         return;
     };
     let placed: Vec<(usize, Rect)> = t
@@ -1862,6 +1872,6 @@ pub(super) fn place_table_parts(nodes: &mut [Node], i: usize, x: f32, y: f32) {
         .collect();
     for (c, r) in placed {
         let n = &mut nodes[c];
-        (n.x, n.y, n.w, n.h) = (r.x, r.y, r.width, r.height);
+        (n.layout.x, n.layout.y, n.layout.w, n.layout.h) = (r.x, r.y, r.width, r.height);
     }
 }

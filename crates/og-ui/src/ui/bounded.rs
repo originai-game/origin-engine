@@ -95,7 +95,15 @@ pub(super) fn compare(ui: &Ui, twin: &Ui) {
                         n.placed.screen,
                         n.placed.alpha
                     ),
-                    (n.x, n.y, n.w, n.h, &n.lines, n.content_h, n.content_w),
+                    (
+                        n.layout.x,
+                        n.layout.y,
+                        n.layout.w,
+                        n.layout.h,
+                        &n.layout.lines,
+                        n.layout.content_h,
+                        n.layout.content_w
+                    ),
                     (&n.children, &n.out),
                 )
             )
@@ -109,7 +117,7 @@ pub(super) fn compare_tree(ui: &Ui, order: &[usize]) {
     let mut keys: Vec<(u64, usize)> = Vec::new();
     for &i in order {
         keys.push((ui.tree.nodes[i].key, i));
-        for l in &ui.tree.nodes[i].links {
+        for l in &ui.tree.nodes[i].layout.links {
             keys.push((child_key(ui.tree.nodes[i].key, l), i));
         }
     }

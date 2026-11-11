@@ -437,10 +437,10 @@ impl crate::ui::Style {
             .previous_nodes(layout)
             .find(|n| n.key == key)
             .or_else(|| tree.index.find(key).map(|i| &tree.nodes[i]))?;
-        if let Some(line) = n.rich_lines.first() {
+        if let Some(line) = n.layout.rich_lines.first() {
             return Some(line.pieces.iter().map(|p| p.text.chars().count()).sum());
         }
-        n.lines.first().map(|l| l.text.chars().count())
+        n.layout.lines.first().map(|l| l.text.chars().count())
     }
 }
 

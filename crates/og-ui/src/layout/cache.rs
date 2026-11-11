@@ -433,13 +433,13 @@ pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
         && a.widget == b.widget
         && a.shapes == b.shapes
         && a.decor == b.decor
-        && a.lines == b.lines
+        && a.layout.lines == b.layout.lines
         && a.selected == b.selected
         && a.props.text_path == b.props.text_path
-        && a.rich_lines == b.rich_lines
-        && a.col_rules == b.col_rules
-        && a.frag == b.frag
-        && a.wrap_lines == b.wrap_lines
+        && a.layout.rich_lines == b.layout.rich_lines
+        && a.layout.col_rules == b.layout.col_rules
+        && a.layout.frag == b.layout.frag
+        && a.layout.wrap_lines == b.layout.wrap_lines
 }
 
 impl LayoutCache {
@@ -503,7 +503,7 @@ impl LayoutCache {
             order.push(i);
             // An element skipping its contents (`content-visibility`)
             // never lays them out.
-            if self.visits(i) && !nodes[i].cv_skip {
+            if self.visits(i) && !nodes[i].layout.cv_skip {
                 stack.extend(nodes[i].ordered_children.iter().rev());
             }
         }
@@ -516,7 +516,7 @@ impl LayoutCache {
     fn open(&self, nodes: &[Node], order: &mut Vec<usize>, opened: &mut Vec<usize>, k: usize) {
         let i = order[k];
         if self.visits(i)
-            || nodes[i].cv_skip
+            || nodes[i].layout.cv_skip
             || opened.contains(&i)
             || nodes[i].ordered_children.is_empty()
         {
@@ -671,20 +671,20 @@ pub(crate) fn layout(
     let measure = cx.measure;
     let r = &nodes[root];
     let w = match r.el.width {
-        Size::Fit { .. } => r.pref_w.min(area.width).max(r.min_w),
+        Size::Fit { .. } => r.layout.pref_w.min(area.width).max(r.layout.min_w),
         Size::Grow { .. } => {
             let (lo, hi) = r.el.width.bounds();
             area.width.clamp(lo, hi)
         }
         size => size
-            .definite(r.pref_w, r.min_w, Some(area.width))
-            .unwrap_or(r.pref_w),
+            .definite(r.layout.pref_w, r.layout.min_w, Some(area.width))
+            .unwrap_or(r.layout.pref_w),
     };
-    nodes[root].w = super::flex::clamp_to(r, 0, Some(area.width), w);
+    nodes[root].layout.w = super::flex::clamp_to(r, 0, Some(area.width), w);
     // A clean node at the width it had keeps its children's widths, its
     // lines and its tracks.
     let same_w = |nodes: &[Node], kept: &LayoutCache, i: usize| {
-        kept.is_clean(i) && nodes[i].layout_size[0] == nodes[i].w
+        kept.is_clean(i) && nodes[i].layout.layout_size[0] == nodes[i].layout.w
     };
     let mut k = 0;
     while k < order.len() {
@@ -695,7 +695,7 @@ pub(crate) fn layout(
         }
         if same_w(nodes, kept, i) {
             // An auto-fit text keeps the step its lines were broken at.
-            let step = nodes[i].layout_step;
+            let step = nodes[i].layout.layout_step;
             if let (Content::Text(a), Some(step)) = (&mut nodes[i].content, step)
                 && !a.fit.is_empty()
             {
@@ -703,7 +703,7 @@ pub(crate) fn layout(
             }
         } else {
             kept.laid_out += 1;
-            if !nodes[i].cv_skip {
+            if !nodes[i].layout.cv_skip {
                 distribute_w(nodes, i, measure);
             }
             kept.open(nodes, &mut order, &mut opened, k);
@@ -734,24 +734,24 @@ pub(crate) fn layout(
     }
     let r = &nodes[root];
     let h = match r.el.height {
-        Size::Fit { .. } => r.pref_h,
+        Size::Fit { .. } => r.layout.pref_h,
         Size::Grow { .. } => {
             let (lo, hi) = r.el.height.bounds();
             area.height.clamp(lo, hi)
         }
         size => size
-            .definite(r.pref_h, r.min_h, Some(area.height))
-            .unwrap_or(r.pref_h),
+            .definite(r.layout.pref_h, r.layout.min_h, Some(area.height))
+            .unwrap_or(r.layout.pref_h),
     };
-    nodes[root].h = super::flex::clamp_to(r, 1, Some(area.height), h);
+    nodes[root].layout.h = super::flex::clamp_to(r, 1, Some(area.height), h);
     let same_wh = |nodes: &[Node], kept: &LayoutCache, i: usize| {
-        same_w(nodes, kept, i) && nodes[i].layout_size[1] == nodes[i].h
+        same_w(nodes, kept, i) && nodes[i].layout.layout_size[1] == nodes[i].layout.h
     };
     let mut k = 0;
     while k < order.len() {
         let i = order[k];
         if !skip(&frames, i) && !same_wh(nodes, kept, i) {
-            if !nodes[i].cv_skip {
+            if !nodes[i].layout.cv_skip {
                 distribute_h(nodes, i, measure);
             }
             kept.open(nodes, &mut order, &mut opened, k);
@@ -765,11 +765,11 @@ pub(crate) fn layout(
             icb: [area.width, area.height],
             laid: 0,
         };
-        super::writing::refit(nodes, f, &mut order, &|n| n.layout_size, &mut cx);
+        super::writing::refit(nodes, f, &mut order, &|n| n.layout.layout_size, &mut cx);
         kept.laid_out += cx.laid;
     }
-    nodes[root].x = area.x;
-    nodes[root].y = area.y;
+    nodes[root].layout.x = area.x;
+    nodes[root].layout.y = area.y;
     let mut k = 0;
     while k < order.len() {
         let i = order[k];
@@ -777,15 +777,15 @@ pub(crate) fn layout(
             k += 1;
             continue;
         }
-        if nodes[i].cv_skip {
+        if nodes[i].layout.cv_skip {
             // Its contents keep where they were: nothing reads them.
         } else if !nodes[i].scrolls() && same_wh(nodes, kept, i) {
             for &c in &nodes[i].ordered_children.clone() {
-                nodes[c].x = nodes[i].x + nodes[c].layout_offset[0];
-                nodes[c].y = nodes[i].y + nodes[c].layout_offset[1];
+                nodes[c].layout.x = nodes[i].layout.x + nodes[c].layout.layout_offset[0];
+                nodes[c].layout.y = nodes[i].layout.y + nodes[c].layout.layout_offset[1];
             }
             // Children left out keep their places while it keeps its own.
-            if [nodes[i].x, nodes[i].y] != nodes[i].laid_xy {
+            if [nodes[i].layout.x, nodes[i].layout.y] != nodes[i].layout.laid_xy {
                 kept.open(nodes, &mut order, &mut opened, k);
             }
         } else {
@@ -802,46 +802,49 @@ pub(crate) fn layout(
     while k < order.len() {
         let i = order[k];
         let n = &nodes[i];
-        let rect = Rect::new(n.x, n.y, n.w, n.h);
+        let rect = Rect::new(n.layout.x, n.layout.y, n.layout.w, n.layout.h);
         let (parent_clip, src) = if n.up == NONE || i == root {
             (clip, NONE)
         } else {
             let p = &nodes[n.up];
             if p.el.scroll || p.el.scroll_x {
-                (p.laid_clip.intersect(&p.laid_rect), n.up)
+                (p.layout.laid_clip.intersect(&p.layout.laid_rect), n.up)
             } else {
-                (p.laid_clip, p.placed.clip_src)
+                (p.layout.laid_clip, p.placed.clip_src)
             }
         };
-        if parent_clip != nodes[i].laid_clip || src != nodes[i].placed.clip_src {
+        if parent_clip != nodes[i].layout.laid_clip || src != nodes[i].placed.clip_src {
             kept.open(nodes, &mut order, &mut opened, k);
         }
         nodes[i].placed.clip = parent_clip;
-        nodes[i].laid_clip = parent_clip;
+        nodes[i].layout.laid_clip = parent_clip;
         nodes[i].placed.clip_src = src;
         nodes[i].placed.rect = rect.snapped(dpr);
-        nodes[i].laid_rect = nodes[i].placed.rect;
-        nodes[i].laid_xy = [nodes[i].x, nodes[i].y];
+        nodes[i].layout.laid_rect = nodes[i].placed.rect;
+        nodes[i].layout.laid_xy = [nodes[i].layout.x, nodes[i].layout.y];
         kept.lay(i);
-        if nodes[i].layout_size != [nodes[i].w, nodes[i].h] {
+        if nodes[i].layout.layout_size != [nodes[i].layout.w, nodes[i].layout.h] {
             kept.resized.push(i);
         }
-        nodes[i].layout_size = [nodes[i].w, nodes[i].h];
-        nodes[i].layout_offset = if nodes[i].up == NONE || i == root {
+        nodes[i].layout.layout_size = [nodes[i].layout.w, nodes[i].layout.h];
+        nodes[i].layout.layout_offset = if nodes[i].up == NONE || i == root {
             [0.0; 2]
         } else {
             let parent = &nodes[nodes[i].up];
-            [nodes[i].x - parent.x, nodes[i].y - parent.y]
+            [
+                nodes[i].layout.x - parent.layout.x,
+                nodes[i].layout.y - parent.layout.y,
+            ]
         };
-        nodes[i].layout_step = match &nodes[i].content {
+        nodes[i].layout.layout_step = match &nodes[i].content {
             Content::Text(text) if !text.fit.is_empty() => Some(text.step),
             _ => None,
         };
         queries.measurements.observe(
             nodes[i].key,
             crate::ui::settlement::ContentBox {
-                width: (nodes[i].w - nodes[i].el.padding.horizontal()).max(0.0),
-                height: (nodes[i].h - nodes[i].el.padding.vertical()).max(0.0),
+                width: (nodes[i].layout.w - nodes[i].el.padding.horizontal()).max(0.0),
+                height: (nodes[i].layout.h - nodes[i].el.padding.vertical()).max(0.0),
             },
         );
         k += 1;
@@ -883,7 +886,7 @@ mod text_cache {
             .iter()
             .filter(|n| matches!(n.content, Content::Text(_)))
             .map(|n| {
-                let lines = n.lines.iter().map(|l| (l.text.clone(), l.width));
+                let lines = n.layout.lines.iter().map(|l| (l.text.clone(), l.width));
                 (lines.collect(), n.placed.rect)
             })
             .collect()

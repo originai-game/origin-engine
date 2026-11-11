@@ -136,22 +136,22 @@ fn along(from: u8, at: f32, len: f32, size: [f32; 2]) -> (usize, f32) {
 /// extent and intrinsic sizes.
 fn turn_back(nodes: &mut [Node], members: &[usize], s: Sides) {
     let r = members[0];
-    let (fw, fh) = (nodes[r].w, nodes[r].h);
+    let (fw, fh) = (nodes[r].layout.w, nodes[r].layout.h);
     let size = if turns(s) { [fh, fw] } else { [fw, fh] };
     for &m in members {
         let n = &mut nodes[m];
         let mut xy = [0.0; 2];
-        let (ax, sx) = along(s[3], n.x, n.w, size);
+        let (ax, sx) = along(s[3], n.layout.x, n.layout.w, size);
         xy[ax] = sx;
-        let (ay, sy) = along(s[0], n.y, n.h, size);
+        let (ay, sy) = along(s[0], n.layout.y, n.layout.h, size);
         xy[ay] = sy;
-        [n.x, n.y] = xy;
+        [n.layout.x, n.layout.y] = xy;
         if turns(s) {
-            std::mem::swap(&mut n.w, &mut n.h);
-            std::mem::swap(&mut n.content_w, &mut n.content_h);
-            std::mem::swap(&mut n.pref_w, &mut n.pref_h);
-            std::mem::swap(&mut n.min_w, &mut n.min_h);
-            n.min_content.swap(0, 1);
+            std::mem::swap(&mut n.layout.w, &mut n.layout.h);
+            std::mem::swap(&mut n.layout.content_w, &mut n.layout.content_h);
+            std::mem::swap(&mut n.layout.pref_w, &mut n.layout.pref_h);
+            std::mem::swap(&mut n.layout.min_w, &mut n.layout.min_h);
+            n.layout.min_content.swap(0, 1);
         }
     }
 }
@@ -162,8 +162,8 @@ fn shift_inside(nodes: &mut [Node], i: usize, d: [f32; 2]) {
         return;
     }
     for j in subtree(nodes, i).into_iter().skip(1) {
-        nodes[j].x += d[0];
-        nodes[j].y += d[1];
+        nodes[j].layout.x += d[0];
+        nodes[j].layout.y += d[1];
     }
 }
 
@@ -224,23 +224,23 @@ pub(super) fn nest(
     let n = &nodes[r];
     let w = match (size, n.el.width) {
         (Some(sz), _) => sz[0],
-        (None, Size::Fit { .. }) => n.pref_w.min(avail[0]).max(n.min_w),
+        (None, Size::Fit { .. }) => n.layout.pref_w.min(avail[0]).max(n.layout.min_w),
         (None, Size::Grow { .. }) => {
             let (lo, hi) = n.el.width.bounds();
             avail[0].clamp(lo, hi)
         }
         (None, sz) => sz
-            .definite(n.pref_w, n.min_w, Some(avail[0]))
-            .unwrap_or(n.pref_w),
+            .definite(n.layout.pref_w, n.layout.min_w, Some(avail[0]))
+            .unwrap_or(n.layout.pref_w),
     };
-    nodes[r].w = if size.is_some() {
+    nodes[r].layout.w = if size.is_some() {
         w
     } else {
         clamp_to(&nodes[r], 0, Some(avail[0]), w)
     };
     for &m in &members {
         if !inner(nodes, m) {
-            if !nodes[m].cv_skip {
+            if !nodes[m].layout.cv_skip {
                 distribute_w(nodes, m, cx.measure);
             }
             cx.laid += 1;
@@ -263,30 +263,30 @@ pub(super) fn nest(
         (Some(sz), _) => sz[1],
         (None, Size::Grow { .. }) => {
             let (lo, hi) = n.el.height.bounds();
-            avail[1].clamp(lo, hi).max(n.pref_h)
+            avail[1].clamp(lo, hi).max(n.layout.pref_h)
         }
-        (None, Size::Fit { .. }) => n.pref_h,
+        (None, Size::Fit { .. }) => n.layout.pref_h,
         (None, sz) => sz
-            .definite(n.pref_h, n.min_h, Some(avail[1]))
-            .unwrap_or(n.pref_h),
+            .definite(n.layout.pref_h, n.layout.min_h, Some(avail[1]))
+            .unwrap_or(n.layout.pref_h),
     };
-    nodes[r].h = if size.is_some() {
+    nodes[r].layout.h = if size.is_some() {
         h
     } else {
         clamp_to(&nodes[r], 1, Some(avail[1]), h)
     };
     for &m in &members {
-        if !inner(nodes, m) && !nodes[m].cv_skip {
+        if !inner(nodes, m) && !nodes[m].layout.cv_skip {
             distribute_h(nodes, m, cx.measure);
         }
     }
     // An inner frame its boxes gave another size lays out again at it.
     for &(m, p) in &produced {
-        let got = [nodes[m].w, nodes[m].h];
+        let got = [nodes[m].layout.w, nodes[m].layout.h];
         if got != p {
             let fixed = if turns(s) { [got[1], got[0]] } else { got };
             nest(nodes, m, Some(s), cx.icb, Some(fixed), cx);
-            [nodes[m].w, nodes[m].h] = got;
+            [nodes[m].layout.w, nodes[m].layout.h] = got;
         }
     }
     // Scroll offsets in the frame: an axis that runs against the space's
@@ -313,23 +313,23 @@ pub(super) fn nest(
     }
     let outer = cx.scroll;
     let scroll = |key: u64| offsets.get(&key).copied().unwrap_or_else(|| outer(key));
-    nodes[r].x = 0.0;
-    nodes[r].y = 0.0;
+    nodes[r].layout.x = 0.0;
+    nodes[r].layout.y = 0.0;
     for &m in &members {
-        if !inner(nodes, m) && !nodes[m].cv_skip {
+        if !inner(nodes, m) && !nodes[m].layout.cv_skip {
             position(nodes, m, &scroll);
         }
     }
     // Its intrinsic sizes to the frame around it: the inline size it laid
     // out at (no less than its least) and its block size.
     let n = &nodes[r];
-    let inline = (n.w, n.min_w.min(n.w));
-    let block = n.h;
+    let inline = (n.layout.w, n.layout.min_w.min(n.layout.w));
+    let block = n.layout.h;
     nodes[r].el.bfc = bfc;
     turn_back(nodes, &members, s);
     for &m in &members[1..] {
         if inner(nodes, m) {
-            let d = [nodes[m].x, nodes[m].y];
+            let d = [nodes[m].layout.x, nodes[m].layout.y];
             shift_inside(nodes, m, d);
         }
     }
@@ -352,10 +352,15 @@ pub(super) fn nest(
         space
     };
     let n = &mut nodes[r];
-    (n.pref_w, n.min_w, n.pref_h, n.min_h) = (a.0, a.1, b.0, b.1);
-    n.min_content = [a.1, b.1];
-    n.w = a.0;
-    n.h = b.0;
+    (
+        n.layout.pref_w,
+        n.layout.min_w,
+        n.layout.pref_h,
+        n.layout.min_h,
+    ) = (a.0, a.1, b.0, b.1);
+    n.layout.min_content = [a.1, b.1];
+    n.layout.w = a.0;
+    n.layout.h = b.0;
     [a.0, b.0]
 }
 
@@ -463,7 +468,7 @@ pub(super) fn refit(
 ) {
     for at in 0..f.roots.len() {
         let (r, p) = f.roots[at];
-        let got = [nodes[r].w, nodes[r].h];
+        let got = [nodes[r].layout.w, nodes[r].layout.h];
         let was = p.unwrap_or_else(|| laid_size(&nodes[r]));
         if got == was {
             continue;
@@ -477,7 +482,7 @@ pub(super) fn refit(
         }
         let icb = cx.icb;
         nest(nodes, r, None, icb, Some(got), cx);
-        [nodes[r].w, nodes[r].h] = got;
+        [nodes[r].layout.w, nodes[r].layout.h] = got;
         f.roots[at].1 = Some(got);
     }
 }
@@ -487,7 +492,7 @@ pub(super) fn refit(
 pub(super) fn settle(nodes: &mut [Node], f: &Frames) {
     for &(r, p) in &f.roots {
         if p.is_some() {
-            let d = [nodes[r].x, nodes[r].y];
+            let d = [nodes[r].layout.x, nodes[r].layout.y];
             shift_inside(nodes, r, d);
         }
     }

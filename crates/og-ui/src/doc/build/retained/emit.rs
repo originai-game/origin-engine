@@ -173,7 +173,12 @@ impl RetainedHost {
         for &i in &owned.slots {
             let node = &ui.tree.nodes[i];
             keys.push(node.key);
-            keys.extend(node.links.iter().map(|l| crate::id::child_key(node.key, l)));
+            keys.extend(
+                node.layout
+                    .links
+                    .iter()
+                    .map(|l| crate::id::child_key(node.key, l)),
+            );
         }
         for key in &keys {
             self.owner_of.insert(*key, identity.clone());

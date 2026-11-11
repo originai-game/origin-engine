@@ -56,7 +56,7 @@ pub(crate) mod feat {
 /// align by a baseline.
 pub(crate) fn baseline_row(n: &Node) -> bool {
     use crate::layout::Cross;
-    matches!(n.el.cross, Cross::Baseline | Cross::LastBaseline) || n.baseline_items
+    matches!(n.el.cross, Cross::Baseline | Cross::LastBaseline) || n.layout.baseline_items
 }
 
 /// The features of node `n`.
@@ -94,7 +94,7 @@ pub(crate) fn features(n: &Node) -> u32 {
     if n.scrolls() {
         f |= feat::SCROLLS;
     }
-    if n.el.contain.visibility != crate::layout::ContentVisibility::Visible || n.cv_skip {
+    if n.el.contain.visibility != crate::layout::ContentVisibility::Visible || n.layout.cv_skip {
         f |= feat::SKIPS;
     }
     if n.el.resize != 0 {
@@ -359,7 +359,7 @@ impl Ui {
         } else {
             o.skip_in[up]
         };
-        let skip_in = skip.max(match (n.cv_skip, n.el.contain.visibility) {
+        let skip_in = skip.max(match (n.layout.cv_skip, n.el.contain.visibility) {
             (false, _) => 0,
             (true, crate::layout::ContentVisibility::Hidden) => SKIP_HIDDEN,
             (true, _) => SKIP_AUTO,
@@ -505,7 +505,7 @@ impl Ui {
             if n.scope {
                 flags |= HIT_SCOPE;
             }
-            if flags == 0 && n.links.is_empty() && n.el.resize == 0 {
+            if flags == 0 && n.layout.links.is_empty() && n.el.resize == 0 {
                 break 'node;
             }
             if pass {
@@ -587,7 +587,7 @@ impl Ui {
                 }
             }
             // A rich text's links are controls of their own.
-            if !n.links.is_empty() && !n.placed.inert {
+            if !n.layout.links.is_empty() && !n.placed.inert {
                 for (l, lr) in self.rich_links(i) {
                     let lr = n.placed.world.map_rect(&lr);
                     let shown = lr.intersect(&n.placed.clip);

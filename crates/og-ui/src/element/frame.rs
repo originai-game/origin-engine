@@ -282,7 +282,7 @@ impl crate::ui::Layout {
         let n = &tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
-                let line = n.lines.first()?;
+                let line = n.layout.lines.first()?;
                 let m = &env
                     .fonts
                     .for_styled(tc.font, tc.step.weight, false, &tc.text)
@@ -290,14 +290,14 @@ impl crate::ui::Layout {
                     .metrics;
                 let lh = tc.line_height();
                 let inner = n.placed.rect.inset(&n.el.padding);
-                let block = lh * n.lines.len() as f32;
+                let block = lh * n.layout.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
                 Some(m.baseline(&line.text, top, lh, tc.step.size))
             }
             Content::Rich(_) => {
-                let l = n.rich_lines.first()?;
+                let l = n.layout.rich_lines.first()?;
                 // A first line floats moved down (`Node::wrap_lines`).
-                let drop = n.wrap_lines.first().map_or(0.0, |w| w[1]);
+                let drop = n.layout.wrap_lines.first().map_or(0.0, |w| w[1]);
                 Some(n.placed.rect.y + n.el.padding.top + drop + l.baseline)
             }
             _ => n
@@ -335,8 +335,8 @@ impl crate::ui::Layout {
                     .filter(|s| s[0] % 2 == 1)
                     .map(|s| if s[0] == 3 { 1.0 } else { -1.0 });
             let kids = n.children.clone();
-            let lines = if n.el.wrap && !n.rows.is_empty() {
-                n.rows.clone()
+            let lines = if n.el.wrap && !n.layout.rows.is_empty() {
+                n.layout.rows.clone()
             } else {
                 vec![(0, kids.len())]
             };
@@ -345,7 +345,7 @@ impl crate::ui::Layout {
             // A line whose line box holds a `vertical-align` was placed by
             // layout (`Node::inline_rows`), its baselines with it.
             let held: Vec<bool> = (0..lines.len())
-                .map(|r| n.inline_rows.get(r).copied().flatten().is_some())
+                .map(|r| n.layout.inline_rows.get(r).copied().flatten().is_some())
                 .collect();
             for (s, e, last) in lines
                 .into_iter()
@@ -414,7 +414,7 @@ impl crate::ui::Layout {
             };
             // Its target's box before a right-to-left mirror, as laid out
             // this frame or kept from the last.
-            let tr = tree.nodes[t].laid_rect;
+            let tr = tree.nodes[t].layout.laid_rect;
             let n = &tree.nodes[i];
             let (ax, ay) = p.anchor_at.fractions();
             let (ox, oy) = p.anchor_self.fractions();
@@ -465,7 +465,7 @@ impl crate::ui::Layout {
         let n = &tree.nodes[i];
         match &n.content {
             Content::Text(tc) => {
-                let line = n.lines.last()?;
+                let line = n.layout.lines.last()?;
                 let m = &env
                     .fonts
                     .for_styled(tc.font, tc.step.weight, false, &tc.text)
@@ -473,15 +473,15 @@ impl crate::ui::Layout {
                     .metrics;
                 let lh = tc.line_height();
                 let inner = n.placed.rect.inset(&n.el.padding);
-                let block = lh * n.lines.len() as f32;
+                let block = lh * n.layout.lines.len() as f32;
                 let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
-                let top = top + lh * (n.lines.len() - 1) as f32;
+                let top = top + lh * (n.layout.lines.len() - 1) as f32;
                 Some(m.baseline(&line.text, top, lh, tc.step.size))
             }
             Content::Rich(_) => {
-                let (last, before) = n.rich_lines.split_last()?;
+                let (last, before) = n.layout.rich_lines.split_last()?;
                 let above: f32 = before.iter().map(|l| l.height).sum();
-                let drop = n.wrap_lines.last().map_or(0.0, |w| w[1]);
+                let drop = n.layout.wrap_lines.last().map_or(0.0, |w| w[1]);
                 Some(n.placed.rect.y + n.el.padding.top + above + drop + last.baseline)
             }
             _ => n
@@ -507,18 +507,18 @@ impl crate::ui::Tree {
         for &j in &sub {
             let n = &mut self.nodes[j];
             if layout {
-                n.x += dx;
-                n.y += dy;
+                n.layout.x += dx;
+                n.layout.y += dy;
             }
             n.placed.rect.x += dx;
             n.placed.rect.y += dy;
-            n.laid_rect.x += dx;
-            n.laid_rect.y += dy;
+            n.layout.laid_rect.x += dx;
+            n.layout.laid_rect.y += dy;
             if n.placed.clip_src != NONE && inside.contains(&n.placed.clip_src) {
                 n.placed.clip.x += dx;
                 n.placed.clip.y += dy;
-                n.laid_clip.x += dx;
-                n.laid_clip.y += dy;
+                n.layout.laid_clip.x += dx;
+                n.layout.laid_clip.y += dy;
             }
         }
     }
@@ -534,14 +534,14 @@ impl crate::ui::Tree {
             Content::Text(tc) => {
                 let v = tc.vertical?;
                 let k = if last {
-                    n.lines.len().checked_sub(1)?
+                    n.layout.lines.len().checked_sub(1)?
                 } else {
                     0
                 };
-                n.lines.first()?;
+                n.layout.lines.first()?;
                 let lh = tc.line_height();
                 let inner = n.placed.rect.inset(&n.el.padding);
-                let off = ((inner.width - lh * n.lines.len() as f32) / 2.0).max(0.0);
+                let off = ((inner.width - lh * n.layout.lines.len() as f32) / 2.0).max(0.0);
                 Some(if v.mode.block_rl() {
                     inner.right() - off - (k as f32 + 0.5) * lh
                 } else {
@@ -706,7 +706,7 @@ impl crate::ui::Layout {
                     let child = &nodes[c];
                     // A box among floats changes what they shorten and
                     // move; its size alone is not all it gives its parent.
-                    if child.beside || !child.floats.is_empty() {
+                    if child.layout.beside || !child.floats.is_empty() {
                         return k.clean[c];
                     }
                     // A fixed box still lays out its dirty contents, but
@@ -716,13 +716,13 @@ impl crate::ui::Layout {
                             && matches!(child.el.height, Size::Fixed(_))
                             // Nor can they through its edge, unless a
                             // child's top margin collapses through it.
-                            && (written[c] || !child.collapse_in[0])
+                            && (written[c] || !child.layout.collapse_in[0])
                             && (!written[c]
                                 || k.prev.get(&c).is_some_and(|old| {
                                     child.el.width == old.el.width
                                         && child.el.height == old.el.height
                                         && child.el.margin == old.el.margin
-                                        && !old.collapse_in[0]
+                                        && !old.layout.collapse_in[0]
                                         && child.props.place == old.props.place
                                         && child.props.position == old.props.position
                                         && child.props.insets == old.props.insets

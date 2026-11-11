@@ -811,7 +811,7 @@ impl Ui {
             align: desc.align,
             wrap: !desc.nowrap,
         });
-        n.links = links;
+        n.layout.links = links;
         out
     }
 
@@ -858,12 +858,12 @@ impl Ui {
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let mut out = Vec::new();
         let mut line_y = inner.y;
-        for (k, line) in n.rich_lines.iter().enumerate() {
+        for (k, line) in n.layout.rich_lines.iter().enumerate() {
             let segments = visual_segments(rc, &self.env.fonts, line, self.env.direction);
             let width: f32 = segments.iter().map(|s| s.width).sum();
             // Its line box: the room floats leave it (`Node::wrap_lines`,
             // its drop below the lines above), or its box.
-            let (bx, bw, dy) = match n.wrap_lines.get(k) {
+            let (bx, bw, dy) = match n.layout.wrap_lines.get(k) {
                 Some(&[dx, dy, w]) if rtl => {
                     (inner.x + inner.width - (dx + w) * sk, w * sk, dy * sk)
                 }
@@ -901,7 +901,8 @@ impl Ui {
             return Vec::new();
         };
         let pieces = self.rich_pieces(i);
-        n.links
+        n.layout
+            .links
             .iter()
             .filter_map(|l| {
                 let rects: Vec<Rect> = pieces
@@ -1350,9 +1351,9 @@ impl Ui {
         let inner = self.tree.rich_inner(i);
         let from_bottom = self.rich_from_bottom(i, v);
         let mut out = Vec::new();
-        let mut cols = Vec::with_capacity(n.rich_lines.len());
+        let mut cols = Vec::with_capacity(n.layout.rich_lines.len());
         let mut line_at = 0.0;
-        for (k, line) in n.rich_lines.iter().enumerate() {
+        for (k, line) in n.layout.rich_lines.iter().enumerate() {
             let segments: Vec<Segment> = line
                 .pieces
                 .iter()
@@ -1364,11 +1365,11 @@ impl Ui {
                     rise: p.rise,
                 })
                 .collect();
-            let [dx, dy, room] =
-                n.wrap_lines
-                    .get(k)
-                    .copied()
-                    .unwrap_or([0.0, 0.0, inner.height / sk.max(1e-6)]);
+            let [dx, dy, room] = n.layout.wrap_lines.get(k).copied().unwrap_or([
+                0.0,
+                0.0,
+                inner.height / sk.max(1e-6),
+            ]);
             let across = line.height * sk;
             let col = if v.mode.block_rl() {
                 inner.right() - (line_at + dy * sk) - across
@@ -1536,7 +1537,7 @@ impl Ui {
         if let Some((a, b)) = n.selected {
             let mut first = 0usize;
             let lines = self.vertical_rich_lines(i);
-            for (line, l) in lines.iter().zip(&n.rich_lines) {
+            for (line, l) in lines.iter().zip(&n.layout.rich_lines) {
                 let count: usize = l.pieces.iter().map(|p| p.text.chars().count()).sum();
                 let (a, b) = (
                     (a as usize).saturating_sub(first),

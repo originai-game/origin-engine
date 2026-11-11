@@ -147,7 +147,7 @@ impl Ui {
             let mut start = 0u32;
             let lines = lines
                 .into_iter()
-                .zip(&n.lines)
+                .zip(&n.layout.lines)
                 .map(|(l, line)| {
                     let l = vertical_line(l, line, start, up);
                     start += l.chars.len() as u32 + 1;
@@ -176,12 +176,13 @@ impl Ui {
             rect.width - pad.horizontal() * sk,
             rect.height - pad.vertical() * sk,
         );
-        let block = lh * n.lines.len() as f32;
+        let block = lh * n.layout.lines.len() as f32;
         let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
         let rtl = self.env.direction == og_i18n::Direction::Rtl;
         let tracking = tc.tracking();
         let mut start = 0u32;
         let lines = n
+            .layout
             .lines
             .iter()
             .enumerate()
@@ -410,10 +411,11 @@ impl crate::ui::Tree {
     pub(crate) fn select_source(&self, i: usize) -> Option<(String, Vec<crate::text::Line>)> {
         let n = &self.nodes[i];
         match &n.content {
-            Content::Text(tc) => Some((tc.text.clone(), n.lines.clone())),
+            Content::Text(tc) => Some((tc.text.clone(), n.layout.lines.clone())),
             Content::Rich(rc) if n.rich_vertical().is_some() => {
                 let source = rc.spans.iter().filter(|s| s.atom.is_none());
                 let lines = n
+                    .layout
                     .rich_lines
                     .iter()
                     .map(|l| crate::text::Line {

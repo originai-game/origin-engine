@@ -62,6 +62,7 @@ impl TreeIndex {
     fn enter(&mut self, nodes: &[Node], i: usize) {
         self.by_key.insert(nodes[i].key, i);
         let keys: Vec<u64> = nodes[i]
+            .layout
             .links
             .iter()
             .map(|l| child_key(nodes[i].key, l))
@@ -374,7 +375,7 @@ impl crate::ui::Tree {
         }
         for &i in self.emitted.iter().chain(repainted.unwrap_or_default()) {
             // A rich text's links are nodes of their own: the shape again.
-            if !self.nodes[i].links.is_empty() {
+            if !self.nodes[i].layout.links.is_empty() {
                 log.note_all();
             }
         }

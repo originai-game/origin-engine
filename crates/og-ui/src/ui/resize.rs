@@ -70,7 +70,7 @@ impl crate::ui::Tree {
                         key: n.key,
                         axes: n.el.resize,
                         from: p,
-                        size: [n.w, n.h],
+                        size: [n.layout.w, n.layout.h],
                     })
             });
         }

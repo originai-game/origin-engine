@@ -141,9 +141,9 @@ struct FlexInputs {
 fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
     let axis = usize::from(!horizontal);
     let (size, pref, min) = if horizontal {
-        (n.el.width, n.pref_w, n.min_w)
+        (n.el.width, n.layout.pref_w, n.layout.min_w)
     } else {
-        (n.el.height, n.pref_h, n.min_h)
+        (n.el.height, n.layout.pref_h, n.layout.min_h)
     };
     let f = n.el.flex.unwrap_or(match size {
         Size::Grow { .. } => FlexItem {
@@ -187,7 +187,7 @@ fn flex_inputs(n: &Node, horizontal: bool, inner: f32) -> FlexInputs {
     } else {
         n.el.scroll
     };
-    let content = n.min_content[axis];
+    let content = n.layout.min_content[axis];
     let auto = if scrolls {
         0.0
     } else {
@@ -312,9 +312,9 @@ fn main_sizes(
     for &c in kids {
         let n = &nodes[c];
         let (size, pref, min) = if horizontal {
-            (n.el.width, n.pref_w, n.min_w)
+            (n.el.width, n.layout.pref_w, n.layout.min_w)
         } else {
-            (n.el.height, n.pref_h, n.min_h)
+            (n.el.height, n.layout.pref_h, n.layout.min_h)
         };
         let base = size.definite(pref, min, Some(inner)).unwrap_or(pref);
         sizes.push(clamp_to(n, usize::from(!horizontal), Some(inner), base));
