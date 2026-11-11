@@ -807,6 +807,43 @@ impl Probe {
         desc: CommandDesc,
         handler: impl Fn(&mut World, &[String]) -> Result<(), String> + 'static,
     ) -> og_core::Result<()> {
+        self.commands.register_command(name, desc, handler)
+    }
+
+    /// Register a dump action: `handler` answers JSON for the world as of
+    /// the tick it runs (with the arguments before `path_arg`), written as
+    /// an output at `args[path_arg]` or `<name>-<tick>.json`. Refused as
+    /// [`Self::register_command`] refuses.
+    pub fn register_dump(
+        &mut self,
+        name: &str,
+        desc: CommandDesc,
+        path_arg: usize,
+        handler: impl Fn(&World, &[String]) -> Result<Value, String> + 'static,
+    ) -> og_core::Result<()> {
+        self.commands.register_dump(name, desc, path_arg, handler)
+    }
+
+    /// The queue engine modules push actions into from inside a tick; they
+    /// run at the start of the next tick (before its scheduled steps).
+    pub fn inbox(&self) -> Inbox {
+        self.commands.inbox.clone()
+    }
+
+    /// Every action the channel knows: core actions, then registered ones by name.
+    pub fn help(&self) -> Vec<CommandInfo> {
+        self.commands.help()
+    }
+}
+
+impl state::Commands {
+    /// [`Probe::register_command`].
+    pub(super) fn register_command(
+        &mut self,
+        name: &str,
+        desc: CommandDesc,
+        handler: impl Fn(&mut World, &[String]) -> Result<(), String> + 'static,
+    ) -> og_core::Result<()> {
         let valid = command::parse(&format!("0:{name}"))
             .is_ok_and(|s| s.len() == 1 && s[0].action == name && s[0].args.is_empty());
         if !valid {
@@ -821,13 +858,13 @@ impl Probe {
                 format!("'{name}' is a core action; register under another name"),
             ));
         }
-        if self.commands.registered.contains_key(name) {
+        if self.registered.contains_key(name) {
             return Err(Error::new(
                 ErrorKind::Invalid,
                 format!("'{name}' is already registered"),
             ));
         }
-        self.commands.registered.insert(
+        self.registered.insert(
             name.to_owned(),
             Registered {
                 desc,
@@ -837,11 +874,8 @@ impl Probe {
         Ok(())
     }
 
-    /// Register a dump action: `handler` answers JSON for the world as of
-    /// the tick it runs (with the arguments before `path_arg`), written as
-    /// an output at `args[path_arg]` or `<name>-<tick>.json`. Refused as
-    /// [`Self::register_command`] refuses.
-    pub fn register_dump(
+    /// [`Probe::register_dump`].
+    pub(super) fn register_dump(
         &mut self,
         name: &str,
         desc: CommandDesc,
@@ -855,49 +889,61 @@ impl Probe {
         #[cfg(not(feature = "publish"))]
         {
             self.register_command(name, desc, |_, _| Ok(()))?;
-            if let Some(r) = self.commands.registered.get_mut(name) {
+            if let Some(r) = self.registered.get_mut(name) {
                 r.handler = Handler::Dump(Rc::new(handler), path_arg);
             }
         }
         Ok(())
     }
 
-    /// The queue engine modules push actions into from inside a tick; they
-    /// run at the start of the next tick (before its scheduled steps).
-    pub fn inbox(&self) -> Inbox {
-        self.commands.inbox.clone()
-    }
-
-    /// Every action the channel knows: core actions, then registered ones by name.
-    pub fn help(&self) -> Vec<CommandInfo> {
+    /// [`Probe::help`].
+    pub(super) fn help(&self) -> Vec<CommandInfo> {
         let core = CORE_ACTIONS.iter().map(|(name, usage, doc)| CommandInfo {
             name: (*name).to_owned(),
             usage: (*usage).to_owned(),
             doc: (*doc).to_owned(),
             core: true,
         });
-        let registered = self
-            .commands
-            .registered
-            .iter()
-            .map(|(name, r)| CommandInfo {
-                name: name.clone(),
-                usage: if r.desc.usage.is_empty() {
-                    name.clone()
-                } else {
-                    format!("{name}:{}", r.desc.usage)
-                },
-                doc: r.desc.doc.clone(),
-                core: false,
-            });
+        let registered = self.registered.iter().map(|(name, r)| CommandInfo {
+            name: name.clone(),
+            usage: if r.desc.usage.is_empty() {
+                name.clone()
+            } else {
+                format!("{name}:{}", r.desc.usage)
+            },
+            doc: r.desc.doc.clone(),
+            core: false,
+        });
         core.chain(registered).collect()
+    }
+
+    /// [`Probe::act`].
+    pub(super) fn act(
+        &mut self,
+        world: &mut World,
+        action: &str,
+        args: &[String],
+    ) -> Option<Result<(), String>> {
+        match self.registered.get(action).map(|r| r.handler.clone())? {
+            Handler::Act(handler) => Some(handler(world, args)),
+            Handler::Dump(..) => Some(Err(format!(
+                "`{action}` is a dump; run it through a commands script"
+            ))),
+        }
+    }
+
+    /// [`Probe::registered`].
+    pub(super) fn registered(&self) -> Vec<String> {
+        self.registered.keys().cloned().collect()
     }
 
     fn knows(&self, action: &str) -> bool {
         CORE_ACTIONS.iter().any(|(name, _, _)| *name == action)
-            || self.commands.registered.contains_key(action)
+            || self.registered.contains_key(action)
     }
+}
 
+impl Probe {
     /// Runs a registered action now, outside the schedule (a host's
     /// `engine.command`, `og run --setup`). `None` for a name nothing
     /// registered; a dump refuses, since its output belongs to a script.
@@ -907,22 +953,12 @@ impl Probe {
         action: &str,
         args: &[String],
     ) -> Option<Result<(), String>> {
-        match self
-            .commands
-            .registered
-            .get(action)
-            .map(|r| r.handler.clone())?
-        {
-            Handler::Act(handler) => Some(handler(world, args)),
-            Handler::Dump(..) => Some(Err(format!(
-                "`{action}` is a dump; run it through a commands script"
-            ))),
-        }
+        self.commands.act(world, action, args)
     }
 
     /// The registered actions' names, for a refusal that lists them.
     pub fn registered(&self) -> Vec<String> {
-        self.commands.registered.keys().cloned().collect()
+        self.commands.registered()
     }
 
     /// Schedule a script on simulation time from the current tick: a step at
@@ -953,7 +989,7 @@ impl Probe {
             // start: the float error of the division is not a time within it.
             let off = exact - exact.round();
             let within = if off.abs() < 1e-6 { 0.0 } else { off as f32 };
-            if !self.knows(&step.action) {
+            if !self.commands.knows(&step.action) {
                 report.warnings.push(format!(
                     "{}s: unknown action '{}'; it is skipped unless registered before tick {tick} (`help` lists the actions)",
                     step.at, step.action
