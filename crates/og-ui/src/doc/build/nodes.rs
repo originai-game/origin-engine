@@ -481,12 +481,7 @@ impl Ui {
     }
 
     /// The document's `art` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_art(
         &mut self,
         b: &mut Build<'_>,
@@ -494,16 +489,15 @@ impl Ui {
         path: &String,
         r: &Resolved,
     ) -> Option<og_draw::TextureHandle> {
-        let texture;
         // An art slot: its art fitted by its spec, or the style's
         // placeholder for its kind (docs/ui.md §3.3).
-        self.art_spec(&path, &r);
+        self.art_spec(path, r);
         let mut spec = self.last_art().clone();
         let (at, nearest) = r.object_css();
         if let Some([focal, _]) = at {
             spec.focal = focal;
         }
-        texture = r.handle("texture").and_then(|h| b.env.texture(h));
+        let texture = r.handle("texture").and_then(|h| b.env.texture(h));
         self.art(
             id.as_str(),
             &crate::widgets::ArtDesc {
@@ -521,20 +515,14 @@ impl Ui {
     }
 
     /// The document's `image` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_image(
         &mut self,
         b: &mut Build<'_>,
         id: &String,
         r: &Resolved,
     ) -> Option<og_draw::TextureHandle> {
-        let texture;
-        texture = r.handle("texture").and_then(|h| b.env.texture(h));
+        let texture = r.handle("texture").and_then(|h| b.env.texture(h));
         let i = self.leaf("image", id.as_str().into(), Default::default());
         self.apply_image(
             i,
@@ -550,17 +538,12 @@ impl Ui {
                 ..Default::default()
             },
         );
-        self.object_fit(i, &r);
+        self.object_fit(i, r);
         texture
     }
 
     /// The document's `icon` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_icon(&mut self, id: &String, r: &Resolved) {
         let name = match (r.str("icon"), r.str("cue")) {
             (Some(icon), _) => icon.to_string(),
@@ -581,12 +564,7 @@ impl Ui {
     }
 
     /// The document's `meter` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_meter(&mut self, id: &String, r: &Resolved) {
         self.gauge(
             id.as_str(),
@@ -603,12 +581,7 @@ impl Ui {
     }
 
     /// The document's `progress` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_progress(&mut self, id: &String, r: &Resolved) {
         let v = r.num("value").unwrap_or(0.0);
         self.progress(
@@ -621,12 +594,7 @@ impl Ui {
     }
 
     /// The document's `slider` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_slider_range(
         &mut self,
         b: &mut Build<'_>,
@@ -647,7 +615,7 @@ impl Ui {
                 max: r.num("max").unwrap_or(1.0),
                 step: r.num("stepBy").unwrap_or(0.0),
                 min_gap: r.num("dataMinGap").unwrap_or(0.0),
-                label: text_of(&r, b),
+                label: text_of(r, b),
                 show_value: !r.has("showValue") || r.flag("showValue"),
                 width: r.size("width"),
                 disabled: r.flag("disabled"),
@@ -663,12 +631,7 @@ impl Ui {
     }
 
     /// The document's `datetime` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_datetime(
         &mut self,
         b: &mut Build<'_>,
@@ -679,8 +642,7 @@ impl Ui {
         key: u64,
         r: &Resolved,
     ) -> crate::ui::Response {
-        let resp;
-        resp = self.datetime_input(b, n, id.as_str(), &r);
+        let resp = self.datetime_input(b, n, id.as_str(), r);
         let barred = r.flag("disabled") || r.flag("readonly");
         self.docs.host.validity.insert(
             key,
@@ -689,19 +651,14 @@ impl Ui {
                 doc: doc.name.clone(),
                 node: i,
                 row_key: b.row_key.clone(),
-                invalid: !barred && (r.flag("invalid") || super::datetime::invalid(&r)),
+                invalid: !barred && (r.flag("invalid") || super::datetime::invalid(r)),
             },
         );
         resp
     }
 
     /// The document's `badge` element.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_badge(
         &mut self,
         b: &mut Build<'_>,
@@ -709,7 +666,7 @@ impl Ui {
         r: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) {
-        let text = text_of(&r, b);
+        let text = text_of(r, b);
         let tone = match r.str("tone") {
             Some("info") => crate::widgets::Tone::Info,
             Some("success") => crate::widgets::Tone::Success,
@@ -970,12 +927,7 @@ impl Ui {
 
     /// The document's `dialog` element: the dialog it opens; whether it is opened and shows
     /// its content.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_dialog(
         &mut self,
         b: &mut Build<'_>,
@@ -986,17 +938,16 @@ impl Ui {
         open_now: &impl Fn(&mut Ui) -> bool,
         mut opened: Option<bool>,
     ) -> (Option<bool>, bool) {
-        let shows_content;
         let open = open_now(self);
-        let out = self.open_dialog(id.as_str(), open, &dialog);
+        let out = self.open_dialog(id.as_str(), open, dialog);
         // `::backdrop` styles the scrim, the panel's parent.
         if dialog.modal
-            && let Some(backdrop) = self.pseudo_node(b, r, &path, "backdrop")
+            && let Some(backdrop) = self.pseudo_node(b, r, path, "backdrop")
         {
             let scrim = self.tree.nodes[self.parent()].parent;
             self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
         }
-        shows_content = out.visible;
+        let shows_content = out.visible;
         if out.dismissed {
             opened = Some(false);
         }
@@ -1018,12 +969,7 @@ impl Ui {
 
     /// The document's `details` element: the disclosure it opens; whether it is opened and shows
     /// its content.
-    #[allow(
-        clippy::too_many_arguments,
-        clippy::ptr_arg,
-        clippy::needless_borrow,
-        clippy::needless_late_init
-    )]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_details(
         &mut self,
         b: &mut Build<'_>,
@@ -1033,7 +979,6 @@ impl Ui {
         open_now: &impl Fn(&mut Ui) -> bool,
         mut opened: Option<bool>,
     ) -> (Option<bool>, bool) {
-        let shows_content;
         let mut open = open_now(self);
         // An exclusive accordion (`<details name>`): the open one
         // of its name in this mount is widget memory; another
@@ -1054,7 +999,7 @@ impl Ui {
                 width: r.size("width"),
             },
         );
-        shows_content = out.open;
+        let shows_content = out.open;
         if out.toggled || closing {
             opened = Some(out.open);
         }
