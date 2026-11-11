@@ -1,7 +1,7 @@
 //! `og.procgen`: og-core's generators over the wire. Each is a pure
 //! function of its desc (the seed in it included), so it needs no world.
 
-use super::{ok, parse, refuse};
+use super::{ok, refuse, wire};
 use og_core::procgen::{self, BspDesc, Fbm, NoiseKind, Wfc, WfcTile};
 use serde_json::{Value, json};
 
@@ -12,74 +12,52 @@ fn wire(r: Result<Value, String>) -> String {
     }
 }
 
-fn u32_of(v: &Value, key: &str, default: u32) -> u32 {
-    v[key]
-        .as_u64()
-        .map_or(default, |n| n.min(u64::from(u32::MAX)) as u32)
-}
-
-fn f32_of(v: &Value, key: &str, default: f32) -> f32 {
-    v[key].as_f64().map_or(default, |n| n as f32)
-}
-
-/// An FbmDesc on the wire.
-fn fbm(v: &Value) -> Result<(Fbm, bool), String> {
-    let kind = match v["kind"].as_str() {
-        None | Some("perlin") => NoiseKind::Perlin,
-        Some("simplex") => NoiseKind::Simplex,
-        Some(k) => return Err(format!("desc.kind '{k}' is not perlin or simplex")),
-    };
-    let f = Fbm {
-        seed: u32_of(v, "seed", 0),
-        kind,
-        octaves: u32_of(v, "octaves", 1).clamp(1, 16),
-        frequency: f32_of(v, "frequency", 1.0),
-        lacunarity: f32_of(v, "lacunarity", 2.0),
-        gain: f32_of(v, "gain", 0.5),
-    };
-    Ok((f, v["threeD"].as_bool().unwrap_or(false)))
+/// An FbmDesc read off the wire as og-core's generator.
+fn fbm(d: &wire::FbmDesc) -> Fbm {
+    Fbm {
+        seed: d.seed,
+        kind: match d.kind {
+            wire::NoiseKind::Perlin => NoiseKind::Perlin,
+            wire::NoiseKind::Simplex => NoiseKind::Simplex,
+        },
+        octaves: d.octaves.clamp(1, 16),
+        frequency: d.frequency,
+        lacunarity: d.lacunarity,
+        gain: d.gain,
+    }
 }
 
 pub fn og_procgen_noise(desc: String, x: f64, y: f64, z: f64) -> f64 {
-    match parse(Some(&desc)).and_then(|v| fbm(&v)) {
-        Ok((f, three)) => f64::from(f.at(x as f32, y as f32, z as f32, !three)),
+    match wire::arg::<wire::FbmDesc>(Some(&desc), "desc") {
+        Ok(d) => f64::from(fbm(&d).at(x as f32, y as f32, z as f32, !d.three_d)),
         Err(_) => f64::NAN,
     }
 }
 
 pub fn og_procgen_noise_grid(desc: Option<String>) -> String {
     wire((|| {
-        let v = parse(desc.as_deref())?;
-        let (f, three) = fbm(&v["noise"])?;
-        let (w, h) = (u32_of(&v, "width", 64), u32_of(&v, "height", 64));
+        let d: wire::NoiseGridDesc = wire::arg(desc.as_deref(), "desc")?;
+        let (w, h) = (d.width, d.height);
         if w == 0 || h == 0 || u64::from(w) * u64::from(h) > 1 << 24 {
             return Err(format!(
                 "desc.width x desc.height is {w} x {h}: 1 to 16,777,216 samples"
             ));
         }
-        let grid = f.grid(
-            w,
-            h,
-            f32_of(&v, "x", 0.0),
-            f32_of(&v, "y", 0.0),
-            f32_of(&v, "step", 1.0),
-            f32_of(&v, "z", 0.0),
-            !three,
-        );
+        let grid = fbm(&d.noise).grid(w, h, d.x, d.y, d.step, d.z, !d.noise.three_d);
         Ok(json!(grid))
     })())
 }
 
 pub fn og_procgen_poisson_disk(desc: Option<String>) -> String {
     wire((|| {
-        let v = parse(desc.as_deref())?;
+        let d: wire::PoissonDesc = wire::arg(desc.as_deref(), "desc")?;
         let pts = procgen::poisson_disk(
-            u32_of(&v, "seed", 0),
-            f32_of(&v, "width", 0.0),
-            f32_of(&v, "height", 0.0),
-            f32_of(&v, "radius", 1.0),
-            u32_of(&v, "attempts", 30).clamp(1, 256),
-            u32_of(&v, "maxPoints", 4096).min(1 << 20) as usize,
+            d.seed,
+            d.width,
+            d.height,
+            d.radius,
+            d.attempts.clamp(1, 256),
+            d.max_points.min(1 << 20) as usize,
         )
         .map_err(|e| e.reason().to_string())?;
         Ok(json!(
@@ -96,17 +74,16 @@ fn rect(r: &procgen::CellRect) -> Value {
 
 pub fn og_procgen_bsp(desc: Option<String>) -> String {
     wire((|| {
-        let v = parse(desc.as_deref())?;
-        let d = BspDesc::default();
+        let d: wire::BspDesc = wire::arg(desc.as_deref(), "desc")?;
         let out = procgen::bsp_rooms(&BspDesc {
-            seed: u32_of(&v, "seed", d.seed),
-            width: u32_of(&v, "width", d.width),
-            height: u32_of(&v, "height", d.height),
-            min_room: u32_of(&v, "minRoom", d.min_room),
-            max_room: u32_of(&v, "maxRoom", d.max_room),
-            depth: u32_of(&v, "depth", d.depth),
-            padding: u32_of(&v, "padding", d.padding),
-            corridor: u32_of(&v, "corridor", d.corridor),
+            seed: d.seed,
+            width: d.width,
+            height: d.height,
+            min_room: d.min_room,
+            max_room: d.max_room,
+            depth: d.depth,
+            padding: d.padding,
+            corridor: d.corridor,
         })
         .map_err(|e| e.reason().to_string())?;
         Ok(json!({
@@ -119,40 +96,29 @@ pub fn og_procgen_bsp(desc: Option<String>) -> String {
 
 pub fn og_procgen_wfc(desc: Option<String>) -> String {
     wire((|| {
-        let v = parse(desc.as_deref())?;
-        let list = |key: &str| v[key].as_array().cloned().unwrap_or_default();
-        let tiles = list("tiles")
+        let d: wire::WfcDesc = wire::arg(desc.as_deref(), "desc")?;
+        let tiles = d
+            .tiles
             .iter()
             .map(|t| WfcTile {
-                weight: f32_of(t, "weight", 1.0),
-                sockets: [
-                    u32_of(t, "up", 0),
-                    u32_of(t, "right", 0),
-                    u32_of(t, "down", 0),
-                    u32_of(t, "left", 0),
-                ],
-                rotations: t["rotations"].as_bool().unwrap_or(false),
+                weight: t.weight,
+                sockets: [t.up, t.right, t.down, t.left],
+                rotations: t.rotations,
             })
             .collect();
-        let fixed = list("fixed")
+        let fixed = d
+            .fixed
             .iter()
-            .map(|c| {
-                (
-                    u32_of(c, "x", 0),
-                    u32_of(c, "y", 0),
-                    u32_of(c, "tile", 0),
-                    u32_of(c, "rotation", 0),
-                )
-            })
+            .map(|c| (c.x, c.y, c.tile, c.rotation))
             .collect();
         let out = procgen::wfc(&Wfc {
-            seed: u32_of(&v, "seed", 0),
-            width: u32_of(&v, "width", 16),
-            height: u32_of(&v, "height", 16),
+            seed: d.seed,
+            width: d.width,
+            height: d.height,
             tiles,
             fixed,
-            wrap: v["wrap"].as_bool().unwrap_or(false),
-            attempts: u32_of(&v, "attempts", 10).clamp(1, 1000),
+            wrap: d.wrap,
+            attempts: d.attempts.clamp(1, 1000),
         })
         .map_err(|e| e.reason().to_string())?;
         Ok(json!({ "tiles": out.tiles, "rotations": out.rotations, "attempt": out.attempt }))

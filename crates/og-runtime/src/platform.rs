@@ -248,16 +248,13 @@ fn valid_key(key: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
 }
 
-fn board_of(d: &Value) -> String {
-    d["board"]
-        .as_str()
-        .filter(|b| valid_key(b))
-        .unwrap_or("main")
-        .to_string()
-}
-
-fn count_of(d: &Value) -> u64 {
-    d["count"].as_u64().unwrap_or(10).clamp(1, 100)
+/// A board name, `main` when it is not a key.
+fn board_of(board: String) -> String {
+    if valid_key(&board) {
+        board
+    } else {
+        "main".to_string()
+    }
 }
 
 pub fn og_platform_store_get(world: u32, key: String) -> String {
@@ -270,25 +267,25 @@ pub fn og_platform_store_get(world: u32, key: String) -> String {
 }
 
 pub fn og_platform_store_set(world: u32, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: super::wire::StoreSetDesc = match super::wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    let key = d["key"].as_str().unwrap_or("").to_string();
+    let key = d.key;
     if !valid_key(&key) {
         return refuse(format!(
             "'{key}' is not a store key: 1 to 64 of letters, digits, '.', '_' and '-'"
         ));
     }
-    let value = d.get("value").cloned().unwrap_or(Value::Null);
+    let value = d.value;
     let size = value.to_string().len();
     if size > MAX_VALUE {
         return refuse(format!(
             "the value is {size} bytes encoded; a store value is at most {MAX_VALUE}"
         ));
     }
-    let revision = d["revision"].as_u64().unwrap_or(0);
-    let create = d["create"].as_bool().unwrap_or(false);
+    let revision = d.revision;
+    let create = d.create;
     request(
         world,
         "store.set",
@@ -324,31 +321,27 @@ pub fn og_platform_store_list(world: u32) -> u32 {
 }
 
 pub fn og_platform_leaderboard_submit(world: u32, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: super::wire::LeaderboardSubmitDesc = match super::wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    let Some(score) = d["score"].as_f64().filter(|s| s.is_finite()) else {
+    if !d.score.is_finite() {
         return refuse("score must be a finite number");
-    };
-    let order = if d["order"].as_str() == Some("asc") {
-        "asc"
-    } else {
-        "desc"
-    };
+    }
     request(
         world,
         "leaderboard.submit",
-        json!({ "board": board_of(&d), "score": score, "order": order }),
+        json!({ "board": board_of(d.board), "score": d.score, "order": d.order.as_str() }),
     )
 }
 
 fn query(world: u32, method: &str, desc: Option<String>) -> u32 {
-    let d = parse(desc.as_deref()).unwrap_or(json!({}));
+    let d: super::wire::LeaderboardQueryDesc =
+        super::wire::arg(desc.as_deref(), "desc").unwrap_or_default();
     call(
         world,
         method,
-        json!({ "board": board_of(&d), "count": count_of(&d) }),
+        json!({ "board": board_of(d.board), "count": d.count.clamp(1, 100) }),
         false,
     )
     .unwrap_or(0)
@@ -410,14 +403,17 @@ pub fn og_platform_telemetry(world: u32, name: String, attrs: Option<String>) ->
 }
 
 pub fn og_platform_point(world: u32, desc: Option<String>) -> String {
-    let d = parse(desc.as_deref()).unwrap_or(json!({}));
-    let reason = d["reason"].as_str().unwrap_or("").trim().to_string();
+    let d: super::wire::PointDesc = match super::wire::arg(desc.as_deref(), "desc") {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
+    let reason = d.reason.trim().to_string();
     if reason.is_empty() || !valid_key(&reason) {
         return refuse(format!(
             "'{reason}' is not a reason: 1 to 64 of letters, digits, '.', '_' and '-', as `level.completed`"
         ));
     }
-    let amount = d["amount"].as_u64().unwrap_or(1).clamp(1, 1000);
+    let amount = d.amount.clamp(1, 1000);
     request(
         world,
         "point",
@@ -426,9 +422,12 @@ pub fn og_platform_point(world: u32, desc: Option<String>) -> String {
 }
 
 pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
-    let d = parse(desc.as_deref()).unwrap_or(json!({}));
-    let kind = d["kind"].as_str().unwrap_or("").trim().to_string();
-    let label = d["label"].as_str().unwrap_or("").trim().to_string();
+    let d: super::wire::AiMarkDesc = match super::wire::arg(desc.as_deref(), "desc") {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
+    let kind = d.kind.trim().to_string();
+    let label = d.label.trim().to_string();
     let kind_ok = kind.len() <= 32
         && kind.bytes().next().is_some_and(|c| c.is_ascii_lowercase())
         && kind
@@ -440,7 +439,7 @@ pub fn og_platform_ai_mark(world: u32, desc: Option<String>) -> String {
         );
     }
     let mut args = json!({ "kind": kind, "label": label });
-    if let Some(m) = d["model"].as_str().filter(|m| !m.is_empty()) {
+    if let Some(m) = Some(d.model.as_str()).filter(|m| !m.is_empty()) {
         if m.chars().count() > 80 {
             return refuse("an AI mark's model is at most 80 characters");
         }
@@ -537,15 +536,15 @@ fn start_slot(world: u32, method: &str, slot: &str, args: Value, op: SlotOp) -> 
 }
 
 pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: super::wire::SaveSlotDesc = match super::wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    let slot = d["slot"].as_str().unwrap_or("").to_string();
+    let slot = d.slot;
     if let Err(e) = valid_slot(&slot) {
         return refuse(e);
     }
-    let text = d["text"].as_str().unwrap_or("").to_string();
+    let text = d.text;
     let parts = split(&text).len();
     if parts > MAX_PARTS {
         return refuse(format!(
@@ -553,7 +552,7 @@ pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
             text.len()
         ));
     }
-    let meta = d.get("meta").cloned().unwrap_or(Value::Null);
+    let meta = d.meta;
     let meta_size = meta.to_string().len();
     if meta_size > MAX_META {
         return refuse(format!(
@@ -565,15 +564,15 @@ pub fn og_platform_save_slot(world: u32, desc: Option<String>) -> String {
 }
 
 pub fn og_platform_load_slot(world: u32, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: super::wire::LoadSlotDesc = match super::wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    let slot = d["slot"].as_str().unwrap_or("").to_string();
+    let slot = d.slot;
     if let Err(e) = valid_slot(&slot) {
         return refuse(e);
     }
-    let meta_only = d["metaOnly"].as_bool().unwrap_or(false);
+    let meta_only = d.meta_only;
     let args = json!({ "slot": slot, "metaOnly": meta_only });
     start_slot(world, "slot.load", &slot, args, SlotOp::Load { meta_only })
 }

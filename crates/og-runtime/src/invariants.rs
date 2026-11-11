@@ -435,29 +435,29 @@ pub fn og_assert_record(world: u32, record: String) -> u32 {
         return 0;
     };
     let mut a = eng.assertions.borrow_mut();
-    let Ok(r) = serde_json::from_str::<Value>(&record) else {
-        return a.epoch();
-    };
-    if r.is_null() {
-        return a.epoch();
-    }
-    let Some(kind) = r["kind"]
-        .as_str()
-        .and_then(og_probe::assertions::Kind::parse)
+    let Ok(Some(r)) =
+        crate::wire::arg::<Option<crate::wire::AssertRecord>>(Some(&record), "record")
     else {
         return a.epoch();
     };
-    let text = |k: &str| r[k].as_str().unwrap_or_default().to_owned();
+    use crate::wire::AssertKind as K;
+    use og_probe::assertions::Kind;
     a.record(&og_probe::assertions::Call {
-        kind,
+        kind: match r.kind {
+            K::Always => Kind::Always,
+            K::Sometimes => Kind::Sometimes,
+            K::Reachable => Kind::Reachable,
+            K::Unreachable => Kind::Unreachable,
+            K::Each => Kind::Each,
+        },
         origin: Origin::Game,
-        name: text("name"),
-        location: text("location"),
-        condition: r["condition"].as_bool().unwrap_or(true),
-        key: text("key"),
-        details: r.get("details").cloned().unwrap_or(Value::Null),
-        tick: r["tick"].as_u64().unwrap_or(0),
-        declared: r["declared"].as_bool().unwrap_or(false),
+        name: r.name,
+        location: r.location,
+        condition: r.condition,
+        key: r.key,
+        details: r.details,
+        tick: u64::from(r.tick),
+        declared: r.declared,
     });
     a.epoch()
 }

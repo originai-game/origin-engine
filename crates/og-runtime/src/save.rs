@@ -108,20 +108,15 @@ type SelectionIds = (Vec<og_ecs::SchemaId>, Vec<og_ecs::SchemaId>);
 
 /// SnapshotDesc's `with` and `resources`, as this world's type ids.
 fn selection_ids(
-    desc: &Value,
+    desc: &super::wire::SnapshotDesc,
     id: impl Fn(&str) -> og_core::Result<og_ecs::SchemaId>,
 ) -> Result<Option<SelectionIds>, String> {
-    let names = |k: &str| -> Vec<String> {
-        desc[k]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(|v| v.as_str().map(str::to_string))
-                    .collect()
-            })
-            .unwrap_or_default()
+    let names = |list: &[Value]| -> Vec<String> {
+        list.iter()
+            .filter_map(|v| v.as_str().map(str::to_string))
+            .collect()
     };
-    let (with, resources) = (names("with"), names("resources"));
+    let (with, resources) = (names(&desc.with), names(&desc.resources));
     if with.is_empty() && resources.is_empty() {
         return Ok(None);
     }
@@ -143,10 +138,10 @@ pub fn og_world_snapshot(world: u32, desc: Option<String>) -> String {
         Ok(e) => e,
         Err(e) => return refuse(e),
     };
-    let desc = desc
-        .as_deref()
-        .and_then(|d| serde_json::from_str::<Value>(d).ok())
-        .unwrap_or(Value::Null);
+    let desc: super::wire::SnapshotDesc = match super::wire::arg(desc.as_deref(), "desc") {
+        Ok(d) => d,
+        Err(e) => return refuse(e),
+    };
     let version = eng.state.borrow().save_version;
     let taken = if let Some(f) = running(world) {
         // SAFETY: the frame is published while its system runs.
@@ -343,12 +338,11 @@ pub fn og_world_restore(world: u32, save: String, desc: Option<String>) -> Strin
         Ok(e) => e,
         Err(e) => return refuse(e),
     };
-    let desc = desc
-        .as_deref()
-        .and_then(|d| serde_json::from_str::<Value>(d).ok())
-        .unwrap_or(Value::Null);
-    let migrate = desc["migrate"].as_bool().unwrap_or(false);
-    let session = desc["session"].as_bool().unwrap_or(false);
+    let super::wire::RestoreDesc { migrate, session } =
+        match super::wire::arg(desc.as_deref(), "desc") {
+            Ok(d) => d,
+            Err(e) => return refuse(e),
+        };
     let current = eng.state.borrow().save_version;
     let (snapshot, ui) = match upgraded(&save, current) {
         Ok(s) => {
@@ -621,16 +615,13 @@ fn current(
 /// by name, those it leaves out at their defaults. The type's old values
 /// go; its queued events too. A type the save does not hold is added.
 pub fn og_save_edit_set_records(edit: u32, ty: String, desc: Option<String>) -> String {
-    let d = desc
-        .as_deref()
-        .and_then(|d| serde_json::from_str::<Value>(d).ok())
-        .unwrap_or(Value::Null);
-    let into = d["into"]
-        .as_str()
-        .filter(|s| !s.is_empty())
-        .unwrap_or(&ty)
-        .to_string();
     answer(with_open(edit, |o| {
+        let d: super::wire::SetRecordsDesc = super::wire::arg(desc.as_deref(), "desc")?;
+        let into = if d.into.is_empty() {
+            ty.clone()
+        } else {
+            d.into
+        };
         // A type the save does not hold is added (written as `into`).
         let remove: &[&str] = if o.edit.schema(&ty).is_some() {
             &[ty.as_str()]
@@ -643,11 +634,11 @@ pub fn og_save_edit_set_records(edit: u32, ty: String, desc: Option<String>) -> 
             components: Vec::new(),
             resource: None,
         };
-        for r in d["records"].as_array().into_iter().flatten() {
+        for r in &d.records {
             let bytes = layout
-                .encode(None, Some(&r["value"]))
+                .encode(None, Some(&r.value))
                 .map_err(|e| format!("a record for {into}: {e}"))?;
-            match r["entity"].as_u64() {
+            match r.entity {
                 Some(e) => values
                     .components
                     .push((og_ecs::Entity::from_bits(e), bytes)),
@@ -712,20 +703,17 @@ pub fn og_save_edit_drop_type(edit: u32, ty: String) -> String {
 /// `SaveEdit.spawn`: an entity added to the save, its components written
 /// as this build's types.
 pub fn og_save_edit_spawn(edit: u32, desc: Option<String>) -> String {
-    let d = desc
-        .as_deref()
-        .and_then(|d| serde_json::from_str::<Value>(d).ok())
-        .unwrap_or(Value::Null);
     answer(with_open(edit, |o| {
+        let d: super::wire::SaveSpawnDesc = super::wire::arg(desc.as_deref(), "desc")?;
         let mut components = Vec::new();
-        for (ty, value) in d["components"].as_object().into_iter().flatten() {
+        for (ty, value) in d.components.as_object().into_iter().flatten() {
             let (layout, schema) = current(o.engine, ty)?;
             let bytes = layout
                 .encode(None, Some(value))
                 .map_err(|e| format!("SaveSpawnDesc.components.{ty}: {e}"))?;
             components.push((schema, bytes));
         }
-        let name = d["name"].as_str().filter(|n| !n.is_empty());
+        let name = Some(d.name.as_str()).filter(|n| !n.is_empty());
         o.edit
             .spawn(name, components)
             .map(|e| e.to_bits())

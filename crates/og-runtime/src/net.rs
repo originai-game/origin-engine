@@ -371,20 +371,17 @@ fn can_join(n: &Net) -> Result<(), String> {
 }
 
 pub fn og_platform_room_create(world: u32, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: super::wire::RoomDesc = match super::wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    let name = d["name"].as_str().unwrap_or("").to_string();
+    let name = d.name;
     if !name.is_empty() && !protocol::valid_room(&name) {
         return refuse(format!(
             "'{name}' is not a room name: at most 64 of letters, digits, '.', '_' and '-'"
         ));
     }
-    let capacity = d["capacity"]
-        .as_u64()
-        .unwrap_or(2)
-        .clamp(1, u64::from(protocol::MAX_CAPACITY)) as u32;
+    let capacity = d.capacity.clamp(1, protocol::MAX_CAPACITY);
     with(world, |n| match can_join(n) {
         Ok(()) => {
             n.stage = Stage::Joining;
@@ -396,12 +393,11 @@ pub fn og_platform_room_create(world: u32, desc: Option<String>) -> String {
 }
 
 pub fn og_platform_quick_play(world: u32, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: super::wire::QuickPlayDesc = match super::wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
-    let text = |k: &str| d[k].as_str().unwrap_or("").to_string();
-    let (mode, name) = (text("mode"), text("name"));
+    let (mode, name) = (d.mode, d.name);
     if !mode.is_empty() && (!protocol::valid_room(&mode) || mode.len() > 32) {
         return refuse(format!(
             "'{mode}' is not a quick play mode: at most 32 of letters, digits, '.', '_' and '-'"
@@ -412,14 +408,8 @@ pub fn og_platform_quick_play(world: u32, desc: Option<String>) -> String {
             "'{name}' is not a player name: at most 64 of letters, digits, '.', '_' and '-'"
         ));
     }
-    let players = d["players"]
-        .as_u64()
-        .unwrap_or(2)
-        .clamp(1, u64::from(protocol::MAX_CAPACITY)) as u32;
-    let timeout = d["timeoutMs"]
-        .as_u64()
-        .unwrap_or(u64::from(protocol::QUICK_TIMEOUT_MS))
-        .min(u64::from(protocol::QUICK_TIMEOUT_MAX_MS)) as u32;
+    let players = d.players.clamp(1, protocol::MAX_CAPACITY);
+    let timeout = d.timeout_ms.min(protocol::QUICK_TIMEOUT_MAX_MS);
     with(world, |n| match can_join(n) {
         Ok(()) => {
             n.stage = Stage::Joining;
@@ -550,15 +540,26 @@ pub fn og_net_submit(world: u32, input: Option<String>) -> String {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
+    let i: super::wire::InputDesc = match super::wire::value(&d, "input") {
+        Ok(i) => i,
+        Err(e) => return refuse(e),
+    };
+    // Only the fields given are written; the rest keep og.PlayerInput's defaults.
     let mut fields = serde_json::Map::new();
-    for k in ["buttons", "x", "y", "aimX", "aimY"] {
-        match d.get(k) {
-            None | Some(Value::Null) => {}
-            Some(v) if v.as_f64().is_some_and(f64::is_finite) => {
-                fields.insert(k.into(), v.clone());
-            }
-            Some(v) => return refuse(format!("{k} must be a finite number, got {v}")),
+    for (k, v) in [
+        ("buttons", json!(i.buttons)),
+        ("x", json!(i.x)),
+        ("y", json!(i.y)),
+        ("aimX", json!(i.aim_x)),
+        ("aimY", json!(i.aim_y)),
+    ] {
+        if d.get(k).is_none_or(Value::is_null) {
+            continue;
         }
+        if !v.as_f64().is_some_and(f64::is_finite) {
+            return refuse(format!("{k} must be a finite number, got {}", d[k]));
+        }
+        fields.insert(k.into(), v);
     }
     if let Some(k) = d.as_object().and_then(|o| {
         o.keys()
@@ -654,7 +655,7 @@ fn fingerprint(parts: &[&super::codec::Layout], max: u32) -> u64 {
 }
 
 pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
-    let d = match parse(desc.as_deref()) {
+    let d: super::wire::NetShapeDesc = match super::wire::arg(desc.as_deref(), "desc") {
         Ok(d) => d,
         Err(e) => return refuse(e),
     };
@@ -673,15 +674,15 @@ pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
     if with(world, |n| n.ls.running()) {
         return refuse("og.net.shape: lockstep runs; set the shape before the room starts");
     }
-    let name = |k: &str| -> Result<Option<String>, String> {
-        match &d[k] {
-            Value::Null => Ok(None),
-            v => token_name(v)
+    let name = |k: &str, v: &Option<Value>| -> Result<Option<String>, String> {
+        match v {
+            None => Ok(None),
+            Some(v) => token_name(v)
                 .map(Some)
                 .ok_or_else(|| format!("og.net.shape's {k} is a component token, got {v}")),
         }
     };
-    let (input, command) = match (name("input"), name("command")) {
+    let (input, command) = match (name("input", &d.input), name("command", &d.command)) {
         (Ok(i), Ok(c)) => (i.unwrap_or_default(), c.unwrap_or_default()),
         (Err(e), _) | (_, Err(e)) => return refuse(e),
     };
@@ -690,7 +691,7 @@ pub fn og_net_shape(world: u32, desc: Option<String>) -> String {
     } else {
         input
     };
-    let max_commands = d["maxCommands"].as_u64().unwrap_or(32).clamp(1, 256) as u32;
+    let max_commands = d.max_commands.clamp(1, 256);
     let input_layout = if input.is_empty() {
         eng.state.borrow().layouts.get(PLAYER_INPUT).cloned()
     } else {

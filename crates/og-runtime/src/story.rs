@@ -892,15 +892,14 @@ pub fn og_story_parse(world: u32, text: String) -> String {
 
 pub fn og_story_start(world: u32, desc: Option<String>) -> String {
     wire((|| {
-        let d = parse(desc.as_deref())?;
-        let dialogue = d["dialogue"]
-            .as_str()
-            .filter(|s| !s.is_empty())
-            .ok_or("StartDesc.dialogue names the dialogue to start")?
-            .to_string();
-        let node = d["node"].as_str().filter(|s| !s.is_empty());
+        let d: super::wire::StartDesc = super::wire::arg(desc.as_deref(), "desc")?;
+        if d.dialogue.is_empty() {
+            return Err("StartDesc.dialogue names the dialogue to start".into());
+        }
+        let dialogue = d.dialogue;
+        let node = Some(d.node.as_str()).filter(|s| !s.is_empty());
         let mut cast = BTreeMap::new();
-        if let Some(o) = d["cast"].as_object() {
+        if let Some(o) = d.cast.as_object() {
             for (k, v) in o {
                 let e = v
                     .as_f64()
@@ -910,7 +909,7 @@ pub fn og_story_start(world: u32, desc: Option<String>) -> String {
             }
         }
         let mut vars = BTreeMap::new();
-        if let Some(o) = d["vars"].as_object() {
+        if let Some(o) = d.vars.as_object() {
             for (k, v) in o {
                 let v = val_of(v).ok_or_else(|| {
                     format!("StartDesc.vars.{k} is a number, a boolean or a string")
@@ -1117,35 +1116,32 @@ pub fn og_story_stop(world: u32, conversation: u32) -> bool {
 
 // ── barks ───────────────────────────────────────────────────────────────
 
-fn bark_desc(desc: Option<String>) -> Result<(u64, String, String, Value), String> {
-    let d = parse(desc.as_deref())?;
-    let entity = d["entity"]
-        .as_f64()
-        .filter(|e| e.is_finite() && *e > 0.0)
-        .ok_or("the desc's entity is the entity that barks")? as u64;
-    let topic = d["topic"]
-        .as_str()
-        .filter(|t| !t.is_empty())
-        .ok_or("the desc's topic names the barks to choose from, such as idle")?
-        .to_string();
-    let dialogue = d["dialogue"].as_str().unwrap_or("").to_string();
-    Ok((entity, topic, dialogue, d))
+/// A bark's entity and topic, which it needs.
+fn bark_target(entity: u64, topic: &str) -> Result<(), String> {
+    if entity == 0 {
+        return Err("the desc's entity is the entity that barks".into());
+    }
+    if topic.is_empty() {
+        return Err("the desc's topic names the barks to choose from, such as idle".into());
+    }
+    Ok(())
 }
 
 pub fn og_story_bark(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
-        let (entity, topic, dialogue, _) = bark_desc(desc)?;
-        story(world, |lib, s| s.bark(lib, entity, &topic, &dialogue))?
+        let d: super::wire::BarkDesc = super::wire::arg(desc.as_deref(), "desc")?;
+        bark_target(d.entity, &d.topic)?;
+        story(world, |lib, s| s.bark(lib, d.entity, &d.topic, &d.dialogue))?
     })())
 }
 
 pub fn og_story_ambient(world: u32, desc: Option<String>) -> String {
     wire_void((|| {
-        let (entity, topic, dialogue, d) = bark_desc(desc)?;
-        let every = d["every"]
-            .as_f64()
-            .map_or(600, |v| v.clamp(0.0, 1e9) as u32);
-        let jitter = d["jitter"].as_f64().map_or(0, |v| v.clamp(0.0, 1e9) as u32);
+        let d: super::wire::AmbientDesc = super::wire::arg(desc.as_deref(), "desc")?;
+        bark_target(d.entity, &d.topic)?;
+        let (entity, topic, dialogue) = (d.entity, d.topic, d.dialogue);
+        let every = d.every.min(1_000_000_000);
+        let jitter = d.jitter.min(1_000_000_000);
         story(world, |lib, s| {
             if every > 0 {
                 let known = lib
@@ -1460,12 +1456,10 @@ pub fn og_story_mark_seen(world: u32, id: String) -> bool {
 }
 
 pub fn og_story_mark(world: u32, id: String, desc: Option<String>) -> bool {
-    let Ok(d) = parse(desc.as_deref()) else {
+    let Ok(d) = super::wire::arg::<super::wire::MarkerDesc>(desc.as_deref(), "desc") else {
         return false;
     };
-    let entity = d["entity"].as_f64().filter(|e| *e >= 0.0).unwrap_or(0.0) as u64;
-    let p = &d["position"];
-    let pos = ["x", "y", "z"].map(|k| p[k].as_f64().unwrap_or(0.0) as f32);
+    let (entity, pos) = (d.entity, d.position.to_array());
     with_quest(world, &id, |q| {
         q.marker = (entity != 0 || pos != [0.0; 3]).then_some((entity, pos));
     })

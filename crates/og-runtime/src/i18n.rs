@@ -400,9 +400,10 @@ pub(crate) fn retire(engine: u32) {
 }
 
 pub fn og_i18n_format_number(world: u32, value: f64, format: Option<String>) -> String {
-    let options = parse(format.as_deref()).unwrap_or(Value::Null);
-    let decimals = options["decimals"].as_u64().map(|n| n.min(20) as u8);
-    let grouping = options["grouping"].as_bool().unwrap_or(true);
+    let f: super::wire::DecimalFormat =
+        super::wire::arg(format.as_deref(), "format").unwrap_or_default();
+    let decimals = f.decimals.map(|n| n.min(20) as u8);
+    let grouping = f.grouping.unwrap_or(true);
     og_i18n::format_decimal(value, decimals, grouping, &tag(world))
 }
 
@@ -418,25 +419,19 @@ pub fn og_i18n_format_currency(world: u32, amount: f64, currency: String) -> Str
     og_i18n::format_currency(amount, &currency, &tag(world))
 }
 
-/// A format desc's style name and offset.
-fn moment(format: Option<&str>) -> (String, i32) {
-    let v = parse(format).unwrap_or(Value::Null);
-    let style = v["style"].as_str().unwrap_or("").to_string();
-    let offset = v["offsetMinutes"]
-        .as_f64()
-        .map_or(0, |m| m.clamp(-1440.0, 1440.0) as i32);
-    (style, offset)
-}
-
 pub fn og_i18n_format_date(world: u32, seconds: f64, format: Option<String>) -> String {
-    let (style, offset) = moment(format.as_deref());
-    let style = og_i18n::DateStyle::named(&style).unwrap_or(og_i18n::DateStyle::Medium);
+    let f: super::wire::DateFormat =
+        super::wire::arg(format.as_deref(), "format").unwrap_or_default();
+    let style = og_i18n::DateStyle::named(f.style.as_str()).unwrap_or(og_i18n::DateStyle::Medium);
+    let offset = f.offset_minutes.clamp(-1440, 1440);
     og_i18n::format_date(seconds, offset, style, &tag(world))
 }
 
 pub fn og_i18n_format_time(world: u32, seconds: f64, format: Option<String>) -> String {
-    let (style, offset) = moment(format.as_deref());
-    let style = og_i18n::TimeStyle::named(&style).unwrap_or(og_i18n::TimeStyle::Short);
+    let f: super::wire::TimeFormat =
+        super::wire::arg(format.as_deref(), "format").unwrap_or_default();
+    let style = og_i18n::TimeStyle::named(f.style.as_str()).unwrap_or(og_i18n::TimeStyle::Short);
+    let offset = f.offset_minutes.clamp(-1440, 1440);
     og_i18n::format_time(seconds, offset, style, &tag(world))
 }
 

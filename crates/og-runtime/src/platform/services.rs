@@ -13,7 +13,7 @@
 
 use super::{MAX_VALUE, call, request, valid_key, with};
 use crate::engine::{engine, running};
-use crate::{ok, parse, refuse};
+use crate::{ok, parse, refuse, wire};
 use og_core::Reflect;
 use serde_json::{Value, json};
 
@@ -46,11 +46,6 @@ fn valid_token(id: &str) -> bool {
         && id
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b':'))
-}
-
-fn desc_of(desc: Option<String>) -> Result<Value, String> {
-    let d = parse(desc.as_deref())?;
-    Ok(if d.is_null() { json!({}) } else { d })
 }
 
 fn named(what: &str, id: &str) -> Result<(), String> {
@@ -88,15 +83,8 @@ pub fn og_platform_products(world: u32, desc: Option<String>) -> String {
         world,
         "purchase.products",
         (|| {
-            let d = desc_of(desc)?;
-            let ids: Vec<String> = d["ids"]
-                .as_array()
-                .map(|a| {
-                    a.iter()
-                        .map(|v| v.as_str().unwrap_or("").to_string())
-                        .collect()
-                })
-                .unwrap_or_default();
+            let d: wire::ProductsDesc = wire::arg(desc.as_deref(), "desc")?;
+            let ids = d.ids;
             if ids.len() > 100 {
                 return Err(format!(
                     "{} product ids; products describes at most 100 at once",
@@ -116,10 +104,10 @@ pub fn og_platform_purchase(world: u32, desc: Option<String>) -> String {
         world,
         "purchase.buy",
         (|| {
-            let d = desc_of(desc)?;
-            let product = d["product"].as_str().unwrap_or("");
+            let d: wire::PurchaseDesc = wire::arg(desc.as_deref(), "desc")?;
+            let product = d.product.as_str();
             named("a product id", product)?;
-            let quantity = d["quantity"].as_u64().unwrap_or(1).clamp(1, 99);
+            let quantity = d.quantity.clamp(1, 99);
             Ok(json!({ "product": product, "quantity": quantity }))
         })(),
     )
@@ -199,13 +187,9 @@ pub fn og_platform_granted(world: u32, purchase: String) -> bool {
 // ── ads ──────────────────────────────────────────────────────────────────
 
 fn ad_args(desc: Option<String>) -> Result<Value, String> {
-    let d = desc_of(desc)?;
-    let kind = match d["kind"].as_str() {
-        None | Some("rewarded") => "rewarded",
-        Some("interstitial") => "interstitial",
-        Some(k) => return Err(format!("'{k}' is not an ad kind: rewarded or interstitial")),
-    };
-    let placement = d["placement"].as_str().unwrap_or("default");
+    let d: wire::AdDesc = wire::arg(desc.as_deref(), "desc")?;
+    let kind = d.kind.as_str();
+    let placement = d.placement.as_str();
     let placement = if placement.is_empty() {
         "default"
     } else {
@@ -238,10 +222,12 @@ pub fn og_platform_achievement_progress(world: u32, desc: Option<String>) -> Str
         world,
         "achievement.progress",
         (|| {
-            let d = desc_of(desc)?;
-            let id = d["id"].as_str().unwrap_or("");
+            let raw = parse(desc.as_deref())?;
+            let d: wire::AchievementProgressDesc = wire::value(&raw, "desc")?;
+            let id = d.id.as_str();
             named("an achievement id", id)?;
-            let percent = d["percent"].as_f64().unwrap_or(0.0);
+            // Read as f64, as the host is sent it: the IDL's percent is an f32.
+            let percent = raw["percent"].as_f64().unwrap_or(0.0);
             if !(0.0..=100.0).contains(&percent) {
                 return Err(format!("percent is 0 to 100, got {percent}"));
             }
@@ -261,8 +247,8 @@ pub fn og_platform_player(world: u32) -> u32 {
 }
 
 pub fn og_platform_friends(world: u32, desc: Option<String>) -> u32 {
-    let d = desc_of(desc).unwrap_or_else(|_| json!({}));
-    let count = d["count"].as_u64().unwrap_or(50).clamp(1, 200);
+    let d: wire::FriendsDesc = wire::arg(desc.as_deref(), "desc").unwrap_or_default();
+    let count = d.count.clamp(1, 200);
     call(world, "friends.list", json!({ "count": count }), false).unwrap_or(0)
 }
 
@@ -274,16 +260,16 @@ pub fn og_platform_invite_send(world: u32, desc: Option<String>) -> String {
         world,
         "invite.send",
         (|| {
-            let d = desc_of(desc)?;
-            let to = d["to"].as_str().unwrap_or("");
+            let d: wire::InviteDesc = wire::arg(desc.as_deref(), "desc")?;
+            let to = d.to.as_str();
             if !to.is_empty() {
                 token("a friend's player id", to)?;
             }
-            let message = d["message"].as_str().unwrap_or("");
+            let message = d.message.as_str();
             if message.chars().count() > 120 {
                 return Err("an invite's message is at most 120 characters".into());
             }
-            let payload = d.get("payload").cloned().unwrap_or(Value::Null);
+            let payload = d.payload.clone();
             let size = payload.to_string().len();
             if size > MAX_PAYLOAD {
                 return Err(format!(
@@ -310,19 +296,19 @@ pub fn og_platform_share(world: u32, desc: Option<String>) -> String {
         world,
         "share",
         (|| {
-            let d = desc_of(desc)?;
-            let text = d["text"].as_str().unwrap_or("").trim();
+            let d: wire::ShareDesc = wire::arg(desc.as_deref(), "desc")?;
+            let text = d.text.trim();
             let chars = text.chars().count();
             if chars == 0 || chars > 280 {
                 return Err(format!(
                     "a share's text is 1 to 280 characters, got {chars}"
                 ));
             }
-            let title = d["title"].as_str().unwrap_or("");
+            let title = d.title.as_str();
             if title.chars().count() > 80 {
                 return Err("a share's title is at most 80 characters".into());
             }
-            let path = d["path"].as_str().unwrap_or("");
+            let path = d.path.as_str();
             let path_ok = path.len() <= 256
                 && path.bytes().all(|b| {
                     b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b'/' | b'=')
@@ -336,7 +322,7 @@ pub fn og_platform_share(world: u32, desc: Option<String>) -> String {
                 "text": text,
                 "title": title,
                 "path": path,
-                "image": d["image"].as_bool().unwrap_or(false),
+                "image": d.image,
             }))
         })(),
     )
