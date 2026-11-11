@@ -148,7 +148,27 @@ fn palette_css(theme: &Theme) -> BTreeMap<String, String> {
 }
 
 impl Ui {
+    /// Read the root CSS tokens into the theme. A frame begins with this,
+    /// so the answer is kept: reading again from the same theme under the
+    /// same media context, with the root inputs and the fonts unchanged,
+    /// cascades nothing.
     pub(crate) fn read_theme_tokens(&mut self) {
+        let source = ThemeSource {
+            theme: self.env.theme,
+            configured: self.env.configured,
+            media: self.media_context(),
+        };
+        if let Some(kept) = &self.style.theme_read
+            && kept.0 == source
+        {
+            self.env.theme = kept.1;
+            return;
+        }
+        self.read_root_tokens();
+        self.style.theme_read = Some(Box::new((source, self.env.theme)));
+    }
+
+    fn read_root_tokens(&mut self) {
         let root = self.css_root_variables();
         let context = crate::css_color::Context::of(&self.env.theme);
         let colors: Vec<_> = Palette::NAMES
@@ -280,5 +300,58 @@ impl crate::ui::Style {
                 .collect()
         });
         self.root_inputs_changed();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokens::TypeRole;
+
+    fn frame(ui: &mut Ui) {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+        ui.end();
+    }
+
+    #[test]
+    fn a_root_token_write_is_read_though_the_theme_it_reads_into_is_the_same() {
+        let mut ui = Ui::default();
+        let radius = |px: f32| format!(":root {{ --radius-button: {px}px; }}");
+        let before = ui.theme().radius.control;
+        // The same sheet again leaves the theme as it was: the write
+        // after it reads into the theme the kept reading started from.
+        ui.set_part_css(&radius(before + 4.0)).unwrap();
+        ui.set_part_css(&radius(before + 4.0)).unwrap();
+        assert_eq!(ui.theme().radius.control, before + 4.0);
+        ui.set_part_css(&radius(before + 8.0)).unwrap();
+        assert_eq!(ui.theme().radius.control, before + 8.0);
+        frame(&mut ui);
+        frame(&mut ui);
+        assert_eq!(ui.theme().radius.control, before + 8.0);
+    }
+
+    #[test]
+    fn a_frame_names_the_type_families_among_the_fonts_set_since_the_last() {
+        let mut ui = Ui::default();
+        ui.set_part_css(":root { --type-button-font: 'Brand', monospace; }")
+            .unwrap();
+        frame(&mut ui);
+        assert_eq!(ui.type_font(TypeRole::Button), FontRole::Mono);
+        ui.set_fonts(Fonts {
+            families: vec![FamilyFace {
+                family: "Brand".into(),
+                weight: (400, 400),
+                ..FamilyFace::default()
+            }],
+            ..Fonts::default()
+        });
+        frame(&mut ui);
+        let FontRole::Family(list) = ui.type_font(TypeRole::Button) else {
+            panic!("the list keeps the family it now has");
+        };
+        assert_eq!(ui.env.fonts.family_names(list).len(), 2);
+        ui.set_fonts(Fonts::default());
+        frame(&mut ui);
+        assert_eq!(ui.type_font(TypeRole::Button), FontRole::Mono);
     }
 }

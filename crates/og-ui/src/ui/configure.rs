@@ -125,6 +125,7 @@ impl Ui {
                 root_tokens: Vec::new(),
                 root_type_tokens: Default::default(),
                 root_cascade: Default::default(),
+                theme_read: None,
                 part_commits: Default::default(),
                 css_sounds: Default::default(),
                 timelines: Default::default(),
@@ -455,6 +456,8 @@ impl Ui {
 
     pub fn set_fonts(&mut self, fonts: Fonts) {
         self.env.fonts = fonts;
+        // The theme's type steps name their families among these fonts.
+        self.style.theme_read = None;
         self.tree.invalidation.epoch += 1;
         self.env.fonts.link();
         self.layout.texts.clear();

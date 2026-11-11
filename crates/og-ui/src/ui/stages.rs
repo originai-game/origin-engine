@@ -84,6 +84,11 @@ pub(crate) struct Style {
             std::sync::Arc<crate::doc::build::cascade::Cascade>,
         )>,
     >,
+    /// The theme the root tokens were last read into
+    /// ([`crate::Ui::read_theme_tokens`]) and what it was read from. The
+    /// read also depends on the root inputs above and on the fonts: a
+    /// write of either drops it.
+    pub(crate) theme_read: Option<Box<(ThemeSource, Theme)>>,
     /// Part samples read one before-change state throughout a frame. Commit
     /// their next state together after rendering the owning nodes.
     pub(crate) part_commits: std::cell::RefCell<
@@ -101,10 +106,23 @@ pub(crate) struct Style {
     pub(crate) motion: crate::layout::MotionCache,
 }
 
+/// What a reading of the root tokens into a theme starts from, beside
+/// the root inputs and the fonts ([`Style::theme_read`]).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ThemeSource {
+    /// The theme the tokens are read into.
+    pub(crate) theme: Theme,
+    pub(crate) configured: Theme,
+    /// The viewport and preferences the root rules matched under; the
+    /// breakpoint follows from its size.
+    pub(crate) media: crate::doc::media::Context,
+}
+
 impl Style {
     /// The part rules, their sheet or the root tokens were written.
     pub(crate) fn root_inputs_changed(&mut self) {
         *self.root_cascade.get_mut() = None;
+        self.theme_read = None;
     }
 }
 
