@@ -48,101 +48,6 @@ impl Ui {
         node.gutter = gutter;
     }
 
-    /// The minimum touch target in og-ui units (44 CSS px) on a touch
-    /// screen, zero with a fine pointer.
-    pub(crate) fn touch_min(&self) -> f32 {
-        if self.env.viewport.coarse_pointer {
-            TOUCH_TARGET / self.env.unit.max(0.01)
-        } else {
-            0.0
-        }
-    }
-
-    /// CSS `content-visibility` (CSS Containment 2 §4), before layout:
-    /// which elements skip their contents this frame. `hidden` always does;
-    /// `auto` does from the frame after it was found far from the screen
-    /// with no focus inside it ([`Ui::note_relevance`]). An element that
-    /// starts or stops skipping lays out again, its contents afresh.
-    fn content_visibility(&mut self) {
-        use crate::layout::ContentVisibility as Cv;
-        // A node written again keeps what it had found.
-        for k in 0..self.tree.emitted.len() {
-            let i = self.tree.emitted[k];
-            if let Some(p) = self.layout.cache.prev.get(&i) {
-                let (skip, far, remembered) = (p.cv_skip, p.cv_far, p.remembered);
-                let n = &mut self.tree.nodes[i];
-                (n.cv_skip, n.cv_far, n.remembered) = (skip, far, remembered);
-            }
-        }
-        let mut at: Vec<usize> = self.tree.orders.with(visit::feat::SKIPS).to_vec();
-        at.extend(self.tree.emitted.iter().copied());
-        at.sort_unstable();
-        at.dedup();
-        for i in at {
-            if i >= self.tree.nodes.len() {
-                continue;
-            }
-            let n = &mut self.tree.nodes[i];
-            let v = n.el.contain.visibility;
-            if v != Cv::Auto {
-                n.cv_far = false;
-            }
-            let skip = v == Cv::Hidden || (v == Cv::Auto && n.cv_far);
-            if skip != n.cv_skip {
-                n.cv_skip = skip;
-                self.layout.cache.relayout.push(i);
-            }
-        }
-    }
-
-    /// After the frame: whether each `content-visibility: auto` element is
-    /// relevant to the user, near the screen (its box within half the
-    /// viewport of what of the screen its clip shows) or holding the
-    /// focus; one whose answer changed skips its contents, or lays them
-    /// out, from the next frame. One laying its contents out remembers its
-    /// content box for `contain-intrinsic-size: auto`.
-    fn note_relevance(&mut self) {
-        let vp = self.env.viewport;
-        let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
-        let focus = self.tree.index.find(self.interaction.state.focus);
-        for k in 0..self.tree.orders.with(visit::feat::SKIPS).len() {
-            let i = self.tree.orders.with(visit::feat::SKIPS)[k];
-            if i >= self.tree.nodes.len() || !self.tree.index.has(i) {
-                continue;
-            }
-            let n = &self.tree.nodes[i];
-            if !n.cv_skip {
-                let size = [
-                    (n.w - n.el.padding.horizontal()).max(0.0),
-                    (n.h - n.el.padding.vertical()).max(0.0),
-                ];
-                self.tree.nodes[i].remembered = Some(size);
-            }
-            let n = &self.tree.nodes[i];
-            if n.el.contain.visibility != crate::layout::ContentVisibility::Auto {
-                continue;
-            }
-            let (mx, my) = (vp.width * 0.5, vp.height * 0.5);
-            let near = Rect::new(
-                n.screen.x - mx,
-                n.screen.y - my,
-                n.screen.width + 2.0 * mx,
-                n.screen.height + 2.0 * my,
-            );
-            let mut holds_focus = false;
-            let mut at = focus.unwrap_or(NONE);
-            while at != NONE && at < self.tree.nodes.len() {
-                if at == i {
-                    holds_focus = true;
-                    break;
-                }
-                at = self.tree.nodes[at].parent;
-            }
-            let far = !holds_focus && !near.overlaps(&n.clip.intersect(&screen));
-            self.tree.nodes[i].cv_far = far;
-        }
-    }
-
     /// Lays out the frame, updates the interaction state and returns the frame.
     pub fn end(&mut self) -> &UiFrame {
         if let Err(error) = self.end_with_layout_queries(Ui::settle_document_containers) {
@@ -1436,6 +1341,103 @@ impl Ui {
         self.paint.cache.last_cmds = trees;
         self.paint.cache.last_tail = tail;
         (order, items, missing_glyphs)
+    }
+}
+
+impl Ui {
+    /// The minimum touch target in og-ui units (44 CSS px) on a touch
+    /// screen, zero with a fine pointer.
+    pub(crate) fn touch_min(&self) -> f32 {
+        if self.env.viewport.coarse_pointer {
+            TOUCH_TARGET / self.env.unit.max(0.01)
+        } else {
+            0.0
+        }
+    }
+
+    /// CSS `content-visibility` (CSS Containment 2 §4), before layout:
+    /// which elements skip their contents this frame. `hidden` always does;
+    /// `auto` does from the frame after it was found far from the screen
+    /// with no focus inside it ([`Ui::note_relevance`]). An element that
+    /// starts or stops skipping lays out again, its contents afresh.
+    fn content_visibility(&mut self) {
+        use crate::layout::ContentVisibility as Cv;
+        // A node written again keeps what it had found.
+        for k in 0..self.tree.emitted.len() {
+            let i = self.tree.emitted[k];
+            if let Some(p) = self.layout.cache.prev.get(&i) {
+                let (skip, far, remembered) = (p.cv_skip, p.cv_far, p.remembered);
+                let n = &mut self.tree.nodes[i];
+                (n.cv_skip, n.cv_far, n.remembered) = (skip, far, remembered);
+            }
+        }
+        let mut at: Vec<usize> = self.tree.orders.with(visit::feat::SKIPS).to_vec();
+        at.extend(self.tree.emitted.iter().copied());
+        at.sort_unstable();
+        at.dedup();
+        for i in at {
+            if i >= self.tree.nodes.len() {
+                continue;
+            }
+            let n = &mut self.tree.nodes[i];
+            let v = n.el.contain.visibility;
+            if v != Cv::Auto {
+                n.cv_far = false;
+            }
+            let skip = v == Cv::Hidden || (v == Cv::Auto && n.cv_far);
+            if skip != n.cv_skip {
+                n.cv_skip = skip;
+                self.layout.cache.relayout.push(i);
+            }
+        }
+    }
+
+    /// After the frame: whether each `content-visibility: auto` element is
+    /// relevant to the user, near the screen (its box within half the
+    /// viewport of what of the screen its clip shows) or holding the
+    /// focus; one whose answer changed skips its contents, or lays them
+    /// out, from the next frame. One laying its contents out remembers its
+    /// content box for `contain-intrinsic-size: auto`.
+    fn note_relevance(&mut self) {
+        let vp = self.env.viewport;
+        let screen = Rect::new(0.0, 0.0, vp.width, vp.height);
+        let focus = self.tree.index.find(self.interaction.state.focus);
+        for k in 0..self.tree.orders.with(visit::feat::SKIPS).len() {
+            let i = self.tree.orders.with(visit::feat::SKIPS)[k];
+            if i >= self.tree.nodes.len() || !self.tree.index.has(i) {
+                continue;
+            }
+            let n = &self.tree.nodes[i];
+            if !n.cv_skip {
+                let size = [
+                    (n.w - n.el.padding.horizontal()).max(0.0),
+                    (n.h - n.el.padding.vertical()).max(0.0),
+                ];
+                self.tree.nodes[i].remembered = Some(size);
+            }
+            let n = &self.tree.nodes[i];
+            if n.el.contain.visibility != crate::layout::ContentVisibility::Auto {
+                continue;
+            }
+            let (mx, my) = (vp.width * 0.5, vp.height * 0.5);
+            let near = Rect::new(
+                n.screen.x - mx,
+                n.screen.y - my,
+                n.screen.width + 2.0 * mx,
+                n.screen.height + 2.0 * my,
+            );
+            let mut holds_focus = false;
+            let mut at = focus.unwrap_or(NONE);
+            while at != NONE && at < self.tree.nodes.len() {
+                if at == i {
+                    holds_focus = true;
+                    break;
+                }
+                at = self.tree.nodes[at].parent;
+            }
+            let far = !holds_focus && !near.overlaps(&n.clip.intersect(&screen));
+            self.tree.nodes[i].cv_far = far;
+        }
     }
 
     /// The paths of the focused controls, pads 1 to 3 after the first.
