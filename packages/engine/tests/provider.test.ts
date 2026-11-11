@@ -1,5 +1,6 @@
 // The provider contract (src/provider.ts, docs/design.md §2.8 Providers):
-// its vocabulary and error codes agree with the IDL's (platform.ogt), and the
+// its vocabulary and error codes agree with the IDL's (platform.ogt) and with
+// the lists its guide gives a game author (guides/saves.md), and the
 // providers in the tree keep it under checkPlatformProvider: the local
 // document with and without its fake, no platform, and the Player bridge
 // (shell/platform.ts) over a stand-in Player with every method and with
@@ -17,12 +18,15 @@ import type { PlayerResult } from "../shell/player.ts";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const idl = readFileSync(join(repo, "crates/og-api/api/platform.ogt"), "utf8");
+// The guide wraps its lines: one space for each run of whitespace.
+const guide = readFileSync(join(repo, "crates/og-api/guides/saves.md"), "utf8").replace(/\s+/g, " ");
 
 /** The words of an IDL doc sentence: `a, b and c` → [a, b, c]. */
 const words = (text: string) => text.split(/,\s*|\s+and\s+|\s+or\s+/).map((w) => w.trim().replace(/\s*\(.*$/, "")).filter(Boolean);
 
-test("the vocabulary is the IDL's: PlatformInfo.capabilities lists exactly CORE_METHODS and HOST_EXTENSIONS", () => {
-  const m = /field capabilities List\.String "The methods it answers: ([^"(]+?) \(og\.platform\.supports/.exec(idl);
+test("the vocabulary is the guide's: PlatformInfo.capabilities lists exactly CORE_METHODS and HOST_EXTENSIONS", () => {
+  // A method name has a dot inside it; the list ends at the first one before a space.
+  const m = /The methods a host may answer, as PlatformInfo\.capabilities lists them: (.+?)\. /.exec(guide);
   expect(m).not.toBeNull();
   const listed = words(m![1]!).sort();
   expect(listed).toEqual([...CORE_METHODS, ...HOST_EXTENSIONS].sort());
@@ -31,8 +35,8 @@ test("the vocabulary is the IDL's: PlatformInfo.capabilities lists exactly CORE_
   expect(PROVIDER_VERSION).toBe(1);
 });
 
-test("the error codes and the retryable ones are the IDL's", () => {
-  const m = /Errors carry the Player's stable codes: (.+?); retryable is true for ([^."]+)\./.exec(idl);
+test("the error codes are the IDL's and the guide's, the retryable ones the guide's", () => {
+  const m = /Error codes: (.+?)\. `retryable` is true for ([^.]+)\./.exec(guide);
   expect(m).not.toBeNull();
   // "cancelled (the player backed out ...) and no_fill (no ad to show now)": the codes before each note.
   const codes = m![1]!.replace(/\([^)]*\)/g, "");
