@@ -78,12 +78,43 @@ fn has_timeline(eng: &Engine, e: Entity) -> Result<u64, String> {
     Ok(bits(&layout.decode(&bytes)["asset"]))
 }
 
+/// The same inside a system, where the step holds the world: the entity's
+/// og.Timeline as the running system can read it. `None` when it cannot
+/// (it does not read og.Timeline, or inserted it this tick, queued until
+/// it returns): the op is queued as it is, and og.timeline, later this
+/// tick, warns of one it cannot apply.
+fn timeline_in_system(
+    eng: &Engine,
+    f: &crate::engine::Frame,
+    e: Entity,
+) -> Result<Option<u64>, String> {
+    // SAFETY: the frame is published while its system runs.
+    let ctx = unsafe { f.ctx() };
+    if !ctx.is_alive(e) {
+        return Err(format!("entity {} is not alive", e.to_bits()));
+    }
+    let Ok((layout, id)) =
+        crate::api::running_record(eng, "og.Timeline", crate::RecordKind::Component)
+    else {
+        return Ok(None);
+    };
+    Ok(ctx
+        .get_bytes(e, id)
+        .ok()
+        .map(|bytes| bits(&layout.decode(&bytes)["asset"])))
+}
+
 fn op(world: u32, entity: f64, op: Op) -> Result<(), String> {
     (|| {
         let eng = engine(world)?;
         let e = Entity::from_bits(entity as u64);
-        let asset = has_timeline(&eng, e)?;
-        if matches!(op, Op::Play | Op::Seek(_)) {
+        let asset = match crate::engine::running(world) {
+            Some(f) => timeline_in_system(&eng, f, e)?,
+            None => Some(has_timeline(&eng, e)?),
+        };
+        if let Some(asset) = asset
+            && matches!(op, Op::Play | Op::Seek(_))
+        {
             let t = lock(&registry(world)).timeline(asset).ok_or_else(|| {
                 format!("its og.Timeline.asset {asset} is not a loaded timeline (og.load.timeline)")
             })?;
@@ -482,6 +513,16 @@ fn timeline_system(
         rows.extend_from_slice(a.entities());
     }
     let ops = std::mem::take(&mut lock(state).ops);
+    // A play or seek a system queued without reading the entity's
+    // og.Timeline (`timeline_in_system`): said here when it has none.
+    for (k, o) in &ops {
+        if matches!(o, Op::Play | Op::Seek(_)) && !rows.iter().any(|e| e.to_bits() == *k) {
+            note(
+                engine_id,
+                format!("og.timeline: entity {k} has no og.Timeline: nothing plays"),
+            );
+        }
+    }
     // Runs of entities that lost their og.Timeline (or died): let go.
     let gone: Vec<u64> = lock(state)
         .runs
