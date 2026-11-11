@@ -1601,10 +1601,7 @@ impl crate::ui::Tree {
                 },
             };
             let (b, placed, point) = (n.placed.rect, n.layout.anchor_placed, n.anchor_point);
-            self.nodes[f].shapes.retain(|s| {
-                !matches!(s, crate::layout::Shape::Bar { part, .. }
-                    if part.component == "Popover" && part.part == "arrow")
-            });
+            self.nodes[f].placed.arrow = None;
             let (Some(side), false, None) = (placed.side, placed.hidden, point) else {
                 continue;
             };
@@ -1619,7 +1616,7 @@ impl crate::ui::Tree {
                 crate::anchor::PlacedSide::Left => (b.right(), along(b.y, b.height, ay)),
             };
             let (bx, by) = b.center();
-            self.nodes[f].shapes.push(crate::layout::Shape::Bar {
+            self.nodes[f].placed.arrow = Some(crate::layout::Shape::Bar {
                 part: crate::dress::PartRef::of("Popover", "arrow", None),
                 frame: crate::layout::Frame::centered(cx - bx, cy - by, size, size),
                 angle: std::f32::consts::FRAC_PI_4,
