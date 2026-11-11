@@ -24,8 +24,9 @@ threads linked here; rules are in `AGENTS.md`, the UI contract in
 
 Phase 1 closed 2026-11-10. Streams run on macrunner and report to the
 coordinator thread [T-01a1c3df](https://ampcode.com/threads/T-01a1c3df-23c6-73be-9bb8-0da680008e82).
-Every stream finished its current item on 2026-11-10 and is paused with
-its lane reserved until the owner orders the next list.
+Every stream finished its current item on 2026-11-10 and is paused until
+the owner orders the next list. The structure work (§Structure) runs
+meanwhile.
 
 Landed in phase 1:
 
@@ -49,18 +50,25 @@ Landed in phase 1:
 
 Still open in phase 1:
 
-- G2/G3 parts as nodes: text fields and textarea, the number spinner, G3
-  (range, meter and progress, panel and tooltip, slots, HUD and touch
-  controls). The rpg kit's flourish and inactive-hover markers drop with
-  them.
-- `-og` migration: reduced-motion, meta → `og-overlay` and overlaps →
-  `og.ui` diagnostics land with PR #40; then the revision-3 extras and the
-  final reflection audit. `-og-scroll-fade`, `-og-layout-transition` and
-  `-og-text-path` stay `-og` properties (the owner, 2026-11-10): standard
-  CSS has no equivalent that keeps their output.
-- The `docs/ui.md` §8 inventory and its named gaps (image-alpha shape
-  contours, select/file/vertical `field-sizing`, cursors over arbitrary
-  clip paths).
+- Parts as nodes. Landed: text fields and textarea, the number spinner
+  (0724b886f) and range (21fd314855). On PR #40, not landed: the progress
+  and meter tracks and the stepper's button and value. Open, behind two
+  behaviours of the shared part-box painter (a part box draws its CSS
+  background before its backdrop, and a `background:` shorthand image lies
+  over the widget's own fill): panel and tooltip, slots, the HUD and touch
+  controls, and the fills and frames left drawn on their hosts. The rpg
+  kit's flourish marker is the heading's part and stays.
+- `-og` migration. Landed: reduced-motion on the media query (cc9ce594a),
+  overlaps through `og.ui` (3e9d4059e), `og-overlay` (b9faa8313). Open:
+  the revision-3 extras and the final reflection audit.
+  `-og-scroll-fade`, `-og-layout-transition` and `-og-text-path` stay
+  `-og` properties (the owner, 2026-11-10): standard CSS has no equivalent
+  that keeps their output.
+- The `docs/ui.md` §8 inventory (101 of 454 with output proofs). Its named
+  gaps are on PR #40, not landed: cursors inside clip paths, `field-sizing`
+  for select, file and vertical fields, image-alpha shape contours (on the
+  web only for lossless or RGBA textures until the cook keeps a CPU alpha
+  mask).
 - PR #9 waits for its author (the cut-out check ignores
   `baseColorFactor.a`); #23 stays a draft until the performance pass.
 
@@ -225,22 +233,28 @@ From the review of expo/exact (thread
   licence is checked before anything is ported (`third_party/`).
 - **Not taken:** Exact's Contract UI language, Rust gameplay, the DOM host.
 
-## Structure (the owner, 2026-11-10)
+## Structure (the owner, 2026-11-10; measured at e3ed9b49, 2026-11-11)
 
-From the structural review; the rules are `docs/design.md` §2.1 Structure
-rules, §2.6 Tiers and §2.8 Providers. Work runs on
-`claude/zen-clarke-grqlh1`, CPU checks only; its GPU check and landing are
-the integrator's.
+From the structural review (#41); the rules are `AGENTS.md` (Structure
+before size), `docs/design.md` §2.1 Structure rules, §2.6 Tiers and §2.8
+Providers. The purpose is a clear structure: state grouped by the stage
+or subject that owns it, a pipeline as named steps with explicit data
+between them, a boundary carried by types. No file is split for its line
+count (the owner, 2026-11-11). A refactor that must move no frame lands
+on the CPU gate and is verified once on the GPU host. Open work is
+collected on PR #40.
 
-| Item | Rule | State |
+| Item | Done | Open |
 |---|---|---|
-| Provider contract | §2.8 Providers | Done: `@origingame/engine/provider` (version 1), the page's `provider` option, `relayRooms`. Open: the relay's 16 MiB frame limit drops a near-limit engine message instead of answering `too_large`; the native room client does not reconnect; `og relay` serves `ws://` only, so a public page needs TLS in front; the platform's rename of its extensions |
-| Optional runtime modules | §2.1 | Done: `story`, `video`, `destruction` and `motion` are features of `og-runtime` and both hosts with absent stand-ins, default on; the shipping variants name them, so they are unchanged (`scripts/wasm-crates.txt`). Open: `nav` and `ai` (their mounts in `e6.rs` and `lazy.rs`), variants that leave modules out, then separate artifacts loaded after the first frame |
-| One host implementation | §2.1 | Done: `og_runtime::host_impl` and `host_bindings!`; the hosts' copied `host*.rs` are gone. Open: the web host's TypeScript services (input, audio, lifecycle, accessibility) have no native counterpart until the native shell |
-| Tiers | §2.6 | Stated. Open: the renderer still selects several passes by backend; each becomes a capability, starting with the mini-game WebGPU set (no MRT, async pipelines, timestamps) |
-| og-ui scope | `docs/ui.md` §7 | The CSS dialect is closed at the pinned inventory. Open: og-ui as crates (core; documents: Svelte, CSS, SVG). 29 core files name `doc`, and `doc` holds 25 `impl Ui` blocks (about 9,500 lines) that a separate crate must reach through an extension trait: first move the data types down and `style_pack.rs` up, then put `DocHost` behind a trait, then the crate. `rive` and `reactive` are the cheaper first crates |
-| Formats below features | §2.1 | Open: `og-cook` and `og-bundle` link `og-render` for format types |
-| File size | §2.1 | Split verbatim (`scripts/verify-move.py`): the render and physics IDL parts; in og-render `particles`, `particles_gpu`, `scatter`, `scene/store`, `terrain`, `water`; in og-ui `draw`, `paint`, `element`, `layout/flex` and the document builder, CSS and Svelte files; `og-physics` `sim`, `og-net` `lockstep`, `og-core` `reflect`, `og-cli` `style_check`, the engine's `runtime.ts`. Open, at 2,000 lines or more: `og-runtime` `motion/present.rs`, `destruction.rs`, `fx.rs`; `og-cook` `cook/mod.rs`, `riv/defs.rs`; `og-input` `actions.rs`; `og-physics` `lib.rs`; `og-nav` `system.rs`. `og-render`'s `renderer/render.rs` (5,757 lines) is one function, `Renderer::render`: it cannot be moved verbatim, and extracting its passes is a rendering change checked against the reference frames on the GPU host |
+| og-ui: one retained tree | `Ui` is ten fields: the stage states (`ui/stages.rs`: tree, interaction, style, layout, paint, documents, front end); `Node`'s fields are grouped (`Placed`, `LayoutBox`, `StyleNode`, `NodeMarks`); `og-css`, `og-draw` and `og-text` are crates and og-ui's sources name no `og_render` type | In order: layout writes only its own results, never the authored element (19 write-backs in 8 groups today), with reuse decided from input revisions instead of whole-node clones; a control is an element kind (build, behaviour, appearance), so a hover or a press rebuilds nothing and documents call no immediate widget; the tree takes explicit insert, update and remove, with no per-tick slots or ownership patches; the immediate API becomes `og_ui::immediate`, a front end that diffs onto the tree, engine-internal, outside the crate root and the IDL. Then og-ui as crates: 30 files outside `doc` name `crate::doc` and `doc` holds 28 `impl Ui` blocks; og-ui still links `og-render` for its tests |
+| og-render: the frame as passes | `Renderer` is 75 fields, from 184, and `RenderScene` 66, from 158, grouped by stage; a pass is a unit (`renderer/render/pass.rs`: 18 passes with their state, plan and encode) listed in one table with the capabilities it needs (`schedule.rs` `PASSES`); `Renderer::render` is 1,287 lines, from 5,535 | `render` is still one function that plans every pass; the rest of its regions as passes |
+| Tiers (§2.6) | `Caps` (`og-render` `caps.rs`): compute, MRT, async pipelines, timestamps, indirect, fragment and vertex storage, computed once from the adapter and clamped by `RenderDesc::tier`; the encoder checks what a pass uses against its needs; no pass is selected by backend (the backend is read only for the HDR scale and the adapter's name) | A limited tier run end to end: the mini-game WebGPU set (no MRT, async pipelines, timestamps) on a device, then the GL tier (no compute) |
+| og-runtime: typed bindings | Every module reads its arguments through the types generated from the IDL and answers through the generated writers | 625 hand reads of JSON values remain (`as_f64` and its kin) and 519 bindings still return a JSON `String`; 30 `thread_local!` state tables; one function per feature: `extract/frame.rs`, `destruction::run` (993 lines, twelve stages in order, staged in design only) |
+| Optional runtime modules (§2.1) | `story`, `video`, `destruction`, `motion`, `nav` and `ai` are features of `og-runtime` and both hosts with absent stand-ins, default on; the shipping variants name them, so they are unchanged (`scripts/wasm-crates.txt`) | Variants that leave modules out, then separate artifacts loaded after the first frame |
+| One host implementation (§2.1) | `og_runtime::host_impl` and `host_bindings!`; the hosts' copied `host*.rs` are gone | The web host's TypeScript services (input, audio, lifecycle, accessibility) have no native counterpart until the native shell |
+| og-cook: the cook as stages | The cook is stages with explicit data between them, timed in the report; `cook/mod.rs` is 663 lines | Formats below features: `og-cook` links `og-render`, `og-physics` and `og-ui`, and `og-bundle` links `og-render`, for format types |
+| og-probe | On PR #40, not landed: `Probe` is twelve fields (nine states: host, clock, schedule, commands, out, inject, checks, stats, saves); `action` is a 28-line dispatch to one handler per family; the wire and the 259 public items are unchanged | The three longest handlers (`key_step` 200 lines, `pointer_step` 184, `evaluate` 172); the members over the world and its names that stay on `Probe` |
+| Provider contract (§2.8) | `@origingame/engine/provider` (version 1), the page's `provider` option, `relayRooms` | The relay's 16 MiB frame limit drops a near-limit engine message instead of answering `too_large`; the native room client does not reconnect; `og relay` serves `ws://` only, so a public page needs TLS in front; the platform's rename of its extensions |
 
 ## Open
 
