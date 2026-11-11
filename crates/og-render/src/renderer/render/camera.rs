@@ -2,6 +2,10 @@
 
 use super::*;
 
+/// A planar reflection: its water's index, the mirrored camera and its
+/// frame, its view-projection and its target size.
+pub(super) type PlanarReflection = (usize, Camera, frame::CameraFrame, Mat4, (u32, u32));
+
 impl Renderer {
     /// This frame's TAA jitter in scene pixels (x right, y down: the
     /// image moves by it), over more phases under TAAU
@@ -45,11 +49,7 @@ impl Renderer {
         cam: &frame::CameraFrame,
         view_frustum: &Frustum,
         &aspect: &f32,
-    ) -> (
-        Option<VolumetricFog>,
-        Option<Fog>,
-        Vec<(usize, Camera, frame::CameraFrame, Mat4, (u32, u32))>,
-    ) {
+    ) -> (Option<VolumetricFog>, Option<Fog>, Vec<PlanarReflection>) {
         // Water: the surface the camera is under (its fog replaces the
         // frame's), and the one drawn with a planar reflection (the camera
         // mirrored in it, clipped at the surface by an oblique near plane).

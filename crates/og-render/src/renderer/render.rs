@@ -90,6 +90,8 @@ mod sprite_arenas;
 use sprite_arenas::{SpriteArenaInputs, SpriteArenas};
 mod shadow_plan;
 use shadow_plan::{PlanShadowsInputs, PlanShadowsOutputs};
+mod reflection_lists;
+use reflection_lists::{PlanReflectionListsInputs, PlanReflectionListsOutputs};
 mod setup;
 
 impl Renderer {
@@ -1083,66 +1085,26 @@ impl Renderer {
                 || skinned_visible.iter().any(|b| b.transparent && b.blend)
                 || oit_candidates
         });
-        // (The GPU culling has one reflection pass: the second slot is culled here.)
-        let mut reflection_list = Vec::new();
-        let mut reflection_meshlets: Vec<u32> = Vec::new();
-        for (k, r) in reflections.iter().enumerate() {
-            let frustum = Frustum::from_view_proj(r.3);
-            let view = vis.meshlet_view(
-                meshlet_gpu,
-                &batches,
-                meshlet_gpu::MeshletView::seen(
-                    frustum.planes(),
-                    on_layers(mask),
-                    r.1.position,
-                    r.3,
-                    r.4.1,
-                ),
-            );
-            reflection_meshlets.push(view);
-            let include =
-                |b: &Batch| !b.transparent && b.layers & mask != 0 && !(view > 0 && in_meshlet(b));
-            reflection_list.push(if gpu_cull && k == 0 {
-                let g = vis.gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None, None);
-                indirect_list(&batches, cull_n, g, include)
-            } else {
-                self.cull(
-                    &batches,
-                    &spheres,
-                    &mut transforms,
-                    &mut origins,
-                    &mut cull_inside,
-                    &frustum,
-                    // Under GPU culling the sorted instances are the
-                    // culling's: append, never draw a batch whole (the
-                    // shift below would wrap).
-                    !gpu_cull,
-                    include,
-                )
-                .0
-            });
-        }
-        // The transparent meshes in each mirror (three.js's Reflector renders the whole scene: the sky dome's clouds,
-        // the falls' curtains), back to front from the mirrored eye.
-        let mut reflection_blended = Vec::new();
-        for r in &reflections {
-            let frustum = Frustum::from_view_proj(r.3);
-            reflection_blended.push(
-                self.sort_transparent(
-                    &batches,
-                    &spheres,
-                    &submission,
-                    &mut transforms,
-                    &mut origins,
-                    &frustum,
-                    r.1.position,
-                    r.2.forward,
-                    mask,
-                    &[],
-                )
-                .0,
-            );
-        }
+        // The planar reflections' lists (reflection_lists.rs).
+        let PlanReflectionListsOutputs {
+            mut reflection_list,
+            reflection_meshlets,
+            mut reflection_blended,
+        } = self.plan_reflection_lists(PlanReflectionListsInputs {
+            batches: &batches,
+            vis: &mut vis,
+            gpu_cull,
+            spheres: &spheres,
+            transforms: &mut transforms,
+            origins: &mut origins,
+            cull_inside: &mut cull_inside,
+            submission: &submission,
+            in_meshlet: &in_meshlet,
+            on_layers: &on_layers,
+            reflections: &reflections,
+            mask,
+            cull_n,
+        });
         // Reflection probes: each due capture's faces culled, their
         // transparent meshes sorted back to front from the probe (probes.rs).
         let mut probe_lists: Vec<DrawList> = Vec::new();
