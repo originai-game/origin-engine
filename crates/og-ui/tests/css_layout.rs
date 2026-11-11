@@ -62,6 +62,9 @@
 //!   (not shrinking to fit), a definite width between two insets
 //!   stretched, or its margins (`auto` ones too) ignored →
 //!   `positioning_places_as_css_positioning_does`
+//! - a fixed box with an inset on one axis only standing at the screen's
+//!   edge on the other, not where its parent's flow would have put it →
+//!   `a_fixed_box_keeps_its_static_position_on_an_axis_with_no_inset`
 //! - `inline-start` not following the containing block's direction, `left`
 //!   turned round under a right-to-left surface, a positioned box with no
 //!   horizontal inset not flipped with its margins on their sides
@@ -711,6 +714,61 @@ fn positioning_places_as_css_positioning_does() {
             (0.0, 10.0, false),
             "sticky"
         );
+    });
+}
+
+#[test]
+fn a_fixed_box_keeps_its_static_position_on_an_axis_with_no_inset() {
+    // CSS 2.1 §10.3.7 and §10.6.4, CSS Flexbox §4.1: an inset places its
+    // own axis only; the other keeps the place the flow would have given
+    // the box (it once stood at the screen's left or top edge).
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Col"><p id="Tip">x</p></div>
+  <div id="Blk"><div id="A"></div><div id="After"></div><div id="B"></div></div>
+  <div id="Row"><div id="End"></div></div>
+  <div id="Pinned"></div>
+</div></div>
+<style>
+#Root { width: 400px; padding: 20px 0 0 30px; }
+#Col { display: flex; flex-direction: column; align-items: center; width: 300px; height: 50px; }
+#Tip { position: fixed; bottom: 10px; width: 60px; height: 20px; margin: 0; }
+#Blk { width: 200px; padding: 8px; }
+#A { height: 30px; }
+#After { position: fixed; width: 20px; height: 10px; margin-left: 4px; }
+#B { height: 12px; }
+#Row { display: flex; justify-content: flex-end; align-items: flex-end; width: 200px; height: 40px; }
+#End { position: fixed; top: 5px; width: 20px; height: 10px; }
+#Pinned { position: fixed; left: 7px; top: 9px; width: 10px; height: 10px; }
+</style>"#;
+    both(text, &[], |d| {
+        let at = |id: &str| {
+            let e = d.get(id);
+            (e.x, e.y)
+        };
+        let (col, blk, row) = (at("Col"), at("Blk"), at("Row"));
+        assert_eq!(col, (30.0, 20.0), "the flow starts inside the padding");
+        assert_eq!(
+            at("Tip"),
+            (col.0 + (300.0 - 60.0) / 2.0, 900.0 - 10.0 - 20.0),
+            "centred as its flex column would centre it, on its bottom inset"
+        );
+        assert_eq!(
+            at("After"),
+            (blk.0 + 8.0 + 4.0, blk.1 + 8.0 + 30.0),
+            "in a block: under the sibling before it, past its margin"
+        );
+        assert_eq!(
+            at("B"),
+            (blk.0 + 8.0, blk.1 + 8.0 + 30.0),
+            "and it takes no room in the flow"
+        );
+        assert_eq!(
+            at("End"),
+            (row.0 + 200.0 - 20.0, 5.0),
+            "at the end of its flex row, on its top inset"
+        );
+        assert_eq!(at("Pinned"), (7.0, 9.0), "two insets place both axes");
     });
 }
 

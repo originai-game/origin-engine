@@ -675,11 +675,125 @@ pub(in crate::layout) fn auto_offset(n: &Node, edge: usize, free: f32) -> Option
 
 /// Where an out-of-flow element placed on the screen ([`Position::Screen`])
 /// stands: its size and place by its insets in the whole surface `screen`.
-pub(crate) fn on_screen(n: &Node, screen: &Rect) -> Rect {
+/// An axis with no inset keeps its static position ([`static_position`]).
+pub(crate) fn on_screen(
+    nodes: &[Node],
+    i: usize,
+    screen: &Rect,
+    scroll: &dyn Fn(u64) -> (f32, f32),
+) -> Rect {
+    let n = &nodes[i];
     let w = out_size(n, 0, screen.width, screen.width);
     let h = out_size(n, 1, screen.height, screen.width);
-    let (x, y) = place_out(screen, n, w, h);
+    let (mut x, mut y) = place_out(screen, n, w, h);
+    let ins = &n.layout.insets;
+    let free_x = ins.start.is_none() && ins.end.is_none() && ins.across.is_none() && !ins.center_x;
+    let free_y = ins.top.is_none() && ins.bottom.is_none() && !ins.center_y;
+    if (free_x || free_y) && n.up != NONE {
+        let (sx, sy) = static_position(nodes, i, w, h, screen.width, scroll);
+        if free_x {
+            x = sx;
+        }
+        if free_y {
+            y = sy;
+        }
+    }
     Rect::new(x, y, w, h)
+}
+
+/// The static position of out-of-flow node `i`, `w`×`h` (CSS 2.1 §10.3.7
+/// and §10.6.4): where it would have stood in the flow of the box it lays
+/// out in, which an axis with no inset keeps. In a block it follows the
+/// sibling before it in the flow; in a flex container it is placed as the
+/// only item would be (CSS Flexbox §4.1), by `justify-content` and its
+/// `align-self`; in a stack by the stack's alignment; in a grid at the
+/// content box's start. Its margins' percentages read `basis`.
+fn static_position(
+    nodes: &[Node],
+    i: usize,
+    w: f32,
+    h: f32,
+    basis: f32,
+    scroll: &dyn Fn(u64) -> (f32, f32),
+) -> (f32, f32) {
+    let n = &nodes[i];
+    let p = &nodes[n.up];
+    let el = p.layout.used;
+    let (sx, sy) = if el.scroll || el.scroll_x {
+        scroll(p.key)
+    } else {
+        (0.0, 0.0)
+    };
+    let inner = Rect::new(
+        p.layout.x + el.padding.left - sx.clamp(0.0, p.max_scroll_x()),
+        p.layout.y + el.padding.top - sy.clamp(0.0, p.max_scroll()),
+        (p.layout.w - el.padding.horizontal()).max(0.0),
+        (p.layout.h - el.padding.vertical()).max(0.0),
+    );
+    let [mt, mr, mb, ml] = n.layout.used.margin.map(|m| m.of(basis));
+    let (room_w, room_h) = (inner.width - ml - mr, inner.height - mt - mb);
+    let (mut x, y) = if p.layout_mode() == LayoutMode::Stack {
+        // A stack places its children without their margins.
+        place_in(&inner, w, h, &Edges::default(), el.align, el.cross)
+    } else if p.layout_mode() != LayoutMode::Flex && matches!(*p.content, Content::None) {
+        (inner.x + ml, inner.y + mt)
+    } else {
+        // The sibling before it in the flow of the same box.
+        let siblings = &nodes[n.parent].ordered_children;
+        let before = siblings
+            .iter()
+            .position(|&c| c == i)
+            .and_then(|at| siblings[..at].iter().rfind(|c| p.children.contains(c)))
+            .map(|&c| &nodes[c]);
+        let cross = n.layout.used.align_self.unwrap_or(el.cross);
+        let safe = (el.safe | n.layout.used.safe) & 2 != 0;
+        let main = |free: f32| main_offsets(line_align(&el), free, 1, el.safe & 1 != 0).0;
+        let row = el.direction == Direction::Row;
+        let (x, y) = match (row, before) {
+            // On a line, after the box before it.
+            (true, Some(b)) if p.layout.line_box.is_some() => (
+                b.layout.x + b.layout.w + b.layout.margin_x[1] + ml,
+                b.layout.y,
+            ),
+            (true, _) if p.layout.line_box.is_some() => (inner.x + ml, inner.y + mt),
+            (true, _) => (
+                inner.x + main(room_w - w) + ml,
+                inner.y + mt + cross_offset(cross, room_h, h, safe),
+            ),
+            (false, before) => (
+                inner.x + ml + cross_offset(cross, room_w, w, safe),
+                match before {
+                    Some(b) if el.block => {
+                        b.layout.y + b.layout.h + span(b.layout.margin_sets[1]) + mt
+                    }
+                    _ if el.block => inner.y + mt,
+                    _ => inner.y + main(room_h - h) + mt,
+                },
+            ),
+        };
+        // A reversed axis runs from its other end, as its flow does.
+        let (flip_x, flip_y) = if row {
+            (el.reverse, el.wrap_reverse && el.wrap)
+        } else {
+            (el.wrap_reverse && el.wrap, el.reverse)
+        };
+        (
+            if flip_x {
+                2.0 * inner.x + inner.width - x - w - mr + ml
+            } else {
+                x
+            },
+            if flip_y {
+                2.0 * inner.y + inner.height - y - h - mb + mt
+            } else {
+                y
+            },
+        )
+    };
+    if el.flip {
+        x = 2.0 * inner.x + inner.width - x - w - mr + ml;
+    }
+    (x, y)
 }
 
 /// Where a `w`×`h` box sits in `bx`: by its insets where they are set,
