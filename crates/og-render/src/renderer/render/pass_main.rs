@@ -2,7 +2,9 @@
 
 use super::*;
 
-pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6, F7> {
+pub(super) struct MainPassInputs<'a> {
+    /// What the frame draws with (draw_ctx.rs).
+    pub(super) ctx: &'a DrawCtx<'a>,
     pub(super) scene: &'a RenderScene,
     pub(super) water_draws: &'a [water::WaterDraw],
     pub(super) fluid_frame: &'a Option<fluid3d::Fluid3dFrame>,
@@ -11,13 +13,11 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6, F7> {
     pub(super) encoder: &'a mut Encoder,
     pub(super) frame_bind_group: &'a wgpu::BindGroup,
     pub(super) fx_group: &'a wgpu::BindGroup,
-    pub(super) draw_list: &'a F0,
     pub(super) main_list: &'a DrawList,
     pub(super) batches: &'a [Batch],
     pub(super) physical_fx: Option<(&'a wgpu::BindGroup, &'a wgpu::BindGroup)>,
     pub(super) probe_binding: Option<probe_select::ProbeGroups<'a>>,
     pub(super) stats: &'a mut FrameStats,
-    pub(super) draw_skinned: &'a F1,
     pub(super) skinned_visible: &'a [Batch],
     pub(super) lit_skinned: &'a [&'a wgpu::RenderPipeline],
     pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
@@ -26,21 +26,16 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6, F7> {
     pub(super) scatter_batches: &'a scatter::ScatterBatches,
     /// Where the crowds' cards come from in this pass.
     pub(super) cards: scatter::CardSource<'a>,
-    pub(super) scatter_material: &'a F2,
-    pub(super) scatter_mesh: &'a F3,
     pub(super) grass_frame: &'a grass::GrassFrame,
     pub(super) sky_group: &'a wgpu::BindGroup,
     pub(super) fluid_bounds: Option<(Vec3, f32)>,
-    pub(super) draw_blended: &'a F4,
     pub(super) blended_list: &'a DrawList,
     pub(super) sprite_frame: &'a sprites::SpriteFrame,
     pub(super) sprite_fx_group: &'a wgpu::BindGroup,
     pub(super) particle_group: &'a Option<wgpu::BindGroup>,
     pub(super) particle_frame: &'a particles_gpu::ParticleFrame,
-    pub(super) draw_strips: &'a F5,
     pub(super) ribbon_frame: &'a ribbons::RibbonFrame,
     pub(super) line_frame: &'a lines::LineFrame,
-    pub(super) draw_sprites: &'a F6,
     pub(super) metaball_groups: &'a [wgpu::BindGroup],
     pub(super) volumetric_fog: Option<VolumetricFog>,
     /// The blended surfaces' order-independent pass (oit.rs), or `None`:
@@ -50,7 +45,6 @@ pub(super) struct MainPassInputs<'a, F0, F1, F2, F3, F4, F5, F6, F7> {
     /// reflection probes' groups likewise.
     pub(super) oit_frame_group: Option<&'a wgpu::BindGroup>,
     pub(super) oit_probe_binding: Option<probe_select::ProbeGroups<'a>>,
-    pub(super) draw_oit_part: &'a F7,
 }
 
 impl Renderer {
@@ -77,9 +71,10 @@ impl Renderer {
         }
     }
 
-    pub(super) fn encode_main<'r>(
+    pub(super) fn encode_main(
         &self,
         MainPassInputs {
+            ctx,
             scene,
             water_draws,
             fluid_frame,
@@ -88,13 +83,11 @@ impl Renderer {
             encoder,
             frame_bind_group,
             fx_group,
-            draw_list,
             main_list,
             batches,
             physical_fx,
             probe_binding,
             stats,
-            draw_skinned,
             skinned_visible,
             lit_skinned,
             terrain_indices,
@@ -102,70 +95,22 @@ impl Renderer {
             view_frustum,
             scatter_batches,
             cards,
-            scatter_material,
-            scatter_mesh,
             grass_frame,
             sky_group,
             fluid_bounds,
-            draw_blended,
             blended_list,
             sprite_frame,
             sprite_fx_group,
             particle_group,
             particle_frame,
-            draw_strips,
             ribbon_frame,
             line_frame,
-            draw_sprites,
             metaball_groups,
             volumetric_fog,
             oit,
             oit_frame_group,
             oit_probe_binding,
-            draw_oit_part,
-        }: MainPassInputs<
-            '_,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &DrawList,
-                bool,
-                &mut Option<LitDrawKey>,
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                Option<&wgpu::BindGroup>,
-            ),
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &[Batch],
-                bool,
-                u32,
-                u32,
-                &[&wgpu::RenderPipeline],
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                Option<u32>,
-            ) -> u32,
-            impl Fn(usize) -> Option<&'r wgpu::BindGroup>,
-            impl Fn(usize) -> Option<(&'r wgpu::Buffer, &'r wgpu::Buffer, u32)>,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &DrawList,
-                (&[(f32, sprites::SpriteRun)], &[sprites::SpriteRun]),
-                (&wgpu::BindGroup, &wgpu::BindGroup),
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                bool,
-            ) -> u32,
-            impl Fn(&mut wgpu::RenderPass, &[ribbons::RibbonRun]) -> u32,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &[sprites::SpriteRun],
-                &wgpu::BindGroup,
-                &[wgpu::BindGroup],
-                bool,
-            ) -> u32,
-            impl Fn(&mut wgpu::RenderPass, BlendedPart, Option<probe_select::ProbeGroups>) -> u32,
-        >,
+        }: MainPassInputs<'_>,
     ) {
         let clear = match scene.environment.background {
             Background::Color(c) => wgpu::Color {
@@ -248,7 +193,7 @@ impl Renderer {
         let mut pass = begin(encoder, true, split || oit.is_some(), "main");
         pass.set_bind_group(0, frame_bind_group, &[]);
         pass.set_bind_group(2, fx_group, &[]);
-        draw_list(
+        ctx.draw_list(
             &mut pass,
             main_list,
             true,
@@ -280,7 +225,7 @@ impl Renderer {
             );
             binder.reset(&mut pass);
         }
-        stats.draw_calls += draw_skinned(
+        stats.draw_calls += ctx.draw_skinned(
             &mut pass,
             skinned_visible,
             false,
@@ -310,8 +255,8 @@ impl Renderer {
             &mut pass,
             scatter::ScatterPass::Lit,
             scatter_batches,
-            scatter_material,
-            scatter_mesh,
+            |m| ctx.scatter_material(m),
+            |m| ctx.scatter_mesh(m),
             |c, r| view_frustum.intersects_sphere(c, r),
             Some(&mut probe_select::Binder::new(probe_binding)),
             Some(fx_group),
@@ -414,7 +359,7 @@ impl Renderer {
                 // Transparent meshes and the billboards among them, back
                 // to front over the opaque scene.
                 pass.set_bind_group(2, fx_group, &[]);
-                stats.draw_calls += draw_blended(
+                stats.draw_calls += ctx.draw_blended(
                     &mut pass,
                     blended_list,
                     (&sprite_frame.billboards, &sprite_frame.billboard_shadows),
@@ -423,7 +368,7 @@ impl Renderer {
                     probe_binding,
                     false,
                 );
-                stats.draw_calls += draw_skinned(
+                stats.draw_calls += ctx.draw_skinned(
                     &mut pass,
                     skinned_visible,
                     true,
@@ -436,7 +381,7 @@ impl Renderer {
                 );
                 stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::All);
                 // Trails, ribbons and beams (layered 2D trails go with the sprites).
-                stats.draw_calls += draw_strips(&mut pass, &ribbon_frame.runs);
+                stats.draw_calls += ctx.draw_strips(&mut pass, &ribbon_frame.runs);
             }
             Some(mode) => {
                 // The transmissive meshes (depth written, the scene copy
@@ -444,7 +389,7 @@ impl Renderer {
                 // blended surfaces test against them.
                 pass.set_bind_group(2, fx_group, &[]);
                 stats.draw_calls +=
-                    draw_oit_part(&mut pass, BlendedPart::Transmissive, probe_binding);
+                    ctx.draw_oit_part(&mut pass, BlendedPart::Transmissive, probe_binding);
                 stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::Before);
                 drop(pass);
                 // The blended surfaces in any order into the weighted
@@ -481,7 +426,7 @@ impl Renderer {
                     mark_pass.set_bind_group(0, frame_group, &[]);
                     mark_pass.set_bind_group(2, fx_group, &[]);
                     stats.draw_calls +=
-                        draw_oit_part(&mut mark_pass, BlendedPart::Oit(mark), probes);
+                        ctx.draw_oit_part(&mut mark_pass, BlendedPart::Oit(mark), probes);
                     if let Some(p) = self.oit_pipeline(oit::Source::Particles, mark) {
                         stats.draw_calls +=
                             particles(&mut mark_pass, particles_gpu::ParticlePart::Oit(p));
@@ -532,7 +477,8 @@ impl Renderer {
                 });
                 oit_pass.set_bind_group(0, frame_group, &[]);
                 oit_pass.set_bind_group(2, fx_group, &[]);
-                stats.draw_calls += draw_oit_part(&mut oit_pass, BlendedPart::Oit(mode), probes);
+                stats.draw_calls +=
+                    ctx.draw_oit_part(&mut oit_pass, BlendedPart::Oit(mode), probes);
                 if let Some(p) = self.oit_pipeline(oit::Source::Particles, mode) {
                     stats.draw_calls +=
                         particles(&mut oit_pass, particles_gpu::ParticlePart::Oit(p));
@@ -554,7 +500,7 @@ impl Renderer {
                 pass = begin(encoder, false, false, "main (after oit)");
                 pass.set_bind_group(0, frame_bind_group, &[]);
                 pass.set_bind_group(2, fx_group, &[]);
-                stats.draw_calls += draw_oit_part(&mut pass, BlendedPart::Rest, probe_binding);
+                stats.draw_calls += ctx.draw_oit_part(&mut pass, BlendedPart::Rest, probe_binding);
                 stats.draw_calls += particles(&mut pass, particles_gpu::ParticlePart::After);
                 stats.draw_calls += self.frame_draw_strips(
                     &mut pass,
@@ -575,7 +521,7 @@ impl Renderer {
             pass.set_bind_group(0, frame_bind_group, &[]);
         }
         // Sprites and text, blended over the scene in sorted order.
-        stats.draw_calls += draw_sprites(
+        stats.draw_calls += ctx.draw_sprites(
             &mut pass,
             &sprite_frame.runs,
             sprite_fx_group,

@@ -2,7 +2,9 @@
 
 use super::*;
 
-pub(super) struct ProbesPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
+pub(super) struct ProbesPassInputs<'a> {
+    /// What the frame draws with (draw_ctx.rs).
+    pub(super) ctx: &'a DrawCtx<'a>,
     pub(super) scene: &'a RenderScene,
     pub(super) probe_frame: &'a probes::ProbeFrame,
     pub(super) face_depth: bool,
@@ -11,21 +13,15 @@ pub(super) struct ProbesPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) probe_faces: &'a [[frame::CameraFrame; 6]],
     pub(super) active_probes: &'a [ReflectionProbe],
     pub(super) stats: &'a mut FrameStats,
-    pub(super) depth_prepass: &'a F0,
     pub(super) encoder: &'a mut Encoder,
     pub(super) face_groups: &'a [wgpu::BindGroup],
     pub(super) fx_group: &'a wgpu::BindGroup,
     pub(super) probe_lists: &'a [DrawList],
     pub(super) probe_skinned: &'a [Vec<Batch>],
-    pub(super) draw_list: &'a F1,
-    pub(super) draw_skinned: &'a F2,
     pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
     pub(super) terrain_draws: &'a [terrain::TerrainDraw],
     pub(super) scatter_batches: &'a scatter::ScatterBatches,
-    pub(super) scatter_material: &'a F3,
-    pub(super) scatter_mesh: &'a F4,
     pub(super) sky_group: &'a wgpu::BindGroup,
-    pub(super) draw_blended: &'a F5,
     pub(super) probe_blended: &'a [DrawList],
     pub(super) face_boards: &'a [sprites::Billboards],
     pub(super) glow_fx_group: &'a wgpu::BindGroup,
@@ -33,7 +29,6 @@ pub(super) struct ProbesPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
     pub(super) particle_frame: &'a particles_gpu::ParticleFrame,
     pub(super) line_frame: &'a lines::LineFrame,
     pub(super) face_line_groups: &'a [wgpu::BindGroup],
-    pub(super) draw_sprites: &'a F6,
     pub(super) face_sprites: &'a [Vec<sprites::SpriteRun>],
     /// Each pass's view of the meshlet dispatch (0: none), and the
     /// frame's batches it draws.
@@ -42,9 +37,10 @@ pub(super) struct ProbesPassInputs<'a, F0, F1, F2, F3, F4, F5, F6> {
 }
 
 impl Renderer {
-    pub(super) fn encode_probes<'r>(
+    pub(super) fn encode_probes(
         &self,
         ProbesPassInputs {
+            ctx,
             scene,
             probe_frame,
             face_depth,
@@ -53,21 +49,15 @@ impl Renderer {
             probe_faces,
             active_probes,
             stats,
-            depth_prepass,
             encoder,
             face_groups,
             fx_group,
             probe_lists,
             probe_skinned,
-            draw_list,
-            draw_skinned,
             terrain_indices,
             terrain_draws,
             scatter_batches,
-            scatter_material,
-            scatter_mesh,
             sky_group,
-            draw_blended,
             probe_blended,
             face_boards,
             glow_fx_group,
@@ -75,61 +65,10 @@ impl Renderer {
             particle_frame,
             line_frame,
             face_line_groups,
-            draw_sprites,
             face_sprites,
             meshlet_views,
             batches,
-        }: ProbesPassInputs<
-            '_,
-            impl Fn(
-                &mut Encoder,
-                &str,
-                &views::DepthPrepass,
-                (&wgpu::BindGroup, &wgpu::BindGroup),
-                &DrawList,
-                &[Batch],
-                &Frustum,
-                Option<&dyn Fn(Vec3, f32) -> bool>,
-            ) -> u32,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &DrawList,
-                bool,
-                &mut Option<LitDrawKey>,
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                Option<&wgpu::BindGroup>,
-            ),
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &[Batch],
-                bool,
-                u32,
-                u32,
-                &[&wgpu::RenderPipeline],
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                Option<u32>,
-            ) -> u32,
-            impl Fn(usize) -> Option<&'r wgpu::BindGroup>,
-            impl Fn(usize) -> Option<(&'r wgpu::Buffer, &'r wgpu::Buffer, u32)>,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &DrawList,
-                (&[(f32, sprites::SpriteRun)], &[sprites::SpriteRun]),
-                (&wgpu::BindGroup, &wgpu::BindGroup),
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                bool,
-            ) -> u32,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &[sprites::SpriteRun],
-                &wgpu::BindGroup,
-                &[wgpu::BindGroup],
-                bool,
-            ) -> u32,
-        >,
+        }: ProbesPassInputs<'_>,
     ) {
         // Each due probe's six faces from its position, then
         // its filtering (`probes.rs`).
@@ -164,7 +103,7 @@ impl Renderer {
                 // Its linear depth, before its pass reads it: the
                 // depth prepass a view draws (`depth_prepass`).
                 if let Some(t) = targets {
-                    stats.draw_calls += depth_prepass(
+                    stats.draw_calls += ctx.depth_prepass(
                         encoder,
                         "reflection probe face depth",
                         &t.prepass,
@@ -241,7 +180,7 @@ impl Renderer {
                 pass.set_bind_group(0, &face_groups[k], &[]);
                 pass.set_bind_group(2, fx_group, &[]);
                 let list = &probe_lists[k];
-                draw_list(&mut pass, list, true, &mut None, None, None, Some(fx_group));
+                ctx.draw_list(&mut pass, list, true, &mut None, None, None, Some(fx_group));
                 stats.draw_calls += list.ranges.len() as u32;
                 stats.draw_calls += self.draw_meshlets(&mut pass, batches, meshlet_views[k]);
                 // Skinned meshes in their pose, terrain and
@@ -250,7 +189,7 @@ impl Renderer {
                     .iter()
                     .map(|b| self.lit_pipeline_of(b, true, false))
                     .collect();
-                stats.draw_calls += draw_skinned(
+                stats.draw_calls += ctx.draw_skinned(
                     &mut pass,
                     &probe_skinned[k],
                     false,
@@ -277,8 +216,8 @@ impl Renderer {
                     &mut pass,
                     scatter::ScatterPass::Lit,
                     scatter_batches,
-                    scatter_material,
-                    scatter_mesh,
+                    |m| ctx.scatter_material(m),
+                    |m| ctx.scatter_mesh(m),
                     scattered,
                     None,
                     Some(fx_group),
@@ -339,7 +278,7 @@ impl Renderer {
                 // Transparent meshes and the billboards among
                 // them, back to front from the probe, over the
                 // opaque capture.
-                stats.draw_calls += draw_blended(
+                stats.draw_calls += ctx.draw_blended(
                     &mut pass,
                     &probe_blended[k],
                     (&face_boards[k].0, &face_boards[k].1),
@@ -348,7 +287,7 @@ impl Renderer {
                     None,
                     true,
                 );
-                stats.draw_calls += draw_skinned(
+                stats.draw_calls += ctx.draw_skinned(
                     &mut pass,
                     &probe_skinned[k],
                     true,
@@ -398,7 +337,7 @@ impl Renderer {
                     pass.set_bind_group(0, &face_groups[k], &[]);
                 }
                 stats.draw_calls +=
-                    draw_sprites(&mut pass, &face_sprites[k], glow_fx_group, &[], true);
+                    ctx.draw_sprites(&mut pass, &face_sprites[k], glow_fx_group, &[], true);
             }
             // A light volume probe is projected onto its harmonics
             // (probe_grid.rs); a reflection probe filtered.

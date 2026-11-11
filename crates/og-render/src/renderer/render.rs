@@ -47,7 +47,9 @@ mod view_culling;
 
 mod camera;
 
+mod draw_ctx;
 mod schedule;
+use draw_ctx::DrawCtx;
 mod setup;
 
 impl Renderer {
@@ -2338,13 +2340,6 @@ impl Renderer {
         }
         // The crowds' cards' atlases, baked from the palette's clips.
         self.prepare_crowd_cards(scene, &crowd_frame, &mut scatter_batches.cards);
-        let scatter_material = |m: usize| self.cache.materials.get(m).map(|g| &g.bind_group);
-        let scatter_mesh = |m: usize| {
-            self.cache
-                .meshes
-                .get(m)
-                .map(|g| (&g.vertices, &g.indices, g.index_count))
-        };
         grow_and_write(
             &self.device,
             &self.queue,
@@ -3863,12 +3858,6 @@ impl Renderer {
                 .chain(view_groups.iter().map(|g| (&g.1, g.2.as_ref())))
                 .filter_map(|(fx, lean)| Some((fx, lean?)))
                 .collect();
-        let fx_lean_of = |fx: &wgpu::BindGroup| {
-            fx_leans
-                .iter()
-                .find(|(f, _)| std::ptr::eq(*f, fx))
-                .map(|(_, l)| *l)
-        };
         // Each view's metaball field groups (its own fields' textures).
         let view_fields: Vec<Vec<wgpu::BindGroup>> = view_plans
             .iter()
@@ -4148,579 +4137,43 @@ impl Renderer {
         };
         let culled_gpu = self.gpu_cull.as_ref().filter(|_| gpu_cull);
         let crowd_cull = self.crowd_gpu.as_ref().filter(|_| crowd_gpu);
-        // Where a pass's crowd cards come from: GPU culling pass `g`'s row
-        // of the crowd cull, or the CPU path's records.
-        let card_source = |g: Option<u32>| match crowd_cull {
-            Some(cc) => g
-                .and_then(|g| cc.rows_of.get(g as usize).copied().flatten())
-                .map_or(scatter::CardSource::None, |r| {
-                    scatter::CardSource::Gpu(cc, r)
-                }),
-            None => scatter::CardSource::Cpu,
+        // The effect groups of the standard and the physical pipelines, in
+        // the passes that draw physical materials with theirs.
+        let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
+        // What every pass below draws with (draw_ctx.rs).
+        let ctx = DrawCtx {
+            r: self,
+            scene,
+            batches: &batches,
+            culled_gpu,
+            crowd_cull,
+            fx_leans: &fx_leans,
+            palette_group,
+            skinned_gpu,
+            sprite_frame: &sprite_frame,
+            blended_list: &blended_list,
+            main_list: &main_list,
+            skinned_visible: &skinned_visible,
+            lit_skinned: &lit_skinned,
+            physical_fx,
+            fx_group,
+            sprite_fx_group,
+            glow_fx_group,
+            terrain_indices: self.terrain.index_buffer(),
+            terrain_draws: &terrain_draws,
+            scatter_batches: &scatter_batches,
+            grass_frame: &grass_frame,
+            shadow_skinned: &shadow_skinned,
+            skinned_batches: &skinned_batches,
+            terrain_casters,
         };
-        let camera_cards = card_source(
+        let camera_cards = ctx.card_source(
             cull_passes
                 .iter()
                 .position(|p| p.kind == cull_gpu::PassKind::Main)
                 .map(|g| g as u32),
         );
-        // The effect groups of the standard and the physical pipelines, in
-        // the passes that draw physical materials with theirs.
-        let physical_fx = physical_fx_group.as_ref().map(|p| (fx_group, p));
-        // The blended skinned batches' OIT pipelines (oit.rs), the rest as
-        // `lit_skinned` (not drawn by the OIT pass).
-        let oit_skinned = |mode: oit::Oit| -> Vec<&wgpu::RenderPipeline> {
-            skinned_visible
-                .iter()
-                .zip(&lit_skinned)
-                .map(|(b, &sorted)| {
-                    let physical = b.physical && physical_fx.is_some();
-                    b.transparent
-                        .then_some(())
-                        .filter(|_| b.blend)
-                        .and_then(|_| {
-                            self.oit_pipeline(Self::oit_lit_source(b, true, physical), mode)
-                        })
-                        .unwrap_or(sorted)
-                })
-                .collect()
-        };
-        // A part of the main camera's transparent surfaces under OIT
-        // (`BlendedPart`): the transmissive meshes, the blended surfaces
-        // into the OIT pass of its mode, or the billboards it cannot take
-        // (back to front). Returns the draws.
-        let draw_oit_part = |pass: &mut wgpu::RenderPass,
-                             part: BlendedPart,
-                             probes: Option<probe_select::ProbeGroups>|
-         -> u32 {
-            let billboard_runs = |oit: bool| -> Vec<sprites::SpriteRun> {
-                let keep = |r: &sprites::SpriteRun| self.oit_billboard(r, scene).is_some() == oit;
-                let boards: Vec<(f32, sprites::SpriteRun)> = sprite_frame
-                    .billboards
-                    .iter()
-                    .filter(|(_, r)| keep(r))
-                    .copied()
-                    .collect();
-                sprite_frame
-                    .billboard_shadows
-                    .iter()
-                    .filter(|r| keep(r))
-                    .copied()
-                    .chain(sprites::draw_runs_of(&boards))
-                    .collect()
-            };
-            let mode = match part {
-                BlendedPart::Transmissive => None,
-                BlendedPart::Oit(m) => Some(m),
-                BlendedPart::Rest => {
-                    let runs = billboard_runs(false);
-                    if runs.is_empty() {
-                        return 0;
-                    }
-                    let n =
-                        self.frame_draw_sprites(pass, &runs, sprite_fx_group, &[], false, scene);
-                    pass.set_bind_group(2, fx_group, &[]);
-                    return n;
-                }
-            };
-            let part_list = DrawList {
-                ranges: blended_list
-                    .ranges
-                    .iter()
-                    .filter(|r| batches[r.0 as usize].blend == mode.is_some())
-                    .copied()
-                    .collect(),
-                indirect: blended_list.indirect,
-                ..DrawList::default()
-            };
-            self.frame_draw_list(DrawListInputs {
-                pass,
-                list: &part_list,
-                lit: true,
-                shadow: ShadowTarget::Cascade,
-                current: &mut None,
-                physical_fx,
-                probes,
-                fx: Some(fx_group),
-                batches: &batches,
-                culled_gpu,
-                fx_lean_of: &fx_lean_of,
-                oit: mode,
-            });
-            let mut draws = part_list.ranges.len() as u32;
-            draws += self.frame_draw_skinned(DrawSkinnedInputs {
-                pass,
-                list: &skinned_visible,
-                transparent: true,
-                blended: Some(mode.is_some()),
-                material_group: 1,
-                palette_at: 3,
-                pipelines: &match mode {
-                    Some(m) => oit_skinned(m),
-                    None => lit_skinned.clone(),
-                },
-                physical_fx,
-                probes,
-                palette_group,
-                indirect: main_list
-                    .indirect
-                    .filter(|_| skinned_gpu)
-                    .zip(culled_gpu)
-                    .map(|(g, gc)| (gc, g)),
-                // Crowds take this path only when every part is opaque.
-                crowds: None,
-            });
-            if let Some(mode) = mode {
-                draws += self.frame_draw_oit_billboards(
-                    pass,
-                    &billboard_runs(true),
-                    sprite_fx_group,
-                    mode,
-                    scene,
-                );
-                pass.set_bind_group(2, fx_group, &[]);
-            }
-            draws
-        };
-        // Draws a list's ranges. Lit passes switch the pipeline when the
-        // batch's (side, blending, effects, shader, physical, lean) changes and
-        // bind each batch's material (and, between standard and physical,
-        // the effect group: `physical_fx`); shadow passes switch on the
-        // side and dissolve (with the material).
-        let draw_list = |pass: &mut wgpu::RenderPass,
-                         list: &DrawList,
-                         lit: bool,
-                         current: &mut Option<LitDrawKey>,
-                         physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                         probes: Option<probe_select::ProbeGroups>,
-                         fx: Option<&wgpu::BindGroup>| {
-            self.frame_draw_list(DrawListInputs {
-                pass,
-                list,
-                lit,
-                shadow: ShadowTarget::Cascade,
-                current,
-                physical_fx,
-                probes,
-                fx,
-                batches: &batches,
-                culled_gpu,
-                fx_lean_of: &fx_lean_of,
-                oit: None,
-            })
-        };
-        // The skinned batches (`transparent`: which of them) with the
-        // pipelines `pipeline` picks; materials at group `material_group`.
-        // `physical_fx` as in draw_list: the main pass's physical batches
-        // bind their physical groups (their pipelines are in `pipelines`).
-        let draw_skinned = |pass: &mut wgpu::RenderPass,
-                            list: &[Batch],
-                            transparent: bool,
-                            material_group: u32,
-                            palette_at: u32,
-                            pipelines: &[&wgpu::RenderPipeline],
-                            physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                            probes: Option<probe_select::ProbeGroups>,
-                            // GPU culling's pass whose kept instances
-                            // `list` (every skinned batch) draws; `None`:
-                            // `list`'s own ranges.
-                            cull_pass: Option<u32>|
-         -> u32 {
-            self.frame_draw_skinned(DrawSkinnedInputs {
-                pass,
-                list,
-                transparent,
-                material_group,
-                palette_at,
-                blended: None,
-                pipelines,
-                physical_fx,
-                probes,
-                palette_group,
-                indirect: cull_pass
-                    .filter(|_| skinned_gpu)
-                    .zip(culled_gpu)
-                    .map(|(g, gc)| (gc, g)),
-                crowds: cull_pass.zip(crowd_cull).and_then(|(g, cc)| {
-                    cc.rows_of
-                        .get(g as usize)
-                        .copied()
-                        .flatten()
-                        .map(|r| (cc, r))
-                }),
-            })
-        };
-        // Glowing sprites into a glow buffer (group 0 set: the camera's).
-        let draw_glow = |pass: &mut wgpu::RenderPass, runs: &[sprites::SpriteRun]| -> u32 {
-            self.frame_draw_glow(pass, runs, glow_fx_group)
-        };
-        // Trails, ribbons and beams drawn with the 3D scene (layered 2D
-        // trails go with the sprites): the main camera's or a view's runs.
-        let draw_strips = |pass: &mut wgpu::RenderPass, runs: &[ribbons::RibbonRun]| -> u32 {
-            self.frame_draw_strips(pass, runs, scene.debug != DebugView::None, StripPart::All)
-        };
-        // Sprites and text over a camera's scene, in sorted order: the main
-        // camera's runs with its effect group and metaball fields, or a
-        // view's (`view`: every run tone mapped, no HDR alpha cover).
-        // Answers the draws made.
-        let draw_sprites =
-            |pass: &mut wgpu::RenderPass,
-             runs: &[sprites::SpriteRun],
-             fx: &wgpu::BindGroup,
-             fields: &[wgpu::BindGroup],
-             view: bool|
-             -> u32 { self.frame_draw_sprites(pass, runs, fx, fields, view, scene) };
-        // The transparent meshes of `list` and the billboards sorted among
-        // them (`sprites::SpriteFrame::billboards`): the billboards' drop
-        // shadows first, then each billboard before the first run nearer
-        // than it (`DrawList::before`), the rest after the last. `fx`: the
-        // pass's effects group and its sprites' (each pass's group 2).
-        // Returns the draw calls.
-        #[allow(clippy::type_complexity)]
-        let draw_blended =
-            |pass: &mut wgpu::RenderPass,
-             list: &DrawList,
-             (boards, shadows): (&[(f32, sprites::SpriteRun)], &[sprites::SpriteRun]),
-             (fx, sprite_fx): (&wgpu::BindGroup, &wgpu::BindGroup),
-             physical_fx: Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-             probes: Option<probe_select::ProbeGroups>,
-             view: bool|
-             -> u32 {
-                if boards.is_empty() && shadows.is_empty() {
-                    draw_list(pass, list, true, &mut None, physical_fx, probes, Some(fx));
-                    return list.ranges.len() as u32;
-                }
-                let billboards = |pass: &mut wgpu::RenderPass, runs: &[sprites::SpriteRun]| {
-                    let n = draw_sprites(pass, runs, sprite_fx, &[], view);
-                    pass.set_bind_group(2, fx, &[]);
-                    n
-                };
-                let meshes = |pass: &mut wgpu::RenderPass, range: std::ops::Range<usize>| {
-                    let part = DrawList {
-                        ranges: list.ranges[range.clone()].to_vec(),
-                        ..DrawList::default()
-                    };
-                    draw_list(pass, &part, true, &mut None, physical_fx, probes, Some(fx));
-                    range.len() as u32
-                };
-                let mut draws = billboards(pass, shadows);
-                let (mut drawn, mut start) = (0usize, 0usize);
-                for r in 0..=list.ranges.len() {
-                    let before = list.before.get(r).map_or(boards.len(), |&b| b as usize);
-                    if before > drawn {
-                        draws += meshes(pass, start..r);
-                        draws += billboards(pass, &sprites::draw_runs_of(&boards[drawn..before]));
-                        (drawn, start) = (before, r);
-                    }
-                }
-                draws + meshes(pass, start..list.ranges.len())
-            };
-        let terrain_indices = self.terrain.index_buffer();
-        // The depth prepass of a camera other than the main one (a view's,
-        // a probe face's: views.rs, probes.rs): its opaque `list`, its
-        // opaque skinned batches, the terrain in `frustum` and the
-        // scattered copies `scatter` keeps, through the main prepass's
-        // pipelines (group 0 and 2: `groups`) into `pre`. Returns the draws.
-        let depth_prepass = |encoder: &mut crate::Encoder,
-                             label: &str,
-                             pre: &views::DepthPrepass,
-                             groups: (&wgpu::BindGroup, &wgpu::BindGroup),
-                             list: &DrawList,
-                             skinned: &[Batch],
-                             frustum: &Frustum,
-                             scatter: Option<&dyn Fn(Vec3, f32) -> bool>|
-         -> u32 {
-            let attachment = |view, clear: f64| {
-                Some(wgpu::RenderPassColorAttachment {
-                    view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: clear,
-                            g: 0.0,
-                            b: 0.0,
-                            a: 0.0,
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })
-            };
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some(label),
-                color_attachments: &[
-                    attachment(&pre.gbuffer, 0.0),
-                    attachment(&pre.lindepth, post::FAR_DEPTH as f64),
-                    attachment(&pre.outline, 0.0),
-                ],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &pre.depth,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: wgpu::StoreOp::Discard,
-                    }),
-                    stencil_ops: None,
-                }),
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            pass.set_bind_group(0, groups.0, &[]);
-            pass.set_bind_group(2, groups.1, &[]);
-            let mut draws = 0;
-            for &(b, first, count) in &list.ranges {
-                let batch = &batches[b as usize];
-                let Some(pipeline) = self.prepass_pipeline_of(batch, false) else {
-                    continue;
-                };
-                pass.set_pipeline(pipeline);
-                let m = &self.cache.materials[batch.material];
-                pass.set_bind_group(1, m.array.as_ref().unwrap_or(&m.bind_group), &[]);
-                let mesh = &self.cache.meshes[batch.mesh];
-                let start = first as u64 * INSTANCE_STRIDE;
-                let range = start..start + count as u64 * INSTANCE_STRIDE;
-                // A view's GPU-culled list: its pass's region and draws.
-                let indirect = list.indirect.zip(culled_gpu);
-                let instances = indirect.map_or(&self.instance_buffer, |(_, gc)| &gc.instances);
-                pass.set_vertex_buffer(0, mesh.vertex_buffer(batch.compact).slice(..));
-                pass.set_vertex_buffer(1, instances.slice(range.clone()));
-                pass.set_vertex_buffer(2, instances.slice(range));
-                if let Some(surface) = &mesh.surface {
-                    pass.set_vertex_buffer(3, surface.previous.slice(..));
-                }
-                pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-                match indirect {
-                    Some((g, gc)) => {
-                        let (args, at) = gc.draw_args(g, b);
-                        pass.draw_indexed_indirect(args, at)
-                    }
-                    None => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
-                }
-                draws += 1;
-            }
-            let opaque: Vec<Batch> = skinned
-                .iter()
-                .filter(|b| !b.transparent && self.prepass_pipeline_of(b, true).is_some())
-                .map(|b| Batch { ..*b })
-                .collect();
-            let pipelines: Vec<&wgpu::RenderPipeline> = opaque
-                .iter()
-                .filter_map(|b| self.prepass_pipeline_of(b, true))
-                .collect();
-            draws += draw_skinned(
-                &mut pass, &opaque, false, 1, 3, &pipelines, None, None, None,
-            );
-            if let Some(indices) = terrain_indices {
-                draws += terrain::draw_levels(
-                    &mut pass,
-                    &terrain_draws,
-                    indices,
-                    terrain::TerrainPass::Prepass,
-                    frustum,
-                    None,
-                )
-                .0;
-            }
-            if let Some(keep) = scatter {
-                draws += self
-                    .scatter
-                    .draw(
-                        &mut pass,
-                        scatter::ScatterPass::Prepass,
-                        &scatter_batches,
-                        scatter_material,
-                        scatter_mesh,
-                        keep,
-                        None,
-                        None,
-                        false,
-                        card_source(None),
-                        ShadowTarget::Cascade,
-                    )
-                    .0;
-            }
-            draws
-        };
-        // One shadow layer: a cascade or a local light's face, as its plan
-        // (shadow_cache.rs) says: its static casters, the copy into or out
-        // of its cache texture, its dynamic casters over them.
-        let shadow_pass = |encoder: &mut crate::Encoder,
-                           color: &wgpu::TextureView,
-                           depth: &wgpu::TextureView,
-                           // The live array, the layer's index in it and the
-                           // depth buffer, which the cache copies.
-                           target: (&wgpu::Texture, u32, &wgpu::Texture),
-                           slot: usize,
-                           lists: &[DrawList; 2],
-                           plan: crate::shadow_cache::Plan,
-                           frustum: &Frustum,
-                           view: u32,
-                           stats: &mut FrameStats,
-                           // The weather occlusion map takes only what stands
-                           // still for its key (weather::shelter_key): no
-                           // skinned casters, no scattered copies (grass must
-                           // not keep the ground under it dry).
-                           all_casters: bool,
-                           // The draws of every caster, in order, each into
-                           // its target (shadow_target.rs): a cascade's, or a
-                           // local layer's far sides then near sides.
-                           targets: &[ShadowTarget]| {
-            stats.shadow_passes += 1;
-            stats.shadow_cached += plan.cached() as u32;
-            // What every pass of every caster draws besides the instances.
-            let draw_rest =
-                |pass: &mut wgpu::RenderPass, shadow: ShadowTarget, stats: &mut FrameStats| {
-                    // The clustered casters (meshlet_gpu.rs), each one draw of
-                    // the clusters the pass's view kept.
-                    if view > 0
-                        && let Some(m) = self.meshlet.as_ref()
-                    {
-                        stats.draw_calls += m.draw_shadow(pass, shadow, &batches, view, |b| {
-                            &self.cache.materials[b.material].bind_group
-                        });
-                    }
-                    // Terrain levels that reach into the pass's volume.
-                    if let Some(indices) = terrain_indices
-                        && terrain_casters
-                    {
-                        let (n, _) = terrain::draw_levels(
-                            pass,
-                            &terrain_draws,
-                            indices,
-                            terrain::TerrainPass::Shadow(shadow),
-                            frustum,
-                            None,
-                        );
-                        stats.draw_calls += n;
-                        stats.terrain_shadow_draws += n;
-                    }
-                    if !all_casters {
-                        return;
-                    }
-                    // Skinned casters: those GPU culling's pass for the layer
-                    // kept (its counts hold them), unculled on the CPU path.
-                    let g = lists[0].indirect.or(lists[1].indirect);
-                    let pipelines: Vec<&wgpu::RenderPipeline> =
-                        shadow_skinned.iter().map(|s| s.get(shadow)).collect();
-                    let n = draw_skinned(
-                        pass,
-                        &skinned_batches,
-                        false,
-                        1,
-                        2,
-                        &pipelines,
-                        None,
-                        None,
-                        g,
-                    );
-                    stats.draw_calls += n;
-                    if !(skinned_gpu && g.is_some()) {
-                        stats.shadow_casters += skinned_batches
-                            .iter()
-                            .filter(|b| !b.transparent && b.cast)
-                            .map(|b| b.count)
-                            .sum::<u32>();
-                    }
-                    let (n, _) = self.scatter.draw(
-                        pass,
-                        scatter::ScatterPass::Shadow,
-                        &scatter_batches,
-                        scatter_material,
-                        scatter_mesh,
-                        |c, r| frustum.intersects_sphere(c, r),
-                        None,
-                        None,
-                        false,
-                        card_source(g),
-                        shadow,
-                    );
-                    stats.draw_calls += n; // Grass casts into the first cascades only (grass.rs).
-                    if slot < grass::SHADOW_CASCADES {
-                        stats.draw_calls +=
-                            self.grass
-                                .draw(pass, grass::GrassPass::Shadow, &grass_frame, None);
-                    }
-                };
-            let draw = |encoder: &mut crate::Encoder,
-                        list: &DrawList,
-                        rest: bool,
-                        load: bool,
-                        keep_depth: bool,
-                        stats: &mut FrameStats| {
-                let mut pass = shadow_target(encoder, color, depth, load, keep_depth);
-                // No pipeline first: the draw list sets each batch's own, as
-                // do the meshlet, skinned, terrain and scatter casters.
-                pass.set_bind_group(
-                    0,
-                    &self.shadow_bind_group,
-                    &[(slot as u64 * SHADOW_SLOT_STRIDE) as u32],
-                );
-                for &shadow in targets {
-                    self.frame_draw_list(DrawListInputs {
-                        pass: &mut pass,
-                        list,
-                        lit: false,
-                        shadow,
-                        current: &mut None,
-                        physical_fx: None,
-                        probes: None,
-                        fx: None,
-                        batches: &batches,
-                        culled_gpu,
-                        fx_lean_of: &fx_lean_of,
-                        oit: None,
-                    });
-                    stats.draw_calls += list.ranges.len() as u32;
-                    if rest {
-                        draw_rest(&mut pass, shadow, stats);
-                    }
-                }
-                stats.shadow_casters += list.instances;
-            };
-            // The layer and its cache texture (and both depths), one way.
-            let copy = |encoder: &mut crate::Encoder, into_cache: bool| {
-                let cache = self.shadow_cache_maps[slot]
-                    .as_ref()
-                    .expect("made for its plan");
-                let (array, layer, depth_texture) = target;
-                let at = |texture, z| wgpu::TexelCopyTextureInfo {
-                    texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d { x: 0, y: 0, z },
-                    aspect: wgpu::TextureAspect::All,
-                };
-                let size = wgpu::Extent3d {
-                    width: cache.size,
-                    height: cache.size,
-                    depth_or_array_layers: 1,
-                };
-                let pairs = [
-                    (at(array, layer), at(&cache.color, 0)),
-                    (at(depth_texture, 0), at(&cache.depth, 0)),
-                ];
-                for (live, kept) in pairs {
-                    if into_cache {
-                        encoder.copy_texture_to_texture(live, kept, size);
-                    } else {
-                        encoder.copy_texture_to_texture(kept, live, size);
-                    }
-                }
-            };
-            if plan.draw_static {
-                // Every caster when it is one pass; the depth kept for the
-                // dynamic casters when they follow.
-                draw(encoder, &lists[0], plan.single(), false, plan.save, stats);
-            }
-            if plan.save {
-                copy(encoder, true);
-            }
-            if plan.restore {
-                copy(encoder, false);
-            }
-            if plan.overlay && !plan.single() {
-                draw(encoder, &lists[1], true, true, false, stats);
-            }
-        };
+        let terrain_indices = ctx.terrain_indices;
 
         // Per-pass CPU encode time, with a clock (`Renderer::set_clock`),
         // and GPU time where the device has timestamps (`timing.rs`): each
@@ -4750,7 +4203,7 @@ impl Renderer {
             let q0 = encoder.used();
             let _span = pass.redrawn().then(FrameSpan::open);
             match pass {
-                FramePass::Cascade(i) => shadow_pass(
+                FramePass::Cascade(i) => ctx.shadow_pass(
                     &mut encoder,
                     &self.cascade_map.layers[i as usize],
                     &self.cascade_map.depth,
@@ -4770,7 +4223,7 @@ impl Renderer {
                 ),
                 FramePass::Shelter => {
                     let s = shelter.as_ref().expect("a shelter pass has its view");
-                    shadow_pass(
+                    ctx.shadow_pass(
                         &mut encoder,
                         self.cascade_map.layers.last().expect("fit_shelter_layer"),
                         &self.cascade_map.depth,
@@ -4791,7 +4244,7 @@ impl Renderer {
                 }
                 FramePass::LocalFace(layer) => {
                     let l = layer as usize;
-                    shadow_pass(
+                    ctx.shadow_pass(
                         &mut encoder,
                         &self.local_map.layers[l],
                         &self.local_map.depth,
@@ -4813,6 +4266,7 @@ impl Renderer {
                     )
                 }
                 FramePass::Prepass => self.encode_prepass(PrepassPassInputs {
+                    ctx: &ctx,
                     water_draws: &water_draws,
                     encoder: &mut encoder,
                     object_space,
@@ -4823,7 +4277,6 @@ impl Renderer {
                     object_motion,
                     batches: &batches,
                     stats: &mut stats,
-                    draw_skinned: &draw_skinned,
                     skinned_visible: &skinned_visible,
                     prepass_skinned: &prepass_skinned,
                     terrain_indices,
@@ -4831,8 +4284,6 @@ impl Renderer {
                     view_frustum: &view_frustum,
                     scatter_batches: &scatter_batches,
                     cards: camera_cards,
-                    scatter_material: &scatter_material,
-                    scatter_mesh: &scatter_mesh,
                     grass_frame: &grass_frame,
                 }),
                 FramePass::Particles => {
@@ -4932,6 +4383,7 @@ impl Renderer {
                     c.record(&mut encoder, &self.ibl, frame, sky_group);
                 }
                 FramePass::Probes => self.encode_probes(ProbesPassInputs {
+                    ctx: &ctx,
                     meshlet_views: &probe_views,
                     batches: &batches,
                     scene,
@@ -4942,21 +4394,15 @@ impl Renderer {
                     probe_faces: &probe_faces,
                     active_probes: &active_probes,
                     stats: &mut stats,
-                    depth_prepass: &depth_prepass,
                     encoder: &mut encoder,
                     face_groups: &face_groups,
                     fx_group,
                     probe_lists: &probe_lists,
                     probe_skinned: &probe_skinned,
-                    draw_list: &draw_list,
-                    draw_skinned: &draw_skinned,
                     terrain_indices,
                     terrain_draws: &terrain_draws,
                     scatter_batches: &scatter_batches,
-                    scatter_material: &scatter_material,
-                    scatter_mesh: &scatter_mesh,
                     sky_group,
-                    draw_blended: &draw_blended,
                     probe_blended: &probe_blended,
                     face_boards: &face_boards,
                     glow_fx_group,
@@ -4964,10 +4410,10 @@ impl Renderer {
                     particle_frame: &particle_frame,
                     line_frame: &line_frame,
                     face_line_groups: &face_line_groups,
-                    draw_sprites: &draw_sprites,
                     face_sprites: &face_sprites,
                 }),
                 FramePass::Reflection(k) => self.encode_reflection(ReflectionPassInputs {
+                    ctx: &ctx,
                     meshlet_views: &reflection_meshlets,
                     batches: &batches,
                     k,
@@ -4976,9 +4422,7 @@ impl Renderer {
                     reflection_frame_group,
                     reflection_fx_group: &reflection_fx_group,
                     reflection_list: &reflection_list,
-                    draw_list: &draw_list,
                     stats: &mut stats,
-                    draw_skinned: &draw_skinned,
                     skinned_visible: &skinned_visible,
                     lit_skinned_standard: &lit_skinned_standard,
                     terrain_indices,
@@ -4988,6 +4432,7 @@ impl Renderer {
                     reflection_blended: &reflection_blended,
                 }),
                 FramePass::View(i) => self.encode_view(ViewPassInputs {
+                    ctx: &ctx,
                     meshlet_views: &view_views,
                     batches: &batches,
                     i,
@@ -4997,28 +4442,21 @@ impl Renderer {
                     stats: &mut stats,
                     lights_2d,
                     view_groups: &view_groups,
-                    depth_prepass: &depth_prepass,
                     view_lists: &view_lists,
                     view_skinned: &view_skinned,
-                    draw_list: &draw_list,
-                    draw_skinned: &draw_skinned,
                     terrain_indices,
                     terrain_draws: &terrain_draws,
                     sky_group,
-                    draw_blended: &draw_blended,
                     view_blended: &view_blended,
                     view_boards: &view_boards,
                     view_sprite_fx: &view_sprite_fx,
                     view_particle_groups: &view_particle_groups,
                     particle_frame: &particle_frame,
-                    draw_strips: &draw_strips,
                     view_ribbons: &view_ribbons,
                     line_frame: &line_frame,
                     view_line_groups: &view_line_groups,
-                    draw_sprites: &draw_sprites,
                     view_sprites: &view_sprites,
                     view_fields: &view_fields,
-                    draw_glow: &draw_glow,
                     view_glow_runs: &view_glow_runs,
                     post_fx,
                 }),
@@ -5036,6 +4474,7 @@ impl Renderer {
                 ),
                 FramePass::Main => {
                     self.encode_main(MainPassInputs {
+                        ctx: &ctx,
                         scene,
                         water_draws: &water_draws,
                         fluid_frame: &fluid_frame,
@@ -5044,13 +4483,11 @@ impl Renderer {
                         encoder: &mut encoder,
                         frame_bind_group,
                         fx_group,
-                        draw_list: &draw_list,
                         main_list: &main_list,
                         batches: &batches,
                         physical_fx,
                         probe_binding,
                         stats: &mut stats,
-                        draw_skinned: &draw_skinned,
                         skinned_visible: &skinned_visible,
                         lit_skinned: &lit_skinned,
                         terrain_indices,
@@ -5058,27 +4495,21 @@ impl Renderer {
                         view_frustum: &view_frustum,
                         scatter_batches: &scatter_batches,
                         cards: camera_cards,
-                        scatter_material: &scatter_material,
-                        scatter_mesh: &scatter_mesh,
                         grass_frame: &grass_frame,
                         sky_group,
                         fluid_bounds,
-                        draw_blended: &draw_blended,
                         blended_list: &blended_list,
                         sprite_frame: &sprite_frame,
                         sprite_fx_group,
                         particle_group: &particle_group,
                         particle_frame: &particle_frame,
-                        draw_strips: &draw_strips,
                         ribbon_frame: &ribbon_frame,
                         line_frame: &line_frame,
-                        draw_sprites: &draw_sprites,
                         metaball_groups: &metaball_groups,
                         volumetric_fog,
                         oit: oit_mode,
                         oit_frame_group: oit_frame_group.as_ref(),
                         oit_probe_binding,
-                        draw_oit_part: &draw_oit_part,
                     });
                     // The lit image for the next frame's GI (`gi-write`).
                     if let (true, Some((_, copies))) = (gi_copy, &self.persistent.gi) {
@@ -5107,7 +4538,7 @@ impl Renderer {
                         multiview_mask: None,
                     });
                     pass.set_bind_group(0, frame_bind_group, &[]);
-                    stats.draw_calls += draw_glow(&mut pass, &sprite_frame.glow_runs);
+                    stats.draw_calls += ctx.draw_glow(&mut pass, &sprite_frame.glow_runs);
                 }
                 FramePass::CustomPost(i) => {
                     let (read, write) = self.graph.custom_post_views(&self.persistent, i, slot);

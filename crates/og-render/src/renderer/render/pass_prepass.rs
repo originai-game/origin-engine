@@ -2,7 +2,9 @@
 
 use super::*;
 
-pub(super) struct PrepassPassInputs<'a, F0, F1, F2> {
+pub(super) struct PrepassPassInputs<'a> {
+    /// What the frame draws with (draw_ctx.rs).
+    pub(super) ctx: &'a DrawCtx<'a>,
     pub(super) water_draws: &'a [water::WaterDraw],
     pub(super) encoder: &'a mut Encoder,
     pub(super) object_space: bool,
@@ -13,7 +15,6 @@ pub(super) struct PrepassPassInputs<'a, F0, F1, F2> {
     pub(super) object_motion: bool,
     pub(super) batches: &'a [Batch],
     pub(super) stats: &'a mut FrameStats,
-    pub(super) draw_skinned: &'a F0,
     pub(super) skinned_visible: &'a [Batch],
     pub(super) prepass_skinned: &'a [&'a wgpu::RenderPipeline],
     pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
@@ -22,15 +23,14 @@ pub(super) struct PrepassPassInputs<'a, F0, F1, F2> {
     pub(super) scatter_batches: &'a scatter::ScatterBatches,
     /// Where the crowds' cards come from in this pass.
     pub(super) cards: scatter::CardSource<'a>,
-    pub(super) scatter_material: &'a F1,
-    pub(super) scatter_mesh: &'a F2,
     pub(super) grass_frame: &'a grass::GrassFrame,
 }
 
 impl Renderer {
-    pub(super) fn encode_prepass<'r>(
+    pub(super) fn encode_prepass(
         &self,
         PrepassPassInputs {
+            ctx,
             water_draws,
             encoder,
             object_space,
@@ -41,7 +41,6 @@ impl Renderer {
             object_motion,
             batches,
             stats,
-            draw_skinned,
             skinned_visible,
             prepass_skinned,
             terrain_indices,
@@ -49,25 +48,8 @@ impl Renderer {
             view_frustum,
             scatter_batches,
             cards,
-            scatter_material,
-            scatter_mesh,
             grass_frame,
-        }: PrepassPassInputs<
-            '_,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &[Batch],
-                bool,
-                u32,
-                u32,
-                &[&wgpu::RenderPipeline],
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                Option<u32>,
-            ) -> u32,
-            impl Fn(usize) -> Option<&'r wgpu::BindGroup>,
-            impl Fn(usize) -> Option<(&'r wgpu::Buffer, &'r wgpu::Buffer, u32)>,
-        >,
+        }: PrepassPassInputs<'_>,
     ) {
         // The water's surfaces for the AO (water.rs `draw_ao_depth`), drawn after the prepass against it.
         let ao_depth = self
@@ -184,7 +166,7 @@ impl Renderer {
                 |_, _| {},
             );
         }
-        stats.prepass_draws += draw_skinned(
+        stats.prepass_draws += ctx.draw_skinned(
             &mut p,
             skinned_visible,
             false,
@@ -205,8 +187,8 @@ impl Renderer {
             &mut p,
             scatter::ScatterPass::Prepass,
             scatter_batches,
-            scatter_material,
-            scatter_mesh,
+            |m| ctx.scatter_material(m),
+            |m| ctx.scatter_mesh(m),
             |c, r| view_frustum.intersects_sphere(c, r),
             None,
             None,
@@ -267,7 +249,7 @@ impl Renderer {
                 .iter()
                 .map(|b| object.pipeline(b.side, true))
                 .collect();
-            stats.draw_calls += draw_skinned(
+            stats.draw_calls += ctx.draw_skinned(
                 &mut p,
                 skinned_visible,
                 false,

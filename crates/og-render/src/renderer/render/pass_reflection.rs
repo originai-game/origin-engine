@@ -2,16 +2,16 @@
 
 use super::*;
 
-pub(super) struct ReflectionPassInputs<'a, F0, F1> {
+pub(super) struct ReflectionPassInputs<'a> {
+    /// What the frame draws with (draw_ctx.rs).
+    pub(super) ctx: &'a DrawCtx<'a>,
     pub(super) k: u8,
     pub(super) scene: &'a RenderScene,
     pub(super) encoder: &'a mut Encoder,
     pub(super) reflection_frame_group: &'a [wgpu::BindGroup],
     pub(super) reflection_fx_group: &'a [wgpu::BindGroup],
     pub(super) reflection_list: &'a [DrawList],
-    pub(super) draw_list: &'a F0,
     pub(super) stats: &'a mut FrameStats,
-    pub(super) draw_skinned: &'a F1,
     pub(super) skinned_visible: &'a [Batch],
     pub(super) lit_skinned_standard: &'a [&'a wgpu::RenderPipeline],
     pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
@@ -30,15 +30,14 @@ impl Renderer {
     pub(super) fn encode_reflection(
         &self,
         ReflectionPassInputs {
+            ctx,
             k,
             scene,
             encoder,
             reflection_frame_group,
             reflection_fx_group,
             reflection_list,
-            draw_list,
             stats,
-            draw_skinned,
             skinned_visible,
             lit_skinned_standard,
             terrain_indices,
@@ -48,29 +47,7 @@ impl Renderer {
             reflection_blended,
             meshlet_views,
             batches,
-        }: ReflectionPassInputs<
-            '_,
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &DrawList,
-                bool,
-                &mut Option<LitDrawKey>,
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                Option<&wgpu::BindGroup>,
-            ),
-            impl Fn(
-                &mut wgpu::RenderPass,
-                &[Batch],
-                bool,
-                u32,
-                u32,
-                &[&wgpu::RenderPipeline],
-                Option<(&wgpu::BindGroup, &wgpu::BindGroup)>,
-                Option<probe_select::ProbeGroups>,
-                Option<u32>,
-            ) -> u32,
-        >,
+        }: ReflectionPassInputs<'_>,
     ) {
         let k = k as usize;
         let clear = match scene.environment.background {
@@ -121,7 +98,7 @@ impl Renderer {
         pass.set_bind_group(0, &reflection_frame_group[k], &[]);
         pass.set_bind_group(2, &reflection_fx_group[k], &[]);
         let list = &reflection_list[k];
-        draw_list(
+        ctx.draw_list(
             &mut pass,
             list,
             true,
@@ -135,7 +112,7 @@ impl Renderer {
         let n = self.draw_meshlets(&mut pass, batches, meshlet_views[k]);
         stats.draw_calls += n;
         stats.reflection_draws += n;
-        let n = draw_skinned(
+        let n = ctx.draw_skinned(
             &mut pass,
             skinned_visible,
             false,
@@ -178,7 +155,7 @@ impl Renderer {
         pass.set_bind_group(0, &reflection_frame_group[k], &[]);
         pass.set_bind_group(2, &reflection_fx_group[k], &[]);
         let list = &reflection_blended[k];
-        draw_list(
+        ctx.draw_list(
             &mut pass,
             list,
             true,
