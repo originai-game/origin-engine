@@ -44,6 +44,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
     ReflectionPass::DESC,
     ViewPass::DESC,
     MainPass::DESC,
+    GlowPass::DESC,
     VolumetricPass::DESC,
     SsrPass::DESC,
 ];

@@ -76,6 +76,8 @@ mod pass_shadows;
 use pass_shadows::{
     CascadePass, CascadePlan, LocalFacePass, LocalFacePlan, ShelterPass, ShelterPlan,
 };
+mod pass_glow;
+use pass_glow::GlowPass;
 mod setup;
 
 impl Renderer {
@@ -4386,6 +4388,7 @@ impl Renderer {
             oit_probe_binding,
             gi_copy,
         });
+        plans.glow = glow.then_some(sprite_frame.glow_runs.as_slice());
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4414,26 +4417,6 @@ impl Renderer {
                         slot,
                     },
                 ) => {}
-                FramePass::Glow => {
-                    let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                        label: Some("glow"),
-                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                            view: self.graph.view("glow"),
-                            depth_slice: None,
-                            resolve_target: None,
-                            ops: wgpu::Operations {
-                                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                                store: wgpu::StoreOp::Store,
-                            },
-                        })],
-                        depth_stencil_attachment: None,
-                        timestamp_writes: None,
-                        occlusion_query_set: None,
-                        multiview_mask: None,
-                    });
-                    pass.set_bind_group(0, frame_bind_group, &[]);
-                    stats.draw_calls += ctx.draw_glow(&mut pass, &sprite_frame.glow_runs);
-                }
                 FramePass::CustomPost(i) => {
                     let (read, write) = self.graph.custom_post_views(&self.persistent, i, slot);
                     let lit = self.graph.custom_post_views(&self.persistent, 0, slot).0;

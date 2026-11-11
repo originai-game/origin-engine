@@ -104,4 +104,5 @@ passes! {
     view: pass_view::ViewPass => FramePass::View(_),
     prepass: pass_prepass::PrepassPass => FramePass::Prepass,
     main: pass_main::MainPass => FramePass::Main,
+    glow: pass_glow::GlowPass => FramePass::Glow,
 }
