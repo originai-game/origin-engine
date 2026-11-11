@@ -52,59 +52,18 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
         return Err(format!("{name} has no value"));
     }
     if name == "display" {
-        let word = match value.trim() {
-            "none" => {
-                return Ok(vec![e("visible", vec![Value::Word("false".into())])]);
-            }
-            "initial" => {
-                return Ok(vec![e("visible", vec![Value::Word("true".into())])]);
-            }
-            v => display_word(v)?,
-        };
-        return Ok(vec![
-            e("visible", vec![Value::Word("true".into())]),
-            e("display", vec![Value::Word(word.into())]),
-        ]);
+        return lower_display(value);
     }
     // A bound declaration: the whole value is the binding.
     if let [Tok::Func(f, a)] = t.as_slice()
         && f == "bind"
         && !matches!(name, "translate" | "scale")
     {
-        let src = match a.as_slice() {
-            [v] => match v.as_slice() {
-                [Tok::Ident(p)] => Value::Word(p.clone()),
-                [Tok::Str(s)] => Value::String(s.clone()),
-                _ => return Err("bind(path) or bind(\"expression\")".into()),
-            },
-            _ => return Err("bind(path) or bind(\"expression\")".into()),
-        };
-        let prop = if state {
-            return Err("a state's values are literals".into());
-        } else {
-            match name {
-                "grid-column" | "grid-row" | "grid-auto-flow" => {
-                    return Err(format!("{name} binds each part: write it as values"));
-                }
-                n => STYLE
-                    .iter()
-                    .find(|(_, c)| *c == n)
-                    .map(|(p, _)| *p)
-                    .ok_or_else(|| format!("'{n}' is not a property"))?,
-            }
-        };
-        return Ok(vec![e(prop, vec![Value::Word("bind".into()), src])]);
+        return lower_bind(name, a, state);
     }
     match name {
         "translate" => lower_translate(name, t, state),
-        "scale" => match t.as_slice() {
-            [s] => Ok(vec![e("scale", part("scale", s)?)]),
-            [x, y] => Ok(vec![
-                e("scaleX", part("scaleX", x)?),
-                e("scaleY", part("scaleY", y)?),
-            ]),
-            _ => Err("scale: <both> or <x> <y>".into()),
-        },
+        "scale" => lower_scale(t),
         "rotate" => Ok(vec![e("rotate", vec![want_angle(&one(&t, name)?)?])]),
         "opacity" => Ok(vec![e("opacity", vec![want_num(&one(&t, name)?)?])]),
         "z-index" => Ok(vec![e("z", vec![want_num(&one(&t, name)?)?])]),
@@ -251,52 +210,125 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
         "flex-wrap" => lower_flex_wrap(name, t),
         "flex-flow" => lower_flex_flow(t),
         "flex" => lower_flex(t),
-        "flex-basis" => match one(&t, name)? {
-            Tok::Ident(w) if w == "auto" => Ok(Vec::new()),
-            Tok::Ident(w) if w == "content" => {
-                Ok(vec![e("flexBasis", vec![Value::Word("maxContent".into())])])
-            }
-            _ => {
-                let parts = lower_decl("width", value, false)?;
-                Ok(parts
-                    .into_iter()
-                    .map(|p| match p {
-                        Part::Size(_, SizeBit::Kind(v)) => e("flexBasis", v),
-                        p => p,
-                    })
-                    .collect())
-            }
-        },
+        "flex-basis" => lower_flex_basis(name, value, t),
         "order" => match one(&t, name)? {
             Tok::Num(n, u) if u.is_empty() && !n.contains('.') => {
                 Ok(vec![e("order", vec![number(&n)?])])
             }
             v => Err(format!("order takes an integer, not '{}'", describe(&v))),
         },
-        "gap" => match t.as_slice() {
-            [g] => Ok(vec![e("gap", vec![want_len(g)?])]),
-            [r, c] => Ok(vec![
-                e("rowGap", vec![want_len(r)?]),
-                e("columnGap", vec![want_len(c)?]),
-            ]),
-            _ => Err("gap: <row-gap> [<column-gap>]".into()),
-        },
-        "row-gap" | "column-gap" => match one(&t, name)? {
-            Tok::Ident(w) if w == "normal" => Ok(Vec::new()),
-            v => Ok(vec![e(
-                if name == "row-gap" {
-                    "rowGap"
-                } else {
-                    "columnGap"
-                },
-                vec![want_len(&v)?],
-            )]),
-        },
+        "gap" => lower_gap(t),
+        "row-gap" | "column-gap" => lower_gap_axis(name, t),
         "justify-content" | "align-content" | "align-items" | "align-self" | "justify-items"
         | "justify-self" => alignment(name, &t),
         "place-content" | "place-items" | "place-self" => lower_place(name, t),
         "grid-auto-flow" => lower_grid_auto_flow(t),
         _ => lower_other(name, value, t),
+    }
+}
+
+/// Lowers `display`: whether the element is shown, and how.
+#[allow(clippy::needless_return)]
+fn lower_display(value: &str) -> Result<Vec<Part>, String> {
+    let word = match value.trim() {
+        "none" => {
+            return Ok(vec![e("visible", vec![Value::Word("false".into())])]);
+        }
+        "initial" => {
+            return Ok(vec![e("visible", vec![Value::Word("true".into())])]);
+        }
+        v => display_word(v)?,
+    };
+    return Ok(vec![
+        e("visible", vec![Value::Word("true".into())]),
+        e("display", vec![Value::Word(word.into())]),
+    ]);
+}
+
+/// Lowers a bound declaration: the whole value is the binding.
+#[allow(clippy::needless_return, clippy::ptr_arg)]
+fn lower_bind(name: &str, a: &Vec<Vec<Tok>>, state: bool) -> Result<Vec<Part>, String> {
+    let src = match a.as_slice() {
+        [v] => match v.as_slice() {
+            [Tok::Ident(p)] => Value::Word(p.clone()),
+            [Tok::Str(s)] => Value::String(s.clone()),
+            _ => return Err("bind(path) or bind(\"expression\")".into()),
+        },
+        _ => return Err("bind(path) or bind(\"expression\")".into()),
+    };
+    let prop = if state {
+        return Err("a state's values are literals".into());
+    } else {
+        match name {
+            "grid-column" | "grid-row" | "grid-auto-flow" => {
+                return Err(format!("{name} binds each part: write it as values"));
+            }
+            n => STYLE
+                .iter()
+                .find(|(_, c)| *c == n)
+                .map(|(p, _)| *p)
+                .ok_or_else(|| format!("'{n}' is not a property"))?,
+        }
+    };
+    return Ok(vec![e(prop, vec![Value::Word("bind".into()), src])]);
+}
+
+/// Lowers `"scale"`.
+fn lower_scale(t: Vec<Tok>) -> Result<Vec<Part>, String> {
+    match t.as_slice() {
+        [s] => Ok(vec![e("scale", part("scale", s)?)]),
+        [x, y] => Ok(vec![
+            e("scaleX", part("scaleX", x)?),
+            e("scaleY", part("scaleY", y)?),
+        ]),
+        _ => Err("scale: <both> or <x> <y>".into()),
+    }
+}
+
+/// Lowers `"gap"`.
+fn lower_gap(t: Vec<Tok>) -> Result<Vec<Part>, String> {
+    match t.as_slice() {
+        [g] => Ok(vec![e("gap", vec![want_len(g)?])]),
+        [r, c] => Ok(vec![
+            e("rowGap", vec![want_len(r)?]),
+            e("columnGap", vec![want_len(c)?]),
+        ]),
+        _ => Err("gap: <row-gap> [<column-gap>]".into()),
+    }
+}
+
+/// Lowers `"row-gap" | "column-gap"`.
+fn lower_gap_axis(name: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
+    match one(&t, name)? {
+        Tok::Ident(w) if w == "normal" => Ok(Vec::new()),
+        v => Ok(vec![e(
+            if name == "row-gap" {
+                "rowGap"
+            } else {
+                "columnGap"
+            },
+            vec![want_len(&v)?],
+        )]),
+    }
+}
+
+/// Lowers `"flex-basis"`.
+fn lower_flex_basis(name: &str, value: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
+    match one(&t, name)? {
+        Tok::Ident(w) if w == "auto" => Ok(Vec::new()),
+        Tok::Ident(w) if w == "content" => {
+            Ok(vec![e("flexBasis", vec![Value::Word("maxContent".into())])])
+        }
+        _ => {
+            let parts = lower_decl("width", value, false)?;
+            Ok(parts
+                .into_iter()
+                .map(|p| match p {
+                    Part::Size(_, SizeBit::Kind(v)) => e("flexBasis", v),
+                    p => p,
+                })
+                .collect())
+        }
     }
 }
 
