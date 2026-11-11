@@ -499,6 +499,26 @@ impl crate::probe::state::Checks {
         self.invariants.push(args.to_vec());
         Ok(())
     }
+
+    /// An invariant's result after tick `ran`: a failure is a violation at
+    /// `ran` with the observed value.
+    #[cfg(not(feature = "publish"))]
+    fn invariant_checked(&self, ran: u64, r: crate::ExpectResult) {
+        if r.status == crate::Status::Fail {
+            self.assertions.borrow_mut().fail(
+                Origin::Playtest,
+                &format!("invariant {}", r.expect),
+                "playtest",
+                ran,
+                Seen {
+                    value: r.observed,
+                    expected: r.expected,
+                    message: r.reason,
+                    ..Seen::default()
+                },
+            );
+        }
+    }
 }
 
 impl crate::Probe {
@@ -516,20 +536,7 @@ impl crate::Probe {
             let Ok(r) = self.expect_args(world, args, None) else {
                 continue;
             };
-            if r.status == crate::Status::Fail {
-                self.checks.assertions.borrow_mut().fail(
-                    Origin::Playtest,
-                    &format!("invariant {}", r.expect),
-                    "playtest",
-                    ran,
-                    Seen {
-                        value: r.observed,
-                        expected: r.expected,
-                        message: r.reason,
-                        ..Seen::default()
-                    },
-                );
-            }
+            self.checks.invariant_checked(ran, r);
         }
         self.checks.quiet = false;
         self.checks.invariants = invariants;

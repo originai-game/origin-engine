@@ -596,14 +596,7 @@ impl Probe {
     /// restored a save, which carries its own `Time`): every scheduled step
     /// moves with it, so each keeps the delay it had left.
     pub fn shift_schedule(&mut self, from: u64, to: u64) {
-        if from == to || self.schedule.queue.is_empty() {
-            return;
-        }
-        let queue = std::mem::take(&mut self.schedule.queue);
-        self.schedule.queue = og_core::sort::map(queue.into_iter().map(|((tick, seq), step)| {
-            let left = tick.saturating_sub(from);
-            ((to + left, seq), step)
-        }));
+        self.schedule.shift(from, to);
     }
 
     /// The game's own facts for `state().facts` (`GameDesc.facts`).
@@ -801,10 +794,7 @@ impl Probe {
                     step.at, step.action
                 ));
             }
-            self.schedule.seq += 1;
-            self.schedule
-                .queue
-                .insert((tick, self.schedule.seq), Queued::Step(step, within));
+            self.schedule.push(tick, Queued::Step(step, within));
             report.scheduled += 1;
             report.until_tick = tick;
         }

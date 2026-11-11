@@ -515,14 +515,10 @@ impl state::Inject {
                                 ..Modifiers::default()
                             },
                         };
-                        schedule.seq += 1;
-                        schedule
-                            .queue
-                            .insert((at, schedule.seq), Queued::Inject(event));
+                        schedule.push(at, Queued::Inject(event));
                     }
-                    schedule.seq += 1;
-                    schedule.queue.insert(
-                        (at, schedule.seq),
+                    schedule.push(
+                        at,
                         Queued::Inject(InjectedInput::Text {
                             text: c.to_string(),
                             composing: false,

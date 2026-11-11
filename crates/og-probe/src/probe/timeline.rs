@@ -114,14 +114,16 @@ impl Recorder {
             std::mem::take(&mut self.dropped),
         )
     }
-}
 
-impl Probe {
-    /// `timeline`: the run's events since the last call, in order, with
-    /// the assertion events among them by tick.
-    pub fn timeline(&mut self, world: &World) -> Value {
-        let (mut events, dropped) = self.timeline.take();
-        for e in self.checks.assertions.borrow_mut().take_timeline() {
+    /// [`Probe::timeline`]: the events taken, with the assertions' among
+    /// them by tick.
+    fn report(
+        &mut self,
+        assertions: &std::cell::RefCell<crate::assertions::Assertions>,
+        world: &World,
+    ) -> Value {
+        let (mut events, dropped) = self.take();
+        for e in assertions.borrow_mut().take_timeline() {
             let outcome = e["outcome"].as_str().unwrap_or("fired");
             let what = format!(
                 "{outcome} {}{}",
@@ -141,9 +143,17 @@ impl Probe {
         events.sort_by_key(|e| e["tick"].as_u64().unwrap_or(0));
         json!({
             "tick": world.time().tick,
-            "screens": self.timeline.screens,
+            "screens": self.screens,
             "events": events,
             "dropped": dropped,
         })
+    }
+}
+
+impl Probe {
+    /// `timeline`: the run's events since the last call, in order, with
+    /// the assertion events among them by tick.
+    pub fn timeline(&mut self, world: &World) -> Value {
+        self.timeline.report(&self.checks.assertions, world)
     }
 }

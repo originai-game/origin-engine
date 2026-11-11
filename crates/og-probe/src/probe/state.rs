@@ -145,6 +145,24 @@ impl Clock {
 }
 
 impl Schedule {
+    /// Queues `queued` at `tick`, after what is already queued there.
+    pub(super) fn push(&mut self, tick: u64, queued: Queued) {
+        self.seq += 1;
+        self.queue.insert((tick, self.seq), queued);
+    }
+
+    /// [`Probe::shift_schedule`].
+    pub(super) fn shift(&mut self, from: u64, to: u64) {
+        if from == to || self.queue.is_empty() {
+            return;
+        }
+        let queue = std::mem::take(&mut self.queue);
+        self.queue = og_core::sort::map(queue.into_iter().map(|((tick, seq), step)| {
+            let left = tick.saturating_sub(from);
+            ((to + left, seq), step)
+        }));
+    }
+
     /// Polls a screenshot whose frame is in flight and writes it when it
     /// lands; true while it still waits.
     pub(super) fn shot_waits(
