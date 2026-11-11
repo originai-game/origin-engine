@@ -210,6 +210,30 @@ fn a_save_of_an_instanced_world_restores_where_no_prefab_was_placed_and_goes_on_
 }
 
 #[test]
+fn a_second_instance_of_a_named_scene_is_refused_with_what_works() {
+    // Star Focus ENGINE-ISSUES #8: the refusal advised "instantiate the
+    // scene under a root", which is how the second instance was placed.
+    let root = project("twice", YARD);
+    let e = placed(&root);
+    let scene = value(og_runtime::host_impl::answer(og_load_scene(
+        e,
+        "scenes/yard.ogt".into(),
+    )));
+    let again: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_world_instantiate(
+        e,
+        scene.as_f64().unwrap(),
+        Some(json!({ "name": "second" }).to_string()),
+    )))
+    .unwrap();
+    assert_eq!(again["ok"], json!(false), "{again}");
+    let reason = again["reason"].as_str().unwrap();
+    assert!(!reason.contains("under a root,"), "{reason}");
+    assert!(reason.contains("unique in the world"), "{reason}");
+    assert!(reason.contains("og.load.prefab"), "{reason}");
+    assert_eq!(og_world_find(e, "second".into()), "null", "{reason}");
+}
+
+#[test]
 fn apply_back_and_revert_round_trip_in_the_text() {
     let root = project("apply", YARD);
     let scene = |r: &Path| std::fs::read_to_string(r.join("assets/scenes/yard.ogt")).unwrap();
