@@ -415,20 +415,27 @@ impl Renderer {
         physical: bool,
     ) -> &wgpu::RenderPipeline {
         if b.lean && !skinned {
-            return self.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)]
+            return self.lit.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)]
                 .get(self.frame_features);
         }
         let key = (b.side, b.blend, skinned, b.effects);
         if b.array && !physical {
-            return &self.array_maps.as_ref().expect("an array batch").lit[&key];
+            return &self.lit.array_maps.as_ref().expect("an array batch").lit[&key];
         }
         match (physical, b.shader) {
-            (true, None) => &self.physical.as_ref().expect("a physical batch").pipelines[&key],
+            (true, None) => {
+                &self
+                    .lit
+                    .physical
+                    .as_ref()
+                    .expect("a physical batch")
+                    .pipelines[&key]
+            }
             (true, Some(sh)) => &self.cache.physical_hook_pipelines[&(sh, key)],
             (false, Some(sh)) => {
                 &self.cache.hook_pipelines[&(sh, b.side, b.blend, b.effects, skinned)]
             }
-            (false, None) => self.pbr_pipelines[&key].get(self.frame_features),
+            (false, None) => self.lit.pbr_pipelines[&key].get(self.frame_features),
         }
     }
 
@@ -463,6 +470,7 @@ impl Renderer {
         }
         if b.array {
             return self
+                .lit
                 .array_maps
                 .as_ref()
                 .and_then(|a| a.prepass.get(&(b.side, skinned)))
@@ -495,7 +503,7 @@ impl Renderer {
 
     /// The local layers' pipelines of every caster's shadow set made so far.
     fn ensure_local_shadow_pipelines(&self) {
-        let array = self.array_maps.iter().flat_map(|a| a.shadow.values());
+        let array = self.lit.array_maps.iter().flat_map(|a| a.shadow.values());
         for set in self
             .shadows
             .shadow_pipelines
@@ -509,7 +517,7 @@ impl Renderer {
     }
 
     fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
-        let (features, declared) = (self.frame_features, self.pbr_shader.declared);
+        let (features, declared) = (self.frame_features, self.lit.pbr_shader.declared);
         for (slot, work) in self.pipeline_jobs(batches, skinned, prepass) {
             use Made::{Pipeline as P, Shadows as S};
             let job = match work {
@@ -517,9 +525,9 @@ impl Renderer {
                 Work::Variants(job) => {
                     let v = variants(declared, features, job);
                     match slot {
-                        Slot::Lean(k) => self.lean_pipelines.insert(k, v),
+                        Slot::Lean(k) => self.lit.lean_pipelines.insert(k, v),
                         Slot::LeanPrepass(k) => self.prepass.lean_prepass_pipelines.insert(k, v),
-                        Slot::Pbr(k) => self.pbr_pipelines.insert(k, v),
+                        Slot::Pbr(k) => self.lit.pbr_pipelines.insert(k, v),
                         Slot::Prepass(k) => self.prepass.prepass_pipelines.insert(k, v),
                         _ => unreachable!("only the built-in lit and prepass slots vary"),
                     };
@@ -540,7 +548,8 @@ impl Renderer {
                 });
                 match slot {
                     Slot::ArrayShadow(k) => {
-                        self.array_maps
+                        self.lit
+                            .array_maps
                             .as_mut()
                             .expect("array material")
                             .shadow
@@ -568,21 +577,24 @@ impl Renderer {
                     self.cache.surface_prepass_pipelines.insert(k, p);
                 }
                 Slot::ArrayLit(k) => {
-                    self.array_maps
+                    self.lit
+                        .array_maps
                         .as_mut()
                         .expect("array material")
                         .lit
                         .insert(k, p);
                 }
                 Slot::ArrayPrepass(k) => {
-                    self.array_maps
+                    self.lit
+                        .array_maps
                         .as_mut()
                         .expect("array material")
                         .prepass
                         .insert(k, p);
                 }
                 Slot::Physical(k) => {
-                    self.physical
+                    self.lit
+                        .physical
                         .as_mut()
                         .expect("physical material")
                         .pipelines
@@ -613,8 +625,11 @@ impl Renderer {
     ) -> Vec<(Slot, Work)> {
         let device = &self.device;
         let samples = self.samples;
-        let pbr = &(self.pbr_layout.clone(), self.pbr_skinned_layout.clone());
-        let pbr_shader = &self.pbr_shader;
+        let pbr = &(
+            self.lit.pbr_layout.clone(),
+            self.lit.pbr_skinned_layout.clone(),
+        );
+        let pbr_shader = &self.lit.pbr_shader;
         let shadow_shader = &self.shadows.shadow_shader;
         let shadow_layouts = &self.shadows.shadow_layouts;
         let mut jobs: Vec<(Slot, Work)> = Vec::new();
@@ -635,7 +650,7 @@ impl Renderer {
                     self.cache.surface_prepass_pipelines.contains_key(&key),
                     {
                         let (layouts, module) = if b.array {
-                            let a = self.array_maps.as_ref().expect("array material");
+                            let a = self.lit.array_maps.as_ref().expect("array material");
                             (a.layouts.clone(), Shader::Made(a.module.clone()))
                         } else {
                             (
@@ -661,7 +676,11 @@ impl Renderer {
             if b.array {
                 // The array-map variant: the standard builders over its
                 // module and layouts (`material::ArrayMaps`).
-                let a = self.array_maps.as_ref().expect("made with the material");
+                let a = self
+                    .lit
+                    .array_maps
+                    .as_ref()
+                    .expect("made with the material");
                 let key = (b.side, b.blend, is_skinned, b.effects);
                 add_job!(jobs, Slot::ArrayLit(key), a.lit.contains_key(&key), {
                     let (d, layouts, module) =
@@ -726,7 +745,7 @@ impl Renderer {
                 // The physical lit pipeline (the standard ones below draw the
                 // material's reflection).
                 let key = (b.side, b.blend, is_skinned, b.effects);
-                let physical = self.physical.as_ref().expect("made with the material");
+                let physical = self.lit.physical.as_ref().expect("made with the material");
                 match b.shader {
                     None => {
                         add_job!(
@@ -852,10 +871,13 @@ impl Renderer {
                 add_job!(
                     jobs,
                     Slot::Lean(key),
-                    self.lean_pipelines.contains_key(&key),
+                    self.lit.lean_pipelines.contains_key(&key),
                     {
-                        let (d, layout, module) =
-                            (device.clone(), self.pbr_layout.clone(), pbr_shader.clone());
+                        let (d, layout, module) = (
+                            device.clone(),
+                            self.lit.pbr_layout.clone(),
+                            pbr_shader.clone(),
+                        );
                         Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
                             Made::Pipeline(lean_pipeline(&d, &layout, &module, key, samples, off))
                         }))
@@ -917,7 +939,7 @@ impl Renderer {
                 add_job!(
                     jobs,
                     Slot::Pbr(key),
-                    self.pbr_pipelines.contains_key(&key),
+                    self.lit.pbr_pipelines.contains_key(&key),
                     {
                         let (d, layouts, module) =
                             (device.clone(), pbr.clone(), pbr_shader.clone());

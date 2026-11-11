@@ -103,4 +103,5 @@ passes! {
     reflection: pass_reflection::ReflectionPass => FramePass::Reflection(_),
     view: pass_view::ViewPass => FramePass::View(_),
     prepass: pass_prepass::PrepassPass => FramePass::Prepass,
+    main: pass_main::MainPass => FramePass::Main,
 }

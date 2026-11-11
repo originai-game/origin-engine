@@ -2,49 +2,46 @@
 
 use super::*;
 
-pub(super) struct MainPassInputs<'a> {
-    /// What the frame draws with (draw_ctx.rs).
-    pub(super) ctx: &'a DrawCtx<'a>,
-    pub(super) scene: &'a RenderScene,
-    pub(super) water_draws: &'a [water::WaterDraw],
-    pub(super) fluid_frame: &'a Option<fluid3d::Fluid3dFrame>,
-    pub(super) transmission_view: Option<(&'a wgpu::TextureView, &'a mips::MipChain)>,
+pub(super) struct MainPlan<'f> {
+    pub(super) scene: &'f RenderScene,
+    pub(super) water_draws: &'f [water::WaterDraw],
+    pub(super) fluid_frame: &'f Option<fluid3d::Fluid3dFrame>,
+    pub(super) transmission_view: Option<(&'f wgpu::TextureView, &'f mips::MipChain)>,
     pub(super) taa: bool,
-    pub(super) encoder: &'a mut Encoder,
-    pub(super) frame_bind_group: &'a wgpu::BindGroup,
-    pub(super) fx_group: &'a wgpu::BindGroup,
-    pub(super) main_list: &'a DrawList,
-    pub(super) batches: &'a [Batch],
-    pub(super) physical_fx: Option<(&'a wgpu::BindGroup, &'a wgpu::BindGroup)>,
-    pub(super) probe_binding: Option<probe_select::ProbeGroups<'a>>,
-    pub(super) stats: &'a mut FrameStats,
-    pub(super) skinned_visible: &'a [Batch],
-    pub(super) lit_skinned: &'a [&'a wgpu::RenderPipeline],
-    pub(super) terrain_indices: Option<&'a wgpu::Buffer>,
-    pub(super) terrain_draws: &'a [terrain::TerrainDraw],
-    pub(super) view_frustum: &'a Frustum,
-    pub(super) scatter_batches: &'a scatter::ScatterBatches,
+    pub(super) frame_bind_group: &'f wgpu::BindGroup,
+    pub(super) fx_group: &'f wgpu::BindGroup,
+    pub(super) main_list: &'f DrawList,
+    pub(super) batches: &'f [Batch],
+    pub(super) physical_fx: Option<(&'f wgpu::BindGroup, &'f wgpu::BindGroup)>,
+    pub(super) probe_binding: Option<probe_select::ProbeGroups<'f>>,
+    pub(super) skinned_visible: &'f [Batch],
+    pub(super) lit_skinned: &'f [&'f wgpu::RenderPipeline],
+    pub(super) terrain_indices: Option<&'f wgpu::Buffer>,
+    pub(super) terrain_draws: &'f [terrain::TerrainDraw],
+    pub(super) view_frustum: &'f Frustum,
+    pub(super) scatter_batches: &'f scatter::ScatterBatches,
     /// Where the crowds' cards come from in this pass.
-    pub(super) cards: scatter::CardSource<'a>,
-    pub(super) grass_frame: &'a grass::GrassFrame,
-    pub(super) sky_group: &'a wgpu::BindGroup,
+    pub(super) cards: scatter::CardSource<'f>,
+    pub(super) grass_frame: &'f grass::GrassFrame,
     pub(super) fluid_bounds: Option<(Vec3, f32)>,
-    pub(super) blended_list: &'a DrawList,
-    pub(super) sprite_frame: &'a sprites::SpriteFrame,
-    pub(super) sprite_fx_group: &'a wgpu::BindGroup,
-    pub(super) particle_group: &'a Option<wgpu::BindGroup>,
-    pub(super) particle_frame: &'a particles_gpu::ParticleFrame,
-    pub(super) ribbon_frame: &'a ribbons::RibbonFrame,
-    pub(super) line_frame: &'a lines::LineFrame,
-    pub(super) metaball_groups: &'a [wgpu::BindGroup],
+    pub(super) blended_list: &'f DrawList,
+    pub(super) sprite_frame: &'f sprites::SpriteFrame,
+    pub(super) sprite_fx_group: &'f wgpu::BindGroup,
+    pub(super) particle_group: &'f Option<wgpu::BindGroup>,
+    pub(super) particle_frame: &'f particles_gpu::ParticleFrame,
+    pub(super) ribbon_frame: &'f ribbons::RibbonFrame,
+    pub(super) line_frame: &'f lines::LineFrame,
+    pub(super) metaball_groups: &'f [wgpu::BindGroup],
     pub(super) volumetric_fog: Option<VolumetricFog>,
     /// The blended surfaces' order-independent pass (oit.rs), or `None`:
     /// sorted back to front.
     pub(super) oit: Option<oit::Oit>,
     /// The linked lists' frame group (binding 12, the arena) and their
     /// reflection probes' groups likewise.
-    pub(super) oit_frame_group: Option<&'a wgpu::BindGroup>,
-    pub(super) oit_probe_binding: Option<probe_select::ProbeGroups<'a>>,
+    pub(super) oit_frame_group: Option<&'f wgpu::BindGroup>,
+    pub(super) oit_probe_binding: Option<probe_select::ProbeGroups<'f>>,
+    /// The lit image copied for the next frame's GI (`gi-write`).
+    pub(super) gi_copy: bool,
 }
 
 impl Renderer {
@@ -71,23 +68,19 @@ impl Renderer {
         }
     }
 
-    pub(super) fn encode_main(
-        &self,
-        MainPassInputs {
-            ctx,
+    pub(super) fn encode_main(&self, plan: &MainPlan<'_>, cx: &mut EncodeCx<'_, '_>) {
+        let &MainPlan {
             scene,
             water_draws,
             fluid_frame,
             transmission_view,
             taa,
-            encoder,
             frame_bind_group,
             fx_group,
             main_list,
             batches,
             physical_fx,
             probe_binding,
-            stats,
             skinned_visible,
             lit_skinned,
             terrain_indices,
@@ -96,7 +89,6 @@ impl Renderer {
             scatter_batches,
             cards,
             grass_frame,
-            sky_group,
             fluid_bounds,
             blended_list,
             sprite_frame,
@@ -110,8 +102,10 @@ impl Renderer {
             oit,
             oit_frame_group,
             oit_probe_binding,
-        }: MainPassInputs<'_>,
-    ) {
+            gi_copy,
+        } = plan;
+        let (ctx, encoder, stats, sky_group) =
+            (cx.ctx, &mut *cx.encoder, &mut *cx.stats, cx.sky_group);
         let clear = match scene.environment.background {
             Background::Color(c) => wgpu::Color {
                 r: c.x as f64,
@@ -544,5 +538,42 @@ impl Renderer {
                 self.graph.view("lindepth"),
             );
         }
+        // The lit image for the next frame's GI (`gi-write`).
+        if let (true, Some((_, copies))) = (gi_copy, &self.persistent.gi) {
+            encoder.copy_texture_to_texture(
+                self.graph.view("hdr").texture().as_image_copy(),
+                copies[cx.slot].texture().as_image_copy(),
+                self.graph.view("hdr").texture().size(),
+            );
+        }
+    }
+}
+
+pub(super) struct MainPass;
+
+impl Pass for MainPass {
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::Main,
+        name: "main",
+        needs: Caps::NONE,
+    };
+    type State = LitPipelines;
+    type Plan<'f> = MainPlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.lit
+    }
+
+    /// Order-independent transparency: its accumulation targets.
+    fn needs(plan: &MainPlan<'_>) -> Caps {
+        if plan.oit.is_some() {
+            Caps::MRT
+        } else {
+            Caps::NONE
+        }
+    }
+
+    fn encode<'f>(_: &Self::State, plan: &MainPlan<'f>, _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
+        cx.ctx.r.encode_main(plan, cx);
     }
 }

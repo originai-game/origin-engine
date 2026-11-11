@@ -10,7 +10,7 @@ mod config;
 pub(crate) mod history;
 mod init;
 mod pipelines;
-pub(crate) use pipelines::PrepassState;
+pub(crate) use pipelines::{LitPipelines, PrepassState};
 mod presentation;
 mod readback;
 mod render;

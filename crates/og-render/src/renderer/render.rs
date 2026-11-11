@@ -41,7 +41,7 @@ use pass_reflection::{ReflectionPass, ReflectionPlan};
 mod pass_oit;
 use pass_oit::BlendedPart;
 mod pass_main;
-use pass_main::MainPassInputs;
+use pass_main::{MainPass, MainPlan};
 
 mod view_culling;
 
@@ -3681,7 +3681,7 @@ impl Renderer {
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         // The physical pipelines' effect group: the same plus the scene copy
         // (a placeholder in a frame without transmission).
-        let physical_fx_group = self.physical.as_ref().and_then(|p| {
+        let physical_fx_group = self.lit.physical.as_ref().and_then(|p| {
             batches
                 .iter()
                 .chain(&skinned_visible)
@@ -4178,6 +4178,7 @@ impl Renderer {
                         .shader
                         .and_then(|sh| self.cache.hook_prepass_pipelines.get(&(sh, b.side, true)));
                     let array = self
+                        .lit
                         .array_maps
                         .as_ref()
                         .filter(|_| b.array)
@@ -4350,6 +4351,41 @@ impl Renderer {
             cards: camera_cards,
             grass_frame: &grass_frame,
         });
+        plans.main = Some(MainPlan {
+            scene,
+            water_draws: &water_draws,
+            fluid_frame: &fluid_frame,
+            transmission_view,
+            taa: temporal,
+            frame_bind_group,
+            fx_group,
+            main_list: &main_list,
+            batches: &batches,
+            physical_fx,
+            probe_binding,
+            skinned_visible: &skinned_visible,
+            lit_skinned: &lit_skinned,
+            terrain_indices,
+            terrain_draws: &terrain_draws,
+            view_frustum: &view_frustum,
+            scatter_batches: &scatter_batches,
+            cards: camera_cards,
+            grass_frame: &grass_frame,
+            fluid_bounds,
+            blended_list: &blended_list,
+            sprite_frame: &sprite_frame,
+            sprite_fx_group,
+            particle_group: &particle_group,
+            particle_frame: &particle_frame,
+            ribbon_frame: &ribbon_frame,
+            line_frame: &line_frame,
+            metaball_groups: &metaball_groups,
+            volumetric_fog,
+            oit: oit_mode,
+            oit_frame_group: oit_frame_group.as_ref(),
+            oit_probe_binding,
+            gi_copy,
+        });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4358,7 +4394,6 @@ impl Renderer {
                 pass.needs()
                     | plans.needs(pass)
                     | match pass {
-                        FramePass::Main if oit_mode.is_some() => Caps::MRT,
                         FramePass::Taa | FramePass::TaaSharpen if fsr => Caps::COMPUTE,
                         _ => Caps::NONE,
                     },
@@ -4379,54 +4414,6 @@ impl Renderer {
                         slot,
                     },
                 ) => {}
-                FramePass::Main => {
-                    self.encode_main(MainPassInputs {
-                        ctx: &ctx,
-                        scene,
-                        water_draws: &water_draws,
-                        fluid_frame: &fluid_frame,
-                        transmission_view,
-                        taa: temporal,
-                        encoder: &mut encoder,
-                        frame_bind_group,
-                        fx_group,
-                        main_list: &main_list,
-                        batches: &batches,
-                        physical_fx,
-                        probe_binding,
-                        stats: &mut stats,
-                        skinned_visible: &skinned_visible,
-                        lit_skinned: &lit_skinned,
-                        terrain_indices,
-                        terrain_draws: &terrain_draws,
-                        view_frustum: &view_frustum,
-                        scatter_batches: &scatter_batches,
-                        cards: camera_cards,
-                        grass_frame: &grass_frame,
-                        sky_group,
-                        fluid_bounds,
-                        blended_list: &blended_list,
-                        sprite_frame: &sprite_frame,
-                        sprite_fx_group,
-                        particle_group: &particle_group,
-                        particle_frame: &particle_frame,
-                        ribbon_frame: &ribbon_frame,
-                        line_frame: &line_frame,
-                        metaball_groups: &metaball_groups,
-                        volumetric_fog,
-                        oit: oit_mode,
-                        oit_frame_group: oit_frame_group.as_ref(),
-                        oit_probe_binding,
-                    });
-                    // The lit image for the next frame's GI (`gi-write`).
-                    if let (true, Some((_, copies))) = (gi_copy, &self.persistent.gi) {
-                        encoder.copy_texture_to_texture(
-                            self.graph.view("hdr").texture().as_image_copy(),
-                            copies[slot].texture().as_image_copy(),
-                            self.graph.view("hdr").texture().size(),
-                        );
-                    }
-                }
                 FramePass::Glow => {
                     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                         label: Some("glow"),

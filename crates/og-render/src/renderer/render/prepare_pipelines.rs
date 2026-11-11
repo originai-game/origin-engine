@@ -42,8 +42,8 @@ impl Renderer {
         // decals take screen derivatives (the lean pipelines keep the discard).
         // (No decal in a renderer made without them, RenderDesc::without.)
         let decals = !scene.decals.is_empty() && !self.info.without.contains(LitFeatures::DECALS);
-        self.plain_effects = ao || decals;
-        if self.plain_effects {
+        self.lit.plain_effects = ao || decals;
+        if self.lit.plain_effects {
             for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
                 b.effects = true;
                 b.derivatives |= decals;
@@ -107,19 +107,20 @@ impl Renderer {
                 // Without the planar reflection, where it takes a slot.
                 let lightmap_fx = self.fx_lean_layout.as_ref().unwrap_or(&self.fx_layout);
                 let (groups, module) = match family {
-                    Family::Standard | Family::Compact => {
-                        ([&self.material_layout, lightmap_fx], self.pbr_shader.get())
-                    }
+                    Family::Standard | Family::Compact => (
+                        [&self.material_layout, lightmap_fx],
+                        self.lit.pbr_shader.get(),
+                    ),
                     Family::Shader(sh) => (
                         [&self.material_layout, lightmap_fx],
                         &self.cache.shaders[sh],
                     ),
                     Family::Array => {
-                        let a = self.array_maps.as_ref().expect("an array batch");
+                        let a = self.lit.array_maps.as_ref().expect("an array batch");
                         ([&a.layout, lightmap_fx], &a.module)
                     }
                     Family::Physical | Family::PhysicalShader(_) => {
-                        let p = self.physical.as_ref().expect("a physical batch");
+                        let p = self.lit.physical.as_ref().expect("a physical batch");
                         let module = match family {
                             Family::PhysicalShader(sh) => &self.cache.physical_shaders[&sh],
                             _ => &p.module,
@@ -150,7 +151,7 @@ impl Renderer {
             {
                 object.ensure(
                     &self.device,
-                    (&self.pbr_layout, &self.pbr_skinned_layout),
+                    (&self.lit.pbr_layout, &self.lit.pbr_skinned_layout),
                     side,
                     skinned,
                 );

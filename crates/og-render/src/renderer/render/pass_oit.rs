@@ -89,14 +89,14 @@ impl Renderer {
         };
         let mut wanted: Vec<Source> = Vec::new();
         for b in batches.iter().filter(|b| b.transparent && b.blend) {
-            let physical = b.physical && self.physical.is_some();
+            let physical = b.physical && self.lit.physical.is_some();
             wanted.push(Self::oit_lit_source(b, false, physical));
             if let Some(f) = Self::lightmap_family(&self.lights.lightmaps, b, physical) {
                 wanted.push(Source::Lightmap(f, b.side, b.effects));
             }
         }
         for b in skinned.iter().filter(|b| b.transparent && b.blend) {
-            let physical = b.physical && self.physical.is_some();
+            let physical = b.physical && self.lit.physical.is_some();
             wanted.push(Self::oit_lit_source(b, true, physical));
         }
         wanted.extend_from_slice(billboards);
@@ -136,8 +136,8 @@ impl Renderer {
                         LitModule::Standard => (
                             "pbr (oit)",
                             [&self.material_layout, &self.fx_layout],
-                            self.pbr_shader.get(),
-                            self.pbr_shader.declared,
+                            self.lit.pbr_shader.get(),
+                            self.lit.pbr_shader.declared,
                         ),
                         LitModule::Shader(sh) => (
                             "pbr (oit)",
@@ -146,7 +146,7 @@ impl Renderer {
                             none,
                         ),
                         LitModule::Array => {
-                            let a = self.array_maps.as_ref().expect("an array batch");
+                            let a = self.lit.array_maps.as_ref().expect("an array batch");
                             (
                                 "pbr array maps (oit)",
                                 [&a.layout, &self.fx_layout],
@@ -155,7 +155,7 @@ impl Renderer {
                             )
                         }
                         LitModule::Physical | LitModule::PhysicalShader(_) => {
-                            let p = self.physical.as_ref().expect("a physical batch");
+                            let p = self.lit.physical.as_ref().expect("a physical batch");
                             let shader = match module {
                                 LitModule::PhysicalShader(sh) => &self.cache.physical_shaders[&sh],
                                 _ => &p.module,
@@ -229,8 +229,8 @@ impl Renderer {
                         Family::Standard | Family::Compact => (
                             "lightmapped (oit)",
                             [&self.material_layout, lightmap_fx],
-                            self.pbr_shader.get(),
-                            self.pbr_shader.declared,
+                            self.lit.pbr_shader.get(),
+                            self.lit.pbr_shader.declared,
                         ),
                         Family::Shader(sh) => (
                             "lightmapped (oit)",
@@ -239,7 +239,7 @@ impl Renderer {
                             none,
                         ),
                         Family::Array => {
-                            let a = self.array_maps.as_ref().expect("an array batch");
+                            let a = self.lit.array_maps.as_ref().expect("an array batch");
                             (
                                 "lightmapped array maps (oit)",
                                 [&a.layout, lightmap_fx],
@@ -248,7 +248,7 @@ impl Renderer {
                             )
                         }
                         Family::Physical | Family::PhysicalShader(_) => {
-                            let p = self.physical.as_ref().expect("a physical batch");
+                            let p = self.lit.physical.as_ref().expect("a physical batch");
                             let shader = match family {
                                 Family::PhysicalShader(sh) => &self.cache.physical_shaders[&sh],
                                 _ => &p.module,

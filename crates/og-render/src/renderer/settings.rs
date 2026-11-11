@@ -222,14 +222,14 @@ impl Renderer {
     /// Forgets the lit pipelines, which batches make again as they need
     /// them, at the current samples.
     fn forget_lit_pipelines(&mut self) {
-        self.pbr_pipelines.clear();
-        self.lean_pipelines.clear();
+        self.lit.pbr_pipelines.clear();
+        self.lit.lean_pipelines.clear();
         self.cache.hook_pipelines.clear();
         self.cache.physical_hook_pipelines.clear();
-        if let Some(a) = &mut self.array_maps {
+        if let Some(a) = &mut self.lit.array_maps {
             a.lit.clear();
         }
-        if let Some(p) = &mut self.physical {
+        if let Some(p) = &mut self.lit.physical {
             p.pipelines.clear();
         }
         self.lights.lightmaps.forget_pipelines();

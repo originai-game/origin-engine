@@ -662,7 +662,7 @@ impl Renderer {
             uniform.stamp = [self.frame_index as u32, 0, 0, 0];
         }
         // The array maps' views (a material shader keeps the standard path).
-        let arrays = match self.array_maps.as_ref() {
+        let arrays = match self.lit.array_maps.as_ref() {
             Some(a) if custom.is_none() && m.draws_array_maps() => {
                 let [map_array, normal_array] = m.array_maps().map(|h| {
                     h.map(|h| {
@@ -748,8 +748,8 @@ impl Renderer {
         m: &StandardMaterial,
         factors: &wgpu::Buffer,
     ) -> Result<wgpu::BindGroup, RenderError> {
-        if self.physical.is_none() {
-            self.physical = Some(physical::PhysicalPipelines::new(
+        if self.lit.physical.is_none() {
+            self.lit.physical = Some(physical::PhysicalPipelines::new(
                 &self.device,
                 &self.frame_layout,
                 &self.palette_layout,
@@ -774,7 +774,7 @@ impl Renderer {
                 .get(h.index())
                 .is_some_and(|g| g.format.two_channel())
         });
-        let physical = self.physical.as_ref().expect("made above");
+        let physical = self.lit.physical.as_ref().expect("made above");
         let pack = match self.cache.packs.get(&key) {
             Some(view) => view.clone(),
             None if layers.is_empty() => physical.empty_pack.clone(),

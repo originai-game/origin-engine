@@ -69,17 +69,17 @@ impl Renderer {
     fn warm_plain_lit(&mut self) -> bool {
         // With the effect shader when the frame puts it on every batch:
         // the variant without it would be made for nothing.
-        let key = (Side::Front, false, false, self.plain_effects);
-        if !self.pbr_pipelines.contains_key(&key) {
+        let key = (Side::Front, false, false, self.lit.plain_effects);
+        if !self.lit.pbr_pipelines.contains_key(&key) {
             let p = pbr_pipeline(
                 &self.device,
-                (&self.pbr_layout, &self.pbr_skinned_layout),
-                &self.pbr_shader,
+                (&self.lit.pbr_layout, &self.lit.pbr_skinned_layout),
+                &self.lit.pbr_shader,
                 key,
                 self.samples,
             );
-            let declared = self.pbr_shader.declared;
-            self.pbr_pipelines.insert(
+            let declared = self.lit.pbr_shader.declared;
+            self.lit.pbr_pipelines.insert(
                 key,
                 crate::pipeline_features::Variants::new(declared, move |_| {
                     let p = p.clone();
@@ -292,9 +292,13 @@ mod tests {
         renderer
             .render(&scene, &RenderTarget::Offscreen)
             .expect("render");
-        assert!(renderer.plain_effects, "the AO puts the effect shader on");
+        assert!(
+            renderer.lit.plain_effects,
+            "the AO puts the effect shader on"
+        );
         while renderer.warm() {}
         let plain: Vec<bool> = renderer
+            .lit
             .pbr_pipelines
             .keys()
             .filter(|&&(side, blend, skinned, _)| side == Side::Front && !blend && !skinned)

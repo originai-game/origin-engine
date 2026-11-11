@@ -73,9 +73,9 @@ impl Renderer {
         for (feature, name) in LitFeatures::NAMED {
             if off.contains(feature)
                 && used.contains(feature.features())
-                && !self.warned_without.contains(feature)
+                && !self.lit.warned_without.contains(feature)
             {
-                self.warned_without = self.warned_without | feature;
+                self.lit.warned_without = self.lit.warned_without | feature;
                 log::warn!(
                     "og-render: the scene uses {name}, but the renderer was made without it \
                      (RenderOptions.without), so it is not drawn"

@@ -530,8 +530,8 @@ impl Renderer {
             let styled = material::styled(material, &scene.stylise.material);
             let material = &styled;
             let hooked = scene.material_shader(MaterialHandle::from_index(i));
-            if material.draws_array_maps() && hooked.is_none() && self.array_maps.is_none() {
-                self.array_maps = Some(material::ArrayMaps::new(
+            if material.draws_array_maps() && hooked.is_none() && self.lit.array_maps.is_none() {
+                self.lit.array_maps = Some(material::ArrayMaps::new(
                     &self.device,
                     &self.queue,
                     [&self.frame_layout, &self.fx_layout, &self.palette_layout],

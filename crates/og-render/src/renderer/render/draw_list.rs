@@ -141,7 +141,7 @@ impl Renderer {
                         match batch.shader {
                             Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)],
                             None if batch.array => {
-                                &self.array_maps.as_ref().expect("an array batch").shadow
+                                &self.lit.array_maps.as_ref().expect("an array batch").shadow
                                     [&(batch.side, batch.dissolve)]
                             }
                             None if batch.compact => {

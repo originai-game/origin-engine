@@ -611,10 +611,10 @@ pub struct Renderer {
     /// Its cluster table and references, over the main view's light records.
     reflection_light_buffers: Vec<[wgpu::Buffer; 3]>,
     reflection_clusters: Vec<clusters::ClusterBuilder>,
-    pbr_layout: wgpu::PipelineLayout,
-    pbr_skinned_layout: wgpu::PipelineLayout,
-    /// Parsed when the first lit pipeline is made (deferred.rs).
-    pbr_shader: deferred::Module,
+    /// The lit passes' pipelines: the standard, lean and physical ones by key,
+    /// their layouts and shader, the array maps' variants, and the features a
+    /// scene used that the renderer was made without.
+    lit: renderer::LitPipelines,
     /// The shadow pass's slot (group 0 of every caster's pipeline).
     shadow_bind_layout: wgpu::BindGroupLayout,
     /// Lit pipelines, each made when a batch first needs it (or by
@@ -626,16 +626,9 @@ pub struct Renderer {
     /// are the full variants, waited for, so its bytes never depend on
     /// which variants a compile worker has finished.
     capturing: bool,
-    pbr_pipelines: HashMap<PbrKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
-    /// Whether the last frame prepared drew every batch with the effect
-    /// shader (screen-space AO or GI, decals: `prepare_frame_pipelines`):
-    /// the variant [`Renderer::warm`] makes for plain materials.
-    plain_effects: bool,
     /// The depth prepass's pipelines: the standard and the lean ones by key,
     /// and stylise's object pass.
     prepass: renderer::PrepassState,
-    /// The lean lit pipelines of plain materials, made at first use.
-    lean_pipelines: HashMap<LeanKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     sky_pipeline: Sampled<wgpu::RenderPipeline>,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     sky_look_pipeline: Sampled<wgpu::RenderPipeline>,
@@ -696,16 +689,7 @@ pub struct Renderer {
     /// does not draw ([`RenderDesc::planar_reflections`] 1), and the log
     /// said so once.
     warned_planar: bool,
-    /// The features the renderer was made without that a scene used
-    /// ([`RenderDesc::without`]): the log said so once for each.
-    warned_without: LitFeatures,
     mips: mips::MipGenerator,
-    /// The physical lit pipelines, made when a scene first draws a physical
-    /// material (`physical.rs`).
-    physical: Option<physical::PhysicalPipelines>,
-    /// The array-map variant of the lit, prepass and shadow pipelines, made
-    /// when a scene first draws a material with array maps (`material.rs`).
-    array_maps: Option<material::ArrayMaps>,
     /// The copy of the opaque scene transmission refracts, with its mip
     /// chain, at the renderer's size (made when a frame first needs it),
     /// its view and the chain's views and bind groups (made with it, not

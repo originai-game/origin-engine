@@ -715,3 +715,31 @@ pub(crate) struct PrepassState {
     /// object space (`stylise_object.rs`).
     pub(crate) stylise_object: Option<stylise_object::ObjectPass>,
 }
+
+/// The lit passes' pipelines: the standard, lean and physical ones by key,
+/// their layouts and shader, the array maps' variants, and the features a
+/// scene used that the renderer was made without.
+pub(crate) struct LitPipelines {
+    pub(crate) pbr_layout: wgpu::PipelineLayout,
+    pub(crate) pbr_skinned_layout: wgpu::PipelineLayout,
+    /// Parsed when the first lit pipeline is made (deferred.rs).
+    pub(crate) pbr_shader: deferred::Module,
+    pub(crate) pbr_pipelines:
+        HashMap<PbrKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// Whether the last frame prepared drew every batch with the effect
+    /// shader (screen-space AO or GI, decals: `prepare_frame_pipelines`):
+    /// the variant [`Renderer::warm`] makes for plain materials.
+    pub(crate) plain_effects: bool,
+    /// The lean lit pipelines of plain materials, made at first use.
+    pub(crate) lean_pipelines:
+        HashMap<LeanKey, pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// The physical lit pipelines, made when a scene first draws a physical
+    /// material (`physical.rs`).
+    pub(crate) physical: Option<physical::PhysicalPipelines>,
+    /// The array-map variant of the lit, prepass and shadow pipelines, made
+    /// when a scene first draws a material with array maps (`material.rs`).
+    pub(crate) array_maps: Option<material::ArrayMaps>,
+    /// The features the renderer was made without that a scene used
+    /// ([`RenderDesc::without`]): the log said so once for each.
+    pub(crate) warned_without: LitFeatures,
+}
