@@ -86,17 +86,29 @@ fn module_of(page: &str) -> &str {
 }
 
 /// The entries named `name` (with or without `og.`, any case); a module's
-/// own name as written (`input`, not `Input` or `og.Input`) is its overview.
-pub fn show<'a>(all: &'a [Entry], name: &str) -> Vec<&'a Entry> {
-    let module: Vec<&Entry> = all
-        .iter()
-        .filter(|e| e.kind == "module" && e.name == name.trim())
-        .collect();
-    if !module.is_empty() {
-        return module;
+/// or guide's own name as written (`input`, not `Input` or `og.Input`) is its
+/// overview. A guide named like a module (`physics`) is shown with `guide`.
+pub fn show<'a>(all: &'a [Entry], name: &str, guide: bool) -> Vec<&'a Entry> {
+    let whole = |kind: &str| -> Vec<&'a Entry> {
+        all.iter()
+            .filter(|e| e.kind == kind && e.name == name.trim())
+            .collect()
+    };
+    for kind in if guide {
+        ["guide", "module"]
+    } else {
+        ["module", "guide"]
+    } {
+        let found = whole(kind);
+        if !found.is_empty() {
+            return found;
+        }
     }
     let want = bare(name);
-    let all: Vec<&Entry> = all.iter().filter(|e| e.kind != "module").collect();
+    let all: Vec<&Entry> = all
+        .iter()
+        .filter(|e| e.kind != "module" && !(e.kind == "guide" && !e.name.contains(" §")))
+        .collect();
     let exact: Vec<&Entry> = all
         .iter()
         .copied()
@@ -221,6 +233,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
     let mut limit = 12usize;
     let mut json = false;
     let mut every = false;
+    let mut guide = false;
     let mut rest = Vec::new();
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -241,6 +254,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             },
             "--json" => json = true,
             "--all" => every = true,
+            "--guide" => guide = true,
             w => rest.push(w),
         }
     }
@@ -269,7 +283,7 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             Ok(all) => all,
             Err(e) => return unreadable(e),
         };
-        let hits = show(&all, &query);
+        let hits = show(&all, &query, guide);
         if hits.is_empty() {
             let near = find(&ix, &query, kind);
             eprintln!("og api show: no entry named `{query}`.");
@@ -288,6 +302,12 @@ pub fn run(cmd: &str, args: &[&str]) -> ExitCode {
             print!("{}", render(e));
             if e.kind == "module" {
                 print!("{}", members(&ix, &e.page, &e.body, every));
+                if all.iter().any(|g| g.kind == "guide" && g.name == e.name) {
+                    println!(
+                        "The `{0}` guide (how to use it): `og api show {0} --guide`.",
+                        e.name
+                    );
+                }
             }
         }
         return ExitCode::SUCCESS;
@@ -432,21 +452,21 @@ mod tests {
         // Scores fall from first to last.
         let hits = find(&ix, "ray cast against colliders", None);
         assert!(hits.windows(2).all(|w| w[0].1.score >= w[1].1.score));
-        let one = show(&all, "CharacterController");
+        let one = show(&all, "CharacterController", false);
         assert_eq!(one.len(), 1);
         let text = render(one[0]);
         assert!(text.contains("| `jumpSpeed` |"), "{text}");
         assert!(text.len() < 12_000, "{}", text.len());
-        let ray = render(show(&all, "og.physics.castRay")[0]);
+        let ray = render(show(&all, "og.physics.castRay", false)[0]);
         assert!(ray.contains("og.physics.castRay(world: World"), "{ray}");
         assert!(
             !ray.contains("```ogt") && !ray.contains("Binding symbol"),
             "{ray}"
         );
         // A table row (a constant) is an entry too.
-        let c = show(&all, "SHAPE_BOX");
+        let c = show(&all, "SHAPE_BOX", false);
         assert_eq!((c.len(), c[0].kind.as_str()), (1, "const"));
-        assert!(show(&all, "NoSuchThing").is_empty());
+        assert!(show(&all, "NoSuchThing", false).is_empty());
         // Words only a field's doc carries find the record; a word nothing
         // carries leaves the rest ranked; a typo still finds it.
         assert!(
@@ -490,13 +510,13 @@ mod tests {
         let (n, at1, at5) = recall(&ix, include_str!("../tests/fixtures/api-find-queries.tsv"));
         assert!(n >= 160, "{n}");
         assert!(
-            at1 >= 60 && at5 >= 129,
+            at1 >= 68 && at5 >= 129,
             "recall@1 {at1}/{n}, recall@5 {at5}/{n}"
         );
         let (n, at1, at5) = recall(&ix, include_str!("../tests/fixtures/api-find-heldout.tsv"));
         assert!(n >= 40, "{n}");
         assert!(
-            at1 >= 8 && at5 >= 19,
+            at1 >= 11 && at5 >= 20,
             "held out: recall@1 {at1}/{n}, recall@5 {at5}/{n}"
         );
     }
@@ -506,7 +526,7 @@ mod tests {
     #[test]
     fn show_of_a_module_name_is_its_overview_without_idl() {
         let all = wiki();
-        let module = show(&all, "input");
+        let module = show(&all, "input", false);
         assert_eq!(
             module.len(),
             1,
@@ -530,7 +550,10 @@ mod tests {
             "{listed}"
         );
         assert_eq!(listed.matches("og.anim.clip,").count(), 1, "{listed}");
-        let resource = show(&all, "og.Input");
+        let resource = show(&all, "og.Input", false);
+        // A guide named like the module: the module by default, the guide on asking.
+        assert_eq!(show(&all, "input", true)[0].kind, "guide");
+        assert_eq!(show(&all, "saves", false)[0].kind, "guide");
         assert!(resource.iter().all(|e| e.kind == "record") && !resource.is_empty());
         assert!(all.iter().filter(|e| e.kind == "module").count() > 20);
     }

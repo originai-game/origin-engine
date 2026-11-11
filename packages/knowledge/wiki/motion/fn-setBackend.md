@@ -6,7 +6,9 @@ Module [`motion`](../motion.md) · [index](../index.md)
 
 ### `og.motion.setBackend`
 
-Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). gpu, the default, runs it beside the renderer, cheapest per character. No tick waits for it: a result is applied when it comes back, as of the tick it was due, and until then a frame draws the poses it has, so live frames may vary run to run (what checks a frame waits for it, as the module's overview says). cpu runs it on the CPU across the lanes instead, each generation spread over the ticks before it is due (about 21 ms of CPU a generation natively, 23 ms in wasm), for a few characters. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again.
+Where the motion model runs: gpu (the default, beside the renderer, cheapest per character) or cpu (across the lanes, each generation spread over the ticks before it is due, for a few characters). A presentation setting of this engine, outside the world: a snapshot does not keep it. No tick waits for it; results apply when they come back. A change after the first agent loads the model again and every agent's generated motion starts again.
+
+See `animation §10`.
 
 ```ts
 og.motion.setBackend(world: World, backend: MotionBackend): Result<void>
@@ -23,7 +25,8 @@ Binding symbol `og_motion_set_backend` · publish builds: kept
 
 ```ogt
 fn setBackend {
-  doc "Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). gpu, the default, runs it beside the renderer, cheapest per character. No tick waits for it: a result is applied when it comes back, as of the tick it was due, and until then a frame draws the poses it has, so live frames may vary run to run (what checks a frame waits for it, as the module's overview says). cpu runs it on the CPU across the lanes instead, each generation spread over the ticks before it is due (about 21 ms of CPU a generation natively, 23 ms in wasm), for a few characters. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again."
+  doc "Where the motion model runs: gpu (the default, beside the renderer, cheapest per character) or cpu (across the lanes, each generation spread over the ticks before it is due, for a few characters). A presentation setting of this engine, outside the world: a snapshot does not keep it. No tick waits for it; results apply when they come back. A change after the first agent loads the model again and every agent's generated motion starts again."
+  guide "animation §10"
   param world World "The world."
   param backend MotionBackend "cpu or gpu."
   returns Result.Void "Refused for none."

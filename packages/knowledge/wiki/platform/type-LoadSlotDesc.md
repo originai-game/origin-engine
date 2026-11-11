@@ -24,4 +24,4 @@ struct LoadSlotDesc {
 }
 ```
 
-<sub>Module `platform` line 80</sub>
+<sub>Module `platform` line 76</sub>

@@ -12,27 +12,54 @@ Also known as: main camera, view, PerspectiveCamera, Camera3D
 
 Token `og.Camera`, registered under the schema name `og.Camera`; its value type is `Camera`.
 
+#### Pose
+
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | Where the camera is. |
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation; the camera looks down its local -Z. |
+
+#### Projection
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `fov` | `number` | `50` | 1 … 179 | `deg` | tunable | The vertical field of view of the perspective projection. |
 | `near` | `number` | `0.1` | ≥ 0.001 | `m` | — | The near clipping plane. |
 | `far` | `number` | `2000` | ≥ 0.01 | `m` | — | The far clipping plane. |
 | `zoom` | `number` | `1` | 0.01 … 100 | — | tunable | The zoom factor, as three.js Camera.zoom. |
 | `orthographic` | `boolean` | `false` | — | — | — | Use an orthographic projection (the 2D profile) instead of a perspective one. |
 | `height` | `number` | `10` | ≥ 0.01 | `m` | — | The visible world height of the orthographic projection. |
+
+#### Output
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `background` | `Color` | `{ r: 0.00699, g: 0.00803, b: 0.01096 }` | — | — | — | The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB. |
 | `exposure` | `number` | `1` | 0 … 16 | — | tunable | Exposure before tone mapping, as three.js toneMappingExposure. |
+
+#### Shake
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `trauma` | `number` | `0` | 0 … 1 | — | tunable | Screen shake, 0 to 1, added by og.camera.shake and decayed by traumaDecay every tick (unscaled, so a hit stop still shakes). The offset and roll grow with trauma squared and follow smooth noise of the tick: visual only, a replay shakes the same. |
 | `traumaDecay` | `number` | `1.5` | ≥ 0 | `perSecond` | tunable | How much trauma drains per second. |
 | `shakeOffset` | `number` | `0.04` | ≥ 0 | — | tunable | The largest offset at trauma 1, as a fraction of the view height. |
 | `shakeRoll` | `number` | `2` | ≥ 0 | `deg` | tunable | The largest roll at trauma 1. |
 | `shakeFrequency` | `number` | `15` | ≥ 0 | `hz` | — | How fast the shake moves. |
+
+#### Punch and kick
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `punch` | `number` | `0` | -0.9 … 4 | — | — | A zoom punch in progress (og.camera.punch): the view is narrowed by this fraction, decaying by punchDecay. Visual only. |
 | `punchDecay` | `number` | `8` | ≥ 0 | `perSecond` | tunable | How fast a punch springs back (exponential, per second). |
 | `kick` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | A kick in progress (og.camera.kick): the view is offset by this, decaying by kickDecay. Visual only. |
 | `kickDecay` | `number` | `12` | ≥ 0 | `perSecond` | tunable | How fast a kick returns (exponential, per second). |
+
+#### Zones
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `zoneActive` | `boolean` | `false` | — | — | — | The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system. |
 | `zoneMin` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | The zone the view keeps inside: its bottom-left corner. |
 | `zoneMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | Its top-right corner. |
@@ -41,17 +68,24 @@ Token `og.Camera`, registered under the schema name `og.Camera`; its value type 
 | `zoneFromMax` | `Vector2` | `{ x: 0, y: 0 }` | — | `m` | worldspace `world` | Its top-right corner. |
 | `zoneScroll` | `number` | `1` | 0 … 1 | — | — | How far the transition has come, 0 to 1 (eased; 1 is settled). |
 | `zoneScrollTime` | `number` | `0` | ≥ 0 | `s` | — | How long the transition takes: the entered zone's scrollTime. |
+
+#### Layers
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `layers` | `number` | `1` | — | — | — | Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's. |
 
 ```ogt
 resource Camera {
   doc "The camera the frame is rendered from. Rendering reads it after the tick; it never feeds back into the simulation."
   aliases "main camera, view, PerspectiveCamera, Camera3D"
+  group "Pose"
   field position Vector3 "Where the camera is." {
     worldspace world
     unit m
   }
   field quaternion Quaternion "Its rotation; the camera looks down its local -Z."
+  group "Projection"
   field fov f32 "The vertical field of view of the perspective projection." {
     default 50
     min 1
@@ -81,6 +115,7 @@ resource Camera {
     min 0.01
     unit m
   }
+  group "Output"
   field background Color "The clear colour, as three.js Scene.background. The default is the brand ink #14161b in linear RGB." {
     default 0.00699 0.00803 0.01096
   }
@@ -90,6 +125,7 @@ resource Camera {
     max 16
     tunable true
   }
+  group "Shake"
   field trauma f32 "Screen shake, 0 to 1, added by og.camera.shake and decayed by traumaDecay every tick (unscaled, so a hit stop still shakes). The offset and roll grow with trauma squared and follow smooth noise of the tick: visual only, a replay shakes the same." {
     min 0
     max 1
@@ -117,6 +153,7 @@ resource Camera {
     min 0
     unit hz
   }
+  group "Punch and kick"
   field punch f32 "A zoom punch in progress (og.camera.punch): the view is narrowed by this fraction, decaying by punchDecay. Visual only." {
     min -0.9
     max 4
@@ -136,6 +173,7 @@ resource Camera {
     unit perSecond
     tunable true
   }
+  group "Zones"
   field zoneActive bool "The followed entity is in an og.CameraZone: the view keeps inside zoneMin to zoneMax. Written by the og.camera system."
   field zoneMin Vector2 "The zone the view keeps inside: its bottom-left corner." {
     worldspace world
@@ -179,13 +217,14 @@ resource Camera {
     param y f32 "Vertical position in CSS pixels."
     returns Ray
   }
+  group "Layers"
   field layers u32 "Three.js layers, as Camera.layers.mask: the frame draws the meshes, models, world sprites, particle systems, lines and points whose layers share a bit with it. 1 (layer 0) by default, as every object's." {
     default 1
   }
 }
 ```
 
-<sub>Module `camera` line 5</sub>
+<sub>Module `camera` line 6</sub>
 
 <a id="member-Camera-lookAt"></a>
 
@@ -212,7 +251,7 @@ fn lookAt {
 }
 ```
 
-<sub>Module `camera` line 124</sub>
+<sub>Module `camera` line 131</sub>
 
 <a id="member-Camera-worldToScreen"></a>
 
@@ -243,7 +282,7 @@ fn worldToScreen {
 }
 ```
 
-<sub>Module `camera` line 128</sub>
+<sub>Module `camera` line 135</sub>
 
 <a id="member-Camera-screenToRay"></a>
 
@@ -273,4 +312,4 @@ fn screenToRay {
 }
 ```
 
-<sub>Module `camera` line 134</sub>
+<sub>Module `camera` line 141</sub>

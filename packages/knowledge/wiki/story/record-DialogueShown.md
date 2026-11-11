@@ -23,4 +23,4 @@ event DialogueShown {
 }
 ```
 
-<sub>Module `story` line 36</sub>
+<sub>Module `story` line 35</sub>

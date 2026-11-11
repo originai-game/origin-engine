@@ -32,4 +32,4 @@ struct AmbientDesc {
 }
 ```
 
-<sub>Module `story` line 195</sub>
+<sub>Module `story` line 196</sub>

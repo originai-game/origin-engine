@@ -14,7 +14,7 @@ The first desync of this peer's lockstep session (og.net), as `dump_desync` writ
 | `tick` | `number \| null` | `null` | — | — | — | The first divergent tick: og.Time.tick of the two worlds that differ. |
 | `local` | `unknown` | `null` | — | — | — | This peer: `{ peer, player, hash }`. |
 | `remote` | `unknown` | `null` | — | — | — | The other peer: `{ peer, player, hash }`. |
-| `diff` | `unknown` | `null` | — | — | — | What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order (the first entry is the first difference in storage order); `{ pending }` until the other peer's snapshot arrived. |
+| `diff` | `unknown` | `null` | — | — | — | What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order; `{ pending }` until the other peer's snapshot arrived. |
 
 ```ogt
 struct DesyncDump {
@@ -23,7 +23,7 @@ struct DesyncDump {
   field tick Option.u32 "The first divergent tick: og.Time.tick of the two worlds that differ."
   field local Json "This peer: `{ peer, player, hash }`."
   field remote Json "The other peer: `{ peer, player, hash }`."
-  field diff Json "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order (the first entry is the first difference in storage order); `{ pending }` until the other peer's snapshot arrived."
+  field diff Json "What differs: `{ components: [{ entity, component, fields: [{ field, local, remote }] }], entities: { onlyLocal, onlyRemote }, resources, events, blocks, allocator }`, in the local world's entity order; `{ pending }` until the other peer's snapshot arrived."
 }
 ```
 

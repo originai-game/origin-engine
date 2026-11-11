@@ -27,4 +27,4 @@ event BarkSaid {
 }
 ```
 
-<sub>Module `story` line 62</sub>
+<sub>Module `story` line 61</sub>

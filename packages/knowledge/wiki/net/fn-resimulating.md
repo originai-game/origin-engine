@@ -6,7 +6,7 @@ Module [`net`](../net.md) · [index](../index.md)
 
 ### `og.net.resimulating`
 
-Whether the tick running is a rollback's re-simulation: the world was rewound and this tick runs again, so its presentation already happened once. The engine already plays each sound once and snaps the view; a game that triggers its own presentation from a system (a screen shake, a haptic) checks this first. False in lockstep and alone. Callable from a system.
+Whether the tick running is a rollback's re-simulation: the world was rewound and this tick runs again, so its presentation already happened once. The engine already plays each sound once and snaps the view; a game's own presentation checks this. False in lockstep and alone. Callable from a system.
 
 ```ts
 og.net.resimulating(world: World): boolean
@@ -22,10 +22,10 @@ Binding symbol `og_net_resimulating` · publish builds: kept
 
 ```ogt
 fn resimulating {
-  doc "Whether the tick running is a rollback's re-simulation: the world was rewound and this tick runs again, so its presentation already happened once. The engine already plays each sound once and snaps the view; a game that triggers its own presentation from a system (a screen shake, a haptic) checks this first. False in lockstep and alone. Callable from a system."
+  doc "Whether the tick running is a rollback's re-simulation: the world was rewound and this tick runs again, so its presentation already happened once. The engine already plays each sound once and snaps the view; a game's own presentation checks this. False in lockstep and alone. Callable from a system."
   param world World "The world."
   returns bool
 }
 ```
 
-<sub>Module `net` line 239</sub>
+<sub>Module `net` line 242</sub>

@@ -1,7 +1,8 @@
 module anim {
-  doc "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
-  doc "Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none."
-  doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again."
+  doc "Skeletal animation over og-anim: glTF skins and clips (loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
+  doc "Game code sets players, graph parameters and IK targets; og.anim writes the pose (world state, the `og.anim` state block), the joint palette, root motion into og.Transform and the fields marked written. Asset handles (og.load.animation, og.anim.graph): 0 is none."
+  doc "Clips bind to nodes by name; assets are not world state."
+  guide "animation §7"
 
   handle SkeletonAsset "A rig: a glTF's nodes in topological order with their rest transforms, and its skins (joints and inverse bind matrices)."
   handle ClipAsset "An animation clip, resampled at the cook's rate, with its markers."
@@ -70,7 +71,7 @@ module anim {
 
   enum IkSpace {
     doc "What an IK chain's target and pole are relative to."
-    variant world "Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child (a body under a character capsule takes targets relative to the capsule; transform world points by the parent's inverse yourself)."
+    variant world "Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child."
     variant model "The skeleton's model space."
   }
 
@@ -97,8 +98,9 @@ module anim {
   }
 
   component CrowdAnimation {
-    doc "Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade."
-    doc "The clip's time is `offset` plus `speed` times the world's time, so give each member of a crowd its own `offset` to keep them out of step. It is drawn only: it never feeds back into the simulation, and TAA gets its motion vectors from the frame before. The camera culls each entity by its bounds on the CPU, as a model posed by og.anim; crowds do not go through GPU culling or the meshlet path yet."
+    doc "Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade."
+    doc "The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before."
+    guide "animation §7"
     field skeleton SkeletonAsset "The skeleton asset of the model (og.load.animation's `skeleton`); 0 draws nothing posed."
     field skin u32 "Which of the skeleton's skins poses the model (glTF skin index)." {
       min 0
@@ -165,8 +167,9 @@ module anim {
   }
 
   component AnimationGraph {
-    doc "Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param` is p1, ...)."
-    doc "On an entity with an og.Flipbook or an og.Skeleton2D, a graph registered with GraphDesc.sprite drives it instead: its `clip` lines name the sheet's or rig's clips, so one graph serves every sheet with those names. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins over the layers under it) and its rate: transitions cut, never fade, and wait for the frame on screen to end; a cut within one state (a blend's other clip) or between states of one sync group keeps the phase. A 2D skeleton blends the two heaviest clips (Skeleton2D.clip and blendClip, their times and `blend`) and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only. The machines are world state (the og.flipbook and og.skeleton2d state blocks); weight is not used there."
+    doc "Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, named in the graph's `param` order (`param speed` is p0)."
+    doc "On an og.Flipbook or og.Skeleton2D entity a GraphDesc.sprite graph drives it instead. A flipbook shows the heaviest clip (an upper override layer at weight 0.5 or more wins) at its rate, cutting on frame ends and keeping the phase within a state or sync group; a 2D skeleton blends the two heaviest clips and cross-fades over a transition's `fade`. Additive layers and masks are skeleton-only."
+    guide "animation §9"
     field asset GraphAsset "The graph asset; 0 is none."
     field weight f32 "How much of the pose the graph decides over the rest pose." {
       default 1
@@ -394,7 +397,8 @@ module anim {
   }
 
   component FootLock {
-    doc "Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at least half the pose), the foot stays where it touched the ground, through clip blends and root motion, its leg bent by two-bone IK and the foot keeping its animated orientation; when the clips lift it, the foot rejoins its animation over `release`. Put it on its own entity, one per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. The lock is world state (the `og.anim` state block)."
+    doc "Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through blends and root motion, its leg bent by two-bone IK, keeping its animated orientation; when the clips lift it, it rejoins its animation over `release`. One entity per foot; locks apply after root motion and before og.IkChain, in query order, and og.JointLimit clamps the leg. World state (the `og.anim` state block)."
+    guide "animation §8"
     field skeleton Entity "The entity with the og.Skeleton whose foot this holds."
     field foot u32 "The foot joint (an index into the skin's joints); the two bones above it are the leg that bends." {
       min 0
@@ -440,7 +444,8 @@ module anim {
   }
 
   component SpringBone {
-    doc "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint of the chain; for the last joint its first child, or its parent bone continued at the same length) is a point pulled towards where the animated pose puts it by a damped spring (`frequency`, `damping`), under `gravity`, held at the bone's length, and the joint turns to point at it. Applied after og.IkChain and og.LookAt, top joint first; put it on its own entity (a tail, an ear, a strand of hair, a single jiggling node), one per chain. Deterministic under the fixed tick; the tails' positions and velocities are world state (the `og.anim` state block), so a restore continues a swing exactly. A changed chain (another skeleton, length or space) restarts at the animated pose."
+    doc "A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. Each joint's tail (the next joint; for the last, its first child or its bone continued at the same length) is pulled towards its animated place by a damped spring (`frequency`, `damping`) under `gravity`, held at the bone's length, and the joint turns to it. Applied after og.IkChain and og.LookAt, top joint first. Tail positions and velocities are world state (the `og.anim` state block); a changed chain (skeleton, length or space) restarts at the animated pose."
+    guide "animation §8"
     field skeleton Entity "The entity with the og.Skeleton whose joints this swings."
     field joint u32 "The chain's last joint (an index into the skin's joints): the tip of a tail, an ear." {
       min 0
@@ -513,7 +518,8 @@ module anim {
   }
 
   component SpringCollider {
-    doc "A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing through the body. Each tick, after a tail of an og.SpringBone of the same skeleton has stepped and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. Put it on its own entity, one per shape; colliders follow the pose as it is when a chain is swung, so one on a joint an earlier chain swung follows that swing."
+    doc "A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. Each tick, after a tail of an og.SpringBone of the same skeleton steps and before its joint turns, the tail is pushed out of every collider whose `layers` meet the spring's `colliders` (in query order) to `radius` plus the spring's `radius`, keeping its bone's length. One entity per shape; it follows the pose as it is when a chain swings, so one on a joint an earlier chain swung follows that swing."
+    guide "animation §8"
     field skeleton Entity "The entity with the og.Skeleton whose spring bones this keeps out."
     field joint u32 "The joint the collider rides on (an index into the skin's joints)." {
       min 0
@@ -591,8 +597,8 @@ module anim {
   }
 
   struct HumanBone {
-    doc "One standard humanoid bone of a skeleton."
-    field bone String "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers (VRM 1.0 names): leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's."
+    doc "One standard humanoid bone of a skeleton. The bones, by VRM 1.0 name: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers: leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's."
+    field bone String "The standard bone, by its VRM 1.0 name (listed above)."
     field node String "The skeleton node that is that bone."
   }
 
@@ -630,7 +636,8 @@ module anim {
   }
 
   fn retarget {
-    doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames agree; fingers turn from their hand, so a hand pose holds whatever the arm does), the target keeps its bone lengths, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest pose's foot heights). The target's twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on an upper or lower arm or leg) take a share of their segment's twist by how far along it they sit. Same name, duration and markers. The cook does the same for a model's `animation { library }` import setting; this is for clips chosen at run time."
+    doc "A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the target's, the hips travel the source's distance scaled by the leg ratio (root motion kept, hip height scaled), and with footIk the feet land where the source's do, scaled, on the ground each rig's `footHeight` names (else its rest foot heights). Twist bones (unmapped nodes named `twist`, or Rigify's `DEF-….001`, on a limb) take a share of its twist by position. Same name, duration and markers."
+    guide "animation §7"
     param world World "The world whose animation owns the skeletons and the clip."
     param desc RetargetDesc "The clip, the two skeletons and their rigs."
     returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip, skeleton or rig, a skeleton without recognisable hips (name them in a `type rig` file), or a rig naming a missing node."
@@ -644,7 +651,8 @@ module anim {
   }
 
   fn mirror {
-    doc "A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers (markers keep their names). Mirroring twice gives the clip back. A clip known ahead needs no call: a graph's `clip` line with `mirror true` plays it mirrored, and the cook's `animation { mirror \"<clip>\" }` writes the mirrored clip into the model."
+    doc "A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in model space so left and right bone frames need not mirror each other, root motion's sideways travel and turns flipped. Assumes a symmetric rest pose; a sided node without a counterpart keeps its rest pose. Same name, duration and markers. Mirroring twice gives the clip back."
+    guide "animation §7"
     param world World "The world whose animation owns the skeleton and the clip."
     param desc MirrorDesc "The clip and its skeleton."
     returns Result.ClipInfo "The new clip (what AnimationPlayer.clip takes). Refused for an unregistered clip or skeleton."
@@ -667,8 +675,9 @@ module anim {
   }
 
   component Flipbook {
-    doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems."
-    doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block). An og.AnimationGraph of a GraphDesc.sprite graph on the entity writes clip, time and speed each tick: its states by the sheet's clip names, cut on frame boundaries."
+    doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or the frame's layer of an `array true` sheet's texture array. Played by og.flipbook by scaled time (Time.scaledDt), after the game's systems."
+    doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent; the playback position is world state (the og.flipbook state block). A sprite graph on the entity writes clip, time and speed."
+    guide "animation §9"
     field sheet FlipbookSheet "The sheet (og.load.flipbook's `sheet`); 0 is none."
     field clip u32 "The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name)." {
       min 0
@@ -762,8 +771,9 @@ module anim {
   }
 
   component Skeleton2D {
-    doc "Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it."
-    doc "Changing `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block)."
+    doc "Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`, lit as a sprite there is. `unit` rig pixels make a world unit, +y up; the entity's og.Transform places, turns (about z) and scales it."
+    doc "Changing `clip` restarts at 0 (or at `time` written that tick); another time is a seek, firing no events. The pose follows these fields, the Transform and its og.IkTarget2D; the playback position is world state (the og.skeleton2d state block)."
+    guide "animation §9"
     field rig Rig2D "The rig (og.load.rig2d's `rig`); 0 is none."
     field clip u32 "The clip: an index into Rig2DInfo.clips (og.anim.clip finds one by name)." {
       min 0
@@ -783,13 +793,13 @@ module anim {
     }
     field flipX bool "Mirror the rig left to right about the entity's position (a character facing left)."
     field layer i32 "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer)."
-    field skin u32 "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf(\"armor\")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it." {
+    field skin u32 "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it." {
       min 0
     }
     field finished bool "Written: a clip that does not loop reached its end (or its start, played backwards)." {
       readonly true
     }
-    field blendClip u32 "A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Each bone's offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; what a slot shows, the draw order and IK bends come from the heavier clip. Only `clip`'s events fire (an og.AnimationGraph fires both's)." {
+    field blendClip u32 "A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Bone offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; attachments, draw order and IK bends come from the heavier clip. Only `clip`'s events fire." {
       min 0
     }
     field blendTime f32 "Seconds into blendClip; advanced with `time` (by `speed`, wrapping when `loop`), set it to seek." {

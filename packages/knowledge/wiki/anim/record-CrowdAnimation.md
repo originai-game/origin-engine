@@ -6,9 +6,11 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.CrowdAnimation` (component)
 
-Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade.
+Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade.
 
-The clip's time is `offset` plus `speed` times the world's time, so give each member of a crowd its own `offset` to keep them out of step. It is drawn only: it never feeds back into the simulation, and TAA gets its motion vectors from the frame before. The camera culls each entity by its bounds on the CPU, as a model posed by og.anim; crowds do not go through GPU culling or the meshlet path yet.
+The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before.
+
+See `animation §7`.
 
 Token `og.CrowdAnimation`, registered under the schema name `og.CrowdAnimation`; its value type is `CrowdAnimation`.
 
@@ -24,8 +26,9 @@ Token `og.CrowdAnimation`, registered under the schema name `og.CrowdAnimation`;
 
 ```ogt
 component CrowdAnimation {
-  doc "Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing the same clip on the same skeleton. Each entity costs no animation work on the CPU, so thousands can walk at once; the price is that nothing reads the pose (no markers, root motion, IK, blendshapes or attachments to joints) and a change of `clip` cuts without a fade."
-  doc "The clip's time is `offset` plus `speed` times the world's time, so give each member of a crowd its own `offset` to keep them out of step. It is drawn only: it never feeds back into the simulation, and TAA gets its motion vectors from the frame before. The camera culls each entity by its bounds on the CPU, as a model posed by og.anim; crowds do not go through GPU culling or the meshlet path yet."
+  doc "Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade."
+  doc "The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before."
+  guide "animation §7"
   field skeleton SkeletonAsset "The skeleton asset of the model (og.load.animation's `skeleton`); 0 draws nothing posed."
   field skin u32 "Which of the skeleton's skins poses the model (glTF skin index)." {
     min 0
@@ -52,4 +55,4 @@ component CrowdAnimation {
 }
 ```
 
-<sub>Module `anim` line 99</sub>
+<sub>Module `anim` line 100</sub>

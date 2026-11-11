@@ -113,13 +113,25 @@ module test {
 "#;
     let mut api = og_idl::parse(source).unwrap();
     let files = og_idl::generate(&api);
-    let text = |end: &str| &files.iter().find(|f| f.path.ends_with(end)).unwrap().contents;
+    let text = |end: &str| {
+        &files
+            .iter()
+            .find(|f| f.path.ends_with(end))
+            .unwrap()
+            .contents
+    };
     let dts = text("types/index.d.ts");
     assert!(dts.contains(" * How to save.\n * See `saves §2`."), "{dts}");
-    assert!(dts.contains("  // ── Size ──\n  // What bounds a save.\n"), "{dts}");
+    assert!(
+        dts.contains("  // ── Size ──\n  // What bounds a save.\n"),
+        "{dts}"
+    );
     assert!(dts.contains("The most bytes.\n   * See `saves`."), "{dts}");
     let page = text("wiki/test/type-SaveDesc.md");
-    assert!(page.contains("#### Size\n\nWhat bounds a save.\n\n| Field |"), "{page}");
+    assert!(
+        page.contains("#### Size\n\nWhat bounds a save.\n\n| Field |"),
+        "{page}"
+    );
     assert!(page.contains("See `saves §2`."), "{page}");
     let overview = text("wiki/test.md");
     assert!(

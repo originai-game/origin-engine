@@ -8,6 +8,8 @@ Module [`render`](../render.md) · [index](../index.md)
 
 How a point light's shadow map is stored, as og-render's PointShadows. RenderCapabilities.pointShadows reports what the device resolved.
 
+See `render §3`.
+
 A string: one of the variants below. The zero value is `"auto"`.
 
 | Variant | Doc |
@@ -22,7 +24,8 @@ enum PointShadows {
   variant auto "Cube faces."
   variant cube "Six 90 degree faces: six shadow passes per light."
   variant paraboloid "Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection)."
+  guide "render §3"
 }
 ```
 
-<sub>Module `render` line 49</sub>
+<sub>Module `render` line 50</sub>

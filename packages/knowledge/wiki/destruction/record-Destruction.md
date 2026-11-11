@@ -16,8 +16,8 @@ Token `og.Destruction`, registered under the schema name `og.Destruction`; its v
 | `debrisVolume` | `number` | `0.004` | ≥ 0 | `m3` | tunable | A loose island smaller than this is debris: it despawns debrisLifetime after it broke loose. |
 | `debrisLifetime` | `number` | `8` | ≥ 0 | `s` | tunable | How long debris lasts (0: until maxChunks takes it). |
 | `fxLifetime` | `number` | `3` | ≥ 0 | `s` | — | How long a breakFx or hitFx burst's entity lasts before og.destruction despawns it. |
-| `stressIterations` | `number` | `0` | 0 … 1000 | — | — | The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds), so a large structure's weight reaches every bond it rests on; a cap is cheaper on a slow device, but an unconverged solve loads distant bonds too little, and what should fall can stand. |
-| `stressBudget` | `number` | `200000` | ≥ 0 | — | tunable | The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, so a tick's worst case is this plus one solve (six iterations a bond) whatever comes down at once; the order is the destructibles' entity order, so a replay waits the same way. The 200-chunk brick wall's largest solve takes about 41000. 0 sets no limit. |
+| `stressIterations` | `number` | `0` | 0 … 1000 | — | — | The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds); a capped, unconverged solve loads distant bonds too little, and what should fall can stand. |
+| `stressBudget` | `number` | `200000` | ≥ 0 | — | tunable | The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, in the destructibles' entity order, so a tick's worst case is this plus one solve. 0 sets no limit. See `physics §9`. |
 
 ```ogt
 resource Destruction {
@@ -45,12 +45,13 @@ resource Destruction {
     min 0
     unit s
   }
-  field stressIterations u32 "The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds), so a large structure's weight reaches every bond it rests on; a cap is cheaper on a slow device, but an unconverged solve loads distant bonds too little, and what should fall can stand." {
+  field stressIterations u32 "The stress solver's iterations when a destructible's support changes (Blast's maxIter). 0, the default, solves until it converges (at most six times its bonds); a capped, unconverged solve loads distant bonds too little, and what should fall can stand." {
     default 0
     min 0
     max 1000
   }
-  field stressBudget u32 "The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, so a tick's worst case is this plus one solve (six iterations a bond) whatever comes down at once; the order is the destructibles' entity order, so a replay waits the same way. The 200-chunk brick wall's largest solve takes about 41000. 0 sets no limit." {
+  field stressBudget u32 "The stress solver's work in one tick, across every destructible, in bond-iterations (one solver iteration over one bond). A solve that would start past it waits for the next tick, in the destructibles' entity order, so a tick's worst case is this plus one solve. 0 sets no limit." {
+    guide "physics §9"
     default 200000
     min 0
     tunable true
@@ -58,4 +59,4 @@ resource Destruction {
 }
 ```
 
-<sub>Module `destruction` line 122</sub>
+<sub>Module `destruction` line 127</sub>

@@ -29,4 +29,4 @@ enum AssertKind {
 }
 ```
 
-<sub>Module `assert` line 9</sub>
+<sub>Module `assert` line 7</sub>

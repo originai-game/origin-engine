@@ -14,4 +14,4 @@ A generational handle: a number the engine hands out. A dead handle is an error 
 handle VfxAsset "A loaded composed effect (og.load.vfx): its elements and the emitters, effect materials, meshes, textures and sounds they name."
 ```
 
-<sub>Module `vfx` line 5</sub>
+<sub>Module `vfx` line 6</sub>

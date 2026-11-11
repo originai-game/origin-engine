@@ -106,3 +106,25 @@ reference's angle and compare: `og compare reference.png render.png
   in the wrong place is still wrong.
 - Review the turntable (front, side, back, three-quarter) before
   accepting; a model built to one view collapses at the others.
+
+<a id="guide-art-review-6"></a>
+### `art-review §6` The art contract's resources
+
+A look sets seven resources beside its render ones (docs/art.md §2.1):
+ArtPalette (the palette texels sit on), ArtPixels (one pixel size for 2D
+art), ArtTexels (one texel density for 3D surfaces), ArtShape (the models'
+shape language), ArtLine, ArtMotion (the step of motion) and ArtCamera. A
+style is the assets, not a filter on the frame: the render resources treat
+the frame, these say what the assets themselves must be.
+
+- Every field is no constraint at its zero value (0, false, the first
+  variant, an empty list), so a look without these blocks, and every game
+  made before them, cooks and draws as before.
+- The built-in presets (templates/looks/<slug>.ogt) carry each catalogue
+  style's values; a game's look overrides them field by field, and
+  project.ogt's `look` names the look whose contract the cook reads.
+- Game code reads the contract too: a sprite snapping to ArtPixels.unit, a
+  spawner picking colours from ArtPalette.
+- Writing them changes neither the frame nor the simulation. The cook's
+  conformance (§3), the run-time defaults taken from them and
+  `og style check` are docs/art.md §2.3 to §2.5.

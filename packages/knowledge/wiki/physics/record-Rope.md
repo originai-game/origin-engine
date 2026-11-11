@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
 
+Also known as: chain, cable, swinging lantern, hanging rope, Verlet rope
+
 Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `Rope`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -28,6 +30,7 @@ Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `
 
 ```ogt
 component Rope {
+  aliases "chain, cable, swinging lantern, hanging rope, Verlet rope"
   doc "A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`."
   field segments u32 "The number of links (points minus one)." {
     default 16
@@ -90,4 +93,4 @@ component Rope {
 }
 ```
 
-<sub>Module `physics` line 928</sub>
+<sub>Module `physics` line 949</sub>

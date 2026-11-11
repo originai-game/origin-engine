@@ -8,7 +8,9 @@ Module [`render`](../render.md) · [index](../index.md)
 
 A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
 
-Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (16) caps how many get shadows and RenderSettings.shadowedLights (8 by default) chooses it, the brightest at the camera first.
+Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.
+
+See `render §3`.
 
 Also known as: omni light, point light, lamp, bulb, Godot OmniLight3D
 
@@ -20,13 +22,14 @@ Token `og.PointLight`, registered under the schema name `og.PointLight`; its val
 | `intensity` | `number` | `10` | ≥ 0 | — | tunable | The radiance at one metre. |
 | `distance` | `number` | `10` | ≥ 0.01 | `m` | tunable | Where the light reaches zero, as three.js PointLight.distance (never infinite here). |
 | `castShadow` | `boolean` | `false` | — | — | — | Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows). |
-| `cookie` | `Texture` | `0` | — | — | — | A light cookie projected all around the light: a cube of six square faces in one texture, stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z (a KTX2 cube's face order and a cube map's orientation, world axes; the texture is six times as tall as it is wide). The light's colour is multiplied by the texel its direction meets, so a lamp behind a pierced shade throws its pattern on the walls. 0 is none. |
+| `cookie` | `Texture` | `0` | — | — | — | A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none. See `render §3`. |
 
 ```ogt
 component PointLight {
   doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (16) caps how many get shadows and RenderSettings.shadowedLights (8 by default) chooses it, the brightest at the camera first."
+  doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first."
   aliases "omni light, point light, lamp, bulb, Godot OmniLight3D"
+  guide "render §3"
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -42,8 +45,10 @@ component PointLight {
     tunable true
   }
   field castShadow bool "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows)."
-  field cookie Texture "A light cookie projected all around the light: a cube of six square faces in one texture, stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z (a KTX2 cube's face order and a cube map's orientation, world axes; the texture is six times as tall as it is wide). The light's colour is multiplied by the texel its direction meets, so a lamp behind a pierced shade throws its pattern on the walls. 0 is none."
+  field cookie Texture "A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none." {
+    guide "render §3"
+  }
 }
 ```
 
-<sub>Module `render` line 478</sub>
+<sub>Module `render` line 515</sub>

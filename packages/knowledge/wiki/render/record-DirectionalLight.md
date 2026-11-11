@@ -10,6 +10,8 @@ The sun, as three.js DirectionalLight: parallel light along the entity's local -
 
 Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene.
 
+See `render §3`.
+
 Also known as: sun, directional light, Godot DirectionalLight3D
 
 Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLight`; its value type is `DirectionalLight`.
@@ -20,7 +22,7 @@ Token `og.DirectionalLight`, registered under the schema name `og.DirectionalLig
 | `intensity` | `number` | `3` | ≥ 0 | — | tunable | The radiance multiplier, as three.js DirectionalLight.intensity. |
 | `castShadow` | `boolean` | `true` | — | — | — | Cast shadows through the cascades (RenderSettings.shadowCascades), as three.js Light.castShadow. |
 | `shadowDistance` | `number` | `200` | ≥ 1 | `m` | — | How far from the camera shadows reach; they fade over the last tenth. Smaller is sharper. |
-| `shadowSoftness` | `number` | `0` | 0 … 0.2 | — | tunable | Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel. |
+| `shadowSoftness` | `number` | `0` | 0 … 0.2 | — | tunable | Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. |
 | `shadowBox` | `number` | `0` | ≥ 0 | `m` | tunable | One shadow map over a fixed box instead of the cascades: its half size across the light. 0 keeps the cascades. Everything outside the box is lit; the casters are drawn once, not once per cascade (three.js games that fit the light's orthographic shadow camera around the player draw this way). |
 | `shadowFocus` | `number` | `0` | — | `m` | tunable | With shadowBox: how far ahead of the camera (along its level forward) the box is centred. |
 | `shadowFocusDrop` | `number` | `0` | — | `m` | tunable | With shadowBox: how far below the camera the box's centre sits (the ground under a first-person eye). |
@@ -33,6 +35,7 @@ component DirectionalLight {
   doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default)."
   doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
   aliases "sun, directional light, Godot DirectionalLight3D"
+  guide "render §3"
   field color Color "The light's linear colour." {
     default 1 1 1
   }
@@ -49,7 +52,7 @@ component DirectionalLight {
     min 1
     unit m
   }
-  field shadowSoftness f32 "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel." {
+  field shadowSoftness f32 "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance." {
     min 0
     max 0.2
     tunable true
@@ -86,4 +89,4 @@ component DirectionalLight {
 }
 ```
 
-<sub>Module `render` line 422</sub>
+<sub>Module `render` line 458</sub>

@@ -620,14 +620,22 @@ impl<'a> Gen<'a, '_> {
     }
 
     /// A `// ── Heading ──` comment (and its doc) where a field starts a new `group`.
-    fn group_heading<'g>(&mut self, groups: &'g [FieldGroup], current: &mut Option<&'g str>, f: &Field) {
+    fn group_heading<'g>(
+        &mut self,
+        groups: &'g [FieldGroup],
+        current: &mut Option<&'g str>,
+        f: &Field,
+    ) {
         let Some(name) = f.group.as_deref() else {
             return;
         };
         if *current == Some(name) {
             return;
         }
-        let g = groups.iter().find(|g| g.name == name).expect("a declared group");
+        let g = groups
+            .iter()
+            .find(|g| g.name == name)
+            .expect("a declared group");
         *current = Some(&g.name);
         self.line(&format!("  // ── {} ──", g.name));
         for d in &g.doc {

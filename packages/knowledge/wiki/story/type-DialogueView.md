@@ -22,7 +22,7 @@ What a conversation shows now: the line in full (the dialogue box paces its own 
 | `voiceTicks` | `number` | `0` | — | — | — | The voice's length in ticks (0: no voice, or one that did not load). |
 | `voiceLeft` | `number` | `0` | — | — | — | Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance). |
 | `speaker` | `SpeakerView` | `{ id: "", name: "", entity: 0, portrait: "", expression: "", side: "" }` | — | — | — | Who says it. |
-| `shot` | `string` | `""` | — | — | — | The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo: a name is the entity of that name, a role the cast entity's own og.VirtualCamera, else the first one whose lookAt is that entity. When no running conversation's line has a shot the game's own solo is handed back. |
+| `shot` | `string` | `""` | — | — | — | The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo, and hands the game's own solo back when no line has a shot. See `yarn §8`. |
 | `choices` | `readonly ChoiceView[]` | `[]` | — | — | — | The choices, when it waits on them; empty while a line waits for og.story.advance. |
 | `timer` | `TimerView \| null` | `null` | — | — | — | The choice timer, while it runs. |
 | `lastCheck` | `RollView \| null` | `null` | — | — | — | The last active check this conversation rolled. |
@@ -43,7 +43,9 @@ struct DialogueView {
   field voiceTicks u32 "The voice's length in ticks (0: no voice, or one that did not load)."
   field voiceLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
   field speaker SpeakerView "Who says it."
-  field shot String "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo: a name is the entity of that name, a role the cast entity's own og.VirtualCamera, else the first one whose lookAt is that entity. When no running conversation's line has a shot the game's own solo is handed back."
+  field shot String "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo, and hands the game's own solo back when no line has a shot." {
+    guide "yarn §8"
+  }
   field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
   field timer Option.TimerView "The choice timer, while it runs."
   field lastCheck Option.RollView "The last active check this conversation rolled."
@@ -51,4 +53,4 @@ struct DialogueView {
 }
 ```
 
-<sub>Module `story` line 145</sub>
+<sub>Module `story` line 144</sub>

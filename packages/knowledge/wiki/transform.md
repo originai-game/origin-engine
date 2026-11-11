@@ -25,7 +25,7 @@ module transform {
 | [`og.MatrixWorld`](transform/record-MatrixWorld.md) | component |  | The world matrix the engine composes after the systems run, as three.js Object3D.matrixWorld. |
 | [`WorldOriginPlane`](transform/type-WorldOriginPlane.md) | enum |  | The axes og.WorldOrigin moves the world's zero along. |
 | [`WorldOriginPlane()`](#column-WorldOriginPlane) | column kind |  | A WorldOriginPlane field: the variant's index. |
-| [`og.WorldOrigin`](transform/record-WorldOrigin.md) | resource |  | Large worlds (R12): naming it keeps every place in the world near its zero. |
+| [`og.WorldOrigin`](transform/record-WorldOrigin.md) | resource |  | Large worlds: naming it keeps every place near the zero. |
 | [`og.OriginShifted`](transform/record-OriginShifted.md) | event |  | og.WorldOrigin shifted the world as this tick started, before any system ran: every marked place moved by `delta`. |
 | [`og.transform.compose`](transform/fn-compose.md) | function | `(position: Vector3, quaternion: Quaternion, scale: Vector3): Matrix4` | A matrix from position, rotation and scale, as three.js Matrix4.compose. |
 | [`og.transform.decompose`](transform/fn-decompose.md) | function | `(matrix: Matrix4): Transform` | Position, rotation and scale from a matrix, as three.js Matrix4.decompose. |

@@ -6,7 +6,9 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Clouds` (resource)
 
-Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (a broken sky hides the sun a share of the time; an overcast deck hides it from every surface, leaving the deck's flat grey light). Visual only: nothing in the simulation reads them.
+Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. The wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
+
+See `render §7`.
 
 Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type is `Clouds`.
 
@@ -27,7 +29,8 @@ Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type 
 
 ```ogt
 resource Clouds {
-  doc "Clouds in the procedural sky: a volumetric layer of cumulus raymarched through a curved shell over the planet, lit by the first DirectionalLight (shadowed within themselves, with multiple scattering: bright tops, dark bases, silver edges against the sun) and the sky's light, faded into the sky with distance; and a thin, streaked high layer (cirrus) above. The wind carries them with the tick's clock, so they look the same on every run and after a restore. They are drawn over the procedural sky (og.Sky, og.DayNight or og.PhysicalSky; alone they bring the built-in procedural sky with them) and dim the sun and the sky's light by their cover (a broken sky hides the sun a share of the time; an overcast deck hides it from every surface, leaving the deck's flat grey light). Visual only: nothing in the simulation reads them."
+  doc "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. The wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only."
+  guide "render §7"
   field enabled bool "Draw the clouds."
   field coverage f32 "How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
     default 0.45
@@ -97,4 +100,4 @@ resource Clouds {
 }
 ```
 
-<sub>Module `atmosphere` line 260</sub>
+<sub>Module `atmosphere` line 266</sub>

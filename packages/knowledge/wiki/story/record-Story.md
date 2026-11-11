@@ -31,4 +31,4 @@ resource Story {
 }
 ```
 
-<sub>Module `story` line 23</sub>
+<sub>Module `story` line 22</sub>

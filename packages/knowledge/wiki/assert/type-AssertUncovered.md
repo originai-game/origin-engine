@@ -31,4 +31,4 @@ struct AssertUncovered {
 }
 ```
 
-<sub>Module `assert` line 80</sub>
+<sub>Module `assert` line 78</sub>

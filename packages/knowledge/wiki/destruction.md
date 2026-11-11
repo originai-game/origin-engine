@@ -2,15 +2,11 @@
 
 # The `destruction` module
 
-Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down.
+Props that break (walls, crates, pillars, glass) and 2D ground that carves. A model cooked with a `fracture { }` block is cut by the cook into Voronoi chunks bonded where they touch; hits, og.destruction.damage and explode break an og.Destructible's bonds, each unanchored island falls as one body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight. og.PixelTerrain is 2D ground of cells.
 
-**Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts.
+It runs in the tick after the game's systems, before og.physics, in fixed f32 arithmetic; bonds, islands, chunks and cells are world state on both hosts.
 
-**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first.
-
-**2D: pixel terrain.** An og.PixelTerrain is ground made of cells, Worms and Noita style: og.destruction.carve2d digs a round hole, fill2d builds ground back (or bedrock, which nothing carves), explode2d blows a hole and throws the ground round it as pieces, fracture2d breaks a piece (or a terrain with no bedrock) into Voronoi pieces. Each chunk of it collides as its smoothed outline (a static og.Collider per chunk, rebuilt only where a change touched it), ground cut loose from the bedrock and the bottom row falls as an og.PixelPiece (a dynamic body), and og.PixelDetached reports each. The cells, the pieces and the queued changes are world state, carried by snapshots, restores, replays and the world hash on both hosts; the drawn image is made from them each frame they change.
-
-Props (og.Destructible) are the 3D profile's. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors.
+See `physics §9`.
 
 - **TypeScript**: functions are the namespace `og.destruction`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,11 +14,8 @@ Props (og.Destructible) are the 3D profile's. The chunks of a dynamic prop (a cr
 
 ```ogt
 module destruction {
-  doc "Props that break: walls, crates, pillars, glass. A model cooked with a `fracture { }` block (at the top of a `type model`, or in a glTF's import settings) is cut by the cook into Voronoi chunks bonded where they touch, and the chunks resting on its floor are anchored to the world. Give the entity that draws it (its og.Model) an og.Destructible: hits, og.destruction.damage and og.destruction.explode wear the bonds down, a broken bond splits the prop into islands, an island anchored to the world stays put and every other island falls as one rigid body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight, so a wall shot out at its foot comes down."
-  doc "**Deterministic.** Damage, bonds, islands and the stress solver are fixed f32 arithmetic in the tick (og.destruction runs after the game's systems and before og.physics), the chunks are world entities and the bonds' health is in a state block: snapshots, restores, replays and the world hash cover the whole fracture, on both hosts."
-  doc "**What a game sees.** og.Fractured, the tick after, for every island that breaks loose (play a sound by its volume, shake the camera); each loose chunk is an entity with og.Chunk (its body is a dynamic og.RigidBody: query it, push it, despawn it). Its look: the og.Destructible's `breakFx` emitter bursts where each island breaks loose and `hitFx` at each damaging hit, each the material's own (dust for stone, splinters for wood, shards and glints for glass, a few sparks only for metal). Budgets (og.Destruction): a loose island (a body and the chunks it carries) smaller than `debrisVolume` despawns after `debrisLifetime`, and past `maxChunks` loose chunks the oldest islands go first."
-  doc "**2D: pixel terrain.** An og.PixelTerrain is ground made of cells, Worms and Noita style: og.destruction.carve2d digs a round hole, fill2d builds ground back (or bedrock, which nothing carves), explode2d blows a hole and throws the ground round it as pieces, fracture2d breaks a piece (or a terrain with no bedrock) into Voronoi pieces. Each chunk of it collides as its smoothed outline (a static og.Collider per chunk, rebuilt only where a change touched it), ground cut loose from the bedrock and the bottom row falls as an og.PixelPiece (a dynamic body), and og.PixelDetached reports each. The cells, the pieces and the queued changes are world state, carried by snapshots, restores, replays and the world hash on both hosts; the drawn image is made from them each frame they change."
-  doc "Props (og.Destructible) are the 3D profile's. The chunks of a dynamic prop (a crate with an og.RigidBody) fly with its velocity; a prop without a body, or with a static one, stands on its anchors."
+  doc "Props that break (walls, crates, pillars, glass) and 2D ground that carves. A model cooked with a `fracture { }` block is cut by the cook into Voronoi chunks bonded where they touch; hits, og.destruction.damage and explode break an og.Destructible's bonds, each unanchored island falls as one body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight. og.PixelTerrain is 2D ground of cells."
+  doc "It runs in the tick after the game's systems, before og.physics, in fixed f32 arithmetic; bonds, islands, chunks and cells are world state on both hosts."
   # declarations follow, each on its own page
 ```
 
@@ -44,7 +37,7 @@ module destruction {
 | [`MATERIAL_STONE`](#const-MATERIAL_STONE) | constant |  | og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick). |
 | [`CAUSE_FRACTURE`](#const-CAUSE_FRACTURE) | constant |  | Fractured.cause: og.destruction.fracture; PixelDetached.cause: og.destruction.fracture2d. |
 | [`CAUSE_CARVE`](#const-CAUSE_CARVE) | constant |  | PixelDetached.cause: og.destruction.carve2d cut it loose. |
-| [`og.Destructible`](destruction/record-Destructible.md) | component |  | Makes the entity's og.Model, a model cooked with a `fracture` block, break into its chunks. |
+| [`og.Destructible`](destruction/record-Destructible.md) | component |  | Breaks the entity's og.Model, cooked with a `fracture` block, into its chunks (3D profile). |
 | [`og.Chunk`](destruction/record-Chunk.md) | component |  | One chunk of an og.Destructible, written by og.destruction when the prop fractures. |
 | [`og.Fractured`](destruction/record-Fractured.md) | event |  | An island of chunks broke loose from a destructible during the tick (or the destructible shattered): read the tick after, for its sound, its camera shake, its score. |
 | [`og.Destruction`](destruction/record-Destruction.md) | resource |  | The world's destruction budgets. |
@@ -59,7 +52,7 @@ module destruction {
 | [`og.destruction.info`](destruction/fn-info.md) | function | `(world: World, entity: Entity): Result<DestructibleInfo>` | How much of a destructible stands. |
 | [`og.destruction.material`](destruction/fn-material.md) | function | `(world: World, kind: number): Result<DestructibleMaterial>` | A material's og.Destructible tuning (MATERIAL_*): toughness, strength, friction, tension, density and how hard a hit must be to hurt it, measured against the props of the destruction-yard test fixtur… |
 | [`og.destruction.capabilities`](destruction/fn-capabilities.md) | function | `(world: World): DestructionCapabilities` | What destruction does on this device. |
-| [`og.PixelTerrain`](destruction/record-PixelTerrain.md) | component |  | Destructible 2D ground of square cells (Worms, Noita): solid ground, bedrock or empty. |
+| [`og.PixelTerrain`](destruction/record-PixelTerrain.md) | component |  | Destructible 2D ground of square cells: ground, bedrock or empty. |
 | [`og.PixelPiece`](destruction/record-PixelPiece.md) | component |  | A piece of an og.PixelTerrain cut loose (an island carve2d cut free, a piece explode2d threw or fracture2d broke off), written by og.destruction2d: a dynamic og.RigidBody whose og.Collider is the con… |
 | [`og.PixelDetached`](destruction/record-PixelDetached.md) | event |  | Cells of an og.PixelTerrain (or of an og.PixelPiece fracture2d broke) broke loose during the tick, read the tick after: one for each piece, in the order they were cut, for its sound, its dust, its sc… |
 | [`Carve2dDesc`](destruction/type-Carve2dDesc.md) | desc struct |  | A round hole for og.destruction.carve2d. |
@@ -93,70 +86,70 @@ module destruction {
 const CAUSE_IMPACT u32 0 "Fractured.cause: a collision's impulse (og.CollisionStarted) past the prop's impactThreshold."
 ```
 
-<sub>Module `destruction` line 8</sub>
+<sub>Module `destruction` line 6</sub>
 
 ```ogt
 const CAUSE_DAMAGE u32 1 "Fractured.cause: og.destruction.damage."
 ```
 
-<sub>Module `destruction` line 9</sub>
+<sub>Module `destruction` line 7</sub>
 
 ```ogt
 const CAUSE_EXPLOSION u32 2 "Fractured.cause: og.destruction.explode; PixelDetached.cause: og.destruction.explode2d."
 ```
 
-<sub>Module `destruction` line 10</sub>
+<sub>Module `destruction` line 8</sub>
 
 ```ogt
 const CAUSE_STRESS u32 3 "Fractured.cause: the stress solver: a part that could no longer hold its own weight."
 ```
 
-<sub>Module `destruction` line 11</sub>
+<sub>Module `destruction` line 9</sub>
 
 ```ogt
 const CAUSE_SHATTER u32 4 "Fractured.cause: a chunk with children (the fracture block's `children`) took three times the damage that breaks a bond of its cross-section, and broke into them: they fly free, each its own body, leaving a hole."
 ```
 
-<sub>Module `destruction` line 12</sub>
+<sub>Module `destruction` line 10</sub>
 
 ```ogt
 const MATERIAL_BRICK u32 0 "og.destruction.material: brickwork in mortar (no-tension masonry: stands by its weight, steps back over its piers)."
 ```
 
-<sub>Module `destruction` line 13</sub>
+<sub>Module `destruction` line 11</sub>
 
 ```ogt
 const MATERIAL_CONCRETE u32 1 "og.destruction.material: plain concrete (strong, breaks in chunky lumps, holds what is left)."
 ```
 
-<sub>Module `destruction` line 14</sub>
+<sub>Module `destruction` line 12</sub>
 
 ```ogt
 const MATERIAL_WOOD u32 2 "og.destruction.material: timber boards (light and weak across the grain: splinters where it lands or is struck)."
 ```
 
-<sub>Module `destruction` line 15</sub>
+<sub>Module `destruction` line 13</sub>
 
 ```ogt
 const MATERIAL_GLASS u32 3 "og.destruction.material: a glass pane (shatters at a touch, no stress solver)."
 ```
 
-<sub>Module `destruction` line 16</sub>
+<sub>Module `destruction` line 14</sub>
 
 ```ogt
 const MATERIAL_STONE u32 4 "og.destruction.material: dry-laid stone (masonry with no mortar: no tension, heavier and tougher than brick)."
 ```
 
-<sub>Module `destruction` line 17</sub>
+<sub>Module `destruction` line 15</sub>
 
 ```ogt
 const CAUSE_FRACTURE u32 5 "Fractured.cause: og.destruction.fracture; PixelDetached.cause: og.destruction.fracture2d."
 ```
 
-<sub>Module `destruction` line 18</sub>
+<sub>Module `destruction` line 16</sub>
 
 ```ogt
 const CAUSE_CARVE u32 6 "PixelDetached.cause: og.destruction.carve2d cut it loose."
 ```
 
-<sub>Module `destruction` line 19</sub>
+<sub>Module `destruction` line 17</sub>

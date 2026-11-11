@@ -23,4 +23,4 @@ event RoomPeerLeft {
 }
 ```
 
-<sub>Module `platform` line 537</sub>
+<sub>Module `platform` line 543</sub>

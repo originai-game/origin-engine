@@ -2,9 +2,11 @@
 
 # The `procgen` module
 
-Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it the seed of a fork of og.Rng, `world.resource(og.Rng)`'s value `.fork("dungeon").seed` (a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore.
+Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed` (a fork of og.Rng's, so the main stream does not move) and draws only from a stream on it, in a fixed order, with bit-identical arithmetic: the same seed gives the same output on every host, in a replay and after a restore.
 
-Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer.
+Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes a generated grid into a tilemap layer.
+
+See `world §7`.
 
 - **TypeScript**: functions are the namespace `og.procgen`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -12,8 +14,8 @@ Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permu
 
 ```ogt
 module procgen {
-  doc "Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed`; give it the seed of a fork of og.Rng, `world.resource(og.Rng)`'s value `.fork(\"dungeon\").seed` (a fork needs og.Rng among a system's reads only), so the same world and label give the same output and the main stream does not move. A generator draws only from a stream on that seed, in a fixed order, with arithmetic that is bit-identical on every host: the same seed gives the same map natively and on the web, in a replay and after a restore."
-  doc "Weighted picks and shuffles are og.Rng's and RngStream's own (`weighted`, `permutation`; a shuffle is a permutation applied to an array). og.tilemap.fill writes a generated grid into a tilemap layer."
+  doc "Procedural generation: gradient noise (Perlin, simplex, FBM), Poisson-disk points, BSP dungeons and wave function collapse, all deterministic. Each generator takes a `seed` (a fork of og.Rng's, so the main stream does not move) and draws only from a stream on it, in a fixed order, with bit-identical arithmetic: the same seed gives the same output on every host, in a replay and after a restore."
+  doc "Weighted picks and shuffles are og.Rng's own; og.tilemap.fill writes a generated grid into a tilemap layer."
   # declarations follow, each on its own page
 ```
 

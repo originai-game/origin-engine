@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them.
 
+See `physics §3`.
+
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `tick` | `number` | `0` | — | — | — | The tick the step ran (0 before the first). |
@@ -20,6 +22,7 @@ What the last physics step cost, phase by phase, and where it ran: for finding w
 ```ogt
 struct PhysicsStats {
   doc "What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them."
+  guide "physics §3"
   field tick f64 "The tick the step ran (0 before the first)."
   field bodies u32 "The rapier bodies it stepped (with ragdoll bones and vehicle wheels)."
   field threads u32 "The lanes pool's threads at the time (1: lanes off or single-threaded)."
@@ -31,4 +34,4 @@ struct PhysicsStats {
 }
 ```
 
-<sub>Module `physics` line 2059</sub>
+<sub>Module `physics` line 2097</sub>

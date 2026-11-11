@@ -6,9 +6,11 @@ Module [`audio`](../audio.md) · [index](../index.md)
 
 ### `og.AudioBusNode` (component)
 
-A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`.
+A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master. The first node in query order for an index counts; a removed node's sources play on their `bus`.
 
 The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash.
+
+See `audio §1`.
 
 Token `og.AudioBusNode`, registered under the schema name `og.AudioBusNode`; its value type is `AudioBusNode`.
 
@@ -20,8 +22,9 @@ Token `og.AudioBusNode`, registered under the schema name `og.AudioBusNode`; its
 
 ```ogt
 component AudioBusNode {
-  doc "A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master, so a footsteps bus under sfx is turned down with sfx. The first node in query order for an index counts; a removed node's sources play on their `bus`."
+  doc "A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays into its `parent`: a built-in bus or a user bus of a lower index, so the graph has no cycles (any other parent is master). Its volume is multiplied down the chain to master. The first node in query order for an index counts; a removed node's sources play on their `bus`."
   doc "The graph reaches the mixer as commands in the stream (only what changed each tick), so it is deterministic and in the world hash."
+  guide "audio §1"
   field index u32 "The bus's index, 4 to 15." {
     default 4
     min 4
@@ -40,4 +43,4 @@ component AudioBusNode {
 }
 ```
 
-<sub>Module `audio` line 435</sub>
+<sub>Module `audio` line 451</sub>

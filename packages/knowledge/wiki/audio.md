@@ -4,11 +4,9 @@
 
 Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively).
 
-The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends.
+The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Spatial sound is computed in the tick, from world transforms (og.Transform down og.Parent), so it is in the stream.
 
-Spatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig.
-
-Propagation, all in the tick and so in the stream: a spatial source or listener that moves shifts the pitch (Doppler, from their tick velocities: AudioSource.dopplerFactor, AudioListener.dopplerFactor, Audio.speedOfSound), a source with a cone is turned down away from its +Z (coneInnerAngle, coneOuterAngle, coneOuterGain, as three.js's setDirectionalCone), and a listener whose panningModel is hrtf places sources for headphones (interaural delay and head shadow) instead of the stereo panner.
+See `audio`.
 
 - **TypeScript**: functions are the namespace `og.audio`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -17,9 +15,7 @@ Propagation, all in the tick and so in the stream: a spatial source or listener 
 ```ogt
 module audio {
   doc "Sound: inside the tick, the engine's og.audio system (after the game's systems and physics) turns AudioSource changes into a deterministic, time-stamped command stream; outside the tick the host's mixer renders it (an AudioWorklet on the web, the output device, a capture or a null sink natively)."
-  doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Load sounds with og.load.sound; inserting a source plays it, setting `playing` false stops it, and a one-shot sets `playing` back to false when it ends."
-  doc "Spatial gain and pan are computed in the tick from the source's world transform relative to the first AudioListener's (three.js convention: the listener looks down -Z, +X is right; with none, the origin looking down -Z). A source, listener or zone on a child entity is placed at its og.Transform composed down og.Parent, as og.MatrixWorld is: a sound on a child is heard where its parent carries it, a listener under a camera rig hears from the rig."
-  doc "Propagation, all in the tick and so in the stream: a spatial source or listener that moves shifts the pitch (Doppler, from their tick velocities: AudioSource.dopplerFactor, AudioListener.dopplerFactor, Audio.speedOfSound), a source with a cone is turned down away from its +Z (coneInnerAngle, coneOuterAngle, coneOuterGain, as three.js's setDirectionalCone), and a listener whose panningModel is hrtf places sources for headphones (interaural delay and head shadow) instead of the stereo panner."
+  doc "The stream, not the PCM, is world state: snapshots, restore and the world hash cover it, and nothing a sink does reaches the world. Spatial sound is computed in the tick, from world transforms (og.Transform down og.Parent), so it is in the stream."
   # declarations follow, each on its own page
 ```
 
@@ -42,11 +38,11 @@ module audio {
 | [`AudioResampler()`](#column-AudioResampler) | column kind |  | An AudioResampler field: the variant's index. |
 | [`PanningModel()`](#column-PanningModel) | column kind |  | A PanningModel field: the variant's index. |
 | [`og.AudioSource`](audio/record-AudioSource.md) | component |  | A sound an entity plays. |
-| [`og.AudioListener`](audio/record-AudioListener.md) | component |  | Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right. |
+| [`og.AudioListener`](audio/record-AudioListener.md) | component |  | Where spatial sources are heard from: the entity's world transform (its og.Transform down og.Parent, so a listener under a camera rig hears from the rig), looking down its -Z with +X to the right (th… |
 | [`og.Audio`](audio/record-Audio.md) | resource |  | Bus volumes; master scales every bus. |
 | [`og.AudioBusFx`](audio/record-AudioBusFx.md) | component |  | A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. |
 | [`og.AudioBusNode`](audio/record-AudioBusNode.md) | component |  | A user bus of the bus graph: bus `index` (4 to 15) sums the sources whose AudioSource.userBus (or AudioEvent.userBus) names it, runs its og.AudioBusFx (the one whose userBus is the index), and plays … |
-| [`og.AudioSnapshot`](audio/record-AudioSnapshot.md) | component |  | A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back from when not, over `fade` seconds. |
+| [`og.AudioSnapshot`](audio/record-AudioSnapshot.md) | component |  | A mixer snapshot (combat, underwater, paused): per-bus volumes and filters the mix blends towards while `active`, and back when not. |
 | [`AudioEventOrder`](audio/type-AudioEventOrder.md) | enum |  | How a AudioEvent chooses its next sound. |
 | [`AudioEventOrder()`](#column-AudioEventOrder) | column kind |  | A AudioEventOrder field: the variant's index. |
 | [`og.AudioEvent`](audio/record-AudioEvent.md) | component |  | An audio event: one of a set of sounds played on each trigger, with pitch and volume jitter, a cooldown and a voice limit (footsteps, impacts, gunshots). |
@@ -81,7 +77,7 @@ column AudioBus {
 }
 ```
 
-<sub>Module `audio` line 22</sub>
+<sub>Module `audio` line 21</sub>
 
 ```ogt
 column AudioResampler {
@@ -92,7 +88,7 @@ column AudioResampler {
 }
 ```
 
-<sub>Module `audio` line 41</sub>
+<sub>Module `audio` line 40</sub>
 
 ```ogt
 column PanningModel {
@@ -103,7 +99,7 @@ column PanningModel {
 }
 ```
 
-<sub>Module `audio` line 48</sub>
+<sub>Module `audio` line 47</sub>
 
 ```ogt
 column AudioEventOrder {
@@ -114,7 +110,7 @@ column AudioEventOrder {
 }
 ```
 
-<sub>Module `audio` line 483</sub>
+<sub>Module `audio` line 501</sub>
 
 ## Constants
 
@@ -131,34 +127,34 @@ column AudioEventOrder {
 const SOUND_FINISHED u32 0 "SoundEnded.reason: a one-shot played to its end."
 ```
 
-<sub>Module `audio` line 7</sub>
+<sub>Module `audio` line 6</sub>
 
 ```ogt
 const SOUND_STOPPED u32 1 "SoundEnded.reason: `playing` was set to false."
 ```
 
-<sub>Module `audio` line 8</sub>
+<sub>Module `audio` line 7</sub>
 
 ```ogt
 const SOUND_REMOVED u32 2 "SoundEnded.reason: the AudioSource was removed from a living entity."
 ```
 
-<sub>Module `audio` line 9</sub>
+<sub>Module `audio` line 8</sub>
 
 ```ogt
 const SOUND_REPLACED u32 3 "SoundEnded.reason: `sound` changed while it played."
 ```
 
-<sub>Module `audio` line 10</sub>
+<sub>Module `audio` line 9</sub>
 
 ```ogt
 const SOUND_CULLED u32 4 "SoundEnded.reason: more sources played than Audio.maxVoices and this one stood lowest (priority, then volume, then age)."
 ```
 
-<sub>Module `audio` line 11</sub>
+<sub>Module `audio` line 10</sub>
 
 ```ogt
 const SOUND_RETRIGGERED u32 5 "SoundEnded.reason: AudioSource.retrigger started the sound again from the top; a new voice plays it."
 ```
 
-<sub>Module `audio` line 12</sub>
+<sub>Module `audio` line 11</sub>

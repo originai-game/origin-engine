@@ -6,7 +6,9 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.Garment` (component)
 
-Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red or alpha is 0, stay on the skinned pose; red times alpha between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment; paint the alpha over a white colour to keep a textured garment's colours, which the red would tint, since an opaque material does not show the alpha). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied.
+Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied.
+
+See `physics §8`.
 
 Token `og.Garment`, registered under the schema name `og.Garment`; its value type is `Garment`.
 
@@ -22,15 +24,16 @@ Token `og.Garment`, registered under the schema name `og.Garment`; its value typ
 | `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick. |
 | `damping` | `number` | `0.97` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the garment flutters with it. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the garment flutters with it. A visual garment (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s. See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the garment and the tick (0: steady). |
 | `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0. |
 | `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
-| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). |
+| `simulation` | `number` | `0` | 0 … 1 | — | — | SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL). See `physics §8`. |
 
 ```ogt
 component Garment {
-  doc "Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick the animation poses the mesh; then every point of it swings under gravity and wind and drags behind the motion, but stays within `maxDistance` of where the skinned pose puts it, never goes further than `backstop` behind it into the body, and keeps its edges' lengths. Points within `pinTop` of the garment's top, and points whose vertex colour's red or alpha is 0, stay on the skinned pose; red times alpha between 0 and 1 scales `maxDistance` (paint it in the modelling tool: white everywhere frees the whole garment; paint the alpha over a white colour to keep a textured garment's colours, which the red would tint, since an opaque material does not show the alpha). With `radius` it collides with every solid collider too. One-way like og.Cloth (it moves nothing), simulated in the physics step with the rest of the world, so it replays and snapshots carry it. The model draws the garment where the simulation leaves it, with motion vectors for TAA. 3D only. Its blendshapes are not applied."
+  doc "Cloth on a skinned character: glTF mesh `mesh` of the entity's og.Model (a skirt, a cape, a coat's tails), posed by the entity's og.Skeleton and simulated from there. Each tick its points swing under gravity and wind behind the motion, but stay within `maxDistance` of the skinned pose and `backstop` behind it, keeping their edges' lengths. Points within `pinTop` of its top, or whose vertex colour's red or alpha is 0, stay on the pose; red times alpha scales `maxDistance`. One-way like og.Cloth, simulated in the physics step as world state. 3D only; its blendshapes are not applied."
+  guide "physics §8"
   field mesh u32 "The glTF mesh of the entity's model that is the garment (its primitives together), as og.Blendshapes.mesh."
   field maxDistance f32 "How far a point may stray from where the skinned pose puts it." {
     default 0.2
@@ -84,7 +87,8 @@ component Garment {
     max 10
     tunable true
   }
-  field wind Vector3 "A steady acceleration (wind); the garment flutters with it." {
+  field wind Vector3 "A steady acceleration (wind); the garment flutters with it. A visual garment (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s." {
+    guide "physics §8"
     unit mps2
     tunable true
   }
@@ -105,10 +109,11 @@ component Garment {
     tunable true
   }
   field simulation u32 "SIMULATION_GAMEPLAY 0 (in the tick, world state) or SIMULATION_VISUAL 1 (on the GPU, for looks only; see SIMULATION_VISUAL)." {
+    guide "physics §8"
     min 0
     max 1
   }
 }
 ```
 
-<sub>Module `physics` line 1078</sub>
+<sub>Module `physics` line 1102</sub>

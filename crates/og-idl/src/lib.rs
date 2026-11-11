@@ -24,8 +24,8 @@ pub mod search;
 mod validate;
 mod values;
 
-pub use index::Index;
 pub use r#gen::wiki::CORE_PREFIX;
+pub use index::Index;
 pub use model::{Api, Guide};
 
 use std::fmt;
@@ -162,7 +162,15 @@ pub fn read(path: &Path) -> Result<Api, ReadError> {
     api.parts = sources
         .iter()
         .skip(1)
-        .map(|(n, p)| (*n, p.file_name().unwrap_or_default().to_string_lossy().into_owned()))
+        .map(|(n, p)| {
+            (
+                *n,
+                p.file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned(),
+            )
+        })
         .collect();
     api.guides = guides(&path.join("..").join("guides"))?;
     let unresolved = validate::guide_refs(&api);

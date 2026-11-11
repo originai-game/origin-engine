@@ -6,7 +6,9 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.style`
 
-Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3, the CSS dialect (docs/ui.md §3.2, what `og style upgrade`, `og style new` and `og ui migrate` write and every built-in style is), has the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event; colours and lengths as custom properties, `--panel-raised: #211a15`) and dresses parts with selector blocks (`Button::base.primary:active { -og-slice: … }`). Versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
+Load a cooked UI style (an `.ogt` of `type style`: the palette roles, radii, type ramp, durations and its art; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3 is the CSS dialect every built-in style uses; versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`.
+
+See `loading §6`.
 
 ```ts
 og.load.style(world: World, path: string): Result<Style>
@@ -23,11 +25,12 @@ Binding symbol `og_load_style` · publish builds: kept
 
 ```ogt
 fn style {
-  doc "Load a cooked UI style (an `.ogt` of `type style`: every palette role, the radii, type ramp, durations, and its art: the atlas and its nine-slice frames, ornaments, fonts, icons, motion and sounds; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3, the CSS dialect (docs/ui.md §3.2, what `og style upgrade`, `og style new` and `og ui migrate` write and every built-in style is), has the tokens (rarity, team, damage and chart colours each with its cue, the type scale per breakpoint, the space, size, radius and stroke scales, elevation, the shape language, motion springs and eases, sounds and haptics per UI event; colours and lengths as custom properties, `--panel-raised: #211a15`) and dresses parts with selector blocks (`Button::base.primary:active { -og-slice: … }`). Versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`."
+  doc "Load a cooked UI style (an `.ogt` of `type style`: the palette roles, radii, type ramp, durations and its art; the grammar is og-ui's `parse_style`) for UiDesc.style. Version 3 is the CSS dialect every built-in style uses; versions 1 and 2 still load. Its atlas, fonts, icons and sounds are loaded with it. Loaded once per path. A built-in style a look names is in the bundle as `@styles/<name>/style.ogt`."
+  guide "loading §6"
   param world World "The world whose UI uses it."
   param path String "The asset id, such as `styles/pixel/style.ogt` or `@styles/pixel/style.ogt`."
   returns Result.Style "Refused for a path not in the bundle, a style that does not parse (the reason names the line) or an asset it names that cannot load."
 }
 ```
 
-<sub>Module `load` line 317</sub>
+<sub>Module `load` line 336</sub>

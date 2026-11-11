@@ -28,4 +28,4 @@ struct LeaderboardSubmitDesc {
 }
 ```
 
-<sub>Module `platform` line 30</sub>
+<sub>Module `platform` line 26</sub>

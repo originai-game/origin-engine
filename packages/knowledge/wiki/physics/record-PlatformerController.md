@@ -6,7 +6,9 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.PlatformerController` (component)
 
-A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body and pushes the dynamic bodies it runs into (`pushBodies`) with at most `pushStrength`, so a crate's mass tells: a light one is shoved at the run speed, a heavy one holds (set its og.RigidBody `mass`).
+A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayLayers`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
+
+See `physics §6`.
 
 Token `og.PlatformerController`, registered under the schema name `og.PlatformerController`; its value type is `PlatformerController`.
 
@@ -15,7 +17,7 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 | `moveX` | `number` | `0` | -1 … 1 | — | — | The run input, -1 (left) to 1 (right). Set it every tick. |
 | `jump` | `boolean` | `false` | — | — | — | Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump. |
 | `down` | `boolean` | `false` | — | — | — | Held to drop through a one-way platform. |
-| `impulse` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | — | A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks. |
+| `impulse` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | — | A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on. See `physics §6`. |
 | `maxSpeed` | `number` | `8` | ≥ 0 | `mps` | tunable | The top running speed. |
 | `acceleration` | `number` | `70` | ≥ 0 | `mps2` | tunable | How fast it reaches maxSpeed on the ground. |
 | `deceleration` | `number` | `80` | ≥ 0 | `mps2` | tunable | How fast it stops on the ground without input. |
@@ -35,13 +37,13 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 | `wallSlideSpeed` | `number` | `3` | ≥ 0 | `mps` | tunable | The fastest slide down a wall. |
 | `wallJump` | `Vector2` | `{ x: 8, y: 12 }` | — | `mps` | tunable | A wall jump's velocity: x away from the wall, y up. |
 | `wallJumpLock` | `number` | `0.14` | ≥ 0 | `s` | tunable | After a wall jump, the run input is ignored for this long (so it leaves the wall). |
-| `oneWayLayers` | `number` | `0` | — | — | — | The collision layers that are one-way platforms (solid from above), as bits. |
-| `cornerCorrection` | `number` | `0.15` | ≥ 0 | `m` | tunable | How far a rising jump is nudged sideways past a ceiling corner (0: never). |
+| `oneWayLayers` | `number` | `0` | — | — | — | The collision layers that are one-way platforms (solid from above only), as bits. |
+| `cornerCorrection` | `number` | `0.15` | ≥ 0 | `m` | tunable | How far a rising jump that clips a ceiling corner is nudged sideways past it (0: never). |
 | `maxSlope` | `number` | `50` | 0 … 89 | `deg` | tunable | The steepest slope it runs up. |
 | `snapDistance` | `number` | `0.1` | ≥ 0 | `m` | tunable | How far below it the ground still holds it (slopes, small drops). |
 | `skin` | `number` | `0.01` | ≥ 0.001 | `m` | — | The gap kept between it and every surface. |
 | `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it runs into, with at most `pushStrength`. |
-| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does. |
+| `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does. See `physics §6`. |
 | `grounded` | `boolean` | `false` | — | — | read only | Written: standing on ground after the step. |
 | `onWall` | `number` | `0` | -1 … 1 | — | read only | Written: -1 sliding on a wall to its left, 1 to its right, 0 none. |
 | `facing` | `number` | `1` | -1 … 1 | — | read only | Written: -1 facing left, 1 right (the last run direction). |
@@ -57,14 +59,16 @@ Token `og.PlatformerController`, registered under the schema name `og.Platformer
 
 ```ogt
 component PlatformerController {
-  doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height (releasing jump while rising cuts the jump), apex hang, air jumps, wall slide and wall jump, one-way platforms (colliders on `oneWayLayers` are solid from above only; hold `down` to drop through), moving platforms (it rides what it stands on) and corner correction (a jump that clips a ceiling corner by less than `cornerCorrection` slides past it). It keeps `skin` off every surface; what blocks it is every solid collider its og.Collider's `layers` and `mask` interact with (each one's layers meeting the other's mask), as for bodies. The entity needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body and pushes the dynamic bodies it runs into (`pushBodies`) with at most `pushStrength`, so a crate's mass tells: a light one is shoved at the run speed, a heavy one holds (set its og.RigidBody `mass`)."
+  doc "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayLayers`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
+  guide "physics §6"
   field moveX f32 "The run input, -1 (left) to 1 (right). Set it every tick." {
     min -1
     max 1
   }
   field jump bool "Held to jump: a press is buffered for jumpBuffer; releasing while rising cuts the jump."
   field down bool "Held to drop through a one-way platform."
-  field impulse Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on, so a knock-back is `{ x: away * 6, y: 7 }` with `moveX` 0 for its few ticks." {
+  field impulse Vector2 "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on." {
+    guide "physics §6"
     unit mps
   }
   field maxSpeed f32 "The top running speed." {
@@ -173,8 +177,8 @@ component PlatformerController {
     unit s
     tunable true
   }
-  field oneWayLayers u32 "The collision layers that are one-way platforms (solid from above), as bits."
-  field cornerCorrection f32 "How far a rising jump is nudged sideways past a ceiling corner (0: never)." {
+  field oneWayLayers u32 "The collision layers that are one-way platforms (solid from above only), as bits."
+  field cornerCorrection f32 "How far a rising jump that clips a ceiling corner is nudged sideways past it (0: never)." {
     default 0.15
     min 0
     unit m
@@ -201,7 +205,8 @@ component PlatformerController {
   field pushBodies bool "Push dynamic bodies it runs into, with at most `pushStrength`." {
     default true
   }
-  field pushStrength f32 "The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped), so a body of a few kilograms is shoved at its speed while one whose friction holds more (a tonne on the ground) does not move. 0 leaves every body where it is, as `pushBodies` false does." {
+  field pushStrength f32 "The most force it pushes with: each tick the bodies it runs into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does." {
+    guide "physics §6"
     default 1000
     min 0
     unit newton
@@ -252,4 +257,4 @@ component PlatformerController {
 }
 ```
 
-<sub>Module `physics` line 470</sub>
+<sub>Module `physics` line 482</sub>

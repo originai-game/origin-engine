@@ -78,10 +78,16 @@ impl Loader {
                 "doc" => module.doc.extend(self.doc_line(child)),
                 "guide" => module.see.extend(self.guide_ref(child)),
                 "core" => {
-                    let words: Option<Vec<&str>> = child.values.iter().map(Value::as_word).collect();
+                    let words: Option<Vec<&str>> =
+                        child.values.iter().map(Value::as_word).collect();
                     match words {
-                        Some(w) if !w.is_empty() => module.core.extend(w.into_iter().map(str::to_string)),
-                        _ => self.error(child.line, "`core` lists the module's core items by name, written bare"),
+                        Some(w) if !w.is_empty() => {
+                            module.core.extend(w.into_iter().map(str::to_string))
+                        }
+                        _ => self.error(
+                            child.line,
+                            "`core` lists the module's core items by name, written bare",
+                        ),
                     }
                 }
                 "place" => match child.values.first().and_then(Value::as_word) {
@@ -651,14 +657,26 @@ impl Loader {
             Some((g, n)) => match n.parse() {
                 Ok(n) => (g, Some(n)),
                 Err(_) => {
-                    self.error(node.line, format!("`guide \"{text}\"`: the section after § is a number"));
+                    self.error(
+                        node.line,
+                        format!("`guide \"{text}\"`: the section after § is a number"),
+                    );
                     return None;
                 }
             },
             None => (text.as_str(), None),
         };
-        if guide.is_empty() || !guide.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-') {
-            self.error(node.line, format!("`guide \"{text}\"` names a guide by its file name, as `guide \"saves §2\"`"));
+        if guide.is_empty()
+            || !guide
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+        {
+            self.error(
+                node.line,
+                format!(
+                    "`guide \"{text}\"` names a guide by its file name, as `guide \"saves §2\"`"
+                ),
+            );
             return None;
         }
         Some(GuideRef {
@@ -687,7 +705,10 @@ impl Loader {
                 })
             }
             _ => {
-                self.error(node.line, "a group is written `group \"<heading>\"`, optionally followed by a quoted doc");
+                self.error(
+                    node.line,
+                    "a group is written `group \"<heading>\"`, optionally followed by a quoted doc",
+                );
                 None
             }
         }

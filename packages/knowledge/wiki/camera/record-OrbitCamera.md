@@ -8,9 +8,11 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own.
 
-Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera.
+Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera.
 
 The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host.
+
+See `camera §1`.
 
 Token `og.OrbitCamera`, registered under the schema name `og.OrbitCamera`; its value type is `OrbitCamera`.
 
@@ -35,7 +37,8 @@ Token `og.OrbitCamera`, registered under the schema name `og.OrbitCamera`; its v
 ```ogt
 component OrbitCamera {
   doc "Orbits og.Camera around the entity carrying it, as three.js OrbitControls: a left-button drag on the play surface turns it, the wheel zooms, autoRotate turns it on its own."
-  doc "Camera controllers are game-level systems the engine ships in TypeScript (og.systems.cameras); list them in GameDesc.systems: `systems: [...og.systems.cameras, ...yours]`. The first entity carrying one, in query order, drives the camera."
+  doc "Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
+  guide "camera §1"
   doc "The camera sits `distance` from the orbited point (the entity's position plus `target`) in the direction given by `azimuth` about +Y and `polar` from +Y, and looks at the point. Every angle is computed with deterministic arithmetic, so a replay moves the camera identically on every host."
   field target Vector3 "The orbited point, relative to the entity's position." {
     worldspace none
@@ -110,4 +113,4 @@ component OrbitCamera {
 }
 ```
 
-<sub>Module `camera` line 145</sub>
+<sub>Module `camera` line 153</sub>

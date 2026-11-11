@@ -39,4 +39,4 @@ component PixelPiece {
 }
 ```
 
-<sub>Module `destruction` line 380</sub>
+<sub>Module `destruction` line 387</sub>

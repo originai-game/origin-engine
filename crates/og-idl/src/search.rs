@@ -13,6 +13,13 @@ use std::collections::BTreeMap;
 /// The index's file name in the wiki directory.
 pub const INDEX_FILE: &str = "search.tsv";
 
+/// How many guide sections the first [`GUIDE_WINDOW`] results may hold:
+/// a guide's sections share words, so without a cap one query's sections
+/// crowd out the API entries they name. The others follow the window.
+const GUIDE_CAP: usize = 1;
+/// The results the guide cap applies to (the five a reader looks at).
+const GUIDE_WINDOW: usize = 5;
+
 /// One anchored entry of a wiki page.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entry {
@@ -701,7 +708,25 @@ impl SearchIndex {
                 .total_cmp(&a.score)
                 .then_with(|| self.docs[a.doc].name.cmp(&self.docs[b.doc].name))
         });
-        out
+        // Past the cap, a guide section (not one named exactly) waits until
+        // the window is full; the order is otherwise the score's.
+        let mut kept = Vec::with_capacity(out.len());
+        let mut later = Vec::new();
+        let mut guides = 0;
+        for h in out {
+            let guide = self.docs[h.doc].kind == "guide" && h.score < 1.0;
+            if guide && guides >= GUIDE_CAP && kept.len() < GUIDE_WINDOW {
+                later.push(h);
+                continue;
+            }
+            guides += usize::from(guide);
+            kept.push(h);
+            if kept.len() == GUIDE_WINDOW {
+                kept.append(&mut later);
+            }
+        }
+        kept.append(&mut later);
+        kept
     }
 }
 

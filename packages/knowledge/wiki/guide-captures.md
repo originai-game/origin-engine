@@ -17,6 +17,8 @@ The API of everything here: `og api show probe` (`capture`, `marks`, `timeline`,
 | The rendered size (a reference, a pixel count) | `og probe capture '{"fit": 0}'` |
 | A detail at full resolution, as its own image | `og probe capture '{"region": {"x": 600, "y": 20, "width": 200, "height": 120}}'` |
 
+A requested size renders with the same camera, its aspect following the size. On the web the readback is asynchronous: a capture requested on tick N is answered on N + 1, and a synchronous in-page call answers null on the first tick and the frame from then on.
+
 `region` is a box of the play surface in CSS px (the units of `pickUi`, `describe` and `touch_move_to`). The answer's `scale` is the PNG's pixels per CSS pixel and `region` the box it shows: a PNG pixel (px, py) is the surface point (region.x + px / scale, region.y + py / scale). Look at the whole frame first, then cut the region you need instead of asking for a larger whole frame.
 
 <a id="guide-captures-2"></a>
@@ -37,6 +39,8 @@ The API of everything here: `og api show probe` (`capture`, `marks`, `timeline`,
 | `depth` | An entity's distance from the camera |
 
 UI marks come first in reading order, then entities nearest first. A layout container that draws nothing gets no mark, a label inside a button of the same box is marked once (as the button), and a backdrop covering the whole surface is left out. `max` (64) caps the marks; `omitted` counts the rest. `ui: false` or `entities: false` marks only one kind.
+
+An entity's `what` names what draws it. A grass field is seen at field fidelity, not per blade: its coverage is the ground it grows on lifted half its tallest blade, so a pixel between blades answers the field and a tip above that height answers what is behind it.
 
 A review then says "7 is cut off" and the map says `ui/shop.svelte:42`, `Button.base[primary]` from `styles/clean/style.ogt:210`: the line to change.
 

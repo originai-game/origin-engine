@@ -6,7 +6,9 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.WindMotor` (component)
 
-A local push on the wind the renderer sways vegetation with, at the entity's position: grass blades, og.TerrainScatter copies and their impostor cards, and swaying trees within `radius` lean away from it (omni), along it (directional) or around it (vortex), the push fading to nothing at its edge; the field carries and swirls the push, so it ripples out and settles after the motor stops. Needs no og.Wind (a motor in still air moves only what it reaches). Visual only, where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it, and the same ticks draw the same push on every run. The 16 nearest the camera act.
+A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and the field carries the push on after the motor stops. Needs no og.Wind. Only where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing); visual only, the same on every run. The 16 nearest the camera act.
+
+See `render §8`.
 
 Token `og.WindMotor`, registered under the schema name `og.WindMotor`; its value type is `WindMotor`.
 
@@ -18,7 +20,8 @@ Token `og.WindMotor`, registered under the schema name `og.WindMotor`; its value
 
 ```ogt
 component WindMotor {
-  doc "A local push on the wind the renderer sways vegetation with, at the entity's position: grass blades, og.TerrainScatter copies and their impostor cards, and swaying trees within `radius` lean away from it (omni), along it (directional) or around it (vortex), the push fading to nothing at its edge; the field carries and swirls the push, so it ripples out and settles after the motor stops. Needs no og.Wind (a motor in still air moves only what it reaches). Visual only, where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing): nothing in the simulation reads it, and the same ticks draw the same push on every run. The 16 nearest the camera act."
+  doc "A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and the field carries the push on after the motor stops. Needs no og.Wind. Only where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing); visual only, the same on every run. The 16 nearest the camera act."
+  guide "render §8"
   field kind WindMotorKind "How it pushes."
   field radius f32 "How far it reaches." {
     default 6
@@ -37,4 +40,4 @@ component WindMotor {
 }
 ```
 
-<sub>Module `atmosphere` line 610</sub>
+<sub>Module `atmosphere` line 627</sub>

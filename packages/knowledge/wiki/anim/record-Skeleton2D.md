@@ -6,9 +6,11 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.Skeleton2D` (component)
 
-Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it.
+Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`, lit as a sprite there is. `unit` rig pixels make a world unit, +y up; the entity's og.Transform places, turns (about z) and scales it.
 
-Changing `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block).
+Changing `clip` restarts at 0 (or at `time` written that tick); another time is a seek, firing no events. The pose follows these fields, the Transform and its og.IkTarget2D; the playback position is world state (the og.skeleton2d state block).
+
+See `animation §9`.
 
 Token `og.Skeleton2D`, registered under the schema name `og.Skeleton2D`; its value type is `Skeleton2D`.
 
@@ -21,16 +23,17 @@ Token `og.Skeleton2D`, registered under the schema name `og.Skeleton2D`; its val
 | `loop` | `boolean` | `true` | — | — | — | Wrap at the clip's end; otherwise hold the last pose and set `finished`. Rig2DInfo.clips says what the rig's author meant. |
 | `flipX` | `boolean` | `false` | — | — | — | Mirror the rig left to right about the entity's position (a character facing left). |
 | `layer` | `number` | `0` | — | — | — | The sprite layer it draws in, sorted with the sprites there (after them when they share the layer). |
-| `skin` | `number` | `0` | ≥ 0 | — | — | The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf("armor")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it. |
+| `skin` | `number` | `0` | ≥ 0 | — | — | The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it. |
 | `finished` | `boolean` | `false` | — | — | read only | Written: a clip that does not loop reached its end (or its start, played backwards). |
-| `blendClip` | `number` | `0` | ≥ 0 | — | — | A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Each bone's offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; what a slot shows, the draw order and IK bends come from the heavier clip. Only `clip`'s events fire (an og.AnimationGraph fires both's). |
+| `blendClip` | `number` | `0` | ≥ 0 | — | — | A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Bone offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; attachments, draw order and IK bends come from the heavier clip. Only `clip`'s events fire. |
 | `blendTime` | `number` | `0` | ≥ 0 | `s` | — | Seconds into blendClip; advanced with `time` (by `speed`, wrapping when `loop`), set it to seek. |
 | `blend` | `number` | `0` | 0 … 1 | — | tunable | How much of the pose blendClip decides: 0 none (the default), 1 all of it. An og.AnimationGraph writes clip, blendClip, their times and blend each tick. |
 
 ```ogt
 component Skeleton2D {
-  doc "Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its slots, in their order, as textured triangles of the sprite batch at `layer` (region attachments as quads, mesh attachments weighted to bones and deformed by the clip), lit by og.Lighting2D when the layer is in its range, as a sprite there is. The rig's pixels are `unit` to a world unit and +y is up; the entity's og.Transform places, turns (about z) and scales it."
-  doc "Changing `clip` restarts at 0 (or at `time`, written in the same tick); writing a different time is a seek and fires no events. The pose is a function of these fields, the Transform and the og.IkTarget2D on it; the playback position is world state (the og.skeleton2d state block)."
+  doc "Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`, lit as a sprite there is. `unit` rig pixels make a world unit, +y up; the entity's og.Transform places, turns (about z) and scales it."
+  doc "Changing `clip` restarts at 0 (or at `time` written that tick); another time is a seek, firing no events. The pose follows these fields, the Transform and its og.IkTarget2D; the playback position is world state (the og.skeleton2d state block)."
+  guide "animation §9"
   field rig Rig2D "The rig (og.load.rig2d's `rig`); 0 is none."
   field clip u32 "The clip: an index into Rig2DInfo.clips (og.anim.clip finds one by name)." {
     min 0
@@ -50,13 +53,13 @@ component Skeleton2D {
   }
   field flipX bool "Mirror the rig left to right about the entity's position (a character facing left)."
   field layer i32 "The sprite layer it draws in, sorted with the sprites there (after them when they share the layer)."
-  field skin u32 "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default; `rig.skins.indexOf(\"armor\")` finds one by name). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it." {
+  field skin u32 "The skin it wears: an index into Rig2DInfo.skins (0 is the rig's default). A skin shows its own attachment wherever the setup pose or a clip shows the default's; a slot the skin leaves alone shows the default's. Change it any tick: the pose is drawn from it." {
     min 0
   }
   field finished bool "Written: a clip that does not loop reached its end (or its start, played backwards)." {
     readonly true
   }
-  field blendClip u32 "A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Each bone's offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; what a slot shows, the draw order and IK bends come from the heavier clip. Only `clip`'s events fire (an og.AnimationGraph fires both's)." {
+  field blendClip u32 "A second clip blended over `clip` by `blend`: an index into Rig2DInfo.clips. Bone offsets from the setup pose (turns the short way), slot colours and mesh deforms mix by `blend`; attachments, draw order and IK bends come from the heavier clip. Only `clip`'s events fire." {
     min 0
   }
   field blendTime f32 "Seconds into blendClip; advanced with `time` (by `speed`, wrapping when `loop`), set it to seek." {
@@ -71,4 +74,4 @@ component Skeleton2D {
 }
 ```
 
-<sub>Module `anim` line 764</sub>
+<sub>Module `anim` line 773</sub>

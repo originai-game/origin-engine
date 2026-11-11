@@ -27,19 +27,25 @@ module world {
       default 1 1 1
     }
     field bare bool "Spawn without a Transform: a pure data entity."
-    field source String "Where a person would change it (`src/enemies.ts:42`), which the probe answers as the entity's source (pick, marks). Outside a publish build the runtime fills it with the game's own TypeScript line that called spawn (the first frame of the call's stack outside the engine and node_modules); a value given here wins, so a helper may name its caller. A publish build keeps none."
+    field source String "Where a person would change it (`src/enemies.ts:42`), the probe's source of it (pick, marks). Outside a publish build (which keeps none) the runtime fills in the game line calling spawn (the first stack frame outside the engine and node_modules); a given value wins, so a helper may name its caller."
   }
 
   struct RestoreDesc {
     doc "How world.restore takes a save."
     desc true
-    field migrate bool "Map a type whose layout changed since the save field by field, by name, as a hot reload does: a field added since takes its default, a removed one is dropped, an enum value is mapped by its variant's name, a field of another type starts at its default, and a type this build no longer registers is dropped. Off, such a save is refused naming the type and its fields, except for the host's input the restore keeps (og.Input, og.Pointers, og.Gamepad, og.PointerLock, og.Audio), which is mapped either way: a save from before og.Gamepad's eight pads restores without it."
-    field session bool "Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: the keys, buttons and pointers held and this tick's edges) instead of keeping the host's. Off, a loaded game reads the keys the player holds now; on, the world is the one saved, hash and all, which a tool returning to a state needs (og explore, a replay from a snapshot). A selection keeps the host's input either way."
+    guide "saves §5"
+    field migrate bool "Map a type whose layout changed since the save by field name, as hot reload does (added fields take defaults, removed ones and unregistered types drop, enums map by variant name, retyped ones reset). Off, such a save is refused, naming the type; the host input the restore keeps is mapped either way." {
+      guide "saves §5"
+    }
+    field session bool "Take the save's input too (og.Input, og.Pointers, og.Gamepad, og.PointerLock: keys, buttons and pointers held and this tick's edges) instead of keeping the host's, so the world is the one saved, hash and all. A selection keeps the host's input either way." {
+      guide "saves §4"
+    }
   }
 
   struct SnapshotDesc {
-    doc "What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew, in saved order, a saved entity's Entity fields pointed at its new id) and sets those resources, and leaves the rest of the world (other entities, og.Time, the modules' state, the session) as it is: a game keeps its progress and settings this way and rebuilds the level from its scene. A selection is small (only the types it uses are in its table) and so takes fewer store keys."
+    doc "What world.snapshot saves. `{}` (or no desc) saves the whole world; naming tags or resources saves a selection: the entities that carry every component of `with` (with all their components and names) and the resources `resources` names, nothing else. world.restore of a selection replaces the live entities that carry those tags by the saved ones (spawned anew in saved order, their Entity fields pointed at the new ids), sets those resources and leaves the rest of the world as it is."
     desc true
+    guide "saves §2"
     field with List.AnyComponent "The tags: an entity carrying all of them is saved. Empty with `resources` empty: the whole world."
     field resources List.AnyResource "The resources a selection keeps (settings, progress)."
   }
@@ -136,7 +142,8 @@ module world {
       returns Result.Void "Refused as setRecords is, or when map throws."
     }
     fn split {
-      doc "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. The migrated world holds the records a world built at the new version holds, and every peer and every restore of the same save migrates to the same world and hash; its hash differs from a built one's only by the archetypes the built one passed through (inserting the new types one at a time leaves an empty archetype of the first alone, which the split never makes), so compare a split's result record by record, not by hash. renameField, renameType, transform, dropType and spawn keep which types sit together: those migrate to a built world's hash exactly."
+      doc "Split a type into several: each saved value is handed to `map`, whose answer names the new types' records; the old type goes. Every restore of the same save migrates to the same world and hash; it holds the records a world built at the new version holds, but its hash may differ from that world's by empty archetypes, so compare a split's result record by record, not by hash."
+      guide "saves §5"
       host false
       param name String "The saved type."
       param map SplitFn "The old record to the new types' records."
@@ -176,7 +183,8 @@ module world {
   }
 
   event WorldRestored {
-    doc "A world.restore applied: the tick after it (the first whole tick after a save taken mid-tick, whose next step completes the saved tick) delivers this, read through world.events like any event. Everything in the world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session: it forgets requests answered long ago, asks the store again for the settings and progress, and closes a menu the player had open. Sent as that tick starts, not when the restore applies, so the world between the two hashes as the save did."
+    doc "A world.restore applied: sent as the tick after it starts (after a mid-tick save, the first whole tick), not when the restore applies, so the world between the two hashes as the save did; read through world.events. The world came back as saved, request numbers and resources the session filled included; the session did not, so a system that reads this resets what belongs to the session."
+    guide "saves §4"
     field from u32 "The tick the world was at when the restore applied." {
       unit ticks
     }
@@ -302,7 +310,7 @@ module world {
     }
 
     fn resource {
-      doc "A resource's live value: the same handle in a world every time, its fields typed reads and writes of the resource's packed record. Ease strings use the shared host timing codec; other fields use packed bytes without JSON. The packed record is fetched again only by the first read after another engine call or a system boundary, and pending writes reach the engine before the next engine call and when the system or command returns, so two handles agree and a read after an engine call sees the engine's value. Inside a system, the resource must be among the system's reads or writes (writes to set a field): an undeclared one throws in a dev or release build, naming the system and the resource, and fails the tick; a publish build refuses it and logs it once per system in the engine log."
+      doc "A resource's live value: the same handle every time, its fields typed reads and writes of the resource's packed record (no JSON; ease strings in the host timing codec). A read after an engine call or a system boundary sees the engine's value; writes reach the engine before the next engine call and when the system or command returns. Inside a system the resource must be among its reads or writes (writes to set a field): undeclared, it throws in a dev or release build naming the system and resource and fails the tick; a publish build refuses it and logs once per system."
       generic R AnyResource
       param resource R "The resource token."
       returns Result.Value.R "Refused for an unregistered resource (or, in a publish build, one the running system did not declare)."
@@ -390,7 +398,8 @@ module world {
     }
 
     fn snapshot {
-      doc "The whole world as text, to save a game's progress in the platform store: every entity with its components and names, every resource (og.Time's clock and the og.Rng streams too), the pending events and the modules' state (physics, animation, flipbooks, tweens, tilemap and terrain edits), each type with its schema hash, and the game's save version (GameDesc.saveVersion), deflated and base64-encoded after `og-save:3:`. Every build has it, publish included, and the same world saves to the same text on both hosts. Save it with og.platform.saveSlot (`{ slot: \"slot1\", text, meta: { name, chimes } }`), which spreads it over as many store keys as it needs (a key holds 64 KiB) and writes the slot's manifest last, then og.platform.loadSlot and world.restore of the answer's `text` (a 2D platformer of 189 entities on a 96 x 48 tile map saves to about 25 KiB; a 3D world of 93 entities with skinned characters, cloths and minds to about 78 KB; a world of a few entities to about 11 KiB, most of it the table of every registered type; 5,000 entities, half of them physics bodies, to about 436 KiB, written in about 95 ms and restored in about 60 ms natively). With SnapshotDesc's `with` or `resources`, only the tagged entities and the chosen resources (a selection). Inside a system it is the world in the middle of that tick, as that system sees it: what earlier systems wrote this tick is in it, a structural change the system queued (applied when it returns) is not, and it names the system, so a world restored from it completes that tick: its next step runs the systems after this one and the engine's (physics included) with the tick's own events, then ends the tick, and the world goes on tick for tick as the one that saved did (a replay from it matches; make the snapshot the system's last write of the tick, since what it does after the call is not in the save). Between ticks (GameDesc.start, a command, a UI callback) it is the world between two ticks. Physics carries its mesh, convex-hull and height-field colliders by their geometry's handle and scale, not their triangles (og.physics.setMesh). Asset and material handles in components are saved as their numbers: load what a saved entity uses in the same order on every launch (in GameDesc.start) before restoring."
+      doc "The whole world as text: every entity with its components and names, every resource (og.Time and og.Rng too), the pending events and the modules' state, each type with its schema hash, and GameDesc.saveVersion, after `og-save:3:`. Every build has it, publish too; the same world saves to the same text on both hosts. With SnapshotDesc's `with` or `resources`, a selection. Inside a system it is the world mid-tick as that system sees it, without the structural changes it queued, and a restore completes that tick: make it the system's last write. Between ticks it is the world between two ticks."
+      guide "saves"
       aliases "save game, savegame, checkpoint, serialise the world, persist state, quick save"
       param desc SnapshotDesc "The whole world, or a selection: tagged entities and chosen resources." {
         optional true
@@ -405,10 +414,11 @@ module world {
     }
 
     fn restore {
-      doc "Replace the world with a save that world.snapshot wrote (a selection replaces only its tagged entities and its resources: SnapshotDesc). First the engine's own migrations upgrade what an older engine wrote of the engine's state, then GameDesc.migrations run from the save's version to GameDesc.saveVersion, in order, on the save (SaveEdit); a refused or throwing step refuses the restore with its reason and the world is left as it was. A save of a newer saveVersion is refused. Then: entities, components, names, resources, events and the modules' state, so the restored world hashes as the saved one did, on either host. The session stays: input (og.Input, og.Pointers, og.Gamepad, og.PointerLock), the player's bus volumes (og.Audio), the player's action bindings and dead zones (og.input), the UI's focus and hover, and what lives outside the world (the platform's calls and clock, the language, the loaded assets, the command channel's scheduled steps, which keep their remaining delays though og.Time takes the saved tick, so an `og run --commands` script goes on to its last step or `quit` whether the save is of a later tick or an earlier one). Called in a system or a command it applies when the tick ends, after the last system; elsewhere (GameDesc.start, between ticks) at once. Either way the tick after it delivers og.WorldRestored, for the systems that reset what lives in the session. A save a system took mid-tick restores to that moment of its tick (og.Time reads its tick): the next step completes it (the systems after the saver, then the engine's), so the ticks after it are the saved run's. The meshes and height fields its colliders name must be loaded or registered first (a save naming one that is not is refused). A save holds only the world: progress kept in module variables is not in it, so keep it in components and resources."
+      doc "Replace the world with a world.snapshot save (a selection replaces only its tagged entities and resources). The engine's migrations, then GameDesc.migrations from the save's version to saveVersion, run on the save; a step that refuses or throws refuses the restore. It then hashes as the saved world did; the session (input, audio volumes, bindings, UI focus, platform, assets) stays. In a system or command it applies when the tick ends, elsewhere at once; the tick after delivers og.WorldRestored. A mid-tick save's next step completes its tick. The meshes its colliders name must be loaded first."
+      guide "saves"
       param save String "The text world.snapshot returned."
       param desc RestoreDesc "Whether a type whose layout changed since the save is mapped field by field."
-      returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or of a newer GameDesc.saveVersion, a migration that refused, or a type whose layout changed since the save (a field added, removed or retyped, an enum's variants) and that the save holds data of (a type it holds none of, no component, resource value or event, takes this build's layout; an engine og.* type that only gained fields takes their declared defaults): the reason names the type and the fields, and the fix (`{ migrate: true }`, a migration in GameDesc.migrations, or keeping a saved type's fields stable between releases)."
+      returns Result.Void "Refused, with nothing changed, for text world.snapshot did not write, a save from a newer engine or saveVersion, a refused migration, an unloaded collider mesh, or a type whose layout changed that the save holds data of: the reason names the type, its fields and the fix."
     }
   }
 

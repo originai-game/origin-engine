@@ -12,6 +12,8 @@ Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code
 
 Token `og.Input`, registered under the schema name `og.Input`; its value type is `Input`.
 
+#### Pointer
+
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `pointer` | `Vector2` | `{ x: 0, y: 0 }` | — | `cssPx` | read only, worldspace `none` | The pointer position. |
@@ -21,18 +23,38 @@ Token `og.Input`, registered under the schema name `og.Input`; its value type is
 | `buttonsPressed` | `number` | `0` | — | — | read only | Buttons that went down this tick. |
 | `buttonsReleased` | `number` | `0` | — | — | read only | Buttons that went up this tick. |
 | `buttonsReleaseNext` | `number` | `0` | — | — | read only | Buttons a click releases at the end of the next tick. |
+
+#### Keys held
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `keys0` | `number` | `0` | — | — | read only | Held keys, word 0: codes 0 to 31 of KEY_CODES. |
 | `keys1` | `number` | `0` | — | — | read only | Held keys, word 1: codes 32 to 63 of KEY_CODES. |
 | `keys2` | `number` | `0` | — | — | read only | Held keys, word 2: codes 64 to 95 of KEY_CODES. |
 | `keys3` | `number` | `0` | — | — | read only | Held keys, word 3: codes 96 to 127 of KEY_CODES. |
+
+#### Keys pressed this tick
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `pressed0` | `number` | `0` | — | — | read only | Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES. |
 | `pressed1` | `number` | `0` | — | — | read only | Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES. |
 | `pressed2` | `number` | `0` | — | — | read only | Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES. |
 | `pressed3` | `number` | `0` | — | — | read only | Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES. |
+
+#### Keys released this tick
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `released0` | `number` | `0` | — | — | read only | Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES. |
 | `released1` | `number` | `0` | — | — | read only | Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES. |
 | `released2` | `number` | `0` | — | — | read only | Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES. |
 | `released3` | `number` | `0` | — | — | read only | Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES. |
+
+#### Keys a press releases next tick
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `releaseNext0` | `number` | `0` | — | — | read only | Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES. |
 | `releaseNext1` | `number` | `0` | — | — | read only | Keys a press releases at the end of the next tick, word 1: codes 32 to 63 of KEY_CODES. |
 | `releaseNext2` | `number` | `0` | — | — | read only | Keys a press releases at the end of the next tick, word 2: codes 64 to 95 of KEY_CODES. |
@@ -42,6 +64,7 @@ Token `og.Input`, registered under the schema name `og.Input`; its value type is
 resource Input {
   doc "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods."
   doc "Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4."
+  group "Pointer"
   field pointer Vector2 "The pointer position." {
     worldspace none
     readonly true
@@ -66,6 +89,7 @@ resource Input {
   field buttonsReleaseNext u32 "Buttons a click releases at the end of the next tick." {
     readonly true
   }
+  group "Keys held"
   field keys0 u32 "Held keys, word 0: codes 0 to 31 of KEY_CODES." {
     readonly true
   }
@@ -78,6 +102,7 @@ resource Input {
   field keys3 u32 "Held keys, word 3: codes 96 to 127 of KEY_CODES." {
     readonly true
   }
+  group "Keys pressed this tick"
   field pressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
     readonly true
   }
@@ -90,6 +115,7 @@ resource Input {
   field pressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
     readonly true
   }
+  group "Keys released this tick"
   field released0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
     readonly true
   }
@@ -102,6 +128,7 @@ resource Input {
   field released3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
     readonly true
   }
+  group "Keys a press releases next tick"
   field releaseNext0 u32 "Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES." {
     readonly true
   }
@@ -161,7 +188,7 @@ resource Input {
 }
 ```
 
-<sub>Module `input` line 757</sub>
+<sub>Module `input` line 762</sub>
 
 <a id="member-Input-down"></a>
 
@@ -189,7 +216,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 832</sub>
+<sub>Module `input` line 842</sub>
 
 <a id="member-Input-pressed"></a>
 
@@ -217,7 +244,7 @@ fn pressed {
 }
 ```
 
-<sub>Module `input` line 837</sub>
+<sub>Module `input` line 847</sub>
 
 <a id="member-Input-released"></a>
 
@@ -245,7 +272,7 @@ fn released {
 }
 ```
 
-<sub>Module `input` line 842</sub>
+<sub>Module `input` line 852</sub>
 
 <a id="member-Input-axis"></a>
 
@@ -275,7 +302,7 @@ fn axis {
 }
 ```
 
-<sub>Module `input` line 847</sub>
+<sub>Module `input` line 857</sub>
 
 <a id="member-Input-axis2"></a>
 
@@ -309,7 +336,7 @@ fn axis2 {
 }
 ```
 
-<sub>Module `input` line 853</sub>
+<sub>Module `input` line 863</sub>
 
 <a id="member-Input-buttonDown"></a>
 
@@ -337,7 +364,7 @@ fn buttonDown {
 }
 ```
 
-<sub>Module `input` line 861</sub>
+<sub>Module `input` line 871</sub>
 
 <a id="member-Input-buttonPressed"></a>
 
@@ -365,7 +392,7 @@ fn buttonPressed {
 }
 ```
 
-<sub>Module `input` line 866</sub>
+<sub>Module `input` line 876</sub>
 
 <a id="member-Input-buttonReleased"></a>
 
@@ -393,4 +420,4 @@ fn buttonReleased {
 }
 ```
 
-<sub>Module `input` line 871</sub>
+<sub>Module `input` line 881</sub>

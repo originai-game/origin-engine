@@ -2,11 +2,13 @@
 
 # The `anim` module
 
-Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
+Skeletal animation over og-anim: glTF skins and clips (loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
 
-Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none.
+Game code sets players, graph parameters and IK targets; og.anim writes the pose (world state, the `og.anim` state block), the joint palette, root motion into og.Transform and the fields marked written. Asset handles (og.load.animation, og.anim.graph): 0 is none.
 
-Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again.
+Clips bind to nodes by name; assets are not world state.
+
+See `animation §7`.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -14,9 +16,9 @@ Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another 
 
 ```ogt
 module anim {
-  doc "Skeletal animation over og-anim: glTF skins and clips (cooked into the `<model>#anim` blob, loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
-  doc "Game code owns the components and sets players, graph parameters and IK targets; og.anim writes the pose (kept as world state in the `og.anim` state block, so snapshots, restore and the world hash cover it), the joint palette, root motion into og.Transform and the fields marked written. Asset handles are what og.load.animation and og.anim.graph answer; 0 is none."
-  doc "Clips bind to a skeleton's nodes by name, so a clip of one rig plays on another with the same node names; a rig with other names or proportions plays it retargeted (og.anim.retarget at run time, or a model's `animation { library }` import setting at cook time). Assets are not world state: a hot reload registers them again."
+  doc "Skeletal animation over og-anim: glTF skins and clips (loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics."
+  doc "Game code sets players, graph parameters and IK targets; og.anim writes the pose (world state, the `og.anim` state block), the joint palette, root motion into og.Transform and the fields marked written. Asset handles (og.load.animation, og.anim.graph): 0 is none."
+  doc "Clips bind to nodes by name; assets are not world state."
   # declarations follow, each on its own page
 ```
 
@@ -41,20 +43,20 @@ module anim {
 | [`IkSpace`](anim/type-IkSpace.md) | enum |  | What an IK chain's target and pole are relative to. |
 | [`IkSpace()`](#column-IkSpace) | column kind |  | An IkSpace field: the variant's index. |
 | [`og.Skeleton`](anim/record-Skeleton.md) | component |  | A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. |
-| [`og.CrowdAnimation`](anim/record-CrowdAnimation.md) | component |  | Plays a clip on a model on the GPU, for crowds: put it on an entity with og.Model (and no og.Skeleton, which og.anim would pose on the CPU instead) and the model is drawn skinned by `clip` baked into… |
+| [`og.CrowdAnimation`](anim/record-CrowdAnimation.md) | component |  | Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, sh… |
 | [`og.AnimationPlayer`](anim/record-AnimationPlayer.md) | component |  | Plays one clip on a skeleton. |
-| [`og.AnimationGraph`](anim/record-AnimationGraph.md) | component |  | Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, which the graph names in `param` order (`param speed` is p0, the next `param`… |
+| [`og.AnimationGraph`](anim/record-AnimationGraph.md) | component |  | Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, named in the graph's `param` order (`param speed` is p0). |
 | [`og.Blendshapes`](anim/record-Blendshapes.md) | component |  | Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). |
 | [`og.IkChain`](anim/record-IkChain.md) | component |  | An inverse-kinematics constraint on a skeleton, applied after its clips and graph: the chain of `bones` bones ending at joint `tip` turns so the tip reaches `target`. |
 | [`og.LookAt`](anim/record-LookAt.md) | component |  | An aim constraint on a skeleton, applied after its clips, graph and IK chains: `joint` turns so its `axis` points at `target` and its `upAxis` leans towards `up` (three.js Object3D.lookAt: +Z at the … |
 | [`og.JointLimit`](anim/record-JointLimit.md) | component |  | How far a joint may turn from its rest rotation when og.anim's solvers (og.IkChain, og.LookAt, og.FootLock) turn it: a swing of `axis` within a cone and a twist about it within a range. |
-| [`og.FootLock`](anim/record-FootLock.md) | component |  | Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip, the notion retargeting uses, weighed across blends and cross-fades: planted when the planting clips hold at… |
+| [`og.FootLock`](anim/record-FootLock.md) | component |  | Foot locking: while the playing clips plant `foot` (within 5 mm of its lowest in each clip; planted when the planting clips hold at least half the pose), it stays where it touched the ground through … |
 | [`SpringSpace`](anim/type-SpringSpace.md) | enum |  | Where a spring bone's tails move. |
 | [`SpringSpace()`](#column-SpringSpace) | column kind |  | A SpringSpace field: the variant's index. |
 | [`og.SpringBone`](anim/record-SpringBone.md) | component |  | A spring (jiggle) bone chain, three-vrm's VRMSpringBone: `joint` and its `bones` - 1 parents swing after their parents' motion. |
 | [`SpringColliderShape`](anim/type-SpringColliderShape.md) | enum |  | The shape of a spring collider. |
 | [`SpringColliderShape()`](#column-SpringColliderShape) | column kind |  | A SpringColliderShape field: the variant's index. |
-| [`og.SpringCollider`](anim/record-SpringCollider.md) | component |  | A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton (a head, a chest, an upper arm), so hair, ears and tails do not swing… |
+| [`og.SpringCollider`](anim/record-SpringCollider.md) | component |  | A collider spring bones are kept out of, three-vrm's VRMSpringBoneCollider: a sphere or a capsule riding on a joint of a skeleton. |
 | [`og.AnimationEvent`](anim/record-AnimationEvent.md) | event |  | A named marker of a clip that playback passed in the last tick (read in the tick after it fired, like every event). |
 | [`ClipInfo`](anim/type-ClipInfo.md) | struct |  | One clip of a loaded animation. |
 | [`Animation`](anim/type-Animation.md) | struct |  | What og.load.animation registered from a model's `#anim` blob. |
@@ -67,13 +69,13 @@ module anim {
 | [`HumanoidDesc`](anim/type-HumanoidDesc.md) | desc struct |  | A skeleton and, optionally, the rig that says how its bones are named. |
 | [`og.anim.humanoid`](anim/fn-humanoid.md) | function | `(world: World, desc?: HumanoidDesc): Result<Humanoid>` | The standard humanoid bones of a skeleton, as retargeting sees them: to check a rig before retargeting onto it. |
 | [`RetargetDesc`](anim/type-RetargetDesc.md) | desc struct |  | A clip made for one skeleton, to play on another (other proportions, rest pose or bone names). |
-| [`og.anim.retarget`](anim/fn-retarget.md) | function | `(world: World, desc?: RetargetDesc): Result<ClipInfo>` | A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction, so a T-pose drives an A-pose and other bone frames… |
+| [`og.anim.retarget`](anim/fn-retarget.md) | function | `(world: World, desc?: RetargetDesc): Result<ClipInfo>` | A new clip for `target` from a clip of `source`: each animated humanoid bone turns as the source's does from its rest pose (after a rest correction; fingers from their hand), bone lengths stay the ta… |
 | [`MirrorDesc`](anim/type-MirrorDesc.md) | desc struct |  | A clip to play on the other side of the skeleton it was made for. |
 | [`og.anim.mirror`](anim/fn-mirror.md) | function | `(world: World, desc?: MirrorDesc): Result<ClipInfo>` | A new clip that plays `clip` on the other side: every frame reflected in the skeleton's x = 0 plane, each node taking its counterpart's motion (a left swing becomes the right's), rotations moved in m… |
 | [`FlipbookSheet`](anim/type-FlipbookSheet.md) | handle |  | A sprite sheet's frames and clips (a cooked `.ogt` of `type flipbook`), from og.load.flipbook. |
 | [`FlipbookSheet()`](#column-FlipbookSheet) | column kind |  | A FlipbookSheet handle field. |
 | [`FlipMode`](anim/type-FlipMode.md) | enum |  | How a flipbook clip runs past its last frame. |
-| [`og.Flipbook`](anim/record-Flipbook.md) | component |  | Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's l… |
+| [`og.Flipbook`](anim/record-Flipbook.md) | component |  | Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or the frame's layer of an `array true` shee… |
 | [`og.FlipbookEvent`](anim/record-FlipbookEvent.md) | event |  | A flipbook entered a frame its clip names in an `event` line (`event 2 "step"`): footsteps, the frame a hit lands, a pickup's sparkle. |
 | [`FlipbookClipInfo`](anim/type-FlipbookClipInfo.md) | struct |  | One clip of a loaded flipbook sheet. |
 | [`FlipbookInfo`](anim/type-FlipbookInfo.md) | struct |  | What og.load.flipbook registered. |
@@ -82,7 +84,7 @@ module anim {
 | [`og.anim.clip`](anim/fn-clip.md) | function | `(info: Rig2DInfo, name: string): number` | The index of a 2D rig's clip by name, for Skeleton2D.clip: `og.anim.clip(og.load.rig2d(world, "rigs/hero.ogt").value, "walk")`. |
 | [`Rig2D`](anim/type-Rig2D.md) | handle |  | A 2D rig (a cooked `.ogt` of `type rig2d`): bones, slots, region, mesh, bounding-box and child-armature attachments, IK constraints, child armatures and clips, from og.load.rig2d. |
 | [`Rig2D()`](#column-Rig2D) | column kind |  | A Rig2D handle field. |
-| [`og.Skeleton2D`](anim/record-Skeleton2D.md) | component |  | Plays a clip of a 2D rig at the entity: the og.skeleton2d system advances it by scaled time (Time.scaledDt) after the game's systems and fires its events as og.Skeleton2DEvent; extraction draws its s… |
+| [`og.Skeleton2D`](anim/record-Skeleton2D.md) | component |  | Plays a clip of a 2D rig at the entity: og.skeleton2d advances it by Time.scaledDt after the game's systems and fires og.Skeleton2DEvent; its slots draw in order as sprite-batch triangles at `layer`,… |
 | [`og.Skeleton2DEvent`](anim/record-Skeleton2DEvent.md) | event |  | A 2D skeleton's clip, or the clip a child armature in one of its slots plays, passed one of its events (`event 0.2 "step"` in the rig) in the last tick: footsteps, the frame a swing lands. |
 | [`og.IkTarget2D`](anim/record-IkTarget2D.md) | component |  | Moves one IK constraint of a 2D skeleton (Rig2DInfo.constraints) to a point: a foot planted on the ground under it, a hand on a ledge, a tail's tip. |
 | [`Rig2DClipInfo`](anim/type-Rig2DClipInfo.md) | struct |  | One clip of a loaded 2D rig. |
@@ -119,7 +121,7 @@ column SkeletonAsset {
 }
 ```
 
-<sub>Module `anim` line 10</sub>
+<sub>Module `anim` line 11</sub>
 
 ```ogt
 column ClipAsset {
@@ -130,7 +132,7 @@ column ClipAsset {
 }
 ```
 
-<sub>Module `anim` line 17</sub>
+<sub>Module `anim` line 18</sub>
 
 ```ogt
 column GraphAsset {
@@ -141,7 +143,7 @@ column GraphAsset {
 }
 ```
 
-<sub>Module `anim` line 24</sub>
+<sub>Module `anim` line 25</sub>
 
 ```ogt
 column RootMotion {
@@ -152,7 +154,7 @@ column RootMotion {
 }
 ```
 
-<sub>Module `anim` line 38</sub>
+<sub>Module `anim` line 39</sub>
 
 ```ogt
 column BlendshapeSource {
@@ -163,7 +165,7 @@ column BlendshapeSource {
 }
 ```
 
-<sub>Module `anim` line 51</sub>
+<sub>Module `anim` line 52</sub>
 
 ```ogt
 column IkSolver {
@@ -174,7 +176,7 @@ column IkSolver {
 }
 ```
 
-<sub>Module `anim` line 64</sub>
+<sub>Module `anim` line 65</sub>
 
 ```ogt
 column IkSpace {
@@ -185,7 +187,7 @@ column IkSpace {
 }
 ```
 
-<sub>Module `anim` line 77</sub>
+<sub>Module `anim` line 78</sub>
 
 ```ogt
 column SpringSpace {
@@ -196,7 +198,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 435</sub>
+<sub>Module `anim` line 439</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -207,7 +209,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 508</sub>
+<sub>Module `anim` line 513</sub>
 
 ```ogt
 column Rig {
@@ -218,7 +220,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 586</sub>
+<sub>Module `anim` line 592</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -229,7 +231,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 655</sub>
+<sub>Module `anim` line 663</sub>
 
 ```ogt
 column Rig2D {
@@ -240,4 +242,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 757</sub>
+<sub>Module `anim` line 766</sub>

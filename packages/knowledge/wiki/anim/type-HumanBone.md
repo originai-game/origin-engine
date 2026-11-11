@@ -6,19 +6,19 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `HumanBone` (struct)
 
-One standard humanoid bone of a skeleton.
+One standard humanoid bone of a skeleton. The bones, by VRM 1.0 name: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers: leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `bone` | `string` | `""` | — | — | — | The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers (VRM 1.0 names): leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's. |
+| `bone` | `string` | `""` | — | — | — | The standard bone, by its VRM 1.0 name (listed above). |
 | `node` | `string` | `""` | — | — | — | The skeleton node that is that bone. |
 
 ```ogt
 struct HumanBone {
-  doc "One standard humanoid bone of a skeleton."
-  field bone String "The standard bone: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers (VRM 1.0 names): leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's."
+  doc "One standard humanoid bone of a skeleton. The bones, by VRM 1.0 name: hips, spine, chest, upperChest, neck, head, then leftShoulder, leftUpperArm, leftLowerArm, leftHand, the right arm, leftUpperLeg, leftLowerLeg, leftFoot, leftToes and the right leg, then each hand's fingers: leftThumbMetacarpal, leftThumbProximal, leftThumbDistal, leftIndexProximal, leftIndexIntermediate, leftIndexDistal, the same for Middle, Ring and Little, and the right hand's."
+  field bone String "The standard bone, by its VRM 1.0 name (listed above)."
   field node String "The skeleton node that is that bone."
 }
 ```
 
-<sub>Module `anim` line 593</sub>
+<sub>Module `anim` line 599</sub>

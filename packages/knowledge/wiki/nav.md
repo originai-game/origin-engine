@@ -2,11 +2,11 @@
 
 # The `nav` module
 
-Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch.
+Navigation: grids (A* and jump point search, eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (cooked, or built at runtime) with funnel paths and box obstacles that rebuild only the tiles they touch.
 
-Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets.
+Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans and follows their paths with og.Steering; an og.Velocity gets its velocity written, else the Transform moves. All of it is deterministic and in snapshots. Agents move on x and y in 2D, x and z in 3D.
 
-Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh).
+See `world §9`.
 
 - **TypeScript**: functions are the namespace `og.nav`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -14,9 +14,8 @@ Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and 
 
 ```ogt
 module nav {
-  doc "Navigation: grids (A* and jump point search with eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (baked at cook time from a level's static colliders and models, or built at runtime for a flat procedural level) with funnel paths and box obstacles that rebuild only the tiles they touch."
-  doc "Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans their paths, follows them and adds the og.Steering behaviours; an entity with an og.Velocity (a physics body) gets its velocity written, any other its Transform moved. Everything is deterministic and in snapshots: paths, grid edits, obstacles and flow targets."
-  doc "Agents move on the profile's plane: x and y in 2D (a grid's rows run up), x and z in 3D (y kept on grids, from the surface on a navmesh)."
+  doc "Navigation: grids (A* and jump point search, eight-way moves that never cut a blocked corner, line-of-sight smoothing), flow fields for crowds, and navmeshes (cooked, or built at runtime) with funnel paths and box obstacles that rebuild only the tiles they touch."
+  doc "Agents are entities with an og.NavAgent (and an og.Transform): the og.nav system, after the game's systems and before physics, plans and follows their paths with og.Steering; an og.Velocity gets its velocity written, else the Transform moves. All of it is deterministic and in snapshots. Agents move on x and y in 2D, x and z in 3D."
   # declarations follow, each on its own page
 ```
 

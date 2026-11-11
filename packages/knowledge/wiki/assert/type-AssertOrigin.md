@@ -25,4 +25,4 @@ enum AssertOrigin {
 }
 ```
 
-<sub>Module `assert` line 30</sub>
+<sub>Module `assert` line 28</sub>

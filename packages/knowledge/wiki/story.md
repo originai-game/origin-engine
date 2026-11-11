@@ -2,13 +2,11 @@
 
 # The `story` module
 
-Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards.
+Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards.
 
-og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log.
+og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error.
 
-Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn.
-
-Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash.
+See `yarn`.
 
 - **TypeScript**: functions are the namespace `og.story`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -16,10 +14,8 @@ Saves checkpoint stable continuation, node, line and option ids, detour stacks, 
 
 ```ogt
 module story {
-  doc "Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards."
-  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log."
-  doc "Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn."
-  doc "Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash."
+  doc "Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards."
+  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error."
   # declarations follow, each on its own page
 ```
 

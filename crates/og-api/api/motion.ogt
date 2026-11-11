@@ -1,8 +1,7 @@
 module motion {
-  doc "Generated motion for humanoids: the engine's motion model (a 17.6M-parameter student distilled from NVIDIA MotionBricks, og-motion) moves a character between the goals the game gives it, on the GPU. Give an entity with an og.Skeleton (a humanoid rig og.anim.humanoid recognises, or one an og.MotionAgent.rig names) an og.MotionAgent, then queue goals: og.motion.pose (a pose of the model's library where the character stands), og.motion.place (a pose at a place, facing a heading), og.motion.face (turn to a heading), og.motion.walkTo (walk or run to a point) and og.motion.jump (a jump whose arc the simulation owns). og.motion.poses lists the library: idle, walk, run, jump, crouch, wave, cheer."
-  doc "**Presentation only.** The generated pose is drawn, never simulated (docs/design.md §2.4): it replaces og.anim's joint palette when the frame is drawn, and nothing a tick reads (og.anim's pose, its joint queries, root motion, physics, the world hash) depends on it, so a run is deterministic on every GPU. Game logic never reads og.motion's poses or presentation: the model's results are applied when they come back, so what a frame draws may vary run to run (a capture, an og test screenshot, a reference frame or a fork check waits for every result due by its tick, and reproduces). A simulation that needs a pose reads og.anim's, which og.motion never changes; og.motion.setBackend cpu runs the model on the CPU instead. A development build logs a warning when a system reads og.motion.presentation on the gpu backend. The model never moves the character: og.Transform is its root, always. With og.MotionAgent.drive the og.motion system moves the Transform to the goals itself with fixed math inside the tick (walkTo at its speed along a straight line, place over its duration, face at turnSpeed), and the generated pose is re-rooted onto the Transform, its planted feet absorbing the difference; without drive the game moves the Transform (its own physics, path or controller) and the character's motion follows it (walking, running or standing by how fast it moves). No model root motion ever reaches the simulation."
-  doc "**Goals are the game's.** A goal is current from the tick it starts until it ends by fixed rules (walkTo when the mover arrives, pose, place and face after their duration), then the next queued one starts; og.motion.status answers the queue and the current goal, never the model's progress, so game code may branch on it. og.motion.presentation reports visual readiness for a host cover; game logic must not branch on it. The probe's `dump_motion` also reports readiness, generated frames, batches and timings."
-  doc "**The model.** Its weights (35 MB in f16) ship inside @origingame/engine; `og cook` writes them as an optional file, cooked/motion/model.ogb, only for a project that uses og.motion (the manifest names it), and the engine reads and uploads it in the background as soon as the bundle is open, before any agent needs it (natively on a thread of its own; on the web a fetch after the boot bundle, never in it). The model runs on the GPU beside the renderer (in the engine Worker on the web): one batch for every agent at once, submitted in slices of about 3 ms of GPU time a frame, so a batch never costs a frame its vsync, and decoded a few characters a frame. Until the weights are resident, or when they fail to load, og.motion.capabilities answers backend none and each agent is drawn as og.anim poses it: its og.AnimationPlayer or og.AnimationGraph is the fallback, so give it an idle or walk clip."
+  doc "Generated motion for humanoids: the engine's motion model moves a character between the game's goals, on the GPU. Give a humanoid og.Skeleton an og.MotionAgent, then queue goals (og.motion.walkTo, og.motion.jump, og.motion.pose, ...)."
+  doc "Presentation only (docs/design.md §2.4): the generated pose replaces og.anim's joint palette when drawn, and nothing a tick reads depends on it. og.Transform is always the root. og.motion.status answers the goals by fixed rules; game logic never branches on og.motion.presentation. Until the weights are resident, og.anim's player or graph draws the agent."
+  guide "animation §10"
 
   enum MotionGoalKind {
     doc "What a goal asks for."
@@ -109,7 +108,8 @@ module motion {
       default 3
       min 0
     }
-    field acceleration f32 "How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, so a walk queued after another keeps moving through the first target (braking only to the next walk's speed, less by the corner it turns), and a jump queued after a walk takes off at the speed it arrives with. A large value, such as 1000, starts at full speed in the first tick." {
+    field acceleration f32 "How fast the walk gains speed; 0 uses 4 m/s². It starts from the speed the last walk or jump left, braking only to the next walk's speed (less by the corner it turns)." {
+      guide "animation §10"
       default 4
       min 0
       unit mps2
@@ -117,7 +117,8 @@ module motion {
   }
 
   struct JumpGoalDesc {
-    doc "A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` the og.motion system takes off in the tick, with an og.CharacterController through the controller's jump (it sets the controller's jumpSpeed for `height` under the controller's gravity and holds `jump` on the takeoff tick, so a ceiling cuts the rise and the landing is wherever the controller reaches ground), without one by the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight, never adding the model's own vertical travel (docs/design.md §2.7)."
+    doc "A jump (og.motion.jump); needs og.MotionAgent.drive. The simulation owns its whole arc: after `prepare` it takes off in the tick, through an og.CharacterController's jump when there is one (landing where the controller reaches ground), else on the fixed ballistic arc of `height` back to the takeoff height. The goal ends `recover` seconds after the landing tick. The generated jump is drawn in place on that flight (docs/design.md §2.7)."
+    guide "animation §10"
     desc true
     field height f32 "The apex over the takeoff height, with gravity og.Physics.gravity (times the controller's gravityScale)." {
       default 0.5
@@ -183,9 +184,8 @@ module motion {
   }
 
   struct ReactionDesc {
-    doc "An authored humanoid reaction over locomotion. Entry, a held interval, and exit come from a cooked type motion-action asset. Timing and strength belong to the tick; the generated pose is presentation only."
-    doc "**Action asset.** An .ogt starts with `type motion-action`, `version 1`, then `---`. Its body has `source \"anims/brace.glb\"`, `clip \"brace\"`, optional `rig \"rigs/meshy.ogt\"`, `holdStart 0.5` and `holdEnd 1.5`, each on its own line. Paths are relative to assets/. The hold must lie inside the clip (0 <= holdStart < holdEnd < clip duration), with matching poses at both ends for looping. Use a stationary root, +Z facing the reaction source, entry before the hold, and recovery after it. A 30 Hz clip is recommended; the cook also accepts other sample rates."
-    doc "**Hood contact.** Optional `hand right` (or left) and `handTarget x y z` attach that wrist to an offset from the head during the hold. Supply the offset in metres along the source head bone's local axes, independent of the GLB's unit scale. Retargeting adjusts it to the target's proportions; IK follows the final head pose after lookAt. The clip owns the stance step and lean: the engine does not synthesize an untrained action. Keep provenance and licensing beside the source asset."
+    doc "An authored humanoid reaction over locomotion: entry, a held interval and exit from a cooked `type motion-action` asset (source, clip, optional rig, holdStart and holdEnd, optional hand and handTarget). Timing and strength belong to the tick; the generated pose is presentation only."
+    guide "animation §11"
     desc true
     field action String "The motion-action asset path, such as actions/brace.ogt. Empty releases the current reaction."
     field direction Vector3 "World direction the character reacts toward (toward the wind source for a brace); zero keeps the character's facing."
@@ -251,7 +251,7 @@ module motion {
 
   fn pose {
     doc "Queue a library pose where the character stands, after its other goals."
-    aliases "emote, gesture, wave, idle pose, play a pose"
+    aliases "emote, gesture, wave, wave hello, humanoid gesture, idle pose, play a pose"
     param world World "The world."
     param entity Entity "An entity with an og.MotionAgent."
     param desc PoseGoalDesc "The pose and how long it is current."
@@ -328,14 +328,16 @@ module motion {
   }
 
   fn setBackend {
-    doc "Where the motion model runs: a presentation setting of this engine, outside the world (a snapshot does not keep it). gpu, the default, runs it beside the renderer, cheapest per character. No tick waits for it: a result is applied when it comes back, as of the tick it was due, and until then a frame draws the poses it has, so live frames may vary run to run (what checks a frame waits for it, as the module's overview says). cpu runs it on the CPU across the lanes instead, each generation spread over the ticks before it is due (about 21 ms of CPU a generation natively, 23 ms in wasm), for a few characters. Set it before the first agent; a change later loads the model again on the other backend and every agent's generated motion starts again."
+    doc "Where the motion model runs: gpu (the default, beside the renderer, cheapest per character) or cpu (across the lanes, each generation spread over the ticks before it is due, for a few characters). A presentation setting of this engine, outside the world: a snapshot does not keep it. No tick waits for it; results apply when they come back. A change after the first agent loads the model again and every agent's generated motion starts again."
+    guide "animation §10"
     param world World "The world."
     param backend MotionBackend "cpu or gpu."
     returns Result.Void "Refused for none."
   }
 
   fn presentation {
-    doc "Presentation-only readiness on both hosts. Game logic must not branch on this value: it depends on GPU timing and is outside snapshots and hashes; a development build logs a warning when a system reads it on the gpu backend. A host may keep its page or shell cover up while the agent remains in the world and warms, then lift the cover on ready or failed (showing reason). Never write a component, gate a goal or advance a tick from this answer. ready requires generated frames and their palette for the current rendered frame; authored fallback does not count. Available in the probe's dump_motion too."
+    doc "Presentation-only readiness on both hosts, for a host's cover: ready once generated frames and their palette exist for the current rendered frame (authored fallback does not count), or failed with a reason. Game logic must not branch on it: it depends on GPU timing and is outside snapshots and hashes; a development build warns when a system reads it on the gpu backend."
+    guide "animation §10"
     param world World "The world."
     param entity Entity "An entity with an og.MotionAgent."
     returns Result.MotionPresentationStatus "Refused for an entity without og.MotionAgent."

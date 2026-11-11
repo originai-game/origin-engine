@@ -12,15 +12,15 @@ A string: one of the variants below. The zero value is `"world"`.
 
 | Variant | Doc |
 |---|---|
-| `"world"` | Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child (a body under a character capsule takes targets relative to the capsule; transform world points by the parent's inverse yourself). |
+| `"world"` | Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child. |
 | `"model"` | The skeleton's model space. |
 
 ```ogt
 enum IkSpace {
   doc "What an IK chain's target and pole are relative to."
-  variant world "Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child (a body under a character capsule takes targets relative to the capsule; transform world points by the parent's inverse yourself)."
+  variant world "Positions in the frame the skeleton entity's og.Transform is written in (its position, rotation and scale are undone): true world for a skeleton entity without a parent, its parent's frame for a child."
   variant model "The skeleton's model space."
 }
 ```
 
-<sub>Module `anim` line 71</sub>
+<sub>Module `anim` line 72</sub>

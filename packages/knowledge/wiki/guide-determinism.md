@@ -85,6 +85,9 @@ snapshotted solver keep moving bodies deterministic across machines.
 ### `determinism §3` Lockstep over a room
 
 Every peer runs the whole world; only inputs and hashes cross the room.
+These are the rules a game keeps to stay in step; choosing a net mode,
+input delay, stalls, desyncs and testing a room are in `networking §1` to
+`networking §7`.
 
 - Exactly one system reads og.Input and calls og.net.submit; every other
   system reads og.PlayerInput (or the game's own input shape, declared
@@ -99,17 +102,8 @@ Every peer runs the whole world; only inputs and hashes cross the room.
 - With rollback, systems run again for re-simulated ticks: effects that
   leave the world (sounds, particles, haptics) check og.net.resimulating
   or come from events the engine deduplicates.
-- A peer that stalls past `stallTimeout` loses its seat (og.SeatDropped,
-  on one tick for everyone); the game hands that seat to a bot or ends
-  the match, the same way on every peer.
-- og.Desync names the first divergent tick; `dump_desync` gives the
-  component-level diff. Read it before guessing.
-- Test with `PlaytestDesc.room`: several processes, distinct scripts per
-  seat, and assertions on `run.lockstep` and the peers' `netHash`. Two
-  peers fed the same inputs agreeing proves little; feed them different
-  ones.
-- `og relay` plus `og run --room ws://127.0.0.1:P/<room>` plays a room by
-  hand.
+- What happens to a dropped seat (a bot, the match's end) is decided the
+  same way on every peer, from og.SeatDropped.
 
 <a id="guide-determinism-4"></a>
 ### `determinism §4` Destruction

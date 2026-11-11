@@ -2,15 +2,13 @@
 
 # The `input` module
 
-Input as the game sees it: the Input resource for polling, events for edges.
+Input as the game sees it: the Input resource for polling, events for edges, og.Pointers for several pointers at once (multi-touch) and og.Gamepad for up to eight pads. All of it is world state, so it replays.
 
-The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path.
-
-Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay.
-
-Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is.
+Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it, in action maps the player rebinds; prompts read each action's glyph (og.input.glyph).
 
 Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick.
+
+See `input`.
 
 - **TypeScript**: functions are the namespace `og.input`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -18,10 +16,8 @@ Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerL
 
 ```ogt
 module input {
-  doc "Input as the game sees it: the Input resource for polling, events for edges."
-  doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
-  doc "Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay."
-  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is."
+  doc "Input as the game sees it: the Input resource for polling, events for edges, og.Pointers for several pointers at once (multi-touch) and og.Gamepad for up to eight pads. All of it is world state, so it replays."
+  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it, in action maps the player rebinds; prompts read each action's glyph (og.input.glyph)."
   doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
   # declarations follow, each on its own page
 ```
@@ -42,7 +38,7 @@ module input {
 | [`InputDevice`](input/type-InputDevice.md) | enum |  | A kind of input device: the set a glyph is drawn from, the device used last, and what a pad is. |
 | [`ActionKind`](input/type-ActionKind.md) | enum |  | What an action gives. |
 | [`TouchZone`](input/type-TouchZone.md) | desc struct |  | Where on the play surface a touch binding's touches must start, in fractions of it from the top left; a zone of no size is all of it. |
-| [`InputBinding`](input/type-InputBinding.md) | desc struct |  | One binding of an action: a control, or a composite of parts (A and D as one axis, WASD as two). |
+| [`InputBinding`](input/type-InputBinding.md) | desc struct |  | One binding of an action: a control, or a composite of parts. |
 | [`ActionDesc`](input/type-ActionDesc.md) | desc struct |  | A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. |
 | [`ActionState`](input/type-ActionState.md) | struct |  | An action this tick. |
 | [`ActionInfo`](input/type-ActionInfo.md) | struct |  | An action as a controls screen lists it. |
@@ -54,7 +50,7 @@ module input {
 | [`CaptureDesc`](input/type-CaptureDesc.md) | desc struct |  | A capture of the player's next input for a slot of an action: a controls screen's "press a key". |
 | [`CaptureState`](input/type-CaptureState.md) | struct |  | Where a capture is: waiting, done with the control it took, or cancelled. |
 | [`InputGlyph`](input/type-InputGlyph.md) | struct |  | A control's glyph, for prompts and a controls screen. |
-| [`SensitivityDesc`](input/type-SensitivityDesc.md) | desc struct |  | The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity slid… |
+| [`SensitivityDesc`](input/type-SensitivityDesc.md) | desc struct |  | The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own. |
 | [`KeyLabel`](input/type-KeyLabel.md) | desc struct |  | A key and what the player's keyboard layout prints on it: `KeyQ` and `a` on AZERTY. |
 | [`MouseDesc`](input/type-MouseDesc.md) | desc struct |  | How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). |
 | [`MouseInfo`](input/type-MouseInfo.md) | struct |  | The mouse as the host reads it (og.input.mouse). |
@@ -89,7 +85,7 @@ module input {
 | [`og.input.setDeadzones`](input/fn-setDeadzones.md) | function | `(world: World, desc?: DeadzoneDesc): Result<void>` | A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings. |
 | [`og.input.setSensitivity`](input/fn-setSensitivity.md) | function | `(world: World, desc?: SensitivityDesc): Result<void>` | Set the player's sensitivity and inversion of an axis action on a device class (SensitivityDesc): applied from the next tick's actions, kept by og.input.saveBindings. |
 | [`og.input.sensitivity`](input/fn-sensitivity.md) | function | `(world: World, action: string, device?: InputDevice): SensitivityDesc` | An action's sensitivity on a device class (the device used last when omitted): the player's, else scale 1 and nothing inverted. |
-| [`og.input.setKeyboardLayout`](input/fn-setKeyboardLayout.md) | function | `(labels: readonly KeyLabel[]): void` | The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's … |
+| [`og.input.setKeyboardLayout`](input/fn-setKeyboardLayout.md) | function | `(labels: readonly KeyLabel[]): void` | Set the keys the player's keyboard layout prints, for glyphs: bindings still name physical keys (KeyboardEvent.code), so only their glyphs change (Z Q S D on AZERTY). |
 | [`og.input.keyboardLayout`](input/fn-keyboardLayout.md) | function | `(): readonly KeyLabel[]` | The keys the layout prints as og.input.setKeyboardLayout last set them, sorted by code (empty: the US layout). |
 | [`og.input.setMouse`](input/fn-setMouse.md) | function | `(world: World, desc?: MouseDesc): Result<void>` | Set how the host reads the mouse (MouseDesc: raw input). |
 | [`og.input.mouse`](input/fn-mouse.md) | function | `(world: World): MouseInfo` | How the host reads the mouse: raw input asked for, granted or refused by the browser. |
@@ -112,7 +108,7 @@ module input {
 | [`og.Input`](input/record-Input.md) | resource |  | The input state at the start of this tick (og-input's og.Input, version 2). |
 | [`og.Pointers`](input/record-Pointers.md) | resource |  | Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. |
 | [`og.PointerLock`](input/record-PointerLock.md) | resource |  | Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), t… |
-| [`og.Gamepad`](input/record-Gamepad.md) | resource |  | Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not … |
+| [`og.Gamepad`](input/record-Gamepad.md) | resource |  | Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. |
 | [`og.KeyDown`](input/record-KeyDown.md) | event |  | A key went down (a down for a held key is a repeat and sets no edge). |
 | [`og.TextInput`](input/record-TextInput.md) | event |  | Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. |
 | [`og.KeyUp`](input/record-KeyUp.md) | event |  | A key went up. |
@@ -133,10 +129,10 @@ module input {
 const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
 ```
 
-<sub>Module `input` line 8</sub>
+<sub>Module `input` line 7</sub>
 
 ```ogt
 const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."
 ```
 
-<sub>Module `input` line 9</sub>
+<sub>Module `input` line 8</sub>

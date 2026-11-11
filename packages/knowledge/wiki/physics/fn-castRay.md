@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.
 
+See `physics §4`.
+
 Also known as: ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle
 
 ```ts
@@ -26,6 +28,7 @@ Binding symbol `og_physics_cast_ray` · publish builds: kept
 ```ogt
 fn castRay {
   doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
+  guide "physics §4"
   aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
   param world World "The world."
   param desc RaycastDesc "The ray and the filter."
@@ -33,4 +36,4 @@ fn castRay {
 }
 ```
 
-<sub>Module `physics` line 1825</sub>
+<sub>Module `physics` line 1859</sub>

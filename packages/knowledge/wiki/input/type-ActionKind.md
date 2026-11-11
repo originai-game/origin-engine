@@ -25,4 +25,4 @@ enum ActionKind {
 }
 ```
 
-<sub>Module `input` line 61</sub>
+<sub>Module `input` line 60</sub>

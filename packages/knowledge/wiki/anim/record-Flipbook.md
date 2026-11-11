@@ -6,9 +6,11 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 ### `og.Flipbook` (component)
 
-Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems.
+Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or the frame's layer of an `array true` sheet's texture array. Played by og.flipbook by scaled time (Time.scaledDt), after the game's systems.
 
-Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block). An og.AnimationGraph of a GraphDesc.sprite graph on the entity writes clip, time and speed each tick: its states by the sheet's clip names, cut on frame boundaries.
+Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent; the playback position is world state (the og.flipbook state block). A sprite graph on the entity writes clip, time and speed.
+
+See `animation §9`.
 
 Token `og.Flipbook`, registered under the schema name `og.Flipbook`; its value type is `Flipbook`.
 
@@ -25,8 +27,9 @@ Token `og.Flipbook`, registered under the schema name `og.Flipbook`; its value t
 
 ```ogt
 component Flipbook {
-  doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or, for an `array true` sheet, the frame's layer of its texture array whole (the sprite keeps its size, colour, flips and layer). Played by the engine's og.flipbook system by scaled time (Time.scaledDt: slow motion, hit stop), after the game's systems."
-  doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent. The playback position is world state (the og.flipbook state block). An og.AnimationGraph of a GraphDesc.sprite graph on the entity writes clip, time and speed each tick: its states by the sheet's clip names, cut on frame boundaries."
+  doc "Plays a clip of a flipbook sheet on the entity's og.Sprite: extraction draws the sprite with the sheet's texture and the current frame's region and pivot, or the frame's layer of an `array true` sheet's texture array. Played by og.flipbook by scaled time (Time.scaledDt), after the game's systems."
+  doc "Changing clip restarts at the clip's first frame (or at `time`, written in the same tick); writing a different time is a seek. Frame events are og.FlipbookEvent; the playback position is world state (the og.flipbook state block). A sprite graph on the entity writes clip, time and speed."
+  guide "animation §9"
   field sheet FlipbookSheet "The sheet (og.load.flipbook's `sheet`); 0 is none."
   field clip u32 "The clip: an index into FlipbookInfo.clips (og.anim.clip finds one by name)." {
     min 0
@@ -56,4 +59,4 @@ component Flipbook {
 }
 ```
 
-<sub>Module `anim` line 669</sub>
+<sub>Module `anim` line 677</sub>

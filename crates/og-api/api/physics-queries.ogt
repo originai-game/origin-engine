@@ -1,5 +1,6 @@
   struct QueryFilter {
     doc "Which colliders a scene query considers. The zero value considers every solid collider on every layer."
+    guide "physics §4"
     desc true
     field mask u32 "Layers to consider: a collider counts when its layers meet this; 0 means every layer."
     field includeSensors bool "Also report sensors."
@@ -153,6 +154,7 @@
 
   fn castRay {
     doc "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them."
+    guide "physics §4"
     aliases "ray, line trace, hit test, mouse picking, Unity Physics.Raycast, Godot intersect_ray, Unreal LineTraceSingle"
     param world World "The world."
     param desc RaycastDesc "The ray and the filter."
@@ -243,7 +245,8 @@
     }
     field rotation Quaternion "Its rotation (steering and spin) in world space."
     field contact bool "Whether it touches the ground."
-    field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. Start smoke and skid marks above about 0.2, and fade a squeal in with it." {
+    field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D." {
+      guide "physics §7"
       min 0
       max 1
     }
@@ -378,7 +381,9 @@
 
   struct PhysicsPhase {
     doc "One phase of the last physics step, for og.physics.stats."
-    field name String "gather (reading the components), sync (bodies and static colliders into rapier), joints (joints and vehicles), ragdolls, water (buoyancy before the step), rapier (rapier's step, every substep), readout (touching pairs and bodies read back, the rest rule), controllers (characters and platformers), soft (ropes and cloths), fluids (2D), fluids3d or writeBack (components and events written back)."
+    field name String "The phase: gather, sync, joints, ragdolls, water, rapier, readout, controllers, soft, fluids, fluids3d or writeBack." {
+      guide "physics §3"
+    }
     field ms f64 "Wall-clock time it took (0 where the host has no clock); never world state." {
       unit ms
     }
@@ -387,6 +392,7 @@
 
   struct PhysicsStats {
     doc "What the last physics step cost, phase by phase, and where it ran: for finding where physics time goes. Timings are wall clock and vary run to run; the simulation never reads them."
+    guide "physics §3"
     field tick f64 "The tick the step ran (0 before the first)."
     field bodies u32 "The rapier bodies it stepped (with ragdoll bones and vehicle wheels)."
     field threads u32 "The lanes pool's threads at the time (1: lanes off or single-threaded)."

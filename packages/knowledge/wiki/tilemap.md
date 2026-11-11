@@ -2,17 +2,11 @@
 
 # The `tilemap` module
 
-Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component.
+Tilemaps: layers of tiles from a tileset atlas (a `type tileset` `.ogt`), loaded from a cooked map (a `type tilemap` `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component; og.tilemap.create and og.tilemap.resize make and change maps in game code.
 
-Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them.
+Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position.
 
-With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it).
-
-Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position.
-
-Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one collider per connected solid region, its outline (a hollow polyline in 2D, a prism in 3D; a layer's cellColliders makes it one diamond or hexagon per cell). Building them is one-time per map edit or resize; in 3D a non-orthogonal map's prisms build in about 75 ms per 400,000 triangles (a 256 × 256 hex map, half solid at random, release), so keep large 3D hex and iso collision layers in large solid regions, or edit them rarely. Stepping costs per region, not per cell. Terrain layers need a square grid (orthogonal or isometric).
-
-Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it.
+See `world §6`.
 
 - **TypeScript**: functions are the namespace `og.tilemap`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -20,12 +14,8 @@ Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize c
 
 ```ogt
 module tilemap {
-  doc "Tilemaps: layers of tiles from a tileset atlas (an `.ogt` of `type tileset`: grid, solid tiles and collision rects, animated tiles, 47-blob and 16-bitmask auto-tiling terrains), loaded from a cooked map (a hand-written `.ogt` of `type tilemap`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component."
-  doc "Layers draw through the sprite batch in 16x16-tile chunks culled to the view, each at the map's sprite layer plus its z, scrolled by its parallax; solid tiles become static og-physics colliders merged into rectangles. Runtime edits (og.tilemap.setTile, re-auto-tiling the neighbourhood) are world state (the og.tilemap state block), and the colliders follow them."
-  doc "With og.Lighting2D enabled, a layer whose sprite layer (the map's layer plus its z) lies in minLayer to maxLayer is lit as the sprites there are: multiplied by the ambient plus every Light2D reaching it, with the shadows of Occluder2Ds and castShadow sprites, so a dark cave lit by torches is the map, its lights and its occluders. A layer that should stay as authored in the lit range (a sky, a far parallax backdrop) opts out: a bool custom property `lit` set to false on the Tiled layer, or a `lit false` line in a tilemap `.ogt`'s layer block (TileLayerInfo.lit reports it)."
-  doc "Cells count from the top-left corner, x right and y down (Tiled's); the map's top-left corner is at the entity's position."
-  doc "Orientations: a map is orthogonal, isometric (diamonds on a turned grid), staggered (diamonds in rows) or hexagonal (pointy- or flat-top), from its `orientation` line or its Tiled map. cellAt, cellCenter and neighbours follow it; an isometric or staggered tile's image stands up from its cell's bottom (taller tiles overlap the ones behind, drawn back to front); solid tiles off the orthogonal grid collide as one collider per connected solid region, its outline (a hollow polyline in 2D, a prism in 3D; a layer's cellColliders makes it one diamond or hexagon per cell). Building them is one-time per map edit or resize; in 3D a non-orthogonal map's prisms build in about 75 ms per 400,000 triangles (a 256 × 256 hex map, half solid at random, release), so keep large 3D hex and iso collision layers in large solid regions, or edit them rarely. Stepping costs per region, not per cell. Terrain layers need a square grid (orthogonal or isometric)."
-  doc "Run-time maps: og.tilemap.create makes a map from a desc and og.tilemap.resize changes a map's size, both in game code. A map made or resized is world state: the og.tilemap state block saves it whole (its tilesets by asset id), so a save restores it in a session that never made it."
+  doc "Tilemaps: layers of tiles from a tileset atlas (a `type tileset` `.ogt`), loaded from a cooked map (a `type tilemap` `.ogt`, a Tiled `.tmj` or an LDtk `.ldtk`) with og.load.tilemap and placed by an og.Tilemap component; og.tilemap.create and og.tilemap.resize make and change maps in game code."
+  doc "Layers draw through the sprite batch; solid tiles become static colliders. Edits and run-time maps are world state (the og.tilemap state block). Cells count from the top-left corner, x right and y down (Tiled's), at the entity's position."
   # declarations follow, each on its own page
 ```
 
@@ -74,4 +64,4 @@ column TilemapAsset {
 }
 ```
 
-<sub>Module `tilemap` line 11</sub>
+<sub>Module `tilemap` line 8</sub>

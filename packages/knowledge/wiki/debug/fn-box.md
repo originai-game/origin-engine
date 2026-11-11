@@ -33,4 +33,4 @@ fn box {
 }
 ```
 
-<sub>Module `debug` line 30</sub>
+<sub>Module `debug` line 31</sub>

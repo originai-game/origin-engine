@@ -23,4 +23,4 @@ struct GltfPart {
 }
 ```
 
-<sub>Module `load` line 66</sub>
+<sub>Module `load` line 68</sub>

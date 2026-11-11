@@ -14,24 +14,51 @@ Also known as: ducking, side-chain, compressor, low-pass, mixer effects, Unity A
 
 Token `og.AudioBusFx`, registered under the schema name `og.AudioBusFx`; its value type is `AudioBusFx`.
 
+#### Bus
+
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `bus` | `AudioBus` | `"music"` | — | — | — | The bus these effects are on. |
+
+#### Filters and reverb send
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `lowpass` | `number` | `0` | 0 … 20000 | `hz` | tunable | Low-pass cutoff; 0 is off. |
 | `highpass` | `number` | `0` | 0 … 20000 | `hz` | tunable | High-pass cutoff; 0 is off. |
 | `reverb` | `number` | `0` | 0 … 1 | — | tunable | How much of the bus goes to the reverb. |
+
+#### Compressor
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `threshold` | `number` | `0` | -60 … 0 | `db` | tunable | The compressor's threshold; 0 dB is off. |
 | `ratio` | `number` | `4` | 1 … 30 | — | tunable | The compressor's ratio: dB in over the threshold per dB out. |
 | `attack` | `number` | `0.005` | 0 … 1 | `s` | tunable | The compressor's attack. |
 | `release` | `number` | `0.15` | 0 … 3 | `s` | tunable | The compressor's release. |
 | `makeup` | `number` | `0` | -24 … 24 | `db` | tunable | Gain after the compressor. |
+
+#### Ducking
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `duck` | `boolean` | `false` | — | — | — | Turns this bus down while duckBus is loud: music under effects or dialogue. |
 | `duckBus` | `AudioBus` | `"sfx"` | — | — | — | The bus that ducks this one. |
 | `duckDepth` | `number` | `9` | 0 … 60 | `db` | tunable | How far it is turned down. |
 | `duckThreshold` | `number` | `-36` | -80 … 0 | `db` | tunable | How loud the key bus must be. |
 | `duckAttack` | `number` | `0.02` | 0 … 2 | `s` | tunable | How fast it goes down. |
 | `duckRelease` | `number` | `0.4` | 0 … 5 | `s` | tunable | How fast it comes back. |
+
+#### Routing
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `userBus` | `number` | `0` | 0 … 15 | — | — | A user bus (4 to 15, an og.AudioBusNode) these effects are on instead of `bus`; 0 uses `bus`. |
+
+#### Equaliser
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `eqLow` | `number` | `0` | -24 … 24 | `db` | tunable | The equaliser's low shelf (RBJ, 12 dB/octave): its gain below eqLowFreq; 0 dB is flat. |
 | `eqLowFreq` | `number` | `200` | 20 … 2000 | `hz` | tunable | The low shelf's corner frequency. |
 | `eqMid` | `number` | `0` | -24 … 24 | `db` | tunable | The equaliser's mid band (a peak, or a notch below 0 dB): its gain at eqMidFreq; 0 dB is flat. |
@@ -39,9 +66,19 @@ Token `og.AudioBusFx`, registered under the schema name `og.AudioBusFx`; its val
 | `eqMidQ` | `number` | `0.7` | 0.1 … 10 | — | tunable | The mid band's Q: higher is narrower. |
 | `eqHigh` | `number` | `0` | -24 … 24 | `db` | tunable | The equaliser's high shelf: its gain above eqHighFreq; 0 dB is flat. |
 | `eqHighFreq` | `number` | `5000` | 1000 … 20000 | `hz` | tunable | The high shelf's corner frequency. |
+
+#### Delay
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `delay` | `number` | `0` | 0 … 2 | `s` | tunable | An echo after the compressor: the delay's time, to the sample; 0 is off. |
 | `delayFeedback` | `number` | `0.35` | 0 … 0.95 | — | tunable | How much of each echo feeds the next. |
 | `delayMix` | `number` | `0.35` | 0 … 1 | — | tunable | How loud the echoes are, added to the dry bus. |
+
+#### Distortion
+
+| Field | Type | Default | Range | Unit | Notes | Doc |
+|---|---|---|---|---|---|---|
 | `distortion` | `number` | `0` | 0 … 1 | — | tunable | A tanh waveshaper after the equaliser: its drive, 0 (off) to 1 (heavy: 20x into the curve), scaled so a full-scale input stays at full scale. |
 | `distortionMix` | `number` | `1` | 0 … 1 | — | tunable | How much of the distorted signal replaces the clean one. |
 
@@ -50,9 +87,11 @@ component AudioBusFx {
   doc "A bus's insert effects: a high- and low-pass (12 dB/octave), a compressor, side-chain ducking by another bus, and a send to the shared reverb, whose return joins master. One entity per bus (the first in query order counts); without one a bus passes straight through."
   doc "Changes reach the mixer through the command stream, so they are deterministic and in the world hash; the PCM is the mixer's."
   aliases "ducking, side-chain, compressor, low-pass, mixer effects, Unity AudioMixer, Godot AudioEffect"
+  group "Bus"
   field bus AudioBus "The bus these effects are on." {
     default music
   }
+  group "Filters and reverb send"
   field lowpass f32 "Low-pass cutoff; 0 is off." {
     min 0
     max 20000
@@ -70,6 +109,7 @@ component AudioBusFx {
     max 1
     tunable true
   }
+  group "Compressor"
   field threshold f32 "The compressor's threshold; 0 dB is off." {
     min -60
     max 0
@@ -102,6 +142,7 @@ component AudioBusFx {
     unit db
     tunable true
   }
+  group "Ducking"
   field duck bool "Turns this bus down while duckBus is loud: music under effects or dialogue."
   field duckBus AudioBus "The bus that ducks this one." {
     default sfx
@@ -134,10 +175,12 @@ component AudioBusFx {
     unit s
     tunable true
   }
+  group "Routing"
   field userBus u32 "A user bus (4 to 15, an og.AudioBusNode) these effects are on instead of `bus`; 0 uses `bus`." {
     min 0
     max 15
   }
+  group "Equaliser"
   field eqLow f32 "The equaliser's low shelf (RBJ, 12 dB/octave): its gain below eqLowFreq; 0 dB is flat." {
     min -24
     max 24
@@ -183,6 +226,7 @@ component AudioBusFx {
     unit hz
     tunable true
   }
+  group "Delay"
   field delay f32 "An echo after the compressor: the delay's time, to the sample; 0 is off." {
     min 0
     max 2
@@ -201,6 +245,7 @@ component AudioBusFx {
     max 1
     tunable true
   }
+  group "Distortion"
   field distortion f32 "A tanh waveshaper after the equaliser: its drive, 0 (off) to 1 (heavy: 20x into the curve), scaled so a full-scale input stays at full scale." {
     min 0
     max 1
@@ -215,4 +260,4 @@ component AudioBusFx {
 }
 ```
 
-<sub>Module `audio` line 267</sub>
+<sub>Module `audio` line 275</sub>

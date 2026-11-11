@@ -6,7 +6,9 @@ Module [`camera`](../camera.md) · [index](../index.md)
 
 ### `og.camera.punch`
 
-A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only.
+A zoom punch: the view narrows by `amount` and springs back by Camera.punchDecay. Visual only.
+
+See `camera §4`.
 
 ```ts
 og.camera.punch(world: World, amount: number): Result<void>
@@ -23,11 +25,12 @@ Binding symbol `og_camera_punch` · publish builds: kept
 
 ```ogt
 fn punch {
-  doc "A zoom punch: the view narrows by `amount` (0.05 is a tap, 0.15 a slam) and springs back by Camera.punchDecay. Visual only."
+  doc "A zoom punch: the view narrows by `amount` and springs back by Camera.punchDecay. Visual only."
+  guide "camera §4"
   param world World "The world."
   param amount f32 "The fraction to zoom in (negative zooms out), -0.9 to 4."
   returns Result.Void
 }
 ```
 
-<sub>Module `camera` line 547</sub>
+<sub>Module `camera` line 569</sub>

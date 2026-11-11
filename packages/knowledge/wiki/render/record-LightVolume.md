@@ -6,9 +6,11 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.LightVolume` (component)
 
-A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side.
+A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (off static models, the sky, emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every surface drawn inside it without a lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing.
 
-The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene.
+The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Unbaked, it lights nothing and og doctor --project names the scene.
+
+See `render §4`.
 
 Token `og.LightVolume`, registered under the schema name `og.LightVolume`; its value type is `LightVolume`.
 
@@ -19,8 +21,9 @@ Token `og.LightVolume`, registered under the schema name `og.LightVolume`; its v
 
 ```ogt
 component LightVolume {
-  doc "A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every mesh, model, skinned character and particle-lit surface drawn inside it that has no lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing: a ball rolling past a red wall turns red on that side."
-  doc "The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Its probes are the scene's: unbaked (no bake since the volume was added, moved or resized) it lights nothing and og doctor --project names the scene."
+  doc "A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (off static models, the sky, emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every surface drawn inside it without a lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing."
+  doc "The box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Unbaked, it lights nothing and og doctor --project names the scene."
+  guide "render §4"
   field size Vector3 "The box's extent along world x, y and z." {
     default 4 4 4
     unit m
@@ -34,4 +37,4 @@ component LightVolume {
 }
 ```
 
-<sub>Module `render` line 3915</sub>
+<sub>Module `render` line 4128</sub>

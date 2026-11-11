@@ -29,7 +29,7 @@ A string: one of the variants below. The zero value is `"none"`.
 | `"terrainLayers"` | Terrain's strongest raw layer (control times slope and altitude), coloured by index; magenta means the first-layer fallback. Brightness shows its share before height blending. |
 | `"terrainMip"` | Terrain normal-map mip footprint: one colour per estimated isotropic mip, darkening between levels. This is a derivative-based estimate, not the hardware anisotropic mip selection. |
 | `"terrainProjection"` | Dominant raw terrain layer's actual projection weights, XYZ as RGB, without cell or morph overlays. Planar layers are green (top-down Y projection). |
-| `"terrainDensity"` | Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB. Each linear channel is d/(1+d), where d is base-level texels per vertical screen pixel; 0.5 means one texel per pixel. Density is measured before projection weighting; a missing albedo shows the unsupported checker. |
+| `"terrainDensity"` | Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB, each linear channel d/(1+d) for d base-level texels per vertical screen pixel (0.5: one texel per pixel), measured before projection weighting; a missing albedo shows the unsupported checker. |
 
 ```ogt
 enum DebugView {
@@ -51,8 +51,8 @@ enum DebugView {
   variant terrainLayers "Terrain's strongest raw layer (control times slope and altitude), coloured by index; magenta means the first-layer fallback. Brightness shows its share before height blending."
   variant terrainMip "Terrain normal-map mip footprint: one colour per estimated isotropic mip, darkening between levels. This is a derivative-based estimate, not the hardware anisotropic mip selection."
   variant terrainProjection "Dominant raw terrain layer's actual projection weights, XYZ as RGB, without cell or morph overlays. Planar layers are green (top-down Y projection)."
-  variant terrainDensity "Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB. Each linear channel is d/(1+d), where d is base-level texels per vertical screen pixel; 0.5 means one texel per pixel. Density is measured before projection weighting; a missing albedo shows the unsupported checker."
+  variant terrainDensity "Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB, each linear channel d/(1+d) for d base-level texels per vertical screen pixel (0.5: one texel per pixel), measured before projection weighting; a missing albedo shows the unsupported checker."
 }
 ```
 
-<sub>Module `render` line 75</sub>
+<sub>Module `render` line 78</sub>

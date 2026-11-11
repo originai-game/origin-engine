@@ -8,7 +8,7 @@ Module [`render`](../render.md) · [index](../index.md)
 
 Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices).
 
-Missing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points.
+Missing normals are computed, as three.js computeVertexNormals (area-weighted: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -26,7 +26,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 ```ogt
 struct BufferGeometryDesc {
   doc "Geometry from attribute arrays, as three.js BufferGeometry with its attributes set: one item per vertex in each array, triangles three indices each (or, with no indices, every three vertices)."
-  doc "Missing normals are computed, as three.js computeVertexNormals (each vertex the area-weighted sum of its triangles' normals: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points."
+  doc "Missing normals are computed, as three.js computeVertexNormals (area-weighted: shared vertices shade smooth, an unindexed geometry flat); missing tangents are generated when a normal map needs them. An unindexed geometry whose vertex count is not a multiple of three has no triangles: it draws nothing as an og.Mesh and is a vertex set for og.Lines and og.Points."
   desc true
   field positions Float32Array "The vertex positions, x y z per vertex (three.js `position`); at least one vertex."
   field normals Option.Float32Array "Unit normals, x y z per vertex; null computes them."
@@ -41,4 +41,4 @@ struct BufferGeometryDesc {
 }
 ```
 
-<sub>Module `render` line 2874</sub>
+<sub>Module `render` line 3078</sub>

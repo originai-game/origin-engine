@@ -71,15 +71,15 @@ module render {
 | [`ScreenBlur()`](#column-ScreenBlur) | column kind |  | A ScreenBlur field: the variant's index. |
 | [`SpriteBlend`](render/type-SpriteBlend.md) | enum |  | How a sprite is blended over what is below it. |
 | [`SpriteBlend()`](#column-SpriteBlend) | column kind |  | A SpriteBlend field: the variant's index. |
-| [`SpriteFacing`](render/type-SpriteFacing.md) | enum |  | How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite). |
+| [`SpriteFacing`](render/type-SpriteFacing.md) | enum |  | How a world sprite turns towards the camera that draws it: a billboard (three.js Sprite), a mode of og.Sprite and SpriteDesc. |
 | [`SpriteFacing()`](#column-SpriteFacing) | column kind |  | A SpriteFacing field: the variant's index. |
 | [`StripBlend`](render/type-StripBlend.md) | enum |  | How a trail, ribbon or beam is blended. |
 | [`StripBlend()`](#column-StripBlend) | column kind |  | A StripBlend field: the variant's index. |
 | [`og.PostEffects`](render/record-PostEffects.md) | resource |  | The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. |
-| [`og.LensFlare`](render/record-LensFlare.md) | resource |  | Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo mirror the bright parts of the bloom chain's first level through the centre of the frame with chromatic aberration… |
+| [`og.LensFlare`](render/record-LensFlare.md) | resource |  | Lens flare, as Filament's screen-space flare (after John Chapman): ghosts and a halo of the bright parts of the bloom chain's first level mirrored through the frame's centre, plus ghosts of the sun a… |
 | [`GiMethod`](render/type-GiMethod.md) | enum |  | How GlobalIllumination bounces the light. |
 | [`GiMethod()`](#column-GiMethod) | column kind |  | A GiMethod field: the variant's index. |
-| [`og.GlobalIllumination`](render/record-GlobalIllumination.md) | resource |  | Global illumination: light bounces between surfaces, so shade is lit by what stands around it. |
+| [`og.GlobalIllumination`](render/record-GlobalIllumination.md) | resource |  | Global illumination: light bounces between surfaces, so shade is lit by what stands around it, traced in screen space, with probes, or both (method). |
 | [`Palette`](render/type-Palette.md) | handle |  | A colour palette for Stylise.palette, from og.load.palette (a `.hex` or GIMP `.gpl` file of up to 256 colours). |
 | [`Look`](render/type-Look.md) | handle |  | A look from og.load.look (an `.ogt` of `type look`): the frame's whole art direction as data, applied with og.render.applyLook. |
 | [`Palette()`](#column-Palette) | column kind |  | A Palette handle field (0 is none). |
@@ -98,8 +98,8 @@ module render {
 | [`HalftoneMode()`](#column-HalftoneMode) | column kind |  | A HalftoneMode field: the variant's index. |
 | [`HalftoneRegion`](render/type-HalftoneRegion.md) | enum |  | Which tones Stylise.halftone prints on. |
 | [`HalftoneRegion()`](#column-HalftoneRegion) | column kind |  | A HalftoneRegion field: the variant's index. |
-| [`og.Stylise`](render/record-Stylise.md) | resource |  | Stylisation primitives that move the frame away from the photographic: a low-resolution pixel grid scaled up by whole numbers, fewer tones or a fixed palette through an ordered or blue-noise dither, … |
-| [`og.MaterialStyle`](render/record-MaterialStyle.md) | resource |  | Stylised defaults for every lit material, so a whole scene takes one treatment without editing each material: toon shading and its ramp, a coloured shadow side, rim light, outlines whose width falls … |
+| [`og.Stylise`](render/record-Stylise.md) | resource |  | Stylisation primitives that move the frame away from the photographic: a whole-number pixel grid, fewer tones or a fixed palette through a dither, halftone dots, cross-hatching, paint and watercolour… |
+| [`og.MaterialStyle`](render/record-MaterialStyle.md) | resource |  | Stylised defaults for every lit material, for a whole scene at once: toon shading and its ramp, a coloured shadow side, rim light, distance-scaled outlines, flat facets, made surfaces and wireframe. |
 | [`LookInfo`](render/type-LookInfo.md) | struct |  | A loaded look: where it came from and what applying it sets. |
 | [`og.Lighting2D`](render/record-Lighting2D.md) | resource |  | 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus e… |
 | [`Light2DKind`](render/type-Light2DKind.md) | enum |  | What shape of light a Light2D is. |
@@ -140,7 +140,7 @@ module render {
 | [`MAX_REFLECTION_PROBES`](#const-MAX_REFLECTION_PROBES) | constant |  | The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped. |
 | [`ReflectionProbeMode`](render/type-ReflectionProbeMode.md) | enum |  | When a reflection probe's cube is rendered. |
 | [`ReflectionProbeMode()`](#column-ReflectionProbeMode) | column kind |  | A ReflectionProbeMode field: the variant's index. |
-| [`og.ReflectionProbe`](render/record-ReflectionProbe.md) | component |  | A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (the reflected ray meets the box, so a room's walls reflect where t… |
+| [`og.ReflectionProbe`](render/record-ReflectionProbe.md) | component |  | A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity) and blende… |
 | [`og.render.standardMaterial`](render/fn-standardMaterial.md) | function | `(world: World, desc?: StandardMaterialDesc): Result<Material>` | Create a standard material. |
 | [`og.render.updateMaterial`](render/fn-updateMaterial.md) | function | `(world: World, material: Material, desc?: StandardMaterialDesc): Result<void>` | Change some parameters of a standard material. |
 | [`Shader`](render/type-Shader.md) | handle |  | A material shader from og.load.shader (an `.ogt` of `type shader`): WGSL hooks of the lit shader, or with `mode full` its own vertex and fragment entries, and the parameters they read. |
@@ -148,7 +148,7 @@ module render {
 | [`og.render.shaderMaterial`](render/fn-shaderMaterial.md) | function | `(world: World, shader: Shader, desc?: StandardMaterialDesc): Result<Material>` | Create a standard material that draws with a material shader's hooks (vertex_offset, surface_color, surface_normal, surface_emissive), its parameters at their defaults. |
 | [`og.render.setMaterialShader`](render/fn-setMaterialShader.md) | function | `(world: World, material: Material, shader: Shader \| null): Result<void>` | Give an existing material a material shader, or take it away with null: a loaded model's material (GltfInfo.materials) draws its skinned or static meshes through the hooks, with the shader's paramete… |
 | [`og.render.setShaderParam`](render/fn-setShaderParam.md) | function | `(world: World, material: Material, name: string, value: readonly number[]): Result<void>` | Set a parameter of a shader material, by the name its shader declares: a number for float, two to four for vec2, vec3, vec4 and color. |
-| [`og.render.applyLook`](render/fn-applyLook.md) | function | `(world: World, look: Look): Result<void>` | Apply a look, in GameDesc.start (or name it in GameDesc.look) or at any tick for a level's mood, a flashback or a photo mode: every resource the look names is replaced whole (the fields it sets take … |
+| [`og.render.applyLook`](render/fn-applyLook.md) | function | `(world: World, look: Look): Result<void>` | Apply a look: every resource the look names is replaced whole (the fields it sets take its values, the rest their defaults; PostEffects.flash and PostEffects.shakeTrauma keep theirs), and the UI is c… |
 | [`og.render.applyQuality`](render/fn-applyQuality.md) | function | `(world: World, preset: GraphicsQuality): Result<void>` | Apply a graphics preset: write its row of RenderSettings' quality fields (the rest of RenderSettings keeps its values) and record it in RenderSettings.quality. |
 | [`FrameCap`](render/type-FrameCap.md) | enum |  | How many frames a second the display draws at most (DisplaySettings.frameCap). |
 | [`PowerPreference`](render/type-PowerPreference.md) | enum |  | Which GPU the browser's adapter is asked for (requestAdapter's powerPreference), on a laptop with two. |
@@ -215,7 +215,7 @@ module render {
 | [`RaycastGeometryDesc`](render/type-RaycastGeometryDesc.md) | desc struct |  | Which meshes og.render.raycast tests, as three.js Raycaster's near, far and layers. |
 | [`GeometryHit`](render/type-GeometryHit.md) | struct |  | Where a ray meets a drawn triangle, as three.js Raycaster's intersection. |
 | [`og.render.raycast`](render/fn-raycast.md) | function | `(world: World, ray: Ray, desc?: RaycastGeometryDesc): Result<readonly GeometryHit[]>` | Every drawn triangle a ray crosses, nearest first, as three.js Raycaster.intersectObjects: what is drawn, not the colliders (og.physics.castRay answers those). |
-| [`og.render.light2dAt`](render/fn-light2dAt.md) | function | `(world: World, point: Vector2, layers?: number): Result<Color>` | The 2D light reaching a point, for game rules (a stealth game's "is the player lit"): the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its fall… |
+| [`og.render.light2dAt`](render/fn-light2dAt.md) | function | `(world: World, point: Vector2, layers?: number): Result<Color>` | The 2D light reaching a point, for game rules: the sum of every og.Light2D whose layers share a bit with `layers`, each its color times intensity times its falloff (and a spot's cone), blocked when c… |
 | [`RenderTargetFormat`](render/type-RenderTargetFormat.md) | enum |  | How a render target's colour is stored. |
 | [`RenderTargetFormat()`](#column-RenderTargetFormat) | column kind |  | A RenderTargetFormat field: the variant's index. |
 | [`RenderTarget`](render/type-RenderTarget.md) | handle |  | A texture a camera draws into (og.render.renderTarget), as three.js WebGLRenderTarget. |
@@ -223,7 +223,7 @@ module render {
 | [`RenderTargetDesc`](render/type-RenderTargetDesc.md) | desc struct |  | A render target's size and storage, as three.js WebGLRenderTarget's width, height, type and depthTexture. |
 | [`RenderTargetInfo`](render/type-RenderTargetInfo.md) | struct |  | What og.render.renderTarget made. |
 | [`og.render.renderTarget`](render/fn-renderTarget.md) | function | `(world: World, desc?: RenderTargetDesc): Result<RenderTargetInfo>` | Make a render target: a texture an og.CameraView or og.Mirror draws into, its colour (RenderTargetInfo.texture) usable by any map, sprite or UI image, as three.js WebGLRenderTarget and its texture. |
-| [`og.CameraView`](render/record-CameraView.md) | component |  | A secondary camera, as a second three.js camera rendered with setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z, as og.Camera) into a render … |
+| [`og.CameraView`](render/record-CameraView.md) | component |  | A secondary camera, as three.js's setRenderTarget or setViewport: it draws the scene from the entity's MatrixWorld (looking down its local -Z) into a render target, or without one into a viewport rec… |
 | [`og.Mirror`](render/record-Mirror.md) | component |  | A planar mirror: the main camera reflected in the entity's xy plane (its local +Z the mirror's facing side), drawn into target fitted to a width by height rect centred on the entity, as a mirrored og… |
 | [`Post`](render/type-Post.md) | handle |  | A custom post pass from og.load.post (an `.ogt` of `type post`): a WGSL `post` function over the lit image and the parameters it reads. |
 | [`Post()`](#column-Post) | column kind |  | A Post handle field (0 is none). |
@@ -231,9 +231,9 @@ module render {
 | [`PostError`](render/type-PostError.md) | struct |  | A custom post pass the device failed to compile. |
 | [`og.render.postErrors`](render/fn-postErrors.md) | function | `(world: World): readonly PostError[]` | The custom post passes PostEffects.custom names that failed to compile on this device, each skipped (the frame draws as without it). |
 | [`VolumetricFog`](render/type-VolumetricFog.md) | enum |  | How the device draws Fog.volumetric (RenderCapabilities.volumetricFog). |
-| [`og.RectLight`](render/record-RectLight.md) | component |  | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z (aim it with transform.lookAt, as a spot), emitting colo… |
-| [`og.LightVolume`](render/record-LightVolume.md) | component |  | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (bounced off its static models, from the sky, from emissive surfaces) at a grid of point… |
-| [`og.RealtimeLightVolume`](render/record-RealtimeLightVolume.md) | component |  | Relights the LightVolume on the same entity while the game runs, so its probes follow moving lights, opening doors, a sun crossing the sky and switched lamps: each probe is relit by capturing the sce… |
+| [`og.RectLight`](render/record-RectLight.md) | component |  | A rectangle of light, as three.js RectAreaLight: width by height metres centred on the entity in its local xy plane, facing along its local -Z, emitting color * intensity from its front (both faces w… |
+| [`og.LightVolume`](render/record-LightVolume.md) | component |  | A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (off static models, the sky, emissive surfaces) at a grid of points spacing metres apart… |
+| [`og.RealtimeLightVolume`](render/record-RealtimeLightVolume.md) | component |  | Relights the LightVolume on the same entity while the game runs: each probe captures the scene around it (six small views), a few a frame, following moving lights, doors and the sun, gaining a bounce… |
 | [`BakedScene`](render/type-BakedScene.md) | struct |  | One instantiated scene's baked lighting, as og.render.bakedLighting reports it. |
 | [`og.render.bakedLighting`](render/fn-bakedLighting.md) | function | `(world: World): readonly BakedScene[]` | The baked lighting of every scene instantiated in the world, in instantiation order: whether it is drawn, and why not. |
 
@@ -309,7 +309,7 @@ column Upscaler {
 }
 ```
 
-<sub>Module `render` line 68</sub>
+<sub>Module `render` line 71</sub>
 
 ```ogt
 column ToneMapping {
@@ -320,7 +320,7 @@ column ToneMapping {
 }
 ```
 
-<sub>Module `render` line 540</sub>
+<sub>Module `render` line 582</sub>
 
 ```ogt
 column AoResolutionSetting {
@@ -331,7 +331,7 @@ column AoResolutionSetting {
 }
 ```
 
-<sub>Module `render` line 561</sub>
+<sub>Module `render` line 604</sub>
 
 ```ogt
 column QualityPreset {
@@ -342,7 +342,7 @@ column QualityPreset {
 }
 ```
 
-<sub>Module `render` line 576</sub>
+<sub>Module `render` line 619</sub>
 
 ```ogt
 column Texture {
@@ -353,7 +353,7 @@ column Texture {
 }
 ```
 
-<sub>Module `render` line 732</sub>
+<sub>Module `render` line 797</sub>
 
 ```ogt
 column Lut {
@@ -364,7 +364,7 @@ column Lut {
 }
 ```
 
-<sub>Module `render` line 739</sub>
+<sub>Module `render` line 804</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -375,7 +375,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>Module `render` line 746</sub>
+<sub>Module `render` line 811</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -386,7 +386,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>Module `render` line 813</sub>
+<sub>Module `render` line 879</sub>
 
 ```ogt
 column AoMethod {
@@ -397,7 +397,7 @@ column AoMethod {
 }
 ```
 
-<sub>Module `render` line 828</sub>
+<sub>Module `render` line 895</sub>
 
 ```ogt
 column AoResolution {
@@ -408,7 +408,7 @@ column AoResolution {
 }
 ```
 
-<sub>Module `render` line 841</sub>
+<sub>Module `render` line 908</sub>
 
 ```ogt
 column DofQuality {
@@ -419,7 +419,7 @@ column DofQuality {
 }
 ```
 
-<sub>Module `render` line 854</sub>
+<sub>Module `render` line 921</sub>
 
 ```ogt
 column ScreenBlur {
@@ -430,7 +430,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>Module `render` line 869</sub>
+<sub>Module `render` line 936</sub>
 
 ```ogt
 column SpriteBlend {
@@ -441,7 +441,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>Module `render` line 882</sub>
+<sub>Module `render` line 949</sub>
 
 ```ogt
 column SpriteFacing {
@@ -452,7 +452,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>Module `render` line 896</sub>
+<sub>Module `render` line 964</sub>
 
 ```ogt
 column StripBlend {
@@ -463,7 +463,7 @@ column StripBlend {
 }
 ```
 
-<sub>Module `render` line 909</sub>
+<sub>Module `render` line 977</sub>
 
 ```ogt
 column GiMethod {
@@ -474,7 +474,7 @@ column GiMethod {
 }
 ```
 
-<sub>Module `render` line 1309</sub>
+<sub>Module `render` line 1406</sub>
 
 ```ogt
 column Palette {
@@ -485,7 +485,7 @@ column Palette {
 }
 ```
 
-<sub>Module `render` line 1379</sub>
+<sub>Module `render` line 1478</sub>
 
 ```ogt
 column Look {
@@ -496,7 +496,7 @@ column Look {
 }
 ```
 
-<sub>Module `render` line 1386</sub>
+<sub>Module `render` line 1485</sub>
 
 ```ogt
 column DitherPattern {
@@ -507,7 +507,7 @@ column DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1403</sub>
+<sub>Module `render` line 1502</sub>
 
 ```ogt
 column MaterialSurface {
@@ -518,7 +518,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>Module `render` line 1418</sub>
+<sub>Module `render` line 1517</sub>
 
 ```ogt
 column OutlinePlace {
@@ -529,7 +529,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>Module `render` line 1432</sub>
+<sub>Module `render` line 1531</sub>
 
 ```ogt
 column StyliseSpace {
@@ -540,7 +540,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>Module `render` line 1446</sub>
+<sub>Module `render` line 1546</sub>
 
 ```ogt
 column PosterizeMode {
@@ -551,7 +551,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1459</sub>
+<sub>Module `render` line 1559</sub>
 
 ```ogt
 column HalftoneMode {
@@ -562,7 +562,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1472</sub>
+<sub>Module `render` line 1573</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -573,7 +573,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1486</sub>
+<sub>Module `render` line 1587</sub>
 
 ```ogt
 column Light2DKind {
@@ -584,7 +584,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 1866</sub>
+<sub>Module `render` line 2010</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -595,7 +595,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 2626</sub>
+<sub>Module `render` line 2836</sub>
 
 ```ogt
 column Shader {
@@ -606,7 +606,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2683</sub>
+<sub>Module `render` line 2894</sub>
 
 ```ogt
 column LineMode {
@@ -617,7 +617,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3497</sub>
+<sub>Module `render` line 3701</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -628,7 +628,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3707</sub>
+<sub>Module `render` line 3912</sub>
 
 ```ogt
 column RenderTarget {
@@ -639,7 +639,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3716</sub>
+<sub>Module `render` line 3921</sub>
 
 ```ogt
 column Post {
@@ -650,7 +650,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 3852</sub>
+<sub>Module `render` line 4061</sub>
 
 ## Constants
 
@@ -659,35 +659,35 @@ column Post {
 | <a id="const-PARTICLES_ARMED"></a>`PARTICLES_ARMED` | `number` | `4294967295` | ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it. |
 | <a id="const-MAX_LIGHTS"></a>`MAX_LIGHTS` | `number` | `256` | The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept. |
 | <a id="const-MAX_CLUSTER_LIGHTS"></a>`MAX_CLUSTER_LIGHTS` | `number` | `64` | The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there. |
-| <a id="const-UI_LAYER"></a>`UI_LAYER` | `number` | `1000` | The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way. |
+| <a id="const-UI_LAYER"></a>`UI_LAYER` | `number` | `1000` | The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way. |
 | <a id="const-MAX_REFLECTION_PROBES"></a>`MAX_REFLECTION_PROBES` | `number` | `8` | The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped. |
 
 ```ogt
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 1990</sub>
+<sub>Module `render` line 2135</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2578</sub>
+<sub>Module `render` line 2756</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2579</sub>
+<sub>Module `render` line 2757</sub>
 
 ```ogt
-const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included (a HUD element made of sprites sitting on a UI panel: draw it only while its screen shows), in their layers' order either way."
+const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2580</sub>
+<sub>Module `render` line 2758</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 2618</sub>
+<sub>Module `render` line 2828</sub>

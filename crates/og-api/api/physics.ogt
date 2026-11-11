@@ -1,7 +1,8 @@
 module physics {
   doc "Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back."
-  doc "The profile is the project's (`profile \"2d\"` or `\"3d\"` in project.ogt). In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
+  doc "The profile is project.ogt's `profile`. In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform."
   doc "The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1."
+  guide "physics"
 
   const MAX_RAYCAST_HITS u32 256 "The most hits og.physics.castRayAll returns."
   const LOCK_TRANSLATION_X u32 1 "RigidBody.lock bit: no translation along x."
@@ -24,9 +25,10 @@ module physics {
 
   enum RigidBodyType {
     doc "A body's simulation mode. Fixed has Rapier's meaning; kinematic is the engine's combined Velocity/Transform contract."
+    guide "physics §1"
     variant dynamic "Moved by the solver; Transform and Velocity are written back every tick."
     variant fixed "Not moved by the solver; collides with dynamic bodies."
-    variant kinematic "Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Unlike Rapier there are no separate position-based and velocity-based modes: Transform is not a next-position target from which velocity is inferred."
+    variant kinematic "Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Transform is not a next-position target from which velocity is inferred."
   }
 
   column RigidBodyType {
@@ -40,6 +42,7 @@ module physics {
     doc "A body the physics step simulates. It needs an og.Transform and usually has an og.Collider; a dynamic body without an og.Velocity gets one."
     doc "Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport)."
     aliases "physics body, Rigidbody, RigidBody3D, dynamic body, kinematic body"
+    guide "physics §1"
     field kind RigidBodyType "dynamic is simulated, fixed is not moved by the solver, kinematic follows Velocity and Transform writes." {
       label "Kind"
     }
@@ -71,7 +74,8 @@ module physics {
       max 63
     }
     field ccd bool "Enable continuous collision detection for fast small bodies that must not tunnel."
-    field centerOfMass Vector3 "Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. A car's lowered below its wheel mounts keeps it on its wheels at full lock; a weight at a toy's base rights it. Needs an og.Collider." {
+    field centerOfMass Vector3 "Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. Needs an og.Collider." {
+      guide "physics §1"
       unit m
       tunable true
     }
@@ -83,7 +87,8 @@ module physics {
 
   component Collider {
     doc "The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale."
-    doc "Compound colliders: a Collider without a RigidBody on a child entity whose og.Parent chain reaches a RigidBody is part of that body (the nearest such ancestor), placed at its transform relative to the body (the transforms between them composed, the body's scale applied): a table of a top and four legs, a ship of a hull and a mast, are one body. Its mass adds to the body's from its density, or the body's RigidBody.mass is shared among its colliders by theirs; its friction, restitution, layers and sensor flag are its own. Children join in entity order, whatever the query order. Changing a child (its collider, or its transform relative to the body) rebuilds the body, which loses its contacts' warm starts. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children; a collider whose chain reaches no body stays static at its world transform."
+    doc "A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children."
+    guide "physics §1"
     aliases "trigger, sensor, hitbox, collision shape, Unity Collider isTrigger, Godot CollisionShape"
     field shape u32 "One of the SHAPE_* codes: 0 box, 1 sphere (a circle in 2D), 2 capsule, 3 cylinder (3D), 4 convex hull of `mesh` (a polygon in 2D), 5 triangle mesh of `mesh` (its outline in 2D), 6 the height field `mesh` (3D: a terrain), 7 a diamond and 8 a hexagon in `size` (both)." {
       min 0
@@ -153,7 +158,8 @@ module physics {
 
   resource Physics {
     doc "The physics settings of the world. The profile is the project's; the same components serve both profiles."
-    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Set the other one at run time to change profile: the next step builds that profile's simulation from the components (contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again), so a 3D game can play a 2D scene and back." {
+    field profile u32 "PROFILE_2D (2: rapier2d, the xy plane, rotation about z) or PROFILE_3D (3: rapier3d), from project.ogt. Setting the other one at run time makes the next step build that profile's simulation from the components; contacts, joints' warm starts, ropes, cloth, fluids and ragdoll bodies start again." {
+      guide "physics §2"
       default 3
       min 2
       max 3
@@ -183,7 +189,8 @@ module physics {
       unit mps
       tunable true
     }
-    field sleepTicks u32 "Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively): a settled pile sleeps whole and costs nothing until something wakes it (a body landing on it, a push, a joint, a moving kinematic body, a write to its Transform, Velocity, RigidBody or Collider, its support going away). BodySlept and BodyWoke report it. Deterministic: counted in ticks, saved with the world. 0, the default, never sleeps; new projects use about 30." {
+    field sleepTicks u32 "Ticks in a row a dynamic body must stay slower than sleepSpeed before it sleeps, together with every dynamic body it touches (contacts and joints, transitively), and stays asleep until woken. BodySlept and BodyWoke report it. Counted in ticks and saved with the world; 0, the default, never sleeps." {
+      guide "physics §3"
       min 0
       max 3600
       tunable true
@@ -199,6 +206,7 @@ module physics {
 
   event CollisionStarted {
     doc "Two solid colliders started touching during the tick. Read in the tick after, when og.Velocity already holds the solver's answer (the bodies parting): how hard they met is `impulse` and `relativeVelocity`, taken in the step itself."
+    guide "physics §5"
     field a Entity "The entity with the lower id."
     field b Entity "The entity with the higher id."
     field point Vector3 "The deepest contact point in world space (z is 0 in 2D)." {
@@ -210,7 +218,8 @@ module physics {
       min 0
       unit newtonSecond
     }
-    field relativeVelocity Vector3 "a's velocity relative to b at `point` as that step began, before the solver answered: each body's linear velocity plus its angular velocity crossed with the point's offset from its centre of mass (a static collider is still; z is 0 in 2D). Along `normal` it is the closing speed, positive while they approach: max(0, relativeVelocity · normal) is how hard they hit, in m/s." {
+    field relativeVelocity Vector3 "a's velocity relative to b at `point` as the step began, before the solver answered: each body's linear velocity plus its angular velocity crossed with the offset from its centre of mass (a static collider is still; z is 0 in 2D). Along `normal` it is the closing speed, positive while they approach." {
+      guide "physics §5"
       unit mps
     }
   }
@@ -298,6 +307,7 @@ module physics {
 
   component Joint {
     doc "A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are."
+    guide "physics §1"
     field kind u32 "JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5." {
       min 0
       max 5

@@ -18,7 +18,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | The initial Transform.quaternion. |
 | `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | The initial Transform.scale. |
 | `bare` | `boolean` | `false` | — | — | — | Spawn without a Transform: a pure data entity. |
-| `source` | `string` | `""` | — | — | — | Where a person would change it (`src/enemies.ts:42`), which the probe answers as the entity's source (pick, marks). Outside a publish build the runtime fills it with the game's own TypeScript line that called spawn (the first frame of the call's stack outside the engine and node_modules); a value given here wins, so a helper may name its caller. A publish build keeps none. |
+| `source` | `string` | `""` | — | — | — | Where a person would change it (`src/enemies.ts:42`), the probe's source of it (pick, marks). Outside a publish build (which keeps none) the runtime fills in the game line calling spawn (the first stack frame outside the engine and node_modules); a given value wins, so a helper may name its caller. |
 
 ```ogt
 struct SpawnDesc {
@@ -34,7 +34,7 @@ struct SpawnDesc {
     default 1 1 1
   }
   field bare bool "Spawn without a Transform: a pure data entity."
-  field source String "Where a person would change it (`src/enemies.ts:42`), which the probe answers as the entity's source (pick, marks). Outside a publish build the runtime fills it with the game's own TypeScript line that called spawn (the first frame of the call's stack outside the engine and node_modules); a value given here wins, so a helper may name its caller. A publish build keeps none."
+  field source String "Where a person would change it (`src/enemies.ts:42`), the probe's source of it (pick, marks). Outside a publish build (which keeps none) the runtime fills in the game line calling spawn (the first stack frame outside the engine and node_modules); a given value wins, so a helper may name its caller."
 }
 ```
 

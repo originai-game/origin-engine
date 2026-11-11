@@ -8,6 +8,8 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 Which colliders a scene query considers. The zero value considers every solid collider on every layer.
 
+See `physics §4`.
+
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -19,6 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 ```ogt
 struct QueryFilter {
   doc "Which colliders a scene query considers. The zero value considers every solid collider on every layer."
+  guide "physics §4"
   desc true
   field mask u32 "Layers to consider: a collider counts when its layers meet this; 0 means every layer."
   field includeSensors bool "Also report sensors."
@@ -26,4 +29,4 @@ struct QueryFilter {
 }
 ```
 
-<sub>Module `physics` line 1672</sub>
+<sub>Module `physics` line 1705</sub>

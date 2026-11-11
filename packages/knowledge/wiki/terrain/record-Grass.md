@@ -6,7 +6,9 @@ Module [`terrain`](../terrain.md) · [index](../index.md)
 
 ### `og.Grass` (component)
 
-A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); under and past them the terrain takes the field's average colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
+A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
+
+See `world §3`.
 
 Token `og.Grass`, registered under the schema name `og.Grass`; its value type is `Grass`.
 
@@ -39,14 +41,15 @@ Token `og.Grass`, registered under the schema name `og.Grass`; its value type is
 | `castShadows` | `boolean` | `true` | — | — | — | Whether the blades cast the sun's shadows (near the camera, into the first two cascades). Either way a blade is shaded by the field's own canopy between it and the sun, darker towards the roots the denser the field and the lower the sun. |
 | `seed` | `number` | `1` | — | — | — | Another seed places the blades elsewhere. |
 | `recovery` | `number` | `4` | 0 … 120 | `s` | tunable | How long blades pressed by an og.GrassPusher take to stand again after it leaves. |
-| `types` | `readonly Entity[]` | `[]` | — | — | a list of at most 3 `Entity` (`List.Entity.3`): reads a frozen copy, writes a whole array | Up to three more kinds of blade growing in the field among its own (a meadow of grass, taller reeds and flowers): entities carrying an og.GrassType. The field's own height, width, curve and colours are its first kind. Each clump grows one kind, chosen by `typeMap` or, without one, by the kinds' `share`; 0s and entities without an og.GrassType are skipped. |
+| `types` | `readonly Entity[]` | `[]` | — | — | a list of at most 3 `Entity` (`List.Entity.3`): reads a frozen copy, writes a whole array | Up to three more kinds of blade among its own: entities carrying an og.GrassType (the field's own fields are its first kind). Each clump grows one kind, by `typeMap` or else the kinds' `share`; 0s and entities without an og.GrassType are skipped. See `world §3`. |
 | `typeMap` | `Texture` | `0` | — | — | — | Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share. |
 | `densityMap` | `Texture` | `0` | — | — | — | Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none. |
 | `heightMap` | `Texture` | `0` | — | — | — | Multiplies the blades' height over the terrain's extent (its red channel, laid out as typeMap; loaded linear): short grass by a path, tall in the hollows. 0: none. |
 
 ```ogt
 component Grass {
-  doc "A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance` (a meadow with every other field at its default). Blades are curved strips placed on a blue-noise pattern fixed to the terrain, so each keeps its place as the camera moves; they grow where the layer's weight is (its control-map channel times its slope and altitude rules), never over holes, in clumps that share their tint and height. With distance they thin out, the ones left widening to keep the ground covered, and take fewer vertices (15, 7, then 3); under and past them the terrain takes the field's average colour (`farTint`), so the far field reads as grass to the horizon with no seam. og.Wind bends them in gusts that roll across the field, each blade swaying on its own; lit like the terrain under them, with light through blades lit from behind (`translucency`), a sheen on the upper blade and the roots shaded by their neighbours. Visual only: drawn from the tick, nothing in the simulation reads it, the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one)."
+  doc "A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one)."
+  guide "world §3"
   field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
   field layer u32 "The terrain layer that places it, 0 to 15." {
     max 15
@@ -198,11 +201,13 @@ component Grass {
     unit s
     tunable true
   }
-  field types List.Entity.3 "Up to three more kinds of blade growing in the field among its own (a meadow of grass, taller reeds and flowers): entities carrying an og.GrassType. The field's own height, width, curve and colours are its first kind. Each clump grows one kind, chosen by `typeMap` or, without one, by the kinds' `share`; 0s and entities without an og.GrassType are skipped."
+  field types List.Entity.3 "Up to three more kinds of blade among its own: entities carrying an og.GrassType (the field's own fields are its first kind). Each clump grows one kind, by `typeMap` or else the kinds' `share`; 0s and entities without an og.GrassType are skipped." {
+    guide "world §3"
+  }
   field typeMap Texture "Where each of `types` grows, over the terrain's extent (its top row along the terrain's -z edge, as the control map; loaded linear): red, green and blue the share of the first, second and third of `types` at each point, the rest the field's own kind. 0: every kind everywhere, by its share."
   field densityMap Texture "Multiplies the blades' density over the terrain's extent (its red channel, laid out as typeMap; loaded linear): black grows none, a path through the meadow. 0: none."
   field heightMap Texture "Multiplies the blades' height over the terrain's extent (its red channel, laid out as typeMap; loaded linear): short grass by a path, tall in the hollows. 0: none."
 }
 ```
 
-<sub>Module `terrain` line 182</sub>
+<sub>Module `terrain` line 190</sub>

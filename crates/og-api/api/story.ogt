@@ -1,8 +1,7 @@
 module story {
-  doc "Dialogue uses released Yarn Spinner 3.2.2 in `.yarn` files, compiled to engine-owned IR by og cook. Declare `#og-profile:yarn-spinner-3.2.2`; see the yarn guide for the language and engine extensions. Every line and option requires an explicit stable `#line:` id. Base text enters the string catalog under that id; og.story resolves through og.i18n on every read, so switching locale re-translates the current line and choices. Quests remain `type quest` data, with stages, reflected event objectives and rewards."
-  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view each frame, and call og.story.advance or og.story.choose. Dialogue text retains its Speaker: prefix and carries typed TextSpan attributes in Unicode scalar offsets. Quests start with `<<quest start rescue>>` or og.story.startQuest, count with og.story.progress and advance stages themselves; og.story.quests lists them for a quest log."
-  doc "Barks use Yarn nodes with `og-topic`, `og-when`, `og-priority`, `og-weight`, `og-cooldown`, `og-shared` and `og-once` headers. The engine scheduler still owns priority, cooldowns and once state. og.story.bark asks for one, og.story.ambient asks periodically, and og.story.barks lists those being said. A line's `#voice:` plays through og.audio. Quest objectives with `on Event` and `where` count reflected events without moving quest data into Yarn."
-  doc "Saves checkpoint stable continuation, node, line and option ids, detour stacks, timers, variables and the story RNG fork. They never store bytecode offsets. Inserting or moving unrelated lines preserves the current line. A missing saved continuation is an error, never a restart that could repeat a command or reward. `=>` line groups prefer eligible conditional lines over unconditional fallbacks and draw ties by weight; line groups, barks and active checks use og.Rng's story fork on both hosts. Timers count ticks. Worlds without loaded stories keep their existing saves and hash."
+  doc "Dialogue and quests: Yarn Spinner 3.2.2 dialogue in `.yarn` files (declaring `#og-profile:yarn-spinner-3.2.2`), compiled by og cook, every line and option with an explicit stable `#line:` id; quests as `type quest` data with stages, reflected event objectives and rewards."
+  doc "og.story.load a dialogue or quest in setup, og.story.start a conversation, read og.story.view, answer with og.story.advance or og.story.choose. Lines resolve through og.i18n on every read. Barks are `og-topic` nodes the engine schedules. Saves keep stable ids, never bytecode offsets; a missing saved continuation is an error."
+  guide "yarn"
 
   enum StorySaliency {
     doc "How Yarn node and line groups choose eligible content. All random draws use the checkpointed story RNG fork."
@@ -156,7 +155,9 @@ module story {
     field voiceTicks u32 "The voice's length in ticks (0: no voice, or one that did not load)."
     field voiceLeft u32 "Ticks of the voice still to play: voiceTicks until it starts, 0 once it has ended (advance then, for auto-advance)."
     field speaker SpeakerView "Who says it."
-    field shot String "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo: a name is the entity of that name, a role the cast entity's own og.VirtualCamera, else the first one whose lookAt is that entity. When no running conversation's line has a shot the game's own solo is handed back."
+    field shot String "The camera shot it is shown in: its `shot`, else its node's (a virtual camera's entity name or a cast role); empty: none. While it shows, og.story makes that og.VirtualCamera og.CameraBrain.solo, and hands the game's own solo back when no line has a shot." {
+      guide "yarn §8"
+    }
     field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
     field timer Option.TimerView "The choice timer, while it runs."
     field lastCheck Option.RollView "The last active check this conversation rolled."

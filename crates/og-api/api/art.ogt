@@ -1,6 +1,7 @@
 module art {
-  doc "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): the palette its texels sit on (ArtPalette), one pixel size for 2D art (ArtPixels), one texel density for 3D surfaces (ArtTexels), the shape language of its models (ArtShape), its line (ArtLine), the step of its motion (ArtMotion) and its camera (ArtCamera). A style is the assets, not a filter on the frame: the look's render resources treat the frame, these say what the assets themselves must be."
-  doc "Every field is no constraint at its zero value (0, false, the first variant, an empty list), so a look without these blocks, and every game made before them, cooks and draws exactly as before. The built-in presets (templates/looks/<slug>.ogt) carry each catalogue style's values and a game's look overrides them field by field. They are resources, so game code reads the contract too (a sprite snapping to ArtPixels.unit, a spawner picking colours from ArtPalette); project.ogt's `look` names the look whose contract the cook reads. Writing them changes neither the frame nor the simulation: the cook's conformance of assets, the runtime defaults from them and og style check are docs/art.md §2.3 to §2.5."
+  doc "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion and ArtCamera. A style is the assets, not a filter on the frame."
+  doc "Every field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of project.ogt's `look`."
+  guide "art-review §6"
 
   enum ArtRotation {
     doc "How the style's pixel art turns (ArtPixels.rotation)."

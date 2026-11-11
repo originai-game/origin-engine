@@ -6,7 +6,9 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.Decal` (component)
 
-A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept).
+A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
+
+See `looks §14`.
 
 Token `og.Decal`, registered under the schema name `og.Decal`; its value type is `Decal`.
 
@@ -26,7 +28,8 @@ Token `og.Decal`, registered under the schema name `og.Decal`; its value type is
 
 ```ogt
 component Decal {
-  doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); with a normalMin to normalMax region, that region of the same atlas is a tangent-space normal map that bends the surface's normal (cracks, a bullet hole's rim, embossed lettering). Later decals blend over earlier ones. Tens of thousands can be placed: each pixel walks only the decals whose box can reach it, and at most 255 overlap at one place (the newest are kept)."
+  doc "A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept)."
+  guide "looks §14"
   field color Color "A linear colour multiplied with the atlas." {
     default 1 1 1
   }
@@ -69,4 +72,4 @@ component Decal {
 }
 ```
 
-<sub>Module `render` line 1947</sub>
+<sub>Module `render` line 2091</sub>

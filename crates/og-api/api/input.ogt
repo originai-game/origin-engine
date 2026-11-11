@@ -1,9 +1,8 @@
 module input {
-  doc "Input as the game sees it: the Input resource for polling, events for edges."
-  doc "The shell collects pointer, keyboard and wheel input on the main thread; the probe and the command channel inject through the same path."
-  doc "Several pointers at once (multi-touch) are og.Pointers; up to eight gamepads, mapped to the W3C standard layout, are og.Gamepad. Both are world state, as og.Input is, so they replay."
-  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it: buttons and one- or two-axis values bound to keys, the mouse, pad buttons, sticks, triggers and touch, in action maps, with dead zones and sensitivity. The player rebinds them (og.input.rebind, og.input.startCapture for a controls screen, conflicts reported), the bindings are kept as text (og.input.saveBindings), and prompts read each action's glyph on the device used last (og.input.glyph). Actions are read once per tick from og.Input, og.Pointers and og.Gamepad, so they replay; in lockstep they are this peer's own, handed on with og.net.submit as og.Input is."
+  doc "Input as the game sees it: the Input resource for polling, events for edges, og.Pointers for several pointers at once (multi-touch) and og.Gamepad for up to eight pads. All of it is world state, so it replays."
+  doc "Gameplay actions (og.input.defineAction) name what the player does instead of the keys that do it, in action maps the player rebinds; prompts read each action's glyph (og.input.glyph)."
   doc "Mouse-look (pointer lock, mouse delta, relative mouse movement): set og.PointerLock.wanted and turn the camera by og.Pointers.movement each tick."
+  guide "input"
 
   const MAX_POINTERS u32 5 "The most pointers og.Pointers tracks at once: ids 0 (the primary pointer) to 4."
   const MAX_GAMEPADS u32 8 "The most gamepads og.Gamepad reads: pads 0 to 7."
@@ -91,8 +90,9 @@ module input {
   }
 
   struct InputBinding {
-    doc "One binding of an action: a control, or a composite of parts (A and D as one axis, WASD as two). Controls are named by strings: a key code (`KeyW`, `Space`), `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy` (the mouse's movement this tick, CSS px), `wheel.x`, `wheel.y` (notches of 100 CSS px), `pad.a` to `pad.home` (GamepadButton's names, any pad), `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY` (a stick), `pad.dpad`, `touch` (a touch held) and `touch.xy` (a touch stick). A one-axis control takes `+` or `-` for its half (`pad.leftX+`: 0 to 1, a direction as a button)."
-    doc "Every y is up-positive in actions (W, the stick pushed up, the mouse moved up, the wheel scrolled up, a touch dragged up: +1), whatever the raw og.Gamepad says. A binding with neither a control nor parts is an unbound slot."
+    doc "One binding of an action: a control, or a composite of parts. A binding with neither a control nor parts is an unbound slot."
+    doc "Controls are strings: a key code (`KeyW`, `Space`); `mouse.left`, `mouse.middle`, `mouse.right`, `mouse.x`, `mouse.y`, `mouse.xy`; `wheel.x`, `wheel.y`; `pad.a` to `pad.home` (GamepadButton's names); `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY`, `pad.leftTrigger`, `pad.rightTrigger`, `pad.leftXY`, `pad.rightXY`, `pad.dpad`; `touch` and `touch.xy`. A one-axis control takes `+` or `-` for its half (`pad.leftX+`). Every y is up-positive."
+    guide "input §1"
     desc true
     field control String "The control; empty for a composite or an unbound slot."
     field negative String "An axis composite's control for -1 (`KeyA`)."
@@ -117,7 +117,8 @@ module input {
   }
 
   struct ActionDesc {
-    doc "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Actions are read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad, so they replay with them; the player rebinds them (og.input.rebind, og.input.startCapture) and a settings screen lists them (og.input.actions)."
+    doc "A gameplay action: a name the game reads instead of keys (`jump`, `move`, `look`), its kind and default bindings over keys, the mouse, pads and touch. Read once per tick, before the game's systems, from og.Input, og.Pointers and og.Gamepad."
+    guide "input §1"
     desc true
     field name String "Its name."
     field kind ActionKind "Button, one axis or two."
@@ -242,7 +243,8 @@ module input {
   }
 
   struct SensitivityDesc {
-    doc "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own (a settings screen's Mouse sensitivity and Stick sensitivity sliders, Invert Y). Kept by og.input.saveBindings, forgotten by og.input.resetBindings; a world whose player set none saves and hashes as before."
+    doc "The player's sensitivity and inversion of an axis action on one device class: a look action's mouse and its stick each have their own. Kept by og.input.saveBindings, forgotten by og.input.resetBindings."
+    guide "input §5"
     desc true
     field action String "The action (axis or axis2)."
     field device InputDevice "The device class it is for: keyboardMouse (the mouse's movement and the wheel; inversion turns the keys over too), any pad family (every pad), or touch (a touch stick)."
@@ -265,7 +267,8 @@ module input {
   struct MouseDesc {
     doc "How the host reads the mouse while the pointer is locked (og.PointerLock): the player's setting, kept by the game with its settings (og.platform.saveSettings). Host only: none of it is world state."
     desc true
-    field raw bool "Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement), where it supports that (Chrome and Edge on Windows, macOS and ChromeOS); elsewhere the lock is the plain one and the movement keeps the OS's acceleration (MouseInfo.rawUnsupported). Takes effect at the next lock." {
+    field raw bool "Raw input: ask the browser for the mouse's movement without the OS's pointer acceleration (requestPointerLock with unadjustedMovement); where it refuses, the lock is the plain one (MouseInfo.rawUnsupported). Takes effect at the next lock." {
+      guide "input §2"
       default true
     }
   }
@@ -274,7 +277,7 @@ module input {
     doc "The mouse as the host reads it (og.input.mouse)."
     field raw bool "Raw input is asked for (MouseDesc.raw)."
     field rawActive bool "The lock now delivers raw movement: the browser granted unadjustedMovement. False while unlocked."
-    field rawUnsupported bool "The browser refused unadjustedMovement (Firefox, Safari, Linux): its lock moves with the OS's acceleration. A settings screen shows the Raw input switch as unavailable then."
+    field rawUnsupported bool "The browser refused unadjustedMovement (Firefox, Safari, Linux): its lock moves with the OS's acceleration."
   }
 
   struct DeadzoneDesc {
@@ -515,6 +518,7 @@ module input {
   }
 
   fn setDeadzones {
+    aliases "controller dead zone, stick deadzone, gamepad drift, trigger dead zone"
     doc "A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings."
     param world World "The world."
     param desc DeadzoneDesc "The pad and its dead zones."
@@ -539,7 +543,8 @@ module input {
   }
 
   fn setKeyboardLayout {
-    doc "The keys the player's keyboard layout prints, for glyphs: the web shell sets it from navigator.keyboard.getLayoutMap() (Chrome, Edge), and where the browser has none from the characters the player's unmodified keys type as they are pressed (Firefox, Safari: a key reads as on a US layout until it is pressed once). Bindings still name physical keys (KeyboardEvent.code), so WASD is the same four keys on every layout; only their glyphs change (Z Q S D on AZERTY). Empty is the US layout (native runs). The host's, one for the page: no world state."
+    doc "Set the keys the player's keyboard layout prints, for glyphs: bindings still name physical keys (KeyboardEvent.code), so only their glyphs change (Z Q S D on AZERTY). The web shell sets it; empty is the US layout (native runs). The host's, one for the page: no world state."
+    guide "input §2"
     param labels List.KeyLabel "Each key's printed label, in place of the last list."
     returns Void
   }
@@ -757,6 +762,7 @@ module input {
   resource Input {
     doc "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods."
     doc "Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4."
+    group "Pointer"
     field pointer Vector2 "The pointer position." {
       worldspace none
       readonly true
@@ -781,6 +787,7 @@ module input {
     field buttonsReleaseNext u32 "Buttons a click releases at the end of the next tick." {
       readonly true
     }
+    group "Keys held"
     field keys0 u32 "Held keys, word 0: codes 0 to 31 of KEY_CODES." {
       readonly true
     }
@@ -793,6 +800,7 @@ module input {
     field keys3 u32 "Held keys, word 3: codes 96 to 127 of KEY_CODES." {
       readonly true
     }
+    group "Keys pressed this tick"
     field pressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
       readonly true
     }
@@ -805,6 +813,7 @@ module input {
     field pressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
       readonly true
     }
+    group "Keys released this tick"
     field released0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
       readonly true
     }
@@ -817,6 +826,7 @@ module input {
     field released3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
       readonly true
     }
+    group "Keys a press releases next tick"
     field releaseNext0 u32 "Keys a press releases at the end of the next tick, word 0: codes 0 to 31 of KEY_CODES." {
       readonly true
     }
@@ -940,7 +950,8 @@ module input {
       readonly true
       unit cssPx
     }
-    field movement Vector2 "The mouse's relative movement this tick: the sum of the movementX, movementY of pointer 0's events since the last tick (y down), zero again when the tick ends. Mouse-look reads it: it keeps coming while the pointer is locked (og.PointerLock), when the position stands still. The web shell fills it from the browser's movementX/Y; headless, only injected pointer events with movementX/Y move it." {
+    field movement Vector2 "The mouse's relative movement this tick: the sum of pointer 0's movementX, movementY since the last tick (y down), zero again when the tick ends. It keeps coming while the pointer is locked (og.PointerLock) and the position stands still; headless, only injected movementX/Y moves it." {
+      guide "input §2"
       readonly true
       unit cssPx
     }
@@ -977,22 +988,26 @@ module input {
 
   resource PointerLock {
     doc "Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), the host hides the cursor and locks the pointer to the play surface, and og.Pointers.movement carries the mouse's movement each tick. Off by default."
-    doc "On the web the shell reads `wanted` from each frame and asks for the lock on the next press on the canvas (browsers grant it only to a gesture, so the click that starts play takes it), releases it when `wanted` goes false, and reports `locked` from pointerlockchange: the player's Escape releases it, and `locked` goes false while `wanted` stays true, so show a \"click to look\" prompt then. While locked, og.Input.pointer and og.Pointers' positions stand still (the UI's hover stays where it was) and the mouse's buttons still press. Native runs (og run, og dev) are headless: `locked` stays false unless a script injects `{ kind: \"pointerLock\", locked: true }`. `locked` is the host's (session state, as og.Input is: a restore keeps it, lockstep peers do not compare it)."
+    doc "While locked, og.Input.pointer and og.Pointers' positions stand still and the mouse's buttons still press. `locked` is the host's session state: a restore keeps it, lockstep peers do not compare it."
+    guide "input §2"
     field wanted bool "The game wants the pointer locked and the cursor hidden."
-    field locked bool "The pointer is locked now, as the host last reported it." {
+    field locked bool "The pointer is locked now, as the host last reported it (the player's Escape releases it while `wanted` stays true; headless runs stay unlocked unless a script injects a pointerLock report)." {
       readonly true
     }
   }
 
   resource Gamepad {
-    doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout: on the web the shell polls the pads each display frame, maps a pad the browser does not map (Firefox, Linux, many third-party pads) through its table, and sends their state through the input ring, so a pad is world state and replays; it also maps pads to keys for games that only read keys."
+    doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays."
     doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice)."
+    guide "input §4"
+    group "Pads"
     field connectedMask u32 "Connected pads: bit `pad`." {
       readonly true
     }
     field devices u32 "Each pad's family, four bits per pad (pad p at bit 4p): an InputDevice index (1 xbox, 2 playstation, 3 switch, 4 gamepad), 0 when the host did not say." {
       readonly true
     }
+    group "Buttons held"
     field buttons0 u32 "Held buttons of pad 0." {
       readonly true
     }
@@ -1017,6 +1032,7 @@ module input {
     field buttons7 u32 "Held buttons of pad 7." {
       readonly true
     }
+    group "Pressed this tick"
     field pressed0 u32 "Buttons of pad 0 that went down this tick." {
       readonly true
     }
@@ -1041,6 +1057,7 @@ module input {
     field pressed7 u32 "Buttons of pad 7 that went down this tick." {
       readonly true
     }
+    group "Released this tick"
     field released0 u32 "Buttons of pad 0 that went up this tick." {
       readonly true
     }
@@ -1065,6 +1082,7 @@ module input {
     field released7 u32 "Buttons of pad 7 that went up this tick." {
       readonly true
     }
+    group "Left sticks"
     field leftStick0 Vector2 "The left stick of pad 0, -1 to 1, y down." {
       readonly true
     }
@@ -1089,6 +1107,7 @@ module input {
     field leftStick7 Vector2 "The left stick of pad 7, -1 to 1, y down." {
       readonly true
     }
+    group "Right sticks"
     field rightStick0 Vector2 "The right stick of pad 0, -1 to 1, y down." {
       readonly true
     }
@@ -1113,6 +1132,7 @@ module input {
     field rightStick7 Vector2 "The right stick of pad 7, -1 to 1, y down." {
       readonly true
     }
+    group "Triggers"
     field triggers0 Vector2 "The left (x) and right (y) triggers of pad 0, 0 to 1." {
       readonly true
     }
@@ -1182,7 +1202,8 @@ module input {
     doc "A key went down (a down for a held key is a repeat and sets no edge). Input events are sent between ticks and read by the next tick's systems."
     field key String "The physical key code."
     field repeat bool "Whether this is an auto-repeat."
-    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
+      guide "input §6"
       min -1
       max 1
     }
@@ -1198,7 +1219,8 @@ module input {
   event KeyUp {
     doc "A key went up."
     field key String "The physical key code."
-    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
+      guide "input §6"
       min -1
       max 1
     }
@@ -1210,7 +1232,8 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches (og.Pointers)."
-    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
+      guide "input §6"
       min -1
       max 1
     }
@@ -1222,7 +1245,8 @@ module input {
     field y f32 "Vertical position in CSS pixels."
     field button PointerButton "The button."
     field id u32 "Which pointer: 0 the primary one, 1 to 4 further touches."
-    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. The shell stamps it from the browser event's timeStamp, the command channel from the step's time; it is part of the event, so a replay carries it." {
+    field at f32 "When it happened, in ticks from the start of the tick that reads it, -1 to 1 (0 when the host gave no time): its world time is `time.elapsed + at * time.dt`. Part of the event, so a replay carries it." {
+      guide "input §6"
       min -1
       max 1
     }

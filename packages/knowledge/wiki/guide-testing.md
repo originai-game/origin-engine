@@ -43,11 +43,33 @@ tick, not as pictures compared afterwards.
   what a run must get to: the boss's second phase, the door opening, each
   level cleared. A site that never fires is listed as uncovered, not
   failed; name it in the playtest's `require` to make it a failure.
+
+```ts
+og.assert.always(world.get(hero, Health).hp >= 0, "hp never negative", { hp });
+og.assert.sometimes(boss.phase === 2, "boss reaches phase 2");
+og.assert.reachable("door opened");
+og.assert.unreachable("fell through the floor");
+og.assert.each(level, cleared, "each level cleared"); // one bucket per distinct key
+```
+
+- An assertion is its name and the place it is called from
+  (`src/player.ts:42`). The build records every `og.assert.<kind>(...)`
+  site, so a site that never runs is still listed. At the end of a run,
+  every `sometimes`, `reachable` and `each` bucket that never fired is
+  uncovered: a sometimes that never fires is a test that never got there.
+- Violations and coverage reach `og run --json`'s `assertions` and
+  `og test`'s results through the probe (`assertions`): the tick, the name
+  and place, and the values passed as details.
+- A call that passes costs a lookup in the runtime, without a call into
+  the engine.
 - The default invariants run beside them in every development and test
   build: no NaN or infinity in a reflected float, every number inside its
   field's declared range, no Entity field naming a despawned entity, and
   every entity inside og.WorldBounds when the world declares them. Give
-  fields real ranges and declare the bounds: each is a free check.
+  fields real ranges and declare the bounds: each is a free check. They
+  read the components that changed (where the world tracks their changes)
+  or every row, never write, and name the entity, component, field and
+  value of their first failure.
 - A playtest's `invariants` (`"state:lives>=0"`,
   `"entity:hero:og.Transform.position.y>-5"`) check the script's own
   properties from tick 0, without game code. A value written `$<path>` is
@@ -162,3 +184,81 @@ it once. Read state before guessing at it:
 - First frame on a phone over 4G within 2 s for a small game: a large
   first scene, fonts for every language at once and uncompressed textures
   are the usual causes. Stream what the first screen does not show.
+
+<a id="guide-testing-7"></a>
+### `testing §7` The command channel's checks and edits
+
+The command channel (`og run --commands "t:action[:args];..."`, a
+playtest's `commands`) drives a run and checks it. `help` lists every
+action; this section gives the forms of the ones that check and edit.
+
+`expect:<what>` asserts at its tick and `invariant:<what>` after every tick
+from its own on. Their forms:
+
+| Form | Checks |
+|---|---|
+| `entity:<id>:within:x,y,w,h` | the entity's visible box, in CSS pixels |
+| `entity:<id>:within:x0,y0,z0,x1,y1,z1` | its position, in world units |
+| `event:<Name>[:count]` | the event was emitted (that many times) |
+| `ui:text:[=]<text>` | the UI shows the text (exactly with `=`) |
+| `region:x,y,w,h:color:#rrggbb[:tolerance]` | a screen region's colour (expect only) |
+| `frame:<ref.png>:rmse:<=v` | the frame against a reference (expect only) |
+| `state:<path>==<value>` | a field of the probe's state(); also `!=`, `<`, `<=`, `>`, `>=` |
+| `entity:<id>:<path>==<value>` | a field of its dump_entity (`render.lod==2`, `og.Transform.position.y>0`) |
+| `timings:<path>==<value>` | state().timings (`triangles<=1500000`) |
+
+- A value written `$<path>` is another path of the same source, read when
+  the expectation is evaluated: `state:coins<=$total`,
+  `entity:hero:Health.hp<=$Health.max`.
+- A failed `expect` is a warning with the tick and the observed value;
+  `og run --json` lists every result and exits 1 on a failure. A failed
+  `invariant` is an assertion violation (og.assert's report, the probe's
+  `assertions`), which fails `og run --json` and the playtest. A
+  playtest's `invariants` are invariant steps.
+- Without a renderer, frame expectations, an entity's `render.*` fields
+  and the renderer's timings (`triangles`, `render`, `passes`) are
+  unchecked (§3).
+
+`get:` reads through the schema as game code sees it: an enum as its
+variant's name (`"music"`), og.Time whole with its rate and the time
+scale, and the DirectionalLight og.DayNight drives with the colour,
+intensity and direction it is drawn with. Each read is logged and
+written as JSON to `get-<tick>.json` (more unnamed ones on one tick:
+`get-<tick>-2.json`, ...).
+
+Editing scenes from a run, after tuning with `set:` or the probe's patch:
+
+- `save_scene` writes every scene the world was assembled from back from
+  the world: the boot scene's, then each one World.instantiate made,
+  each to its own `.ogt`. Only the lines whose values changed are
+  rewritten (comments and order kept): the fields set or patch tuned, and
+  resources as `resource <Name> { }` blocks. With `spawned`, the entities
+  the game spawned at run time go under the boot scene's marked section.
+  Without a path each scene goes to its source; with one, the boot scene
+  goes to that file under the output directory and the others beside it.
+- The command
+  ```
+  apply_prefab:<entity>[:<Component>[.<field>]][:base]
+  ```
+  moves an entity's prefab overrides (all, a component's
+  or one field, a field set at run time too) into its prefab's `.ogt` at
+  the entity's node and out of its scene's instance block, so the scene
+  cooks to the same world and every other instance takes the values; with
+  `base`, into a variant's base. `revert_prefab` drops them instead.
+
+<a id="guide-testing-8"></a>
+### `testing §8` Debug draw and debug views
+
+- og.debug draws lines, boxes, spheres, arrows, axes and labels in the
+  world, each for a number of ticks. They are drawn over the finished frame
+  (after every post effect, before the UI), so they read in every capture
+  and never hide behind geometry: draw a hitbox, a sight cone or a path
+  while chasing a bug, then look at a capture.
+- The command channel's `debug:` actions switch the debug views: physics,
+  navigation, bounds, levels of detail, and the lit image's terms (shadow
+  cascades, ambient occlusion, albedo, image-based and direct light). Turn
+  one on before judging why a frame is dark or an agent stuck.
+- Leave debug draws in: a publish build compiles every member to nothing
+  that answers its default. Debug draw is rendering, never fed back into
+  the simulation, and not world state, so a snapshot or a replay does not
+  carry it.

@@ -17,9 +17,9 @@ Token `og.Terrain`, registered under the schema name `og.Terrain`; its value typ
 | `castShadows` | `boolean` | `true` | — | — | — | Cast the directional and local lights' shadows (it always receives them). |
 | `horizonShadows` | `boolean` | `true` | — | — | — | Shade it by its own horizon, baked by the cook: past the sun's shadow cascades a valley behind a ridge falls into its shade (to the horizon), and everywhere the sky a valley's walls hide lights it less. |
 | `lodSpacing` | `number` | `0` | 0 … 64 | `m` | tunable | The finest clipmap level's spacing (0: the terrain file's, or the samples' spacing). |
-| `lodRing` | `number` | `0` | 0 … 256 | — | — | Quads per side of every clipmap level at least (0: the terrain file's, else 64, or 256 for a terrain whose layers displace it; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro. |
+| `lodRing` | `number` | `0` | 0 … 256 | — | — | Quads per side of every clipmap level at least (0: the terrain file's, else 64, or 256 for a terrain whose layers displace it; 16 to 256, rounded to a multiple of 4). Levels grow to 128 quads where a coarser level's height error would show (`lodError`). See `world §2`. |
 | `lodError` | `number` | `0` | 0 … 64 | — | tunable | Pixels of height error a coarser clipmap level may show before the finer one reaches further out (0: 1): a peak that is large on screen keeps its shape at any distance. Larger draws fewer vertices. |
-| `displacementDistance` | `number` | `40` | 0 … 1000 | `m` | tunable | Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 128th of the finest displacing layer's `tile`, a 128th of a sample at most; `lodSpacing` above 0 decides instead) and denser (256 quads a side unless `lodRing` says) to carry the relief: a sett's joint and arris are drawn by vertices, not stepped across a grid cell. Each corner is evaluated once a frame for every pass (T4's cobbled crest: 6.5 ms of GPU a frame on an M4 Pro against 3.8 with the default 64-quad levels). 0: no displacement. |
+| `displacementDistance` | `number` | `40` | 0 … 1000 | `m` | tunable | Metres from the camera within which layers with a `displacement` raise and lower the drawn ground, fading out over the last 40%. Near the camera the clipmap's levels then grow finer and denser to carry the relief (`lodSpacing` and `lodRing` above 0 decide instead). 0: no displacement. See `world §2`. |
 
 ```ogt
 component Terrain {
@@ -40,7 +40,8 @@ component Terrain {
     unit m
     tunable true
   }
-  field lodRing u32 "Quads per side of every clipmap level at least (0: the terrain file's, else 64, or 256 for a terrain whose layers displace it; 16 to 256, rounded to a multiple of 4). The levels grow to 128 quads where a coarser level's height error would show (`lodError`); 256 draws every level that large, at about 3 ms more on an M4 Pro." {
+  field lodRing u32 "Quads per side of every clipmap level at least (0: the terrain file's, else 64, or 256 for a terrain whose layers displace it; 16 to 256, rounded to a multiple of 4). Levels grow to 128 quads where a coarser level's height error would show (`lodError`)." {
+    guide "world §2"
     min 0
     max 256
   }
@@ -49,7 +50,8 @@ component Terrain {
     max 64
     tunable true
   }
-  field displacementDistance f32 "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground by their height maps, fading out over the last 40%. Near the camera the clipmap's levels then grow finer than the samples (down to a 128th of the finest displacing layer's `tile`, a 128th of a sample at most; `lodSpacing` above 0 decides instead) and denser (256 quads a side unless `lodRing` says) to carry the relief: a sett's joint and arris are drawn by vertices, not stepped across a grid cell. Each corner is evaluated once a frame for every pass (T4's cobbled crest: 6.5 ms of GPU a frame on an M4 Pro against 3.8 with the default 64-quad levels). 0: no displacement." {
+  field displacementDistance f32 "Metres from the camera within which layers with a `displacement` raise and lower the drawn ground, fading out over the last 40%. Near the camera the clipmap's levels then grow finer and denser to carry the relief (`lodSpacing` and `lodRing` above 0 decide instead). 0: no displacement." {
+    guide "world §2"
     default 40
     min 0
     max 1000

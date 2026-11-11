@@ -24,7 +24,11 @@ pub fn run(args: &[&str]) -> ExitCode {
                 Ok(root) => {
                     let drift = api_check(&root);
                     let budget = api_budget(&root, list);
-                    if drift == ExitCode::SUCCESS { budget } else { drift }
+                    if drift == ExitCode::SUCCESS {
+                        budget
+                    } else {
+                        drift
+                    }
                 }
                 Err(code) => code,
             }
@@ -172,14 +176,21 @@ fn api_budget(root: &Path, list: bool) -> ExitCode {
     if list {
         for o in &over {
             let (part, line) = api.locate(o.line);
-            println!("{part}:{line}: {} has {} characters of {}", o.entry, o.chars, o.budget);
+            println!(
+                "{part}:{line}: {} has {} characters of {}",
+                o.entry, o.chars, o.budget
+            );
         }
     }
     println!(
         "og api check: {} description(s) over budget ({items} over {ITEM} characters for modules, functions and types; {} over {FIELD} for fields, parameters and the rest), backlog {BACKLOG}{}",
         over.len(),
         over.len() - items,
-        if list || over.is_empty() { "" } else { "; `og api check --budget` lists them" }
+        if list || over.is_empty() {
+            ""
+        } else {
+            "; `og api check --budget` lists them"
+        }
     );
     if over.len() > BACKLOG {
         eprintln!(

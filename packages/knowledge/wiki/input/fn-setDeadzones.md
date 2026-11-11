@@ -8,6 +8,8 @@ Module [`input`](../input.md) · [index](../index.md)
 
 A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings.
 
+Also known as: controller dead zone, stick deadzone, gamepad drift, trigger dead zone
+
 ```ts
 og.input.setDeadzones(world: World, desc?: DeadzoneDesc): Result<void>
 ```
@@ -23,6 +25,7 @@ Binding symbol `og_input_set_deadzones` · publish builds: kept
 
 ```ogt
 fn setDeadzones {
+  aliases "controller dead zone, stick deadzone, gamepad drift, trigger dead zone"
   doc "A pad's dead zones (or every pad's): the player's setting, kept by og.input.saveBindings."
   param world World "The world."
   param desc DeadzoneDesc "The pad and its dead zones."
@@ -30,4 +33,4 @@ fn setDeadzones {
 }
 ```
 
-<sub>Module `input` line 517</sub>
+<sub>Module `input` line 520</sub>

@@ -2,19 +2,11 @@
 
 # The `stream` module
 
-Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance x y z r [unload d] | volume "<entity>"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads.
+Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance ... | volume ...; priority n }` blocks name assets that load and unload together, one pack each, admitted by priority within a memory budget (256 MiB by default). Until resident, models draw proxies, textures a placeholder and sounds silence of their own length, so nothing a tick reads depends on what is resident.
 
-At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not.
+World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state.
 
-Texture arrays, flipbooks, environment maps, palettes, looks and colour LUTs have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, PostEffects.lut grades nothing, og.render.sprite of the array and applying the look are refused, an og.Sprite, a flipbook's sprite or a particle emitter of the array draws nothing) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite, a screen sprite or a particle emitter draws from, the look last applied, the LUT PostEffects grades with) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it. What is kept still takes its memory: its bytes count in the budget's `used` (and `kept`, and its group's StreamStatus.kept) until it is let go, so a group that would not fit beside it waits.
-
-Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading with each asset's bytes), the recent changes, the terrain streamer's tiles and the fetch queue.
-
-What streams is read through one queue: first the chunks of the sounds cooked in chunks that a playhead needs soonest (the one it is playing, then by the seconds until it gets there at its pitch, a loop's start by the time to its wrap), then the loading groups' packs by priority (then name). At most four reads are in flight at once (on the web, fetches; natively a read completes at once, so only the order shows); the rest wait in that order. `dump_stream`'s `fetch` lists what is in flight and what waits, each with its path and what it is for (a sound's chunk and its seconds, a group's pack and its priority).
-
-World cells (G3-3) stream entities, not assets: an entity with an og.StreamCell and a sub-scene (a `scene "<id>"` line in its scene block, or StreamCell.scene from og.load.scene) is a cell. Its sub-scene's entities, and with them their colliders, bodies and everything else they carry, spawn when it loads, placed by the cell's transform (its top-level entities are roots, at the cell's transform after their own, so physics bodies among them are where they look) and each with an og.CellMember naming the cell; when it unloads, every member and its descendants are despawned. Whether a cell is loaded is decided as each tick starts, before any system runs, from world state alone: it loads while an og.StreamAnchor (a player, a vehicle) is within StreamCell.load of its box, unloads once every anchor is past StreamCell.unload, and stays loaded while StreamCell.pin is set. Without any anchor the og.Camera resource's position anchors, a convenience for a single-player game; a lockstep or rollback session (og.net) refuses that, since each peer's camera is its own. Cells load in entity id order and a sub-scene's entities spawn in its text order, so the same world spawns the same entity ids on both hosts, in a replay, a rollback and after a restore. A sub-scene's blob is in the boot bundle unless the sub-scene declares a cell group (`stream "<name>" { cell; asset ... }`): then the blob is in that group's pack with the assets it names, fetched ahead of the anchors (StreamAnchor.maxSpeed), and its models and textures draw their stand-ins until the group is resident. A tick that would load a cell whose blob has not landed is held, never skipped or reordered: frames go on drawing, the engine's log records each hold and how long it lasted, and `dump_stream`'s `hold` says what the tick waits for. Natively a read completes at once, so a native run or replay never holds.
-
-A cell's state is world state: StreamCell.loaded, and its sub-scene's entities, are in snapshots, saves and the world hash, so restoring a save restores which cells are loaded and what is in them; an unloaded cell's entities are not in the world and come back from its sub-scene, as authored, when it loads again. Each change sends CellEvent in the tick it happens, and add hooks and `added` filters on the sub-scene's components see its entities arrive. The probe's `dump_stream` lists every cell (`cells`): its entity, sub-scene, state, entities and the ticks it last loaded and unloaded.
+See `world §4`.
 
 - **TypeScript**: functions are the namespace `og.stream`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
@@ -22,11 +14,8 @@ A cell's state is world state: StreamCell.loaded, and its sub-scene's entities, 
 
 ```ogt
 module stream {
-  doc "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance x y z r [unload d] | volume \"<entity>\"; priority n }` blocks name glTF models (without skins or morph targets), textures, texture arrays, flipbooks (an `array true` sheet brings its array), sounds, environment maps, palettes, looks and colour LUTs (`.cube`) that load and unload together, and what loads them: the camera within `r` of the anchor (kept until it is past `unload`, 1.25 r by default), the camera inside the named entity's box (its position ± half its scale, turned with it), or neither (og.stream.request only). `og cook` packs each group's files into `cooked/stream/<name>.ogb`; `og build --publish` ships the packs beside the boot bundle, which the shell and the service worker fetch first, and fetches a pack only when its group loads."
-  doc "At every tick boundary the engine decides which groups are wanted, admits them by priority (then name) within the memory budget (256 MiB by default; GPU textures and meshes and decoded audio, as the cook measured them), evicting lower-priority resident groups to make room for a higher one, and reads and puts in place at most one group's assets per boundary. A group that cannot fit waits, queued; one larger than the whole budget fails. Until its group is resident, a model draws its proxy (its coarsest LOD, untextured), a texture is a 1x1 grey placeholder and a sound plays as silence of its own length; then the real ones take over the same handles. Physics always collides with the proxy's meshes and a sound's length never changes, so nothing a tick reads depends on what is resident: a run's world hash is the same streamed or not."
-  doc "Texture arrays, flipbooks, environment maps, palettes, looks and colour LUTs have no stand-in: they load once their group is resident, and when it unloads the renderer lets them go and their handles wait (the sky lights the scene, Stylise.palette quantises to none, PostEffects.lut grades nothing, og.render.sprite of the array and applying the look are refused, an og.Sprite, a flipbook's sprite or a particle emitter of the array draws nothing) until the group is resident again, when they come back under the same handles. One the frame still uses when its group unloads (the map Environment lights it with, the palette Stylise quantises to, an array a sprite, a screen sprite or a particle emitter draws from, the look last applied, the LUT PostEffects grades with) is never freed under the frame: it is kept, with a warning naming it in the engine's log, until the frame stops using it. What is kept still takes its memory: its bytes count in the budget's `used` (and `kept`, and its group's StreamStatus.kept) until it is let go, so a group that would not fit beside it waits."
-  doc "Every change of a group's state sends StreamEvent at the start of the next tick; og.stream.status and og.stream.budget answer at once, and the probe's `dump_stream` lists the budget, the memory used and its peak, every group (trigger, state, why, since which tick, what it keeps for the frame after unloading with each asset's bytes), the recent changes, the terrain streamer's tiles and the fetch queue."
-  doc "What streams is read through one queue: first the chunks of the sounds cooked in chunks that a playhead needs soonest (the one it is playing, then by the seconds until it gets there at its pitch, a loop's start by the time to its wrap), then the loading groups' packs by priority (then name). At most four reads are in flight at once (on the web, fetches; natively a read completes at once, so only the order shows); the rest wait in that order. `dump_stream`'s `fetch` lists what is in flight and what waits, each with its path and what it is for (a sound's chunk and its seconds, a group's pack and its priority)."
+  doc "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance ... | volume ...; priority n }` blocks name assets that load and unload together, one pack each, admitted by priority within a memory budget (256 MiB by default). Until resident, models draw proxies, textures a placeholder and sounds silence of their own length, so nothing a tick reads depends on what is resident."
+  doc "World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state."
   # declarations follow, each on its own page
 ```
 
@@ -69,28 +58,28 @@ module stream {
 const STREAM_UNLOADED u32 0 "`StreamEvent.state`: the group is unloaded (StreamState unloaded)."
 ```
 
-<sub>Module `stream` line 68</sub>
+<sub>Module `stream` line 69</sub>
 
 ```ogt
 const STREAM_QUEUED u32 1 "`StreamEvent.state`: the group waits for room in the budget (StreamState queued)."
 ```
 
-<sub>Module `stream` line 69</sub>
+<sub>Module `stream` line 70</sub>
 
 ```ogt
 const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read (StreamState loading)."
 ```
 
-<sub>Module `stream` line 70</sub>
+<sub>Module `stream` line 71</sub>
 
 ```ogt
 const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
 ```
 
-<sub>Module `stream` line 71</sub>
+<sub>Module `stream` line 72</sub>
 
 ```ogt
 const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 ```
 
-<sub>Module `stream` line 72</sub>
+<sub>Module `stream` line 73</sub>

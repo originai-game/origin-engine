@@ -37,13 +37,14 @@ module render {
 
   enum Antialias {
     doc "Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved."
+    guide "render §2"
     variant tier "The engine's default method, on every backend (WebGPU, Metal, Vulkan, DX12): 4x MSAA in a 2D project (project.ogt's profile 2d), where TAA's jitter and history blend would soften nearest-sampled pixel art; TAA in a 3D one."
     variant off "One sample per pixel."
     variant msaa4 "4x MSAA (what tier resolves to in a 2D project): sharp sprites and text, no temporal blur; FXAA where the HDR format cannot be multisampled."
     variant taa "Temporal antialiasing (what tier resolves to in a 3D project): a sub-pixel jitter per frame and a reprojected history; converges over about eight frames. RenderOptions.taaHistory and taaSharpen refine it."
     variant fxaa "FXAA: one full-screen pass over the tonemapped image (the overlay stays sharp), no extra samples and nothing to converge; softer than MSAA on fine texture."
     variant smaa "SMAA 1x high preset: perceptual luma edges, area/search weights and neighbourhood blending over the tonemapped image; the overlay stays sharp. No jitter or history; an alternative to TAA, not combined with TAAU."
-    variant smaaT2x "SMAA temporal 2x: two quarter-pixel-jittered SMAA frames, reprojected with the engine's camera and object velocity and neighbourhood rejection. Resolves in linear display colour before stylisation and the overlay; first frame and camera cuts use only the current frame. Exclusive of TAA, TAAU and MSAA; render scale uses spatial upscaling. taaHistory and taaSharpen apply only to TAA."
+    variant smaaT2x "SMAA temporal 2x: two quarter-pixel-jittered SMAA frames, reprojected with the engine's camera and object velocity and neighbourhood rejection. Exclusive of TAA, TAAU and MSAA; render scale uses spatial upscaling, and taaHistory and taaSharpen do not apply."
   }
 
   enum PointShadows {
@@ -51,6 +52,7 @@ module render {
     variant auto "Cube faces."
     variant cube "Six 90 degree faces: six shadow passes per light."
     variant paraboloid "Two paraboloid hemispheres (below and above the light): two passes per light instead of six, coarser, and large casters' silhouettes approximate (their edges stay straight in the curved projection)."
+    guide "render §3"
   }
 
   enum TaaHistory {
@@ -61,8 +63,9 @@ module render {
 
   enum Upscaler {
     doc "The temporal resolve under TAA (RenderSettings.upscaler), as og-render's Upscaler: what turns the jittered frame, drawn at the render scale, into the output. RenderCapabilities.upscalers names the ones this device draws. Without TAA neither runs: the frame is scaled bilinearly."
-    variant taau "The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then RenderOptions.taaSharpen. The cheapest; softer on thin geometry and ghosts a little more on disocclusion."
-    variant fsr3 "AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, locks that keep thin geometry and edges through motion, luma instability, Lanczos upsampling and RCAS sharpening (taaSharpen's strength). Transparent surfaces (the order-independent transparency's coverage) feed its reactive mask, so particles and glass do not smear. More GPU time than taau (docs/design.md §11 has the measurements)."
+    variant taau "The engine's TAA resolve with temporal upscaling: one pass, a neighbourhood clamp of the history and the RenderOptions.taaHistory filter, then RenderOptions.taaSharpen."
+    variant fsr3 "AMD FidelityFX Super Resolution 3.1's upscaler (MIT), in fp32 without subgroups so it runs alike on every host: depth-based disocclusion, thin-geometry locks, luma instability, Lanczos upsampling and RCAS sharpening (taaSharpen's strength); transparent surfaces feed its reactive mask."
+    guide "render §2"
   }
 
   column Upscaler {
@@ -91,13 +94,14 @@ module render {
     variant terrainLayers "Terrain's strongest raw layer (control times slope and altitude), coloured by index; magenta means the first-layer fallback. Brightness shows its share before height blending."
     variant terrainMip "Terrain normal-map mip footprint: one colour per estimated isotropic mip, darkening between levels. This is a derivative-based estimate, not the hardware anisotropic mip selection."
     variant terrainProjection "Dominant raw terrain layer's actual projection weights, XYZ as RGB, without cell or morph overlays. Planar layers are green (top-down Y projection)."
-    variant terrainDensity "Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB. Each linear channel is d/(1+d), where d is base-level texels per vertical screen pixel; 0.5 means one texel per pixel. Density is measured before projection weighting; a missing albedo shows the unsupported checker."
+    variant terrainDensity "Dominant raw terrain layer's vertical albedo texel footprints for X/Y/Z projections as RGB, each linear channel d/(1+d) for d base-level texels per vertical screen pixel (0.5: one texel per pixel), measured before projection weighting; a missing albedo shows the unsupported checker."
   }
 
   enum Transparency {
     doc "How the main camera's blended surfaces (transparent materials, alpha billboards, alpha particles and trails) are composited, as og-render's Transparency: in any order, never sorted. Additive effects stay additive and drawn after them; 2D sprites, text and the UI keep their layer order; secondary cameras, reflections and probe faces still sort back to front. RenderCapabilities.transparency reports what the device resolved."
-    variant weighted "Weighted blended order-independent transparency (McGuire and Bavoil 2013) with each pixel's nearest layer kept exact (hybrid transparency, Maule et al. 2013): a billboard or pane in front keeps its own colour over what lies behind it, and only the layers behind the nearest read as their weighted mean rather than strictly front over back. The nearest layer is the nearest fragment at least 1/8 opaque, marked by a depth pass of its own (where the device cannot write storage from fragment shaders, every layer is weighted). Two submission orders agree within the half-float rounding of the sums (at most one 8-bit step per channel for a few layers)."
-    variant linkedList "Per-pixel fragment lists: each pixel keeps up to RenderOptions.transparencyLayers fragments, sorted by depth (equal depths by a stable key of the draw and its primitive) and composited exactly, the same in any submission order. A pixel with more fragments is resolved whole as weighted, and counted (the render dump's transparency.fallbackPixels). Weighted where the device cannot write storage from fragment shaders, or where the scene is too large for one node a pixel in its largest storage buffer."
+    variant weighted "Weighted blended OIT (McGuire and Bavoil 2013) with each pixel's nearest fragment at least 1/8 opaque kept exact (Maule et al. 2013); the layers behind it show as their weighted mean. Any two submission orders agree within half-float rounding. Without fragment storage writes, all are weighted."
+    variant linkedList "Per-pixel fragment lists: up to RenderOptions.transparencyLayers a pixel, sorted by depth (ties by a stable draw and primitive key) and composited exactly in any order. A pixel with more is resolved as weighted and counted (render dump transparency.fallbackPixels). Weighted where lists cannot run."
+    guide "render §2"
   }
 
   enum LitFeature {
@@ -111,35 +115,47 @@ module render {
 
   struct RenderOptions {
     doc "How the renderer is created for a game (GameDesc.render). The host reads it once, when it attaches the renderer."
+    guide "render §2"
     desc true
+    group "Antialiasing"
     field antialias Antialias "The antialiasing method; left out, tier (4x MSAA in a 2D project, TAA in a 3D one)."
-    field hdr bool "Request extended-range HDR surface output. Opt-in; not yet accepted on a real HDR display (acceptance belongs to the compatibility phase). False keeps SDR and its tone operator. Unsupported surfaces fall back to SDR; capabilities.hdrSupported reports the float extended-sRGB surface path, capabilities.hdr reports the resolved mode. Headless renderers remain SDR. HDR uses the LPM display mapper and linear UI composition, with the surface transfer applied last."
-    field paperWhiteNits f32 "HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation."
-    field peakNits f32 "HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation."
-    field shadowMapSize u32 "The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels; smaller saves memory on phones (three 2048 maps are 48 MB, with their depth buffer 64 MB)." {
-      default 2048
-      min 256
-      max 4096
-    }
-    field pointShadows PointShadows "How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser)."
     field taaHistory TaaHistory "With TAA: how the history is resampled."
     field taaSharpen f32 "With TAA: a sharpening pass after it, 0 (none) to 1; it never pushes a pixel past its neighbours' range." {
       min 0
       max 1
       unit ratio
     }
-    field planarReflections u32 "How many planar reflection surfaces draw at once: water surfaces (og.Water.planarReflection) that mirror the scene in a pass of their own in the same frame. 1: the first surface that asks (a grid surface before one over a mesh); a second surface reflects as if it did not ask (screen-space and sky reflections), never in the first's mirror, and the log says so once. 2: a second surface in view mirrors the scene too, and material shaders can read the first's mirror (`planar_reflection`), at the cost of one more texture in every lit pipeline and a second reflection pass while both are in view. RenderCapabilities.planarReflections reports the count the renderer was made with." {
+    group "Display"
+    field hdr bool "Request extended-range HDR surface output; false keeps SDR and its tone operator. Unsupported surfaces and headless renderers stay SDR; capabilities.hdrSupported reports the extended-sRGB path, capabilities.hdr the resolved mode. HDR maps with LPM, composes the UI linearly, transfers last." {
+      guide "render §12"
+    }
+    field paperWhiteNits f32 "HDR reference white; 0 means 203 nits. Clamped to 80..1000. On Apple EDR and web, absolute display nits are unavailable: white follows OS SDR white and peakNits/paperWhiteNits sets relative headroom. On DXGI/Vulkan scRGB this sets absolute paper white. Read once at renderer creation."
+    field peakNits f32 "HDR target peak; 0 means 1000 nits. Clamped to 80..10000 and at least paperWhiteNits. A display can limit actual output below this target. Read once at renderer creation."
+    group "Shadows and reflections"
+    field shadowMapSize u32 "The side of each of the directional light's cascade maps (RenderSettings.shadowCascades of them), in texels." {
+      default 2048
+      min 256
+      max 4096
+      guide "render §3"
+    }
+    field pointShadows PointShadows "How point lights' shadows are stored: cube faces, or two paraboloid hemispheres (fewer passes, coarser)."
+    field planarReflections u32 "How many planar reflections (og.Water.planarReflection) draw at once. 1: the first asking (a grid before a mesh); others reflect as if they did not ask, logged once. 2: a second in view mirrors too; shaders read the first's (`planar_reflection`). RenderCapabilities.planarReflections reports it." {
       default 1
       min 1
       max 2
+      guide "render §8"
     }
+    group "Transparency"
     field transparency Transparency "How blended surfaces are composited: weighted (the default) or the exact per-pixel lists where the device allows them."
     field transparencyLayers u32 "With transparency linkedList: the fragments a pixel keeps and sorts exactly (0: 4), as far as the device's largest storage buffer holds them for every pixel at the render size; RenderCapabilities.transparency says whether the lists run at all." {
       default 0
       min 0
       max 32
     }
-    field without List.LitFeature "Optional lit features to build no lit shader with, for a game that never uses them: empty (the default) builds every one into every lit shader, as before. Each one left out is in no lit pipeline the renderer makes, on any host, so those pipelines compile faster and draw a little faster; it is not drawn: a scene that uses it draws as if it did not, and the log says so once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it."
+    group "Shaders and debugging"
+    field without List.LitFeature "Optional lit features left out of every lit pipeline, on any host; empty (the default) builds them all. A scene using one left out draws as if it did not, logged once. Each name once, in any order. Read once, when the renderer is created; RenderCapabilities.without reports it." {
+      guide "render §10"
+    }
     field debugView DebugView "A debug overlay from the first frame (og.debug.setView, the command channel's `debug:<view>`): none in a game, a view while building one. Not in publish builds."
   }
 
@@ -158,13 +174,10 @@ module render {
 
   struct StandardMaterialDesc {
     doc "A physically based metallic-roughness material with three.js MeshStandardMaterial parameter names."
-    doc "It is og-render's reflected StandardMaterial field for field: metalnessMap and roughnessMap read a glTF metallic-roughness texture (blue metal, green rough), so give both the same texture; alphaTest above 0 discards below that alpha; transparent blends, sorted back to front."
-    doc "The stylised fields: unlit (three.js MeshBasicMaterial), toon with its gradientMap ramp, a rim (fresnel) light, a hit flash, dissolve with a glowing edge, and a per-material outline. All are off at their defaults. og.MaterialStyle fills the ones a material leaves at their defaults unless the material sets styled false."
-    doc "The MeshPhysicalMaterial fields, under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults: clearcoat with clearcoatMap, clearcoatRoughnessMap and clearcoatNormalMap; sheen (velvet, cloth) with sheenColor, sheenRoughness and their maps; transmission (glass, water) refracting the opaque scene behind through thickness, attenuationColor and ior; iridescence (soap film, oil) with its film's iridescenceIOR and iridescenceThicknessRange; anisotropy (brushed metal) along anisotropyRotation or anisotropyMap. They draw on every backend; unlit and toon materials ignore them."
-    doc "A transmissive material is drawn after the opaque scene, back to front with the transparent ones, and refracts what was drawn before it (not other transmissive or transparent objects); thickness is in the mesh's own units, scaled with it."
-    doc "normalMap is read in glTF's tangent frame: red tilts towards +u, green up the image. The tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
+    doc "It is og-render's reflected StandardMaterial field for field. Its tangents come from the model (the cook generates MikkTSpace ones where a glTF has none) or are generated when the geometry is made; normals follow a non-uniform scale correctly."
+    guide "render §6"
     desc true
-    field foliage FoliageDesc "Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y."
+    group "Surface" "The metallic-roughness surface and its maps."
     field color Color "The base colour." {
       default 1 1 1
     }
@@ -173,45 +186,51 @@ module render {
       min 0
       max 1
     }
-    field metalnessMap Option.Texture "Metalness from the texture's blue channel."
+    field metalnessMap Option.Texture "Metalness from the texture's blue channel (a glTF metallic-roughness texture, the same as roughnessMap's)."
     field roughness f32 "How rough the surface is." {
       default 1
       min 0
       max 1
     }
     field roughnessMap Option.Texture "Roughness from the texture's green channel."
-    field normalMap Option.Texture "A tangent-space normal map."
+    field normalMap Option.Texture "A tangent-space normal map in glTF's tangent frame: red tilts towards +u, green up the image."
+    field normalScale Vector2 "How strongly the normal map bends the normal, per tangent axis." {
+      default 1 1
+    }
     field aoMap Option.Texture "Ambient occlusion from the texture's red channel."
+    field aoMapIntensity f32 "How strongly aoMap darkens the ambient light." {
+      default 1
+      min 0
+    }
     field emissive Color "The emitted colour."
     field emissiveIntensity f32 "A multiplier on the emitted colour." {
       default 1
       min 0
     }
     field emissiveMap Option.Texture "The emitted colour texture."
+    field envMapIntensity f32 "A multiplier on image-based lighting." {
+      default 1
+      min 0
+    }
+    group "Alpha and faces"
     field opacity f32 "The opacity; below 1 only with transparent." {
       default 1
       min 0
       max 1
     }
-    field transparent bool "Blend instead of writing opaque pixels."
-    field alphaTest f32 "Discard pixels whose alpha is below this." {
+    field transparent bool "Blend instead of writing opaque pixels, composited as RenderOptions.transparency says." {
+      guide "render §2"
+    }
+    field alphaTest f32 "Above 0, discard pixels whose alpha is below this." {
       min 0
       max 1
     }
+    field alphaToCoverage bool "With MSAA (antialias msaa4), an alpha-tested material turns alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage. Without MSAA it cuts half a pixel's change of alpha below alphaTest (where coverage reaches 0): an edge keeps a few more pixels." {
+      guide "render §6"
+    }
     field side Side "Which faces are drawn."
     field flatShading bool "Shade with face normals."
-    field alphaToCoverage bool "With MSAA (antialias msaa4), an alpha-tested material turns its alpha into sample coverage instead of a hard cut at alphaTest, as three.js alphaToCoverage: minified foliage cards cover part of a pixel and the scene shows between them instead of drawing as solid sheets. Without MSAA it is a hard cut too, half a pixel's change of alpha below alphaTest (where the coverage reaches 0), so an edge keeps a few more pixels than alphaTest's own cut."
-    field envMapIntensity f32 "A multiplier on image-based lighting." {
-      default 1
-      min 0
-    }
-    field normalScale Vector2 "How strongly the normal map bends the normal, per tangent axis." {
-      default 1 1
-    }
-    field aoMapIntensity f32 "How strongly aoMap darkens the ambient light." {
-      default 1
-      min 0
-    }
+    group "Stylised" "Unlit, toon, rim, hit flash, dissolve and outline, all off at their defaults; og.MaterialStyle fills the ones a material leaves at their defaults (styled)."
     field unlit bool "No lighting at all, as three.js MeshBasicMaterial: the colour (times map) plus emissive."
     field toon bool "Cel shading, as three.js MeshToonMaterial: light is quantized by gradientMap (three built-in bands without one), highlights are hard."
     field gradientMap Option.Texture "The toon ramp: a texture whose first row maps the light's angle (left dark, right lit) to the light received, read without filtering."
@@ -250,13 +269,16 @@ module render {
       min 0
     }
     field outlineColor Color "This material's outline colour (linear)."
-    field outlineWidth f32 "This material's outline width in pixels; 0 is none (PostEffects.outline outlines everything). A hull outline, as toon shading draws one: the object's silhouette, where one part of it passes in front of another, and its creases against other objects (where it meets the ground or a wall), never the edges between its own faces, so a .vox model or any flat-shaded, hard-edged mesh keeps clean faces inside its silhouette; a face seen at a grazing angle (a box's side nearly edge-on, a large ground plane) is not lined across, only where it ends. Creases inside an object are Stylise.inkDepth's." {
+    field outlineWidth f32 "This material's hull outline width in pixels; 0 is none (PostEffects.outline outlines everything). It lines the silhouette, where one part passes in front of another and creases against other objects, never edges between its own faces; a face at a grazing angle is lined only where it ends." {
       min 0
       max 31
+      guide "render §6"
     }
-    field styled bool "Whether og.MaterialStyle (a look's scene-wide toon, rim, outline, flat facets, shadow tint and outline distance) reaches this material. false keeps it exactly as declared under any look: a lantern's lacquer, a UI-like prop, a hero kept photographic in a toon scene. A material with a MeshPhysicalMaterial lobe (clearcoat, sheen, transmission, iridescence, anisotropy, an ior other than 1.5) keeps its physical shading under the style's toon even when styled (toon would drop those lobes) and takes the rest of the style; its own toon true still makes it toon." {
+    field styled bool "Whether og.MaterialStyle (a look's scene-wide stylised fields) reaches this material; false keeps it as declared under any look. A material with a physical lobe (any Physical layers field, or ior not 1.5) keeps that shading under the style's toon and takes the rest; its own toon still applies." {
       default true
+      guide "render §6"
     }
+    group "Physical layers" "MeshPhysicalMaterial's fields under three.js's names and glTF's KHR_materials_* meanings, all off at their defaults; drawn on every backend, ignored by unlit and toon materials."
     field clearcoat f32 "A clear lacquer over the surface, as three.js MeshPhysicalMaterial.clearcoat: a second, 4 % reflective specular layer on the surface's normal before normalMap (car paint, varnished wood, wet plastic); 0 is none." {
       min 0
       max 1
@@ -273,10 +295,11 @@ module render {
     field clearcoatNormalScale Vector2 "How strongly clearcoatNormalMap bends the coat's normal, per tangent axis." {
       default 1 1
     }
-    field sheen f32 "A velvet-like layer that brightens grazing angles (cloth, fuzz, peach skin), as MeshPhysicalMaterial.sheen and glTF KHR_materials_sheen: Estevez and Kulla's Charlie fibres with their shadowing and soft terminator, lit by the environment through its directional albedo, and what it reflects taken from the surface under it, so cloth never glows (velvet: a very dark base, a bright desaturated sheenColor, sheenRoughness about 0.5; cotton and wool: a dim sheenColor at sheenRoughness 0.8 to 1; roughness 1 on both). Its strength, times sheenColor; 0 is none." {
+    field sheen f32 "A velvet layer brightening grazing angles, as MeshPhysicalMaterial.sheen (KHR_materials_sheen): Estevez and Kulla's Charlie fibres with shadowing and a soft terminator, lit by the environment through its directional albedo, its light taken from the surface below. Strength times sheenColor; 0 none." {
       min 0
       max 1
       unit ratio
+      guide "render §6"
     }
     field sheenColor Color "The sheen's colour (linear), times sheenColorMap; black is none."
     field sheenRoughness f32 "How rough the sheen is: low keeps it to a thin rim, high spreads it over the surface." {
@@ -287,13 +310,13 @@ module render {
     }
     field sheenColorMap Option.Texture "The sheen's colour from the texture's RGB (sRGB)."
     field sheenRoughnessMap Option.Texture "The sheen's roughness from the texture's alpha channel."
-    field transmission f32 "How much light passes through, as MeshPhysicalMaterial.transmission (glass, water, thin plastic): the opaque scene behind is refracted and blurred by roughness; 0 is none. Unlike opacity, the surface keeps its reflections." {
+    field transmission f32 "How much light passes through, as MeshPhysicalMaterial.transmission (glass, water): drawn after the opaque scene, back to front with the transparent ones, it refracts what was drawn before it (not other transmissive or transparent objects), blurred by roughness; 0 is none. It keeps its reflections." {
       min 0
       max 1
       unit ratio
     }
     field transmissionMap Option.Texture "Transmission from the texture's red channel."
-    field thickness f32 "The volume's thickness under the surface in the mesh's own units (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall." {
+    field thickness f32 "The volume's thickness under the surface in the mesh's own units, scaled with it (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall." {
       min 0
     }
     field thicknessMap Option.Texture "Thickness from the texture's green channel."
@@ -330,22 +353,28 @@ module render {
     }
     field anisotropyRotation f32 "The stretch's direction in radians from the tangent (+u) towards the bitangent."
     field anisotropyMap Option.Texture "The stretch's direction in red and green (-1 to 1 in the tangent frame, turned by anisotropyRotation) and its strength in blue, times anisotropy."
-    field mapArray Option.TextureArray "The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map: variants of one look (tiles, skins, damage states) are one material, each Mesh picking its layer with Mesh.materialLayer, and every mesh of the material is one draw whichever layer it shows. A material with mapArray or normalMapArray reads its base colour and normal map from arrays only (map and normalMap are not read). Physical materials (the MeshPhysicalMaterial fields) and shader materials do not take arrays."
+    group "Texture arrays"
+    field mapArray Option.TextureArray "The base colour from layer mapLayer of a texture array (og.load.textureArray) instead of map, each Mesh picking its layer (Mesh.materialLayer), in one draw. With mapArray or normalMapArray, colour and normals come from arrays only (map and normalMap unread). Physical and shader materials take none." {
+      guide "render §6"
+    }
     field mapLayer u32 "The layer of mapArray drawn where the Mesh does not pick one (past the array's last layer: the last)."
     field normalMapArray Option.TextureArray "A tangent-space normal map from layer normalMapLayer of a texture array (linear: cook it with `kind normal`), the counterpart of mapArray."
     field normalMapLayer u32 "The layer of normalMapArray read where the Mesh does not pick one."
-    field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs. A transform's own texCoord (a second uv set) is not read: the cook notes it and every map samples TEXCOORD_0."
+    group "Texture transforms" "Every map samples TEXCOORD_0; a glTF transform's own texCoord (a second uv set) is not read, and the cook notes it."
+    field mapOffset Vector2 "The uv offset map is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs." {
+      guide "render §6"
+    }
     field mapRepeat Vector2 "How many times map repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
       default 1 1
     }
     field mapRotation f32 "The uv rotation of map, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
       unit rad
     }
-    field metalnessMapOffset Vector2 "The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
-    field metalnessMapRepeat Vector2 "How many times metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) repeats across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
+    field metalnessMapOffset Vector2 "The uv offset metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too) are sampled at, as mapOffset. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
+    field metalnessMapRepeat Vector2 "How many times metalnessMap and roughnessMap (and the maps packed with them, as metalnessMapOffset) repeat across the uvs, as three.js Texture.repeat (glTF's scale): tiling and atlas cells." {
       default 1 1
     }
-    field metalnessMapRotation f32 "The uv rotation of metalnessMap and roughnessMap (one glTF texture; a physical material's other maps and aoMap are packed with them and sampled here too), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
+    field metalnessMapRotation f32 "The uv rotation of metalnessMap and roughnessMap (and the maps packed with them, as metalnessMapOffset), counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
       unit rad
     }
     field normalMapOffset Vector2 "The uv offset normalMap is sampled at, as three.js Texture.offset and glTF KHR_texture_transform: uv' = offset + rotation(rotation) * (repeat * uv), glTF's order. A loaded glTF's transform is here unless the cook baked it into the model's uvs."
@@ -369,13 +398,18 @@ module render {
     field aoMapRotation f32 "The uv rotation of aoMap, counter-clockwise in uv space about the uv origin, as glTF KHR_texture_transform's rotation." {
       unit rad
     }
-    field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide, in the colour the surface shows along each edge (color times map and the vertex colours, plus emissive times emissiveMap) or wireframeColor, unlit, depth tested; drawn as lines, not a polygon mode (WebGPU has none). Its meshes cast no shadow."
+    group "Wireframe"
+    field wireframe bool "Draw the edges of the mesh's triangles instead of its faces, as three.js Material.wireframe: one CSS pixel wide lines, unlit, depth tested, in the surface's colour along each edge (color × map × vertex colour + emissive × emissiveMap) or wireframeColor. Its meshes cast no shadow." {
+      guide "render §6"
+    }
     field wireframeAngle f32 "With wireframe: only the mesh's feature edges, its open borders and the edges whose two faces meet at more than this angle (welded by position, so uv seams and split hard edges do not show): a box's 12 edges, nothing across a smooth sphere but where it ends. 0 is every triangle edge." {
       min 0
       max 180
       unit deg
     }
     field wireframeColor Color "With wireframe: one colour for every edge (linear, above 1 blooms) instead of the colour the surface shows along it; black (the zero value) is the surface's."
+    group "Leaves, paint and weather"
+    field foliage FoliageDesc "Leaf shading; omitted parameters keep their values on updateMaterial. The reflected foliage vector stores translucency in x and domeNormals in y."
     field paintDetail f32 "How much of its detail the painterly filter (Stylise.paintRadius) keeps on this material, times Stylise.paintDetail: 0 painted at the full radius, 1 kept as drawn (a face, a hand, a sign's lettering)." {
       min 0
       max 1
@@ -395,8 +429,9 @@ module render {
     field geometry Geometry "The geometry."
     field material Material "The material."
     field castShadow bool "Cast shadows, as three.js Object3D.castShadow: drawn into the sun's cascades and the shadowed lights' maps. Off by default: a lamp's own glass around its light, a glow card or a decal-like slab casts none."
-    field receiveShadow bool "Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off): every mesh received shadows before the flag was applied. false lights it as if unshadowed by every light, while it still casts as castShadow says: a glowing sign, a hero kept readable in a dark alley." {
+    field receiveShadow bool "Receive shadows, as three.js Object3D.receiveShadow: darkened where the sun's cascades and the shadowed lights' maps say something stands between it and the light. On by default (three.js's is off). false lights it as if unshadowed by every light, while it still casts as castShadow says." {
       default true
+      guide "render §3"
     }
     field visible bool "Whether it is drawn." {
       default true
@@ -414,8 +449,9 @@ module render {
       min -1
       tunable true
     }
-    field layers u32 "Three.js layers, as Object3D.layers.mask: bit n set puts it on layer n. A camera (og.Camera, og.CameraView, og.Mirror) draws it when their masks share a bit, and og.render.raycast tests it when its own `layers` does. Shadow maps take every caster whatever its layers, so a body hidden from a first-person camera still casts." {
+    field layers u32 "Three.js layers, as Object3D.layers.mask: bit n set puts it on layer n. A camera (og.Camera, og.CameraView, og.Mirror) draws it when their masks share a bit, and og.render.raycast tests it when its own `layers` does. Shadow maps take every caster whatever its layers." {
       default 1
+      guide "render §3"
     }
   }
 
@@ -423,6 +459,7 @@ module render {
     doc "The sun, as three.js DirectionalLight: parallel light along the entity's local -Z (aim it with transform.lookAt, as a camera). The first one found is drawn, with RenderSettings.shadowCascades shadow cascades (3 by default)."
     doc "Without one, the renderer's default sun (from above and to the side, intensity 3) lights the scene."
     aliases "sun, directional light, Godot DirectionalLight3D"
+    guide "render §3"
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -439,7 +476,7 @@ module render {
       min 1
       unit m
     }
-    field shadowSoftness f32 "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance. Costs a blocker search and a 16-tap filter per shadowed pixel." {
+    field shadowSoftness f32 "Soft shadows (PCSS): the penumbra's width per metre between caster and receiver, the tangent of the sun's apparent radius (the real sun's is 0.005). 0 keeps the hard one-texel edge; 0.01 to 0.05 is a soft sun, sharp at contact and blurring with distance." {
       min 0
       max 0.2
       tunable true
@@ -477,8 +514,9 @@ module render {
 
   component PointLight {
     doc "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance."
-    doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it, so hundreds are cheap. Lights out of view are skipped; up to MAX_LIGHTS in view are drawn, and past that (or past what one screen cluster holds, MAX_CLUSTER_LIGHTS) the ones brightest at the camera are kept. Of those in view with castShadow, RenderCapabilities.maxShadowedLights (16) caps how many get shadows and RenderSettings.shadowedLights (8 by default) chooses it, the brightest at the camera first."
+    doc "Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first."
     aliases "omni light, point light, lamp, bulb, Godot OmniLight3D"
+    guide "render §3"
     field color Color "The light's linear colour." {
       default 1 1 1
     }
@@ -494,7 +532,9 @@ module render {
       tunable true
     }
     field castShadow bool "Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows)."
-    field cookie Texture "A light cookie projected all around the light: a cube of six square faces in one texture, stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z (a KTX2 cube's face order and a cube map's orientation, world axes; the texture is six times as tall as it is wide). The light's colour is multiplied by the texel its direction meets, so a lamp behind a pierced shade throws its pattern on the walls. 0 is none."
+    field cookie Texture "A light cookie projected all around the light: six square faces stacked top to bottom as +X, -X, +Y, -Y, +Z, -Z, six times as tall as wide (a KTX2 cube's face order, a cube map's orientation, world axes). The light's colour is multiplied by the texel its direction meets. 0 is none." {
+      guide "render §3"
+    }
   }
 
   component SpotLight {
@@ -526,7 +566,9 @@ module render {
       unit ratio
     }
     field castShadow bool "Cast a shadow map."
-    field cookie Texture "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour, so a spot throws a window's bars or a stained-glass pattern. 0 is none. A shadowed spot keeps its shadow over the pattern."
+    field cookie Texture "A light cookie, as three.js SpotLight.map: the texture projected along the cone (its centre on the axis, its edges at the outer angle, its top towards world up), multiplying the light's colour. 0 is none. A shadowed spot keeps its shadow over the pattern." {
+      guide "render §3"
+    }
   }
 
   enum ToneMapping {
@@ -547,8 +589,9 @@ module render {
   enum GraphicsQuality {
     doc "A graphics preset: a row of RenderSettings' quality fields that og.render.applyQuality writes (its doc has the table). A settings page offers the three."
     variant medium "The full frame: every quality field at its default."
-    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no screen-space reflections, ambient occlusion or global illumination, FXAA for MSAA; and, for a game that turns one of those back on, ambient occlusion at half resolution and half the reflection and fog steps."
-    variant high "The full frame refined, at the GPU time of the effects the scene draws: FSR 3.1 as the temporal upscaler (sharper and steadier in motion than TAAU, about 1 ms to 2 ms more at 1080p and 1440p on an M4 Pro), the shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps). A scene without those effects differs from medium only by its shadow maps."
+    variant low "The cheapest frame: no rect-light shadows, two shadowed lights, half-size shadow maps, plain fog, hard particles, no SSR, ambient occlusion or GI, FXAA for MSAA; for a game that turns one back on, half-resolution AO and half the reflection and fog steps."
+    variant high "The full frame refined: FSR 3.1 as the temporal upscaler, shadow maps at twice their side, ambient occlusion at full resolution whatever PostEffects.aoResolution asks, twice PostEffects.ssrSteps and twice the volumetric fog's slices (or raymarch steps)."
+    guide "render §1"
   }
 
   enum AoResolutionSetting {
@@ -582,12 +625,15 @@ module render {
 
   resource RenderSettings {
     doc "The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure."
+    guide "render §5"
+    group "Sky light"
     field environmentIntensity f32 "The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set." {
       default 0.55
       min 0
       tunable true
     }
     field sky bool "Draw the procedural sky behind the scene instead of Camera.background (with an og.Environment map set, the map)."
+    group "Bloom"
     field bloom bool "Light above the threshold bleeds into its surroundings."
     field bloomThreshold f32 "Brightness after exposure where bloom starts; 1 is display white." {
       default 1
@@ -603,28 +649,33 @@ module render {
       min 0
       tunable true
     }
-    field bloomRadius f32 "Below 0 (the default) keeps Origin's bloom. 0 to 1 switches to three.js UnrealBloomPass with this radius: a luminance high pass (smoothstep from bloomThreshold to bloomThreshold + bloomKnee, the colour kept whole above it) at half resolution, five Gaussian mips (kernels 3, 5, 7, 9, 11), mixed with weights mix(f, 1.2 - f, radius) for f = 1, 0.8, 0.6, 0.4, 0.2; bloomIntensity is its strength, and the mix is added as EffectComposer's additive copy does, weighted again by its alpha (strength times the weights' sum)." {
+    field bloomRadius f32 "Below 0 (the default) keeps Origin's bloom. 0 to 1 is three.js UnrealBloomPass at this radius: a half-resolution high pass from bloomThreshold to bloomThreshold + bloomKnee, five Gaussian mips mixed by mix(f, 1.2 - f, radius), added at bloomIntensity as EffectComposer's additive copy." {
       default -1
       min -1
       max 1
+      guide "render §5"
     }
     field bloomContrast f32 "With bloomRadius 0 or more: the high pass (and the blur) sees each channel as 0.18 x (colour / 0.18) to this power before exposure, as a contrast grade run ahead of UnrealBloomPass (the way a three.js grade pass before the bloom does) would leave it. 1, the default, leaves the colour as lit." {
       default 1
       min 0.5
       max 2
     }
-    field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the current frame's alone; otherwise it adapts over time like an eye, starting at the metered exposure of the first frame drawn after the first tick (a frame drawn before it, such as the web shell's first frame behind the play gate, meters at once and is never adapted from), so every host draws the same exposures for the same ticks."
-    field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame (never the wall clock, so a replay and every host adapt the same, however many frames each drew); 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
+    group "Exposure and tone mapping"
+    field autoExposure bool "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick (earlier frames meter at once), so every host draws the same exposures." {
+      guide "render §5"
+    }
+    field adaptSpeedUp f32 "How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame, never by the wall clock; 0 is instant. Snapshots and probe sweeps carry the adapted exposure." {
       min 0
       max 100
       unit evPerSecond
       tunable true
     }
-    field adaptSpeedDown f32 "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant. Eyes adapt to brightness faster than to the dark: 3 down and 1 up is a natural pair." {
+    field adaptSpeedDown f32 "How fast auto exposure falls when the view gets brighter, in EV per second of game time; 0 is instant." {
       min 0
       max 100
       unit evPerSecond
       tunable true
+      guide "render §5"
     }
     field toneMapped bool "Tone mapping by toneMapping; false clamps, so 2D colours come out exactly as authored at exposure 1." {
       default true
@@ -636,19 +687,24 @@ module render {
       max 16
       tunable true
     }
+    group "Scene"
     field decalAtlas Texture "The texture Decal components take their uvMin to uvMax region from; 0 draws decals as solid colour."
-    field lodBias f32 "A multiplier on every model's projected level-of-detail error when its level is picked (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers less than a pixel on the screen. 1 is the engine's choice, 2 keeps full meshes twice as far, 0.5 simplifies sooner; 0 draws every model at its full mesh." {
+    field lodBias f32 "A multiplier on every model's projected level-of-detail error (og.Model.lodBias multiplies it again): a level is drawn while its error, measured by the cook against the full mesh, covers under a pixel. 1 is the engine's choice, 2 keeps full meshes twice as far; 0 draws every model in full." {
       default 1
       min 0
       max 16
       tunable true
+      guide "render §10"
     }
-    field bakedLighting bool "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map: to compare, or to see the realtime lights alone." {
+    field bakedLighting bool "Draw the baked lighting of the scenes that have it (og bake lightmaps): static models with their lightmaps, everything else inside a LightVolume with its probes. False draws every scene as if unbaked, its ambient light from the sky or the environment map." {
       default true
+      guide "render §4"
     }
+    group "Quality" "The fields og.render.applyQuality writes from a graphics preset."
     field quality QualityPreset "The graphics preset og.render.applyQuality last wrote into the quality fields below (rectShadows to upscaler), or none. A record for the settings screen and the probe: the renderer reads the fields, never this, so a field the game sets after the preset is drawn as set."
-    field rectShadows bool "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off: a rect light's shadow is the costliest light in the frame." {
+    field rectShadows bool "Rect lights whose castShadow is on cast their soft shadows; false draws every rect light unshadowed, each keeping its castShadow for when this is on again. The low preset turns it off." {
       default true
+      guide "render §3"
     }
     field shadowedLights u32 "At most this many point, spot and rect lights cast shadows in a frame, the brightest at the camera kept (RenderCapabilities.shadowedLights caps it, 16); 0 casts none. The high preset keeps 16, medium 8, low 2. The directional light's cascades are not counted." {
       default 8
@@ -660,7 +716,7 @@ module render {
       min 1
       max 4
     }
-    field shadowMapScale f32 "The shadow maps at this fraction of their full side: the directional light's cascades (2048 texels by default) and the local lights' layers (512), each kept within 64 texels and the device's limit (4096 for the cascades). Changing it makes the maps again at the next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn." {
+    field shadowMapScale f32 "The shadow maps at this fraction of their full side: the cascades (2048 texels by default) and local lights' layers (512), each within 64 texels and the device's limit (4096 for cascades). Changing it remakes the maps next frame; RenderCapabilities.shadowMapSize is the cascades' side drawn." {
       default 1
       min 0.125
       max 4
@@ -677,25 +733,33 @@ module render {
     field ambientOcclusion bool "PostEffects.ao darkens creases; false draws none. PostEffects keeps its settings either way." {
       default true
     }
-    field aoResolution AoResolutionSetting "The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again. The renderer reads this first, so the probe's RenderSettings and PostEffects together say what is drawn."
+    field aoResolution AoResolutionSetting "The resolution ambient occlusion is searched at: postEffects (the default) draws PostEffects.aoResolution; full or half is drawn in its place, and PostEffects keeps its own for when this is postEffects again." {
+      guide "render §5"
+    }
     field ssrStepScale f32 "PostEffects.ssrSteps times this (within the 4 to 128 steps the pass takes): 2 is 128 steps for the default 64, finer contact with thin and distant reflected surfaces at a higher GPU time. PostEffects keeps its steps." {
       default 1
       min 0
       max 32
     }
-    field volumetricStepScale f32 "An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), each thinner, so a shaft's edge in depth and the fog just in front of a surface resolve more finely, or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). The froxel grid's GPU time and memory grow with its slices; changing it makes the grid again at the next frame." {
+    field volumetricStepScale f32 "An og.VolumetricFog's samples along each view ray times this: the froxel grid's 64 slices deep (8 to 256), or the raymarch's 24 steps per pixel (4 to 96) where the renderer draws one (RenderCapabilities.volumetricFog). Changing it makes the grid again at the next frame." {
       default 1
       min 0
       max 4
+      guide "render §7"
     }
-    field msaaSamples u32 "Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it, as maxShadowedLights caps shadowedLights: where the device resolved no MSAA (TAA, FXAA, off, or FXAA for want of a multisampled HDR format) it is 1, and one sample is drawn whatever this says; RenderCapabilities.antialias is what is drawn now. Changing it makes the multisampled targets and pipelines again at the next frame." {
+    field msaaSamples u32 "Samples per pixel where the antialiasing multisamples (msaa4): 4, or 1, which draws FXAA instead. RenderCapabilities.maxMsaaSamples caps it: 1 where the device resolved no MSAA, which draws one sample whatever this says. Changing it remakes the multisampled targets and pipelines next frame." {
       default 4
       min 1
       max 4
+      guide "render §2"
     }
-    field upscaler Upscaler "Under TAA, the temporal resolve that takes the frame from the render scale (DisplaySettings.renderScale, automatic quality's) to the output: taau (the default, the low and medium presets) or fsr3 (the high preset). Automatic quality keeps it while it lowers the render scale and draws taau once its preset steps cap the quality at medium or low. A device that draws only some (RenderCapabilities.upscalers) draws taau for one it lacks. Switching starts the history again at the next frame."
-    field interpolate bool "Draw what moves between the last two ticks. A display frame that falls between ticks (a 60 Hz tick on a 120 or 144 Hz screen) draws every entity's world transform and og.Camera's position and rotation blended from the tick before the last to the last, by the time past the last tick over the tick's length (positions and scales lerped, rotations slerped), so camera pans, cars and bullets glide instead of judder; skinned models blend their joints too (each joint's translation and scale lerped, rotation slerped, blendshape weights lerped; root motion and every pose the simulation reads stay at the tick), UI anchored to an entity (a document's `<anchor entity>`) stays on its drawn place, and object motion blur moves from the frame drawn before, never across a snap or a camera cut. Immediate-mode draws (og.render.sprite, og.render.text, og.debug.line and og.debug.text, placed by a system on its tick) and shader time stay at the tick. The frame then shows the world up to one tick late. A frame on a tick boundary (a host that steps whole ticks: og run without --realtime, og render, og test) draws the last tick exactly, as do the probe's screenshots and captures, so reference frames are the ticks'. Presentation only: the simulation, world_hash, snapshots, replays, lockstep, the probe and dump_* read the ticks, never the blend. og.Interpolation opts an entity out; og.render.snap, the probe's teleport and snapDistance keep a teleport from gliding." {
+    field upscaler Upscaler "Under TAA, the temporal resolve from the render scale (DisplaySettings.renderScale) to the output: taau (the default; the low and medium presets) or fsr3 (the high preset). A device lacking one (RenderCapabilities.upscalers) draws taau. Switching restarts the history next frame." {
+      guide "render §1"
+    }
+    group "Interpolation"
+    field interpolate bool "Draw what moves between the last two ticks: a frame between ticks blends entities, og.Camera and skinned joints from the tick before the last to the last, showing the world up to one tick late. Frames on a tick boundary, screenshots and captures draw the last tick. Presentation only." {
       default true
+      guide "render §9"
     }
     field snapDistance f32 "An entity or og.Camera that moved further than this between the last two ticks is drawn at the last tick, not blended: a teleport or a respawn this far needs no og.render.snap. 0 never snaps by distance." {
       default 10
@@ -707,6 +771,7 @@ module render {
 
   component Interpolation {
     doc "How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does."
+    guide "render §9"
     field off bool "Draw this entity, and everything under it through og.Parent, at the last tick's transform on every frame, never blended: a marker the game already moves every frame, or an object that jumps on purpose (a clock hand that ticks)."
   }
 

@@ -8,21 +8,24 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 A body's simulation mode. Fixed has Rapier's meaning; kinematic is the engine's combined Velocity/Transform contract.
 
+See `physics §1`.
+
 A string: one of the variants below. The zero value is `"dynamic"`.
 
 | Variant | Doc |
 |---|---|
 | `"dynamic"` | Moved by the solver; Transform and Velocity are written back every tick. |
 | `"fixed"` | Not moved by the solver; collides with dynamic bodies. |
-| `"kinematic"` | Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Unlike Rapier there are no separate position-based and velocity-based modes: Transform is not a next-position target from which velocity is inferred. |
+| `"kinematic"` | Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Transform is not a next-position target from which velocity is inferred. |
 
 ```ogt
 enum RigidBodyType {
   doc "A body's simulation mode. Fixed has Rapier's meaning; kinematic is the engine's combined Velocity/Transform contract."
+  guide "physics §1"
   variant dynamic "Moved by the solver; Transform and Velocity are written back every tick."
   variant fixed "Not moved by the solver; collides with dynamic bodies."
-  variant kinematic "Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Unlike Rapier there are no separate position-based and velocity-based modes: Transform is not a next-position target from which velocity is inferred."
+  variant kinematic "Velocity moves it each tick; a Transform write teleports it first. Without Velocity it stays at Transform. It pushes dynamic bodies and carries controllers. Transform is not a next-position target from which velocity is inferred."
 }
 ```
 
-<sub>Module `physics` line 25</sub>
+<sub>Module `physics` line 26</sub>

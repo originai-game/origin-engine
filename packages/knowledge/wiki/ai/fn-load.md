@@ -8,6 +8,8 @@ Module [`ai`](../ai.md) · [index](../index.md)
 
 A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets.
 
+Also known as: load a behaviour tree, behaviour tree asset, state machine asset
+
 ```ts
 og.ai.load(world: World, path: string): Result<BehaviourInfo>
 ```
@@ -23,6 +25,7 @@ Binding symbol `og_ai_load` · publish builds: kept
 
 ```ogt
 fn load {
+  aliases "load a behaviour tree, behaviour tree asset, state machine asset"
   doc "A cooked behaviour (an `.ogt` of `type behaviour`, validated by og cook); its `use` subtrees are read from their own cooked assets."
   param world World "The world."
   param path String "The behaviour asset, such as `ai/slime.ogt`."
@@ -30,4 +33,4 @@ fn load {
 }
 ```
 
-<sub>Module `ai` line 195</sub>
+<sub>Module `ai` line 193</sub>

@@ -25,4 +25,4 @@ struct CellRect {
 }
 ```
 
-<sub>Module `procgen` line 111</sub>
+<sub>Module `procgen` line 112</sub>

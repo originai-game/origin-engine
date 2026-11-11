@@ -14,7 +14,7 @@ A loaded sound.
 | `channels` | `number` | `0` | — | — | — | Interleaved channels. |
 | `frames` | `number` | `0` | — | — | — | Samples per channel. |
 | `seconds` | `number` | `0` | — | `s` | — | Its length. |
-| `chunks` | `number` | `0` | — | — | — | The chunks it was cooked in (`sound { stream true }` in its import settings, or a QOA file above 1 MiB), the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead (on the web, fetched like a streaming group's pack) and drops the rest. |
+| `chunks` | `number` | `0` | — | — | — | The chunks it was cooked in, the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead and drops the rest. See `loading §3`. |
 
 ```ogt
 struct SoundInfo {
@@ -27,8 +27,10 @@ struct SoundInfo {
   field seconds f32 "Its length." {
     unit s
   }
-  field chunks u32 "The chunks it was cooked in (`sound { stream true }` in its import settings, or a QOA file above 1 MiB), the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead (on the web, fetched like a streaming group's pack) and drops the rest."
+  field chunks u32 "The chunks it was cooked in, the first included; 0 when it was cooked whole. A chunked sound is never resident whole: the engine reads its chunks from about half a second behind each playhead to four seconds ahead and drops the rest." {
+    guide "loading §3"
+  }
 }
 ```
 
-<sub>Module `load` line 103</sub>
+<sub>Module `load` line 107</sub>
