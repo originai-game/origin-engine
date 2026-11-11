@@ -5,7 +5,7 @@
 //! left.
 
 use crate::draw::DrawCmd;
-use crate::motion::codec::{R, W};
+use crate::motion::codec::{MotionRead, MotionWrite, R, W};
 use og_core::glam::Vec2;
 use og_draw::{
     TextureHandle, UiAlign, UiBackgroundSize, UiBlend, UiBuiltin, UiCap, UiCorner, UiEdge,
@@ -1179,10 +1179,15 @@ fn rmaterial(r: &mut R) -> Option<UiMaterial> {
     })
 }
 
-impl W<'_> {
+/// The UI pass's commands, written beyond [`W`]'s primitives.
+pub(crate) trait DrawWrite {
+    fn ui_cmd(&mut self, c: &DrawCmd) -> bool;
+}
+
+impl DrawWrite for W<'_> {
     /// A UI pass command (one of [`DrawCmd`]'s since the old six); false
     /// for one of those.
-    pub(crate) fn ui_cmd(&mut self, c: &DrawCmd) -> bool {
+    fn ui_cmd(&mut self, c: &DrawCmd) -> bool {
         let w = self;
         match c {
             DrawCmd::StyledText { text, effects: fx } => {
@@ -1293,9 +1298,14 @@ impl W<'_> {
     }
 }
 
-impl R<'_> {
+/// The UI pass's commands, read beyond [`R`]'s primitives.
+pub(crate) trait DrawRead {
+    fn ui_cmd(&mut self) -> Option<DrawCmd>;
+}
+
+impl DrawRead for R<'_> {
     /// [`W::ui_cmd`]'s command.
-    pub(crate) fn ui_cmd(&mut self) -> Option<DrawCmd> {
+    fn ui_cmd(&mut self) -> Option<DrawCmd> {
         let r = self;
         Some(match r.u8()? {
             0 => {
@@ -1385,7 +1395,7 @@ mod tests {
 
     use crate::draw::DrawCmd;
     use crate::layout::Rect;
-    use crate::motion::codec::{R, W};
+    use crate::motion::codec::{MotionRead, MotionWrite, R, W};
     use og_core::glam::Vec2;
     use og_draw::{UiGlass, UiGlassShadow, UiMode, UiShape};
 

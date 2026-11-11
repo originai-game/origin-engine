@@ -170,6 +170,7 @@ impl Running {
             .iter()
             .map(|c| {
                 let mut b = Vec::new();
+                use crate::motion::codec::MotionWrite;
                 let mut w = crate::motion::codec::W(&mut b);
                 w.u32(c.cmds.len() as u32);
                 for (cmd, m) in &c.cmds {
@@ -196,6 +197,7 @@ impl Running {
                 .step_by(2)
                 .map(|k| u8::from_str_radix(hex.get(k..k + 2)?, 16).ok())
                 .collect::<Option<_>>()?;
+            use crate::motion::codec::MotionRead;
             let mut r = crate::motion::codec::R {
                 bytes: &bytes,
                 at: 0,

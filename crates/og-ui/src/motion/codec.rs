@@ -5,6 +5,7 @@ use super::PresenceSpec;
 use super::spring::{Channel, Transition};
 use super::state::*;
 use crate::draw::DrawCmd;
+use crate::draw_codec::{DrawRead, DrawWrite};
 use crate::element::{Affine, Prop};
 use crate::layout::Rect;
 use crate::style::Srgba;
@@ -64,7 +65,20 @@ impl W<'_> {
             }
         }
     }
-    pub fn channel(&mut self, c: &Channel) {
+}
+
+/// What the motion state writes beyond [`W`]'s primitives.
+pub(crate) trait MotionWrite {
+    fn channel(&mut self, c: &Channel);
+    fn transition(&mut self, t: &Transition);
+    fn presence(&mut self, p: &Option<PresenceSpec>);
+    fn cmd(&mut self, c: &DrawCmd);
+    fn frozen(&mut self, f: &Frozen);
+    fn motion(&mut self, m: &MotionState);
+}
+
+impl MotionWrite for W<'_> {
+    fn channel(&mut self, c: &Channel) {
         for v in [c.value, c.velocity, c.target, c.from] {
             self.f32(v);
         }
@@ -75,7 +89,7 @@ impl W<'_> {
         }
         self.u8(c.kind);
     }
-    pub fn transition(&mut self, t: &Transition) {
+    fn transition(&mut self, t: &Transition) {
         // Resolved against the default tokens is not wanted here: a token
         // stays a token, so a style change after a restore still applies.
         match *t {
@@ -100,7 +114,7 @@ impl W<'_> {
             }
         }
     }
-    pub fn presence(&mut self, p: &Option<PresenceSpec>) {
+    fn presence(&mut self, p: &Option<PresenceSpec>) {
         match p {
             None => self.u8(0),
             Some(p) => {
@@ -116,7 +130,7 @@ impl W<'_> {
         }
     }
 
-    pub fn cmd(&mut self, c: &DrawCmd) {
+    fn cmd(&mut self, c: &DrawCmd) {
         match c {
             DrawCmd::Glass {
                 rect,
@@ -260,7 +274,7 @@ impl W<'_> {
         }
     }
 
-    pub fn frozen(&mut self, f: &Frozen) {
+    fn frozen(&mut self, f: &Frozen) {
         self.u32(f.cmds.len() as u32);
         for (c, m) in &f.cmds {
             self.cmd(c);
@@ -276,7 +290,7 @@ impl W<'_> {
         self.f32(f.radius);
     }
 
-    pub fn motion(&mut self, m: &MotionState) {
+    fn motion(&mut self, m: &MotionState) {
         self.u32(m.channels.len() as u32);
         let mut keys: Vec<u64> = m.channels.keys().copied().collect();
         keys.sort_unstable();
@@ -559,6 +573,19 @@ impl R<'_> {
             }
         })
     }
+}
+
+/// What the motion state reads beyond [`R`]'s primitives.
+pub(crate) trait MotionRead {
+    fn channel(&mut self) -> Option<Channel>;
+    fn transition(&mut self) -> Option<Transition>;
+    fn presence(&mut self) -> Option<Option<PresenceSpec>>;
+    fn cmd(&mut self) -> Option<DrawCmd>;
+    fn frozen(&mut self) -> Option<Frozen>;
+    fn motion(&mut self, version: u32) -> Option<MotionState>;
+}
+
+impl MotionRead for R<'_> {
     fn channel(&mut self) -> Option<Channel> {
         let channel = Channel {
             value: self.f32()?,
@@ -618,7 +645,7 @@ impl R<'_> {
         }))
     }
 
-    pub fn cmd(&mut self) -> Option<DrawCmd> {
+    fn cmd(&mut self) -> Option<DrawCmd> {
         Some(match self.u8()? {
             tag @ (0 | 7) => {
                 let (rect, radius, blur, tint, alpha, clip) = (
@@ -770,7 +797,7 @@ impl R<'_> {
 
     /// A UI state's motion, saved at `version` (a burst's duration came in
     /// at 23).
-    pub fn motion(&mut self, version: u32) -> Option<MotionState> {
+    fn motion(&mut self, version: u32) -> Option<MotionState> {
         let mut m = MotionState::default();
         for _ in 0..self.u32()? {
             let k = self.u64()?;

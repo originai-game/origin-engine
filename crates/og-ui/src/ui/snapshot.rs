@@ -166,6 +166,7 @@ impl Ui {
         }
         b.push(u8::from(s.caret_upstream) | u8::from(s.killing) << 1);
         text(&mut b, &s.kill);
+        use crate::motion::codec::MotionWrite;
         crate::motion::codec::W(&mut b).motion(&s.motion);
         // Focus groups, explicit moves, recognisers and the press (version 14).
         u32_(&mut b, s.groups.len() as u32);
@@ -771,6 +772,7 @@ impl Reader<'_> {
         if v9 {
             return Some(s);
         }
+        use crate::motion::codec::MotionRead;
         let mut r = crate::motion::codec::R {
             bytes: self.bytes,
             at: self.at,
