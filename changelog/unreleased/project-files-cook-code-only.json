@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "A cook after a change to code alone (src/ and the project's other TypeScript; nothing under assets/, nor project.ogt) no longer plans every asset again. It rewrites the asset index and the publish plan from the last cook and reports the stages index, code and save: 46-59 ms instead of 700-873 ms for a project of 1350 assets. A project whose code uses og.motion is still cooked whole."
+    }
+  ]
+}

@@ -469,6 +469,18 @@ pub fn cook_project_with_texture_cache(
         report.stages = laps.stages;
         return Ok(report);
     }
+    // Code alone changed: the assets are as cooked, and only what reads
+    // code is done again.
+    if let Some((mut report, before_code)) = cook_index.only_code_changed()
+        && cook_code(root, &before_code)?
+    {
+        laps.lap("code");
+        cook_index.save(&report, Some(before_code));
+        laps.lap("save");
+        report.elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+        report.stages = laps.stages;
+        return Ok(report);
+    }
     let project = Project::read(root)?;
     laps.lap("project");
     let assets_dir = &project.assets_dir;
@@ -602,7 +614,8 @@ pub fn cook_project_with_texture_cache(
     laps.lap("write");
     pack(&cx, &groups, &mut written, &mut reports)?;
     laps.lap("pack");
-    let (removed, warnings) = finish(&cx, &old, written, &parsed_refs, &mut reports, &log)?;
+    let (removed, warnings, before_code) =
+        finish(&cx, &old, written, &parsed_refs, &mut reports, &log)?;
     laps.lap("finish");
     let (conformed, warnings) = diagnose(
         &cx,
@@ -627,7 +640,14 @@ pub fn cook_project_with_texture_cache(
         elapsed_ms: started.elapsed().as_secs_f64() * 1000.0,
         stages: Vec::new(),
     };
-    save(&cook_index, &report, &sources, assets_dir, texture_cache);
+    save(
+        &cook_index,
+        &report,
+        before_code,
+        &sources,
+        assets_dir,
+        texture_cache,
+    );
     laps.lap("save");
     report.stages = laps.stages;
     Ok(report)

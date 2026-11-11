@@ -27,7 +27,7 @@ const ENTRY: &str = "motion/model.safetensors";
 const IN_PACKAGE: &str = "motion/model.safetensors";
 
 /// Whether the project's code under `src/` names og.motion.
-fn uses_motion(root: &Path) -> bool {
+pub(super) fn uses_motion(root: &Path) -> bool {
     fn walk(dir: &Path) -> bool {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return false;
@@ -83,11 +83,12 @@ fn model_path() -> Result<PathBuf, String> {
     })
 }
 
-/// Writes (or removes) the pack: kept in `keep` and answered as the
+/// Writes (or removes) the pack, for a project whose code uses og.motion
+/// ([`uses_motion`]) or does not: kept in `keep` and answered as the
 /// manifest's `motion` entry when written; a warning when the project uses
 /// og.motion and no weights are found (the pack is then removed).
 pub(super) fn cook(
-    root: &Path,
+    uses_motion: bool,
     cooked_dir: &Path,
     keep: &mut BTreeSet<String>,
     warnings: &mut Vec<String>,
@@ -99,7 +100,7 @@ pub(super) fn cook(
         }
         Ok(None)
     };
-    if !uses_motion(root) {
+    if !uses_motion {
         return remove();
     }
     let model = match model_path() {
