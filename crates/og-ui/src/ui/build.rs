@@ -100,25 +100,6 @@ impl Ui {
         self.path_of(self.tree.last_closed)
     }
 
-    pub(crate) fn path_of(&self, mut i: usize) -> String {
-        let mut parts = Vec::new();
-        let own = i;
-        while i != NONE && i != 0 {
-            if i == own
-                || self.tree.nodes[i].part_box.is_none()
-                || !self.tree.nodes[i].id.starts_with("::part(")
-            {
-                parts.push(self.tree.nodes[i].id.clone());
-            }
-            i = self.tree.nodes[i].parent;
-        }
-        if parts.is_empty() {
-            return "root".into();
-        }
-        parts.reverse();
-        parts.join("/")
-    }
-
     /// The path of the innermost open container, as the probe, `bounds`,
     /// `visual_state` and `force_state` name it; empty at the top level.
     /// A component reads its root's path right after opening it, to name
@@ -128,17 +109,6 @@ impl Ui {
             Some(&i) if i != 0 => self.probe_path(i),
             _ => String::new(),
         }
-    }
-
-    /// The path the probe lists an element by: [`Ui::path_of`], and for a
-    /// layer placed against another element (a tooltip) that element's path
-    /// before its own id, as its `parent` is that element's id.
-    pub(crate) fn probe_path(&self, i: usize) -> String {
-        let n = &self.tree.nodes[i];
-        if n.parent == NONE && n.anchor != NONE && n.anchor < self.tree.nodes.len() {
-            return format!("{}/{}", self.probe_path(n.anchor), n.id);
-        }
-        self.path_of(i)
     }
 
     pub(crate) fn respond(&self, key: u64) -> Response {
@@ -401,6 +371,38 @@ impl Ui {
         let i = self.push(kind, id, el);
         self.tree.last_closed = i;
         i
+    }
+}
+
+impl Ui {
+    pub(crate) fn path_of(&self, mut i: usize) -> String {
+        let mut parts = Vec::new();
+        let own = i;
+        while i != NONE && i != 0 {
+            if i == own
+                || self.tree.nodes[i].part_box.is_none()
+                || !self.tree.nodes[i].id.starts_with("::part(")
+            {
+                parts.push(self.tree.nodes[i].id.clone());
+            }
+            i = self.tree.nodes[i].parent;
+        }
+        if parts.is_empty() {
+            return "root".into();
+        }
+        parts.reverse();
+        parts.join("/")
+    }
+
+    /// The path the probe lists an element by: [`Ui::path_of`], and for a
+    /// layer placed against another element (a tooltip) that element's path
+    /// before its own id, as its `parent` is that element's id.
+    pub(crate) fn probe_path(&self, i: usize) -> String {
+        let n = &self.tree.nodes[i];
+        if n.parent == NONE && n.anchor != NONE && n.anchor < self.tree.nodes.len() {
+            return format!("{}/{}", self.probe_path(n.anchor), n.id);
+        }
+        self.path_of(i)
     }
 }
 

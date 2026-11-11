@@ -705,7 +705,9 @@ impl Ui {
         }
         true
     }
+}
 
+impl Ui {
     /// Brings the drawing order up to date once motion has set this
     /// frame's `z`: made again where the shape, a `z` or the world panels
     /// changed.
