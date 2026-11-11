@@ -110,3 +110,10 @@ pub(crate) struct Stats {
     pub(super) render_ms: f64,
     pub(super) triangles: u64,
 }
+
+/// Worlds kept to go back to: the snapshots and a sweep in flight.
+pub(crate) struct Saves {
+    pub(super) snapshots: VecDeque<(String, Saved)>,
+    pub(super) next_snapshot: u64,
+    pub(super) sweeping: Option<SweepJob>,
+}

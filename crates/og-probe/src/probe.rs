@@ -232,15 +232,14 @@ pub struct Probe {
     pub(crate) commands: state::Commands,
     /// The script's steps waiting to run, and the screenshot that holds them.
     pub(crate) schedule: state::Schedule,
-    snapshots: VecDeque<(String, Saved)>,
-    next_snapshot: u64,
+    /// Worlds kept to go back to: the snapshots and a sweep in flight.
+    pub(crate) saves: state::Saves,
     /// Whether the next tick runs: the holds and the host's hooks around a tick.
     pub(crate) clock: state::Clock,
     /// What a run hands back to the host: output files and log lines.
     pub(crate) out: state::Out,
     /// The input being injected: where the pointer is and when in the tick.
     pub(crate) inject: state::Inject,
-    sweeping: Option<SweepJob>,
 }
 
 /// The host's tick gate: asked before every tick the clock takes (a frame's
@@ -488,8 +487,11 @@ impl Probe {
                 seq: 0,
                 shot: None,
             },
-            snapshots: VecDeque::new(),
-            next_snapshot: 1,
+            saves: state::Saves {
+                snapshots: VecDeque::new(),
+                next_snapshot: 1,
+                sweeping: None,
+            },
             clock: state::Clock {
                 paused: false,
                 script_paused: false,
@@ -505,7 +507,6 @@ impl Probe {
                 gets: (u64::MAX, 0),
                 written: BTreeMap::new(),
             },
-            sweeping: None,
         })
     }
 
