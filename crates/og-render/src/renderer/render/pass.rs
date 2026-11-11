@@ -90,6 +90,7 @@ macro_rules! passes {
 passes! {
     live_sky: pass_live_sky::LiveSkyPass => FramePass::LiveSky,
     gi_probes: pass_gi_probes::GiProbesPass => FramePass::GiProbes,
+    cascade: pass_shadows::CascadePass => FramePass::Cascade(_),
     particles: pass_particles::ParticlesPass => FramePass::Particles,
     light_2d: pass_light_2d::Light2dPass => FramePass::Light2d,
     metaballs: pass_metaballs::MetaballsPass => FramePass::Metaballs,

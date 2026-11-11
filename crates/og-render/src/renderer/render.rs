@@ -72,6 +72,8 @@ pub(crate) use pass_particles::Particles;
 use pass_particles::{ParticlesPass, ParticlesPlan};
 mod pre_graph;
 use pre_graph::pre_graph;
+mod pass_shadows;
+use pass_shadows::{CascadePass, CascadePlan};
 mod setup;
 
 impl Renderer {
@@ -4223,6 +4225,12 @@ impl Renderer {
             .into_iter()
             .chain(scatter_queries.into_iter().map(|(n, q)| (n.to_string(), q)))
             .collect();
+        plans.cascade = Some(CascadePlan {
+            cascades: &cascades,
+            lists: &cascade_lists,
+            plans: &cascade_plans,
+            views: &cascade_views,
+        });
         for &pass in self.graph.order() {
             // What the pass needs here: its kind's, and what this frame's
             // instance of it adds (schedule.rs).
@@ -4252,24 +4260,6 @@ impl Renderer {
                         slot,
                     },
                 ) => {}
-                FramePass::Cascade(i) => ctx.shadow_pass(
-                    &mut encoder,
-                    &self.cascade_map.layers[i as usize],
-                    &self.cascade_map.depth,
-                    (
-                        &self.cascade_map.texture,
-                        i,
-                        &self.cascade_map.depth_texture,
-                    ),
-                    i as usize,
-                    &cascade_lists[i as usize],
-                    cascade_plans[i as usize],
-                    &cascades[i as usize].frustum,
-                    cascade_views.get(i as usize).copied().unwrap_or(0),
-                    &mut stats,
-                    true,
-                    &[ShadowTarget::Cascade],
-                ),
                 FramePass::Shelter => {
                     let s = shelter.as_ref().expect("a shelter pass has its view");
                     ctx.shadow_pass(
