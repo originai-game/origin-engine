@@ -294,7 +294,7 @@ pub(crate) fn before_render(rs: &mut RenderState) {
     // The player's preset replaces the game's quality fields on every host,
     // as RenderSettings' own do; automatic quality's steps cap it below.
     if let Some(q) = rs.display.settings.quality {
-        rs.scene.quality = og_render::RenderQuality::preset(q);
+        rs.scene.frame.quality = og_render::RenderQuality::preset(q);
     }
     let Some(presents) = rs.backend.as_ref().map(|b| b.presents()) else {
         return;
@@ -330,7 +330,7 @@ pub(crate) fn before_render(rs: &mut RenderState) {
         } else {
             QualityPreset::Medium
         };
-        rs.scene.quality = rs.scene.quality.capped(preset);
+        rs.scene.frame.quality = rs.scene.frame.quality.capped(preset);
     }
     if let Some(b) = rs.backend.as_mut() {
         b.set_render_scale(scale);

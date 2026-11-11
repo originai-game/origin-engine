@@ -17,7 +17,7 @@ const H: u32 = 32;
 /// red and its right half green in the texture.
 fn scene(shader: Option<MaterialShader>, cut: Option<f32>) -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 1.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 1.0);
     let mut rgba = Vec::new();
     for _y in 0..8 {
         for x in 0..8 {

@@ -71,7 +71,7 @@ fn field(rgb: [u8; 3]) -> RenderScene {
     let mut scene = RenderScene::new();
     scene.look.post.tonemap = Tonemap::None;
     scene.lighting.environment.background = Background::Color(Vec3::from(rgb.map(srgb_to_linear)));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };

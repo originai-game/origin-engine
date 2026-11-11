@@ -98,8 +98,8 @@ pub fn wind_scene(blowing: bool, tick: u64) -> RenderScene {
     scene.set_shader_param(red, "wave", &[phase[0], phase[1], k, COLUMN]);
     scene.add_instance(column, red, Mat4::from_translation(SWAYING_AT));
     scene.add_instance(column, blue, Mat4::from_translation(STILL_AT));
-    scene.tick = tick;
-    scene.camera = Camera {
+    scene.frame.tick = tick;
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.5, 14.0),
         target: Vec3::new(0.0, 3.0, 0.0),
         projection: Projection::Perspective {

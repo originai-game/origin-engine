@@ -4,11 +4,11 @@ use super::*;
 
 impl Renderer {
     pub(super) fn prepare_frame_resources(&mut self, scene: &RenderScene) -> (u32, (u32, u32)) {
-        self.apply_quality(&scene.quality);
+        self.apply_quality(&scene.frame.quality);
         // The render origin moved (`origin.rs`): what the renderer keeps
         // from the frames before moves with it, so the move is invisible.
-        if scene.origin != self.history.drawn_origin {
-            let d = self.history.drawn_origin - scene.origin;
+        if scene.frame.origin != self.history.drawn_origin {
+            let d = self.history.drawn_origin - scene.frame.origin;
             self.history.prev_view_proj = self
                 .history
                 .prev_view_proj
@@ -22,7 +22,7 @@ impl Renderer {
             if let Some(g) = &mut self.strips.gpu_trails {
                 g.shift(d);
             }
-            self.history.drawn_origin = scene.origin;
+            self.history.drawn_origin = scene.frame.origin;
         }
         // A look that switches the stylisation on or off (passes added or
         // removed, the pixel grid, the material style) is a cut: no ghost of
@@ -31,7 +31,7 @@ impl Renderer {
         // ghost of the previous shot. TAA is the only history the renderer
         // reprojects; motion vectors take the cut from `prev_view_proj`.
         let chain = scene.look.stylise.chain_bits();
-        if scene.camera_cut || self.stylise_chain.is_some_and(|c| c != chain) {
+        if scene.frame.camera_cut || self.stylise_chain.is_some_and(|c| c != chain) {
             self.history.taa_history = None;
             self.gi_history = None;
             self.ssr.reset();
@@ -96,7 +96,7 @@ impl Renderer {
     ) -> (probes::ProbeFrame, Vec<ReflectionProbe>, Vec<(Vec3, Vec3)>) {
         // The light volumes' probes, then the realtime volumes' due
         // relighting (probe_grid.rs), which the quality's GI switch stops.
-        let realtime: &[crate::RealtimeLightVolume] = if scene.quality.global_illumination {
+        let realtime: &[crate::RealtimeLightVolume] = if scene.frame.quality.global_illumination {
             &scene.lighting.light_volumes
         } else {
             &[]
@@ -116,7 +116,7 @@ impl Renderer {
             &self.queue,
             &self.lights.ibl,
             &scene.lighting.reflection_probes,
-            scene.tick,
+            scene.frame.tick,
             self.samples,
             |h| {
                 self.cache

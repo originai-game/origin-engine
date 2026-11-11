@@ -110,13 +110,13 @@ fn smaa_t2x_keeps_only_two_frames_and_resets_on_cuts() {
     let mut a = Renderer::new_blocking(&desc).expect("renderer");
     let mut b = Renderer::new_blocking(&desc).expect("renderer");
     let mut scene = scenes::thin_geometry();
-    let camera = scene.camera;
+    let camera = scene.frame.camera;
     let shift = Vec3::new(0.6, 0.2, 0.0);
     draw(&mut a, &scene);
-    scene.camera.position += shift;
-    scene.camera.target += shift;
+    scene.frame.camera.position += shift;
+    scene.frame.camera.target += shift;
     draw(&mut b, &scene);
-    scene.camera = camera;
+    scene.frame.camera = camera;
     draw(&mut a, &scene);
     draw(&mut b, &scene);
     let first = draw(&mut a, &scene).0;
@@ -126,11 +126,11 @@ fn smaa_t2x_keeps_only_two_frames_and_resets_on_cuts() {
         "history older than two frames must not survive"
     );
     // The scene flag and explicit reset agree at the same jitter phase.
-    scene.camera.position += shift;
-    scene.camera.target += shift;
-    scene.camera_cut = true;
+    scene.frame.camera.position += shift;
+    scene.frame.camera.target += shift;
+    scene.frame.camera_cut = true;
     let cut = draw(&mut a, &scene).0;
-    scene.camera_cut = false;
+    scene.frame.camera_cut = false;
     b.reset_history();
     assert!(cut.pixels == draw(&mut b, &scene).0.pixels);
     // Render scale uses the spatial upscale, not a second temporal AA.

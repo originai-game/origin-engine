@@ -181,7 +181,7 @@ fn daylight() -> RenderScene {
         ..Environment::default()
     };
     scene.look.post.bloom = Some(Bloom::default());
-    scene.tick_rate = 60.0;
+    scene.frame.tick_rate = 60.0;
     scene
 }
 
@@ -190,7 +190,7 @@ fn daylight() -> RenderScene {
 pub fn visual_bodies_scene(visual: bool) -> RenderScene {
     let mut scene = daylight();
     let mut bodies = Vec::new();
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.4, 2.1, 6.4),
         target: Vec3::new(0.0, 1.15, 0.0),
         exposure: Exposure::linear(0.85),
@@ -422,7 +422,7 @@ pub fn visual_bodies_scene(visual: bool) -> RenderScene {
 
 /// A frame's update: the next tick.
 pub fn next_tick(scene: &mut RenderScene, frame: u32) {
-    scene.tick = u64::from(frame) + 1;
+    scene.frame.tick = u64::from(frame) + 1;
 }
 
 /// The ticks the garment runs before its frame.
@@ -435,7 +435,7 @@ pub const GARMENT_TICKS: u32 = 120;
 /// skin's pose (what a device without compute draws).
 pub fn visual_garment_scene(visual: bool) -> RenderScene {
     let mut scene = daylight();
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.3, 0.9, 1.95),
         target: Vec3::new(0.0, 0.66, 0.0),
         exposure: Exposure::linear(0.85),
@@ -628,7 +628,7 @@ pub const FLUID_TICKS: u32 = 150;
 /// compute draws).
 pub fn visual_fluid_scene(visual: bool) -> RenderScene {
     let mut scene = daylight();
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.6, 2.6, 4.4),
         target: Vec3::new(0.0, 0.35, 0.0),
         exposure: Exposure::linear(0.85),
@@ -774,8 +774,8 @@ pub fn visual_particles_scene() -> RenderScene {
         background: Background::Color(Vec3::new(0.006, 0.007, 0.012)),
         ..Environment::default()
     };
-    scene.tick_rate = 60.0;
-    scene.camera = Camera {
+    scene.frame.tick_rate = 60.0;
+    scene.frame.camera = Camera {
         position: Vec3::new(-0.7, 2.1, 3.3),
         target: Vec3::new(-0.2, 0.4, 0.0),
         exposure: Exposure::linear(1.6),

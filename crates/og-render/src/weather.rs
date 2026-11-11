@@ -458,7 +458,7 @@ pub fn add_lightning(
     // channel's middle (half the cloud base up; the whole channel shines)
     // while the flash outshines it.
     let channel = at + Vec3::Y * (0.5 * top).max(150.0);
-    let toward = (channel - scene.camera.position).normalize_or(Vec3::Y);
+    let toward = (channel - scene.frame.camera.position).normalize_or(Vec3::Y);
     let bolt_light = 2.0 * flash;
     // The cloud over the root glows from inside (the clouds' own flash).
     if let Some(c) = scene.atmosphere.clouds.as_mut() {
@@ -466,9 +466,9 @@ pub fn add_lightning(
         // camera, so the glow lights the base from inside where the channel
         // enters it rather than a ball in the deck's middle.
         let toward_eye = Vec3::new(
-            scene.camera.position.x - at.x,
+            scene.frame.camera.position.x - at.x,
             0.0,
-            scene.camera.position.z - at.z,
+            scene.frame.camera.position.z - at.z,
         )
         .normalize_or(Vec3::ZERO);
         let root = lightning_bolt(at, top, strike)[0].0;
@@ -494,11 +494,11 @@ pub fn add_lightning(
     if seconds < 0.35 {
         // The core's least width at each point: BOLT_CORE of the view's
         // height at its distance (a vertical field of view's tangent).
-        let fov = match scene.camera.projection {
+        let fov = match scene.frame.camera.projection {
             crate::Projection::Perspective { fov_y_degrees } => fov_y_degrees.to_radians(),
             _ => 1.0,
         };
-        let eye = scene.camera.position;
+        let eye = scene.frame.camera.position;
         let span = 2.0 * (fov * 0.5).tan() * BOLT_CORE;
         // Bright enough to bloom, not so bright the bloom and its
         // reflection burn a white column across the frame.
@@ -747,10 +747,10 @@ mod lightning_tests {
     #[test]
     fn a_far_bolt_keeps_a_core_and_a_halo() {
         let mut scene = crate::RenderScene::new();
-        scene.camera.projection = crate::Projection::Perspective {
+        scene.frame.camera.projection = crate::Projection::Perspective {
             fov_y_degrees: 60.0,
         };
-        scene.camera.position = Vec3::new(0.0, 2.0, 0.0);
+        scene.frame.camera.position = Vec3::new(0.0, 2.0, 0.0);
         let at = Vec3::new(-150.0, 0.0, -1500.0);
         add_lightning(&mut scene, at, 900.0, 3, 0.03);
         assert!(
@@ -761,7 +761,7 @@ mod lightning_tests {
         let (halo, core) = (&scene.effects.ribbons[0], &scene.effects.ribbons[1]);
         let p = core.points.last().unwrap();
         let px = p.width
-            / (2.0 * (30f32).to_radians().tan() * p.position.distance(scene.camera.position))
+            / (2.0 * (30f32).to_radians().tan() * p.position.distance(scene.frame.camera.position))
             * 720.0;
         assert!((2.9..4.0).contains(&px), "{px} px");
         // Four times the core at the ground, eight at the deck.

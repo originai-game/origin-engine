@@ -18,7 +18,7 @@ fn ball(style: MaterialStyle) -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(ball, clay, Mat4::from_scale(Vec3::splat(2.0)));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.4, 3.2),
         target: Vec3::ZERO,
         ..Default::default()
@@ -101,7 +101,7 @@ fn a_made_surface_keeps_the_normal_where_it_lies_in_the_face() {
             ..Default::default()
         });
         scene.add_instance(quad, paint, Mat4::IDENTITY);
-        scene.camera = Camera {
+        scene.frame.camera = Camera {
             position: Vec3::new(0.0, 0.0, 2.0),
             target: Vec3::ZERO,
             ..Default::default()

@@ -151,7 +151,7 @@ pub fn stylised_scene() -> Result<RenderScene, String> {
         ..Default::default()
     });
     scene.look.post.bloom = Some(Bloom::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.2, 7.0),
         target: Vec3::new(0.0, 0.7, 0.0),
         exposure: Exposure::linear(1.0),
@@ -300,7 +300,7 @@ pub fn skinning_scene() -> RenderScene {
             i,
         ));
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.6, 7.0),
         target: Vec3::new(0.0, 1.2, 0.0),
         exposure: Exposure::linear(0.9),
@@ -383,7 +383,7 @@ pub fn crowd_culling_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(-12.0, 0.0, 2.2)),
         0,
     ));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.6, 8.0),
         target: Vec3::new(0.0, 1.0, -2.0),
         exposure: Exposure::linear(0.9),
@@ -461,7 +461,7 @@ pub fn model_flash_scene() -> Result<RenderScene, String> {
         }
         scene.objects.skinned_instances.push(inst);
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.4, 6.4),
         target: Vec3::new(0.0, 1.0, 0.0),
         exposure: Exposure::linear(0.9),

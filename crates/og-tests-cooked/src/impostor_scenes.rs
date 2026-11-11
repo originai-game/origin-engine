@@ -123,7 +123,7 @@ pub fn impostor_self_shadow_scene() -> Result<(RenderScene, (Vec3, Vec3)), Strin
         cast_shadows: true,
     });
     let mid = (model.min + model.max) * 0.5;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, mid.y, 11.0),
         target: Vec3::new(0.0, mid.y, 0.0),
         exposure: Exposure::linear(0.8),

@@ -63,7 +63,7 @@ fn decals_project_on_terrain_and_reject_back_faces() {
         holes: None,
     });
     scene.world.terrains.push(Terrain::new(terrain));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 10.0, 0.0),
         target: Vec3::ZERO,
         up: Vec3::Z,
@@ -264,7 +264,7 @@ fn layers_follow_slope_altitude_and_the_control_map() {
         ..Default::default()
     };
     scene.look.post.tonemap = Tonemap::None;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 170.0, 150.0),
         target: Vec3::new(0.0, 10.0, 0.0),
         exposure: Exposure::linear(1.0),
@@ -272,7 +272,7 @@ fn layers_follow_slope_altitude_and_the_control_map() {
     };
     let (img, _) = render(&scene);
     keep("layers", &img);
-    let at = |p: Vec3| color_at(&img, project(&scene.camera, p));
+    let at = |p: Vec3| color_at(&img, project(&scene.frame.camera, p));
     let dominant = |c: [f32; 3]| {
         if c[0] > 100.0 && c[1] > 100.0 && c[2] > 100.0 {
             "white"
@@ -327,24 +327,27 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
             ..Default::default()
         });
         scene.lighting.environment.background = Background::Sky;
-        scene.camera = Camera {
+        scene.frame.camera = Camera {
             position: Vec3::new(0.0, eye_y, 0.0),
             target: Vec3::new(0.0, eye_y - 0.5, -30.0),
             exposure: Exposure::linear(1.0),
             ..Default::default()
         };
-        scene.tick = 30;
+        scene.frame.tick = 30;
         scene
     };
     let below = make(-3.0, 0.0);
     let (under, _) = render(&below);
     let (above, _) = render(&make(3.0, 0.0));
     let redness = |c: [f32; 3]| c[0] - (c[1] + c[2]) * 0.5;
-    let p_under = color_at(&under, project(&below.camera, Vec3::new(0.0, -3.0, -30.0)));
+    let p_under = color_at(
+        &under,
+        project(&below.frame.camera, Vec3::new(0.0, -3.0, -30.0)),
+    );
     let above_scene = make(3.0, 0.0);
     let p_above = color_at(
         &above,
-        project(&above_scene.camera, Vec3::new(0.0, 2.0, -30.0)),
+        project(&above_scene.frame.camera, Vec3::new(0.0, 2.0, -30.0)),
     );
     assert!(redness(p_above) > 60.0, "the post from above: {p_above:?}");
     assert!(
@@ -354,11 +357,11 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
     // Looking straight up from below: the sky's light through the window,
     // brighter than the fog around.
     let mut up = make(-3.0, 0.0);
-    up.camera.target = Vec3::new(0.0, 10.0, -0.01);
+    up.frame.camera.target = Vec3::new(0.0, 10.0, -0.01);
     let (up_img, _) = render(&up);
     let centre = mean(&up_img, 600, 320, 680, 400);
     let mut down = make(-3.0, 0.0);
-    down.camera.target = Vec3::new(0.0, -10.0, -12.0);
+    down.frame.camera.target = Vec3::new(0.0, -10.0, -12.0);
     let (fog_img, _) = render(&down);
     let fogged = mean(&fog_img, 0, 0, 1280, 120);
     assert!(
@@ -367,10 +370,10 @@ fn the_underwater_view_fogs_shows_the_surface_and_caustics() {
     );
     // Caustics: the bed's light varies (a pattern) only with them.
     let mut bed = make(-3.0, 1.0);
-    bed.camera.target = Vec3::new(0.0, -8.0, -6.0);
+    bed.frame.camera.target = Vec3::new(0.0, -8.0, -6.0);
     let (lit, _) = render(&bed);
     let mut flat = make(-3.0, 0.0);
-    flat.camera.target = Vec3::new(0.0, -8.0, -6.0);
+    flat.frame.camera.target = Vec3::new(0.0, -8.0, -6.0);
     let (plain, _) = render(&flat);
     let spread = |img: &RgbaImage| {
         let m = mean(img, 440, 420, 840, 620);

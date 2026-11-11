@@ -345,7 +345,7 @@ pub fn particles_scene() -> RenderScene {
         knee: 0.6,
         intensity: 0.7,
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.4, 2.6, 6.5),
         target: Vec3::new(0.0, 0.9, -0.5),
         exposure: Exposure::linear(1.4),
@@ -525,7 +525,7 @@ pub fn particles_lit_scene() -> RenderScene {
     // A low, clear sun over a dimmer sky, so the lit particles' sun side
     // reads against the sky's fill.
     scene.lighting.environment.intensity = 0.5;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.4, 6.4),
         target: Vec3::new(0.0, 1.0, -0.8),
         exposure: Exposure::linear(0.9),
@@ -643,7 +643,7 @@ pub fn trails_scene() -> RenderScene {
         ..Default::default()
     });
     scene.look.post.bloom = Some(Bloom::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.5, 3.0, 7.0),
         target: Vec3::new(0.3, 1.0, -0.8),
         exposure: Exposure::linear(1.6),

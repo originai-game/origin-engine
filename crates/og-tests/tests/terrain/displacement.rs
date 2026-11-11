@@ -29,8 +29,8 @@ fn displaced_levels_leave_no_cracks() {
     for step in 0..6 {
         let x = step as f32 * 0.37;
         let z = ts::DISPLACED_CREST + 1.0 + step as f32 * 0.29;
-        scene.camera.position = Vec3::new(x, ts::displaced_height(z) + 2.0, z);
-        scene.camera.target = Vec3::new(x + 0.3, ts::displaced_height(z - 1.0), z - 1.0);
+        scene.frame.camera.position = Vec3::new(x, ts::displaced_height(z) + 2.0, z);
+        scene.frame.camera.target = Vec3::new(x + 0.3, ts::displaced_height(z - 1.0), z - 1.0);
         renderer
             .render(&scene, &RenderTarget::Offscreen)
             .expect("render");

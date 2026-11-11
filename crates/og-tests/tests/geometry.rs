@@ -34,7 +34,7 @@ fn wire_cube(
         intensity: 0.0,
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(2.2, 1.8, 2.6),
         target: Vec3::ZERO,
         exposure: Exposure::linear(1.0),

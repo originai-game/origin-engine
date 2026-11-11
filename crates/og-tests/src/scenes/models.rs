@@ -11,7 +11,7 @@ pub(super) fn sky_only() -> RenderScene {
         look: None,
     };
     scene.lighting.light.direction_to_light = sun;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.0, 0.0),
         target: Vec3::new(0.15, 1.15, -1.0),
         projection: Projection::Perspective {
@@ -111,7 +111,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
         ..Environment::default()
     };
     scene.look.post.bloom = Some(Bloom::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.5, 3.2, 9.0),
         target: Vec3::new(0.0, 1.3, -1.5),
         exposure: Exposure::Auto {
@@ -273,7 +273,7 @@ fn layout(scene: &mut RenderScene, models: &[Parts], count: u32, spacing: f32) {
     let radius = (max - min).length() / 2.0;
     let angle = 0.6 + SPIKE_TIME * 0.25;
     let dist = radius * 1.05;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: center + Vec3::new(angle.cos() * dist, radius * 0.5, angle.sin() * dist),
         target: center,
         up: Vec3::Y,

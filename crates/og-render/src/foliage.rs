@@ -27,19 +27,19 @@ pub(crate) fn foliage_winds(
         strength: 0.0,
         ..Wind::default()
     });
-    let (old, tick, rate) = previous.unwrap_or((current, scene.tick, scene.tick_rate));
+    let (old, tick, rate) = previous.unwrap_or((current, scene.frame.tick, scene.frame.tick_rate));
     (
         [current, old],
         [
             FoliageWind::new(
                 current,
-                scene.tick,
-                scene.tick_rate,
+                scene.frame.tick,
+                scene.frame.tick_rate,
                 0.0,
-                scene.origin,
+                scene.frame.origin,
                 grid,
             ),
-            FoliageWind::new(old, tick, rate, 0.0, scene.origin, grid),
+            FoliageWind::new(old, tick, rate, 0.0, scene.frame.origin, grid),
         ],
     )
 }

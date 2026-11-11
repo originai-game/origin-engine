@@ -1226,9 +1226,10 @@ pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
         Some((_, ht)) if ht > 0 => ht,
         _ => super::fx::viewport(rs).1 as u32,
     };
-    let c = rs
-        .scene
-        .terrain_clipmap(i, &og_render::TerrainView::of(&rs.scene.camera, height))?;
+    let c = rs.scene.terrain_clipmap(
+        i,
+        &og_render::TerrainView::of(&rs.scene.frame.camera, height),
+    )?;
     let regions: Vec<Value> = c
         .levels
         .iter()
@@ -1573,7 +1574,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             Some((_, ht)) if ht > 0 => ht,
             _ => super::fx::viewport(rs).1 as u32,
         };
-        let view = og_render::TerrainView::of(&rs.scene.camera, height);
+        let view = og_render::TerrainView::of(&rs.scene.frame.camera, height);
         let terrains = rs.scene.world.terrains.clone();
         let details: Vec<f32> = (0..terrains.len())
             .map(|k| rs.scene.scatter_detail(k))

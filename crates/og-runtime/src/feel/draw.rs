@@ -681,7 +681,7 @@ fn tile_layers(
         return;
     }
     let tiles = lock(&feel.tiles);
-    let cam = rs.scene.camera.position;
+    let cam = rs.scene.frame.camera.position;
     let RenderState {
         scene,
         feel: fr,
@@ -826,12 +826,12 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
     let cam = r.camera.1.decode(&bytes);
     let scene = &mut rs.scene;
     let trauma = f(&cam, "trauma", 0.0);
-    let held = scene.shake != og_render::CameraShake::default();
+    let held = scene.frame.shake != og_render::CameraShake::default();
     if trauma > 0.0 && !held {
-        scene.shake = og_render::CameraShake::trauma(
+        scene.frame.shake = og_render::CameraShake::trauma(
             trauma,
-            scene.tick,
-            scene.tick_rate,
+            scene.frame.tick,
+            scene.frame.tick_rate,
             0,
             f(&cam, "shakeOffset", 0.04),
             f(&cam, "shakeRoll", 2.0),
@@ -841,7 +841,7 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
     let punch = f(&cam, "punch", 0.0);
     if punch != 0.0 {
         let k = (1.0 + punch).max(0.1);
-        scene.camera.projection = match scene.camera.projection {
+        scene.frame.camera.projection = match scene.frame.camera.projection {
             og_render::Projection::Orthographic { height } => {
                 og_render::Projection::Orthographic { height: height / k }
             }
@@ -855,11 +855,11 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
     }
     let mut shift = v3(&cam["kick"], Vec3::ZERO);
     // The zone og.camera picked (and the one a room transition leaves).
-    if let og_render::Projection::Orthographic { height } = scene.camera.projection
+    if let og_render::Projection::Orthographic { height } = scene.frame.camera.projection
         && on(&cam, "zoneActive", false)
     {
         let half = Vec2::new(height * 0.5 * aspect, height * 0.5);
-        let c = scene.camera.position.truncate() + shift.truncate();
+        let c = scene.frame.camera.position.truncate() + shift.truncate();
         let clamp = |v: f32, a: f32, b: f32, hf: f32| {
             if b - a <= 2.0 * hf {
                 (a + b) * 0.5
@@ -890,7 +890,7 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
         shift += (n - c).extend(0.0);
     }
     if shift != Vec3::ZERO {
-        scene.camera.position += shift;
-        scene.camera.target += shift;
+        scene.frame.camera.position += shift;
+        scene.frame.camera.target += shift;
     }
 }

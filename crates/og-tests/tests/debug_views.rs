@@ -38,7 +38,7 @@ fn scene(name: &str, remove: bool) -> RenderScene {
     }
     s.look.post = Default::default();
     s.look.post.ao = Some(AmbientOcclusion::default());
-    s.camera.exposure = Exposure::linear(1.0);
+    s.frame.camera.exposure = Exposure::linear(1.0);
     s.look.post.tonemap = Tonemap::None;
     if name != "sky-only" {
         s.lighting.environment.background = Background::Color(Vec3::ZERO);
@@ -102,10 +102,10 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
         // Advance only the particle fixture; other fixtures are static.
         if name == "particles" {
             for tick in 0..60 {
-                s.tick = tick;
+                s.frame.tick = tick;
                 r.render(&s, &RenderTarget::Offscreen).unwrap();
             }
-            s.tick = 60;
+            s.frame.tick = 60;
         }
         let beauty = capture(&mut r, &s);
         let absent = capture(
@@ -127,7 +127,7 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
             mask.len()
         );
         for view in VIEWS {
-            s.debug = view;
+            s.frame.debug = view;
             let image = capture(&mut r, &s);
             let changed = mask
                 .iter()
@@ -238,7 +238,7 @@ fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
         ..Terrain::new(h)
     });
     s.look.post.tonemap = Tonemap::None;
-    s.camera = Camera {
+    s.frame.camera = Camera {
         position: Vec3::new(0.0, 10.0, 0.0),
         target: Vec3::ZERO,
         up: Vec3::Z,
@@ -249,8 +249,8 @@ fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
     for wall in [false, true] {
         if wall {
             s.world.terrains[0].transform = Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2);
-            s.camera.position = Vec3::new(0.0, 0.0, 10.0);
-            s.camera.up = Vec3::Y;
+            s.frame.camera.position = Vec3::new(0.0, 0.0, 10.0);
+            s.frame.camera.up = Vec3::Y;
         }
         // 8m / 64 pixels / 2m per repeat: 4 texels along the texture's
         // 64-wide U axis, 2 along its 32-high V axis. A collapsed axis is 0.
@@ -272,7 +272,7 @@ fn terrain_projection_and_vertical_density_use_the_sampled_axes() {
                 },
             ),
         ] {
-            s.debug = view;
+            s.frame.debug = view;
             let image = capture(&mut r, &s);
             let at = (32 * 64 + 32) * 4;
             for (channel, want) in expected.into_iter().enumerate() {

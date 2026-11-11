@@ -69,7 +69,7 @@ pub fn lod_scene() -> Result<LodScene, String> {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.6;
-    scene.camera = lod_camera();
+    scene.frame.camera = lod_camera();
     let ground = scene.add_standard_material(StandardMaterial {
         color: Vec3::new(0.3, 0.32, 0.28),
         roughness: 1.0,
@@ -123,8 +123,12 @@ pub fn lod_scene() -> Result<LodScene, String> {
             Quat::from_rotation_y(0.6 * i as f32),
             Vec3::new(x, 0.0, -d),
         );
-        let per_unit =
-            lod::pixels_per_unit(&scene.camera, at.transform_point3(center), radius, 720.0);
+        let per_unit = lod::pixels_per_unit(
+            &scene.frame.camera,
+            at.transform_point3(center),
+            radius,
+            720.0,
+        );
         let level = lod::select(&errors, per_unit, 1.0, None);
         chosen[i] = level;
         drawn += tris(level);

@@ -61,7 +61,7 @@ fn sphere_scene(material: StandardMaterial, toon: bool, env: f32) -> RenderScene
     };
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.lighting.environment.intensity = env;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 4.0),
         target: Vec3::ZERO,
         exposure: Exposure::linear(1.0),
@@ -157,7 +157,7 @@ fn box_scene(place: OutlinePlace, width: f32) -> RenderScene {
     );
     scene.lighting.environment.background = Background::Color(Vec3::splat(0.2));
     scene.lighting.environment.intensity = 0.0;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 4.0),
         target: Vec3::ZERO,
         exposure: Exposure::linear(1.0),

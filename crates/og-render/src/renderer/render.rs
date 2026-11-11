@@ -272,7 +272,7 @@ impl Renderer {
         let crowd_gpu = crowd_frame.len() > 0
             && self.world.crowd_indirect
             && self.visibility.desc_culling != Culling::Cpu
-            && scene.views.is_empty()
+            && scene.frame.views.is_empty()
             && probe_frame.due.is_empty()
             && crowd_batches.iter().all(|b| !b.transparent)
             && {
@@ -333,7 +333,7 @@ impl Renderer {
         let (probe_faces, mut probe_skinned) =
             self.prepare_probe_culling(&probe_frame, &active_probes, &camera, &mut skinned);
         let (mut skinned_visible, mut skinned_culled) =
-            Self::cull_skinned(&mut skinned, &view_frustum, scene.camera_layers);
+            Self::cull_skinned(&mut skinned, &view_frustum, scene.frame.camera_layers);
         let mut skinned_batches = std::mem::take(&mut skinned.batches);
         // The skinned instances' batches; the crowds' GPU draws after them.
         let skinned_plain = skinned_batches.len();
@@ -1397,7 +1397,7 @@ impl Renderer {
         });
         encoder.expect(self.info.caps, self.info.caps);
         for &(slot, _) in &probe_frame.due {
-            self.probes.slots[slot].captured = Some(scene.tick);
+            self.probes.slots[slot].captured = Some(scene.frame.tick);
         }
         // The passes after the graph (after_graph.rs).
         let EncodeAfterGraphOutputs {

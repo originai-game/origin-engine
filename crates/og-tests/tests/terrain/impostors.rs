@@ -47,7 +47,7 @@ fn a_leaf_card_lets_the_sun_through_from_behind() {
             .map(|&(dx, dy)| {
                 let c = color_at(
                     img,
-                    project(&scene.camera, is::BACKLIT_AT + Vec3::new(dx, dy, 0.8)),
+                    project(&scene.frame.camera, is::BACKLIT_AT + Vec3::new(dx, dy, 0.8)),
                 );
                 assert!(ball_pixel(c), "the card covers ({dx}, {dy}): {c:?}");
                 luma(c)
@@ -80,10 +80,10 @@ fn crossfade_scene() -> RenderScene {
 #[ignore = "requires GPU"]
 fn the_crossfade_turns_its_noise_every_render_frame() {
     let mut scene = crossfade_scene();
-    scene.debug = og_render::DebugView::Albedo;
+    scene.frame.debug = og_render::DebugView::Albedo;
     scene.look.post = Default::default();
     scene.look.post.tonemap = Tonemap::None;
-    scene.camera.exposure = Exposure::linear(1.0);
+    scene.frame.camera.exposure = Exposure::linear(1.0);
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     r.render(&scene, &RenderTarget::Offscreen).unwrap();
     let first = r.read_offscreen().unwrap();

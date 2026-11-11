@@ -28,7 +28,7 @@ fn draw(mesh: MeshData, material: EffectMaterial, scale: Vec3, color: f32) -> (V
         tonemap: Tonemap::None,
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 10.0),
         target: Vec3::ZERO,
         projection: Projection::Orthographic { height: 4.0 },

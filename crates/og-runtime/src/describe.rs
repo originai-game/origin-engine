@@ -130,15 +130,15 @@ impl RuntimeView {
         .into_iter()
         .filter_map(|(i, camera, (w, h))| {
             let e = *rs.views.entities.get(i)?;
-            let mirror = scene.views[i].mirror.is_some();
+            let mirror = scene.frame.views[i].mirror.is_some();
             let (vw, vh) = og_render::id_pass_size(w, h);
             let f = og_render::render_ids_from(scene, &sources, &heights, vw, vh, &camera);
             Some((e, mirror, (w, h), f))
         })
         .collect();
-        let c = &scene.camera;
+        let c = &scene.frame.camera;
         // In the world: the frame is drawn from its render origin.
-        let back = scene.origin - rs.zero;
+        let back = scene.frame.origin - rs.zero;
         let camera = if !describe {
             serde_json::Value::Null
         } else {

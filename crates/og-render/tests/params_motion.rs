@@ -62,7 +62,7 @@ fn a_parameter_change_moves_in_its_own_frame_only() {
     });
     assert!(scene.set_material_shader(material, Some(shader)));
     scene.add_instance(mesh, material, Mat4::IDENTITY);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 3.0),
         target: Vec3::ZERO,
         ..Default::default()
@@ -104,10 +104,10 @@ fn a_parameter_change_moves_in_its_own_frame_only() {
     assert!(scene.set_standard_material(material, unlit(0.5)));
     assert!(!moved(&scene, "a colour edit"));
     // ...and with a parameter change in the same frame, that frame moves.
-    scene.tick += 1;
+    scene.frame.tick += 1;
     assert!(scene.set_standard_material(material, unlit(0.25)));
     assert!(scene.set_shader_param(material, "v", &[2.0]));
     assert!(moved(&scene, "a colour edit with a parameter change"));
-    scene.tick += 1;
+    scene.frame.tick += 1;
     assert!(!moved(&scene, "the frame after, the clock running"));
 }

@@ -362,7 +362,7 @@ impl CustomPosts {
             screen: [
                 size.0 as f32,
                 size.1 as f32,
-                scene.tick as f32 / scene.tick_rate.max(1e-6),
+                scene.frame.tick as f32 / scene.frame.tick_rate.max(1e-6),
                 0.0,
             ],
         };

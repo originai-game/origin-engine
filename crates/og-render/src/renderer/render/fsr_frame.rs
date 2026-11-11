@@ -28,7 +28,7 @@ impl Renderer {
         let post_size = self.history_size();
         let fsr = taa
             && self.info.caps.contains(Caps::COMPUTE)
-            && scene.quality.upscaler == crate::Upscaler::Fsr3
+            && scene.frame.quality.upscaler == crate::Upscaler::Fsr3
             && self.width <= post_size.0
             && self.height <= post_size.1;
         let no_reactive = self.post.no_reactive.clone();
@@ -50,8 +50,8 @@ impl Renderer {
                         .history
                         .taa_history
                         .is_none_or(|p| still_camera(&p, &cam.view_proj)),
-                    tick: scene.tick,
-                    tick_rate: scene.tick_rate,
+                    tick: scene.frame.tick,
+                    tick_rate: scene.frame.tick_rate,
                     sharpness: self.post.taa_sharpen,
                     color,
                     depth,

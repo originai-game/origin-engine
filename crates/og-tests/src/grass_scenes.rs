@@ -42,13 +42,13 @@ pub fn grass_scene(view: &str) -> RenderScene {
     let (x, z) = (-80.0, 150.0);
     match view {
         "mid" => {
-            scene.camera = camera_at(
+            scene.frame.camera = camera_at(
                 Vec3::new(x, ground(x, z) + 12.0, z),
                 Vec3::new(x - 30.0, ground(x - 30.0, z - 90.0) + 2.0, z - 90.0),
             );
         }
         "far" => {
-            scene.camera = camera_at(
+            scene.frame.camera = camera_at(
                 Vec3::new(x, ground(x, z) + 40.0, z + 40.0),
                 Vec3::new(-110.0, ground(-110.0, 60.0) + 10.0, 60.0),
             );
@@ -72,7 +72,7 @@ pub fn grass_scene(view: &str) -> RenderScene {
                 sun_color: warm,
             };
             // Towards the sun, a little to its right so its disc is in frame.
-            scene.camera = camera_at(
+            scene.frame.camera = camera_at(
                 Vec3::new(x, ground(x, z) + 1.2, z),
                 Vec3::new(x - 30.0, ground(x - 30.0, z - 5.0) + 0.6, z - 5.0),
             );
@@ -93,6 +93,6 @@ pub fn grass_scene(view: &str) -> RenderScene {
 pub fn grass_wind_scene(tick: u64) -> RenderScene {
     let mut scene = grass_scene("near");
     scene.atmosphere.wind = Some(wind());
-    scene.tick = tick;
+    scene.frame.tick = tick;
     scene
 }

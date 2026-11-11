@@ -69,7 +69,7 @@ fn scene(offset: Vec3, space: StyliseSpace) -> RenderScene {
         ..Default::default()
     };
     scene.lighting.environment.background = Background::Color(Vec3::new(0.86, 0.84, 0.78));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.3, 2.0, 5.0) + offset,
         target: Vec3::new(0.0, 0.6, 0.0) + offset,
         exposure: Exposure::linear(0.9),

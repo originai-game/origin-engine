@@ -481,7 +481,7 @@ fn with_model(
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.7;
     scene.lighting.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
-    scene.camera = camera;
+    scene.frame.camera = camera;
     let bundle = Bundle::open(&cooked().expect("cooked").join("cooked")).expect("the bundle opens");
     let textures: Vec<_> = model
         .textures

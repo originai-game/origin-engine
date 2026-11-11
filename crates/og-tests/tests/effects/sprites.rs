@@ -18,8 +18,13 @@ fn decals_project_onto_surfaces_past_the_old_cap() {
     save("decals", &with);
     assert_eq!(stats.decals, base.effects.decals.len() as u32);
     // The scorch at (-1.6, 0, 0.6) darkens the ground; the rune glows.
-    let scorch = project(&base.camera, 1280, 720, Vec3::new(-1.6, 0.0, 0.6));
-    let rune = project(&base.camera, 1280, 720, Vec3::new(0.2 + 0.8, 0.0, 1.6));
+    let scorch = project(&base.frame.camera, 1280, 720, Vec3::new(-1.6, 0.0, 0.6));
+    let rune = project(
+        &base.frame.camera,
+        1280,
+        720,
+        Vec3::new(0.2 + 0.8, 0.0, 1.6),
+    );
     let (s1, s0) = (
         luma(px(&with, scorch.0, scorch.1)),
         luma(px(&without, scorch.0, scorch.1)),
@@ -111,7 +116,7 @@ fn a_normal_mapped_sprite_is_lit_by_where_its_normal_faces() {
             cast_shadows: false,
             ..Default::default()
         });
-        scene.camera = Camera::orthographic_2d(Vec2::ZERO, 8.0);
+        scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 8.0);
         scene.lighting.environment.background = Background::Color(Vec3::ZERO);
         scene.look.post.tonemap = Tonemap::None;
         frame(&small(), &scene).0

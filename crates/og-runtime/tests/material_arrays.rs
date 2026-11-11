@@ -112,7 +112,7 @@ impl RenderBackend for Recorder {
             })
             .collect();
         self.0.borrow_mut().terrains = scene.world.terrains.clone();
-        self.0.borrow_mut().debug = scene.debug;
+        self.0.borrow_mut().debug = scene.frame.debug;
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {

@@ -42,14 +42,15 @@ pub fn physical_sky_scene(hours: f32, air: PhysicalAtmosphere, into_sun: bool) -
     let mut scene = RenderScene::new();
     colonnade(&mut scene);
     let look = physical_light(&mut scene, hours, air);
-    scene.camera = colonnade_camera();
+    scene.frame.camera = colonnade_camera();
     if into_sun {
         let s = look.sun_direction;
         let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
         // Tilted up with the sun (a 15° pitch at most), so a sun up to
         // about 40° high stands in the frame with its glow.
         let lift = (s.y.max(0.0).asin() - 0.05).clamp(0.07, 0.26).tan();
-        scene.camera.target = scene.camera.position + bearing * 40.0 + Vec3::Y * 40.0 * lift;
+        scene.frame.camera.target =
+            scene.frame.camera.position + bearing * 40.0 + Vec3::Y * 40.0 * lift;
     }
     scene
 }
@@ -126,9 +127,9 @@ pub fn live_sky_scene(clouds: bool) -> RenderScene {
     });
     let at = Vec3::new(0.0, 1.0, 0.0);
     scene.add_instance(sphere, chrome, Mat4::from_translation(at));
-    scene.camera = colonnade_camera();
-    scene.camera.position = Vec3::new(0.0, 2.2, 4.5);
-    scene.camera.target = at;
+    scene.frame.camera = colonnade_camera();
+    scene.frame.camera.position = Vec3::new(0.0, 2.2, 4.5);
+    scene.frame.camera.target = at;
     scene.atmosphere.clouds = Some(Clouds {
         coverage: if clouds { 0.95 } else { 0.0 },
         density: 0.06,
@@ -153,7 +154,7 @@ fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
         scene = exposed(scene, 1.5 * t * t * (3.0 - 2.0 * t));
     }
     scene.atmosphere.clouds = Some(clouds);
-    scene.camera.target += Vec3::Y * 14.0;
+    scene.frame.camera.target += Vec3::Y * 14.0;
     scene
 }
 
@@ -171,8 +172,8 @@ fn weathered(hours: f32, weather: SurfaceWeather) -> RenderScene {
         },
     );
     scene.atmosphere.surface_weather = Some(weather);
-    scene.camera.position = Vec3::new(1.5, 1.6, 4.0);
-    scene.camera.target = Vec3::new(-1.0, 0.2, -30.0);
+    scene.frame.camera.position = Vec3::new(1.5, 1.6, 4.0);
+    scene.frame.camera.target = Vec3::new(-1.0, 0.2, -30.0);
     scene
 }
 
@@ -254,7 +255,7 @@ fn one_level(data: &og_render::MeshData) -> og_render::meshlet::MeshClusters {
 
 /// `scene` with its camera's exposure opened by `ev` stops.
 fn exposed(mut scene: RenderScene, ev: f32) -> RenderScene {
-    if let Exposure::Manual { ev: e } = &mut scene.camera.exposure {
+    if let Exposure::Manual { ev: e } = &mut scene.frame.camera.exposure {
         *e += ev;
     }
     scene
@@ -272,14 +273,14 @@ pub fn storm(strike: bool) -> RenderScene {
             ..SurfaceWeather::default()
         },
     );
-    scene.camera.target = Vec3::new(-1.0, 8.0, -30.0);
+    scene.frame.camera.target = Vec3::new(-1.0, 8.0, -30.0);
     if strike {
         // 1.5 km out, so the bolt's root in the deck (35° up) is in frame
         // and the glow about it reads.
         let at = Vec3::new(-150.0, 0.0, -1500.0);
         // The bolt is a ribbon in the scene: past the default 1 km far
         // plane it would be clipped.
-        scene.camera.far = 4000.0;
+        scene.frame.camera.far = 4000.0;
         og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
     }
     scene
@@ -297,7 +298,7 @@ fn auroral(aurora: Aurora) -> RenderScene {
         look.moon_size = 0.0;
     }
     scene.atmosphere.aurora = Some(aurora);
-    scene.camera.target += Vec3::Y * 22.0;
+    scene.frame.camera.target += Vec3::Y * 22.0;
     scene
 }
 

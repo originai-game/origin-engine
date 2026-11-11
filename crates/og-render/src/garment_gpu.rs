@@ -133,7 +133,7 @@ impl Pipelines {
                 .garment
                 .as_ref()
                 .expect("garment draw");
-            let rows = inputs(g, first, previous, scene.camera_cut);
+            let rows = inputs(g, first, previous, scene.frame.camera_cut);
             let bytes = bytemuck::cast_slice(&rows);
             let mesh = cache
                 .entry(g.key)
@@ -143,7 +143,7 @@ impl Pipelines {
                 *mesh = self.mesh(device, queue, g, bytes);
             }
             let mut rows = rows;
-            rows[1][3] = f32::from(!mesh.initialized || scene.camera_cut);
+            rows[1][3] = f32::from(!mesh.initialized || scene.frame.camera_cut);
             queue.write_buffer(&mesh.input, 0, bytemuck::cast_slice(&rows));
             let entries: Vec<_> = [&mesh.input, &mesh.adjacency, &mesh.points, output]
                 .into_iter()
@@ -247,8 +247,8 @@ fn simulate(
         let topology = Topology::build(None, body, &shapes.rest, triangles);
         mesh.visual = Some(pipelines.mesh(device, queue, topology));
     }
-    let dt = if scene.tick_rate > 0.0 {
-        1.0 / scene.tick_rate
+    let dt = if scene.frame.tick_rate > 0.0 {
+        1.0 / scene.frame.tick_rate
     } else {
         1.0 / 60.0
     };
@@ -260,7 +260,7 @@ fn simulate(
         body,
         &g.targets,
         &shapes.normals,
-        scene.tick,
+        scene.frame.tick,
         dt,
         list,
         g.world,

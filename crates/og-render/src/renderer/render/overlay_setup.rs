@@ -100,7 +100,7 @@ impl Renderer {
                 cam.proj,
                 self.width,
                 self.height,
-                scene.css_height,
+                scene.frame.css_height,
                 false,
             ),
         );

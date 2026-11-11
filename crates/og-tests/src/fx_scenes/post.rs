@@ -136,7 +136,7 @@ pub fn ao_scene(method: AoMethod) -> RenderScene {
         method,
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(1.0, 2.6, 5.0),
         target: Vec3::new(-0.2, 0.6, -1.2),
         exposure: Exposure::linear(0.9),
@@ -226,7 +226,7 @@ pub fn gi_scene(gi: bool) -> RenderScene {
         ..Environment::default()
     };
     scene.look.post.gi = gi.then(og_render::ScreenSpaceGlobalIllumination::default);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.2, 6.0),
         target: Vec3::new(0.0, 0.9, -1.0),
         exposure: Exposure::linear(0.8),
@@ -343,7 +343,7 @@ pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
     });
     // Below the roof, looking at the floor in the porch's middle (the
     // frame's centre).
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.6, 1.5, 6.5),
         target: Vec3::new(0.0, 0.0, -0.8),
         exposure: Exposure::linear(1.0),
@@ -474,7 +474,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
                 intensity: 1.0,
             });
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.6, 2.7),
         target: Vec3::new(0.0, 0.9, -1.5),
         exposure: Exposure::linear(0.9),
@@ -557,7 +557,7 @@ pub fn dof_scene(quality: DofQuality) -> Result<RenderScene, String> {
         falloff: 3.0,
         quality,
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.5, 7.0),
         target: Vec3::new(0.0, 1.1, -4.0),
         exposure: Exposure::linear(1.1),
@@ -616,7 +616,7 @@ pub fn god_rays_scene() -> RenderScene {
         ..Default::default()
     });
     scene.look.post.bloom = Some(Bloom::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.8, 6.0),
         target: Vec3::new(0.3, 3.2, -12.0),
         exposure: Exposure::linear(0.7),
@@ -670,7 +670,7 @@ pub fn flare_noon_scene() -> RenderScene {
         Vec3::new(1.0, 0.96, 0.9),
         3.0,
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.7, 6.0),
         target: Vec3::new(0.4, 12.0, -3.0),
         exposure: Exposure::linear(0.6),
@@ -706,7 +706,7 @@ pub fn flare_edge_scene(elevation: f32) -> RenderScene {
         Vec3::new(1.0, 0.82, 0.6),
         2.5,
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: eye,
         target: eye + Vec3::new(0.35, 0.22, -1.0),
         exposure: Exposure::linear(0.7),
@@ -791,7 +791,7 @@ pub fn flare_lights_scene() -> RenderScene {
     };
     scene.look.post.bloom = Some(Bloom::default());
     scene.look.post.lens_flare = Some(LensFlare::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: eye,
         target: Vec3::new(0.6, 2.0, -10.0),
         exposure: Exposure::linear(1.0),
@@ -868,6 +868,6 @@ pub fn move_blur(scene: &mut RenderScene, frame: u32) {
     scene.objects.previous_transforms[2] = racer(prev);
     scene.objects.instances[1].transform = spinner(frame);
     scene.objects.instances[2].transform = racer(frame);
-    scene.camera = motion_camera(frame);
+    scene.frame.camera = motion_camera(frame);
     tick_all(scene, frame as u64);
 }

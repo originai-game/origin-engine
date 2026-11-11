@@ -163,7 +163,7 @@ impl Features {
                 Features::CAUSTICS,
                 scene.world.water.iter().any(|w| w.caustics > 0.0),
             )
-            .with(Features::DEBUG, scene.debug.lit_code() != 0.0)
+            .with(Features::DEBUG, scene.frame.debug.lit_code() != 0.0)
             .with(Features::GRASS, !scene.world.grass.is_empty())
             .with(
                 Features::SURFACE,

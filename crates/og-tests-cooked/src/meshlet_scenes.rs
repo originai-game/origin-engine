@@ -78,7 +78,7 @@ fn base() -> Result<(RenderScene, Parts), String> {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.6;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.7, 0.0),
         target: Vec3::new(0.0, 1.5, -20.0),
         exposure: Exposure::linear(0.8),
@@ -190,8 +190,8 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
         range: 25.0,
         cast_shadows: true,
     });
-    scene.camera.position = Vec3::new(0.0, 9.0, 2.0);
-    scene.camera.target = Vec3::new(0.0, 0.0, -18.0);
+    scene.frame.camera.position = Vec3::new(0.0, 9.0, 2.0);
+    scene.frame.camera.target = Vec3::new(0.0, 0.0, -18.0);
     scene.objects.meshlets = meshlets;
     Ok(scene)
 }
@@ -224,7 +224,7 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
         Vec3::new(-2.5, 1.6, -5.0),
         Vec3::new(14.0, 6.0, 14.0),
     ));
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(0.0, 70.0, -30.0),
             target: Vec3::new(0.0, 0.0, -62.0),
@@ -245,8 +245,8 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
 pub fn far_scene(visibility_buffer: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     plant_forest(&mut scene, &parts);
-    scene.camera.position = Vec3::new(0.0, 40.0, 54.0);
-    scene.camera.target = Vec3::new(0.0, 0.0, -50.0);
+    scene.frame.camera.position = Vec3::new(0.0, 40.0, 54.0);
+    scene.frame.camera.target = Vec3::new(0.0, 0.0, -50.0);
     scene.objects.visibility_buffer = visibility_buffer;
     Ok(scene)
 }
@@ -298,8 +298,8 @@ fn windy(scene: &mut RenderScene) {
         gust: 0.3,
         ..og_render::Wind::default()
     });
-    scene.tick = 90;
-    scene.tick_rate = 60.0;
+    scene.frame.tick = 90;
+    scene.frame.tick_rate = 60.0;
 }
 
 /// `meshlet-sway` (module docs): the near tree seen from the side, its
@@ -315,8 +315,8 @@ pub fn sway_scene(sway: f32, foliage: bool) -> Result<RenderScene, String> {
         give_foliage(&mut scene, &parts);
     }
     windy(&mut scene);
-    scene.camera.position = Vec3::new(0.0, 2.0, 0.0);
-    scene.camera.target = Vec3::new(0.0, 2.0, -7.0);
+    scene.frame.camera.position = Vec3::new(0.0, 2.0, 0.0);
+    scene.frame.camera.target = Vec3::new(0.0, 2.0, -7.0);
     Ok(scene)
 }
 

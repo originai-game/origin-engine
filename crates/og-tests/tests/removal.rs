@@ -36,7 +36,7 @@ fn flat_scene() -> RenderScene {
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     scene.lighting.light.cast_shadows = false;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 10.0, 0.0),
         target: Vec3::ZERO,
         up: Vec3::NEG_Z,

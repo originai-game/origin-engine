@@ -38,7 +38,7 @@ pub use sprites::*;
 /// Advances every clock of the scene to `tick`: the scene's, each particle
 /// system's and each trail's.
 pub fn tick_all(scene: &mut RenderScene, tick: u64) {
-    scene.tick = tick;
+    scene.frame.tick = tick;
     for p in &mut scene.effects.particles {
         p.tick = tick;
     }
@@ -345,7 +345,7 @@ pub fn decals_many_scene() -> RenderScene {
         ..Default::default()
     };
     scene.lighting.environment.sky.sun_direction = sun;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 5.6),
         target: Vec3::new(0.0, 0.6, -0.8),
         exposure: Exposure::linear(0.9),
@@ -426,7 +426,7 @@ pub fn decals_scene() -> RenderScene {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.look.post.bloom = Some(Bloom::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 4.2, 6.2),
         target: Vec3::new(0.0, 0.4, -0.6),
         exposure: Exposure::linear(0.9),

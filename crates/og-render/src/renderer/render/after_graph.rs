@@ -182,7 +182,7 @@ impl Renderer {
                     cam.proj,
                     self.out_width,
                     self.out_height,
-                    scene.css_height,
+                    scene.frame.css_height,
                     !srgb_view && !self.output_format.is_srgb() && self.output_format != HDR_FORMAT,
                 ),
             );

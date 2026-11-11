@@ -76,7 +76,7 @@ pub fn room() -> RenderScene {
         colour(0.95, 0.8, 0.1),
         Mat4::from_translation(Vec3::new(3.0, 0.4, 1.5)),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.6, 7.5),
         target: Vec3::new(0.0, 1.0, 0.0),
         exposure: Exposure::linear(0.8),
@@ -123,7 +123,7 @@ pub fn monitor_scene() -> RenderScene {
     let i = scene.objects.instances.len() - 1;
     scene.objects.instance_layers.resize(i + 1, 1);
     scene.objects.instance_layers[i] = 2;
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(5.5, 2.8, 5.5),
             target: Vec3::new(-1.0, 0.6, -1.0),
@@ -163,10 +163,10 @@ pub fn mirror_scene() -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(mesh, m, at);
-    scene.camera.position = Vec3::new(3.5, 2.0, 4.5);
-    scene.camera.target = Vec3::new(-3.0, 1.2, 0.0);
-    scene.views.push(View {
-        camera: scene.camera,
+    scene.frame.camera.position = Vec3::new(3.5, 2.0, 4.5);
+    scene.frame.camera.target = Vec3::new(-3.0, 1.2, 0.0);
+    scene.frame.views.push(View {
+        camera: scene.frame.camera,
         target: ViewTarget::Texture(target),
         mirror: Some(MirrorQuad {
             transform: at,
@@ -183,7 +183,7 @@ pub fn mirror_scene() -> RenderScene {
 pub fn split_scene() -> RenderScene {
     let mut scene = room();
     let exposure = Exposure::linear(0.8);
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(-1.0, 2.0, 6.0),
             target: Vec3::new(-0.5, 0.8, 0.0),
@@ -193,7 +193,7 @@ pub fn split_scene() -> RenderScene {
         target: ViewTarget::Viewport([0.0, 0.0, 0.5, 1.0]),
         ..Default::default()
     });
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(0.5, 11.0, 2.5),
             target: Vec3::new(0.5, 0.0, -0.5),
@@ -251,7 +251,7 @@ pub fn full_dissolve_scene(amount: f32) -> RenderScene {
         dissolve,
         Mat4::from_rotation_translation(Quat::from_rotation_y(-1.17), Vec3::new(1.4, 1.25, -0.5)),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(1.0, 3.5, 7.5),
         target: Vec3::new(0.5, 0.8, 0.0),
         exposure: Exposure::linear(0.8),
@@ -373,7 +373,7 @@ pub fn view_kinds_scene(kinds: &[ViewKind], view_layers: u32, tick: u64) -> Rend
     for &k in kinds {
         add_view_kind(&mut scene, k);
     }
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(5.5, 2.8, 5.5),
             target: Vec3::new(-1.0, 0.6, -1.0),
@@ -426,7 +426,7 @@ pub fn depth_scene() -> RenderScene {
         depth: true,
         ..Default::default()
     });
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(0.0, 1.5, 0.0),
             target: Vec3::new(0.0, 1.5, -6.0),
@@ -446,7 +446,7 @@ pub fn depth_scene() -> RenderScene {
         9.0,
         Mat4::from_translation(at),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: at + Vec3::Z * 5.0,
         target: at,
         projection: og_render::Projection::Orthographic { height: 9.0 },
@@ -506,7 +506,7 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
         grey,
         Mat4::from_translation(Vec3::new(0.0, 0.0, -1.1)),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 6.0),
         target: Vec3::new(0.0, 0.0, 12.0),
         exposure: Exposure::linear(1.0),
@@ -611,7 +611,7 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
             ..Default::default()
         });
     }
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera,
         target: ViewTarget::Viewport([0.5, 0.0, 0.5, 1.0]),
         ..Default::default()

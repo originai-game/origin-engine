@@ -76,7 +76,7 @@ pub fn soft_shadows_scene(soft: bool) -> RenderScene {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.45;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 5.5, 9.0),
         target: Vec3::new(0.0, 0.0, -14.0),
         exposure: Exposure::linear(0.85),
@@ -171,7 +171,7 @@ pub fn many_shadowed_lights(extra: bool) -> RenderScene {
         background: Background::Color(Vec3::new(0.004, 0.006, 0.015)),
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 8.5, 9.0),
         target: Vec3::new(0.0, 0.0, -5.0),
         exposure: Exposure::linear(1.1),
@@ -185,8 +185,8 @@ pub fn many_shadowed_lights(extra: bool) -> RenderScene {
 /// than a bilinear tap.
 pub fn pan_thin_geometry(scene: &mut RenderScene, frame: u32) {
     let x = frame as f32 * 0.02;
-    scene.camera.position.x = x;
-    scene.camera.target.x = x;
+    scene.frame.camera.position.x = x;
+    scene.frame.camera.target.x = x;
 }
 
 /// [`pan_thin_geometry`] with the thin geometry's sphere (its last
@@ -327,7 +327,7 @@ pub fn crypt_scene() -> RenderScene {
         cast_shadows: true,
         ..Default::default()
     }];
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(3.4, 2.4, 2.6),
         target: Vec3::new(-3.0, 0.9, -0.6),
         exposure: Exposure::linear(1.6),
@@ -427,7 +427,7 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.3;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.2, 3.6, 8.6),
         target: Vec3::new(0.4, 0.7, -1.2),
         exposure: Exposure::linear(1.0),
@@ -580,6 +580,6 @@ fn contact_room(point: bool, shadows: bool) -> RenderScene {
         background: Background::Sky,
         ..Default::default()
     };
-    scene.camera = local_contact_camera();
+    scene.frame.camera = local_contact_camera();
     scene
 }

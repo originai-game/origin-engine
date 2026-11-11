@@ -577,8 +577,8 @@ impl GiProbes {
             self.frame = 0;
         }
         self.desc = Some(desc);
-        let eye = scene.camera.position;
-        let forward = (scene.camera.target - eye).normalize_or_zero();
+        let eye = scene.frame.camera.position;
+        let forward = (scene.frame.camera.target - eye).normalize_or_zero();
         let placed = placed(scene, &mut self.scene, eye);
         self.scene.update(&placed, |s| match s {
             Source::Mesh(i, _) => scene

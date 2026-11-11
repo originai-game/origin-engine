@@ -60,7 +60,7 @@ impl Renderer {
             .look
             .post
             .gi_probes
-            .filter(|_| WORLD_3D && scene.quality.global_illumination)
+            .filter(|_| WORLD_3D && scene.frame.quality.global_illumination)
             // A renderer made without the probe GI (RenderDesc::without).
             .filter(|_| !self.info.without.contains(LitFeatures::GI));
         let Some(desc) = desc else {

@@ -314,7 +314,7 @@ pub fn camera_at(position: Vec3, target: Vec3) -> Camera {
 pub fn island_view(distance: &str) -> RenderScene {
     let mut scene = island_scene();
     let ground = |x: f32, z: f32| island_height(x, z);
-    scene.camera = match distance {
+    scene.frame.camera = match distance {
         "near" => {
             let (x, z) = (-80.0, 150.0);
             camera_at(
@@ -376,7 +376,7 @@ pub fn water_planar_scene() -> RenderScene {
     );
     posts(&mut scene);
     let eye = Vec3::new(LAKE.x - 20.0, LAKE_LEVEL + 3.0, LAKE.y + 150.0);
-    scene.camera = camera_at(
+    scene.frame.camera = camera_at(
         eye,
         Vec3::new(LAKE.x - 40.0, LAKE_LEVEL + 40.0, LAKE.y - 300.0),
     );
@@ -434,7 +434,7 @@ pub fn water_shadows_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(LAKE.x - 8.0, LAKE_LEVEL + 2.2, LAKE.y + 100.0)),
     );
     let eye = Vec3::new(LAKE.x - 30.0, LAKE_LEVEL + 22.0, LAKE.y + 140.0);
-    scene.camera = camera_at(eye, Vec3::new(LAKE.x - 4.0, LAKE_LEVEL, LAKE.y + 92.0));
+    scene.frame.camera = camera_at(eye, Vec3::new(LAKE.x - 4.0, LAKE_LEVEL, LAKE.y + 92.0));
     scene
 }
 
@@ -454,11 +454,11 @@ pub fn water_underwater_scene() -> RenderScene {
     );
     posts(&mut scene);
     let eye = Vec3::new(LAKE.x - 40.0, LAKE_LEVEL - 3.0, LAKE.y + 70.0);
-    scene.camera = camera_at(
+    scene.frame.camera = camera_at(
         eye,
         Vec3::new(LAKE.x - 48.0, LAKE_LEVEL + 6.0, LAKE.y + 90.0),
     );
-    scene.tick = 90;
+    scene.frame.tick = 90;
     scene
 }
 
@@ -672,7 +672,7 @@ pub fn holes_scene() -> RenderScene {
     let sun = Vec3::new(0.2, 0.95, 0.15).normalize();
     scene.lighting.light.direction_to_light = sun;
     scene.lighting.environment.sky.sun_direction = sun;
-    scene.camera = camera_at(c + Vec3::new(0.0, 30.0, 24.0), c);
+    scene.frame.camera = camera_at(c + Vec3::new(0.0, 30.0, 24.0), c);
     scene
 }
 
@@ -706,7 +706,7 @@ pub fn layers_scene(painted: bool) -> RenderScene {
     let mut scene = with_layer_arrays(island_view("near"));
     let (x, z) = (-98.0, 114.0);
     let below = Vec3::new(x, island_height(x, z), z);
-    scene.camera = camera_at(below + Vec3::new(0.0, 70.0, 26.0), below);
+    scene.frame.camera = camera_at(below + Vec3::new(0.0, 70.0, 26.0), below);
     let handle = scene.world.terrains[0].terrain;
     let mut data = scene.terrain(handle).expect("the island").clone();
     // Both pages at 1024 texels (2 m): the first resampled from the
@@ -809,7 +809,7 @@ pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
         ..Terrain::new(handle)
     });
     plain_light(&mut scene);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.3, 150.0, 0.7),
         target: Vec3::new(0.3, 0.0, 0.7),
         up: Vec3::NEG_Z,
@@ -873,7 +873,7 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
     plain_light(&mut scene);
     // The sun from the camera's side, so the face is lit.
     scene.lighting.light.direction_to_light = Vec3::new(-0.8, 0.5, 0.3);
-    scene.camera = camera_at(
+    scene.frame.camera = camera_at(
         Vec3::new(STEEP_FOOT - 30.0, STEEP_HEIGHT * 0.5, 0.0),
         Vec3::new(STEEP_FOOT, STEEP_HEIGHT * 0.5, 0.0),
     );
@@ -930,7 +930,7 @@ pub fn horizon_scene(horizon: bool) -> RenderScene {
     scene.lighting.light.intensity = 7.0;
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.25;
-    scene.camera = camera_at(
+    scene.frame.camera = camera_at(
         Vec3::new(-1500.0, 120.0, 0.0),
         Vec3::new(HORIZON_RIDGE, 0.0, 0.0),
     );
@@ -1024,7 +1024,7 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
     // The sun from the valley's side, so the face and the ground are lit alike.
     scene.lighting.light.direction_to_light = Vec3::new(0.7, 0.65, 0.3).normalize();
     scene.lighting.environment.sky.sun_direction = scene.lighting.light.direction_to_light;
-    scene.camera = camera_at(CLIFF_EYE, CLIFF_FOOT);
+    scene.frame.camera = camera_at(CLIFF_EYE, CLIFF_FOOT);
     scene
 }
 
@@ -1279,7 +1279,7 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
     scene.lighting.light.max_shadow_distance = 60.0;
     scene.lighting.environment.sky.sun_direction = sun;
     let eye_z = DISPLACED_CREST + 4.0;
-    scene.camera = camera_at(
+    scene.frame.camera = camera_at(
         Vec3::new(0.0, displaced_height(eye_z) + 0.3, eye_z),
         Vec3::new(
             0.0,

@@ -24,7 +24,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // in the world and moved to its own at the end (`rebase`).
     // In the absolute world (R12's og.WorldOrigin moves the world's zero
     // there); the world's place is it less the zero.
-    let drawn_at = std::mem::take(&mut rs.scene.origin);
+    let drawn_at = std::mem::take(&mut rs.scene.frame.origin);
     let zero = crate::origin::zero(world, rs.draw.origin.as_ref());
     let back = drawn_at - zero.as_vec3();
     let framed = super::review::bounds(rs, &h, &ids).map(|(a, b)| (a + back, b + back));
@@ -78,10 +78,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     scene.effects.point_layers.clear();
     scene.effects.particle_layers.clear();
     let time = world.time();
-    scene.tick = time.tick;
-    scene.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    scene.frame.tick = time.tick;
+    scene.frame.tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     // The sea's clock between ticks (og_render's `RenderScene::interpolation`).
-    scene.interpolation = blended;
+    scene.frame.interpolation = blended;
     // og.render.sprite and og.render.text are immediate mode: what the last
     // tick submitted (or a command since it) is drawn, and a tick that
     // submitted nothing draws nothing. The queues are cleared lazily by the
@@ -91,17 +91,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
 
     // Camera.
     let mut exposure = 1.0f32;
-    scene.camera_layers = camera
+    scene.frame.camera_layers = camera
         .as_ref()
         .and_then(|c| c["layers"].as_u64())
         .map_or(1, |x| x as u32);
-    scene.camera_cut = false;
+    scene.frame.camera_cut = false;
     let (mut origin, mut look_along) = (Vec3::ZERO, None);
     if let Some(c) = &camera {
         let (position, rot) = super::interpolate::camera_pose(c);
         let (position, rot, cut) = super::interpolate::camera(&rs.interp, position, rot);
-        scene.camera_cut = cut;
-        let cam = &mut scene.camera;
+        scene.frame.camera_cut = cut;
+        let cam = &mut scene.frame.camera;
         cam.position = position;
         cam.target = position + rot * Vec3::NEG_Z;
         cam.up = rot * Vec3::Y;
@@ -125,7 +125,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         scene.lighting.environment.background =
             og_render::Background::Color(color(&c["background"], 0.0));
     }
-    super::review::apply(&mut scene.camera, rs.review.as_ref(), size, framed);
+    super::review::apply(&mut scene.frame.camera, rs.review.as_ref(), size, framed);
 
     // Settings: environment, sky, bloom, exposure, tone mapping.
     if let Some(s) = &settings {
@@ -163,7 +163,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         } else {
             og_render::Tonemap::None
         };
-        scene.camera.exposure = if on(s, "autoExposure", false) {
+        scene.frame.camera.exposure = if on(s, "autoExposure", false) {
             og_render::Exposure::Auto {
                 compensation: exposure.max(1e-6).log2(),
                 min_ev: -10.0,
@@ -177,7 +177,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
         // The quality fields, one to one (og.render.applyQuality writes a
         // preset's row of them; RenderSettings.quality is only its record).
         let full = og_render::RenderQuality::default();
-        scene.quality = og_render::RenderQuality {
+        scene.frame.quality = og_render::RenderQuality {
             rect_shadows: on(s, "rectShadows", full.rect_shadows),
             shadowed_lights: f(s, "shadowedLights", full.shadowed_lights as f32).max(0.0) as u32,
             shadow_cascades: f(s, "shadowCascades", full.shadow_cascades as f32).max(1.0) as u32,
@@ -203,8 +203,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 [crate::fx::variant(&s["upscaler"], super::UPSCALERS).min(1)],
         };
     } else {
-        scene.camera.exposure = og_render::Exposure::linear(exposure);
-        scene.quality = og_render::RenderQuality {
+        scene.frame.camera.exposure = og_render::Exposure::linear(exposure);
+        scene.frame.quality = og_render::RenderQuality {
             global_illumination: crate::fx::gi_allowed(
                 crate::fx::resource(world, layouts.fx.global_illumination.as_ref()).as_deref(),
                 rs.fx.gi_preset,
@@ -458,7 +458,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             Some(l) => {
                 let scale = m.to_scale_rotation_translation().0.abs().max_element();
                 let per_unit = og_render::lod::pixels_per_unit(
-                    &rs.scene.camera,
+                    &rs.scene.frame.camera,
                     m.transform_point3(l.center),
                     l.radius * scale,
                     view_height,
@@ -724,7 +724,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, &mut h));
     // The wind copies' parameters, from the og.Wind just read.
-    let (wind, tick, rate) = (rs.scene.atmosphere.wind, rs.scene.tick, rs.scene.tick_rate);
+    let (wind, tick, rate) = (
+        rs.scene.atmosphere.wind,
+        rs.scene.frame.tick,
+        rs.scene.frame.tick_rate,
+    );
     rs.wind.present(&mut rs.scene, wind, tick, rate);
     super::environment::extract(world, rs);
     super::probes::extract(world, rs, &mut h);
@@ -808,7 +812,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     if rs.review.is_some() {
         let ids: Vec<u64> = keys.iter().map(|k| k.0).collect();
         let framed = super::review::bounds(rs, &h, &ids);
-        super::review::apply(&mut rs.scene.camera, rs.review.as_ref(), size, framed);
+        super::review::apply(&mut rs.scene.frame.camera, rs.review.as_ref(), size, framed);
     }
     // Lines, points and debug draw (after every instance is in, for the
     // bounds view).
@@ -844,7 +848,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     super::interpolate::end(rs, &mut h);
     rebase(&mut rs.scene, origin, look_along);
     // The frame's zero is the grid point, in the absolute world.
-    rs.scene.origin += zero.as_vec3();
+    rs.scene.frame.origin += zero.as_vec3();
     rs.zero = zero.as_vec3();
     rs.hierarchy = h;
 }
@@ -882,7 +886,7 @@ fn rebase(scene: &mut og_render::RenderScene, origin: Vec3, forward: Option<Vec3
     if origin == Vec3::ZERO {
         return;
     }
-    let cam = scene.camera;
+    let cam = scene.frame.camera;
     let look = cam.target - cam.position;
     // What rounding position + forward at this distance can do to it.
     let rounding = 4.0 * cam.position.abs().max_element() * f32::EPSILON + 1e-4;
@@ -890,7 +894,7 @@ fn rebase(scene: &mut og_render::RenderScene, origin: Vec3, forward: Option<Vec3
     if let Some(f) = forward
         && (look - f).length() <= rounding
     {
-        scene.camera.target = scene.camera.position + f;
+        scene.frame.camera.target = scene.frame.camera.position + f;
     }
 }
 

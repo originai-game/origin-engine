@@ -48,8 +48,8 @@ fn stage() -> RenderScene {
         method: AoMethod::Gtao,
         ..Default::default()
     });
-    scene.camera.position = Vec3::new(0.0, 3.0, 7.0);
-    scene.camera.target = Vec3::new(0.0, 0.8, 0.0);
+    scene.frame.camera.position = Vec3::new(0.0, 3.0, 7.0);
+    scene.frame.camera.target = Vec3::new(0.0, 0.8, 0.0);
     scene
 }
 

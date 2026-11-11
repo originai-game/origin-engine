@@ -624,12 +624,12 @@ mod tests {
     #[test]
     fn the_sea_runs_at_the_display_rate_between_ticks() {
         let mut scene = crate::RenderScene::new();
-        scene.tick = 600;
-        scene.tick_rate = 60.0;
+        scene.frame.tick = 600;
+        scene.frame.tick_rate = 60.0;
         assert_eq!(seconds(&scene), 10.0);
-        scene.interpolation = Some(0.25);
+        scene.frame.interpolation = Some(0.25);
         assert!((seconds(&scene) - 599.25 / 60.0).abs() < 1e-12);
-        scene.interpolation = Some(1.0);
+        scene.frame.interpolation = Some(1.0);
         assert_eq!(seconds(&scene), 10.0);
         // Two frames of one tick at different alphas draw different seas.
         let water = Water {
@@ -640,16 +640,16 @@ mod tests {
         let sea = ocean(&water).expect("a sea");
         let at = glam::DVec2::new(13.0, -7.0);
         let mut height = |a: f32| {
-            scene.interpolation = Some(a);
+            scene.frame.interpolation = Some(a);
             sea.height_on_grid(at, seconds(&scene), 0.0)
         };
         assert!((height(0.2) - height(0.7)).abs() > 1e-3);
         // Monotonic across a tick: the frame after the tick's last blends on.
         let late = 599.95 / 60.0;
         let mut next = crate::RenderScene::new();
-        next.tick = 601;
-        next.tick_rate = 60.0;
-        next.interpolation = Some(0.05);
+        next.frame.tick = 601;
+        next.frame.tick_rate = 60.0;
+        next.frame.interpolation = Some(0.05);
         assert!(seconds(&next) > late);
     }
 

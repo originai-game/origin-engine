@@ -1113,7 +1113,7 @@ impl MeshletGpu {
         let soft_on = scene.objects.visibility_buffer
             && self.vis_buffer.usable()
             && matches!(
-                scene.camera.projection,
+                scene.frame.camera.projection,
                 crate::Projection::Perspective { .. }
             );
         let (rows, draws, items, workgroups, list) = plan(
@@ -1219,7 +1219,7 @@ impl MeshletGpu {
                 scene.objects.lod_bias.max(0.0),
                 level_row as f32,
                 picked as u32 as f32,
-                scene.camera.near,
+                scene.frame.camera.near,
             ],
             sizes: [width, height, pyramid.map_or(0, |p| p.1), rows.len() as u32],
             phase: [phase, read as u32, write as u32, 0],

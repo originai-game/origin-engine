@@ -51,7 +51,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
             }
         }
         scene.objects.skinned_instances.push(inst);
-        scene.camera = camera;
+        scene.frame.camera = camera;
         scene
     };
     for (at, palette) in [
@@ -124,7 +124,7 @@ fn baked_clips_pose_a_crowd_like_their_palettes() {
             scene.objects.skinned_instances.push(inst);
         }
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 6.0),
         target: Vec3::new(0.0, 1.0, -2.0),
         ..Default::default()
@@ -186,7 +186,7 @@ fn deformed_vertices_replace_the_mesh() {
             }
         }
         scene.lighting.environment.background = Background::Color(Vec3::ZERO);
-        scene.camera = Camera {
+        scene.frame.camera = Camera {
             position: Vec3::new(0.0, 1.6, 6.0),
             target: Vec3::new(0.0, 1.6, 0.0),
             ..Default::default()

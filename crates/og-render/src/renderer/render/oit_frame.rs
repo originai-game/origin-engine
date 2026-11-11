@@ -49,12 +49,12 @@ impl Renderer {
             .iter()
             .filter(|r| r.layer.is_none() && r.blend == ParticleBlend::Alpha)
             .fold((false, false), |(v, p), r| (v || !r.points, p || r.points));
-        let oit_particles = particle_frame.has_oit(scene.camera_layers);
+        let oit_particles = particle_frame.has_oit(scene.frame.camera_layers);
         // What needs no culling: billboards, particles and strips.
         let oit_candidates =
             !oit_billboards.is_empty() || oit_particles || oit_strips.0 || oit_strips.1;
         // Its targets are three (sorted blending without MRT).
-        let oit_frame = (scene.debug == DebugView::None
+        let oit_frame = (scene.frame.debug == DebugView::None
             && self.info.caps.contains(Caps::MRT)
             && (oit_candidates
                 || batches.iter().any(|b| b.transparent && b.blend)

@@ -53,7 +53,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     scene.look.post.tonemap = Tonemap::None;
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.lighting.light.cast_shadows = false;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 100.0, 0.001),
         target: Vec3::ZERO,
         near: 1.0,
@@ -87,7 +87,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     let placed = scene.world.terrains[0].scatter(
         &TerrainData::flat(Vec2::splat(size), n, n),
         &s,
-        scene.camera.position,
+        scene.frame.camera.position,
     );
     let (mut solid, mut thinned, mut gone) = (0, 0, 0);
     let (mut shrunk, mut faded_out) = (0, 0);
@@ -189,8 +189,8 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
     }
     assert_eq!(gone, 0, "the CPU placement keeps to the distance");
     // Moving 150 m east builds only the chunks that came into range.
-    scene.camera.position.x += 150.0;
-    scene.camera.target.x += 150.0;
+    scene.frame.camera.position.x += 150.0;
+    scene.frame.camera.target.x += 150.0;
     let moved = r.render(&scene, &RenderTarget::Offscreen).expect("render");
     assert!(
         moved.scatter_built > 0 && moved.scatter_built < first.scatter_built,
@@ -239,7 +239,7 @@ fn scatter_chunks_are_built_again_only_when_what_placed_them_changes() {
         impostor_distance: 0.0,
     });
     scene.lighting.light.cast_shadows = false;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 100.0, 0.001),
         target: Vec3::ZERO,
         near: 1.0,
@@ -323,7 +323,7 @@ fn wind_sways_scattered_copies_downwind() {
     scene.look.post.tonemap = Tonemap::None;
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.lighting.light.cast_shadows = false;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 100.0, 0.001),
         target: Vec3::ZERO,
         near: 1.0,
@@ -337,7 +337,7 @@ fn wind_sways_scattered_copies_downwind() {
     // The roots in view with no other within 5 m, so no other plate comes
     // within 3 m of 1 m downwind of one.
     let placed: Vec<Vec2> = scene.world.terrains[0]
-        .scatter(&data, &s, scene.camera.position)
+        .scatter(&data, &s, scene.frame.camera.position)
         .iter()
         .map(|(_, m)| Vec2::new(m.w_axis.x, m.w_axis.z))
         .collect();
@@ -349,7 +349,7 @@ fn wind_sways_scattered_copies_downwind() {
         .collect();
     assert!(roots.len() >= 6, "{} roots apart", roots.len());
     let draw = |scene: &mut RenderScene, tick: u64| {
-        scene.tick = tick;
+        scene.frame.tick = tick;
         let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
         r.render(scene, &RenderTarget::Offscreen).expect("render");
         r.read_offscreen().expect("capture")
@@ -474,7 +474,7 @@ fn wind_sways_scattered_copies_downwind() {
     });
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     for tick in [0, 30] {
-        scene.tick = tick;
+        scene.frame.tick = tick;
         r.render(&scene, &RenderTarget::Offscreen).expect("render");
     }
     let smeared = r.read_offscreen().expect("capture");

@@ -75,7 +75,7 @@ pub(super) fn sprite_field(n: usize) -> Result<RenderScene, String> {
             ..Default::default()
         });
     }
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 20.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 20.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     Ok(scene)
@@ -247,7 +247,7 @@ pub fn sprites_shadow_scene() -> RenderScene {
         intensity: 3.0,
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.6, 7.5),
         target: Vec3::new(0.0, 0.6, -0.4),
         exposure: Exposure::linear(0.9),
@@ -439,7 +439,7 @@ pub fn billboard_scene() -> RenderScene {
         ..Default::default()
     };
     let exposure = Exposure::linear(0.9);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(7.5, 5.5, 7.0),
         target: Vec3::new(0.0, 0.8, -0.8),
         exposure,
@@ -447,7 +447,7 @@ pub fn billboard_scene() -> RenderScene {
     };
     // From the side: every billboard turns to this camera too (the flat
     // figure is seen nearly edge on).
-    scene.views.push(View {
+    scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(-10.0, 2.2, -0.8),
             target: Vec3::new(0.0, 1.0, -0.8),
@@ -580,7 +580,7 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
         intensity: 3.0,
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 5.6, 8.5),
         target: Vec3::new(0.0, 0.8, -0.2),
         exposure: Exposure::linear(0.9),
@@ -749,7 +749,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
     });
     scene.ui.overlay = Some(overlay);
     scene.look.post.glow = Some(Glow { intensity: 0.8 });
-    scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -852,7 +852,7 @@ pub fn sprite_array_scene() -> RenderScene {
             ..Default::default()
         });
     }
-    scene.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -960,7 +960,7 @@ pub fn lights_2d_scene(angles: u32, normals: bool) -> RenderScene {
             ..Default::default()
         });
     }
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     scene

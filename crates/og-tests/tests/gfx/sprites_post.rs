@@ -37,7 +37,7 @@ fn a_sprite_draws_the_layer_of_its_texture_array() {
             layer,
         });
     }
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let desc = scenes::base_desc();
@@ -95,7 +95,7 @@ fn rgb_array(scene: &mut RenderScene) -> og_render::TextureArrayHandle {
         })
         .expect("three layers");
     scene.set_texture_array_filter(array, og_render::TextureFilter::Nearest);
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     array
@@ -162,7 +162,7 @@ fn array_particles_take_their_layers_by_age_or_at_random() {
         // 1.5 s of a 3 s life at 60 ticks a second: the middle layer by age.
         let mut stats = FrameStats::default();
         for t in 0..=90 {
-            scene.tick = t;
+            scene.frame.tick = t;
             scene.effects.particles[0].tick = t;
             stats = renderer.render(&scene, &RenderTarget::Offscreen)?;
         }

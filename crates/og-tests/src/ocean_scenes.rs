@@ -123,7 +123,7 @@ fn wake_cut(frame: u32) -> og_render::WaterCut {
 /// `water-wake`'s update: the tick, the boat's hull and the cuts of the
 /// last two ticks.
 pub fn wake_update(scene: &mut RenderScene, frame: u32) {
-    scene.tick = TICK + u64::from(frame);
+    scene.frame.tick = TICK + u64::from(frame);
     let at = wake_boat(frame);
     if let Some(boat) = scene.objects.instances.first_mut() {
         boat.transform = Mat4::from_translation(Vec3::new(at.x, WAKE_HALF.y - WAKE_DRAFT, at.y));
@@ -155,7 +155,7 @@ fn wake(scene: &mut RenderScene) {
     scene.add_instance(hull, paint, Mat4::IDENTITY);
     scene.world.water.push(sea(Vec2::new(-1.2, -2.6), 0.4));
     sea_haze(scene);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(9.0, 16.0, 22.0),
         target: Vec3::new(0.0, 0.0, -6.0),
         far: 5000.0,
@@ -278,7 +278,7 @@ fn river(scene: &mut RenderScene) {
         ..Default::default()
     });
     // From the plain below the fall, high enough to see the reach above it.
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(18.0, 10.0, 14.0),
         target: Vec3::new(-6.0, 2.5, -12.0),
         far: 2000.0,
@@ -327,7 +327,7 @@ fn shallows(scene: &mut RenderScene) {
         scattering: Vec3::new(0.01, 0.015, 0.025),
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 22.0, 0.5),
         target: Vec3::ZERO,
         far: 1000.0,
@@ -340,8 +340,8 @@ fn shallows(scene: &mut RenderScene) {
 pub fn ocean_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
     let mut scene = RenderScene::new();
-    scene.tick = TICK;
-    scene.tick_rate = 60.0;
+    scene.frame.tick = TICK;
+    scene.frame.tick_rate = 60.0;
     match name {
         // A fresh breeze (9 m/s, waves about 65 m long, 1.7 m significant
         // height) running away from the camera and to the left, the
@@ -350,7 +350,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             physical_light(&mut scene, 15.0, earth);
             scene.world.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
             sea_haze(&mut scene);
-            scene.camera = Camera {
+            scene.frame.camera = Camera {
                 position: Vec3::new(0.0, 4.0, 0.0),
                 target: Vec3::new(0.0, 1.5, -60.0),
                 far: 5000.0,
@@ -381,8 +381,8 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             sea_haze(&mut scene);
             // 96 s in: the swell's crests under the near sea (at 90 s the
             // view's first 50 m lay in one long trough, with no whitecaps).
-            scene.tick = TICK + 360;
-            scene.camera = Camera {
+            scene.frame.tick = TICK + 360;
+            scene.frame.camera = Camera {
                 position: Vec3::new(0.0, 10.0, 0.0),
                 target: Vec3::new(-10.0, 1.0, -80.0),
                 far: 5000.0,
@@ -398,7 +398,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             sea_haze(&mut scene);
             let s = look.sun_direction;
             let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
-            scene.camera = Camera {
+            scene.frame.camera = Camera {
                 position: Vec3::new(0.0, 3.0, 0.0),
                 target: Vec3::new(0.0, 3.0, 0.0) + bearing * 60.0 + Vec3::Y * 2.5,
                 far: 5000.0,
@@ -438,7 +438,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
             scene.world.water.push(gale);
             sea_haze(&mut scene);
-            scene.camera = metered(Vec3::new(0.0, 6.0, 0.0), -1.0);
+            scene.frame.camera = metered(Vec3::new(0.0, 6.0, 0.0), -1.0);
         }
         // The breeze's sea at night under a clear, starry sky and a moon
         // behind the camera: dark water, the moonlight on it faint.
@@ -446,7 +446,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             physical_light(&mut scene, 22.3, earth);
             scene.world.water.push(sea(Vec2::new(-3.0, -8.5), 0.6));
             sea_haze(&mut scene);
-            scene.camera = metered(Vec3::new(0.0, 4.0, 0.0), -2.5);
+            scene.frame.camera = metered(Vec3::new(0.0, 4.0, 0.0), -2.5);
         }
         // W1: a breeze's sea rolling in on a 1:20 sandy beach, seen from
         // the water 160 m out: the swell fading in the shallows, the shore
@@ -455,7 +455,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             physical_light(&mut scene, 15.0, earth);
             beach(&mut scene, sea(Vec2::new(1.5, -8.0), 0.6), 1.0);
             sea_haze(&mut scene);
-            scene.camera = Camera {
+            scene.frame.camera = Camera {
                 position: Vec3::new(0.0, 6.0, 60.0),
                 target: Vec3::new(0.0, 0.0, -100.0),
                 far: 5000.0,
@@ -484,7 +484,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             gale.deep = Vec3::new(0.012, 0.035, 0.035);
             beach(&mut scene, gale, 1.5);
             sea_haze(&mut scene);
-            scene.camera = Camera {
+            scene.frame.camera = Camera {
                 position: Vec3::new(0.0, 8.0, 60.0),
                 target: Vec3::new(0.0, 0.0, -100.0),
                 far: 5000.0,
@@ -603,7 +603,7 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
         flow_map,
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 7.0, 9.0),
         target: Vec3::new(0.0, 0.9, -8.0),
         exposure: Exposure::linear(0.9),
@@ -612,8 +612,8 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
     // 1.5 s in, half a period (water.wgsl `flowed_slope`), when one copy
     // of the waves alone is drawn: moved 0.75 m along the flow far out,
     // 1.5 m beside the boulder and not at all at its nose.
-    scene.tick = 90;
-    scene.tick_rate = 60.0;
+    scene.frame.tick = 90;
+    scene.frame.tick_rate = 60.0;
     scene.atmosphere.fog = None::<Fog>;
 }
 

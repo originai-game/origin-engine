@@ -1659,7 +1659,7 @@ fn glass_cost() {
     for round in 0..12 {
         let mode = round % 4;
         let mut scene = RenderScene::new();
-        scene.camera = og_render::Camera::orthographic_2d(Vec2::new(640.0, 360.0), 720.0);
+        scene.frame.camera = og_render::Camera::orthographic_2d(Vec2::new(640.0, 360.0), 720.0);
         for k in 0..160 {
             scene.sprite.sprites.push(og_render::Sprite {
                 position: Vec3::new(k as f32 * 8.0 + 2.0, 360.0, 0.0),

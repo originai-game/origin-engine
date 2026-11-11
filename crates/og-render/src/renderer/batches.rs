@@ -1474,7 +1474,7 @@ impl Renderer {
         } = crate::crowd::cpu_records(
             &scene.objects.crowds,
             frame,
-            &scene.camera,
+            &scene.frame.camera,
             self.height as f32,
             scene.objects.lod_bias,
             previous_at,

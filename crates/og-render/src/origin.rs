@@ -35,7 +35,7 @@ impl RenderScene {
         if origin == Vec3::ZERO {
             return;
         }
-        self.origin += origin;
+        self.frame.origin += origin;
         let d = -origin;
         let d2 = d.truncate();
         for i in &mut self.objects.instances {
@@ -55,8 +55,8 @@ impl RenderScene {
         for i in &mut self.objects.skinned_instances {
             moved(&mut i.transform, d);
         }
-        self.camera.position += d;
-        self.camera.target += d;
+        self.frame.camera.position += d;
+        self.frame.camera.target += d;
         if let crate::ShadowBounds::Sphere { center, .. } = &mut self.lighting.light.shadow_bounds {
             *center += d;
         }
@@ -69,7 +69,7 @@ impl RenderScene {
         for l in &mut self.lighting.lights {
             l.position += d;
         }
-        for v in &mut self.views {
+        for v in &mut self.frame.views {
             v.camera.position += d;
             v.camera.target += d;
             if let Some(m) = &mut v.mirror {

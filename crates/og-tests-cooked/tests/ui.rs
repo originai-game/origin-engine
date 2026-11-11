@@ -685,7 +685,7 @@ fn colour_glyphs_outline_world_text_under_their_images() {
                 ..Text::new(h, text)
             });
         }
-        scene.camera = Camera::orthographic_2d(glam::Vec2::ZERO, 2.5);
+        scene.frame.camera = Camera::orthographic_2d(glam::Vec2::ZERO, 2.5);
         scene.lighting.environment.background = Background::Color(glam::Vec3::splat(0.2));
         scene.look.post.tonemap = Tonemap::None;
         let mut renderer = Renderer::new_blocking(&RenderDesc {

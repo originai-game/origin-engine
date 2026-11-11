@@ -101,7 +101,8 @@ impl Renderer {
             .as_ref()
             .filter(|_| self.shadows.cascade_map.layers.len() as u32 > self.frame_cascades(scene))
             .and_then(|w| {
-                let (view_proj, cell) = weather::shelter_view(w, camera.position, scene.origin)?;
+                let (view_proj, cell) =
+                    weather::shelter_view(w, camera.position, scene.frame.origin)?;
                 let frustum = Frustum::from_view_proj(view_proj);
                 let mut inside = vec![false; spheres.len()];
                 for b in batches.iter().filter(|b| b.cast) {

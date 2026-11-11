@@ -51,7 +51,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
         ..Default::default()
     };
     scene.lighting.environment.intensity = 1.0;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.3, 1.6, 4.2),
         target: Vec3::new(-0.6, 1.0, 0.0),
         exposure: Exposure::linear(0.9),
@@ -142,7 +142,7 @@ pub fn ssr_scene(ssr: bool) -> RenderScene {
         intensity: 2.5,
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.4, 5.0),
         target: Vec3::new(0.0, 0.6, 0.0),
         exposure: Exposure::linear(1.0),

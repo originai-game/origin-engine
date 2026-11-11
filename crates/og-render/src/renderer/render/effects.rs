@@ -64,18 +64,20 @@ impl Renderer {
         // The quality's resolution, where it sets one, over the scene's.
         let ao = post_fx
             .ao
-            .filter(|a| scene.quality.ambient_occlusion && a.intensity > 0.0 && a.radius > 0.0)
+            .filter(|a| {
+                scene.frame.quality.ambient_occlusion && a.intensity > 0.0 && a.radius > 0.0
+            })
             .map(|a| AmbientOcclusion {
-                resolution: scene.quality.ao_resolution.unwrap_or(a.resolution),
+                resolution: scene.frame.quality.ao_resolution.unwrap_or(a.resolution),
                 ..a
             });
         // Screen-space GI (ssgi.rs), in the AO passes' place: its targets
         // hold the AO too, at the GI's resolution when both are on.
         let gi = post_fx
             .gi
-            .filter(|g| scene.quality.global_illumination && g.intensity > 0.0)
+            .filter(|g| scene.frame.quality.global_illumination && g.intensity > 0.0)
             .map(|g| ScreenSpaceGlobalIllumination {
-                resolution: scene.quality.ao_resolution.unwrap_or(g.resolution),
+                resolution: scene.frame.quality.ao_resolution.unwrap_or(g.resolution),
                 ..g
             });
         let ao = ao.map(|a| AmbientOcclusion {
@@ -92,7 +94,12 @@ impl Renderer {
         let contact = WORLD_3D
             && self.runs(FramePass::Contact)
             && gi.is_none()
-            && scene.quality.shadowed_lights.min(self.info.shadowed_lights) > 0
+            && scene
+                .frame
+                .quality
+                .shadowed_lights
+                .min(self.info.shadowed_lights)
+                > 0
             && scene
                 .lighting
                 .lights
@@ -106,7 +113,7 @@ impl Renderer {
             && !contact
             && ao.is_some_and(|a| a.method == AoMethod::Gtao)
             && post_fx.gi_probes.is_some()
-            && scene.quality.global_illumination
+            && scene.frame.quality.global_illumination
             && !self.info.without.contains(LitFeatures::GI);
         let outline = post_fx.outline.is_some()
             || batches

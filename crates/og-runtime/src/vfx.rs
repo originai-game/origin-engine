@@ -695,7 +695,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
         return;
     }
     let loaded = lock(&registry).clone();
-    let rate = rs.scene.tick_rate.max(1.0);
+    let rate = rs.scene.frame.tick_rate.max(1.0);
     for (e, v) in rows {
         let Some(l) = index(&v["asset"]).and_then(|i| loaded.get(i)) else {
             continue;

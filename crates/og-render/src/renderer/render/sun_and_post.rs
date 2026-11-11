@@ -96,7 +96,10 @@ impl Renderer {
                     let [_, _, _, d, g] = look.gpu(true, Vec3::from_slice(&atmosphere.sky[4][1..]));
                     let through = look.physical.map_or(Vec3::ONE, |p| {
                         let up = direction.normalize_or(Vec3::Y).y;
-                        p.sun_transmittance(p.altitude + camera.position.y + scene.origin.y, up)
+                        p.sun_transmittance(
+                            p.altitude + camera.position.y + scene.frame.origin.y,
+                            up,
+                        )
                     });
                     let glow = if look.physical.is_some() { 0.0 } else { d[3] };
                     disc = (Vec3::new(g[1], g[2], g[3]) * through * (d[2] + glow))
@@ -145,7 +148,7 @@ impl Renderer {
             glow,
             god_rays.is_some(),
             sprite_frame.untonemapped,
-            scene.tick,
+            scene.frame.tick,
             self.history_size().0,
             lens_flare.as_ref().map(|f| (f, flare_turn)),
         );
@@ -153,8 +156,8 @@ impl Renderer {
             self.post.advance_exposure(
                 &self.queue,
                 camera.exposure,
-                scene.tick,
-                scene.tick_rate,
+                scene.frame.tick,
+                scene.frame.tick_rate,
                 (self.frame_index % 2) as usize,
             );
         } else {

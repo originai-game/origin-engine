@@ -163,7 +163,7 @@ pub fn world(
         stone,
         og_core::glam::Mat4::from_translation(Vec3::new(0.0, 2.0, 0.0)),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.0, 12.0),
         target: Vec3::new(0.0, 2.0, 0.0),
         up: Vec3::Y,
@@ -467,7 +467,7 @@ pub fn panel() -> RenderScene {
             Vec3::new(0.0, 1.5, 0.0),
         ),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.5, 5.0),
         target: Vec3::new(0.0, 1.5, 0.0),
         up: Vec3::Y,

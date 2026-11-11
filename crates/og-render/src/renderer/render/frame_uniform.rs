@@ -68,7 +68,7 @@ impl Renderer {
                 .to_array(),
             light_dir: to_light.extend(cascades.len() as f32).to_array(),
             light_color: (light.color * light.intensity)
-                .extend(scene.debug.lit_code())
+                .extend(scene.frame.debug.lit_code())
                 .to_array(),
             params: [
                 scene.lighting.environment.intensity,
@@ -110,10 +110,10 @@ impl Renderer {
                     .map(|c| (c, scene.sky_captured())),
                 scene.atmosphere.aurora.as_ref(),
                 scene.atmosphere.surface_weather.as_ref(),
-                scene.tick,
-                scene.tick_rate,
+                scene.frame.tick,
+                scene.frame.tick_rate,
             ),
-            caustics: water::caustics(scene_water, scene.origin, scene.camera.position),
+            caustics: water::caustics(scene_water, scene.frame.origin, scene.frame.camera.position),
             shadow: {
                 let (softness, fill) = light.shadow_softness_and_fill();
                 [
@@ -156,7 +156,7 @@ impl Renderer {
                 [g[0], g[1], g[2], 0.0]
             },
             material_surface: scene.look.stylise.material.surface_uniform(),
-            origin: scene.origin.extend(0.0).to_array(),
+            origin: scene.frame.origin.extend(0.0).to_array(),
             env_dome: crate::GroundProjection::gpu(scene.lighting.environment.ground),
             foliage_wind: crate::foliage::foliage_winds(
                 scene,
@@ -182,7 +182,12 @@ impl Renderer {
         // The shadow passes' clock, and the scene's origin for the hooks
         // (`h.origin`, `origin.rs`).
         let t = uniform.atmosphere.time;
-        let shadow_time = [t[0], scene.origin.x, scene.origin.y, scene.origin.z];
+        let shadow_time = [
+            t[0],
+            scene.frame.origin.x,
+            scene.frame.origin.y,
+            scene.frame.origin.z,
+        ];
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
         for (i, c) in cascades.iter().enumerate() {
             uniform.cascade_view_proj[i] = c.view_proj.to_cols_array_2d();

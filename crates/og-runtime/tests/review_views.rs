@@ -59,7 +59,7 @@ impl RenderBackend for Recorder {
         Ok(())
     }
     fn capture(&mut self, scene: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
-        self.0.borrow_mut().push(scene.camera);
+        self.0.borrow_mut().push(scene.frame.camera);
         Some(RgbaImage {
             width: 1,
             height: 1,

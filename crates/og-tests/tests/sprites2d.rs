@@ -37,7 +37,7 @@ fn frame(scene: &RenderScene, frames: u32) -> (RgbaImage, FrameStats) {
 /// A flat 2D scene: orthographic, 10 units tall, black, untonemapped.
 fn flat() -> RenderScene {
     let mut scene = RenderScene::new();
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -301,7 +301,7 @@ fn a_2d_penumbra_is_a_smooth_ramp() {
     ];
     for (r, columns) in cases {
         let mut scene = flat();
-        scene.camera = Camera::orthographic_2d(Vec2::ZERO, 11.25);
+        scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 11.25);
         scene.add_sprite(Sprite {
             size: Vec2::new(24.0, 14.0),
             layer: -5,

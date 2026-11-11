@@ -74,10 +74,10 @@ impl Renderer {
                 },
                 ao.map_or(0.0, |a| a.direct),
                 scene.atmosphere.adaptation,
-                scene.origin,
+                scene.frame.origin,
                 water::seconds(scene),
-                &scene.camera,
-                &scene.quality,
+                &scene.frame.camera,
+                &scene.frame.quality,
                 &self.post.white,
                 &self.lights.caustic_grid,
                 &|h| {
@@ -158,8 +158,8 @@ impl Renderer {
                 &self.queue,
                 slots,
                 &scene.world.colliders,
-                scene.tick,
-                scene.tick_rate,
+                scene.frame.tick,
+                scene.frame.tick_rate,
                 self.world.fluid3d.instances(),
             );
         }

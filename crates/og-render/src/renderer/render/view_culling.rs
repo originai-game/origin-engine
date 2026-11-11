@@ -15,7 +15,7 @@ impl Renderer {
             self.views.stale || self.views.slots.get(i).is_none_or(|s| s.is_none())
         });
         self.views.stale = false;
-        self.views.retain(scene.views.len());
+        self.views.retain(scene.frame.views.len());
         let view_skinned: Vec<Vec<Batch>> = view_plans
             .iter()
             .map(|p| {

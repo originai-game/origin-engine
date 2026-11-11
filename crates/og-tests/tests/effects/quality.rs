@@ -32,7 +32,7 @@ fn at_quality(
 ) -> RgbaImage {
     let mut built = scenes::build(name).expect("scene");
     edit(&mut built.scene);
-    built.scene.quality = quality;
+    built.scene.frame.quality = quality;
     gfx::render_built(&mut built).expect("render").image
 }
 

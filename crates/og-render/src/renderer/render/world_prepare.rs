@@ -40,7 +40,7 @@ impl Renderer {
     ) -> Result<PrepareWorldOutputs, RenderError> {
         // Terrains: new or edited data uploaded, this frame's clipmap levels.
         let prev_view_proj = match self.history.prev_view_proj {
-            Some(vp) if !scene.camera_cut => vp,
+            Some(vp) if !scene.frame.camera_cut => vp,
             _ => cam.view_proj,
         };
         let textures = &self.cache.textures;

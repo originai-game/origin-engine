@@ -44,7 +44,7 @@ impl RenderBackend for Recorder {
         (64, 64)
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
-        self.0.set(Some(scene.quality));
+        self.0.set(Some(scene.frame.quality));
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<RgbaImage> {
@@ -212,7 +212,7 @@ impl RenderBackend for VolumeRecorder {
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = (
             scene.lighting.light_volumes.clone(),
-            scene.quality.global_illumination,
+            scene.frame.quality.global_illumination,
         );
         Ok(())
     }

@@ -88,7 +88,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         t.color = [2.4, 0.9, 0.25, 1.0];
     }
     // The darker ground meters brighter: hold the sky back.
-    scene.camera.exposure = Exposure::Auto {
+    scene.frame.camera.exposure = Exposure::Auto {
         compensation: -1.1,
         min_ev: -4.0,
         max_ev: 4.0,

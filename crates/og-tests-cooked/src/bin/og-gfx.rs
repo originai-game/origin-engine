@@ -182,7 +182,7 @@ fn run(
         Ok(other) => return Err(format!("OG_GFX_CULLING={other}: cpu, gpu or auto")),
     }
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
-        built.scene.debug = og_render::DebugView::Cascades;
+        built.scene.frame.debug = og_render::DebugView::Cascades;
     }
     if std::env::var_os("OG_GFX_COMPACT").is_some() {
         for i in 0..built.scene.mesh_count() {
@@ -194,7 +194,7 @@ fn run(
         }
     }
     if std::env::var_os("OG_GFX_DEBUG_AO").is_some() {
-        built.scene.debug = og_render::DebugView::AmbientOcclusion;
+        built.scene.frame.debug = og_render::DebugView::AmbientOcclusion;
     }
     if std::env::var_os("OG_GFX_AO_HALF").is_some()
         && let Some(ao) = &mut built.scene.look.post.ao
@@ -203,13 +203,16 @@ fn run(
     }
     match std::env::var("OG_GFX_QUALITY").as_deref() {
         Ok("low") => {
-            built.scene.quality = og_render::RenderQuality::preset(og_render::QualityPreset::Low)
+            built.scene.frame.quality =
+                og_render::RenderQuality::preset(og_render::QualityPreset::Low)
         }
         Ok("medium") => {
-            built.scene.quality = og_render::RenderQuality::preset(og_render::QualityPreset::Medium)
+            built.scene.frame.quality =
+                og_render::RenderQuality::preset(og_render::QualityPreset::Medium)
         }
         Ok("high") => {
-            built.scene.quality = og_render::RenderQuality::preset(og_render::QualityPreset::High)
+            built.scene.frame.quality =
+                og_render::RenderQuality::preset(og_render::QualityPreset::High)
         }
         Err(_) => {}
         Ok(other) => return Err(format!("OG_GFX_QUALITY={other}: low, medium or high")),
@@ -314,7 +317,7 @@ type Variant = (&'static str, fn(&mut GfxScene));
 /// Four local lights around the camera's target (alternating point and
 /// spot), the first two shadowed when `shadowed`.
 fn local_lights(g: &mut GfxScene, shadowed: bool) {
-    let c = g.scene.camera.target;
+    let c = g.scene.frame.camera.target;
     for i in 0..4 {
         let a = i as f32 * std::f32::consts::FRAC_PI_2;
         g.scene.lighting.lights.push(Light {
@@ -347,7 +350,7 @@ const VARIANTS: &[Variant] = &[
         g.scene.look.post.bloom = Some(Bloom::default())
     }),
     ("auto exposure", |g| {
-        g.scene.camera.exposure = Exposure::auto()
+        g.scene.frame.camera.exposure = Exposure::auto()
     }),
     ("4 point/spot lights", |g| local_lights(g, false)),
     ("4 lights, 2 shadowed", |g| local_lights(g, true)),
@@ -399,7 +402,7 @@ const VARIANTS: &[Variant] = &[
         og_tests::fx_scenes::grade(&mut g.scene)
     }),
     ("E1: 8 decals", |g| {
-        let c = g.scene.camera.target;
+        let c = g.scene.frame.camera.target;
         for i in 0..8 {
             let p = c + glam::Vec3::new(i as f32 - 4.0, 0.0, (i % 3) as f32 - 1.0);
             g.scene.effects.decals.push(og_render::Decal::on_surface(
@@ -431,7 +434,7 @@ const VARIANTS: &[Variant] = &[
         |g| {
             g.desc.antialias = Antialias::Taa;
             g.scene.look.post.bloom = Some(Bloom::default());
-            g.scene.camera.exposure = Exposure::auto();
+            g.scene.frame.camera.exposure = Exposure::auto();
             local_lights(g, true);
         },
     ),

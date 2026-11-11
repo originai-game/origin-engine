@@ -62,7 +62,7 @@ fn stage() -> (RenderScene, MaterialHandle, MaterialHandle) {
     assert!(scene.alias_material(b, a));
     scene.add_instance(mesh, a, Mat4::from_translation(Vec3::new(-1.0, 0.0, 0.0)));
     scene.add_instance(mesh, b, Mat4::from_translation(Vec3::new(1.0, 0.0, 0.0)));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 3.0),
         target: Vec3::ZERO,
         projection: Projection::Orthographic { height: 4.0 },

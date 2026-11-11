@@ -389,7 +389,7 @@ pub fn effect_materials_scene() -> RenderScene {
         0,
     ));
     scene.look.post.bloom = Some(Bloom::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.6, 2.4, 9.5),
         target: Vec3::new(0.6, 1.1, 0.0),
         exposure: Exposure::linear(1.0),

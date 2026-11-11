@@ -28,7 +28,7 @@ fn moon(phase: f32, size: f32) -> RgbaImage {
 /// The moon's disc on screen: its centre and radius in pixels, from the
 /// colonnade camera (the scene's) and the moon's direction.
 fn disc(img: &RgbaImage, size_degrees: f32) -> (u32, u32, u32) {
-    let cam = p2_scenes::moon_scene(0.5, size_degrees).camera;
+    let cam = p2_scenes::moon_scene(0.5, size_degrees).frame.camera;
     let og_render::Projection::Perspective { fov_y_degrees } = cam.projection else {
         panic!("a perspective camera");
     };

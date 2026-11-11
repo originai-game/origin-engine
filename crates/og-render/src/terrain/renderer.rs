@@ -651,13 +651,13 @@ impl TerrainRenderer {
         // stepped them (none on the tick already drawn, a tick back, or the
         // first frame); past [`FADE_CATCH_UP`] every tile is in.
         let elapsed = match self.fade_tick {
-            Some(t) if scene.tick >= t => scene.tick - t,
+            Some(t) if scene.frame.tick >= t => scene.frame.tick - t,
             _ => 0,
         };
         let settle_all = elapsed > FADE_CATCH_UP;
         let fade_ticks = elapsed.min(FADE_CATCH_UP);
         if !self.settled {
-            self.fade_tick = Some(scene.tick);
+            self.fade_tick = Some(scene.frame.tick);
         }
         let (sources, revisions) = scene.terrain_sources();
         self.datas.resize_with(sources.len(), || None);
@@ -840,7 +840,7 @@ impl TerrainRenderer {
             // since it arrived, never of the frames drawn (docs/design.md
             // §2.4). A capture draws them settled and steps nothing.
             if !self.settled {
-                let per_tick = 1.0 / (scene.tick_rate.max(1e-3) * FADE_SECONDS);
+                let per_tick = 1.0 / (scene.frame.tick_rate.max(1e-3) * FADE_SECONDS);
                 for _ in 0..fade_ticks {
                     let parents_in: Vec<bool> = gpu
                         .slots
@@ -946,7 +946,7 @@ impl TerrainRenderer {
         let view = TerrainView {
             camera,
             far,
-            ..TerrainView::of(&scene.camera, target_height)
+            ..TerrainView::of(&scene.frame.camera, target_height)
         };
         self.sync(device, queue, scene, view)?;
         // Each terrain's clipmap from this view, and the ring sizes they draw
@@ -1076,8 +1076,8 @@ impl TerrainRenderer {
                             l.altitude_fade.max(0.0),
                             at(normal),
                         ],
-                        offset: layer_offset(scene.origin, l),
-                        ..layer_look(l, scene.origin)
+                        offset: layer_offset(scene.frame.origin, l),
+                        ..layer_look(l, scene.frame.origin)
                     };
                     continue;
                 }
@@ -1110,8 +1110,8 @@ impl TerrainRenderer {
                     ],
                     slope: [l.slope[0], l.slope[1], l.slope_fade.max(0.0), 0.0],
                     altitude: [l.altitude[0], l.altitude[1], l.altitude_fade.max(0.0), 0.0],
-                    offset: layer_offset(scene.origin, l),
-                    ..layer_look(l, scene.origin)
+                    offset: layer_offset(scene.frame.origin, l),
+                    ..layer_look(l, scene.frame.origin)
                 };
             }
             let lay = data.layout;

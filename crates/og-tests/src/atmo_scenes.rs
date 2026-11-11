@@ -93,7 +93,7 @@ pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
         });
     }
     scene.look.post.bloom = Some(Bloom::default());
-    scene.camera = colonnade_camera();
+    scene.frame.camera = colonnade_camera();
     scene
 }
 
@@ -201,7 +201,7 @@ pub fn water_scene() -> RenderScene {
         heights: Some(ripples(64, 22.0)),
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.6, 6.0),
         target: Vec3::new(0.0, 0.0, -6.0),
         exposure: Exposure::linear(0.85),
@@ -261,7 +261,7 @@ pub fn water_2d_scene() -> RenderScene {
         layer: 2,
         ..Default::default()
     });
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 12.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 12.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.05, 0.06, 0.09));
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -348,7 +348,7 @@ pub fn fluid_2d_scene() -> RenderScene {
         layer: 1,
         ..Default::default()
     });
-    scene.camera = Camera::orthographic_2d(Vec2::new(-0.6, -1.5), 9.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(-0.6, -1.5), 9.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -492,7 +492,7 @@ pub fn fluid_groups_scene() -> RenderScene {
             ..Default::default()
         });
     }
-    scene.camera = Camera::orthographic_2d(Vec2::new(-0.4, 0.4), 7.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(-0.4, 0.4), 7.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -640,8 +640,8 @@ pub fn hooks_scene_parts(tick: u64) -> (RenderScene, og_render::MaterialHandle) 
                 * Mat4::from_scale(Vec3::splat(s)),
         );
     }
-    scene.tick = tick;
-    scene.camera = Camera {
+    scene.frame.tick = tick;
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.2, 6.5),
         target: Vec3::new(0.0, 0.9, -1.0),
         exposure: Exposure::linear(0.9),
@@ -675,8 +675,8 @@ pub fn weather_scene(kind: u32) -> RenderScene {
             1,
             emitter,
             Mat4::from_translation(look.origin(
-                scene.camera.position,
-                scene.camera.target - scene.camera.position,
+                scene.frame.camera.position,
+                scene.frame.camera.target - scene.frame.camera.position,
             )),
             7,
             0,

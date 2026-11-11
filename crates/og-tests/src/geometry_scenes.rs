@@ -20,14 +20,14 @@ fn lit(scene: &mut RenderScene, eye: Vec3, target: Vec3) {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.7;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: eye,
         target,
         exposure: Exposure::linear(0.75),
         ..Default::default()
     };
     // Widths in CSS pixels at one per device pixel of the 720-line frame.
-    scene.css_height = 720.0;
+    scene.frame.css_height = 720.0;
 }
 
 fn put(scene: &mut RenderScene, mesh: MeshData, m: StandardMaterial, t: Mat4) {
@@ -376,7 +376,7 @@ fn debug_label(
     color: [f32; 4],
 ) {
     let (w, h) = (1280.0, 720.0);
-    let cam = &scene.camera;
+    let cam = &scene.frame.camera;
     let fov = match cam.projection {
         og_render::Projection::Perspective { fov_y_degrees } => fov_y_degrees,
         og_render::Projection::Orthographic { .. } => 50.0,

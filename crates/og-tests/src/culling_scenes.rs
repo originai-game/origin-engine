@@ -73,7 +73,7 @@ pub fn city(eye: Vec3, target: Vec3) -> RenderScene {
             Mat4::from_translation(at) * Mat4::from_scale(Vec3::new(1.0, height, 1.0)),
         );
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: eye,
         target,
         near: 0.1,
@@ -109,6 +109,6 @@ pub fn city_aerial() -> RenderScene {
 /// Walks the street camera 0.5 m a frame down the avenue (the occluders change).
 pub fn walk(scene: &mut RenderScene, frame: u32) {
     let z = 40.0 - frame as f32 * 0.5;
-    scene.camera.position.z = z;
-    scene.camera.target.z = z - 440.0;
+    scene.frame.camera.position.z = z;
+    scene.frame.camera.target.z = z - 440.0;
 }

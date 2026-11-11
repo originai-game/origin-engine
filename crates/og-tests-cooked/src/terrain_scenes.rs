@@ -142,7 +142,7 @@ pub fn generated_scene() -> Result<RenderScene, String> {
         ..Terrain::new(handle)
     });
     afternoon(&mut scene);
-    scene.camera = camera_at(GENERATED_EYE, GENERATED_TARGET);
+    scene.frame.camera = camera_at(GENERATED_EYE, GENERATED_TARGET);
     scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, sea, 0.0)),
         size: Vec2::splat(12000.0),

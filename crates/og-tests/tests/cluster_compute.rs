@@ -66,7 +66,7 @@ fn cluster_build_in_compute_against_the_cpu_build() {
         .render(&built.scene, &RenderTarget::Offscreen)
         .expect("render");
     let (device, queue) = (renderer.device().clone(), renderer.queue().clone());
-    let cam = &built.scene.camera;
+    let cam = &built.scene.frame.camera;
     let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
     let spheres: Vec<[f32; 4]> = built
         .scene

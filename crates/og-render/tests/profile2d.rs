@@ -19,7 +19,7 @@ fn scene() -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(ball, red, Mat4::from_translation(Vec3::new(0.0, 0.6, 0.0)));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.6, 6.0),
         target: Vec3::ZERO,
         ..Default::default()

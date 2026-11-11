@@ -94,7 +94,7 @@ pub fn ground_grid(repeat: f32) -> RenderScene {
             Mat4::from_translation(Vec3::new(0.0, 1.0, -10.0 * k as f32)),
         );
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(4.0, 6.0, 4.0),
         target: Vec3::new(0.0, 0.0, -35.0),
         far: 2000.0,
@@ -167,7 +167,7 @@ pub fn cascades_200m(tall: bool) -> RenderScene {
             Mat4::from_translation(Vec3::new(-20.0, 10.0, -200.0)),
         );
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 5.0, 6.0),
         target: Vec3::new(0.0, 0.0, -45.0),
         far: 1000.0,
@@ -282,7 +282,7 @@ pub fn point_spot_lights() -> RenderScene {
         background: Background::Color(Vec3::new(0.004, 0.006, 0.015)),
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 7.0, 11.0),
         target: Vec3::new(0.0, 0.5, 0.0),
         exposure: Exposure::linear(1.2),
@@ -331,7 +331,7 @@ pub fn thin_geometry() -> RenderScene {
         shiny,
         Mat4::from_translation(Vec3::new(2.0, 1.0, 1.0)) * Mat4::from_scale(Vec3::splat(2.0)),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.6, 6.0),
         target: Vec3::new(0.0, 1.2, -4.0),
         exposure: Exposure::linear(0.9),
@@ -373,7 +373,7 @@ pub(super) fn emissive_spheres() -> RenderScene {
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02)),
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 8.0),
         target: Vec3::new(0.0, 0.8, -1.0),
         exposure: Exposure::linear(1.0),
@@ -423,7 +423,7 @@ pub fn dim_scene(brightness: f32) -> RenderScene {
         background: Background::Color(Vec3::new(0.01, 0.012, 0.02) * brightness),
         ..Environment::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 10.0),
         target: Vec3::new(0.0, 1.0, -1.0),
         exposure: Exposure::auto(),

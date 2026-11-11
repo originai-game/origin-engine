@@ -100,7 +100,7 @@ fn around(p: (u32, u32), r: u32) -> (u32, u32, u32, u32) {
 
 /// The pixel a world point projects to in a W x H frame of `scene`'s camera.
 fn project(scene: &RenderScene, p: Vec3) -> (u32, u32) {
-    let cam = &scene.camera;
+    let cam = &scene.frame.camera;
     let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
     let proj = match cam.projection {
         Projection::Perspective { fov_y_degrees } => glam::camera::rh::proj::directx::perspective(

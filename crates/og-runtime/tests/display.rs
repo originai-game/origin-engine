@@ -57,8 +57,8 @@ impl RenderBackend for Recorder {
         self.size
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
-        self.seen.borrow_mut().quality = Some(scene.quality);
-        self.seen.borrow_mut().projection = Some(scene.camera.projection);
+        self.seen.borrow_mut().quality = Some(scene.frame.quality);
+        self.seen.borrow_mut().projection = Some(scene.frame.camera.projection);
         self.seen.borrow_mut().cloth_subdivisions = scene.objects.cloth_subdivisions;
         Ok(())
     }

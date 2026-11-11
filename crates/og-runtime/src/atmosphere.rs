@@ -333,7 +333,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     scene.world.fluids_3d.clear();
     let time = world.time();
     let tick = time.tick;
-    let orthographic = matches!(scene.camera.projection, Projection::Orthographic { .. });
+    let orthographic = matches!(
+        scene.frame.camera.projection,
+        Projection::Orthographic { .. }
+    );
 
     // The physical sky: alone, towards the first directional light.
     let air = physical_air(world, layouts.physical_sky.as_ref());
@@ -605,7 +608,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                     handle
                 }
             };
-            let cam = &scene.camera;
+            let cam = &scene.frame.camera;
             let at = look.origin(cam.position, cam.target - cam.position);
             let at = if orthographic {
                 Vec3::new(cam.position.x, cam.position.y + look.offset.y, 0.0)

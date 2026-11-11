@@ -107,7 +107,7 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         self.0.borrow_mut().push((
-            scene.tick,
+            scene.frame.tick,
             scene.effects.particles.len(),
             scene.effects.effect_meshes.len(),
             scene.lighting.lights.len(),

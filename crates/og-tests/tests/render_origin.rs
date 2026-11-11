@@ -78,7 +78,7 @@ fn within(d: &Comparison, rmse: f64) -> Result<(), String> {
 /// world placed there and drawn without a render origin.
 fn place(scene: &mut RenderScene, by: Vec3) {
     scene.rebase(-by);
-    scene.origin = Vec3::ZERO;
+    scene.frame.origin = Vec3::ZERO;
 }
 
 /// 1000 km out along x and 600 km along z: a multiple of the render
@@ -136,7 +136,7 @@ const GRID: Vec3 = Vec3::new(8192.0, 0.0, 0.0);
 /// coordinates the scene is drawn in (its world sits at GRID).
 fn wisps(scene: &mut RenderScene, frame: u32) {
     fx_scenes::move_wisps(scene, frame);
-    let by = GRID - scene.origin;
+    let by = GRID - scene.frame.origin;
     for i in 0..scene.effects.trails.len() {
         scene.effects.trails[i].position += by;
         scene.objects.instances[1 + i].transform.w_axis += by.extend(0.0);

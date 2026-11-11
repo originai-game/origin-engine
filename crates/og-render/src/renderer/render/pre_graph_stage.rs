@@ -112,7 +112,7 @@ impl Renderer {
             if let Some(pipelines) = &self.world.surfaces {
                 for mesh in &self.cache.meshes {
                     if let Some(surface) = &mesh.surface {
-                        pipelines.encode(e, surface, &mesh.vertices, scene.camera_cut);
+                        pipelines.encode(e, surface, &mesh.vertices, scene.frame.camera_cut);
                     }
                 }
             }

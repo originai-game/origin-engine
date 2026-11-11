@@ -315,7 +315,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
     }
 
     // Views.
-    scene.views.clear();
+    scene.frame.views.clear();
     rs.views.entities.clear();
     let targets = &rs.views.targets;
     let target = |v: &Value| index(&v["target"]).and_then(|i| targets.get(i).copied());
@@ -333,7 +333,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
                 f(&v, "viewportHeight", 1.0),
             ]),
         };
-        scene.views.push(og_render::View {
+        scene.frame.views.push(og_render::View {
             camera: camera_of(h.world_of(e), &v),
             target: view_target,
             layers: mask(&v),
@@ -351,8 +351,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
         let Some(t) = target(&v) else {
             continue;
         };
-        scene.views.push(og_render::View {
-            camera: scene.camera,
+        scene.frame.views.push(og_render::View {
+            camera: scene.frame.camera,
             target: og_render::ViewTarget::Texture(t),
             layers: mask(&v),
             order: 0,

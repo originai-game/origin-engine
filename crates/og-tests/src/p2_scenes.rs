@@ -102,7 +102,7 @@ pub fn many_lights(count: u32) -> RenderScene {
         background: Background::Color(Vec3::new(0.003, 0.004, 0.01)),
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 26.0, 30.0),
         target: Vec3::new(0.0, 0.0, -2.0),
         far: 200.0,
@@ -370,7 +370,7 @@ pub fn materials_scene() -> RenderScene {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.8;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 7.4, 5.4),
         target: Vec3::new(0.0, 0.0, -1.3),
         exposure: Exposure::linear(0.7),
@@ -436,7 +436,7 @@ pub fn skinned_hooks_scene() -> RenderScene {
         method: og_render::AoMethod::Gtao,
         ..Default::default()
     });
-    scene.tick = 30;
+    scene.frame.tick = 30;
     scene
 }
 
@@ -573,7 +573,7 @@ pub fn fluid_3d_scene() -> RenderScene {
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.8;
     scene.lighting.environment.background = Background::Sky;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.4, 3.9),
         target: Vec3::new(0.0, 0.35, 0.0),
         exposure: Exposure::linear(0.55),

@@ -256,7 +256,7 @@ pub(crate) fn moving(scene: &RenderScene) -> bool {
         .objects
         .debris
         .iter()
-        .any(|d| scene.tick < d.tick.saturating_add(DEBRIS_SETTLE_TICKS))
+        .any(|d| scene.frame.tick < d.tick.saturating_add(DEBRIS_SETTLE_TICKS))
 }
 
 /// Each debris instance of `scene` by its index: its piece's index in
@@ -459,8 +459,8 @@ impl DebrisLayer {
         // The clock: one step a tick since the last frame; a jump back or
         // a long gap restarts every piece from where it broke off.
         let (steps, shift, restart) = match self.last {
-            Some((t, o)) if scene.tick >= t && scene.tick - t <= MAX_STEPS => {
-                ((scene.tick - t) as u32, o - scene.origin, false)
+            Some((t, o)) if scene.frame.tick >= t && scene.frame.tick - t <= MAX_STEPS => {
+                ((scene.frame.tick - t) as u32, o - scene.frame.origin, false)
             }
             _ => (0, Vec3::ZERO, true),
         };
@@ -469,7 +469,7 @@ impl DebrisLayer {
             self.free.clear();
             self.count = 0;
         }
-        self.last = Some((scene.tick, scene.origin));
+        self.last = Some((scene.frame.tick, scene.frame.origin));
         // Slots: the pieces gone give theirs back, new ones take one.
         let live: HashMap<u64, usize> = scene
             .objects
@@ -523,7 +523,11 @@ impl DebrisLayer {
                 half.x * half.x + half.z * half.z,
                 half.x * half.x + half.y * half.y,
             ) / 3.0;
-            let catch_up = scene.tick.saturating_sub(d.tick).min(u64::from(u32::MAX)) as u32;
+            let catch_up = scene
+                .frame
+                .tick
+                .saturating_sub(d.tick)
+                .min(u64::from(u32::MAX)) as u32;
             let pos = d.position;
             let body = BodyGpu {
                 pos: pos.extend(d.friction).to_array(),
@@ -621,7 +625,7 @@ impl DebrisLayer {
         }
         let params = |first: u32, n: u32| ParamsGpu {
             counts: [self.count, steps, SUBSTEPS, n],
-            step: [9.81, 1.0 / scene.tick_rate.max(1e-3), 0.0, 0.0],
+            step: [9.81, 1.0 / scene.frame.tick_rate.max(1e-3), 0.0, 0.0],
             shift: shift.extend(0.0).to_array(),
             writes_at: [first, 0, 0, 0],
         };
@@ -771,7 +775,7 @@ mod tests {
         let mut layer = DebrisLayer::default();
         let mut at = Vec::new();
         for tick in 0..=180u64 {
-            scene.tick = tick;
+            scene.frame.tick = tick;
             let targets = [Target {
                 instances: &records,
                 previous: None,

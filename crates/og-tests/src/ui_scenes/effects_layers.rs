@@ -682,7 +682,7 @@ pub fn ground() -> RenderScene {
         stone,
         og_core::glam::Mat4::from_translation((lo + hi) / 2.0),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: GROUND_EYE,
         target: Vec3::ZERO,
         up: Vec3::Y,

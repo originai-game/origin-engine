@@ -10,7 +10,7 @@ use og_tests::scenes;
 fn scene(brightness: f32) -> RenderScene {
     let mut s = scenes::dim_scene(1.0);
     light(&mut s, brightness);
-    s.camera.exposure = Exposure::Auto {
+    s.frame.camera.exposure = Exposure::Auto {
         compensation: 0.0,
         min_ev: -10.0,
         max_ev: 10.0,
@@ -36,8 +36,8 @@ fn brightness_at(tick: u64) -> f32 {
 fn run(r: &mut Renderer, s: &mut RenderScene, from: u64, to: u64) -> RgbaImage {
     for tick in from..=to {
         light(s, brightness_at(tick));
-        s.tick = tick;
-        s.tick_rate = 60.0;
+        s.frame.tick = tick;
+        s.frame.tick_rate = 60.0;
         r.render(s, &RenderTarget::Offscreen).expect("render");
     }
     r.read_offscreen().expect("capture")
@@ -68,7 +68,7 @@ fn renderer() -> Renderer {
 fn adaptation_converges_identically_and_survives_a_restore() {
     // Instant metering of the dim scene: where the adaptation must land.
     let mut instant = scene(1.0);
-    instant.camera.exposure = Exposure::auto();
+    instant.frame.camera.exposure = Exposure::auto();
     let mut r = renderer();
     let settled = mean_luma(&run(&mut r, &mut instant, 30, 30));
 
@@ -146,8 +146,8 @@ fn a_frame_before_the_first_tick_does_not_start_the_adaptation() {
     // first frame, before its systems placed the camera, can).
     let draw = |r: &mut Renderer, s: &mut RenderScene, tick: u64, brightness: f32| {
         light(s, brightness);
-        s.tick = tick;
-        s.tick_rate = 60.0;
+        s.frame.tick = tick;
+        s.frame.tick_rate = 60.0;
         r.render(s, &RenderTarget::Offscreen).expect("render");
     };
     let (mut og_run, mut web) = (renderer(), renderer());

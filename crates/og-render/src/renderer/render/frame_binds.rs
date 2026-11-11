@@ -354,7 +354,7 @@ impl Renderer {
             })
             .map(|(f, position, size, depth)| {
                 let (particles, lines) =
-                    views::camera_gpu(f, position, (size, size), scene.css_height);
+                    views::camera_gpu(f, position, (size, size), scene.frame.css_height);
                 let buffer = |label, contents: &[u8]| {
                     crate::buffer_init(
                         &self.device,

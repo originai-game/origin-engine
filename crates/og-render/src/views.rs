@@ -142,12 +142,12 @@ pub(crate) fn plan(
     out: (u32, u32),
     due: impl Fn(usize) -> bool,
 ) -> Vec<ViewPlan> {
-    let mut order: Vec<usize> = (0..scene.views.len()).collect();
-    og_core::sort::sort_by_key(&mut order, |&i| scene.views[i].order);
+    let mut order: Vec<usize> = (0..scene.frame.views.len()).collect();
+    og_core::sort::sort_by_key(&mut order, |&i| scene.frame.views[i].order);
     let mut plans = Vec::new();
     for i in order {
-        let v = &scene.views[i];
-        if v.every > 1 && !scene.tick.is_multiple_of(v.every as u64) && !due(i) {
+        let v = &scene.frame.views[i];
+        if v.every > 1 && !scene.frame.tick.is_multiple_of(v.every as u64) && !due(i) {
             continue;
         }
         let (dest, size) = match v.target {
@@ -805,7 +805,8 @@ impl Views {
                     Some(g)
                 }
             };
-            let (particles, lines) = camera_gpu(&p.frame, p.position, p.size, scene.css_height);
+            let (particles, lines) =
+                camera_gpu(&p.frame, p.position, p.size, scene.frame.css_height);
             queue.write_buffer(&slot.particle_buffer, 0, bytemuck::bytes_of(&particles));
             queue.write_buffer(&slot.line_buffer, 0, bytemuck::bytes_of(&lines));
         }

@@ -167,7 +167,7 @@ impl IdFrame {
 /// The camera a frame of `aspect` uses (with the scene's shake), as the
 /// renderer builds it.
 fn view_proj(scene: &RenderScene, aspect: f32) -> (Mat4, Mat4) {
-    let camera: Camera = crate::shaken_camera(&scene.camera, scene.shake);
+    let camera: Camera = crate::shaken_camera(&scene.frame.camera, scene.frame.shake);
     let f = camera_frame(&camera, aspect, Vec2::ZERO);
     (f.view_proj, f.view)
 }
@@ -205,7 +205,7 @@ pub fn view_id_cameras(
     scene: &RenderScene,
     frame: (u32, u32),
 ) -> Vec<(usize, IdCamera, (u32, u32))> {
-    let main = crate::shaken_camera(&scene.camera, scene.shake);
+    let main = crate::shaken_camera(&scene.frame.camera, scene.frame.shake);
     crate::views::plan(scene, &main, frame, |_| true)
         .into_iter()
         .map(|p| {
@@ -236,7 +236,7 @@ pub fn render_ids(
     let camera = IdCamera {
         view_proj: vp,
         view,
-        layers: scene.camera_layers,
+        layers: scene.frame.camera_layers,
     };
     render_ids_from(scene, sources, heights, width, height, &camera)
 }
@@ -345,7 +345,7 @@ pub fn render_ids_from(
     }
     // Terrains, laid out around the main camera as the renderer lays them
     // out for every pass of the frame, and their stamps.
-    let main = crate::shaken_camera(&scene.camera, scene.shake);
+    let main = crate::shaken_camera(&scene.frame.camera, scene.frame.shake);
     let mut tests: Vec<Box<CutTest>> = Vec::new();
     for (k, t) in scene.world.terrains.iter().enumerate() {
         let id = sources.terrains.get(k).copied().unwrap_or(0);
@@ -937,8 +937,8 @@ mod tests {
         let mut scene = RenderScene::new();
         let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
         let m = scene.add_material(Material::default());
-        scene.camera.position = Vec3::new(0.0, 0.0, 10.0);
-        scene.camera.target = Vec3::ZERO;
+        scene.frame.camera.position = Vec3::new(0.0, 0.0, 10.0);
+        scene.frame.camera.target = Vec3::ZERO;
         // A wide floor-like slab behind, a box in front of its left half.
         scene.add_instance(
             cube,
@@ -1013,7 +1013,7 @@ mod tests {
             layers,
             ..Default::default()
         };
-        scene.views = vec![eye(3), eye(1)];
+        scene.frame.views = vec![eye(3), eye(1)];
         assert!(
             render_ids(&scene, &ids, &|_, _, _| None, 200, 100)
                 .object(9)
@@ -1046,7 +1046,7 @@ mod tests {
     #[test]
     fn sprites_draw_over_by_layer_and_behind_nearer_meshes() {
         let mut scene = RenderScene::new();
-        scene.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+        scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
         let quad = |x: f32, layer: i32| Sprite {
             position: Vec3::new(x, 0.0, 0.0),
             size: Vec2::new(4.0, 4.0),
@@ -1092,9 +1092,9 @@ mod tests {
         t.transform = transform;
         t.lod.ring = 256;
         scene.world.terrains.push(t);
-        scene.camera.position = eye;
-        scene.camera.target = target;
-        scene.camera.far = 500.0;
+        scene.frame.camera.position = eye;
+        scene.frame.camera.target = target;
+        scene.frame.camera.far = 500.0;
         let ids = IdSources {
             terrains: vec![5],
             ..IdSources::default()
@@ -1476,7 +1476,7 @@ mod tests {
     #[test]
     fn a_grass_field_is_drawn_under_its_owner_id_where_it_grows() {
         let (mut scene, ids) = grass_scene();
-        let eye = scene.camera.position;
+        let eye = scene.frame.camera.position;
         let f = render_ids(&scene, &ids, &|_, _, _| None, 160, 90);
         let grass = f.object(7).expect("the field shows");
         assert!(grass.visible > 400, "{} pixels", grass.visible);

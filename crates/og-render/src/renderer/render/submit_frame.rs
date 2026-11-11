@@ -136,7 +136,7 @@ impl Renderer {
         self.instances
             .previous_sway
             .extend(scene.objects.instances.iter().map(|i| i.sway));
-        self.history.previous_wind = Some((wind, scene.tick, scene.tick_rate));
+        self.history.previous_wind = Some((wind, scene.frame.tick, scene.frame.tick_rate));
         self.frame_index += 1;
         // The first frame made the scene's pipelines: keep them now, not
         // only when the renderer is dropped (a killed process never is).

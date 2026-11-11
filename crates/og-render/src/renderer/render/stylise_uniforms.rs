@@ -45,7 +45,7 @@ impl Renderer {
             // CPU, so a camera far from 0 keeps the patterns' precision),
             // and the canvas uv there. The camera's place in the world is
             // the scene's origin plus its own (`origin.rs`).
-            let eye = scene.origin.as_dvec3() + camera.position.as_dvec3();
+            let eye = scene.frame.origin.as_dvec3() + camera.position.as_dvec3();
             let origin = post::surface_origin(eye);
             let surface_eye = (eye - origin).as_vec3();
             let canvas_world_scale = pt.map_or(0.0, |p| {

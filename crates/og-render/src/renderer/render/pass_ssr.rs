@@ -52,7 +52,10 @@ impl Renderer {
         &self,
         scene: &RenderScene,
     ) -> Option<ssr::ScreenSpaceReflections> {
-        let perspective = matches!(scene.camera.projection, Projection::Perspective { .. });
+        let perspective = matches!(
+            scene.frame.camera.projection,
+            Projection::Perspective { .. }
+        );
         scene
             .look
             .post
@@ -61,11 +64,11 @@ impl Renderer {
                 WORLD_3D
                     && self.runs(FramePass::Ssr)
                     && perspective
-                    && scene.quality.ssr
+                    && scene.frame.quality.ssr
                     && s.intensity > 0.0
             })
             .map(|s| ssr::ScreenSpaceReflections {
-                steps: scene.quality.ssr_steps(s.steps),
+                steps: scene.frame.quality.ssr_steps(s.steps),
                 ..s
             })
     }

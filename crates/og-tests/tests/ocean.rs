@@ -60,8 +60,8 @@ fn the_floaters_sit_in_the_drawn_sea() {
     let mut failures: Vec<String> = Vec::new();
     for tick in [300u64, 390] {
         let mut scene = RenderScene::new();
-        scene.tick = tick;
-        scene.tick_rate = 60.0;
+        scene.frame.tick = tick;
+        scene.frame.tick_rate = 60.0;
         let mut sea_now = water.clone();
         sea_now.wakes = Some(std::sync::Arc::new(og_render::WaterWakes {
             epoch: 1,
@@ -70,7 +70,7 @@ fn the_floaters_sit_in_the_drawn_sea() {
             ..Default::default()
         }));
         scene.world.water.push(sea_now);
-        scene.camera = og_render::Camera {
+        scene.frame.camera = og_render::Camera {
             position: Vec3::new(0.0, 10.0, 0.0),
             target: Vec3::new(-4.0, 0.0, -60.0),
             far: 3000.0,
@@ -234,9 +234,9 @@ fn the_sea_moves_between_ticks_in_step_with_the_tick() {
         .collect();
     for alpha in [0.1f32, 0.6] {
         let mut scene = RenderScene::new();
-        scene.tick = 300;
-        scene.tick_rate = 60.0;
-        scene.interpolation = Some(alpha);
+        scene.frame.tick = 300;
+        scene.frame.tick_rate = 60.0;
+        scene.frame.interpolation = Some(alpha);
         scene.world.water.push(og_render::Water {
             wakes: Some(std::sync::Arc::new(og_render::WaterWakes {
                 epoch: 1,
@@ -246,7 +246,7 @@ fn the_sea_moves_between_ticks_in_step_with_the_tick() {
             })),
             ..water.clone()
         });
-        scene.camera = og_render::Camera {
+        scene.frame.camera = og_render::Camera {
             position: Vec3::new(0.0, 10.0, 0.0),
             target: Vec3::new(-4.0, 0.0, -60.0),
             far: 3000.0,

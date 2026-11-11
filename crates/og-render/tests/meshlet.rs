@@ -52,7 +52,7 @@ fn equal_depth_meshlets_choose_the_same_triangle_across_frames() {
             ..Default::default()
         };
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 3.0),
         target: Vec3::ZERO,
         ..Default::default()

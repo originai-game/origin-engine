@@ -185,7 +185,7 @@ pub fn rect_lights_scene() -> RenderScene {
     for l in scene.lighting.lights.clone() {
         fixture(&mut scene, &l);
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.6, 6.5),
         target: Vec3::new(0.0, 0.8, -1.0),
         exposure: Exposure::linear(1.0),
@@ -308,7 +308,7 @@ pub fn light_cookies_scene() -> RenderScene {
             Vec3::new(3.0, 1.4, -1.0),
         ),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(-0.5, 3.0, 7.0),
         target: Vec3::new(0.6, 1.0, -1.0),
         exposure: Exposure::linear(1.0),
@@ -377,7 +377,7 @@ pub fn volumetric_fog_scene() -> RenderScene {
         anisotropy: 0.6,
         distance: 30.0,
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(-0.8, 1.5, 6.0),
         target: Vec3::new(0.3, 2.0, -3.0),
         exposure: Exposure::linear(0.9),
@@ -407,7 +407,7 @@ pub fn baked_cornell_scene(baked: bool) -> Result<RenderScene, String> {
 fn cornell_view() -> RenderScene {
     let mut scene = RenderScene::new();
     dark(&mut scene, 0.35);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.0, 3.7),
         target: Vec3::new(0.0, 0.95, 0.0),
         projection: og_render::Projection::Perspective {
@@ -431,7 +431,7 @@ fn cornell_view() -> RenderScene {
 pub fn baked_cornell_pair_scene() -> Result<RenderScene, String> {
     let mut scene = RenderScene::new();
     dark(&mut scene, 0.35);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.0, 5.6),
         target: Vec3::new(0.0, 0.95, 0.0),
         projection: og_render::Projection::Perspective {
@@ -775,8 +775,8 @@ pub fn rect_meadow_scene(grass: bool) -> (RenderScene, [Vec3; 2]) {
     scene.lighting.environment.intensity = 0.02;
     scene.lighting.environment.background = Background::Color(Vec3::new(0.004, 0.006, 0.015));
     scene.atmosphere.fog = None;
-    let eye = scene.camera.position;
-    let ahead = (scene.camera.target - eye) * Vec3::new(1.0, 0.0, 1.0);
+    let eye = scene.frame.camera.position;
+    let ahead = (scene.frame.camera.target - eye) * Vec3::new(1.0, 0.0, 1.0);
     let forward = ahead.normalize();
     let side = forward.cross(Vec3::Y).normalize();
     let foot = eye + forward * 10.0;
@@ -835,7 +835,7 @@ pub fn rect_shadow_scene(cast: bool) -> (RenderScene, [Vec3; 2]) {
     panel.cast_shadows = cast;
     fixture(&mut scene, &panel);
     scene.lighting.lights = vec![panel];
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.6, 4.5, 5.5),
         target: Vec3::new(0.6, 0.3, 0.0),
         exposure: Exposure::linear(1.0),

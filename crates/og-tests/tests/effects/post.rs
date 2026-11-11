@@ -23,7 +23,7 @@ fn lens_distortion_bends_by_its_formula() {
                 ..Default::default()
             });
         }
-        s.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+        s.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
         // Dark grey, so a black corner (beyond the image) shows.
         s.lighting.environment.background = Background::Color(Vec3::splat(0.05));
         s.look.post.tonemap = Tonemap::None;
@@ -138,7 +138,7 @@ fn depth_of_field_blurs_outside_the_focus_band() {
     println!("near ground sharpness: dof {n_on}, off {n_off}");
     assert!(n_on < 0.5 * n_off);
     let focus = project(
-        &low.camera,
+        &low.frame.camera,
         1280,
         720,
         Vec3::new(-2.0 + 0.8 * 2.0, 1.0, 2.0 - 2.6 * 2.0),

@@ -318,8 +318,8 @@ impl Trample {
             return;
         };
         let uniform = gpu.uniform.clone();
-        let origin = scene.origin.as_dvec3();
-        let eye = scene.camera.position.as_dvec3() + origin;
+        let origin = scene.frame.origin.as_dvec3();
+        let eye = scene.frame.camera.position.as_dvec3() + origin;
         let cell = grid_cell(DVec2::new(eye.x, eye.z));
         let corner = cell.as_dvec2() * CELL;
         let rel = corner - DVec2::new(origin.x, origin.z);
@@ -328,17 +328,17 @@ impl Trample {
         // starts from nothing pressed at the tick drawn.
         let last = if fresh { None } else { self.last };
         let (restart, first, count) = match last {
-            Some((t, _)) if scene.tick >= t && scene.tick - t <= MAX_STEPS => {
-                (false, t + 1, scene.tick - t)
+            Some((t, _)) if scene.frame.tick >= t && scene.frame.tick - t <= MAX_STEPS => {
+                (false, t + 1, scene.frame.tick - t)
             }
-            _ => (true, scene.tick, 1),
+            _ => (true, scene.frame.tick, 1),
         };
         if count == 0 {
             return;
         }
         let previous = last.map_or(cell, |l| l.1);
         let pushers = pushers_gpu(scene, eye);
-        let dt = 1.0 / scene.tick_rate.max(1e-3);
+        let dt = 1.0 / scene.frame.tick_rate.max(1e-3);
         let mut bytes = vec![0u8; (SLOT * count) as usize];
         for k in 0..count {
             let d = if k == 0 { cell - previous } else { IVec2::ZERO };
@@ -388,7 +388,7 @@ fn pushers_gpu(
     scene: &crate::RenderScene,
     eye: glam::DVec3,
 ) -> ([[f32; 4]; 2 * MAX_PUSHERS], usize) {
-    let origin = scene.origin.as_dvec3();
+    let origin = scene.frame.origin.as_dvec3();
     let mut near: Vec<&GrassPusher> = scene
         .atmosphere
         .grass_pushers

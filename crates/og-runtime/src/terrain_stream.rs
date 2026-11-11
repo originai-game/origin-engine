@@ -322,7 +322,7 @@ impl Streamer {
         hooks: Option<&dyn super::Hooks>,
         notes: &mut Vec<String>,
     ) {
-        let tick = scene.tick;
+        let tick = scene.frame.tick;
         self.frame = tick;
         if self.handed_at.0 != tick {
             self.handed_at = (tick, 0);

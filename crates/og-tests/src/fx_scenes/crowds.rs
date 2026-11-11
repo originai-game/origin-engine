@@ -299,7 +299,7 @@ pub fn crowd_scene(count: u32) -> RenderScene {
     });
     scene.lighting.light.direction_to_light = Vec3::new(0.5, 0.8, 0.35);
     scene.lighting.light.cast_shadows = true;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 9.0, 6.0),
         target: Vec3::new(0.0, 0.0, -depth * 0.35),
         exposure: Exposure::linear(0.9),
@@ -480,7 +480,7 @@ pub fn crowd_lods_scene() -> RenderScene {
     }
     scene.lighting.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
     scene.lighting.light.cast_shadows = true;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(2.0, 7.0, 4.0),
         target: Vec3::new(0.0, 0.0, -60.0),
         exposure: Exposure::linear(0.9),

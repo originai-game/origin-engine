@@ -74,7 +74,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         p.blend_distance = f(&v, "blendDistance", 1.0).max(0.0);
         probes.push(p);
     }
-    let eye = rs.scene.camera.position;
+    let eye = rs.scene.frame.camera.position;
     og_core::sort::sort_by(&mut probes, |a, b| {
         a.position
             .distance_squared(eye)
@@ -124,7 +124,7 @@ pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut
             intensity: f(&v, "intensity", 1.0).max(0.0),
         });
     }
-    let eye = rs.scene.camera.position;
+    let eye = rs.scene.frame.camera.position;
     let distance =
         |v: &og_render::RealtimeLightVolume| eye.clamp(v.min, v.max).distance_squared(eye);
     og_core::sort::sort_by(&mut volumes, |a, b| {
@@ -157,8 +157,8 @@ pub(crate) fn apply_bakes(rs: &mut RenderState) -> Vec<(usize, String)> {
         let room = rs.probe_bakes.content.room(&rs.scene, &p);
         // Keyed by its place in the world, wherever the frame is drawn from.
         let mut at = p;
-        if rs.scene.origin != glam::Vec3::ZERO {
-            at.position += rs.scene.origin;
+        if rs.scene.frame.origin != glam::Vec3::ZERO {
+            at.position += rs.scene.frame.origin;
         }
         let k = key(&at, room.hash);
         match rs.probe_bakes.tried.get(&k) {

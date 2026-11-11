@@ -337,7 +337,7 @@ impl Renderer {
                 particle_frame,
                 self.samples,
                 group,
-                scene.camera_layers,
+                scene.frame.camera_layers,
                 true,
                 part,
                 |t: Option<TextureHandle>| match t {
@@ -353,7 +353,7 @@ impl Renderer {
                 },
             )
         };
-        let diagnostic = scene.debug != DebugView::None;
+        let diagnostic = scene.frame.debug != DebugView::None;
         match oit {
             None => {
                 // Transparent meshes and the billboards among them, back
@@ -513,7 +513,7 @@ impl Renderer {
         // Lines, points and wireframes (lines.rs), with their own group 0.
         let n = self
             .lines
-            .draw_scene(&mut pass, line_frame, scene.camera_layers, &|m| {
+            .draw_scene(&mut pass, line_frame, scene.frame.camera_layers, &|m| {
                 &self.cache.materials[m].bind_group
             });
         if n > 0 {

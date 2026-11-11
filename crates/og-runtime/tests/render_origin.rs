@@ -48,9 +48,9 @@ impl RenderBackend for Recorder {
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
         *self.0.borrow_mut() = Seen {
-            origin: scene.origin,
-            position: scene.camera.position,
-            target: scene.camera.target,
+            origin: scene.frame.origin,
+            position: scene.frame.camera.position,
+            target: scene.frame.camera.target,
             instances: scene
                 .objects
                 .instances

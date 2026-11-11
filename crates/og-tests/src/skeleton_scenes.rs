@@ -163,7 +163,7 @@ pub fn skeleton_scene(skinned: bool) -> Result<RenderScene, String> {
         cast_shadows: false,
         ..Default::default()
     }];
-    scene.camera = Camera::orthographic_2d(Vec2::new(0.0, 0.0), 6.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(0.0, 0.0), 6.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.012, 0.014, 0.04));
     scene.look.post.tonemap = Tonemap::None;
     Ok(scene)

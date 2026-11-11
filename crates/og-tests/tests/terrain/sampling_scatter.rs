@@ -9,7 +9,7 @@ fn scatter_follows_its_layer_distance_and_stays_put() {
     let scene = ts::grass_scene();
     let terrain = scene.world.terrains[0].clone();
     let data = ts::island();
-    let eye = scene.camera.position;
+    let eye = scene.frame.camera.position;
     let s = ts::grass_scatter();
     let placed = terrain.scatter(&data, &s, eye);
     let flat = |p: Vec3| Vec2::new(p.x - eye.x, p.z - eye.z).length();
@@ -161,7 +161,7 @@ fn strip_scene(transform: Mat4, from_side: bool) -> RenderScene {
         cast_shadows: false,
         ..Default::default()
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: if from_side {
             Vec3::new(0.0, 6.0, 80.0)
         } else {
@@ -242,7 +242,7 @@ fn a_terrain_honours_its_transform() {
         let scene = strip_scene(transform, false);
         let (img, _) = render(&scene);
         keep(&format!("transform-{}", label.replace(' ', "-")), &img);
-        let pixel = project(&scene.camera, at);
+        let pixel = project(&scene.frame.camera, at);
         assert_eq!(
             !is_background(&img, pixel),
             covered,
@@ -268,14 +268,14 @@ fn a_terrain_honours_its_transform() {
     let plain = strip_scene(Mat4::IDENTITY, true);
     let (img, _) = render(&plain);
     assert!(
-        is_background(&img, project(&plain.camera, probe)),
+        is_background(&img, project(&plain.frame.camera, probe)),
         "6 m bump under 12 m"
     );
     let tall = strip_scene(Mat4::from_scale(Vec3::new(1.0, 3.0, 1.0)), true);
     let (img, _) = render(&tall);
     keep("transform-tall", &img);
     assert!(
-        !is_background(&img, project(&tall.camera, probe)),
+        !is_background(&img, project(&tall.frame.camera, probe)),
         "18 m bump over 12 m"
     );
     // Scattered copies on the turned, raised and doubled strip lie on it.

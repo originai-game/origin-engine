@@ -425,7 +425,7 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.film_grain = None;
     post.sharpen = None;
     post.flash = None;
-    scene.shake = CameraShake::default();
+    scene.frame.shake = CameraShake::default();
     scene.sprite.lighting_2d = None;
     if let Some(p) = resource(world, layouts.post.as_ref()) {
         if on(&p, "ao", false) {
@@ -586,10 +586,10 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         }
         let trauma = f(&p, "shakeTrauma", 0.0);
         if trauma > 0.0 {
-            scene.shake = CameraShake::trauma(
+            scene.frame.shake = CameraShake::trauma(
                 trauma,
-                scene.tick,
-                scene.tick_rate,
+                scene.frame.tick,
+                scene.frame.tick_rate,
                 u64::from(u(&p, "shakeSeed", 0)),
                 f(&p, "shakeMaxOffset", 0.05),
                 f(&p, "shakeMaxRoll", 3.0),
@@ -696,7 +696,7 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
         None if art.pixel_perfect && art.logical_height > 0 => Some(art.logical_height),
         None => None,
     };
-    let og_render::Projection::Orthographic { height } = scene.camera.projection else {
+    let og_render::Projection::Orthographic { height } = scene.frame.camera.projection else {
         return;
     };
     let unit = match rows {
@@ -704,7 +704,7 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
         None if art.pixel_perfect && art.unit > 0.0 => 1.0 / art.unit,
         None => return,
     };
-    let forward = (scene.camera.target - scene.camera.position).normalize_or_zero();
+    let forward = (scene.frame.camera.target - scene.frame.camera.position).normalize_or_zero();
     if forward.z > -0.999 {
         return;
     }
@@ -712,7 +712,7 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
         return;
     }
     let snap = |v: f32| (v / unit).round() * unit;
-    let c = &mut scene.camera;
+    let c = &mut scene.frame.camera;
     let d = c.target - c.position;
     c.position.x = snap(c.position.x);
     c.position.y = snap(c.position.y);

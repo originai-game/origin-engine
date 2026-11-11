@@ -55,8 +55,8 @@ impl VolumetricPass {
             frame_layout,
             fog,
             size,
-            scene.tick,
-            &scene.quality,
+            scene.frame.tick,
+            &scene.frame.quality,
         );
         (st.method == VolumetricMethod::Froxel).then_some(())
     }

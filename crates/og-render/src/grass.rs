@@ -560,10 +560,10 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
     // does not read the simulated field).
     gpu.wind = crate::wind::field_gpu(
         scene.atmosphere.wind,
-        scene.tick,
-        scene.tick,
-        scene.tick_rate,
-        scene.origin,
+        scene.frame.tick,
+        scene.frame.tick,
+        scene.frame.tick_rate,
+        scene.frame.origin,
         crate::wind_field::NO_GRID,
     );
     gpu
@@ -1264,14 +1264,14 @@ impl GrassRenderer {
         textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
     ) -> GrassFrame {
         let mut frame = GrassFrame::default();
-        let previous = self.last_tick.unwrap_or(scene.tick);
-        self.last_tick = (!scene.world.grass.is_empty()).then_some(scene.tick);
+        let previous = self.last_tick.unwrap_or(scene.frame.tick);
+        self.last_tick = (!scene.world.grass.is_empty()).then_some(scene.frame.tick);
         let wind = crate::wind::field_gpu(
             scene.atmosphere.wind,
-            scene.tick,
+            scene.frame.tick,
             previous,
-            scene.tick_rate,
-            scene.origin,
+            scene.frame.tick_rate,
+            scene.frame.origin,
             view.wind_grid,
         );
         let l = scene

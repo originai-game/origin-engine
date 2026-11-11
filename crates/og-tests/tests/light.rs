@@ -93,7 +93,7 @@ fn a_renderer_restore_keeps_the_baked_frame() {
     let mut r = Renderer::new_blocking(&built.desc).expect("renderer");
     let frames = built.frames.max(1);
     let mut scene = built.scene;
-    let camera = scene.camera;
+    let camera = scene.frame.camera;
     let draw = |r: &mut Renderer, s: &og_render::RenderScene| {
         for _ in 0..frames {
             r.render(s, &RenderTarget::Offscreen).expect("render");
@@ -105,9 +105,9 @@ fn a_renderer_restore_keeps_the_baked_frame() {
     let baked = std::mem::take(&mut scene.lighting.baked);
     let unbaked = draw(&mut r, &scene);
     assert_ne!(unbaked.pixels, first.pixels, "unbaked draws otherwise");
-    scene.camera.position.x += 0.4;
+    scene.frame.camera.position.x += 0.4;
     draw(&mut r, &scene);
-    scene.camera = camera;
+    scene.frame.camera = camera;
     scene.lighting.baked = baked;
     r.restore_state(saved);
     let again = draw(&mut r, &scene);
@@ -162,7 +162,7 @@ fn a_full_custom_shader_lights_rect_lights_with_their_shadow() {
             .expect("save");
         }
         points.map(|p| {
-            let (x, y) = project(&built.scene.camera, p);
+            let (x, y) = project(&built.scene.frame.camera, p);
             let c = mean(&img, x - 4, y - 3, x + 4, y + 3);
             0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
         })

@@ -275,8 +275,8 @@ impl Renderer {
             .map(|&(key, _)| key)
             .zip(garment_lists)
             .collect();
-        let dt = if scene.tick_rate > 0.0 {
-            1.0 / scene.tick_rate
+        let dt = if scene.frame.tick_rate > 0.0 {
+            1.0 / scene.frame.tick_rate
         } else {
             1.0 / 60.0
         };
@@ -291,7 +291,7 @@ impl Renderer {
                 body,
                 &rest,
                 &[],
-                scene.tick,
+                scene.frame.tick,
                 dt,
                 list,
                 Mat4::IDENTITY,
@@ -880,6 +880,7 @@ impl Renderer {
     /// the renderer's ([`crate::RenderInfo::shadow_cascades`]), at least one.
     pub(crate) fn frame_cascades(&self, scene: &RenderScene) -> u32 {
         scene
+            .frame
             .quality
             .shadow_cascades
             .min(self.info.shadow_cascades)
@@ -899,7 +900,11 @@ impl Renderer {
             return;
         }
         // Every shadowed light of the scene's, within the frame's budget.
-        let lights = scene.quality.shadowed_lights.min(self.info.shadowed_lights) as usize;
+        let lights = scene
+            .frame
+            .quality
+            .shadowed_lights
+            .min(self.info.shadowed_lights) as usize;
         let wanted: Vec<usize> = scene
             .lighting
             .lights
@@ -1009,9 +1014,9 @@ impl Renderer {
         // frame with one makes its texture, and the sky group again.
         if let Some(a) = &scene.atmosphere.aurora {
             let made = self.sky.aurora_map.made();
-            let viewer = scene.camera.position + scene.origin;
-            let rate = if scene.tick_rate > 0.0 {
-                scene.tick_rate
+            let viewer = scene.frame.camera.position + scene.frame.origin;
+            let rate = if scene.frame.tick_rate > 0.0 {
+                scene.frame.tick_rate
             } else {
                 60.0
             };
@@ -1019,7 +1024,7 @@ impl Renderer {
                 &self.device,
                 &self.queue,
                 a,
-                scene.tick as f64 / f64::from(rate),
+                scene.frame.tick as f64 / f64::from(rate),
                 glam::Vec2::new(viewer.x, viewer.z),
             );
             if !made {

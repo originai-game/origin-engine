@@ -224,7 +224,7 @@ pub fn impostors_scene_with(card: bool) -> RenderScene {
     } else {
         scene.add_instance(ball, white, at(BALL_CARD_AT));
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.4, 6.5),
         target: Vec3::new(0.0, 1.0, 0.0),
         projection: Projection::Perspective {
@@ -278,7 +278,7 @@ pub fn impostor_backlit_scene(translucency: Option<f32>) -> RenderScene {
         ),
         cast_shadows: true,
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.6, 5.0),
         target: BACKLIT_AT,
         projection: Projection::Perspective {
@@ -330,7 +330,7 @@ pub fn impostor_scatter_scene(impostor_distance: f32) -> RenderScene {
         impostor: Some(impostor),
         impostor_distance,
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 6.0, 26.0),
         target: Vec3::new(0.0, 2.0, -6.0),
         far: 200.0,

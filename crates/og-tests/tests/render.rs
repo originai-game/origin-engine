@@ -161,7 +161,7 @@ fn texture_scene(color: og_render::TextureUpload, normal: og_render::TextureUplo
     let mut scene = RenderScene::new();
     scene.lighting.environment.background = Background::Color(Vec3::splat(0.02));
     scene.lighting.light.cast_shadows = false;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 6.0),
         target: Vec3::new(0.0, 0.0, -2.0),
         ..Default::default()
@@ -341,7 +341,7 @@ fn linked_lists_order_equal_depths_by_key_not_by_draw() {
     ];
     let draw = |order: [usize; 4]| {
         let mut scene = RenderScene::new();
-        scene.camera = Camera {
+        scene.frame.camera = Camera {
             position: Vec3::new(0.0, 0.0, 4.0),
             target: Vec3::ZERO,
             exposure: og_render::Exposure::linear(1.0),

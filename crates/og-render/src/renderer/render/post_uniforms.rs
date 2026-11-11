@@ -97,7 +97,7 @@ impl Renderer {
                 camera.far,
                 cam.orthographic as u32 as f32,
                 camera.near,
-                scene.debug.ao_code(),
+                scene.frame.debug.ao_code(),
             ],
             // z: the AO targets' divisor of the screen (2 at half resolution).
             ao: {

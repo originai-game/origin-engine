@@ -45,6 +45,7 @@ impl Renderer {
             let camera = ui::mass::MassCameraGpu {
                 view_proj: cam.view_proj.to_cols_array_2d(),
                 eye: scene
+                    .frame
                     .camera
                     .position
                     .extend(f32::from(u8::from(cam.orthographic)))

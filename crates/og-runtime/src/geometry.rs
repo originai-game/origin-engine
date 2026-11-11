@@ -992,7 +992,7 @@ fn vertices_of(rs: &RenderState, v: &Value, alpha: f32) -> Option<(Vec<Vec3>, Ve
 
 /// Lines, points and debug draw into the frame (`super::extract`).
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp: (f32, f32)) {
-    rs.scene.css_height = vp.1;
+    rs.scene.frame.css_height = vp.1;
     let now = world.time().tick;
     // Immediate sets of the tick drawn (or the one before it, whose frame
     // this is).
@@ -1069,7 +1069,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     rs.geo.draws.retain(|(until, _)| *until >= now);
     rs.geo.texts.retain(|t| t.until >= now);
     // The lit image's views; a publish build draws none of them.
-    rs.scene.debug = if cfg!(feature = "publish") {
+    rs.scene.frame.debug = if cfg!(feature = "publish") {
         og_render::DebugView::None
     } else {
         render_view(current_view(rs))
@@ -1248,7 +1248,7 @@ fn texts(rs: &mut RenderState, vp: (f32, f32)) {
     if rs.geo.texts.is_empty() || vp.0 <= 0.0 || vp.1 <= 0.0 {
         return;
     }
-    let cam = &rs.scene.camera;
+    let cam = &rs.scene.frame.camera;
     let view = glam::camera::rh::view::look_at_mat4(cam.position, cam.target, cam.up);
     let aspect = vp.0 / vp.1;
     let proj = match cam.projection {

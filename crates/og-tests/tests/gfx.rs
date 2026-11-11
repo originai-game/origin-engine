@@ -42,7 +42,7 @@ fn cascade_frames(tall: bool) -> (RgbaImage, RgbaImage, RgbaImage) {
     scene.lighting.light.cast_shadows = false;
     let (unshadowed, _) = frame(&g.desc, &scene, 1);
     scene.lighting.light.cast_shadows = true;
-    scene.debug = DebugView::Cascades;
+    scene.frame.debug = DebugView::Cascades;
     let (debug, _) = frame(&g.desc, &scene, 1);
     (debug, lit, unshadowed)
 }
@@ -126,7 +126,7 @@ fn the_device_msaa_caps_the_qualitys() {
     if resolved == Antialias::Msaa4 {
         assert_eq!(msaa.info().msaa_samples, og_render::MSAA_SAMPLES);
         let mut one = RenderScene::new();
-        one.quality = RenderQuality {
+        one.frame.quality = RenderQuality {
             msaa_samples: 1,
             ..RenderQuality::default()
         };

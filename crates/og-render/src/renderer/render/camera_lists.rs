@@ -66,7 +66,7 @@ impl Renderer {
     ) -> PlanCameraListsOutputs {
         // The GPU cull's passes and the meshlet dispatch's views
         // (frame_visibility.rs), registered by every view below in order.
-        let mut vis = FrameVisibility::new(scene.camera_layers, (meshlet_items, meshlet_max));
+        let mut vis = FrameVisibility::new(scene.frame.camera_layers, (meshlet_items, meshlet_max));
         // Lent to every CPU cull of this frame, given back after the last.
         let mut cull_inside = std::mem::take(&mut self.visibility.cull_inside);
         cull_inside.whole.clear();
@@ -83,7 +83,7 @@ impl Renderer {
                 .iter()
                 .any(|b| self.cache.materials[b.material].occluder);
         // The main camera's layers (views.rs).
-        let mask = scene.camera_layers;
+        let mask = scene.frame.camera_layers;
         let (main_list, mut culled) = if gpu_cull {
             let g = vis.gpu_pass(cull_gpu::PassKind::Main, view_frustum, None, None);
             if occlusion {
@@ -114,7 +114,7 @@ impl Renderer {
         // reflection, view, probe face and shadow pass that fits
         // (`meshlet_view`: its index, 0 none: that pass keeps its list).
         vis.camera(meshlet_gpu::MeshletView::camera(
-            &scene.camera,
+            &scene.frame.camera,
             view_frustum.planes(),
             std::mem::take(&mut meshlet_taken),
             self.height,

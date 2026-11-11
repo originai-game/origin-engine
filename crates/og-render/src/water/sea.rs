@@ -97,14 +97,16 @@ pub(super) fn shore_texture(
 /// between the last two ticks the blended transforms are drawn at, so the
 /// sea moves at the display's rate under floaters drawn in step with it.
 pub(crate) fn seconds(scene: &crate::RenderScene) -> f64 {
-    let rate = if scene.tick_rate > 0.0 {
-        scene.tick_rate
+    let rate = if scene.frame.tick_rate > 0.0 {
+        scene.frame.tick_rate
     } else {
         60.0
     };
-    let ticks = match scene.interpolation {
-        Some(a) if scene.tick > 0 => scene.tick as f64 - 1.0 + f64::from(a.clamp(0.0, 1.0)),
-        _ => scene.tick as f64,
+    let ticks = match scene.frame.interpolation {
+        Some(a) if scene.frame.tick > 0 => {
+            scene.frame.tick as f64 - 1.0 + f64::from(a.clamp(0.0, 1.0))
+        }
+        _ => scene.frame.tick as f64,
     };
     ticks / f64::from(rate)
 }

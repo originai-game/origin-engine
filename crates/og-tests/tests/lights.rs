@@ -62,8 +62,8 @@ fn moving_the_depth_slices_changes_nothing() {
     let (base, stats) = frame(&desc, &scene);
     assert!(stats.lights > 200);
     for (near, far) in [(0.5, 120.0), (0.05, 2000.0), (2.0, 150.0)] {
-        scene.camera.near = near;
-        scene.camera.far = far;
+        scene.frame.camera.near = near;
+        scene.frame.camera.far = far;
         let (other, _) = frame(&desc, &scene);
         let d = changed(&base, &other);
         println!("near {near} far {far}: {d} pixels changed");
@@ -77,17 +77,17 @@ fn moving_the_depth_slices_changes_nothing() {
             "near {near}, far {far}: the lights changed ({d} pixels)"
         );
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 40.0, 0.01),
         target: Vec3::ZERO,
         projection: Projection::Orthographic { height: 50.0 },
         near: 1.0,
         far: 80.0,
-        ..scene.camera
+        ..scene.frame.camera
     };
     let (ortho, _) = frame(&desc, &scene);
-    scene.camera.near = 20.0;
-    scene.camera.far = 300.0;
+    scene.frame.camera.near = 20.0;
+    scene.frame.camera.far = 300.0;
     let (ortho_moved, _) = frame(&desc, &scene);
     let d = changed(&ortho, &ortho_moved);
     println!("orthographic: {d} pixels changed");

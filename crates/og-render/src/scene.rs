@@ -123,7 +123,10 @@ pub struct RenderScene {
     /// place since it was last replaced whole, each with the revision it
     /// made (the latest [`TERRAIN_EDIT_LOG`]).
     terrain_edits: Vec<Vec<(u64, glam::Vec2, glam::Vec2)>>,
-    pub camera: Camera,
+    /// The frame's clock and view: its tick and rate, interpolation, the camera
+    /// (its cut and layers), the viewport views, the world origin, the debug
+    /// view, the quality, the camera shake and the CSS height.
+    pub frame: SceneFrame,
     /// The 3D lighting: the sun and the local lights, their cookies and the
     /// baked light and light volumes, the reflection probes, the hemisphere and
     /// the environment.
@@ -136,18 +139,6 @@ pub struct RenderScene {
     /// sprite effects and meshes, the 2D lighting, lights and occluders, 2D
     /// water and metaballs.
     pub sprite: SceneSprites,
-    pub debug: DebugView,
-    /// The game's tick (drives beams' scroll and film grain; particle
-    /// systems and trails carry their own).
-    pub tick: u64,
-    /// Ticks per second (the fixed step of particles and trails).
-    pub tick_rate: f32,
-    /// A display frame drawn between the last two ticks (render
-    /// interpolation): its alpha, 0 at the tick before `tick` and 1 at
-    /// `tick`, as the blended transforms are drawn; `None` draws `tick`.
-    /// The sea's clock runs at it, so waves move at the display's rate and
-    /// stay in step with the floaters drawn on them.
-    pub interpolation: Option<f32>,
     /// The effects drawn among the scene: particles and their history, trails,
     /// ribbons and beams, effect meshes, lines and points (each with its
     /// layers), and the decals with their atlas.
@@ -155,40 +146,12 @@ pub struct RenderScene {
     /// The 3D world's ground and waters: water, terrains and their stamps,
     /// scattered copies, grass, 3D fluids and the colliders they meet.
     pub world: SceneWorld,
-    /// The output's height in CSS pixels, which line widths and point sizes
-    /// are measured in (0: one CSS pixel per device pixel).
-    pub css_height: f32,
-    /// Screen shake applied to the camera.
-    pub shake: CameraShake,
-    /// The camera cut into this frame (a teleport or a cut between shots):
-    /// motion blur takes no camera motion from the frame before, and TAA
-    /// starts from this frame's samples ([`crate::Renderer::reset_history`]).
-    pub camera_cut: bool,
     /// The overlay (its UI tree and canvases) and the UI's vector paths and
     /// materials.
     pub ui: SceneUi,
     /// The air and the weather: fog, volumetric fog, clouds, aurora, the eye's
     /// adaptation, the surface weather, the wind and what pushes the grass.
     pub atmosphere: SceneAtmosphere,
-    /// What the frame may cost: switches and sizes over what the rest of
-    /// the scene asks for (`quality.rs`). The default draws all of it.
-    pub quality: crate::RenderQuality,
-    /// The main camera's layer mask (three.js `Camera.layers`): it draws
-    /// the instances, skinned instances, world sprites, scene lines and
-    /// points and particle systems whose masks share a bit with it, as each
-    /// [`crate::View`] does with its own. 1 by default; 0 draws none of
-    /// them. What carries no mask (the sky, terrain, scattered copies,
-    /// water, trails, text, tile layers and sprite meshes) draws on every
-    /// camera.
-    pub camera_layers: u32,
-    /// Secondary cameras drawn into render targets or viewports of the
-    /// frame, before it in [`crate::View::order`] (`views.rs`).
-    pub views: Vec<crate::View>,
-    /// Where the zero of the scene's coordinates is in the caller's world
-    /// ([`RenderScene::rebase`], `origin.rs`): the frame is drawn relative
-    /// to it, and the shaders that read world position for its look add
-    /// it back. Zero by default.
-    pub origin: Vec3,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
     /// The size a streamed texture reports while it holds only its mip

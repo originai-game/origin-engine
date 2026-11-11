@@ -240,7 +240,7 @@ pub fn keyframes_scene() -> Result<RenderScene, String> {
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.8;
     scene.lighting.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.4, 4.6),
         target: Vec3::new(0.0, 0.45, 0.0),
         exposure: Exposure::linear(0.8),

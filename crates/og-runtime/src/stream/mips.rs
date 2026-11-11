@@ -268,7 +268,7 @@ fn measure(m: &mut Mips, scene: &og_render::RenderScene, view_height: f32) {
             .max_element();
         let r = radius * scale;
         let per_unit = lod::pixels_per_unit(
-            &scene.camera,
+            &scene.frame.camera,
             inst.transform.transform_point3(center),
             r,
             view_height,
@@ -650,8 +650,8 @@ mod tests {
     #[test]
     fn a_footprint_is_the_most_any_instance_covers() {
         let mut scene = RenderScene::new();
-        scene.camera.position = Vec3::new(0.0, 0.0, 10.0);
-        scene.camera.target = Vec3::ZERO;
+        scene.frame.camera.position = Vec3::new(0.0, 0.0, 10.0);
+        scene.frame.camera.target = Vec3::ZERO;
         let mesh = scene.add_mesh(og_render::shapes::plane(2.0, 1.0));
         let (streamed, other, unseen) = (
             texture(&mut scene),

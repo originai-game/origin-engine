@@ -81,7 +81,7 @@ fn compute_particles_bounce_off_the_scene_colliders() {
             emitter.render = ParticleRender::Sprite { layer: 0 };
             // A sprite-mode emitter meets the colliders whatever it names.
             emitter.collision = Some(ParticleCollision::default());
-            scene.camera = Camera::orthographic_2d(Vec2::new(0.0, 0.5), 6.0);
+            scene.frame.camera = Camera::orthographic_2d(Vec2::new(0.0, 0.5), 6.0);
         }
         scene.set_emitter(e, emitter);
         scene.world.colliders = colliders;
@@ -156,7 +156,7 @@ fn collision_scene(collide: bool) -> RenderScene {
         1,
         0,
     ));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 6.0),
         target: Vec3::ZERO,
         ..Default::default()
@@ -185,7 +185,7 @@ fn trails_remember_the_path_for_their_lifetime() {
         position: Vec3::ZERO,
         tick: 0,
     });
-    scene.camera = Camera::orthographic_2d(Vec2::ZERO, 6.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 6.0);
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     let mut r = Renderer::new_blocking(&small()).expect("renderer");
@@ -291,7 +291,7 @@ fn expressive_scene(grid: bool) -> RenderScene {
         .effects
         .particles
         .push(ParticleSystem::new(1, e, Mat4::IDENTITY, 7, 0));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.0, 7.0),
         target: Vec3::new(0.0, 0.8, 0.0),
         ..Default::default()

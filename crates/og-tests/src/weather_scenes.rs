@@ -237,7 +237,7 @@ fn street() -> RenderScene {
     });
     // The puddles and the lacquer mirror the lamps and the walls.
     scene.look.post.ssr = Some(ScreenSpaceReflections::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(-1.2, 1.5, 6.0),
         target: Vec3::new(0.6, 0.9, -30.0),
         exposure: Exposure::Manual { ev: 0.5 },
@@ -295,7 +295,7 @@ fn puddles() -> RenderScene {
     });
     // The still puddles mirror the rocks and the sky.
     scene.look.post.ssr = Some(ScreenSpaceReflections::default());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.7, 3.0),
         target: Vec3::new(0.5, 0.0, -12.0),
         exposure: Exposure::Manual { ev: 0.5 },
@@ -400,7 +400,7 @@ fn snow_buildup() -> RenderScene {
         snow_depth: 0.06,
         ..SurfaceWeather::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(2.0, 4.3, 3.0),
         target: Vec3::new(-0.5, 0.4, -6.5),
         exposure: Exposure::Manual { ev: -0.3 },
@@ -472,7 +472,7 @@ fn desert() -> RenderScene {
         dust_color: Vec3::new(0.86, 0.74, 0.56),
         ..SurfaceWeather::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(1.5, 4.0, 2.5),
         target: Vec3::new(-0.3, 0.3, -7.0),
         exposure: Exposure::Manual { ev: -0.5 },
@@ -601,7 +601,7 @@ pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScen
             ),
         );
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: turn * Vec3::new(0.0, 1.4, 4.2),
         target: turn * Vec3::new(0.0, 1.0, -1.0),
         exposure: Exposure::Manual { ev: 0.0 },

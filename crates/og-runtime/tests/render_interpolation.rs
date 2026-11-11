@@ -128,9 +128,9 @@ impl RenderBackend for Recorder {
             .map(|i| i.transform)
             .collect();
         s.previous = scene.objects.previous_transforms.clone();
-        s.camera_cut = scene.camera_cut;
-        s.camera = scene.camera.position;
-        s.interpolation = scene.interpolation;
+        s.camera_cut = scene.frame.camera_cut;
+        s.camera = scene.frame.camera.position;
+        s.interpolation = scene.frame.interpolation;
         Ok(())
     }
     fn capture(&mut self, scene: &RenderScene, w: u32, h: u32) -> Option<og_render::RgbaImage> {
@@ -140,7 +140,7 @@ impl RenderBackend for Recorder {
             .iter()
             .map(|i| i.transform)
             .collect();
-        self.0.borrow_mut().captured_interpolation = scene.interpolation;
+        self.0.borrow_mut().captured_interpolation = scene.frame.interpolation;
         Some(og_render::RgbaImage {
             width: w.max(1),
             height: h.max(1),

@@ -52,8 +52,12 @@ impl Renderer {
             },
             camera.position,
             frame::LocalShadowBudget {
-                max_shadowed: self.info.shadowed_lights.min(scene.quality.shadowed_lights) as usize,
-                rect_shadows: scene.quality.rect_shadows,
+                max_shadowed: self
+                    .info
+                    .shadowed_lights
+                    .min(scene.frame.quality.shadowed_lights)
+                    as usize,
+                rect_shadows: scene.frame.quality.rect_shadows,
                 point: self.info.point_shadows,
                 shadow_size: self.shadows.local_shadow_size,
             },

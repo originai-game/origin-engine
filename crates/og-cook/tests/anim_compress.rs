@@ -181,10 +181,10 @@ fn posed_trickster(root: &Path, clip: &str, t: f32) -> og_render::RgbaImage {
             None => scene.add_instance(mesh, material, place * local),
         }
     }
-    scene.camera = og_render::Camera {
+    scene.frame.camera = og_render::Camera {
         position: Vec3::new(0.4, 1.3, 2.8),
         target: Vec3::new(0.0, 1.0, 0.0),
-        ..src.camera
+        ..src.frame.camera
     };
     scene.lighting.light = src.lighting.light;
     scene.lighting.lights = src.lighting.lights.clone();

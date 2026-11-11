@@ -63,7 +63,7 @@ fn plain(m: StandardMaterial, wall: bool, weather: Option<SurfaceWeather>) -> Rg
     if wall {
         let mesh = scene.add_mesh(shapes::cuboid(Vec3::new(30.0, 20.0, 1.0)));
         scene.add_instance(mesh, h, Mat4::from_translation(Vec3::new(0.0, 8.0, -6.5)));
-        scene.camera = Camera {
+        scene.frame.camera = Camera {
             position: Vec3::new(0.0, 2.0, 0.0),
             target: Vec3::new(0.0, 2.0, -6.0),
             exposure: Exposure::linear(1.0),
@@ -72,7 +72,7 @@ fn plain(m: StandardMaterial, wall: bool, weather: Option<SurfaceWeather>) -> Rg
     } else {
         let mesh = scene.add_mesh(shapes::plane(60.0, 6.0));
         scene.add_instance(mesh, h, Mat4::IDENTITY);
-        scene.camera = Camera {
+        scene.frame.camera = Camera {
             position: Vec3::new(0.0, 6.0, 4.0),
             target: Vec3::new(0.0, 0.0, -4.0),
             exposure: Exposure::linear(1.0),
@@ -210,7 +210,7 @@ fn plain_with(
     let h = scene.add_standard_material(m);
     let mesh = scene.add_mesh(shapes::plane(60.0, 1.0));
     scene.add_instance(mesh, h, Mat4::IDENTITY);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 6.0, 4.0),
         target: Vec3::new(0.0, 0.0, -4.0),
         exposure: Exposure::linear(1.0),

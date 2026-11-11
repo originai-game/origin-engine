@@ -331,7 +331,12 @@ impl<'f> DrawCtx<'f> {
         runs: &[ribbons::RibbonRun],
     ) -> u32 {
         let &DrawCtx { r, scene, .. } = self;
-        r.frame_draw_strips(pass, runs, scene.debug != DebugView::None, StripPart::All)
+        r.frame_draw_strips(
+            pass,
+            runs,
+            scene.frame.debug != DebugView::None,
+            StripPart::All,
+        )
     }
 
     /// Sprites and text over a camera's scene, in sorted order: the main

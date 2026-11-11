@@ -51,7 +51,7 @@ fn trample_scene() -> RenderScene {
     scene.atmosphere.fog = None;
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.lighting.light.cast_shadows = false;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.12, 0.0),
         target: Vec3::new(1.0, 0.12, 0.0),
         near: 0.02,
@@ -86,7 +86,7 @@ fn a_grass_pusher_tramples_the_blades_and_they_recover() {
     let mut scene = trample_scene();
     let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
     let mut draw = |scene: &mut RenderScene, tick: u64| {
-        scene.tick = tick;
+        scene.frame.tick = tick;
         r.render(scene, &RenderTarget::Offscreen).expect("render");
         r.read_offscreen().expect("capture")
     };
@@ -153,7 +153,7 @@ fn a_low_sun_darkens_the_meadow_towards_its_roots() {
     scene.lighting.light.cast_shadows = true;
     let up = 10f32.to_radians();
     scene.lighting.light.direction_to_light = Vec3::new(0.0, up.sin(), up.cos());
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(-20.0, 0.25, 0.0),
         target: Vec3::new(0.0, 0.25, 0.0),
         near: 0.1,

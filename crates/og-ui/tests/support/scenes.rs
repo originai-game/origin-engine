@@ -1059,7 +1059,7 @@ pub fn glow_scene(font: &FontFiles, glow: bool, labels: usize) -> (RenderScene, 
 pub fn stripes_scene(glass: &[og_render::Glass]) -> (RenderScene, RenderDesc) {
     let (w, h) = (320u32, 200u32);
     let mut scene = RenderScene::new();
-    scene.camera =
+    scene.frame.camera =
         og_render::Camera::orthographic_2d(Vec2::new(w as f32 / 2.0, h as f32 / 2.0), h as f32);
     for k in 0..(w / 8) {
         scene.sprite.sprites.push(og_render::Sprite {

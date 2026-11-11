@@ -147,7 +147,7 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
         ..Default::default()
     };
     scene.lighting.environment.intensity = 1.0;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.9, 8.5),
         target: Vec3::new(0.0, 1.4, 0.0),
         exposure: Exposure::linear(0.9),
@@ -241,7 +241,7 @@ pub fn outdoor_scene(o: Outdoor) -> RenderScene {
     let ground = meadow_height;
     // Beside the capture point, so the capture's faces see past it.
     let ball = p + Vec3::new(-1.2, -0.8, 0.0);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(p.x + 1.5, ground(p.x + 1.5, p.z + 5.0) + 1.9, p.z + 5.0),
         target: ball,
         far: 200.0,
@@ -492,7 +492,7 @@ pub fn probe_floor_scene() -> RenderScene {
     };
     scene.lighting.environment.intensity = 0.6;
     scene.lighting.environment.background = Background::Color(Vec3::splat(0.05));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 6.0),
         target: Vec3::ZERO,
         ..Default::default()

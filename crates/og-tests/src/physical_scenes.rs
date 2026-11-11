@@ -258,7 +258,7 @@ pub fn physical_scene() -> RenderScene {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.9;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.3, 6.8),
         target: Vec3::new(0.0, 0.8, -0.6),
         exposure: Exposure::linear(0.7),
@@ -415,7 +415,7 @@ pub fn array_scene() -> RenderScene {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.9;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.4, 7.2),
         target: Vec3::new(0.3, 0.4, 0.2),
         exposure: Exposure::linear(0.75),

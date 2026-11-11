@@ -119,7 +119,7 @@ impl Renderer {
                     shadow_size,
                     light.shadow_bias,
                     light.shadow_normal_bias,
-                    scene.origin,
+                    scene.frame.origin,
                 )
             } else {
                 frame::fit_cascades(
@@ -132,7 +132,7 @@ impl Renderer {
                     shadow_size,
                     self.frame_cascades(scene) as usize,
                     light.cascade_blend,
-                    scene.origin,
+                    scene.frame.origin,
                 )
             }
         } else {
@@ -188,7 +188,7 @@ impl Renderer {
                     &c.view_proj.to_cols_array_2d(),
                     [0.0; 4],
                     [0.0; 4],
-                    scene.origin,
+                    scene.frame.origin,
                     shadow_size,
                 );
                 self.shadows.shadow_cache.plan(
@@ -305,7 +305,7 @@ impl Renderer {
                     &vp.to_cols_array_2d(),
                     ls.position.extend(ls.range).to_array(),
                     local_paraboloid(ls.paraboloid, face, self.shadows.local_shadow_size),
-                    scene.origin,
+                    scene.frame.origin,
                     self.shadows.local_shadow_size,
                 );
                 let plan = self.shadows.shadow_cache.plan(

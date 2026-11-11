@@ -29,7 +29,7 @@ fn only_the_records_a_draw_reads_are_uploaded() {
     built.desc.culling = Culling::Cpu;
     built.scene.lighting.light.cast_shadows = false;
     // Looking past the field's edge.
-    let camera = &mut built.scene.camera;
+    let camera = &mut built.scene.frame.camera;
     camera.target += (camera.target - camera.position)
         .cross(glam::Vec3::Y)
         .normalize()

@@ -426,12 +426,12 @@ impl WindFieldSim {
         let sref = |w: crate::Wind| w.speed.max(1.0);
         if driven {
             self.drive = Some(Drive {
-                tick: scene.tick,
+                tick: scene.frame.tick,
                 cap: lean_cap(wind, motors_on),
                 lean_per_ms: wind.map_or(CALM_LEAN, |w| w.strength / sref(w)),
             });
         }
-        if !runs(driven, self.drive.map(|d| d.tick), scene.tick) {
+        if !runs(driven, self.drive.map(|d| d.tick), scene.frame.tick) {
             return off(self);
         }
         let drive = self.drive.expect("runs only after a drive");
@@ -440,8 +440,8 @@ impl WindFieldSim {
         } else {
             drive.cap
         };
-        let origin = scene.origin.as_dvec3();
-        let eye = scene.camera.position.as_dvec3() + origin;
+        let origin = scene.frame.origin.as_dvec3();
+        let eye = scene.frame.camera.position.as_dvec3() + origin;
         let cells = level_cells(DVec2::new(eye.x, eye.z));
         // The buffers are made once, with a slot for every warm-up tick;
         // new buffers hold nothing, so the field starts again.
@@ -452,7 +452,7 @@ impl WindFieldSim {
         };
         let uniform = gpu.uniform.clone();
         let last = if fresh { None } else { self.last.map(|l| l.0) };
-        let (restart, first, count) = plan(last, scene.tick);
+        let (restart, first, count) = plan(last, scene.frame.tick);
         self.grid = grid_of(cells, DVec2::new(origin.x, origin.z));
         if count == 0 {
             return;
@@ -493,7 +493,7 @@ impl WindFieldSim {
                     wind,
                     tick,
                     tick,
-                    scene.tick_rate,
+                    scene.frame.tick_rate,
                     Vec3::ZERO,
                     NO_GRID,
                 ),
@@ -504,7 +504,7 @@ impl WindFieldSim {
                     w.gust_size.max(1.0),
                 ],
                 step: [
-                    1.0 / scene.tick_rate.max(1e-3),
+                    1.0 / scene.frame.tick_rate.max(1e-3),
                     // A start with no frame drawn before it moves nothing
                     // on screen: its last step is what it last drew.
                     if restart && !keep && k + 1 == count {
@@ -522,7 +522,7 @@ impl WindFieldSim {
         }
         queue.write_buffer(&uniform, 0, &bytes);
         self.steps = count as u32;
-        self.last = Some((scene.tick, cells));
+        self.last = Some((scene.frame.tick, cells));
     }
 
     /// The field as the last frame left it, copied for a presentation
@@ -597,7 +597,7 @@ impl WindFieldSim {
 /// The scene's motors nearest the eye (world `eye`), at most
 /// [`MAX_MOTORS`], as wind_field.wgsl's rows (absolute x, z), and how many.
 fn motors_gpu(scene: &crate::RenderScene, eye: glam::DVec3) -> ([[f32; 4]; 2 * MAX_MOTORS], usize) {
-    let origin = scene.origin.as_dvec3();
+    let origin = scene.frame.origin.as_dvec3();
     let mut near: Vec<&WindMotor> = scene
         .atmosphere
         .wind_motors

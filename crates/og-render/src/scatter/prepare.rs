@@ -120,17 +120,17 @@ impl ScatterRenderer {
         let noise = crossfade_noise_offset(frame_index);
         let mut batches = Vec::new();
         let wind = scene.atmosphere.wind.filter(|w| w.strength > 0.0);
-        let previous = self.last_tick.unwrap_or(scene.tick);
-        self.last_tick = Some(scene.tick);
+        let previous = self.last_tick.unwrap_or(scene.frame.tick);
+        self.last_tick = Some(scene.frame.tick);
         queue.write_buffer(
             &self.wind_uniform,
             0,
             bytemuck::bytes_of(&crate::wind::field_gpu(
                 wind,
-                scene.tick,
+                scene.frame.tick,
                 previous,
-                scene.tick_rate,
-                scene.origin,
+                scene.frame.tick_rate,
+                scene.frame.origin,
                 wind_grid,
             )),
         );
@@ -172,7 +172,7 @@ impl ScatterRenderer {
             view_proj: view_proj.to_cols_array_2d(),
             prev_view_proj: prev_view_proj.to_cols_array_2d(),
             wind: [0.0; 4],
-            wind_shape: [0.0, 0.0, scene.origin.x, scene.origin.z],
+            wind_shape: [0.0, 0.0, scene.frame.origin.x, scene.frame.origin.z],
             impostor: [0.0; 4],
             impostor_grid: [0.0; 4],
             impostor_light: [0.0; 4],
@@ -274,7 +274,7 @@ impl ScatterRenderer {
                 t.layers.len(),
                 scene.world.water.iter().map(|w| {
                     let mut m = w.transform;
-                    m.w_axis += scene.origin.extend(0.0);
+                    m.w_axis += scene.frame.origin.extend(0.0);
                     (m, w.size, w.endless)
                 }),
             );
@@ -293,16 +293,16 @@ impl ScatterRenderer {
             // grid) and then moved by the origin, so each copy's place, and
             // the wind's phase hashed from its bits, is the same bits
             // wherever the origin is (`origin.rs`).
-            let world = scene.origin != Vec3::ZERO;
+            let world = scene.frame.origin != Vec3::ZERO;
             let placed_on = if world {
                 let mut w = t.clone();
-                w.transform.w_axis += scene.origin.extend(0.0);
+                w.transform.w_axis += scene.frame.origin.extend(0.0);
                 std::borrow::Cow::Owned(w)
             } else {
                 std::borrow::Cow::Borrowed(t)
             };
             let transform = placed_on.transform.to_cols_array().map(f32::to_bits);
-            let origin = scene.origin.to_array().map(f32::to_bits);
+            let origin = scene.frame.origin.to_array().map(f32::to_bits);
             let layers: Vec<u32> = t
                 .layers
                 .iter()
@@ -517,7 +517,7 @@ impl ScatterRenderer {
                             }
                             Some(Some((_, mut m, _))) => {
                                 if world {
-                                    m.w_axis -= scene.origin.extend(0.0);
+                                    m.w_axis -= scene.frame.origin.extend(0.0);
                                 }
                                 placed.push(m)
                             }
@@ -594,7 +594,7 @@ impl ScatterRenderer {
                 view_proj: view_proj.to_cols_array_2d(),
                 prev_view_proj: prev_view_proj.to_cols_array_2d(),
                 wind: wind_row,
-                wind_shape: [0.0, mesh_top, scene.origin.x, scene.origin.z],
+                wind_shape: [0.0, mesh_top, scene.frame.origin.x, scene.frame.origin.z],
                 impostor: [0.0; 4],
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],

@@ -61,7 +61,7 @@ fn fsr_resolves_the_half_scale_scene_to_the_output() {
     taau.set_render_scale(0.5);
     let by_taau = draw(&mut taau, &scene, 64);
 
-    scene.quality.upscaler = Upscaler::Fsr3;
+    scene.frame.quality.upscaler = Upscaler::Fsr3;
     let mut fsr = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
     fsr.set_render_scale(0.5);
     let by_fsr = draw(&mut fsr, &scene, 64);
@@ -175,7 +175,7 @@ fn run(
     let mut renderer = Renderer::new_blocking(&d).expect("renderer");
     renderer.set_render_scale(scale);
     let mut scene = (case.scene)();
-    scene.quality.upscaler = upscaler;
+    scene.frame.quality.upscaler = upscaler;
     let mut out = Vec::new();
     for f in 0..case.frames {
         if let Some(u) = case.update {
@@ -318,7 +318,7 @@ fn cost() {
             Ok("thin") => scenes::thin_geometry(),
             _ => og_tests::grass_scenes::grass_scene("near"),
         };
-        scene.quality.upscaler = upscaler;
+        scene.frame.quality.upscaler = upscaler;
         let mut shown = false;
         let mut resolve = Vec::new();
         let mut total = Vec::new();

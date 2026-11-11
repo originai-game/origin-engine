@@ -34,7 +34,7 @@ impl Renderer {
         } else {
             Vec2::ZERO
         };
-        let camera = shaken_camera(&scene.camera, scene.shake);
+        let camera = shaken_camera(&scene.frame.camera, scene.frame.shake);
         let cam = frame::camera_frame(&camera, aspect, jitter);
         let view_frustum = Frustum::from_view_proj(cam.view_proj);
         (aspect, taa, camera, cam, view_frustum)
@@ -55,18 +55,23 @@ impl Renderer {
         // mirrored in it, clipped at the surface by an oblique near plane).
         // W6: where the near plane crosses a surface the frame is the air's,
         // the waterline pass fogging what lies under it (water.rs).
-        let line = water::waterline(scene_water, &camera, water::seconds(scene), scene.origin);
+        let line = water::waterline(
+            scene_water,
+            &camera,
+            water::seconds(scene),
+            scene.frame.origin,
+        );
         let under = water::underwater(
             scene_water,
             camera.position,
             water::seconds(scene),
-            scene.origin,
+            scene.frame.origin,
         )
         .filter(|_| line.is_none());
         // Volumetric fog replaces the plain fog (volumetric.rs): above
         // water, for a perspective camera, where the quality lets it.
         let volumetric_fog = scene.atmosphere.volumetric_fog.filter(|_| {
-            WORLD_3D && scene.quality.volumetric_fog && under.is_none() && !cam.orthographic
+            WORLD_3D && scene.frame.quality.volumetric_fog && under.is_none() && !cam.orthographic
         });
         let frame_fog = match under {
             Some(i) => Some(water::underwater_fog(&scene_water[i])),

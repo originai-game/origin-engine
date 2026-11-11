@@ -54,7 +54,7 @@ fn a_replaced_mesh_draws_its_new_shape() {
     });
     s.add_instance(mesh, white, Mat4::IDENTITY);
     s.lighting.environment.background = og_render::Background::Color(Vec3::ZERO);
-    s.camera = Camera {
+    s.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 8.0),
         target: Vec3::ZERO,
         ..Default::default()
@@ -146,7 +146,7 @@ fn solar_probe() -> RenderScene {
         sun_direction: sun,
         sun_color: Vec3::ONE,
     };
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::ZERO,
         target: sun,
         projection: og_render::Projection::Perspective {
@@ -187,7 +187,7 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
             .as_mut()
             .unwrap()
             .sun_size = 0.5;
-        scene.camera.projection = og_render::Projection::Perspective {
+        scene.frame.camera.projection = og_render::Projection::Perspective {
             fov_y_degrees: 50.0,
         };
         let sun = scene.lighting.environment.sky.sun_direction;
@@ -208,16 +208,16 @@ fn a_moving_hdr_sun_stays_stable_through_temporal_resolves() {
         for frame in 0..48 {
             // Warm history first, then pan continuously through subpixels.
             let angle = (frame as f32 - 8.0).max(0.0) * 0.002;
-            scene.camera.target = glam::Quat::from_rotation_y(angle) * sun;
-            scene.tick = frame;
+            scene.frame.camera.target = glam::Quat::from_rotation_y(angle) * sun;
+            scene.frame.tick = frame;
             renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
             let image = renderer.read_offscreen().unwrap();
             std::fs::write(out.join(format!("{frame:03}.png")), og_render::png(&image)).unwrap();
             if frame < 8 {
                 continue;
             }
-            let forward = scene.camera.target.normalize();
-            let right = forward.cross(scene.camera.up).normalize();
+            let forward = scene.frame.camera.target.normalize();
+            let right = forward.cross(scene.frame.camera.up).normalize();
             let up = right.cross(forward);
             let z = sun.dot(forward) * 25f32.to_radians().tan();
             let expected = Vec2::new(

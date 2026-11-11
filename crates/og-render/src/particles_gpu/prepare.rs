@@ -20,7 +20,7 @@ impl ParticleRenderer {
             self.systems.clear();
             self.points.clear();
         }
-        let tick_rate = scene.tick_rate.max(1e-3);
+        let tick_rate = scene.frame.tick_rate.max(1e-3);
         let dt = 1.0 / tick_rate;
         let mut out = ParticleFrame::default();
         let mut entries: Vec<EmitterGpu> = Vec::new();
@@ -108,7 +108,7 @@ impl ParticleRenderer {
             out.capacity += e.max_particles;
             let pending = std::mem::take(&mut state.shift);
             let (moved, origin) = match e.space {
-                SimulationSpace::World => (pending, scene.origin),
+                SimulationSpace::World => (pending, scene.frame.origin),
                 SimulationSpace::Local => (Vec3::ZERO, Vec3::ZERO),
             };
             state.cpu.origin = origin;
@@ -240,7 +240,7 @@ impl ParticleRenderer {
                 && !gpu
             {
                 match hosted {
-                    Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.origin),
+                    Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.frame.origin),
                     None => {
                         out.ticks += state
                             .cpu
@@ -295,7 +295,7 @@ impl ParticleRenderer {
             let (effect, material) = effect_of(scene, e, kind, sys.emitter.index())?;
             // Soft particles fade against the depth behind them, where the
             // frame's quality lets them (RenderQuality::soft_particles).
-            let soft = if scene.quality.soft_particles && sprite.is_none() {
+            let soft = if scene.frame.quality.soft_particles && sprite.is_none() {
                 e.soft_distance
                     .max(material.map_or(0.0, |m| m.soft_depth))
                     .max(0.0)
@@ -438,7 +438,7 @@ impl ParticleRenderer {
                 }
             } else {
                 match hosted {
-                    Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.origin),
+                    Some(h) => take_hosted(&mut state.cpu, h, e.space, scene.frame.origin),
                     None => {
                         out.ticks += state
                             .cpu
@@ -493,7 +493,7 @@ impl ParticleRenderer {
                 out.distortion |= kind == DrawKind::Distort;
                 let (effect, material) =
                     effect_of(scene, ce, kind, e.sub_emitters[k].emitter.index())?;
-                let soft = if scene.quality.soft_particles {
+                let soft = if scene.frame.quality.soft_particles {
                     ce.soft_distance
                         .max(material.map_or(0.0, |m| m.soft_depth))
                         .max(0.0)
@@ -559,7 +559,7 @@ impl ParticleRenderer {
         self.systems.retain(|_, s| s.seen == frame);
         // The unsupported diagnostic is opaque, not emitted light. Adding
         // it to the background destroys the checker's black and magenta.
-        if scene.debug != crate::DebugView::None {
+        if scene.frame.debug != crate::DebugView::None {
             for s in &mut out.systems {
                 if s.kind != DrawKind::Sprite {
                     s.blend = ParticleBlend::Alpha;
@@ -921,7 +921,7 @@ impl ParticleRenderer {
                 &mut state.upload,
                 std::slice::from_ref(&particle),
             );
-            let soft = if scene.quality.soft_particles {
+            let soft = if scene.frame.quality.soft_particles {
                 material.soft_depth.max(0.0)
             } else {
                 0.0

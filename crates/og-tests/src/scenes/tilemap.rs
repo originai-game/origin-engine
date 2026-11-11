@@ -110,7 +110,7 @@ pub fn tilemap_256() -> RenderScene {
             light_mask: 1,
         });
     }
-    scene.camera = Camera::orthographic_2d(Vec2::new(64.0, 128.0), 45.0);
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(64.0, 128.0), 45.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -121,7 +121,7 @@ pub fn tilemap_256() -> RenderScene {
 pub fn pan_tilemap(scene: &mut RenderScene, frame: u32) {
     let t = frame as f32;
     let c = Vec2::new(64.0 + (t * 0.37) % 120.0, 128.0 - (t * 0.21) % 60.0);
-    scene.camera = Camera::orthographic_2d(c, 45.0);
+    scene.frame.camera = Camera::orthographic_2d(c, 45.0);
     for (i, l) in scene.sprite.tile_layers.iter_mut().enumerate() {
         l.time = t / 60.0;
         l.origin = if i == 3 {

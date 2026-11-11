@@ -105,7 +105,7 @@ pub fn water_mesh_scene(mesh: bool) -> RenderScene {
         mesh: stream,
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 6.0, 7.0),
         target: Vec3::new(0.0, 0.0, -2.0),
         exposure: Exposure::linear(0.45),
@@ -152,13 +152,13 @@ pub fn water_ripples_scene() -> RenderScene {
         flow: Vec2::new(0.2, 0.0),
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 5.0, 9.0),
         target: Vec3::new(0.0, 1.5, -3.0),
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
-    scene.tick = 30;
+    scene.frame.tick = 30;
     scene
 }
 
@@ -182,7 +182,7 @@ pub fn water_fresnel_scene() -> RenderScene {
         reflection_bias: 0.1,
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 10.0, 4.0),
         target: Vec3::new(0.0, 4.0, -1.0),
         exposure: Exposure::linear(0.9),
@@ -217,7 +217,7 @@ pub fn water_glint_scene() -> RenderScene {
         ..Default::default()
     });
     scene.look.post.tonemap = Tonemap::None;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: GLINT_EYE,
         target: glint_point(),
         exposure: Exposure::linear(0.5),
@@ -309,7 +309,7 @@ pub fn shadow_box_scene() -> RenderScene {
     scene.lighting.light.shadow_focus_drop = 6.0;
     scene.lighting.light.shadow_bias = 0.04;
     scene.lighting.light.shadow_normal_bias = 0.04;
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: BOX_EYE,
         target: Vec3::new(0.0, 0.0, -6.0),
         exposure: Exposure::linear(0.9),
@@ -355,7 +355,7 @@ pub fn hemisphere_scene() -> RenderScene {
     });
     scene.add_instance(tile, metal, Mat4::from_translation(HEMI_METAL));
     scene.lighting.hemisphere = ([1.0, 0.0, 0.0], [0.0, 0.0, 1.0], 2.0);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.2, 6.0),
         target: Vec3::new(0.0, 1.2, -4.0),
         exposure: Exposure::linear(0.9),
@@ -420,7 +420,7 @@ pub fn ao_screen_water_scene(water: bool) -> RenderScene {
         direct: 1.0,
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 5.0, 4.0),
         target: Vec3::new(0.0, 1.0, 0.0),
         exposure: Exposure::linear(0.9),
@@ -447,7 +447,7 @@ pub fn sharpen_scene() -> RenderScene {
         Mat4::from_translation(Vec3::new(0.0, 0.75, 0.0)),
     );
     scene.look.post.sharpen = Some(1.0);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.6, 6.0),
         target: Vec3::new(0.0, 0.8, -4.0),
         exposure: Exposure::linear(0.9),
@@ -501,7 +501,7 @@ pub fn alpha_to_coverage_scene(a2c: bool) -> RenderScene {
         ..Default::default()
     });
     scene.add_instance(card, m, Mat4::IDENTITY);
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 0.0, 5.0),
         target: Vec3::ZERO,
         exposure: Exposure::linear(1.0),
@@ -566,7 +566,7 @@ pub fn hooks_eye_front_scene() -> RenderScene {
         m,
         Mat4::from_translation(Vec3::new(1.0, 1.0, 0.0)) * Mat4::from_rotation_y(2.8),
     );
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: HOOK_EYE,
         target: Vec3::new(0.0, 1.0, 0.0),
         exposure: Exposure::linear(1.0),
@@ -625,7 +625,7 @@ pub fn hooks_planar_scene(planar: bool) -> RenderScene {
     scene.set_material_shader(m, Some(shader));
     let card = scene.add_mesh(shapes::plane(6.0, 1.0));
     scene.add_instance(card, m, Mat4::from_translation(Vec3::new(0.0, 1.02, -8.0)));
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 4.0, 4.0),
         target: Vec3::new(0.0, 1.0, -6.0),
         exposure: Exposure::linear(0.9),
@@ -675,7 +675,7 @@ pub fn hooks_screen_ao_scene() -> RenderScene {
         method: AoMethod::Gtao,
         ..Default::default()
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 3.0, 4.0),
         target: Vec3::new(0.0, 0.3, 0.0),
         exposure: Exposure::linear(0.9),
@@ -739,7 +739,7 @@ pub fn water_planar_two_scene() -> RenderScene {
         });
         scene.add_instance(slab, m, Mat4::from_translation(at));
     }
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 6.0, 6.0),
         target: Vec3::new(0.0, 0.5, -2.0),
         exposure: Exposure::linear(0.9),
@@ -805,7 +805,7 @@ pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
         impostor: None,
         impostor_distance: 0.0,
     });
-    scene.camera = Camera {
+    scene.frame.camera = Camera {
         position: Vec3::new(0.0, 14.0, 14.0),
         target: Vec3::new(0.0, 2.0, 0.0),
         exposure: Exposure::linear(0.9),

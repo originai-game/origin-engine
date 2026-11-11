@@ -142,13 +142,13 @@ impl ProbeContent {
     pub fn room(&mut self, scene: &RenderScene, probe: &ReflectionProbe) -> ProbeRoom {
         let (lo, hi) = probe.bounds();
         // (At the world's zero, the bits as they are: -0 stays -0.)
-        let at_zero = scene.origin == Vec3::ZERO;
+        let at_zero = scene.frame.origin == Vec3::ZERO;
         let in_world = |m: &Mat4| {
             if at_zero {
                 return *m;
             }
             Mat4 {
-                w_axis: m.w_axis + scene.origin.extend(0.0) * m.w_axis.w,
+                w_axis: m.w_axis + scene.frame.origin.extend(0.0) * m.w_axis.w,
                 ..*m
             }
         };
@@ -262,7 +262,7 @@ impl ProbeContent {
             let l = match at_zero {
                 true => *l,
                 false => crate::Light {
-                    position: l.position + scene.origin,
+                    position: l.position + scene.frame.origin,
                     ..*l
                 },
             };

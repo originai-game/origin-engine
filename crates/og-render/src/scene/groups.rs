@@ -347,3 +347,51 @@ pub struct SceneObjects {
     /// collide with [`RenderScene::colliders`]. Empty by default.
     pub debris: Vec<crate::DebrisPiece>,
 }
+
+/// The frame's clock and view: its tick and rate, interpolation, the camera
+/// (its cut and layers), the viewport views, the world origin, the debug
+/// view, the quality, the camera shake and the CSS height.
+#[derive(Debug)]
+pub struct SceneFrame {
+    /// The game's tick (drives beams' scroll and film grain; particle
+    /// systems and trails carry their own).
+    pub tick: u64,
+    /// Ticks per second (the fixed step of particles and trails).
+    pub tick_rate: f32,
+    /// A display frame drawn between the last two ticks (render
+    /// interpolation): its alpha, 0 at the tick before `tick` and 1 at
+    /// `tick`, as the blended transforms are drawn; `None` draws `tick`.
+    /// The sea's clock runs at it, so waves move at the display's rate and
+    /// stay in step with the floaters drawn on them.
+    pub interpolation: Option<f32>,
+    pub camera: Camera,
+    /// The camera cut into this frame (a teleport or a cut between shots):
+    /// motion blur takes no camera motion from the frame before, and TAA
+    /// starts from this frame's samples ([`crate::Renderer::reset_history`]).
+    pub camera_cut: bool,
+    /// The main camera's layer mask (three.js `Camera.layers`): it draws
+    /// the instances, skinned instances, world sprites, scene lines and
+    /// points and particle systems whose masks share a bit with it, as each
+    /// [`crate::View`] does with its own. 1 by default; 0 draws none of
+    /// them. What carries no mask (the sky, terrain, scattered copies,
+    /// water, trails, text, tile layers and sprite meshes) draws on every
+    /// camera.
+    pub camera_layers: u32,
+    /// Secondary cameras drawn into render targets or viewports of the
+    /// frame, before it in [`crate::View::order`] (`views.rs`).
+    pub views: Vec<crate::View>,
+    /// Where the zero of the scene's coordinates is in the caller's world
+    /// ([`RenderScene::rebase`], `origin.rs`): the frame is drawn relative
+    /// to it, and the shaders that read world position for its look add
+    /// it back. Zero by default.
+    pub origin: Vec3,
+    pub debug: DebugView,
+    /// What the frame may cost: switches and sizes over what the rest of
+    /// the scene asks for (`quality.rs`). The default draws all of it.
+    pub quality: crate::RenderQuality,
+    /// Screen shake applied to the camera.
+    pub shake: CameraShake,
+    /// The output's height in CSS pixels, which line widths and point sizes
+    /// are measured in (0: one CSS pixel per device pixel).
+    pub css_height: f32,
+}

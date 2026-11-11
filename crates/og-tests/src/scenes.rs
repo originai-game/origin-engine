@@ -596,7 +596,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // cascades give over the same distance.
         "shadows-cascades-4" => |g, _| {
             g.scene = crate::scenes::cascades_200m(true);
-            g.scene.quality.shadow_cascades = 4;
+            g.scene.frame.quality.shadow_cascades = 4;
             Ok(())
         },
         "shadows-local-8" => |g, _| {
@@ -712,7 +712,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // (the worst case: about 170,000 quads; for the record, not a budget).
         "tilemap-256-all" => |g, _| {
             g.scene = tilemap_256();
-            g.scene.camera = Camera::orthographic_2d(Vec2::new(128.0, 128.0), 260.0);
+            g.scene.frame.camera = Camera::orthographic_2d(Vec2::new(128.0, 128.0), 260.0);
             Ok(())
         },
         // Phase 3: 40,000 buildings in sixteen batches from the street
@@ -1515,7 +1515,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 gust: 0.7,
                 ..og_render::Wind::default()
             });
-            g.scene.tick = 90;
+            g.scene.frame.tick = 90;
             Ok(())
         },
         // R6: a 16 × 12 m pit cut out of the island's meadow over an

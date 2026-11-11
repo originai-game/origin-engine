@@ -32,7 +32,7 @@ fn a_cards_trunk_is_in_its_own_crowns_shadow() {
     )
     .expect("saved");
     let vp = {
-        let c = &scene.camera;
+        let c = &scene.frame.camera;
         let og_render::Projection::Perspective { fov_y_degrees } = c.projection else {
             unreachable!("a perspective camera")
         };
