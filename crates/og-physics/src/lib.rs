@@ -792,8 +792,13 @@ impl PhysicsSystem {
         let run = move |ctx: &mut SystemContext<'_>| {
             let settings = *ctx.resource::<Physics>()?;
             let lazy = gather::LazyIds::of(|n| ctx.id_by_name(n).ok());
-            let scene =
-                gather::gather(&|i| ctx.query(i), &|e, id| ctx.get_bytes(e, id), lazy, &ids)?;
+            let scene = gather::gather(
+                &|i| ctx.query(i),
+                &|e, id| ctx.get_bytes(e, id),
+                lazy,
+                &ids,
+                &mut ids.kept(),
+            )?;
             let mut shared = lock(&shared);
             shared.recorded = Some((settings, scene));
             shared.recorded_query = None;
@@ -1195,6 +1200,8 @@ impl PhysicsSystem {
             &|e, id| world.get_bytes(e, id),
             gather::LazyIds::of(|n| world.id_by_name(n).ok()),
             &self.ids,
+            // Outside a system nothing kept can be relied on (`gather::Kept`).
+            &mut gather::Kept::default(),
         )?;
         let inner = Arc::new(QueryInner::build_outside(
             settings.profile,
