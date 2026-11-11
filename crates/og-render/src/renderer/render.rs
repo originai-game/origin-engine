@@ -3995,49 +3995,27 @@ impl Renderer {
             gpu_set,
         );
         encoder.expect(self.info.caps, self.info.caps);
-        // The crowds' cull, in the frame's (timed) encoder: after GPU
-        // culling's commands and the pyramid's last build (the meshlets'
-        // first phase draws into its depth), before any pass draws them.
-        // It opens no graph pass, so its queries are listed as their own
-        // pass ("cull: crowds", the first of the frame's GPU passes).
-        let mut crowd_cull_queries: Option<std::ops::Range<u32>> = None;
-        if crowd_gpu {
-            let q0 = encoder.used();
-            let gc = self.gpu_cull.as_ref().expect("made above");
-            let (half_tan, ortho_height) = match scene.camera.projection {
-                Projection::Perspective { fov_y_degrees } => {
-                    (Some((fov_y_degrees.to_radians() * 0.5).tan()), 0.0)
-                }
-                Projection::Orthographic { height } => (None, height),
-            };
-            let index_counts = crowd_frame.index_counts();
-            let cc = self
-                .crowd_gpu
-                .as_mut()
-                .expect("made when crowd_gpu was decided");
-            cc.encode(
-                &mut encoder,
-                &self.device,
-                &self.queue,
-                &crowd_frame,
-                &index_counts,
-                &cull_passes,
-                &crowd_gpu::CrowdView {
-                    position: camera.position,
-                    half_tan,
-                    ortho_height,
-                    view_height: self.height as f32,
-                    view_proj: cam.jittered_view_proj,
-                    size: (self.width, self.height),
-                    pyramid: gc.pyramid(),
-                },
-                crowd_previous.map_or(0, |at| at + 1),
-                (&gc.args, gc.crowd_counts_word()),
-            );
-            if encoder.timed() && encoder.used() > q0 {
-                crowd_cull_queries = Some(q0..encoder.used());
-            }
-        }
+        // The crowds' cull, before any pass draws them (pre_graph.rs).
+        let crowd_cull_queries = if crowd_gpu {
+            pre_graph(&mut encoder, self.info.caps, pre_graph::CROWD_CULL, |e| {
+                pre_graph::encode_crowd_cull(
+                    e,
+                    (&self.device, &self.queue, (self.width, self.height)),
+                    self.gpu_cull.as_ref().expect("made above"),
+                    self.crowd_gpu
+                        .as_mut()
+                        .expect("made when crowd_gpu was decided"),
+                    scene,
+                    &crowd_frame,
+                    &cull_passes,
+                    (&camera, &cam),
+                    crowd_previous,
+                )
+            })
+            .flatten()
+        } else {
+            None
+        };
         // GPU culling's counts' readback, after every cull that writes them.
         if gpu_cull && let Some(gc) = self.gpu_cull.as_mut() {
             gc.copy_counts(&mut encoder);
