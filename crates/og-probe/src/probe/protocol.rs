@@ -717,14 +717,15 @@ impl Probe {
     pub fn reload(&mut self, world: &mut World) -> Option<Value> {
         let tick = world.time().tick;
         let Some(reloader) = self.host.reloader.as_mut() else {
-            self.note(tick, true, "reload: this host has no bundle loader".into());
+            self.out
+                .note(tick, true, "reload: this host has no bundle loader".into());
             return None;
         };
         let saved = world.snapshot();
         let rebuilt = match reloader.rebuild(world) {
             Ok(rebuilt) => rebuilt,
             Err(why) => {
-                self.note(
+                self.out.note(
                     tick,
                     true,
                     format!(
@@ -736,7 +737,8 @@ impl Probe {
         };
         let mut next = rebuilt.world;
         if let Err(err) = self.host.input.attach(&mut next) {
-            self.note(tick, true, format!("reload: input: {}", err.reason()));
+            self.out
+                .note(tick, true, format!("reload: input: {}", err.reason()));
             return None;
         }
         // Types by name, fields by name (og-ecs `restore_migrating`): added
@@ -744,7 +746,7 @@ impl Probe {
         let report = match next.restore_migrating(&saved) {
             Ok(r) => r,
             Err(err) => {
-                self.note(
+                self.out.note(
                     tick,
                     true,
                     format!(
@@ -930,7 +932,8 @@ impl Probe {
         match self.schedule(world, script) {
             Ok(report) => Some(report.to_json()),
             Err(err) => {
-                self.note(world.time().tick, true, format!("commands: {err}"));
+                self.out
+                    .note(world.time().tick, true, format!("commands: {err}"));
                 None
             }
         }

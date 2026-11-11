@@ -438,7 +438,8 @@ impl Probe {
                 match self.save_scene(world, write, spawned) {
                     Ok(v) => v,
                     Err(reason) => {
-                        self.note(world.time().tick, true, format!("save_scene: {reason}"));
+                        self.out
+                            .note(world.time().tick, true, format!("save_scene: {reason}"));
                         Value::Null
                     }
                 }
