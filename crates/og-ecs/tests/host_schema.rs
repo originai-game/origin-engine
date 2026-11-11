@@ -100,6 +100,62 @@ struct Velocity {
     drag: f32,
 }
 
+/// A component's columns together are its rows' packed values: row `i` of
+/// each, in field order, is `get_bytes` of entity `i`.
+#[test]
+fn a_components_columns_hold_each_rows_packed_bytes_in_field_order() {
+    let mut w = World::new(&WorldDesc::default()).unwrap();
+    let vel = w
+        .register_schema(Schema::from_json(VELOCITY).unwrap())
+        .unwrap();
+    let mass = w
+        .register_schema(
+            Schema::from_json(
+                r#"{"name":"Mass","version":1,"fields":[{"name":"kg","type":"f32"}]}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    for (v, drag) in [([1.0, 2.0, 3.0], 0.5), ([4.0, 5.0, 6.0], 0.25)] {
+        w.spawn_bytes(vec![
+            (vel, packed(v, drag)),
+            (mass, 7.0f32.to_le_bytes().to_vec()),
+        ])
+        .unwrap();
+    }
+    let mut q = QueryDesc::new();
+    q.write.push("Velocity".into());
+    let mut seen = 0;
+    for view in w.query(&q).unwrap() {
+        let columns = view.component_bytes(vel).unwrap();
+        assert_eq!(columns.len(), 2, "one column a field");
+        for (row, &e) in view.entities().iter().enumerate() {
+            let mut bytes = Vec::new();
+            for c in &columns {
+                let size = c.len() / view.len();
+                bytes.extend_from_slice(&c[row * size..(row + 1) * size]);
+            }
+            assert_eq!(bytes, w.get_bytes(e, vel).unwrap(), "row {row}");
+            seen += 1;
+        }
+        drop(columns);
+        // A component the query did not declare is refused, and so is one
+        // a column of which is held for writing.
+        assert_eq!(
+            view.component_bytes(mass).unwrap_err().kind(),
+            ErrorKind::Access
+        );
+        let held = view
+            .write_bytes(w.field_by_id(vel, "drag").unwrap())
+            .unwrap();
+        let busy = view.component_bytes(vel).unwrap_err();
+        assert!(busy.to_string().contains("still held"), "{busy}");
+        drop(held);
+        assert!(view.component_bytes(vel).is_ok());
+    }
+    assert_eq!(seen, 2);
+}
+
 #[test]
 fn a_rust_type_adopts_a_host_layout_of_the_same_shape() {
     let mut w = World::new(&WorldDesc::default()).unwrap();

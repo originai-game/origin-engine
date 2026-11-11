@@ -372,6 +372,36 @@ impl<'w> ArchetypeView<'w> {
         Ok(Ref::map(col, |c| c.bytes()))
     }
 
+    /// Every column of component `id` as raw bytes, in field order: a row's
+    /// packed value ([`World::get_bytes`]) is its slice of each, one after
+    /// the other.
+    pub fn component_bytes(&self, id: SchemaId) -> Result<Vec<Ref<'w, [u8]>>> {
+        self.registry.check(id)?;
+        if self.access.required.binary_search(&id).is_err() {
+            return Err(Error::new(
+                ErrorKind::Access,
+                format!(
+                    "{}: no read access to '{}' (declare it in the query's read or write list)",
+                    self.access.owner,
+                    self.registry.name(id),
+                ),
+            ));
+        }
+        let position = self
+            .arch
+            .position(id)
+            .expect("a matched archetype holds every required component");
+        self.arch
+            .columns_of(position)
+            .map(|c| {
+                let col = self.arch.columns[c]
+                    .try_borrow()
+                    .map_err(|_| busy(self.registry.name(id)))?;
+                Ok(Ref::map(col, |c| c.bytes()))
+            })
+            .collect()
+    }
+
     pub fn write_bytes(&self, field: FieldRef) -> Result<RefMut<'w, [u8]>> {
         let c = self.column(field, true)?;
         let col = self.arch.columns[c]
