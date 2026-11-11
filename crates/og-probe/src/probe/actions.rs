@@ -730,13 +730,13 @@ impl Probe {
                 // Unnamed gets on one tick: get-<tick>.json, then -2, -3, ...
                 let mut path = output_path(args.get(1))?;
                 if path.is_none() {
-                    self.gets = if self.gets.0 == tick {
-                        (tick, self.gets.1 + 1)
+                    self.out.gets = if self.out.gets.0 == tick {
+                        (tick, self.out.gets.1 + 1)
                     } else {
                         (tick, 1)
                     };
-                    if self.gets.1 > 1 {
-                        path = Some(format!("get-{tick:06}-{}.json", self.gets.1));
+                    if self.out.gets.1 > 1 {
+                        path = Some(format!("get-{tick:06}-{}.json", self.out.gets.1));
                     }
                 }
                 self.emit(

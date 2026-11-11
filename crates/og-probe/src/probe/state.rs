@@ -57,3 +57,16 @@ pub(crate) struct Commands {
     pub(super) registered: BTreeMap<String, Registered>,
     pub(super) inbox: Inbox,
 }
+
+/// What a run hands back to the host: output files and log lines.
+pub(crate) struct Out {
+    pub(super) outputs: Vec<Output>,
+    pub(super) log: Vec<LogLine>,
+    /// The tick of the last unnamed `get` and how many it has had, so a
+    /// second one on the same tick writes `get-<tick>-2.json`.
+    pub(super) gets: (u64, u32),
+    /// The files this script's steps wrote, each with the step that wrote
+    /// it (its time and action): a second step naming one is written beside
+    /// it, suffixed, with a warning naming both ([`Probe::emit`]).
+    pub(super) written: BTreeMap<String, (f64, String)>,
+}

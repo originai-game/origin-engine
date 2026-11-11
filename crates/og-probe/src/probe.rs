@@ -254,20 +254,13 @@ pub struct Probe {
     step_ms: f64,
     render_ms: f64,
     triangles: u64,
-    outputs: Vec<Output>,
-    log: Vec<LogLine>,
+    /// What a run hands back to the host: output files and log lines.
+    pub(crate) out: state::Out,
     pointer: (f32, f32),
     target_missed: bool,
     /// The sub-tick stamp of the input being delivered (InputSink::inject_at).
     stamp: f32,
     sweeping: Option<SweepJob>,
-    /// The tick of the last unnamed `get` and how many it has had, so a
-    /// second one on the same tick writes `get-<tick>-2.json`.
-    gets: (u64, u32),
-    /// The files this script's steps wrote, each with the step that wrote
-    /// it (its time and action): a second step naming one is written beside
-    /// it, suffixed, with a warning naming both ([`Probe::emit`]).
-    written: BTreeMap<String, (f64, String)>,
     /// The host's input filter ([`Probe::set_input_filter`]).
     filter: Option<InputFilterFn>,
 }
@@ -519,13 +512,15 @@ impl Probe {
             step_ms: 0.0,
             render_ms: 0.0,
             triangles: 0,
-            outputs: Vec::new(),
-            log: Vec::new(),
+            out: state::Out {
+                outputs: Vec::new(),
+                log: Vec::new(),
+                gets: (u64::MAX, 0),
+                written: BTreeMap::new(),
+            },
             pointer: (0.0, 0.0),
             target_missed: false,
             sweeping: None,
-            gets: (u64::MAX, 0),
-            written: BTreeMap::new(),
             filter: None,
         })
     }
@@ -755,7 +750,7 @@ impl Probe {
 
     /// Files commands produced since the last call, for the host to write.
     pub fn take_outputs(&mut self) -> Vec<Output> {
-        std::mem::take(&mut self.outputs)
+        std::mem::take(&mut self.out.outputs)
     }
 
     /// Hands an output a step made to the host. A file an earlier step of
@@ -768,7 +763,7 @@ impl Probe {
         let wanted = output.file_name();
         let mut name = wanted.clone();
         let mut n = 1;
-        while self.written.contains_key(&name) {
+        while self.out.written.contains_key(&name) {
             n += 1;
             name = suffixed(&wanted, n);
         }
@@ -776,7 +771,7 @@ impl Probe {
             output.path = Some(name.clone());
             // Unnamed outputs are the probe's own names: suffixed quietly.
             if named {
-                let (first_at, first_action) = &self.written[&wanted];
+                let (first_at, first_action) = &self.out.written[&wanted];
                 self.note(
                     output.tick,
                     true,
@@ -787,17 +782,17 @@ impl Probe {
                 );
             }
         }
-        self.written.insert(name, (at, output.action.clone()));
-        self.outputs.push(output);
+        self.out.written.insert(name, (at, output.action.clone()));
+        self.out.outputs.push(output);
     }
 
     /// Log lines since the last call.
     pub fn take_log(&mut self) -> Vec<LogLine> {
-        std::mem::take(&mut self.log)
+        std::mem::take(&mut self.out.log)
     }
 
     pub(crate) fn note(&mut self, tick: u64, warning: bool, text: String) {
-        self.log.push(LogLine {
+        self.out.log.push(LogLine {
             tick,
             warning,
             text,
@@ -946,7 +941,7 @@ impl Probe {
             .collect();
         self.watch_events(watched.iter().map(String::as_str));
         // A script's outputs are its own: one names each file once.
-        self.written.clear();
+        self.out.written.clear();
         let rate = f64::from(tick_rate(world));
         let mut report = CommandsReport {
             scheduled: 0,
