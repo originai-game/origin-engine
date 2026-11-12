@@ -29,6 +29,7 @@ pub use hierarchy::Hierarchy;
 pub(crate) use hierarchy::{Blend, blend};
 
 use super::codec::{Cells, Col, ColRow, Layout, Rec, Slot as FieldSlot};
+use crate::wire::FromJson;
 use glam::{Mat4, Quat, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};
@@ -512,10 +513,6 @@ pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
     v[key].as_f64().map_or(default, |x| x as f32)
 }
 
-fn vec3(v: &Value) -> Vec3 {
-    Vec3::new(f(v, "x", 0.0), f(v, "y", 0.0), f(v, "z", 0.0))
-}
-
 fn color(v: &Value, default: f32) -> Vec3 {
     Vec3::new(f(v, "r", default), f(v, "g", default), f(v, "b", default))
 }
@@ -757,20 +754,22 @@ pub(crate) fn mesh_rows(world: &World, layout: &Layout) -> Vec<MeshRow> {
     }
     rows(world, layout)
         .into_iter()
-        .map(|(e, v)| {
-            let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
-            MeshRow {
+        .filter_map(|(e, v)| {
+            let v = crate::wire::record::Mesh::from_json(&v).ok()?;
+            let index = |h: u64| (h & 0xffff_ffff) as usize;
+            let c = &v.flash_color;
+            Some(MeshRow {
                 entity: e,
-                geometry: index("geometry"),
-                material: index("material"),
-                visible: on(&v, "visible", true),
-                flash: v["flash"].as_f64().unwrap_or(0.0) as f32,
-                flash_color: color(&v["flashColor"], 1.0),
-                layer: v["materialLayer"].as_f64().unwrap_or(-1.0) as i32,
-                cast: on(&v, "castShadow", false),
-                receive: on(&v, "receiveShadow", true),
-                layers: v["layers"].as_u64().map_or(1, |x| x as u32),
-            }
+                geometry: index(v.geometry),
+                material: index(v.material),
+                visible: v.visible,
+                flash: v.flash,
+                flash_color: Vec3::new(c.r, c.g, c.b),
+                layer: v.material_layer,
+                cast: v.cast_shadow,
+                receive: v.receive_shadow,
+                layers: v.layers,
+            })
         })
         .collect()
 }

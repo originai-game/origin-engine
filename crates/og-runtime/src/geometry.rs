@@ -16,7 +16,7 @@ use super::assets::{self, index_of};
 use super::engine::{Engine, engine, running};
 use super::extract::{Hierarchy, RenderState};
 use super::parse;
-use super::wire;
+use super::wire::{self, FromJson};
 use glam::{DVec2, DVec3, Mat4, Quat, Vec2, Vec3};
 use og_ecs::World;
 use og_render::geometry::{self as geo, Bvh};
@@ -363,23 +363,13 @@ pub(crate) fn current_view(rs: &RenderState) -> &'static str {
     VIEWS[rs.geo.view_index(&rs.options)]
 }
 
+/// A RenderOptions.debugView value's index in [`VIEWS`] (the IDL's
+/// DebugView order); none or an unknown name is `none`.
 fn view_of(v: &Value) -> usize {
-    match v {
-        Value::String(s) => VIEWS.iter().position(|n| n == s).unwrap_or(0),
-        Value::Number(n) => (n.as_u64().unwrap_or(0) as usize).min(VIEWS.len() - 1),
-        _ => 0,
-    }
+    wire::DebugView::from_json(v).map_or(0, |d| d as usize)
 }
 
 // ── decoding ────────────────────────────────────────────────────────────────
-
-fn num(v: &Value, k: &str, d: f32) -> f32 {
-    v[k].as_f64().map_or(d, |x| x as f32)
-}
-
-fn flag(v: &Value, k: &str, d: bool) -> bool {
-    v[k].as_bool().unwrap_or(d)
-}
 
 /// `q` normalised; a zero quaternion is the identity.
 fn unit(q: Quat) -> Quat {
@@ -388,18 +378,6 @@ fn unit(q: Quat) -> Quat {
     } else {
         q.normalize()
     }
-}
-
-fn rgb(v: &Value, d: [f32; 3]) -> [f32; 3] {
-    if !v.is_object() {
-        return d;
-    }
-    [num(v, "r", d[0]), num(v, "g", d[1]), num(v, "b", d[2])]
-}
-
-fn rgba(v: &Value, d: [f32; 3], alpha: f32) -> [f32; 4] {
-    let [r, g, b] = rgb(v, d);
-    [r, g, b, alpha]
 }
 
 fn color4(c: &wire::Color, alpha: f32) -> [f32; 4] {
@@ -489,13 +467,11 @@ pub(crate) fn adopt_cooked_bvh(
 
 // ── lines and points ────────────────────────────────────────────────────────
 
-fn line_mode(v: &Value) -> LineMode {
-    match v {
-        Value::String(s) if s == "segments" => LineMode::Segments,
-        Value::String(s) if s == "loop" => LineMode::Loop,
-        Value::Number(n) if n.as_u64() == Some(1) => LineMode::Segments,
-        Value::Number(n) if n.as_u64() == Some(2) => LineMode::Loop,
-        _ => LineMode::Strip,
+fn line_mode(m: wire::LineMode) -> LineMode {
+    match m {
+        wire::LineMode::Strip => LineMode::Strip,
+        wire::LineMode::Segments => LineMode::Segments,
+        wire::LineMode::Loop => LineMode::Loop,
     }
 }
 
@@ -962,8 +938,8 @@ pub(crate) fn register(probe: &mut og_probe::Probe, engine_id: u32) {
 // ── extraction ──────────────────────────────────────────────────────────────
 
 /// The vertices of a geometry handle field as points and colours.
-fn vertices_of(rs: &RenderState, v: &Value, alpha: f32) -> Option<(Vec<Vec3>, Vec<[f32; 4]>)> {
-    let index = super::fx::handle_index(&v["geometry"])?;
+fn vertices_of(rs: &RenderState, geometry: u64, alpha: f32) -> Option<(Vec<Vec3>, Vec<[f32; 4]>)> {
+    let index = index_of(geometry as f64)?;
     let mesh = rs.scene.mesh(*rs.geometries.get(index)?)?;
     let points = mesh
         .vertices
@@ -994,16 +970,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     // og.Lines and og.Points.
     if let Some(layout) = rs.draw.lines.clone() {
         for (e, v) in super::fx::rows(world, Some(&layout)) {
-            // Drawn by the cameras its layers admit (the renderer tests them).
-            let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
-            if !flag(&v, "visible", true) {
-                continue;
-            }
-            let alpha = num(&v, "opacity", 1.0).clamp(0.0, 1.0);
-            let Some((points, colors)) = vertices_of(rs, &v, alpha) else {
+            let Ok(v) = wire::record::Lines::from_json(&v) else {
                 continue;
             };
-            let dash = num(&v, "dashSize", 0.0);
+            // Drawn by the cameras its layers admit (the renderer tests them).
+            let layers = v.layers;
+            if !v.visible {
+                continue;
+            }
+            let alpha = v.opacity.clamp(0.0, 1.0);
+            let Some((points, colors)) = vertices_of(rs, v.geometry, alpha) else {
+                continue;
+            };
+            let dash = v.dash_size;
             let at = rs.scene.effects.lines.len();
             if layers != 1 {
                 rs.scene.effects.line_layers.resize(at, 1);
@@ -1012,13 +991,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
             rs.scene.effects.lines.push(Lines {
                 points,
                 colors,
-                color: rgba(&v["color"], [1.0; 3], 1.0),
-                mode: line_mode(&v["mode"]),
-                width: num(&v, "width", 1.0).max(0.0),
-                world_width: flag(&v, "worldUnits", false),
-                depth_test: flag(&v, "depthTest", true),
+                color: color4(&v.color, 1.0),
+                mode: line_mode(v.mode),
+                width: v.width.max(0.0),
+                world_width: v.world_units,
+                depth_test: v.depth_test,
                 screen: false,
-                dashed: (dash > 0.0).then(|| (dash, num(&v, "gapSize", 1.0).max(0.0))),
+                dashed: (dash > 0.0).then(|| (dash, v.gap_size.max(0.0))),
                 layer: LineLayer::Scene,
                 transform: h.world_of(e),
             });
@@ -1026,13 +1005,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
     }
     if let Some(layout) = rs.draw.points.clone() {
         for (e, v) in super::fx::rows(world, Some(&layout)) {
+            let Ok(v) = wire::record::Points::from_json(&v) else {
+                continue;
+            };
             // Drawn by the cameras its layers admit (the renderer tests them).
-            let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
-            if !flag(&v, "visible", true) {
+            let layers = v.layers;
+            if !v.visible {
                 continue;
             }
-            let alpha = num(&v, "opacity", 1.0).clamp(0.0, 1.0);
-            let Some((positions, colors)) = vertices_of(rs, &v, alpha) else {
+            let alpha = v.opacity.clamp(0.0, 1.0);
+            let Some((positions, colors)) = vertices_of(rs, v.geometry, alpha) else {
                 continue;
             };
             let at = rs.scene.effects.points.len();
@@ -1043,10 +1025,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, vp
             rs.scene.effects.points.push(Points {
                 positions,
                 colors,
-                color: rgba(&v["color"], [1.0; 3], 1.0),
-                size: num(&v, "size", 1.0).max(0.0),
-                size_attenuation: flag(&v, "sizeAttenuation", true),
-                depth_test: flag(&v, "depthTest", true),
+                color: color4(&v.color, 1.0),
+                size: v.size.max(0.0),
+                size_attenuation: v.size_attenuation,
+                depth_test: v.depth_test,
                 screen: false,
                 layer: LineLayer::Scene,
                 transform: h.world_of(e),
