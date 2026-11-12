@@ -13,6 +13,7 @@
 //! log without it.
 
 use super::{Engine, edit_loaded, index_of, log_of, placement, replay_if_restored, terrain_id};
+use crate::wire::{TerrainStampDesc, TerrainStampMode};
 use glam::{DVec2, Mat4, Vec2, Vec3};
 use og_render::TerrainData;
 use serde_json::{Value, json};
@@ -297,18 +298,22 @@ pub(crate) fn apply(
 
 /// `og.terrain.stamp`'s mesh in the terrain's own space: its triangles,
 /// placed by the stamp's transform, then into the terrain's.
-fn triangles(eng: &Engine, desc: &Value) -> Result<Vec<[Vec3; 3]>, String> {
-    let geometry = desc["geometry"].as_f64().unwrap_or(0.0);
+fn triangles(
+    eng: &Engine,
+    desc: &TerrainStampDesc,
+    given: &Value,
+) -> Result<Vec<[Vec3; 3]>, String> {
+    let geometry = desc.geometry;
     let rs = eng.render.borrow();
-    let mesh = super::super::assets::index_of(geometry)
+    let mesh = super::super::assets::index_of(geometry as f64)
         .and_then(|i| rs.geometries.get(i).copied())
         .and_then(|m| rs.scene.mesh(m))
         .ok_or_else(|| {
             format!("TerrainStampDesc.geometry {geometry} is not a loaded geometry with its mesh in memory")
         })?;
     let mesh = super::super::modules::mesh_of(mesh);
-    let terrain = placement(&desc["origin"], &desc["quaternion"], &desc["scale"]);
-    let stamp = placement(&desc["position"], &desc["rotation"], &desc["size"]);
+    let terrain = placement(&given["origin"], &given["quaternion"], &given["scale"]);
+    let stamp = placement(&given["position"], &given["rotation"], &given["size"]);
     let m: Mat4 = terrain.inverse() * stamp;
     let p: Vec<Vec3> = mesh
         .positions
@@ -328,33 +333,27 @@ fn triangles(eng: &Engine, desc: &Value) -> Result<Vec<[Vec3; 3]>, String> {
         .collect())
 }
 
-pub(crate) fn stamp(eng: &Engine, desc: &Value) -> Result<Value, String> {
+/// `og.terrain.stamp` of `desc`, read from `given` (the desc as passed).
+pub(crate) fn stamp(eng: &Engine, desc: &TerrainStampDesc, given: &Value) -> Result<Value, String> {
     replay_if_restored(eng)?;
-    let i = index_of(eng, desc["data"].as_f64().unwrap_or(0.0))?;
-    let hole = match &desc["mode"] {
-        Value::Null => false,
-        Value::String(s) => match MODES.iter().position(|m| m == s) {
-            Some(k) => k == 1,
-            None => {
-                return Err(format!(
-                    "TerrainStampDesc.mode '{s}' is not one of {}",
-                    MODES.join(", ")
-                ));
-            }
-        },
-        other => return Err(format!("TerrainStampDesc.mode {other} is not a mode")),
-    };
+    let i = index_of(eng, desc.data as f64)?;
+    let hole = desc.mode == TerrainStampMode::Hole;
     // The depth is the terrain's own metres, as its heights are.
-    let up = placement(&desc["origin"], &desc["quaternion"], &desc["scale"])
+    let up = placement(&given["origin"], &given["quaternion"], &given["scale"])
         .y_axis
         .truncate()
         .length()
         .max(1e-6);
-    let depth = desc["depth"].as_f64().unwrap_or(0.25) as f32;
+    // A null depth (a NaN the game passed) is the default, as it was.
+    let depth = if desc.depth.is_nan() {
+        0.25
+    } else {
+        desc.depth
+    };
     if !(depth >= 0.0 && depth.is_finite()) {
         return Err("TerrainStampDesc.depth must be at least 0".into());
     }
-    let triangles = triangles(eng, desc)?;
+    let triangles = triangles(eng, desc, given)?;
     let grid = {
         let rs = eng.render.borrow();
         let t = &rs.terrain.loaded[i];
