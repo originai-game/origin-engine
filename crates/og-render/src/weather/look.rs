@@ -45,6 +45,14 @@ pub struct WeatherLook {
     /// closes as they build, by `dim`), 0 for what hangs in the air under
     /// any sky (dust, mist).
     pub cover: f32,
+    /// How hard it rains (its intensity; 0 for every other weather): what
+    /// ripples the puddles under it ([`crate::SurfaceWeather::under`]).
+    pub rain: f32,
+    /// The velocity what falls settles at, in m/s: the rain's or the
+    /// snow's fall slanted by the level wind, straight down for what does
+    /// not fall. The weather's shelter looks along it
+    /// ([`crate::SurfaceWeather::under`]).
+    pub fall: Vec3,
 }
 
 /// The greatest intensity: what each emitter's rate and capacity are set
@@ -96,6 +104,11 @@ pub fn weather(
         Some(layer) => ParticleRender::Sprite { layer },
         None => ParticleRender::Billboard,
     };
+    // What falls settles at its fall speed slanted by the level wind, as
+    // its particles do (their drag scales both alike). The world's wind,
+    // not the 2D layer's: the shelter is the world's.
+    let level = Vec3::new(wind.x, 0.0, wind.z);
+    let settling = move |fall: f32| level - Vec3::Y * fall;
     let wind = if two_d {
         Vec3::new(wind.x, wind.y, 0.0)
     } else {
@@ -158,6 +171,8 @@ pub fn weather(
                 }),
                 light: dimmed(0.55),
                 cover: closing(0.95),
+                rain: i,
+                fall: settling(fall),
             }
         }
         WEATHER_SNOW => {
@@ -208,6 +223,8 @@ pub fn weather(
                 }),
                 light: dimmed(0.35),
                 cover: closing(0.9),
+                rain: 0.0,
+                fall: settling(fall),
             }
         }
         WEATHER_DUST => WeatherLook {
@@ -260,6 +277,8 @@ pub fn weather(
             }),
             light: dimmed(0.45),
             cover: 0.0,
+            rain: 0.0,
+            fall: Vec3::NEG_Y,
         },
         WEATHER_MIST => WeatherLook {
             emitter: None,
@@ -276,6 +295,8 @@ pub fn weather(
             }),
             light: dimmed(0.25),
             cover: 0.0,
+            rain: 0.0,
+            fall: Vec3::NEG_Y,
         },
         _ => WeatherLook {
             emitter: None,
@@ -284,6 +305,8 @@ pub fn weather(
             fog: None,
             light: 1.0,
             cover: 0.0,
+            rain: 0.0,
+            fall: Vec3::NEG_Y,
         },
     }
 }

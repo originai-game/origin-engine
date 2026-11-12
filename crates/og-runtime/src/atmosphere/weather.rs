@@ -78,6 +78,7 @@ pub(super) fn extract(
     {
         c.light_scene(scene);
     }
+    let mut falling = None;
     if let Some(w) = weather {
         let kind = w.kind;
         let layer = orthographic.then_some(w.layer);
@@ -154,20 +155,24 @@ pub(super) fn extract(
                 tick,
             ));
         }
+        falling = Some(look);
     }
 
-    lightning_and_surfaces(world, scene, layouts, tick);
+    lightning_and_surfaces(world, scene, layouts, tick, falling.as_ref());
 }
 
 /// og.WeatherState drawn: the lit surfaces' wetness, puddles and snow,
 /// and the latest lightning strike for 0.6 s after its tick (a double
 /// flash of the sky's light, a bolt from the cloud base to the ground and
-/// a bright light where it lands). A pure function of the world's state.
+/// a bright light where it lands). The surfaces lie under `falling`, the
+/// weather now (its rain ripples the puddles, the shelter looks along its
+/// fall). A pure function of the world's state.
 fn lightning_and_surfaces(
     world: &World,
     scene: &mut og_render::RenderScene,
     layouts: &AtmoLayouts,
     tick: u64,
+    falling: Option<&og_render::WeatherLook>,
 ) {
     scene.atmosphere.surface_weather = None;
     let Some(st) = resource(world, layouts.weather_state.as_ref())
@@ -175,37 +180,17 @@ fn lightning_and_surfaces(
     else {
         return;
     };
-    let world_wind = WorldWind::read(world, layouts.wind.as_ref()).velocity;
-    let weather =
-        resource(world, layouts.weather.as_ref()).and_then(|w| record::Weather::from_json(&w).ok());
-    let kind = weather.as_ref().map_or(0, |w| w.kind);
-    let rain = weather
-        .as_ref()
-        .filter(|_| kind == og_render::WEATHER_RAIN)
-        .map_or(0.0, |w| w.intensity);
-    // The shelter map looks along the fall: the rain's or the snow's speed
-    // (og_render::weather's particles) slanted by the wind, at most 45°
-    // (what drifts flatter eddies round a roof, not under it); straight
-    // down once neither falls.
-    let (drift, down) = match (kind, weather.as_ref()) {
-        (og_render::WEATHER_RAIN, Some(w)) => (w.wind + world_wind, 11.0),
-        (og_render::WEATHER_SNOW, Some(w)) => ((w.wind + world_wind) * 0.8, 0.88),
-        _ => (Vec3::ZERO, 1.0),
-    };
-    let drift = Vec3::new(drift.x, 0.0, drift.z).clamp_length_max(down);
-    let fall = drift - Vec3::Y * down;
-    scene.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
+    let lying = og_render::SurfaceWeather {
         wetness: st.wetness,
         puddles: st.puddles,
         snow: st.snow_depth / st.snow_cover.max(1e-3),
-        rain,
-        fall: fall.normalize_or(Vec3::NEG_Y),
         shelter: st.shelter_size,
         dust: st.dust,
         dust_color: rgb(&st.dust_color),
         snow_depth: st.snow_depth,
         ..Default::default()
-    });
+    };
+    scene.atmosphere.surface_weather = Some(falling.map_or(lying, |look| lying.under(look)));
     let strikes = st.strikes;
     if strikes == 0 {
         return;

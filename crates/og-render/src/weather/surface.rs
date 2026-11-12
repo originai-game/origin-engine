@@ -60,6 +60,21 @@ impl Default for SurfaceWeather {
 }
 
 impl SurfaceWeather {
+    /// These surfaces under the weather `look`: how hard it rains on them
+    /// now and which way it falls, slanted by the wind at most 45 degrees
+    /// (what drifts flatter eddies round a roof, not under it). What lies
+    /// on them (wetness, puddles, snow, dust) stays: it is the state the
+    /// weather left, not the weather.
+    pub fn under(self, look: &crate::WeatherLook) -> SurfaceWeather {
+        let down = (-look.fall.y).max(0.0);
+        let drift = Vec3::new(look.fall.x, 0.0, look.fall.z).clamp_length_max(down);
+        SurfaceWeather {
+            rain: look.rain,
+            fall: (drift - Vec3::Y * down).normalize_or(Vec3::NEG_Y),
+            ..self
+        }
+    }
+
     /// The frame uniform's rows (`frame.weather`, `frame.weather_look`,
     /// `frame.weather_dust`, `frame.weather_depth`).
     pub(crate) fn gpu(&self) -> [[f32; 4]; 4] {
@@ -82,5 +97,51 @@ impl SurfaceWeather {
                 .to_array(),
             [self.snow_depth.clamp(0.0, 4.0), 0.0, 0.0, 0.0],
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{WEATHER_DUST, WEATHER_RAIN, WEATHER_SNOW, weather};
+
+    fn under(kind: u32, intensity: f32, wind: Vec3) -> SurfaceWeather {
+        let lying = SurfaceWeather {
+            wetness: 0.4,
+            snow: 0.3,
+            ..SurfaceWeather::default()
+        };
+        lying.under(&weather(kind, intensity, wind, 18.0, Vec3::ONE, 1.0, None))
+    }
+
+    /// The rain falls at 11 m/s and the snow at 1.1: a 5.5 m/s wind slants
+    /// the rain a little under 27 degrees and would lay the snow nearly
+    /// flat, which is held at 45. Only the rain ripples the puddles, a
+    /// rising wind slants nothing, dust falls straight, and what lies on
+    /// the surfaces is not the weather's to change.
+    #[test]
+    fn surfaces_take_the_rain_and_the_fall_of_the_weather_over_them() {
+        let close = |a: Vec3, b: Vec3| (a - b).length() < 1e-4;
+        let rain = under(WEATHER_RAIN, 1.5, Vec3::new(5.5, 3.0, 0.0));
+        assert_eq!(rain.rain, 1.5);
+        let s = 5f32.sqrt();
+        assert!(
+            close(rain.fall, Vec3::new(1.0 / s, -2.0 / s, 0.0)),
+            "{:?}",
+            rain.fall
+        );
+        assert_eq!((rain.wetness, rain.snow), (0.4, 0.3));
+
+        let snow = under(WEATHER_SNOW, 1.0, Vec3::new(4.0, 0.0, -3.0));
+        assert_eq!(snow.rain, 0.0);
+        let h = 0.5f32.sqrt();
+        assert!(
+            close(snow.fall, Vec3::new(0.8 * h, -h, -0.6 * h)),
+            "{:?}",
+            snow.fall
+        );
+
+        let dust = under(WEATHER_DUST, 2.0, Vec3::new(9.0, 0.0, 0.0));
+        assert_eq!((dust.rain, dust.fall), (0.0, Vec3::NEG_Y));
     }
 }
