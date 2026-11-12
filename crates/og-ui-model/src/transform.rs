@@ -1,4 +1,4 @@
-use crate::layout::Rect;
+use crate::Rect;
 
 /// A map of CSS px, DOMMatrix's `a`–`f` with a projective row `g h i`:
 /// `x' = (a·x + c·y + e) / w`, `y' = (b·x + d·y + f) / w`,

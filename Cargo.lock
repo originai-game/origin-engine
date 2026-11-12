@@ -3364,6 +3364,7 @@ dependencies = [
  "og-probe",
  "og-text",
  "og-tween",
+ "og-ui-model",
  "parley",
  "parley_engine",
  "regex-lite",
@@ -3371,6 +3372,14 @@ dependencies = [
  "serde_json",
  "skrifa",
  "ttf-parser",
+]
+
+[[package]]
+name = "og-ui-model"
+version = "0.7.7"
+dependencies = [
+ "og-core",
+ "og-css",
 ]
 
 [[package]]
