@@ -57,6 +57,8 @@ use draw_ctx::DrawCtx;
 use pass_gi_probes::GiProbesPass;
 mod pass_live_sky;
 use pass_live_sky::LiveSkyPass;
+mod pass_clouds;
+use pass_clouds::CloudsPass;
 mod pass_volumetric;
 use pass_volumetric::VolumetricPass;
 mod pass_ssr;
@@ -413,6 +415,10 @@ impl Renderer {
             use crate::deferred::Start;
             match scene.lighting.environment.background {
                 Background::Sky => self.sky.sky_pipeline.start(),
+                Background::Procedural { .. } if scene.atmosphere.clouds.is_some() => {
+                    self.sky.clouds_low.march.start();
+                    self.sky.clouds_low.sky.start();
+                }
                 Background::Procedural { .. } => self.sky.sky_look_pipeline.start(),
                 Background::Color(_) => {}
             }
@@ -928,6 +934,7 @@ impl Renderer {
         // The bind steps of the passes whose plans hold nothing of the
         // frame's: the pass list reads them.
         plans.live_sky = LiveSkyPass::bind(self, &mut frames.live_sky, ());
+        plans.clouds = CloudsPass::bind(self, &mut frames.clouds, scene);
         plans.gi_probes = GiProbesPass::bind(self, &mut frames.gi_probes, ());
         plans.light_2d = Light2dPass::bind(self, &mut frames.light_2d, scene);
         let Light2dFrame {
@@ -958,6 +965,7 @@ impl Renderer {
             reflections: reflections.len() as u8,
             views: view_plans.len() as u32,
             glow,
+            clouds: plans.clouds.is_some(),
             taa,
             smaa_t2x,
             // What the frame draws over its finished image (after_graph.rs).

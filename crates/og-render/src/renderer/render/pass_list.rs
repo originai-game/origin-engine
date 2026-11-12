@@ -24,6 +24,7 @@ pub(super) struct PassListInputs<'a> {
     pub reflections: u8,
     pub views: u32,
     pub glow: bool,
+    pub clouds: bool,
     pub taa: bool,
     pub smaa_t2x: bool,
     /// What is drawn over the finished frame (after_graph.rs).
@@ -54,6 +55,7 @@ impl Renderer {
             reflections,
             views,
             glow,
+            clouds,
             taa,
             smaa_t2x,
             after,
@@ -88,6 +90,7 @@ impl Renderer {
                 views,
                 froxels,
                 ssr: effects.ssr.is_some(),
+                clouds,
                 depth_bands: effects.depth_bands.is_some(),
                 glow,
                 outline: effects.outline,

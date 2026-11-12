@@ -51,6 +51,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
     ProbesPass::DESC,
     ReflectionPass::DESC,
     ViewPass::DESC,
+    CloudsPass::DESC,
     MainPass::DESC,
     GlowPass::DESC,
     CustomPostPass::DESC,
@@ -168,6 +169,8 @@ pub(crate) struct PassDecisions<'a> {
     pub views: u32,
     pub froxels: bool,
     pub ssr: bool,
+    /// The main camera's clouds at half the frame's size.
+    pub clouds: bool,
     pub depth_bands: bool,
     pub glow: bool,
     pub outline: bool,
@@ -285,6 +288,9 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     }
     if d.ssr {
         push(FramePass::Ssr);
+    }
+    if d.clouds {
+        push(FramePass::Clouds);
     }
     push(FramePass::Main);
     if d.depth_bands {
@@ -436,6 +442,7 @@ mod tests {
             crowd_cull: true,
             cull_counts: true,
             live_sky: true,
+            clouds: true,
             gi_probes: true,
             cascades: 3,
             shelter: true,

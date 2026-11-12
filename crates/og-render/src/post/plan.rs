@@ -52,6 +52,9 @@ pub(crate) enum FramePass {
     /// The live sky's step this frame (`sky_capture.rs`): a slice of its
     /// capture of the per-pixel sky and its filtering.
     LiveSky,
+    /// The main camera's clouds, marched at half the frame's size into
+    /// `clouds` (pass_clouds.rs): the main pass's sky draws them from there.
+    Clouds,
     /// The probe GI's trace and blend this frame (`gi_probes.rs`): into the
     /// light volumes' buffer, which every lit pass after it reads.
     GiProbes,
@@ -296,6 +299,7 @@ impl FramePass {
             FramePass::Metaballs => "metaballs".into(),
             FramePass::Fluid3d => "fluid-3d".into(),
             FramePass::LiveSky => "live-sky".into(),
+            FramePass::Clouds => "clouds".into(),
             FramePass::GiProbes => "gi-probes".into(),
             FramePass::Probes => "reflection-probes".into(),
             FramePass::Reflection(k) => reflection_target(k, "").into(),
@@ -732,6 +736,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     if has(FramePass::Glow) {
         g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
     }
+    if has(FramePass::Clouds) {
+        g.transient("clouds", desc(hw, hh, HDR_FORMAT, 1, attach_bind));
+    }
     let chain = chain_passes(passes);
     for i in 0..chain.len() {
         g.transient(ldr_name(i), desc(pw, ph, cfg.chain_format, 1, attach_bind));
@@ -930,6 +937,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::Probes => g.pass(name, &["cascades", "local-shadows"], &[]),
             // Into its own cubes and the bound IBL ones.
             FramePass::LiveSky => g.pass(name, &[], &[]),
+            FramePass::Clouds => g.pass(name, &[], &["clouds"]),
             // Into the light volumes' buffer, not a graph target.
             FramePass::GiProbes => g.pass(name, &[], &[]),
             FramePass::Reflection(k) => {
@@ -980,6 +988,9 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
                 }
                 if has(FramePass::Ssr) {
                     reads.push("ssr");
+                }
+                if has(FramePass::Clouds) {
+                    reads.push("clouds");
                 }
                 let mut writes = vec!["hdr", "depth"];
                 if msaa {

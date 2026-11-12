@@ -771,6 +771,8 @@ pub(crate) struct SkyState {
     pub(crate) sky_pipeline: Sampled<wgpu::RenderPipeline>,
     /// The procedural sky of a chosen look drawn per pixel ([`Background::Procedural`]).
     pub(crate) sky_look_pipeline: Sampled<wgpu::RenderPipeline>,
+    /// The main camera's clouds at half the frame's size, and the sky drawn under them.
+    pub(crate) clouds_low: clouds::CloudsLow,
     /// The live sky (`sky_capture.rs`): made while the background is the
     /// per-pixel sky.
     pub(crate) sky_capture: Option<sky_capture::SkyCapture>,

@@ -136,6 +136,7 @@ impl Renderer {
             fresh.shadows.compact_shadow_pipelines = self.shadows.compact_shadow_pipelines;
             fresh.sky.sky_pipeline = self.sky.sky_pipeline;
             fresh.sky.sky_look_pipeline = self.sky.sky_look_pipeline;
+            fresh.sky.clouds_low = self.sky.clouds_low;
             fresh.sprite.sprite_pipeline = self.sprite.sprite_pipeline;
             fresh.sprite.sprite_additive_pipeline = self.sprite.sprite_additive_pipeline;
             fresh.sprite.sprite_untonemapped_pipeline = self.sprite.sprite_untonemapped_pipeline;
@@ -387,11 +388,14 @@ impl Renderer {
         let SkyResourcesOutputs {
             sky_pipeline,
             sky_look_pipeline,
+            clouds_low,
             ibl,
             cloud_noise,
             sky_params,
             aurora_map,
         } = Self::sky_resources(SkyResourcesInputs {
+            frame_layout: &frame_layout,
+            sky_layout: &sky_layout,
             device: &device,
             queue: &queue,
             sky_pl: &sky_pl,
@@ -610,6 +614,7 @@ impl Renderer {
             sky: SkyState::new(
                 sky_layout,
                 (sky_pipeline, sky_look_pipeline),
+                clouds_low,
                 cloud_noise,
                 sky_params,
                 aurora_map,
@@ -823,6 +828,7 @@ impl SkyState {
             Sampled<wgpu::RenderPipeline>,
             Sampled<wgpu::RenderPipeline>,
         ),
+        clouds_low: clouds::CloudsLow,
         cloud_noise: clouds::CloudNoise,
         sky_params: wgpu::Buffer,
         aurora_map: aurora::AuroraMap,
@@ -834,6 +840,7 @@ impl SkyState {
             aurora_map,
             sky_pipeline,
             sky_look_pipeline,
+            clouds_low,
             sky_capture: None,
         }
     }

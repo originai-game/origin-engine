@@ -1015,6 +1015,7 @@ impl FrameGraph {
             | FramePass::Fluid3d
             | FramePass::Probes
             | FramePass::LiveSky
+            | FramePass::Clouds
             | FramePass::GiProbes
             | FramePass::Reflection(_)
             | FramePass::View(_)

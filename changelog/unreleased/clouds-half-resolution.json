@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"Clouds.coverage","summary":"The main camera's clouds are marched at half the frame's size each way and drawn over the sky at the frame's own size, so a cloudy sky costs about half as much of the frame (a fair sky 10.3 ms to 5.7 ms, a sunset 12.5 ms to 6.2 ms at 720p on an Apple M4 Pro). Cloud edges are a little softer and the march's dither grain is gone; meshes against the sky stay as sharp. Probes, mirrors, views and a live sky's capture march at their own pixels as before."}
+  ]
+}

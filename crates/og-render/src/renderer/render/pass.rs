@@ -193,6 +193,7 @@ passes! {
     reflection: pass_reflection::ReflectionPass => FramePass::Reflection(_),
     view: pass_view::ViewPass => FramePass::View(_),
     prepass: pass_prepass::PrepassPass => FramePass::Prepass,
+    clouds: pass_clouds::CloudsPass => FramePass::Clouds,
     main: pass_main::MainPass => FramePass::Main,
     glow: pass_glow::GlowPass => FramePass::Glow,
     custom_post: pass_custom_post::CustomPostPass => FramePass::CustomPost(_),

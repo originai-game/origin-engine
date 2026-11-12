@@ -215,6 +215,18 @@ pub(crate) struct CloudNoise {
     _texture: wgpu::Texture,
 }
 
+/// The main camera's clouds marched at half the frame's size (render/pass_clouds.rs, sky.wgsl `fs_clouds_low`): a
+/// march is the sky's whole cost and a cloud has no edge a pixel wide.
+pub(crate) struct CloudsLow {
+    /// The cloud target's group in the sky's draw (group 2).
+    pub layout: wgpu::BindGroupLayout,
+    /// The march into the cloud target.
+    pub march: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// The procedural sky drawn at the frame's size under the cloud target's clouds, in place of
+    /// `SkyState::sky_look_pipeline`.
+    pub sky: crate::deferred::Sampled<wgpu::RenderPipeline>,
+}
+
 fn volume(device: &wgpu::Device, size: u32, storage: bool) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("cloud noise"),

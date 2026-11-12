@@ -277,15 +277,33 @@ impl Renderer {
             Some(fx_group),
             f32::INFINITY,
         );
+        // The clouds the cloud pass marched at half the frame's size, when it ran (pass_clouds.rs): the sky draws
+        // them from there.
+        let clouds_low = self.graph.try_view("clouds").map(|clouds| {
+            bind_group(
+                &self.device,
+                "clouds low",
+                &self.sky.clouds_low.layout,
+                &[wgpu::BindingResource::TextureView(clouds)],
+            )
+        });
         let sky = match scene.lighting.environment.background {
             Background::Sky => Some(&self.sky.sky_pipeline),
+            Background::Procedural { .. } if clouds_low.is_some() => Some(&self.sky.clouds_low.sky),
             Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
             Background::Color(_) => None,
         };
         if let Some(sky) = sky {
             pass.set_pipeline(sky);
             pass.set_bind_group(1, sky_group, &[]);
+            if let Some(clouds_low) = &clouds_low {
+                pass.set_bind_group(2, clouds_low, &[]);
+            }
             pass.draw(0..3, 0..1);
+            if clouds_low.is_some() {
+                // The effects' back for what follows.
+                pass.set_bind_group(2, fx_group, &[]);
+            }
             stats.draw_calls += 1;
         }
         if split {
