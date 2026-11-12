@@ -173,9 +173,11 @@ genre, view, look, mood, UI style, platform, input and players before the
 first build. Languages and music have defaults. Use the released engine's
 create package, not a separate platform vocabulary:
 
-- `CREATION_CHOICES` owns the enums. `creationSchema(readCatalogue().map(s => s.slug))`
+- `CREATION_CHOICES` owns the enums. `creationSchema(creationLooks())`
   returns the form's JSON Schema 2020-12. The look catalogue still owns its
-  37 slugs. There are 14 installable UI packs in this revision, not 16;
+  37 slugs; `creationLooks()` lists the eight a new game is offered, and
+  leaves out the styles frozen while their looks are rebuilt
+  (`look.frozen`). A game made on a frozen look keeps building. There are 14 installable UI packs in this revision, not 16;
   `cjk` and `shared` contain support assets, not styles.
 - `resolveCreationChoices(premise, partialChoices)` returns suggestions
   with explicit choices preserved. Display and confirm the required

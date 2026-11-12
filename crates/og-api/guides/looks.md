@@ -42,6 +42,8 @@ PostEffects {
 - A preset whose catalogue entry is not `full` support still lacks a
   primitive; the catalogue's `missing` names it. Do not promise the
   user that look's whole effect.
+- A preset whose catalogue entry has `look.frozen` is being rebuilt. A
+  game already on it keeps cooking; do not start a new look on it.
 
 ## 2. What goes where
 

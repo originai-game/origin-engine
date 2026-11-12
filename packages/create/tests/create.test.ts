@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { artBrief, audioBrief, authoredArt, create, CREATION_CHOICES, fontPackFor, fontPacksDir, creationSchema, inferCreationChoices, MOODS, parseCreationInput, pickStyle, presetLook, pseudoMessage, readCatalogue, resolveCreationChoices, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
+import { artBrief, audioBrief, authoredArt, create, creationLooks, CREATION_CHOICES, fontPackFor, fontPacksDir, creationSchema, inferCreationChoices, MOODS, parseCreationInput, pickStyle, presetLook, pseudoMessage, readCatalogue, resolveCreationChoices, RIG_TEMPLATES, rigParts, words } from "../bin/create.ts";
 
 const pkg = join(import.meta.dir, "..");
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "og-create-")));
@@ -119,10 +119,11 @@ test("creation choices infer a premise, preserve overrides, and serialize every 
   expect(() => parseCreationInput({ lang: [] })).toThrow("lang");
   expect(() => parseCreationInput({ lang: ["en", "en"] })).toThrow("lang");
   expect(() => resolveCreationChoices("", { look: "missing" })).toThrow("no look preset");
+  expect(() => resolveCreationChoices("", { look: "watercolor-wash" })).toThrow("is frozen while it is rebuilt; pick one of");
 });
 
 test("creation schema labels preserve every stable choice ID", () => {
-  const schema = creationSchema(readCatalogue().map(s => s.slug));
+  const schema = creationSchema(creationLooks());
   for (const [key, values] of Object.entries(CREATION_CHOICES)) {
     const field = Object.entries(schema.properties).find(([name]) => name === key)?.[1];
     expect(field).toMatchObject({ type: "string", enum: [...values] });
@@ -130,7 +131,7 @@ test("creation schema labels preserve every stable choice ID", () => {
     expect(Object.keys(field["x-labels"])).toEqual([...values]);
     for (const copy of Object.values(field["x-labels"])) expect(copy).toMatchObject({ label: { en: expect.any(String), "zh-CN": expect.any(String) }, description: { en: expect.any(String), "zh-CN": expect.any(String) } });
   }
-  expect(schema.properties.look.enum).toHaveLength(37);
+  expect(schema.properties.look.enum).toEqual(["faceted-low-poly", "16bit-pixel", "low-resolution-3d", "anime-cel-3d", "inked-comic-3d", "painterly-3d", "cinematic-realism", "minimal-geometric"]);
   for (const copy of Object.values(schema.properties.look["x-labels"])) expect(copy).toMatchObject({ label: { "zh-CN": expect.any(String) }, description: { "zh-CN": expect.any(String) } });
 });
 
@@ -156,14 +157,17 @@ test("art and audio briefs remain available without creating a game", () => {
 
 test("catalogue suggestions respect profile and mood without installing them", () => {
   const styles = readCatalogue();
-  expect(pickStyle("a cosy city builder with a tabletop charm", styles)?.style.slug).toBe("miniature-diorama");
+  // A frozen style is never suggested, however well its premise fits.
+  const thawed = styles.map(s => ({ ...s, look: { ...s.look, frozen: false } }));
+  expect(pickStyle("a cosy city builder with a tabletop charm", thawed)?.style.slug).toBe("miniature-diorama");
+  expect(pickStyle("a cosy city builder with a tabletop charm", styles)?.style.slug).not.toBe("miniature-diorama");
   expect(pickStyle("16-bit platformer, energetic and heroic", styles, "2d")?.style.slug).toBe("16bit-pixel");
   expect(pickStyle("", styles)).toBeNull();
   expect(pickStyle("neon arcade shooter", styles.map(s => ({ ...s, look: { ...s.look, presetReady: false } })))).toBeNull();
   expect(words("Cozy Platformers in Sci-Fi colors, hand-drawn")).toEqual(["cosy", "platformer", "sci", "colour", "hand-drawn", "hand", "drawn"]);
   expect([...CREATION_CHOICES.mood]).toEqual([...MOODS]);
-  expect(resolveCreationChoices("", { look: "muted-cinematic-3d" }).mood).toBe("dark");
-  expect(resolveCreationChoices("", { look: "muted-cinematic-3d", mood: "warm" }).mood).toBe("warm");
+  expect(resolveCreationChoices("", { look: "low-resolution-3d" }).mood).toBe("dark");
+  expect(resolveCreationChoices("", { look: "low-resolution-3d", mood: "warm" }).mood).toBe("warm");
 });
 
 test("the packed package creates the same skeleton and briefs from its own presets", () => {

@@ -48,7 +48,7 @@ export interface Style {
   readonly category: string;
   readonly descriptor: string;
   readonly premise: Readonly<Record<string, string>>;
-  readonly look: { readonly presetReady: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly views: readonly string[]; readonly mood: string; readonly missing: readonly string[] };
+  readonly look: { readonly presetReady: boolean; readonly frozen?: boolean; readonly support: string; readonly profiles: readonly Profile[]; readonly views: readonly string[]; readonly mood: string; readonly missing: readonly string[] };
   readonly ui: string;
 }
 
@@ -73,6 +73,11 @@ export function readCatalogue(file = catalogueFile()): Style[] {
   return (JSON.parse(readFileSync(file, "utf8")) as { styles: Style[] }).styles;
 }
 
+/** The looks a new game may pick: those with a preset that is not frozen (`look.frozen`: being rebuilt). */
+export function creationLooks(styles: readonly Style[] = readCatalogue()): string[] {
+  return styles.filter(s => s.look.presetReady && !s.look.frozen).map(s => s.slug);
+}
+
 const STOP = new Set(["the", "and", "for", "with", "about", "into", "from", "that", "this", "game", "games", "player", "players", "where", "who", "your", "you", "its", "set", "lot", "very", "like", "one", "two", "all", "any", "out", "their", "them", "has", "have", "are", "was", "but", "not", "own"]);
 const SPELLING: Readonly<Record<string, string>> = { cozy: "cosy", color: "colour", colors: "colours", gray: "grey", scifi: "sci", "sci-fi": "sci", watercolour: "watercolor", "8-bit": "8bit", "16-bit": "16bit", "1-bit": "1bit" };
 
@@ -95,7 +100,7 @@ export function pickStyle(premise: string, styles: readonly Style[], profile: Pr
   ];
   let best: { style: Style; score: number; full: boolean } | null = null;
   for (const style of styles) {
-    if (!style.look.presetReady || !style.look.profiles.includes(profile)) continue;
+    if (!style.look.presetReady || style.look.frozen || !style.look.profiles.includes(profile)) continue;
     if (view !== undefined && !style.look.views.includes(view)) continue;
     let score = 0;
     for (const [field, weight] of weights) {
@@ -138,6 +143,7 @@ export function resolveCreationChoices(premise: string, input: CreationInput = {
   const slug = input.look ?? pickStyle(premise, styles, effectiveProfile, asked.view)?.style.slug ?? (effectiveProfile === "2d" ? "16bit-pixel" : "faceted-low-poly");
   const style = styles.find(s => s.slug === slug && s.look.presetReady);
   if (!style) throw new Error(`no look preset '${slug}'`);
+  if (style.look.frozen) throw new Error(`look '${slug}' is frozen while it is rebuilt; pick one of ${creationLooks(styles).join(", ")}`);
   return inferCreationChoices(premise, { ...input, look: slug, ui: parseCreationInput({ ui: input.ui ?? style.ui }).ui! }, parseCreationInput({ mood: style.look.mood }));
 }
 
@@ -239,7 +245,7 @@ function main(argv: string[]): number {
         continue;
       }
       const suggested = resolveCreationChoices(premise, parseCreationInput(choices))[key];
-      const values = key === "look" ? readCatalogue().map(s => s.slug).join(", ") : key === "lang" ? "comma-separated language tags" : CREATION_CHOICES[key].join(", ");
+      const values = key === "look" ? creationLooks().join(", ") : key === "lang" ? "comma-separated language tags" : CREATION_CHOICES[key].join(", ");
       for (;;) {
         const answer = globalThis.prompt(`${key}: ${values}`, Array.isArray(suggested) ? suggested.join(",") : String(suggested));
         if (answer === null) throw new Error("creation cancelled");

@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "create: look",
+      "change": "A new game is offered eight looks: cinematic-realism, anime-cel-3d, inked-comic-3d, painterly-3d, faceted-low-poly, low-resolution-3d, 16bit-pixel and minimal-geometric. The other 29 catalogue styles are frozen while their looks are rebuilt (look.frozen in looks/catalogue.json): create and resolveCreationChoices refuse one by name and never suggest one from a premise. Their presets still cook, a look that extends one still builds, and their briefs still read, so a game already made on one is unchanged.",
+      "fix": "Build the creation form from creationSchema(creationLooks()) instead of every catalogue slug, and pick one of the eight for a new game. A stored choice of a frozen look needs no change for an existing game."
+    }
+  ],
+  "added": [
+    {
+      "member": "create: creationLooks",
+      "summary": "creationLooks(styles?) lists the looks a new game may pick: the catalogue's styles with a preset that is not frozen."
+    }
+  ]
+}

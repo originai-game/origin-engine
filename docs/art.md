@@ -286,6 +286,14 @@ build (numbers cannot judge a style).
   style needs made and what it must be. `artBrief` writes that into every
   request of the kind (an `Authored` line) and `authoredArt(look)` lists
   them.
+- `look.frozen` (true or absent) marks a style whose look is being
+  rebuilt (AGENTS.md, "Frozen is not obsolete"). Its preset still cooks,
+  `extends "<slug>"` still builds on it and its brief still reads, so a
+  game made on it is unchanged; create offers a new game only the rest
+  (`creationLooks`), and the validator keeps at least one unfrozen style
+  for every creation view. Eight are offered now: cinematic-realism,
+  anime-cel-3d, inked-comic-3d, painterly-3d, faceted-low-poly,
+  low-resolution-3d, 16bit-pixel and minimal-geometric.
 - A style's sample scene belongs to the game's art review, not the
   catalogue. The engine ships no sample-game gallery.
 

@@ -157,6 +157,22 @@ test("the style catalogue covers 37 styles, each complete", () => {
   }
 });
 
+test("a view left with only frozen styles is refused", () => {
+  const p = added((r) =>
+    edit(join(r.pkg, "looks/catalogue.json"), (s) => {
+      const cat = JSON.parse(s);
+      for (const style of cat.styles) if (style.look.views.includes("top-down-2d")) style.look.frozen = true;
+      cat.styles[0].look.frozen = false;
+      return JSON.stringify(cat, null, 2);
+    }),
+  );
+  const first = (JSON.parse(readFileSync(join(real.pkg, "looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] }).styles[0]!.slug;
+  expect(p.sort()).toEqual([
+    `looks/catalogue.json: ${first}: look.frozen is true or absent`,
+    "looks/catalogue.json: every style of the top-down-2d view is frozen; a new game of that view has no look to pick",
+  ].sort());
+});
+
 test("an incomplete, dishonest or unknown catalogue entry is refused", () => {
   const p = added((r) =>
     edit(join(r.pkg, "looks/catalogue.json"), (s) => {
