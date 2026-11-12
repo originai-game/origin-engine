@@ -19,11 +19,11 @@
 
 use super::engine::{Engine, engine};
 use super::extract::{Hierarchy, RenderState};
-use super::fx::{color, f, kept_rows, on, u};
+use super::fx::{f, kept_rows};
 use super::parse;
 use super::wire::{
-    self, Color, TerrainBounds, TerrainBrush, TerrainEdit, TerrainInfo, TerrainLayerDesc,
-    TerrainSample, TerrainSampleDesc, TerrainStampDesc, ToJson,
+    self, Color, FromJson, TerrainBounds, TerrainBrush, TerrainEdit, TerrainInfo, TerrainLayerDesc,
+    TerrainSample, TerrainSampleDesc, TerrainStampDesc, ToJson, record,
 };
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
@@ -1097,11 +1097,11 @@ pub fn og_terrain_edit(
 pub fn og_terrain_stamp(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
     (|| {
         let eng = engine(world)?;
-        let d = parse(desc.as_deref())?;
-        // Read through the IDL's type to refuse a wrong field; the stamp
-        // and its log keep the desc as given.
-        wire::value::<TerrainStampDesc>(&d, "desc")?;
-        stamp::stamp(&eng, &d)
+        let given = parse(desc.as_deref())?;
+        let d: TerrainStampDesc = wire::value(&given, "desc")?;
+        // The transforms are read from the desc as given: a quaternion
+        // without `w` (or a null member) reads as the stamp always read it.
+        stamp::stamp(&eng, &d, &given)
     })()
 }
 
@@ -1272,6 +1272,10 @@ pub(crate) fn dump_render(rs: &RenderState, entity: u64) -> Option<Value> {
     }))
 }
 
+fn rgb(c: &Color) -> Vec3 {
+    Vec3::new(c.r, c.g, c.b)
+}
+
 /// og.Terrain components into `rs.scene.terrains`: each terrain placed by
 /// its entity's world transform with its layers; og.TerrainScatter
 /// components into `rs.scene.scatters`; then the streamed terrains' tiles.
@@ -1288,7 +1292,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let budget = rs.terrain.budget;
     let mut streamed = Vec::new();
     for (e, v) in kept_rows(world, layout.as_ref()) {
-        let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
+        let Ok(v) = record::Terrain::from_json(&v) else {
+            continue;
+        };
+        let Some(i) = super::assets::index_of(v.data as f64) else {
             continue;
         };
         let Some(t) = rs.terrain.loaded.get(i) else {
@@ -1297,8 +1304,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             continue;
         };
         let world = h.world_of(e);
-        let spacing = f(&v, "lodSpacing", 0.0);
-        let ring = u(&v, "lodRing", 0);
+        let spacing = v.lod_spacing;
+        let ring = v.lod_ring;
         let array = |i: Option<usize>| i.and_then(|i| rs.texture_arrays.get(i)?.handle);
         let layer_arrays = og_render::TerrainLayerArrays {
             albedo: array(t.layer_arrays[0]),
@@ -1310,7 +1317,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             layers: t.layers.clone(),
             layer_arrays,
             height_blend: t.height_blend,
-            cast_shadows: on(&v, "castShadows", true) && t.cast_shadows,
+            cast_shadows: v.cast_shadows && t.cast_shadows,
             lod: TerrainLod {
                 spacing: if spacing > 0.0 {
                     spacing
@@ -1319,12 +1326,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 },
                 ring: if ring > 0 { ring } else { t.lod.ring },
                 budget: if budget > 0 { budget } else { t.lod.budget },
-                error: f(&v, "lodError", 0.0).max(0.0),
+                error: v.lod_error.max(0.0),
             },
             fade_in: !settle,
-            visible: on(&v, "visible", true),
-            horizon_shadows: on(&v, "horizonShadows", true),
-            displacement_distance: f(&v, "displacementDistance", 40.0).max(0.0),
+            visible: v.visible,
+            horizon_shadows: v.horizon_shadows,
+            displacement_distance: v.displacement_distance.max(0.0),
         });
         rs.ids.terrains.push(e);
         if !t.edited {
@@ -1344,7 +1351,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     rs.terrain.scatter_issues.clear();
     let layout = rs.draw.scatter.clone();
     for (e, v) in kept_rows(world, layout.as_ref()) {
-        let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
+        let Ok(v) = record::TerrainScatter::from_json(&v) else {
+            continue;
+        };
+        let Some(i) = super::assets::index_of(v.data as f64) else {
             continue;
         };
         let Some(t) = rs.terrain.loaded.get(i) else {
@@ -1362,14 +1372,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         else {
             continue;
         };
-        let index = |key: &str| (v[key].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
+        let index = |h: u64| (h & 0xffff_ffff) as usize;
         let (Some(&mesh), Some(&material)) = (
-            rs.geometries.get(index("geometry")),
-            rs.materials.get(index("material")),
+            rs.geometries.get(index(v.geometry)),
+            rs.materials.get(index(v.material)),
         ) else {
             continue;
         };
-        let model = v["impostor"].as_f64().unwrap_or(0.0) as u64;
+        let model = v.impostor;
         let lods = rs.model_lods.get(&model);
         let impostor = lods.and_then(|l| l.impostor.map(|i| i.0));
         let mesh = lods
@@ -1400,26 +1410,26 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             mesh,
             material,
             scatter: og_render::TerrainScatter {
-                layer: u(&v, "layer", 0),
-                density: f(&v, "density", 2.0),
-                distance: f(&v, "distance", 40.0),
-                fade: f(&v, "fade", 0.3),
-                scale: [f(&v, "minScale", 0.8), f(&v, "maxScale", 1.2)],
-                align: f(&v, "align", 0.0),
-                seed: u(&v, "seed", 1),
-                sway: f(&v, "sway", 1.0),
-                noise_scale: f(&v, "noiseScale", 8.0),
-                noise_threshold: f(&v, "noiseThreshold", 0.0),
-                footprint: f(&v, "footprint", 0.0),
-                priority: u(&v, "priority", 0),
-                avoid_water: f(&v, "avoidWater", 0.0),
-                density_map: super::fx::handle_index(&v["densityMap"])
+                layer: v.layer,
+                density: v.density,
+                distance: v.distance,
+                fade: v.fade,
+                scale: [v.min_scale, v.max_scale],
+                align: v.align,
+                seed: v.seed,
+                sway: v.sway,
+                noise_scale: v.noise_scale,
+                noise_threshold: v.noise_threshold,
+                footprint: v.footprint,
+                priority: v.priority,
+                avoid_water: v.avoid_water,
+                density_map: super::assets::index_of(v.density_map as f64)
                     .and_then(|i| rs.textures.get(i).copied()),
-                gpu: on(&v, "gpuPlacement", true),
+                gpu: v.gpu_placement,
             },
-            cast_shadows: on(&v, "castShadows", true),
+            cast_shadows: v.cast_shadows,
             impostor,
-            impostor_distance: f(&v, "impostorDistance", 0.0),
+            impostor_distance: v.impostor_distance,
         });
     }
     // og.TerrainStamp: meshes drawn with the drawn terrain of the same
@@ -1428,11 +1438,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     rs.ids.stamps.clear();
     let layout = rs.draw.stamp.clone();
     for (e, v) in kept_rows(world, layout.as_ref()) {
-        if !on(&v, "visible", true) {
+        let Ok(v) = record::TerrainStamp::from_json(&v) else {
+            continue;
+        };
+        if !v.visible {
             continue;
         }
-        let Some(t) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0))
-            .and_then(|i| rs.terrain.loaded.get(i))
+        let Some(t) = super::assets::index_of(v.data as f64).and_then(|i| rs.terrain.loaded.get(i))
         else {
             rs.notes.push(format!(
                 "og.TerrainStamp on entity {e} names no loaded terrain"
@@ -1448,7 +1460,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         else {
             continue;
         };
-        let geometry = (v["geometry"].as_f64().unwrap_or(0.0) as u64 & 0xffff_ffff) as usize;
+        let geometry = (v.geometry & 0xffff_ffff) as usize;
         let Some(&mesh) = rs.geometries.get(geometry) else {
             continue;
         };
@@ -1459,8 +1471,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 terrain,
                 mesh,
                 transform: h.world_of(e),
-                blend: f(&v, "blend", 1.0),
-                cast_shadows: on(&v, "castShadows", true),
+                blend: v.blend,
+                cast_shadows: v.cast_shadows,
             });
         rs.ids.stamps.push(e);
     }
@@ -1473,22 +1485,26 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let kinds: og_core::IdMap<u64, og_render::GrassType> =
         kept_rows(world, rs.draw.grass_type.as_ref())
             .into_iter()
-            .map(|(e, v)| {
-                let d = og_render::GrassType::default();
+            .filter_map(|(e, v)| {
+                let v = record::GrassType::from_json(&v).ok()?;
                 let kind = og_render::GrassType {
-                    height: f(&v, "height", d.height),
-                    width: f(&v, "width", d.width),
-                    curve: f(&v, "curve", d.curve),
-                    base_color: color(&v["baseColor"], d.base_color),
-                    tip_color: color(&v["tipColor"], d.tip_color),
-                    share: f(&v, "share", d.share),
+                    height: v.height,
+                    width: v.width,
+                    curve: v.curve,
+                    base_color: rgb(&v.base_color),
+                    tip_color: rgb(&v.tip_color),
+                    share: v.share,
                 };
-                (e, kind)
+                Some((e, kind))
             })
             .collect();
-    let texture = |v: &Value| super::fx::handle_index(v).and_then(|i| rs.textures.get(i).copied());
+    let texture =
+        |h: u64| super::assets::index_of(h as f64).and_then(|i| rs.textures.get(i).copied());
     for (e, v) in kept_rows(world, layout.as_ref()) {
-        let Some(i) = super::assets::index_of(v["data"].as_f64().unwrap_or(0.0)) else {
+        let Ok(v) = record::Grass::from_json(&v) else {
+            continue;
+        };
+        let Some(i) = super::assets::index_of(v.data as f64) else {
             continue;
         };
         let Some(t) = rs.terrain.loaded.get(i) else {
@@ -1505,46 +1521,42 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         else {
             continue;
         };
-        let d = og_render::Grass::default();
-        let listed = v["types"].as_array().map_or(&[][..], Vec::as_slice);
-        let mut types = listed
-            .iter()
-            .filter_map(|t| kinds.get(&(t.as_f64().unwrap_or(0.0) as u64)).copied());
+        let mut types = v.types.iter().filter_map(|t| kinds.get(t).copied());
         let types = [types.next(), types.next(), types.next()];
         let (type_map, density_map, height_map) = (
-            texture(&v["typeMap"]),
-            texture(&v["densityMap"]),
-            texture(&v["heightMap"]),
+            texture(v.type_map),
+            texture(v.density_map),
+            texture(v.height_map),
         );
         rs.scene.world.grass.push(og_render::GrassDraw {
             terrain,
             grass: og_render::Grass {
-                layer: u(&v, "layer", d.layer),
-                density: f(&v, "density", d.density),
-                distance: f(&v, "distance", d.distance),
-                far_tint: on(&v, "farTint", d.far_tint),
-                height: f(&v, "height", d.height),
-                height_variation: f(&v, "heightVariation", d.height_variation),
-                width: f(&v, "width", d.width),
-                curve: f(&v, "curve", d.curve),
-                lean: f(&v, "lean", d.lean),
-                clump_size: f(&v, "clumpSize", d.clump_size),
-                clump_lean: f(&v, "clumpLean", d.clump_lean),
-                tufts: f(&v, "tufts", d.tufts),
-                base_color: color(&v["baseColor"], d.base_color),
-                tip_color: color(&v["tipColor"], d.tip_color),
-                dry_color: color(&v["dryColor"], d.dry_color),
-                color_variation: f(&v, "colorVariation", d.color_variation),
-                dryness: f(&v, "dryness", d.dryness),
-                translucency: f(&v, "translucency", d.translucency),
-                sheen: f(&v, "sheen", d.sheen),
-                roughness: f(&v, "roughness", d.roughness),
-                sway: f(&v, "sway", d.sway),
-                stiffness: f(&v, "stiffness", d.stiffness),
-                flutter: f(&v, "flutter", d.flutter),
-                cast_shadows: on(&v, "castShadows", d.cast_shadows),
-                seed: u(&v, "seed", d.seed),
-                recovery: f(&v, "recovery", d.recovery),
+                layer: v.layer,
+                density: v.density,
+                distance: v.distance,
+                far_tint: v.far_tint,
+                height: v.height,
+                height_variation: v.height_variation,
+                width: v.width,
+                curve: v.curve,
+                lean: v.lean,
+                clump_size: v.clump_size,
+                clump_lean: v.clump_lean,
+                tufts: v.tufts,
+                base_color: rgb(&v.base_color),
+                tip_color: rgb(&v.tip_color),
+                dry_color: rgb(&v.dry_color),
+                color_variation: v.color_variation,
+                dryness: v.dryness,
+                translucency: v.translucency,
+                sheen: v.sheen,
+                roughness: v.roughness,
+                sway: v.sway,
+                stiffness: v.stiffness,
+                flutter: v.flutter,
+                cast_shadows: v.cast_shadows,
+                seed: v.seed,
+                recovery: v.recovery,
                 types,
                 type_map,
                 density_map,
@@ -1558,15 +1570,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     rs.scene.atmosphere.grass_pushers.clear();
     let layout = rs.draw.grass_pusher.clone();
     for (e, v) in kept_rows(world, layout.as_ref()) {
+        let Ok(v) = record::GrassPusher::from_json(&v) else {
+            continue;
+        };
         let m = h.world_of(e);
         rs.scene
             .atmosphere
             .grass_pushers
             .push(og_render::GrassPusher {
                 position: m.transform_point3(glam::Vec3::ZERO),
-                radius: f(&v, "radius", 0.5),
-                height: f(&v, "height", 1.8),
-                strength: f(&v, "strength", 1.0),
+                radius: v.radius,
+                height: v.height,
+                strength: v.strength,
             });
     }
     // The unedited terrains' tiles, as the camera needs them.
