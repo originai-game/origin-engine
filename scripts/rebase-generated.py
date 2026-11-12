@@ -14,7 +14,7 @@ OUTPUTS = (
     'crates/og-records/src/generated', 'crates/og-host-web/src/generated',
     'crates/og-host-node/src/generated', 'packages/knowledge/wiki',
 )
-THEME = 'crates/og-ui/src/theme.rs'
+THEME = 'crates/og-ui-core/src/theme.rs'
 
 
 def git(*args, check=True):

@@ -272,28 +272,6 @@ fn root_path(mount: &SourceId, doc: &UiDocument) -> String {
     }
 }
 
-impl ElementInstance {
-    fn build<'a>(
-        &'a self,
-        env: &'a dyn Env,
-        inherited: Arc<super::super::variables::Computed>,
-    ) -> Build<'a> {
-        Build {
-            doc: self.document.clone(),
-            mount: self.context.node.mount.id.clone(),
-            vm: &Value::Null,
-            env,
-            locals: Vec::new(),
-            row_key: self.context.row_key.clone(),
-            inherited,
-            events: Vec::new(),
-            writes: Vec::new(),
-            cached: Some(&self.cached),
-            recording: Default::default(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

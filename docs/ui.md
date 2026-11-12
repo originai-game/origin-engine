@@ -895,7 +895,7 @@ alpha after `/`) and `color()` over `srgb`, `srgb-linear`, `display-p3`,
 the spec's percentage normalisation and hue methods; relative colours
 (`oklch(from var(--accent) calc(l * 0.8) c h)`, channel keywords in
 `calc()`, `min()`, `max()`, `clamp()`); and `light-dark()`. Conversions
-are CSS Color 4's (`crates/og-ui/src/css_color.rs`), and a colour outside
+are CSS Color 4's (`crates/og-ui-core/src/css_color.rs`), and a colour outside
 sRGB is gamut mapped by OKLCh chroma reduction, not clipped. A colour that
 reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
 one that does is resolved against the active style when drawn, so a
@@ -2265,7 +2265,7 @@ fixes that API before the kit depends on it.
 A component exposes named parts with variants, state, and attributes.
 Style selectors dress those parts; the grammar and specificity rules live
 in `crates/og-ui/src/style_file/css.rs`. Document CSS lives in
-`crates/og-ui/src/doc/css.rs`; generated references come from those sources.
+`crates/og-ui-core/src/doc/css.rs`; generated references come from those sources.
 Parser support for a literal does not override the authoring rule above.
 
 A document's `<style>` controls appearance and layout; attributes control
@@ -2721,7 +2721,7 @@ Noto Color Emoji's COLRv1 face (SIL OFL 1.1, 5.05 MB, 1,508 characters
 and their sequences): a pack of no language, named by its script `Zsye`,
 tried after every text pack. Its face declares `color true` with `runtime
 true`, so a glyph with a COLR paint is painted in colour when first shown,
-by the same painter the cook uses (`crates/og-ui/src/colr.rs`, COLR v0
+by the same painter the cook uses (`crates/og-ui-core/src/colr.rs`, COLR v0
 and v1) at `color_px` in the palette the settings name (the blob's
 `color-runtime` section). Each glyph goes onto a colour page with a
 silhouette distance field beside it for its shadows, glow and outline,

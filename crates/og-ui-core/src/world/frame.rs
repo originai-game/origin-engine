@@ -1,0 +1,716 @@
+use super::*;
+
+impl Ui {
+    // ── inputs from the host ─────────────────────────────────────────────
+
+    /// The camera this tick's anchored elements project with and panel
+    /// rays start from (the host sets it before [`Ui::end`]; `None`: none,
+    /// so anchors are hidden).
+    pub fn set_world_view(&mut self, view: Option<WorldView>) {
+        self.world.declared.view = view;
+    }
+
+    pub fn world_view(&self) -> Option<WorldView> {
+        self.world.declared.view
+    }
+
+    /// The entities' world poses (position, rotation, scale) for anchors and
+    /// panels on entities: replaces the last ones.
+    pub fn set_world_poses(&mut self, poses: &[(u64, Pose)]) {
+        self.world.declared.poses = poses.iter().copied().collect();
+    }
+
+    /// The anchored elements the last tick placed, with what they are on.
+    pub fn world_anchor_points(&self) -> &[AnchorPoint] {
+        &self.world.placement.placed
+    }
+
+    /// The entities this frame's anchors and panels are on, for the host to
+    /// hand their poses in before [`Ui::end`].
+    pub fn world_entities(&self) -> Vec<u64> {
+        let mut v = self.world.declared.wanted.clone();
+        v.sort_unstable();
+        v
+    }
+
+    // ── anchored elements ────────────────────────────────────────────────
+
+    /// Opens an anchored element; its children follow until [`Ui::close`].
+    pub fn open_world_anchor(&mut self, id: impl Into<Id>, desc: WorldAnchorDesc) -> AnchorInfo {
+        self.open_world_anchor_keyed(id.into(), None, desc)
+    }
+
+    /// The world layer of an anchor or panel: keyed from its id, or by
+    /// `key` itself, `id` then being the full path `key` is the key of (a
+    /// document's element: its subtree is keyed and named as if in place).
+    fn open_world_layer(
+        &mut self,
+        kind: &'static str,
+        id: Id,
+        key: Option<u64>,
+        el: Element,
+    ) -> usize {
+        match key {
+            Some(key) => {
+                self.open_layer_keyed(kind, key, id.as_str().to_owned(), el, Float::World, NONE)
+            }
+            None => self.open_layer(kind, id, el, Float::World, NONE),
+        }
+    }
+
+    /// [`Ui::open_world_anchor`], its layer keyed by `key` when given.
+    pub fn open_world_anchor_keyed(
+        &mut self,
+        id: Id,
+        key: Option<u64>,
+        desc: WorldAnchorDesc,
+    ) -> AnchorInfo {
+        let mut el = desc.element;
+        // Laid out at its own size: never stretched to the screen.
+        if matches!(el.width, Size::Grow { .. } | Size::Percent(_)) {
+            el.width = Size::fit();
+        }
+        if matches!(el.height, Size::Grow { .. } | Size::Percent(_)) {
+            el.height = Size::fit();
+        }
+        let i = self.open_world_layer("world", id, key, el);
+        self.world.want(desc.target);
+        let info = self.world.anchor_info(self.tree.nodes[i].key, &desc);
+        self.world
+            .declared
+            .anchors
+            .push(AnchorEntry { node: i, desc });
+        info
+    }
+
+    /// Places again the anchors of mounted documents that were not built
+    /// this tick (a retained element keeps its node, not its registration),
+    /// and forgets those no longer mounted. Work: one lookup per anchor,
+    /// which follows the camera every tick anyway.
+    pub fn keep_world_anchors(&mut self) {
+        let built: std::collections::BTreeSet<u64> = self
+            .world
+            .declared
+            .anchors
+            .iter()
+            .map(|a| self.tree.nodes[a.node].key)
+            .collect();
+        let mut kept = std::mem::take(&mut self.world.declared.kept);
+        kept.retain(|key, (desc, owner)| {
+            if built.contains(key) {
+                return true;
+            }
+            match self.tree.index.by_key.get(key) {
+                Some(&node) if self.docs.host.retained.owns(*owner) => {
+                    self.world.want(desc.target);
+                    self.world.declared.anchors.push(AnchorEntry {
+                        node,
+                        desc: desc.clone(),
+                    });
+                    true
+                }
+                _ => false,
+            }
+        });
+        self.world.declared.kept = kept;
+        let built: std::collections::BTreeSet<u64> = self
+            .world
+            .declared
+            .panels
+            .iter()
+            .map(|p| self.tree.nodes[p.node].key)
+            .collect();
+        let mut kept = std::mem::take(&mut self.world.declared.kept_panels);
+        kept.retain(|key, (desc, rect, owner)| {
+            if built.contains(key) {
+                return true;
+            }
+            match self.tree.index.by_key.get(key) {
+                Some(&node) if self.docs.host.retained.owns(*owner) => {
+                    if let Some((t, ..)) = desc.quad {
+                        self.world.want(t);
+                    }
+                    self.world.declared.panels.push(PanelEntry {
+                        node,
+                        desc: desc.clone(),
+                        rect: *rect,
+                    });
+                    true
+                }
+                _ => false,
+            }
+        });
+        self.world.declared.kept_panels = kept;
+        // Mass elements: standing ones pushed where their target is now,
+        // one-shots forgotten once their row leaves.
+        let mut kept = std::mem::take(&mut self.world.declared.kept_mass);
+        kept.retain(|key, m| {
+            if !self.world.declared.mass_built.contains(key)
+                && !self.docs.host.retained.owns(m.owner)
+            {
+                return false;
+            }
+            self.world.want(m.target);
+            if let Some((p, _)) = self.world.pose_of(m.target) {
+                let p = p + m.offset;
+                let instance = UiMassInstance {
+                    position: [p.x, p.y, p.z],
+                    ..m.instance
+                };
+                self.push_mass(m.handle, instance);
+            }
+            true
+        });
+        self.world.declared.kept_mass = kept;
+        let mut spawned = std::mem::take(&mut self.world.declared.mass_spawned);
+        spawned.retain(|k| {
+            self.world.declared.mass_built.contains(k) || self.docs.host.retained.owns(*k)
+        });
+        self.world.declared.mass_spawned = spawned;
+        self.tree
+            .keep_effects(&mut self.world, &self.docs, &mut self.interaction);
+    }
+
+    /// A document's mass element `key` (owned by the element `owner`):
+    /// `once`, spawned when its row first builds and left to play its
+    /// template's life; else kept and pushed every tick while it stands.
+    pub fn document_mass(&mut self, key: u64, owner: u64, once: bool, m: KeptMass) {
+        self.world.declared.mass_built.push(key);
+        if !once {
+            self.world
+                .declared
+                .kept_mass
+                .insert(key, KeptMass { owner, ..m });
+            return;
+        }
+        self.world.declared.kept_mass.remove(&key);
+        if !self.world.declared.mass_spawned.insert(key) {
+            return;
+        }
+        self.world.want(m.target);
+        if let Some((p, _)) = self.world.pose_of(m.target) {
+            let p = p + m.offset;
+            let instance = UiMassInstance {
+                position: [p.x, p.y, p.z],
+                ..m.instance
+            };
+            self.spawn_mass(m.handle, instance);
+        }
+    }
+
+    /// An anchored element built by `f`, which reads where it stands (its
+    /// level of detail, its distance, whether it is clamped).
+    pub fn world_anchor(
+        &mut self,
+        id: impl Into<Id>,
+        desc: WorldAnchorDesc,
+        f: impl FnOnce(&mut Ui, &AnchorInfo),
+    ) -> AnchorInfo {
+        let info = self.open_world_anchor(id, desc);
+        f(self, &info);
+        self.close();
+        info
+    }
+
+    // ── world panels ─────────────────────────────────────────────────────
+
+    /// Opens a world panel; its children follow until [`Ui::close`].
+    pub fn open_world_panel(&mut self, id: impl Into<Id>, desc: WorldPanelDesc) -> PanelInfo {
+        self.open_world_panel_keyed(id.into(), None, desc)
+    }
+
+    /// [`Ui::open_world_panel`], its layer keyed by `key` when given.
+    pub fn open_world_panel_keyed(
+        &mut self,
+        id: Id,
+        key: Option<u64>,
+        desc: WorldPanelDesc,
+    ) -> PanelInfo {
+        let mut el = desc.element;
+        el.width = Size::Fixed(desc.width.max(1.0));
+        el.height = Size::Fixed(desc.height.max(1.0));
+        let k = self.world.declared.panels.len() as f32;
+        let rect = Rect::new(
+            PANEL_X + k * PANEL_SLOT,
+            0.0,
+            desc.width.max(1.0),
+            desc.height.max(1.0),
+        );
+        let i = self.open_world_layer("panel", id, key, el);
+        if let Some((t, ..)) = desc.quad {
+            self.world.want(t);
+        }
+        let key = self.tree.nodes[i].key;
+        self.world.declared.panels.push(PanelEntry {
+            node: i,
+            desc,
+            rect,
+        });
+        match self.world.placement.pointed {
+            Some((k, info)) if k == key => info,
+            _ => PanelInfo::default(),
+        }
+    }
+
+    /// A world panel built by `f`.
+    pub fn world_panel(
+        &mut self,
+        id: impl Into<Id>,
+        desc: WorldPanelDesc,
+        f: impl FnOnce(&mut Ui, &PanelInfo),
+    ) -> PanelInfo {
+        let info = self.open_world_panel(id, desc);
+        f(self, &info);
+        self.close();
+        info
+    }
+
+    // ── mass elements ────────────────────────────────────────────────────
+
+    /// Declares a mass element template (configuration, like a timeline): a
+    /// second declaration of a name replaces it and keeps its handle.
+    /// Text and numbers without a font take the UI's body font.
+    pub fn define_mass(
+        &mut self,
+        name: &str,
+        template: UiMassTemplate,
+        space: UiMassSpace,
+    ) -> MassHandle {
+        let mut t = template;
+        if t.font.is_none() {
+            t.font = self.env.fonts.body.handle;
+        }
+        let t = Arc::new(t);
+        if let Some(k) = self
+            .world
+            .declared
+            .templates
+            .iter()
+            .position(|(n, ..)| n == name)
+        {
+            self.world.declared.templates[k] = (name.to_owned(), t, space);
+            return MassHandle(k as u32);
+        }
+        self.world
+            .declared
+            .templates
+            .push((name.to_owned(), t, space));
+        MassHandle(self.world.declared.templates.len() as u32 - 1)
+    }
+
+    /// A template by name.
+    pub fn mass_handle(&self, name: &str) -> Option<MassHandle> {
+        self.world
+            .declared
+            .templates
+            .iter()
+            .position(|(n, ..)| n == name)
+            .map(|k| MassHandle(k as u32))
+    }
+
+    /// Starts an instance of a template on this tick: it plays its
+    /// template's timeline over its lifetime and leaves the pool after it.
+    pub fn spawn_mass(&mut self, h: MassHandle, instance: UiMassInstance) {
+        let Some((_, t, _)) = self.world.declared.templates.get(h.0 as usize) else {
+            self.out
+                .warnings
+                .push(format!("spawn_mass: no template {}; define it first", h.0));
+            return;
+        };
+        if t.lifetime == 0 {
+            // No life to play: shown this tick only.
+            self.push_mass(h, instance);
+            return;
+        }
+        let pool = self.world.state.pools.entry(h.0).or_default();
+        if pool.len() >= MASS_POOL_LIMIT {
+            pool.remove(0);
+        }
+        pool.push(UiMassInstance {
+            start: self.interaction.state.tick as u32,
+            ..instance
+        });
+    }
+
+    /// Shows an instance of a template this tick only (an overhead bar, a
+    /// nameplate, a status icon: rebuilt every tick with its values).
+    pub fn push_mass(&mut self, h: MassHandle, instance: UiMassInstance) {
+        if self.world.declared.templates.get(h.0 as usize).is_none() {
+            self.out
+                .warnings
+                .push(format!("push_mass: no template {}; define it first", h.0));
+            return;
+        }
+        self.world
+            .declared
+            .immediate
+            .entry(h.0)
+            .or_default()
+            .push(UiMassInstance {
+                start: self.interaction.state.tick as u32,
+                ..instance
+            });
+    }
+
+    /// The frame's own mass elements (the templates' pools and this tick's
+    /// instances), to emit with [`WorldFrame::emit`] beside the UI frame.
+    pub fn world_frame(&self) -> &WorldFrame {
+        &self.world.placement.frame
+    }
+
+    /// The live instances a template's pool holds.
+    pub fn mass_count(&self, h: MassHandle) -> usize {
+        self.world.state.pools.get(&h.0).map_or(0, Vec::len)
+    }
+
+    // ── the frame ────────────────────────────────────────────────────────
+
+    /// Places this frame's world layers once laid out: anchors on their
+    /// projected points (scaled, faded, decluttered, clamped), panels in
+    /// their targets, meta layers over the screen. Called by `end` before
+    /// transforms are applied.
+    pub(crate) fn world_place(&mut self) {
+        self.layout
+            .world_anchors(&mut self.world, &self.env, &mut self.tree);
+        self.layout
+            .world_panels(&mut self.world, &self.env, &mut self.tree);
+        self.world_metas();
+    }
+}
+
+impl crate::ui::Tree {
+    /// Registers the kept effects of the elements that stand this tick.
+    fn keep_effects(
+        &mut self,
+        world: &mut crate::world::WorldUi,
+        docs: &crate::ui::Docs,
+        interaction: &mut crate::ui::Interaction,
+    ) {
+        let mut kept = std::mem::take(&mut world.declared.kept_effects);
+        kept.retain(|key, (emitter, meta)| {
+            let Some(&i) = self.index.by_key.get(key) else {
+                return docs.host.retained.owns(*key);
+            };
+            if let Some(d) = emitter {
+                // Its burst fires, and its `for` counts, from when it first stands.
+                let owner = *key;
+                let key = crate::id::child_key(*key, "particles");
+                let at = interaction.since(owner, key);
+                world
+                    .declared
+                    .emitters
+                    .push(crate::particles::EmitterEntry {
+                        node: i,
+                        key,
+                        desc: d.clone(),
+                        at: Some(at),
+                    });
+            }
+            if let Some(m) = meta {
+                let intensity = self.nodes[i].opacity().clamp(0.0, 1.0);
+                world.declared.metas.push((
+                    i,
+                    MetaDesc {
+                        intensity: m.intensity * intensity,
+                        ..m.clone()
+                    },
+                ));
+            }
+            true
+        });
+        world.declared.kept_effects = kept;
+    }
+
+    /// Spawns particles where their elements are drawn, ages the pools and
+    /// makes the frame's own batches. Called by `end` once transforms are
+    /// applied.
+    pub(crate) fn world_finish(
+        &mut self,
+        world: &mut crate::world::WorldUi,
+        env: &crate::ui::Env,
+        paint: &mut crate::ui::Paint,
+        interaction: &crate::ui::Interaction,
+    ) {
+        let tick = interaction.state.tick as u32;
+        paint.world_particles(tick, world, env, interaction, self);
+        // Pools: instances past their life leave.
+        let templates = &world.declared.templates;
+        world.state.pools.retain(|&k, pool| {
+            let Some((_, t, _)) = templates.get(k as usize) else {
+                return false;
+            };
+            pool.retain(|i| tick.wrapping_sub(i.start) < t.lifetime);
+            !pool.is_empty()
+        });
+        // The frame's own batches: pools, then this tick's instances.
+        let mut batches = Vec::new();
+        for (k, (_, t, space)) in world.declared.templates.iter().enumerate() {
+            let k = k as u32;
+            let mut instances = world.state.pools.get(&k).cloned().unwrap_or_default();
+            if let Some(now) = world.declared.immediate.get(&k) {
+                instances.extend_from_slice(now);
+            }
+            if instances.is_empty() {
+                continue;
+            }
+            let mut b = UiMassBatch {
+                template: t.clone(),
+                space: *space,
+                instances,
+                layer: 0,
+                clip: None,
+            };
+            // Drawn in CSS px like the frame's commands (the og-ui unit).
+            crate::draw::zoom_mass(&mut b, env.unit);
+            batches.push(b);
+        }
+        world.placement.frame = WorldFrame { tick, batches };
+    }
+}
+
+impl crate::world::WorldUi {
+    /// Where an anchor stands as of now: its distance and level from the
+    /// current view, the rest from last tick.
+    fn anchor_info(&self, key: u64, desc: &WorldAnchorDesc) -> AnchorInfo {
+        let mut info = self.placement.last.get(&key).copied().unwrap_or_default();
+        if let (Some(view), Some((p, _))) = (self.declared.view, self.pose_of(desc.target)) {
+            let p = p + desc.offset;
+            info.distance = (p - view.eye).length();
+            info.lod = lod_of(&desc.lod, info.distance);
+        }
+        info
+    }
+
+    /// Starts the world part of a frame: the pointer retargeted onto a
+    /// world panel its ray meets, before anything is hit tested.
+    pub(crate) fn world_begin(
+        &mut self,
+        input: &mut crate::input::InputFrame,
+        env: &crate::ui::Env,
+        interaction: &crate::ui::Interaction,
+    ) {
+        let w = self;
+        w.placement.last_pointer = interaction.state.pointer;
+        w.declared.wanted.clear();
+        w.declared.anchors.clear();
+        w.declared.panels.clear();
+        w.declared.emitters.clear();
+        w.declared.metas.clear();
+        w.declared.immediate.clear();
+        w.placement.marks.clear();
+        w.placement.grounds.clear();
+        w.declared.mass_built.clear();
+        w.placement.pointed = None;
+        let Some(view) = w.declared.view else {
+            return;
+        };
+        if !input.pointer_inside || w.placement.last_panels.is_empty() {
+            return;
+        }
+        // The screen's own elements are over the world: a pointer on one
+        // stays there.
+        let p = input.pointer;
+        let on_screen = interaction.state.hits.iter().any(|h| {
+            !off_screen(&h.rect) && h.contains(p.x, p.y) && h.flags & crate::ui::HIT_POINTER != 0
+        });
+        if on_screen {
+            return;
+        }
+        let vp = env.viewport;
+        let (o, d) = view.ray(p.x, p.y, vp.width, vp.height);
+        let mut best: Option<(f32, PanelHit, Vec2)> = None;
+        for ph in &w.placement.last_panels {
+            let n = ph.rotation * Vec3::Z;
+            let den = n.dot(d);
+            if den.abs() < 1e-6 {
+                continue;
+            }
+            let t = n.dot(ph.center - o) / den;
+            if t <= 0.0 || best.is_some_and(|(bt, ..)| bt <= t) {
+                continue;
+            }
+            let local = ph.rotation.inverse() * (o + d * t - ph.center);
+            let u = local.x / ph.size.x + 0.5;
+            let v = 0.5 - local.y / ph.size.y;
+            if (0.0..=1.0).contains(&u) && (0.0..=1.0).contains(&v) {
+                best = Some((t, *ph, Vec2::new(u, v)));
+            }
+        }
+        if let Some((t, ph, uv)) = best {
+            let at = Vec2::new(
+                ph.rect.x + uv.x * ph.rect.width,
+                ph.rect.y + uv.y * ph.rect.height,
+            );
+            input.pointer = at;
+            w.placement.pointed = Some((
+                ph.key,
+                PanelInfo {
+                    pointed: true,
+                    x: uv.x * ph.rect.width,
+                    y: uv.y * ph.rect.height,
+                    distance: t,
+                },
+            ));
+        }
+    }
+}
+
+impl crate::ui::Tree {
+    /// A document element's emitter and meta effects (`None` both:
+    /// none): kept by its key and registered on node `i` every tick it
+    /// stands ([`Ui::keep_world_anchors`]).
+    pub fn document_effects(
+        &mut self,
+        i: usize,
+        emitter: Option<crate::particles::ParticlesDesc>,
+        meta: Option<MetaDesc>,
+        world: &mut crate::world::WorldUi,
+    ) {
+        let key = self.nodes[i].key;
+        if emitter.is_none() && meta.is_none() {
+            world.declared.kept_effects.remove(&key);
+        } else {
+            world.declared.kept_effects.insert(key, (emitter, meta));
+        }
+    }
+
+    /// Keeps a document's world panel `node` for placement and rays on the
+    /// ticks it is not built again, while the retained element `owner`
+    /// stands (see [`Ui::keep_world_anchors`]).
+    pub fn keep_world_panel(&mut self, node: usize, owner: u64, world: &mut crate::world::WorldUi) {
+        let key = self.nodes[node].key;
+        if let Some(p) = world.declared.panels.iter().rev().find(|p| p.node == node) {
+            let kept = (p.desc.clone(), p.rect, owner);
+            world.declared.kept_panels.insert(key, kept);
+        }
+    }
+}
+
+impl Ui {
+    // ── state ────────────────────────────────────────────────────────────
+
+    /// The world state's bytes: spawned mass elements and particles, each
+    /// anchor's eased values. The host keeps them beside the UI state.
+    pub fn save_world_state(&self) -> Vec<u8> {
+        let s = &self.world.state;
+        let mut out = Vec::new();
+        out.extend_from_slice(b"OGUW");
+        out.extend_from_slice(&1u32.to_le_bytes());
+        let put = |out: &mut Vec<u8>, v: u64| out.extend_from_slice(&v.to_le_bytes());
+        put(&mut out, s.pools.len() as u64);
+        for (k, pool) in &s.pools {
+            put(&mut out, u64::from(*k));
+            put(&mut out, pool.len() as u64);
+            out.extend_from_slice(bytemuck::cast_slice(pool));
+        }
+        put(&mut out, s.particles.len() as u64);
+        for (k, e) in &s.particles {
+            put(&mut out, *k);
+            e.save(&mut out);
+        }
+        put(&mut out, s.smooth.len() as u64);
+        for (k, v) in &s.smooth {
+            put(&mut out, *k);
+            for f in [v.alpha, v.dx, v.dy] {
+                out.extend_from_slice(&f.to_le_bytes());
+            }
+        }
+        out
+    }
+
+    /// Moves the world-space pools' instances by `d` (og.WorldOrigin moved
+    /// the world's zero): every pool whose template is not in the screen's
+    /// space. Emitters' particles and anchors' eased offsets are CSS px.
+    pub fn shift_world(&mut self, d: og_core::glam::Vec3) {
+        let d = d.as_dvec3();
+        for (k, pool) in self.world.state.pools.iter_mut() {
+            let world = self
+                .world
+                .declared
+                .templates
+                .get(*k as usize)
+                .is_some_and(|(_, _, space)| *space != UiMassSpace::Screen);
+            if !world {
+                continue;
+            }
+            for i in pool {
+                let p = og_core::glam::Vec3::from_array(i.position).as_dvec3() + d;
+                i.position = p.as_vec3().to_array();
+            }
+        }
+    }
+
+    /// Restores [`Ui::save_world_state`]'s bytes (empty: the empty state).
+    pub fn restore_world_state(&mut self, bytes: &[u8]) -> og_core::Result<()> {
+        self.world.state = decode_world(bytes).ok_or_else(|| {
+            og_core::Error::new(
+                og_core::ErrorKind::Parse,
+                "og.ui world state: unreadable bytes",
+            )
+        })?;
+        Ok(())
+    }
+}
+
+/// Reads a world state's bytes.
+fn decode_world(bytes: &[u8]) -> Option<WorldState> {
+    let mut s = WorldState::default();
+    if bytes.is_empty() {
+        return Some(s);
+    }
+    let mut r = Reader { b: bytes, at: 0 };
+    if r.take(4)? != b"OGUW" || r.u32()? != 1 {
+        return None;
+    }
+    for _ in 0..r.u64()? {
+        let k = r.u64()? as u32;
+        let n = r.u64()? as usize;
+        let size = std::mem::size_of::<UiMassInstance>();
+        let raw = r.take(n.checked_mul(size)?)?;
+        let pool: Vec<UiMassInstance> = raw
+            .chunks_exact(size)
+            .map(bytemuck::pod_read_unaligned)
+            .collect();
+        s.pools.insert(k, pool);
+    }
+    for _ in 0..r.u64()? {
+        let k = r.u64()?;
+        s.particles
+            .insert(k, crate::particles::EmitterState::load(&mut r)?);
+    }
+    for _ in 0..r.u64()? {
+        let k = r.u64()?;
+        s.smooth.insert(
+            k,
+            Smooth {
+                alpha: r.f32()?,
+                dx: r.f32()?,
+                dy: r.f32()?,
+            },
+        );
+    }
+    (r.at == bytes.len()).then_some(s)
+}
+
+/// Little-endian reads over a byte slice.
+pub struct Reader<'a> {
+    pub b: &'a [u8],
+    pub at: usize,
+}
+
+impl Reader<'_> {
+    pub fn take(&mut self, n: usize) -> Option<&[u8]> {
+        let s = self.b.get(self.at..self.at.checked_add(n)?)?;
+        self.at += n;
+        Some(s)
+    }
+    pub fn u32(&mut self) -> Option<u32> {
+        Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
+    }
+    pub fn u64(&mut self) -> Option<u64> {
+        Some(u64::from_le_bytes(self.take(8)?.try_into().ok()?))
+    }
+    pub fn f32(&mut self) -> Option<f32> {
+        Some(f32::from_le_bytes(self.take(4)?.try_into().ok()?))
+    }
+}

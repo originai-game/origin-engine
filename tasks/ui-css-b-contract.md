@@ -20,7 +20,7 @@ Normal declarations increase in priority as follows:
 CSS important declarations reverse layer priority. Sublayers stay below their
 parent's normal declarations, even when sheets merge after parsing.
 
-`crates/og-ui/default.css` declares `og-default`. A document whose asset ID
+`crates/og-ui-core/default.css` declares `og-default`. A document whose asset ID
 starts with `ui-kits/` places its `<style>` blocks and imports in `og-kit`.
 The pack loader wraps its imports in `og-pack`. Game styles can declare
 `og-game`; unlayered game styles retain standard CSS precedence.

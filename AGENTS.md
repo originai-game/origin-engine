@@ -101,7 +101,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   `packages/brand` and the design tokens.
 - **One design language for the engine and origin-agent.** `packages/design`
   (`tokens.json` and its document) generates og-ui's default style
-  (`crates/og-ui/src/theme.rs`, drift-checked); origin-agent pins it by
+  (`crates/og-ui-core/src/theme.rs`, drift-checked); origin-agent pins it by
   version. It binds the default style only, never a game's.
 
 ## Building and testing

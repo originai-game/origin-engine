@@ -1,6 +1,6 @@
 # font-rs
 
-`crates/og-ui/src/colr.rs` ports the accumulation rasterizer of
+`crates/og-ui-core/src/colr.rs` ports the accumulation rasterizer of
 [font-rs](https://github.com/raphlinus/font-rs) (`src/raster.rs`, Raph
 Levien, Copyright 2015 Google Inc.), Apache-2.0 (`LICENSE`): each edge adds
 its exact signed area to the cells it crosses and a row's running sum is the

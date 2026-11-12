@@ -10,7 +10,7 @@ seeded from the platform's language and tokens at origingame d25f1f15
 already differs.
 
 **Where it binds.** The language binds the engine's **default style** alone
-(`crates/og-ui/src/theme.rs`, generated from `tokens.json`; docs/ui.md
+(`crates/og-ui-core/src/theme.rs`, generated from `tokens.json`; docs/ui.md
 §3) and origin-agent. A game may draw in the default style, a built-in
 pack or a style of its own (generated or hand-made, a look's `ui` line);
 the engine requires none of them. A game's style may restyle, re-dress, re-shape

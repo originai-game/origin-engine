@@ -447,7 +447,7 @@ out from its outlines into pages of the font's own
 `color true` draws each cooked character that has a COLR paint (v0
 layers, v1 paint graphs: solid, linear, radial and sweep brushes with pad,
 repeat and reflect, transforms, glyph and box clips, every composite mode)
-into an sRGB image at `color_px` (`crates/og-ui/src/colr.rs`: skrifa walks the
+into an sRGB image at `color_px` (`crates/og-ui-core/src/colr.rs`: skrifa walks the
 graph, font-rs's accumulation rasterizer covers each clip). The images are
 shelf-packed onto the blob's `color.<n>` pages, after the field's pages,
 and the glyph rows point at them; the field keeps their advances. og-render

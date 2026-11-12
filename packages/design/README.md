@@ -5,7 +5,7 @@ platform's: [`design-language.md`](design-language.md) and its values,
 [`tokens.json`](tokens.json).
 
 - **The engine** generates og-ui's default style from `tokens.json`
-  (`crates/og-ui/scripts/gen-theme.sh` writes `crates/og-ui/src/theme.rs`;
+  (`crates/og-ui/scripts/gen-theme.sh` writes `crates/og-ui-core/src/theme.rs`;
   og-ui's `tests/theme.rs` fails on drift). The default style is
   origin-agent's look; a game may ship it, a built-in pack or a style of
   its own.

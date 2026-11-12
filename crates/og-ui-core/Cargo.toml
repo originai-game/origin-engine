@@ -1,0 +1,60 @@
+[package]
+name = "og-ui-core"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine UI core: the immediate-mode toolkit stages (input, layout, the CSS cascade, motion, paint, draw) and their state, below og-ui documents."
+autotests = false
+
+[features]
+default = ["shaping"]
+# Run-time shaping with HarfRust: Arabic joining, Indic clusters and
+# conjuncts, marks placed by the font's GPOS. Without it a shaped script is
+# drawn unshaped (its characters in visual order); bidi, kerning and run-time
+# glyphs stay. og-runtime and og-host-web pass it on (`shaping`).
+shaping = ["og-text/shaping", "dep:parley"]
+
+[dependencies]
+og-core = { path = "../og-core" }
+og-ecs = { path = "../og-ecs" }
+og-input = { path = "../og-input" }
+# The draw commands og-render draws (the UI never links the renderer).
+og-draw = { path = "../og-draw" }
+og-probe = { path = "../og-probe", default-features = false }
+# The damped spring the skin's hover and press move on.
+og-tween = { path = "../og-tween" }
+# World-space UI's state: mass instances as bytes (src/world.rs).
+bytemuck = { workspace = true }
+# Localization: text direction and shaped scripts (og-i18n).
+og-i18n = { path = "../og-i18n" }
+# CSS values: the value lexer and calc().
+og-css = { path = "../og-css" }
+# Bindings and the reactive session (og_ui::bind, og_ui::reactive).
+og-reactive = { path = "../og-reactive" }
+# Rive artboards and their player (og_ui::rive).
+og-rive = { path = "../og-rive" }
+# Rectangles, insets, the 2D transforms and the codec primitives.
+og-ui-model = { path = "../og-ui-model" }
+# Text measurement, line breaking, bidi and shaping.
+og-text = { path = "../og-text", default-features = false }
+# Match Parley 0.12's font stack; libm, never host floating-point math.
+skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
+parley = { version = "=0.12.0", optional = true, default-features = false, features = ["libm", "complex-scripts"] }
+parley_engine = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
+# Viewmodels and bindings (src/bind.rs) are JSON, as the host passes them.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# HTML `pattern` on text inputs (input_type.rs); the small engine, no Unicode tables.
+regex-lite = "0.1.9"
+cssparser = "0.38.0"
+elsa = "1.11.2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+accesskit = { version = "=0.25.2", features = ["serde"] }
+
+[dev-dependencies]
+# Font files the tests read directly (the version og-text reads them with).
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
+
+

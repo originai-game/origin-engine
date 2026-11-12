@@ -1710,7 +1710,7 @@ window: Origin Desktop owns the AccessKit platform adapter (platform ask
   slug (`templates/styles/<slug>/`, cooked under `@styles/`) or the game's
   own `styles/<name>/style.ogt`. Without one the UI draws in the engine's
   default style, generated from `packages/design` into
-  `crates/og-ui/src/theme.rs`. Contrast and accessibility checks run over
+  `crates/og-ui-core/src/theme.rs`. Contrast and accessibility checks run over
   every built-in style (`pack_contrast.rs`). A nine-slice's middle squeezed
   into a control shorter than its art shows the centre of the art's
   middle, squeezed at most twice, and sprites and UI images are sampled

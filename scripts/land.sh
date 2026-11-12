@@ -29,7 +29,7 @@ common = (
     b'.config', b'scripts', b'tests/gpu.rs', b'packages/design',
     b'packages/engine/types', b'packages/engine/schema',
     b'packages/knowledge/wiki', b'crates/og-api', b'crates/og-idl',
-    b'crates/og-ui/src/theme.rs',
+    b'crates/og-ui-core/src/theme.rs',
 )
 shared = any(
     b'/generated/' in p or p.endswith(b'.d.ts') or

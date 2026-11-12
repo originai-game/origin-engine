@@ -126,7 +126,7 @@ agent in a sandbox read the same.
 
 **The UI kinds** (docs/ui.md §3.3): `ART_KINDS`
 continues, after the eight above and in this order, by the art-slot kinds of
-docs/ui.md §3.3, named as og-ui's `SlotKind` (`crates/og-ui/src/slot.rs`):
+docs/ui.md §3.3, named as og-ui's `SlotKind` (`crates/og-ui-core/src/slot.rs`):
 `keyArt`, `capsule`, `logo`, `appIcon`, `characterSplash`, `fullBody`,
 `bust`, `vnSprite`, `eventCg`, `itemIcon`, `abilityIcon`, `cardArt`,
 `cardFrame`, `unitPortrait`, `levelThumb`, `songJacket`, `saveThumb`,

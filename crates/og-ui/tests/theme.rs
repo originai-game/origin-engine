@@ -25,7 +25,8 @@ fn theme_rs_is_generated_from_the_design_tokens() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let tokens = std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
         .expect("tokens.json");
-    let committed = std::fs::read_to_string(root.join("src/theme.rs")).expect("theme.rs");
+    let committed =
+        std::fs::read_to_string(root.join("../og-ui-core/src/theme.rs")).expect("theme.rs");
     let generated = theme_codegen::generate(&tokens).expect("the tokens generate");
     if committed != generated {
         let line = committed
@@ -51,7 +52,8 @@ fn default_css_is_generated_from_the_design_tokens() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let tokens = std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
         .expect("tokens.json");
-    let committed = std::fs::read_to_string(root.join("default.css")).expect("default.css");
+    let committed =
+        std::fs::read_to_string(root.join("../og-ui-core/default.css")).expect("default.css");
     let generated = theme_codegen::generate_css(&tokens).expect("the tokens generate CSS");
     assert_eq!(
         committed, generated,
