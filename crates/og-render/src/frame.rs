@@ -59,6 +59,9 @@ pub(crate) struct FrameUniform {
     /// `MaterialStyle`: x: the distance at which outlines are their width
     /// (0: constant), y: the shadow darkness (0: off), zw: unused.
     pub outline_style: [f32; 4],
+    /// `MaterialStyle`: rgb: the outline's colour, w: its width in pixels
+    /// (0: none), for the surfaces no material carries it to (the terrain).
+    pub style_line: [f32; 4],
     /// The reflection probe of the frame group a draw binds (`probes.rs`):
     /// the box's min corner (w: 1 with a probe), its max corner (w: the
     /// probe's intensity), the capture point (w: the blend distance).

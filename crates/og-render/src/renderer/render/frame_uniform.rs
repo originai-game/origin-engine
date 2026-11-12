@@ -145,6 +145,15 @@ impl Renderer {
                 f32::from(u8::from(scene.look.stylise.material.toon)),
                 0.0,
             ],
+            style_line: {
+                let m = &scene.look.stylise.material;
+                [
+                    m.outline_color[0],
+                    m.outline_color[1],
+                    m.outline_color[2],
+                    m.outline_width.clamp(0.0, 31.0),
+                ]
+            },
             probe: [[0.0; 4]; 3],
             view_right: cam.axes().0,
             view_up: cam.axes().1,

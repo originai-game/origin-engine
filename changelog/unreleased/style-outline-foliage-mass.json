@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: MaterialStyle.outlineWidth, Stylise.ink, Stylise.hatching",
+      "summary": "Lines treat foliage and ground as masses. A look's outline reached only meshes, while Stylise.ink and surface hatching drew every leaf and grass blade as an edge, so an inked or hatched look's forest and meadow were covered in ink blots. Scattered copies and model impostors now take the look's outline round each copy (never between its own leaves, thinning to nothing with distance), the terrain takes it on its silhouette, and on scattered copies, impostors, grass and terrain the ink keeps to silhouettes and the hatching is laid on the screen. Outline colours are stored with 5 bits a channel. Frames without an outline, ink or hatching are unchanged; a 3D look with MaterialStyle.outlineWidth now runs the depth prepass and the outline pass over scattered copies and terrain as well."
+    }
+  ]
+}

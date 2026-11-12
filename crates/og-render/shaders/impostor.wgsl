@@ -29,6 +29,10 @@ struct ImpostorOut {
   @location(9) @interpolate(flat) m1: vec3<f32>,
   @location(10) @interpolate(flat) m2: vec3<f32>,
   @location(11) @interpolate(flat) extent: f32,
+  // The copy's id in the outline target, its mesh's (scatter.wgsl). Here,
+  // not last: a scalar after `rest` packs it, and naga's Metal output then
+  // fails to multiply it by a matrix.
+  @location(14) @interpolate(flat) object: u32,
   // The model's sphere's centre in the world.
   @location(12) @interpolate(flat) centre: vec3<f32>,
   // The card's point before the wind moved it (imp_sway): what the frames'
@@ -60,6 +64,7 @@ fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> Impost
   o.m2 = normalize(i.m2);
   o.extent = card.extent;
   o.centre = mul_point(model, vec4<f32>(scatter.impostor.xyz, 1.0)).xyz;
+  o.object = clump_id(i.m3);
   return o;
 }
 
@@ -350,7 +355,12 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
   let reflectivity = select(reflectivity_bits(clamp(material.mr.y, 0.04, 1.0), material.mr.x), 0.0, (u32(material.flags.w) & 2u) != 0u);
   o.depth = vec4<f32>(dot(surface.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
-  o.outline = vec4<f32>(0.0);
+  // The copy's outline as its mesh writes it (scatter.wgsl fs_prepass).
+  var width = material.outline.w;
+  if ((u32(material.flags.w) & 8u) == 0u) {
+    width = style_line_width(width, surface.world, true);
+  }
+  o.outline = outline_bytes(material.outline.rgb, width, in.object, true);
   o.frag_depth = imp_depth(surface.world);
   return o;
 }

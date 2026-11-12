@@ -904,11 +904,17 @@ fn contour_at(px: vec2<i32>, r: f32) -> f32 {
   let d0 = view_depth(px);
   if (d0 >= st.ink_depth.x * 0.999) { return 0.0; }
   let n0 = normal_at(px);
+  let t = line_texel(px);
+  let clump = (t.y & 32u) != 0u;
   for (var i = 0; i < 4; i++) {
     let a = f32(i) * 0.7853982;
     let o = vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
     let dp = view_depth(px + o);
     let dm = view_depth(px - o);
+    if (clump) {
+      if (clump_edge(t, d0, px + o, dp) || clump_edge(t, d0, px - o, dm)) { return 1.0; }
+      continue;
+    }
     if (d0 / dp + d0 / dm - 2.0 < -st.ink_depth.y) { return 1.0; }
     if (abs(dp - d0) < d0 * st.ink_depth.y * 4.0 && 1.0 - dot(normal_at(px + o), n0) > st.ink_depth.z) {
       return 1.0;
@@ -920,15 +926,35 @@ fn contour_at(px: vec2<i32>, r: f32) -> f32 {
   return 0.0;
 }
 
+// The outline target's bytes under a pixel (lighting.wgsl outline_bytes;
+// 0 without the prepass).
+fn line_texel(px: vec2<i32>) -> vec4<u32> {
+  let size = vec2<i32>(textureDimensions(pre_outline));
+  return vec4<u32>(round(textureLoad(pre_outline, prepass_px(px, size), 0) * 255.0));
+}
+
+// Whether a clump (a crown, a scattered copy, the ground: the clump bit of
+// `t`, the texel at `px`) has an edge towards the pixel `q` of depth `d`:
+// the sky or another object behind it, never its own leaves or folds.
+fn clump_edge(t: vec4<u32>, d0: f32, q: vec2<i32>, d: f32) -> bool {
+  return d > d0 * (1.0 + st.ink_depth.y) && (d >= st.ink_depth.x * 0.999 || line_texel(q).w != t.w);
+}
+
 // depth_edge with the neighbours `r` pixels away.
 fn depth_edge_at(px: vec2<i32>, r: f32) -> f32 {
   let d0 = view_depth(px);
   if (d0 >= st.ink_depth.x * 0.999) { return 0.0; }
   let n0 = normal_at(px);
+  let t = line_texel(px);
+  let clump = (t.y & 32u) != 0u;
   for (var i = 0; i < 8; i++) {
     let a = f32(i) * 0.7853982;
     let q = px + vec2<i32>(round(vec2<f32>(cos(a), sin(a)) * r));
     let d = view_depth(q);
+    if (clump) {
+      if (clump_edge(t, d0, q, d)) { return 1.0; }
+      continue;
+    }
     if (d > d0 * (1.0 + st.ink_depth.y)) { return 1.0; }
     if (abs(d - d0) < d0 * st.ink_depth.y * 4.0 && 1.0 - dot(normal_at(q), n0) > st.ink_depth.z) {
       return 1.0;
@@ -1139,6 +1165,9 @@ fn lines(in: VsOut) -> vec3<f32> {
   if (st.surface.z > 1.5 || st.surface.w > 1.5) {
     osurf = object_at(p, surf);
   }
+  // A clump (lighting.wgsl outline_bytes: foliage, grass, the ground) is
+  // drawn as one mass: lines on its silhouette, none on its own leaves.
+  let clump = (line_texel(px).y & 32u) != 0u;
   if (st.hatching.x > 0.0) {
     // Darker tones add stroke sets, each turned a little further, over a
     // ground lifted towards the paper (hatchingPaper); with hatchingDepth silhouettes and creases
@@ -1148,7 +1177,12 @@ fn lines(in: VsOut) -> vec3<f32> {
       th = max(t - st.ink_depth.w * depth_band(px), 0.0);
     }
     var ink = 0.0;
-    if (st.surface.z > 1.5 && osurf.ok) {
+    if (clump) {
+      // A crown's leaves and a meadow's blades each face their own way:
+      // strokes laid on them would be one mark per leaf. They are hatched
+      // as one mass, on the screen.
+      ink = hatch_screen(p, th);
+    } else if (st.surface.z > 1.5 && osurf.ok) {
       ink = hatch_surface(osurf, th);
     } else if (st.surface.z > 0.5 && surf.ok) {
       ink = hatch_surface(surf, th);
@@ -1229,6 +1263,11 @@ fn lines(in: VsOut) -> vec3<f32> {
       }
     }
     var k = smoothstep(st.ink.y, st.ink.y + 0.1, edge * 0.25);
+    if (clump) {
+      // Every leaf and blade is a luminance edge; the mass keeps its
+      // silhouette (the depth edges below and the outline pass).
+      k = 0.0;
+    }
     if (st.ink.w > 0.0) {
       k = max(k, depth_edge(px) * st.ink.w);
     }
