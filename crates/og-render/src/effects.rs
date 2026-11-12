@@ -955,12 +955,19 @@ impl ColorLut {
             at(p.x as u32, p.y as u32, p.z as u32)
         }))
     }
+}
 
+/// The table the tonemap samples for the frame's colour adjustment.
+pub(crate) trait AdjustedLut {
     /// The table the tonemap samples for `adjust` after `grade` (a
     /// [`LUT_SIZE`] table and its intensity, mixed in linear light as the
     /// tonemap mixes it). The grid points fall on the grading table's
     /// texels, so it is read without filtering.
-    pub(crate) fn adjusted(adjust: &ColorAdjust, grade: Option<(&ColorLut, f32)>) -> ColorLut {
+    fn adjusted(adjust: &ColorAdjust, grade: Option<(&ColorLut, f32)>) -> ColorLut;
+}
+
+impl AdjustedLut for ColorLut {
+    fn adjusted(adjust: &ColorAdjust, grade: Option<(&ColorLut, f32)>) -> ColorLut {
         let apply = adjust.prepare();
         let n = LUT_SIZE as usize;
         let decode = &srgb_tables().decode;
@@ -999,7 +1006,9 @@ impl ColorLut {
             rgba,
         }
     }
+}
 
+impl ColorLut {
     pub(crate) fn validate(&self) -> Result<(), String> {
         let n = self.size as usize;
         if self.size != LUT_SIZE || self.rgba.len() != n * n * n * 4 {

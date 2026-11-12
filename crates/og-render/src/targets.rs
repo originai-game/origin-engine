@@ -37,14 +37,21 @@ pub enum TargetFormat {
     Rgba16Float,
 }
 
-impl TargetFormat {
-    pub(crate) fn wgpu(self) -> wgpu::TextureFormat {
+/// The wgpu formats of a render target's textures.
+pub(crate) trait TargetGpu {
+    fn wgpu(self) -> wgpu::TextureFormat;
+}
+
+impl TargetGpu for TargetFormat {
+    fn wgpu(self) -> wgpu::TextureFormat {
         match self {
             TargetFormat::Rgba8 => wgpu::TextureFormat::Rgba8UnormSrgb,
             TargetFormat::Rgba16Float => wgpu::TextureFormat::Rgba16Float,
         }
     }
+}
 
+impl TargetFormat {
     /// Bytes per texel.
     pub(crate) fn bytes(self) -> u64 {
         match self {
@@ -95,15 +102,17 @@ pub enum TargetKind {
     Stream,
 }
 
-impl TargetTexture {
-    pub(crate) fn format(self) -> wgpu::TextureFormat {
+impl TargetGpu for TargetTexture {
+    fn wgpu(self) -> wgpu::TextureFormat {
         match self.kind {
             TargetKind::Color(f) => f.wgpu(),
             TargetKind::Depth => wgpu::TextureFormat::Rgba16Float,
             TargetKind::Stream => wgpu::TextureFormat::Rgba8UnormSrgb,
         }
     }
+}
 
+impl TargetTexture {
     /// Bytes allocated on the GPU.
     pub(crate) fn bytes(self) -> u64 {
         let texel = match self.kind {
@@ -174,7 +183,7 @@ pub(crate) fn create(device: &wgpu::Device, t: TargetTexture) -> wgpu::Texture {
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: t.format(),
+        format: t.wgpu(),
         // A stream's frames are copied in (queue writes natively, the
         // browser's external image copies on the web).
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT

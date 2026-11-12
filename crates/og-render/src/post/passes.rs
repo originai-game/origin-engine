@@ -629,6 +629,7 @@ impl PostPasses {
         if self.adjusted_lut.as_ref().is_some_and(|(k, ..)| *k == key) {
             return;
         }
+        use crate::effects::AdjustedLut;
         let lut = crate::ColorLut::adjusted(adjust, grade.map(|(lut, _, k)| (lut, k)));
         match &mut self.adjusted_lut {
             Some((k, texture, _)) => {

@@ -174,6 +174,7 @@ pub(crate) fn upload(
     data: &TextureArrayData,
     info: TextureArrayInfo,
 ) -> Result<GpuTextureArray, String> {
+    use crate::texture::TextureFormatGpu;
     use wgpu::util::DeviceExt;
     let format = info
         .format

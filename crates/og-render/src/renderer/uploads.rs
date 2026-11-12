@@ -577,6 +577,7 @@ impl Renderer {
 
     /// A texture whose levels arrive encoded (no mip generation).
     fn upload_encoded(&self, upload: &TextureUpload) -> GpuTexture {
+        use crate::texture::TextureFormatGpu;
         let desc = &upload.desc;
         let format = desc.format.wgpu(desc.color_space).expect("checked");
         let texture = self.device.create_texture_with_data(

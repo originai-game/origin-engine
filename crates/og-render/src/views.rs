@@ -39,6 +39,7 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::frame::CameraFrame;
+use crate::targets::TargetGpu;
 use crate::{Camera, RenderTargetHandle};
 
 /// A layer mask from a per-index list: past its end, layer 0 (mask 1).
