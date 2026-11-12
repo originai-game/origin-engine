@@ -228,11 +228,13 @@ crates/            Rust workspace
   og-host-web      wasm-bindgen host, run in a Worker on an OffscreenCanvas
   og-host-node     napi host (origin-engine.node), headless
   og-render        wgpu renderer
+  og-render-data   what it draws as cooked data (meshes, textures, materials, terrains, shaders' WGSL), no GPU
   og-anim          skeletal animation, blend graphs, IK, blendshapes
   og-motion        generated humanoid motion (CPU and wgpu compute)
   og-tween         tweens of reflected fields
   og-timeline      splines and the timeline sequencer
   og-physics       rapier2d/rapier3d integration
+  og-physics-data  collider meshes, the baked triangle mesh format and its bake, the save codec
   og-nav           grids, flow fields, navmesh, steering
   og-ai            behaviour trees, state machines, perception
   og-audio         command stream and mixer
