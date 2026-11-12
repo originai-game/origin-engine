@@ -17,6 +17,54 @@ impl Default for RenderScene {
     }
 }
 
+/// What og-bundle adds a cooked model through: the scene's own methods.
+impl SceneResources for RenderScene {
+    fn add_texture_source(&mut self, source: TextureSource) -> TextureHandle {
+        RenderScene::add_texture_source(self, source)
+    }
+    fn set_texture_filter(&mut self, texture: TextureHandle, filter: TextureFilter) -> bool {
+        RenderScene::set_texture_filter(self, texture, filter)
+    }
+    fn add_material(&mut self, material: Material) -> MaterialHandle {
+        RenderScene::add_material(self, material)
+    }
+    fn add_standard_material(&mut self, material: StandardMaterial) -> MaterialHandle {
+        RenderScene::add_standard_material(self, material)
+    }
+    fn standard_material(&self, handle: MaterialHandle) -> Option<&StandardMaterial> {
+        RenderScene::standard_material(self, handle)
+    }
+    fn alias_material_when_alike(&mut self, copy: MaterialHandle, of: MaterialHandle) -> bool {
+        RenderScene::alias_material_when_alike(self, copy, of)
+    }
+    fn add_mesh(&mut self, mesh: MeshData) -> MeshHandle {
+        RenderScene::add_mesh(self, mesh)
+    }
+    fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {
+        RenderScene::mesh(self, handle)
+    }
+    fn mesh_foliage(&self, handle: MeshHandle) -> Option<&crate::meshlet::MeshFoliage> {
+        RenderScene::mesh_foliage(self, handle)
+    }
+    fn set_mesh_clusters(
+        &mut self,
+        handle: MeshHandle,
+        clusters: Option<crate::meshlet::MeshClusters>,
+    ) -> bool {
+        RenderScene::set_mesh_clusters(self, handle, clusters)
+    }
+    fn set_mesh_foliage(
+        &mut self,
+        handle: MeshHandle,
+        foliage: Option<crate::meshlet::MeshFoliage>,
+    ) -> bool {
+        RenderScene::set_mesh_foliage(self, handle, foliage)
+    }
+    fn add_instance(&mut self, mesh: MeshHandle, material: MaterialHandle, transform: Mat4) {
+        RenderScene::add_instance(self, mesh, material, transform)
+    }
+}
+
 impl RenderScene {
     /// Whether the renderer captures the sky as it draws it into the
     /// image-based light (the live sky, `sky_capture.rs`): the per-pixel

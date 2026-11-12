@@ -18,7 +18,7 @@ use og_blob::{Blob, BlobError, Expect};
 use og_core::ogt::{Block, Document};
 use og_render::{
     AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips,
-    PhysicalExtensions, RenderScene, StandardMaterial, TextureData, TextureDesc, TextureFormat,
+    PhysicalExtensions, SceneResources, StandardMaterial, TextureData, TextureDesc, TextureFormat,
     TextureFormats, TextureHandle, TextureSource, TextureUpload, Vertex,
 };
 use std::collections::BTreeMap;
@@ -1108,7 +1108,7 @@ impl Bundle {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn model_geometry_hash(&self, id: &str) -> Result<u64, LoadError> {
         let model = self.load_model(id)?;
-        let mut scene = RenderScene::new();
+        let mut scene = Meshes::default();
         let parts = model.add_to_with(&mut scene, &[]);
         Ok(crate::lightmap::geometry_hash(
             parts.parts.iter().filter_map(|&(m, _, _)| scene.mesh(m)),
@@ -1130,6 +1130,65 @@ impl Bundle {
             .collect::<Result<Vec<_>, _>>()?;
         Ok((model, textures))
     }
+}
+
+/// What [`Bundle::model_geometry_hash`] adds a model to: a scene that
+/// keeps its meshes, as og-render's `RenderScene` holds them, and nothing
+/// else (no texture, material or instance is read back).
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Default)]
+struct Meshes {
+    meshes: Vec<MeshData>,
+    materials: usize,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl SceneResources for Meshes {
+    fn add_texture_source(&mut self, _: TextureSource) -> TextureHandle {
+        TextureHandle::from_index(0)
+    }
+    fn set_texture_filter(&mut self, _: TextureHandle, _: og_render::TextureFilter) -> bool {
+        true
+    }
+    fn add_material(&mut self, _: Material) -> MaterialHandle {
+        self.materials += 1;
+        MaterialHandle::from_index(self.materials - 1)
+    }
+    fn add_standard_material(&mut self, _: StandardMaterial) -> MaterialHandle {
+        self.materials += 1;
+        MaterialHandle::from_index(self.materials - 1)
+    }
+    fn standard_material(&self, _: MaterialHandle) -> Option<&StandardMaterial> {
+        None
+    }
+    fn alias_material_when_alike(&mut self, _: MaterialHandle, _: MaterialHandle) -> bool {
+        false
+    }
+    fn add_mesh(&mut self, mesh: MeshData) -> MeshHandle {
+        self.meshes.push(mesh);
+        MeshHandle::from_index(self.meshes.len() - 1)
+    }
+    fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {
+        self.meshes.get(handle.index())
+    }
+    fn mesh_foliage(&self, _: MeshHandle) -> Option<&og_render::meshlet::MeshFoliage> {
+        None
+    }
+    fn set_mesh_clusters(
+        &mut self,
+        _: MeshHandle,
+        _: Option<og_render::meshlet::MeshClusters>,
+    ) -> bool {
+        true
+    }
+    fn set_mesh_foliage(
+        &mut self,
+        _: MeshHandle,
+        _: Option<og_render::meshlet::MeshFoliage>,
+    ) -> bool {
+        true
+    }
+    fn add_instance(&mut self, _: MeshHandle, _: MaterialHandle, _: Mat4) {}
 }
 
 fn invalid(blob: &Blob, reason: impl Into<String>) -> LoadError {
