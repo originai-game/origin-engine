@@ -147,8 +147,8 @@ fn camera(rs: &mut RenderState, b: &Begun) -> View {
     let mut exposure = 1.0f32;
     scene.frame.camera_layers = camera
         .as_ref()
-        .and_then(|c| c["layers"].as_u64())
-        .map_or(1, |x| x as u32);
+        .and_then(|c| crate::wire::record::Camera::from_json(c).ok())
+        .map_or(1, |c| c.layers);
     scene.frame.camera_cut = false;
     let (mut origin, mut look_along) = (Vec3::ZERO, None);
     if let Some(c) = &camera {
@@ -215,19 +215,10 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
         scene.look.post.bloom_unreal = (radius >= 0.0).then(|| radius.min(1.0));
         scene.look.post.bloom_contrast = f(s, "bloomContrast", 1.0).clamp(0.5, 2.0);
         scene.look.post.tonemap = if on(s, "toneMapped", true) {
-            match s["toneMapping"].as_u64().or_else(|| {
-                s["toneMapping"]
-                    .as_str()
-                    .and_then(|n| {
-                        ["aces", "agx", "none", "neutral"]
-                            .iter()
-                            .position(|v| *v == n)
-                    })
-                    .map(|i| i as u64)
-            }) {
-                Some(1) => og_render::Tonemap::Agx,
-                Some(2) => og_render::Tonemap::None,
-                Some(3) => og_render::Tonemap::Neutral,
+            match crate::wire::ToneMapping::from_json(&s["toneMapping"]) {
+                Ok(crate::wire::ToneMapping::Agx) => og_render::Tonemap::Agx,
+                Ok(crate::wire::ToneMapping::None) => og_render::Tonemap::None,
+                Ok(crate::wire::ToneMapping::Neutral) => og_render::Tonemap::Neutral,
                 _ => og_render::Tonemap::Aces,
             }
         } else {
@@ -739,26 +730,25 @@ fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     }
     // Each light with its cookie (PointLight.cookie, SpotLight.cookie).
     let textures = &rs.textures;
-    let cookie = |v: &Value| {
-        v["cookie"]
-            .as_f64()
-            .and_then(super::assets::index_of)
-            .and_then(|i| textures.get(i).copied())
-    };
+    let cookie = |h: u64| super::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
+    let rgb = |c: &crate::wire::Color| Vec3::new(c.r, c.g, c.b);
     let mut locals: Vec<(u64, og_render::Light, Option<og_render::TextureHandle>)> = Vec::new();
     if let Some(pl) = &layouts.point {
         for (e, v) in rows(world, pl) {
+            let Ok(v) = crate::wire::record::PointLight::from_json(&v) else {
+                continue;
+            };
             let m = h.world_of(e);
-            let c = cookie(&v);
+            let c = cookie(v.cookie);
             locals.push((
                 e,
                 og_render::Light {
                     kind: og_render::LightKind::Point,
                     position: m.transform_point3(Vec3::ZERO),
-                    color: color(&v["color"], 1.0),
-                    intensity: f(&v, "intensity", 10.0),
-                    range: f(&v, "distance", 10.0),
-                    cast_shadows: on(&v, "castShadow", false),
+                    color: rgb(&v.color),
+                    intensity: v.intensity,
+                    range: v.distance,
+                    cast_shadows: v.cast_shadow,
                 },
                 c,
             ));
@@ -766,21 +756,24 @@ fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     }
     if let Some(sl) = &layouts.spot {
         for (e, v) in rows(world, sl) {
+            let Ok(v) = crate::wire::record::SpotLight::from_json(&v) else {
+                continue;
+            };
             let m = h.world_of(e);
-            let c = cookie(&v);
+            let c = cookie(v.cookie);
             locals.push((
                 e,
                 og_render::Light {
                     kind: og_render::LightKind::Spot {
                         direction: forward(m),
-                        angle_degrees: f(&v, "angle", std::f32::consts::FRAC_PI_6).to_degrees(),
-                        penumbra: f(&v, "penumbra", 0.0),
+                        angle_degrees: v.angle.to_degrees(),
+                        penumbra: v.penumbra,
                     },
                     position: m.transform_point3(Vec3::ZERO),
-                    color: color(&v["color"], 1.0),
-                    intensity: f(&v, "intensity", 10.0),
-                    range: f(&v, "distance", 10.0),
-                    cast_shadows: on(&v, "castShadow", false),
+                    color: rgb(&v.color),
+                    intensity: v.intensity,
+                    range: v.distance,
+                    cast_shadows: v.cast_shadow,
                 },
                 c,
             ));
@@ -1284,40 +1277,36 @@ fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         return;
     };
     for (e, v) in rows(world, &layout) {
+        let Ok(v) = crate::wire::record::Collider::from_json(&v) else {
+            continue;
+        };
         let world_m = h.world_of(e);
-        let rotation = &v["rotation"];
-        let q = Quat::from_xyzw(
-            rotation["x"].as_f64().unwrap_or(0.0) as f32,
-            rotation["y"].as_f64().unwrap_or(0.0) as f32,
-            rotation["z"].as_f64().unwrap_or(0.0) as f32,
-            rotation["w"].as_f64().unwrap_or(1.0) as f32,
-        )
-        .normalize();
-        let local = Mat4::from_rotation_translation(q, vec3(&v["offset"]));
+        let q = v.rotation.normalize();
+        let local = Mat4::from_rotation_translation(q, v.offset);
         let m = world_m * local;
-        let collider = match v["shape"].as_u64().unwrap_or(0) {
+        let collider = match v.shape {
             0 => og_render::SceneCollider::Box {
                 transform: m,
-                half_extents: vec3(&v["size"]) * 0.5,
+                half_extents: v.size * 0.5,
             },
             1 => {
                 let scale = world_m.to_scale_rotation_translation().0.max_element();
                 og_render::SceneCollider::Sphere {
                     center: m.transform_point3(Vec3::ZERO),
-                    radius: f(&v, "radius", 0.5) * scale,
+                    radius: v.radius * scale,
                 }
             }
             2 => {
                 let scale = world_m.to_scale_rotation_translation().0.max_element();
-                let half = f(&v, "height", 1.0) * 0.5;
+                let half = v.height * 0.5;
                 og_render::SceneCollider::Capsule {
                     a: m.transform_point3(Vec3::new(0.0, -half, 0.0)),
                     b: m.transform_point3(Vec3::new(0.0, half, 0.0)),
-                    radius: f(&v, "radius", 0.5) * scale,
+                    radius: v.radius * scale,
                 }
             }
             6 => {
-                let geometry = v["mesh"].as_f64().unwrap_or(0.0) as u64;
+                let geometry = v.mesh;
                 let Some(data) = super::terrain::field_of_geometry(&rs.terrain, geometry) else {
                     continue;
                 };
