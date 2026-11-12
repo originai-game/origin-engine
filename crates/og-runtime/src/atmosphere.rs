@@ -11,7 +11,7 @@
 use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
-use super::fx::{color, f, kept_rows, on, resource, rows, u};
+use super::fx::{kept_rows, resource, rows};
 use super::parse;
 use super::wire::{Color, FromJson, WindMotorKind, record};
 use glam::{Mat4, Vec2, Vec3};
@@ -105,12 +105,12 @@ pub(crate) struct AtmoState {
 const WEATHER_ID: u64 = u64::MAX - 0x5745;
 
 /// The DayNight clock at `tick` (hours, 0..24), from its row.
-fn hours(d: &Value, tick: u64, dt: f32) -> f32 {
-    let start = f64::from(f(d, "start", 9.0));
-    if !on(d, "enabled", false) {
+fn hours(d: &record::DayNight, tick: u64, dt: f32) -> f32 {
+    let start = f64::from(d.start);
+    if !d.enabled {
         return start.rem_euclid(24.0) as f32;
     }
-    let speed = f64::from(f(d, "speed", 0.05));
+    let speed = f64::from(d.speed);
     (start + tick as f64 * f64::from(dt) * speed).rem_euclid(24.0) as f32
 }
 
@@ -118,7 +118,7 @@ fn hours(d: &Value, tick: u64, dt: f32) -> f32 {
 /// look, and the directional light's intensity (the look's times
 /// lightIntensity).
 struct DayNightNow {
-    d: Arc<Value>,
+    d: record::DayNight,
     hours: f32,
     look: og_render::DayNightLook,
     intensity: f32,
@@ -133,12 +133,12 @@ fn day_night_now(
     layout: Option<&Layout>,
     physical: Option<&Layout>,
 ) -> Option<DayNightNow> {
-    let d = resource(world, layout)?;
-    if !on(&d, "enabled", false) {
+    let d = record::DayNight::from_json(&*resource(world, layout)?).ok()?;
+    if !d.enabled {
         return None;
     }
     let time = world.time();
-    let (tilt, azimuth) = (f(&d, "tilt", 25.0), f(&d, "azimuth", 0.0));
+    let (tilt, azimuth) = (d.tilt, d.azimuth);
     let now = hours(&d, time.tick, time.dt);
     let air = physical_air(world, physical);
     let look = og_render::day_night(now, tilt, azimuth);
@@ -146,7 +146,7 @@ fn day_night_now(
         Some(a) => look.with_atmosphere(a),
         None => look,
     };
-    let intensity = look.light_intensity * f(&d, "lightIntensity", 1.0).max(0.0);
+    let intensity = look.light_intensity * d.light_intensity.max(0.0);
     Some(DayNightNow {
         d,
         hours: now,
@@ -157,19 +157,19 @@ fn day_night_now(
 
 /// An enabled og.PhysicalSky as the renderer's atmosphere.
 fn physical_air(world: &World, layout: Option<&Layout>) -> Option<og_render::PhysicalAtmosphere> {
-    let p = resource(world, layout)?;
-    if !on(&p, "enabled", false) {
+    let p = record::PhysicalSky::from_json(&*resource(world, layout)?).ok()?;
+    if !p.enabled {
         return None;
     }
     let earth = og_render::PhysicalAtmosphere::EARTH;
     Some(og_render::PhysicalAtmosphere {
-        rayleigh: earth.rayleigh * f(&p, "airDensity", 1.0).max(0.0),
-        mie: earth.mie * f(&p, "haze", 1.0).max(0.0),
-        mie_absorption: earth.mie_absorption * f(&p, "haze", 1.0).max(0.0),
-        ozone: earth.ozone * f(&p, "ozone", 1.0).max(0.0),
-        ground_albedo: color(&p["groundAlbedo"], Vec3::splat(0.3)),
-        altitude: f(&p, "altitude", 0.0).max(0.0),
-        night: color(&p["night"], earth.night),
+        rayleigh: earth.rayleigh * p.air_density.max(0.0),
+        mie: earth.mie * p.haze.max(0.0),
+        mie_absorption: earth.mie_absorption * p.haze.max(0.0),
+        ozone: earth.ozone * p.ozone.max(0.0),
+        ground_albedo: rgb(&p.ground_albedo),
+        altitude: p.altitude.max(0.0),
+        night: rgb(&p.night),
         ..earth
     })
 }
@@ -302,14 +302,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // No twilight adaptation unless the day-night cycle sets one below.
     scene.atmosphere.adaptation = 1.0;
     scene.atmosphere.wind = resource(world, layouts.wind.as_ref()).and_then(|w| {
-        let strength = f(&w, "strength", 0.0);
-        (strength > 0.0).then(|| og_render::Wind {
-            strength,
-            direction: super::fx::vec3(&w["direction"]),
-            speed: f(&w, "speed", 3.0),
-            gust: f(&w, "gust", 0.6),
-            turbulence: f(&w, "turbulence", 0.3),
-            gust_size: f(&w, "gustSize", 14.0),
+        // The hand read's direction default (zero), not the IDL's +X.
+        let base = record::Wind {
+            direction: Vec3::ZERO,
+            ..Default::default()
+        };
+        let w = record::Wind::from_json_over(&w, base).ok()?;
+        (w.strength > 0.0).then_some(og_render::Wind {
+            strength: w.strength,
+            direction: w.direction,
+            speed: w.speed,
+            gust: w.gust,
+            turbulence: w.turbulence,
+            gust_size: w.gust_size,
         })
     });
     // og.WindMotor: local pushes on the simulated wind field, placed by
@@ -371,27 +376,36 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
 
     // The sky: a chosen look, drawn per pixel and lit by.
     if let Some(s) = resource(world, layouts.sky.as_ref())
-        && on(&s, "enabled", false)
+        // The hand read's sunDirection default (zero, so +Y below), not
+        // the IDL's (0.45, 0.8, 0.35).
+        && let Ok(s) = record::Sky::from_json_over(
+            &s,
+            record::Sky {
+                sun_direction: Vec3::ZERO,
+                ..Default::default()
+            },
+        )
+        && s.enabled
     {
         let look = SkyLook {
-            zenith: color(&s["zenith"], Vec3::new(0.18, 0.36, 0.78)),
-            horizon: color(&s["horizon"], Vec3::new(0.78, 0.84, 0.92)),
-            ground: color(&s["ground"], Vec3::new(0.16, 0.14, 0.12)),
-            sun_size: f(&s, "sunSize", 1.8),
-            sun_intensity: f(&s, "sunIntensity", 40.0),
-            glow: f(&s, "glow", 0.6),
-            glow_power: f(&s, "glowPower", 24.0),
-            stars: f(&s, "stars", 0.0),
-            brightness: f(&s, "brightness", 1.1),
-            moon_size: f(&s, "moonSize", 0.0),
-            moon_phase: f(&s, "moonPhase", 0.5),
-            moon_intensity: f(&s, "moonIntensity", 1.4),
-            moon_color: color(&s["moonColor"], Vec3::new(0.9, 0.92, 1.0)),
-            moon_direction: super::fx::vec3(&s["moonDirection"]),
+            zenith: rgb(&s.zenith),
+            horizon: rgb(&s.horizon),
+            ground: rgb(&s.ground),
+            sun_size: s.sun_size,
+            sun_intensity: s.sun_intensity,
+            glow: s.glow,
+            glow_power: s.glow_power,
+            stars: s.stars,
+            brightness: s.brightness,
+            moon_size: s.moon_size,
+            moon_phase: s.moon_phase,
+            moon_intensity: s.moon_intensity,
+            moon_color: rgb(&s.moon_color),
+            moon_direction: s.moon_direction,
             physical: air,
         };
-        let dir = super::fx::vec3(&s["sunDirection"]).normalize_or(Vec3::Y);
-        let sun = color(&s["sunColor"], Vec3::new(1.0, 0.95, 0.88));
+        let dir = s.sun_direction.normalize_or(Vec3::Y);
+        let sun = rgb(&s.sun_color);
         scene.lighting.environment.sky = ProceduralSky {
             sun_direction: dir,
             sun_color: sun,
@@ -415,16 +429,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         layouts.day_night.as_ref(),
         layouts.physical_sky.as_ref(),
     ) {
-        let (tilt, azimuth) = (f(&d, "tilt", 25.0), f(&d, "azimuth", 0.0));
+        let (tilt, azimuth) = (d.tilt, d.azimuth);
         // The image-based light steps every `step` game minutes.
-        let step = f(&d, "step", 10.0).clamp(1.0, 120.0) / 60.0;
+        let step = d.step.clamp(1.0, 120.0) / 60.0;
         let mut stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
         if let Some(a) = &air {
             stepped = stepped.with_atmosphere(a);
         }
         // The moon opposite the sun drawn this frame (moon_direction zero).
-        stepped.sky.moon_size = f(&d, "moonSize", 1.6);
-        stepped.sky.moon_phase = f(&d, "moonPhase", 0.5);
+        stepped.sky.moon_size = d.moon_size;
+        stepped.sky.moon_phase = d.moon_phase;
         scene.lighting.light.direction_to_light = look.light_direction;
         scene.lighting.light.color = look.light_color;
         scene.lighting.light.intensity = intensity;
@@ -439,7 +453,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             sun_direction: look.sun_direction,
             sun_color: look.sun_color,
         };
-        if on(&d, "tintFog", true) {
+        if d.tint_fog {
             fog_tint = Some((look.fog_color, look.fog_sun));
         }
     }
@@ -447,38 +461,47 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // Clouds over the procedural sky (they bring the built-in one when no
     // sky resource drew it), dimming the light by their cover.
     scene.atmosphere.clouds = resource(world, layouts.clouds.as_ref())
-        .filter(|c| on(c, "enabled", false))
+        // The hand read's wind default (zero), not the IDL's (12, 0.4, 4).
+        .and_then(|c| {
+            let base = record::Clouds {
+                wind: Vec3::ZERO,
+                ..Default::default()
+            };
+            record::Clouds::from_json_over(&c, base).ok()
+        })
+        .filter(|c| c.enabled)
         .map(|c| og_render::Clouds {
-            coverage: f(&c, "coverage", 0.45),
-            density: f(&c, "density", 0.04),
-            base: f(&c, "base", 1500.0),
-            thickness: f(&c, "thickness", 1800.0),
-            scale: f(&c, "scale", 9000.0),
-            wind: super::fx::vec3(&c["wind"]),
-            color: color(&c["color"], Vec3::ONE),
-            detail: f(&c, "detail", 0.35),
-            layer: f(&c, "layer", 0.3),
-            layer_altitude: f(&c, "layerAltitude", 8000.0),
-            steps: u(&c, "steps", 48),
+            coverage: c.coverage,
+            density: c.density,
+            base: c.base,
+            thickness: c.thickness,
+            scale: c.scale,
+            wind: c.wind,
+            color: rgb(&c.color),
+            detail: c.detail,
+            layer: c.layer,
+            layer_altitude: c.layer_altitude,
+            steps: c.steps,
             // A strike's flash, set by lightning_and_surfaces.
             flash: glam::Vec4::ZERO,
         });
     // The aurora, in the same procedural sky.
     scene.atmosphere.aurora = resource(world, layouts.aurora.as_ref())
-        .filter(|a| on(a, "enabled", false))
+        .and_then(|a| record::Aurora::from_json(&a).ok())
+        .filter(|a| a.enabled)
         .map(|a| og_render::Aurora {
-            intensity: f(&a, "intensity", 1.0),
-            activity: f(&a, "activity", 0.4),
-            curtains: u(&a, "curtains", 3),
-            direction: f(&a, "direction", 90.0),
-            distance: f(&a, "distance", 150_000.0),
-            spread: f(&a, "spread", 70_000.0),
-            energy: f(&a, "energy", 2.0),
-            speed: f(&a, "speed", 1.0),
-            seed: u(&a, "seed", 0),
-            green: color(&a["greenColor"], og_render::Aurora::SPECTRAL[0]),
-            red: color(&a["redColor"], og_render::Aurora::SPECTRAL[1]),
-            nitrogen: color(&a["nitrogenColor"], og_render::Aurora::SPECTRAL[2]),
+            intensity: a.intensity,
+            activity: a.activity,
+            curtains: a.curtains,
+            direction: a.direction,
+            distance: a.distance,
+            spread: a.spread,
+            energy: a.energy,
+            speed: a.speed,
+            seed: a.seed,
+            green: rgb(&a.green_color),
+            red: rgb(&a.red_color),
+            nitrogen: rgb(&a.nitrogen_color),
         });
     if scene.atmosphere.aurora.is_some()
         && scene.atmosphere.clouds.is_none()
@@ -516,20 +539,21 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
 
     // Fog, declared or from the weather.
     if let Some(v) = resource(world, layouts.fog.as_ref())
-        && on(&v, "enabled", false)
+        && let Ok(v) = record::Fog::from_json(&v)
+        && v.enabled
     {
         let mut fog = Fog {
-            color: color(&v["color"], Vec3::new(0.62, 0.68, 0.76)),
-            density: f(&v, "density", 0.02),
-            start: f(&v, "start", 0.0),
-            end: f(&v, "end", 0.0),
-            height_density: f(&v, "heightDensity", 0.0),
-            height: f(&v, "height", 0.0),
-            falloff: f(&v, "falloff", 0.5),
-            sun_color: color(&v["sunColor"], Vec3::new(1.0, 0.86, 0.62)),
-            sun_power: f(&v, "sunPower", 8.0),
-            max_opacity: f(&v, "maxOpacity", 1.0),
-            sky: f(&v, "sky", 1.0),
+            color: rgb(&v.color),
+            density: v.density,
+            start: v.start,
+            end: v.end,
+            height_density: v.height_density,
+            height: v.height,
+            falloff: v.falloff,
+            sun_color: rgb(&v.sun_color),
+            sun_power: v.sun_power,
+            max_opacity: v.max_opacity,
+            sky: v.sky,
         };
         if let Some((t, sun)) = fog_tint {
             fog.color = fog.color.lerp(t, 0.75);
@@ -539,16 +563,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         }
         // Fog.volumetric: the same medium lit (og-render's volumetric.rs),
         // which replaces the plain fog where the renderer draws it.
-        if on(&v, "volumetric", false) {
+        if v.volumetric {
             scene.atmosphere.volumetric_fog = Some(og_render::VolumetricFog {
                 color: fog.color,
                 density: fog.density,
                 height: fog.height,
                 height_density: fog.height_density,
                 falloff: fog.falloff,
-                scattering: f(&v, "scattering", 0.8),
-                anisotropy: f(&v, "anisotropy", 0.6),
-                distance: f(&v, "volumetricDistance", 48.0),
+                scattering: v.scattering,
+                anisotropy: v.anisotropy,
+                distance: v.volumetric_distance,
             });
         }
         scene.atmosphere.fog = Some(fog);
@@ -829,56 +853,60 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // its particles by their mix over the group's fluids' colours (lanes as
     // og-physics' fluid3d_mix gives them).
     // Fluid3D.color is a Vector3 (x, y, z are r, g, b).
-    let fluid_color = |v: &Value| match v["color"].is_object() {
-        true => super::fx::vec3(&v["color"]),
-        false => Vec3::new(0.2, 0.55, 0.9),
-    };
-    let fluids3 = kept_rows(world, layouts.fluid3d.as_ref());
+    let fluids3: Vec<(u64, record::Fluid3D)> = kept_rows(world, layouts.fluid3d.as_ref())
+        .into_iter()
+        .filter_map(|(e, v)| {
+            // The hand read's size default (zero), not the IDL's (2, 1, 2).
+            let base = record::Fluid3D {
+                size: Vec3::ZERO,
+                ..Default::default()
+            };
+            Some((e, record::Fluid3D::from_json_over(&v, base).ok()?))
+        })
+        .collect();
     let mut lanes: BTreeMap<(u32, u32), Vec3> = BTreeMap::new();
     let mut mixes = BTreeMap::new();
     for (e, v) in &fluids3 {
         if let Some((lane, mix)) = physics.fluid3d_mix(Entity::from_bits(*e)) {
-            let group = u(v, "group", 0);
-            lanes.insert((group, lane), fluid_color(v));
-            mixes.insert(*e, (group, mix));
+            lanes.insert((v.group, lane), v.color);
+            mixes.insert(*e, (v.group, mix));
         }
     }
     for (e, v) in &fluids3 {
-        if !on(v, "visible", true) {
+        if !v.visible {
             continue;
         }
         let Some(particles) = physics.fluid3d_particles(Entity::from_bits(*e)) else {
             continue;
         };
-        let radius = f(v, "radius", 0.2);
+        let radius = v.radius;
         // SIMULATION_VISUAL: the renderer's particles (the tick has none),
         // spawned and moved on the GPU from this.
-        if record::Fluid3D::from_json(v).is_ok_and(|r| visual(r.simulation)) {
+        if visual(v.simulation) {
             let at = h.world_of(*e).transform_point3(Vec3::ZERO);
-            let size = super::fx::vec3(&v["size"]);
-            let count = u(v, "count", 2000);
+            let size = v.size;
+            let count = v.count;
             let fluid = og_render::VisualFluid {
                 key: *e,
                 count,
                 centre: at,
                 size,
-                bounds: super::fx::vec3(&v["bounds"]),
+                bounds: v.bounds,
                 cell: radius,
-                max_count: u(v, "maxCount", 8192),
+                max_count: v.max_count,
                 // The solver's own are water at the component's defaults.
-                stiffness: f(v, "stiffness", 0.02) / 0.02,
-                viscosity: f(v, "viscosity", 0.4) / 0.4,
-                gravity: physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0))
-                    * f(v, "gravityScale", 1.0),
-                substeps: u(v, "substeps", 2),
-                seed: u(v, "seed", 0),
-                emit_rate: f(v, "emitRate", 0.0),
-                emit_at: at + super::fx::vec3(&v["emitOffset"]),
-                emit_radius: f(v, "emitRadius", 0.1),
-                emit_velocity: super::fx::vec3(&v["emitVelocity"]),
+                stiffness: v.stiffness / 0.02,
+                viscosity: v.viscosity / 0.4,
+                gravity: physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0)) * v.gravity_scale,
+                substeps: v.substeps,
+                seed: v.seed,
+                emit_rate: v.emit_rate,
+                emit_at: at + v.emit_offset,
+                emit_radius: v.emit_radius,
+                emit_velocity: v.emit_velocity,
                 sink: {
-                    let half = super::fx::vec3(&v["sinkSize"]) * 0.5;
-                    let c = at + super::fx::vec3(&v["sinkOffset"]);
+                    let half = v.sink_size * 0.5;
+                    let c = at + v.sink_offset;
                     half.cmpgt(Vec3::ZERO).all().then_some((c - half, c + half))
                 },
             };
@@ -888,13 +916,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             scene.world.fluids_3d.push(og_render::Fluid3d {
                 particles: Arc::from(Vec::new()),
                 colors: None,
-                color: fluid_color(v),
-                opacity: f(v, "opacity", 0.6),
-                radius: (radius * f(v, "drawScale", 0.6)).max(0.9 * volume.cbrt()),
+                color: v.color,
+                opacity: v.opacity,
+                radius: (radius * v.draw_scale).max(0.9 * volume.cbrt()),
                 volume,
-                reflectivity: f(v, "reflectivity", 1.0),
-                refraction: f(v, "refraction", 1.0),
-                smoothing: f(v, "smoothing", 1.0),
+                reflectivity: v.reflectivity,
+                refraction: v.refraction,
+                smoothing: v.smoothing,
                 visual: Some(Arc::new(fluid)),
             });
             continue;
@@ -914,29 +942,37 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         scene.world.fluids_3d.push(og_render::Fluid3d {
             particles: Arc::from(particles),
             colors,
-            color: fluid_color(v),
-            opacity: f(v, "opacity", 0.6),
-            radius: radius * f(v, "drawScale", 0.6),
+            color: v.color,
+            opacity: v.opacity,
+            radius: radius * v.draw_scale,
             // The share of the volume each particle stands for: at rest
             // they sit about half the interaction radius apart.
             volume: (radius * 0.5).powi(3),
-            reflectivity: f(v, "reflectivity", 1.0),
-            refraction: f(v, "refraction", 1.0),
-            smoothing: f(v, "smoothing", 1.0),
+            reflectivity: v.reflectivity,
+            refraction: v.refraction,
+            smoothing: v.smoothing,
             visual: None,
         });
     }
     // Ropes: a strip through their points in 3D, a sprite per segment in 2D.
     for (e, v) in kept_rows(world, layouts.rope.as_ref()) {
-        if !on(&v, "visible", true) {
+        // The hand read's colour default (black), not the IDL's brown.
+        let base = record::Rope {
+            color: Vec3::ZERO,
+            ..Default::default()
+        };
+        let Ok(v) = record::Rope::from_json_over(&v, base) else {
+            continue;
+        };
+        if !v.visible {
             continue;
         }
         let Some(points) = physics.rope_points(Entity::from_bits(e)) else {
             continue;
         };
         // Rope.color is a Vector3 (x, y, z are r, g, b).
-        let c = super::fx::vec3(&v["color"]);
-        let width = f(&v, "width", 0.08);
+        let c = v.color;
+        let width = v.width;
         if orthographic {
             for pair in points.windows(2) {
                 let (a, b) = (pair[0], pair[1]);
@@ -970,7 +1006,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let gravity = physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0));
     // Cloth: a double-sided mesh of its points, replaced every frame.
     for (e, v) in kept_rows(world, layouts.cloth.as_ref()) {
-        if !on(&v, "visible", true) {
+        let Ok(row) = record::Cloth::from_json(&v) else {
+            continue;
+        };
+        if !row.visible {
             continue;
         }
         let Some(c) = physics.cloth_points(Entity::from_bits(e)) else {
@@ -993,19 +1032,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 rows: c.rows,
             },
         );
-        if let Ok(row) = record::Cloth::from_json(&v)
-            && visual(row.simulation)
-        {
+        if visual(row.simulation) {
             let body = og_render::VisualBody {
                 pinned: c.pinned.into(),
                 substeps: small_steps(row.substeps, row.iterations),
-                damping: f(&v, "damping", 0.985),
-                gravity: gravity * f(&v, "gravityScale", 1.0),
-                wind: super::fx::vec3(&v["wind"]),
-                gust: f(&v, "gust", 0.6),
-                radius: f(&v, "radius", 0.04),
-                friction: f(&v, "friction", 0.0),
-                thickness: f(&v, "thickness", 0.0),
+                damping: row.damping,
+                gravity: gravity * row.gravity_scale,
+                wind: row.wind,
+                gust: row.gust,
+                radius: row.radius,
+                friction: row.friction,
+                thickness: row.thickness,
                 stiffness: 1.0,
                 bending: CLOTH_BENDING,
                 plane: c.flat.then(|| c.points.first().map_or(0.0, |p| p.z)),
@@ -1013,7 +1050,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             };
             scene.set_visual_body(handle, Some(Arc::new(body)));
         }
-        let material = super::fx::handle_index(&v["material"])
+        let material = super::assets::index_of(row.material as f64)
             .and_then(|i| materials.get(i).copied())
             .unwrap_or_else(|| {
                 *atmo.cloth_material.get_or_insert_with(|| {
@@ -1030,7 +1067,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     }
     // Soft volumes: their surface, smooth-shaded, replaced every frame.
     for (e, v) in kept_rows(world, layouts.soft.as_ref()) {
-        if !on(&v, "visible", true) {
+        let Ok(row) = record::SoftBody::from_json(&v) else {
+            continue;
+        };
+        if !row.visible {
             continue;
         }
         let Some(s) = physics.soft_body_points(Entity::from_bits(e)) else {
@@ -1046,20 +1086,18 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             }
         };
         scene.set_simulation_surface(handle, mesh, og_render::SimulationSurface::SoftBody);
-        if let Ok(row) = record::SoftBody::from_json(&v)
-            && visual(row.simulation)
-        {
+        if visual(row.simulation) {
             let body = og_render::VisualBody {
                 pinned: s.pinned.into(),
                 substeps: small_steps(row.substeps, row.iterations),
-                damping: f(&v, "damping", 0.995),
-                gravity: gravity * f(&v, "gravityScale", 1.0),
-                radius: f(&v, "thickness", 0.03),
-                friction: f(&v, "friction", 0.3),
-                stiffness: f(&v, "stiffness", 1.0),
-                pressure: f(&v, "pressure", 1.0),
-                volume_stiffness: if f(&v, "pressure", 1.0) > 0.0 {
-                    f(&v, "volumeStiffness", 1.0)
+                damping: row.damping,
+                gravity: gravity * row.gravity_scale,
+                radius: row.thickness,
+                friction: row.friction,
+                stiffness: row.stiffness,
+                pressure: row.pressure,
+                volume_stiffness: if row.pressure > 0.0 {
+                    row.volume_stiffness
                 } else {
                     0.0
                 },
@@ -1068,7 +1106,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             };
             scene.set_visual_body(handle, Some(Arc::new(body)));
         }
-        let material = super::fx::handle_index(&v["material"])
+        let material = super::assets::index_of(row.material as f64)
             .and_then(|i| materials.get(i).copied())
             .unwrap_or_else(|| {
                 *atmo.soft_material.get_or_insert_with(|| {
@@ -1120,45 +1158,54 @@ fn lightning_and_surfaces(
     tick: u64,
 ) {
     scene.atmosphere.surface_weather = None;
-    let Some(st) = resource(world, layouts.weather_state.as_ref()) else {
+    let Some(st) = resource(world, layouts.weather_state.as_ref())
+        .and_then(|st| record::WeatherState::from_json(&st).ok())
+    else {
         return;
     };
-    let weather = resource(world, layouts.weather.as_ref());
-    let kind = weather.as_ref().map_or(0, |w| u(w, "kind", 0));
+    // The hand read's wind default (zero), not the IDL's (1.5, 0, 0.5).
+    let weather = resource(world, layouts.weather.as_ref()).and_then(|w| {
+        let base = record::Weather {
+            wind: Vec3::ZERO,
+            ..Default::default()
+        };
+        record::Weather::from_json_over(&w, base).ok()
+    });
+    let kind = weather.as_ref().map_or(0, |w| w.kind);
     let rain = weather
         .as_ref()
         .filter(|_| kind == og_render::WEATHER_RAIN)
-        .map_or(0.0, |w| f(w, "intensity", 1.0));
+        .map_or(0.0, |w| w.intensity);
     // The shelter map looks along the fall: the rain's or the snow's speed
     // (og_render::weather's particles) slanted by the wind, at most 45°
     // (what drifts flatter eddies round a roof, not under it); straight
     // down once neither falls.
     let (drift, down) = match (kind, weather.as_ref()) {
-        (og_render::WEATHER_RAIN, Some(w)) => (super::fx::vec3(&w["wind"]), 11.0),
-        (og_render::WEATHER_SNOW, Some(w)) => (super::fx::vec3(&w["wind"]) * 0.8, 0.88),
+        (og_render::WEATHER_RAIN, Some(w)) => (w.wind, 11.0),
+        (og_render::WEATHER_SNOW, Some(w)) => (w.wind * 0.8, 0.88),
         _ => (Vec3::ZERO, 1.0),
     };
     let drift = Vec3::new(drift.x, 0.0, drift.z).clamp_length_max(down);
     let fall = drift - Vec3::Y * down;
     scene.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
-        wetness: f(&st, "wetness", 0.0),
-        puddles: f(&st, "puddles", 0.0),
-        snow: f(&st, "snowDepth", 0.0) / f(&st, "snowCover", 0.08).max(1e-3),
+        wetness: st.wetness,
+        puddles: st.puddles,
+        snow: st.snow_depth / st.snow_cover.max(1e-3),
         rain,
         fall: fall.normalize_or(Vec3::NEG_Y),
-        shelter: f(&st, "shelterSize", 64.0),
-        dust: f(&st, "dust", 0.0),
-        dust_color: color(&st["dustColor"], Vec3::new(0.62, 0.5, 0.36)),
-        snow_depth: f(&st, "snowDepth", 0.0),
+        shelter: st.shelter_size,
+        dust: st.dust,
+        dust_color: rgb(&st.dust_color),
+        snow_depth: st.snow_depth,
         ..Default::default()
     });
-    let strikes = u(&st, "strikes", 0);
+    let strikes = st.strikes;
     if strikes == 0 {
         return;
     }
     let rate = f64::from(world.time().dt).recip();
-    let since = (tick.saturating_sub(u64::from(u(&st, "lastStrike", 0)))) as f64 / rate;
-    let at = super::fx::vec3(&st["strikePosition"]);
+    let since = (tick.saturating_sub(u64::from(st.last_strike))) as f64 / rate;
+    let at = st.strike_position;
     let base = scene.atmosphere.clouds.map_or(600.0, |c| c.base.max(50.0));
     og_render::add_lightning(scene, at, at.y + base, strikes, since as f32);
 }
@@ -1259,14 +1306,19 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
         let time = ctx.time();
         let d = super::api::running_record(&eng, "og.DayNight", super::codec::RecordKind::Resource)
             .ok()
-            .and_then(|(l, id)| ctx.resource_bytes(id).ok().map(|b| l.decode(&b)));
+            .and_then(|(l, id)| {
+                l.read::<record::DayNight>(&ctx.resource_bytes(id).ok()?)
+                    .ok()
+            });
         return d.map_or(9.0, |d| f64::from(hours(&d, time.tick, time.dt)));
     }
     let Ok(w) = eng.world() else {
         return 0.0;
     };
     let time = w.time();
-    resource(w, Some(&layout)).map_or(9.0, |d| f64::from(hours(&d, time.tick, time.dt)))
+    resource(w, Some(&layout))
+        .and_then(|d| record::DayNight::from_json(&d).ok())
+        .map_or(9.0, |d| f64::from(hours(&d, time.tick, time.dt)))
 }
 
 // ── material shaders ────────────────────────────────────────────────────
