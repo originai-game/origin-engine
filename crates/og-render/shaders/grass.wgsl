@@ -267,6 +267,8 @@ fn fs_prepass(in: GrassPrepassIn, @builtin(front_facing) front: bool) -> GrassPr
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
   let roughness = clamp(grass.dry_color.w * (1.0 - 0.45 * in.sheen), 0.04, 1.0);
   o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity_bits(roughness, 0.0), 0.0, 1.0);
-  o.outline = vec4<f32>(0.0);
+  // No line of its own; a clump with the ground (id 0), so a line filter
+  // draws no blade against it.
+  o.outline = outline_bytes(vec3<f32>(0.0), 0.0, 0u, true);
   return o;
 }

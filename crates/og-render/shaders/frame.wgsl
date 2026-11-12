@@ -70,6 +70,7 @@ struct Frame {
   stylise: vec4<f32>,         // xy: the vertex snap grid in cells (0: none), z: affine texturing, w: depth bits (0: full)
   shadow_tint: vec4<f32>,     // rgb: the tint shadowed light moves towards, w: amount (0: off)
   outline_style: vec4<f32>,   // x: the distance at which outlines are their width (0: constant), y: shadow darkness (0: off), z: 1 when the style is toon (the terrain's bands)
+  style_line: vec4<f32>,      // rgb: the style's outline colour, w: its width in pixels (0: none), for surfaces without a material (the terrain)
   // A reflection probe (probes.rs): set in the frame group bound for a
   // draw inside the probe's box, whose irradiance_map is then the
   // environment's prefiltered cube and prefiltered_map the probe's.

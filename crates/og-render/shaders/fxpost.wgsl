@@ -398,7 +398,7 @@ fn fs_ao_upsample(in: VsOut) -> @location(0) vec4<f32> {
 // Outlines inside silhouettes (a neighbour at the line width farther than
 // the surface would be there) and along creases (a neighbour of about the
 // same depth turned past the threshold), in each object's own colour and
-// width (tex_b: the prepass outline target, pbr_prepass.wgsl
+// width (tex_b: the prepass outline target, lighting.wgsl
 // `outline_bytes`) or the scene's. An object's own outline is a hull
 // outline: a crease is lined only where it meets another object (another
 // id), never between its own faces, so a voxel, flat-shaded or hard-edged
@@ -433,12 +433,12 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
   let id = outline_texel(px);
   var width = f32(id.z) / 8.0;
   let packed = (id.x << 8u) | id.y;
-  var color = vec4<f32>(
-    f32(packed >> 11u) / 31.0,
-    f32((packed >> 5u) & 63u) / 63.0,
-    f32(packed & 31u) / 31.0,
-    1.0);
+  var color = vec4<f32>(line_color(packed), 1.0);
   let own = width > 0.0;
+  // A clump (lighting.wgsl outline_bytes: a crown, the grass, the
+  // ground): lined against the sky or another id only, and by no crease
+  // (two crowns' leaves at one depth are no fold).
+  let clump = line_clump(packed);
   if (!own) {
     width = fxp.outline.x;
     color = fxp.outline_color;
@@ -464,6 +464,7 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
       let q = px + step;
       let d = depth_at(q);
       if (abs(d - d0) < d0 * fxp.outline.y * 4.0
+          && !clump && !line_clump((outline_texel(q).x << 8u) | outline_texel(q).y)
           && (!own || outline_texel(q).w != id.w)
           && 1.0 - dot(world_normal(q), n0) > fxp.outline.z) {
         edges += 1.0;
@@ -473,6 +474,7 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
       let si = vec2<i32>(round(dir * ri));
       let qs = px + si;
       let ds = depth_at(qs);
+      if (clump && !is_sky(ds) && (outline_texel(qs).w == id.w || clump_gap(px, dir, id.w))) { continue; }
       let back = px - si;
       let planar = !is_sky(ds)
           && outline_texel(qs).w == id.w && outline_texel(back).w == id.w
@@ -504,7 +506,7 @@ fn fs_outline(in: VsOut) -> @location(0) vec4<f32> {
 //
 // The field (Rgba32Float, outline-jfa.a/b): x the offset to the nearest
 // seed, packed ((dx + 64) + 128 (dy + 64)), -1 none; y the seed's line,
-// its 5:6:5 colour in the low 16 bits and its width in eighths of a pixel
+// its colour and clump bit in the low 16 bits and its width in eighths of a pixel
 // above them; z the seed's depth; w the pixel's own depth (carried along).
 
 fn jfa_pack(o: vec2<i32>) -> f32 {
@@ -534,10 +536,11 @@ fn fs_outline_seed(in: VsOut) -> @location(0) vec4<f32> {
   var packed = (id.x << 8u) | id.y;
   if (width <= 0.0) {
     width = fxp.outline.x;
-    let c = vec3<u32>(round(clamp(fxp.outline_color.rgb, vec3<f32>(0.0), vec3<f32>(1.0)) * vec3<f32>(31.0, 63.0, 31.0)));
-    packed = (c.r << 11u) | (c.g << 5u) | c.b;
+    let c = vec3<u32>(round(clamp(fxp.outline_color.rgb, vec3<f32>(0.0), vec3<f32>(1.0)) * 31.0));
+    packed = (c.r << 11u) | (c.g << 6u) | c.b;
   }
   if (width <= 0.0) { return none; }
+  let clump = line_clump(packed);
   var silhouette = false;
   for (var i = 0; i < 4; i++) {
     let o = select(select(vec2<i32>(0, -1), vec2<i32>(0, 1), i == 2), select(vec2<i32>(-1, 0), vec2<i32>(1, 0), i == 0), i < 2);
@@ -546,7 +549,7 @@ fn fs_outline_seed(in: VsOut) -> @location(0) vec4<f32> {
     // Farther past the threshold, or another object behind at all (a near
     // hill over a far one, whose depths differ by less than the threshold
     // along much of the overlap: the line came out dashed).
-    if (is_sky(d) || d > d0 * (1.0 + fxp.outline.y) || (d > d0 && outline_texel(q).w != id.w)) { silhouette = true; }
+    if (is_sky(d) || (!clump && d > d0 * (1.0 + fxp.outline.y)) || (d > d0 && outline_texel(q).w != id.w)) { silhouette = true; }
   }
   if (!silhouette) { return none; }
   let line = f32(packed) + 65536.0 * round(clamp(width, 0.0, 31.875) * 8.0);
@@ -606,12 +609,16 @@ fn fs_outline_wide(in: VsOut) -> @location(0) vec4<f32> {
   // Behind the seed: the sky, farther past the threshold, or another object
   // (as fs_outline_seed: the seed lies at px + o).
   let other = r.w > r.z && outline_texel(px + o).w != outline_texel(px).w;
-  if (!(is_sky(r.w) || r.w > r.z * (1.0 + fxp.outline.y) || other)) { return c; }
   let line = u32(r.y);
+  // A clump's line (the seed's) falls on the sky or another object only,
+  // and never in a gap between its own leaves.
+  let clump = line_clump(line);
+  if (!(is_sky(r.w) || (!clump && r.w > r.z * (1.0 + fxp.outline.y)) || other)) { return c; }
+  if (clump && clump_gap(px + o, -normalize(vec2<f32>(o)), outline_texel(px + o).w)) { return c; }
   var width = f32(line >> 16u) / 8.0;
   if (u32(fxp.outline.w + 0.5) == 2u) { width *= 0.5; }
   let packed = line & 65535u;
-  let color = vec3<f32>(f32(packed >> 11u) / 31.0, f32((packed >> 5u) & 63u) / 63.0, f32(packed & 31u) / 31.0);
+  let color = line_color(packed);
   let dist = length(vec2<f32>(o)) - 0.5;
   let k = clamp(width - dist + 0.5, 0.0, 1.0);
   return vec4<f32>(mix(c.rgb, color, k), c.a);
@@ -628,6 +635,28 @@ fn surface_ahead(d0: f32, back: f32) -> f32 {
   if (is_sky(back) || back >= d0 || back < d0 * 0.5) { return d0; }
   let inv = 2.0 / d0 - 1.0 / back;
   return select(d0 * 2.0, clamp(1.0 / inv, d0, d0 * 2.0), inv > 0.5 / d0);
+}
+
+// A line's colour from its 16 bits (lighting.wgsl outline_bytes: 5:5:5,
+// the clump bit between green and blue).
+fn line_color(packed: u32) -> vec3<f32> {
+  return vec3<f32>(f32((packed >> 11u) & 31u), f32((packed >> 6u) & 31u), f32(packed & 31u)) / 31.0;
+}
+
+// Whether the clump `id` goes on beyond its edge at `px` towards `dir`: a
+// gap between a crown's leaves, which shows what stands behind it and is
+// no silhouette of the crown. Looked for a 120th and a 36th of the
+// frame's height out (6 and 20 px at 720p); the ground (id 0) has none.
+fn clump_gap(px: vec2<i32>, dir: vec2<f32>, id: u32) -> bool {
+  if (id == 0u) { return false; }
+  let near = px + vec2<i32>(round(dir * fxp.screen.y / 120.0));
+  let far = px + vec2<i32>(round(dir * fxp.screen.y / 36.0));
+  return outline_texel(near).w == id || outline_texel(far).w == id;
+}
+
+// Whether a line's 16 bits are a clump's.
+fn line_clump(packed: u32) -> bool {
+  return (packed & 32u) != 0u;
 }
 
 // The outline target's bytes at `px` (clamped to the image).

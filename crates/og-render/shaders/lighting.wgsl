@@ -595,6 +595,45 @@ fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
 // impostors and crowd cards, which carry no such maps, call style_sun,
 // style_irradiance and style_local.
 
+// The outline target's texel (Rgba8Unorm, read back as bytes by
+// fxpost.wgsl `fs_outline`): the colour in 5:5:5 with the clump bit
+// between green and blue (r the high byte, g the low), the width in
+// eighths of a pixel (0: no line of its own), the object's id. A clump
+// (a tree's crown, a scattered copy, the terrain) is lined only against
+// the sky or another id, never between its own leaves or folds.
+fn outline_bytes(color: vec3<f32>, width: f32, object: u32, clump: bool) -> vec4<f32> {
+  let c = vec3<u32>(round(clamp(color, vec3<f32>(0.0), vec3<f32>(1.0)) * 31.0));
+  let packed = (c.r << 11u) | (c.g << 6u) | (u32(clump) << 5u) | c.b;
+  let w = u32(round(clamp(width, 0.0, 31.875) * 8.0));
+  return vec4<f32>(f32(packed >> 8u), f32(packed & 255u), f32(w), f32(object)) / 255.0;
+}
+
+// A style line's width at the world point `p`: with the style's outline
+// distance, nearer than it the line grows, up to four times its width (a
+// ground a metre under the camera is not lined 30 px wide), farther it
+// thins in proportion (never for an orthographic camera). Never under a
+// pixel, where a far silhouette wants ink (inked-comic-3d's hills), unless
+// `thin` (foliage): its line never grows past its width and fades out by
+// coverage far off, so a wood is not filled with ink near or far.
+fn style_line_width(width: f32, p: vec3<f32>, thin: bool) -> f32 {
+  if (frame.outline_style.x <= 0.0 || frame.view_pos.w >= 0.5 || width <= 0.0) { return width; }
+  let depth = max(dot(p - frame.view_pos.xyz, frame.view_forward.xyz), 0.01);
+  let w = width * frame.outline_style.x / depth;
+  if (thin) { return min(w, width); }
+  return clamp(w, 1.0, max(min(31.0, width * 4.0), 1.0));
+}
+
+// A clump's id in the outline target, 1 to 255, from where it stands
+// (pbr.wgsl object_id for an instance): neighbouring clumps share one in 255.
+fn clump_id(at: vec3<f32>) -> u32 {
+  var h = 2166136261u;
+  h = (h ^ bitcast<u32>(at.x)) * 16777619u;
+  h = (h ^ bitcast<u32>(at.y)) * 16777619u;
+  h = (h ^ bitcast<u32>(at.z)) * 16777619u;
+  h = h ^ (h >> 16u);
+  return 1u + h % 255u;
+}
+
 // Whether the frame's style is toon.
 fn style_toon() -> bool {
   return frame.outline_style.z > 0.5;

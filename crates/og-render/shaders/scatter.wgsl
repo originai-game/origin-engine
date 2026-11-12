@@ -22,6 +22,9 @@ struct ScatterOut {
   @location(3) color: vec4<f32>,
   // How much of the copy draws as its mesh (scatter_near; scatter_dropped).
   @location(4) @interpolate(flat) fade: f32,
+  // The copy's id in the outline target (clump_id); beside the other
+  // scalar, so no vector is packed for it (impostor.wgsl).
+  @location(8) @interpolate(flat) object: u32,
   @location(5) cur_clip: vec4<f32>,
   @location(6) prev_clip: vec4<f32>,
   @location(7) local: vec3<f32>,
@@ -49,6 +52,7 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   let model = scatter_shrunk(instance_matrix(i.m0, i.m1, i.m2, i.m3), size);
   var o: ScatterOut;
   o.fade = scatter_near(i.m3);
+  o.object = clump_id(i.m3);
   let scale = length(i.m1) * size;
   let sway = scatter_sway(v.position, i.m3, scale, false);
   var world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
@@ -237,6 +241,13 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
   let roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
   let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, (u32(material.flags.w) & 2u) != 0u);
   o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
-  o.outline = vec4<f32>(0.0);
+  // The material's outline (the style's, material.rs), as a clump: round
+  // the copy, never between its leaves; an unstyled material's (mode bit
+  // 8) keeps its width at any distance.
+  var width = material.outline.w;
+  if ((u32(material.flags.w) & 8u) == 0u) {
+    width = style_line_width(width, in.world, true);
+  }
+  o.outline = outline_bytes(material.outline.rgb, width, in.object, true);
   return o;
 }

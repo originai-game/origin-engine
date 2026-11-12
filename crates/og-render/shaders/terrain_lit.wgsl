@@ -674,7 +674,10 @@ fn terrain_prepass_out(p: vec3<f32>, n: vec3<f32>, n_geo: vec3<f32>, layers: vec
   o.gbuffer = vec4<f32>(oct_encode(g.n), (cur - prev) * vec2<f32>(0.5, -0.5));
   let reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);
   o.depth = vec4<f32>(dot(p - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
-  o.outline = vec4<f32>(0.0);
+  // The style's outline round the ground as one clump (id 0, the grass's):
+  // where it ends against the sky or stands before an object, never along
+  // its own folds, which at a grazing angle are a depth step every pixel.
+  o.outline = outline_bytes(frame.style_line.rgb, style_line_width(frame.style_line.w, p, false), 0u, true);
   return o;
 }
 

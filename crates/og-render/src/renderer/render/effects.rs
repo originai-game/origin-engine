@@ -115,7 +115,10 @@ impl Renderer {
             && post_fx.gi_probes.is_some()
             && scene.frame.quality.global_illumination
             && !self.info.without.contains(LitFeatures::GI);
+        // The style's outline also lines what no batch draws: the terrain
+        // and scattered copies (lighting.wgsl outline_bytes).
         let outline = post_fx.outline.is_some()
+            || (WORLD_3D && scene.look.stylise.material.outline_width > 0.0)
             || batches
                 .iter()
                 .chain(skinned_batches)
