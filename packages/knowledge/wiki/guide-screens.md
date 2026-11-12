@@ -158,11 +158,8 @@ layer priority. Custom properties belong to authors, not a second token
 language. The only appearance extensions are `-og-material` and
 `-og-sound`; unknown `-og-*` declarations are errors.
 
-Core-widget host rules and inheritance require parts-as-nodes. Until that
-lands, style their exposed parts directly. `og style upgrade`, `art`, and
-`pack` are removed: CSS images need no style-file conversion or atlas
-writer. The game's art-contract measurements remain available through
-`og style check-project`.
+Style a core widget through its exposed parts. The game's art-contract
+measurements are `og style check-project`.
 
 <a id="guide-screens-4"></a>
 ### `screens §4` Structure and data
@@ -226,73 +223,42 @@ writer. The game's art-contract measurements remain available through
   pure number formatters, and `t(key, { named: expression })`. Assignments,
   arbitrary calls, `$state`, `$effect`, and raw HTML are errors.
 - Style reactive state with `class:active={$step == 'brightness'}` and
-  `.active` rules. The selector grammar includes types, IDs, classes,
-  attributes (`=`, `~=`, `|=`, `^=`, `$=`, `*=`, with `i`/`s`), descendant,
-  child and sibling (`+`, `~`) combinators, `:not()`, `:is()`, `:where()` and
-  `:has()`. `:where()` contributes zero specificity. `:not()`, `:is()` and
-  `:has()` take the highest specificity of their arguments.
-- Structural selectors read the instantiated rows, after `{#if}` and keyed
-  `{#each}`: `.row:nth-child(odd)`, `:nth-child(2n of .gem)`,
-  `:nth-last-child(2)`, `:first-child`, `:last-child`, `:only-child`, the
-  `-of-type` forms, `:empty`, `.card:has(> .hot)` and `.item + .item`
-  separators all follow reorders, inserts and removals. Rows of a `list`
-  restyle when they scroll into view.
-  State selectors name `:hover`, `:active`, `:focus`, `:focus-visible`,
-  `:focus-within`, `:disabled`, `:enabled`, `:checked`, `:selected`,
-  `:indeterminate`, `:default`, `:invalid`, `:valid`, `:user-invalid`,
-  `:required`, `:optional`, `:read-only`, `:read-write`, `:in-range`,
-  `:out-of-range`, `:placeholder-shown`, `:open`, `:modal`,
-  `:popover-open` and `:target`; also `:lang()`, `:dir()`, `:state(name)`
-  (from `state:name={…}`), `:defined`, `:scope` and `:any-link`. Ancestor
-  selectors read that ancestor's interaction identity, not the styled
-  child's state.
-  Rules nest (`.card { &:hover { … } .title { … } @media (…) { … } }`),
-  and stylesheets take `@layer`, `@supports`, `@scope`, `@import`,
-  `@starting-style` and `@property`, with `inherit`, `initial`, `unset`,
-  `revert` and `revert-layer` on every property.
-  Use CSS media conditions, for example
-  `@media (width < 600px), (height < 600px) { ... }`.
-  Supported features are `width`, `height`, `aspect-ratio`, `orientation`,
-  `resolution`, `prefers-reduced-motion`, `prefers-color-scheme`,
-  `prefers-contrast`, `prefers-reduced-transparency` (these follow the
-  theme), and `pointer`/`any-pointer` (`coarse`, `fine`)
-  and `hover`/`any-hover` (`hover`, `none`), which follow a touch screen.
-  `color-gamut`, `dynamic-range`, `display-mode`, `update`, `scripting`,
-  `forced-colors` and `color` answer for the play surface (`srgb`,
-  `standard`, `fullscreen`, `fast`, `enabled`, `none`, 8). Use inclusive `min-`/`max-` bounds or
-  range comparisons, including `(600px <= width < 1024px)`.
-  Commas and `or` mean alternatives; `and` intersects; `not` negates.
-  Group mixed operators with parentheses. Nested `@media` rules intersect.
-  `screen` and `all` are the supported media types. Square viewports are
-  portrait. Lengths use the viewport's logical coordinates: `px`, absolute
-  CSS units, and `em`/`rem` at the engine's initial 16px font size, independent
-  of document styling. Unsupported features, zero-denominator ratios,
-  viewport units, and `calc()` fail cooking instead of silently matching.
-  Legacy names such as `@media phone` are not supported.
+  `.active` rules. Selectors are standard CSS (Selectors 4: combinators,
+  attribute operators, `:not()`, `:is()`, `:where()`, `:has()`, the
+  structural, form and state pseudo-classes), plus `:state(name)` from
+  `state:name={…}`. Structural selectors read the instantiated rows after
+  `{#if}` and keyed `{#each}`, so `.row:nth-child(odd)` and `.item + .item`
+  follow reorders, inserts and removals; rows of a `list` restyle when they
+  scroll into view. An ancestor selector reads that ancestor's own state,
+  not the styled child's.
+- Rules nest, and stylesheets take `@layer`, `@supports`, `@scope`,
+  `@import`, `@starting-style` and `@property`, with the CSS-wide keywords
+  on every property.
+- Use CSS media conditions, for example `@media (width < 600px), (height <
+  600px) { ... }`. `prefers-reduced-motion`, `prefers-color-scheme`,
+  `prefers-contrast` and `prefers-reduced-transparency` follow the theme;
+  `pointer` and `hover` (and their `any-` forms) follow a touch screen, and
+  `(-og-input: pad)` matches while a pad is in use. The display features
+  (`color-gamut`, `dynamic-range`, `display-mode`…) answer fixed values for
+  the play surface. `screen` and `all` are the media types; square
+  viewports are portrait; `em`/`rem` in a condition are the initial 16px.
+  Unsupported features, zero-denominator ratios, viewport units and
+  `calc()` in a condition fail cooking, as do names such as `@media phone`.
 - Size a component to its slot with container queries: give the slot
-  `container-type: inline-size` (or `size` for height conditions), optionally
-  `container-name: card` or the shorthand `container: card / inline-size`,
-  then write `@container card (width < 320px) { ... }`. Conditions take the
-  media range syntax over `width`, `height`, `inline-size`, `block-size`,
-  `aspect-ratio` and `orientation`, and read the nearest matching ancestor
-  container, never the element itself. They settle before the first frame
-  paints and again on every resize. Do not let a query resize its own
-  container: that fails as a settlement cycle. `style(--tone: warm)` reads a
-  container's custom property (unnamed: the parent's).
-  `scroll-state(scrollable: top)`, `snapped`, `stuck` and `scrolled` need
-  `container-type: scroll-state`. Container units (`cqw`, `cqh`, `cqi`,
-  `cqb`, `cqmin`, `cqmax`) size against the nearest size container.
-- Declare custom properties in any scoped rule, such as
-  `.card { --spacing: 12px; gap: var(--spacing); }`. Declarations win by
-  `!important`, specificity, then source order. Custom properties inherit
-  from the instantiated parent, including through component mounts.
-  They substitute on the declaring element before inheritance: changing
-  `--a` in a child does not recompute an inherited `--b: var(--a)`.
-  Recursive `var()` accepts fallbacks, including an empty fallback.
-  Cycles invalidate the participating properties at computed-value time
-  and report their names. A winning declaration with an invalid value
-  does not revive a lower-priority declaration. Unshadowed engine tokens
-  resolve from the active style. `::part` declarations use the same cascade.
+  `container-type: inline-size` (or `size` for height conditions),
+  optionally `container: card / inline-size`, then write `@container card
+  (width < 320px) { ... }`. Conditions read the nearest matching ancestor,
+  never the element itself, and settle before the first frame paints and on
+  every resize. Do not let a query resize its own container: that fails as
+  a settlement cycle. `style(--tone: warm)` reads a container's custom
+  property (unnamed: the parent's); `scroll-state(scrollable: top)`,
+  `snapped`, `stuck` and `scrolled` need `container-type: scroll-state`.
+  Container units (`cqw`…) size against the nearest size container.
+- Custom properties (`.card { --spacing: 12px; gap: var(--spacing); }`)
+  inherit through component mounts and substitute on the declaring
+  element: changing `--a` in a child does not recompute an inherited
+  `--b: var(--a)`. Cycles report their names. Unshadowed engine tokens
+  resolve from the active style.
 - A `<button>`'s own `background`, `border`, `padding`, `border-radius`
   and `box-shadow` (`button.buy { background: #ff7a2e; border-radius: 30px; }`)
   restyle its plate, replacing the style's fill and painted frame, as CSS
@@ -301,24 +267,16 @@ writer. The game's art-contract measurements remain available through
   a state rule fills it. A rule for the plate itself
   (`button.buy::part(base):hover { background: … }`) wins over them and is
   where its states go.
-- Transition values with standard CSS: `transition: opacity 120ms ease-out,
-  translate 200ms ease-out 50ms` or the longhands `transition-property`,
-  `-duration`, `-timing-function` and `-delay`; `all` covers every
-  animatable value, and a later entry wins for its property. The timing slot
-  also takes `-og-spring(300ms, 0.2)` and `var(--motion-ui)`.
-- Animate with scoped `@keyframes` and `animation` or its longhands
-  (`animation-name`, `-duration`, `-timing-function`, `-delay`,
-  `-iteration-count`, `-direction`, `-fill-mode`, `-play-state`). An element
-  runs several animations; later ones win per value. Keyframes take `from`,
-  `to` and percentages; a missing 0% or 100% uses the element's own value,
-  and `animation-timing-function` inside a keyframe times the segment after
-  it. Rules choose animations like any property, so `#Card.open { animation:
-  … }` or `:hover` starts one and removing the match ends it. Reduced motion
-  shows a finite animation's end and stops endless ones.
-  `@keyframes` may sit inside `@media` or `@container`, for example a
-  shorter entrance on phones: the last definition of a name whose
-  conditions hold is the one that plays, and switching to another
-  definition restarts the animation.
+- Transition and animate with standard CSS `transition`, `@keyframes` and
+  `animation` (and their longhands); `all` covers every animatable value.
+  The timing slot also takes `-og-spring(300ms, 0.2)` and
+  `var(--motion-ui)`. Rules choose animations like any property, so
+  `#Card.open { animation: … }` or `:hover` starts one and losing the
+  match ends it. `@keyframes` may sit inside `@media` or `@container` (a
+  shorter entrance on phones); switching definitions restarts the
+  animation. Under reduced motion a finite animation shows its end and an
+  endless one stops; a transition written in a `prefers-reduced-motion`
+  block plays as written, any other jumps (opacity and colour fade).
   A keyframe's `-og-sound: error` emits the active style's named sound once
   when playback crosses that frame, at the recorded playback rate.
 - Bind structured rich text with `<text spans={$spans}>{$body}</text>`.
@@ -410,7 +368,6 @@ writer. The game's art-contract measurements remain available through
   (`120px/s`) and colours yourself. The `celebration` component is confetti,
   a burst, a level-up flourish or fireworks. Flash damage with `<og-overlay
   id="Hurt" effect="vignette #a00">` and `#Hurt { opacity: var(--hit); }`.
-  drawn flat on the ground in perspective, inert.
 - Turn a model on a turntable with `<viewport src={$target} camera-controls
   camera-orbit="30deg 75deg 3m" max-camera-orbit="auto 100deg 6m"
   bind:cameraOrbit={$orbit}>`: a drag orbits it and a fling keeps it
