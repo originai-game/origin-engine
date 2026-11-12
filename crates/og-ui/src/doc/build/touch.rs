@@ -10,52 +10,6 @@ use super::*;
 use og_input::{ControlZone, ZoneKind};
 
 impl Ui {
-    /// A `<joystick>` or `<dpad>`: the native control, sized by its CSS
-    /// width (or height: it is round) from `styled`, and its zone.
-    pub(super) fn build_touch_control(
-        &mut self,
-        kind: &str,
-        id: &str,
-        r: &Resolved,
-        styled: &Resolved,
-    ) -> crate::ui::Response {
-        let size = match styled.size("width").or(styled.size("height")) {
-            Some(Size::Fixed(w)) => w,
-            _ => 0.0,
-        };
-        let disabled = r.flag("disabled");
-        let dead_zone = r.num("dataDeadZone").unwrap_or(0.0).clamp(0.0, 0.95);
-        let (pressed, zone) = if kind == "joystick" {
-            let out = self.joystick(
-                id,
-                crate::widgets::JoystickDesc {
-                    size,
-                    dead_zone,
-                    customize: None,
-                    disabled,
-                },
-            );
-            (out.active, ZoneKind::Stick)
-        } else {
-            let out = self.dpad(
-                id,
-                crate::widgets::DpadDesc {
-                    size,
-                    customize: None,
-                    disabled,
-                },
-            );
-            (out.up || out.down || out.left || out.right, ZoneKind::Pad)
-        };
-        let key = self.tree.nodes[self.tree.last_closed].key;
-        self.docs
-            .note_zone(key, r.str("action"), zone, dead_zone, disabled);
-        crate::ui::Response {
-            pressed,
-            ..Default::default()
-        }
-    }
-
     /// The on-screen controls documents laid out, for og-input's action
     /// map ([`og_input::ActionMap::set_zones`]), after [`Ui::end`]: `None`
     /// when nothing moved since the last call. Each zone is the rect its
@@ -113,6 +67,54 @@ impl Ui {
                 .cloned()
                 .collect()
         })
+    }
+}
+
+impl Ui {
+    /// A `<joystick>` or `<dpad>`: the native control, sized by its CSS
+    /// width (or height: it is round) from `styled`, and its zone.
+    pub(super) fn build_touch_control(
+        &mut self,
+        kind: &str,
+        id: &str,
+        r: &Resolved,
+        styled: &Resolved,
+    ) -> crate::ui::Response {
+        let size = match styled.size("width").or(styled.size("height")) {
+            Some(Size::Fixed(w)) => w,
+            _ => 0.0,
+        };
+        let disabled = r.flag("disabled");
+        let dead_zone = r.num("dataDeadZone").unwrap_or(0.0).clamp(0.0, 0.95);
+        let (pressed, zone) = if kind == "joystick" {
+            let out = self.joystick(
+                id,
+                crate::widgets::JoystickDesc {
+                    size,
+                    dead_zone,
+                    customize: None,
+                    disabled,
+                },
+            );
+            (out.active, ZoneKind::Stick)
+        } else {
+            let out = self.dpad(
+                id,
+                crate::widgets::DpadDesc {
+                    size,
+                    customize: None,
+                    disabled,
+                },
+            );
+            (out.up || out.down || out.left || out.right, ZoneKind::Pad)
+        };
+        let key = self.tree.nodes[self.tree.last_closed].key;
+        self.docs
+            .note_zone(key, r.str("action"), zone, dead_zone, disabled);
+        crate::ui::Response {
+            pressed,
+            ..Default::default()
+        }
     }
 }
 

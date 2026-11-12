@@ -125,42 +125,6 @@ impl Ui {
         r
     }
 
-    /// Builds `doc` here with root id `id`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn mount_doc(
-        &mut self,
-        doc: Arc<UiDocument>,
-        mount: String,
-        id: &str,
-        vm: &mut Value,
-        env: &dyn Env,
-        inherited: Arc<super::super::variables::Computed>,
-    ) -> DocResponse {
-        let root = doc.root;
-        let mut b = Build {
-            doc: doc.clone(),
-            mount: mount.clone(),
-            vm,
-            env,
-            locals: Vec::new(),
-            row_key: String::new(),
-            inherited,
-            events: Vec::new(),
-            writes: Vec::new(),
-            cached: None,
-            recording: Default::default(),
-        };
-        let path = self.build_node(&mut b, root, Some(id));
-        let (events, writes) = (b.events, b.writes);
-        for (p, v) in writes {
-            set_path(vm, &p, v);
-        }
-        DocResponse {
-            events,
-            path: path.unwrap_or_default(),
-        }
-    }
-
     /// Opens a document's slot so code fills it (its children follow until
     /// [`Ui::close`]): a full path, or `<mount>/<slot id>`. False when no
     /// such slot was built this tick.
@@ -343,6 +307,44 @@ impl Ui {
             return Ok(id);
         }
         self.play_doc_timeline(path, timeline, ms, true)
+    }
+}
+
+impl Ui {
+    /// Builds `doc` here with root id `id`.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn mount_doc(
+        &mut self,
+        doc: Arc<UiDocument>,
+        mount: String,
+        id: &str,
+        vm: &mut Value,
+        env: &dyn Env,
+        inherited: Arc<super::super::variables::Computed>,
+    ) -> DocResponse {
+        let root = doc.root;
+        let mut b = Build {
+            doc: doc.clone(),
+            mount: mount.clone(),
+            vm,
+            env,
+            locals: Vec::new(),
+            row_key: String::new(),
+            inherited,
+            events: Vec::new(),
+            writes: Vec::new(),
+            cached: None,
+            recording: Default::default(),
+        };
+        let path = self.build_node(&mut b, root, Some(id));
+        let (events, writes) = (b.events, b.writes);
+        for (p, v) in writes {
+            set_path(vm, &p, v);
+        }
+        DocResponse {
+            events,
+            path: path.unwrap_or_default(),
+        }
     }
 
     fn timeline_name(&self, path: &str, timeline: &str) -> Result<String, String> {

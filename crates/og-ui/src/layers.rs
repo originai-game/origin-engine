@@ -69,147 +69,6 @@ impl Ui {
         }
     }
 
-    /// Removes layer `k` from the stack (a mounted one is unmounted), or,
-    /// when its screen has a view transition, starts it leaving: the cover
-    /// closes over it before it goes.
-    fn remove_layer(&mut self, k: usize) -> Layer {
-        let l = self.docs.host.layers.layers[k].clone();
-        if self.layer_leaves(k) {
-            return l;
-        }
-        self.docs.host.layers.layers.remove(k);
-        if let Some(mount) = &l.mount {
-            self.finish_unmount(mount);
-        }
-        l
-    }
-
-    /// Starts layer `k` leaving when its screen has a view transition;
-    /// true while it is leaving.
-    pub(crate) fn layer_leaves(&mut self, k: usize) -> bool {
-        let transition = self
-            .screen_spec(&self.docs.host.layers.layers[k].screen)
-            .is_ok_and(|s| s.transition.is_some());
-        let l = &mut self.docs.host.layers.layers[k];
-        if !transition {
-            return false;
-        }
-        if !l.leaving {
-            l.leaving = true;
-            l.since = STARTS;
-        }
-        true
-    }
-
-    /// Where layer `k`'s view transition is this tick: whether the layer
-    /// shows, and the animations its node plays (`new` while it joins, `old`
-    /// while it leaves). Covers named on `old` close first; on a join the
-    /// layer shows once they have closed, and `new`'s covers open on it. A
-    /// leaving layer is dropped when its `old` animations end, and `new`'s
-    /// covers then open on what is under it.
-    fn layer_transition(&mut self, k: usize, spec: &LayerSpec) -> (bool, Vec<CssAnimation>) {
-        let l = &self.docs.host.layers.layers[k];
-        let (Some(vt), true) = (&spec.transition, l.since != 0) else {
-            return (!l.leaving, Vec::new());
-        };
-        let (mut since, leaving, serial) = (l.since, l.leaving, l.serial);
-        if since == STARTS {
-            since = self.interaction.state.tick;
-            let screen = l.screen.clone();
-            self.docs.host.layers.layers[k].since = since;
-            self.style.start_view_transition(
-                &screen,
-                !leaving,
-                &self.env,
-                &self.paint,
-                &mut self.interaction,
-            );
-        }
-        if self.interaction.view_transition_skipped(since) {
-            // Skipped (a shared element's name twice): the update happens
-            // without its animations.
-            if leaving {
-                self.docs.host.ops.push(LayerOp::Drop(serial));
-                return (false, Vec::new());
-            }
-            self.docs.host.layers.layers[k].since = 0;
-            return (true, Vec::new());
-        }
-        let t = self.interaction.state.tick.saturating_sub(since) as f32 * 1000.0
-            / self.env.ticks_per_second.max(1) as f32;
-        let (covers, plays): (Vec<_>, Vec<_>) = vt.old.iter().cloned().partition(is_cover);
-        if leaving {
-            if t < ends(&vt.old) {
-                self.draw_covers(&covers, vt.color, vt.image.as_deref(), t, false);
-                return (true, plays);
-            }
-            self.docs.host.ops.push(LayerOp::Drop(serial));
-            let opening: Vec<_> = vt.new.iter().filter(|a| is_cover(a)).cloned().collect();
-            if !opening.is_empty() {
-                self.draw_covers(&opening, vt.color, vt.image.as_deref(), 0.0, true);
-                self.docs.host.revealing.push((
-                    opening,
-                    vt.color,
-                    vt.image.clone(),
-                    self.interaction.state.tick,
-                ));
-            }
-            return (false, Vec::new());
-        }
-        let wait = ends(&covers);
-        if t < wait {
-            self.draw_covers(&covers, vt.color, vt.image.as_deref(), t, false);
-            return (false, Vec::new());
-        }
-        let t = t - wait;
-        if t >= ends(&vt.new) {
-            self.docs.host.layers.layers[k].since = 0;
-            return (true, Vec::new());
-        }
-        let (opening, plays): (Vec<_>, Vec<_>) = vt.new.iter().cloned().partition(is_cover);
-        self.draw_covers(&opening, vt.color, vt.image.as_deref(), t, true);
-        (true, plays)
-    }
-
-    /// Draws the cover of the last of `covers` that has started at `t` ms:
-    /// closing (0 to 1 over its timing) or opening (1 to 0), in `color`, or
-    /// the texture asset `image` tinted by it. False when none is running.
-    pub(crate) fn draw_covers(
-        &mut self,
-        covers: &[CssAnimation],
-        color: Option<crate::Srgba>,
-        image: Option<&str>,
-        t: f32,
-        opening: bool,
-    ) -> bool {
-        let Some(a) = covers.iter().rev().find(|a| t >= a.delay_ms || opening) else {
-            return false;
-        };
-        let Some((kind, from)) = crate::doc::view_transition::cover(&a.name) else {
-            return false;
-        };
-        let p = if a.duration_ms > 0.0 {
-            ((t - a.delay_ms) / a.duration_ms).clamp(0.0, 1.0)
-        } else {
-            f32::from(u8::from(t >= a.delay_ms))
-        };
-        let p = a.ease.apply(p);
-        let texture = image.and_then(|p| self.docs.host.textures.get(p).copied());
-        let desc = crate::ScreenTransitionDesc {
-            kind,
-            from,
-            color: if texture.is_some() {
-                Some(color.unwrap_or(crate::Srgba::WHITE))
-            } else {
-                color
-            },
-            texture: texture.map(|t| (t, [0.0, 0.0, 1.0, 1.0])),
-            ..Default::default()
-        };
-        self.cover(&desc, if opening { 1.0 - p } else { p }, opening);
-        true
-    }
-
     /// A layer's viewmodel (the top one of that screen).
     pub fn screen_vm(&self, screen: &str) -> Option<&Value> {
         self.docs
@@ -425,6 +284,149 @@ impl Ui {
             }
         }
         self.tree.floating = floats;
+    }
+}
+
+impl Ui {
+    /// Removes layer `k` from the stack (a mounted one is unmounted), or,
+    /// when its screen has a view transition, starts it leaving: the cover
+    /// closes over it before it goes.
+    fn remove_layer(&mut self, k: usize) -> Layer {
+        let l = self.docs.host.layers.layers[k].clone();
+        if self.layer_leaves(k) {
+            return l;
+        }
+        self.docs.host.layers.layers.remove(k);
+        if let Some(mount) = &l.mount {
+            self.finish_unmount(mount);
+        }
+        l
+    }
+
+    /// Starts layer `k` leaving when its screen has a view transition;
+    /// true while it is leaving.
+    pub(crate) fn layer_leaves(&mut self, k: usize) -> bool {
+        let transition = self
+            .screen_spec(&self.docs.host.layers.layers[k].screen)
+            .is_ok_and(|s| s.transition.is_some());
+        let l = &mut self.docs.host.layers.layers[k];
+        if !transition {
+            return false;
+        }
+        if !l.leaving {
+            l.leaving = true;
+            l.since = STARTS;
+        }
+        true
+    }
+
+    /// Where layer `k`'s view transition is this tick: whether the layer
+    /// shows, and the animations its node plays (`new` while it joins, `old`
+    /// while it leaves). Covers named on `old` close first; on a join the
+    /// layer shows once they have closed, and `new`'s covers open on it. A
+    /// leaving layer is dropped when its `old` animations end, and `new`'s
+    /// covers then open on what is under it.
+    fn layer_transition(&mut self, k: usize, spec: &LayerSpec) -> (bool, Vec<CssAnimation>) {
+        let l = &self.docs.host.layers.layers[k];
+        let (Some(vt), true) = (&spec.transition, l.since != 0) else {
+            return (!l.leaving, Vec::new());
+        };
+        let (mut since, leaving, serial) = (l.since, l.leaving, l.serial);
+        if since == STARTS {
+            since = self.interaction.state.tick;
+            let screen = l.screen.clone();
+            self.docs.host.layers.layers[k].since = since;
+            self.style.start_view_transition(
+                &screen,
+                !leaving,
+                &self.env,
+                &self.paint,
+                &mut self.interaction,
+            );
+        }
+        if self.interaction.view_transition_skipped(since) {
+            // Skipped (a shared element's name twice): the update happens
+            // without its animations.
+            if leaving {
+                self.docs.host.ops.push(LayerOp::Drop(serial));
+                return (false, Vec::new());
+            }
+            self.docs.host.layers.layers[k].since = 0;
+            return (true, Vec::new());
+        }
+        let t = self.interaction.state.tick.saturating_sub(since) as f32 * 1000.0
+            / self.env.ticks_per_second.max(1) as f32;
+        let (covers, plays): (Vec<_>, Vec<_>) = vt.old.iter().cloned().partition(is_cover);
+        if leaving {
+            if t < ends(&vt.old) {
+                self.draw_covers(&covers, vt.color, vt.image.as_deref(), t, false);
+                return (true, plays);
+            }
+            self.docs.host.ops.push(LayerOp::Drop(serial));
+            let opening: Vec<_> = vt.new.iter().filter(|a| is_cover(a)).cloned().collect();
+            if !opening.is_empty() {
+                self.draw_covers(&opening, vt.color, vt.image.as_deref(), 0.0, true);
+                self.docs.host.revealing.push((
+                    opening,
+                    vt.color,
+                    vt.image.clone(),
+                    self.interaction.state.tick,
+                ));
+            }
+            return (false, Vec::new());
+        }
+        let wait = ends(&covers);
+        if t < wait {
+            self.draw_covers(&covers, vt.color, vt.image.as_deref(), t, false);
+            return (false, Vec::new());
+        }
+        let t = t - wait;
+        if t >= ends(&vt.new) {
+            self.docs.host.layers.layers[k].since = 0;
+            return (true, Vec::new());
+        }
+        let (opening, plays): (Vec<_>, Vec<_>) = vt.new.iter().cloned().partition(is_cover);
+        self.draw_covers(&opening, vt.color, vt.image.as_deref(), t, true);
+        (true, plays)
+    }
+
+    /// Draws the cover of the last of `covers` that has started at `t` ms:
+    /// closing (0 to 1 over its timing) or opening (1 to 0), in `color`, or
+    /// the texture asset `image` tinted by it. False when none is running.
+    pub(crate) fn draw_covers(
+        &mut self,
+        covers: &[CssAnimation],
+        color: Option<crate::Srgba>,
+        image: Option<&str>,
+        t: f32,
+        opening: bool,
+    ) -> bool {
+        let Some(a) = covers.iter().rev().find(|a| t >= a.delay_ms || opening) else {
+            return false;
+        };
+        let Some((kind, from)) = crate::doc::view_transition::cover(&a.name) else {
+            return false;
+        };
+        let p = if a.duration_ms > 0.0 {
+            ((t - a.delay_ms) / a.duration_ms).clamp(0.0, 1.0)
+        } else {
+            f32::from(u8::from(t >= a.delay_ms))
+        };
+        let p = a.ease.apply(p);
+        let texture = image.and_then(|p| self.docs.host.textures.get(p).copied());
+        let desc = crate::ScreenTransitionDesc {
+            kind,
+            from,
+            color: if texture.is_some() {
+                Some(color.unwrap_or(crate::Srgba::WHITE))
+            } else {
+                color
+            },
+            texture: texture.map(|t| (t, [0.0, 0.0, 1.0, 1.0])),
+            ..Default::default()
+        };
+        self.cover(&desc, if opening { 1.0 - p } else { p }, opening);
+        true
     }
 
     /// Builds layer `k` of the stack.

@@ -97,12 +97,6 @@ impl Ui {
         self.finish_unmount(mount);
     }
 
-    pub(crate) fn finish_unmount(&mut self, mount: &SourceId) {
-        let mut host = std::mem::take(&mut self.docs.host.retained);
-        host.remove_mount(self, mount);
-        self.docs.host.retained = host;
-    }
-
     pub fn build_retained_documents(&mut self, env: &dyn Env) -> Result<(), String> {
         let mut host = std::mem::take(&mut self.docs.host.retained);
         if host.built_tick == Some(self.tick()) {
@@ -185,5 +179,13 @@ impl Ui {
 
     pub fn mounted_topology(&self) -> &Topology {
         &self.docs.host.retained.topology
+    }
+}
+
+impl Ui {
+    pub(crate) fn finish_unmount(&mut self, mount: &SourceId) {
+        let mut host = std::mem::take(&mut self.docs.host.retained);
+        host.remove_mount(self, mount);
+        self.docs.host.retained = host;
     }
 }
