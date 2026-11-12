@@ -534,9 +534,9 @@ fn hash_str(s: &str) -> u64 {
 }
 
 impl Ui {
-    /// The touch target floor: `controlSm` of the touch density (44).
+    /// The touch target floor (CSS `--touch-target`, 44 by default).
     pub fn min_target(&self) -> f32 {
-        crate::theme::TOUCH.control_sm
+        self.env.theme.state.touch_target
     }
 
     /// A number the UI keeps for `id` under the open element (a template's

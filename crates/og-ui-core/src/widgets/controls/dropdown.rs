@@ -190,7 +190,11 @@ impl Ui {
         let was_open = self.memory(&open_key, 0.0) > 0.0;
         let shut = self.memory(&shut_key, 0.0) > 0.0 && !typed;
         let open = (focused || was_open) && !shut && !kept.is_empty();
-        let row_h = self.by_text(if self.touch_frame() { TOUCH } else { 36.0 });
+        let row_h = self.by_text(if self.touch_frame() {
+            self.touch_target()
+        } else {
+            36.0
+        });
         let content = Element {
             direction: Direction::Column,
             width: Size::px(
@@ -242,7 +246,7 @@ impl Ui {
                             name: Some((*s).to_string()),
                             ..Semantics::default()
                         }),
-                        ..Ctl::default()
+                        ..self.ctl_base()
                     },
                     |ui, _| {
                         ui.text(
@@ -334,7 +338,10 @@ impl Ui {
         let mut open = self.memory(&format!("{key}~open"), 0.0) > 0.0 && !disabled;
         let was_open = open;
         let touch = self.touch_frame();
-        let h = self.sizes().control_md.max(if touch { TOUCH } else { 0.0 });
+        let h = self
+            .sizes()
+            .control_md
+            .max(if touch { self.touch_target() } else { 0.0 });
         let chosen = usize::try_from(selected).ok().and_then(|i| options.get(i));
         let searchable = desc.searchable.unwrap_or(options.len() > 10);
         let (panel, well, ink, faint, muted, raised, primary) = (
@@ -396,7 +403,7 @@ impl Ui {
                             expanded: Some(open),
                             ..Semantics::default()
                         }),
-                        ..Ctl::default()
+                        ..ui.ctl_base()
                     },
                     |ui, _| {
                         if let Some(c) = chosen.filter(|c| !c.icon.is_empty()) {
@@ -441,7 +448,7 @@ impl Ui {
         }
         let anchor = self.bounds_of(&trig_path);
         let list_id = format!("{key}.list");
-        let row_h = self.by_text(40f32.max(if touch { TOUCH } else { 0.0 }));
+        let row_h = self.by_text(40f32.max(if touch { self.touch_target() } else { 0.0 }));
         let mut dismissed = false;
         if let Some(anchor) = anchor {
             let filter_key = format!("{key}~f");
@@ -573,7 +580,7 @@ impl Ui {
                                     selected: Some(on),
                                     ..Semantics::default()
                                 }),
-                                ..Ctl::default()
+                                ..ui.ctl_base()
                             },
                             |ui, _| {
                                 if !o.icon.is_empty() {
