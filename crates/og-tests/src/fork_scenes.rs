@@ -804,6 +804,7 @@ pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
         cast_shadows,
         impostor: None,
         impostor_distance: 0.0,
+        with: None,
     });
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 14.0, 14.0),

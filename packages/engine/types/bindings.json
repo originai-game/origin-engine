@@ -7183,6 +7183,11 @@
           "name": "gpuPlacement",
           "column": "bool",
           "default": true
+        },
+        {
+          "name": "model",
+          "column": "Asset",
+          "default": 0
         }
       ]
     },

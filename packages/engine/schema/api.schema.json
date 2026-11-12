@@ -51238,6 +51238,11 @@
           "type": "boolean",
           "description": "Place the copies on the GPU, a chunk per compute pass by the same rules, nothing per copy on the CPU; matching the CPU's but for the last bits. Without compute (RenderCapabilities.compute), or for a footprint chain too long or wide, the CPU places them. False places every chunk on the CPU.\nSee `world §3`.",
           "default": true
+        },
+        "model": {
+          "$ref": "#/$defs/Asset",
+          "description": "A glTF (og.load.gltf) scattered whole, in place of geometry and material: every part with its own material, as one copy, placed and swaying together (a grown tree's wood and its leaves). Cooked with an impostor, copies past impostorDistance draw as it. None: geometry and material.\nSee `world §3`.",
+          "default": 0
         }
       },
       "additionalProperties": false

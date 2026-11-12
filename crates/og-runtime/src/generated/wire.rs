@@ -35192,6 +35192,7 @@ pub mod record {
         pub avoid_water: f32,
         pub density_map: u64,
         pub gpu_placement: bool,
+        pub model: u64,
     }
 
     impl Default for TerrainScatter {
@@ -35219,6 +35220,7 @@ pub mod record {
                 avoid_water: Default::default(),
                 density_map: Default::default(),
                 gpu_placement: true,
+                model: Default::default(),
             }
         }
     }
@@ -35252,6 +35254,7 @@ pub mod record {
                 avoid_water: field(o, "avoidWater", d.avoid_water)?,
                 density_map: field(o, "densityMap", d.density_map)?,
                 gpu_placement: field(o, "gpuPlacement", d.gpu_placement)?,
+                model: field(o, "model", d.model)?,
             })
         }
     }

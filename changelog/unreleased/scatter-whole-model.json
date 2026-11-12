@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"TerrainScatter.model","summary":"og.TerrainScatter's `model` scatters a whole glTF as one copy, every part with its own material: a grown plant's wood and leaves stand and sway together, so three or four species with footprints make a wood. Cooked with an impostor, copies past impostorDistance draw as one card. The world guide (§3) and the models guide (§3) show how."}
+  ],
+  "fixed": [
+    {"member":"type import","summary":"Import settings named after a text asset with one more `.ogt` (`oak.ogt.ogt` beside the model text `oak.ogt`) reach it; they were read as settings for `oak`, so a `type model` could not be cooked with an impostor."}
+  ]
+}

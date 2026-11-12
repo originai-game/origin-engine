@@ -186,6 +186,9 @@ module terrain {
       guide "world §3"
       default true
     }
+    field model Asset "A glTF (og.load.gltf) scattered whole, in place of geometry and material: every part with its own material, as one copy, placed and swaying together (a grown tree's wood and its leaves). Cooked with an impostor, copies past impostorDistance draw as it. None: geometry and material." {
+      guide "world §3"
+    }
   }
 
   component Grass {

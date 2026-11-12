@@ -118,6 +118,14 @@ simplified with distance. As written above the oak is 37 000 triangles
 a larger `size` first, then fewer `children`; the cook refuses one past
 20 000 branches or 120 000 leaves and petals.
 
+A wood is plants scattered whole (og.TerrainScatter's `model`,
+`og api show "world §3"`). Far copies draw as one card when the plant is cooked
+with an impostor: import settings beside the model text, named after it
+with one more `.ogt` (`oak.ogt.ogt` for `oak.ogt`), holding `type
+import`, `version 1` and `model { impostor true }`. The card is
+softer than the leaves and shaded as one mass, so set impostorDistance
+past where a tree's leaves read one by one.
+
 og.Wind's `strength` is lean per metre of height: 0.05 to 0.1 moves a
 10 m tree as a breeze does, and what suits grass (0.5 and up) lays a tree
 flat. Give trees their own lower `sway` when one wind blows over both.

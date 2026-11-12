@@ -1372,65 +1372,126 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         else {
             continue;
         };
-        let index = |h: u64| (h & 0xffff_ffff) as usize;
-        let (Some(&mesh), Some(&material)) = (
-            rs.geometries.get(index(v.geometry)),
-            rs.materials.get(index(v.material)),
-        ) else {
-            continue;
+        let skip = |rs: &mut super::extract::RenderState, issue: String| {
+            rs.notes
+                .push(format!("og.TerrainScatter on entity {e}: {issue}"));
+            rs.terrain.scatter_issues.insert(e, issue);
         };
-        let model = v.impostor;
-        let lods = rs.model_lods.get(&model);
-        let impostor = lods.and_then(|l| l.impostor.map(|i| i.0));
-        let mesh = lods
-            .and_then(|l| l.scatter_meshes.iter().find(|p| p.0 == mesh))
-            .map_or(mesh, |p| p.1);
-        if let Some(card) = impostor {
-            let Some((min, max)) = rs.scene.mesh(mesh).and_then(|m| m.bounds()) else {
+        // What a copy draws, in the model's space: every part of `model`,
+        // or the one geometry and material.
+        let whole = v.model;
+        let mut parts: Vec<(og_render::MeshHandle, og_render::MaterialHandle)> = Vec::new();
+        let impostor = if whole != 0 {
+            let Some(model) = rs.models.get(&whole) else {
+                skip(rs, "model names no loaded glTF (og.load.gltf)".into());
                 continue;
             };
-            let center = (min + max) * 0.5;
-            let radius = ((max - min) * 0.5).length().max(1e-3);
-            // Cooked positions are quantized to 16 bits; compare bounds in model space.
-            let tolerance = card.radius * 1e-4;
-            if center.distance(card.center) > tolerance || (radius - card.radius).abs() > tolerance
-            {
-                let issue = format!(
-                    "geometry bounds (center {center:?}, radius {radius}) differ from impostor bounds (center {:?}, radius {}); use geometry from the same complete model",
-                    card.center, card.radius
-                );
-                rs.notes
-                    .push(format!("og.TerrainScatter on entity {e}: {issue}"));
-                rs.terrain.scatter_issues.insert(e, issue);
+            let lods = rs.model_lods.get(&whole);
+            let mut seen = Vec::new();
+            let mut by_nodes = false;
+            for &(mesh, material, _) in model {
+                if seen.contains(&mesh) {
+                    continue;
+                }
+                seen.push(mesh);
+                // Placed with the impostor's bake, or standing at the
+                // model's origin as made.
+                let placed = lods
+                    .and_then(|l| l.scatter_meshes.iter().find(|p| p.0 == mesh))
+                    .map(|p| p.1)
+                    .or_else(|| {
+                        model
+                            .iter()
+                            .filter(|p| p.0 == mesh)
+                            .all(|p| p.2 == glam::Mat4::IDENTITY)
+                            .then_some(mesh)
+                    });
+                match placed {
+                    Some(m) => parts.push((m, material)),
+                    None => by_nodes = true,
+                }
+            }
+            if by_nodes || parts.is_empty() {
+                let issue = if by_nodes {
+                    "model has parts its nodes move or scale; cook it with `model { impostor true }`, which places them (and draws far copies as one card)"
+                } else {
+                    "model has no mesh"
+                };
+                skip(rs, issue.into());
                 continue;
             }
+            lods.and_then(|l| l.impostor.map(|i| i.0))
+        } else {
+            let index = |h: u64| (h & 0xffff_ffff) as usize;
+            let (Some(&mesh), Some(&material)) = (
+                rs.geometries.get(index(v.geometry)),
+                rs.materials.get(index(v.material)),
+            ) else {
+                continue;
+            };
+            let model = v.impostor;
+            let lods = rs.model_lods.get(&model);
+            let impostor = lods.and_then(|l| l.impostor.map(|i| i.0));
+            let mesh = lods
+                .and_then(|l| l.scatter_meshes.iter().find(|p| p.0 == mesh))
+                .map_or(mesh, |p| p.1);
+            if let Some(card) = impostor {
+                let Some((min, max)) = rs.scene.mesh(mesh).and_then(|m| m.bounds()) else {
+                    continue;
+                };
+                let center = (min + max) * 0.5;
+                let radius = ((max - min) * 0.5).length().max(1e-3);
+                // Cooked positions are quantized to 16 bits; compare bounds in model space.
+                let tolerance = card.radius * 1e-4;
+                if center.distance(card.center) > tolerance
+                    || (radius - card.radius).abs() > tolerance
+                {
+                    skip(
+                        rs,
+                        format!(
+                            "geometry bounds (center {center:?}, radius {radius}) differ from impostor bounds (center {:?}, radius {}); use geometry from the same complete model, or scatter the model whole (`model`)",
+                            card.center, card.radius
+                        ),
+                    );
+                    continue;
+                }
+            }
+            parts.push((mesh, material));
+            impostor
+        };
+        let scatter = og_render::TerrainScatter {
+            layer: v.layer,
+            density: v.density,
+            distance: v.distance,
+            fade: v.fade,
+            scale: [v.min_scale, v.max_scale],
+            align: v.align,
+            seed: v.seed,
+            sway: v.sway,
+            noise_scale: v.noise_scale,
+            noise_threshold: v.noise_threshold,
+            footprint: v.footprint,
+            priority: v.priority,
+            avoid_water: v.avoid_water,
+            density_map: super::assets::index_of(v.density_map as f64)
+                .and_then(|i| rs.textures.get(i).copied()),
+            gpu: v.gpu_placement,
+        };
+        // A model's parts are one copy: the first places it, the rest
+        // draw with it.
+        let first = rs.scene.world.scatters.len();
+        for (k, (mesh, material)) in parts.into_iter().enumerate() {
+            rs.scene.world.scatters.push(og_render::ScatterDraw {
+                terrain,
+                mesh,
+                material,
+                scatter,
+                cast_shadows: v.cast_shadows,
+                impostor,
+                impostor_distance: v.impostor_distance,
+                with: (k > 0).then_some(first),
+            });
         }
-        rs.scene.world.scatters.push(og_render::ScatterDraw {
-            terrain,
-            mesh,
-            material,
-            scatter: og_render::TerrainScatter {
-                layer: v.layer,
-                density: v.density,
-                distance: v.distance,
-                fade: v.fade,
-                scale: [v.min_scale, v.max_scale],
-                align: v.align,
-                seed: v.seed,
-                sway: v.sway,
-                noise_scale: v.noise_scale,
-                noise_threshold: v.noise_threshold,
-                footprint: v.footprint,
-                priority: v.priority,
-                avoid_water: v.avoid_water,
-                density_map: super::assets::index_of(v.density_map as f64)
-                    .and_then(|i| rs.textures.get(i).copied()),
-                gpu: v.gpu_placement,
-            },
-            cast_shadows: v.cast_shadows,
-            impostor,
-            impostor_distance: v.impostor_distance,
-        });
     }
     // og.TerrainStamp: meshes drawn with the drawn terrain of the same
     // data, in its material and blended into its ground.

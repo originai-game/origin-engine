@@ -108,6 +108,15 @@ world.insert(ground, og.Collider, { shape: 6, mesh: t.geometry });  // SHAPE_HEI
   a smooth blend. Mesh and impostor bounds must agree in model space; a
   mismatch skips the scatter and reports render.scatterIssue in its entity
   dump and a runtime warning.
+- `model` scatters a whole glTF as one copy, in place of geometry and
+  material: every part with its own material (a grown plant's wood and its
+  leaves, `og api show "models §3"`), placed and swaying together. Cooked
+  with an impostor, its copies past impostorDistance draw as it; without
+  one its parts must stand at the model's origin, as a grown plant's do.
+  A wood is three or four species, each its own scatter: a `footprint`
+  and a higher `priority` on the trees keep them apart and the bushes
+  clear of them, `noiseThreshold` gathers each species into groves, and
+  og.Grass grows under all of them.
 - A `densityMap` thins copies where its red channel is below 1 (a path
   cleared through flowers): its top row runs along the terrain's -z edge,
   as the control map, loaded linear. It needs GPU culling
@@ -117,8 +126,9 @@ world.insert(ground, og.Collider, { shape: 6, mesh: t.geometry });  // SHAPE_HEI
   blue-noise pattern fixed to the terrain, in clumps sharing tint and
   height, never over holes. With distance blades thin out, widen to keep
   the ground covered and drop from 15 to 7 to 3 vertices; under and past
-  them the terrain takes the field's average colour (`farTint`), so the far
-  field reads as grass to the horizon with no seam. og.Wind bends them in
+  them the terrain shows what the blades show on average (their colours,
+  shade and backlight, tinted by `farTint`), so the field keeps its look
+  to the horizon with no seam and a shorter `distance` costs less. og.Wind bends them in
   rolling gusts; they are lit like the terrain under them, with light
   through backlit blades (`translucency`), a sheen and shaded roots. A
   field at its defaults is a meadow.

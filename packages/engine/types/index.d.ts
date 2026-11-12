@@ -28728,6 +28728,11 @@ export interface TerrainScatter {
    * @default true
    */
   gpuPlacement: boolean;
+  /**
+   * A glTF (og.load.gltf) scattered whole, in place of geometry and material: every part with its own material, as one copy, placed and swaying together (a grown tree's wood and its leaves). Cooked with an impostor, copies past impostorDistance draw as it. None: geometry and material.
+   * See `world §3`.
+   */
+  model: Asset;
 }
 
 /**
@@ -36510,7 +36515,7 @@ export declare namespace og {
    * Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, each cell growing one with the probability of the layer's weight there. Over the outer `fade` of `distance` copies shrink and thin out. The renderer places them a chunk at a time, once. They grow over the og.Terrain drawing the same data, placed as it is. Drawn only: no colliders, and the copies are not entities.
    * See `world §3`.
    */
-  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32">; readonly noiseScale: FieldSpec<"f32">; readonly noiseThreshold: FieldSpec<"f32">; readonly footprint: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly avoidWater: FieldSpec<"f32">; readonly densityMap: FieldSpec<"Texture">; readonly gpuPlacement: FieldSpec<"bool"> }, TerrainScatter>;
+  const TerrainScatter: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly geometry: FieldSpec<"Geometry">; readonly material: FieldSpec<"Material">; readonly layer: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly fade: FieldSpec<"f32">; readonly minScale: FieldSpec<"f32">; readonly maxScale: FieldSpec<"f32">; readonly align: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly castShadows: FieldSpec<"bool">; readonly sway: FieldSpec<"f32">; readonly impostor: FieldSpec<"Asset">; readonly impostorDistance: FieldSpec<"f32">; readonly noiseScale: FieldSpec<"f32">; readonly noiseThreshold: FieldSpec<"f32">; readonly footprint: FieldSpec<"f32">; readonly priority: FieldSpec<"u32">; readonly avoidWater: FieldSpec<"f32">; readonly densityMap: FieldSpec<"Texture">; readonly gpuPlacement: FieldSpec<"bool">; readonly model: FieldSpec<"Asset"> }, TerrainScatter>;
   /**
    * A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one).
    * See `world §3`.

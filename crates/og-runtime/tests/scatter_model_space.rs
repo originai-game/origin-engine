@@ -47,9 +47,9 @@ impl RenderBackend for Seen {
     }
 }
 
-fn project() -> PathBuf {
+fn project(test: &str) -> PathBuf {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-        .join(format!("scatter-model-space-{}", std::process::id()));
+        .join(format!("scatter-model-space-{test}-{}", std::process::id()));
     let assets = root.join("assets");
     std::fs::create_dir_all(&assets).unwrap();
     let positions: [f32; 12] = [-1., -1., -1., 1., -1., -1., 0., 1., -1., 0., 0., 1.];
@@ -75,7 +75,15 @@ fn project() -> PathBuf {
         ]
     });
     std::fs::write(assets.join("scaled.gltf"), gltf.to_string()).unwrap();
-    std::fs::write(assets.join("scaled.gltf.ogt"), "type import\nversion 1\n---\nmodel {\n impostor true\n impostorGrid 4\n impostorSize 64\n}\n").unwrap();
+    let card = "type import\nversion 1\n---\nmodel {\n impostor true\n impostorGrid 4\n impostorSize 64\n}\n";
+    std::fs::write(assets.join("scaled.gltf.ogt"), card).unwrap();
+    // The same model with no impostor, and a grown plant (wood and leaves)
+    // with one (its settings beside the model text) and without.
+    std::fs::write(assets.join("moved.gltf"), gltf.to_string()).unwrap();
+    let sprig = "type model\nversion 1\n---\nplant \"sprig\" {\n levels 1\n trunk {\n  length 1\n  radius 0.05\n  sections 3\n  segments 3\n  children 2\n }\n branch1 {\n  length 0.5\n  radius 0.6\n  sections 2\n  segments 3\n }\n leaves {\n  count 4\n  size 0.2\n }\n}\n";
+    std::fs::write(assets.join("sprig.ogt"), sprig).unwrap();
+    std::fs::write(assets.join("sprig.ogt.ogt"), card).unwrap();
+    std::fs::write(assets.join("bare.ogt"), sprig).unwrap();
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     std::fs::copy(
         repo.join("packages/engine/tests/fixtures/terrain/assets/terrain/hill.png"),
@@ -90,7 +98,7 @@ fn project() -> PathBuf {
 
 #[test]
 fn scaled_node_placements_match_scatter_impostor_bounds_and_report_mismatches() {
-    let root = project();
+    let root = project("parts");
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
     let game = og_game_game(None);
@@ -195,4 +203,94 @@ fn scaled_node_placements_match_scatter_impostor_bounds_and_report_mismatches() 
     );
     assert!(!dump.contains("scatterIssue"), "{dump}");
     assert_eq!(seen.borrow().len(), 1);
+}
+
+/// `model` scatters a whole model as one copy: a draw for each part with
+/// its own material, the later ones drawn with the first, in the model's
+/// space; a model its nodes place needs the impostor's bake to say where.
+#[test]
+fn a_model_scatters_whole_with_every_part_as_one_copy() {
+    let root = project("whole");
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(None);
+    let engine = value(og_engine_create(game, json!({"root":root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let seen = Rc::new(RefCell::new(Vec::new()));
+    set_render_backend(engine, Some(Box::new(Seen(seen.clone())))).unwrap();
+    let load = |path: &str| {
+        value(og_runtime::host_impl::answer(og_load_gltf(
+            engine,
+            path.into(),
+            None,
+        )))
+    };
+    let data = value(og_runtime::host_impl::answer(og_terrain_load(
+        engine,
+        "ground.ogt".into(),
+    )))["data"]
+        .clone();
+    let spawn = |name: &str| {
+        value(og_runtime::host_impl::answer(og_world_spawn(
+            engine,
+            Some(json!({"name":name}).to_string()),
+        )))
+        .as_f64()
+        .unwrap()
+    };
+    let scatter = |entity: f64, model: &Value, seed: u32| {
+        value(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            entity,
+            "og.TerrainScatter".into(),
+            Some(json!({"data":data,"model":model,"seed":seed,"impostorDistance":12}).to_string()),
+        )));
+    };
+    let ground = spawn("ground");
+    value(og_runtime::host_impl::answer(og_world_insert(
+        engine,
+        ground,
+        "og.Terrain".into(),
+        Some(json!({"data":data}).to_string()),
+    )));
+    let (carded, bare, moved) = (spawn("carded"), spawn("bare"), spawn("moved"));
+    scatter(carded, &load("sprig.ogt"), 3);
+    scatter(bare, &load("bare.ogt"), 5);
+    scatter(moved, &load("moved.gltf"), 7);
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    let draws = seen.borrow();
+    for (seed, card) in [(3, true), (5, false)] {
+        let parts: Vec<_> = draws
+            .iter()
+            .enumerate()
+            .filter(|(_, (d, _))| d.scatter.seed == seed)
+            .collect();
+        assert_eq!(parts.len(), 2, "wood and leaves, seed {seed}");
+        let (first, (wood, _)) = parts[0];
+        let (_, (leaves, _)) = parts[1];
+        assert_eq!((wood.with, leaves.with), (None, Some(first)));
+        assert_ne!(wood.material, leaves.material);
+        assert_eq!(wood.impostor.is_some(), card, "seed {seed}");
+        if let Some(c) = wood.impostor {
+            // Both parts in the space the card was baked in.
+            for (_, (_, (lo, hi))) in &parts {
+                assert!(lo.distance(c.center) <= c.radius * 1.001, "{lo:?} {c:?}");
+                assert!(hi.distance(c.center) <= c.radius * 1.001, "{hi:?} {c:?}");
+            }
+        }
+    }
+    assert!(
+        draws.iter().all(|(d, _)| d.scatter.seed != 7),
+        "no card says where the moved model's parts stand"
+    );
+    let id = og_ecs::Entity::from_bits(moved as u64);
+    let dump = og_engine_probe_dump(
+        engine,
+        Some(
+            json!({"what":"entity", "id":format!("#{}.{}", id.index(), id.generation())})
+                .to_string(),
+        ),
+    );
+    assert!(dump.contains("nodes move or scale"), "{dump}");
 }

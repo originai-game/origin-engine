@@ -222,25 +222,28 @@ impl ScatterRenderer {
         let mut gpu_budget = GPU_CHUNKS_PER_FRAME;
         self.shared.resize(scene.world.scatters.len(), None);
         // Each scatter's terrain draw and parameters: what places before it.
-        let placing: Vec<(usize, TerrainScatter)> = scene
-            .world
-            .scatters
-            .iter()
-            .map(|d| (d.terrain, d.scatter))
-            .collect();
+        // A model's further parts are placed by its first.
+        let (placing, slots) = ScatterDraw::placing(&scene.world.scatters);
+        // The parts of one copy sway as one plant, by the tallest's top.
+        let mut tops = vec![0.0f32; placing.len()];
+        for (d, &slot) in scene.world.scatters.iter().zip(&slots) {
+            if let Some((_, top, _)) = mesh_bounds(d.mesh.index()) {
+                tops[slot] = tops[slot].max(top);
+            }
+        }
         for (si, d) in scene.world.scatters.iter().enumerate() {
             let Some(t) = scene.world.terrains.get(d.terrain) else {
                 continue;
             };
             let di = t.terrain.index();
-            let (Some(source), Some(side), Some((mesh_r, mesh_top, index_count))) = (
+            let (Some(source), Some(side), Some((mesh_r, _, index_count))) = (
                 sources.get(di),
                 side_of(d.material.index()),
                 mesh_bounds(d.mesh.index()),
             ) else {
                 continue;
             };
-            let s = d.scatter;
+            let (s, mesh_top) = (placing[slots[si]].1, tops[slots[si]]);
             if !s.usable(t.layers.len()) {
                 continue;
             }
@@ -270,7 +273,7 @@ impl ScatterRenderer {
             );
             let ctx = ScatterContext::of(
                 &placing,
-                si,
+                slots[si],
                 t.layers.len(),
                 scene.world.water.iter().map(|w| {
                     let mut m = w.transform;
@@ -656,7 +659,10 @@ impl ScatterRenderer {
                 offset: (si as u64 * SLOT) as u32,
                 chunks: keys,
                 sway,
-                impostor: impostor.map(|i| i.material.index()),
+                // A further part's far copies are its first part's card.
+                impostor: impostor
+                    .filter(|_| d.with.is_none())
+                    .map(|i| i.material.index()),
             });
         }
         self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
