@@ -1,5 +1,5 @@
 // W2: a sea's caustics (water.rs `Caustics`): the curvature of the drawn surface on a camera-centred grid, read by
-// lighting.wgsl `caustics` on everything under it.
+// caustics.wgsl `caustics` on everything under it.
 //
 // The refracted-area method (Wallace's WebGL Water, the method: light refracted through a curved surface converges or
 // spreads, and the irradiance on a receiver is the surface's area over the area its rays cover there; Watt, "Light-water
@@ -24,7 +24,7 @@ struct CausticParams {
 @group(0) @binding(0) var<uniform> cp: CausticParams;
 @group(0) @binding(1) var fields: texture_2d_array<f32>;
 @group(0) @binding(2) var lin: sampler;
-// Per texel the Hessian (xx, zz, xz) as lighting.wgsl `caustic_h` reads it.
+// Per texel the Hessian (xx, zz, xz) as caustics.wgsl `caustic_h` reads it.
 @group(0) @binding(3) var<storage, read_write> hessian: array<u32>;
 
 const CAUSTIC_H: f32 = 8.0;

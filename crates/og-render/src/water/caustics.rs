@@ -1,6 +1,6 @@
 use super::*;
 
-/// W2: a sea's caustics grid (`shaders/water_caustics.wgsl`, lighting.wgsl
+/// W2: a sea's caustics grid (`shaders/water_caustics.wgsl`, caustics.wgsl
 /// `wave_caustics`): [`CAUSTIC_RES`]² texels of [`CAUSTIC_TEXEL`] metres
 /// about the camera, each the drawn surface's Hessian in one word.
 /// (16 KB, the downlevel limit of a uniform binding the renderer asks for.)

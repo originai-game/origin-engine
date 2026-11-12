@@ -27,8 +27,13 @@ pub const INSTANCE_WGSL: &str = wgsl!("instance.wgsl");
 /// ([`LIGHTING_WGSL`]) and for the BRDF table of the image-based light
 /// (og-render's `ibl::ibl_source`).
 pub const GGX_WGSL: &str = wgsl!("ggx.wgsl");
-/// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water).
-pub const LIGHTING_WGSL: &str = concat!(wgsl!("ggx.wgsl"), wgsl!("lighting.wgsl"));
+/// The BRDF and the shadow lookups the lit passes share (pbr, terrain, water),
+/// then the water's caustics on what they light (caustics.wgsl).
+pub const LIGHTING_WGSL: &str = concat!(
+    wgsl!("ggx.wgsl"),
+    wgsl!("lighting.wgsl"),
+    wgsl!("caustics.wgsl")
+);
 /// Rain, puddles and snow on lit surfaces (weather.rs), after
 /// lighting.wgsl, in the standard, physical and terrain lit modules.
 pub const WEATHER_SURFACE_WGSL: &str = wgsl!("weather_surface.wgsl");
