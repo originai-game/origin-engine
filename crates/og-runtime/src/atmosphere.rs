@@ -11,7 +11,7 @@
 use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
-use super::fx::{kept_rows, resource, rows};
+use super::fx::{kept_rows, resource};
 use super::parse;
 use super::wire::{Color, FromJson, WindMotorKind, record};
 use glam::{Mat4, Vec2, Vec3};
@@ -198,7 +198,7 @@ pub(crate) fn derive(
     let driven = match (name, entity) {
         ("og.DayNight", None) => false,
         ("og.DirectionalLight", Some(e)) => {
-            let first = rows(world, layouts.get("og.DirectionalLight"))
+            let first = super::fx::rows(world, layouts.get("og.DirectionalLight"))
                 .into_iter()
                 .next()
                 .map(|(bits, _)| bits);
