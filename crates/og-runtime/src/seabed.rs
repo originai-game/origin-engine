@@ -12,6 +12,7 @@
 use super::codec::Layout;
 use super::physics_ext::Reader;
 use super::terrain::{SeabedGrid, TerrainState};
+use super::wire::{FromJson, record};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::ocean::{Ocean, Shore, ShoreTrains};
 use og_ecs::Entity;
@@ -42,26 +43,22 @@ pub(crate) fn coast(
     sea: Option<&Ocean>,
 ) -> Option<(Arc<Shore>, ShoreTrains)> {
     let sea = sea?;
-    let raw = v["seabed"].as_f64().unwrap_or(0.0);
-    if raw <= 0.0 {
+    let w = record::Water::from_json(v).ok()?;
+    if w.seabed == 0 {
         return None;
     }
-    let e = Entity::from_bits(raw as u64);
+    let e = Entity::from_bits(w.seabed);
     let rows = r.rows(terrain_layout).ok()?;
     let (_, tv) = rows.into_iter().find(|(id, _)| *id == e.to_bits())?;
-    let index = super::assets::index_of(tv["data"].as_f64().unwrap_or(0.0))?;
+    let index = super::assets::index_of(record::Terrain::from_json(&tv).ok()?.data as f64)?;
     let (at, q, scale) = r.pose(e)?;
     let m = Mat4::from_scale_rotation_translation(scale, q, at);
-    let size = super::fx::vec2(&v["size"], Vec2::splat(16.0));
+    let size = w.size;
     let centre = Vec2::new(position.x, position.z);
     let grid =
         super::terrain::seabed_grid(terrains, index, m, centre - size * 0.5, centre + size * 0.5)?;
     let shore = shore(terrains, &grid, position.y)?;
-    let trains = ShoreTrains::new(
-        sea.significant_height(),
-        super::fx::f(v, "shore", 1.0),
-        super::fx::f(v, "shoreWaveLength", 0.0),
-    );
+    let trains = ShoreTrains::new(sea.significant_height(), w.shore, w.shore_wave_length);
     Some((shore, trains))
 }
 

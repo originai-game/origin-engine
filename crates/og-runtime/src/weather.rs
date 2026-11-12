@@ -8,9 +8,10 @@
 //! computes the same bits.
 
 use super::codec::Layout;
+use super::wire::{FromJson, record};
 use glam::Vec3;
 use og_ecs::{SchemaId, SystemContext, SystemDesc, World};
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::BTreeMap;
 
 pub(crate) const STATE: &str = "og.WeatherState";
@@ -42,8 +43,13 @@ pub(crate) struct Step {
 /// keeps the ground under it from drying no faster than it would. A dust
 /// storm settles dust over dustTime; it stays until rain washes it off
 /// over washTime.
-pub(crate) fn step(s: Step, state: &Value, kind: u64, intensity: f32, dt: f32) -> Step {
-    let num = |k: &str, or: f32| state[k].as_f64().map_or(or, |v| v as f32);
+pub(crate) fn step(
+    s: Step,
+    state: &record::WeatherState,
+    kind: u64,
+    intensity: f32,
+    dt: f32,
+) -> Step {
     let rain = if kind == RAIN {
         intensity.clamp(0.0, 2.0)
     } else {
@@ -56,23 +62,23 @@ pub(crate) fn step(s: Step, state: &Value, kind: u64, intensity: f32, dt: f32) -
     };
     let mut o = s;
     if rain > 0.0 {
-        o.wetness += dt * rain / num("soakTime", 60.0).max(0.1);
+        o.wetness += dt * rain / state.soak_time.max(0.1);
         if s.wetness > 0.5 {
-            o.puddles += dt * rain / num("puddleTime", 120.0).max(0.1);
+            o.puddles += dt * rain / state.puddle_time.max(0.1);
         }
     } else {
-        o.wetness -= dt / num("dryTime", 300.0).max(0.1);
-        o.puddles -= dt / num("drainTime", 600.0).max(0.1);
+        o.wetness -= dt / state.dry_time.max(0.1);
+        o.puddles -= dt / state.drain_time.max(0.1);
     }
     if snowing > 0.0 {
-        o.snow_depth += dt * snowing * num("snowfall", 0.01).max(0.0) / 60.0;
+        o.snow_depth += dt * snowing * state.snowfall.max(0.0) / 60.0;
     } else {
-        o.snow_depth -= dt * num("melt", 0.004).max(0.0) / 60.0 * (1.0 + 2.0 * rain);
+        o.snow_depth -= dt * state.melt.max(0.0) / 60.0 * (1.0 + 2.0 * rain);
     }
     if kind == DUST {
-        o.dust += dt * intensity.clamp(0.0, 2.0) / num("dustTime", 600.0).max(0.1);
+        o.dust += dt * intensity.clamp(0.0, 2.0) / state.dust_time.max(0.1);
     }
-    o.dust -= dt * rain / num("washTime", 90.0).max(0.1);
+    o.dust -= dt * rain / state.wash_time.max(0.1);
     o.dust = o.dust.clamp(0.0, 1.0);
     o.wetness = o.wetness.clamp(0.0, 1.0);
     o.puddles = o.puddles.clamp(0.0, 1.0);
@@ -89,11 +95,6 @@ pub(crate) fn disc(rng: &mut og_core::Rng) -> (f32, f32) {
             return (x, z);
         }
     }
-}
-
-fn vec3(v: &Value) -> Vec3 {
-    let c = |k: &str| v[k].as_f64().unwrap_or(0.0) as f32;
-    Vec3::new(c("x"), c("y"), c("z"))
 }
 
 /// Schedules og.weather (early in the tick, before the game's systems, so
@@ -141,29 +142,32 @@ fn run(
     let invalid = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
     let bytes = ctx.resource_bytes(id)?;
     let mut s = state.decode(&bytes);
-    let w = weather.1.decode(&ctx.resource_bytes(weather.0)?);
+    let row = record::WeatherState::from_json(&s).map_err(invalid)?;
+    let w: record::Weather = weather
+        .1
+        .read(&ctx.resource_bytes(weather.0)?)
+        .map_err(invalid)?;
     let time = ctx.time();
-    let f = |v: &Value, k: &str| v[k].as_f64().unwrap_or(0.0) as f32;
     let next = step(
         Step {
-            wetness: f(&s, "wetness"),
-            puddles: f(&s, "puddles"),
-            snow_depth: f(&s, "snowDepth"),
-            dust: f(&s, "dust"),
+            wetness: row.wetness,
+            puddles: row.puddles,
+            snow_depth: row.snow_depth,
+            dust: row.dust,
         },
-        &s,
-        w["kind"].as_u64().unwrap_or(0),
-        w["intensity"].as_f64().map_or(1.0, |v| v as f32),
+        &row,
+        u64::from(w.kind),
+        w.intensity,
         time.dt,
     );
     s["wetness"] = json!(next.wetness);
     s["puddles"] = json!(next.puddles);
     s["snowDepth"] = json!(next.snow_depth);
     s["dust"] = json!(next.dust);
-    let rate = f(&s, "lightning").max(0.0);
+    let rate = row.lightning.max(0.0);
     if rate > 0.0 {
         let mut rng = og_core::Rng::default();
-        match s["stream"].as_u64().unwrap_or(0) as u32 {
+        match row.stream {
             // The first draw: forked from the world's generator, so the
             // game's own sequence is not disturbed.
             0 => rng = ctx.resource::<og_core::Rng>()?.fork(SYSTEM),
@@ -172,9 +176,9 @@ fn run(
         // A strike this tick with probability rate per minute times dt.
         if (rng.next_f64() as f32) < rate / 60.0 * time.dt {
             let (x, z) = disc(&mut rng);
-            let r = f(&s, "lightningRadius").max(0.0);
-            let at = vec3(&s["lightningCenter"]) + Vec3::new(x * r, 0.0, z * r);
-            let n = s["strikes"].as_u64().unwrap_or(0) as u32 + 1;
+            let r = row.lightning_radius.max(0.0);
+            let at = row.lightning_center + Vec3::new(x * r, 0.0, z * r);
+            let n = row.strikes + 1;
             s["strikes"] = json!(n);
             s["lastStrike"] = json!(time.tick as u32);
             s["strikePosition"] = json!({ "x": at.x, "y": at.y, "z": at.z });
@@ -198,7 +202,7 @@ mod tests {
     use super::*;
 
     fn run_for(s: Step, kind: u64, intensity: f32, seconds: u32) -> Step {
-        let state = json!({});
+        let state = record::WeatherState::default();
         (0..seconds * 60).fold(s, |s, _| step(s, &state, kind, intensity, 1.0 / 60.0))
     }
 
