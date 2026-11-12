@@ -32054,7 +32054,7 @@ pub mod record {
                 base: 1500.0_f32,
                 thickness: 1800.0_f32,
                 scale: 9000.0_f32,
-                wind: Vec3::new(12.0_f32, 0.4_f32, 4.0_f32),
+                wind: Vec3::new(0.0_f32, 0.4_f32, 0.0_f32),
                 color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 detail: 0.35_f32,
                 layer: 0.3_f32,
@@ -32284,7 +32284,7 @@ pub mod record {
             Self {
                 kind: Default::default(),
                 intensity: 1.0_f32,
-                wind: Vec3::new(1.5_f32, 0.0_f32, 0.5_f32),
+                wind: Default::default(),
                 radius: 18.0_f32,
                 tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 dim: 1.0_f32,
@@ -32314,7 +32314,6 @@ pub mod record {
     /// `Wind`: packages/knowledge/wiki/atmosphere.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Wind {
-        pub strength: f32,
         pub direction: Vec3,
         pub speed: f32,
         pub gust: f32,
@@ -32325,9 +32324,8 @@ pub mod record {
     impl Default for Wind {
         fn default() -> Self {
             Self {
-                strength: Default::default(),
                 direction: Vec3::new(1.0_f32, 0.0_f32, 0.0_f32),
-                speed: 3.0_f32,
+                speed: Default::default(),
                 gust: 0.6_f32,
                 turbulence: 0.3_f32,
                 gust_size: 14.0_f32,
@@ -32342,7 +32340,6 @@ pub mod record {
         fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
             let o = object(v)?;
             Ok(Self {
-                strength: field(o, "strength", d.strength)?,
                 direction: field(o, "direction", d.direction)?,
                 speed: field(o, "speed", d.speed)?,
                 gust: field(o, "gust", d.gust)?,

@@ -14,7 +14,7 @@ Token `og.Weather`, registered under the schema name `og.Weather`; its value typ
 |---|---|---|---|---|---|---|
 | `kind` | `number` | `0` | 0 … 4 | — | label “Kind” | WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4. |
 | `intensity` | `number` | `1` | 0 … 2 | — | tunable | How heavy: scales the particle rate, the fog and the dimming. |
-| `wind` | `Vector3` | `{ x: 1.5, y: 0, z: 0.5 }` | — | `mps` | tunable | Where the wind blows the particles. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | A wind of the weather's own on the particles, added to og.Wind's. |
 | `radius` | `number` | `18` | 1 … 200 | `m` | tunable | The size of the region around the camera the particles fill. |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Multiplies the particles' colour. |
 | `dim` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the preset's dimming of the sunlight applies. |
@@ -34,8 +34,7 @@ resource Weather {
     max 2
     tunable true
   }
-  field wind Vector3 "Where the wind blows the particles." {
-    default 1.5 0 0.5
+  field wind Vector3 "A wind of the weather's own on the particles, added to og.Wind's." {
     unit mps
     tunable true
   }

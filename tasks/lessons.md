@@ -161,3 +161,19 @@ A chained `git reset --hard` ran in another stream's checkout again and
 destroyed its uncommitted edits (the 2026-11-09 entry). The lane pool that
 was meant to prevent it is gone (989bb8c94); the rule is that entry's
 branch check, and committing WIP at each logical step.
+
+## 2026-11-12 — Mechanisms, not scenes
+
+Work on the storm sea and its boat tuned one scene (hull cuts, storm
+constants) instead of the systems under it. A defect seen in one scene is
+fixed in the mechanism every scene shares, in the system that owns it: the
+environment (wind, weather) is one state other systems derive from, never a
+field each feature repeats. A test scene shows a mechanism; one that needs
+its own constants in a shader or the runtime is a patch to remove.
+
+## 2026-11-12 — A restructure splits files as it goes
+
+A refactor leaves no file larger than it found it: new behaviour goes in
+its own module (`og-runtime/src/wind.rs`), and a file over about 600 lines
+that the work touches is split by responsibility in its own verbatim-move
+commit before the behaviour changes.

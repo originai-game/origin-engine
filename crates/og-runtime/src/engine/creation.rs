@@ -138,8 +138,9 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         // R11: Light2D's kind, cone, height and layers; Occluder2D's
         // polygon and layers; Lighting2D's shadowAngles.
         "og.Light2D" | "og.Occluder2D" | "og.Lighting2D" => 2,
-        // G2: turbulence and gustSize, the simulated field's.
-        "og.Wind" => 2,
+        // G2: turbulence and gustSize, the simulated field's (2); the
+        // world's wind, `strength` gone into `speed` (3).
+        "og.Wind" => 3,
         _ => return schema,
     };
     schema

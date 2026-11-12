@@ -22,7 +22,7 @@ Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `
 | `iterations` | `number` | `12` | 1 … 64 | — | tunable | Constraint passes per step: more is stiffer, at more cost. |
 | `damping` | `number` | `0.99` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick (1: none lost). |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind). |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second). |
 | `radius` | `number` | `0.05` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
 | `width` | `number` | `0.08` | ≥ 0 | `m` | — | The drawn width. |
 | `color` | `Vector3` | `{ x: 0.55, y: 0.42, z: 0.28 }` | — | — | — | The drawn linear colour. |
@@ -69,7 +69,7 @@ component Rope {
     max 10
     tunable true
   }
-  field wind Vector3 "A steady acceleration (wind)." {
+  field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second)." {
     unit mps2
     tunable true
   }

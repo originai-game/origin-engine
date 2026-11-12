@@ -11141,9 +11141,9 @@
           "name": "wind",
           "column": "Vector3",
           "default": {
-            "x": 12,
+            "x": 0,
             "y": 0.4,
-            "z": 4
+            "z": 0
           },
           "tunable": true
         },
@@ -11444,9 +11444,9 @@
           "name": "wind",
           "column": "Vector3",
           "default": {
-            "x": 1.5,
+            "x": 0,
             "y": 0,
-            "z": 0.5
+            "z": 0
           },
           "tunable": true
         },
@@ -11485,12 +11485,6 @@
       "module": "atmosphere",
       "fields": [
         {
-          "name": "strength",
-          "column": "f32",
-          "default": 0,
-          "tunable": true
-        },
-        {
           "name": "direction",
           "column": "Vector3",
           "default": {
@@ -11503,7 +11497,7 @@
         {
           "name": "speed",
           "column": "f32",
-          "default": 3,
+          "default": 0,
           "tunable": true
         },
         {

@@ -15061,7 +15061,7 @@ export interface Rope {
    */
   gravityScale: number;
   /**
-   * A steady acceleration (wind).
+   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second).
    *
    * @unit mps2 (metres per second squared)
    * @tunable
@@ -15180,7 +15180,7 @@ export interface Cloth {
    */
   gravityScale: number;
   /**
-   * A steady acceleration (wind); the cloth flutters with it. A visual cloth (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s.
+   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s.
    * See `physics §8`.
    *
    * @unit mps2 (metres per second squared)
@@ -15328,7 +15328,7 @@ export interface Garment {
    */
   gravityScale: number;
   /**
-   * A steady acceleration (wind); the garment flutters with it. A visual garment (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s.
+   * A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s.
    * See `physics §8`.
    *
    * @unit mps2 (metres per second squared)
@@ -17106,7 +17106,7 @@ export interface PhysicalSky {
 }
 
 /**
- * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. The wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
+ * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
  * See `render §7`.
  *
  * The `Clouds` resource (token `og.Clouds`).
@@ -17159,9 +17159,9 @@ export interface Clouds {
    */
   scale: number;
   /**
-   * How fast the wind carries them (x and z; y slowly turns their shapes over).
+   * Their own motion, added to og.Wind's (which carries them twice as fast as it blows at the ground): x and z a drift, y how fast their shapes turn over.
    *
-   * @default { x: 12, y: 0.4, z: 4 }
+   * @default { x: 0, y: 0.4, z: 0 }
    * @unit mps (metres per second)
    * @tunable
    */
@@ -17534,9 +17534,8 @@ export interface Weather {
    */
   intensity: number;
   /**
-   * Where the wind blows the particles.
+   * A wind of the weather's own on the particles, added to og.Wind's.
    *
-   * @default { x: 1.5, y: 0, z: 0.5 }
    * @unit mps (metres per second)
    * @tunable
    */
@@ -17574,19 +17573,12 @@ export interface Weather {
 }
 
 /**
- * The wind the renderer sways vegetation with (og.TerrainScatter copies and their impostors, og.Grass, swaying trees, og.Model instances with a sway): they lean downwind and sway in gusts sweeping across the field, each vertex by its height. Material shader hooks read it as `h.wind` (xyz where it blows, w its strength, 0 without og.Wind) in every pass. Where RenderCapabilities.compute allows, it is one simulated field around the camera that carries og.WindMotor pushes. Off at strength 0. Visual only, drawn from the tick; og.Rope, og.Cloth and og.Weather keep their own wind.
+ * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and og.Rope, og.Cloth and og.Garment are pushed in the tick. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. Still at speed 0. An og.Water's sea keeps its own wind.
  * See `render §8`.
  *
  * The `Wind` resource (token `og.Wind`).
  */
 export interface Wind {
-  /**
-   * The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still.
-   *
-   * @range 0..2
-   * @tunable
-   */
-  strength: number;
   /**
    * Where the wind blows: its horizontal part, normalised.
    *
@@ -17595,9 +17587,8 @@ export interface Wind {
    */
   direction: Vector3;
   /**
-   * How fast the gusts travel downwind, over a 10 m wave.
+   * How fast the air moves, and the gusts travel downwind (3: a light breeze, 8: fresh, branches move; 20: a gale); 0 is still.
    *
-   * @default 3
    * @range 0..50
    * @unit mps (metres per second)
    * @tunable
@@ -17668,7 +17659,7 @@ export interface WindMotor {
    */
   radius: number;
   /**
-   * Its push at its centre, as a wind speed; vegetation leans by about 0.05 per m/s of it in still air, by og.Wind's lean per m/s of its speed in a wind.
+   * Its push at its centre, as a wind speed: vegetation leans by 0.05 of its height per m/s of it, as in og.Wind.
    *
    * @default 10
    * @range 0..100
@@ -34560,7 +34551,7 @@ export declare namespace og {
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;
   /**
-   * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. The wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
+   * Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
    * See `render §7`.
    */
   const Clouds: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly coverage: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly base: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly scale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly color: FieldSpec<"Color">; readonly detail: FieldSpec<"f32">; readonly layer: FieldSpec<"f32">; readonly layerAltitude: FieldSpec<"f32">; readonly steps: FieldSpec<"u32"> }, Clouds>;
@@ -34583,10 +34574,10 @@ export declare namespace og {
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
-   * The wind the renderer sways vegetation with (og.TerrainScatter copies and their impostors, og.Grass, swaying trees, og.Model instances with a sway): they lean downwind and sway in gusts sweeping across the field, each vertex by its height. Material shader hooks read it as `h.wind` (xyz where it blows, w its strength, 0 without og.Wind) in every pass. Where RenderCapabilities.compute allows, it is one simulated field around the camera that carries og.WindMotor pushes. Off at strength 0. Visual only, drawn from the tick; og.Rope, og.Cloth and og.Weather keep their own wind.
+   * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and og.Rope, og.Cloth and og.Garment are pushed in the tick. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. Still at speed 0. An og.Water's sea keeps its own wind.
    * See `render §8`.
    */
-  const Wind: ResourceType<{ readonly strength: FieldSpec<"f32">; readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32">; readonly turbulence: FieldSpec<"f32">; readonly gustSize: FieldSpec<"f32"> }, Wind>;
+  const Wind: ResourceType<{ readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32">; readonly turbulence: FieldSpec<"f32">; readonly gustSize: FieldSpec<"f32"> }, Wind>;
   /**
    * A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and the field carries the push on after the motor stops. Needs no og.Wind. Only where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing); visual only, the same on every run. The 16 nearest the camera act.
    * See `render §8`.

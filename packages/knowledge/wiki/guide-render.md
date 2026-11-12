@@ -254,13 +254,22 @@ depth-normal prepass: the first one pays for it.
   snow settles on what faces up, deeper snow reaching steeper faces,
   lifting the drawn terrain; dust settles up and low; a strike flashes the
   scene with a bolt. Shelter is a weather occlusion map looking along the
-  rain as og.Weather's wind slants it; a game that needs to know whether a
+  rain as the wind slants it (og.Wind and og.Weather's own); a game that needs to know whether a
   place is sheltered casts a ray up against the colliders.
 
 <a id="guide-render-8"></a>
 ### `render §8` Wind and water
 
-- Wind: roots stay put, tips move furthest. The engine's vegetation sways
+- og.Wind is the world's one wind: set its direction and speed and the
+  vegetation leans (5 cm per metre of height for each m/s), the clouds
+  drift (twice as fast aloft), rain and snow slant, and ropes, cloths and
+  garments are pushed, all the same way. A `wind` on og.Clouds,
+  og.Weather, og.Rope, og.Cloth or og.Garment adds to it: leave it at 0
+  to follow the world, and set it only for air that differs there (a fan
+  on one flag, a high cloud layer crossing the ground wind). A sea keeps
+  its own (og.Water's `wind`): give it the same vector for waves that run
+  with the air.
+- Roots stay put, tips move furthest. The engine's vegetation sways
   unless its `sway` is 0. Where the field is simulated a gust front
   crosses grass, copies and trees together, eddies, and vegetation springs
   into a gust and settles; og.Model sway keeps the wind's own gusts.

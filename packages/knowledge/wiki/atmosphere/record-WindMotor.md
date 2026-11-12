@@ -16,7 +16,7 @@ Token `og.WindMotor`, registered under the schema name `og.WindMotor`; its value
 |---|---|---|---|---|---|---|
 | `kind` | `WindMotorKind` | `"omni"` | — | — | — | How it pushes. |
 | `radius` | `number` | `6` | 0 … 200 | `m` | tunable | How far it reaches. |
-| `strength` | `number` | `10` | 0 … 100 | `mps` | tunable | Its push at its centre, as a wind speed; vegetation leans by about 0.05 per m/s of it in still air, by og.Wind's lean per m/s of its speed in a wind. |
+| `strength` | `number` | `10` | 0 … 100 | `mps` | tunable | Its push at its centre, as a wind speed: vegetation leans by 0.05 of its height per m/s of it, as in og.Wind. |
 
 ```ogt
 component WindMotor {
@@ -30,7 +30,7 @@ component WindMotor {
     unit m
     tunable true
   }
-  field strength f32 "Its push at its centre, as a wind speed; vegetation leans by about 0.05 per m/s of it in still air, by og.Wind's lean per m/s of its speed in a wind." {
+  field strength f32 "Its push at its centre, as a wind speed: vegetation leans by 0.05 of its height per m/s of it, as in og.Wind." {
     default 10
     min 0
     max 100
@@ -40,4 +40,4 @@ component WindMotor {
 }
 ```
 
-<sub>Module `atmosphere` line 627</sub>
+<sub>Module `atmosphere` line 620</sub>

@@ -24,7 +24,7 @@ Token `og.Garment`, registered under the schema name `og.Garment`; its value typ
 | `substeps` | `number` | `1` | 1 … 16 | — | — | Simulation steps per tick. |
 | `damping` | `number` | `0.97` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the garment flutters with it. A visual garment (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s. See `physics §8`. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s. See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the garment and the tick (0: steady). |
 | `radius` | `number` | `0` | ≥ 0 | `m` | tunable | The thickness it collides with solid colliders at (0: no collision; the skinned pose, through `maxDistance` and `backstop`, holds it on the body). A character's own collider counts: keep it inside the body, or leave this 0. |
 | `friction` | `number` | `0` | 0 … 1 | — | tunable | How much of its sliding a point touching a solid loses each step. |
@@ -87,7 +87,7 @@ component Garment {
     max 10
     tunable true
   }
-  field wind Vector3 "A steady acceleration (wind); the garment flutters with it. A visual garment (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s." {
+  field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s." {
     guide "physics §8"
     unit mps2
     tunable true

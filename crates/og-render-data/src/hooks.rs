@@ -25,7 +25,7 @@
 //! on its back (three.js's `gl_FrontFacing`; the lit normal `n` is already turned
 //! towards the eye, which differs from it for normals bent away from the face); `h.wind` og.Wind as the
 //! frame draws it (`foliage::FoliageWind`'s first row, which every pass already has): xyz where it
-//! blows (horizontal, normalised), w its `strength` (0 without og.Wind), the previous drawn frame's
+//! blows (horizontal, normalised), w its lean per metre of height (0.05 for each m/s of og.Wind's speed, 0 in still air), the previous drawn frame's
 //! where the prepass evaluates the previous position. An alpha below the material's `alphaTest`
 //! discards the fragment (a dissolve). The hooks apply to static and
 //! skinned meshes alike, and the shadow passes and the depth prepass see

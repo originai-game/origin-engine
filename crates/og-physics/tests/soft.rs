@@ -184,3 +184,56 @@ fn a_cloth_pinned_to_a_child_entity_follows_its_parent() {
         "under the grandparent the first pin is at {first}"
     );
 }
+
+/// The world's wind (`set_wind`, og.Wind as the host reads it) pushes a rope
+/// and a cloth exactly as the same wind set on each of them does, and the
+/// two add: half from the world and half their own is that wind too.
+#[test]
+fn the_worlds_wind_pushes_a_rope_and_a_cloth_as_their_own_does() {
+    let blow = Vec3::new(1.0, 0.0, 6.0);
+    let hang = |world_wind: Vec3, own: Vec3| {
+        let (mut w, p) = world(Physics::default(), 1);
+        p.set_wind(world_wind);
+        let rope = w
+            .spawn((
+                at(0.0, 5.0, 0.0),
+                Rope {
+                    wind: own,
+                    ..Rope::default()
+                },
+            ))
+            .unwrap();
+        let cloth = w
+            .spawn((
+                at(4.0, 5.0, 0.0),
+                Cloth {
+                    wind: own,
+                    ..Cloth::default()
+                },
+            ))
+            .unwrap();
+        run(&mut w, 90);
+        (
+            p.rope_points(rope).unwrap(),
+            p.cloth_points(cloth).unwrap().points,
+        )
+    };
+    let still = hang(Vec3::ZERO, Vec3::ZERO);
+    let world_wind = hang(blow, Vec3::ZERO);
+    assert_eq!(
+        world_wind,
+        hang(Vec3::ZERO, blow),
+        "the world's against its own"
+    );
+    assert_eq!(world_wind, hang(blow * 0.5, blow * 0.5), "half of each");
+    // Downwind of where they hang in still air (+z, where the wind goes).
+    let (rope_end, hem) = (world_wind.0.last().unwrap(), world_wind.1.last().unwrap());
+    assert!(
+        rope_end.z > still.0.last().unwrap().z + 0.2,
+        "the rope's end at {rope_end}"
+    );
+    assert!(
+        hem.z > still.1.last().unwrap().z + 0.1,
+        "the cloth's hem at {hem}"
+    );
+}

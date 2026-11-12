@@ -408,6 +408,11 @@ pub(crate) struct Shared {
     /// as the tick started ([`PhysicsSystem::set_waters`]; derived from the
     /// world's components, not world state).
     pub waters: Vec<WaterBody>,
+    /// The world's wind (m/s) the next steps push ropes, cloths and
+    /// garments with, beside each one's own `wind`
+    /// ([`PhysicsSystem::set_wind`]; og.Wind as the host read it when the
+    /// tick started, not world state here).
+    pub wind: Vec3,
 }
 
 /// A body of water from an og.Water (a renderer's record the host reads),
@@ -1241,6 +1246,12 @@ impl PhysicsSystem {
         with_sim!(self.shared, |s| Some(s.gravity()))
     }
 
+    /// The world's wind the steps push soft bodies with
+    /// ([`PhysicsSystem::set_wind`]).
+    pub fn wind(&self) -> Vec3 {
+        lock(&self.shared).wind
+    }
+
     /// The points of the og.Cloth on `entity`.
     pub fn cloth_points(&self, entity: Entity) -> Option<ClothPoints> {
         with_sim!(self.shared, |s| s.cloths.get(&entity.to_bits()).map(|c| {
@@ -1455,6 +1466,13 @@ impl PhysicsSystem {
     /// order), replacing the last ones.
     pub fn set_waters(&self, waters: Vec<WaterBody>) {
         lock(&self.shared).waters = waters;
+    }
+
+    /// The world's wind (m/s; the host reads og.Wind as each tick starts)
+    /// the next steps push every og.Rope, og.Cloth and og.Garment with: its
+    /// velocity as an acceleration per second, added to their own `wind`.
+    pub fn set_wind(&self, wind: Vec3) {
+        lock(&self.shared).wind = wind;
     }
 }
 

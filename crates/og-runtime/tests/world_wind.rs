@@ -1,0 +1,136 @@
+//! og.Wind is the world's wind: the one resource moves what the frame
+//! draws in the air. Vegetation leans by its speed, the clouds drift on it
+//! (faster aloft) and rain falls slanted by it, each adding its own
+//! record's `wind`; without og.Wind the air is still.
+//!
+//! Ways this could fail: one of the three keeps reading only its own
+//! `wind` (the state before: three winds a game had to keep in step), a
+//! record's own `wind` replaces the world's instead of adding to it, or
+//! still air leaves a default drift behind.
+
+use glam::Vec3;
+use og_render::RenderScene;
+use og_runtime::{
+    Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
+    og_engine_write_resource, og_game_game, og_host_begin_bundle, set_hooks, set_render_backend,
+};
+use serde_json::{Value, json};
+use std::cell::Cell;
+use std::rc::Rc;
+
+struct NoAssets;
+
+impl Hooks for NoAssets {
+    fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        Fetch::Failed(format!("{path}: no assets in this test"))
+    }
+}
+
+/// What the last frame's air moved.
+#[derive(Clone, Copy, Debug)]
+struct Air {
+    /// The vegetation's wind: where it blows and its lean per metre.
+    lean: Option<(Vec3, f32)>,
+    clouds: Vec3,
+    /// Where the rain falls (unit).
+    rain: Vec3,
+}
+
+struct Recorder(Rc<Cell<Option<Air>>>);
+
+impl RenderBackend for Recorder {
+    fn tier(&self) -> String {
+        "test".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (64, 64)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        let a = &scene.atmosphere;
+        self.0.set(Some(Air {
+            lean: a.wind.map(|w| (w.direction, w.strength)),
+            clouds: a.clouds.expect("og.Clouds is on").wind,
+            rain: a.surface_weather.as_ref().expect("og.WeatherState").fall,
+        }));
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+fn answer(text: String) -> Value {
+    let v: Value = serde_json::from_str(&text).expect("wire JSON");
+    assert_eq!(v["ok"], json!(true), "{text}");
+    v
+}
+
+fn write(engine: u32, resource: &str, value: Value) {
+    answer(og_engine_write_resource(
+        engine,
+        resource.into(),
+        value.to_string(),
+    ));
+}
+
+fn close(a: Vec3, b: Vec3) -> bool {
+    (a - b).length() < 1e-4
+}
+
+#[test]
+fn the_worlds_wind_moves_vegetation_clouds_and_rain_together() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    let seen = Rc::new(Cell::new(None));
+    set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
+    let frame = || {
+        answer(og_engine_frame(engine, 1000.0 / 60.0));
+        seen.get().expect("the renderer was handed a frame")
+    };
+    write(engine, "og.Clouds", json!({ "enabled": true }));
+    write(engine, "og.Weather", json!({ "kind": 1, "intensity": 1 }));
+    write(engine, "og.WeatherState", json!({}));
+
+    // Still air: nothing leans, the clouds only billow, the rain falls
+    // straight.
+    let still = frame();
+    assert_eq!(still.lean, None);
+    assert!(close(still.clouds, Vec3::new(0.0, 0.4, 0.0)), "{still:?}");
+    assert!(close(still.rain, Vec3::NEG_Y), "{still:?}");
+
+    // 5 m/s to -z, given off the axis and unnormalised.
+    write(
+        engine,
+        "og.Wind",
+        json!({ "direction": { "x": 0, "y": 3, "z": -2 }, "speed": 5 }),
+    );
+    let windy = frame();
+    let (direction, lean) = windy.lean.expect("vegetation sways");
+    assert!(close(direction, Vec3::NEG_Z), "{windy:?}");
+    assert!((lean - 0.25).abs() < 1e-5, "5 m/s leans 5 cm a metre each");
+    assert!(close(windy.clouds, Vec3::new(0.0, 0.4, -10.0)), "{windy:?}");
+    let slant = Vec3::new(0.0, -11.0, -5.0).normalize();
+    assert!(close(windy.rain, slant), "{windy:?}");
+
+    // Their own wind adds to the world's.
+    write(
+        engine,
+        "og.Clouds",
+        json!({ "enabled": true, "wind": { "x": 3, "y": 0, "z": 4 } }),
+    );
+    write(
+        engine,
+        "og.Weather",
+        json!({ "kind": 1, "intensity": 1, "wind": { "x": 0, "y": 0, "z": 5 } }),
+    );
+    let own = frame();
+    assert!(close(own.clouds, Vec3::new(3.0, 0.0, -6.0)), "{own:?}");
+    assert!(close(own.rain, Vec3::NEG_Y), "{own:?}");
+}

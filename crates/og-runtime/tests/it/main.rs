@@ -162,6 +162,8 @@ mod wire;
 mod world_origin;
 #[path = "../world_ui.rs"]
 mod world_ui;
+#[path = "../world_wind.rs"]
+mod world_wind;
 #[cfg(feature = "story")]
 #[path = "../yarn.rs"]
 mod yarn;

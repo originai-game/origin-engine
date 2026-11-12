@@ -6,7 +6,7 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Clouds` (resource)
 
-Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. The wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
+Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only.
 
 See `render §7`.
 
@@ -20,7 +20,7 @@ Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type 
 | `base` | `number` | `1500` | ≥ 0 | `m` | tunable | The height of the cloud base above the world's y 0. |
 | `thickness` | `number` | `1800` | ≥ 0 | `m` | tunable | How tall the layer is (0: no cumulus, only the high layer). |
 | `scale` | `number` | `9000` | 500 … 200000 | `m` | tunable | The size of the largest cloud shapes. |
-| `wind` | `Vector3` | `{ x: 12, y: 0.4, z: 4 }` | — | `mps` | tunable | How fast the wind carries them (x and z; y slowly turns their shapes over). |
+| `wind` | `Vector3` | `{ x: 0, y: 0.4, z: 0 }` | — | `mps` | tunable | Their own motion, added to og.Wind's (which carries them twice as fast as it blows at the ground): x and z a drift, y how fast their shapes turn over. |
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Their albedo: white for fair-weather clouds, a grey for rain clouds. |
 | `detail` | `number` | `0.35` | 0 … 1 | `ratio` | tunable | How much fine noise erodes their edges (0: smooth blobs, 1: wispy). |
 | `layer` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The high thin layer's cover (0: none). |
@@ -29,7 +29,7 @@ Token `og.Clouds`, registered under the schema name `og.Clouds`; its value type 
 
 ```ogt
 resource Clouds {
-  doc "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. The wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only."
+  doc "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only."
   guide "render §7"
   field enabled bool "Draw the clouds."
   field coverage f32 "How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
@@ -64,8 +64,8 @@ resource Clouds {
     unit m
     tunable true
   }
-  field wind Vector3 "How fast the wind carries them (x and z; y slowly turns their shapes over)." {
-    default 12 0.4 4
+  field wind Vector3 "Their own motion, added to og.Wind's (which carries them twice as fast as it blows at the ground): x and z a drift, y how fast their shapes turn over." {
+    default 0 0.4 0
     unit mps
     tunable true
   }

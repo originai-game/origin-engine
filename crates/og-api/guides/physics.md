@@ -294,9 +294,10 @@ a decorative pool. What it means for the rest of the world:
 - It meets the colliders drawn this frame: boxes, spheres, capsules and
   height fields. Convex, cylinder and triangle-mesh colliders are passed
   through. With `thickness` a visual cloth collides with itself.
-- Visual cloth and garments take `wind` as air moving along it at its
-  magnitude in m/s, meeting each triangle with drag and lift against the
-  triangle's own motion (scaled so a still face square to it feels `wind`);
+- Visual cloth and garments take the wind (og.Wind and their own `wind`
+  added) as air moving along it at its magnitude in m/s, meeting each
+  triangle with drag and lift against the triangle's own motion (scaled so
+  a still face square to it feels the wind);
   `gust` sends bands of stronger, veering air down it, so it ripples and
   flaps rather than leaning.
 - Where RenderCapabilities.visualSimulation is false (no compute or no

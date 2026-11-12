@@ -21,7 +21,7 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 | `iterations` | `number` | `8` | 1 … 64 | — | tunable | Constraint passes per step. |
 | `damping` | `number` | `0.985` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
-| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration (wind); the cloth flutters with it. A visual cloth (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s. See `physics §8`. |
+| `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s. See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the cloth and the tick (0: steady). |
 | `radius` | `number` | `0.04` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
 | `thickness` | `number` | `0` | ≥ 0 | `m` | tunable | Self-collision: how far apart its points keep from the points of the cloth that are not their near neighbours (0: none). About `spacing` keeps a cloth that folds or piles up from passing through itself. |
@@ -72,7 +72,7 @@ component Cloth {
     max 10
     tunable true
   }
-  field wind Vector3 "A steady acceleration (wind); the cloth flutters with it. A visual cloth (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s." {
+  field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s." {
     guide "physics §8"
     unit mps2
     tunable true

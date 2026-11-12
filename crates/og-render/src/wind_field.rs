@@ -55,7 +55,7 @@ pub const WARM_STEPS: u64 = 90;
 /// snapping still: 3 s at 60 Hz.
 pub const SETTLE_TICKS: u64 = 180;
 /// What a cell leans by per m/s without og.Wind (motors in still air).
-const CALM_LEAN: f32 = 0.05;
+const CALM_LEAN: f32 = crate::Wind::LEAN_PER_MPS;
 /// One step's uniform, padded to the dynamic offset's alignment.
 const SLOT: u64 = 768;
 

@@ -150,6 +150,7 @@ mod video;
 mod video;
 mod views;
 mod weather;
+mod wind;
 pub mod wire;
 
 pub use ai::{

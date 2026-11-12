@@ -434,6 +434,8 @@ pub(crate) fn before_tick(eng: &Engine, world: &og_ecs::World) {
     if world.id_by_name("og.Buoyancy").is_ok() {
         p.set_waters(waters(eng, &Reader::World(world)).unwrap_or_default());
     }
+    let wind = eng.state.borrow().layouts.get("og.Wind").cloned();
+    crate::wind::before_tick(&p, world, wind.as_ref());
 }
 
 /// An og.Water's sea (og.Water.wind, `og_core::ocean`) at world point

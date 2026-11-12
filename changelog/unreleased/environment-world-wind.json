@@ -1,0 +1,27 @@
+{
+  "simulation": "changed",
+  "breaking": [
+    {
+      "member": "og.Wind.strength, og.Wind.speed",
+      "change": "og.Wind is the world's wind and `strength` is removed: `speed` is how fast the air moves (m/s, 0 by default: still), and vegetation leans 0.05 of its height for each m/s of it. `speed` used to be how fast the gusts travelled (3 by default) beside a separate lean.",
+      "fix": "Set `speed` to the old `strength / 0.05` (a strength of 0.3 is 6 m/s) and drop `strength`. A save restores that way by itself.",
+      "find": ["strength"]
+    },
+    {
+      "member": "og.Clouds.wind, og.Weather.wind",
+      "change": "Both are added to og.Wind (the clouds take it at twice its speed) and default to no drift of their own: clouds were carried at (12, 0.4, 4) and rain and snow at (1.5, 0, 0.5) whatever og.Wind said.",
+      "fix": "Set og.Wind's direction and speed for a world whose clouds, weather and vegetation move together; for the old motion without it, set og.Clouds.wind to (12, 0.4, 4) and og.Weather.wind to (1.5, 0, 0.5)."
+    },
+    {
+      "member": "og.Rope.wind, og.Cloth.wind, og.Garment.wind",
+      "change": "og.Wind now pushes every rope, cloth and garment (its velocity in m/s as an acceleration), and each one's `wind` is added to it. They ignored og.Wind before, so a world with both moves differently.",
+      "fix": "Nothing where the two should agree. For one that must hang still in a wind, set its `wind` to the opposite of og.Wind's velocity."
+    }
+  ],
+  "added": [
+    {
+      "member": "og.Wind",
+      "summary": "One wind for the world: vegetation, clouds, rain and snow, and ropes, cloths and garments all move in og.Wind's direction and speed, so a game sets the wind once instead of keeping five fields in step."
+    }
+  ]
+}

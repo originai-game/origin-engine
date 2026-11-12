@@ -791,7 +791,9 @@ the logic tests and the probe's CPU description of a frame.
   map), with IEEE-exact arithmetic and the generator's own PCG32 so every
   host makes the same field; both routes write the same tile pyramid, and
   `TerrainInfo.seaLevel` places the water. Detail meshes scattered over it
-  sway in `og.Wind` (drawn from the tick, never read by the simulation).
+  sway in `og.Wind`, the world's one wind (the sway is drawn from the tick
+  and never read by the simulation; the same wind drifts the clouds, slants
+  the weather and pushes ropes, cloths and garments in the tick).
   Decals: deferred-style projection in the forward pass.
 - Text: MSDF for UI and world text, kerned from the font's GPOS pairs; CJK
   coverage through the platform's subset fonts, and characters outside a

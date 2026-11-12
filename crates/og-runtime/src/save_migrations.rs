@@ -210,12 +210,20 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         from: 1,
         to: 2,
         note: "0.7.7 and earlier, registered in every world: gained turbulence and gustSize (G2, the simulated field); at its defaults (a game that never set a wind) it is dropped, as the record is lazy now",
-        run: Some(|e| became_lazy(e, "og.Wind")),
+        run: Some(wind_1_to_2),
+    },
+    Migration {
+        target: Target::Record,
+        name: "og.Wind",
+        from: 2,
+        to: 3,
+        note: "the world's wind: strength (the lean per metre) is gone and speed is the air's, so the saved lean becomes the speed that leans as far (strength / 0.05 m/s)",
+        run: Some(wind_2_to_3),
     },
 ];
 
-/// A record that became lazy with its version 1 -> 2 (R11's 2D lighting,
-/// G2's og.Wind): dropped where it holds nothing a game set (no component,
+/// A record that became lazy with its version 1 -> 2 (R11's 2D lighting):
+/// dropped where it holds nothing a game set (no component,
 /// or the resource at its defaults), so the save restores as a world that
 /// never had it; else each saved field kept by name and the new ones at
 /// their defaults. Keyed on the version, so a save this build writes keeps
@@ -281,6 +289,97 @@ fn became_lazy(edit: &mut SnapshotEdit, name: &str) -> Result<(), String> {
     }
     edit.map_type(name, schema, &mut |v| Ok(upgrade(v)))
         .map_err(err)
+}
+
+/// The f32s a schema's fields hold in `v`, by name.
+fn f32s<'a>(schema: &'a og_core::reflect::Schema, v: &'a [u8]) -> Vec<(&'a str, Vec<f32>)> {
+    let mut at = 0;
+    schema
+        .fields
+        .iter()
+        .map(|f| {
+            let n = f.ty.size();
+            at += n;
+            let (words, _) = v[at - n..at].as_chunks::<4>();
+            let values = words.iter().map(|b| f32::from_le_bytes(*b)).collect();
+            (f.name.as_str(), values)
+        })
+        .collect()
+}
+
+/// og.Wind 1 -> 2: `turbulence` and `gustSize` at the defaults version 2
+/// declared (0.3 and 14 m), after the saved fields. Version 1 was in every
+/// world, so one still at that version's defaults is a game that never set
+/// a wind: dropped, as the record is lazy now. The fields and defaults are
+/// those releases', written here: the record has moved on since.
+fn wind_1_to_2(edit: &mut SnapshotEdit) -> Result<(), String> {
+    use og_core::reflect::{FieldSchema, FieldType};
+    const V1: [(&str, &[f32]); 4] = [
+        ("strength", &[0.0]),
+        ("direction", &[1.0, 0.0, 0.0]),
+        ("speed", &[3.0]),
+        ("gust", &[0.6]),
+    ];
+    let name = "og.Wind";
+    let err = |e: og_core::Error| e.reason().to_string();
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let unused = match edit.resource(name) {
+        Some(v) => f32s(&old, v) == V1.map(|(n, d)| (n, d.to_vec())),
+        None => edit.components(name).is_empty() && !edit.has_events(name),
+    };
+    if unused {
+        return edit.replace_types(&[name], Vec::new()).map_err(err);
+    }
+    let mut schema = old;
+    schema.version = 2;
+    for added in ["turbulence", "gustSize"] {
+        schema.fields.push(FieldSchema::new(added, FieldType::F32));
+    }
+    edit.map_type(name, schema, &mut |v| {
+        let mut out = v.to_vec();
+        out.extend_from_slice(&0.3f32.to_le_bytes());
+        out.extend_from_slice(&14.0f32.to_le_bytes());
+        Ok(out)
+    })
+    .map_err(err)
+}
+
+/// What og.Wind's version 2 leaned a copy by per m/s of the wind version 3
+/// blows at (`og_render::Wind::LEAN_PER_MPS` when the step was written).
+const WIND_LEAN_PER_MPS: f32 = 0.05;
+
+/// og.Wind 2 -> 3: `strength` (the lean per metre of height) is gone;
+/// `speed` is the air's speed, which the lean follows. The save keeps what
+/// it showed: the speed that leans as far as its strength did, so a wind
+/// saved still (strength 0) restores still.
+fn wind_2_to_3(edit: &mut SnapshotEdit) -> Result<(), String> {
+    let name = "og.Wind";
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let at = |field: &str| -> Result<std::ops::Range<usize>, String> {
+        let i = old
+            .fields
+            .iter()
+            .position(|f| f.name == field)
+            .ok_or_else(|| format!("the saved og.Wind has no {field}"))?;
+        let start: usize = old.fields[..i].iter().map(|f| f.ty.size()).sum();
+        Ok(start..start + old.fields[i].ty.size())
+    };
+    let (strength, speed) = (at("strength")?, at("speed")?);
+    let mut schema = old.clone();
+    schema.version = 3;
+    schema.fields.retain(|f| f.name != "strength");
+    edit.map_type(name, schema, &mut |v| {
+        let lean = f32::from_le_bytes(v[strength.clone()].try_into().expect("an f32"));
+        let mut out = v.to_vec();
+        out[speed.clone()].copy_from_slice(&(lean.max(0.0) / WIND_LEAN_PER_MPS).to_le_bytes());
+        out.drain(strength.clone());
+        Ok(out)
+    })
+    .map_err(|e| e.reason().to_string())
 }
 
 /// og.VideoPlayer 1 -> 2: `time` from f32 to f64, every other field as it
@@ -463,6 +562,91 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// A world's save holding og.Wind as version 1 or 2 declared it.
+    fn saved_wind(version: u32, strength: f32, speed: f32) -> Vec<u8> {
+        use og_core::reflect::{FieldSchema, FieldType, Schema};
+        let mut fields = vec![
+            FieldSchema::new("strength", FieldType::F32),
+            FieldSchema::new("direction", FieldType::Vec3),
+            FieldSchema::new("speed", FieldType::F32),
+            FieldSchema::new("gust", FieldType::F32),
+        ];
+        let mut values = vec![strength, 1.0, 0.0, 0.0, speed, 0.6];
+        if version == 2 {
+            fields.push(FieldSchema::new("turbulence", FieldType::F32));
+            fields.push(FieldSchema::new("gustSize", FieldType::F32));
+            values.extend([0.5, 20.0]);
+        }
+        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let id = world
+            .register_schema(Schema {
+                name: "og.Wind".into(),
+                version,
+                doc: String::new(),
+                fields,
+            })
+            .unwrap();
+        let bytes: Vec<u8> = values.iter().flat_map(|v| v.to_le_bytes()).collect();
+        world.insert_resource_bytes(id, &bytes).unwrap();
+        world.snapshot()
+    }
+
+    type WindFields = Vec<(String, Vec<f32>)>;
+
+    /// The saved og.Wind after the engine's steps: its version and its
+    /// fields' f32s by name, `None` when the steps dropped it.
+    fn upgraded_wind(saved: &[u8]) -> Option<(u32, WindFields)> {
+        let (bytes, _) = upgrade(saved).unwrap().expect("a step ran");
+        let edit = SnapshotEdit::from_bytes(&bytes).unwrap();
+        let schema = edit.schema("og.Wind")?;
+        let fields = f32s(schema, edit.resource("og.Wind").unwrap())
+            .into_iter()
+            .map(|(n, v)| (n.to_string(), v))
+            .collect();
+        Some((schema.version, fields))
+    }
+
+    #[test]
+    fn a_saved_wind_keeps_its_lean_as_the_airs_speed() {
+        let wind = |speed: f32, turbulence: f32, gust_size: f32| {
+            vec![
+                ("direction".to_string(), vec![1.0, 0.0, 0.0]),
+                ("speed".to_string(), vec![speed]),
+                ("gust".to_string(), vec![0.6]),
+                ("turbulence".to_string(), vec![turbulence]),
+                ("gustSize".to_string(), vec![gust_size]),
+            ]
+        };
+        // Version 1 was in every world: at its defaults, no game set it.
+        assert_eq!(upgraded_wind(&saved_wind(1, 0.0, 3.0)), None);
+        // A lean of 0.3 per metre is what 6 m/s leans; the gusts' old
+        // travel speed (9) is not the air's.
+        assert_eq!(
+            upgraded_wind(&saved_wind(1, 0.3, 9.0)),
+            Some((3, wind(6.0, 0.3, 14.0)))
+        );
+        assert_eq!(
+            upgraded_wind(&saved_wind(2, 0.1, 3.0)),
+            Some((3, wind(2.0, 0.5, 20.0)))
+        );
+        // Version 2 was lazy: a wind a game named stays, still as it was.
+        assert_eq!(
+            upgraded_wind(&saved_wind(2, 0.0, 3.0)),
+            Some((3, wind(0.0, 0.5, 20.0)))
+        );
+        // What this build registers for og.Wind is what the steps end at.
+        let decl = og_api::host::RECORDS
+            .iter()
+            .find(|d| d.schema == "og.Wind")
+            .unwrap();
+        let now = crate::codec::Layout::from_decl(decl).unwrap().schema();
+        let names: Vec<&str> = now.fields.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(
+            names,
+            ["direction", "speed", "gust", "turbulence", "gustSize"]
+        );
     }
 
     #[test]

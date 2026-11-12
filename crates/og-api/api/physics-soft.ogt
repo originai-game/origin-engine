@@ -38,7 +38,7 @@
       max 10
       tunable true
     }
-    field wind Vector3 "A steady acceleration (wind)." {
+    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second)." {
       unit mps2
       tunable true
     }
@@ -108,7 +108,7 @@
       max 10
       tunable true
     }
-    field wind Vector3 "A steady acceleration (wind); the cloth flutters with it. A visual cloth (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s." {
+    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s." {
       guide "physics §8"
       unit mps2
       tunable true
@@ -207,7 +207,7 @@
       max 10
       tunable true
     }
-    field wind Vector3 "A steady acceleration (wind); the garment flutters with it. A visual garment (SIMULATION_VISUAL) takes it as air moving at its magnitude in m/s." {
+    field wind Vector3 "A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the garment flutters with both. A visual garment (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s." {
       guide "physics §8"
       unit mps2
       tunable true

@@ -13,6 +13,7 @@ use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
 use super::fx::{kept_rows, resource};
 use super::parse;
+use super::wind::WorldWind;
 use super::wire::{Color, FromJson, WindMotorKind, record};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
@@ -301,22 +302,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     scene.atmosphere.volumetric_fog = None;
     // No twilight adaptation unless the day-night cycle sets one below.
     scene.atmosphere.adaptation = 1.0;
-    scene.atmosphere.wind = resource(world, layouts.wind.as_ref()).and_then(|w| {
-        // The hand read's direction default (zero), not the IDL's +X.
-        let base = record::Wind {
-            direction: Vec3::ZERO,
-            ..Default::default()
-        };
-        let w = record::Wind::from_json_over(&w, base).ok()?;
-        (w.strength > 0.0).then_some(og_render::Wind {
-            strength: w.strength,
-            direction: w.direction,
-            speed: w.speed,
-            gust: w.gust,
-            turbulence: w.turbulence,
-            gust_size: w.gust_size,
-        })
-    });
+    // og.Wind: what vegetation sways in here; the clouds, the weather and
+    // the visual cloths below add their own to it.
+    let world_wind = WorldWind::read(world, layouts.wind.as_ref());
+    scene.atmosphere.wind = world_wind.vegetation();
     // og.WindMotor: local pushes on the simulated wind field, placed by
     // their entities (wind_field.rs keeps the nearest).
     scene.atmosphere.wind_motors.clear();
@@ -461,14 +450,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // Clouds over the procedural sky (they bring the built-in one when no
     // sky resource drew it), dimming the light by their cover.
     scene.atmosphere.clouds = resource(world, layouts.clouds.as_ref())
-        // The hand read's wind default (zero), not the IDL's (12, 0.4, 4).
-        .and_then(|c| {
-            let base = record::Clouds {
-                wind: Vec3::ZERO,
-                ..Default::default()
-            };
-            record::Clouds::from_json_over(&c, base).ok()
-        })
+        .and_then(|c| record::Clouds::from_json(&c).ok())
         .filter(|c| c.enabled)
         .map(|c| og_render::Clouds {
             coverage: c.coverage,
@@ -476,7 +458,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             base: c.base,
             thickness: c.thickness,
             scale: c.scale,
-            wind: c.wind,
+            wind: c.wind + world_wind.aloft(),
             color: rgb(&c.color),
             detail: c.detail,
             layer: c.layer,
@@ -585,7 +567,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     {
         let kind = w.kind;
         let layer = orthographic.then_some(w.layer);
-        let wind = w.wind;
+        let wind = w.wind + world_wind.velocity;
         let look = og_render::weather(
             kind,
             w.intensity,
@@ -1004,6 +986,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     }
     // og.Physics.gravity, for the bodies the renderer simulates.
     let gravity = physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0));
+    // og.Wind as the tick's steps took it, beside each body's own.
+    let blowing = physics.wind();
     // Cloth: a double-sided mesh of its points, replaced every frame.
     for (e, v) in kept_rows(world, layouts.cloth.as_ref()) {
         let Ok(row) = record::Cloth::from_json(&v) else {
@@ -1038,7 +1022,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 substeps: small_steps(row.substeps, row.iterations),
                 damping: row.damping,
                 gravity: gravity * row.gravity_scale,
-                wind: row.wind,
+                wind: row.wind + blowing,
                 gust: row.gust,
                 radius: row.radius,
                 friction: row.friction,
@@ -1163,14 +1147,9 @@ fn lightning_and_surfaces(
     else {
         return;
     };
-    // The hand read's wind default (zero), not the IDL's (1.5, 0, 0.5).
-    let weather = resource(world, layouts.weather.as_ref()).and_then(|w| {
-        let base = record::Weather {
-            wind: Vec3::ZERO,
-            ..Default::default()
-        };
-        record::Weather::from_json_over(&w, base).ok()
-    });
+    let world_wind = WorldWind::read(world, layouts.wind.as_ref()).velocity;
+    let weather =
+        resource(world, layouts.weather.as_ref()).and_then(|w| record::Weather::from_json(&w).ok());
     let kind = weather.as_ref().map_or(0, |w| w.kind);
     let rain = weather
         .as_ref()
@@ -1181,8 +1160,8 @@ fn lightning_and_surfaces(
     // (what drifts flatter eddies round a roof, not under it); straight
     // down once neither falls.
     let (drift, down) = match (kind, weather.as_ref()) {
-        (og_render::WEATHER_RAIN, Some(w)) => (w.wind, 11.0),
-        (og_render::WEATHER_SNOW, Some(w)) => (w.wind * 0.8, 0.88),
+        (og_render::WEATHER_RAIN, Some(w)) => (w.wind + world_wind, 11.0),
+        (og_render::WEATHER_SNOW, Some(w)) => ((w.wind + world_wind) * 0.8, 0.88),
         _ => (Vec3::ZERO, 1.0),
     };
     let drift = Vec3::new(drift.x, 0.0, drift.z).clamp_length_max(down);

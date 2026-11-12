@@ -6,7 +6,7 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Wind` (resource)
 
-The wind the renderer sways vegetation with (og.TerrainScatter copies and their impostors, og.Grass, swaying trees, og.Model instances with a sway): they lean downwind and sway in gusts sweeping across the field, each vertex by its height. Material shader hooks read it as `h.wind` (xyz where it blows, w its strength, 0 without og.Wind) in every pass. Where RenderCapabilities.compute allows, it is one simulated field around the camera that carries og.WindMotor pushes. Off at strength 0. Visual only, drawn from the tick; og.Rope, og.Cloth and og.Weather keep their own wind.
+The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and og.Rope, og.Cloth and og.Garment are pushed in the tick. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. Still at speed 0. An og.Water's sea keeps its own wind.
 
 See `render §8`.
 
@@ -14,28 +14,21 @@ Token `og.Wind`, registered under the schema name `og.Wind`; its value type is `
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `strength` | `number` | `0` | 0 … 2 | — | tunable | The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still. |
 | `direction` | `Vector3` | `{ x: 1, y: 0, z: 0 }` | — | — | tunable | Where the wind blows: its horizontal part, normalised. |
-| `speed` | `number` | `3` | 0 … 50 | `mps` | tunable | How fast the gusts travel downwind, over a 10 m wave. |
+| `speed` | `number` | `0` | 0 … 50 | `mps` | tunable | How fast the air moves, and the gusts travel downwind (3: a light breeze, 8: fresh, branches move; 20: a gale); 0 is still. |
 | `gust` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How much the lean varies in the gusts: 0 a steady lean, 1 from upright to twice the mean. |
 | `turbulence` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | How much the wind swirls on its own between the gusts, where the renderer simulates it (RenderCapabilities.compute): 0 the gusts alone, 1 eddies as strong as the wind. |
 | `gustSize` | `number` | `14` | 1 … 200 | `m` | tunable | How large the gust patches are. |
 
 ```ogt
 resource Wind {
-  doc "The wind the renderer sways vegetation with (og.TerrainScatter copies and their impostors, og.Grass, swaying trees, og.Model instances with a sway): they lean downwind and sway in gusts sweeping across the field, each vertex by its height. Material shader hooks read it as `h.wind` (xyz where it blows, w its strength, 0 without og.Wind) in every pass. Where RenderCapabilities.compute allows, it is one simulated field around the camera that carries og.WindMotor pushes. Off at strength 0. Visual only, drawn from the tick; og.Rope, og.Cloth and og.Weather keep their own wind."
+  doc "The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and og.Rope, og.Cloth and og.Garment are pushed in the tick. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. Still at speed 0. An og.Water's sea keeps its own wind."
   guide "render §8"
-  field strength f32 "The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still." {
-    min 0
-    max 2
-    tunable true
-  }
   field direction Vector3 "Where the wind blows: its horizontal part, normalised." {
     default 1 0 0
     tunable true
   }
-  field speed f32 "How fast the gusts travel downwind, over a 10 m wave." {
-    default 3
+  field speed f32 "How fast the air moves, and the gusts travel downwind (3: a light breeze, 8: fresh, branches move; 20: a gale); 0 is still." {
     min 0
     max 50
     unit mps
@@ -65,4 +58,4 @@ resource Wind {
 }
 ```
 
-<sub>Module `atmosphere` line 571</sub>
+<sub>Module `atmosphere` line 570</sub>

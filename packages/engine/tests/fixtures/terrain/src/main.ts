@@ -5,7 +5,7 @@
 //     --commands "0.2:screenshot:hill.png;0.3:hole:20:20:4;0.6:screenshot:hole.png;0.7:quit"
 // `grass` grows a default og.Grass over it, and `wind` blows og.Wind (R6's grass):
 //   og run packages/engine/tests/fixtures/terrain --size 1280x720 --out og-out \
-//     --commands "0.2:grass;0.4:screenshot:grass.png;0.5:wind:0.3;1.0:screenshot:grass-wind.png;1.1:quit"
+//     --commands "0.2:grass;0.4:screenshot:grass.png;0.5:wind:6;1.0:screenshot:grass-wind.png;1.1:quit"
 import { og, SHAPE_HEIGHTFIELD, type World } from "@origingame/engine";
 
 // The hill and its terrain data live in the world (the entity named "hill"
@@ -56,16 +56,16 @@ export default og.game({
       const h = hill(world);
       world.insert(h.entity, og.Grass, { data: h.data });
     },
-    /** `wind:<strength>`: og.Wind along +x. */
+    /** `wind:<speed>`: og.Wind along +x, in m/s. */
     wind: (world, args) => {
       const w = world.resource(og.Wind);
       if (!w.ok) throw new Error(w.reason);
-      w.value.strength = Number(args[0] ?? 0.3);
+      w.value.speed = Number(args[0] ?? 6);
     },
   },
   commandHelp: {
     hole: { usage: "<x>:<z>:<radius>", doc: "Cut a round pit into the hill (og.terrain.edit's hole brush)." },
     grass: { usage: "", doc: "Grow a default og.Grass over the hill." },
-    wind: { usage: "<strength>", doc: "Blow og.Wind along +x." },
+    wind: { usage: "<speed>", doc: "Blow og.Wind along +x at <speed> m/s." },
   },
 });

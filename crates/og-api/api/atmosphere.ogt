@@ -264,7 +264,7 @@ module atmosphere {
   }
 
   resource Clouds {
-    doc "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. The wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only."
+    doc "Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, faded with distance, and a thin high cirrus layer above. og.Wind carries them by the tick's clock, the same on every run and after a restore. Drawn over og.Sky, og.DayNight or og.PhysicalSky (alone they bring the built-in sky), they dim the sun and the sky's light by their cover. Visual only."
     guide "render §7"
     field enabled bool "Draw the clouds."
     field coverage f32 "How much of the sky the cumulus covers: 0 none, 0.3 fair weather, 0.6 broken, 1 overcast." {
@@ -299,8 +299,8 @@ module atmosphere {
       unit m
       tunable true
     }
-    field wind Vector3 "How fast the wind carries them (x and z; y slowly turns their shapes over)." {
-      default 12 0.4 4
+    field wind Vector3 "Their own motion, added to og.Wind's (which carries them twice as fast as it blows at the ground): x and z a drift, y how fast their shapes turn over." {
+      default 0 0.4 0
       unit mps
       tunable true
     }
@@ -541,8 +541,7 @@ module atmosphere {
       max 2
       tunable true
     }
-    field wind Vector3 "Where the wind blows the particles." {
-      default 1.5 0 0.5
+    field wind Vector3 "A wind of the weather's own on the particles, added to og.Wind's." {
       unit mps
       tunable true
     }
@@ -569,19 +568,13 @@ module atmosphere {
   }
 
   resource Wind {
-    doc "The wind the renderer sways vegetation with (og.TerrainScatter copies and their impostors, og.Grass, swaying trees, og.Model instances with a sway): they lean downwind and sway in gusts sweeping across the field, each vertex by its height. Material shader hooks read it as `h.wind` (xyz where it blows, w its strength, 0 without og.Wind) in every pass. Where RenderCapabilities.compute allows, it is one simulated field around the camera that carries og.WindMotor pushes. Off at strength 0. Visual only, drawn from the tick; og.Rope, og.Cloth and og.Weather keep their own wind."
+    doc "The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and og.Rope, og.Cloth and og.Garment are pushed in the tick. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. Still at speed 0. An og.Water's sea keeps its own wind."
     guide "render §8"
-    field strength f32 "The mean lean: how far a copy's tip moves downwind per metre of its height (0.2: a 1 m stem's tip leans 20 cm); 0 is still." {
-      min 0
-      max 2
-      tunable true
-    }
     field direction Vector3 "Where the wind blows: its horizontal part, normalised." {
       default 1 0 0
       tunable true
     }
-    field speed f32 "How fast the gusts travel downwind, over a 10 m wave." {
-      default 3
+    field speed f32 "How fast the air moves, and the gusts travel downwind (3: a light breeze, 8: fresh, branches move; 20: a gale); 0 is still." {
       min 0
       max 50
       unit mps
@@ -635,7 +628,7 @@ module atmosphere {
       unit m
       tunable true
     }
-    field strength f32 "Its push at its centre, as a wind speed; vegetation leans by about 0.05 per m/s of it in still air, by og.Wind's lean per m/s of its speed in a wind." {
+    field strength f32 "Its push at its centre, as a wind speed: vegetation leans by 0.05 of its height per m/s of it, as in og.Wind." {
       default 10
       min 0
       max 100

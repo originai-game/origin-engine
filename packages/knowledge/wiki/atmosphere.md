@@ -37,7 +37,7 @@ module atmosphere {
 | [`og.WeatherState`](atmosphere/record-WeatherState.md) | resource |  | The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, d… |
 | [`og.LightningStrike`](atmosphere/record-LightningStrike.md) | event |  | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
 | [`og.Weather`](atmosphere/record-Weather.md) | resource |  | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. |
-| [`og.Wind`](atmosphere/record-Wind.md) | resource |  | The wind the renderer sways vegetation with (og.TerrainScatter copies and their impostors, og.Grass, swaying trees, og.Model instances with a sway): they lean downwind and sway in gusts sweeping acro… |
+| [`og.Wind`](atmosphere/record-Wind.md) | resource |  | The world's wind: where the air moves and how fast. |
 | [`WindMotorKind`](atmosphere/type-WindMotorKind.md) | enum |  | How an og.WindMotor pushes the wind. |
 | [`WindMotorKind()`](#column-WindMotorKind) | column kind |  | A WindMotorKind field: the variant's index. |
 | [`og.WindMotor`](atmosphere/record-WindMotor.md) | component |  | A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and th… |
@@ -62,7 +62,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 620</sub>
+<sub>Module `atmosphere` line 613</sub>
 
 ## Constants
 

@@ -216,6 +216,24 @@ pub struct Wind {
     pub gust_size: f32,
 }
 
+impl Wind {
+    /// How far a stem's tip leans downwind per metre of its height, for
+    /// each m/s the air moves: what og.Wind's speed and an og.WindMotor's
+    /// push lean vegetation by.
+    pub const LEAN_PER_MPS: f32 = 0.05;
+
+    /// The wind of air moving at `speed` m/s along `direction`, with the
+    /// default gusts: vegetation leans by [`Wind::LEAN_PER_MPS`] of it.
+    pub fn blowing(direction: Vec3, speed: f32) -> Wind {
+        Wind {
+            strength: Wind::LEAN_PER_MPS * speed,
+            direction,
+            speed,
+            ..Wind::default()
+        }
+    }
+}
+
 impl Default for Wind {
     fn default() -> Self {
         Wind {

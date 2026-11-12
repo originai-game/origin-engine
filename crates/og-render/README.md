@@ -1385,7 +1385,8 @@ unless `RenderScene::terrains` names one.
   an `impostor` draws its copies past `impostor_distance` as cards,
   cross-dithered with the meshes over the last tenth before it.
 - **Wind.** `RenderScene::wind` (`Wind { strength, direction, speed, gust
-  }`, og.Wind; `None` or strength 0 still) sways the copies of every
+  }`; `None` or strength 0 still; og-runtime makes it from og.Wind with
+  `Wind::blowing`, a lean of `Wind::LEAN_PER_MPS` per m/s) sways the copies of every
   scatter whose `TerrainScatter::sway` is above 0, in the vertex stage
   (`scatter_sway`): a vertex `h` above the copy's origin moves downwind by
   `lean × h × min(h / top, 1)`, the lean `strength × sway × (1 + gust ×
