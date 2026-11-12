@@ -3,13 +3,13 @@
 //! a box (placed by the artboard's fit and align).
 
 use super::*;
-use crate::element::Affine;
-use crate::motion::codec::{R, W};
-use crate::style::Srgba;
+use og_css::Srgba;
 use og_draw::{
     UiBlend, UiGeometry, UiGradient, UiGradientKind, UiJoin, UiMode, UiPaint, UiPath, UiShape,
     UiSpread, UiStop,
 };
+use og_ui_model::Affine;
+use og_ui_model::codec::{R, W};
 use std::sync::Arc;
 
 /// What a playing artboard draws, bottom to top, in screen space.

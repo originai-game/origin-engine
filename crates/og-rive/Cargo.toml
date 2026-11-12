@@ -1,0 +1,18 @@
+[package]
+name = "og-rive"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine Rive artboards: the cooked format of a converted .riv, and a deterministic player that draws it as og-draw's UI shapes, below og-ui and read by the cook."
+
+[dependencies]
+og-core = { path = "../og-core" }
+# The UI shapes and handles a player draws.
+og-draw = { path = "../og-draw" }
+# Rive text: measured, broken and drawn with the cook's fonts.
+og-text = { path = "../og-text", default-features = false }
+og-i18n = { path = "../og-i18n" }
+og-css = { path = "../og-css" }
+# The 2D transforms and the codec primitives its bytes are written with.
+og-ui-model = { path = "../og-ui-model" }

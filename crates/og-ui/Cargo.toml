@@ -30,6 +30,8 @@ bytemuck = { workspace = true }
 og-i18n = { path = "../og-i18n" }
 # CSS values: the value lexer and calc().
 og-css = { path = "../og-css" }
+# Rive artboards and their player (og_ui::rive).
+og-rive = { path = "../og-rive" }
 # Rectangles, insets, the 2D transforms and the codec primitives.
 og-ui-model = { path = "../og-ui-model" }
 # Text measurement, line breaking, bidi and shaping.

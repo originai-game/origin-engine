@@ -75,7 +75,7 @@ pub struct Font {
     pub descent: f32,
     /// The font once loaded ([`Artboard::bind_fonts`]); not in the blob.
     /// Text in an unbound font is laid out and drawn as if it had none.
-    pub font: Option<crate::text::UiFont>,
+    pub font: Option<og_text::text::UiFont>,
 }
 
 /// An image an artboard draws: a texture cooked from the `.riv`.
@@ -104,7 +104,7 @@ impl Artboard {
 
     /// Gives every font of this artboard and the ones it nests its loaded
     /// font, by id (the loader's: `None` leaves its text undrawn).
-    pub fn bind_fonts(&mut self, font: &mut dyn FnMut(&str) -> Option<crate::text::UiFont>) {
+    pub fn bind_fonts(&mut self, font: &mut dyn FnMut(&str) -> Option<og_text::text::UiFont>) {
         for f in &mut self.fonts {
             f.font = font(&f.id);
         }

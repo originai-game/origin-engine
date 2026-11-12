@@ -55,7 +55,7 @@ mod probe;
 pub mod reactive;
 mod recognize;
 mod rich;
-pub mod rive;
+pub use og_rive as rive;
 mod scroll;
 pub use scroll::{Overscroll, ScrollCss, ScrollState};
 pub mod slot;

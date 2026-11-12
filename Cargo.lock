@@ -3177,6 +3177,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-rive"
+version = "0.7.7"
+dependencies = [
+ "og-core",
+ "og-css",
+ "og-draw",
+ "og-i18n",
+ "og-text",
+ "og-ui-model",
+]
+
+[[package]]
 name = "og-runtime"
 version = "0.7.7"
 dependencies = [
@@ -3362,6 +3374,7 @@ dependencies = [
  "og-i18n",
  "og-input",
  "og-probe",
+ "og-rive",
  "og-text",
  "og-tween",
  "og-ui-model",

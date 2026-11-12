@@ -10,10 +10,10 @@
 //! alignment, the origin and the overflow modes.
 
 use super::*;
-use crate::element::Affine;
-use crate::shape::Features;
-use crate::text::{FontMetrics, drawn_line, tokens};
 use og_i18n::Direction;
+use og_text::shape::Features;
+use og_text::text::{FontMetrics, drawn_line, tokens};
+use og_ui_model::Affine;
 
 /// One styled run as laid out: a run with a font, a size and words.
 pub(super) struct Run<'a> {
@@ -634,7 +634,7 @@ pub(super) fn shaped(r: &Run, text: &str) -> (String, Vec<og_draw::GlyphPlacemen
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text::UiFont;
+    use og_text::text::UiFont;
 
     /// One text of `words` in a style of `size` px over a face whose every
     /// character is half an em wide, its ascent 0.8 em and descent 0.2.

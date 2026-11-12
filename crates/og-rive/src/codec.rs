@@ -3,8 +3,8 @@
 //! [`VERSION`]; a reader refuses another version rather than guess.
 
 use super::*;
-use crate::motion::codec::{R, W};
 use og_draw::UiBlend;
+use og_ui_model::codec::{R, W};
 
 /// The codec's version (in the blob after its magic).
 pub const VERSION: u32 = 3;
