@@ -202,18 +202,15 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
         let rid = w
             .id_by_name("og.Transform")
             .map_err(|e| e.reason().to_string())?;
-        let t = tm.decode(
+        let t: wire::record::Tilemap = tm.read(
             &w.get_bytes(e, tid)
                 .map_err(|_| "the entity has no og.Tilemap".to_string())?,
-        );
+        )?;
         let p = tr.decode(
             &w.get_bytes(e, rid)
                 .map_err(|_| "the entity has no og.Transform".to_string())?,
         );
-        (
-            t["map"].as_f64().map_or(0, |m| m as u64),
-            wire::value::<Vec3>(&p["position"], "position")?,
-        )
+        (t.map, wire::value::<Vec3>(&p["position"], "position")?)
     };
     let asset = {
         let st = eng.state.borrow();

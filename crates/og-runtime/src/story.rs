@@ -13,8 +13,9 @@
 use super::engine::engine;
 use super::parse;
 use super::wire::{
-    BarkView, CheckView, ChoiceView, ChosenView, DialogueView, MarkerView, ObjectiveView, OneOf,
-    QuestView, RewardView, RollView, SpeakerView, StoryAsset, StoryLine, TextSpan, TimerView,
+    BarkView, CheckView, ChoiceView, ChosenView, DialogueView, FromJson, MarkerView, ObjectiveView,
+    OneOf, QuestView, RewardView, RollView, SpeakerView, StoryAsset, StoryLine, TextSpan,
+    TimerView, record,
 };
 use og_core::Rng;
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
@@ -437,6 +438,7 @@ fn shot(
         });
         (wanted, s.and_then(|s| s.camera))
     });
+    let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
     let is_vcam = |e: Entity| ctx.is_alive(e) && ctx.get_bytes(e, vid).is_ok();
     // A name: that entity; a cast role: its entity's own virtual camera,
     // else the first (in query order) that looks at it.
@@ -456,8 +458,9 @@ fn shot(
                         let mut hit = None;
                         'all: for a in ctx.query_with(&q)? {
                             for &e in a.entities() {
-                                let v = vl.decode(&ctx.get_bytes(e, vid)?);
-                                if v["lookAt"].as_f64().map_or(0, |x| x as u64) == bits {
+                                let v: record::VirtualCamera =
+                                    vl.read(&ctx.get_bytes(e, vid)?).map_err(bad)?;
+                                if v.look_at == bits {
                                     hit = Some(e);
                                     break 'all;
                                 }
@@ -484,7 +487,7 @@ fn shot(
     };
     let bytes = ctx.resource_bytes(bid)?;
     let mut brain = bl.decode(&bytes);
-    let cur = brain["solo"].as_f64().map_or(0, |x| x as u64);
+    let cur = record::CameraBrain::from_json(&brain).map_err(bad)?.solo;
     let (camera, write) = match (held, want) {
         (None, None) => return Ok(()),
         (None, Some(e)) => (Some((cur, e)), Some(e)),
@@ -497,7 +500,6 @@ fn shot(
     if let Some(solo) = write {
         brain["solo"] = json!(solo);
         brain["soloBlend"] = json!(-1.0);
-        let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
         let next = bl.encode(Some(&bytes), Some(&brain)).map_err(bad)?;
         ctx.set_resource_bytes(bid, &next)?;
     }

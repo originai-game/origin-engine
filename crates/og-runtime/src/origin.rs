@@ -24,6 +24,7 @@
 
 use crate::codec::Layout;
 use crate::engine::Engine;
+use crate::wire::{FromJson, IkSpace, WorldOriginPlane, record};
 use glam::{DVec3, Vec3};
 use og_core::{FieldSchema, Frame, Worldspace};
 use og_ecs::{Entity, QueryDesc, ShiftField, World};
@@ -83,11 +84,6 @@ fn layout(eng: &Engine, name: &str) -> Option<Layout> {
     eng.state.borrow().layouts.get(name).cloned()
 }
 
-fn vec3(v: &Value) -> Vec3 {
-    let f = |k: &str| v[k].as_f64().unwrap_or(0.0) as f32;
-    Vec3::new(f("x"), f("y"), f("z"))
-}
-
 fn json3(v: Vec3) -> Value {
     json!({ "x": v.x, "y": v.y, "z": v.z })
 }
@@ -116,17 +112,11 @@ fn is_child(world: &World, e: Entity) -> bool {
 }
 
 /// The axes `plane` moves along (og.WorldOriginPlane: xz, xyz, xy).
-fn axes(plane: &Value) -> [bool; 3] {
-    match plane
-        .as_str()
-        .map_or(plane.as_u64().unwrap_or(0), |s| match s {
-            "xyz" => 1,
-            "xy" => 2,
-            _ => 0,
-        }) {
-        1 => [true, true, true],
-        2 => [true, true, false],
-        _ => [true, false, true],
+fn axes(plane: WorldOriginPlane) -> [bool; 3] {
+    match plane {
+        WorldOriginPlane::Xyz => [true, true, true],
+        WorldOriginPlane::Xy => [true, true, false],
+        WorldOriginPlane::Xz => [true, false, true],
     }
 }
 
@@ -147,16 +137,20 @@ pub(crate) fn delta(focus: Vec3, step: f64, axes: [bool; 3]) -> DVec3 {
 /// Where the zero follows: og.WorldOrigin.focus's position, else the first
 /// og.StreamAnchor's, else og.Camera.position. `Err` names why there is
 /// none to follow (a session without a focus or an anchor).
-fn focus(eng: &Engine, world: &World, origin: &Value) -> Result<Option<Vec3>, String> {
+fn focus(
+    eng: &Engine,
+    world: &World,
+    origin: &record::WorldOrigin,
+) -> Result<Option<Vec3>, String> {
     let transform = layout(eng, "og.Transform").ok_or("og.Transform has no layout")?;
     let tid = world
         .id_by_name("og.Transform")
         .map_err(|e| e.reason().to_string())?;
     let at = |e: Entity| -> Option<Vec3> {
         let b = world.get_bytes(e, tid).ok()?;
-        Some(vec3(&transform.decode(&b)["position"]))
+        Some(transform.read::<record::Transform>(&b).ok()?.position)
     };
-    let bits = origin["focus"].as_u64().unwrap_or(0);
+    let bits = origin.focus;
     if bits != 0 {
         let e = Entity::from_bits(bits);
         if world.is_alive(e) && !is_child(world, e) {
@@ -178,9 +172,10 @@ fn focus(eng: &Engine, world: &World, origin: &Value) -> Result<Option<Vec3>, St
     }
     let camera = layout(eng, "og.Camera").and_then(|l| {
         let id = world.id_by_name("og.Camera").ok()?;
-        Some(l.decode(&world.resource_bytes(id).ok()?))
+        l.read::<record::Camera>(&world.resource_bytes(id).ok()?)
+            .ok()
     });
-    Ok(camera.map(|c| vec3(&c["position"])))
+    Ok(camera.map(|c| c.position))
 }
 
 /// og.WorldOrigin on one engine: the last warning it logged (not world
@@ -213,11 +208,13 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
     let (Some(l), Ok(bytes)) = (layout(eng, RESOURCE), world.resource_bytes(id)) else {
         return;
     };
-    let origin = l.decode(&bytes);
-    if origin["off"] == json!(true) {
+    let Ok(origin) = l.read::<record::WorldOrigin>(&bytes) else {
+        return;
+    };
+    if origin.off {
         return;
     }
-    let step = origin["step"].as_f64().unwrap_or(2048.0).round().max(64.0);
+    let step = f64::from(origin.step).round().max(64.0);
     let at = match focus(eng, world, &origin) {
         Ok(Some(p)) => p,
         Ok(None) => return,
@@ -226,7 +223,7 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
             return;
         }
     };
-    let d = delta(at, step, axes(&origin["plane"]));
+    let d = delta(at, step, axes(origin.plane));
     if d != DVec3::ZERO
         && let Err(e) = shift(eng, world, d)
     {
@@ -251,15 +248,12 @@ pub(crate) fn shift(eng: &Engine, world: &mut World, d: DVec3) -> Result<(), Str
     let l = layout(eng, RESOURCE).ok_or("og.WorldOrigin has no layout")?;
     let id = world.id_by_name(RESOURCE).map_err(err)?;
     let mut v = l.decode(&world.resource_bytes(id).map_err(err)?);
-    let now = DVec3::new(
-        v["x"].as_f64().unwrap_or(0.0),
-        v["y"].as_f64().unwrap_or(0.0),
-        v["z"].as_f64().unwrap_or(0.0),
-    ) - d;
+    let row = record::WorldOrigin::from_json(&v)?;
+    let now = DVec3::new(row.x, row.y, row.z) - d;
     v["x"] = json!(now.x);
     v["y"] = json!(now.y);
     v["z"] = json!(now.z);
-    v["shifts"] = json!(v["shifts"].as_u64().unwrap_or(0) + 1);
+    v["shifts"] = json!(u64::from(row.shifts) + 1);
     world
         .insert_resource_bytes(id, &l.encode(None, Some(&v))?)
         .map_err(err)?;
@@ -276,7 +270,7 @@ pub(crate) fn shift(eng: &Engine, world: &mut World, d: DVec3) -> Result<(), Str
 /// in the world.
 fn hooks(eng: &Engine, world: &mut World, d: DVec3) -> Result<(), String> {
     let err = |e: og_core::Error| e.reason().to_string();
-    let moved = |v: &Value, d: DVec3| json3((vec3(v).as_dvec3() + d).as_vec3());
+    let moved = |p: Vec3, d: DVec3| json3((p.as_dvec3() + d).as_vec3());
     let mut names: Vec<&str> = HOOKS.iter().map(|h| h.0).collect();
     names.dedup();
     for name in names {
@@ -289,36 +283,43 @@ fn hooks(eng: &Engine, world: &mut World, d: DVec3) -> Result<(), String> {
             };
             let mut v = l.decode(&bytes);
             // The skeleton a constraint is in the frame of moves with a root.
-            let skeleton_root = || {
-                let s = v["skeleton"].as_u64().unwrap_or(0);
-                s != 0 && !is_child(world, Entity::from_bits(s))
-            };
-            let world_space = v["space"] == json!("world") || v["space"] == json!(0);
+            let skeleton_root = |s: u64| s != 0 && !is_child(world, Entity::from_bits(s));
             let changed = match name {
-                "og.Joint" if v["other"].as_u64() == Some(0) => {
-                    v["otherAnchor"] = moved(&v["otherAnchor"], d);
-                    true
-                }
-                "og.IkChain" if world_space && skeleton_root() => {
-                    v["target"] = moved(&v["target"], d);
-                    // The zero pole keeps the animated bend: not a place.
-                    if vec3(&v["pole"]) != Vec3::ZERO {
-                        v["pole"] = moved(&v["pole"], d);
+                "og.Joint" => {
+                    let j = record::Joint::from_json(&v)?;
+                    if j.other == 0 {
+                        v["otherAnchor"] = moved(j.other_anchor, d);
                     }
-                    true
+                    j.other == 0
                 }
-                "og.LookAt" if world_space && skeleton_root() => {
-                    v["target"] = moved(&v["target"], d);
-                    true
+                "og.IkChain" => {
+                    let c = record::IkChain::from_json(&v)?;
+                    let on = c.space == IkSpace::World && skeleton_root(c.skeleton);
+                    if on {
+                        v["target"] = moved(c.target, d);
+                        // The zero pole keeps the animated bend: not a place.
+                        if c.pole != Vec3::ZERO {
+                            v["pole"] = moved(c.pole, d);
+                        }
+                    }
+                    on
                 }
-                "og.IkTarget2D" if skeleton_root() => {
-                    let t = &v["target"];
-                    let p = glam::DVec2::new(
-                        t["x"].as_f64().unwrap_or(0.0),
-                        t["y"].as_f64().unwrap_or(0.0),
-                    ) + d.truncate();
-                    v["target"] = json!({ "x": p.x as f32, "y": p.y as f32 });
-                    true
+                "og.LookAt" => {
+                    let a = record::LookAt::from_json(&v)?;
+                    let on = a.space == IkSpace::World && skeleton_root(a.skeleton);
+                    if on {
+                        v["target"] = moved(a.target, d);
+                    }
+                    on
+                }
+                "og.IkTarget2D" => {
+                    let t = record::IkTarget2D::from_json(&v)?;
+                    let on = skeleton_root(t.skeleton);
+                    if on {
+                        let p = t.target.as_dvec2() + d.truncate();
+                        v["target"] = json!({ "x": p.x as f32, "y": p.y as f32 });
+                    }
+                    on
                 }
                 _ => false,
             };
@@ -376,6 +377,8 @@ pub(crate) fn zero(world: &World, layout: Option<&Layout>) -> DVec3 {
     let Some(v) = crate::extract::resource(world, layout) else {
         return DVec3::ZERO;
     };
-    let f = |k: &str| v[k].as_f64().unwrap_or(0.0);
-    DVec3::new(f("x"), f("y"), f("z"))
+    let Ok(o) = record::WorldOrigin::from_json(&v) else {
+        return DVec3::ZERO;
+    };
+    DVec3::new(o.x, o.y, o.z)
 }
