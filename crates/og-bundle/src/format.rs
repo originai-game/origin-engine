@@ -276,7 +276,7 @@ row!(
 
 row!(
     /// One cluster (meshlet) of a level: at most
-    /// `og_render::meshlet::CLUSTER_TRIANGLES` triangles, a contiguous
+    /// `og_render_data::meshlet::CLUSTER_TRIANGLES` triangles, a contiguous
     /// range of the primitive's decoded cluster indices, with its bounding
     /// sphere and normal cone in the model's units (meshoptimizer's
     /// `meshopt_computeMeshletBounds`). The GPU culls each cluster on its
@@ -930,18 +930,18 @@ pub const COLOR_FIELD_RANGE: f32 = 8.0;
 impl GlyphRow {
     /// The glyph's key: its character, or its glyph id (`None`: neither,
     /// a row no cook writes).
-    pub fn key(&self) -> Option<og_render::GlyphKey> {
+    pub fn key(&self) -> Option<og_draw::GlyphKey> {
         match self.codepoint.checked_sub(GLYPH_ID_KEYS) {
-            Some(id) => u16::try_from(id).ok().map(og_render::GlyphKey::Id),
-            None => char::from_u32(self.codepoint).map(og_render::GlyphKey::Char),
+            Some(id) => u16::try_from(id).ok().map(og_draw::GlyphKey::Id),
+            None => char::from_u32(self.codepoint).map(og_draw::GlyphKey::Char),
         }
     }
 
     /// The row key of glyph `key` ([`GlyphRow::codepoint`]).
-    pub fn code(key: og_render::GlyphKey) -> u32 {
+    pub fn code(key: og_draw::GlyphKey) -> u32 {
         match key {
-            og_render::GlyphKey::Char(c) => c as u32,
-            og_render::GlyphKey::Id(id) => GLYPH_ID_KEYS + u32::from(id),
+            og_draw::GlyphKey::Char(c) => c as u32,
+            og_draw::GlyphKey::Id(id) => GLYPH_ID_KEYS + u32::from(id),
         }
     }
 }

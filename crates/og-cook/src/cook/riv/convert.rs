@@ -13,7 +13,7 @@
 
 use super::read::{Object, RivFile, is_a, type_name};
 use og_core::glam::Vec2;
-use og_render::{UiBlend, UiCap, UiFillRule};
+use og_draw::ui::{UiBlend, UiCap, UiFillRule};
 use og_ui::rive::{
     Animation, Artboard, Ease, Fit, HAlign, Join, Key, Kind, Loop, NO_FONT, NestedAnimation, Node,
     Outline, Overflow, Prop, Sizing, TextLayout, Track, VAlign, Values, Vertex,

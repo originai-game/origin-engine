@@ -296,17 +296,17 @@ fn cook_bvh(
     scale: Vec3,
 ) -> (Vec<BvhNodeRow>, Vec<u32>) {
     let deq = |a: usize, q: u16| lo[a] + q as f32 / 65535.0 * scale[a];
-    let mesh = og_render::MeshData {
+    let mesh = og_render_data::MeshData {
         vertices: ordered
             .iter()
-            .map(|v| og_render::Vertex {
+            .map(|v| og_render_data::Vertex {
                 position: [0, 1, 2].map(|a| deq(a, v.p[a])),
                 ..bytemuck::Zeroable::zeroed()
             })
             .collect(),
         indices: lod0.to_vec(),
     };
-    let bvh = og_render::geometry::Bvh::build(&mesh);
+    let bvh = og_render_data::geometry::Bvh::build(&mesh);
     // The grid point of a bound; a value off the grid (never: every bound is
     // some corner's coordinate) takes the next point outwards.
     let quant = |a: usize, v: f32, up: bool| -> u32 {
@@ -344,17 +344,17 @@ fn cook_bvh(
 /// level's (a feature simplified away). The runtime draws the level while
 /// this error projects to less than a pixel (og-render's `lod`).
 pub(crate) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 {
-    let mesh = |indices: &[u32]| og_render::MeshData {
+    let mesh = |indices: &[u32]| og_render_data::MeshData {
         vertices: pos
             .iter()
-            .map(|&p| og_render::Vertex {
+            .map(|&p| og_render_data::Vertex {
                 position: p,
                 ..bytemuck::Zeroable::zeroed()
             })
             .collect(),
         indices: indices.to_vec(),
     };
-    let farthest = |corners: &[u32], bvh: &og_render::geometry::Bvh| {
+    let farthest = |corners: &[u32], bvh: &og_render_data::geometry::Bvh| {
         let mut seen = vec![false; pos.len()];
         let mut worst = 0.0f32;
         for &i in corners {
@@ -367,20 +367,20 @@ pub(crate) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 
         worst
     };
     let (full_bvh, level_bvh) = (
-        og_render::geometry::Bvh::build(&mesh(full)),
-        og_render::geometry::Bvh::build(&mesh(level)),
+        og_render_data::geometry::Bvh::build(&mesh(full)),
+        og_render_data::geometry::Bvh::build(&mesh(level)),
     );
     farthest(level, &full_bvh).max(farthest(full, &level_bvh))
 }
 
 /// One level's triangles cut into clusters of at most
-/// `og_render::meshlet::CLUSTER_TRIANGLES` (meshoptimizer's
+/// `og_render_data::meshlet::CLUSTER_TRIANGLES` (meshoptimizer's
 /// `buildMeshlets`, a quarter of the weight on keeping their normal cones
 /// tight, as three.js's `MeshletGeometryUtils`): the level's indices in
 /// cluster order, and each cluster's range of them (from 0) with its
 /// bounding sphere and normal cone over `pos`.
 pub(crate) fn clusterize(pos: &[[f32; 3]], level: &[u32]) -> (Vec<u32>, Vec<ClusterRow>) {
-    use og_render::meshlet::{CLUSTER_TRIANGLES, CLUSTER_VERTICES};
+    use og_render_data::meshlet::{CLUSTER_TRIANGLES, CLUSTER_VERTICES};
     if level.is_empty() {
         return (Vec::new(), Vec::new());
     }
@@ -429,7 +429,7 @@ pub(crate) fn cook_primitive(
     normal_mapped: bool,
     opts: &MeshOptions,
     coarsest: bool,
-    uv: Option<og_render::UvTransform>,
+    uv: Option<og_render_data::UvTransform>,
 ) -> Result<Option<CookedPrimitive>, String> {
     // The primitive's levels of detail as the glTF gives them (MSFT_lod: the
     // first is the full mesh), read one after the other into one vertex

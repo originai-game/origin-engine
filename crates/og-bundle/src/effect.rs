@@ -48,7 +48,7 @@
 //! most 8 keys).
 
 use og_core::ogt::{Block, Document, Entry, Value};
-use og_render::{
+use og_render_data::{
     ColorCurve, Curve, EFFECT_PARAMS, EffectChannel, EffectMaterial, EffectTexture, EffectUv,
     EffectValue, Erosion, Flow, Fresnel, MAX_CURVE_KEYS, ParticleBlend, ShaderHandle, ShaderParam,
     TextureHandle,

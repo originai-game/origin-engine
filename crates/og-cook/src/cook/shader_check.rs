@@ -4,14 +4,14 @@
 //! with naga's message before it ships. The parsing and the cooked text
 //! are og-bundle's (`og_bundle::shader`), which never builds naga.
 
-use og_render::{MaterialShader, ShaderMode};
+use og_render_data::{MaterialShader, ShaderMode};
 
 /// Compiles a post pass for every back end (naga: WGSL, SPIR-V, MSL). The
 /// engine also compiles it on the device and skips it, reported, when that
 /// fails.
-pub fn validate_post(post: &og_render::PostShader) -> Result<Vec<String>, String> {
+pub fn validate_post(post: &og_render_data::PostShader) -> Result<Vec<String>, String> {
     use naga::valid::{Capabilities, ValidationFlags, Validator};
-    let src = og_render::post_module_source(post);
+    let src = og_render_data::post_module_source(post);
     let first = src
         .find(post.code.as_str())
         .map_or(0, |at| src[..at].lines().count());
@@ -41,10 +41,12 @@ pub fn validate_post(post: &og_render::PostShader) -> Result<Vec<String>, String
 /// engine draws with (naga: WGSL validation, SPIR-V for Vulkan, MSL for
 /// Metal, HLSL for DX12). The engine also compiles it on the device and
 /// composites the plain layer, reported, when that fails.
-pub fn validate_ui_material(material: &og_render::UiMaterialShader) -> Result<Vec<String>, String> {
+pub fn validate_ui_material(
+    material: &og_render_data::UiMaterialShader,
+) -> Result<Vec<String>, String> {
     use naga::back::hlsl;
     use naga::valid::{Capabilities, ValidationFlags, Validator};
-    let src = og_render::ui_material_module_source(material);
+    let src = og_render_data::ui_material_module_source(material);
     let first = src
         .find(material.code.as_str())
         .map_or(0, |at| src[..at].lines().count());
@@ -95,11 +97,11 @@ pub fn validate_shader(shader: &MaterialShader) -> Result<Vec<String>, String> {
     // checked as a mesh draws it: on a sprite, one calling a lit-only
     // helper draws plain (og-render sprite_hooks.rs).
     let mut modules: Vec<Source> = match shader.mode {
-        ShaderMode::Sprite => vec![og_render::sprite_module_source],
-        _ => vec![og_render::lit_module_source],
+        ShaderMode::Sprite => vec![og_render_data::sprite_module_source],
+        _ => vec![og_render_data::lit_module_source],
     };
     if matches!(shader.mode, ShaderMode::Full { .. }) {
-        modules.push(og_render::shadow_module_source);
+        modules.push(og_render_data::shadow_module_source);
     }
     for source in modules {
         let src = source(shader);

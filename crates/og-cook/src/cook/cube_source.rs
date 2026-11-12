@@ -254,7 +254,7 @@ fn read_level(bytes: &[u8], h: &Header, k: u32) -> Result<Vec<f32>, String> {
                         VK_R16G16B16A16_SFLOAT => [h(i * 8), h(i * 8 + 2), h(i * 8 + 4)],
                         VK_R32G32B32_SFLOAT => [f(i * 12), f(i * 12 + 4), f(i * 12 + 8)],
                         VK_R32G32B32A32_SFLOAT => [f(i * 16), f(i * 16 + 4), f(i * 16 + 8)],
-                        VK_E5B9G9R9_UFLOAT_PACK32 => og_render::rgb9e5_decode(w(i * 4)),
+                        VK_E5B9G9R9_UFLOAT_PACK32 => og_render_data::rgb9e5_decode(w(i * 4)),
                         _ => {
                             let v = w(i * 4);
                             [

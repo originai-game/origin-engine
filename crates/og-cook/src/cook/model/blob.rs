@@ -1,17 +1,19 @@
 use super::*;
 
 /// The cooked texture kind of what a glTF material's texture holds.
-pub(super) fn texture_kind(k: og_render::gltf::TextureKind) -> u32 {
+pub(super) fn texture_kind(k: og_render_data::gltf::TextureKind) -> u32 {
     match k {
-        og_render::gltf::TextureKind::Color => kind::COLOR,
-        og_render::gltf::TextureKind::Normal => kind::NORMAL,
-        og_render::gltf::TextureKind::Linear => kind::LINEAR,
+        og_render_data::gltf::TextureKind::Color => kind::COLOR,
+        og_render_data::gltf::TextureKind::Normal => kind::NORMAL,
+        og_render_data::gltf::TextureKind::Linear => kind::LINEAR,
     }
 }
 
 /// A material row's `KHR_texture_transform` fields, per og-render slot.
-fn set_uv(row: &mut MaterialRow, t: &[og_render::UvTransform; 5]) {
-    let f = |t: &og_render::UvTransform| (t.offset.x, t.offset.y, t.scale.x, t.scale.y, t.rotation);
+fn set_uv(row: &mut MaterialRow, t: &[og_render_data::UvTransform; 5]) {
+    let f = |t: &og_render_data::UvTransform| {
+        (t.offset.x, t.offset.y, t.scale.x, t.scale.y, t.rotation)
+    };
     (
         row.map_offset_x,
         row.map_offset_y,
@@ -101,7 +103,7 @@ pub fn cook(
         if baked {
             b = [1.0, 1.0, 1.0, b[3]];
         }
-        let p = og_render::gltf::physical_extensions(doc, &m, |t, k| {
+        let p = og_render_data::gltf::physical_extensions(doc, &m, |t, k| {
             tex_of(Some(t), texture_kind(k), None)
         });
         let t = |x: Option<u32>| x.unwrap_or(NONE);
@@ -221,7 +223,7 @@ pub fn cook(
     });
     set_uv(
         materials.last_mut().expect("pushed"),
-        &[og_render::UvTransform::IDENTITY; 5],
+        &[og_render_data::UvTransform::IDENTITY; 5],
     );
 
     let mut prims: Vec<PrimitiveRow> = Vec::new();
@@ -687,12 +689,12 @@ fn colliders(blob: &[u8]) -> Result<(Vec<u8>, usize), CookError> {
     let mut baked = Vec::new();
     for (i, p) in model.primitives.iter().enumerate() {
         let m = p.mesh(0);
-        let mesh = og_physics::MeshDesc {
+        let mesh = og_physics_data::MeshDesc {
             positions: m.vertices.iter().map(|v| Vec3::from(v.position)).collect(),
             indices: m.indices.chunks(3).map(|t| [t[0], t[1], t[2]]).collect(),
         };
         baked.push(
-            og_physics::bake_trimesh(&mesh)
+            og_physics_data::bake_trimesh(&mesh)
                 .map_err(|e| CookError(format!("primitive {i}: collider: {}", e.reason())))?,
         );
     }

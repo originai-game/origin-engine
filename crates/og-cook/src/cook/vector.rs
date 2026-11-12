@@ -1,6 +1,6 @@
 //! Vectors (`.ogt` of `type vector`, `docs/ui.md` §3.3): an SVG subset
 //! cooked to triangles that og-render's UI pass draws with an analytic
-//! antialiased edge (`og_render::UiVectorData`).
+//! antialiased edge (`og_draw::ui::UiVectorData`).
 //!
 //! ```text
 //! type vector
@@ -43,7 +43,7 @@ use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
 use og_core::ogt::{Document, Number, Value};
-use og_render::{
+use og_draw::ui::{
     UiGradient, UiGradientKind, UiSpread, UiStop, UiVectorData, UiVectorPaint, UiVectorVertex,
 };
 use std::collections::HashMap;

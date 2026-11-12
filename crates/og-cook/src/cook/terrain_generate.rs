@@ -356,7 +356,13 @@ pub fn parse(entry: &Entry) -> Result<Generate, String> {
             ));
         }
         biomes.push(Biome {
-            layer: whole(r, "layer", 0, 0, og_render::MAX_TERRAIN_LAYERS as u32 - 1)?,
+            layer: whole(
+                r,
+                "layer",
+                0,
+                0,
+                og_render_data::MAX_TERRAIN_LAYERS as u32 - 1,
+            )?,
             weight: num(r, "weight", 1.0, 0.0, 1.0)?,
             altitude: range(r, "altitude", [-1.0e6, 1.0e6])?,
             altitude_fade: num(r, "altitudeFade", 2.0, 0.0, 1.0e6)?,
@@ -1047,7 +1053,7 @@ fn biomes(
             } else {
                 0.0
             };
-            let mut ch = [0.0f32; og_render::MAX_TERRAIN_LAYERS];
+            let mut ch = [0.0f32; og_render_data::MAX_TERRAIN_LAYERS];
             for b in &g.biomes {
                 let w = b.weight
                     * band(h[i], b.altitude, b.altitude_fade)

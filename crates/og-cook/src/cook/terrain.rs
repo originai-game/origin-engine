@@ -2,7 +2,7 @@
 //! `type terrain` .ogt names its heightmap, the heights its black and
 //! white stand for, its size, an optional control map and up to four
 //! layered materials. The field is cooked into og-render's tile pyramid
-//! (`og_render::TerrainLayout`: level k every 2^k-th sample, tiles of
+//! (`og_render_data::TerrainLayout`: level k every 2^k-th sample, tiles of
 //! `tile` quads): each tile's `(tile + 3)²` heights quantised to 16 bits
 //! over the terrain's whole range (so a sample has the same value in every
 //! tile and level that holds it) and zlib'd on its own, and with a control
@@ -130,7 +130,7 @@
 //! drawn nor collided with (a cave mouth, a pit, a tunnel through a
 //! hill). Each tile carries its cells' flags in its heights' lowest bit,
 //! a coarser level's cell a hole where most of the field cells it spans
-//! are (`og_render::HoleCounts`).
+//! are (`og_render_data::HoleCounts`).
 //!
 //! The heightmap and the control map are read relative to the terrain file
 //! (or, failing that, `assets/`); they are part of the terrain, not
@@ -154,7 +154,7 @@ use std::path::{Path, PathBuf};
 pub(super) const TERRAIN_TYPE: &str = "terrain";
 
 /// The most layers a terrain has (og-render's `MAX_TERRAIN_LAYERS`).
-const MAX_LAYERS: usize = og_render::MAX_TERRAIN_LAYERS;
+const MAX_LAYERS: usize = og_render_data::MAX_TERRAIN_LAYERS;
 
 fn assets_root(s: &Source) -> PathBuf {
     let mut p = s.path.clone();
@@ -369,7 +369,7 @@ pub(super) struct TerrainDoc {
     pub collision: bool,
     pub lod_spacing: f32,
     pub lod_ring: u32,
-    pub layers: Vec<(Option<String>, Option<String>, og_render::TerrainLayer)>,
+    pub layers: Vec<(Option<String>, Option<String>, og_render_data::TerrainLayer)>,
     /// `layers` and `layerNormals`: the texture arrays (asset paths).
     pub albedo_array: Option<String>,
     pub normal_array: Option<String>,
@@ -451,7 +451,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
         }
         Some(_) => return Err("'size' takes two positive numbers (metres along x and z)".into()),
     };
-    let tile = number(body, "tile", og_render::TERRAIN_TILE as f32)?;
+    let tile = number(body, "tile", og_render_data::TERRAIN_TILE as f32)?;
     if !(16.0..=1024.0).contains(&tile) || tile.fract() != 0.0 {
         return Err(format!(
             "'tile' is a whole number of quads from 16 to 1024, got {tile}"
@@ -498,7 +498,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
                 ));
             }
         }
-        let d = og_render::TerrainLayer::default();
+        let d = og_render_data::TerrainLayer::default();
         let color = match numbers(b, "color") {
             None => [1.0, 1.0, 1.0],
             Some(v) if v.len() == 3 => [v[0], v[1], v[2]],
@@ -527,7 +527,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
             }
         };
         if !arrayed
-            && layers.len() >= og_render::TERRAIN_TEXTURED_LAYERS
+            && layers.len() >= og_render_data::TERRAIN_TEXTURED_LAYERS
             && let Some(k) = b.get("albedo").or_else(|| b.get("normal"))
         {
             return Err(format!(
@@ -535,7 +535,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
                 k.line,
                 layers.len(),
                 k.key,
-                og_render::TERRAIN_TEXTURED_LAYERS
+                og_render_data::TERRAIN_TEXTURED_LAYERS
             ));
         }
         if arrayed && let Some(k) = b.get("albedo").or_else(|| b.get("normal")) {
@@ -544,7 +544,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
                 k.line, k.key
             ));
         }
-        let layer = og_render::TerrainLayer {
+        let layer = og_render_data::TerrainLayer {
             albedo_layer: index("albedoLayer", &albedo_array)?,
             normal_layer: index("normalLayer", &normal_array)?,
             albedo: None,
@@ -631,8 +631,8 @@ pub(super) struct Field {
     /// Metres above the origin (what the runtime's terrain draws, before
     /// quantisation): a heightmap's `min + v · (max - min)`.
     pub heights: Vec<f32>,
-    pub control: Option<og_render::TerrainControl>,
-    /// Its cells cut out (`og_render::TerrainData::holes`; `None`: none).
+    pub control: Option<og_render_data::TerrainControl>,
+    /// Its cells cut out (`og_render_data::TerrainData::holes`; `None`: none).
     pub holes: Option<Vec<u8>>,
     /// Its extent: `size`, or a metre per sample.
     pub size: [f32; 2],
@@ -649,7 +649,7 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
         })
     };
     // The control maps, one page each, all of the first's size.
-    let control = || -> Result<Option<og_render::TerrainControl>, String> {
+    let control = || -> Result<Option<og_render_data::TerrainControl>, String> {
         let mut out: Option<(u32, u32, Vec<u8>)> = None;
         for c in &doc.control {
             let img = super::texture::decode(&read(c, "control map")?)
@@ -667,11 +667,13 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
                 }
             }
         }
-        Ok(out.map(|(width, height, rgba)| og_render::TerrainControl {
-            width,
-            height,
-            rgba: rgba.into(),
-        }))
+        Ok(
+            out.map(|(width, height, rgba)| og_render_data::TerrainControl {
+                width,
+                height,
+                rgba: rgba.into(),
+            }),
+        )
     };
     // Each cell a hole where the map is black or transparent at its centre.
     let holes = |columns: u32, rows: u32| -> Result<Option<Vec<u8>>, String> {
@@ -706,7 +708,7 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
                 let page = (g.columns * g.rows * 4) as usize;
                 let pages = doc.layers.len().div_ceil(4).max(rgba.len() / page);
                 rgba.resize(page * pages, 0);
-                Some(og_render::TerrainControl {
+                Some(og_render_data::TerrainControl {
                     width: g.columns,
                     height: g.rows,
                     rgba: rgba.into(),
@@ -781,7 +783,7 @@ pub(super) fn cook_terrain(
         .holes
         .as_ref()
         .map_or(0, |h| h.iter().filter(|c| **c != 0).count() as u32);
-    let field = og_render::TerrainData {
+    let field = og_render_data::TerrainData {
         size: glam::Vec2::new(size[0], size[1]),
         columns,
         rows,
@@ -796,7 +798,7 @@ pub(super) fn cook_terrain(
     let pyramid = field
         .control
         .as_ref()
-        .and_then(|c| og_render::ControlPyramid::new(&layout, c));
+        .and_then(|c| og_render_data::ControlPyramid::new(&layout, c));
     let holes = field.hole_counts();
     let heights = field.height_pyramid(&layout);
     // Every tile of every level: its heights quantised over the terrain's
@@ -809,7 +811,7 @@ pub(super) fn cook_terrain(
         let (level, x, z) = layout.locate(index).expect("in the layout");
         let mut tile = field.tile_heights(&layout, index, &heights);
         if let Some(h) = &holes {
-            og_render::mark_holes(&layout, index, &mut tile, h);
+            og_render_data::mark_holes(&layout, index, &mut tile, h);
         }
         let (mut lo, mut hi) = (f32::MAX, f32::MIN);
         let mut q = Vec::with_capacity(tile.len() * 2);
@@ -820,7 +822,7 @@ pub(super) fn cook_terrain(
                 .round()
                 .clamp(0.0, 65535.0) as u16;
             if holes.is_some() {
-                n = (n & !1) | u16::from(og_render::hole_bit(*v));
+                n = (n & !1) | u16::from(og_render_data::hole_bit(*v));
             }
             q.extend_from_slice(&n.to_le_bytes());
         }

@@ -349,14 +349,14 @@ impl CookedTextureArray {
     pub fn to_texture_array(
         &self,
         bundle: &Bundle,
-        formats: Option<&og_render::TextureFormats>,
-    ) -> Result<og_render::TextureArrayData, LoadError> {
+        formats: Option<&og_render_data::TextureFormats>,
+    ) -> Result<og_render_data::TextureArrayData, LoadError> {
         let mut layers = Vec::with_capacity(self.layers.len());
         for l in &self.layers {
             let t = bundle.load_texture(l)?;
             layers.push(t.to_texture_source(formats)?);
         }
-        Ok(og_render::TextureArrayData { layers })
+        Ok(og_render_data::TextureArrayData { layers })
     }
 }
 

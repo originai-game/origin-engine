@@ -29,7 +29,7 @@
 use super::GltfSource;
 use crate::cook::texture::Image;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
-use og_render::impostors::{frame_basis, frame_direction};
+use og_render_data::impostor::{frame_basis, frame_direction};
 
 /// How a model's impostor is baked: frames per side (0: by the model,
 /// [`ImpostorBake::resolved`]) and pixels per frame.
@@ -710,7 +710,7 @@ pub(crate) mod tests {
         assert!(blue(texel(&b.albedo, grid, frame, (0, 0), mid)));
         // Frame (1, 1) from +y: right is -x (og-render's frame basis), so
         // red on the left and blue on the right; facing up.
-        let (right, _) = og_render::impostors::frame_basis(Vec3::Y);
+        let (right, _) = og_render_data::impostor::frame_basis(Vec3::Y);
         assert!(right.x < -0.99);
         let left_px = (
             frame / 2 - (frame as f32 / 2.0 / b.radius) as u32,

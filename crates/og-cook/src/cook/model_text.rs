@@ -450,7 +450,7 @@ fn sample(p: &og_timeline::Path, t: f64) -> (DVec3, DVec3) {
 // ── geometries ──────────────────────────────────────────────────────────────
 
 /// An og-render primitive as og-geom's mesh (no colours).
-fn from_render(m: og_render::MeshData) -> Mesh {
+fn from_render(m: og_render_data::MeshData) -> Mesh {
     Mesh {
         positions: m.vertices.iter().map(|v| v.position).collect(),
         normals: m.vertices.iter().map(|v| v.normal).collect(),
@@ -498,7 +498,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
     let mut mesh = match name {
         "boxGeometry" => {
             let f = Fields::new(b, name, &keys(&["width", "height", "depth"]))?;
-            from_render(og_render::shapes::cuboid(glam::Vec3::new(
+            from_render(og_render_data::shapes::cuboid(glam::Vec3::new(
                 f32s(f.size("width", 1.0)?),
                 f32s(f.size("height", 1.0)?),
                 f32s(f.size("depth", 1.0)?),
@@ -506,7 +506,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
         }
         "planeGeometry" => {
             let f = Fields::new(b, name, &keys(&["width", "height"]))?;
-            from_render(og_render::shapes::plane_xy(
+            from_render(og_render_data::shapes::plane_xy(
                 f32s(f.size("width", 1.0)?),
                 f32s(f.size("height", 1.0)?),
             ))
@@ -518,7 +518,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 &keys(&["radius", "widthSegments", "heightSegments"]),
             )?;
             let r = f32s(f.size("radius", 1.0)?);
-            let mut m = og_render::shapes::sphere(
+            let mut m = og_render_data::shapes::sphere(
                 f.segments("widthSegments", (32, 3, 512), 5, detail)?,
                 f.segments("heightSegments", (16, 2, 512), 3, detail)?,
             );
@@ -544,8 +544,8 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                     "thetaLength",
                 ]),
             )?;
-            from_render(og_render::geometry::primitives::cylinder(
-                &og_render::geometry::primitives::Cylinder {
+            from_render(og_render_data::geometry::primitives::cylinder(
+                &og_render_data::geometry::primitives::Cylinder {
                     radius_top: f32s(f.size("radiusTop", 1.0)?),
                     radius_bottom: f32s(f.size("radiusBottom", 1.0)?),
                     height: f32s(f.size("height", 1.0)?),
@@ -569,7 +569,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                     "openEnded",
                 ]),
             )?;
-            from_render(og_render::geometry::primitives::cone(
+            from_render(og_render_data::geometry::primitives::cone(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("height", 1.0)?),
                 f.segments("radialSegments", (32, 3, 1 << 16), 5, detail)?,
@@ -589,7 +589,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                     "heightSegments",
                 ]),
             )?;
-            from_render(og_render::geometry::primitives::capsule(
+            from_render(og_render_data::geometry::primitives::capsule(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("height", 1.0)?),
                 f.segments("capSegments", (4, 1, 1 << 16), 1, detail)?,
@@ -603,7 +603,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
                 name,
                 &keys(&["radius", "tube", "radialSegments", "tubularSegments", "arc"]),
             )?;
-            from_render(og_render::geometry::primitives::torus(
+            from_render(og_render_data::geometry::primitives::torus(
                 f32s(f.size("radius", 1.0)?),
                 f32s(f.size("tube", 0.4)?),
                 f.segments("radialSegments", (12, 2, 1 << 16), 3, detail)?,
@@ -832,7 +832,7 @@ fn geometry(e: &Entry, detail: f64) -> Result<Mesh, String> {
         }
         _ => unreachable!("geometry_entry names only geometries"),
     };
-    // uvRepeat, as og.render's geometry descs take it (og_render::shapes::repeat_uv).
+    // uvRepeat, as og.render's geometry descs take it (og_render_data::shapes::repeat_uv).
     if let Some(e) = b.get("uvRepeat") {
         let r = exactly(e, 2)?;
         for uv in &mut mesh.uvs {

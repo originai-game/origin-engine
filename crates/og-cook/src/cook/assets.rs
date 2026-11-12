@@ -443,7 +443,7 @@ fn resolve(
         .collect()
 }
 
-fn image_hash(image: og_render::TextureData) -> Option<u64> {
+fn image_hash(image: og_render_data::TextureData) -> Option<u64> {
     let image = image::RgbaImage::from_raw(image.width, image.height, image.rgba)?;
     let gray = image::DynamicImage::ImageRgba8(image).to_luma8();
     let small = image::imageops::resize(&gray, 9, 8, image::imageops::FilterType::Triangle);
