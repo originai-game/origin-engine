@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"Grass.distance","summary":"The ground past and between an og.Grass field's blades shows what the blades show on average from where it is seen: their colour as deep as the eye sees into them, the canopy's own shade and hot spot, the light through backlit blades, the same dry clumps and colour patches. A field keeps its look where its blades thin out, so a shorter distance costs less without a seam; the far field is a little darker and greener than it was."}
+  ]
+}

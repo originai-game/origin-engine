@@ -500,14 +500,20 @@ pub(crate) struct FarGpu {
     fade: [f32; 4],
     clump: [f32; 4],
     dry: [f32; 4],
+    root: [f32; 4],
+    canopy: [f32; 4],
     wind: WindFieldGpu,
 }
 
-/// A field's average colour (grass.wgsl `grass_far_color`): its blades'
-/// colour a little over halfway up, darkened by their occlusion towards
-/// the roots and the shade between them.
-fn far_color(g: &Grass) -> Vec3 {
-    g.base_color.lerp(g.tip_color, 0.55) * 0.7
+/// A field's canopy as the shaders hold it (grass.wgsl `grass_canopy`,
+/// grass_common.wgsl `grass_mean`): its extinction per metre of a ray
+/// (blades per square metre times their width times [`CANOPY_BLOCKING`])
+/// and its top, the field's mean blade height.
+fn canopy(g: &Grass) -> [f32; 2] {
+    [
+        g.density.max(0.0) * g.width.max(0.0) * CANOPY_BLOCKING,
+        g.height * (1.0 - 0.5 * g.height_variation.clamp(0.0, 1.0)),
+    ]
 }
 
 /// The seed as the shaders read it: 24 bits, exact in an f32.
@@ -523,6 +529,8 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
         fade: [0.0; 4],
         clump: [1.0, 0.0, 0.0, 0.0],
         dry: [0.0; 4],
+        root: [0.0; 4],
+        canopy: [0.0; 4],
         wind: WindFieldGpu::default(),
     };
     let Some(d) = scene
@@ -539,12 +547,20 @@ pub(crate) fn far_gpu(scene: &crate::RenderScene, terrain: usize) -> FarGpu {
         .terrains
         .get(terrain)
         .map_or(1.0, |t| horizontal_scale(t.transform));
-    // The field's average: its blades' colour a little over halfway up
-    // (grass_blade.wgsl grass_color), darkened by their occlusion towards
-    // the roots and the shade between them, so the ground under and past
-    // the blades reads as the same field.
-    let c = far_color(g);
-    gpu.color = c.extend(g.layer as f32).to_array();
+    // The field's own colours and canopy: the ground under and past the
+    // blades takes what they show on average from where it is seen
+    // (grass_common.wgsl grass_mean), so it reads as the same field.
+    gpu.color = g.tip_color.extend(g.layer as f32).to_array();
+    // w: the patches' size (m), as the blades' (look_gpu).
+    gpu.root = g.base_color.extend(g.clump_size.max(0.05) * 6.0).to_array();
+    let [extinction, top] = canopy(g);
+    // z: the blades' spacing (m), the grain of the field from afar.
+    gpu.canopy = [
+        extinction,
+        top,
+        g.density.max(1e-3).sqrt().recip(),
+        g.translucency.clamp(0.0, 1.0),
+    ];
     // Under every blade (gaps show the field's colour, not the layer's),
     // whole by the start of LOD 1; gusts brighten it as they do the blades.
     let lod = DistanceLod::for_radius(g.distance);
@@ -1432,14 +1448,11 @@ impl GrassRenderer {
                 variation,
                 rows: [lod_rows[0], lod_rows[1], lod_rows[2], 0],
                 // The canopy the sun crosses to reach a blade's lower part
-                // (grass.wgsl grass_canopy): its extinction per metre and
-                // its top, the field's mean blade height.
-                canopy: [
-                    g.density.max(0.0) * g.width.max(0.0) * CANOPY_BLOCKING,
-                    g.height * (1.0 - 0.5 * g.height_variation.clamp(0.0, 1.0)),
-                    0.0,
-                    0.0,
-                ],
+                // (grass.wgsl grass_canopy).
+                canopy: {
+                    let [extinction, top] = canopy(&g);
+                    [extinction, top, 0.0, 0.0]
+                },
                 kinds: kinds_draw(&g),
                 wind,
             };
@@ -1830,7 +1843,7 @@ mod tests {
         check(
             &generate_source(false),
             "TerrainGrass",
-            fields!(FarGpu: color, fade, clump, dry, wind),
+            fields!(FarGpu: color, fade, clump, dry, root, canopy, wind),
             size_of::<FarGpu>(),
         );
         // Translucency, sheen, roughness and the look's numbers land in the

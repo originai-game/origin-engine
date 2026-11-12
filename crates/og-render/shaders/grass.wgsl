@@ -30,6 +30,10 @@ struct GrassOut {
   @location(4) far: f32,
   // How high above its root this point of the blade stands (m).
   @location(5) above: f32,
+  // The sun's and the sky's light the field shows on average from here,
+  // and the sun's through its blades (grass_common.wgsl grass_mean's sun,
+  // sky and through), a far blade's.
+  @location(6) mean: vec3<f32>,
 };
 
 // What the prepass takes of a blade: its lit draw needs no motion, and
@@ -68,13 +72,16 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   o.clip = frame.view_proj * vec4<f32>(v.world, 1.0);
   o.world = v.world;
   o.normal = v.normal;
-  // Far off, a blade takes its kind's average colour and lights as the
-  // ground under it (in `fs`), so the thinning survivors match the ground
-  // they stand on rather than dot it (Ghost of Tsushima's far blades
-  // take the terrain's normal).
+  // Far off, a blade takes what its field shows on average and lights as
+  // the ground under it (in `fs`; terrain_lit.wgsl grass_far), so the
+  // thinning survivors match the ground they stand on rather than dot it
+  // (Ghost of Tsushima's far blades take the terrain's normal).
   o.far = smoothstep(0.2, 0.8, distance(r.blade.root, grass.eye.xyz) / max(grass.variation.w, 1e-3));
   let kind = r.blade.kind * 2u;
-  let average = grass_far_color(grass.kinds[kind].rgb, grass.kinds[kind + 1u].rgb);
+  let to_eye = select(normalize(grass.eye.xyz - r.blade.root), -grass.forward.xyz, grass.eye.w > 0.5);
+  let mean = grass_mean(grass.canopy.x, grass.canopy.y, grass.base_color.w, vec3<f32>(0.0, 1.0, 0.0), to_eye, grass.sun.xyz);
+  let average = grass_mean_color(grass.kinds[kind].rgb, grass.kinds[kind + 1u].rgb, mean.t);
+  o.mean = vec3<f32>(mean.sun, mean.sky, mean.through);
   o.color = mix(grass_color(r.blade, v.t), average, 0.6 * o.far) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
   o.shading = vec3<f32>(grass_occlusion(max(v.world.y - r.blade.root.y, 0.0)), grass_sheen(v.t), v.t);
   o.above = max(v.world.y - r.blade.root.y, 0.0);
@@ -141,11 +148,11 @@ const GRASS_EXTINCTION: f32 = 1.6;
 // and Saeki's law of light in a plant canopy, 1953, the leaf area along
 // the ray standing for their leaf area index). Self-shadowing the
 // cascades are too coarse to draw: dense grass darkens towards its roots,
-// the more the lower the sun. Far blades light as the ground (`far`).
-fn grass_canopy(above: f32, l: vec3<f32>, far: f32) -> f32 {
+// the more the lower the sun.
+fn grass_canopy(above: f32, l: vec3<f32>) -> f32 {
   let deep = max(grass.canopy.y - above, 0.0);
   let path = deep / max(l.y, 0.08);
-  return mix(exp(-grass.canopy.x * path), 1.0, far);
+  return exp(-grass.canopy.x * path);
 }
 
 // The toon ramp's three bands (terrain_lit.wgsl terrain_band).
@@ -194,8 +201,10 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
     // flat, bright meadow: grass-near 0.021 rmse off its reference).
     shadow = cascade_shadow_lookup(p, n, n_dot_l, false);
   }
-  // The field's own canopy, with or without the cascades.
-  shadow *= grass_canopy(in.above, l, in.far);
+  // The field's own canopy, with or without the cascades; a far blade
+  // under the field's mean, as the ground it stands on.
+  let sunlit = shadow;
+  shadow *= mix(grass_canopy(in.above, l), in.mean.x, in.far);
   // Lit from behind, the light comes through the blades in the way: the
   // cascades' thickness of them, already the canopy's depth along the ray
   // (so not dimmed by it a second time).
@@ -219,6 +228,8 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   // The light through a backlit blade: dimmed by its translucency, tinted by its colour.
   let through = grass.base_color.w * min(s.albedo * 2.0, vec3<f32>(1.0));
   var color = direct * select(vec3<f32>(1.0), through, backlit);
+  // A far blade takes the field's mean glow for its own lobe below.
+  color += in.far * in.mean.z * pow(max(s.albedo, vec3<f32>(1e-4)), vec3<f32>(0.85)) * frame.light_color.rgb * sunlit;
   // Looking into the sun through a blade, the light it scatters forward
   // (lighting.wgsl leaf_forward, the shared leaf lobe): the glow along
   // backlit blades. Tinted by Beer-Lambert through the blade, its colour
@@ -235,7 +246,7 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   }
   color += surface_local_lights(in.clip.xy, s, p, n0, v);
   // Far blades light as the ground (`far`), under the sky alike.
-  var occlusion = mix(in.shading.x, 1.0, in.far);
+  var occlusion = mix(in.shading.x, in.mean.y, in.far);
   if (grass_fx.ao.x > 0.5) {
     let ssao = textureSampleLevel(grass_ssao, grass_fx_sampler, in.clip.xy * grass_fx.screen.zw, 0.0).r;
     occlusion *= mix(1.0, ssao, grass_fx.ao.y);
