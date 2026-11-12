@@ -128,7 +128,7 @@ most; `--all` lists every member.
 | animate characters and props | `animation` | `og.AnimationPlayer`, `og.anim.clip`, `og.MotionAgent`, `og.tween` |
 | build terrain, tilemaps, paths, AI | `world` | `og.Terrain`, `og.Tilemap`, `og.tilemap.setTile`, `og.nav` |
 | add effects | loading §11, `pixel-vfx`, `effect-packs` | `og.vfx.spawn`, `og.ParticleSystem` |
-| write screens and HUDs | `screens`, `kits`, `components` | `og.ui.configure`, `og.ui.scope` |
+| write screens and HUDs | `screens`, `components`, `ui-materials` | `og.ui.configure`, `og.ui.scope`, `og.ui.push` |
 | translate text | `localization`, screens §6 | `og.i18n.t` |
 | write dialogue and quests | `yarn` | `og.story` |
 | port three.js code | `three-to-og` | `og migrate three` |

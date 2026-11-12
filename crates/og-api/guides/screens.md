@@ -1,40 +1,72 @@
 # UI and the UI packs
 
-Screens and HUDs for an Origin Engine game. The UI packs (genre kits and style packs) and how to install and change them, documents versus code, the thresholds for text, contrast and touch, og ui check and preview, and languages with their fonts.
+Screens and HUDs for an Origin Engine game. The built-in screens and components and how to use, customise and review them, style packs and how to install and change them, documents versus code, the thresholds for text, contrast and touch, og ui check and preview, and languages with their fonts.
 
 The API: `og api show ui` (elements, components, layers, motion, styles)
 and `og api show i18n` (string tables, plurals, fonts, line breaking,
-right to left). `og ui list` names every installed and bundled kit and
-style with its documents.
+right to left). `og ui eject --list` names every built-in screen and
+component; `og ui list` names the bundled and installed packs.
 
 ## 1. Order of work
 
 1. List the screens the game needs from the brief: title, the HUD, pause,
    settings, results, and the genre's own (inventory, shop, deck).
-2. Start from a library screen (`og ui eject --list`) or compose core
-   controls in a screen document. No genre kits are bundled during the rebuild.
+2. Start from a built-in screen and the built-in components (§2,
+   `og ui eject --list` names them), or compose core controls in a
+   screen document of the game's own.
 3. Fill it with the game's named data inputs; never edit text
    into a document that the game should bind.
 4. Dress it with the look's style (§3), then preview and check (§5)
    at every breakpoint the create block's `platform` implies.
 
-## 2. Genre kits
+## 2. Built-in screens and components
 
-A kit is a directory with an `extension.json`, screen and component
-documents, and typed data helpers registered with `registerUiExtension`.
-Genre kits are not yet built. For local kits, see kits §1 to kits §5;
-the retained shader finishes are documented in ui-materials §1.
+The engine has screen and component documents built in under the `@ui/`
+root: generic screens (pause, settings, results…), generic components
+(§7) and genre groups of components (`rpg/`, `shooter/`, each documented
+in its README under the engine package's `src/ui/components/<group>/`).
+Nothing is installed or copied to use them.
 
-- `og ui add <kit>` installs an editable copy under `assets/ui-kits/<kit>`;
-  the game imports the installed `index.ts`. Edit the copy freely; an
-  installation never replaces an existing one silently.
-- `og ui eject <kit>/<screen>` copies one screen document with its
-  companions into `assets/ui/`, where the game owns it.
-- A kit never adds members to `og.ui`; its components are the namespace
-  the kit exports. UI state lives in named scope sources and core
-  interaction state, not module globals (determinism §1).
-- New components of the game's own register with `registerUiExtension`
-  the same way, so they are dressed by styles like the kit's.
+- A component is used by the name its `<meta name="component">` declares,
+  with props from named stores: `<RpgBackpack items={$items}
+  selected={$selected} />`. Its header (`<meta name="prop:…">`) names its
+  props, and its group's README its intents and parts. The cook bundles
+  every built-in component the game's documents use, with the components
+  those use, and `og.load.document` of the screen loads them with it.
+- A built-in screen is loaded by its id and shown by its name:
+
+  ```ts
+  og.load.document(world, "@ui/screens/pause.svelte");
+  og.ui.push(world, "pause", vm);
+  ```
+
+  The cook bundles each built-in screen whose id the code names as a
+  string literal; `og ui types` types its viewmodel.
+- To change one, run `og ui eject <name>` (`og ui eject pause`,
+  `og ui eject rpg/backpack`). It copies the document and its strings into
+  `assets/ui/`, where the game owns it. The game's document of the same
+  name then wins everywhere: screens using the component get the copy,
+  and loading the `@ui/` id loads `ui/<file>`. Keep the component's
+  named parts and states intact when changing its layout, so styles still
+  dress it. An existing copy is not replaced without `--force`.
+- Components draw what the game passes and report intents with stable
+  item IDs; the game decides whether to apply them and keeps every
+  domain rule. UI state lives in named scope sources and core interaction
+  state, not module globals (determinism §1).
+- A component of the game's own is a component document in `assets/ui/`,
+  used the same way and dressed by styles through its parts like the
+  built-in ones.
+
+Change the look in the style (§3), never in a component: no literal
+colours, spacing, font paths or durations in a document's `<style>`.
+Structural ratios and data values are not visual tokens. Use the core
+fallback when a part has no custom dressing.
+
+Before shipping a screen built on a group, check it with fixtures for
+empty, populated, overflow, disabled, selected, focused, loading and
+error states, keyboard, gamepad families, touch, live input-prompt
+switching, large text, reduced motion, high contrast and right-to-left
+text (§5). The materials resource pack is documented in ui-materials §1.
 
 ## 3. Style packs
 
@@ -49,9 +81,12 @@ A style pack is a directory of CSS and assets, with no manifest or
    accepts flat, gradient, glass, hologram, neon, paper, bevel, or brush.
    `--scheme` selects the fallback palette; the UI's explicit `data-scheme`
    selects its dark or light palette at runtime.
-3. Run `og style check assets/styles/my-style`. Fix parser diagnostics
-   and unresolved URLs. Contrast reports root-token ratios, not a grade
-   or a guarantee about text over images and gradients.
+3. Run `og style check assets/styles/my-style`. Fix parser diagnostics,
+   unresolved URLs and every literal outside a `:root` rule (a colour, a
+   length other than 0, a duration or a `url()`): move the value into a
+   `:root` token and read it with `var()`. Contrast reports root-token
+   ratios, not a grade or a guarantee about text over images and
+   gradients.
 4. Run `og ui sheet assets/styles/my-style` to inspect every core-control
    page at desktopHd and phonePortrait, at 100% and 150% text scale.
    Use `og ui review assets/styles/my-style --locales game,pseudo,zh,ar`
@@ -67,34 +102,53 @@ if (!style.ok) throw new Error(style.reason);
 og.ui.configure(engine, { style: style.value });
 ```
 
-Write lowercase markup hosts before `::part(name)` and states after it:
+Every literal value (colours, lengths, durations, art and sound URLs)
+goes in a `:root` rule as a token; every other rule reads tokens with
+`var()`. Set the engine's own tokens (`--primary`, `--radius-md`,
+`--button-radius`…) to restyle every control and built-in component at
+once, and add the pack's own for its dressings. Write lowercase markup
+hosts before `::part(name)` and states after it:
 
 ```css
-:root { --my-accent: #72e8dc; }
+:root {
+  --my-accent: #72e8dc;
+  --my-accent-hover: #a9fff2;
+  --my-edge: #184d55;
+  --my-edge-width: 2px;
+  --my-sheen: inset 0 1px 0 #ffffff60, 0 3px 6px #00000040;
+  --my-quick: 140ms;
+  -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.2 0.3);
+}
 :root[data-scheme=light] { --my-accent: #14675f; }
 button.primary::part(base) {
   background: var(--my-accent);
-  border: 2px solid #184d55;
-  box-shadow: inset 0 1px 0 #ffffff60, 0 3px 6px #00000040;
-  transition: background 140ms ease-out;
-  -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.2 0.3);
+  border: var(--my-edge-width) solid var(--my-edge);
+  box-shadow: var(--my-sheen);
+  transition: background var(--my-quick) ease-out;
 }
-button.primary::part(base):hover { background: #a9fff2; }
+button.primary::part(base):hover { background: var(--my-accent-hover); }
 @media (prefers-reduced-motion: reduce) {
   button::part(base) { transition: none; }
 }
 ```
 
+A built-in component's parts are dressed the same way, by its part name
+and its states or `data-*` attributes:
+`RpgBackpack::cell[data-rarity=epic] { border-color: var(--my-epic); }`.
+
 Use `@font-face` for fonts, `mask-image` for icons, `border-image` for
-painted frames, and `@keyframes` for animation. Asset URLs resolve beside
-the CSS file that contains them. `/@styles/shared/` addresses shared
+painted frames, and `@keyframes` for animation. An image is a `:root`
+token too (`--my-frame: url(art/frame.svg)`, then
+`border-image-source: var(--my-frame)`). Asset URLs resolve beside the
+CSS file that contains them. `/@styles/shared/` addresses shared
 assets. Copy fonts with their licences. `og style add ./my-style` installs
 a local pack without overwriting an installed one.
 
 Direct-child CSS files load in lexical filename order. Put sheets that
 need explicit ordering in a subdirectory and use `@import`. Normal
-declarations increase in priority from `og-default` through `og-kit`,
-`og-pack`, `og-game`, then unlayered CSS. Important declarations reverse
+declarations increase in priority from `og-default` through
+`og-components` (the built-in components' own rules), `og-pack`,
+`og-game`, then unlayered CSS. Important declarations reverse
 layer priority. Custom properties belong to authors, not a second token
 language. The only appearance extensions are `-og-material` and
 `-og-sound`; unknown `-og-*` declarations are errors.
@@ -437,10 +491,13 @@ Read a phone layout at 390×844 and a desktop one at 1920×1080.
 
 Health bars, ability bars and cooldowns, a round countdown timer, a minimap
 and compass, a radial weapon wheel chosen with the stick, nameplates and
-damage numbers are component documents, not `og.ui` builders: copy one with `og ui eject <name>` (`--list` names them
-with the screens), load it with `og.load.document`, and use it in a screen
-by its declared name with props from named stores. Each declares its props,
-actions and a `fixture:default`, so `og ui preview` shows it at once.
+damage numbers are built-in component documents, not `og.ui` builders:
+use one in a screen by its declared name with props from named stores, and
+loading the screen loads it (§2). To change one, copy it with `og ui eject
+<name>` (`--list` names them with the screens) and edit
+`assets/ui/<name>.svelte`; the game's copy then replaces the built-in one
+in every screen, with no load of its own. Each declares its props, actions
+and a `fixture:default`, so `og ui preview` shows it at once.
 
 - Bars and meters: `stat-bar` (a health or resource bar with a ghost and a
   shield), `orb-meter`, `radial-meter` (a stamina wheel), `progress-bar`,
@@ -473,6 +530,13 @@ actions and a `fixture:default`, so `og ui preview` shows it at once.
   `selection-ring`, `telegraph`, `path-line` and `placement-ghost` are
   `<ground>` marks; `overhead-bars` and `damage-numbers` are
   `<anchor mass>` rows drawn on the GPU by the thousand.
+- Genre groups, named by their path: `rpg/` (`RpgBackpack`,
+  `RpgItemCard`, `RpgCharacter`, `RpgQuestLog`, `RpgWorldMap`,
+  `RpgConversation`, `RpgParty`, `RpgTurnOrder`, `RpgActionBar` and the
+  rest: inventory, equipment, quests, map, dialogue and the combat HUD)
+  and `shooter/` (crosshair, ammunition, damage direction, killfeed,
+  combat HUD, loadout). Each group's README lists its members with their
+  props, intents and parts; eject one as `og ui eject rpg/backpack`.
 
 Expressions compute no geometry: the game passes a chart's line and a path
 line's route as SVG path data, a radial menu's slice positions and a split
