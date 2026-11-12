@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: Stylise.paintAnisotropy",
+      "summary": "The paint pass reads 2 x 2 blocks from a stroke radius of 3 pixels, whatever the anisotropy, and every pixel under it. A stroke read in blocks is at least 1.5 pixels across, so a long thin stroke no longer reads its whole ellipse pixel by pixel: on a forest at 1280 x 720 on an Apple M4 Pro the paint pass of expressionist-painting goes from 13.6 to 4.0 ms and painterly-3d from 6.9 to 2.3 ms, and their thinnest lines are a little softer. Under 3 pixels the blocks showed as squares along leaf edges, so sculpted-clay and lush-painted-worlds are read pixel by pixel again (sculpted-clay 1.9 to 2.6 ms)."
+    }
+  ]
+}

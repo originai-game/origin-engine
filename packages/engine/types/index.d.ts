@@ -8639,7 +8639,8 @@ export interface Stylise {
    */
   paintRadius: number;
   /**
-   * How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep lines a pixel wide.
+   * How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape.
+   * See `looks §10`.
    *
    * @range 0..1
    * @unit ratio (a fraction between 0 and 1)

@@ -208,6 +208,12 @@ and the dither cells.
 - paintRadius is an anisotropic Kuwahara filter with eight sectors over
   a smoothed structure tensor (Kyprianidis 2009 and 2010). Grass and
   noise become strokes; edges and thin lines keep their shape.
+- From a stroke radius of 3 pixels the filter reads the frame in 2 x 2
+  blocks and no stroke is under 1.5 pixels across, so paintAnisotropy
+  costs nothing more: 2 to 4 ms at 1280 x 720 on an Apple M4 Pro for a
+  radius of 3 to 5, and a line a pixel wide is drawn a little softer.
+  Under 3 pixels it reads every pixel, where a block would show as a
+  square along a leaf's edge, and keeps that line as it is.
 - paintDetail keeps faces, hands and lettering drawn while grass and
   broad areas paint. It runs the prepass only where meshes are drawn.
 - In a profile 2d project under the art contract, the cook applies the

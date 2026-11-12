@@ -59,7 +59,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `paintRadius` | `number` | `0` | 0 … 8 | — | tunable | Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a profile 2d art contract the cook paints each texture and the frame draws neither pass. See `looks §10`. |
-| `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep lines a pixel wide. |
+| `paintAnisotropy` | `number` | `0` | 0 … 1 | `ratio` | — | How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape. See `looks §10`. |
 | `paintEdgeDarkening` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none. |
 | `paintBleed` | `number` | `0` | 0 … 1 | `ratio` | tunable | Colour bleeding across edges into its neighbours, wet in wet; 0 is none. |
 | `paintCanvas` | `Texture` | `0` | — | — | — | A tileable paper or canvas texture (og.load.texture) laid over the frame by paintCanvasStrength; 0 is none. |
@@ -237,10 +237,11 @@ resource Stylise {
     tunable true
     guide "looks §10"
   }
-  field paintAnisotropy f32 "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep lines a pixel wide." {
+  field paintAnisotropy f32 "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape." {
     min 0
     max 1
     unit ratio
+    guide "looks §10"
   }
   field paintEdgeDarkening f32 "Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none." {
     min 0

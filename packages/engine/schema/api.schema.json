@@ -24882,7 +24882,7 @@
         },
         "paintAnisotropy": {
           "type": "number",
-          "description": "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep lines a pixel wide.",
+          "description": "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape.\nSee `looks §10`.",
           "default": 0,
           "minimum": 0,
           "maximum": 1,

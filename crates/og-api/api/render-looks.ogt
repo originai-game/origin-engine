@@ -217,10 +217,11 @@
       tunable true
       guide "looks §10"
     }
-    field paintAnisotropy f32 "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep lines a pixel wide." {
+    field paintAnisotropy f32 "How far the strokes follow the image's structure: 0 round brush cells, 0.5 the filter's classic ellipses, 1 thin strokes along every coherent contour, which keep a thin line's shape." {
       min 0
       max 1
       unit ratio
+      guide "looks §10"
     }
     field paintEdgeDarkening f32 "Pigment pooling at the edges of colour regions, as wet watercolour dries darker at its rim; 0 is none." {
       min 0

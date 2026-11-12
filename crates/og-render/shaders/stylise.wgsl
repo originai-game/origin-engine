@@ -346,11 +346,17 @@ const PAINT_SHARPNESS: f32 = 8.0;
 const PAINT_HARDNESS: f32 = 8.0;
 const PAINT_ZERO_CROSSING: f32 = 0.58;
 const PAINT_ALPHA_FLOOR: f32 = 0.25;
-// The ellipse's narrow axis, in pixels, from which its taps are 2 x 2 blocks.
+// The radius, in pixels, from which the taps are 2 x 2 blocks; under it a
+// block is as large as the stroke and shows as squares along an edge.
+const PAINT_BLOCK_RADIUS: f32 = 3.0;
+// The narrow axis, in pixels, a stroke read in blocks keeps: a block's width.
 const PAINT_BLOCK_AXIS: f32 = 1.5;
 // The widest ellipse in pixels: Paint::radius is at most 8 and anisotropy
 // stretches an axis at most twice.
 const PAINT_REACH: i32 = 16;
+// A row's span is the chord of the ellipse at this squared radius, not 1,
+// so that rounding in the chord never drops a tap on the rim.
+const PAINT_SPAN: f32 = 1.05;
 
 // The stroke frame at a pixel: the direction along the structure, its
 // anisotropy (0 to 1) and edge strength (the larger eigenvalue's root).
@@ -423,12 +429,21 @@ fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32, f: PaintFrame) -> vec3<
   // drawn. At 0 (paintDetail 1) the taps' ellipse coordinates divided by
   // it, and the NaN weights drew the material black.
   if (radius < 0.5) { return load(px); }
+  // The taps: every texel of the ellipse, or, from PAINT_BLOCK_RADIUS, the
+  // frame's 2 x 2 blocks (each one bilinear tap on the corner its four
+  // texels share, weighed at its own centre): a quarter of the taps over
+  // the same texels. The blocks lie on the frame's even texels, the same
+  // for every pixel, so the filter reads a halved frame that does not move
+  // with the pixel. A stroke read in blocks is no narrower than one: a
+  // long thin ellipse read texel by texel was most of the filter's cost.
+  let blocks = radius >= PAINT_BLOCK_RADIUS;
   var a = radius;
   var b = radius;
   if (anisotropy > 0.0) {
     let alpha = max((1.0 - min(anisotropy, 1.0)) / anisotropy, PAINT_ALPHA_FLOOR);
     a = radius * clamp((alpha + f.aniso) / alpha, 0.1, 2.0);
     b = radius * clamp(alpha / (alpha + f.aniso), 0.1, 2.0);
+    if (blocks) { b = max(b, PAINT_BLOCK_AXIS); }
   }
   // phi = -atan2(dir.y, dir.x): the rotation taking the stroke onto x.
   let cos_phi = f.dir.x;
@@ -439,21 +454,32 @@ fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32, f: PaintFrame) -> vec3<
   let sin_zc = sin(PAINT_ZERO_CROSSING);
   let eta = (zeta + cos(PAINT_ZERO_CROSSING)) / (sin_zc * sin_zc);
   let own = paint_object(px);
-  // The taps: every texel of the ellipse's box, or, where the ellipse is
-  // at least PAINT_BLOCK_AXIS pixels along its narrow axis, the frame's
-  // 2 x 2 blocks (each one bilinear tap on the corner its four texels
-  // share, weighed at its own centre): a quarter of the taps over the
-  // same texels. The blocks lie on the frame's even texels, the same for
-  // every pixel, so the filter reads a halved frame that does not move
-  // with the pixel.
-  let blocks = min(a, b) >= PAINT_BLOCK_AXIS;
   let parity = px & vec2<i32>(1);
   let nx = min(select(max_x, (max_x + 2) / 2, blocks), PAINT_REACH);
   let ny = min(select(max_y, (max_y + 2) / 2, blocks), PAINT_REACH);
+  // A row's taps lie on the ellipse's chord along it, so the row visits
+  // that span and not the box's whole width: a thin ellipse across the
+  // diagonal fills a small part of its box. The chord is taken a little
+  // wide (PAINT_SPAN) and rounded outwards, and the test below still
+  // decides each tap, so the taps and their order are the whole box's.
+  let ia = 1.0 / (a * a);
+  let ib = 1.0 / (b * b);
+  let qa = cos_phi * cos_phi * ia + sin_phi * sin_phi * ib;
+  let qb = cos_phi * sin_phi * (ib - ia);
+  let qc = sin_phi * sin_phi * ia + cos_phi * cos_phi * ib;
+  let pitch = select(1.0, 2.0, blocks);
+  let first = select(vec2<f32>(0.0), 0.5 - vec2<f32>(parity), blocks);
   var m: array<vec4<f32>, 8>;
   var s: array<vec3<f32>, 8>;
   for (var y = -ny; y <= ny; y++) {
-    for (var x = -nx; x <= nx; x++) {
+    let oy = f32(y) * pitch + first.y;
+    let mid = qb * oy;
+    let span = mid * mid - qa * (qc * oy * oy - PAINT_SPAN);
+    if (span < 0.0) { continue; }
+    let reach = sqrt(span);
+    let x0 = max(i32(floor(((-mid - reach) / qa - first.x) / pitch)), -nx);
+    let x1 = min(i32(ceil(((reach - mid) / qa - first.x) / pitch)), nx);
+    for (var x = x0; x <= x1; x++) {
       var o = vec2<f32>(f32(x), f32(y));
       if (blocks) { o = o * 2.0 + 0.5 - vec2<f32>(parity); }
       var v = vec2<f32>((cos_phi * o.x - sin_phi * o.y) * 0.5 / a, (sin_phi * o.x + cos_phi * o.y) * 0.5 / b);
