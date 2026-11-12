@@ -1,10 +1,15 @@
 # Component documents
 
-Generic component documents built from og-ui's public elements: the HUD,
-feedback, world and pattern pieces that used to be TypeScript builders on
-`og.ui`. Copy one with `og ui eject <component>` and edit it in
-`assets/ui/<component>.svelte`; a screen then uses it by its declared name
-(`<AbilityBar slots={$slots} />`).
+Component documents built from og-ui's public elements and built into the
+engine: the HUD, feedback, world and pattern pieces that used to be
+TypeScript builders on `og.ui`, and, in a directory per group, a genre's
+components (`rpg/`, `shooter/`, each with its README). A game's document
+uses any of them by its declared name (`<AbilityBar slots={$slots} />`,
+`<RpgBackpack items={$items} />`) without a copy: the cook bundles it as
+`@ui/<path>` and the screen that uses it loads it. Copy one with
+`og ui eject <component>` (`og ui eject rpg/backpack` in a group) and edit
+it in `assets/ui/<component>.svelte`; the game's copy then replaces the
+built-in one of its name.
 
 They follow the screen conventions (`../screens/README.md`): each declares
 `<meta name="component">`, its props and actions, and a
@@ -40,3 +45,8 @@ test cooks every one from its fixture at desktop and phone sizes.
 | World tags over units and items | `nameplate`, `waypoint`, `loot-label`, `speech-bubble`, `interaction-prompt` |
 | Ground marks (selection, telegraphs, paths, placement) | `selection-ring`, `telegraph`, `path-line`, `placement-ghost` |
 | Mass world elements (overhead bars, damage numbers) | `overhead-bars`, `damage-numbers` |
+| RPG inventory, character and equipment (`rpg/README.md`) | `rpg/backpack`, `rpg/item-card`, `rpg/character`, `rpg/stats`, `rpg/menu-bar` |
+| RPG quests, world map and conversation | `rpg/quest-log`, `rpg/quest-detail`, `rpg/quest-tracker`, `rpg/world-map`, `rpg/place-card`, `rpg/conversation`, `rpg/compass` |
+| RPG party, turn order and combat HUD | `rpg/vitals`, `rpg/party`, `rpg/turn-order`, `rpg/action-bar`, `rpg/combat-log`, `rpg/enemy-info`, `rpg/commands` |
+| Shooter HUD: aim, ammunition, damage direction, killfeed (`shooter/README.md`) | `shooter/crosshair`, `shooter/ammo-counter`, `shooter/damage-direction`, `shooter/killfeed`, `shooter/combat-hud` |
+| Shooter loadout | `shooter/loadout` |

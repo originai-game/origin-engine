@@ -27,6 +27,8 @@
   "include": [
     "src/**/*.ts",
     "extensions/**/*.ts",
+    "sheets/rpg/**/*.ts",
+    "sheets/shooter/**/*.ts",
     "shell/**/*.ts",
     "tests/**/*.ts",
     "bench/*.ts",

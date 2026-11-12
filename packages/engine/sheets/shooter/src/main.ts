@@ -1,8 +1,8 @@
-// The shooter kit's review sheet (docs/ui.md §6.2): the normal page (combat
+// The shooter components' review sheet (docs/ui.md §6.2): the normal page (combat
 // HUD over a bright sky and a dark ground) and the stress page (a loadout
 // with long names, locked and equipped slots, and a dense killfeed), in a
-// style pack. The kit is installed into assets/ui-kits/shooter as a game
-// installs it; the pages mount its documents with fixture stores.
+// style pack. The pages use the built-in components by name, as a game
+// does, with fixture stores; loading a page loads them.
 //
 // Commands: style:<clean>, page:<combat|loadout>; for motion clips (`og
 // render --keyframes`), hit:<kind> replays the hit mark, damage:<id>:<angle>
@@ -18,13 +18,6 @@ const KINDS = ["normal", "shield", "critical"] as const;
 const STYLES = ["clean"] as const;
 
 const DOCUMENTS = [
-  "ui/stat-bar.svelte",
-  "ui-kits/shooter/crosshair.svelte",
-  "ui-kits/shooter/ammo-counter.svelte",
-  "ui-kits/shooter/damage-direction.svelte",
-  "ui-kits/shooter/killfeed.svelte",
-  "ui-kits/shooter/loadout.svelte",
-  "ui-kits/shooter/combat-hud.svelte",
   "ui/combat.svelte",
   "ui/loadout.svelte",
   "ui/sheet.svelte",

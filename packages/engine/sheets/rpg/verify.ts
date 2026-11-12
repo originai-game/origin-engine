@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decodePng } from "../../../src/node/png.ts";
+import { decodePng } from "../../src/node/png.ts";
 
 function assert(ok: unknown, message: string): asserts ok {
   if (!ok) throw new Error(message);

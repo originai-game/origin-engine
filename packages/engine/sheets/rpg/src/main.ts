@@ -1,9 +1,8 @@
-// The rpg kit's review sheet (docs/ui.md §6.2): the inventory page (backpack,
+// The rpg components' review sheet (docs/ui.md §6.2): the inventory page (backpack,
 // item card, character) and the journal page (quest log, map and place,
 // quest detail, conversation, compass; on a phone, party and turn order over
-// the map), dressed by a style pack. The kit is installed into
-// assets/ui-kits/rpg as a game installs it; the pages mount its documents
-// with fixture stores.
+// the map), dressed by a style pack. The pages use the built-in components
+// by name, as a game does, with fixture stores; loading a page loads them.
 //
 // Commands: style:<fantasy>, page:<inventory|journal|equipment|explore|combat>,
 // reduced:<on|off>.
@@ -15,26 +14,6 @@ const PAGES = ["inventory", "journal", "equipment", "explore", "combat"] as cons
 const STYLES = ["fantasy"] as const;
 
 const DOCUMENTS = [
-  "ui-kits/rpg/backpack.svelte",
-  "ui-kits/rpg/item-card.svelte",
-  "ui-kits/rpg/character.svelte",
-  "ui-kits/rpg/quest-log.svelte",
-  "ui-kits/rpg/quest-detail.svelte",
-  "ui-kits/rpg/world-map.svelte",
-  "ui-kits/rpg/place-card.svelte",
-  "ui-kits/rpg/conversation.svelte",
-  "ui-kits/rpg/compass.svelte",
-  "ui-kits/rpg/party.svelte",
-  "ui-kits/rpg/turn-order.svelte",
-  "ui-kits/rpg/quest-tracker.svelte",
-  "ui-kits/rpg/vitals.svelte",
-  "ui-kits/rpg/action-bar.svelte",
-  "ui-kits/rpg/combat-log.svelte",
-  "ui-kits/rpg/enemy-info.svelte",
-  "ui-kits/rpg/commands.svelte",
-  "ui-kits/rpg/menu-bar.svelte",
-  "ui-kits/rpg/stats.svelte",
-  "ui/minimap.svelte",
   "ui/inventory.svelte",
   "ui/journal.svelte",
   "ui/equipment.svelte",
