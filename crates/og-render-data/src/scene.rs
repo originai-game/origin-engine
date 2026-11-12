@@ -2,8 +2,10 @@
 //! handles a scene gives them.
 
 mod resources;
+mod resources_sink;
 mod sprites;
 pub use resources::*;
+pub use resources_sink::*;
 pub use sprites::*;
 
 use crate::texture::TextureUpload;

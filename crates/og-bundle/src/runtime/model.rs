@@ -60,7 +60,7 @@ impl CookedPrimitive {
         ))
     }
 
-    /// The geometry of one LOD (0 is the full mesh) for [`RenderScene::add_mesh`].
+    /// The geometry of one LOD (0 is the full mesh) for [`SceneResources::add_mesh`].
     pub fn mesh(&self, lod: usize) -> MeshData {
         let l = self.lods[lod.min(self.lods.len() - 1)];
         MeshData {
@@ -70,7 +70,7 @@ impl CookedPrimitive {
     }
 
     /// Every level with its clusters and indices, for
-    /// [`RenderScene::set_mesh_clusters`] on [`Self::mesh`]`(0)`'s mesh;
+    /// [`SceneResources::set_mesh_clusters`] on [`Self::mesh`]`(0)`'s mesh;
     /// `None` when a level has none.
     pub fn mesh_clusters(&self) -> Option<og_render::meshlet::MeshClusters> {
         let levels = self
@@ -294,7 +294,7 @@ pub struct ModelParts {
 
 impl ModelParts {
     /// Submits one instance of the whole model at `transform`.
-    pub fn instance(&self, scene: &mut RenderScene, transform: Mat4) {
+    pub fn instance(&self, scene: &mut impl SceneResources, transform: Mat4) {
         for &(mesh, material, local) in &self.parts {
             scene.add_instance(mesh, material, transform * local);
         }
@@ -896,7 +896,7 @@ impl CookedModel {
     /// returns the parts of its default scene (every mesh node's primitives
     /// with the node's transform). `textures` are the decoded
     /// [`CookedModel::textures`], in order.
-    pub fn add_to(&self, scene: &mut RenderScene, textures: &[TextureData]) -> ModelParts {
+    pub fn add_to(&self, scene: &mut impl SceneResources, textures: &[TextureData]) -> ModelParts {
         let sources: Vec<_> = textures.iter().cloned().map(TextureSource::Rgba).collect();
         self.add_to_with(scene, &sources)
     }
@@ -905,7 +905,7 @@ impl CookedModel {
     /// of their own, after whatever [`CookedModel::add_to`] added: per
     /// primitive, each level's mesh and its error, the largest distance from
     /// level 0 in the model's units (empty for a primitive of one level).
-    pub fn add_lod_levels(&self, scene: &mut RenderScene) -> Vec<Vec<(MeshHandle, f32)>> {
+    pub fn add_lod_levels(&self, scene: &mut impl SceneResources) -> Vec<Vec<(MeshHandle, f32)>> {
         self.primitives
             .iter()
             .map(|p| {
@@ -916,7 +916,7 @@ impl CookedModel {
             .collect()
     }
 
-    /// Primitive `i`'s foliage for [`RenderScene::set_mesh_foliage`] on
+    /// Primitive `i`'s foliage for [`SceneResources::set_mesh_foliage`] on
     /// its mesh, `None` without: its vertices' pivots and anchors and what
     /// the model's foliage shares, so its bark and leaves bend as one tree
     /// (every foliage primitive in one space, the model's: its top is the
@@ -957,7 +957,7 @@ impl CookedModel {
     /// the shared copies batch at every level too.
     pub fn add_lod_levels_shared(
         &self,
-        scene: &mut RenderScene,
+        scene: &mut impl SceneResources,
         meshes: &[MeshHandle],
         shared: &mut SharedParts,
     ) -> Vec<Vec<(MeshHandle, f32)>> {
@@ -980,7 +980,11 @@ impl CookedModel {
 
     /// [`CookedModel::add_to`] with textures of either kind (transcoded to
     /// the device's format: [`CookedTexture::to_texture_source`]).
-    pub fn add_to_with(&self, scene: &mut RenderScene, textures: &[TextureSource]) -> ModelParts {
+    pub fn add_to_with(
+        &self,
+        scene: &mut impl SceneResources,
+        textures: &[TextureSource],
+    ) -> ModelParts {
         self.add_to_shared(scene, textures, None).0
     }
 
@@ -990,13 +994,13 @@ impl CookedModel {
     /// foliage reuse that model's handle, so copies of one tree in many
     /// models upload once. Materials stay the model's own (an edit of one
     /// never shows on another model), each drawn in the batches of an
-    /// identical one added before ([`RenderScene::alias_material`]), so the
+    /// identical one added before (og-render's `RenderScene::alias_material`), so the
     /// copies still draw in one instanced batch. Also answers each
     /// primitive's mesh (shared ones are not the consecutive handles a
     /// model adds alone).
     pub fn add_to_shared(
         &self,
-        scene: &mut RenderScene,
+        scene: &mut impl SceneResources,
         textures: &[TextureSource],
         mut shared: Option<&mut SharedParts>,
     ) -> (ModelParts, Vec<MeshHandle>) {
