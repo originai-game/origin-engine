@@ -12,10 +12,12 @@
 
 use og_core::glam::Vec3;
 
+mod body;
 mod line;
 mod surface;
 mod wakes;
 
+pub use body::WaterBody;
 pub(crate) use line::LineState;
 pub(crate) use surface::SurfaceState;
 pub use wakes::{Wakes, WaterCut};
