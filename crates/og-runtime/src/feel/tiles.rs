@@ -534,18 +534,25 @@ pub(super) fn tilemap_system(
     let mut gone: Vec<u64> = Vec::new();
     for e in rows {
         let key = e.to_bits();
-        let v = r.tilemap.1.decode(&ctx.get_bytes(e, r.tilemap.0)?);
-        let tr = r.transform.1.decode(&ctx.get_bytes(e, r.transform.0)?);
-        let row = record::Tilemap::from_json(&v).map_err(|e| Error::new(ErrorKind::Invalid, e))?;
+        let row: record::Tilemap = r
+            .tilemap
+            .1
+            .read(&ctx.get_bytes(e, r.tilemap.0)?)
+            .map_err(invalid)?;
+        let tr: record::Transform = r
+            .transform
+            .1
+            .read(&ctx.get_bytes(e, r.transform.0)?)
+            .map_err(invalid)?;
         let map = row.map;
         let Some(asset) = t.maps.get(&map).cloned() else {
             continue;
         };
         seen.insert(key);
-        let origin = v3(&tr["position"], Vec3::ZERO);
-        let collision = on(&v, "collision", true);
+        let origin = tr.position;
+        let collision = row.collision;
         let layers = row.collider_layers;
-        let friction = f(&v, "friction", 0.5);
+        let friction = row.friction;
         let fresh = t.live.get(&key).is_none_or(|l| l.map != map);
         if fresh {
             let old = t.live.remove(&key).map(|l| l.colliders).unwrap_or_default();
