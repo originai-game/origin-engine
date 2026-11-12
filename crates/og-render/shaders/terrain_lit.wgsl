@@ -366,13 +366,6 @@ fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4
   return vec2<f32>(blended_roughness(pick, w), height);
 }
 
-// The toon ramp's three bands for the terrain (pbr.wgsl toon_ramp's built-in
-// one), each edge smoothed over a pixel of t.
-fn terrain_band(t: f32) -> f32 {
-  let e = max(fwidthFine(t), 1e-4);
-  return 0.22 + 0.38 * smoothstep(0.08 - e, 0.08 + e, t) + 0.4 * smoothstep(0.45 - e, 0.45 + e, t);
-}
-
 // The share of layer `layer` at a point (world `p`, normal `n`, control
 // channels `c`) over every layer's weight, as og.Grass places its blades
 // (grass_generate.wgsl grass_layer_weight).
@@ -628,43 +621,28 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   // the sunlight through them.
   let through = grass.through * frame.light_color.rgb * shadow;
   shadow *= grass.light.x;
-  var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  // og.MaterialStyle's shadow tint: the sunlight a cast shadow takes moves towards the tint, as on a lit material.
-  var tinted = (1.0 - shadow) * n_dot_l;
-  if (frame.outline_style.z > 0.5) {
-    // og.MaterialStyle's toon: the ground in the built-in ramp's three bands
-    // (as a lit material without its own gradientMap), matte (no hard
-    // highlight), each band's edge smoothed over a pixel so it does not crawl.
-    let band = terrain_band(n_dot_l * shadow);
-    color = s.albedo / PI * band * frame.light_color.rgb;
-    // The tint takes what the ramp lost to the shadow, once, from the final
-    // shadow factor: inside the dark band a deeper shadow (two overlapping,
-    // or a soft one deepened) loses nothing more, so it gains no more tint
-    // (else overlapping shadows came out lighter).
-    tinted = terrain_band(n_dot_l) - band;
-  }
-  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
-    var tint = frame.shadow_tint.rgb * frame.shadow_tint.w;
-    // Under toon, never more than the diffuse light the ramp took (as pbr_fs.wgsl).
-    if (frame.outline_style.z > 0.5) { tint = min(tint, vec3<f32>(1.0 / PI)); }
-    color += tinted * tint * s.albedo * frame.light_color.rgb;
-  }
+  // The sun under the frame's material style (lighting.wgsl style_sun):
+  // the BRDF, or the toon bands, matte; its shadow darkness and tint. The
+  // band edges smoothed over the ramp's own change, cast shadows' too.
+  let sun = style_sun(s, n, v, l, shadow, style_edge(n_dot_l * shadow));
+  var color = sun.direct;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p) + through;
   // Point, spot and rect lights: this fragment's cluster's, or every light
   // in a reflection probe's face (area.wgsl surface_local_lights).
-  color += surface_local_lights(clip, s, p, n, v);
+  color += styled_local_lights(clip, s, p, n, v);
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = vec3<f32>(1.0) - f_ibl;
   // The environment, or the probe holding the tile blended with it (probes.rs),
   // at its intensity, plus the hemisphere light at its own.
-  let irradiance = ambient_light(n, p) * frame.params.x + hemi_irradiance(n);
+  let irradiance = style_irradiance(ambient_light(n, p) * frame.params.x + hemi_irradiance(n), p);
   let r = reflect(-v, n);
   // With the screen-space reflections over it (frame.wgsl ssr_reflected).
   let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, clip);
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let diffuse_ibl = kd_ibl * irradiance * s.albedo * sky;
-  let specular_ibl = prefiltered * (s.f0 * lut.x + lut.y) * sky;  // Karis split sum (pbr_fs.wgsl)
+  // The style's shadow darkness takes its share of the ambient light too.
+  let diffuse_ibl = kd_ibl * irradiance * s.albedo * sky * sun.keep;
+  let specular_ibl = prefiltered * (s.f0 * lut.x + lut.y) * sky * sun.keep;  // Karis split sum (pbr_fs.wgsl)
   let view = u32(frame.light_color.w);
   if (view == 4u) { return vec4<f32>(diffuse_ibl, 1.0); }
   if (view == 5u) { return vec4<f32>(specular_ibl, 1.0); }

@@ -447,12 +447,12 @@ var<private> toon_metal_lit: f32 = 1.0;
 
 // A toon step at `edge`: 0 below, 1 above, over toon_aa (hard without).
 fn toon_step(x: f32, edge: f32) -> f32 {
-  if (toon_aa <= 0.0) { return select(0.0, 1.0, x > edge); }
-  return smoothstep(edge - toon_aa, edge + toon_aa, x);
+  return style_step(x, edge, toon_aa);
 }
 
 // The toon ramp: N·L (times shadow) to the light received, from the
-// gradient map's first row without filtering, or three built-in bands;
+// gradient map's first row without filtering, or the style's built-in
+// bands (lighting.wgsl style_bands, every other lit surface's);
 // each band edge anti-aliased over toon_aa.
 fn toon_ramp(x: f32) -> f32 {
   let t = clamp(x, 0.0, 1.0);
@@ -472,7 +472,7 @@ fn toon_ramp(x: f32) -> f32 {
     let after = textureLoad(gradient_tex, vec2<i32>(min(i + 1, w - 1), 0), 0).r;
     return mix(here, after, smoothstep(-hw, hw, f - 1.0));
   }
-  return 0.22 + 0.38 * toon_step(t, 0.08) + 0.4 * toon_step(t, 0.45);
+  return style_bands(t, toon_aa);
 }
 
 // Cel-shaded light: the ramp on the colour and a toon highlight. A metal

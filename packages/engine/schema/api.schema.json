@@ -25201,7 +25201,7 @@
     "MaterialStyle": {
       "x-og-kind": "resource",
       "x-og-module": "render",
-      "description": "Stylised defaults for every lit material, for a whole scene at once: toon shading and its ramp, a coloured shadow side, rim light, distance-scaled outlines, flat facets, made surfaces and wireframe. Each applies to a material that leaves that field at its own default; an og.Terrain takes toon and shadowTint. Unlit and shader materials, StandardMaterialDesc.styled false, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation.\nSee `looks §12`.",
+      "description": "Stylised defaults for a whole scene: toon shading and its ramp, a coloured shadow side, rim light, outlines, flat facets, made surfaces and wireframe. Each applies to a lit material that leaves that field at its own default; the terrain, grass, scattered copies, impostors and crowds take toon (built-in bands), shadowTint and shadowDarkness. Unlit and shader materials, StandardMaterialDesc.styled false, sprites and the UI are untouched. All off is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds the simulation.\nSee `looks §12`.",
       "type": "object",
       "properties": {
         "toon": {

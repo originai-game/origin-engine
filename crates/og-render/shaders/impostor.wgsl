@@ -286,14 +286,25 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   // The light through the leaves takes no shadow of the card's own: the
   // depth atlas is a solid shell, so a face away from the sun always
   // stands behind it, and the leaves' share of the sun is baked in mat.w.
-  let sun = imp_direct(s, n, v, l, surface.agree);
-  var color = (sun.reflected * shadow + sun.transmitted * outside * mat.w) * frame.light_color.rgb;
+  let card = imp_direct(s, n, v, l, surface.agree);
+  let sunlit = card.reflected * shadow + card.transmitted * outside * mat.w;
+  // The sun under the frame's material style (lighting.wgsl style_sun_of), as
+  // the model the card stands for, unless its material is unstyled (mode 8).
+  // Toon draws the bands alone, without the light through the leaves.
+  let styled = (mode & 8u) == 0u;
+  let band_aa = style_edge(n_dot_l * shadow);
+  var sun: StyleSun;
+  sun.direct = sunlit * frame.light_color.rgb;
+  sun.keep = 1.0;
+  if (styled) { sun = style_sun_of(sunlit, s, n, l, shadow, band_aa); }
+  var color = sun.direct;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(surface.world);
-  color += surface_local_lights(in.clip.xy, s, surface.world, n, v);
+  color += local_lights_on(in.clip.xy, s, surface.world, n, v, styled);
   let n_dot_v = max(dot(n, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  let irradiance = ambient_light(n, surface.world) * frame.params.x + hemi_irradiance(n);
+  var irradiance = ambient_light(n, surface.world) * frame.params.x + hemi_irradiance(n);
+  if (styled) { irradiance = style_irradiance(irradiance, surface.world); }
   let r = reflect(-v, n);
   // With the screen-space reflections over it (frame.wgsl ssr_reflected),
   // unless blended: then it lies over the surface they were traced for.
@@ -301,8 +312,9 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, surface.world, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let direct = color;
-  let diffuse = kd_ibl * irradiance * s.albedo * material.flags.z;
-  color += diffuse + prefiltered * (s.f0 * lut.x + lut.y) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
+  let ibl = material.flags.z * sun.keep;
+  let diffuse = kd_ibl * irradiance * s.albedo * ibl;
+  color += diffuse + prefiltered * (s.f0 * lut.x + lut.y) * ibl;  // Karis split sum (pbr_fs.wgsl)
   color += emissive;
   if (dbg > 0u) {
     if (dbg == 4u) { color = diffuse; }

@@ -408,7 +408,7 @@
   }
 
   resource MaterialStyle {
-    doc "Stylised defaults for every lit material, for a whole scene at once: toon shading and its ramp, a coloured shadow side, rim light, distance-scaled outlines, flat facets, made surfaces and wireframe. Each applies to a material that leaves that field at its own default; an og.Terrain takes toon and shadowTint. Unlit and shader materials, StandardMaterialDesc.styled false, sprites and the UI are untouched. All off (false, 0) is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds back into the simulation."
+    doc "Stylised defaults for a whole scene: toon shading and its ramp, a coloured shadow side, rim light, outlines, flat facets, made surfaces and wireframe. Each applies to a lit material that leaves that field at its own default; the terrain, grass, scattered copies, impostors and crowds take toon (built-in bands), shadowTint and shadowDarkness. Unlit and shader materials, StandardMaterialDesc.styled false, sprites and the UI are untouched. All off is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds the simulation."
     guide "looks §12"
     group "Toon"
     field toon bool "Cel shading for every lit material, as StandardMaterialDesc.toon: light quantised by the ramp, hard highlights. A material with a physical lobe (clearcoat, transmission and the rest) keeps its physical shading; set its own toon to make it toon anyway."
