@@ -20,7 +20,8 @@
 //! og run, og render and og test do) has no alpha and draws the tick, so
 //! reference frames are the ticks'.
 
-use super::extract::{Blend, Hierarchy, RenderState, f, on, rows};
+use super::extract::{Blend, Hierarchy, RenderState, rows};
+use super::wire::FromJson;
 use glam::{Mat4, Quat, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::World;
@@ -147,27 +148,17 @@ pub(crate) struct InterpCheckpoint {
 }
 
 /// og.Camera's position and unit rotation.
-pub(crate) fn camera_pose(c: &Value) -> (Vec3, Quat) {
-    let q = &c["quaternion"];
-    let rot = Quat::from_xyzw(
-        f(q, "x", 0.0),
-        f(q, "y", 0.0),
-        f(q, "z", 0.0),
-        f(q, "w", 1.0),
-    )
-    .normalize();
-    let p = &c["position"];
-    (
-        Vec3::new(f(p, "x", 0.0), f(p, "y", 0.0), f(p, "z", 0.0)),
-        rot,
-    )
+pub(crate) fn camera_pose(c: &crate::wire::record::Camera) -> (Vec3, Quat) {
+    (c.position, c.quaternion.normalize())
 }
 
 /// The probe's tick start: og.Camera's pose, and the snaps of earlier
 /// ticks dropped.
 pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
     let tick = world.time().tick;
-    let camera = super::extract::resource(world, rs.camera.as_ref()).map(|c| camera_pose(&c));
+    let camera = super::extract::resource(world, rs.camera.as_ref())
+        .and_then(|c| crate::wire::record::Camera::from_json(&c).ok())
+        .map(|c| camera_pose(&c));
     let s = &mut rs.interp;
     s.camera = camera.map(|(p, q)| (tick, p, q));
     s.snaps.retain(|_, t| *t >= tick);
@@ -218,7 +209,7 @@ pub(crate) fn pose(
 pub(crate) fn begin(
     world: &World,
     rs: &mut RenderState,
-    settings: Option<&Value>,
+    settings: Option<&crate::wire::record::RenderSettings>,
     h: &mut Hierarchy,
 ) {
     rs.interp.drawn = None;
@@ -226,7 +217,7 @@ pub(crate) fn begin(
     let Some(alpha) = rs.interp.alpha.filter(|_| !rs.interp.stale) else {
         return;
     };
-    if !settings.is_none_or(|s| on(s, "interpolate", true)) {
+    if !settings.is_none_or(|s| s.interpolate) {
         return;
     }
     let Some(started) = world.time().tick.checked_sub(1) else {
@@ -235,7 +226,7 @@ pub(crate) fn begin(
     if rs.geo.record_tick() != Some(started) {
         return;
     }
-    let snap = settings.map_or(SNAP_DISTANCE, |s| f(s, "snapDistance", SNAP_DISTANCE));
+    let snap = settings.map_or(SNAP_DISTANCE, |s| s.snap_distance);
     let snap_sq = if snap > 0.0 {
         snap * snap
     } else {
@@ -250,7 +241,7 @@ pub(crate) fn begin(
     let mut held = snapped.clone();
     if let Some(layout) = &rs.draw.interpolation {
         for (e, v) in rows(world, layout) {
-            if on(&v, "off", false) {
+            if crate::wire::record::Interpolation::from_json(&v).is_ok_and(|i| i.off) {
                 held.insert(e, ());
             }
         }
@@ -336,9 +327,10 @@ pub(crate) fn ui_shifts(
     };
     let vp = ui.viewport();
     let (w, ht) = (vp.width.max(1.0), vp.height.max(1.0));
-    let drawn_view = match camera {
-        Some(c) => {
-            let (p, q) = camera_pose(c);
+    let pose = camera.and_then(|c| Some((c, crate::wire::record::Camera::from_json(c).ok()?)));
+    let drawn_view = match pose {
+        Some((c, row)) => {
+            let (p, q) = camera_pose(&row);
             let (p, q, _) = self::camera(&rs.interp, p, q);
             let mut c = c.clone();
             c["position"] = serde_json::json!({ "x": p.x, "y": p.y, "z": p.z });

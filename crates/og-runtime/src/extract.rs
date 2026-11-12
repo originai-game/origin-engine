@@ -509,22 +509,6 @@ impl RenderState {
     }
 }
 
-pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
-    v[key].as_f64().map_or(default, |x| x as f32)
-}
-
-fn color(v: &Value, default: f32) -> Vec3 {
-    Vec3::new(f(v, "r", default), f(v, "g", default), f(v, "b", default))
-}
-
-pub(crate) fn on(v: &Value, key: &str, default: bool) -> bool {
-    match &v[key] {
-        Value::Bool(b) => *b,
-        Value::Number(n) => n.as_f64().is_some_and(|x| x != 0.0),
-        _ => default,
-    }
-}
-
 /// The IDL `AoResolutionSetting`'s variants, in order: RenderSettings.aoResolution.
 const AO_RESOLUTION_SETTINGS: &[&str] = &["postEffects", "full", "half"];
 

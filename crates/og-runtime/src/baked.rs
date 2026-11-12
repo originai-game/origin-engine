@@ -15,12 +15,10 @@
 //! when its static models are all despawned.
 
 use super::extract::Parts;
-use super::fx::{color, f, on};
 use glam::{Mat4, Vec3};
 use og_bundle::runtime::SceneDesc;
 use og_core::IdMap;
 use og_render::{BakedLighting, BakedMesh, LightmapPages, LightmapUvs, MeshData, ProbeVolume};
-use serde_json::Value;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -87,18 +85,18 @@ impl BakedState {
 /// og.RectLight at world transform `m`: width and height along its local
 /// x and y, emitting along its local -Z; its range where it would light a
 /// white surface facing it at one hundredth of one.
-pub(crate) fn rect_light(m: Mat4, v: &Value) -> og_render::Light {
-    let half_width = m.transform_vector3(Vec3::X) * f(v, "width", 10.0).max(0.0) * 0.5;
-    let half_height = m.transform_vector3(Vec3::Y) * f(v, "height", 10.0).max(0.0) * 0.5;
-    let c = color(&v["color"], Vec3::ONE);
-    let intensity = f(v, "intensity", 1.0).max(0.0);
+pub(crate) fn rect_light(m: Mat4, v: &crate::wire::record::RectLight) -> og_render::Light {
+    let half_width = m.transform_vector3(Vec3::X) * v.width.max(0.0) * 0.5;
+    let half_height = m.transform_vector3(Vec3::Y) * v.height.max(0.0) * 0.5;
+    let c = Vec3::new(v.color.r, v.color.g, v.color.b);
+    let intensity = v.intensity.max(0.0);
     let area = 4.0 * half_width.cross(half_height).length();
     let reach = (c.max_element().max(0.0) * intensity * area / 0.01).sqrt();
     og_render::Light {
         kind: og_render::LightKind::Rect {
             half_width,
             half_height,
-            two_sided: on(v, "twoSided", false),
+            two_sided: v.two_sided,
         },
         position: m.transform_point3(Vec3::ZERO),
         color: c,
@@ -106,7 +104,7 @@ pub(crate) fn rect_light(m: Mat4, v: &Value) -> og_render::Light {
         range: reach
             .max((half_width + half_height).length() * 2.0)
             .max(0.1),
-        cast_shadows: on(v, "castShadow", false),
+        cast_shadows: v.cast_shadow,
     }
 }
 
