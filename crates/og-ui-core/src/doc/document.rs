@@ -254,7 +254,7 @@ impl UiDocument {
     }
 
     /// The `type ui-material` assets its `-og-material` declarations and
-    /// `<og-overlay effect="material …">` name (`-og-material: "ui-kits/materials/foil.ogt"
+    /// `<og-overlay effect="material …">` name (`-og-material: "materials/materials/foil.ogt"
     /// …`), each once: the host loads them and binds them with
     /// [`crate::Ui::define_material`].
     pub fn material_assets(&self) -> Vec<String> {

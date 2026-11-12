@@ -15,11 +15,6 @@ fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Res
             format!("{rel}/{name}")
         };
         if e.file_type()?.is_dir() {
-            // An installed kit's `sheet/` is a review project of its own
-            // (docs/ui.md §6), `og ui sheet` cooks it apart.
-            if name == "sheet" && dir.join("extension.json").is_file() {
-                continue;
-            }
             walk(&e.path(), &r, out)?;
         } else {
             out.push((r, e.path()));

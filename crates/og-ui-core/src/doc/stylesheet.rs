@@ -337,11 +337,11 @@ fn read(
     }
     for (text, at) in styles {
         reader.imports_open = true;
-        // A built-in component's rules (and an installed kit's) sit below
-        // every pack's.
-        let source = source.trim_start_matches('/');
+        // A built-in component's rules sit below every pack's.
         let context = Context {
-            layer: (source.starts_with("@ui/") || source.starts_with("ui-kits/"))
+            layer: source
+                .trim_start_matches('/')
+                .starts_with("@ui/")
                 .then(|| "og-components".into()),
             ..Context::default()
         };

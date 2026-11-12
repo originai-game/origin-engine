@@ -17,7 +17,7 @@
 //! naming no font role. Documents (`type screen`, `type component`) are
 //! parsed: a literal `#rrggbb` paint in a prop, an `@media` override or a
 //! state, and a literal `border-radius` other than 0. The default
-//! arguments are the project's `assets/ui-kits` and `assets/ui`.
+//! argument is the project's `assets/ui`.
 
 use og_ui::prelude::*;
 use std::path::{Path, PathBuf};
@@ -385,15 +385,13 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
     }
     if paths.is_empty() {
-        paths = ["assets/ui-kits", "assets/ui"]
+        paths = ["assets/ui"]
             .iter()
             .map(PathBuf::from)
             .filter(|p| p.is_dir())
             .collect();
         if paths.is_empty() {
-            eprintln!(
-                "og ui literals: no assets/ui-kits or assets/ui here; name the kits or documents to read"
-            );
+            eprintln!("og ui literals: no assets/ui here; name the documents to read");
             return ExitCode::FAILURE;
         }
     }

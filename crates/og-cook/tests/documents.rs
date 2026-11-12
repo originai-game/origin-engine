@@ -245,41 +245,6 @@ fn a_game_component_of_a_built_in_name_wins() {
     assert_eq!(uses(&root, "ui/vitals.svelte"), ["ui/my-bar.svelte"]);
 }
 
-/// An installed kit (docs/ui.md §5) cooks with the game: its documents
-/// are the game's assets under `ui-kits/<kit>/`, and its review sheet, a
-/// project of its own, is left out.
-#[test]
-fn an_installed_kit_cooks_its_documents_and_not_its_sheet() {
-    let kit = "ui-kits/racing";
-    let root = project(
-        "kit",
-        &[
-            (&format!("{kit}/extension.json"), "{}"),
-            (&format!("{kit}/results.svelte"), SCREEN),
-            (
-                &format!("{kit}/sheet/project.ogt"),
-                "type project\nversion 1\n---\nname \"Sheet\"\n",
-            ),
-            (
-                &format!("{kit}/sheet/assets/looks/scifi.ogt"),
-                "type look\nversion 1\n---\nname \"sheet\"\nui \"scifi\"\n",
-            ),
-        ],
-    );
-    let report = cook_project(&root, &CookOptions::default()).unwrap();
-    assert!(report.ok(), "{}", report.errors().join("\n"));
-    let bundle = Bundle::open(&root.join("cooked")).unwrap();
-    assert_eq!(
-        bundle.output(&format!("{kit}/results.svelte")).unwrap().ty,
-        "og.UiDocument"
-    );
-    assert!(
-        bundle
-            .output(&format!("{kit}/sheet/assets/looks/scifi.ogt"))
-            .is_err()
-    );
-}
-
 /// A document's `@import` is read from beside it (with the imports of the
 /// imported sheet) into its blob, and an edit to the stylesheet re-cooks
 /// the document. Ways it could fail: the runtime parsing the text without

@@ -16,9 +16,7 @@
       "@origingame/engine": ["./.og/engine/types/index.d.ts"],
       "@origingame/engine/playtest": ["./.og/engine/src/playtest.ts"],
       "bun:test": ["./.og/engine/vendor/bun-types/test.d.ts"],
-      "@origingame/engine/ui-check": ["./.og/engine/src/node/ui-check.ts"],
-      "@origingame/engine/ui-extensions": ["./.og/engine/src/ui-extensions.ts"],
-      "@origingame/engine/extensions/*": ["./.og/engine/extensions/*"]
+      "@origingame/engine/ui-check": ["./.og/engine/src/node/ui-check.ts"]
     }
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", ".og/types/**/*.d.ts"]

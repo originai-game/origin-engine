@@ -594,7 +594,7 @@ fn split_texture(
 
 /// The text of `rel` (an asset path) under the assets directory `s` came from.
 /// A file a source names, read relative to the source's own directory
-/// first (`foil.wgsl` beside `ui-kits/materials/foil.ogt`, so a kit's
+/// first (`foil.wgsl` beside `materials/materials/foil.ogt`, so a pack's
 /// relative references survive installation, docs/ui.md §5), then as an
 /// asset path from `assets/` ([`read_sibling`]), as a style resolves its
 /// references.
