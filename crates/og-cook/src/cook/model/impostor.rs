@@ -76,23 +76,38 @@ impl ImpostorBake {
 /// `KHR_materials_transmission`'s, else 0.5 for a double-sided alpha-
 /// masked material (a leaf card), else 0.
 pub fn translucency(m: &gltf::Material) -> f32 {
-    let factor = |ext: &str, key: &str| {
-        m.extension_value(ext)
-            .map(|v| v.get(key).and_then(|f| f.as_f64()).unwrap_or(0.0) as f32)
-    };
-    if let Some(f) = factor(
-        "KHR_materials_diffuse_transmission",
-        "diffuseTransmissionFactor",
-    ) {
-        return f.clamp(0.0, 1.0);
+    if let Some(f) = diffuse_transmission(m) {
+        return f;
     }
-    if let Some(f) = factor("KHR_materials_transmission", "transmissionFactor") {
-        return (0.5 * f).clamp(0.0, 1.0);
+    if let Some(f) = m
+        .extension_value("KHR_materials_transmission")
+        .map(|v| v.get("transmissionFactor").and_then(|f| f.as_f64()))
+    {
+        return (0.5 * f.unwrap_or(0.0) as f32).clamp(0.0, 1.0);
     }
     if m.alpha_mode() == gltf::material::AlphaMode::Mask && m.double_sided() {
         return 0.5;
     }
     0.0
+}
+
+/// glTF `KHR_materials_diffuse_transmission`'s factor (0..1) where the
+/// material states one: a thin leaf's translucency, which the cooked
+/// material draws with.
+pub fn diffuse_transmission(m: &gltf::Material) -> Option<f32> {
+    let v = m.extension_value("KHR_materials_diffuse_transmission")?;
+    let f = v.get("diffuseTransmissionFactor").and_then(|f| f.as_f64());
+    Some((f.unwrap_or(0.0) as f32).clamp(0.0, 1.0))
+}
+
+/// How far a material's normals turn to its canopy's dome (0..1): its
+/// glTF `extras` `{ "ogFoliage": { "domeNormals": 0.7 } }`, else 0.
+pub fn dome_normals(m: &gltf::Material) -> f32 {
+    m.extras()
+        .as_ref()
+        .and_then(|e| serde_json::from_str::<serde_json::Value>(e.get()).ok())
+        .and_then(|v| v["ogFoliage"]["domeNormals"].as_f64())
+        .map_or(0.0, |d| (d as f32).clamp(0.0, 1.0))
 }
 
 /// A baked impostor: the three atlases and the sphere they cover.

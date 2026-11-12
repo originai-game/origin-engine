@@ -145,6 +145,11 @@ pub struct CookedMaterial {
     pub physical: PhysicalExtensions<usize>,
     /// `KHR_materials_unlit`: drawn unlit (three.js MeshBasicMaterial).
     pub unlit: bool,
+    /// How much light passes through to the far side (0..1): a leaf
+    /// ([`og_render::StandardMaterial::foliage`]'s x).
+    pub translucency: f32,
+    /// How far its normals turn to the canopy's dome (0..1; the foliage's y).
+    pub dome_normals: f32,
     /// Each texture slot's `KHR_texture_transform` (og-render's slot
     /// order, [`og_render::StandardMaterial::uv_transforms`]): identity
     /// where none, or where the cook baked it into the primitives' uvs.
@@ -152,11 +157,18 @@ pub struct CookedMaterial {
 }
 
 impl CookedMaterial {
+    /// Whether it is a leaf's: translucent or lit by its canopy's dome.
+    pub fn leaf(&self) -> bool {
+        self.translucency > 0.0 || self.dome_normals > 0.0
+    }
+
     /// Whether it draws as a standard material rather than in its glTF
-    /// shape: physical extensions, unlit, or a texture transform to carry.
+    /// shape: physical extensions, unlit, a leaf, or a texture transform
+    /// to carry.
     pub fn needs_standard(&self) -> bool {
         self.physical.present != 0
             || self.unlit
+            || self.leaf()
             || self.uv_transforms.iter().any(|t| !t.is_identity())
     }
 }
@@ -602,6 +614,8 @@ impl CookedModel {
                     anisotropy_texture: tex(m.anisotropy_texture)?,
                 },
                 unlit: m.unlit != 0,
+                translucency: m.translucency,
+                dome_normals: m.dome_normals,
                 uv_transforms: {
                     let t = |o: [f32; 2], sc: [f32; 2], r: f32| og_render::UvTransform {
                         offset: glam::Vec2::from(o),
@@ -880,14 +894,21 @@ impl CookedModel {
         }
     }
 
-    /// Material `index` with its physical extensions, as a standard
-    /// material: what [`CookedModel::add_to`] adds for a material that has
-    /// any (and the same as [`CookedModel::material`] for one without).
+    /// Material `index` with its physical extensions and a leaf's
+    /// translucency, dome normals and both faces (a double-sided
+    /// material that is no leaf draws its front, as its glTF shape
+    /// does), as a standard material: what
+    /// [`CookedModel::add_to`] adds for a material that has any (and the
+    /// same as [`CookedModel::material`] for one without).
     pub fn standard_material(&self, index: usize, textures: &[TextureHandle]) -> StandardMaterial {
         let mut m = StandardMaterial::from(&self.material(index, textures));
         let c = &self.materials[index];
         c.physical.map(|i| textures.get(i).copied()).apply(&mut m);
         m.unlit = c.unlit as u32;
+        if c.double_sided && c.leaf() {
+            m.side = og_render::Side::Double as u32;
+        }
+        m.foliage = glam::Vec2::new(c.translucency, c.dome_normals);
         m.set_uv_transforms(c.uv_transforms);
         m
     }

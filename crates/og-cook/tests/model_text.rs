@@ -9,7 +9,9 @@
 //! no triangle where the gear is, or one where its hole is; the levels of
 //! detail of a text model are measured otherwise than a glTF's (or not at
 //! all); a part placed three times is three meshes; the budgets are only
-//! reported, not enforced.
+//! reported, not enforced; a plant's leaves lose their wind (the anchors
+//! follow other vertices after the weld), are simplified, or are drawn as
+//! bark is (one face, no light through them); a plant's mistakes cook.
 
 use glam::Vec3;
 use og_cook::runtime::Bundle;
@@ -218,5 +220,159 @@ fn past_the_project_s_budgets_it_is_cooked_with_a_warning_and_a_scene_names_it()
     assert_eq!(
         scene.entities[0].instance.as_deref(),
         Some("models/gear.ogt")
+    );
+}
+
+/// A flowering shrub, its leaves' translucency and dome normals its own.
+const SHRUB: &str = r#"type model
+version 1
+---
+plant "shrub" {
+  seed 7
+  levels 2
+  trunk {
+    length 0.4
+    radius 0.06
+    children 5
+  }
+  branch1 {
+    length 0.9
+    children 3
+  }
+  branch2 {
+    length 0.5
+  }
+  leaves {
+    count 12
+    size 0.2
+    translucency 0.35
+    domeNormals 0.8
+  }
+  flowers {
+    share 0.5
+    size 0.1
+  }
+}
+"#;
+
+#[test]
+fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
+    let root = cooked(
+        "og-cook-model-text-plant",
+        &[("plants/shrub.ogt", SHRUB.as_bytes())],
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("plants/shrub.ogt").unwrap();
+    assert_eq!(model.meshes.len(), 1, "one mesh, the wind's one tree");
+    let [wood, leaves] = &model.primitives[..] else {
+        panic!("{} primitives", model.primitives.len());
+    };
+
+    // The wood: bark, every vertex about a pivot inside the plant, the
+    // root's own rigid (the trunk stands where the model does).
+    let (wf, leaf) = wood.foliage.as_ref().expect("the wood's wind");
+    assert!(!leaf);
+    assert_eq!(wf.len(), wood.vertices.len());
+    let (lo, hi) = (wood.min - 0.01, wood.max + 0.01);
+    for (v, f) in wood.vertices.iter().zip(wf) {
+        let pivot = Vec3::new(f.branch[0], f.branch[1], f.branch[2]);
+        assert!(pivot.cmpge(lo).all() && pivot.cmple(hi).all(), "{pivot}");
+        assert!((0.0..=1.0).contains(&f.branch[3]), "{:?}", f.branch);
+        assert_eq!(f.leaf, [0.0; 4], "bark flutters at {:?}", v.position);
+    }
+    assert!(wood.min.y.abs() < 1e-3, "the root is at {}", wood.min.y);
+
+    // The leaves and petals: flagged, never simplified, each vertex within
+    // a leaf's reach of its own anchor (so the anchors followed their
+    // vertices through the weld and the reorder), which is on the wood.
+    let (lf, leaf) = leaves.foliage.as_ref().expect("the leaves' wind");
+    assert!(leaf);
+    assert_eq!(leaves.lods.len(), 1, "leaves are never simplified");
+    assert!(leaves.vertices.len() > 200, "{}", leaves.vertices.len());
+    let mut flutter = 0.0f32;
+    for (v, f) in leaves.vertices.iter().zip(lf) {
+        let anchor = Vec3::new(f.leaf[0], f.leaf[1], f.leaf[2]);
+        let reach = (Vec3::from(v.position) - anchor).length();
+        // A leaf of 0.2 at its largest (sizeVariance up to 1.7 times).
+        assert!(reach < 0.36, "{reach} from its anchor at {:?}", v.position);
+        assert!(anchor.cmpge(lo).all() && anchor.cmple(hi).all(), "{anchor}");
+        flutter = flutter.max(f.leaf[3]);
+    }
+    assert!(flutter > 0.5, "no leaf flutters: {flutter}");
+
+    // Their materials: bark as any opaque one, the leaves lit from both
+    // faces and through, by the canopy's dome.
+    let bark = &model.materials[wood.material];
+    assert!(!bark.leaf() && !bark.double_sided, "{bark:?}");
+    let green = &model.materials[leaves.material];
+    assert!(green.double_sided && green.needs_standard());
+    assert!(
+        (green.translucency - 0.35).abs() < 1e-6 && (green.dome_normals - 0.8).abs() < 1e-6,
+        "{} {}",
+        green.translucency,
+        green.dome_normals
+    );
+
+    // What og-render receives: one top for both, the canopy over the root.
+    let (mw, ml) = (
+        model.mesh_foliage(0).unwrap(),
+        model.mesh_foliage(1).unwrap(),
+    );
+    assert_eq!((mw.top, mw.canopy_center), (ml.top, ml.canopy_center));
+    let top = wood.max.y.max(leaves.max.y);
+    assert!((mw.top - top).abs() < 1e-3 && top > 1.0, "{} {top}", mw.top);
+    assert!(mw.canopy_center.y > 0.4 && mw.canopy_center.y < top);
+    assert!(mw.validate(wood.vertices.len()).is_ok());
+    assert!(ml.validate(leaves.vertices.len()).is_ok());
+}
+
+#[test]
+fn a_plant_s_mistakes_are_refused_with_their_line() {
+    let refused = |name: &str, text: String, line: &str, says: &str| {
+        let root = project(name, &[("plants/bad.ogt", text.as_bytes())]);
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        let errors = report.errors();
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(
+            errors[0].starts_with("assets/plants/bad.ogt")
+                && errors[0].contains(line)
+                && errors[0].contains(says),
+            "{errors:?}"
+        );
+    };
+    // Leaves that end before they start.
+    refused(
+        "og-cook-model-text-plant-end",
+        SHRUB.replace("count 12\n", "count 12\n    start 0.6\n    end 0.2\n"),
+        "line 22",
+        "before start",
+    );
+    // A second plant in one model: the wind bends a model as one tree.
+    refused(
+        "og-cook-model-text-plant-two",
+        format!("{SHRUB}plant \"other\" {{\n  seed 2\n}}\n"),
+        "line 30",
+        "another plant is another model",
+    );
+    // Leaves that name a material take their translucency from it.
+    refused(
+        "og-cook-model-text-plant-material",
+        SHRUB
+            .replace(
+                "plant \"shrub\" {",
+                "material \"leaf\" {\n  translucency 0.4\n}\nplant \"shrub\" {",
+            )
+            .replace("count 12\n", "count 12\n    material \"leaf\"\n"),
+        "line 26",
+        "is its material's",
+    );
+    // A number that would grow past what a model holds.
+    refused(
+        "og-cook-model-text-plant-runaway",
+        SHRUB
+            .replace("children 5", "children 400")
+            .replace("children 3", "children 400"),
+        "plant 'shrub'",
+        "fewer children, levels or leaves",
     );
 }
