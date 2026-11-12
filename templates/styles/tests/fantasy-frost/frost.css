@@ -1,0 +1,74 @@
+/* fantasy-frost: the fantasy pack restyled by :root tokens alone
+   (README.md). A pack made of templates/styles/fantasy's files with this
+   one beside them: it applies after base.css, so its tokens win, and it
+   selects no part. */
+
+:root {
+  /* Roles: blue-black ice, silver rims, a frost-blue primary. */
+  --backdrop: #070a0f;
+  --well: #05080c;
+  --panel: #0d131b;
+  --panel-hover: #18222e;
+  --panel-raised: #111a24;
+  --line: #2f3d4c;
+  --line-strong: #8fa3b8;
+  --ink: #e4eef8;
+  --ink-muted: #b4c4d4;
+  --ink-faint: #8798aa;
+  --ink-inverse: #0f151c;
+  --control: #18212b;
+  --control-strong: #24303d;
+  --primary: #2a5f8f;
+  --primary-hover: #3a78ad;
+  --primary-active: #1d4669;
+  --on-primary: #eef6ff;
+  --primary-soft: #2a5f8f40;
+  --highlight: #bfe3ff;
+  --selection: #1c2c3d;
+  --on-selection: #e8f4ff;
+  --accent: #bfe3ff;
+  --focus: #d6eeff;
+  --knob: #c3d3e2;
+  --hud: #0a0f15ea;
+  --gold: #cfe6fa;
+
+  /* Materials: steel and rime instead of brass and walnut. */
+  --fantasy-soot: #05080b;
+  --fantasy-keyline: #030507;
+  --fantasy-leather-deep: #0a0f15;
+  --fantasy-well-pressed: #070b10;
+  --fantasy-walnut: #16202b;
+  --fantasy-walnut-dark: #0e151d;
+  --fantasy-walnut-deep: #1a2633;
+  --fantasy-badge-ground: #0c121a;
+  --fantasy-crimson-deep: #1f4466;
+  --fantasy-crimson-lo: #122c45;
+  --fantasy-rim: #8ea2b6;
+  --fantasy-brass-hi: #dbe8f4;
+  --fantasy-brass-bright: #b9cadb;
+  --fantasy-brass-pale: #e6f0f9;
+  --fantasy-brass-lo: #4c5d70;
+  --fantasy-slot-rim: #5d6876;
+
+  /* Inks. */
+  --button-hover-ink: #eef7ff;
+  --fantasy-ink-label: #b9d3ea;
+  --fantasy-ink-title: #dceaf6;
+  --fantasy-ink-heading: #d2e2f0;
+  --fantasy-ink-figure: #e6f0fa;
+  --fantasy-ink-round: #dceaf6;
+
+  /* Surfaces that carry their own colours. */
+  --fantasy-frame-fill:
+    var(--fantasy-filigree-tl) left top / var(--fantasy-corner) var(--fantasy-corner) no-repeat,
+    var(--fantasy-filigree-tr) right top / var(--fantasy-corner) var(--fantasy-corner) no-repeat,
+    var(--fantasy-filigree-bl) left bottom / var(--fantasy-corner) var(--fantasy-corner) no-repeat,
+    var(--fantasy-filigree-br) right bottom / var(--fantasy-corner) var(--fantasy-corner) no-repeat,
+    radial-gradient(ellipse at 50% 0%, #1a2634 0%, #0e151d 60%, #080c11 100%);
+  --fantasy-band: linear-gradient(90deg, #0b1a2a00 0%, #163552 14%, #1f4a70 50%, #163552 86%, #0b1a2a00 100%);
+  --fantasy-cell-fill: radial-gradient(circle at 50% 45%, #2a3440 0%, #141b23 72%, #0b1015 100%);
+  --panel-fill: radial-gradient(ellipse at 50% 0%, #1c2836, #0f161e 55%, #090d12);
+  --fantasy-ground:
+    radial-gradient(ellipse at 50% 40%, #00000000 40%, #000000a8 100%),
+    linear-gradient(180deg, #0c131c, #070b10);
+}
