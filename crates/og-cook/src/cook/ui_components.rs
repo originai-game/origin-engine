@@ -1,29 +1,35 @@
-//! The engine's built-in component documents: every `.svelte` under the
-//! engine package's `src/ui/components/`, its group directories (`rpg/`,
-//! `shooter/`) included, by the name its `<meta name="component">`
-//! declares. A game uses one by that name (`<RpgBackpack/>`) without a
-//! copy; the cook then bundles it, its string tables and the files it
-//! names under the reserved id `@ui/<path>` (`@ui/rpg/backpack.svelte`),
-//! as it bundles a look's `@styles/`. A game document declaring the same
-//! component name wins (`og ui eject` makes one).
+//! The engine's built-in UI documents: every `.svelte` under the engine
+//! package's `src/ui/components/` (its group directories, `rpg/` and
+//! `shooter/`, included) and `src/ui/screens/`, by the name its
+//! `<meta name="component">` or `<meta name="screen">` declares, under
+//! the reserved id `@ui/<path under src/ui>` (`@ui/components/rpg/backpack.svelte`,
+//! `@ui/screens/pause.svelte`). A game uses a component by its name
+//! (`<RpgBackpack/>`) and loads a screen by its id
+//! (`og.load.document(world, "@ui/screens/pause.svelte")`) without a copy;
+//! the cook then bundles it, its string tables, the files it names and the
+//! components it uses, as it bundles a look's `@styles/`. A game document
+//! declaring the same name wins (`og ui eject` makes one).
 //!
-//! The directory is `src/ui/components` of the engine package
-//! `OG_ENGINE_PACKAGE` names (bin/og.mjs sets it), else of an installed
-//! `@origingame/engine` or a checkout's `packages/engine` above the running
-//! executable, else of the checkout this crate was built in. It is read
-//! when a game first uses a name it does not define.
+//! The directory is `src/ui` of the engine package `OG_ENGINE_PACKAGE`
+//! names (bin/og.mjs sets it), else of an installed `@origingame/engine`
+//! or a checkout's `packages/engine` above the running executable, else of
+//! the checkout this crate was built in. It is read when a game first uses
+//! a name it does not define.
 
 use og_ui::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-/// The reserved id prefix of the built-in components' files.
+/// The reserved id prefix of the built-in documents' files.
 pub const PREFIX: &str = "@ui/";
 
-/// One built-in component document.
+/// The directories under `src/ui` that hold built-in documents.
+const ROOTS: [&str; 2] = ["components/", "screens/"];
+
+/// One built-in document, a component or a screen.
 pub struct Component {
-    /// Its bundle id, `@ui/<path under src/ui/components>`.
+    /// Its bundle id, `@ui/<path under src/ui>`.
     pub id: String,
     pub doc: og_ui::UiDocument,
     /// The component names it uses.
@@ -45,56 +51,49 @@ pub fn uses(doc: &og_ui::UiDocument) -> BTreeSet<String> {
         .collect()
 }
 
-/// The directory the built-in components are read from; `None` when none
-/// was found (an engine package without its `src/`).
-pub fn components_dir() -> Option<&'static Path> {
+/// The directory the built-in documents are read from (`src/ui`); `None`
+/// when none was found (an engine package without its `src/`).
+pub fn ui_dir() -> Option<&'static Path> {
     static DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
     DIR.get_or_init(|| {
-        let components = |p: PathBuf| p.join("README.md").is_file().then_some(p);
+        let ui = |p: PathBuf| p.join("components/README.md").is_file().then_some(p);
         if let Some(pkg) = std::env::var_os("OG_ENGINE_PACKAGE").map(PathBuf::from) {
-            return components(pkg.join("src/ui/components"));
+            return ui(pkg.join("src/ui"));
         }
         // A checkout's og (target/, packages/engine/native/) reads the
         // checkout's documents; the og of an npm install sits in
         // @origingame/engine-<platform>/, a sibling of @origingame/engine.
         if let Ok(exe) = std::env::current_exe() {
-            for sub in [
-                "packages/engine/src/ui/components",
-                "engine/src/ui/components",
-            ] {
-                if let Some(d) = exe
-                    .ancestors()
-                    .skip(1)
-                    .find_map(|a| components(a.join(sub)))
-                {
+            for sub in ["packages/engine/src/ui", "engine/src/ui"] {
+                if let Some(d) = exe.ancestors().skip(1).find_map(|a| ui(a.join(sub))) {
                     return Some(d);
                 }
             }
         }
-        components(
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui/components"),
-        )
+        ui(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui"))
     })
     .as_deref()
 }
 
-/// The bytes of the built-in file `id` (`@ui/rpg/rpg.en.ogt`).
+/// The bytes of the built-in file `id` (`@ui/components/rpg/rpg.en.ogt`).
 pub fn read(id: &str) -> Result<Vec<u8>, String> {
     let rel = id
         .strip_prefix(PREFIX)
+        .filter(|r| ROOTS.iter().any(|root| r.starts_with(root)))
         .filter(|r| !r.split('/').any(|c| c == ".." || c.is_empty()))
-        .ok_or_else(|| format!("'{id}' is not a built-in component file"))?;
-    let dir = components_dir().ok_or("the engine package has no src/ui/components")?;
+        .ok_or_else(|| format!("'{id}' is not a built-in UI file"))?;
+    let dir = ui_dir().ok_or("the engine package has no src/ui")?;
     std::fs::read(dir.join(rel)).map_err(|e| format!("{id}: {e}"))
 }
 
-/// Every built-in component by its name. An error names a document that
-/// does not parse, or two that declare one name.
+/// Every built-in document by its name. An error names a document that
+/// does not parse, a screen among the components, or two that declare one
+/// name.
 pub fn index() -> Result<&'static BTreeMap<String, Component>, String> {
     static INDEX: OnceLock<Result<BTreeMap<String, Component>, String>> = OnceLock::new();
     INDEX
         .get_or_init(|| {
-            let dir = components_dir().ok_or("the engine package has no src/ui/components")?;
+            let dir = ui_dir().ok_or("the engine package has no src/ui")?;
             build(dir)
         })
         .as_ref()
@@ -103,7 +102,7 @@ pub fn index() -> Result<&'static BTreeMap<String, Component>, String> {
 
 fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
     let mut files = Vec::new();
-    let mut pending = vec![String::new()];
+    let mut pending: Vec<String> = ROOTS.iter().map(|r| r.to_string()).collect();
     while let Some(prefix) = pending.pop() {
         let parent = dir.join(&prefix);
         let entries =
@@ -146,9 +145,9 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
         }
         let doc = og_ui::UiDocument::parse_with_imports(&id, &text, imports.clone())
             .map_err(|e| e.join("\n"))?;
-        if doc.kind != og_ui::doc::DocKind::Component {
+        if doc.kind != og_ui::doc::DocKind::Component && rel.starts_with("components/") {
             return Err(format!(
-                "{id}: a built-in component declares <meta name=\"component\">"
+                "{id}: a built-in component declares <meta name=\"component\">; screens go in src/ui/screens"
             ));
         }
         let mut named: BTreeSet<String> = doc.strings.iter().cloned().collect();
@@ -182,7 +181,7 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
         let name = component.doc.name.clone();
         if let Some(other) = out.insert(name.clone(), component) {
             return Err(format!(
-                "{id} and {} both declare the built-in component '{name}'; rename one",
+                "{id} and {} both declare the built-in document '{name}'; rename one",
                 other.id
             ));
         }
@@ -190,24 +189,35 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
     Ok(out)
 }
 
-/// The built-in components a game's documents reach: every name they use
-/// that no game component declares, and the names those use, resolved
-/// against the index. Answers each used name's document id (the game's
-/// or the built-in one) and the built-in files to bundle, by id.
+/// The built-in documents a game reaches: every name its documents use and
+/// every built-in screen its code names by id, that no game document
+/// declares, and the names those use, resolved against the index. Answers
+/// each reached name's document id (the game's or the built-in one) and
+/// the built-in files to bundle, by id.
 pub struct Resolved {
     pub components: BTreeMap<String, String>,
     pub files: BTreeMap<String, &'static [u8]>,
 }
 
-/// Resolves `used` (names a game's documents use) with the game's own
-/// components `game` (name → id) first.
+/// Resolves `used` (names a game's documents use, or the built-in ids its
+/// code names) with the game's own documents `game` (name → id) first.
 pub fn resolve(
     game: BTreeMap<String, String>,
     used: impl IntoIterator<Item = String>,
 ) -> Result<Resolved, String> {
     let mut components = game;
     let mut files: BTreeMap<String, &'static [u8]> = BTreeMap::new();
-    let mut pending: Vec<String> = used.into_iter().collect();
+    let mut pending: Vec<String> = Vec::new();
+    for name in used {
+        if name.starts_with(PREFIX) {
+            // An id the code names: the built-in document it is, if any.
+            if let Some(c) = index()?.values().find(|c| c.id == name) {
+                pending.push(c.doc.name.clone());
+            }
+        } else {
+            pending.push(name);
+        }
+    }
     while let Some(name) = pending.pop() {
         if components.contains_key(&name) {
             continue;

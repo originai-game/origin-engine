@@ -212,15 +212,18 @@ fn a_screen_cooks_in_the_built_in_components_it_uses() {
     assert!(report.ok(), "{}", report.errors().join("\n"));
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     assert_eq!(
-        bundle.output("@ui/stat-bar.svelte").unwrap().ty,
+        bundle.output("@ui/components/stat-bar.svelte").unwrap().ty,
         "og.UiDocument"
     );
-    assert!(bundle.output("@ui/stat-bar.en.ogt").is_ok());
+    assert!(bundle.output("@ui/components/stat-bar.en.ogt").is_ok());
     assert!(
-        bundle.output("@ui/ability-bar.svelte").is_err(),
+        bundle.output("@ui/components/ability-bar.svelte").is_err(),
         "only what it uses"
     );
-    assert_eq!(uses(&root, "ui/vitals.svelte"), ["@ui/stat-bar.svelte"]);
+    assert_eq!(
+        uses(&root, "ui/vitals.svelte"),
+        ["@ui/components/stat-bar.svelte"]
+    );
 }
 
 /// A game's own document declaring a built-in component's name (what
@@ -241,7 +244,7 @@ fn a_game_component_of_a_built_in_name_wins() {
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{}", report.errors().join("\n"));
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
-    assert!(bundle.output("@ui/stat-bar.svelte").is_err());
+    assert!(bundle.output("@ui/components/stat-bar.svelte").is_err());
     assert_eq!(uses(&root, "ui/vitals.svelte"), ["ui/my-bar.svelte"]);
 }
 
