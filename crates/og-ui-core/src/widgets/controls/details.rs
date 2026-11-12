@@ -49,7 +49,7 @@ impl Ui {
             desc.summary.as_str()
         };
         let ink = self.role("ink");
-        let icon = self.by_text(16.0);
+        let icon = self.by_text(self.env.theme.controls.details_icon);
         let rtl = self.rtl();
         let built = self.ctl(
             "Summary",

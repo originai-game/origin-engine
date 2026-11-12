@@ -484,7 +484,11 @@ impl Ui {
                 from: "*".into(),
                 to: "pressed".into(),
                 transition: tween(
-                    if still { 0.0 } else { 60.0 },
+                    if still {
+                        0.0
+                    } else {
+                        self.env.theme.controls.state_press_duration
+                    },
                     Ease::CubicBezier(self.env.theme.ease_out),
                 ),
             }],
@@ -1113,7 +1117,10 @@ impl Ui {
         let k = self.animate_key(
             crate::id::child_key(key, "~open"),
             if visible { 1.0 } else { 0.0 },
-            tween(140.0, Ease::CubicBezier(self.env.theme.ease_out)),
+            tween(
+                self.env.theme.controls.menu_open_duration,
+                Ease::CubicBezier(self.env.theme.ease_out),
+            ),
             Some(0.0),
         );
         let k = if self.still() || !visible { 1.0 } else { k };

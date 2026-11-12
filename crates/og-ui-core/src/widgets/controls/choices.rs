@@ -248,12 +248,12 @@ impl Ui {
         let id = id.into();
         let t = self.env.theme;
         let th = self.by_text(match desc.size {
-            ControlSize::Small => 22.0,
-            ControlSize::Large => 32.0,
-            ControlSize::Medium => 28.0,
+            ControlSize::Small => t.controls.switch_height_sm,
+            ControlSize::Large => t.controls.switch_height_lg,
+            ControlSize::Medium => t.controls.switch_height_md,
         });
-        let tw = (th * 1.72).round();
-        let inset = (th * 0.11).round().max(2.0);
+        let tw = (th * t.controls.switch_width_ratio).round();
+        let inset = (th * t.controls.switch_inset_ratio).round().max(2.0);
         let knob = th - inset * 2.0;
         let travel = (tw - knob - inset * 2.0) * if self.rtl() { -1.0 } else { 1.0 };
         let off_fill = mix(self.role("controlStrong"), self.role("ink"), 0.12);
@@ -465,7 +465,7 @@ impl Ui {
         let id = id.into();
         let t = self.env.theme;
         let on = checked || desc.mixed;
-        let bx = self.by_text(22.0);
+        let bx = self.by_text(t.controls.checkbox_size);
         let off_fill = self.role("well");
         let on_fill = self.role("primary");
         let on_primary = self.role("onPrimary");
@@ -529,7 +529,7 @@ impl Ui {
                         height: Size::px(bx),
                         align: Align::Center,
                         cross: Cross::Center,
-                        radius: (bx * 0.24).round().max(3.0),
+                        radius: (bx * t.controls.checkbox_radius_ratio).round().max(3.0),
                         background: Some(if on { on_fill } else { off_fill }.srgba()),
                         // A field: its rim (found at 3:1 while empty, danger
                         // when invalid, none once filled) is the part's dressing.
@@ -555,7 +555,7 @@ impl Ui {
                 ui.drawn(
                     "Glyph",
                     if mixed { "minus" } else { "tick" },
-                    (bx * 0.78).round(),
+                    (bx * t.controls.checkbox_mark_ratio).round(),
                     on_primary,
                     Some((bx / 9.0).max(2.0)),
                 );
@@ -573,14 +573,21 @@ impl Ui {
                             transition: if still {
                                 tween(0.0, Ease::CubicBezier(ui.env.theme.ease_out))
                             } else {
-                                spring(260.0, 0.45)
+                                spring(
+                                    t.controls.checkbox_pop_duration,
+                                    t.controls.checkbox_pop_bounce,
+                                )
                             },
                         },
                         StateTransition {
                             from: "on".into(),
                             to: "off".into(),
                             transition: tween(
-                                if still { 0.0 } else { 90.0 },
+                                if still {
+                                    0.0
+                                } else {
+                                    t.controls.checkbox_unmark_duration
+                                },
                                 Ease::CubicBezier(ui.env.theme.ease_exit),
                             ),
                         },
@@ -627,7 +634,7 @@ impl Ui {
     }
 
     fn radio_ring(&mut self, selected: bool, ix: Ix, size: f32) {
-        let dot = (size * 0.46).round();
+        let dot = (size * self.env.theme.controls.radio_dot_ratio).round();
         let (p, w, op) = (
             self.role("primary"),
             self.role("well"),
@@ -680,7 +687,10 @@ impl Ui {
                 transition: if still {
                     tween(0.0, Ease::CubicBezier(self.env.theme.ease_out))
                 } else {
-                    spring(240.0, 0.4)
+                    spring(
+                        self.env.theme.controls.radio_pop_duration,
+                        self.env.theme.controls.radio_pop_bounce,
+                    )
                 },
             }],
         );
@@ -718,7 +728,7 @@ impl Ui {
         let mut focused = -1;
         let mut moved = 0;
         let mut move_from = -1;
-        let size = self.by_text(20.0);
+        let size = self.by_text(t.controls.radio_size);
         self.open(
             id,
             Element {
@@ -925,7 +935,7 @@ impl Ui {
             sizes.control_md
         }) - 4.0)
             .max(if touch { self.touch_target() } else { 0.0 });
-        let pad = (inner * 0.08).round().max(2.0);
+        let pad = (inner * t.controls.segmented_pad_ratio).round().max(2.0);
         let h = inner + 2.0 * pad;
         let n = desc.items.len();
         // Each segment's own width (remembered from last tick): segments share

@@ -110,8 +110,8 @@ pub use rich::{
 };
 pub use slot::{Aspect, SlotKind, SlotSpec};
 pub use style::{
-    Breakpoint, Contrast, Densities, Density, DensityMode, Durations, Palette, READABLE, Radius,
-    Roles, Scheme, Space, Spring, Srgba, State, Theme, TypeRamp, TypeStep,
+    Breakpoint, Contrast, Controls, Densities, Density, DensityMode, Durations, Palette, READABLE,
+    Radius, Roles, Scheme, Space, Spring, Srgba, State, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{Art, Slice, SliceFill, StylePart, UiSound};
 pub use text::{

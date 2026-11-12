@@ -214,6 +214,62 @@
     --state-player-ring-width: var(--space-xxs);
     --state-press-scale: var(--vars-press-scale);
     --state-touch-disabled-opacity: 0.45;
+    --action-size: 64px;
+    --button-border-width: var(--stroke-hairline);
+    --button-pressed-shadow: var(--shadow-pressed);
+    --button-radius: var(--radius-button);
+    --button-shadow: var(--shadow-sheen);
+    --checkbox-mark-ratio: 0.78;
+    --checkbox-pop-bounce: 0.45;
+    --checkbox-pop-duration: 260ms;
+    --checkbox-radius-ratio: 0.24;
+    --checkbox-size: 22px;
+    --checkbox-unmark-duration: 90ms;
+    --chip-radius: var(--radius-button);
+    --details-icon: 16px;
+    --dpad-size: 132px;
+    --dropdown-list-shadow: var(--elevation-floating);
+    --dropdown-option-row: 40px;
+    --dropdown-row: 36px;
+    --dropdown-width: 240px;
+    --field-border-width: var(--stroke-thin);
+    --field-radius: var(--radius-button);
+    --field-shadow: var(--shadow-well);
+    --hud-radius: var(--radius-button);
+    --joystick-size: 128px;
+    --keyboard-candidate-height: 36px;
+    --keyboard-key-height: 40px;
+    --keyboard-key-min-height: 32px;
+    --menu-open-duration: 140ms;
+    --meter-fill-shadow: var(--shadow-fill-sheen);
+    --meter-radius: var(--radius-capsule);
+    --meter-shadow: var(--shadow-groove);
+    --modal-width: 420px;
+    --panel-border-width: var(--stroke-hairline);
+    --panel-radius: var(--radius-panel);
+    --radio-card-radius: var(--radius-panel);
+    --radio-card-shadow: var(--elevation-raised);
+    --radio-dot-ratio: 0.46;
+    --radio-pop-bounce: 0.4;
+    --radio-pop-duration: 240ms;
+    --radio-size: 20px;
+    --segmented-pad-ratio: 0.08;
+    --slider-bubble-exit-duration: 90ms;
+    --slider-bubble-height: 26px;
+    --slider-knob: 20px;
+    --slider-knob-touch: 26px;
+    --slider-rail: 4px;
+    --slider-rail-touch: 6px;
+    --slider-tick-width: 2px;
+    --slot-radius: var(--radius-control);
+    --slot-shadow: var(--shadow-well);
+    --state-press-duration: 60ms;
+    --switch-height-lg: 32px;
+    --switch-height-md: 28px;
+    --switch-height-sm: 22px;
+    --switch-inset-ratio: 0.11;
+    --switch-width-ratio: 1.72;
+    --tabs-radius: var(--radius-button);
     --control-lg: var(--density-active-control-lg, var(--density-compact-control-lg));
     --control-md: var(--density-active-control-md, var(--density-compact-control-md));
     --control-sm: var(--density-active-control-sm, var(--density-compact-control-sm));
@@ -788,8 +844,8 @@
   button.primary::part(base):hover { background: var(--primary-hover); }
   button.primary::part(base):active { background: var(--primary-active); }
   button.quiet::part(base), button.ghost::part(base) { background: transparent; }
-  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - var(--stroke-hairline)); }
-  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - var(--stroke-hairline)); }
+  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
+  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - var(--button-border-width)); }
   button.ghost.square::part(base) { padding-inline: 0; }
   button.quiet::part(base):hover, button.quiet::part(base):active,
   button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
@@ -822,16 +878,16 @@
   panel::part(frame), tooltip::part(frame), dialog::part(panel),
   select::part(list), input[type=range]::part(bubble) {
     box-sizing: border-box;
-    border: var(--stroke-hairline) solid var(--line);
-    border-radius: var(--radius-panel);
+    border: var(--panel-border-width) solid var(--line);
+    border-radius: var(--panel-radius);
   }
   select::part(list), input[type=range]::part(bubble) {
-    box-shadow: var(--elevation-floating);
+    box-shadow: var(--dropdown-list-shadow);
   }
   /* Hud */
   hud::part(frame), minimap::part(frame) {
     border: var(--stroke-hairline) solid var(--line-70);
-    border-radius: var(--radius-button);
+    border-radius: var(--hud-radius);
   }
   joystick::part(base):disabled, dpad::part(base):disabled,
   actionbutton::part(face):disabled {
@@ -843,13 +899,13 @@
   stepper::part(button), details::part(summary),
   keyboard::part(key), keyboard::part(candidate) {
     box-sizing: border-box;
-    border: var(--stroke-hairline) solid var(--line);
-    border-radius: var(--radius-button);
-    box-shadow: var(--shadow-sheen);
+    border: var(--button-border-width) solid var(--line);
+    border-radius: var(--button-radius);
+    box-shadow: var(--button-shadow);
   }
   stepper::part(button):active, details::part(summary):active,
   keyboard::part(key):active, keyboard::part(candidate):active {
-    box-shadow: var(--shadow-pressed);
+    box-shadow: var(--button-pressed-shadow);
   }
   stepper::part(button):disabled, details::part(summary):disabled,
   keyboard::part(key):disabled, keyboard::part(candidate):disabled {
@@ -860,11 +916,11 @@
   stepper::part(frame), stepper::part(value), input[type=checkbox]::part(box),
   input[type=radio]::part(ring) {
     box-sizing: border-box;
-    border: var(--stroke-thin) solid var(--line);
-    border-radius: var(--radius-button);
-    box-shadow: var(--shadow-well);
+    border: var(--field-border-width) solid var(--line);
+    border-radius: var(--field-radius);
+    box-shadow: var(--field-shadow);
   }
-  select::part(trigger) { padding-inline: calc(var(--space-md) - var(--stroke-thin)); }
+  select::part(trigger) { padding-inline: calc(var(--space-md) - var(--field-border-width)); }
   input[type=checkbox]::part(box), input[type=radio]::part(ring) {
     border: var(--stroke-hairline) solid var(--well-rim);
   }
@@ -876,25 +932,25 @@
   input[type=checkbox][aria-invalid=true]::part(box),
   select[aria-invalid=true]::part(trigger),
   stepper[aria-invalid=true]::part(frame), stepper[aria-invalid=true]::part(value) {
-    border: var(--stroke-thin) solid var(--danger);
+    border: var(--field-border-width) solid var(--danger);
   }
   /* Slot / Avatar / Chip / Badge / Tab / Bar */
   slot::part(frame) {
     border: var(--stroke-hairline) solid var(--line);
-    border-radius: var(--radius-control);
-    box-shadow: var(--shadow-well);
+    border-radius: var(--slot-radius);
+    box-shadow: var(--slot-shadow);
   }
   chip::part(base), input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
   input[type=checkbox][switch]::part(knob) {
-    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-button);
+    border: var(--stroke-hairline) solid var(--line); border-radius: var(--chip-radius);
   }
   chip[aria-selected=true]::part(base) { border: none; }
   badge::part(base), tabs::part(tab), tabs::part(track), tabs::part(indicator) {
-    border: none; border-radius: var(--radius-button);
+    border: none; border-radius: var(--tabs-radius);
   }
   input[type=radio]::part(card) {
-    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-panel);
-    box-shadow: var(--elevation-raised);
+    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radio-card-radius);
+    box-shadow: var(--radio-card-shadow);
   }
   input[type=radio]::part(card):active, input[type=radio]::part(card):disabled { box-shadow: none; }
   input[type=radio]::part(ring), input[type=radio]::part(dot),
@@ -904,10 +960,10 @@
   }
   meter::part(track), meter::part(fill), progress::part(track), progress::part(fill), input[type=range]::part(track),
   input[type=range]::part(fill), input[type=range]::part(tick) {
-    border: none; border-radius: var(--radius-capsule);
-    box-shadow: var(--shadow-groove);
+    border: none; border-radius: var(--meter-radius);
+    box-shadow: var(--meter-shadow);
   }
-  meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: var(--shadow-fill-sheen); }
+  meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: var(--meter-fill-shadow); }
   /* node_draw focus rings: outside the part, gap only for navigation. */
   button::part(focus):focus-visible, input::part(focus):focus-visible,
   textarea::part(focus):focus-visible, select::part(focus):focus-visible,
@@ -968,7 +1024,7 @@
   /* Button::base */
   button::part(base) { border: none; box-shadow: none; }
   /* Button::base.ghost */
-  button.ghost::part(base) { border: var(--stroke-hairline) solid var(--line-strong); }
+  button.ghost::part(base) { border: var(--button-border-width) solid var(--line-strong); }
   /* Field::frame */
   input::part(frame), textarea::part(frame) { border: none; box-shadow: none; }
   /* Field::frame.invalid */

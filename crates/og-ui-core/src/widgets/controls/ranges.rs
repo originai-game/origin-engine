@@ -254,9 +254,9 @@ impl Ui {
             self.open_part(
                 crate::ui_idi("Tick", i as u32),
                 Element {
-                    width: Size::px(2.0),
+                    width: Size::px(self.env.theme.controls.slider_tick_width),
                     height: Size::px(g.rail + 6.0),
-                    radius: 1.0,
+                    radius: self.env.theme.controls.slider_tick_width / 2.0,
                     background: Some(if passed { on_primary } else { strong }.srgba()),
                     part: Some(p),
                     ..Element::default()
@@ -462,7 +462,7 @@ impl Ui {
     /// The value bubble over a knob.
     fn bubble(&mut self, f: f32, label: &str, g: Geo) {
         let t = self.env.theme;
-        let h = self.by_text(26.0);
+        let h = self.by_text(t.controls.slider_bubble_height);
         let ink = self.role("ink");
         self.open_part(
             "Bubble",
@@ -511,7 +511,10 @@ impl Ui {
             }),
             exit: Some(crate::motion::PresenceSpec {
                 values: vec![(Prop::Opacity, 0.0)],
-                transition: tween(90.0, Ease::CubicBezier(t.ease_exit)),
+                transition: tween(
+                    t.controls.slider_bubble_exit_duration,
+                    Ease::CubicBezier(t.ease_exit),
+                ),
                 delay_ms: 0.0,
             }),
             reduced: Some(crate::motion::Reduced::Fade),
@@ -540,7 +543,12 @@ impl Ui {
         let span = if max - min == 0.0 { 1.0 } else { max - min };
         let disabled = desc.disabled;
         let touch = self.touch_frame();
-        let knob = self.by_text(if touch { 26.0 } else { 20.0 });
+        let c = self.env.theme.controls;
+        let knob = self.by_text(if touch {
+            c.slider_knob_touch
+        } else {
+            c.slider_knob
+        });
         let unit = if step > 0.0 { step } else { span / 20.0 };
         // Last tick's track, for the pointer and the rail's width.
         let track_path = format!("{}/Track", self.child_path(&key));
@@ -554,7 +562,11 @@ impl Ui {
         let g = Geo {
             h: (knob + 8.0).max(if touch { self.touch_target() } else { 28.0 }),
             knob,
-            rail: if touch { 6.0 } else { 4.0 },
+            rail: if touch {
+                c.slider_rail_touch
+            } else {
+                c.slider_rail
+            },
             width: tb.map_or(0.0, |b| (b.width - knob).max(1.0)),
         };
         let down = self.input().down;
@@ -754,7 +766,12 @@ impl Ui {
         let span = if max - min == 0.0 { 1.0 } else { max - min };
         let disabled = desc.disabled;
         let touch = self.touch_frame();
-        let knob = self.by_text(if touch { 26.0 } else { 20.0 });
+        let c = self.env.theme.controls;
+        let knob = self.by_text(if touch {
+            c.slider_knob_touch
+        } else {
+            c.slider_knob
+        });
         let unit = if step > 0.0 { step } else { span / 20.0 };
         let gap = desc.min_gap.max(0.0);
         let track_path = format!("{}/Track", self.child_path(&key));
@@ -762,7 +779,11 @@ impl Ui {
         let g = Geo {
             h: (knob + 8.0).max(if touch { self.touch_target() } else { 28.0 }),
             knob,
-            rail: if touch { 6.0 } else { 4.0 },
+            rail: if touch {
+                c.slider_rail_touch
+            } else {
+                c.slider_rail
+            },
             width: tb.map_or(0.0, |b| (b.width - knob).max(1.0)),
         };
         let down = self.input().down;

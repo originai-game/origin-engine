@@ -2268,6 +2268,40 @@ Adding a token for every arbitrary number does not meet this contract.
 If the public API cannot express a needed semantic value, the core owner
 fixes that API before the kit depends on it.
 
+The default stylesheet (`crates/og-ui-core/default.css`, generated from
+`packages/design/tokens.json`) sets every value the core controls and
+built-in components draw with as a `:root` variable, and the theme reads
+them back each frame, so a style pack restyles every control by setting
+tokens, dressing `::part`s and supplying assets. A control token is
+`--<control>-<property>` and defaults to a semantic token or to the number
+the control drew with.
+
+| Token family | What it controls |
+|---|---|
+| `--color-*`, the role names (`--ink`, `--primary`…) | Colours, per scheme; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
+| `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes, line widths (`--stroke-edge` the material hairline) |
+| `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles |
+| `--density-compact-*`, `--density-pad-*`, `--density-touch-*` | Each input's control, row and header heights, gutter and section |
+| `--control-sm/md/lg`, `--row`, `--header`, `--gutter`, `--section`, `--touch-target` | The input's density, and the smallest finger target |
+| `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*` | Durations, the controls' enter and exit curves, the named transitions' springs (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`) |
+| `--state-*` | Hover wash, press scales (`press-scale` a button's part, `control-press-scale` a control row's), lift, disabled opacities (`touch-disabled-opacity` the stick, pad and action button), press duration, focus ring and player rings |
+| `--shadow-*`, `--elevation-*`, `--glass-*` | Shadows per scheme and the controls' inset shadows, the two drop elevations, glass blur and saturation |
+| `--button-*` | Radius, border width, rest and pressed shadows (stepper, details, keyboard keys and option rows take them) |
+| `--field-*` | Radius, border width and well shadow of text boxes, triggers, steppers, checkbox boxes and radio rings |
+| `--checkbox-*` | Box size, radius and mark ratios, the mark's pop spring and its exit |
+| `--radio-*` | Ring size, dot ratio, pop spring; `--radio-card-*` a card's radius and shadow |
+| `--switch-*` | Track heights by size, width and inset ratios |
+| `--slider-*` | Knob and rail by pointer, tick width, value bubble height and exit |
+| `--segmented-pad-ratio`, `--tabs-radius`, `--chip-radius` | The segmented track's inset; tabs, badges and chips |
+| `--dropdown-*`, `--menu-open-duration` | Trigger and option rows, the width before layout, the list's shadow; a menu's opening |
+| `--details-icon`, `--modal-width`, `--panel-*`, `--hud-radius` | The disclosure icon, a modal's width, panels and lists, HUD frames |
+| `--slot-*`, `--meter-*` | Slot radius and well; meter and progress radius, groove and fill sheen |
+| `--keyboard-*` | Key height, its floor and the candidate row |
+| `--joystick-size`, `--dpad-size`, `--action-size` | The touch controls' default sizes |
+
+Icon path coordinates and behaviour constants (key repeat, dead zones,
+caret blink, typewriter speed) are not tokens.
+
 ### 3.2 Parts and states
 
 A component exposes named parts with variants, state, and attributes.
