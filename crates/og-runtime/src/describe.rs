@@ -227,13 +227,11 @@ impl RuntimeView {
                     .and_then(|rs| rs.draw.model.clone())
                 && let Ok(id) = world.id_by_name(&layout.schema)
                 && let Ok(bytes) = world.get_bytes(entity, id)
+                && let Ok(model) = layout.read::<crate::wire::record::Model>(&bytes)
+                && let Some(index) = super::assets::index_of(model.asset as f64)
+                && let Some(entry) = eng.assets.borrow().entries.get(index)
             {
-                let asset = layout.decode(&bytes)["asset"].as_f64().unwrap_or(0.0);
-                if let Some(index) = super::assets::index_of(asset)
-                    && let Some(entry) = eng.assets.borrow().entries.get(index)
-                {
-                    labels.push(entry.path.clone());
-                }
+                labels.push(entry.path.clone());
             }
         }
         if has("og.Mesh") {
