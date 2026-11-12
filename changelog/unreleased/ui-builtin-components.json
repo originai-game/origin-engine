@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "built-in UI components",
+      "summary": "Every component document under the engine package's src/ui/components/ (its group directories included) is built in: a game's document uses one by the name its <meta name=\"component\"> declares (<StatBar/>, <AbilityBar/>) without copying it. The cook bundles each built-in component the game's documents reach, with its string tables and the files it names, under the reserved id @ui/<path> (@ui/stat-bar.svelte), as it bundles a look's @styles/; two built-in documents of one name fail the cook. A game document declaring the same component name (what og ui eject writes) wins, and the engine's copy is then not bundled. og ui types reads the built-in components' props and events for the documents that use them."
+    },
+    {
+      "member": "og.load.document",
+      "summary": "Loading a document also loads every component document it uses, and theirs, once each: the game's own component of a name, else the built-in one. A screen needs only its own og.load.document call; loading a component explicitly as well is harmless. og dev's reload loads a component an edit starts using."
+    },
+    {
+      "member": "og ui eject",
+      "summary": "An ejected component replaces the built-in one of its name and loads with the screens that use it; the message no longer asks for a separate og.load.document."
+    }
+  ]
+}

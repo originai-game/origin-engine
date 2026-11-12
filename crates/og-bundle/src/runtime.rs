@@ -884,6 +884,18 @@ impl Bundle {
         }
     }
 
+    /// The ids of the documents defining the components a UI document blob
+    /// uses (the game's, or the engine's `@ui/` ones), which loading it
+    /// loads too; none for a document without.
+    pub fn document_uses(&self, id: &str, bytes: &[u8]) -> Result<Vec<String>, LoadError> {
+        let blob = self.blob::<format::Document>(id, bytes)?;
+        match blob.raw_opt("uses") {
+            None => Ok(Vec::new()),
+            Some(raw) => serde_json::from_slice(raw)
+                .map_err(|_| invalid(&blob, "the document's component uses are malformed")),
+        }
+    }
+
     /// Decodes a sound blob (the QOA or Opus stays encoded until
     /// [`CookedSound::decode`]).
     pub fn sound(&self, id: &str, bytes: &[u8]) -> Result<CookedSound, LoadError> {

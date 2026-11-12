@@ -635,7 +635,7 @@ fn eject(args: &[&str]) -> ExitCode {
         Ok(_) if dirs[1].join(format!("{name}.svelte")).is_file() => {
             println!(
                 "og ui eject: the library's '{name}' component into assets/ui/{name}.svelte\n\
-                 load it once with og.load.document(world, \"ui/{name}.svelte\") and use it in a screen by the name its <meta name=\"component\"> declares;\n\
+                 it replaces the built-in one of the name its <meta name=\"component\"> declares, and loads with every screen that uses it;\n\
                  its header names its props, actions and fixture"
             );
             ExitCode::SUCCESS
@@ -833,7 +833,14 @@ pub fn write_types(root: &Path) -> Result<Typed, String> {
         .filter(|d| d.kind == og_ui::doc::DocKind::Component)
         .map(|d| (d.name.as_str(), d))
         .collect();
-    let lookup = |n: &str| components.get(n).copied();
+    // A name the game does not declare is the engine's built-in component,
+    // as the cook resolves it.
+    let lookup = |n: &str| {
+        components.get(n).copied().or_else(|| {
+            let index = og_cook::cook::ui_components::index().ok()?;
+            index.get(n).map(|c| &c.doc)
+        })
+    };
     let mut keep = std::collections::BTreeSet::new();
     for d in &docs {
         let file = format!("{}.d.ts", d.name.replace('/', "."));

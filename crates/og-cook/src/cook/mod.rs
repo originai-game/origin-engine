@@ -67,6 +67,7 @@ pub mod texture_array;
 pub mod tilemap;
 mod timeline;
 pub mod ts_refs;
+pub mod ui_components;
 pub mod ui_screens;
 pub mod vector;
 mod vfx;
@@ -324,7 +325,9 @@ enum Work<'a> {
     Effect(&'a Source),
     Vfx(&'a Source),
     Style(&'a Source),
-    Document(&'a Source),
+    /// A UI document and the ids of the documents defining the components
+    /// it uses, which the runtime loads with it.
+    Document(&'a Source, Vec<String>),
     Tileset(&'a Source),
     Tilemap(&'a Source, tilemap::MapSettings),
     Flipbook(&'a Source),
@@ -511,6 +514,7 @@ pub fn cook_project_with_texture_cache(
         mut ignored,
         mut early_errors,
         mut consumed,
+        components,
     } = scan_sources(assets_dir, &cook_index, threads)?;
     laps.lap("scan");
     let imported = import(&mut sources, &mut consumed, texture_cache, threads);
@@ -593,6 +597,7 @@ pub fn cook_project_with_texture_cache(
         story_functions: &project.story_functions,
         story_functions_stamp: &project.story_functions_stamp,
         document_themes: &document_themes,
+        components: &components,
     };
     let (
         plan,

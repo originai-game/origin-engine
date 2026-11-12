@@ -36,6 +36,9 @@ pub(super) struct Cx<'a> {
     pub(super) story_functions: &'a BTreeMap<String, og_story::yarn::types::Function>,
     pub(super) story_functions_stamp: &'a [u8],
     pub(super) document_themes: &'a [og_ui::Theme],
+    /// Each component name by the id of the document defining it: the
+    /// game's own, else a built-in `@ui/` one (the scan's).
+    pub(super) components: &'a BTreeMap<String, String>,
 }
 
 /// What planning writes as it goes: the errors it finds, the references it
