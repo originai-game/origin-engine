@@ -462,7 +462,7 @@ pub fn ocean_scene(name: &str) -> RenderScene {
 /// along x, v along z from the -x -z corner).
 fn flow_round(size: Vec2, at: Vec2, radius: f32, u: f32, v: f32) -> [u8; 4] {
     // The texture's rows run top to bottom; the stream's v runs up the image
-    // (water.wgsl `flow_at`: the image's top at +z).
+    // (water_detail.wgsl `flow_at`: the image's top at +z).
     let r = Vec2::new((u - 0.5) * size.x, (0.5 - v) * size.y) - at;
     let (d, speed) = (Vec2::new(0.0, -1.0), 0.5);
     let (r2, k) = (r.length_squared(), radius * radius);
@@ -566,7 +566,7 @@ pub fn flow_map_scene(scene: &mut RenderScene, mapped: bool) {
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
-    // 1.5 s in, half a period (water.wgsl `flowed_slope`), when one copy
+    // 1.5 s in, half a period (water_detail.wgsl `flowed_slope`), when one copy
     // of the waves alone is drawn: moved 0.75 m along the flow far out,
     // 1.5 m beside the boulder and not at all at its nose.
     scene.frame.tick = 90;

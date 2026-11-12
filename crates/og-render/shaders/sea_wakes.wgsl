@@ -1,5 +1,5 @@
 // W3: the wakes of the hulls in a sea (sea_wakes.rs), a camera-centred square of dynamic waves over the FFT sea,
-// stepped once per tick of the wakes and drawn on top of it (water.wgsl `sea_wake`). Picture only: buoyancy stays on
+// stepped once per tick of the wakes and drawn on top of it (water_sea.wgsl `sea_wake`). Picture only: buoyancy stays on
 // the tick's waves.
 //
 // The waves are eWave's (Tessendorf, "eWave: Using an Exponential Solver on the iWave Problem", 2014; the algorithm,

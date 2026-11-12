@@ -412,7 +412,7 @@ struct WaterGpu {
 }
 
 /// The spray's droplet slots per population (`SPRAY_SLOTS` in
-/// water.wgsl): the fine droplets, then the spume.
+/// water_spray.wgsl): the fine droplets, then the spume.
 const SPRAY_SLOTS: u32 = 4096;
 /// The water's clocks fold over this many seconds (f64 here, so a long
 /// game keeps its precision in the shader's f32): a whole number of every
@@ -601,7 +601,7 @@ pub(crate) struct WaterDraw {
 mod tests {
     use super::*;
 
-    /// water.wgsl's `ocean_displace` with every wave kept, on the CPU.
+    /// water_sea.wgsl's `ocean_displace` with every wave kept, on the CPU.
     fn drawn(swell: &[[f32; 4]], frame_xz: Vec2) -> Vec3 {
         let mut d = Vec3::ZERO;
         for w in swell.chunks(2) {
@@ -648,7 +648,7 @@ mod tests {
         assert!(seconds(&next) > late);
     }
 
-    /// The vertices draw the sea the tick floats bodies on: water.wgsl's
+    /// The vertices draw the sea the tick floats bodies on: water_sea.wgsl's
     /// `ocean_displace` (every wave of og_core, each left out only where
     /// the clipmap's vertex spacing cannot hold it, the rest point found as
     /// the tick finds it) is [`og_core::ocean::Ocean::height`] to a
@@ -666,7 +666,7 @@ mod tests {
         let eye = Vec3::new(0.0, 10.0, 0.0);
         let (segments, cascades) = sea_tier(&crate::RenderQuality::default());
         let levels = clipmap(eye, Vec3::ZERO, segments);
-        // water.wgsl sea_vertex's spacing d metres from the clipmap's centre: the first level that holds it, its cell
+        // water_sea.wgsl sea_vertex's spacing d metres from the clipmap's centre: the first level that holds it, its cell
         // growing to twice at its edge (the geomorph).
         let spacing = |d: f32| {
             let (cell, half) = levels

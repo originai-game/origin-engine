@@ -151,7 +151,7 @@ pub(super) fn ocean_gpu(
 }
 
 /// How much of a wave of wavenumber `k` samples `cell` metres apart hold:
-/// all of one at least eight cells long, none of one under four (water.wgsl
+/// all of one at least eight cells long, none of one under four (water_sea.wgsl
 /// `sea_keep`: the clipmap's vertices, a pixel's footprint, a foam texel).
 pub(super) fn sea_keep(k: f32, cell: f32) -> f32 {
     let x = ((k * cell - 0.785) / 0.786).clamp(0.0, 1.0);
@@ -348,7 +348,7 @@ pub(super) fn sea_spectrum(
     spectrum::build(&spectrum::cascades(cascades as usize, &params), &params)
 }
 
-/// The foam micro-structure's uv at the scene's `origin` (water.wgsl
+/// The foam micro-structure's uv at the scene's `origin` (water_sea.wgsl
 /// `sea_foam`, after web-ocean's `foamPattern`): per read, the origin's
 /// world xz times its scale, whole repeats dropped (f64), plus web-ocean's
 /// offsets and its lace's slow drift with the tick's `seconds`: the lace

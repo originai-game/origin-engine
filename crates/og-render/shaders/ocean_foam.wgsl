@@ -4,7 +4,7 @@
 //
 // Ported from Noniv/web-ocean's js/wgsl/sim.js (FOAM_TEX, FOAM_UPDATE) and common.js (pcgHash, gnoise, pnoise, pfbm)
 // (MIT, Copyright (c) 2026 Maksymilian Dendura; third_party/ocean/). Changed here: the Jacobian is the drawn surface's,
-// the sea's Gerstner waves (og_core::ocean, water.wgsl ocean_displace) with the cascades' shorter waves; 256 texels a level, not 1024; the threshold from the wind's
+// the sea's Gerstner waves (og_core::ocean, water_sea.wgsl ocean_displace) with the cascades' shorter waves; 256 texels a level, not 1024; the threshold from the wind's
 // whitecap cover at each level's resolution (water.rs foam_thresholds) rather than a slider.
 //
 // W4: the foam ages (b: the mean age of what a texel holds, s) and leaves a lace (a) that outlives the dense cover the
@@ -154,7 +154,7 @@ fn sea_keep(k: f32, cell: f32) -> f32 {
 
 // The drawn surface's Jacobian at frame point p, its waves resolved at `ts` metres.
 fn jacobian(p: vec2<f32>, ts: f32) -> f32 {
-  // Shoaled over the seabed as the drawn surface is (water.wgsl ocean_normal): the open sea's crests bunched over the
+  // Shoaled over the seabed as the drawn surface is (water_sea.wgsl ocean_normal): the open sea's crests bunched over the
   // shallows would lay whitecaps where the sea there is low.
   let sh = shoaling(p);
   var jxx = 0.0;

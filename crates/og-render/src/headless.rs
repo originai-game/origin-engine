@@ -43,7 +43,7 @@ impl Renderer {
 
     /// The height of the sea the last frame drew (its first og.Water with a
     /// wind) at each world point's xz, read back from the GPU (blocking;
-    /// native only; `probe_sea` in water.wgsl): per point the height the
+    /// native only; `probe_sea` in water_sea.wgsl): per point the height the
     /// clipmap's vertices draw there, the height of the sea's own function
     /// there as the GPU evaluates it from the frame's uniforms (every wave
     /// of og_core::ocean: what og.physics.waterHeight floats bodies on),

@@ -935,7 +935,7 @@ impl WaterRenderer {
     }
 
     /// The drawn sea's height at `points` (frame xz) as the last frame drew
-    /// its first sea (`probe_sea` in water.wgsl): submitted, into a buffer to
+    /// its first sea (`probe_sea` in water_sea.wgsl): submitted, into a buffer to
     /// map, per point (the height, the tick's waves' share, the cascades'
     /// share, 0). None without a sea that frame.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
@@ -1131,14 +1131,20 @@ fn height_texture(device: &wgpu::Device, n: u32) -> (wgpu::Texture, wgpu::Textur
 
 /// The water module after the frame group and the lighting.
 pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
-    format!(
-        "{frame_wgsl}{lighting_wgsl}{}{}",
+    [
+        frame_wgsl,
+        lighting_wgsl,
         crate::ocean_fft::SHORE_WGSL,
-        wgsl3d!("water.wgsl")
-    )
+        wgsl3d!("water.wgsl"),
+        wgsl3d!("water_sea.wgsl"),
+        wgsl3d!("water_detail.wgsl"),
+        wgsl3d!("water_spray.wgsl"),
+        wgsl3d!("water_waterline.wgsl"),
+    ]
+    .concat()
 }
 
-/// The lake's four layers' uv at `origin` (water.wgsl `map_slope`: world
+/// The lake's four layers' uv at `origin` (water_detail.wgsl `map_slope`: world
 /// xz times the repeats over each layer's period), in f64 and without the
 /// whole repeats: zero at the world's zero.
 fn lake_layers(origin: Vec3, repeats: f32) -> [[f32; 4]; 2] {
