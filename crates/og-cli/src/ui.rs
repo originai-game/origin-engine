@@ -51,7 +51,7 @@ mod literals;
 mod review;
 mod sheet;
 
-const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui literals [path...] [--json]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <kit> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|kit> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui add <materials|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui literals [path...] [--json]\n       og ui eject <screen|component> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <group|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|group|sheet-directory> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -75,7 +75,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         return review::run(rest);
     }
     if let ["add", rest @ ..] = args {
-        return extensions::add(rest, "kit");
+        return extensions::add(rest, "materials");
     }
     if let ["list", rest @ ..] = args {
         return extensions::list(rest, None);
@@ -600,18 +600,6 @@ fn eject(args: &[&str]) -> ExitCode {
         }
     };
     let project = Path::new(project);
-    if let Some(name) = name.filter(|n| n.contains('/')) {
-        return match extensions::eject(name, project, force) {
-            Ok(path) => {
-                println!("og ui eject: {}", path.display());
-                ExitCode::SUCCESS
-            }
-            Err(e) => {
-                eprintln!("og ui eject: {e}");
-                ExitCode::FAILURE
-            }
-        };
-    }
     let Some(package) = project::engine_package(Some(project)) else {
         eprintln!("og ui eject: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
@@ -902,75 +890,6 @@ mod tests {
         )
         .unwrap();
         dir
-    }
-
-    #[test]
-    fn extension_install_discover_eject_and_refuse_overwrite() {
-        use super::extensions;
-        let dir = game("extension");
-        let source = dir.join("source");
-        std::fs::create_dir_all(source.join("pages")).unwrap();
-        std::fs::write(
-            source.join("extension.json"),
-            r#"{
-            "format":1,"kind":"kit","name":"test-racing","version":"1.2.0",
-            "description":"Race results","skill":"README.md"
-        }"#,
-        )
-        .unwrap();
-        std::fs::write(source.join("README.md"), "Edit pages/results.svelte").unwrap();
-        let document = "<meta name='screen' content='results'><meta name='strings' content='./results.en.ogt'><column id='Root'><text>{t('title')}</text></column>";
-        let strings =
-            "type strings\nversion 1\n---\nlocale \"en\"\nstring \"title\" \"Race results\"\n";
-        std::fs::write(source.join("pages/results.svelte"), document).unwrap();
-        std::fs::write(source.join("pages/results.en.ogt"), strings).unwrap();
-        assert_eq!(
-            extensions::add(&[source.to_str().unwrap(), dir.to_str().unwrap()], "kit"),
-            std::process::ExitCode::SUCCESS
-        );
-        let found = extensions::discover(&dir).unwrap();
-        let kit = found
-            .iter()
-            .find(|e| e.manifest.name == "test-racing")
-            .unwrap();
-        assert!(kit.installed);
-        assert_eq!(kit.documents, ["pages/results.svelte"]);
-        assert_eq!(
-            std::fs::read_to_string(kit.directory.join("pages/results.svelte")).unwrap(),
-            document
-        );
-        let target = extensions::eject("test-racing/pages/results", &dir, false).unwrap();
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), document);
-        assert_eq!(
-            std::fs::read_to_string(target.with_extension("en.ogt")).unwrap(),
-            strings
-        );
-        crate::cook::cook(&dir, 0, false).unwrap();
-        let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
-        assert!(
-            bundle
-                .read("ui-kits/test-racing/pages/results.svelte")
-                .is_ok()
-        );
-        assert!(bundle.read("ui/test-racing/pages/results.svelte").is_ok());
-        std::fs::write(&target, "game edit").unwrap();
-        assert!(extensions::eject("test-racing/pages/results", &dir, false).is_err());
-        assert!(extensions::eject("test-racing/../../escape", &dir, false).is_err());
-        assert_eq!(
-            extensions::add(&[source.to_str().unwrap(), dir.to_str().unwrap()], "kit"),
-            std::process::ExitCode::FAILURE
-        );
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), "game edit");
-        std::fs::write(
-            source.join("extension.json"),
-            r#"{
-            "format":1,"kind":"kit","name":"evil","version":"1.0.0",
-            "description":"Invalid path","skill":"../project.ogt"
-        }"#,
-        )
-        .unwrap();
-        assert!(extensions::read(&source, false).is_err());
-        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

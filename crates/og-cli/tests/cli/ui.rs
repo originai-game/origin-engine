@@ -122,113 +122,16 @@ fn css_style_authoring_checks_sources_and_installs_without_a_manifest() {
     );
 }
 
-/// `og ui add <directory>` installs an editable copy of a fixture kit;
-/// eject then copies the installed copy's document (the game's edit with
-/// it) into assets/ui/fixture/, with no second copy of the
-/// kit's code, manifest, skill or sheet, and refuses to overwrite it
-/// without --force.
-///
-/// Ways it could fail: the bundled document ejected over the game's edit,
-/// the kit's TypeScript or sheet copied beside the document (a stray second
-/// kit in the game's assets), or an existing ejected edit overwritten.
-#[test]
-fn ui_eject_takes_the_installed_kit_document_and_only_its_companions() {
-    let dir = scratch_root();
-    std::fs::create_dir_all(dir.join("src")).unwrap();
-    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
-    std::fs::write(
-        dir.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
-    )
-    .unwrap();
-    let run = |args: &[&str]| {
-        let out = og().args(args).arg(&dir).output().unwrap();
-        (out.status.code(), text(&out))
-    };
-    let source = scratch_root();
-    std::fs::create_dir_all(&source).unwrap();
-    std::fs::write(source.join("extension.json"), r#"{"format":1,"kind":"kit","name":"fixture","version":"1.0.0","description":"Document copy fixture"}"#).unwrap();
-    std::fs::write(source.join("results.svelte"), "<meta name='screen' content='results'><column id='root'><text id='title'>Pos</text></column>").unwrap();
-    let (code, out) = run(&["ui", "add", source.to_str().unwrap()]);
-    assert_eq!(code, Some(0), "{out}");
-    let installed = dir.join("assets/ui-kits/fixture/results.svelte");
-    let edited = std::fs::read_to_string(&installed)
-        .unwrap()
-        .replace(">Pos</text>", ">Position</text>");
-    std::fs::write(&installed, &edited).unwrap();
-
-    let (code, out) = run(&["ui", "eject", "fixture/results"]);
-    assert_eq!(code, Some(0), "{out}");
-    let ejected = dir.join("assets/ui/fixture");
-    assert_eq!(
-        std::fs::read_to_string(ejected.join("results.svelte")).unwrap(),
-        edited
-    );
-    for kit_only in [
-        "index.ts",
-        "types.ts",
-        "extension.json",
-        "src",
-        "sheet",
-        "fixtures",
-    ] {
-        assert!(
-            !ejected.join(kit_only).exists(),
-            "{kit_only} was ejected beside the document"
-        );
-    }
-    let (code, out) = run(&["ui", "eject", "fixture/results"]);
-    assert_eq!(code, Some(1), "{out}");
-    assert_eq!(
-        std::fs::read_to_string(ejected.join("results.svelte")).unwrap(),
-        edited
-    );
-    std::fs::remove_dir_all(source).unwrap();
-}
-
-/// `og ui add shooter` installs the shipped kit's documents and nothing of
-/// its review sheet or behaviour tests (docs/ui.md §6), and the game cooks.
-///
-/// Ways it could fail: `sheet/` installed (the game cooks the sheet's sample
-/// art and a nested project), `tests/` installed (kit tests shipped in a
-/// game), or a document left out.
-#[test]
-fn ui_add_installs_a_kit_without_its_sheet_or_tests() {
-    let dir = scratch_root();
-    std::fs::create_dir_all(dir.join("src")).unwrap();
-    std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
-    std::fs::write(
-        dir.join("project.ogt"),
-        "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
-    )
-    .unwrap();
-    let out = og()
-        .args(["ui", "add", "shooter"])
-        .arg(&dir)
-        .output()
-        .unwrap();
-    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
-    let installed = dir.join("assets/ui-kits/shooter");
-    assert!(installed.join("combat-hud.svelte").is_file());
-    for review in ["sheet", "tests"] {
-        assert!(
-            !installed.join(review).exists(),
-            "{review}/ was installed into the game"
-        );
-    }
-    let out = og().arg("cook").arg(&dir).output().unwrap();
-    assert_eq!(out.status.code(), Some(0), "{}", text(&out));
-}
-
 /// `og ui add materials` installs the material presets (each a `type
 /// ui-material` naming its WGSL beside it), and the game cooks every one:
-/// the source is read relative to the material file, as a kit's relative
+/// the source is read relative to the material file, as a pack's relative
 /// references are promised to survive installation (docs/ui.md §5). Each
 /// cooked material carries its code and its parameters in `param` order.
 ///
 /// Ways it could fail: `source` read only from `assets/` (every preset
 /// missing its WGSL once installed), a preset whose WGSL does not compile,
-/// or a preset past the four parameters a layer carries.
+/// a preset past the four parameters a layer carries, or the pack's review
+/// sheet installed (the game cooks its sample art and a nested project).
 #[test]
 fn the_material_presets_install_and_cook_with_their_wgsl_beside_them() {
     let dir = scratch_root();
@@ -245,6 +148,10 @@ fn the_material_presets_install_and_cook_with_their_wgsl_beside_them() {
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
+    assert!(
+        !dir.join("assets/materials/materials/sheet").exists(),
+        "the review sheet was installed into the game"
+    );
     let out = og().arg("cook").arg(&dir).output().unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", text(&out));
     let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
@@ -254,7 +161,7 @@ fn the_material_presets_install_and_cook_with_their_wgsl_beside_them() {
         ("burn", "progress"),
         ("rarity", "color"),
     ] {
-        let id = format!("ui-kits/materials/{preset}.ogt");
+        let id = format!("materials/materials/{preset}.ogt");
         let m = bundle
             .ui_material(&id, bundle.read(&id).unwrap().as_slice())
             .unwrap_or_else(|e| panic!("{id}: {e}"));
@@ -270,7 +177,7 @@ fn the_material_presets_install_and_cook_with_their_wgsl_beside_them() {
 /// they name by the installed path; a second add refuses, and a pack with
 /// code (`entry`) is not a valid vfx pack.
 ///
-/// Ways it could fail: the pack copied into a kit's or a style's folder,
+/// Ways it could fail: the pack copied into another kind's folder,
 /// an existing installation replaced, or a vfx pack allowed to ship code.
 #[test]
 fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
@@ -367,7 +274,7 @@ fn a_vfx_pack_installs_into_assets_vfx_and_cooks() {
     std::fs::write(pack.join("index.d.ts"), "").unwrap();
     let (code, out) = add();
     assert_eq!(code, Some(1), "{out}");
-    assert!(out.contains("invalid extension manifest"), "{out}");
+    assert!(out.contains("unknown field `entry`"), "{out}");
 }
 
 /// Serves `root`'s files over HTTP on a free local port (GET only, one
@@ -785,67 +692,4 @@ fn ui_slots_json_gives_each_slot_its_generation_spec_and_set() {
         serde_json::json!({ "name": "hud", "members": ["bag/Root/Frame"], "reference": null })
     );
     assert_eq!(frame["problems"], serde_json::json!([]), "{frame}");
-}
-
-/// A kit names the library components its documents compose (`components`
-/// in extension.json); `og ui add` ejects each into the game's assets/ui/
-/// with its strings, keeps a copy the game already has, and refuses a kit
-/// naming a component the library does not have.
-///
-/// Ways it could fail: the component left out (the kit's documents then
-/// name a component no document declares), the game's edited copy
-/// overwritten, or an unknown name installed without a word.
-#[test]
-fn ui_add_ejects_the_library_components_a_kit_composes() {
-    let game = |name: &str| {
-        let dir = scratch_root().join(name);
-        std::fs::create_dir_all(dir.join("src")).unwrap();
-        std::fs::write(dir.join("src/main.ts"), "export default 0;\n").unwrap();
-        std::fs::write(
-            dir.join("project.ogt"),
-            "type project\nversion 1\n---\nname \"T\"\nentry \"src/main.ts\"\n",
-        )
-        .unwrap();
-        dir
-    };
-    let kit = |components: &str| {
-        let source = scratch_root().join("hud");
-        std::fs::create_dir_all(&source).unwrap();
-        std::fs::write(source.join("extension.json"), format!(r#"{{"format":1,"kind":"kit","name":"hud","version":"1.0.0","description":"Composes a library component","components":[{components}]}}"#)).unwrap();
-        std::fs::write(source.join("vitals.svelte"), "<meta name='component' content='Vitals'><column id='root'><StatBar value={1} max={2} /></column>").unwrap();
-        source
-    };
-    let add = |source: &std::path::Path, dir: &std::path::Path| {
-        let out = og()
-            .args(["ui", "add", source.to_str().unwrap()])
-            .arg(dir)
-            .output()
-            .unwrap();
-        (out.status.code(), text(&out))
-    };
-
-    let fresh = game("fresh");
-    let source = kit(r#""stat-bar""#);
-    let (code, out) = add(&source, &fresh);
-    assert_eq!(code, Some(0), "{out}");
-    assert!(fresh.join("assets/ui-kits/hud/vitals.svelte").is_file());
-    let ejected = std::fs::read_to_string(fresh.join("assets/ui/stat-bar.svelte")).unwrap();
-    assert!(ejected.contains(r#"content="StatBar""#), "{ejected}");
-    assert!(fresh.join("assets/ui/stat-bar.en.ogt").is_file());
-
-    let edited = game("edited");
-    std::fs::create_dir_all(edited.join("assets/ui")).unwrap();
-    let mine = "<meta name='component' content='StatBar'><column id='mine'></column>";
-    std::fs::write(edited.join("assets/ui/stat-bar.svelte"), mine).unwrap();
-    let (code, out) = add(&source, &edited);
-    assert_eq!(code, Some(0), "{out}");
-    assert_eq!(
-        std::fs::read_to_string(edited.join("assets/ui/stat-bar.svelte")).unwrap(),
-        mine
-    );
-
-    let unknown = game("unknown");
-    let (code, out) = add(&kit(r#""stat-bars""#), &unknown);
-    assert_ne!(code, Some(0), "{out}");
-    assert!(out.contains("stat-bars"), "{out}");
 }

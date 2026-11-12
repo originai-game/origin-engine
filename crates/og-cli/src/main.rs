@@ -229,8 +229,9 @@ commands:
                       capture the title, play and results screens (project.ogt's screens block or
                       the flags) and measure their colours, palette and edges; exit 0 within the
                       game's own contract or with no look, 3 off it
-  ui sheet <pack|kit> [project] [--out DIR] [--json]
-                      render fixed baseline pages on the pack's own ground at desktop and phone,
+  ui sheet <pack|group|sheet-directory> [project] [--out DIR] [--json]
+                      render fixed baseline pages on the pack's own ground, or a component group's
+                      review sheet (the engine package's sheets/<group>), at desktop and phone,
                       100% and 150%; frames, UI dumps and sheets for review, never a gate step
   ui review <pack-directory> [project] [--locales game,pseudo,zh,ar] [--out DIR] [--json]
                       render the core-control sheet at desktopHd and phonePortrait, 100% and 150%,
@@ -254,10 +255,10 @@ commands:
                       locale) and index.json of every cell, or a filmstrip of a motion at the
                       chosen times after the screen settles (default <project>/og-out/ui-preview)
   ui literals [path...] [--json]
-                      the style values a kit or document writes itself instead of taking from the
+                      the style values a document writes itself instead of taking from the
                       style: colours (#rrggbb, { r, g, b }), corner radii and font families, each
                       with the token to use; facts only, exit 0 when it ran (default: the
-                      project's assets/ui-kits and assets/ui); `style-literal-ok` on a line skips it
+                      project's assets/ui); `style-literal-ok` on a line skips it
   ui eject <screen> [project] [--force] | ui eject --list [project]
                       copy one of the library's screen or component documents (the engine
                       package's src/ui/screens/, one for every screen type of docs/ui.md §2, and

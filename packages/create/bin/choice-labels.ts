@@ -35,7 +35,7 @@ export const CHOICE_LABELS = {
     "high-contrast": ["High contrast", "高对比", "Strong separation between light and shadow.", "鲜明区分明部与暗部。"],
   },
   ui: {
-    default: ["Core default", "核心默认", "The engine core UI; genre kits and style packs are being rebuilt.", "引擎核心界面；类型套件和风格包正在重建。"],
+    default: ["Core default", "核心默认", "The engine core UI with its built-in components; style packs are being rebuilt.", "引擎核心界面及其内置组件；风格包正在重建。"],
   },
   platform: {
     "phone-portrait": ["Phone portrait", "手机竖屏", "A tall mobile screen with touch by default.", "纵向手机画面，默认触控。"],

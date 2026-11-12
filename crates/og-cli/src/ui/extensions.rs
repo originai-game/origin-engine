@@ -1,5 +1,4 @@
 //! Directory extensions; discovery never evaluates an extension's code.
-use og_ui::prelude::*;
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 use std::process::ExitCode;
@@ -17,8 +16,6 @@ pub struct Manifest {
     /// pack keeps loading.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skill: Option<String>,
-    pub entry: Option<String>,
-    pub types: Option<String>,
     /// A vfx pack's catalog fields (the asset library reads them; the engine
     /// checks their shape): the lowest engine release it needs (x.y.z), its
     /// tags and its lowercase search words.
@@ -38,11 +35,6 @@ pub struct Manifest {
     pub languages: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub faces: Option<Vec<String>>,
-    /// A kit's library component documents (`stat-bar`): the core
-    /// components its documents compose, which installing the kit ejects
-    /// into the game's `assets/ui/` unless the game has them already.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub components: Option<Vec<String>>,
 }
 
 /// A vfx pack's tags: its style and dimension, and the union of its
@@ -62,16 +54,16 @@ pub struct VfxTags {
 /// never installed into a game.
 const PREVIEW_DIR: &str = "preview";
 
-/// A kit's review sheet and behaviour tests (docs/ui.md §6): stored with the
-/// kit, never installed into a game, so no game cooks the sheet's sample
-/// art or a second project beside its own.
-const KIT_REVIEW_DIRS: [&str; 2] = ["sheet", "tests"];
+/// A materials pack's review sheet: stored with the pack, never installed
+/// into a game, so no game cooks the sheet's sample art or a second
+/// project beside its own.
+const SHEET_DIR: &str = "sheet";
 
 /// Whether `file` (relative to the package) goes into a game on install.
 fn installs(kind: &str, file: &Path) -> bool {
     match kind {
         "vfx" => !file.starts_with(PREVIEW_DIR),
-        "kit" => !KIT_REVIEW_DIRS.iter().any(|d| file.starts_with(d)),
+        "materials" => !file.starts_with(SHEET_DIR),
         _ => true,
     }
 }
@@ -97,7 +89,6 @@ pub struct Extension {
     pub manifest: Manifest,
     pub directory: PathBuf,
     pub installed: bool,
-    pub documents: Vec<String>,
 }
 
 fn relative(path: &str) -> bool {
@@ -165,7 +156,6 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             manifest,
             directory: directory.into(),
             installed,
-            documents: Vec::new(),
         });
     }
     let manifest: Manifest = serde_json::from_slice(
@@ -174,7 +164,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
     .map_err(|e| format!("{}: {e}", path.display()))?;
     let m = &manifest;
     if m.format != 1
-        || !matches!(m.kind.as_str(), "kit" | "style" | "vfx" | "font")
+        || !matches!(m.kind.as_str(), "materials" | "style" | "vfx" | "font")
         || !m.name.starts_with(|c: char| c.is_ascii_lowercase())
         || !m
             .name
@@ -182,8 +172,6 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
         || !semver(&m.version)
         || m.description.trim().is_empty()
-        || m.entry.is_some() != m.types.is_some()
-        || (m.kind != "kit" && m.entry.is_some())
         || (m.kind != "vfx" && (m.min_engine.is_some() || m.tags.is_some() || m.keywords.is_some()))
         || m.min_engine.as_deref().is_some_and(|v| !semver(v))
         || m.tags.as_ref().is_some_and(|t| {
@@ -194,14 +182,6 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         || m.keywords
             .as_ref()
             .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
-        || (m.kind != "kit" && m.components.is_some())
-        || m.components.as_ref().is_some_and(|c| {
-            !c.iter().all(|n| {
-                n.starts_with(|c: char| c.is_ascii_lowercase())
-                    && n.bytes()
-                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
-            })
-        })
         || (m.kind == "font") != (m.scripts.is_some() || m.languages.is_some() || m.faces.is_some())
         || (m.kind == "font"
             && (m.languages.is_none()
@@ -226,8 +206,6 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         .skill
         .as_deref()
         .into_iter()
-        .chain(m.entry.as_deref())
-        .chain(m.types.as_deref())
         .chain(m.faces.iter().flatten().map(String::as_str))
     {
         if !relative(file) || !all.iter().any(|p| p == Path::new(file)) {
@@ -237,21 +215,10 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             ));
         }
     }
-    let mut documents = Vec::new();
-    for file in all
-        .iter()
-        .filter(|f| f.extension().is_some_and(|e| e == "svelte"))
-    {
-        let text = std::fs::read_to_string(directory.join(file)).map_err(|e| e.to_string())?;
-        let id = file.to_string_lossy().replace('\\', "/");
-        og_ui::UiDocument::parse(&id, &text).map_err(|e| e.join("\n"))?;
-        documents.push(id);
-    }
     Ok(Extension {
         manifest,
         directory: directory.into(),
         installed,
-        documents,
     })
 }
 
@@ -274,7 +241,7 @@ pub fn discover(project: &Path) -> Result<Vec<Extension>, String> {
     if let Some(fonts) = og_cook::cook::look::fonts_dir() {
         roots.push((fonts.to_path_buf(), false));
     }
-    roots.push((project.join("assets/ui-kits"), true));
+    roots.push((project.join("assets/materials"), true));
     roots.push((project.join("assets/styles"), true));
     roots.push((project.join("assets/vfx"), true));
     roots.push((project.join("assets/fonts"), true));
@@ -317,7 +284,7 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
         return Err(format!("{}: no project.ogt", project.display()));
     }
     let family = match extension.manifest.kind.as_str() {
-        "kit" => "ui-kits",
+        "materials" => "materials",
         "style" => "styles",
         "font" => "fonts",
         _ => "vfx",
@@ -337,7 +304,7 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
         .filter(|f| installs(&extension.manifest.kind, f))
         .collect();
     std::fs::create_dir_all(target.parent().unwrap()).map_err(|e| e.to_string())?;
-    // Stage next to the destination: a failed copy cannot leave an installed half-kit.
+    // Stage next to the destination: a failed copy cannot leave an installed half-pack.
     let staging = target.with_file_name(format!(
         ".{}-{}",
         extension.manifest.name,
@@ -356,32 +323,7 @@ pub(super) fn install(extension: &Extension, project: &Path) -> Result<PathBuf, 
     if result.is_err() {
         let _ = std::fs::remove_dir_all(staging);
     }
-    let target = result?;
-    install_components(extension, project)?;
-    Ok(target)
-}
-
-/// Ejects the library components a kit composes (its manifest's
-/// `components`) into the game's `assets/ui/`, as `og ui eject` does; one
-/// the game already has, edited or not, is kept.
-fn install_components(extension: &Extension, project: &Path) -> Result<(), String> {
-    let names = extension.manifest.components.as_deref().unwrap_or_default();
-    if names.is_empty() {
-        return Ok(());
-    }
-    let package = crate::project::engine_package(Some(project)).ok_or(crate::project::NO_ENGINE)?;
-    let dirs = super::LIBRARY_DIRS.map(|d| package.join(d));
-    for name in names {
-        if !project
-            .join("assets/ui")
-            .join(format!("{name}.svelte"))
-            .exists()
-        {
-            super::eject_from(&dirs, name, project, false)
-                .map_err(|e| format!("kit `{}` composes `{name}`: {e}", extension.manifest.name))?;
-        }
-    }
-    Ok(())
+    result
 }
 
 pub fn add(args: &[&str], kind: &str) -> ExitCode {
@@ -526,12 +468,6 @@ pub fn list(args: &[&str], kind: Option<&str>) -> ExitCode {
                 if let Some(skill) = &m.skill {
                     println!("  skill: {}", e.directory.join(skill).display());
                 }
-                for p in [m.entry.as_ref(), m.types.as_ref()].into_iter().flatten() {
-                    println!("  {}", e.directory.join(p).display());
-                }
-                for doc in e.documents {
-                    println!("  {}/{}", m.name, doc.trim_end_matches(".svelte"));
-                }
             }
         }
         Ok(())
@@ -568,50 +504,6 @@ pub fn list_fonts(args: &[&str]) -> ExitCode {
         Ok(())
     })();
     outcome(result)
-}
-
-pub fn eject(name: &str, project: &Path, force: bool) -> Result<PathBuf, String> {
-    if !project.join("project.ogt").is_file() {
-        return Err("no project.ogt".into());
-    }
-    let (kit, doc) = name.split_once('/').ok_or("expected <kit>/<document>")?;
-    let extension = discover(project)?
-        .into_iter()
-        .find(|e| e.manifest.kind == "kit" && e.manifest.name == kit)
-        .ok_or_else(|| format!("unknown kit `{kit}`"))?;
-    let file = format!("{}.svelte", doc.trim_end_matches(".svelte"));
-    if !extension.documents.contains(&file) {
-        return Err(format!("unknown document `{name}` (og ui list names them)"));
-    }
-    let destination = project.join("assets/ui").join(kit);
-    let target = destination.join(&file);
-    if target.exists() && !force {
-        return Err(format!("{} exists (--force overwrites)", target.display()));
-    }
-    // Keep sibling documents/assets at the same relative paths. Existing game
-    // edits of companions stay; --force replaces only the requested document.
-    // A kit's code, manifest, skill, review sheet and tests are not a
-    // document's companions: `og ui add` installs the first three, and the
-    // sheet and tests stay with the kit.
-    let skill = extension.manifest.skill.as_deref().map(Path::new);
-    let skill_dir = skill.and_then(Path::parent);
-    for companion in files(&extension.directory)? {
-        let kit_only = companion == Path::new("extension.json")
-            || KIT_REVIEW_DIRS.iter().any(|d| companion.starts_with(d))
-            || companion.extension().is_some_and(|e| e == "ts")
-            || skill_dir.is_some_and(|d| !d.as_os_str().is_empty() && companion.starts_with(d))
-            || skill == Some(companion.as_path());
-        if kit_only {
-            continue;
-        }
-        let dest = destination.join(&companion);
-        if dest.exists() && dest != target {
-            continue;
-        }
-        std::fs::create_dir_all(dest.parent().unwrap()).map_err(|e| e.to_string())?;
-        std::fs::copy(extension.directory.join(companion), dest).map_err(|e| e.to_string())?;
-    }
-    Ok(target)
 }
 
 fn outcome(result: Result<(), String>) -> ExitCode {
