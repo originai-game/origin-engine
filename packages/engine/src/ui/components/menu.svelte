@@ -39,7 +39,7 @@
 
 <style>
 #Menu { display: flex; flex-direction: column; min-width: 200px; max-width: 360px; margin: 0; padding: 4px; gap: 0; list-style: none; }
-.entry { width: stretch; height: 40px; padding: 0 10px; border-radius: 8px; background: #00000000; color: var(--ink); }
+.entry { width: stretch; height: 40px; padding: 0 10px; border-radius: 8px; color: var(--ink); }
 .row { display: flex; flex-direction: column; width: stretch; }
 .face { display: flex; align-items: center; gap: 8px; width: stretch; height: stretch; }
 .entry:hover, .entry:focus-visible { background: var(--control); }

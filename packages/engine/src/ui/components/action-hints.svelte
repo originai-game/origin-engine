@@ -27,7 +27,7 @@
 <style>
 #ActionHints { flex-direction: row; flex-wrap: wrap; justify-content: end; align-items: center; gap: 16px; padding: 4px 12px; border-radius: 8px; background: #0b0f17b8; }
 .item { align-items: center; }
-.hint { min-height: 36px; padding: 2px 6px; gap: 8px; align-items: center; border-radius: 6px; background: #00000000; color: var(--ink); }
+.hint { min-height: 36px; padding: 2px 6px; gap: 8px; align-items: center; border-radius: 6px; color: var(--ink); }
 .hint:hover { background: #ffffff1a; }
 .hint:active { scale: 0.96; }
 .hint::-og-hold { background: #ffffff33; }

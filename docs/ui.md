@@ -830,7 +830,15 @@ border-box` does; an outline takes no room and is drawn outside the border
 edge, grown by its offset, so `:focus-visible { outline: 2px solid
 var(--focus) }` replaces the core focus ring for that element. A uniform
 border follows `border-radius`, which also replaces a dressed control's
-corner (a `<button>`'s plate); sides that differ are drawn as strips, and
+corner (a `<button>`'s plate). A `<button>` is its plate: its own
+`background*`, `border*`, `padding*`, corner and `box-shadow` declarations
+are the plate part's, above the style's `::part` rules and below the
+document's own (`button.buy::part(base):hover`), so the plate covers the
+button's whole box and the host draws no second box. The host keeps its
+corners for its `overflow` clip and its outline;
+an own `background` clears the style's `background-image` and an own
+border its `border-image-source` unless the author writes them. Sides that
+differ are drawn as strips, and
 `inset`/`outset`/`groove`/`ridge` darken their shaded sides. A uniform
 `dashed` border or outline on round corners is dashed side by side, as
 browsers draw it: each side's dashes and gaps, about three widths long,
