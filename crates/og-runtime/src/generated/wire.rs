@@ -31572,6 +31572,53 @@ pub mod record {
         }
     }
 
+    /// `Ragdoll`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Ragdoll {
+        pub weight: f32,
+        pub blend_time: f32,
+        pub mass: f32,
+        pub thickness: f32,
+        pub joint_limit: f32,
+        pub damping: f32,
+        pub impulse: Vec3,
+        pub blend: f32,
+    }
+
+    impl Default for Ragdoll {
+        fn default() -> Self {
+            Self {
+                weight: Default::default(),
+                blend_time: 0.25_f32,
+                mass: 60.0_f32,
+                thickness: 0.22_f32,
+                joint_limit: 0.9_f32,
+                damping: 0.6_f32,
+                impulse: Default::default(),
+                blend: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Ragdoll {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                weight: field(o, "weight", d.weight)?,
+                blend_time: field(o, "blendTime", d.blend_time)?,
+                mass: field(o, "mass", d.mass)?,
+                thickness: field(o, "thickness", d.thickness)?,
+                joint_limit: field(o, "jointLimit", d.joint_limit)?,
+                damping: field(o, "damping", d.damping)?,
+                impulse: field(o, "impulse", d.impulse)?,
+                blend: field(o, "blend", d.blend)?,
+            })
+        }
+    }
+
     /// `WaterSurface`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct WaterSurface {
@@ -31735,53 +31782,6 @@ pub mod record {
                 entity: field(o, "entity", d.entity)?,
                 point: field(o, "point", d.point)?,
                 speed: field(o, "speed", d.speed)?,
-            })
-        }
-    }
-
-    /// `Ragdoll`: packages/knowledge/wiki/physics.md.
-    #[derive(Clone, Debug, PartialEq)]
-    pub struct Ragdoll {
-        pub weight: f32,
-        pub blend_time: f32,
-        pub mass: f32,
-        pub thickness: f32,
-        pub joint_limit: f32,
-        pub damping: f32,
-        pub impulse: Vec3,
-        pub blend: f32,
-    }
-
-    impl Default for Ragdoll {
-        fn default() -> Self {
-            Self {
-                weight: Default::default(),
-                blend_time: 0.25_f32,
-                mass: 60.0_f32,
-                thickness: 0.22_f32,
-                joint_limit: 0.9_f32,
-                damping: 0.6_f32,
-                impulse: Default::default(),
-                blend: Default::default(),
-            }
-        }
-    }
-
-    impl FromJson for Ragdoll {
-        fn from_json(v: &Value) -> Result<Self, String> {
-            Self::from_json_over(v, Self::default())
-        }
-        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
-            let o = object(v)?;
-            Ok(Self {
-                weight: field(o, "weight", d.weight)?,
-                blend_time: field(o, "blendTime", d.blend_time)?,
-                mass: field(o, "mass", d.mass)?,
-                thickness: field(o, "thickness", d.thickness)?,
-                joint_limit: field(o, "jointLimit", d.joint_limit)?,
-                damping: field(o, "damping", d.damping)?,
-                impulse: field(o, "impulse", d.impulse)?,
-                blend: field(o, "blend", d.blend)?,
             })
         }
     }

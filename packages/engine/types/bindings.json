@@ -4348,6 +4348,65 @@
     },
     {
       "id": 49,
+      "name": "Ragdoll",
+      "schema": "og.Ragdoll",
+      "module": "physics",
+      "fields": [
+        {
+          "name": "weight",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
+          "name": "blendTime",
+          "column": "f32",
+          "default": 0.25,
+          "tunable": true
+        },
+        {
+          "name": "mass",
+          "column": "f32",
+          "default": 60,
+          "tunable": true
+        },
+        {
+          "name": "thickness",
+          "column": "f32",
+          "default": 0.22,
+          "tunable": true
+        },
+        {
+          "name": "jointLimit",
+          "column": "f32",
+          "default": 0.9,
+          "tunable": true
+        },
+        {
+          "name": "damping",
+          "column": "f32",
+          "default": 0.6,
+          "tunable": true
+        },
+        {
+          "name": "impulse",
+          "column": "Vector3",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "name": "blend",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 50,
       "name": "WaterSurface",
       "schema": "og.WaterSurface",
       "module": "physics",
@@ -4396,7 +4455,7 @@
       ]
     },
     {
-      "id": 50,
+      "id": 51,
       "name": "WaterLine",
       "schema": "og.WaterLine",
       "module": "physics",
@@ -4457,7 +4516,7 @@
       ]
     },
     {
-      "id": 51,
+      "id": 52,
       "name": "Buoyancy",
       "schema": "og.Buoyancy",
       "module": "physics",
@@ -4487,65 +4546,6 @@
         },
         {
           "name": "submerged",
-          "column": "f32",
-          "default": 0,
-          "readonly": true
-        }
-      ]
-    },
-    {
-      "id": 52,
-      "name": "Ragdoll",
-      "schema": "og.Ragdoll",
-      "module": "physics",
-      "fields": [
-        {
-          "name": "weight",
-          "column": "f32",
-          "default": 0,
-          "tunable": true
-        },
-        {
-          "name": "blendTime",
-          "column": "f32",
-          "default": 0.25,
-          "tunable": true
-        },
-        {
-          "name": "mass",
-          "column": "f32",
-          "default": 60,
-          "tunable": true
-        },
-        {
-          "name": "thickness",
-          "column": "f32",
-          "default": 0.22,
-          "tunable": true
-        },
-        {
-          "name": "jointLimit",
-          "column": "f32",
-          "default": 0.9,
-          "tunable": true
-        },
-        {
-          "name": "damping",
-          "column": "f32",
-          "default": 0.6,
-          "tunable": true
-        },
-        {
-          "name": "impulse",
-          "column": "Vector3",
-          "default": {
-            "x": 0,
-            "y": 0,
-            "z": 0
-          }
-        },
-        {
-          "name": "blend",
           "column": "f32",
           "default": 0,
           "readonly": true
@@ -18727,6 +18727,38 @@
     {
       "id": 242,
       "kind": "fn",
+      "path": "og.physics.waterHeight",
+      "symbol": "og_physics_water_height",
+      "module": "physics",
+      "name": "waterHeight",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        },
+        {
+          "name": "x",
+          "type": "f32",
+          "optional": false
+        },
+        {
+          "name": "z",
+          "type": "f32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<f32>",
+      "publish": true
+    },
+    {
+      "id": 243,
+      "kind": "fn",
       "path": "og.physics.castRay",
       "symbol": "og_physics_cast_ray",
       "module": "physics",
@@ -18747,7 +18779,7 @@
       "publish": true
     },
     {
-      "id": 243,
+      "id": 244,
       "kind": "fn",
       "path": "og.physics.castRayAll",
       "symbol": "og_physics_cast_ray_all",
@@ -18769,7 +18801,7 @@
       "publish": true
     },
     {
-      "id": 244,
+      "id": 245,
       "kind": "fn",
       "path": "og.physics.projectPoint",
       "symbol": "og_physics_project_point",
@@ -18791,7 +18823,7 @@
       "publish": true
     },
     {
-      "id": 245,
+      "id": 246,
       "kind": "fn",
       "path": "og.physics.castShape",
       "symbol": "og_physics_cast_shape",
@@ -18813,7 +18845,7 @@
       "publish": true
     },
     {
-      "id": 246,
+      "id": 247,
       "kind": "fn",
       "path": "og.physics.overlap",
       "symbol": "og_physics_overlap",
@@ -18835,7 +18867,7 @@
       "publish": true
     },
     {
-      "id": 247,
+      "id": 248,
       "kind": "fn",
       "path": "og.physics.applyForce",
       "symbol": "og_physics_apply_force",
@@ -18867,7 +18899,7 @@
       "publish": true
     },
     {
-      "id": 248,
+      "id": 249,
       "kind": "fn",
       "path": "og.physics.applyImpulse",
       "symbol": "og_physics_apply_impulse",
@@ -18899,7 +18931,7 @@
       "publish": true
     },
     {
-      "id": 249,
+      "id": 250,
       "kind": "fn",
       "path": "og.physics.applyTorque",
       "symbol": "og_physics_apply_torque",
@@ -18926,7 +18958,7 @@
       "publish": true
     },
     {
-      "id": 250,
+      "id": 251,
       "kind": "fn",
       "path": "og.physics.applyTorqueImpulse",
       "symbol": "og_physics_apply_torque_impulse",
@@ -18953,7 +18985,7 @@
       "publish": true
     },
     {
-      "id": 251,
+      "id": 252,
       "kind": "fn",
       "path": "og.physics.setMesh",
       "symbol": "og_physics_set_mesh",
@@ -18980,7 +19012,7 @@
       "publish": true
     },
     {
-      "id": 252,
+      "id": 253,
       "kind": "fn",
       "path": "og.physics.ropePoints",
       "symbol": "og_physics_rope_points",
@@ -19002,7 +19034,7 @@
       "publish": true
     },
     {
-      "id": 253,
+      "id": 254,
       "kind": "fn",
       "path": "og.physics.garmentPoints",
       "symbol": "og_physics_garment_points",
@@ -19024,7 +19056,7 @@
       "publish": true
     },
     {
-      "id": 254,
+      "id": 255,
       "kind": "fn",
       "path": "og.physics.clothPoints",
       "symbol": "og_physics_cloth_points",
@@ -19046,7 +19078,7 @@
       "publish": true
     },
     {
-      "id": 255,
+      "id": 256,
       "kind": "fn",
       "path": "og.physics.softBodyPoints",
       "symbol": "og_physics_soft_body_points",
@@ -19068,7 +19100,7 @@
       "publish": true
     },
     {
-      "id": 256,
+      "id": 257,
       "kind": "fn",
       "path": "og.physics.fluidParticles",
       "symbol": "og_physics_fluid_particles",
@@ -19090,7 +19122,7 @@
       "publish": true
     },
     {
-      "id": 257,
+      "id": 258,
       "kind": "fn",
       "path": "og.physics.fluid3dParticles",
       "symbol": "og_physics_fluid3d_particles",
@@ -19109,38 +19141,6 @@
         }
       ],
       "returns": "Result<List<Vector3>>",
-      "publish": true
-    },
-    {
-      "id": 258,
-      "kind": "fn",
-      "path": "og.physics.waterHeight",
-      "symbol": "og_physics_water_height",
-      "module": "physics",
-      "name": "waterHeight",
-      "params": [
-        {
-          "name": "world",
-          "type": "World",
-          "optional": false
-        },
-        {
-          "name": "entity",
-          "type": "Entity",
-          "optional": false
-        },
-        {
-          "name": "x",
-          "type": "f32",
-          "optional": false
-        },
-        {
-          "name": "z",
-          "type": "f32",
-          "optional": false
-        }
-      ],
-      "returns": "Result<f32>",
       "publish": true
     },
     {

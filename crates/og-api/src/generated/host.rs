@@ -621,6 +621,8 @@ pub trait LoadApi: Wire {
 
 /// `physics`: packages/knowledge/wiki/physics.md.
 pub trait PhysicsApi: Wire {
+    /// `og.physics.waterHeight`
+    fn og_physics_water_height(&self, world: u32, entity: f64, x: f64, z: f64) -> String;
     /// `og.physics.castRay`
     fn og_physics_cast_ray(&self, world: u32, desc: Option<String>) -> String;
     /// `og.physics.castRayAll`
@@ -653,8 +655,6 @@ pub trait PhysicsApi: Wire {
     fn og_physics_fluid_particles(&self, world: u32, entity: f64) -> String;
     /// `og.physics.fluid3dParticles`
     fn og_physics_fluid3d_particles(&self, world: u32, entity: f64) -> String;
-    /// `og.physics.waterHeight`
-    fn og_physics_water_height(&self, world: u32, entity: f64, x: f64, z: f64) -> String;
     /// `og.physics.vehicleWheels`
     fn og_physics_vehicle_wheels(&self, world: u32, entity: f64) -> String;
     /// `og.physics.ragdollRigFromSkeleton`
@@ -1690,6 +1690,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_image_info",
     "og_load_completions",
     "og_load_replay_completions",
+    "og_physics_water_height",
     "og_physics_cast_ray",
     "og_physics_cast_ray_all",
     "og_physics_project_point",
@@ -1706,7 +1707,6 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_soft_body_points",
     "og_physics_fluid_particles",
     "og_physics_fluid3d_particles",
-    "og_physics_water_height",
     "og_physics_vehicle_wheels",
     "og_physics_ragdoll_rig_from_skeleton",
     "og_physics_set_ragdoll_rig",

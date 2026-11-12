@@ -23,8 +23,10 @@ physics.ogt
 physics-characters.ogt
 physics-vehicles.ogt
 physics-soft.ogt
+physics-water.ogt
 physics-queries.ogt
 atmosphere.ogt
+atmosphere-water.ogt
 anim.ogt
 tween.ogt
 tilemap.ogt

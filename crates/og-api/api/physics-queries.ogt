@@ -341,15 +341,6 @@
     returns Result.List.Vector3 "Refused for an entity without an og.Fluid3D."
   }
 
-  fn waterHeight {
-    doc "The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface."
-    param world World "The world."
-    param entity Entity "The water's entity."
-    param x f32 "World x, in metres."
-    param z f32 "World z, in metres (3D)."
-    returns Result.f32 "Refused for an entity without water; outside the water, its rest level."
-  }
-
   fn vehicleWheels {
     doc "An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models."
     param world World "The world."

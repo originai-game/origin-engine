@@ -41,9 +41,9 @@ module atmosphere {
 | [`WindMotorKind`](atmosphere/type-WindMotorKind.md) | enum |  | How an og.WindMotor pushes the wind. |
 | [`WindMotorKind()`](#column-WindMotorKind) | column kind |  | A WindMotorKind field: the variant's index. |
 | [`og.WindMotor`](atmosphere/record-WindMotor.md) | component |  | A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and th… |
+| [`og.atmosphere.timeOfDay`](atmosphere/fn-timeOfDay.md) | function | `(world: World): number` | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. |
 | [`og.Water`](atmosphere/record-Water.md) | component |  | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflectio… |
 | [`og.Water2D`](atmosphere/record-Water2D.md) | component |  | Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface. |
-| [`og.atmosphere.timeOfDay`](atmosphere/fn-timeOfDay.md) | function | `(world: World): number` | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. |
 
 ## Column kinds
 

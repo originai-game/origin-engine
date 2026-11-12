@@ -15881,6 +15881,73 @@ export interface Fluid3D {
 }
 
 /**
+ * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
+ *
+ * The value of the `Ragdoll` component (token `og.Ragdoll`).
+ */
+export interface Ragdoll {
+  /**
+   * 0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.
+   *
+   * @range 0..1
+   * @tunable
+   */
+  weight: number;
+  /**
+   * How long the blend between animation and physics takes, both ways.
+   *
+   * @default 0.25
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  blendTime: number;
+  /**
+   * The whole body's mass, shared by the bones by length.
+   *
+   * @default 60
+   * @range 0.1..
+   * @unit kg (kilograms)
+   * @tunable
+   */
+  mass: number;
+  /**
+   * A bone capsule's radius as a fraction of its length.
+   *
+   * @default 0.22
+   * @range 0.01..1
+   * @tunable
+   */
+  thickness: number;
+  /**
+   * How far each joint bends from the rest pose.
+   *
+   * @default 0.9
+   * @range 0..3.1
+   * @unit rad (radians)
+   * @tunable
+   */
+  jointLimit: number;
+  /**
+   * How much of their motion the bones lose per second.
+   *
+   * @default 0.6
+   * @range 0..20
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  damping: number;
+  /** An impulse given to every bone when weight first goes up (a hit). */
+  impulse: Vector3;
+  /**
+   * Written: the blend in use (0 animation .. 1 physics).
+   *
+   * @readonly written by the engine
+   */
+  readonly blend: number;
+}
+
+/**
  * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
  *
  * The value of the `WaterSurface` component (token `og.WaterSurface`).
@@ -16103,72 +16170,6 @@ export interface Splash {
   readonly speed: number;
 }
 
-/**
- * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
- *
- * The value of the `Ragdoll` component (token `og.Ragdoll`).
- */
-export interface Ragdoll {
-  /**
-   * 0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.
-   *
-   * @range 0..1
-   * @tunable
-   */
-  weight: number;
-  /**
-   * How long the blend between animation and physics takes, both ways.
-   *
-   * @default 0.25
-   * @range 0..
-   * @unit s (seconds of simulation time)
-   * @tunable
-   */
-  blendTime: number;
-  /**
-   * The whole body's mass, shared by the bones by length.
-   *
-   * @default 60
-   * @range 0.1..
-   * @unit kg (kilograms)
-   * @tunable
-   */
-  mass: number;
-  /**
-   * A bone capsule's radius as a fraction of its length.
-   *
-   * @default 0.22
-   * @range 0.01..1
-   * @tunable
-   */
-  thickness: number;
-  /**
-   * How far each joint bends from the rest pose.
-   *
-   * @default 0.9
-   * @range 0..3.1
-   * @unit rad (radians)
-   * @tunable
-   */
-  jointLimit: number;
-  /**
-   * How much of their motion the bones lose per second.
-   *
-   * @default 0.6
-   * @range 0..20
-   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
-   * @tunable
-   */
-  damping: number;
-  /** An impulse given to every bone when weight first goes up (a hit). */
-  impulse: Vector3;
-  /**
-   * Written: the blend in use (0 animation .. 1 physics).
-   *
-   * @readonly written by the engine
-   */
-  readonly blend: number;
-}
 
 /**
  * Which colliders a scene query considers. The zero value considers every solid collider on every layer.
@@ -16644,7 +16645,6 @@ export interface SoftBodyPoints {
    */
   readonly indices: readonly number[];
 }
-
 
 
 
@@ -17669,6 +17669,7 @@ export interface WindMotor {
   strength: number;
 }
 
+
 /**
  * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.
  * See `render §8`.
@@ -18077,7 +18078,6 @@ export interface Water2D {
   /** The sprite layer it is drawn in. */
   layer: number;
 }
-
 
 // ── anim ────────────────────────────────────────────────────────
 // Skeletal animation over og-anim: glTF skins and clips (loaded with og.load.animation), blend-tree graphs with layered state machines, root motion, two-bone and FABRIK IK and blendshapes, evaluated by the engine's og.anim system after the game's systems and before physics.
@@ -34318,6 +34318,10 @@ export declare namespace og {
    */
   const Fluid3D: ComponentType<{ readonly count: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly bounds: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly restDensity: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly nearStiffness: FieldSpec<"f32">; readonly viscosity: FieldSpec<"f32">; readonly group: FieldSpec<"u32">; readonly density: FieldSpec<"f32">; readonly mixing: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly substeps: FieldSpec<"u32">; readonly seed: FieldSpec<"u32">; readonly maxCount: FieldSpec<"u32">; readonly emitRate: FieldSpec<"f32">; readonly emitOffset: FieldSpec<"Vector3">; readonly emitVelocity: FieldSpec<"Vector3">; readonly emitRadius: FieldSpec<"f32">; readonly sinkOffset: FieldSpec<"Vector3">; readonly sinkSize: FieldSpec<"Vector3">; readonly color: FieldSpec<"Vector3">; readonly opacity: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly drawScale: FieldSpec<"f32">; readonly smoothing: FieldSpec<"f32">; readonly visible: FieldSpec<"bool">; readonly simulation: FieldSpec<"u32"> }, Fluid3D>;
   /**
+   * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
+   */
+  const Ragdoll: ComponentType<{ readonly weight: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly jointLimit: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly impulse: FieldSpec<"Vector3">; readonly blend: FieldSpec<"f32"> }, Ragdoll>;
+  /**
    * Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them.
    */
   const WaterSurface: ComponentType<{ readonly resolution: FieldSpec<"u32">; readonly size: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterSurface>;
@@ -34335,16 +34339,22 @@ export declare namespace og {
    */
   const Splash: EventType<Splash>;
   /**
-   * A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.
-   */
-  const Ragdoll: ComponentType<{ readonly weight: FieldSpec<"f32">; readonly blendTime: FieldSpec<"f32">; readonly mass: FieldSpec<"f32">; readonly thickness: FieldSpec<"f32">; readonly jointLimit: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly impulse: FieldSpec<"Vector3">; readonly blend: FieldSpec<"f32"> }, Ragdoll>;
-  /**
    * Rigid bodies over rapier (rapier3d in the 3D profile, rapier2d in 2D, both with enhanced determinism): game code owns the components, the engine's og.physics system steps them after the game's systems and writes the dynamic bodies back.
    * The profile is project.ogt's `profile`. In 2D, bodies move in the xy plane and rotate about z; a transform keeps its z. A collider without a RigidBody is static at its transform.
    * The rapier world persists between ticks and is world state: snapshots, restore and the world hash cover the whole simulation. Events sent in tick N are read in tick N + 1.
    * See `physics`.
    */
   namespace physics {
+    /**
+     * The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface.
+     *
+     * @param world The world.
+     * @param entity The water's entity.
+     * @param x World x, in metres.
+     * @param z World z, in metres (3D).
+     * @returns Refused for an entity without water; outside the water, its rest level.
+     */
+    function waterHeight(world: World, entity: Entity, x: number, z: number): Result<number>;
     /**
      * The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.
      * See `physics §4`.
@@ -34480,16 +34490,6 @@ export declare namespace og {
      * @returns Refused for an entity without an og.Fluid3D.
      */
     function fluid3dParticles(world: World, entity: Entity): Result<readonly Vector3[]>;
-    /**
-     * The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface.
-     *
-     * @param world The world.
-     * @param entity The water's entity.
-     * @param x World x, in metres.
-     * @param z World z, in metres (3D).
-     * @returns Refused for an entity without water; outside the water, its rest level.
-     */
-    function waterHeight(world: World, entity: Entity, x: number, z: number): Result<number>;
     /**
      * An og.Vehicle's wheels after the last step (front left, front right, rear left, rear right; or its og.VehicleWheel children in entity order), for drawing wheel models.
      *

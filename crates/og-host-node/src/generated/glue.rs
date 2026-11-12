@@ -1635,6 +1635,12 @@ pub fn og_load_replay_completions(env: Env, world: u32, completions: String) -> 
     <Host as LoadApi>::og_load_replay_completions(&Host, world, completions)
 }
 
+#[napi(js_name = "og_physics_water_height")]
+pub fn og_physics_water_height(env: Env, world: u32, entity: f64, x: f64, z: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
+}
+
 #[napi(js_name = "og_physics_cast_ray")]
 pub fn og_physics_cast_ray(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -1729,12 +1735,6 @@ pub fn og_physics_fluid_particles(env: Env, world: u32, entity: f64) -> String {
 pub fn og_physics_fluid3d_particles(env: Env, world: u32, entity: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as PhysicsApi>::og_physics_fluid3d_particles(&Host, world, entity)
-}
-
-#[napi(js_name = "og_physics_water_height")]
-pub fn og_physics_water_height(env: Env, world: u32, entity: f64, x: f64, z: f64) -> String {
-    let _env = crate::EnvScope::enter(&env);
-    <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
 }
 
 #[napi(js_name = "og_physics_vehicle_wheels")]

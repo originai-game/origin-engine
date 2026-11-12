@@ -550,6 +550,8 @@ export interface HostAbi<A, V> {
   og_load_completions(world: number): string;
   /** `og.load.replayCompletions` */
   og_load_replay_completions(world: number, completions: string): string;
+  /** `og.physics.waterHeight` */
+  og_physics_water_height(world: number, entity: number, x: number, z: number): string;
   /** `og.physics.castRay` */
   og_physics_cast_ray(world: number, desc: string | undefined): string;
   /** `og.physics.castRayAll` */
@@ -582,8 +584,6 @@ export interface HostAbi<A, V> {
   og_physics_fluid_particles(world: number, entity: number): string;
   /** `og.physics.fluid3dParticles` */
   og_physics_fluid3d_particles(world: number, entity: number): string;
-  /** `og.physics.waterHeight` */
-  og_physics_water_height(world: number, entity: number, x: number, z: number): string;
   /** `og.physics.vehicleWheels` */
   og_physics_vehicle_wheels(world: number, entity: number): string;
   /** `og.physics.ragdollRigFromSkeleton` */
@@ -1518,6 +1518,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_image_info",
   "og_load_completions",
   "og_load_replay_completions",
+  "og_physics_water_height",
   "og_physics_cast_ray",
   "og_physics_cast_ray_all",
   "og_physics_project_point",
@@ -1534,7 +1535,6 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_soft_body_points",
   "og_physics_fluid_particles",
   "og_physics_fluid3d_particles",
-  "og_physics_water_height",
   "og_physics_vehicle_wheels",
   "og_physics_ragdoll_rig_from_skeleton",
   "og_physics_set_ragdoll_rig",
@@ -1973,6 +1973,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
       if (typeof entity !== "number") notEntity("og.render.snap", "entity", entity);
       return abi.og_render_snap(world, entity);
     },
+    og_physics_water_height(world: number, entity: number, x: number, z: number) {
+      if (typeof entity !== "number") notEntity("og.physics.waterHeight", "entity", entity);
+      return abi.og_physics_water_height(world, entity, x, z);
+    },
     og_physics_apply_force(world: number, entity: number, force: string, point: string | undefined) {
       if (typeof entity !== "number") notEntity("og.physics.applyForce", "entity", entity);
       return abi.og_physics_apply_force(world, entity, force, point);
@@ -2012,10 +2016,6 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_physics_fluid3d_particles(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.fluid3dParticles", "entity", entity);
       return abi.og_physics_fluid3d_particles(world, entity);
-    },
-    og_physics_water_height(world: number, entity: number, x: number, z: number) {
-      if (typeof entity !== "number") notEntity("og.physics.waterHeight", "entity", entity);
-      return abi.og_physics_water_height(world, entity, x, z);
     },
     og_physics_vehicle_wheels(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.physics.vehicleWheels", "entity", entity);

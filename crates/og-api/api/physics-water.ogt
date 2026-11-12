@@ -1,0 +1,154 @@
+  component WaterSurface {
+    doc "Height-field water (3D): a `resolution` × `resolution` grid of heights over a `size` square centred on the entity (its y is the rest level), waves travelling at `waveSpeed` and fading by `damping`. Dynamic bodies crossing it push waves (splashes; og.Splash events) and float by `buoyancy`. The heights are world state; an og.Water on the same entity draws them."
+    field resolution u32 "Grid points along each side." {
+      default 64
+      min 8
+      max 256
+    }
+    field size f32 "The side of the square of water." {
+      default 16
+      min 0.1
+      unit m
+      tunable true
+    }
+    field waveSpeed f32 "How fast waves travel." {
+      default 3
+      min 0
+      unit mps
+      tunable true
+    }
+    field damping f32 "How much of a wave survives a second (1: no loss)." {
+      default 0.4
+      min 0
+      max 1
+      tunable true
+    }
+    field splash f32 "How strongly bodies push waves." {
+      default 1
+      min 0
+      tunable true
+    }
+    field buoyancy f32 "The upward force on a submerged body per cubic metre of its box under water (0: bodies sink)." {
+      default 9.81
+      min 0
+      tunable true
+    }
+    field drag f32 "How much a submerged body's velocity is slowed." {
+      default 1.5
+      min 0
+      unit perSecond
+      tunable true
+    }
+  }
+
+  component WaterLine {
+    doc "2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and passing waves to its neighbours by `spread`. Bodies (and characters) crossing the surface splash it (og.Splash events) and float by `buoyancy`. The springs are world state; an og.Water2D on the same entity draws it."
+    field width f32 "The pool's width." {
+      default 12
+      min 0.1
+      unit m
+      tunable true
+    }
+    field depth f32 "The pool's depth below the surface." {
+      default 3
+      min 0
+      unit m
+      tunable true
+    }
+    field columns u32 "Springs along the surface." {
+      default 96
+      min 4
+      max 512
+    }
+    field tension f32 "How hard each spring pulls back to rest." {
+      default 60
+      min 0
+      tunable true
+    }
+    field damping f32 "How fast a spring's motion dies." {
+      default 2.5
+      min 0
+      tunable true
+    }
+    field spread f32 "How much of a spring's height its neighbours feel each pass (waves travel)." {
+      default 0.25
+      min 0
+      max 0.5
+      tunable true
+    }
+    field splash f32 "How strongly crossing bodies splash." {
+      default 0.04
+      min 0
+      tunable true
+    }
+    field buoyancy f32 "The upward force on a submerged body per square metre of its box under water (0: bodies sink)." {
+      default 12
+      min 0
+      tunable true
+    }
+    field drag f32 "How much a submerged body's velocity is slowed." {
+      default 2
+      min 0
+      unit perSecond
+      tunable true
+    }
+  }
+
+  component Buoyancy {
+    aliases "bob on the sea, float on water, floating, buoyant hull"
+    doc "Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (its waves as drawn, og.physics.waterHeight's) or both on one entity. Its colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces (Archimedes), so a hull rights itself, pitches and rolls, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a default-density body half under."
+    guide "physics §8"
+    field waterDensity f32 "The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface, under it sinks." {
+      default 2
+      min 0
+      unit kgPerM3
+      tunable true
+    }
+    field samples u32 "Cells along each side of its colliders' box (1: one point at its centre; up to 12³ points): more follow its shape and the waves more closely." {
+      default 4
+      min 1
+      max 12
+    }
+    field drag f32 "How much of its speed through the water it loses each second when fully under (in part when in part); off-centre cells slow its turning too, so it settles instead of bobbing." {
+      default 4
+      min 0
+      max 100
+      unit perSecond
+      tunable true
+    }
+    field angularDrag f32 "How much of its spin it loses each second when fully under (in part when in part)." {
+      default 3
+      min 0
+      max 100
+      unit perSecond
+      tunable true
+    }
+    field submerged f32 "Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship." {
+      min 0
+      max 1
+      readonly true
+    }
+  }
+
+  event Splash {
+    doc "Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick."
+    field water Entity "The water's entity."
+    field entity Entity "What crossed it."
+    field point Vector3 "Where it crossed the surface." {
+      worldspace world
+      unit m
+    }
+    field speed f32 "Its vertical speed (negative going in)." {
+      unit mps
+    }
+  }
+
+  fn waterHeight {
+    doc "The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface."
+    param world World "The world."
+    param entity Entity "The water's entity."
+    param x f32 "World x, in metres."
+    param z f32 "World z, in metres (3D)."
+    returns Result.f32 "Refused for an entity without water; outside the water, its rest level."
+  }
+
