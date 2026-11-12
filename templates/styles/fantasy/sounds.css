@@ -1,9 +1,10 @@
-/* fantasy: interaction sounds from the shared set. */
-:root { -og-sound: press url(/@styles/shared/sfx-tap.ogt) url(/@styles/shared/sfx-tap2.ogt) volume(0.22 0.28) pitch(0.94 0.99), select url(/@styles/shared/sfx-confirm.ogt) volume(0.28), confirm url(/@styles/shared/sfx-confirm.ogt) volume(0.3), cancel url(/@styles/shared/sfx-back.ogt) volume(0.24), back url(/@styles/shared/sfx-back.ogt) volume(0.24), open url(/@styles/shared/sfx-open.ogt) volume(0.22), close url(/@styles/shared/sfx-back.ogt) volume(0.2), error url(/@styles/shared/sfx-error.ogt) volume(0.3), reward url(/@styles/shared/sfx-reward.ogt) volume(0.32); }
-button::part(base) { -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.22 0.28) pitch(0.94 0.99), hover url(/@styles/shared/sfx-tap2.ogt) volume(0.1); }
-button.primary::part(base) { -og-sound: press url(/@styles/shared/sfx-confirm.ogt) volume(0.3) pitch(0.92 0.96), hover url(/@styles/shared/sfx-tap2.ogt) volume(0.1); }
-button.cell::part(base) { -og-sound: press url(/@styles/shared/sfx-tap2.ogt) volume(0.2 0.26) pitch(0.9 1), hover url(/@styles/shared/sfx-tap.ogt) volume(0.08); }
-button.skill::part(base), button.quick::part(base) { -og-sound: press url(/@styles/shared/sfx-confirm.ogt) volume(0.26) pitch(1.02 1.08), hover url(/@styles/shared/sfx-tap.ogt) volume(0.08); }
-button.command::part(base) { -og-sound: press url(/@styles/shared/sfx-confirm.ogt) volume(0.3) pitch(0.9 0.95), hover url(/@styles/shared/sfx-tap2.ogt) volume(0.1); }
-button.menu-tab::part(base) { -og-sound: press url(/@styles/shared/sfx-open.ogt) volume(0.22), hover url(/@styles/shared/sfx-tap.ogt) volume(0.08); }
-button.menu-close::part(base) { -og-sound: press url(/@styles/shared/sfx-back.ogt) volume(0.24); }
+/* fantasy: interaction sounds from the shared set (--fantasy-sfx-* in base.css).
+   Volumes and pitches are unitless ranges of the -og-sound grammar. */
+:root { -og-sound: press var(--fantasy-sfx-tap) var(--fantasy-sfx-tap2) volume(0.22 0.28) pitch(0.94 0.99), select var(--fantasy-sfx-confirm) volume(0.28), confirm var(--fantasy-sfx-confirm) volume(0.3), cancel var(--fantasy-sfx-back) volume(0.24), back var(--fantasy-sfx-back) volume(0.24), open var(--fantasy-sfx-open) volume(0.22), close var(--fantasy-sfx-back) volume(0.2), error var(--fantasy-sfx-error) volume(0.3), reward var(--fantasy-sfx-reward) volume(0.32); }
+button::part(base), button::part(RpgBackpack\.tab), button::part(RpgQuestLog\.row), button::part(RpgConversation\.row), button::part(RpgParty\.cell), button::part(RpgWorldMap\.marker) { -og-sound: press var(--fantasy-sfx-tap) volume(0.22 0.28) pitch(0.94 0.99), hover var(--fantasy-sfx-tap2) volume(0.1); }
+button.primary::part(base) { -og-sound: press var(--fantasy-sfx-confirm) volume(0.3) pitch(0.92 0.96), hover var(--fantasy-sfx-tap2) volume(0.1); }
+button::part(RpgBackpack\.cell), button::part(RpgCharacter\.cell) { -og-sound: press var(--fantasy-sfx-tap2) volume(0.2 0.26) pitch(0.9 1), hover var(--fantasy-sfx-tap) volume(0.08); }
+button::part(RpgActionBar\.skill), button::part(RpgActionBar\.item) { -og-sound: press var(--fantasy-sfx-confirm) volume(0.26) pitch(1.02 1.08), hover var(--fantasy-sfx-tap) volume(0.08); }
+button::part(RpgCommands\.cell) { -og-sound: press var(--fantasy-sfx-confirm) volume(0.3) pitch(0.9 0.95), hover var(--fantasy-sfx-tap2) volume(0.1); }
+button::part(RpgMenuBar\.tab) { -og-sound: press var(--fantasy-sfx-open) volume(0.22), hover var(--fantasy-sfx-tap) volume(0.08); }
+button.menu-close::part(base) { -og-sound: press var(--fantasy-sfx-back) volume(0.24); }
