@@ -289,7 +289,7 @@ impl RetainedHost {
         self.owner_of.contains_key(&key)
     }
 
-    pub(crate) fn deferred_focus_path(&self, key: u64) -> Option<&str> {
+    pub fn deferred_focus_path(&self, key: u64) -> Option<&str> {
         let identity = self.by_key.get(&key)?;
         let node = self.topology.node(identity)?;
         if node.materialization != Materialization::Deferred
@@ -312,7 +312,7 @@ impl RetainedHost {
     /// render key `key` belongs to (`file:line` each), and its bindings, as
     /// the UI debugger shows them (`Ui::debug_element`): read from what its
     /// last resolve kept, for that one element.
-    pub(crate) fn debug_styles(
+    pub fn debug_styles(
         &self,
         key: u64,
     ) -> Option<(Vec<crate::UiDebugStyle>, crate::ui::DebugBindings)> {
@@ -345,13 +345,13 @@ impl RetainedHost {
     }
 
     /// A widget memory a mounted element keeps while it is not built.
-    pub(crate) fn keeps_memory(&self, key: u64) -> bool {
+    pub fn keeps_memory(&self, key: u64) -> bool {
         self.memories.contains_key(&key)
     }
 }
 
 impl RetainedHost {
-    pub(crate) fn record_mut(&mut self, key: u64) -> Option<&mut super::host::DocRecord> {
+    pub fn record_mut(&mut self, key: u64) -> Option<&mut super::host::DocRecord> {
         let identity = self.by_key.get(&key)?;
         Some(&mut self.elements.get_mut(identity)?.record)
     }
@@ -387,7 +387,7 @@ impl RetainedHost {
     }
 
     /// The layout keys of mounted query containers.
-    pub(crate) fn containers(&self) -> impl Iterator<Item = u64> + '_ {
+    pub fn containers(&self) -> impl Iterator<Item = u64> + '_ {
         self.elements
             .values()
             .filter_map(|e| e.resolved.as_ref()?.values.container)
@@ -402,11 +402,10 @@ impl RetainedHost {
     }
 }
 
-impl crate::ui::Docs {
+impl super::host::DocMemory {
     pub(crate) fn document_registration_state(&self) -> Value {
         json!(
-            self.host
-                .retained
+            self.retained
                 .managed
                 .as_ref()
                 .map(|m| m.iter().collect::<Vec<_>>())
@@ -424,7 +423,7 @@ impl crate::ui::Docs {
         } else {
             Some(RetainedHost::restore(managed)?.registrations)
         };
-        if let Some(current) = &self.host.retained.managed {
+        if let Some(current) = &self.retained.managed {
             if let Some(saved) = &saved {
                 for id in saved.keys().filter(|id| !current.contains_key(*id)) {
                     restored.registrations.remove(id);

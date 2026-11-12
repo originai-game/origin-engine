@@ -134,7 +134,7 @@ impl Ui {
             },
             docs: Docs {
                 host: Default::default(),
-                reactive: Default::default(),
+                state: Box::new(crate::doc::build::NoDocuments::default()),
             },
             world: Default::default(),
         };
@@ -500,7 +500,7 @@ impl Ui {
     pub fn set_locale(&mut self, locale: &str) {
         if self.env.locale != locale {
             self.env.locale = locale.into();
-            self.docs.reactive.graph.locale_changed();
+            self.docs.locale_changed();
         }
     }
 

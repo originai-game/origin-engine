@@ -3,6 +3,7 @@
 //! counter and quote run ([`crate::doc::generated::Run`]) every element
 //! moves as it is built.
 use super::*;
+use crate::doc::build::DocsState;
 use crate::doc::generated::{self as gc, Content, PseudoBox, Quotes};
 
 pub(crate) trait GeneratedUi {
@@ -304,18 +305,18 @@ impl GeneratedDocs for crate::ui::Docs {
         if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
             .has(crate::layout::Contain::STYLE)
         {
-            self.host_mut().run.enter_contained();
+            self.state_mut().run.enter_contained();
         } else {
-            self.host_mut().run.enter();
+            self.state_mut().run.enter();
         }
         if let Some(g) = &r.generated {
-            self.host_mut().run.apply(&g.ops);
+            self.state_mut().run.apply(&g.ops);
         }
     }
 
     fn run_exit(&mut self) {
         if self.host().uses_run {
-            self.host_mut().run.exit();
+            self.state_mut().run.exit();
         }
     }
 
@@ -348,7 +349,7 @@ impl GeneratedDocs for crate::ui::Docs {
                 v => v.to_string(),
             })
         };
-        let run = &mut self.host_mut().run;
+        let run = &mut self.state_mut().run;
         run.enter();
         run.apply(&which.ops);
         let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
@@ -447,17 +448,17 @@ impl GeneratedUi2 for Ui {
             Some(s) => {
                 if self
                     .docs
-                    .host()
+                    .state()
                     .selection
                     .get(&key)
                     .is_none_or(|old| **old != s)
                 {
-                    self.docs.host_mut().selection.insert(key, Arc::new(s));
+                    self.docs.state_mut().selection.insert(key, Arc::new(s));
                 }
             }
             None => {
-                if !self.docs.host().selection.is_empty() {
-                    self.docs.host_mut().selection.remove(&key);
+                if !self.docs.state().selection.is_empty() {
+                    self.docs.state_mut().selection.remove(&key);
                 }
             }
         }
@@ -522,6 +523,7 @@ fn hidden(style: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::DocsState;
     use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::{InputFrame, Ui, UiDesc, Viewport};
@@ -577,7 +579,7 @@ li::marker { content: "(" counter(list-item) ") "; }
                 .filter(|e| !e.text.is_empty())
                 .map(|e| e.text.clone())
                 .collect();
-            (texts, ui.docs.host().retained.reconciled)
+            (texts, ui.docs.state().memory.retained.reconciled)
         };
         let (texts, _) = frame(&mut ui);
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);

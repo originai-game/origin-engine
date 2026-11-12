@@ -64,7 +64,7 @@ impl RetainedFrameRetainedHost for RetainedHost {
         // those a touch holds, and every one when a touch goes down.
         input.extend(s.touch_owners.keys());
         if ui.interaction.input().pointers.pressed != 0 {
-            input.extend(ui.docs.host().zones.keys());
+            input.extend(ui.docs.state().zones.keys());
         }
         if n.back {
             // Back belongs to the topmost scope (a modal, an open list),

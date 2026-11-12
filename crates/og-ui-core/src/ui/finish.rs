@@ -1006,24 +1006,19 @@ impl Ui {
             self.interaction.state.active = 0;
         }
         let touched = std::mem::take(&mut self.front.touched);
-        let retained = &self.docs.host.retained;
+        let docs = &self.docs;
         self.interaction
             .state
             .anims
-            .retain(|k, _| touched.contains(k) || retained.keeps_memory(*k));
+            .retain(|k, _| touched.contains(k) || docs.mount_keeps_memory(*k));
         let tree = &self.tree.index;
         self.interaction
             .state
             .clocks
-            .retain(|_, (owner, _)| tree.find(*owner).is_some() || retained.owns(*owner));
+            .retain(|_, (owner, _)| tree.find(*owner).is_some() || docs.mount_owns(*owner));
         self.docs
-            .host
-            .validity
-            .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
-        self.docs
-            .host
-            .media_sent
-            .retain(|k, _| tree.find(*k).is_some() || retained.keeps_memory(*k));
+            .state
+            .retain_element_memory(&|k| tree.find(k).is_some());
         self.front.touched = touched;
 
         // Scopes, scrollers, focus owners, groups and recognisers around
@@ -1085,8 +1080,7 @@ impl Ui {
         // that opened takes it (its first control, or the one a widget asked
         // for); a scope that closed gives it back.
         let alive = |k: u64| {
-            hits.iter().any(|h: &Hit| h.key == k)
-                || self.docs.host.retained.deferred_focus_path(k).is_some()
+            hits.iter().any(|h: &Hit| h.key == k) || self.docs.deferred_focus_path(k).is_some()
         };
         let first_in = |scope: u64| {
             hits.iter()
@@ -1556,7 +1550,7 @@ impl crate::ui::Layout {
                 {
                     focus_paths[slot] = format!("{}/{l}", focus_paths[slot]);
                 }
-            } else if let Some(path) = docs.host.retained.deferred_focus_path(key) {
+            } else if let Some(path) = docs.deferred_focus_path(key) {
                 focus_paths[slot] = path.to_owned();
             }
         }

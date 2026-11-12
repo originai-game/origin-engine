@@ -22,6 +22,7 @@ pub(crate) mod mount;
 pub(crate) mod nodes;
 pub(crate) mod popover;
 pub(crate) mod retained;
+pub(crate) mod state;
 #[doc(hidden)]
 pub mod svg;
 pub(crate) mod text_motion;
@@ -29,6 +30,7 @@ pub(crate) mod touch;
 pub(crate) mod viewport;
 pub(crate) mod world;
 pub use ext::*;
+pub(crate) use state::DocsState;
 
 use super::schema::{self, PROPS, Ty};
 use super::{Act, DocNode, Lit, NodeKind, Paint, PropValue, UiDocument, When};

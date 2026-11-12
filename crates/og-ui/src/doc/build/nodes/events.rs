@@ -210,7 +210,7 @@ impl NodesEventsUi for Ui {
                 b.event(path, kind, &n.id, Value::Null);
             }
         }
-        let appeared = !self.docs.host().seen.contains(&key);
+        let appeared = !self.docs.state().memory.seen.contains(&key);
         // `use:` in an immediate build: made the first tick it is built,
         // updated when its params change; gone is found in docs_begin. A
         // mounted element's are sent by the retained host.
@@ -219,7 +219,8 @@ impl NodesEventsUi for Ui {
                 let value = params.as_ref().map_or(Value::Null, |p| b.eval(p));
                 let old = self
                     .docs
-                    .host_mut()
+                    .state_mut()
+                    .memory
                     .last
                     .insert((key, usize::MAX - k), value.clone());
                 let phase = match old {
@@ -241,9 +242,9 @@ impl NodesEventsUi for Ui {
                 row_key: b.row_key.clone(),
                 ..DocEvent::default()
             };
-            self.docs.host_mut().uses.insert(key, (event, names));
+            self.docs.state_mut().uses.insert(key, (event, names));
         }
-        let happened = std::mem::take(&mut self.docs.host_mut().happened);
+        let happened = std::mem::take(&mut self.docs.state_mut().happened);
         let held = n.triggers.iter().any(|t| t.when == When::Hold) && self.held(key, n);
         let context = long
             || (self.interaction.input().secondary_pressed && self.interaction.state().hot == key);
@@ -259,7 +260,7 @@ impl NodesEventsUi for Ui {
                 When::ContextMenu => context,
                 When::Toggle | When::Close | When::Revealed => happened.contains(&t.when),
                 When::Action(a) => {
-                    self.docs.host().accepts
+                    self.docs.state().accepts
                         && self.interaction.action_fired(a)
                         // A disabled control's shortcut activates nothing,
                         // as its press does not (a `<fieldset disabled>`'s
@@ -271,7 +272,12 @@ impl NodesEventsUi for Ui {
                 }
                 When::Change(e) => {
                     let v = b.eval(e);
-                    let old = self.docs.host_mut().last.insert((key, k), v.clone());
+                    let old = self
+                        .docs
+                        .state_mut()
+                        .memory
+                        .last
+                        .insert((key, k), v.clone());
                     old.is_some_and(|o| o != v)
                 }
                 // The input pass fires these ([`super::pointer`]); the
@@ -286,7 +292,7 @@ impl NodesEventsUi for Ui {
                     let name = qualify(&b.doc.name, tl);
                     let id = self.play_timeline(path, &name, crate::motion::PlayDesc::default());
                     self.docs
-                        .host_mut()
+                        .state_mut()
                         .plays
                         .insert((path.to_string(), tl.clone()), id);
                 }
@@ -306,7 +312,7 @@ impl NodesEventsUi for Ui {
                     // the focus, and the form is not submitted.
                     let first = self
                         .docs
-                        .host()
+                        .state()
                         .validity
                         .iter()
                         .filter(|(_, v)| {
@@ -325,13 +331,13 @@ impl NodesEventsUi for Ui {
                 }
                 Act::Push(screen) => self
                     .docs
-                    .host_mut()
+                    .state_mut()
                     .ops
                     .push(crate::layers::LayerOp::Push(screen.clone(), Value::Null)),
                 Act::Pop => {
-                    let l = self.docs.host().building;
+                    let l = self.docs.state().building;
                     self.docs
-                        .host_mut()
+                        .state_mut()
                         .ops
                         .push(crate::layers::LayerOp::Pop(l))
                 }

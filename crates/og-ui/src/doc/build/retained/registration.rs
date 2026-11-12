@@ -25,7 +25,7 @@ impl RetainedRegistrationUi for Ui {
         content: BTreeMap<String, String>,
     ) -> Result<(), String> {
         mount.validate()?;
-        self.docs.reactive().graph.check_idle(&mount)?;
+        self.docs.state().memory.reactive.graph.check_idle(&mount)?;
         if !self.docs.host().docs.contains_key(&document) {
             return Err(format!("missing document '{document}'"));
         }
@@ -57,15 +57,15 @@ impl RetainedRegistrationUi for Ui {
             content,
         };
         let document = registration.document.clone();
-        if self.docs.host().retained.registrations.get(&mount) == Some(&registration) {
+        if self.docs.state().memory.retained.registrations.get(&mount) == Some(&registration) {
             self.sync_mount_layer(&mount, Some(&document));
             return Ok(());
         }
-        let mut host = std::mem::take(&mut self.docs.host_mut().retained);
+        let mut host = std::mem::take(&mut self.docs.state_mut().memory.retained);
         host.remove_mount(self, &mount);
         host.registrations.insert(mount.clone(), registration);
         host.pending_mounts.insert(mount.clone());
-        self.docs.host_mut().retained = host;
+        self.docs.state_mut().memory.retained = host;
         self.sync_mount_layer(&mount, Some(&document));
         Ok(())
     }
@@ -73,7 +73,8 @@ impl RetainedRegistrationUi for Ui {
     fn unmount_scope(&mut self, scope: &str) {
         let mounts: Vec<_> = self
             .docs
-            .host()
+            .state()
+            .memory
             .retained
             .registrations
             .keys()
@@ -87,17 +88,17 @@ impl RetainedRegistrationUi for Ui {
             }
             self.finish_unmount(&mount);
         }
-        if let Some(managed) = &mut self.docs.host_mut().retained.managed {
+        if let Some(managed) = &mut self.docs.state_mut().memory.retained.managed {
             managed.retain(|id, _| id.scope != scope);
         }
     }
 
     fn inherit_document_registrations(&mut self, previous: &Self) {
-        let registrations = previous.docs.host().retained.registrations.clone();
-        self.docs.host_mut().retained = RetainedHost {
+        let registrations = previous.docs.state().memory.retained.registrations.clone();
+        self.docs.state_mut().memory.retained = RetainedHost {
             pending_mounts: registrations.keys().cloned().collect(),
             registrations,
-            managed: previous.docs.host().retained.managed.clone(),
+            managed: previous.docs.state().memory.retained.managed.clone(),
             ..Default::default()
         };
     }
@@ -111,19 +112,22 @@ pub(crate) trait RetainedRegistrationDocs {
 
 impl RetainedRegistrationDocs for crate::ui::Docs {
     fn document_mount_inputs(&self) -> Value {
-        json!(self.host().retained.registrations.iter().map(|(mount, registration)| {
+        json!(self.state().memory.retained.registrations.iter().map(|(mount, registration)| {
             json!({ "mount": mount, "inputs": registration.inputs.values().collect::<Vec<_>>() })
         }).collect::<Vec<_>>())
     }
 
     fn registered_document_mounts(&mut self, mounts: Vec<SourceId>) -> Result<(), String> {
-        self.reactive()
+        self.state()
+            .memory
+            .reactive
             .graph
             .check_idle(&SourceId::new("registration", "complete"))?;
         let mut managed = BTreeMap::new();
         for mount in mounts {
             let declaration = self
-                .host()
+                .state()
+                .memory
                 .retained
                 .registrations
                 .get(&mount)
@@ -132,7 +136,7 @@ impl RetainedRegistrationDocs for crate::ui::Docs {
                 })?;
             managed.insert(mount, declaration.clone());
         }
-        self.host_mut().retained.managed = Some(managed);
+        self.state_mut().memory.retained.managed = Some(managed);
         Ok(())
     }
 }

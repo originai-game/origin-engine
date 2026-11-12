@@ -101,7 +101,7 @@ impl Ui {
                 return true;
             }
             match self.tree.index.by_key.get(key) {
-                Some(&node) if self.docs.host.retained.owns(*owner) => {
+                Some(&node) if self.docs.mount_owns(*owner) => {
                     self.world.want(desc.target);
                     self.world.declared.anchors.push(AnchorEntry {
                         node,
@@ -126,7 +126,7 @@ impl Ui {
                 return true;
             }
             match self.tree.index.by_key.get(key) {
-                Some(&node) if self.docs.host.retained.owns(*owner) => {
+                Some(&node) if self.docs.mount_owns(*owner) => {
                     if let Some((t, ..)) = desc.quad {
                         self.world.want(t);
                     }
@@ -145,9 +145,7 @@ impl Ui {
         // one-shots forgotten once their row leaves.
         let mut kept = std::mem::take(&mut self.world.declared.kept_mass);
         kept.retain(|key, m| {
-            if !self.world.declared.mass_built.contains(key)
-                && !self.docs.host.retained.owns(m.owner)
-            {
+            if !self.world.declared.mass_built.contains(key) && !self.docs.mount_owns(m.owner) {
                 return false;
             }
             self.world.want(m.target);
@@ -163,9 +161,7 @@ impl Ui {
         });
         self.world.declared.kept_mass = kept;
         let mut spawned = std::mem::take(&mut self.world.declared.mass_spawned);
-        spawned.retain(|k| {
-            self.world.declared.mass_built.contains(k) || self.docs.host.retained.owns(*k)
-        });
+        spawned.retain(|k| self.world.declared.mass_built.contains(k) || self.docs.mount_owns(*k));
         self.world.declared.mass_spawned = spawned;
         self.tree
             .keep_effects(&mut self.world, &self.docs, &mut self.interaction);
@@ -389,7 +385,7 @@ impl crate::ui::Tree {
         let mut kept = std::mem::take(&mut world.declared.kept_effects);
         kept.retain(|key, (emitter, meta)| {
             let Some(&i) = self.index.by_key.get(key) else {
-                return docs.host.retained.owns(*key);
+                return docs.mount_owns(*key);
             };
             if let Some(d) = emitter {
                 // Its burst fires, and its `for` counts, from when it first stands.

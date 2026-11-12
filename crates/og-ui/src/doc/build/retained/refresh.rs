@@ -202,7 +202,9 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             {
                 self.topology.set_state(identity, state, enabled)?;
                 ui.docs
-                    .reactive_mut()
+                    .state_mut()
+                    .memory
+                    .reactive
                     .graph
                     .interaction_changed(identity, state);
             }
@@ -257,13 +259,15 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         self.css = CssWork::default();
         loop {
             let topology = &self.topology;
-            let changes = self
-                .bindings
-                .refresh(ui.docs.reactive_mut(), env, |node, state| {
+            let changes = self.bindings.refresh(
+                &mut ui.docs.state_mut().memory.reactive,
+                env,
+                |node, state| {
                     topology
                         .node(node)
                         .is_some_and(|n| n.states.contains(&state))
-                });
+                },
+            );
             self.evaluated += changes.evaluated;
             self.pending_bindings.extend(changes.changed);
             if changes.evaluated == 0 && self.pending_bindings.is_empty() {
@@ -450,7 +454,9 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                 if let Some(node) = self.by_key.get(key) {
                     self.topology.set_state(node, state, enabled)?;
                     ui.docs
-                        .reactive_mut()
+                        .state_mut()
+                        .memory
+                        .reactive
                         .graph
                         .interaction_changed(node, state);
                 }
@@ -463,7 +469,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             .map(|(key, node)| {
                 (
                     node.clone(),
-                    ui.docs.host().popovers.get(key).is_some_and(|l| l.shown),
+                    ui.docs.state().popovers.get(key).is_some_and(|l| l.shown),
                 )
             })
             .collect();
@@ -480,14 +486,16 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             {
                 self.topology.set_state(&node, PopoverOpen, open)?;
                 ui.docs
-                    .reactive_mut()
+                    .state_mut()
+                    .memory
+                    .reactive
                     .graph
                     .interaction_changed(&node, PopoverOpen);
             }
         }
-        if self.target.0 != ui.docs.host().target {
+        if self.target.0 != ui.docs.state().target {
             let old = std::mem::take(&mut self.target.1);
-            let id = ui.docs.host().target.clone();
+            let id = ui.docs.state().target.clone();
             let new: Vec<MountedNode> = match &id {
                 Some(id) => self
                     .elements
@@ -502,7 +510,9 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                     if self.topology.node(node).is_some() {
                         self.topology.set_state(node, Target, enabled)?;
                         ui.docs
-                            .reactive_mut()
+                            .state_mut()
+                            .memory
+                            .reactive
                             .graph
                             .interaction_changed(node, Target);
                     }
@@ -518,7 +528,9 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                 while let Some(node) = ancestor {
                     self.topology.set_state(&node, FocusWithin, enabled)?;
                     ui.docs
-                        .reactive_mut()
+                        .state_mut()
+                        .memory
+                        .reactive
                         .graph
                         .interaction_changed(&node, FocusWithin);
                     ancestor = self.topology.parent(&node).cloned();

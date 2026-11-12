@@ -82,7 +82,7 @@ impl SvgElementsUi for Ui {
         uses: &[&crate::paint::FilterUse],
         space: ImageSpace,
     ) {
-        if self.docs.host().element_images >= 4 {
+        if self.docs.state().element_images >= 4 {
             return;
         }
         let doc = b.doc.clone();
@@ -207,9 +207,9 @@ impl SvgElementsUi for Ui {
                     cached: None,
                     recording: Default::default(),
                 };
-                self.docs.host_mut().element_images += 1;
+                self.docs.state_mut().element_images += 1;
                 self.build_node(&mut ib, target, None);
-                self.docs.host_mut().element_images -= 1;
+                self.docs.state_mut().element_images -= 1;
                 self.close();
             }
         }

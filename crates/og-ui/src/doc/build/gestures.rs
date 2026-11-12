@@ -184,6 +184,7 @@ pub(crate) fn two_touches(
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::DocsState;
     use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
@@ -231,7 +232,9 @@ mod tests {
         ui.define_document(UiDocument::parse("snap.svelte", DOC).unwrap());
         let open = SourceId::new("test", "open");
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: open.clone(),
                 initial: json!(false),
@@ -274,7 +277,9 @@ mod tests {
         assert!((s.offset_y - 100.0).abs() < 0.5, "{s:?}");
 
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Set {
                 source: open.clone(),
                 value: json!(true),
@@ -316,7 +321,9 @@ mod tests {
         }
         let v = ui
             .docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Read { source: open })
             .unwrap();
         assert_eq!(v["value"], json!(false), "a swipe down closes the sheet");
@@ -341,7 +348,9 @@ mod tests {
             ui.define_document(UiDocument::parse("side.svelte", doc).unwrap());
             let open = SourceId::new("test", "open");
             ui.docs
-                .reactive_mut()
+                .state_mut()
+                .memory
+                .reactive
                 .execute(Command::Signal {
                     source: open.clone(),
                     initial: json!(true),
@@ -391,7 +400,9 @@ mod tests {
             }
             let v = ui
                 .docs
-                .reactive_mut()
+                .state_mut()
+                .memory
+                .reactive
                 .execute(Command::Read { source: open })
                 .unwrap();
             assert_eq!(

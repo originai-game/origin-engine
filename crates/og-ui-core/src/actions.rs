@@ -317,7 +317,7 @@ impl Ui {
                 force: false,
             }
         };
-        if let Err(e) = self.docs.reactive.execute(command) {
+        if let Err(e) = self.docs.execute(command) {
             self.out.warnings.push(format!("$ui store: {e}"));
             return;
         }

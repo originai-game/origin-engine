@@ -64,10 +64,10 @@ impl PopoverUi for Ui {
         }
         // HTML: showing an auto popover closes the other auto ones, and a
         // hint the other hints.
-        if open && let Some(mode) = self.docs.host().popovers.get(&pk).map(|l| l.mode) {
+        if open && let Some(mode) = self.docs.state().popovers.get(&pk).map(|l| l.mode) {
             let others: Vec<u64> = self
                 .docs
-                .host()
+                .state()
                 .popovers
                 .iter()
                 .filter(|(k, l)| **k != pk && l.mode == mode && mode != Mode::Manual)
@@ -114,7 +114,7 @@ impl PopoverUi for Ui {
                     Some("hide") => false,
                     _ => !open,
                 };
-                let link = self.docs.host_mut().popovers.entry(pk).or_default();
+                let link = self.docs.state_mut().popovers.entry(pk).or_default();
                 link.invoker = (at, key);
                 link.point = None;
                 self.set_popover_open(pk, next);
@@ -131,7 +131,7 @@ impl PopoverUi for Ui {
             if context {
                 let pk = popover_key(&b.mount, target);
                 let p = self.interaction.input().pointer;
-                let link = self.docs.host_mut().popovers.entry(pk).or_default();
+                let link = self.docs.state_mut().popovers.entry(pk).or_default();
                 link.invoker = (at, key);
                 link.point = Some([p.x, p.y]);
                 self.set_popover_open(pk, true);
@@ -145,7 +145,7 @@ impl PopoverUi for Ui {
             let s = &self.interaction.state();
             let interest =
                 (s.hot == key && s.hover_ticks >= delay) || (s.focus == key && s.focus_visible);
-            let link = self.docs.host_mut().popovers.entry(pk).or_default();
+            let link = self.docs.state_mut().popovers.entry(pk).or_default();
             if interest {
                 link.invoker = (at, key);
                 link.interest = true;
@@ -177,7 +177,7 @@ impl PopoverUi for Ui {
         };
         let pk = popover_key(&b.mount, &n.id);
         let link = {
-            let l = self.docs.host_mut().popovers.entry(pk).or_default();
+            let l = self.docs.state_mut().popovers.entry(pk).or_default();
             l.mode = mode;
             *l
         };
@@ -202,7 +202,7 @@ impl PopoverUi for Ui {
             open = false;
         }
         if open != link.shown {
-            self.docs.host_mut().happened.push(When::Toggle);
+            self.docs.state_mut().happened.push(When::Toggle);
         }
         // The element's place in the tree, as a modal dialog's, out of the
         // flow: HTML's popover is in the top layer, never in the page.
@@ -275,7 +275,7 @@ impl PopoverUi for Ui {
         if layer_at != NONE {
             self.place_popover(r, layer_at, link.point);
         }
-        let l = self.docs.host_mut().popovers.entry(pk).or_default();
+        let l = self.docs.state_mut().popovers.entry(pk).or_default();
         if layer != 0 {
             l.layer = layer;
         }

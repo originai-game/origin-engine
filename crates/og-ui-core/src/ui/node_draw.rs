@@ -321,7 +321,7 @@ impl Ui {
                         // `::selection`'s ink, lines and shadows: the line's
                         // selected glyphs drawn again, clipped to their runs.
                         let owner = self.tree.nodes[self.text_owner(i)].key;
-                        let selection = self.docs.host.selection.get(&owner).filter(|s| {
+                        let selection = self.docs.state.selection(owner).filter(|s| {
                             s.color.is_some() || s.decoration.is_some() || s.shadows.is_some()
                         });
                         let range = match &field {
@@ -1519,9 +1519,8 @@ impl Ui {
             .filter(|_| !own && !plated);
         let selection = self
             .docs
-            .host
-            .selection
-            .get(&n.key)
+            .state
+            .selection(n.key)
             .filter(|s| s.color.is_some() || s.decoration.is_some() || s.shadows.is_some());
         // A copy of a line's glyphs moved, in another ink, cut to `band`.
         let copy = |line: &[DrawCmd],
@@ -1716,9 +1715,8 @@ impl Ui {
         let (alpha, dpr) = (n.placed.alpha, self.env.viewport.dpr());
         let fill = self
             .docs
-            .host
-            .selection
-            .get(&n.key)
+            .state
+            .selection(n.key)
             .and_then(|s| s.background)
             .unwrap_or(self.paint_theme().palette.control_strong);
         let part = crate::dress::PartRef::of("TextEdit", "selection", None);

@@ -735,8 +735,8 @@ impl crate::ui::Layout {
         }
         out.stats = LayoutStats {
             rebuilt,
-            bindings: docs.host.retained.evaluated as u32,
-            reconciled: docs.host.retained.reconciled as u32,
+            bindings: docs.mount_counts().0 as u32,
+            reconciled: docs.mount_counts().1 as u32,
             ..LayoutStats::default()
         };
     }

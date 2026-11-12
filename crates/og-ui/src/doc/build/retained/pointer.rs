@@ -239,6 +239,7 @@ impl RetainedPointerRetainedHost for RetainedHost {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::DocsState;
     use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
@@ -314,7 +315,9 @@ mod tests {
         ui.define_document(UiDocument::parse("board.svelte", BOARD).unwrap());
         let items = SourceId::new("test", "items");
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Collection {
                 source: items.clone(),
                 key: "id".into(),

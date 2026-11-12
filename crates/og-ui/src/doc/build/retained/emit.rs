@@ -124,7 +124,7 @@ impl RetainedEmitRetainedHost for RetainedHost {
             && element
                 .run_in
                 .as_ref()
-                .is_none_or(|entered| !entered.same_state(&ui.docs.host().run));
+                .is_none_or(|entered| !entered.same_state(&ui.docs.state().run));
         if !in_place
             && !element.volatile
             && !run_moved
@@ -138,8 +138,8 @@ impl RetainedEmitRetainedHost for RetainedHost {
                 ui.tree.reattach(slot);
             }
             if uses_run {
-                ui.docs.host_mut().run.replay(&element.run_events);
-                ui.docs.host_mut().run.reads += u64::from(element.run_reads);
+                ui.docs.state_mut().run.replay(&element.run_events);
+                ui.docs.state_mut().run.reads += u64::from(element.run_reads);
             }
             return Ok(());
         }
@@ -147,10 +147,10 @@ impl RetainedEmitRetainedHost for RetainedHost {
         let saved_run = (uses_run && in_place)
             .then(|| element.run_in.as_deref().cloned())
             .flatten()
-            .map(|entered| std::mem::replace(&mut ui.docs.host_mut().run, entered));
-        let run_mark = ui.docs.host().run.mark();
-        let run_reads = ui.docs.host().run.reads;
-        let run_in = uses_run.then(|| ui.docs.host().run.snapshot());
+            .map(|entered| std::mem::replace(&mut ui.docs.state_mut().run, entered));
+        let run_mark = ui.docs.state().run.mark();
+        let run_reads = ui.docs.state().run.reads;
+        let run_in = uses_run.then(|| ui.docs.state().run.snapshot());
         self.emit.remove(identity);
         self.reconciled += 1;
         if !self.on_action.is_empty() {
@@ -159,16 +159,16 @@ impl RetainedEmitRetainedHost for RetainedHost {
         let e = self.elements[identity].clone();
         if e.slot.is_some() {
             // Built before and not since retired: not appearing.
-            ui.docs.host_mut().seen.insert(identity.key);
+            ui.docs.state_mut().memory.seen.insert(identity.key);
         }
         if in_place {
             *ui.tree.in_place_mut() = Some((identity.key, parent_slot));
         }
-        ui.docs.host_mut().keeps_hidden = e
+        ui.docs.state_mut().keeps_hidden = e
             .slot
             .is_some_and(|slot| ui.tree.holds(slot, identity.key, parent_slot));
         ui.tree.owning_mut().push(Default::default());
-        ui.docs.host_mut().capture.push(Default::default());
+        ui.docs.state_mut().capture.push(Default::default());
         let resolved = e.resolved.as_ref().expect("resolved mount");
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
         let mut result = Ok(());
@@ -186,17 +186,17 @@ impl RetainedEmitRetainedHost for RetainedHost {
         });
         ui.docs.run_exit();
         let run_events = if uses_run {
-            ui.docs.host().run.since(run_mark)
+            ui.docs.state().run.since(run_mark)
         } else {
             Default::default()
         };
-        let reads_run = ui.docs.host().run.reads != run_reads;
+        let reads_run = ui.docs.state().run.reads != run_reads;
         if let Some(saved) = saved_run {
-            ui.docs.host_mut().run = saved;
+            ui.docs.state_mut().run = saved;
         }
         *ui.tree.in_place_mut() = None;
         let owned = ui.tree.owning_mut().pop().expect("pushed");
-        let record = ui.docs.host_mut().capture.pop().expect("pushed");
+        let record = ui.docs.state_mut().capture.pop().expect("pushed");
         events.extend(b.events);
         writes.extend(
             b.writes
@@ -358,9 +358,9 @@ impl RetainedEmitRetainedHost for RetainedHost {
             if !ui.tree.holds(slot, identity.key, parent) {
                 continue;
             }
-            let outer = (ui.docs.host().accepts, ui.docs.host().building);
+            let outer = (ui.docs.state().accepts, ui.docs.state().building);
             let (accepts, building) = self.contexts.get(&identity.mount).copied().unwrap_or(outer);
-            (ui.docs.host_mut().accepts, ui.docs.host_mut().building) = (accepts, building);
+            (ui.docs.state_mut().accepts, ui.docs.state_mut().building) = (accepts, building);
             // A world layer's own arm opens its layer again.
             if parent != NONE {
                 let owner = ui.tree.nodes()[parent]
@@ -374,7 +374,7 @@ impl RetainedEmitRetainedHost for RetainedHost {
             if parent != NONE {
                 ui.tree.stack_mut().pop();
             }
-            (ui.docs.host_mut().accepts, ui.docs.host_mut().building) = outer;
+            (ui.docs.state_mut().accepts, ui.docs.state_mut().building) = outer;
             result?;
         }
         Ok(())

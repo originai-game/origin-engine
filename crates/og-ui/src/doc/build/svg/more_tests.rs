@@ -1,4 +1,5 @@
 use crate::doc::UiDocument;
+use crate::doc::build::DocsState;
 use crate::doc::build::ext::*;
 use crate::reactive::SourceId;
 use crate::{DrawCmd, InputFrame, Ui, UiDesc, Viewport};
@@ -84,7 +85,9 @@ fn markers_lines_text_paths_and_foreign_objects_draw_in_the_view_box() {
     ui.define_document(UiDocument::parse("pic.svelte", DOC).unwrap());
     let word = SourceId::new("test", "word");
     ui.docs
-        .reactive_mut()
+        .state_mut()
+        .memory
+        .reactive
         .execute(crate::reactive::session::Command::Signal {
             source: word.clone(),
             initial: serde_json::json!("Along"),
