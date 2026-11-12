@@ -7961,7 +7961,7 @@
         },
         {
           "name": "waterHeight",
-          "doc": "The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it, plus an og.Water's sea (og.Water.wind) at this tick, the surface it draws: for boats that bob and spray that starts on the surface.",
+          "doc": "The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface.",
           "params": [
             {
               "name": "world",
@@ -33290,7 +33290,7 @@
     "Splash": {
       "x-og-kind": "event",
       "x-og-module": "physics",
-      "description": "Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.",
+      "description": "Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.",
       "type": "object",
       "properties": {
         "water": {
@@ -35134,7 +35134,7 @@
     "Water": {
       "x-og-kind": "component",
       "x-og-module": "atmosphere",
-      "description": "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).\nSee `render §8`.",
+      "description": "A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.\nSee `render §8`.",
       "type": "object",
       "properties": {
         "size": {

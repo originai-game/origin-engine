@@ -60,3 +60,5 @@ mod time_scale;
 mod unchanged;
 #[path = "../vehicles.rs"]
 mod vehicles;
+#[path = "../water.rs"]
+mod water;

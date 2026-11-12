@@ -269,7 +269,7 @@ pub fn og_physics_stats(world: u32) -> Result<PhysicsStats, String> {
     })()
 }
 
-/// What og.physics.waterHeight and og.Buoyancy read of the world: the
+/// What og.physics.waterHeight and the bodies in water read of the world: the
 /// world itself (between ticks, and as a tick starts), or, inside a system
 /// (a boat a game floats in its own tick), its context, through the
 /// system's declared reads: og.Water and og.Transform (og.Parent for a
@@ -379,7 +379,7 @@ impl<'a> Reader<'a> {
 /// The world's og.Water bodies in entity order (those drawn over a mesh
 /// left out: an arbitrary shape, no square of water): each at its world
 /// position, its sea (og.Water.wind) and og.WorldOrigin's zero. What
-/// og.Buoyancy floats on and og.physics.waterHeight adds.
+/// bodies cross and float on and og.physics.waterHeight answers with.
 pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::WaterBody>, String> {
     let (layout, origin, terrain) = {
         let st = eng.state.borrow();
@@ -424,26 +424,26 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
 }
 
 /// As each tick starts (after og.WorldOrigin's shift): the og.Water bodies
-/// og.physics floats og.Buoyancy bodies on this tick, read only once a game
-/// names og.Buoyancy.
+/// this tick's bodies cross, cut and (og.Buoyancy) float on, read only
+/// once a game names og.Water.
 pub(crate) fn before_tick(eng: &Engine, world: &og_ecs::World) {
     let Ok(p) = physics(eng) else {
         return;
     };
-    if world.id_by_name("og.Buoyancy").is_ok() {
+    if world.id_by_name("og.Water").is_ok() {
         p.set_waters(waters(eng, &Reader::World(world)).unwrap_or_default());
     }
     let wind = eng.state.borrow().layouts.get("og.Wind").cloned();
     crate::wind::before_tick(&p, world, wind.as_ref());
 }
 
-/// An og.Water's sea (og.Water.wind, `og_core::ocean`) at world point
-/// (`x`, `z`) this tick: its height over the water's rest level, inside the
-/// surface's size around it (0 outside); `None` without an og.Water with
-/// a wind. The waves are the absolute world's (og.WorldOrigin's zero added),
-/// at the tick over its rate, as the grid the renderer draws them on
-/// ([`og_physics::WaterBody::height`], what og.Buoyancy rides).
-fn sea_height(
+/// An og.Water's surface (a lake's level, a sea's waves, a river's
+/// course; `og_physics::WaterBody::height`, what bodies float on) at
+/// world point (`x`, `z`) this tick: its height over the entity's y, 0
+/// outside the water; `None` for an entity without an og.Water. A sea's
+/// waves are the absolute world's (og.WorldOrigin's zero added), at the
+/// tick over its rate, as the renderer draws them.
+fn body_height(
     eng: &Engine,
     r: &Reader<'_>,
     e: Entity,
@@ -456,15 +456,15 @@ fn sea_height(
     else {
         return Ok(None);
     };
-    if water.sea.is_none() {
-        return Ok(None);
-    }
     let time = r.time();
     let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     let seconds = time.tick as f64 / f64::from(rate);
     Ok(Some(water.height(x, z, seconds).unwrap_or(0.0)))
 }
 
+/// `og.physics.waterHeight`: the entity's y, its og.Water's surface over
+/// it and the waves bodies raised on its og.WaterSurface or og.WaterLine,
+/// each from the one function the simulation floats bodies on.
 pub fn og_physics_water_height(
     world: u32,
     e: f64,
@@ -481,56 +481,19 @@ pub fn og_physics_water_height(
                 e.to_bits()
             )
         })?;
-        let sea = sea_height(&eng, &r, e, x, z)?;
-        let p = match (physics(&eng), sea) {
-            (Ok(p), _) => p,
-            (Err(_), Some(h)) => return Ok(json!(at.y + h)),
+        let body = body_height(&eng, &r, e, x, z)?;
+        let ripple = match (physics(&eng), body) {
+            (Ok(p), _) => p.water_ripple(e, at, x as f32, z as f32),
+            (Err(_), Some(_)) => None,
             (Err(why), None) => return Err(why),
         };
-        let at = at + Vec3::Y * sea.unwrap_or(0.0);
-        let (x, z) = (x as f32, z as f32);
-        if let Some(w) = p.water_heights(e) {
-            let n = w.resolution as usize;
-            let cell = w.size / (n - 1) as f32;
-            let gx = (x - (at.x - w.size * 0.5)) / cell;
-            let gz = (z - (at.z - w.size * 0.5)) / cell;
-            if !(gx >= 0.0 && gz >= 0.0 && gx <= (n - 1) as f32 && gz <= (n - 1) as f32) {
-                return Ok(json!(at.y));
-            }
-            let (i, j) = ((gx as usize).min(n - 2), (gz as usize).min(n - 2));
-            let (fx, fz) = (gx - i as f32, gz - j as f32);
-            let hh = |a: usize, b: usize| w.heights[b * n + a];
-            let top = hh(i, j) + (hh(i + 1, j) - hh(i, j)) * fx;
-            let bottom = hh(i, j + 1) + (hh(i + 1, j + 1) - hh(i, j + 1)) * fx;
-            return Ok(json!(at.y + top + (bottom - top) * fz));
+        if body.is_none() && ripple.is_none() {
+            return Err(format!(
+                "entity {} has no og.Water, og.WaterSurface or og.WaterLine (or its waves have not stepped yet)",
+                e.to_bits()
+            ));
         }
-        if let Some(line) = p.water_line(e) {
-            let layout = eng.state.borrow().layouts.get("og.WaterLine").cloned();
-            let width = r
-                .rows(layout.as_ref())?
-                .into_iter()
-                .find(|(id, _)| *id == e.to_bits())
-                .and_then(|(_, v)| record::WaterLine::from_json(&v).ok())
-                .map_or(12.0, |w| w.width);
-            let n = line.len();
-            if n < 2 {
-                return Ok(json!(at.y));
-            }
-            let g = (x - (at.x - width * 0.5)) / width * (n - 1) as f32;
-            if !(g >= 0.0 && g <= (n - 1) as f32) {
-                return Ok(json!(at.y));
-            }
-            let i = (g as usize).min(n - 2);
-            let t = g - i as f32;
-            return Ok(json!(at.y + line[i] + (line[i + 1] - line[i]) * t));
-        }
-        if sea.is_some() {
-            return Ok(json!(at.y));
-        }
-        Err(format!(
-            "entity {} has no og.WaterSurface or og.WaterLine (or it has not stepped yet) nor an og.Water with a wind",
-            e.to_bits()
-        ))
+        Ok(json!(at.y + body.unwrap_or(0.0) + ripple.unwrap_or(0.0)))
     })()
 }
 

@@ -4,6 +4,7 @@
 // over the ticks, is the water's rest level outside the surface and without
 // a wind, and two runs read the same heights (the sea is computed in the
 // tick with the engine's own math, never read back from the GPU).
+// Whatever crosses any og.Water is an og.Splash, with or without og.Buoyancy.
 // og.Buoyancy floats a crate on still water at the depth Archimedes gives,
 // and a hull rides a gale's sea, the same on every run and through a
 // restore.
@@ -61,9 +62,8 @@ test("a wind's sea answers waterHeight with its waves, the same on every run", (
   const w = a.engine.world;
   // Outside the surface's 400 m: the rest level.
   expect(must(og.physics.waterHeight(w, w.find("sea")!, 260, 0))).toBeCloseTo(2, 6);
-  // Water without a wind has no sea: refused as before when it has no
-  // simulated surface either.
-  expect(og.physics.waterHeight(w, w.find("pond")!, 500, 0).ok).toBeFalse();
+  // Water without a wind is flat: its level, as every og.Water answers.
+  expect(must(og.physics.waterHeight(w, w.find("pond")!, 500, 0))).toBeCloseTo(1, 6);
 });
 
 test("a system reads the sea's height inside the tick, as between ticks", () => {
@@ -91,7 +91,10 @@ function body(world: World, name: string, position: { x: number; y: number; z: n
   world.insert(e, og.Buoyancy, { samples: 6 });
 }
 
-/** A gale's sea 6 km across at y 0, a still pond at y 1 beside it, a hull on the sea and a flat crate on the pond. */
+/**
+ * A gale's sea 6 km across at y 0, a still pond at y 1 beside it, a hull set
+ * down on the sea where it stands (not dropped onto it) and a flat crate on the pond.
+ */
 function waters(world: World): void {
   const sea = must(world.spawn({ name: "sea", position: { x: 0, y: 0, z: 0 } }));
   world.insert(sea, og.Water, { size: { x: 6000, y: 6000 }, segments: 256, wind: { x: 7, y: -18.7 }, choppiness: 1 });
@@ -119,6 +122,8 @@ test("a crate floats on still water at the depth Archimedes gives", () => {
   // 0.1 m over the pond's level 1. (A flat crate: a cube that light floats
   // tipped on an edge, as a wooden cube does.)
   expect(y(engine, "crate")).toBeCloseTo(1.1, 2);
+  const w = engine.world;
+  expect(y(engine, "crate") - must(og.physics.waterHeight(w, w.find("pond")!, 4000, 0))).toBeCloseTo(0.1, 2);
   const b = must(engine.world.get(engine.world.find("crate")!, og.Buoyancy));
   expect(b.submerged).toBeCloseTo(0.3, 1);
 }, 30_000);
@@ -159,3 +164,28 @@ test("a hull rides the gale's sea, the same on every run and through a restore",
   expect(b.heights).toEqual(a.heights);
   expect(b.end).toBe(a.end);
 }, 60_000);
+
+test("a stone dropped into a pond is an og.Splash at its level", () => {
+  // No og.Buoyancy anywhere: the pond takes the stone's splash by itself.
+  const heard: { water: number; entity: number; y: number; speed: number }[] = [];
+  const Listen = defineSystem("Listen", { reads: [og.Splash] }, (_q: unknown, _t: unknown, world: World) => {
+    for (const s of world.events(og.Splash)) heard.push({ water: Number(s.water), entity: Number(s.entity), y: s.point.y, speed: s.speed });
+  });
+  const pond = (world: World) => {
+    const water = must(world.spawn({ name: "pond", position: { x: 0, y: 1, z: 0 } }));
+    world.insert(water, og.Water, { size: { x: 20, y: 20 } });
+    const stone = must(world.spawn({ name: "stone", position: { x: 2, y: 3, z: 1 } }));
+    world.insert(stone, og.RigidBody);
+    world.insert(stone, og.Collider, { shape: SHAPE_BOX, size: { x: 0.4, y: 0.4, z: 0.4 } });
+  };
+  const r = createEngine(og.game({ start: pond, systems: [Listen] }) as GameToken, {});
+  if (!r.ok) throw new Error(r.reason);
+  expect(r.value.advance(90).ok).toBeTrue();
+  const w = r.value.world;
+  expect(heard.length).toBe(1);
+  expect(heard[0]!.water).toBe(Number(w.find("pond")!));
+  expect(heard[0]!.entity).toBe(Number(w.find("stone")!));
+  expect(heard[0]!.y).toBeCloseTo(1, 5);
+  // Two metres of free fall.
+  expect(heard[0]!.speed).toBeLessThan(-5);
+});

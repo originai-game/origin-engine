@@ -16,7 +16,7 @@
 //! | [`SoftBody`] | PBD soft volumes (edges and a volume constraint), colliding with solids; [`PhysicsSystem::soft_body_points`] |
 //! | [`Fluid2D`] | a 2D particle fluid (double density relaxation); [`PhysicsSystem::fluid_particles`] |
 //! | [`Fluid3D`] | a 3D particle fluid (double density relaxation, spatial hash); [`PhysicsSystem::fluid3d_particles`] |
-//! | [`WaterSurface`], [`WaterLine`], [`Splash`] | height-field water (3D) and a 2D spring line, splashed by and floating bodies |
+//! | [`WaterSurface`], [`WaterLine`], [`Splash`] | height-field water (3D) and a 2D spring line, splashed by and floating bodies; og.Water (lake, sea, river) is crossed, cut and answered through the same path (`water`) |
 //! | [`Ragdoll`], [`RagdollRig`] | capsule bones and joints (ball joints in 3D, hinges about z in 2D) from a host-registered rig, blended between animation and physics |
 //!
 //! Everything beyond rigid bodies lives in the same rapier world and the
@@ -1262,6 +1262,21 @@ impl PhysicsSystem {
     /// ticks, for the renderer's ripples (not world state).
     pub fn water_wakes(&self, entity: Entity) -> Option<Wakes> {
         with_sim!(self.shared, |s| s.wakes.get(&entity.to_bits()).cloned())
+    }
+
+    /// How far the waves bodies raised on `entity`'s og.WaterSurface or
+    /// og.WaterLine stand over its rest level at world point (`x`, `z`),
+    /// the entity at `centre` (a line reads `x` alone); 0 outside it.
+    /// `None` for an entity with neither, or before its first step.
+    pub fn water_ripple(&self, entity: Entity, centre: Vec3, x: f32, z: f32) -> Option<f32> {
+        with_sim!(self.shared, |s| water::ripple(
+            &s.surfaces,
+            &s.lines,
+            entity.to_bits(),
+            centre,
+            x,
+            z
+        ))
     }
 
     /// The spring heights of the og.WaterLine on `entity`, left to right

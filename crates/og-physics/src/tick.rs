@@ -95,11 +95,11 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
             &|e, id| ctx.get_bytes(e, id),
             buoyancy,
         )?;
-        // The world's clock as the sea's (og.physics.waterHeight's, the renderer's): its tick over its rate.
-        let time = ctx.time();
-        let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
-        scene.seconds = time.tick as f64 / f64::from(rate);
     }
+    // The world's clock as the sea's (og.physics.waterHeight's, the renderer's): its tick over its rate.
+    let time = ctx.time();
+    let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+    scene.seconds = time.tick as f64 / f64::from(rate);
     laps.lap(stats::Phase::Gather);
     let tick = ctx.time().tick;
     let threads = og_lanes::threads();

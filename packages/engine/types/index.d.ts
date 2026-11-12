@@ -16079,7 +16079,7 @@ export interface Buoyancy {
 }
 
 /**
- * Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
+ * Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
  *
  * The payload of the `Splash` event (token `og.Splash`).
  */
@@ -17670,7 +17670,7 @@ export interface WindMotor {
 }
 
 /**
- * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+ * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.
  * See `render §8`.
  *
  * The value of the `Water` component (token `og.Water`).
@@ -34331,7 +34331,7 @@ export declare namespace og {
    */
   const Buoyancy: ComponentType<{ readonly waterDensity: FieldSpec<"f32">; readonly samples: FieldSpec<"u32">; readonly drag: FieldSpec<"f32">; readonly angularDrag: FieldSpec<"f32">; readonly submerged: FieldSpec<"f32"> }, Buoyancy>;
   /**
-   * Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
+   * Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
    */
   const Splash: EventType<Splash>;
   /**
@@ -34481,7 +34481,7 @@ export declare namespace og {
      */
     function fluid3dParticles(world: World, entity: Entity): Result<readonly Vector3[]>;
     /**
-     * The surface height of an og.WaterSurface (world y) or an og.WaterLine (world y at `x`; `z` ignored) at a point, as the last step left it, plus an og.Water's sea (og.Water.wind) at this tick, the surface it draws: for boats that bob and spray that starts on the surface.
+     * The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface.
      *
      * @param world The world.
      * @param entity The water's entity.
@@ -34585,7 +34585,7 @@ export declare namespace og {
    */
   const WindMotor: ComponentType<{ readonly kind: FieldSpec<"WindMotorKind">; readonly radius: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, WindMotor>;
   /**
-   * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated).
+   * A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflections (screen-space, the sky's cubemap where that misses, or a planar reflection), the sun's shadows, caustics below it and an underwater view. With an og.WaterSurface on the same entity its wave heights displace the surface (centred on the entity, unrotated). Bodies crossing it are og.Splash events, og.physics.waterHeight answers its surface and an og.Buoyancy hull floats on it.
    * See `render §8`.
    */
   const Water: ComponentType<{ readonly size: FieldSpec<"Vector2">; readonly geometry: FieldSpec<"Geometry">; readonly river: FieldSpec<"Path">; readonly riverWidth: FieldSpec<"f32">; readonly riverSpeed: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly shallow: FieldSpec<"Color">; readonly deep: FieldSpec<"Color">; readonly depthFade: FieldSpec<"f32">; readonly absorption: FieldSpec<"Color">; readonly scattering: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly foam: FieldSpec<"Color">; readonly foamWidth: FieldSpec<"f32">; readonly waveScale: FieldSpec<"f32">; readonly waveSpeed: FieldSpec<"f32">; readonly waveStrength: FieldSpec<"f32">; readonly refraction: FieldSpec<"f32">; readonly reflectivity: FieldSpec<"f32">; readonly planarReflection: FieldSpec<"f32">; readonly shadows: FieldSpec<"f32">; readonly f0: FieldSpec<"f32">; readonly reflectionBias: FieldSpec<"f32">; readonly underwaterColor: FieldSpec<"Color">; readonly underwaterDensity: FieldSpec<"f32">; readonly caustics: FieldSpec<"f32">; readonly causticsScale: FieldSpec<"f32">; readonly normalMap: FieldSpec<"Texture">; readonly normalScale: FieldSpec<"f32">; readonly glint: FieldSpec<"f32">; readonly flow: FieldSpec<"Vector2">; readonly flowMap: FieldSpec<"Texture">; readonly wind: FieldSpec<"Vector2">; readonly swell: FieldSpec<"f32">; readonly choppiness: FieldSpec<"f32">; readonly endless: FieldSpec<"bool">; readonly seabed: FieldSpec<"Entity">; readonly shore: FieldSpec<"f32">; readonly shoreWaveLength: FieldSpec<"f32">; readonly shoreFoam: FieldSpec<"f32">; readonly foamStreaks: FieldSpec<"f32">; readonly meniscus: FieldSpec<"f32">; readonly dynamicWaves: FieldSpec<"f32">; readonly spray: FieldSpec<"f32"> }, Water>;

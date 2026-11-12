@@ -70,53 +70,8 @@ fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option
     })
 }
 
-/// The water surface over world point (`x`, `z`): its height (world y)
-/// and the water's velocity and acceleration there; the highest of the og.WaterSurface squares
-/// and og.Water bodies over it (one entity with both: its rest level and
-/// its sea together); `None` over no water. An og.WaterSurface lifts at its
-/// rest level, as its own buoyancy does: its waves are the bodies'
-/// splashes, and a body riding its own wake would pump them.
-fn water_level(
-    scene: &Scene,
-    waters: &[crate::WaterBody],
-    x: f32,
-    z: f32,
-    seconds: f64,
-) -> Option<og_core::ocean::SurfacePoint> {
-    use og_core::ocean::SurfacePoint;
-    let mut level: Option<SurfacePoint> = None;
-    let mut take = |y: f32, p: SurfacePoint| {
-        if level.is_none_or(|l| y > l.height) {
-            level = Some(SurfacePoint { height: y, ..p });
-        }
-    };
-    let (x64, z64) = (f64::from(x), f64::from(z));
-    for (e, position, surface) in &scene.surfaces {
-        let half = surface.size * 0.5;
-        if (x - position.x).abs() > half || (z - position.z).abs() > half {
-            continue;
-        }
-        let key = e.to_bits();
-        let sea = waters
-            .iter()
-            .find(|w| w.entity == key)
-            .and_then(|w| w.surface(x64, z64, seconds))
-            .unwrap_or_default();
-        take(position.y + sea.height, sea);
-    }
-    for w in waters {
-        if scene.surfaces.iter().any(|s| s.0.to_bits() == w.entity) {
-            continue;
-        }
-        if let Some(p) = w.surface(x64, z64, seconds) {
-            take(w.position.y + p.height, p);
-        }
-    }
-    level
-}
-
 /// The footprint of a floating body's hull (its box `hull.lo` to `hull.hi`,
-/// turned and placed by `at`) in each sea of `waters` it lies over:
+/// turned and placed by `at`) in each og.Water of `cuts` it lies over:
 /// the rectangle its own x and z axes span over the water's xz, its box,
 /// and how far it reaches under the water at its centre.
 fn hull_cuts(
@@ -146,14 +101,23 @@ fn hull_cuts(
     let extent =
         og_core::glam::Vec2::new(reach(og_core::glam::Vec2::X), reach(og_core::glam::Vec2::Y));
     let low = centre.y - (ax.y.abs() * half.x + ay.y.abs() * half.y + az.y.abs() * half.z);
-    let level =
-        water_level(scene, waters, centre.x, centre.z, scene.seconds).map_or(low, |l| l.height);
-    for w in waters.iter().filter(|w| w.sea.is_some()) {
+    let level = crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds)
+        .map_or(low, |l| l.height);
+    for w in waters {
         let Some(list) = cuts.get_mut(&w.entity) else {
             continue;
         };
         let local = og_core::glam::Vec2::new(centre.x - w.position.x, centre.z - w.position.z);
-        if local.x.abs() > w.size.x * 0.5 + extent.x || local.y.abs() > w.size.y * 0.5 + extent.y {
+        let over = match &w.river {
+            Some(river) => river
+                .at(og_core::glam::Vec2::new(centre.x, centre.z))
+                .is_some(),
+            None => {
+                local.x.abs() <= w.size.x * 0.5 + extent.x
+                    && local.y.abs() <= w.size.y * 0.5 + extent.y
+            }
+        };
+        if !over {
             continue;
         }
         list.push(crate::water::WaterCut {
@@ -174,8 +138,9 @@ fn hull_cuts(
 /// those points (a torque that rights and pitches it), and slow it as far
 /// as they are under; its `submerged` is written. Cells and bodies in a
 /// fixed order, og-core's deterministic math: the same on every run. Each
-/// sea (an og.Water with a wind) records the hulls in it for the renderer
-/// ([`crate::water::Wakes::record_sea`]; never read by the tick).
+/// og.Water then records the bodies cutting it for the renderer (`cuts`,
+/// the tick's from [`water`], the hulls' footprints added here;
+/// [`crate::water::Wakes::record_water`]; never read by the tick).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn buoyancy(
     scene: &Scene,
@@ -186,22 +151,21 @@ pub(crate) fn buoyancy(
     sim: &mut Sim,
     handles: &super::super::sim::Handles<'_>,
     out: &mut StepOut,
+    mut cuts: BTreeMap<u64, Vec<crate::water::WaterCut>>,
 ) {
-    let mut cuts: BTreeMap<u64, Vec<crate::water::WaterCut>> = waters
-        .iter()
-        .filter(|w| w.sea.is_some())
-        .map(|w| (w.entity, Vec::new()))
-        .collect();
     if DIM == 3 {
         floats(scene, settings, dt, waters, sim, handles, out, &mut cuts);
     }
     for (key, list) in cuts {
-        sim.wakes.entry(key).or_default().record_sea(dt, tick, list);
+        sim.wakes
+            .entry(key)
+            .or_default()
+            .record_water(dt, tick, list);
     }
 }
 
 /// [`buoyancy`]'s floating bodies, each hull's footprint added to the
-/// `cuts` of the seas it lies in.
+/// `cuts` of the waters it lies in.
 #[allow(clippy::too_many_arguments)]
 fn floats(
     scene: &Scene,
@@ -263,7 +227,7 @@ fn floats(
                 let mut q = *p;
                 q[column] = middle;
                 let c = unv(at.transform_point(v(q)));
-                water_level(scene, waters, c.x, c.z, scene.seconds)
+                crate::water::level(&scene.surfaces, waters, c.x, c.z, scene.seconds)
             });
             let Some(water) = level else {
                 continue;
