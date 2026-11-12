@@ -7,7 +7,7 @@
 
 use super::codec::Layout;
 use super::extract::{Hierarchy, RenderState};
-use super::wire::{FromJson, StripBlend, record};
+use super::wire::{self, FromJson, StripBlend, record};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, World};
@@ -272,10 +272,6 @@ pub(crate) fn color(v: &Value, default: Vec3) -> Vec3 {
     )
 }
 
-pub(crate) fn vec2(v: &Value, default: Vec2) -> Vec2 {
-    Vec2::new(f(v, "x", default.x), f(v, "y", default.y))
-}
-
 pub(crate) fn vec3(v: &Value) -> Vec3 {
     Vec3::new(f(v, "x", 0.0), f(v, "y", 0.0), f(v, "z", 0.0))
 }
@@ -285,17 +281,12 @@ pub(crate) fn handle_index(v: &Value) -> Option<usize> {
     super::assets::index_of(v.as_f64()?)
 }
 
-/// A u32 bit mask field.
-fn mask(v: &Value, key: &str, default: u32) -> u32 {
-    v[key].as_u64().map_or(default, |x| x as u32)
-}
-
 /// Each og.LightMask2D's layers by entity (empty until a game names it:
 /// og.LightMask2D is lazy). A receiver without one is lit as mask 1.
 pub(crate) fn light_masks(world: &World, layouts: &FxLayouts) -> IdMap<u64, u32> {
     rows(world, layouts.light_mask_2d.as_ref())
         .into_iter()
-        .map(|(e, v)| (e, mask(&v, "layers", 1)))
+        .filter_map(|(e, v)| Some((e, record::LightMask2D::from_json(&v).ok()?.layers)))
         .collect()
 }
 
@@ -304,7 +295,9 @@ pub(crate) fn light_masks(world: &World, layouts: &FxLayouts) -> IdMap<u64, u32>
 /// presets write it, and the switch of a preset applied before the world
 /// had the resource (`FxState::gi_preset`).
 pub(crate) fn gi_allowed(gi: Option<&Value>, preset: Option<bool>) -> bool {
-    gi.is_none_or(|g| on(g, "allowed", true)) && preset.unwrap_or(true)
+    // A resource that does not read is skipped, as one not there.
+    gi.is_none_or(|g| record::GlobalIllumination::from_json(g).map_or(true, |g| g.allowed))
+        && preset.unwrap_or(true)
 }
 
 pub(crate) fn variant(v: &Value, names: &[&str]) -> usize {
@@ -389,7 +382,8 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     let layouts = &draw.fx;
     // RenderSettings.decalAtlas: the texture Decal components sample.
     scene.effects.decal_atlas = resource(world, render_settings.as_ref())
-        .and_then(|s| handle_index(&s["decalAtlas"]))
+        .and_then(|s| record::RenderSettings::from_json(&s).ok())
+        .and_then(|s| super::assets::index_of(s.decal_atlas as f64))
         .and_then(|i| textures.get(i).copied());
     let post = &mut scene.look.post;
     post.ao = None;
@@ -413,179 +407,186 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     post.flash = None;
     scene.frame.shake = CameraShake::default();
     scene.sprite.lighting_2d = None;
-    if let Some(p) = resource(world, layouts.post.as_ref()) {
-        if on(&p, "ao", false) {
+    if let Some(p) = resource(world, layouts.post.as_ref())
+        && let Ok(p) = record::PostEffects::from_json(&p)
+    {
+        let rgb = |c: &wire::Color| Vec3::new(c.r, c.g, c.b);
+        let resolution = |r: wire::AoResolution| match r {
+            wire::AoResolution::Full => AoResolution::Full,
+            wire::AoResolution::Half => AoResolution::Half,
+        };
+        if p.ao {
             post.ao = Some(AmbientOcclusion {
-                radius: f(&p, "aoRadius", 0.6),
-                intensity: f(&p, "aoIntensity", 1.0),
-                method: [
-                    AoMethod::Auto,
-                    AoMethod::Gtao,
-                    AoMethod::Ssao,
-                    AoMethod::Screen,
-                ][variant(&p["aoMethod"], &["auto", "gtao", "ssao", "screen"]).min(3)],
-                resolution: [AoResolution::Full, AoResolution::Half]
-                    [variant(&p["aoResolution"], &["full", "half"]).min(1)],
-                direct: f(&p, "aoDirect", 0.0).clamp(0.0, 1.0),
-                radius_scale: f(&p, "aoRadiusScale", 0.0).max(0.0),
+                radius: p.ao_radius,
+                intensity: p.ao_intensity,
+                method: match p.ao_method {
+                    wire::AoMethod::Auto => AoMethod::Auto,
+                    wire::AoMethod::Gtao => AoMethod::Gtao,
+                    wire::AoMethod::Ssao => AoMethod::Ssao,
+                    wire::AoMethod::Screen => AoMethod::Screen,
+                },
+                resolution: resolution(p.ao_resolution),
+                direct: p.ao_direct.clamp(0.0, 1.0),
+                radius_scale: p.ao_radius_scale.max(0.0),
             });
         }
-        if on(&p, "outline", false) {
-            let c = color(&p["outlineColor"], Vec3::new(0.02, 0.02, 0.03));
+        if p.outline {
+            let c = rgb(&p.outline_color);
             post.outline = Some(Outline {
                 color: [c.x, c.y, c.z, 1.0],
-                width: f(&p, "outlineWidth", 2.0),
-                depth_threshold: f(&p, "outlineDepthThreshold", 0.04),
-                normal_threshold: f(&p, "outlineNormalThreshold", 0.4),
+                width: p.outline_width,
+                depth_threshold: p.outline_depth_threshold,
+                normal_threshold: p.outline_normal_threshold,
             });
         }
-        if on(&p, "depthOfField", false) {
+        if p.depth_of_field {
             post.depth_of_field = Some(DepthOfField {
-                focus_distance: f(&p, "dofFocusDistance", 10.0),
-                focus_range: f(&p, "dofFocusRange", 2.0),
-                max_blur: f(&p, "dofMaxBlur", 0.012),
-                falloff: f(&p, "dofFalloff", 4.0),
-                quality: if variant(&p["dofQuality"], &["low", "high"]) == 1 {
-                    DofQuality::High
-                } else {
-                    DofQuality::Low
+                focus_distance: p.dof_focus_distance,
+                focus_range: p.dof_focus_range,
+                max_blur: p.dof_max_blur,
+                falloff: p.dof_falloff,
+                quality: match p.dof_quality {
+                    wire::DofQuality::High => DofQuality::High,
+                    wire::DofQuality::Low => DofQuality::Low,
                 },
             });
         }
-        if on(&p, "motionBlur", false) {
+        if p.motion_blur {
             post.motion_blur = Some(MotionBlur {
-                shutter: f(&p, "motionBlurShutter", 0.5),
-                samples: u(&p, "motionBlurSamples", 12),
-                max_pixels: f(&p, "motionBlurMaxPixels", 40.0),
+                shutter: p.motion_blur_shutter,
+                samples: p.motion_blur_samples,
+                max_pixels: p.motion_blur_max_pixels,
             });
         }
-        let blur_kind = variant(&p["screenBlur"], &["none", "zoom", "spin", "directional"]);
-        let blur_strength = f(&p, "screenBlurStrength", 0.0);
-        if blur_kind > 0 && blur_strength != 0.0 {
+        let blur_kind = match p.screen_blur {
+            wire::ScreenBlur::None => None,
+            wire::ScreenBlur::Zoom => Some(ScreenBlurKind::Zoom),
+            wire::ScreenBlur::Spin => Some(ScreenBlurKind::Spin),
+            wire::ScreenBlur::Directional => Some(ScreenBlurKind::Directional),
+        };
+        let blur_strength = p.screen_blur_strength;
+        if let Some(kind) = blur_kind
+            && blur_strength != 0.0
+        {
             post.screen_blur = Some(ScreenBlur {
-                kind: [
-                    ScreenBlurKind::Zoom,
-                    ScreenBlurKind::Spin,
-                    ScreenBlurKind::Directional,
-                ][(blur_kind - 1).min(2)],
+                kind,
                 strength: blur_strength,
-                center: vec2(&p["screenBlurCenter"], Vec2::splat(0.5)),
-                angle: f(&p, "screenBlurAngle", 0.0).to_radians(),
-                samples: u(&p, "screenBlurSamples", 16),
+                center: p.screen_blur_center,
+                angle: p.screen_blur_angle.to_radians(),
+                samples: p.screen_blur_samples,
             });
         }
-        if on(&p, "godRays", false) {
+        if p.god_rays {
             post.god_rays = Some(GodRays {
-                intensity: f(&p, "godRaysIntensity", 0.5),
-                decay: f(&p, "godRaysDecay", 0.965),
-                density: f(&p, "godRaysDensity", 1.0),
-                tint: color(&p["godRaysTint"], Vec3::ONE),
-                samples: u(&p, "godRaysSamples", 48),
-                threshold: f(&p, "godRaysThreshold", 2.0),
+                intensity: p.god_rays_intensity,
+                decay: p.god_rays_decay,
+                density: p.god_rays_density,
+                tint: rgb(&p.god_rays_tint),
+                samples: p.god_rays_samples,
+                threshold: p.god_rays_threshold,
             });
         }
-        if on(&p, "ssr", false) {
+        if p.ssr {
             post.ssr = Some(og_render::ScreenSpaceReflections {
-                max_distance: f(&p, "ssrMaxDistance", 100.0),
-                thickness: f(&p, "ssrThickness", 0.3),
-                steps: u(&p, "ssrSteps", 64),
-                fade: f(&p, "ssrFade", 0.15),
-                intensity: f(&p, "ssrIntensity", 1.0),
-                max_roughness: f(&p, "ssrMaxRoughness", 0.6),
-                resolution: if p["ssrResolution"].is_null() {
-                    AoResolution::Half
-                } else {
-                    [AoResolution::Full, AoResolution::Half]
-                        [variant(&p["ssrResolution"], &["full", "half"]).min(1)]
-                },
+                max_distance: p.ssr_max_distance,
+                thickness: p.ssr_thickness,
+                steps: p.ssr_steps,
+                fade: p.ssr_fade,
+                intensity: p.ssr_intensity,
+                max_roughness: p.ssr_max_roughness,
+                resolution: resolution(p.ssr_resolution),
             });
         }
-        if on(&p, "glow", false) {
+        if p.glow {
             post.glow = Some(Glow {
-                intensity: f(&p, "glowIntensity", 1.0),
+                intensity: p.glow_intensity,
             });
         }
-        if let Some(lut) = handle_index(&p["lut"])
+        if let Some(lut) = super::assets::index_of(p.lut as f64)
             .and_then(|i| fx.luts.get(i))
             .and_then(|l| l.handle)
         {
             post.color_grading = Some(ColorGrading {
                 lut,
-                intensity: f(&p, "lutIntensity", 1.0),
+                intensity: p.lut_intensity,
             });
         }
         let adjust = ColorAdjust {
-            temperature: f(&p, "temperature", 0.0),
-            tint: f(&p, "tint", 0.0),
-            brightness: f(&p, "brightness", 0.0),
-            contrast: f(&p, "contrast", 0.0),
-            shadows: vec3(&p["balanceShadows"]),
-            midtones: vec3(&p["balanceMidtones"]),
-            highlights: vec3(&p["balanceHighlights"]),
-            preserve_luminosity: on(&p, "preserveLuminosity", true),
-            hue: f(&p, "hue", 0.0),
-            saturation: f(&p, "saturation", 0.0),
-            vibrance: f(&p, "vibrance", 0.0),
-            grayscale: f(&p, "grayscale", 0.0),
-            invert: f(&p, "invert", 0.0),
-            threshold: f(&p, "threshold", 0.0),
+            temperature: p.temperature,
+            tint: p.tint,
+            brightness: p.brightness,
+            contrast: p.contrast,
+            shadows: p.balance_shadows,
+            midtones: p.balance_midtones,
+            highlights: p.balance_highlights,
+            preserve_luminosity: p.preserve_luminosity,
+            hue: p.hue,
+            saturation: p.saturation,
+            vibrance: p.vibrance,
+            grayscale: p.grayscale,
+            invert: p.invert,
+            threshold: p.threshold,
         };
         post.color_adjust = (!adjust.is_identity()).then_some(adjust);
-        if on(&p, "vignette", false) {
+        if p.vignette {
             post.vignette = Some(Vignette {
-                intensity: f(&p, "vignetteIntensity", 0.35),
-                radius: f(&p, "vignetteRadius", 0.55),
-                smoothness: f(&p, "vignetteSmoothness", 0.45),
-                color: color(&p["vignetteColor"], Vec3::ZERO),
+                intensity: p.vignette_intensity,
+                radius: p.vignette_radius,
+                smoothness: p.vignette_smoothness,
+                color: rgb(&p.vignette_color),
             });
         }
-        let aberration = f(&p, "chromaticAberration", 0.0);
+        let aberration = p.chromatic_aberration;
         if aberration > 0.0 {
             post.chromatic_aberration = Some(ChromaticAberration {
                 intensity: aberration,
             });
         }
-        let lens = f(&p, "lensDistortion", 0.0);
+        let lens = p.lens_distortion;
         if lens != 0.0 {
             post.lens_distortion = Some(LensDistortion {
                 amount: lens,
-                center: vec2(&p["lensDistortionCenter"], Vec2::splat(0.5)),
+                center: p.lens_distortion_center,
             });
         }
-        let grain = f(&p, "filmGrain", 0.0);
+        let grain = p.film_grain;
         if grain > 0.0 {
             post.film_grain = Some(FilmGrain {
                 intensity: grain,
-                size: f(&p, "filmGrainSize", 1.5),
+                size: p.film_grain_size,
             });
         }
-        let sharpen = f(&p, "sharpen", -1.0);
+        let sharpen = p.sharpen;
         if sharpen >= 0.0 {
             post.sharpen = Some(sharpen);
         }
-        let flash = f(&p, "flash", 0.0);
+        let flash = p.flash;
         if flash > 0.0 {
             post.flash = Some(ScreenFlash {
-                color: color(&p["flashColor"], Vec3::ONE),
+                color: rgb(&p.flash_color),
                 amount: flash,
             });
         }
-        let trauma = f(&p, "shakeTrauma", 0.0);
+        let trauma = p.shake_trauma;
         if trauma > 0.0 {
             scene.frame.shake = CameraShake::trauma(
                 trauma,
                 scene.frame.tick,
                 scene.frame.tick_rate,
-                u64::from(u(&p, "shakeSeed", 0)),
-                f(&p, "shakeMaxOffset", 0.05),
-                f(&p, "shakeMaxRoll", 3.0),
-                f(&p, "shakeFrequency", 12.0),
+                u64::from(p.shake_seed),
+                p.shake_max_offset,
+                p.shake_max_roll,
+                p.shake_frequency,
             );
         }
     }
     scene.look.stylise = stylise(
-        resource(world, layouts.stylise.as_ref()),
-        resource(world, layouts.material_style.as_ref()),
+        resource(world, layouts.stylise.as_ref())
+            .and_then(|s| record::Stylise::from_json(&s).ok())
+            .as_ref(),
+        resource(world, layouts.material_style.as_ref())
+            .and_then(|m| record::MaterialStyle::from_json(&m).ok())
+            .as_ref(),
         &fx.look.palettes,
         textures,
     );
@@ -595,21 +596,21 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         scene.look.stylise.paint = None;
     }
     if let Some(p) = resource(world, layouts.lens_flare.as_ref())
-        && on(&p, "enabled", false)
+        && let Ok(p) = record::LensFlare::from_json(&p)
+        && p.enabled
     {
-        let d = LensFlare::default();
         post.lens_flare = Some(LensFlare {
-            intensity: f(&p, "intensity", d.intensity),
-            ghosts: u(&p, "ghosts", d.ghosts),
-            ghost_spacing: f(&p, "ghostSpacing", d.ghost_spacing),
-            ghost_threshold: f(&p, "ghostThreshold", d.ghost_threshold),
-            halo_radius: f(&p, "haloRadius", d.halo_radius),
-            halo_thickness: f(&p, "haloThickness", d.halo_thickness),
-            halo_threshold: f(&p, "haloThreshold", d.halo_threshold),
-            chromatic_aberration: f(&p, "chromaticAberration", d.chromatic_aberration),
-            starburst: on(&p, "starburst", d.starburst),
-            sun: f(&p, "sun", d.sun),
-            lights: f(&p, "lights", d.lights),
+            intensity: p.intensity,
+            ghosts: p.ghosts,
+            ghost_spacing: p.ghost_spacing,
+            ghost_threshold: p.ghost_threshold,
+            halo_radius: p.halo_radius,
+            halo_thickness: p.halo_thickness,
+            halo_threshold: p.halo_threshold,
+            chromatic_aberration: p.chromatic_aberration,
+            starburst: p.starburst,
+            sun: p.sun,
+            lights: p.lights,
         });
     }
     // The art contract's line round meshes (ArtLine, art.rs).
@@ -622,36 +623,33 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
     {
         q.palette = art.frame.palette;
     }
-    if let Some(g) = resource(world, layouts.global_illumination.as_ref())
-        && on(&g, "enabled", false)
-        && gi_allowed(Some(&g), fx.gi_preset)
+    if let Some(v) = resource(world, layouts.global_illumination.as_ref())
+        && let Ok(g) = record::GlobalIllumination::from_json(&v)
+        && g.enabled
+        && gi_allowed(Some(&v), fx.gi_preset)
     {
-        // GiMethod: screen, probes, both.
-        let method = variant(&g["method"], &["screen", "probes", "both"]).min(2);
-        if method >= 1 {
+        if g.method != wire::GiMethod::Screen {
             post.gi_probes = Some(og_render::ProbeGlobalIllumination {
-                spacing: f(&g, "probeSpacing", 1.0).max(0.05),
-                cascades: u(&g, "probeCascades", 3).clamp(1, 4),
-                rays: u(&g, "probeRays", 64).clamp(32, 256),
-                intensity: f(&g, "intensity", 1.0).max(0.0),
+                spacing: g.probe_spacing.max(0.05),
+                cascades: g.probe_cascades.clamp(1, 4),
+                rays: g.probe_rays.clamp(32, 256),
+                intensity: g.intensity.max(0.0),
             });
         }
-    }
-    if let Some(g) = resource(world, layouts.global_illumination.as_ref())
-        && on(&g, "enabled", false)
-        && gi_allowed(Some(&g), fx.gi_preset)
-        && variant(&g["method"], &["screen", "probes", "both"]) != 1
-    {
-        post.gi = Some(og_render::ScreenSpaceGlobalIllumination {
-            intensity: f(&g, "intensity", 1.0),
-            max_distance: f(&g, "maxDistance", 16.0),
-            thickness: f(&g, "thickness", 0.5),
-            steps: u(&g, "steps", 12),
-            rays: u(&g, "rays", 4),
-            occlusion: f(&g, "occlusion", 1.0).clamp(0.0, 1.0),
-            resolution: [AoResolution::Full, AoResolution::Half]
-                [variant(&g["resolution"], &["full", "half"]).min(1)],
-        });
+        if g.method != wire::GiMethod::Probes {
+            post.gi = Some(og_render::ScreenSpaceGlobalIllumination {
+                intensity: g.intensity,
+                max_distance: g.max_distance,
+                thickness: g.thickness,
+                steps: g.steps,
+                rays: g.rays,
+                occlusion: g.occlusion.clamp(0.0, 1.0),
+                resolution: match g.resolution {
+                    wire::AoResolution::Full => AoResolution::Full,
+                    wire::AoResolution::Half => AoResolution::Half,
+                },
+            });
+        }
     }
     if let Some(l) = resource(world, layouts.lighting_2d.as_ref())
         && let Ok(l) = record::Lighting2D::from_json(&l)
@@ -713,153 +711,138 @@ pub(crate) fn snap_to_grid(rs: &mut RenderState) {
 /// `Stylise` and `MaterialStyle` as og-render's description (every
 /// primitive `None` or zero unless its field turns it on).
 fn stylise(
-    s: Option<Arc<Value>>,
-    m: Option<Arc<Value>>,
+    s: Option<&record::Stylise>,
+    m: Option<&record::MaterialStyle>,
     palettes: &[(String, Option<og_render::PaletteHandle>)],
     textures: &[og_render::TextureHandle],
 ) -> og_render::Stylise {
-    let rgb = |v: &Value, d: Vec3| {
-        let c = color(v, d);
-        [c.x, c.y, c.z]
-    };
-    let texture = |v: &Value| handle_index(v).and_then(|i| textures.get(i).copied());
+    let rgb = |c: &wire::Color| [c.r, c.g, c.b];
+    let texture = |h: u64| super::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
     let mut out = og_render::Stylise::default();
     if let Some(s) = s {
-        let height = u(&s, "pixelHeight", 0);
+        let height = s.pixel_height;
         if height > 0 {
             out.pixel = Some(og_render::PixelScale {
                 height,
-                upscale: u(&s, "pixelUpscale", 0),
-                snap: on(&s, "pixelSnap", true),
+                upscale: s.pixel_upscale,
+                snap: s.pixel_snap,
             });
         }
-        let posterize = u(&s, "posterize", 0);
+        let posterize = s.posterize;
         // A palette whose streaming group is not resident quantises to none.
-        let palette = handle_index(&s["palette"]).and_then(|i| palettes.get(i)?.1);
-        let dither = match variant(
-            &s["dither"],
-            &[
-                "none",
-                "bayer2",
-                "bayer4",
-                "bayer8",
-                "blueNoise",
-                "interleavedGradient",
-            ],
-        ) {
-            1 => og_render::DitherPattern::Bayer2,
-            2 => og_render::DitherPattern::Bayer4,
-            3 => og_render::DitherPattern::Bayer8,
-            4 => og_render::DitherPattern::BlueNoise,
-            5 => og_render::DitherPattern::InterleavedGradient,
-            _ => og_render::DitherPattern::None,
+        let palette = super::assets::index_of(s.palette as f64).and_then(|i| palettes.get(i)?.1);
+        let dither = match s.dither {
+            wire::DitherPattern::Bayer2 => og_render::DitherPattern::Bayer2,
+            wire::DitherPattern::Bayer4 => og_render::DitherPattern::Bayer4,
+            wire::DitherPattern::Bayer8 => og_render::DitherPattern::Bayer8,
+            wire::DitherPattern::BlueNoise => og_render::DitherPattern::BlueNoise,
+            wire::DitherPattern::InterleavedGradient => {
+                og_render::DitherPattern::InterleavedGradient
+            }
+            wire::DitherPattern::None => og_render::DitherPattern::None,
         };
-        let space = |v: &Value| match variant(v, &["screen", "surface", "object"]) {
-            1 => og_render::StyliseSpace::Surface,
-            2 => og_render::StyliseSpace::Object,
-            _ => og_render::StyliseSpace::Screen,
+        let space = |v: wire::StyliseSpace| match v {
+            wire::StyliseSpace::Surface => og_render::StyliseSpace::Surface,
+            wire::StyliseSpace::Object => og_render::StyliseSpace::Object,
+            wire::StyliseSpace::Screen => og_render::StyliseSpace::Screen,
         };
         if posterize > 0 || palette.is_some() || dither != og_render::DitherPattern::None {
             out.quantize = Some(og_render::Quantize {
                 posterize,
-                mode: match variant(&s["posterizeMode"], &["channel", "tone"]) {
-                    1 => og_render::PosterizeMode::Tone,
-                    _ => og_render::PosterizeMode::Channel,
+                mode: match s.posterize_mode {
+                    wire::PosterizeMode::Tone => og_render::PosterizeMode::Tone,
+                    wire::PosterizeMode::Channel => og_render::PosterizeMode::Channel,
                 },
                 palette,
                 dither,
-                dither_strength: f(&s, "ditherStrength", 1.0),
-                dither_scale: u(&s, "ditherScale", 1).max(1),
-                space: space(&s["ditherSpace"]),
+                dither_strength: s.dither_strength,
+                dither_scale: s.dither_scale.max(1),
+                space: space(s.dither_space),
             });
         }
-        let halftone = f(&s, "halftone", 0.0);
+        let halftone = s.halftone;
         if halftone > 0.0 {
             out.halftone = Some(og_render::Halftone {
                 strength: halftone,
-                size: f(&s, "halftoneSize", 6.0),
-                angle_degrees: f(&s, "halftoneAngle", 45.0),
-                color: rgb(&s["halftoneColor"], Vec3::new(0.02, 0.02, 0.03)),
-                space: space(&s["halftoneSpace"]),
-                mode: match variant(&s["halftoneMode"], &["ink", "cmyk"]) {
-                    1 => og_render::HalftoneMode::Cmyk,
-                    _ => og_render::HalftoneMode::Ink,
+                size: s.halftone_size,
+                angle_degrees: s.halftone_angle,
+                color: rgb(&s.halftone_color),
+                space: space(s.halftone_space),
+                mode: match s.halftone_mode {
+                    wire::HalftoneMode::Cmyk => og_render::HalftoneMode::Cmyk,
+                    wire::HalftoneMode::Ink => og_render::HalftoneMode::Ink,
                 },
-                misregistration: f(&s, "halftoneMisregistration", 0.0),
-                region: match variant(&s["halftoneRegion"], &["all", "shade", "highlight"]) {
-                    1 => og_render::HalftoneRegion::Shade,
-                    2 => og_render::HalftoneRegion::Highlight,
-                    _ => og_render::HalftoneRegion::All,
+                misregistration: s.halftone_misregistration,
+                region: match s.halftone_region {
+                    wire::HalftoneRegion::Shade => og_render::HalftoneRegion::Shade,
+                    wire::HalftoneRegion::Highlight => og_render::HalftoneRegion::Highlight,
+                    wire::HalftoneRegion::All => og_render::HalftoneRegion::All,
                 },
             });
         }
-        let hatching = f(&s, "hatching", 0.0);
+        let hatching = s.hatching;
         if hatching > 0.0 {
             out.hatching = Some(og_render::Hatching {
                 strength: hatching,
-                scale: f(&s, "hatchingScale", 6.0),
-                levels: u(&s, "hatchingLevels", 4),
-                angle_degrees: f(&s, "hatchingAngle", 45.0),
-                color: rgb(&s["hatchingColor"], Vec3::new(0.04, 0.035, 0.03)),
-                paper: rgb(&s["hatchingPaper"], Vec3::ONE),
-                space: space(&s["hatchingSpace"]),
-                depth: f(&s, "hatchingDepth", 0.0),
-                keep_color: on(&s, "hatchingKeepColor", false),
+                scale: s.hatching_scale,
+                levels: s.hatching_levels,
+                angle_degrees: s.hatching_angle,
+                color: rgb(&s.hatching_color),
+                paper: rgb(&s.hatching_paper),
+                space: space(s.hatching_space),
+                depth: s.hatching_depth,
+                keep_color: s.hatching_keep_color,
             });
         }
         let paint = og_render::Paint {
-            radius: f(&s, "paintRadius", 0.0),
-            anisotropy: f(&s, "paintAnisotropy", 0.0),
-            edge_darkening: f(&s, "paintEdgeDarkening", 0.0),
-            bleed: f(&s, "paintBleed", 0.0),
-            canvas: texture(&s["paintCanvas"]),
-            canvas_strength: f(&s, "paintCanvasStrength", 0.0),
-            canvas_scale: f(&s, "paintCanvasScale", 1.0),
-            canvas_space: space(&s["paintCanvasSpace"]),
-            canvas_world_scale: f(&s, "paintCanvasWorldScale", 128.0),
-            detail: f(&s, "paintDetail", og_render::DEFAULT_PAINT_DETAIL),
-            character_detail: f(
-                &s,
-                "paintCharacterDetail",
-                og_render::DEFAULT_CHARACTER_DETAIL,
-            ),
+            radius: s.paint_radius,
+            anisotropy: s.paint_anisotropy,
+            edge_darkening: s.paint_edge_darkening,
+            bleed: s.paint_bleed,
+            canvas: texture(s.paint_canvas),
+            canvas_strength: s.paint_canvas_strength,
+            canvas_scale: s.paint_canvas_scale,
+            canvas_space: space(s.paint_canvas_space),
+            canvas_world_scale: s.paint_canvas_world_scale,
+            detail: s.paint_detail,
+            character_detail: s.paint_character_detail,
             watercolor: og_render::Watercolor {
-                edge_darkening: f(&s, "watercolorEdgeDarkening", 0.0),
-                granulation: f(&s, "watercolorGranulation", 0.0),
-                turbulence: f(&s, "watercolorTurbulence", 0.0),
-                dry_brush: f(&s, "watercolorDryBrush", 0.0),
-                wobble: f(&s, "watercolorWobble", 0.0),
-                paper: rgb(&s["watercolorPaper"], Vec3::ONE),
+                edge_darkening: s.watercolor_edge_darkening,
+                granulation: s.watercolor_granulation,
+                turbulence: s.watercolor_turbulence,
+                dry_brush: s.watercolor_dry_brush,
+                wobble: s.watercolor_wobble,
+                paper: rgb(&s.watercolor_paper),
             },
         };
         if paint.paints() || paint.watercolor.active() {
             out.paint = Some(paint);
         }
-        if on(&s, "ink", false) {
+        if s.ink {
             out.ink = Some(og_render::Ink {
-                threshold: f(&s, "inkThreshold", 0.1),
-                width: f(&s, "inkWidth", 1.0),
-                color: rgb(&s["inkColor"], Vec3::new(0.02, 0.02, 0.03)),
-                depth: f(&s, "inkDepth", 0.0),
-                depth_threshold: f(&s, "inkDepthThreshold", 0.04),
-                normal_threshold: f(&s, "inkNormalThreshold", 0.4),
+                threshold: s.ink_threshold,
+                width: s.ink_width,
+                color: rgb(&s.ink_color),
+                depth: s.ink_depth,
+                depth_threshold: s.ink_depth_threshold,
+                normal_threshold: s.ink_normal_threshold,
             });
         }
-        let bands = u(&s, "depthBands", 0);
+        let bands = s.depth_bands;
         if bands > 0 {
             out.depth_bands = Some(og_render::DepthBands {
                 count: bands,
-                near: f(&s, "depthBandsNear", 5.0),
-                far: f(&s, "depthBandsFar", 60.0),
-                near_color: rgb(&s["depthBandsNearColor"], Vec3::new(0.02, 0.02, 0.03)),
-                far_color: rgb(&s["depthBandsFarColor"], Vec3::new(0.55, 0.6, 0.7)),
-                flatten: f(&s, "depthBandsFlatten", 1.0),
+                near: s.depth_bands_near,
+                far: s.depth_bands_far,
+                near_color: rgb(&s.depth_bands_near_color),
+                far_color: rgb(&s.depth_bands_far_color),
+                flatten: s.depth_bands_flatten,
             });
         }
         let retro = og_render::Retro3d {
-            vertex_snap: f(&s, "vertexSnap", 0.0),
-            affine: f(&s, "affineTexturing", 0.0),
-            depth_bits: u(&s, "depthBits", 0),
+            vertex_snap: s.vertex_snap,
+            affine: s.affine_texturing,
+            depth_bits: s.depth_bits,
         };
         if retro.vertex_snap > 0.0 || retro.affine > 0.0 || retro.depth_bits > 0 {
             out.retro = Some(retro);
@@ -867,34 +850,31 @@ fn stylise(
     }
     if let Some(m) = m {
         out.material = og_render::MaterialStyle {
-            toon: on(&m, "toon", false),
-            gradient_map: texture(&m["gradientMap"]),
-            shadow_tint: rgb(&m["shadowTint"], Vec3::new(0.18, 0.16, 0.32)),
-            shadow_tint_amount: f(&m, "shadowTintAmount", 0.0),
-            shadow_darkness: f(&m, "shadowDarkness", 0.0),
-            rim_color: rgb(&m["rimColor"], Vec3::ONE),
-            rim_intensity: f(&m, "rimIntensity", 0.0),
-            rim_power: f(&m, "rimPower", 3.0),
-            outline_color: rgb(&m["outlineColor"], Vec3::new(0.02, 0.02, 0.03)),
-            outline_width: f(&m, "outlineWidth", 0.0),
-            outline_distance: f(&m, "outlineDistance", 0.0),
-            flat_shading: on(&m, "flatShading", false),
-            surface: og_render::MaterialSurface::from_index(variant(
-                &m["surface"],
-                &["none", "clay", "paper", "plastic"],
-            )),
-            surface_strength: f(&m, "surfaceStrength", 1.0),
-            surface_scale: f(&m, "surfaceScale", 0.0),
-            toon_ambient: f(&m, "toonAmbient", 0.0),
-            toon_softness: f(&m, "toonSoftness", og_render::DEFAULT_TOON_SOFTNESS),
-            outline_place: match variant(&m["outlinePlace"], &["inside", "outside", "both"]) {
-                1 => og_render::OutlinePlace::Outside,
-                2 => og_render::OutlinePlace::Both,
-                _ => og_render::OutlinePlace::Inside,
+            toon: m.toon,
+            gradient_map: texture(m.gradient_map),
+            shadow_tint: rgb(&m.shadow_tint),
+            shadow_tint_amount: m.shadow_tint_amount,
+            shadow_darkness: m.shadow_darkness,
+            rim_color: rgb(&m.rim_color),
+            rim_intensity: m.rim_intensity,
+            rim_power: m.rim_power,
+            outline_color: rgb(&m.outline_color),
+            outline_width: m.outline_width,
+            outline_distance: m.outline_distance,
+            flat_shading: m.flat_shading,
+            surface: og_render::MaterialSurface::from_index(m.surface as usize),
+            surface_strength: m.surface_strength,
+            surface_scale: m.surface_scale,
+            toon_ambient: m.toon_ambient,
+            toon_softness: m.toon_softness,
+            outline_place: match m.outline_place {
+                wire::OutlinePlace::Outside => og_render::OutlinePlace::Outside,
+                wire::OutlinePlace::Both => og_render::OutlinePlace::Both,
+                wire::OutlinePlace::Inside => og_render::OutlinePlace::Inside,
             },
-            wireframe: on(&m, "wireframe", false),
-            wireframe_angle: f(&m, "wireframeAngle", og_render::DEFAULT_WIREFRAME_ANGLE),
-            wireframe_color: rgb(&m["wireframeColor"], Vec3::ZERO),
+            wireframe: m.wireframe,
+            wireframe_angle: m.wireframe_angle,
+            wireframe_color: rgb(&m.wireframe_color),
         };
     }
     out
@@ -931,33 +911,40 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
     scene.effects.trails.clear();
     scene.effects.beams.clear();
     scene.effects.ribbons.clear();
-    let texture = |v: &Value| handle_index(v).and_then(|i| textures.get(i).copied());
+    let texture = |h: u64| super::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
+    let rgb = |c: &wire::Color| Vec3::new(c.r, c.g, c.b);
     // Time groups (og.TimeGroups), once a game uses them.
     let groups = world.time_groups();
     for (e, v) in rows(world, layouts.light_2d.as_ref()) {
+        let Ok(v) = record::Light2D::from_json(&v) else {
+            continue;
+        };
         let m = h.world_of(e);
         let (pos, _, _) = planar(m);
         // A spot's and a global light's axis: the entity's local +x in
         // the plane.
         let axis = m.x_axis.truncate().truncate();
+        // A NaN angle (decoded as null) keeps its former default: with
+        // both NaN og-render's `inner.clamp(0.0, outer)` would panic.
+        let angle = |a: f32, d: f32| if a.is_nan() { d } else { a };
         scene.sprite.lights_2d.push(Light2d {
             position: pos,
-            color: color(&v["color"], Vec3::ONE),
-            intensity: f(&v, "intensity", 1.0),
-            radius: f(&v, "radius", 5.0),
-            falloff: f(&v, "falloff", 2.0),
-            source_radius: f(&v, "sourceRadius", 0.25),
-            cast_shadows: on(&v, "castShadows", true),
-            kind: match variant(&v["kind"], &["point", "spot", "global"]) {
-                1 => Light2dKind::Spot,
-                2 => Light2dKind::Global,
-                _ => Light2dKind::Point,
+            color: rgb(&v.color),
+            intensity: v.intensity,
+            radius: v.radius,
+            falloff: v.falloff,
+            source_radius: v.source_radius,
+            cast_shadows: v.cast_shadows,
+            kind: match v.kind {
+                wire::Light2DKind::Spot => Light2dKind::Spot,
+                wire::Light2DKind::Global => Light2dKind::Global,
+                wire::Light2DKind::Point => Light2dKind::Point,
             },
             direction: axis.normalize_or(Vec2::X),
-            inner_angle: f(&v, "innerAngle", 0.35),
-            outer_angle: f(&v, "outerAngle", 0.6),
-            height: f(&v, "height", 1.0),
-            layers: mask(&v, "layers", u32::MAX),
+            inner_angle: angle(v.inner_angle, 0.35),
+            outer_angle: angle(v.outer_angle, 0.6),
+            height: v.height,
+            layers: v.layers,
         });
     }
     for (e, v) in rows(world, layouts.occluder_2d.as_ref()) {
@@ -981,26 +968,26 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         });
     }
     for (e, v) in rows(world, layouts.decal.as_ref()) {
-        if !on(&v, "visible", true) {
+        let Ok(v) = record::Decal::from_json(&v) else {
+            continue;
+        };
+        if !v.visible {
             continue;
         }
-        let c = color(&v["color"], Vec3::ONE);
-        let (lo, hi) = (vec2(&v["uvMin"], Vec2::ZERO), vec2(&v["uvMax"], Vec2::ONE));
+        let c = &v.color;
+        let (lo, hi) = (v.uv_min, v.uv_max);
         scene.effects.decals.push(Decal {
             transform: h.world_of(e),
             uv_rect: [lo.x, lo.y, hi.x, hi.y],
-            color: [c.x, c.y, c.z, f(&v, "opacity", 1.0)],
-            emissive: color(&v["emissive"], Vec3::ZERO),
-            roughness: f(&v, "roughness", -1.0),
-            angle_fade_degrees: f(&v, "angleFade", 75.0),
+            color: [c.r, c.g, c.b, v.opacity],
+            emissive: rgb(&v.emissive),
+            roughness: v.roughness,
+            angle_fade_degrees: v.angle_fade,
             normal_rect: {
-                let (lo, hi) = (
-                    vec2(&v["normalMin"], Vec2::ZERO),
-                    vec2(&v["normalMax"], Vec2::ZERO),
-                );
+                let (lo, hi) = (v.normal_min, v.normal_max);
                 [lo.x, lo.y, hi.x, hi.y]
             },
-            normal_scale: f(&v, "normalScale", 1.0),
+            normal_scale: v.normal_scale,
         });
     }
     for (e, v) in rows(world, layouts.particles.as_ref()) {
@@ -1116,19 +1103,22 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         });
     }
     for (e, v) in rows(world, layouts.beam.as_ref()) {
-        let c = color(&v["color"], Vec3::ONE);
+        let Ok(v) = record::Beam::from_json(&v) else {
+            continue;
+        };
+        let c = &v.color;
         scene.effects.beams.push(Beam {
             start: h.world_of(e).w_axis.truncate(),
-            end: vec3(&v["end"]),
-            width: f(&v, "width", 0.1),
-            color: [c.x, c.y, c.z, f(&v, "opacity", 1.0)],
-            texture: texture(&v["texture"]),
-            tile: f(&v, "tile", 1.0),
-            scroll: f(&v, "scroll", 0.0),
-            segments: u(&v, "segments", 1).max(1),
-            jitter: f(&v, "jitter", 0.0),
-            seed: u64::from(u(&v, "seed", 0)),
-            blend: if variant(&v["blend"], &["additive", "alpha"]) == 0 {
+            end: v.end,
+            width: v.width,
+            color: [c.r, c.g, c.b, v.opacity],
+            texture: texture(v.texture),
+            tile: v.tile,
+            scroll: v.scroll,
+            segments: v.segments.max(1),
+            jitter: v.jitter,
+            seed: u64::from(v.seed),
+            blend: if v.blend == StripBlend::Additive {
                 ParticleBlend::Additive
             } else {
                 ParticleBlend::Alpha
@@ -2193,28 +2183,36 @@ mod tests {
         assert!(layout.kept_rows.lock().unwrap().is_empty());
     }
 
+    /// og.MaterialStyle as its row reads: `v` written over the IDL's
+    /// defaults, then decoded.
+    fn material_style(v: Value) -> record::MaterialStyle {
+        let decl = og_api::host::RECORDS
+            .iter()
+            .find(|d| d.schema == "og.MaterialStyle")
+            .expect("og.MaterialStyle");
+        let layout = Layout::from_decl(decl).unwrap();
+        layout
+            .read(&layout.encode(None, Some(&v)).unwrap())
+            .unwrap()
+    }
+
     /// A look's MaterialStyle.shadowDarkness reaches the renderer's
     /// material style; unset it is 0 (off), so no look moves without it.
     #[test]
     fn material_style_carries_the_shadow_darkness() {
-        let m = Arc::new(serde_json::json!({ "toon": true, "shadowDarkness": 0.75 }));
-        let s = stylise(None, Some(m), &[], &[]);
+        let m = material_style(serde_json::json!({ "toon": true, "shadowDarkness": 0.75 }));
+        let s = stylise(None, Some(&m), &[], &[]);
         assert_eq!(s.material.shadow_darkness, 0.75);
         assert!(s.material.toon);
-        let off = stylise(
-            None,
-            Some(Arc::new(serde_json::json!({ "toon": true }))),
-            &[],
-            &[],
-        );
+        let off = material_style(serde_json::json!({ "toon": true }));
+        let off = stylise(None, Some(&off), &[], &[]);
         assert_eq!(off.material.shadow_darkness, 0.0);
     }
 
     #[test]
     fn the_material_style_s_surface_reaches_the_renderer() {
-        let m = |v: Value| stylise(None, Some(Arc::new(v)), &[], &[]).material;
-        // As the resource decodes it (the variant's index) and as a look
-        // names it (the variant's name).
+        let m = |v: Value| stylise(None, Some(&material_style(v)), &[], &[]).material;
+        // Written as the variant's index and as its name (a look's).
         let clay = m(serde_json::json!({ "surface": 1, "surfaceStrength": 0.5 }));
         assert_eq!(clay.surface, og_render::MaterialSurface::Clay);
         assert_eq!(clay.surface_strength, 0.5);
