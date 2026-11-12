@@ -279,6 +279,21 @@ module load {
     returns Result.EnvironmentMap "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map."
   }
 
+  struct EnvironmentSun {
+    doc "The sun a cooked environment's `sun extract` took out of its image, for the DirectionalLight that puts it back."
+    field direction Vector3 "The unit direction towards the sun, in the map's own frame: the cook's `rotation` is applied, Environment.rotation is not (turn it about +Y by the same angle)."
+    field color Color "Its linear colour, the largest channel 1: DirectionalLight.color."
+    field intensity f32 "The light it gave a surface facing it: DirectionalLight.intensity. 0 when the environment has no sun to give (`sun keep`, an image with no sun, or an uncooked map)."
+  }
+
+  fn environmentSun {
+    doc "The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time."
+    guide "loading §4"
+    param world World "The world whose renderer owns the map."
+    param map EnvironmentMap "A map og.load.environment answered."
+    returns Result.EnvironmentSun "Refused for a handle that is not an environment map, or one whose streaming group is not resident yet."
+  }
+
   fn emitter {
     doc "A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: its shape, emission, motion, look, rendering (billboards, meshes or 2D sprites), collision, sub-emitters and events. Every line runs the same in compute and on the CPU path. The textures, texture array, mesh model, effect material and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path."
     guide "loading §5"

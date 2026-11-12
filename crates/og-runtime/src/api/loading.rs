@@ -167,6 +167,17 @@ pub fn og_load_environment(world: u32, path: String) -> Result<serde_json::Value
     engine(world).and_then(|eng| super::environment::load(&eng, &path).map(asset_value))
 }
 
+pub fn og_load_environment_sun(world: u32, map: f64) -> Result<serde_json::Value, String> {
+    let sun = engine(world).and_then(|eng| super::environment::sun(&eng, index_of(map)))?;
+    let [x, y, z] = sun.direction;
+    let [r, g, b] = sun.color;
+    Ok(serde_json::json!({
+        "direction": { "x": x, "y": y, "z": z },
+        "color": { "r": r, "g": g, "b": b },
+        "intensity": sun.intensity,
+    }))
+}
+
 pub fn og_load_emitter(world: u32, path: String) -> Result<serde_json::Value, String> {
     engine(world).and_then(|eng| super::fx::load_emitter(&eng, &path).map(asset_value))
 }

@@ -18,7 +18,14 @@
 //! rotation 0            # turns it about +y, degrees (what was at +x moves towards -z)
 //! samples 256           # GGX samples per texel of each prefiltered level (16 to 4096)
 //! prefiltered false     # true: a KTX2 cube's own mip chain is the prefiltered levels
+//! sun keep              # extract: the sun leaves the image and is stored as a light
 //! ```
+//!
+//! `sun extract` takes the image's sun out of the map
+//! (`og_render_data::bake::BakeDesc::sun`) and stores its direction, colour
+//! and intensity in the blob (`og.load.environmentSun`), for the game's
+//! directional light: lit by the map alone a sun casts no shadow, and a
+//! directional light added beside it counts the sun twice.
 //!
 //! `prefiltered true` takes a KTX2 cube map whose mip chain is already
 //! GGX-prefiltered (cmgen's, IBLBaker's, the glTF IBL sampler's: level `k`
@@ -47,7 +54,7 @@ use std::path::{Path, PathBuf};
 
 pub(super) const ENVIRONMENT_TYPE: &str = "environment";
 
-const KEYS: [&str; 7] = [
+const KEYS: [&str; 8] = [
     "source",
     "faces",
     "size",
@@ -55,6 +62,7 @@ const KEYS: [&str; 7] = [
     "rotation",
     "samples",
     "prefiltered",
+    "sun",
 ];
 
 /// What an environment bakes from.
@@ -99,6 +107,8 @@ pub(super) struct EnvironmentDoc {
     pub samples: u32,
     /// The KTX2's own mip chain is the prefiltered levels.
     pub prefiltered: bool,
+    /// `sun extract`.
+    pub sun: bool,
 }
 
 fn number(doc: &Document, key: &str, default: f32) -> Result<f32, String> {
@@ -204,6 +214,25 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
             ));
         }
     }
+    let sun = match doc.body.get("sun") {
+        None => false,
+        Some(e) => match e.values.first().and_then(|v| v.as_word()) {
+            Some("extract") if e.values.len() == 1 => true,
+            Some("keep") if e.values.len() == 1 => false,
+            _ => {
+                return Err(format!(
+                    "line {}: 'sun' takes extract (the sun leaves the image and is stored as a light) or keep",
+                    e.line
+                ));
+            }
+        },
+    };
+    if sun && prefiltered {
+        return Err(
+            "sun extract takes the sun out before the cook prefilters the image; a prefiltered true chain is taken as it is (leave sun out)"
+                .into(),
+        );
+    }
     let size = number(&doc, "size", 128.0)?;
     let (lo, hi) = (
         og_render_data::ENVIRONMENT_MAP_MIN_SIZE,
@@ -230,6 +259,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
         rotation: number(&doc, "rotation", 0.0)?,
         samples: samples as u32,
         prefiltered,
+        sun,
     })
 }
 
@@ -280,6 +310,7 @@ pub(super) fn cook_environment(
         intensity: doc.intensity,
         rotation_degrees: doc.rotation,
         samples: doc.samples,
+        sun: doc.sun,
     };
     let (map, width, height, what) = match &doc.source {
         EnvironmentSource::Equirect(source) => {
@@ -407,8 +438,25 @@ pub(super) fn cook_environment(
         samples,
         stamp,
     );
+    let sun = match (doc.sun, map.sun) {
+        (false, _) => String::new(),
+        (true, s) if s.intensity > 0.0 => format!(
+            "; sun extract: intensity {:.3}, colour {:.2} {:.2} {:.2}, towards {:.3} {:.3} {:.3}",
+            s.intensity,
+            s.color[0],
+            s.color[1],
+            s.color[2],
+            s.direction[0],
+            s.direction[1],
+            s.direction[2]
+        ),
+        (true, _) => {
+            "; sun extract: the image has no sun (nothing sixteen times brighter than the rest), so it is kept whole"
+                .into()
+        }
+    };
     let note = format!(
-        "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd){}",
+        "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd){}{sun}",
         map.size,
         og_render_data::ENVIRONMENT_MAP_LEVELS,
         texels / 1024,
@@ -442,6 +490,13 @@ pub(super) fn environment_blob(
         intensity,
         rotation,
         samples,
+        sun_x: map.sun.direction[0],
+        sun_y: map.sun.direction[1],
+        sun_z: map.sun.direction[2],
+        sun_r: map.sun.color[0],
+        sun_g: map.sun.color[1],
+        sun_b: map.sun.color[2],
+        sun_intensity: map.sun.intensity,
     };
     let sh: Vec<format::EnvironmentShRow> = map
         .irradiance

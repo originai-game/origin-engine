@@ -249,6 +249,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "sound",
             "lut",
             "environment",
+            "environmentSun",
             "emitter",
             "shader",
             "post",

@@ -128,6 +128,7 @@ fn environment(rgb: [f32; 3]) -> EnvironmentMapData {
         size,
         texels: vec![rgb9e5(rgb); EnvironmentMapData::texel_count(size)],
         irradiance: [[0.0; 3]; 9],
+        sun: Default::default(),
     }
 }
 

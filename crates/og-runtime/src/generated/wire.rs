@@ -8482,6 +8482,48 @@ impl ToJson for TextureArrayInfo {
     }
 }
 
+/// `EnvironmentSun`: packages/knowledge/wiki/load.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EnvironmentSun {
+    pub direction: Vec3,
+    pub color: Color,
+    pub intensity: f32,
+}
+
+impl Default for EnvironmentSun {
+    fn default() -> Self {
+        Self {
+            direction: Default::default(),
+            color: Default::default(),
+            intensity: Default::default(),
+        }
+    }
+}
+
+impl FromJson for EnvironmentSun {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            direction: field(o, "direction", d.direction)?,
+            color: field(o, "color", d.color)?,
+            intensity: field(o, "intensity", d.intensity)?,
+        })
+    }
+}
+
+impl ToJson for EnvironmentSun {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("direction".into(), self.direction.to_json());
+        o.insert("color".into(), self.color.to_json());
+        o.insert("intensity".into(), self.intensity.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `LoadBudget`: packages/knowledge/wiki/load.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LoadBudget {

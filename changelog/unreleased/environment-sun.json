@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "load.environmentSun",
+      "summary": "A cooked environment with `sun extract` in its .ogt has the image's sun taken out of the map and stored as a light: og.load.environmentSun answers its direction, colour and intensity for the og.DirectionalLight that puts it back, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. Without the key a map cooks with its sun in it, as before."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "type environment (the cook's bake of an equirectangular image)",
+      "summary": "An image much larger than the cube is now sampled closer than its own pixels (it was four samples per cube texel whatever the image's size), so a small sun gives the map the same light wherever it falls among the texels. A three-pixel sun in a 2048 x 1024 image baked at size 128 gave 0.85 to 1.29 times its light as the image turned by tenths of a degree; it now stays within 2 %. An environment whose image is wider than about four times its `size` re-cooks to slightly different texels; smaller ones are unchanged."
+    }
+  ]
+}

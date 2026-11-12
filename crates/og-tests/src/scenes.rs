@@ -55,6 +55,8 @@ pub const SCENES: &[&str] = &[
     "environment-blend",
     "environment-grounded",
     "environment-uncooked",
+    "environment-sun",
+    "environment-sun-kept",
     "ao-gtao",
     "ao-ssao",
     "gi-room",
@@ -875,6 +877,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // uncooked and prefiltered on the GPU (og.load.environmentData).
         "environment-uncooked" => |g, _| {
             g.scene = crate::ibl_scenes::uncooked_scene(false)?;
+            Ok(())
+        },
+        // A pillar and spheres on a floor under a clear-day HDRI whose sun
+        // the bake took out (`sun extract`) and the directional light puts
+        // back: lit as by the whole map, with the sun's shadows.
+        "environment-sun" => |g, _| {
+            g.scene = crate::ibl_scenes::sunny_scene(true)?;
+            Ok(())
+        },
+        // The same under the whole map, its sun kept in it: no shadow.
+        "environment-sun-kept" => |g, _| {
+            g.scene = crate::ibl_scenes::sunny_scene(false)?;
             Ok(())
         },
         "ao-gtao" => |g, _| {

@@ -1911,6 +1911,7 @@ export const load = Object.freeze({
   textureArray: (world: WorldImpl, path: string) => parse(abi().og_load_texture_array(world.id, path)),
   lut: (world: WorldImpl, path: string) => parse(abi().og_load_lut(world.id, path)),
   environment: (world: WorldImpl, path: string) => parse(abi().og_load_environment(world.id, path)),
+  environmentSun: (world: WorldImpl, map: number) => parse(abi().og_load_environment_sun(world.id, map)),
   emitter: (world: WorldImpl, path: string) => parse(abi().og_load_emitter(world.id, path)),
   shader: (world: WorldImpl, path: string) => parse(abi().og_load_shader(world.id, path)),
   vector: (world: WorldImpl, path: string) => parse(abi().og_load_vector(world.id, path)),

@@ -1008,6 +1008,9 @@ macro_rules! __og_host_bindings_base {
             fn og_load_environment(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_environment(world, path))
             }
+            fn og_load_environment_sun(&self, world: u32, map: f64) -> String {
+                $crate::host_impl::answer($crate::og_load_environment_sun(world, map))
+            }
 
             fn og_load_texture_array(&self, world: u32, path: String) -> String {
                 $crate::host_impl::answer($crate::og_load_texture_array(world, path))

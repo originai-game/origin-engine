@@ -58,6 +58,20 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
     Ok(i)
 }
 
+/// `og.load.environmentSun`: the sun the cook took out of the map's image.
+pub(crate) fn sun(eng: &Engine, index: Option<usize>) -> Result<og_render::EnvironmentSun, String> {
+    let rs = eng.render.borrow();
+    let (id, handle) = index
+        .and_then(|i| rs.env.maps.get(i))
+        .ok_or("not an environment map og.load.environment answered")?;
+    let map = handle
+        .and_then(|h| rs.scene.environment_map_data(h))
+        .ok_or_else(|| {
+            format!("{id} is not loaded: its streaming group is not resident (og.stream.status)")
+        })?;
+    Ok(map.sun)
+}
+
 /// At a tick boundary: adds the pending maps whose pack is now resident.
 pub(crate) fn resolve(eng: &Engine) {
     let pending: Vec<(usize, String)> = eng

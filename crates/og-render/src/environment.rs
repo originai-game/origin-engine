@@ -213,6 +213,144 @@ mod tests {
         }
     }
 
+    /// A sky over a ground with a sun of `px`² pixels at radiance `sun`:
+    /// the image, the direction towards the sun's centre, and its light
+    /// (radiance times solid angle).
+    #[cfg(feature = "bake")]
+    fn sunny(w: u32, h: u32, px: u32, sun: [f32; 3]) -> (Vec<f32>, glam::Vec3, glam::Vec3) {
+        use std::f64::consts::PI;
+        let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+        for y in 0..h {
+            let v = if y < h / 2 { 1.0 } else { 0.2 };
+            rgb.extend(std::iter::repeat_n(v, (w * 3) as usize));
+        }
+        let (x0, y0) = (w / 2 + 37, h / 4 + 11);
+        let lat = |y: f64| (0.5 - y / h as f64) * PI;
+        let mut solid = 0.0;
+        for y in y0..y0 + px {
+            for x in x0..x0 + px {
+                let i = ((y * w + x) * 3) as usize;
+                rgb[i..i + 3].copy_from_slice(&sun);
+            }
+            solid +=
+                px as f64 * (2.0 * PI / w as f64) * (PI / h as f64) * lat(y as f64 + 0.5).cos();
+        }
+        let lon = ((x0 as f64 + px as f64 / 2.0) / w as f64 - 0.5) * 2.0 * PI;
+        let lat = lat(y0 as f64 + px as f64 / 2.0);
+        let towards = glam::DVec3::new(lat.cos() * lon.cos(), lat.sin(), lat.cos() * lon.sin());
+        (
+            rgb,
+            towards.as_vec3(),
+            glam::Vec3::from_array(sun) * solid as f32,
+        )
+    }
+
+    /// A sun of a few pixels in a large image gives the map the same light
+    /// wherever it falls among the cube's texels: the bake samples closer
+    /// together than the image's pixels. (Four samples a texel gave 0.85
+    /// to 1.29 times its light as the map turned by tenths of a degree.)
+    #[cfg(feature = "bake")]
+    #[test]
+    fn a_small_sun_keeps_its_light_as_the_map_turns() {
+        let (w, h) = (2048, 1024);
+        let (rgb, _, light) = sunny(w, h, 3, [50000.0; 3]);
+        let (sky, _, _) = sunny(w, h, 0, [0.0; 3]);
+        let total = |rgb: &[f32], turn: f32| {
+            let baked = bake::bake(
+                &bake::Equirect {
+                    width: w,
+                    height: h,
+                    rgb,
+                },
+                &bake::BakeDesc {
+                    size: 128,
+                    samples: 16,
+                    rotation_degrees: turn,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            // The first harmonic is the whole sphere's radiance times Y0.
+            baked.irradiance[0][0] / 0.282095
+        };
+        let without = total(&sky, 0.0);
+        for k in 0..8 {
+            let turn = k as f32 * 0.11;
+            let got = (total(&rgb, turn) - without) / light.x;
+            assert!(
+                (got - 1.0).abs() < 0.02,
+                "turned {turn}°: {got} of the sun's light"
+            );
+        }
+    }
+
+    /// `sun` takes the sun out of the map as a light: its direction, its
+    /// colour and the irradiance it gave (radiance times solid angle), in
+    /// the turned map's frame; what stays is no brighter than sixteen times
+    /// the rest of the image, and an image without a sun is left whole.
+    #[cfg(feature = "bake")]
+    #[test]
+    fn the_sun_leaves_the_map_as_a_light() {
+        let (w, h) = (2048, 1024);
+        let bake = |rgb: &[f32], turn: f32, sun: bool| {
+            bake::bake(
+                &bake::Equirect {
+                    width: w,
+                    height: h,
+                    rgb,
+                },
+                &bake::BakeDesc {
+                    size: 128,
+                    samples: 16,
+                    rotation_degrees: turn,
+                    sun,
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        };
+        let (rgb, towards, light) = sunny(w, h, 3, [40000.0, 36000.0, 28000.0]);
+        for turn in [0.0f32, 90.0] {
+            let map = bake(&rgb, turn, true);
+            // Turned about +y: what was at +x moves towards -z.
+            let (s, c) = turn.to_radians().sin_cos();
+            let want = glam::Vec3::new(
+                c * towards.x + s * towards.z,
+                towards.y,
+                c * towards.z - s * towards.x,
+            );
+            let got = glam::Vec3::from_array(map.sun.direction);
+            assert!(
+                got.dot(want) > 0.2f32.to_radians().cos(),
+                "turned {turn}°: the sun towards {got}, not {want}"
+            );
+            let lit = glam::Vec3::from_array(map.sun.color) * map.sun.intensity;
+            assert!(
+                ((lit - light) / light).abs().max_element() < 0.02,
+                "turned {turn}°: the sun's light {lit}, not {light}"
+            );
+            assert_eq!(map.sun.color[0], 1.0);
+            // The rest's mean luminance is 0.6: at most 9.6 stays.
+            let count = (6 * 128 * 128) as usize;
+            let brightest = map.texels[..count]
+                .iter()
+                .map(|&t| {
+                    glam::Vec3::from_array(rgb9e5_decode(t))
+                        .dot(glam::Vec3::new(0.2126, 0.7152, 0.0722))
+                })
+                .fold(0.0f32, f32::max);
+            assert!((9.0..10.0).contains(&brightest), "{brightest} stays");
+            // The light that left is the light the sun holds.
+            let whole = bake(&rgb, turn, false);
+            let left = (whole.irradiance[0][1] - map.irradiance[0][1]) / 0.282095;
+            assert!((left / lit.y - 1.0).abs() < 1e-3, "{left} left, {lit}");
+        }
+        let (sky, _, _) = sunny(w, h, 0, [0.0; 3]);
+        let none = bake(&sky, 0.0, true);
+        assert_eq!(none.sun, EnvironmentSun::default());
+        assert_eq!(none, bake(&sky, 0.0, false));
+    }
+
     /// A blend's weight is clamped and drawn in 128 steps, so a weight
     /// moved a little each tick regenerates the light only when it crosses
     /// a step, and a broken weight draws the first map.
@@ -508,6 +646,7 @@ mod tests {
             samples: 64,
             rotation_degrees: 30.0,
             intensity: 1.5,
+            sun: false,
         };
         let a = bake(
             &Equirect {

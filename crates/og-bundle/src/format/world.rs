@@ -649,7 +649,7 @@ impl BlobKind for Terrain {
 row!(
     /// The root of an environment map blob (an `.ogt` of `type environment`):
     /// og-render's `EnvironmentMapData` and what it was baked from.
-    EnvironmentMeta, "og.EnvironmentMap", 1 {
+    EnvironmentMeta, "og.EnvironmentMap", 2 {
         /// Level 0's face size (a power of two) and the level count
         /// (og-render's `ENVIRONMENT_MAP_LEVELS`; level m is roughness
         /// m / (levels - 1)).
@@ -666,6 +666,16 @@ row!(
         /// GGX samples per texel of each prefiltered level (0: a KTX2's
         /// own prefiltered levels, `prefiltered true`, taken as they are).
         samples: u32,
+        /// The sun taken out of the image (`sun extract`; og-render's
+        /// `EnvironmentSun`): the unit direction towards it, its colour
+        /// and its intensity (0: none).
+        sun_x: f32,
+        sun_y: f32,
+        sun_z: f32,
+        sun_r: f32,
+        sun_g: f32,
+        sun_b: f32,
+        sun_intensity: f32,
     }
 );
 

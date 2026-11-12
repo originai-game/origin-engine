@@ -441,6 +441,11 @@ impl Bundle {
             size: meta.size,
             texels,
             irradiance: std::array::from_fn(|k| [sh[k].r, sh[k].g, sh[k].b]),
+            sun: og_render_data::EnvironmentSun {
+                direction: [meta.sun_x, meta.sun_y, meta.sun_z],
+                color: [meta.sun_r, meta.sun_g, meta.sun_b],
+                intensity: meta.sun_intensity,
+            },
         };
         map.validate().map_err(|e| invalid(&blob, e))?;
         Ok(map)

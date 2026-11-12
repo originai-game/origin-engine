@@ -6253,6 +6253,7 @@
         "TextureArrayInfo",
         "Model",
         "PrefabLink",
+        "EnvironmentSun",
         "LoadBudget",
         "ImageKind",
         "GltfDataDesc",
@@ -6492,6 +6493,27 @@
           ],
           "returns": "Result<EnvironmentMap>",
           "returnsDoc": "Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.",
+          "publish": true
+        },
+        {
+          "name": "environmentSun",
+          "doc": "The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.\nSee `loading §4`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer owns the map."
+            },
+            {
+              "name": "map",
+              "type": "EnvironmentMap",
+              "optional": false,
+              "doc": "A map og.load.environment answered."
+            }
+          ],
+          "returns": "Result<EnvironmentSun>",
+          "returnsDoc": "Refused for a handle that is not an environment map, or one whose streaming group is not resident yet.",
           "publish": true
         },
         {
@@ -30172,6 +30194,32 @@
           "readOnly": true
         }
       },
+      "additionalProperties": false
+    },
+    "EnvironmentSun": {
+      "x-og-kind": "struct",
+      "x-og-module": "load",
+      "description": "The sun a cooked environment's `sun extract` took out of its image, for the DirectionalLight that puts it back.",
+      "type": "object",
+      "properties": {
+        "direction": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The unit direction towards the sun, in the map's own frame: the cook's `rotation` is applied, Environment.rotation is not (turn it about +Y by the same angle)."
+        },
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "Its linear colour, the largest channel 1: DirectionalLight.color."
+        },
+        "intensity": {
+          "type": "number",
+          "description": "The light it gave a surface facing it: DirectionalLight.intensity. 0 when the environment has no sun to give (`sun keep`, an image with no sun, or an uncooked map)."
+        }
+      },
+      "required": [
+        "direction",
+        "color",
+        "intensity"
+      ],
       "additionalProperties": false
     },
     "LoadBudget": {

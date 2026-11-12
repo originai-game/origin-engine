@@ -1194,6 +1194,11 @@ pub fn og_load_environment(world: u32, path: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_environment_sun(world: u32, map: f64) -> String {
+    <Host as LoadApi>::og_load_environment_sun(&Host, world, map)
+}
+
+#[wasm_bindgen]
 pub fn og_load_emitter(world: u32, path: String) -> String {
     <Host as LoadApi>::og_load_emitter(&Host, world, path)
 }

@@ -311,3 +311,115 @@ pub fn uncooked_scene(cooked: bool) -> Result<RenderScene, String> {
     }
     Ok(scene)
 }
+
+/// A clear day as a photographed HDRI holds it (2048×1024): the outdoor
+/// map's sky at a third of its brightness (a clear sky gives a fifth of
+/// the sun's light), a flat ground of one grey-green below the horizon, and a sun
+/// as wide as the real one (0.6° across, three pixels) whose radiance gives
+/// a surface facing it the default sun's light, 3.
+pub fn sunny_pixels() -> (u32, u32, Vec<f32>) {
+    let (w, h) = (2048u32, 1024u32);
+    let sun = Vec3::new(0.45, 0.6, 0.66).normalize();
+    let disc = 0.3f32.to_radians().cos();
+    let radiance = 3.0 / (std::f32::consts::TAU * (1.0 - disc));
+    let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+    for y in 0..h {
+        for x in 0..w {
+            let lon = ((x as f32 + 0.5) / w as f32 - 0.5) * std::f32::consts::TAU;
+            let lat =
+                std::f32::consts::FRAC_PI_2 - (y as f32 + 0.5) / h as f32 * std::f32::consts::PI;
+            let d = Vec3::new(lat.cos() * lon.cos(), lat.sin(), lat.cos() * lon.sin());
+            let c = if d.dot(sun) > disc {
+                Vec3::new(1.0, 0.93, 0.8) * radiance
+            } else if d.y >= 0.0 {
+                Vec3::new(0.75, 0.85, 1.0).lerp(Vec3::new(0.15, 0.35, 0.9), d.y.powf(0.5)) * 0.5
+            } else {
+                Vec3::new(0.1, 0.12, 0.08)
+            };
+            rgb.extend_from_slice(&c.to_array());
+        }
+    }
+    (w, h, rgb)
+}
+
+/// A pillar and three spheres (rough chrome, white, red) on a pale floor
+/// under [`sunny_pixels`], baked as the cook bakes it. With `extract` the
+/// bake takes the sun out of the map (`sun extract`) and the scene's
+/// directional light is that sun, so it casts shadows; without, the map
+/// lights the scene alone, its sun still in it: the same light on an open
+/// surface, and no shadow.
+pub fn sunny_scene(extract: bool) -> Result<RenderScene, String> {
+    let mut scene = RenderScene::new();
+    let (w, h, rgb) = sunny_pixels();
+    let baked = bake(
+        &Equirect {
+            width: w,
+            height: h,
+            rgb: &rgb,
+        },
+        &BakeDesc {
+            size: 128,
+            samples: 128,
+            sun: extract,
+            ..Default::default()
+        },
+    )?;
+    let sun = baked.sun;
+    let map = scene.add_environment_map(baked);
+    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    let pale = scene.add_material(Material {
+        base_color: [0.62, 0.6, 0.56, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.add_instance(floor, pale, Mat4::IDENTITY);
+    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 2.4, 0.5)));
+    scene.add_instance(
+        pillar,
+        pale,
+        Mat4::from_translation(Vec3::new(-2.4, 1.2, -0.6)),
+    );
+    let sphere = scene.add_mesh(shapes::sphere(48, 32));
+    let looks = [
+        ([0.95, 0.93, 0.88, 1.0], 1.0, 0.35),
+        ([0.8, 0.8, 0.8, 1.0], 0.0, 0.5),
+        ([0.7, 0.06, 0.04, 1.0], 0.0, 0.15),
+    ];
+    for (i, (base_color, metallic, roughness)) in looks.into_iter().enumerate() {
+        let m = scene.add_material(Material {
+            base_color,
+            metallic,
+            roughness,
+            ..Default::default()
+        });
+        let r = 0.6;
+        let at = Vec3::new(-0.9 + i as f32 * 1.6, r, -0.4 * (i as f32 - 1.0).abs());
+        scene.add_instance(
+            sphere,
+            m,
+            Mat4::from_translation(at) * Mat4::from_scale(Vec3::splat(2.0 * r)),
+        );
+    }
+    scene.lighting.light = DirectionalLight {
+        direction_to_light: if extract {
+            Vec3::from_array(sun.direction)
+        } else {
+            Vec3::Y
+        },
+        color: Vec3::from_array(sun.color),
+        intensity: sun.intensity,
+        cast_shadows: extract,
+        max_shadow_distance: 30.0,
+        ..Default::default()
+    };
+    scene.lighting.environment.intensity = 1.0;
+    scene.lighting.environment.background = Background::Sky;
+    scene.lighting.environment_map = Some(EnvironmentMap::new(map));
+    scene.frame.camera = Camera {
+        position: Vec3::new(-0.6, 1.7, 6.5),
+        target: Vec3::new(0.0, 0.5, 0.0),
+        exposure: Exposure::Manual { ev: -0.5 },
+        ..Default::default()
+    };
+    Ok(scene)
+}

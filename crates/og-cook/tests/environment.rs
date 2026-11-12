@@ -420,6 +420,7 @@ fn a_cube_map_bakes_as_its_equirectangular_studio() {
             intensity: 1.5,
             rotation_degrees: 30.0,
             samples: 64,
+            sun: false,
         },
     )
     .unwrap();
@@ -493,6 +494,7 @@ fn a_prefiltered_ktx2_chain_is_taken_as_it_is() {
         intensity: 1.0,
         rotation_degrees: 0.0,
         samples: 64,
+        sun: false,
     };
     let baked = og_render::bake::bake(
         &og_render::bake::Equirect {
@@ -607,4 +609,108 @@ fn a_prefiltered_ktx2_chain_is_taken_as_it_is() {
         &[("e/c.ktx2", &chain)],
     );
     assert!(e.contains("'prefiltered' takes true or false"), "{e}");
+}
+
+/// `sun extract` takes the image's sun out of the map and stores it in the
+/// blob: the cooked map is og-render's bake with `sun`, light and texels,
+/// the report says what it found, and the same image without the key keeps
+/// its sun. A prefiltered chain, already filtered with its sun in it, and a
+/// word that is neither are refused.
+#[test]
+fn sun_extract_stores_the_images_sun_beside_the_map() {
+    let (w, h) = (512u32, 256u32);
+    let mut px = vec![image::Rgb([0.8f32, 0.9, 1.0]); (w * h) as usize];
+    for p in &mut px[(w * h / 2) as usize..] {
+        *p = image::Rgb([0.2, 0.2, 0.2]);
+    }
+    for (x, y) in [(300, 60), (301, 60), (300, 61), (301, 61)] {
+        px[(y * w + x) as usize] = image::Rgb([30000.0, 27000.0, 21000.0]);
+    }
+    let mut hdr = Vec::new();
+    image::codecs::hdr::HdrEncoder::new(&mut hdr)
+        .encode(&px, w as usize, h as usize)
+        .unwrap();
+    let head = "type environment\nversion 1\n---\n";
+    let settings = "source \"day.hdr\"\nsize 32\nsamples 16\n";
+    let root = project(
+        "sun",
+        &[
+            ("env/day.hdr", &hdr),
+            (
+                "env/sun.ogt",
+                format!("{head}{settings}sun extract\n").as_bytes(),
+            ),
+            ("env/whole.ogt", format!("{head}{settings}").as_bytes()),
+        ],
+    );
+    let report = cook(&root);
+    let notes: Vec<String> = report.assets.iter().flat_map(|a| a.notes.clone()).collect();
+    assert!(
+        notes.iter().any(|n| n.contains("sun extract: intensity")),
+        "{notes:?}"
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let (sun, whole) = (
+        bundle.load_environment("env/sun.ogt").unwrap(),
+        bundle.load_environment("env/whole.ogt").unwrap(),
+    );
+    let img = image::load_from_memory(&hdr).unwrap().to_rgb32f();
+    let bake = |sun: bool| {
+        og_render::bake::bake(
+            &og_render::bake::Equirect {
+                width: w,
+                height: h,
+                rgb: img.as_raw(),
+            },
+            &og_render::bake::BakeDesc {
+                size: 32,
+                intensity: 1.0,
+                rotation_degrees: 0.0,
+                samples: 16,
+                sun,
+            },
+        )
+        .unwrap()
+    };
+    assert_eq!(sun, bake(true), "the cooked map is the bake with its sun");
+    assert_eq!(whole, bake(false));
+    assert_eq!(whole.sun, og_render::EnvironmentSun::default());
+    // Above the horizon, and the light an upward face lost (nine
+    // harmonics hold a sun's cosine to a few percent).
+    assert!(
+        sun.sun.intensity > 1.0 && sun.sun.direction[1] > 0.5,
+        "{:?}",
+        sun.sun
+    );
+    assert_eq!(sun.sun.color[0], 1.0);
+    let up = |m: &og_render::EnvironmentMapData| og_render::bake::irradiance(m, glam::Vec3::Y);
+    let lost = (up(&whole).x - up(&sun).x) * std::f32::consts::PI;
+    let gave = sun.sun.intensity * sun.sun.direction[1];
+    assert!(
+        (lost / gave - 1.0).abs() < 0.1,
+        "lost {lost}, the sun gave {gave}"
+    );
+
+    let cook_err = |name: &str, text: &str, files: &[(&str, &[u8])]| -> String {
+        let mut all: Vec<(&str, &[u8])> = vec![("e/x.ogt", text.as_bytes())];
+        all.extend_from_slice(files);
+        let root = project(name, &all);
+        let report = cook_project(&root, &CookOptions::default()).expect("cook runs");
+        report.errors().join("\n")
+    };
+    let e = cook_err(
+        "sun-word",
+        &format!("{head}source \"day.hdr\"\nsun maybe\n"),
+        &[("e/day.hdr", &hdr)],
+    );
+    assert!(
+        e.contains("'sun' takes extract") && e.contains("keep"),
+        "{e}"
+    );
+    let e = cook_err(
+        "sun-prefiltered",
+        &format!("{head}source \"c.ktx2\"\nprefiltered true\nsun extract\n"),
+        &[("e/c.ktx2", b"")],
+    );
+    assert!(e.contains("sun extract takes the sun out before"), "{e}");
 }

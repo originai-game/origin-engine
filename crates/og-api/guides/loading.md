@@ -183,6 +183,7 @@ An `.ogt` of `type environment` names its source:
 - `faces`: six `.hdr` or `.exr` images in that order.
 - `size`: level 0's face size, a power of two from 16 to 2048, default
   128. Also `intensity`, `rotation` (degrees about +Y) and `samples`.
+- `sun`: `extract` or `keep` (the default), below.
 
 The cook prefilters it into a cube of five GGX levels (roughness 0 to 1)
 in RGB9E5, plus the diffuse irradiance as nine harmonics, so loading
@@ -190,6 +191,28 @@ only uploads it. `prefiltered true` takes a KTX2 cube's own mip chain
 as the levels, at the file's own size, without filtering it again: use
 it for a cube already prefiltered by cmgen, IBLBaker or the glTF IBL
 sampler. Level k of L is then at roughness k / (L - 1).
+
+`sun extract` is for an outdoor image with the sun in it. Left in the
+map, a sun lights without casting a shadow and leaves bright speckles in
+rough reflections; an `og.DirectionalLight` added beside it lights the
+scene with the sun a second time. With `sun extract` the cook takes the
+sun's light out of the image (everything within 5° of the brightest
+point that is over sixteen times the rest's mean) and stores it:
+
+```ts
+const map = og.load.environment(world, "env/day.ogt").value;
+const sun = og.load.environmentSun(world, map).value;
+// sun.direction points towards the sun; a light shines along its -Z.
+light.set(og.DirectionalLight, { color: sun.color, intensity: sun.intensity });
+```
+
+Aim the light's entity so its -Z points along `-sun.direction`, turned
+about +Y by `Environment.rotation` when that is not 0. The sun's disc
+stays in the background, no brighter than the cap. `intensity` 0 means
+the image had no sun; the cook's report says what it took. A scene lit
+by a map alone (a studio, or an image whose sun is kept) sets a
+DirectionalLight of intensity 0: without one the default sun still
+lights the scene beside the map.
 
 On the web the map is fetched with the bundle like any blob. Until a
 streamed one's group is resident, the sky lights the scene.

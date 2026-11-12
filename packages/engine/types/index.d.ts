@@ -13184,6 +13184,23 @@ export interface PrefabLink {
 
 
 
+/**
+ * The sun a cooked environment's `sun extract` took out of its image, for the DirectionalLight that puts it back.
+ */
+export interface EnvironmentSun {
+  /**
+   * The unit direction towards the sun, in the map's own frame: the cook's `rotation` is applied, Environment.rotation is not (turn it about +Y by the same angle).
+   */
+  readonly direction: Vector3;
+  /** Its linear colour, the largest channel 1: DirectionalLight.color. */
+  readonly color: Color;
+  /**
+   * The light it gave a surface facing it: DirectionalLight.intensity. 0 when the environment has no sun to give (`sun keep`, an image with no sun, or an uncooked map).
+   */
+  readonly intensity: number;
+}
+
+
 
 
 
@@ -33902,6 +33919,15 @@ export declare namespace og {
      * @returns Refused for a path not in the bundle (the reason says to run og cook) or not an environment map.
      */
     function environment(world: World, path: string): Result<EnvironmentMap>;
+    /**
+     * The sun a cooked environment map holds apart from its image (`sun extract` in its `.ogt`): the direction, colour and intensity to give a DirectionalLight, so the sun is counted once, casts shadows and leaves no speckle in rough reflections. An image's sun left in the map lights without shadows, and a DirectionalLight beside it adds the sun a second time.
+     * See `loading §4`.
+     *
+     * @param world The world whose renderer owns the map.
+     * @param map A map og.load.environment answered.
+     * @returns Refused for a handle that is not an environment map, or one whose streaming group is not resident yet.
+     */
+    function environmentSun(world: World, map: EnvironmentMap): Result<EnvironmentSun>;
     /**
      * A particle emitter asset for ParticleSystem.emitter, from a cooked `.ogt` of `type particles`: its shape, emission, motion, look, rendering (billboards, meshes or 2D sprites), collision, sub-emitters and events. Every line runs the same in compute and on the CPU path. The textures, texture array, mesh model, effect material and sub-emitters it names are loaded with it (a sub-emitter that fires its parent is refused); while the array's streaming group is not resident its systems draw nothing. Loaded once per path.
      * See `loading §5`.

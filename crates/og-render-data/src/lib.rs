@@ -75,8 +75,8 @@ pub use effects::{ColorLut, LUT_SIZE};
 pub use environment::bake;
 pub use environment::{
     ENVIRONMENT_MAP_LEVELS, ENVIRONMENT_MAP_MAX_SIZE, ENVIRONMENT_MAP_MIN_SIZE,
-    EnvironmentEquirect, EnvironmentMapData, EquirectIrradiance, face_direction, rgb9e5,
-    rgb9e5_decode, sh9,
+    EnvironmentEquirect, EnvironmentMapData, EnvironmentSun, EquirectIrradiance, face_direction,
+    rgb9e5, rgb9e5_decode, sh9,
 };
 pub use hooks::{
     MAX_SHADER_PARAMS, MaterialShader, ParamKind, SHADER_HOOKS, ShaderMode, ShaderParam,

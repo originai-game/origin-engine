@@ -41,6 +41,26 @@ pub struct EnvironmentMapData {
     /// 1.092548 xy, 1.092548 yz, 0.315392 (3z² - 1), 1.092548 xz,
     /// 0.546274 (x² - y²)`.
     pub irradiance: [[f32; 3]; 9],
+    /// The sun the bake took out of the image ([`bake::BakeDesc::sun`]);
+    /// intensity 0: none.
+    pub sun: EnvironmentSun,
+}
+
+/// The sun a bake took out of an environment map, to put back as a
+/// directional light: the texels and the irradiance no longer hold it, so
+/// the light is counted once, casts shadows, and the prefiltered levels
+/// carry no speckle from it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct EnvironmentSun {
+    /// The unit direction towards it, in the map's own frame (the bake's
+    /// turn applied, a draw's rotation not).
+    pub direction: [f32; 3],
+    /// Its colour, the largest channel 1.
+    pub color: [f32; 3],
+    /// With `color`, the irradiance it gave a surface facing it (the
+    /// radiance taken out times its solid angle): a directional light's
+    /// intensity. 0: the image has no sun.
+    pub intensity: f32,
 }
 
 impl EnvironmentMapData {
@@ -302,6 +322,13 @@ pub mod bake {
         pub rotation_degrees: f32,
         /// GGX samples per texel of each prefiltered level.
         pub samples: u32,
+        /// Takes the sun out of the image into
+        /// [`EnvironmentMapData::sun`]: within a few degrees of the
+        /// brightest texel, the radiance above sixteen times the rest of
+        /// the image's mean is removed (its colour kept) and summed as
+        /// the sun's light. An image without so bright a spot keeps
+        /// everything, and its sun's intensity is 0.
+        pub sun: bool,
     }
 
     impl Default for BakeDesc {
@@ -311,6 +338,7 @@ pub mod bake {
                 intensity: 1.0,
                 rotation_degrees: 0.0,
                 samples: 256,
+                sun: false,
             }
         }
     }
@@ -458,27 +486,102 @@ pub mod bake {
         Cube { levels }
     }
 
-    /// The radiance cube at `n` (2x2 samples per texel of `src`'s radiance
-    /// along a direction), and its mips down to 1x1 by 2x2 box filtering.
-    fn radiance_cube(src: &dyn Fn(Vec3) -> Vec3, n: u32, turn: f32, intensity: f32) -> Cube {
+    /// The radiance cube's level 0 at `n`: each texel the mean of
+    /// `per_axis`² samples of `src`'s radiance, on a grid across it.
+    fn radiance_cube(
+        src: &(dyn Fn(Vec3) -> Vec3 + Sync),
+        n: u32,
+        per_axis: u32,
+        turn: f32,
+        intensity: f32,
+    ) -> Vec<Vec3> {
         let (c, s) = (turn.cos(), turn.sin());
-        let mut base = Vec::with_capacity(6 * (n * n) as usize);
-        for face in 0..6 {
+        let step = 1.0 / per_axis as f32;
+        let scale = intensity * step * step;
+        per_face(|face| {
+            let mut out = Vec::with_capacity((n * n) as usize);
             for j in 0..n {
                 for i in 0..n {
                     let mut sum = Vec3::ZERO;
-                    for (di, dj) in [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)] {
-                        let d = texel_direction(face, n, i, j, di, dj);
-                        // The map turned by `turn`: look the image up at
-                        // the direction turned back.
-                        let d = Vec3::new(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
-                        sum += src(d);
+                    for b in 0..per_axis {
+                        for a in 0..per_axis {
+                            let (di, dj) = ((a as f32 + 0.5) * step, (b as f32 + 0.5) * step);
+                            let d = texel_direction(face, n, i, j, di, dj);
+                            // The map turned by `turn`: look the image up
+                            // at the direction turned back.
+                            let d = Vec3::new(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
+                            sum += src(d);
+                        }
                     }
-                    base.push(sum * 0.25 * intensity);
+                    out.push(sum * scale);
                 }
             }
+            out
+        })
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    /// A cube texel's solid angle at face coordinates `x`, `y` (-1..1).
+    fn solid_angle(n: u32, x: f32, y: f32) -> f32 {
+        let texel = 2.0 / n as f32;
+        texel * texel / (1.0 + x * x + y * y).powf(1.5)
+    }
+
+    const LUMA: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
+    /// How far from the brightest texel the sun's light is gathered (its
+    /// disc and the glare around it), in degrees, and how many times the
+    /// rest of the image's mean luminance a texel keeps.
+    const SUN_CONE_DEGREES: f32 = 5.0;
+    const SUN_OVER_MEAN: f32 = 16.0;
+
+    /// [`BakeDesc::sun`]: takes the sun out of a radiance cube's level 0.
+    fn take_sun(n: u32, base: &mut [Vec3]) -> super::EnvironmentSun {
+        let at = |k: usize| {
+            let (face, j, i) = (k as u32 / (n * n), k as u32 / n % n, k as u32 % n);
+            let x = 2.0 * (i as f32 + 0.5) / n as f32 - 1.0;
+            let y = 1.0 - 2.0 * (j as f32 + 0.5) / n as f32;
+            (face_direction(face, x, y), solid_angle(n, x, y))
+        };
+        let Some(peak) =
+            (0..base.len()).max_by(|&a, &b| base[a].dot(LUMA).total_cmp(&base[b].dot(LUMA)))
+        else {
+            return Default::default();
+        };
+        // A texel's centre is up to its diagonal away from the light in it.
+        let reach = (SUN_CONE_DEGREES + 1.5 * 90.0 / n as f32)
+            .to_radians()
+            .cos();
+        let (towards, _) = at(peak);
+        let inside = |k: usize| at(k).0.dot(towards) >= reach;
+        let (mut rest, mut area) = (0.0, 0.0);
+        for k in (0..base.len()).filter(|&k| !inside(k)) {
+            let solid = at(k).1;
+            rest += base[k].dot(LUMA) * solid;
+            area += solid;
         }
-        mips(n, base)
+        let keep = SUN_OVER_MEAN * rest / area;
+        let (mut light, mut aim) = (Vec3::ZERO, Vec3::ZERO);
+        for k in (0..base.len()).filter(|&k| inside(k)) {
+            let luma = base[k].dot(LUMA);
+            if luma > keep && luma > 0.0 {
+                let (d, solid) = at(k);
+                let taken = base[k] * ((1.0 - keep / luma) * solid);
+                light += taken;
+                aim += d * taken.dot(LUMA);
+                base[k] *= keep / luma;
+            }
+        }
+        let intensity = light.max_element();
+        if intensity <= 0.0 {
+            return Default::default();
+        }
+        super::EnvironmentSun {
+            direction: aim.try_normalize().unwrap_or(towards).to_array(),
+            color: (light / intensity).to_array(),
+            intensity,
+        }
     }
 
     fn radical_inverse(mut bits: u32) -> f32 {
@@ -555,7 +658,13 @@ pub mod bake {
         if src.rgb.len() != (src.width * src.height * 3) as usize {
             return Err("the image's pixels do not match its size".into());
         }
-        bake_from(&|d| src.sample(d), desc)
+        // Samples closer together than the image's pixels, so a sun of a
+        // few pixels gives its light wherever it falls: a texel at a
+        // face's centre spans `2 / size` radians and a pixel at the
+        // horizon `2 pi / width`, less by its latitude's cosine above it
+        // (the half again covers pixels up to 48 degrees).
+        let per_axis = (1.5 * src.width as f32 / (PI * desc.size.max(1) as f32)).ceil() as u32;
+        bake_from(&|d| src.sample(d), per_axis.max(2), desc)
     }
 
     /// [`bake`] from a cube map: the same radiance cube (2x2 samples per
@@ -570,7 +679,7 @@ pub mod bake {
             return Err("the cube's texels do not match its face size".into());
         }
         let cube = src.cube();
-        bake_from(&|d| cube.resample(d, desc.size), desc)
+        bake_from(&|d| cube.resample(d, desc.size), 2, desc)
     }
 
     /// A map from a cube's own prefiltered levels, without filtering them
@@ -648,6 +757,7 @@ pub mod bake {
             size: desc.size,
             texels,
             irradiance: irradiance_of(desc.size, &out[0]),
+            sun: Default::default(),
         };
         map.validate()?;
         Ok(map)
@@ -669,17 +779,25 @@ pub mod bake {
     }
 
     fn bake_from(
-        src: &dyn Fn(Vec3) -> Vec3,
+        src: &(dyn Fn(Vec3) -> Vec3 + Sync),
+        per_axis: u32,
         desc: &BakeDesc,
     ) -> Result<EnvironmentMapData, String> {
         check_desc(desc)?;
         let size = desc.size;
-        let cube = radiance_cube(
+        let mut base = radiance_cube(
             src,
             size,
+            per_axis,
             desc.rotation_degrees.to_radians(),
             desc.intensity,
         );
+        let sun = if desc.sun {
+            take_sun(size, &mut base)
+        } else {
+            Default::default()
+        };
+        let cube = mips(size, base);
         let mut texels: Vec<u32> = cube.levels[0]
             .1
             .iter()
@@ -707,6 +825,7 @@ pub mod bake {
             size,
             texels,
             irradiance: irradiance_of(*n, base),
+            sun,
         };
         map.validate()?;
         Ok(map)
@@ -723,8 +842,7 @@ pub mod bake {
                 for i in 0..*n {
                     let x = 2.0 * (i as f32 + 0.5) / *n as f32 - 1.0;
                     let y = 1.0 - 2.0 * (j as f32 + 0.5) / *n as f32;
-                    let texel = 2.0 / *n as f32;
-                    let solid = texel * texel / (1.0 + x * x + y * y).powf(1.5);
+                    let solid = solid_angle(*n, x, y);
                     let d = face_direction(face, x, y);
                     let l = base[((face * *n + j) * *n + i) as usize];
                     for (c, y) in coeffs.iter_mut().zip(sh9(d)) {
