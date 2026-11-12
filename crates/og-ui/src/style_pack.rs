@@ -48,7 +48,7 @@ impl StylePack {
                 "{directory}: a style pack needs at least one .css file directly in its directory"
             ));
         }
-        let mut css = String::from("@layer og-default, og-kit, og-pack, og-game;\n");
+        let mut css = String::from("@layer og-default, og-components, og-pack, og-game;\n");
         for id in entries {
             use cssparser::ToCss;
             css.push_str(&format!(

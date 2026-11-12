@@ -461,12 +461,12 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
 </style>"##;
     ui.define_document(
         UiDocument::parse(
-            "ui-kits/core/minimap.svelte",
+            "@ui/minimap.svelte",
             include_str!("../../../packages/engine/src/ui/components/minimap.svelte"),
         )
         .unwrap(),
     );
-    ui.define_document(UiDocument::parse("ui-kits/test/masks.svelte", text).unwrap());
+    ui.define_document(UiDocument::parse("@ui/test/masks.svelte", text).unwrap());
     let pack = style_pack::StylePack::parse("styles/test", vec![("styles/test/main.css".into(), ".rpg-minimap #Frame { border-radius: 50%; mask-image: radial-gradient(circle, #000 69%, #0000 70.5%); }".into())]).unwrap();
     ui.set_style_pack(&pack).unwrap();
     let markers = reactive::SourceId::new("test", "markers");

@@ -396,7 +396,7 @@ fn translate_none_clears_percentage_and_length_offsets_in_kits() {
 </style>"#;
     for retained in [false, true] {
         let mut ui = ui_with_font(test_font_metrics());
-        ui.define_document(UiDocument::parse("ui-kits/test/ix.svelte", text).unwrap());
+        ui.define_document(UiDocument::parse("@ui/test/ix.svelte", text).unwrap());
         if retained {
             ui.mount_document(
                 reactive::SourceId::new("test", "none"),

@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og-kit cascade layer",
+      "change": "The og-kit layer is renamed og-components, ordered og-default, og-components, og-pack, og-game; it holds the rules of the engine's built-in component documents (sources under @ui/): a style pack's rule dresses a built-in component over its own rule of any specificity, and a game's own rules beat both.",
+      "fix": "Write og-components where a stylesheet named og-kit in an @layer rule."
+    }
+  ]
+}
