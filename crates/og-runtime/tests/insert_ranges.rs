@@ -73,10 +73,10 @@ fn insert_checks_engine_and_game_ranges_inside_and_outside_systems() {
     });
     set_hooks(hooks.clone());
     og_host_begin_bundle();
-    value(og_reflect_define_component("Bounded".into(), json!([
+    value(og_runtime::host_impl::answer(og_reflect_define_component("Bounded".into(), json!([
         {"name": "amount", "kind": "f32", "default": 0, "options": {"min": -2, "max": 2}},
         {"name": "direction", "kind": "Vector3", "default": {"x": 0, "y": 0, "z": 0}, "options": {"min": -2, "max": 2}}
-    ]).to_string()));
+    ]).to_string())));
     let system = og_system_define_system(
         "Insert".into(),
         json!({"writes": [

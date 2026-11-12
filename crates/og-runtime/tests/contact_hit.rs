@@ -33,8 +33,11 @@ impl Hooks for Watch {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         if call.kind == 0 && call.id == WATCH {
             let w = call.engine;
-            let seen: Value =
-                serde_json::from_str(&og_world_events(w, "og.CollisionStarted".into())).unwrap();
+            let seen: Value = serde_json::from_str(&og_runtime::host_impl::json(og_world_events(
+                w,
+                "og.CollisionStarted".into(),
+            )))
+            .unwrap();
             for ev in seen.as_array().unwrap() {
                 self.0.borrow_mut().push((og_world_get_tick(w), ev.clone()));
             }

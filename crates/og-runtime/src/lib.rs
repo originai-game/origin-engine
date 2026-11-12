@@ -412,11 +412,11 @@ pub fn og_engine_write_resource(world: u32, resource: String, value: String) -> 
     write_resource(world, &resource, &value)
 }
 
-pub fn og_engine_resource_layout(world: u32, resource: String) -> String {
+pub fn og_engine_resource_layout(world: u32, resource: String) -> Result<Value, String> {
     engine::resource_layout(world, &resource)
 }
 
-pub fn og_engine_component_layout(world: u32, component: String) -> String {
+pub fn og_engine_component_layout(world: u32, component: String) -> Result<Value, String> {
     engine::component_layout(world, &component)
 }
 

@@ -445,10 +445,13 @@ fn the_flags_round_trip_through_the_scene_text() {
         None,
     )));
     let find = |name: &str| {
-        serde_json::from_str::<Value>(&og_world_find(engine, name.into()))
-            .unwrap()
-            .as_f64()
-            .unwrap_or_else(|| panic!("no entity '{name}'"))
+        serde_json::from_str::<Value>(&og_runtime::host_impl::json(og_world_find(
+            engine,
+            name.into(),
+        )))
+        .unwrap()
+        .as_f64()
+        .unwrap_or_else(|| panic!("no entity '{name}'"))
     };
     let (plain, dark, sign) = (find("plain"), find("dark"), find("sign"));
     assert_eq!(flags(engine, plain, "og.Model"), (true, true));

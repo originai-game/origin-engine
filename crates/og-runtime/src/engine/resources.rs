@@ -157,8 +157,8 @@ fn layout_fields(layout: &Layout) -> (Vec<Value>, usize) {
 }
 
 /// `og_engine_resource_layout`.
-pub fn resource_layout(world: u32, resource: &str) -> String {
-    let answer = (|| {
+pub fn resource_layout(world: u32, resource: &str) -> Result<Value, String> {
+    (|| {
         if computed_resource(resource) {
             return Err(format!("'{resource}' is read through its JSON value"));
         }
@@ -171,18 +171,14 @@ pub fn resource_layout(world: u32, resource: &str) -> String {
             .ok_or_else(|| format!("'{resource}' is not a registered resource"))?;
         let (fields, size) = layout_fields(layout);
         Ok(json!({ "epoch": layout_epoch(), "size": size, "fields": fields }))
-    })();
-    match answer {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// `og_engine_component_layout`: a component's packed layout and its
 /// number in this world, its fields in the order `world.get` answers them
 /// (by name). Asking registers nothing.
-pub fn component_layout(world: u32, component: &str) -> String {
-    let answer = (|| -> Result<Value, String> {
+pub fn component_layout(world: u32, component: &str) -> Result<Value, String> {
+    (|| -> Result<Value, String> {
         let eng = engine(world)?;
         let st = eng.state.borrow();
         let layout = st
@@ -198,11 +194,7 @@ pub fn component_layout(world: u32, component: &str) -> String {
         let (mut fields, size) = layout_fields(layout);
         fields.sort_by(|a, b| a["name"].as_str().cmp(&b["name"].as_str()));
         Ok(json!({ "epoch": layout_epoch(), "id": id, "size": size, "fields": fields }))
-    })();
-    match answer {
-        Ok(v) => ok(v),
-        Err(e) => refuse(e),
-    }
+    })()
 }
 
 /// The id of resource `name` in the world `eng` runs (through the running

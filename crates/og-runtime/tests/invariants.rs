@@ -26,24 +26,24 @@ impl Hooks for Game {
 fn engine() -> u32 {
     set_hooks(Rc::new(Game));
     og_host_begin_bundle();
-    value(og_reflect_define_component(
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Health".into(),
         json!([{"name": "hp", "kind": "f32", "default": 100, "options": {"min": 0, "max": 1000}}])
             .to_string(),
-    ));
-    value(og_reflect_define_component(
+    )));
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Fade".into(),
         json!([{"name": "depth", "kind": "f32", "default": 0.2, "options": {"min": 0.1, "max": 0.3}}])
             .to_string(),
-    ));
-    value(og_reflect_define_component(
+    )));
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Target".into(),
         json!([{"name": "of", "kind": "Entity", "default": 0, "options": {}}]).to_string(),
-    ));
-    value(og_reflect_define_resource(
+    )));
+    value(og_runtime::host_impl::answer(og_reflect_define_resource(
         "Wind".into(),
         json!([{"name": "speed", "kind": "f32", "default": 1, "options": {}}]).to_string(),
-    ));
+    )));
     let game = og_game_game(Some(json!({"resources": ["Wind"]}).to_string()));
     value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32
 }
