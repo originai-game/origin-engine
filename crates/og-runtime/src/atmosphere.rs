@@ -11,8 +11,9 @@
 use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
-use super::fx::{color, f, kept_rows, on, resource, rows, u, vec2};
+use super::fx::{color, f, kept_rows, on, resource, rows, u};
 use super::parse;
+use super::wire::{Color, FromJson, WindMotorKind, record};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, World};
@@ -256,11 +257,9 @@ pub(crate) struct ModuleState {
 pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_core::river::River>> {
     let eng = super::engine::engine(engine).ok()?;
     let rivers = &eng.modules.atmosphere.rivers;
-    let handle = v["river"].as_f64().filter(|h| *h != 0.0)? as u64;
-    let (width, speed) = (
-        f(v, "riverWidth", 6.0).max(0.0),
-        f(v, "riverSpeed", 1.5).max(0.0),
-    );
+    let w = record::Water::from_json(v).ok()?;
+    let handle = Some(w.river).filter(|h| *h != 0)?;
+    let (width, speed) = (w.river_width.max(0.0), w.river_speed.max(0.0));
     let key = (handle, width.to_bits(), speed.to_bits());
     if let Some(r) = rivers
         .borrow()
@@ -317,17 +316,20 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     // their entities (wind_field.rs keeps the nearest).
     scene.atmosphere.wind_motors.clear();
     for (e, v) in kept_rows(world, layouts.wind_motor.as_ref()) {
+        let Ok(v) = record::WindMotor::from_json(&v) else {
+            continue;
+        };
         let m = h.world_of(e);
-        let kind = match v["kind"].as_str() {
-            Some("directional") => og_render::WindMotorKind::Directional,
-            Some("vortex") => og_render::WindMotorKind::Vortex,
-            _ => og_render::WindMotorKind::Omni,
+        let kind = match v.kind {
+            WindMotorKind::Directional => og_render::WindMotorKind::Directional,
+            WindMotorKind::Vortex => og_render::WindMotorKind::Vortex,
+            WindMotorKind::Omni => og_render::WindMotorKind::Omni,
         };
         scene.atmosphere.wind_motors.push(og_render::WindMotor {
             position: m.transform_point3(Vec3::ZERO),
             direction: m.transform_vector3(Vec3::NEG_Z),
-            radius: f(&v, "radius", 6.0),
-            strength: f(&v, "strength", 10.0),
+            radius: v.radius,
+            strength: v.strength,
             kind,
         });
     }
@@ -554,17 +556,19 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     if let Some(c) = scene.atmosphere.clouds {
         c.light_scene(scene);
     }
-    if let Some(w) = resource(world, layouts.weather.as_ref()) {
-        let kind = u(&w, "kind", 0);
-        let layer = orthographic.then(|| w["layer"].as_i64().unwrap_or(50) as i32);
-        let wind = super::fx::vec3(&w["wind"]);
+    if let Some(w) = resource(world, layouts.weather.as_ref())
+        && let Ok(w) = record::Weather::from_json(&w)
+    {
+        let kind = w.kind;
+        let layer = orthographic.then_some(w.layer);
+        let wind = w.wind;
         let look = og_render::weather(
             kind,
-            f(&w, "intensity", 1.0),
+            w.intensity,
             wind,
-            f(&w, "radius", 18.0),
-            color(&w["tint"], Vec3::ONE),
-            f(&w, "dim", 1.0),
+            w.radius,
+            rgb(&w.tint),
+            w.dim,
             layer,
         );
         if scene.atmosphere.fog.is_none()
@@ -584,20 +588,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             // The emitter is remade only when its inputs change.
             let key: Vec<u32> = [
                 kind as f32,
-                f(&w, "intensity", 1.0),
+                w.intensity,
                 wind.x,
                 wind.y,
                 wind.z,
-                f(&w, "radius", 18.0),
+                w.radius,
                 layer.map_or(f32::NAN, |l| l as f32),
             ]
             .iter()
             .map(|x| x.to_bits())
-            .chain([
-                color(&w["tint"], Vec3::ONE).x.to_bits(),
-                color(&w["tint"], Vec3::ONE).y.to_bits(),
-                color(&w["tint"], Vec3::ONE).z.to_bits(),
-            ])
+            .chain([w.tint.r.to_bits(), w.tint.g.to_bits(), w.tint.b.to_bits()])
             .collect();
             let handle = match atmo.weather.as_ref().map(|(k, h)| (k == &key, *h)) {
                 Some((true, handle)) => handle,
@@ -651,8 +651,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     let terrain_layout = draw.terrain.as_ref();
     #[cfg(feature = "profile2d")]
     let terrain_layout = None;
+    let texture = |h: u64| super::assets::index_of(h as f64).and_then(|i| textures.get(i).copied());
     // 3D water, with its wave heights when the entity has them.
     for (e, v) in kept_rows(world, layouts.water.as_ref()) {
+        let Ok(row) = record::Water::from_json(&v) else {
+            continue;
+        };
         let entity = Entity::from_bits(e);
         let field = physics.and_then(|p| p.water_heights(entity));
         let wakes = physics.and_then(|p| p.water_wakes(entity)).map(|w| {
@@ -686,7 +690,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         });
         let m = h.world_of(e);
         // og.Water.geometry: drawn over that mesh, in the entity's frame (scale included).
-        let raw = v["geometry"].as_f64().unwrap_or(0.0) as u64;
+        let raw = row.geometry;
         let mesh = (raw != 0)
             .then(|| geometries.get((raw & 0xffff_ffff) as usize).copied())
             .flatten();
@@ -701,77 +705,89 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         };
         scene.world.water.push(Water {
             transform,
-            size: vec2(&v["size"], Vec2::splat(16.0)),
-            segments: u(&v, "segments", 64),
-            shallow: color(&v["shallow"], Vec3::new(0.55, 0.85, 0.82)),
-            deep: color(&v["deep"], Vec3::new(0.02, 0.09, 0.14)),
-            depth_fade: f(&v, "depthFade", 2.5),
-            absorption: color(&v["absorption"], Vec3::ZERO),
-            scattering: color(&v["scattering"], Vec3::ZERO),
-            opacity: f(&v, "opacity", 0.92),
-            foam: color(&v["foam"], Vec3::new(0.95, 0.97, 1.0)),
-            foam_width: f(&v, "foamWidth", 0.35),
-            wave_scale: f(&v, "waveScale", 0.6),
-            wave_speed: f(&v, "waveSpeed", 1.0),
-            wave_strength: f(&v, "waveStrength", 0.35),
-            refraction: f(&v, "refraction", 1.0),
-            reflectivity: f(&v, "reflectivity", 1.0),
+            size: row.size,
+            segments: row.segments,
+            shallow: rgb(&row.shallow),
+            deep: rgb(&row.deep),
+            depth_fade: row.depth_fade,
+            absorption: rgb(&row.absorption),
+            scattering: rgb(&row.scattering),
+            opacity: row.opacity,
+            foam: rgb(&row.foam),
+            foam_width: row.foam_width,
+            wave_scale: row.wave_scale,
+            wave_speed: row.wave_speed,
+            wave_strength: row.wave_strength,
+            refraction: row.refraction,
+            reflectivity: row.reflectivity,
             heights: field.map(|w| WaterHeights {
                 resolution: w.resolution,
                 size: w.size,
                 heights: Arc::from(w.heights),
             }),
             wakes,
-            planar_reflection: f(&v, "planarReflection", 0.0),
-            shadows: f(&v, "shadows", 0.0),
-            f0: f(&v, "f0", 0.02),
-            reflection_bias: f(&v, "reflectionBias", 0.0),
-            underwater_color: color(&v["underwaterColor"], Vec3::new(0.03, 0.16, 0.2)),
-            underwater_density: f(&v, "underwaterDensity", 0.09),
-            caustics: f(&v, "caustics", 0.0),
-            caustics_scale: f(&v, "causticsScale", 0.6),
+            planar_reflection: row.planar_reflection,
+            shadows: row.shadows,
+            f0: row.f0,
+            reflection_bias: row.reflection_bias,
+            underwater_color: rgb(&row.underwater_color),
+            underwater_density: row.underwater_density,
+            caustics: row.caustics,
+            caustics_scale: row.caustics_scale,
             mesh,
-            normal_map: super::fx::handle_index(&v["normalMap"])
-                .and_then(|i| textures.get(i).copied()),
-            normal_scale: f(&v, "normalScale", 1.0).max(0.0),
-            flow: vec2(&v["flow"], Vec2::ZERO),
-            glint: f(&v, "glint", 0.0).max(0.0),
-            flow_map: super::fx::handle_index(&v["flowMap"]).and_then(|i| textures.get(i).copied()),
-            wind: vec2(&v["wind"], Vec2::ZERO),
-            swell: f(&v, "swell", 1.0),
-            choppiness: f(&v, "choppiness", 0.6),
-            foam_streaks: f(&v, "foamStreaks", 1.0).max(0.0),
-            spray: f(&v, "spray", 1.0).max(0.0),
-            dynamic_waves: f(&v, "dynamicWaves", 1.0).max(0.0),
-            meniscus: f(&v, "meniscus", 2.0),
-            endless: v["endless"].as_bool().unwrap_or(false),
-            shore: seabed(world, terrain, terrain_layout, entity, &v, mesh.is_some()),
+            normal_map: texture(row.normal_map),
+            normal_scale: row.normal_scale.max(0.0),
+            flow: row.flow,
+            glint: row.glint.max(0.0),
+            flow_map: texture(row.flow_map),
+            wind: row.wind,
+            swell: row.swell,
+            choppiness: row.choppiness,
+            foam_streaks: row.foam_streaks.max(0.0),
+            spray: row.spray.max(0.0),
+            dynamic_waves: row.dynamic_waves.max(0.0),
+            meniscus: row.meniscus,
+            endless: row.endless,
+            shore: seabed(
+                world,
+                terrain,
+                terrain_layout,
+                entity,
+                &v,
+                &row,
+                mesh.is_some(),
+            ),
             river: river_of(engine, &v),
         });
     }
     // 2D water over its spring line.
-    let lines: IdMap<u64, Arc<Value>> =
-        IdMap::from_iter(kept_rows(world, layouts.water_line.as_ref()));
+    let lines: IdMap<u64, record::WaterLine> = IdMap::from_iter(
+        kept_rows(world, layouts.water_line.as_ref())
+            .into_iter()
+            .filter_map(|(e, v)| Some((e, record::WaterLine::from_json(&v).ok()?))),
+    );
     for (e, v) in kept_rows(world, layouts.water_2d.as_ref()) {
         let (Some(line), Some(p)) = (lines.get(&e), physics) else {
             continue;
         };
+        let Ok(v) = record::Water2D::from_json(&v) else {
+            continue;
+        };
         let at = h.world_of(e).transform_point3(Vec3::ZERO);
-        let width = f(line, "width", 12.0);
+        let width = line.width;
         let surface = p
             .water_line(Entity::from_bits(e))
-            .unwrap_or_else(|| vec![0.0; u(line, "columns", 96).max(2) as usize]);
-        let rgba = |c: &str, a: &str, dc: Vec3, da: f32| color(&v[c], dc).extend(f(&v, a, da));
+            .unwrap_or_else(|| vec![0.0; line.columns.max(2) as usize]);
         scene.sprite.water_2d.push(Water2d {
             origin: Vec2::new(at.x - width * 0.5, at.y),
             width,
-            depth: f(line, "depth", 3.0),
+            depth: line.depth,
             surface,
-            top: rgba("top", "topOpacity", Vec3::new(0.16, 0.5, 0.72), 0.72),
-            bottom: rgba("bottom", "bottomOpacity", Vec3::new(0.02, 0.1, 0.25), 0.92),
-            lip: color(&v["lip"], Vec3::new(0.8, 0.95, 1.0)).extend(0.9),
-            lip_width: f(&v, "lipWidth", 0.06),
-            layer: v["layer"].as_i64().unwrap_or(0) as i32,
+            top: rgb(&v.top).extend(v.top_opacity),
+            bottom: rgb(&v.bottom).extend(v.bottom_opacity),
+            lip: rgb(&v.lip).extend(0.9),
+            lip_width: v.lip_width,
+            layer: v.layer,
             z: at.z,
         });
     }
@@ -780,7 +796,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     };
     // Fluids as metaballs.
     for (e, v) in kept_rows(world, layouts.fluid.as_ref()) {
-        if !on(&v, "visible", true) {
+        let Ok(v) = record::Fluid2D::from_json(&v) else {
+            continue;
+        };
+        if !v.visible {
             continue;
         }
         let Some(particles) = physics.fluid_particles(Entity::from_bits(e)) else {
@@ -789,20 +808,16 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         // A fluid sharing its group is drawn with the group as one surface,
         // its particles by their mix (og-physics' fluid_mix: its lane).
         let (group, lane, mix) = match physics.fluid_mix(Entity::from_bits(e)) {
-            Some((lane, mix)) => (
-                v["group"].as_u64().unwrap_or(0) as u32,
-                lane,
-                Arc::from(mix),
-            ),
+            Some((lane, mix)) => (v.group, lane, Arc::from(mix)),
             None => (0, 0, Arc::from(Vec::new())),
         };
         scene.sprite.metaballs.push(Metaballs {
             particles: Arc::from(particles),
-            radius: f(&v, "radius", 0.18) * f(&v, "blobScale", 1.6),
-            threshold: f(&v, "threshold", 0.45),
+            radius: v.radius * v.blob_scale,
+            threshold: v.threshold,
             // Fluid2D.color is a Vector3 (x, y, z are r, g, b).
-            color: super::fx::vec3(&v["color"]).extend(f(&v, "opacity", 0.9)),
-            layer: v["layer"].as_i64().unwrap_or(0) as i32,
+            color: v.color.extend(v.opacity),
+            layer: v.layer,
             z: h.world_of(e).transform_point3(Vec3::ZERO).z,
             group,
             lane,
@@ -838,7 +853,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let radius = f(v, "radius", 0.2);
         // SIMULATION_VISUAL: the renderer's particles (the tick has none),
         // spawned and moved on the GPU from this.
-        if visual(v) {
+        if record::Fluid3D::from_json(v).is_ok_and(|r| visual(r.simulation)) {
             let at = h.world_of(*e).transform_point3(Vec3::ZERO);
             let size = super::fx::vec3(&v["size"]);
             let count = u(v, "count", 2000);
@@ -978,10 +993,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 rows: c.rows,
             },
         );
-        if visual(&v) {
+        if let Ok(row) = record::Cloth::from_json(&v)
+            && visual(row.simulation)
+        {
             let body = og_render::VisualBody {
                 pinned: c.pinned.into(),
-                substeps: small_steps(&v, 1, 8),
+                substeps: small_steps(row.substeps, row.iterations),
                 damping: f(&v, "damping", 0.985),
                 gravity: gravity * f(&v, "gravityScale", 1.0),
                 wind: super::fx::vec3(&v["wind"]),
@@ -1029,10 +1046,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             }
         };
         scene.set_simulation_surface(handle, mesh, og_render::SimulationSurface::SoftBody);
-        if visual(&v) {
+        if let Ok(row) = record::SoftBody::from_json(&v)
+            && visual(row.simulation)
+        {
             let body = og_render::VisualBody {
                 pinned: s.pinned.into(),
-                substeps: small_steps(&v, 2, 8),
+                substeps: small_steps(row.substeps, row.iterations),
                 damping: f(&v, "damping", 0.995),
                 gravity: gravity * f(&v, "gravityScale", 1.0),
                 radius: f(&v, "thickness", 0.03),
@@ -1071,18 +1090,23 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
 /// for it; the tick's solve has no bending): enough to round its folds.
 const CLOTH_BENDING: f32 = 0.2;
 
-/// Whether a Cloth, SoftBody or Garment row is SIMULATION_VISUAL.
-pub(crate) fn visual(v: &Value) -> bool {
-    v["simulation"].as_u64() == Some(u64::from(og_physics::SIMULATION_VISUAL))
+/// Whether a Cloth, SoftBody, Garment or Fluid3D `simulation` is
+/// SIMULATION_VISUAL.
+pub(crate) fn visual(simulation: u32) -> bool {
+    simulation == og_physics::SIMULATION_VISUAL
 }
 
 /// The GPU solver's small steps per tick for a row's `substeps` and
-/// `iterations` (defaults given): twice their product, so its one pass a
-/// step converges as the tick's iterations would (Macklin et al. 2019).
-pub(crate) fn small_steps(v: &Value, substeps: u64, iterations: u64) -> u32 {
-    let s = v["substeps"].as_u64().unwrap_or(substeps).clamp(1, 16);
-    let i = v["iterations"].as_u64().unwrap_or(iterations).clamp(1, 64);
-    (2 * s * i).clamp(4, 96) as u32
+/// `iterations`: twice their product, so its one pass a step converges as
+/// the tick's iterations would (Macklin et al. 2019).
+pub(crate) fn small_steps(substeps: u32, iterations: u32) -> u32 {
+    let s = substeps.clamp(1, 16);
+    let i = iterations.clamp(1, 64);
+    (2 * s * i).clamp(4, 96)
+}
+
+fn rgb(c: &Color) -> Vec3 {
+    Vec3::new(c.r, c.g, c.b)
 }
 
 /// og.WeatherState drawn: the lit surfaces' wetness, puddles and snow,
@@ -1150,6 +1174,7 @@ fn seabed(
     terrain_layout: Option<&super::codec::Layout>,
     entity: Entity,
     v: &Value,
+    row: &record::Water,
     over_mesh: bool,
 ) -> Option<og_render::WaterShore> {
     if over_mesh {
@@ -1157,18 +1182,14 @@ fn seabed(
     }
     let r = super::physics_ext::Reader::World(world);
     let (position, _, _) = r.pose(entity)?;
-    let sea = og_core::ocean::Ocean::new(
-        vec2(&v["wind"], Vec2::ZERO),
-        f(v, "swell", 1.0),
-        f(v, "choppiness", 0.6),
-    );
+    let sea = og_core::ocean::Ocean::new(row.wind, row.swell, row.choppiness);
     let (field, trains) =
         super::seabed::coast(terrains, terrain_layout, &r, v, position, sea.as_ref())?;
     Some(og_render::WaterShore {
         origin: field.origin,
         field,
         trains,
-        foam: f(v, "shoreFoam", 1.0),
+        foam: row.shore_foam,
     })
 }
 
