@@ -179,6 +179,16 @@ fn hg_water(cos_t: f32) -> f32 {
   return mix(hg, 0.0795775, 0.2);
 }
 
+// The light on white water (a bank's or a ripple's foam, a fall's sheet), over its colour: a cloud of bubbles and
+// drops, lit through its depth by the sun from any side (wrapped: under Lambert's cosine the flecks on a face turned
+// from the sun went ambient grey and read as grit) and by the whole sky. The sun's share is Lambert's, its irradiance
+// over pi as the sea's foam: without it white water glowed three times brighter than a white wall.
+// (n: the surface's own normal; sun: how much of the sun reaches it.)
+fn white_water_light(n: vec3<f32>, l: vec3<f32>, sun: f32) -> vec3<f32> {
+  let wrap = clamp((dot(n, l) + 0.6) / 1.6, 0.0, 1.0);
+  return wrap * frame.light_color.rgb * sun * 0.31831 + vec3<f32>(frame.params.x * 0.6);
+}
+
 // The height field's texels at local point (x, z) of the surface, bilinear: r the height; with ripples
 // (water_ripples.wgsl) g the ripples alone and b their foam.
 fn field_at(local: vec2<f32>) -> vec4<f32> {
@@ -737,11 +747,7 @@ if (flowing) {
   let amount = clamp(ripple_foam, 0.0, 1.0);
   let lumpy = smoothstep(1.0 - amount, 1.12 - amount, lumps) * (0.5 + 0.5 * amount);
   let foam = clamp(band + crest * noise + lumpy, 0.0, 1.0);
-  // Foam is a cloud of bubbles, lit through its depth from any side as the river's white water (wrapped): under
-  // Lambert's cosine the flecks on a funnel's or a crest's face turned from the sun went ambient grey over the water and
-  // read as grit.
-  let lit = clamp((dot(in.normal, l) + 0.6) / 1.6, 0.0, 1.0) * frame.light_color.rgb * sun + vec3<f32>(frame.params.x * 0.6);
-  color = mix(color, water.foam.rgb * lit, foam * step(0.001, water.foam.w));
+  color = mix(color, water.foam.rgb * white_water_light(in.normal, l, sun), foam * step(0.001, water.foam.w));
   if (water.waterline.w > 0.5) {
     // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, fading over some one and
     // a half widths), in patches carried down by the current in two phases as the bank foam; and where the ribbon hangs (its
@@ -762,12 +768,8 @@ if (flowing) {
     let white_water = smoothstep(0.3, 0.7, streak) * mix(0.55, 1.0, hang);
     let fall_white = hang * white_water;
     let river_white = clamp(max(churned, fall_white), 0.0, 1.0);
-    // White water is a cloud of bubbles and drops: lit through its depth by the sun from any side (wrapped, not Lambert's
-    // cosine, which left a sheet facing away from the sun grey) and by the whole sky.
-    let wrap = (dot(in.normal, l) + 0.6) / 1.6;
-    // (Lambert's 1/pi on the sun's irradiance, as the sea's foam: the river's had none and glowed over the ground.)
-    let white_lit = clamp(wrap, 0.0, 1.0) * frame.light_color.rgb * sun * 0.31831 + vec3<f32>(frame.params.x * 0.6);
-    color = mix(color, water.foam.rgb * white_lit * mix(0.85, 1.0, white_water), river_white);
+    let white_lit = white_water_light(in.normal, l, sun) * mix(0.85, 1.0, white_water);
+    color = mix(color, water.foam.rgb * white_lit, river_white);
   }
   if (OG_SEA) {
 if (sea) {
