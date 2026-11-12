@@ -468,6 +468,8 @@ interface Style {
   look: {
     preset: string;
     presetReady: boolean;
+    /** Being rebuilt: games that build on it keep cooking, and no new game is offered it. */
+    frozen?: boolean;
     support: string;
     layers: string[];
     profiles: string[];
@@ -505,7 +507,8 @@ const ASSET_SPECS = ["logicalResolution", "spriteScale", "faceBudget", "outlineP
  * `type look` file when presetReady), its support honest (`missing` names
  * the primitives a style that is not `full` lacks, and is empty for one
  * that is), the profiles it draws for (`look.profiles`, 2d and/or 3d), every `Resource.field` it names a member of the generated API,
- * and no text phrased as an imitation.
+ * no text phrased as an imitation, and every creation view left with a
+ * style that is not frozen (`look.frozen`).
  */
 function looks(roots: Roots, problems: string[]): void {
   const path = join(roots.pkg, "looks", "catalogue.json");
@@ -608,6 +611,13 @@ function looks(roots: Roots, problems: string[]): void {
     if (/in the style of|™|®/i.test(all)) problems.push(`${id}: phrased as an imitation (\"in the style of\", a trademark sign); describe the look in its own terms`);
   }
   if (seen.size === 0) problems.push(`${at}: no styles`);
+  for (const s of cat.styles ?? []) {
+    if (s.look?.frozen !== undefined && s.look.frozen !== true) problems.push(`${at}: ${s.slug}: look.frozen is true or absent`);
+  }
+  const offered = (cat.styles ?? []).filter((s) => s.look?.presetReady && !s.look.frozen);
+  for (const v of VIEWS) {
+    if (seen.size > 0 && !offered.some((s) => s.look.views?.includes(v))) problems.push(`${at}: every style of the ${v} view is frozen; a new game of that view has no look to pick`);
+  }
 }
 
 /**

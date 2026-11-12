@@ -265,9 +265,11 @@ style, platform, input and players before the first build (languages and
 music have defaults), from the released engine's create package rather than
 a platform vocabulary:
 
-- `CREATION_CHOICES` owns the enums, and
-  `creationSchema(readCatalogue().map(s => s.slug))` returns the form's
-  JSON Schema 2020-12.
+- `CREATION_CHOICES` owns the enums, and `creationSchema(creationLooks())`
+  returns the form's JSON Schema 2020-12. `creationLooks()` lists the
+  eight looks a new game is offered and leaves out the catalogue's styles
+  frozen while their looks are rebuilt (`look.frozen`); a game made on a
+  frozen look keeps building.
 - `resolveCreationChoices(premise, partialChoices)` returns suggestions with
   explicit choices preserved; display and confirm the required ones.
 - Send the confirmed object as `create({ dir, premise, choices })` or the

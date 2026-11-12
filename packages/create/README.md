@@ -45,7 +45,7 @@ and `archetype` options and `Created.look`, `Created.profile`, and
 ## Choice schema
 
 `CREATION_CHOICES`, `CreationChoices`, `CreationInput`,
-`creationSchema(lookSlugs)`, `parseCreationInput(value)`,
+`creationSchema(lookSlugs)`, `creationLooks(styles?)`, `parseCreationInput(value)`,
 `inferCreationChoices(premise, input?, defaults?)`,
 `resolveCreationChoices(premise, input?, profile?, catalogue?)`, and
 `creationBlock(choices)` expose the selection contract.
@@ -54,6 +54,12 @@ and `archetype` options and `Created.look`, `Created.profile`, and
 `x-labels` map supplies English and Simplified Chinese labels and
 descriptions for enum choices. Look entries supply Chinese copy; English
 look names and descriptions remain in the catalogue.
+
+`creationLooks()` lists the looks a new game may pick: the catalogue's
+styles with a preset that is not frozen (`look.frozen`, a style whose look
+is being rebuilt). Pass it to `creationSchema`. `create` and
+`resolveCreationChoices` refuse a frozen look by name and never suggest
+one; a game already made on one keeps cooking, and its briefs still read.
 
 The inference helpers suggest choices using English and Chinese keywords.
 They do not implement those choices. Languages default to Japanese for
