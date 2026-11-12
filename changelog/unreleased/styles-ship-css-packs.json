@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "built-in style packs",
+      "summary": "The engine package ships every built-in style pack that is a CSS directory, with the art its CSS names: a look's ui \"fantasy\" now resolves in an installed engine, not only in a checkout. Before, only packs with an extension.json were copied, and never their art/ directory."
+    }
+  ]
+}

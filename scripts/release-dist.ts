@@ -198,6 +198,8 @@ export function checkLayout(dir: string, t: Target): void {
     "engine/styles/shared/LICENSES.md",
     "engine/styles/shared/InstrumentSans-Regular.ttf",
     "engine/styles/cjk/NotoSansSC-Regular.ttf",
+    "engine/styles/fantasy/base.css",
+    "engine/styles/fantasy/art/button-iron.svg",
     "engine/dist/web-publish/origin-engine_bg.wasm",
     "engine/dist/web-publish-2d/origin-engine_bg.wasm",
     "engine/dist/web-publish/origin-engine-lanes_bg.wasm",
