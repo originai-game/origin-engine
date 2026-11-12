@@ -1405,7 +1405,9 @@ tick 90; the boulders, plain instances, stand still); tests in
 grew from `plant` blocks, each drawn as its wood and its leaves;
 `plant-scatter`: a 64 m hill with the oak, the pine and the shrub
 scattered whole (a `ScatterDraw` per part, the leaves `with` the wood),
-cards past 30 m, in a light wind.
+each plant's copies cards from where a card's texel is a pixel (12 radii
+at 720 rows), in a light wind; `plant-scatter-switch`: oaks and pines
+along a 224 m strip, so both cross from mesh to card in the frame.
 
 ## Water
 

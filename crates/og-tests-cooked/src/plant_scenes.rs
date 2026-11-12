@@ -11,9 +11,15 @@
 //! - `scatter_scene()` (`plant-scatter`): a 64 m hill with the three woody
 //!   plants scattered whole, as og.TerrainScatter.model has og-runtime make
 //!   them: one `ScatterDraw` per part, the parts after the first drawn
-//!   `with` it. Oaks keep pines and shrubs out of their footprint; copies
-//!   past 30 m draw as their impostors; a light wind sways each copy's
-//!   wood and leaves as one plant.
+//!   `with` it. Oaks keep pines and shrubs out of their footprint; a
+//!   plant's copies draw as its impostor past [`card_distance`] (the
+//!   shrubs from 28 m, the pines from 81 m, no oak on a hill this small);
+//!   a light wind sways each copy's wood and leaves as one plant.
+//! - `switch_scene()` (`plant-scatter-switch`): oaks and pines on a flat
+//!   strip 224 m long, seen along it from 23 m to 247 m, so both kinds
+//!   cross from mesh to card in the frame (the pines at 81 m, the oaks at
+//!   113 m). A card that is lit, shadowed or coloured unlike its mesh
+//!   shows as a band across the strip.
 
 use glam::{Mat4, Vec2, Vec3};
 use og_cook::runtime::Bundle;
@@ -119,6 +125,16 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
     Ok(Plant { parts, impostor })
 }
 
+/// Where a card's texel covers one pixel of the capture (720 rows, 50
+/// degrees of them, the cook's 128 texel frame across the sphere): the
+/// nearest a card is as sharp as its mesh, 12 radii here (the models
+/// guide's rule for impostorDistance).
+fn card_distance(impostor: Impostor) -> f32 {
+    const ROWS: f32 = 720.0;
+    const FRAME: f32 = 128.0;
+    impostor.radius * ROWS / (FRAME * 25f32.to_radians().tan())
+}
+
 fn sun(scene: &mut RenderScene, direction: Vec3, max_shadow_distance: f32) {
     let direction = direction.normalize();
     scene.lighting.light = DirectionalLight {
@@ -194,9 +210,6 @@ fn hill() -> TerrainData {
     }
 }
 
-/// Past this the wood's copies draw as cards (m, along x and z).
-pub const SCATTER_IMPOSTORS: f32 = 30.0;
-
 /// `plant-scatter` ([module docs](self)).
 pub fn scatter_scene() -> Result<RenderScene, String> {
     let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
@@ -249,7 +262,7 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
                 scatter,
                 cast_shadows: true,
                 impostor: p.impostor,
-                impostor_distance: SCATTER_IMPOSTORS,
+                impostor_distance: p.impostor.map_or(0.0, card_distance),
                 with: (k > 0).then_some(first),
             });
         }
@@ -264,6 +277,62 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
         position: Vec3::new(0.0, 22.0, 44.0),
         target: Vec3::new(0.0, 4.0, 0.0),
         far: 400.0,
+        projection: Projection::Perspective {
+            fov_y_degrees: 50.0,
+        },
+        ..Default::default()
+    };
+    Ok(scene)
+}
+
+/// `plant-scatter-switch` ([module docs](self)).
+pub fn switch_scene() -> Result<RenderScene, String> {
+    let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    let mut scene = RenderScene::new();
+    sun(&mut scene, Vec3::new(0.5, 0.7, 0.45), 260.0);
+    let h = scene.add_terrain(TerrainData::flat(Vec2::new(64.0, 224.0), 33, 113));
+    scene.world.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::new(0.25, 0.36, 0.16),
+            ..Default::default()
+        }],
+        fade_in: false,
+        ..Terrain::new(h)
+    });
+    for (name, density, seed, priority, footprint) in
+        [("oak", 0.005, 3, 3, 6.0), ("pine", 0.006, 5, 2, 4.5)]
+    {
+        let p = plant(&mut scene, &bundle, name)?;
+        let scatter = TerrainScatter {
+            density,
+            distance: 400.0,
+            fade: 0.1,
+            scale: [0.85, 1.1],
+            seed,
+            priority,
+            footprint,
+            sway: 1.0,
+            ..TerrainScatter::default()
+        };
+        let first = scene.world.scatters.len();
+        for (k, (mesh, material, _)) in p.parts.into_iter().enumerate() {
+            scene.world.scatters.push(ScatterDraw {
+                terrain: 0,
+                mesh,
+                material,
+                scatter,
+                cast_shadows: true,
+                impostor: p.impostor,
+                impostor_distance: p.impostor.map_or(0.0, card_distance),
+                with: (k > 0).then_some(first),
+            });
+        }
+    }
+    scene.frame.tick = 90;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 20.0, 135.0),
+        target: Vec3::new(0.0, 2.0, 40.0),
+        far: 600.0,
         projection: Projection::Perspective {
             fov_y_degrees: 50.0,
         },
