@@ -365,6 +365,11 @@ fn overcast(c: vec3<f32>, r: vec3<f32>) -> vec3<f32> {
   return mix(grey, dk.rgb * (1.0 + 0.6 * max(r.y, 0.0)), dk.a);
 }
 
+// What the reflection maps' light is multiplied by to be as bright as the sky is drawn (`fs`, below its Fresnel).
+fn sky_as_drawn() -> f32 {
+  return frame.params.x * water.ao.w * 1.8;
+}
+
 @fragment
 fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5 && (frame.light_color.w < 1.5 || frame.light_color.w > 2.5)) {
@@ -481,19 +486,18 @@ if (rippled() && !is_sea()) {
   }
   let below = textureSampleLevel(scene_color, water_sampler, ruv, 0.0).rgb;
   if (below_view) {
-    // From below: what is above shows inside Snell's window (the view
-    // steeper than the critical angle, about 49 degrees from the normal),
-    // outside it the surface reflects the water's own colour.
-    // The share that comes through is Fresnel's at the angle the ray leaves into the air (Snell, 1.33), none past the
-    // critical angle: there the surface mirrors the water below it, the body's own light along the mirrored ray (dark
-    // looking down, so the window stands bright in a dark surface the waves break up).
-    let ci = abs(dot(n, v));
-    let st2 = 1.7689 * (1.0 - ci * ci);
-    let ct = sqrt(max(1.0 - st2, 0.0));
-    let window = (0.98 - 0.98 * pow(1.0 - ct, 5.0)) * step(st2, 1.0);
-    var mirror = water.under.rgb;
-    if (frame.fog_color.w > 1.5) { mirror = underwater_body(in.world, reflect(-v, n), 1e4, 1.0, 0.0); }
-    let colour = mix(mirror, below * water.shallow.rgb, window);
+    // From below (water_below.wgsl): the sky where nothing stands over the water, else the scene behind.
+    // A lake's capillary ripples are drawn where a pixel holds them (the surface is a few metres off here, and
+    // they break the window's rim into shards). The slopes a pixel does not draw (one axis' variance) are the
+    // waves it leaves out and the rest of the ripples.
+    var facet = n;
+    var unseen = 0.5 * (detail.cov.x + detail.cov.y + sea_cov.x + sea_cov.y);
+    if (!is_sea()) {
+      let fine = capillary_slope(in.local, t, reach);
+      facet = normalize(select(n, -n, n.y < 0.0) - tangent_x * fine.slope.x - tangent_z * fine.slope.y);
+      unseen += 0.5 * (fine.cov.x + fine.cov.y);
+    }
+    let colour = below_surface(in.world, facet, v, below, scene_at > 0.5 * FAR_VIEW_DEPTH, sun, unseen);
     return vec4<f32>(apply_fog(colour, in.world), 1.0);
   }
   let thickness = max(scene_at - here, 0.0);
@@ -589,7 +593,7 @@ if (sea) {
   // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
   // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
   // deck the sky mirrored is the clouds' grey, as they light it (sky.wgsl).
-  let sky_mirror = frame.params.x * water.ao.w * 1.8;
+  let sky_mirror = sky_as_drawn();
   // A lake mirrors the sun by its glitter alone (below), its facets counted: the environment's sun disc, mirrored by
   // every ripple face turned to it, drew a soft disc twice the sun's width under each glint, and bloomed.
   let lake = !sea && !water2 && !water_js;

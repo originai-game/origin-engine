@@ -190,11 +190,17 @@ impl CausticsPass {
     }
 }
 
+/// The cells a lake's ripples repeat over (caustics.wgsl `ripple_light`:
+/// whole cycles across 16 cells, times two per octave, of which the
+/// longest is the fifth up).
+const RIPPLE_TILE: f64 = 512.0;
+
 /// The frame's caustics: the first surface that has them, as
 /// `FrameUniform::caustics` (height, strength, scale, fade; then the xz
-/// rectangle; then the two cell layers at the scene's `origin`, each its
-/// whole cells and the rest, so the pattern stays put when it moves:
-/// `origin.rs`); zero without one. Then the wet shore ([`shore_wet`]).
+/// rectangle; then where the scene's `origin` lies in the ripples' tile,
+/// in cells, so the pattern stays put when it moves: `origin.rs`; under a
+/// sea its curvature grid and a 1 in the last row's w); zero without one.
+/// Then the wet shore ([`shore_wet`]).
 pub(crate) fn caustics(waters: &[Water], origin: Vec3, eye: Vec3) -> [[f32; 4]; 6] {
     let mut rows = [[0.0; 4]; 6];
     [rows[4], rows[5]] = shore_wet(waters);
@@ -233,19 +239,14 @@ pub(crate) fn caustics(waters: &[Water], origin: Vec3, eye: Vec3) -> [[f32; 4]; 
         hi = hi.max(Vec2::new(p.x, p.z));
     }
     let scale = w.caustics_scale.max(1e-3);
-    // lighting.wgsl `caustics`: the cells of `p.xz * scale`, and of 1.37
-    // times that.
-    let cells = |k: f64| {
-        let at = |o: f32| f64::from(o) * f64::from(scale) * k;
-        let (x, z) = (at(origin.x), at(origin.z));
-        let (wx, wz) = (x.floor(), z.floor());
-        [wx as f32, wz as f32, (x - wx) as f32, (z - wz) as f32]
-    };
+    // caustics.wgsl `ripple_caustics`: the ripples repeat over their tile,
+    // so the origin's place within it is all the pattern needs of it.
+    let within = |o: f32| (f64::from(o) * f64::from(scale)).rem_euclid(RIPPLE_TILE) as f32;
     rows[..4].copy_from_slice(&[
         [at.y, w.caustics, scale, 0.15],
         [lo.x, lo.y, hi.x, hi.y],
-        cells(1.0),
-        cells(f64::from(1.37f32)),
+        [within(origin.x), within(origin.z), 0.0, 0.0],
+        [0.0; 4],
     ]);
     rows
 }

@@ -17862,7 +17862,8 @@ export interface Water {
    */
   underwaterColor: Color;
   /**
-   * Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it.
+   * Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it.
+   * See `render §8`.
    *
    * @default 0.09
    * @range 0..2
@@ -17871,14 +17872,14 @@ export interface Water {
   underwaterDensity: number;
   // ── Caustics ──
   /**
-   * Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.
+   * Caustics of the sunlight on everything below the surface (0: none): the bright net the surface's waves focus, a sea's by its own waves, a lake's by its ripples, its cells growing with depth. One surface a frame, the first that has them.
    *
    * @range 0..4
    * @tunable
    */
   caustics: number;
   /**
-   * The caustics' cells per metre.
+   * How fine a lake's caustics are: the ripples that focus them, in cells per metre (a sea's follow its waves).
    *
    * @default 0.6
    * @range 0.01..10

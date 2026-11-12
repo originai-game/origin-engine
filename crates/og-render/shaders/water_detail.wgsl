@@ -91,6 +91,25 @@ fn wave_slope(p: vec2<f32>, t: f32, w: f32) -> Detail {
   return o;
 }
 
+// A lake's capillary ripples as a pixel of `w` metres holds them, for the surface seen from below a few metres
+// from the eye (water_below.wgsl), where they break the rim of Snell's window into shards: six wavelets 5 to 16 cm
+// long round the compass, their slopes' variance CAPILLARY together at the default wave strength. Those a pixel
+// cannot hold go to the covariance, as the detail's do, so the far rim is their blur and nothing flickers.
+// (From above they stay the glints' facets: lake_glints.)
+fn capillary_slope(p: vec2<f32>, t: f32, w: f32) -> Detail {
+  var waves = array<vec3<f32>, 6>(
+    vec3<f32>(0.996, 0.087, 126.0), vec3<f32>(-0.799, -0.602, 97.0), vec3<f32>(0.438, 0.899, 74.0),
+    vec3<f32>(0.139, -0.990, 57.0), vec3<f32>(-0.602, 0.799, 46.5), vec3<f32>(0.927, -0.375, 39.0));
+  // Six directions share each axis' variance: 3 a² / 2 = CAPILLARY.
+  let a = sqrt(CAPILLARY * clamp(water.waves.z / 0.35, 0.0, 1.0) / 1.5);
+  var o = Detail(vec2<f32>(0.0), vec3<f32>(0.0));
+  for (var i = 0; i < 6; i++) {
+    let d = waves[i];
+    detail_wave(&o, d.xy, d.z, a, dot(d.xy, p) * d.z + t * water.waves.y * sqrt(d.z) * 1.6 + f32(i) * 2.4, w);
+  }
+  return o;
+}
+
 // A Blinn-Phong lobe of power `s` widened by the slopes' covariance a pixel leaves out (LEAN): as a Beckmann lobe its
 // slopes' variance is 2 / (s + 2), to which the covariance's trace adds; and the peak lowered by as much, so the light
 // it reflects stays (the far highlight spreads into a glitter path instead of flickering on the few pixels it hits).

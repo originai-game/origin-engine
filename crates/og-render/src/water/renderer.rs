@@ -196,6 +196,7 @@ pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
         wgsl3d!("water.wgsl"),
         wgsl3d!("water_sea.wgsl"),
         wgsl3d!("water_detail.wgsl"),
+        wgsl3d!("water_below.wgsl"),
         wgsl3d!("water_spray.wgsl"),
         wgsl3d!("water_waterline.wgsl"),
     ]

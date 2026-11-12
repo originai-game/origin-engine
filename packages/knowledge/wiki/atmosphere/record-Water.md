@@ -65,14 +65,14 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `underwaterColor` | `Color` | `{ r: 0.03, g: 0.16, b: 0.2 }` | — | — | — | With the camera below the surface: the water's fog colour. |
-| `underwaterDensity` | `number` | `0.09` | 0 … 2 | — | tunable | Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it. |
+| `underwaterDensity` | `number` | `0.09` | 0 … 2 | — | tunable | Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it. See `render §8`. |
 
 #### Caustics
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `caustics` | `number` | `0` | 0 … 4 | — | tunable | Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them. |
-| `causticsScale` | `number` | `0.6` | 0.01 … 10 | — | tunable | The caustics' cells per metre. |
+| `caustics` | `number` | `0` | 0 … 4 | — | tunable | Caustics of the sunlight on everything below the surface (0: none): the bright net the surface's waves focus, a sea's by its own waves, a lake's by its ripples, its cells growing with depth. One surface a frame, the first that has them. |
+| `causticsScale` | `number` | `0.6` | 0.01 … 10 | — | tunable | How fine a lake's caustics are: the ripples that focus them, in cells per metre (a sea's follow its waves). |
 
 #### Normal maps and flow
 
@@ -241,19 +241,20 @@ component Water {
   field underwaterColor Color "With the camera below the surface: the water's fog colour." {
     default 0.03 0.16 0.2
   }
-  field underwaterDensity f32 "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it." {
+  field underwaterDensity f32 "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it." {
+    guide "render §8"
     default 0.09
     min 0
     max 2
     tunable true
   }
   group "Caustics"
-  field caustics f32 "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them." {
+  field caustics f32 "Caustics of the sunlight on everything below the surface (0: none): the bright net the surface's waves focus, a sea's by its own waves, a lake's by its ripples, its cells growing with depth. One surface a frame, the first that has them." {
     min 0
     max 4
     tunable true
   }
-  field causticsScale f32 "The caustics' cells per metre." {
+  field causticsScale f32 "How fine a lake's caustics are: the ripples that focus them, in cells per metre (a sea's follow its waves)." {
     default 0.6
     min 0.01
     max 10

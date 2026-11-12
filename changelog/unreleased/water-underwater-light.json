@@ -1,6 +1,13 @@
 {
   "simulation": "unchanged",
   "added": [
-    {"member":"Water.underwaterDensity","summary":"The underwater view has depth: the water's light falls off with depth (brighter looking up than down, darker the deeper the eye), the sun comes down in moving shafts as strong as `caustics` (0: none), and outside Snell's window the surface mirrors the water below it, with total internal reflection at the window's edge. No measurable cost (7.9 ms before and after at 720p on an Apple M4 Pro)."}
+    {
+      "member": "Water.underwaterDensity",
+      "summary": "The underwater view has depth: the water's light falls off with depth (brighter looking up than down, darker the deeper the eye), the sun comes down in moving shafts as strong as `caustics` (0: none), split into fine pencils of light, and the surface from below shows the sky and the sun inside Snell's window as the surface bends them, its rim broken into shards by a lake's capillary ripples (blurred where a pixel cannot hold them), and mirrors the water outside it. Some 0.8 ms at 720p on an Apple M4 Pro (7.8 to 8.6 ms, 7.9 to 9.3 ms looking up the shafts, a debug build)."
+    },
+    {
+      "member": "Water.caustics",
+      "summary": "A lake's caustics are the light its ripples focus (1 / |det(I + kH)| of ten travelling ripples, as a sea's are its waves'), in place of a cell pattern: a net of bright lines whose cells grow with depth, fading to their mean where a pixel holds whole cells, and as bright as the sun that makes them (the old lines clipped to white). `causticsScale` is the ripples' fineness. Frames with a lake's caustics move; a sea's do not."
+    }
   ]
 }
