@@ -1,6 +1,9 @@
 //! The graph's executor: each pass of the compiled graph in order, its
 //! capabilities checked against the device (`Encoder::expect`), encoded
-//! from its plan (pass.rs) or by the post chain, and timed.
+//! from its plan (pass.rs) or by the post chain, and timed (schedule.rs
+//! `Timed`). The compute nodes the graph begins with are encoded first,
+//! before the frame's draws are bound (`execute_pre_graph`); the rest in
+//! one run (`execute_graph`), the passes over the finished frame last.
 
 use super::*;
 
@@ -25,7 +28,32 @@ pub(super) struct GraphRun<'a, 'f> {
 }
 
 impl Renderer {
-    /// Encodes the graph's passes in their order.
+    /// Encodes the compute nodes the graph begins with (pre_graph.rs), in
+    /// its order, each where the device has its needs and checked against
+    /// them as it encodes, and against the device alone again after it.
+    /// They list only the queries they name.
+    pub(super) fn execute_pre_graph(
+        &mut self,
+        encoder: &mut Encoder,
+        inputs: &PreGraphInputs<'_>,
+        pass_queries: &mut Vec<(String, std::ops::Range<u32>)>,
+    ) {
+        let caps = self.info.caps;
+        let pre: Vec<FramePass> = self
+            .graph
+            .order()
+            .iter()
+            .copied()
+            .take_while(|p| p.pre_graph())
+            .collect();
+        for pass in pre {
+            encoder.expect(caps, pass.needs());
+            pass_queries.extend(self.encode_pre_graph_pass(pass, encoder, inputs));
+            encoder.expect(caps, caps);
+        }
+    }
+
+    /// Encodes the graph's passes after its compute nodes, in their order.
     pub(super) fn execute_graph(
         &self,
         GraphRun {
@@ -46,20 +74,36 @@ impl Renderer {
         }: GraphRun<'_, '_>,
     ) {
         let clock = self.clock;
+        let caps = self.info.caps;
+        // The passes over the finished frame are drawn again each frame, in
+        // one span (FrameSpan).
+        let mut tail = None;
         for &pass in self.graph.order() {
-            // What the pass needs here: its kind's, and what this frame's
-            // instance of it adds (schedule.rs).
-            encoder.expect(
-                self.info.caps,
-                pass.needs()
-                    | plans.needs(pass)
-                    | match pass {
-                        FramePass::Taa | FramePass::TaaSharpen if fsr => Caps::COMPUTE,
-                        _ => Caps::NONE,
-                    },
-            );
+            let timed = pass.timed();
+            match timed {
+                // Encoded before the frame's draws (`execute_pre_graph`).
+                Timed::OwnQueries => continue,
+                // What the pass needs here: its kind's, and what this
+                // frame's instance of it adds (schedule.rs).
+                Timed::Always => encoder.expect(
+                    caps,
+                    pass.needs()
+                        | plans.needs(pass)
+                        | match pass {
+                            FramePass::Taa | FramePass::TaaSharpen if fsr => Caps::COMPUTE,
+                            _ => Caps::NONE,
+                        },
+                ),
+                // Over the finished frame: what the device has (the glass's
+                // pyramid and copies), checked against the device alone.
+                Timed::WhenDrawn => {
+                    encoder.expect(caps, caps);
+                    tail.get_or_insert_with(FrameSpan::open);
+                }
+            }
             let t0 = clock.map(|c| c());
             let q0 = encoder.used();
+            let draws = stats.draw_calls;
             let _span = pass.redrawn().then(FrameSpan::open);
             match pass {
                 _ if plans.encode(
@@ -89,6 +133,12 @@ impl Renderer {
                         gtao,
                     );
                 }
+            }
+            // A pass over the finished frame is listed in a frame where it
+            // drew, so the UI's budget (`docs/ui.md` §6.3) reads it from
+            // `gpuPasses`.
+            if timed == Timed::WhenDrawn && stats.draw_calls == draws {
+                continue;
             }
             if let (Some(c), Some(t0)) = (clock, t0) {
                 pass_ms.push(PassTiming {

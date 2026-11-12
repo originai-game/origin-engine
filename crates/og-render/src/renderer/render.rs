@@ -49,7 +49,7 @@ mod camera;
 
 mod draw_ctx;
 mod schedule;
-use schedule::PassDesc;
+use schedule::{PassDesc, Timed};
 mod pass;
 use pass::{CullFrame, EncodeCx, FrameCulling, FramePlans, ListsMoved, Pass, PassFrames};
 mod pass_gi_probes;
@@ -70,9 +70,8 @@ use pass_fluid_3d::Fluid3dPass;
 mod pass_particles;
 pub(crate) use pass_particles::Particles;
 use pass_particles::{ParticlesPass, ParticlesPlan};
-mod pre_graph;
-use pre_graph::pre_graph;
 mod pass_shadows;
+mod pre_graph;
 use pass_shadows::{CascadeIn, CascadePass, Casters, LocalFacePass, ShelterPass};
 mod pass_glow;
 use pass_glow::GlowPass;
@@ -131,11 +130,14 @@ mod frame_stats;
 use frame_stats::{FrameStatsInputs, FrameStatsOutputs};
 mod fx_groups;
 mod pre_graph_stage;
-use pre_graph_stage::{EncodePreGraphInputs, EncodePreGraphOutputs};
+use pre_graph_stage::PreGraphInputs;
 mod frame_binds;
 use frame_binds::BindFrameInputs;
 mod after_graph;
-use after_graph::{EncodeAfterGraphInputs, EncodeAfterGraphOutputs};
+use after_graph::{
+    FinishedFrame, HdrOutputPass, OverlayPass, OverlayPlan, UiLayersPass, ViewportViewsPass,
+    ViewportViewsPlan,
+};
 mod submit_frame;
 use submit_frame::SubmitFrameInputs;
 mod skinned_pipelines;
@@ -941,6 +943,8 @@ impl Renderer {
             scene,
             camera: &camera,
             effects: &effects,
+            crowd_cull: crowd_gpu,
+            cull_counts: cull.gpu_cull,
             live_sky: plans.live_sky.is_some(),
             gi_probes: plans.gi_probes.is_some(),
             particles: particle_frame.any_gpu,
@@ -956,6 +960,21 @@ impl Renderer {
             glow,
             taa,
             smaa_t2x,
+            // What the frame draws over its finished image (after_graph.rs).
+            after: schedule::AfterGraph {
+                viewport_views: view_plans
+                    .iter()
+                    .any(|p| matches!(p.dest, views::Dest::Viewport(_))),
+                ui_layers: overlay_frame
+                    .as_ref()
+                    .is_some_and(|of| !of.layers.is_empty()),
+                overlay: (routed && self.glass_targets.is_some())
+                    || line_frame.overlay.1 > 0
+                    || overlay_frame
+                        .as_ref()
+                        .is_some_and(|of| !of.main_runs().is_empty()),
+                hdr_output: self.hdr.is_some() && !matches!(target, RenderTarget::Offscreen),
+            },
         });
         // The stylise passes' table, key and frame_uniforms.uniform (stylise_frame.rs).
         let PrepareFrameStyliseOutputs { stylise_key } =
@@ -1075,17 +1094,16 @@ impl Renderer {
             fluids_3d: effects.fluids_3d,
             face_fluid,
         });
-        // The frame's encoder and the compute before the graph (pre_graph_stage.rs).
-        let EncodePreGraphOutputs {
-            mut encoder,
-            crowd_cull_queries,
-            scatter_queries,
-        } = self.encode_pre_graph(EncodePreGraphInputs {
+        // The frame's encoder, and the compute nodes the graph begins with
+        // (pre_graph_stage.rs, execute.rs). Each graph pass owns the GPU
+        // queries of the render and compute passes it opened (`timing.rs`).
+        let mut encoder = self.open_frame_encoder();
+        let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = Vec::new();
+        let pre_graph = PreGraphInputs {
             scene,
             camera: &camera,
             cam: &cam,
             view_frustum: &view_frustum,
-            crowd_gpu,
             crowd_frame: &crowd_frame,
             crowd_previous,
             vis: &frame_cull.vis,
@@ -1095,7 +1113,8 @@ impl Renderer {
             joints_drawn,
             terrain_draws: &world_frame.terrain_draws,
             grass_frame: &world_frame.grass_frame,
-        });
+        };
+        self.execute_pre_graph(&mut encoder, &pre_graph, &mut pass_queries);
         let transmission_view = self
             .transmission
             .as_ref()
@@ -1307,16 +1326,8 @@ impl Renderer {
         let terrain_indices = ctx.terrain_indices;
 
         // Per-pass CPU encode time, with a clock (`Renderer::set_clock`),
-        // and GPU time where the device has timestamps (`timing.rs`): each
-        // graph pass owns the queries of the render and compute passes it
-        // opened.
-        let clock = self.clock;
+        // and GPU time where the device has timestamps (`timing.rs`).
         let mut pass_ms: Vec<PassTiming> = Vec::new();
-        let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = crowd_cull_queries
-            .map(|q| ("cull: crowds".to_string(), q))
-            .into_iter()
-            .chain(scatter_queries.into_iter().map(|(n, q)| (n.to_string(), q)))
-            .collect();
         // The bind steps of the other passes, in frame order.
         plans.cascade = CascadePass::bind(self, &mut frames.cascade, ());
         plans.shelter = ShelterPass::bind(self, &mut frames.shelter, &shadow_inputs.shelter);
@@ -1408,7 +1419,42 @@ impl Renderer {
                 posts: &effects.custom_posts,
             },
         );
-        // The graph's passes in order (execute.rs).
+        // The bind steps of the passes over the finished frame: into the
+        // output, or its sRGB view, by way of the glass source when the frame
+        // is routed through it.
+        let finished = FinishedFrame {
+            routed,
+            overlay_view,
+            output,
+        };
+        plans.viewport_views = ViewportViewsPass::bind(
+            self,
+            &mut frames.viewport_views,
+            ViewportViewsPlan {
+                scene,
+                view_plans: &view_plans,
+                viewport_format,
+                to: finished,
+            },
+        );
+        plans.ui_layers =
+            UiLayersPass::bind(self, &mut frames.ui_layers, (scene, overlay_frame.as_ref()));
+        plans.overlay = OverlayPass::bind(
+            self,
+            &mut frames.overlay,
+            OverlayPlan {
+                scene,
+                cam: &cam,
+                overlay_frame: overlay_frame.as_ref(),
+                line_frame: &line_frame,
+                glass_on,
+                color_filter,
+                to: finished,
+            },
+        );
+        plans.hdr_output = HdrOutputPass::bind(self, &mut frames.hdr_output, (output, destination));
+        // The graph's passes in order, the passes over the finished frame
+        // last (execute.rs).
         self.execute_graph(GraphRun {
             ctx: &ctx,
             plans: &plans,
@@ -1429,30 +1475,6 @@ impl Renderer {
         for &(slot, _) in &probe_frame.due {
             self.probes.slots[slot].captured = Some(scene.frame.tick);
         }
-        // The passes after the graph (after_graph.rs).
-        let EncodeAfterGraphOutputs {
-            pass_ms,
-            pass_queries,
-        } = self.encode_after_graph(EncodeAfterGraphInputs {
-            scene,
-            target,
-            cam: &cam,
-            encoder: &mut encoder,
-            stats: &mut stats,
-            clock,
-            pass_ms,
-            pass_queries,
-            view_plans: &view_plans,
-            viewport_format,
-            overlay_frame: &overlay_frame,
-            line_frame: &line_frame,
-            routed,
-            glass_on,
-            color_filter,
-            overlay_view,
-            output,
-            destination,
-        });
         // Submit, present, and the history the next frame reads (submit_frame.rs).
         self.submit_frame(SubmitFrameInputs {
             scene,
@@ -1472,49 +1494,6 @@ impl Renderer {
             stats: &mut stats,
         });
         Ok(stats)
-    }
-}
-
-/// The frame's pass timings while it is encoded: each render-graph pass's
-/// CPU encoding and the queries of the passes it opened (`timing.rs`).
-struct Timings {
-    clock: Option<fn() -> f64>,
-    pass_ms: Vec<PassTiming>,
-    pass_queries: Vec<(String, std::ops::Range<u32>)>,
-}
-
-/// Where a pass outside the graph began: the clock, the encoder's queries
-/// and the frame's draws.
-struct PassStart {
-    t0: Option<f64>,
-    q0: u32,
-    draws: u32,
-}
-
-impl Timings {
-    fn begin(&self, encoder: &Encoder, stats: &FrameStats) -> PassStart {
-        PassStart {
-            t0: self.clock.map(|c| c()),
-            q0: encoder.used(),
-            draws: stats.draw_calls,
-        }
-    }
-
-    /// Lists `name` from `at` to now when it drew anything.
-    fn end(&mut self, name: &str, at: PassStart, encoder: &Encoder, stats: &FrameStats) {
-        if stats.draw_calls == at.draws {
-            return;
-        }
-        if let (Some(c), Some(t0)) = (self.clock, at.t0) {
-            self.pass_ms.push(PassTiming {
-                name: name.into(),
-                start: t0,
-                ms: (c() - t0).max(0.0),
-            });
-        }
-        if encoder.timed() {
-            self.pass_queries.push((name.into(), at.q0..encoder.used()));
-        }
     }
 }
 
