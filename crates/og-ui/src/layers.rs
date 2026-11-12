@@ -609,9 +609,23 @@ impl Ui {
     }
 }
 
-/// The host-less build `end` falls back on.
-pub(crate) fn build_without_host(ui: &mut Ui) {
-    ui.build_layers(&NoEnv);
+/// The documents the stages call: the layer stack's build where no host
+/// built it, and the mounted elements' container queries.
+pub(crate) struct MountedDocuments;
+
+impl crate::doc::build::Documents for MountedDocuments {
+    fn build(&self, ui: &mut Ui) {
+        ui.build_layers(&NoEnv);
+    }
+
+    fn requery(
+        &self,
+        host: &mut crate::doc::build::RetainedHost,
+        ui: &mut Ui,
+        changed: &std::collections::BTreeSet<u64>,
+    ) -> Result<Vec<usize>, String> {
+        host.requery(ui, changed)
+    }
 }
 
 #[cfg(test)]

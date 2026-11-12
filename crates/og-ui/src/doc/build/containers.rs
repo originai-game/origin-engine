@@ -57,7 +57,10 @@ impl Ui {
         }
         let mut dirty = self.requery_immediate(&changed);
         let mut host = std::mem::take(&mut self.docs.host.retained);
-        let retained = host.requery(self, &changed);
+        let retained = match documents() {
+            Some(documents) => documents.requery(&mut host, self, &changed),
+            None => Ok(Vec::new()),
+        };
         self.docs.host.retained = host;
         dirty.extend(retained.map_err(SettlementError::Resolver)?);
         Ok(dirty)

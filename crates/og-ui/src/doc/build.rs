@@ -1424,7 +1424,9 @@ mod text_motion;
 mod touch;
 mod viewport;
 mod world;
-pub use host::{Built, DocEvent, DocHost, DocResponse, Edit};
+pub(crate) use host::documents;
+pub use host::{Built, DocEvent, DocHost, DocResponse, Documents, Edit, install_documents};
+pub use instances::RetainedHost;
 
 /// The computed-value entry carrying the inherited `quotes`.
 pub(super) const QUOTES: &str = "@quotes";

@@ -469,3 +469,33 @@ impl crate::ui::Docs {
         );
     }
 }
+
+/// What the stages ask of the documents (docs/ui.md §7): the document
+/// build installs it ([`install_documents`]) as the first document is
+/// defined. A UI that has defined no document has no screen or mount to
+/// build or restyle, so until then the stages go on without it.
+pub trait Documents: Sync {
+    /// Builds the layer stack and the mounted documents once a tick, where
+    /// no host built them before the frame ends ([`Ui::build_layers`]).
+    fn build(&self, ui: &mut Ui);
+    /// Restyles the mounted elements that read the query containers in
+    /// `changed`, answering their layout nodes (settlement).
+    fn requery(
+        &self,
+        host: &mut RetainedHost,
+        ui: &mut Ui,
+        changed: &BTreeSet<u64>,
+    ) -> Result<Vec<usize>, String>;
+}
+
+static DOCUMENTS: std::sync::OnceLock<&'static dyn Documents> = std::sync::OnceLock::new();
+
+/// Installs the documents the stages call; the first one installed stays.
+pub fn install_documents(documents: &'static dyn Documents) {
+    DOCUMENTS.get_or_init(|| documents);
+}
+
+/// The installed documents, if a document was ever defined.
+pub(crate) fn documents() -> Option<&'static dyn Documents> {
+    DOCUMENTS.get().copied()
+}

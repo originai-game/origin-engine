@@ -6,6 +6,7 @@ impl Ui {
     /// Registers a document (its timelines as `<name>/<timeline>`); one of
     /// the same name is replaced, the UI's state kept (a hot reload).
     pub fn define_document(&mut self, doc: UiDocument) {
+        super::install_documents(&crate::layers::MountedDocuments);
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
