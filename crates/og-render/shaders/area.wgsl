@@ -288,8 +288,9 @@ fn light_cookie(light: LocalLight, d: vec3<f32>) -> vec3<f32> {
 // that draw no material effects (terrain, scattered copies, the 3D fluid):
 // a rect light through linearly transformed cosines (area_light), a point
 // or spot by its falloff, cone, shadow and cookie, as pbr.wgsl's
-// local_light without the toon and receive switches.
-fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+// local_light without the receive switch. `styled`: under the frame's
+// material style (lighting.wgsl style_local: its toon bands).
+fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, styled: bool) -> vec3<f32> {
   if (!OG_LOCAL_LIGHTS) { return vec3<f32>(0.0); }
   if (light.color_kind.w < -0.5) { return area_light(light, s, p, n, v); }
   let to_light = light.position_range.xyz - p;
@@ -306,7 +307,9 @@ fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
   }
   if (atten <= 0.0 || (dot(n, l) <= 0.0 && s.translucency <= 0.0)) { return vec3<f32>(0.0); }
   let radiance = light.color_kind.rgb * light_cookie(light, -l);
-  return brdf(s, n, v, l) * radiance * atten * local_shadow(light, p, leaf_shadow_normal(s, n, l));
+  let shadow = local_shadow(light, p, leaf_shadow_normal(s, n, l));
+  if (styled) { return style_local(s, n, v, l, shadow) * radiance * atten; }
+  return brdf(s, n, v, l) * radiance * atten * shadow;
 }
 
 // Every point, spot and rect light on a surface for those shaders: the
@@ -314,11 +317,22 @@ fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
 // scene order, or, in a reflection probe's face, whose frame has no
 // clusters (probes.rs), every light of the frame, as pbr_fs.wgsl's
 // every-light branch. A face read the main camera's first cluster before.
-fn surface_local_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+fn local_lights_on(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, styled: bool) -> vec3<f32> {
   var color = vec3<f32>(0.0);
   let lights = frame_lights(frag, p);
   for (var k = 0u; k < lights.y; k++) {
-    color += surface_local_light(frame_light(lights, k), s, p, n, v);
+    color += surface_local_light(frame_light(lights, k), s, p, n, v, styled);
   }
   return color;
+}
+
+// Those lights as lit (particles, the 3D fluid, a custom lit shader).
+fn surface_local_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+  return local_lights_on(frag, s, p, n, v, false);
+}
+
+// Those lights under the frame's material style (the terrain, the grass,
+// scattered copies, impostors, crowd cards).
+fn styled_local_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
+  return local_lights_on(frag, s, p, n, v, true);
 }

@@ -102,7 +102,7 @@ module render {
 | [`HalftoneRegion`](render/type-HalftoneRegion.md) | enum |  | Which tones Stylise.halftone prints on. |
 | [`HalftoneRegion()`](#column-HalftoneRegion) | column kind |  | A HalftoneRegion field: the variant's index. |
 | [`og.Stylise`](render/record-Stylise.md) | resource |  | Stylisation primitives that move the frame away from the photographic: a whole-number pixel grid, fewer tones or a fixed palette through a dither, halftone dots, cross-hatching, paint and watercolour… |
-| [`og.MaterialStyle`](render/record-MaterialStyle.md) | resource |  | Stylised defaults for every lit material, for a whole scene at once: toon shading and its ramp, a coloured shadow side, rim light, distance-scaled outlines, flat facets, made surfaces and wireframe. |
+| [`og.MaterialStyle`](render/record-MaterialStyle.md) | resource |  | Stylised defaults for a whole scene: toon shading and its ramp, a coloured shadow side, rim light, outlines, flat facets, made surfaces and wireframe. |
 | [`LookInfo`](render/type-LookInfo.md) | struct |  | A loaded look: where it came from and what applying it sets. |
 | [`og.Lighting2D`](render/record-Lighting2D.md) | resource |  | 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus e… |
 | [`Light2DKind`](render/type-Light2DKind.md) | enum |  | What shape of light a Light2D is. |

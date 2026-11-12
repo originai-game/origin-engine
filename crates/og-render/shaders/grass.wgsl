@@ -155,12 +155,6 @@ fn grass_canopy(above: f32, l: vec3<f32>) -> f32 {
   return exp(-grass.canopy.x * path);
 }
 
-// The toon ramp's three bands (terrain_lit.wgsl terrain_band).
-fn grass_band(t: f32) -> f32 {
-  let e = max(fwidthFine(t), 1e-4);
-  return 0.22 + 0.38 * smoothstep(0.08 - e, 0.08 + e, t) + 0.4 * smoothstep(0.45 - e, 0.45 + e, t);
-}
-
 @fragment
 fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let p = in.world;
@@ -211,19 +205,10 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0 && backlit) {
     shadow = max(shadow, grass_transmittance(p));
   }
-  var direct = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  var tinted = (1.0 - shadow) * n_dot_l;
-  if (frame.outline_style.z > 0.5) {
-    // og.MaterialStyle's toon: the terrain's bands, matte.
-    let band = grass_band(n_dot_l * shadow);
-    direct = s.albedo / PI * band * frame.light_color.rgb;
-    tinted = grass_band(n_dot_l) - band;
-  }
-  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
-    var tint = frame.shadow_tint.rgb * frame.shadow_tint.w;
-    if (frame.outline_style.z > 0.5) { tint = min(tint, vec3<f32>(1.0 / PI)); }
-    direct += tinted * tint * s.albedo * frame.light_color.rgb;
-  }
+  // The sun under the frame's material style (lighting.wgsl style_sun), as
+  // the terrain's: the BRDF, or the toon bands, matte.
+  let sun = style_sun(s, n, v, l, shadow, style_edge(n_dot_l * shadow));
+  var direct = sun.direct;
   direct += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
   // The light through a backlit blade: dimmed by its translucency, tinted by its colour.
   let through = grass.base_color.w * min(s.albedo * 2.0, vec3<f32>(1.0));
@@ -237,16 +222,17 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   // light than the roots (Ghost of Tsushima's and Breath of the Wild's
   // sunlit grass). Lit, not toon.
   // Far blades light as the ground, with no lobe of their own.
-  if (backlit && frame.outline_style.z < 0.5) {
+  if (backlit && !style_toon()) {
     let thickness = mix(1.0, 0.75, in.shading.z);
     let tint = pow(max(s.albedo, vec3<f32>(1e-4)), vec3<f32>(thickness));
     let back = max(-dot(n0, l), 0.0);
     let lobe = 1.5 * grass.base_color.w * back * leaf_forward(n0, v, l) * (1.0 - in.far);
     color += lobe * tint * frame.light_color.rgb * shadow;
   }
-  color += surface_local_lights(in.clip.xy, s, p, n0, v);
+  color += styled_local_lights(in.clip.xy, s, p, n0, v);
   // Far blades light as the ground (`far`), under the sky alike.
-  var occlusion = mix(in.shading.x, in.mean.y, in.far);
+  // The style's shadow darkness takes its share of the ambient light too.
+  var occlusion = mix(in.shading.x, in.mean.y, in.far) * sun.keep;
   if (grass_fx.ao.x > 0.5) {
     let ssao = textureSampleLevel(grass_ssao, grass_fx_sampler, in.clip.xy * grass_fx.screen.zw, 0.0).r;
     occlusion *= mix(1.0, ssao, grass_fx.ao.y);
@@ -254,7 +240,7 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   }
   let n_dot_v = max(dot(n0, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
-  let irradiance = ambient_light(n0, p) * frame.params.x + hemi_irradiance(n0);
+  let irradiance = style_irradiance(ambient_light(n0, p) * frame.params.x + hemi_irradiance(n0), p);
   let r = reflect(-v, n0);
   // With the screen-space reflections over it (frame.wgsl ssr_reflected).
   let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, in.clip.xy);

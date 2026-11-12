@@ -150,11 +150,20 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0)) {
     shadow = cascade_shadow_lookup(in.world, leaf_shadow_normal(s, n, l), abs(dot(n, l)), false);
   }
-  var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  // The sun under the frame's material style (lighting.wgsl style_sun: its
+  // toon bands, shadow darkness and tint), as every lit surface's, unless
+  // the material is unstyled (mode 8, as pbr_fs.wgsl).
+  let styled = (mode & 8u) == 0u;
+  let band_aa = style_edge(n_dot_l * shadow);
+  var sun: StyleSun;
+  sun.direct = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
+  sun.keep = 1.0;
+  if (styled) { sun = style_sun(s, n, v, l, shadow, band_aa); }
+  var color = sun.direct;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world);
   // Point, spot and rect lights: this fragment's cluster's, or every light
-  // in a reflection probe's face (area.wgsl surface_local_lights).
-  color += surface_local_lights(in.clip.xy, s, in.world, n, v);
+  // in a reflection probe's face (area.wgsl local_lights_on).
+  color += local_lights_on(in.clip.xy, s, in.world, n, v, styled);
   var ssao_scale = 1.0;
   var ao_all = 1.0;  // also scales the emitted light (pbr_fs.wgsl)
   // Only with PostEffects.aoDirect above 0: without it the copies keep their
@@ -172,7 +181,8 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
   // The environment, or the probe holding the chunk blended with it (probes.rs),
   // at its intensity, plus the hemisphere light at its own.
-  let irradiance = ambient_light(n, in.world) * frame.params.x + hemi_irradiance(n);
+  var irradiance = ambient_light(n, in.world) * frame.params.x + hemi_irradiance(n);
+  if (styled) { irradiance = style_irradiance(irradiance, in.world); }
   let r = reflect(-v, n);
   // With the screen-space reflections over it (frame.wgsl ssr_reflected),
   // unless blended: then it lies over the surface they were traced for.
@@ -180,7 +190,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
   let dbg_direct = color;  // the direct light, for the debug views below (fork s68)
-  var ibl_scale = material.flags.z * ssao_scale;
+  var ibl_scale = material.flags.z * ssao_scale * sun.keep;
   if (material.flags.y >= 0.0) {
     ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
   }

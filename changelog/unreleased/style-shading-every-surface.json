@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: MaterialStyle",
+      "summary": "One shading rule for every lit surface. MaterialStyle.toon, shadowTint and shadowDarkness, and the toon ambient, reached only meshes (and toon and shadowTint the terrain and grass); scattered copies, model impostors and crowd cards were always lit as plain PBR, so a toon look's forest kept smooth shading beside cel-shaded characters. They now go through the same shading (the three built-in bands, matte), point and spot lights included, and the terrain and grass take shadowDarkness and the flat toon ambient as well. A material with styled false keeps its lit shading on scattered copies and impostors. Frames without a MaterialStyle are unchanged; a toon, shadowTint or shadowDarkness look's terrain, grass, scattered copies, impostors and crowds change."
+    }
+  ]
+}

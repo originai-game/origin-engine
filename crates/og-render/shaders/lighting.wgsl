@@ -587,6 +587,105 @@ fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
   return base * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l);
 }
 
+// The frame's material style (og.MaterialStyle; frame.toon,
+// frame.outline_style, frame.shadow_tint): one shading rule for every lit
+// surface, so a style changes the whole picture and not only its meshes.
+// A mesh's material adds its own ramp, highlight and rim over the same
+// bands (pbr.wgsl toon_ramp); the terrain, the grass, scattered copies,
+// impostors and crowd cards, which carry no such maps, call style_sun,
+// style_irradiance and style_local.
+
+// Whether the frame's style is toon.
+fn style_toon() -> bool {
+  return frame.outline_style.z > 0.5;
+}
+
+// A band's step at `edge`: 0 below, 1 above, over `aa` either side (hard at 0).
+fn style_step(x: f32, edge: f32, aa: f32) -> f32 {
+  if (aa <= 0.0) { return select(0.0, 1.0, x > edge); }
+  return smoothstep(edge - aa, edge + aa, x);
+}
+
+// The built-in toon ramp: N·L (times shadow) to the light received, in
+// three bands, each edge over `aa`.
+fn style_bands(t: f32, aa: f32) -> f32 {
+  return 0.22 + 0.38 * style_step(t, 0.08, aa) + 0.4 * style_step(t, 0.45, aa);
+}
+
+// A band edge's half width for a fragment whose ramp input is `t`: its
+// change over a pixel times the style's softness in pixels, never under
+// one pixel (a harder step crawls on blades and leaves). Screen
+// derivatives: called in uniform control flow.
+fn style_edge(t: f32) -> f32 {
+  return clamp(fwidthFine(t), 1e-4, 0.25) * max(frame.toon.x, 1.0);
+}
+
+// The sun on a surface under the style, and what the surface keeps of its
+// ambient light (the style's shadow darkness).
+struct StyleSun {
+  direct: vec3<f32>,
+  keep: f32,
+};
+
+// `shadow`: the sun's visibility; `aa`: style_edge of N·L. Lit: the BRDF,
+// shadowed. Toon: the built-in bands on the surface's colour, matte (a
+// metal in its own colour). Then the style's shadow darkness and its
+// shadow tint, which takes what the shadow took of the light, once.
+fn style_sun(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32, aa: f32) -> StyleSun {
+  return style_sun_of(brdf(s, n, v, l) * shadow, s, n, l, shadow, aa);
+}
+
+// style_sun for a surface with its own lit term, `sunlit`: the sun's light
+// on it per unit of the sun's colour, already shadowed (an impostor's,
+// summed over the surfaces of a texel).
+fn style_sun_of(sunlit: vec3<f32>, s: Surface, n: vec3<f32>, l: vec3<f32>, shadow: f32, aa: f32) -> StyleSun {
+  let n_dot_l = max(dot(n, l), 0.0);
+  let toon = style_toon();
+  var direct = sunlit;
+  var tinted = (1.0 - shadow) * n_dot_l;
+  var lit = smoothstep(0.0, 0.25, n_dot_l * shadow);
+  if (toon) {
+    let dark = style_bands(0.0, 0.0);
+    let band = style_bands(n_dot_l * shadow, aa);
+    direct = mix(s.albedo, s.f0, s.metallic) / PI * band;
+    tinted = style_bands(n_dot_l, aa) - band;
+    lit = clamp((band - dark) / (1.0 - dark), 0.0, 1.0);
+  }
+  var o: StyleSun;
+  o.keep = 1.0 - frame.outline_style.y * (1.0 - lit);
+  direct *= o.keep;
+  if (frame.shadow_tint.w > 0.0 && n_dot_l > 0.0) {
+    var tint = frame.shadow_tint.rgb * frame.shadow_tint.w;
+    // Never more than the diffuse light the ramp took: a white tint fills the shadow, never outshines the lit side.
+    if (toon) { tint = min(tint, vec3<f32>(1.0 / PI)); }
+    direct += tinted * tint * s.albedo;
+  }
+  o.direct = direct * frame.light_color.rgb;
+  return o;
+}
+
+// The diffuse ambient light on a surface under the style, from the
+// surface's own `irradiance` along its normal: under toon mixed towards one
+// flat colour, the light from above and below averaged (MToon's equalised
+// ambient; frame.toon.y 0 flat, 1 as given), so the bands sit on flat
+// colour. No screen derivatives.
+fn style_irradiance(irradiance: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
+  if (!style_toon() || frame.toon.y >= 1.0) { return irradiance; }
+  let up = vec3<f32>(0.0, 1.0, 0.0);
+  let flat_env = 0.5 * (ambient_light_level(up, p) + ambient_light_level(-up, p));
+  let flat_hemi = 0.5 * (frame.hemi_sky.rgb + frame.hemi_ground.rgb) * frame.hemi_sky.w;
+  return mix(flat_env * frame.params.x + flat_hemi, irradiance, frame.toon.y);
+}
+
+// A point or spot light's light along `l` under the style: the BRDF, or
+// under toon the bands, hard-edged.
+fn style_local(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32) -> vec3<f32> {
+  if (style_toon()) {
+    return mix(s.albedo, s.f0, s.metallic) / PI * style_bands(max(dot(n, l), 0.0) * shadow, 0.0);
+  }
+  return brdf(s, n, v, l) * shadow;
+}
+
 // Octahedral encoding of a unit vector into -1..1 (two channels).
 fn oct_encode(n: vec3<f32>) -> vec2<f32> {
   let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
