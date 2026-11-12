@@ -413,6 +413,10 @@ struct ScatterGpu {
     impostor_light: [f32; 4],
     /// The trample map (`trample.rs` `Trample::grid`).
     trample: [f32; 4],
+    /// The mesh's canopy centre in its own space (xyz) and 1 in w when it
+    /// has foliage ([`crate::RenderScene::set_mesh_foliage`]), for its
+    /// leaves' dome normals.
+    canopy: [f32; 4],
 }
 
 impl ScatterGpu {
@@ -440,7 +444,10 @@ fn crossfade_noise_offset(frame_index: u64) -> f32 {
     ((frame_index as f64 * GOLDEN).fract()) as f32
 }
 
-const SLOT: u64 = 256;
+/// One pass's stride in the uniform buffer: a [`ScatterGpu`] rounded up to
+/// the 256-byte dynamic offset alignment, so a slot never reads its
+/// neighbour's.
+const SLOT: u64 = (std::mem::size_of::<ScatterGpu>() as u64).next_multiple_of(256);
 /// The pipelines' kinds past a [`ScatterPass`]'s: its impostor's, and its
 /// crowd cards'.
 const IMPOSTOR_KIND: u8 = 3;

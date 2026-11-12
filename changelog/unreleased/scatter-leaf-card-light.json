@@ -1,0 +1,8 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"TerrainScatter.model","summary":"A scattered plant's leaves are lit as a placed model's: domed normals (the leaf material's domeNormals) and the sun through the leaf (translucency). Scattered copies drew their leaves with flat card normals and no light from behind, so a scattered wood looked harsher than the same plant placed as an og.Model."},
+    {"member":"TerrainScatter.impostor","summary":"A foliage impostor is as bright as its mesh. The cook bakes how much of the sun reaches each texel past the plant's own nearby leaves and branches into the card's material atlas, and the card is lit as the many small faces a texel stands for; cards were brighter and flatter than the trees in front of them, so the switch at impostorDistance showed as a band. Impostors bake again on the next cook. The models guide (§3) gives the distance at which a card is as sharp as its mesh."},
+    {"member":"DebugView","summary":"The diffuse IBL, specular IBL and direct light debug views draw scattered copies and impostors; both showed the unsupported pattern."}
+  ]
+}

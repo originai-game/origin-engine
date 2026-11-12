@@ -149,7 +149,16 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
                     view,
                     DebugView::AmbientOcclusion | DebugView::AoDepth | DebugView::AoRaw
                 ),
-                "impostors" | "shader-full-dissolve" => view != DebugView::Albedo,
+                // Impostor cards and scattered copies draw albedo and the
+                // lighting terms (impostor.wgsl, scatter.wgsl).
+                "impostors" => !matches!(
+                    view,
+                    DebugView::Albedo
+                        | DebugView::IblDiffuse
+                        | DebugView::IblSpecular
+                        | DebugView::DirectLight
+                ),
+                "shader-full-dissolve" => view != DebugView::Albedo,
                 "materials-physical" => matches!(
                     view,
                     DebugView::IblDiffuse
@@ -164,6 +173,9 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
                 "terrain-grass" => !matches!(
                     view,
                     DebugView::Albedo
+                        | DebugView::IblDiffuse
+                        | DebugView::IblSpecular
+                        | DebugView::DirectLight
                         | DebugView::AmbientOcclusion
                         | DebugView::AoDepth
                         | DebugView::AoRaw

@@ -5,7 +5,10 @@
 // Shading: the material's colour (factor, texture and the mesh's vertex
 // colours), alpha cut-off, roughness and metalness, emissive, unlit and
 // flat modes, lit by the directional light with its cascades, the local
-// lights, the image-based light and caustics under water, then fog. Normal
+// lights, the image-based light and caustics under water, then fog. A leaf
+// material is lit as on a model: its normals domed about the mesh's canopy
+// (domeNormals; scatter.canopy, the mesh's foliage), the sun let through
+// by its translucency. Normal
 // maps and the material effects (toon, rim, dissolve) are not drawn on
 // scattered copies. A material shader's hooks run as on meshes: the copy's
 // vertex_offset in the vertex stage, surface_color (before the cut-off),
@@ -49,7 +52,12 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   let scale = length(i.m1) * size;
   let sway = scatter_sway(v.position, i.m3, scale, false);
   var world = model * vec4<f32>(v.position, 1.0) + vec4<f32>(sway, 0.0);
-  o.normal = normalize((model * vec4<f32>(v.normal, 0.0)).xyz);
+  // A leaf's canopy dome (the material's domeNormals, coat.w), as a model's
+  // leaves take it (meshlet.wgsl vs_meshlet). The vertex stands for its
+  // leaf's anchor: a copy carries no foliage stream, and a leaf is small
+  // beside its canopy.
+  let dome = foliage_normal(v.normal, v.position, scatter.canopy.xyz, material.coat.w * scatter.canopy.w);
+  o.normal = normalize((model * vec4<f32>(dome, 0.0)).xyz);
   var h: Hook;
   h.world = world.xyz;
   h.local = v.position;
@@ -113,7 +121,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     let ao = textureSampleLevel(scatter_ssao, scatter_fx_sampler, in.clip.xy * scatter_fx.screen.zw, 0.0).r;
     return vec4<f32>(vec3<f32>(select(1.0, ao, scatter_fx.ao.x > 0.5)), out_a);
   }
-  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
+  if (frame.light_color.w > 0.5 && (frame.light_color.w < 3.5 || frame.light_color.w > 6.5)) { return debug_unsupported(in.clip.xy); }
   let emissive = surface_emissive(h, shader_params(), material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
   if ((mode & 2u) != 0u) {
     return vec4<f32>(apply_fog(base.rgb + emissive, in.world), out_a);
@@ -123,6 +131,8 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   s.roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
   s.albedo = base.rgb;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
+  // A leaf lets the sun through (brdf's leaf_transmission), as pbr_fs.wgsl.
+  s.translucency = material.coat.z;
   var n = normalize(in.normal);
   if ((mode & 1u) != 0u) {
     n = normalize(cross(dpx, dpy));
@@ -137,7 +147,9 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   // blades and cards, thinner than a texel, and neither closed (they would
   // stop shadowing themselves) nor smooth enough for the tent, which
   // averaged their own shadows away (probe-outdoor's meadow went flat).
-  if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow_lookup(in.world, n, n_dot_l, false); }
+  if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0)) {
+    shadow = cascade_shadow_lookup(in.world, leaf_shadow_normal(s, n, l), abs(dot(n, l)), false);
+  }
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world);
   // Point, spot and rect lights: this fragment's cluster's, or every light

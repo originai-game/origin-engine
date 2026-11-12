@@ -122,9 +122,16 @@ A wood is plants scattered whole (og.TerrainScatter's `model`,
 `og api show "world §3"`). Far copies draw as one card when the plant is cooked
 with an impostor: import settings beside the model text, named after it
 with one more `.ogt` (`oak.ogt.ogt` for `oak.ogt`), holding `type
-import`, `version 1` and `model { impostor true }`. The card is
-softer than the leaves and shaded as one mass, so set impostorDistance
-past where a tree's leaves read one by one.
+import`, `version 1` and `model { impostor true }`. The card is lit as
+the leaves are (the same light, the plant's own shade baked in), but
+it is a picture 128 texels across the plant (`impostorSize`): nearer
+than where a texel covers a pixel it reads soft beside the leaves. Set
+impostorDistance to at least the plant's radius times the screen's
+height in pixels, divided by 60 (a 50 degree view; 12 radii at 720
+rows, 18 at 1080; the radius is that of the sphere around the whole
+plant): 110 m for an oak of 9 m at 720 rows, 28 m for a shrub of 2.3 m.
+A larger `impostorSize` brings that nearer in proportion and multiplies
+the atlas by its square.
 
 og.Wind's `strength` is lean per metre of height: 0.05 to 0.1 moves a
 10 m tree as a breeze does, and what suits grass (0.5 and up) lays a tree

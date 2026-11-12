@@ -204,14 +204,17 @@ pub(super) fn plan_model<'a>(
     {
         let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
         for (kind, id) in model::impostor_ids(&s.rel).into_iter().enumerate() {
-            // `3`: the atlas's layout version (2, the
+            // `6`: the atlas's layout version (2, the
             // hemi-octahedron; 3, 16 samples a texel, filtered
-            // textures and the material atlas), so an atlas
-            // baked by an older layout is baked again.
+            // textures and the material atlas; 4, the leaves' dome
+            // normals and the mean normal's length; 6, the sun's
+            // share in the material's alpha, 5 an unlanded bake of
+            // it), so an atlas baked by an older layout is baked
+            // again.
             let st = with(
                 &[
                     b"impostor",
-                    &[3, kind as u8],
+                    &[6, kind as u8],
                     &size,
                     tex_desc.as_bytes(),
                     &hash,

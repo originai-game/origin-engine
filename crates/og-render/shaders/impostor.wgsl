@@ -66,6 +66,9 @@ fn vs_impostor(@builtin(vertex_index) vertex: u32, i: ScatterInstance) -> Impost
 struct ImpSurface {
   albedo: vec3<f32>,
   normal: vec3<f32>,
+  // How far the normals the pixel stands for agree, 0..1: the length of
+  // their mean (the bake keeps a texel's, and the filter the texels').
+  agree: f32,
   // The point lit: the card's moved along the eye by the blended depth.
   world: vec3<f32>,
   coverage: ImpCoverage,
@@ -105,22 +108,25 @@ fn imp_surface(in: ImpostorOut) -> ImpSurface {
   s.coverage = c;
   s.albedo = material.base_color.rgb * rgb / total;
   s.normal = normalize(m3 * nd.xyz + vec3<f32>(0.0, 1e-6, 0.0));
+  s.agree = clamp(length(nd.xyz) / total, 0.0, 1.0);
   s.world = in.world + toward * imp_blended_step(c, dd) * in.extent;
   return s;
 }
 
 // The surface's roughness, translucency and metallic, blended as its
-// colour (G5): the cook's third atlas (`#impostor-material`, bound as the
-// material's roughness map: r roughness, g translucency, b metallic), or
-// the material's factors and no translucency without one.
-fn imp_material(c: ImpCoverage) -> vec3<f32> {
+// colour (G5), and in w how much of the sun reaches it past the faces
+// near it: the cook's third atlas (`#impostor-material`, bound as the
+// material's roughness map: r roughness, g translucency, b metallic, a
+// the sun's share), or the material's factors, no translucency and the
+// whole sun without one.
+fn imp_material(c: ImpCoverage) -> vec4<f32> {
   if (scatter.impostor_grid.w < 0.5) {
-    return vec3<f32>(material.mr.y, 0.0, material.mr.x);
+    return vec4<f32>(material.mr.y, 0.0, material.mr.x, 1.0);
   }
   let total = max(c.wa.x + c.wa.y + c.wa.z, 1e-5);
-  let m = textureSampleLevel(roughness_tex, material_sampler, c.a0, imp_level).rgb * c.wa.x
-    + textureSampleLevel(roughness_tex, material_sampler, c.a1, imp_level).rgb * c.wa.y
-    + textureSampleLevel(roughness_tex, material_sampler, c.a2, imp_level).rgb * c.wa.z;
+  let m = textureSampleLevel(roughness_tex, material_sampler, c.a0, imp_level) * c.wa.x
+    + textureSampleLevel(roughness_tex, material_sampler, c.a1, imp_level) * c.wa.y
+    + textureSampleLevel(roughness_tex, material_sampler, c.a2, imp_level) * c.wa.z;
   return m / total;
 }
 
@@ -166,15 +172,38 @@ fn imp_frame_shadow(x: vec3<f32>, f: u32) -> f32 {
   return 1.0 - smoothstep(0.08, 0.25, ahead) * smoothstep(0.3, 0.7, covered);
 }
 
-// The sunlight a foliage card passes through to the eye when lit from
-// behind, per unit of translucency (G5): half of it diffuse through the
-// leaf (its back face's cosine) and half scattered forward by the
-// Henyey-Greenstein phase (g 0.6), strongest looking into the sun.
-fn imp_backlight(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> f32 {
-  let g = 0.6;
-  let cos_theta = dot(-l, v);
-  let hg = (1.0 - g * g) / (4.0 * PI * pow(max(1.0 + g * g - 2.0 * g * cos_theta, 1e-4), 1.5));
-  return 0.5 * max(dot(-n, l), 0.0) / PI + 0.5 * hg;
+// The sun on a pixel that stands for many small faces (a canopy's leaves
+// in one texel), as the mesh's own pixels average out: a share of them
+// along the mean normal `n`, lit as one surface, and the rest spread over
+// the hemisphere about it, whose mean cosine to the light is (1 + n·l) / 4
+// and to its far side (1 - n·l) / 4 (a leaf's transmission, lighting.wgsl
+// leaf_transmission). The mean's length `agree` is the share's: 1 for one
+// normal, a half for a hemisphere's. Its two parts take different shadows
+// (fs_impostor): what the faces reflect, and what passes through them.
+struct ImpDirect {
+  reflected: vec3<f32>,
+  transmitted: vec3<f32>,
+}
+
+fn imp_direct(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, agree: f32) -> ImpDirect {
+  let c = dot(n, l);
+  let w = (1.0 - agree) * (1.0 + sqrt(max(1.0 - c * c, 0.0)));
+  let k = s.albedo * (1.0 - s.metallic);
+  let through = s.translucency * (3.0 * leaf_forward(n, v, l) + 0.16);
+  let one = clamp(2.0 * agree - 1.0, 0.0, 1.0);
+  var opaque = s;
+  opaque.translucency = 0.0;
+  var d: ImpDirect;
+  d.reflected = mix(k * imp_facing(agree * c, w) / PI, brdf(opaque, n, v, l), one);
+  d.transmitted = mix(k * through * imp_facing(-agree * c, w), leaf_transmission(s, n, v, l), one);
+  return d;
+}
+
+// The mean of max(x, 0) over x spread evenly `w` either side of `mu`.
+fn imp_facing(mu: f32, w: f32) -> f32 {
+  if (mu >= w) { return mu; }
+  let t = max(mu + w, 0.0);
+  return t * t / max(4.0 * w, 1e-5);
 }
 
 // The surface's depth in the view (written, so the card stands where the
@@ -205,9 +234,15 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   }
   var o: ImpostorLit;
   o.depth = imp_depth(surface.world);
-  if (frame.light_color.w > 0.5) {
+  // Debug views (DebugView::lit_code): 3 albedo here, 4 to 6 below, as a
+  // copy's mesh shows them (scatter.wgsl).
+  let dbg = u32(frame.light_color.w + 0.5);
+  if (dbg == 3u) {
+    o.color = vec4<f32>(surface.albedo, 1.0);
+    return o;
+  }
+  if (dbg > 0u && (dbg < 4u || dbg > 6u)) {
     o.color = debug_unsupported(in.clip.xy);
-    if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { o.color = vec4<f32>(surface.albedo, 1.0); }
     return o;
   }
   let mode = u32(material.flags.w);
@@ -222,6 +257,8 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   s.roughness = clamp(mat.x, 0.04, 1.0);
   s.albedo = surface.albedo;
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
+  // Lit from behind, foliage lets the sun through, as its mesh does.
+  s.translucency = mat.y;
   let v = select(normalize(frame.view_pos.xyz - surface.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   var n = surface.normal;
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
@@ -245,12 +282,12 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let own = imp_self_shadow(x, normalize(transpose(m3) * l));
   var outside = 1.0;
   if (frame.light_dir.w > 0.5) { outside = cascade_shadow(surface.world + l * (max(leave, 0.0) + 0.5 * in.extent), n, max(n_dot_l, 0.05)); }
-  if (n_dot_l > 0.0) { shadow = outside * own; }
-  var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  // Lit from behind, foliage lets the sun through (G5).
-  if (mat.y > 0.0 && frame.light_dir.w > 0.5) {
-    color += s.albedo * frame.light_color.rgb * outside * mat.y * imp_backlight(n, v, l);
-  }
+  if (n_dot_l > 0.0 || surface.agree < 1.0 || s.translucency > 0.0) { shadow = outside * own * mat.w; }
+  // The light through the leaves takes no shadow of the card's own: the
+  // depth atlas is a solid shell, so a face away from the sun always
+  // stands behind it, and the leaves' share of the sun is baked in mat.w.
+  let sun = imp_direct(s, n, v, l, surface.agree);
+  var color = (sun.reflected * shadow + sun.transmitted * outside * mat.w) * frame.light_color.rgb;
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(surface.world);
   color += surface_local_lights(in.clip.xy, s, surface.world, n, v);
   let n_dot_v = max(dot(n, v), 1e-4);
@@ -263,8 +300,17 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   var prefiltered = reflected_light(r, surface.world, s.roughness * frame.params.y) * frame.params.x;
   if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, surface.world, in.clip.xy); }
   let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
+  let direct = color;
+  let diffuse = kd_ibl * irradiance * s.albedo * material.flags.z;
+  color += diffuse + prefiltered * (s.f0 * lut.x + lut.y) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
   color += emissive;
+  if (dbg > 0u) {
+    if (dbg == 4u) { color = diffuse; }
+    if (dbg == 5u) { color -= direct + diffuse + emissive; }
+    if (dbg == 6u) { color = direct; }
+    o.color = vec4<f32>(color, select(1.0, coverage, a2c));
+    return o;
+  }
   o.color = vec4<f32>(apply_fog(color, surface.world), select(1.0, coverage, a2c));
   return o;
 }

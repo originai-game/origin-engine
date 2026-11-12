@@ -15,6 +15,7 @@ struct ScatterUniform {
   impostor_grid: vec4<f32>,   // x: frames per side of its atlas, y: the distance past which copies draw as impostors (0: never), z: 1 with alpha to coverage, w: 1 when its material's roughness map is the material atlas (impostor.wgsl imp_material)
   impostor_light: vec4<f32>,  // xyz: towards the sun (the shadow cascades' cards face it)
   trample: vec4<f32>,         // the trample map (trample.rs): min corner (x, z from the frame's origin), cell, cells a side (0: none)
+  canopy: vec4<f32>,          // xyz: the mesh's canopy centre in its own space, w: 1 when it has foliage (meshlet.rs MeshFoliage)
 };
 @group(2) @binding(0) var<uniform> scatter: ScatterUniform;
 // The blue-noise tile (blue_noise.rs): 64 x 64 byte thresholds, row by

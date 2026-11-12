@@ -7,13 +7,19 @@
 //!
 //! A third atlas (G5, linear) holds each texel's roughness (red),
 //! translucency (green) and metallic (blue), so foliage cards are lit
-//! through from behind and keep their materials' gloss.
+//! through from behind and keep their materials' gloss; its alpha is how
+//! much of the sun reaches the texel past the model's faces near it, over
+//! a spread of sun directions ([`near_shade`]). A mesh's leaves shade each
+//! other at a scale the card's own shadow (its depth atlas) cannot
+//! resolve; without that share the card stands lighter than its mesh.
 //!
 //! Each frame is drawn at four times its size along each side (16 samples
 //! a texel) with a depth buffer and box filtered down, so its silhouette
 //! and thin leaves are antialiased; texels nothing covers then take their
-//! nearest covered neighbour's colour, normal and material (alpha stays
-//! 0), so neither the atlas's filtering nor its mips darken the edges. The
+//! nearest covered neighbour's colour, normal and material (the albedo's
+//! alpha stays 0), so neither the atlas's filtering nor its mips darken
+//! the edges. The normal is the texel's mean, not normalised: its length
+//! says how far its faces agree. The
 //! albedo is the material's base colour factor times its base colour
 //! texture times the vertex colour: lighting is the renderer's. Textures
 //! are read bilinearly from the mip level of the triangle's texel
@@ -231,6 +237,45 @@ fn linear_to_srgb(v: f32) -> f32 {
     }
 }
 
+/// The model's canopy centre in its own units, as the cooked model has it
+/// (og-bundle's `CookedModel::mesh_foliage`): the centre of the box of its
+/// leaf cards' anchors, of every anchor without leaf cards.
+fn canopy_center(src: &GltfSource) -> Vec3 {
+    let foliage: Vec<(bool, Vec<[f32; 8]>)> = src
+        .doc
+        .meshes()
+        .flat_map(|m| m.primitives())
+        .filter_map(|p| {
+            let count = p.get(&gltf::Semantic::Positions)?.count();
+            let f = super::primitive::read_foliage(src, &p, count).ok()??;
+            Some((super::primitive::leaf_cards(&p), f))
+        })
+        .collect();
+    let any_leaves = foliage.iter().any(|f| f.0);
+    let (lo, hi) = foliage
+        .iter()
+        .filter(|f| f.0 || !any_leaves)
+        .flat_map(|f| f.1.iter().map(|v| Vec3::new(v[4], v[5], v[6])))
+        .fold(
+            (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
+            |(lo, hi), a| (lo.min(a), hi.max(a)),
+        );
+    (lo + hi) * 0.5
+}
+
+/// og-render's `foliage_normal` (meshlet_foliage.wgsl): a leaf's normal `n`
+/// turned by `strength` to its canopy's dome, out from `center` through
+/// its `anchor` and up.
+fn dome_normal(n: Vec3, anchor: Vec3, center: Vec3, strength: f32) -> Vec3 {
+    if strength <= 0.0 {
+        return n;
+    }
+    let dome = (anchor - center)
+        .try_normalize()
+        .map_or(Vec3::Y, |r| (r + Vec3::new(0.0, 0.45, 0.0)).normalize());
+    n.lerp(dome, strength.clamp(0.0, 1.0)).normalize_or(dome)
+}
+
 /// The default scene's triangles in the model's space, as the rest pose
 /// draws them (hidden nodes and their descendants left out, an instanced
 /// node at each of its instances).
@@ -242,6 +287,7 @@ fn triangles(
     let Some(scene) = src.doc.default_scene().or_else(|| src.doc.scenes().next()) else {
         return out;
     };
+    let canopy = canopy_center(src);
     // A skinned mesh is drawn at its bind pose (model.rs `skin_binds`).
     let binds = super::skin_binds(src);
     let mut stack: Vec<(gltf::Node, Mat4)> = scene.nodes().map(|n| (n, Mat4::IDENTITY)).collect();
@@ -302,6 +348,12 @@ fn triangles(
                     .map(|t| t.texture().source().index());
                 let (roughness, metallic) = (pbr.roughness_factor(), pbr.metallic_factor());
                 let translucent = translucency(&m);
+                // A leaf's normals turn to its canopy's dome before they
+                // are placed, as the mesh's are drawn.
+                let dome = dome_normals(&m);
+                let anchors = (dome > 0.0)
+                    .then(|| super::primitive::read_foliage(src, &prim, pos.len()).ok()?)
+                    .flatten();
                 for xf in &at {
                     let normal_m =
                         Mat4::from_mat3(glam::Mat3::from_mat4(*xf).inverse().transpose());
@@ -316,7 +368,14 @@ fn triangles(
                             normals
                                 .as_ref()
                                 .and_then(|n| n.get(v(j)))
-                                .map(|n| normal_m.transform_vector3(*n).normalize_or(flat))
+                                .map(|n| match &anchors {
+                                    Some(a) => {
+                                        let a = a[v(j)];
+                                        dome_normal(*n, Vec3::new(a[4], a[5], a[6]), canopy, dome)
+                                    }
+                                    None => *n,
+                                })
+                                .map(|n| normal_m.transform_vector3(n).normalize_or(flat))
                                 .unwrap_or(flat)
                         });
                         let uv = [0, 1, 2].map(|j| {
@@ -355,6 +414,32 @@ fn triangles(
     out
 }
 
+/// A frame's fine pixels: depth towards the viewer (radii from the centre,
+/// `f32::MIN` where nothing covers), albedo, normal in the frame's basis
+/// and material.
+struct Fine {
+    depth: Vec<f32>,
+    col: Vec<Vec4>,
+    nrm: Vec<Vec3>,
+    mat: Vec<Vec3>,
+}
+
+/// The band (radii) over which the card's own shadow takes over from the
+/// baked one: og-render's impostor.wgsl `imp_frame_shadow` shades a point
+/// by what stands this far ahead of it, the bake by what stands nearer.
+const SHADE_BAND: [f32; 2] = [0.08, 0.25];
+
+/// How far a face `ahead` of a point towards the sun (radii) shades it in
+/// the bake: fully past three depth steps of `step` (a face does not shade
+/// itself across a fine pixel), fading out over [`SHADE_BAND`].
+fn near_shade(ahead: f32, step: f32) -> f32 {
+    let smooth = |a: f32, b: f32, x: f32| {
+        let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    };
+    smooth(3.0 * step, 6.0 * step, ahead) * (1.0 - smooth(SHADE_BAND[0], SHADE_BAND[1], ahead))
+}
+
 /// Bakes the impostor of `src`'s default scene into the sphere about its
 /// bounds `(min, max)` (`b` resolved: [`ImpostorBake::resolved`]).
 pub fn bake(
@@ -391,97 +476,148 @@ pub fn bake(
     let mut material = vec![0u8; (size * size * 4) as usize];
     let ss = SUPERSAMPLE;
     let fine = b.frame * ss;
+    // The model drawn from `d` (from the centre towards the viewer).
+    let raster = |d: Vec3| {
+        let (right, up) = frame_basis(d);
+        // Per fine pixel: depth, albedo (linear rgba), normal and
+        // material (roughness, translucency, metallic).
+        let n_px = (fine * fine) as usize;
+        let mut depth = vec![f32::MIN; n_px];
+        let mut col = vec![Vec4::ZERO; n_px];
+        let mut nrm = vec![Vec3::ZERO; n_px];
+        let mut mat = vec![Vec3::ZERO; n_px];
+        let to_px = |p: Vec3| {
+            let q = p - center;
+            let x = q.dot(right) / radius;
+            let y = q.dot(up) / radius;
+            Vec3::new(
+                (x * 0.5 + 0.5) * fine as f32,
+                (0.5 - y * 0.5) * fine as f32,
+                q.dot(d) / radius,
+            )
+        };
+        for t in &tris {
+            let s = t.p.map(to_px);
+            let area =
+                (s[1].x - s[0].x) * (s[2].y - s[0].y) - (s[1].y - s[0].y) * (s[2].x - s[0].x);
+            if area.abs() < 1e-12 {
+                continue;
+            }
+            // The texture's footprint: the triangle's uv area over its
+            // fine pixels (affine, one level of detail a triangle).
+            let uv_area = (t.uv[1].x - t.uv[0].x) * (t.uv[2].y - t.uv[0].y)
+                - (t.uv[1].y - t.uv[0].y) * (t.uv[2].x - t.uv[0].x);
+            let sample = |index: Option<usize>, srgb: bool, uv: Vec2| {
+                index
+                    .and_then(|i| images.get(&(i, srgb)))
+                    .map_or(Vec4::ONE, |m| {
+                        m.sample(uv - uv.floor(), m.lod(uv_area, area))
+                    })
+            };
+            let lo = s[0].min(s[1]).min(s[2]);
+            let hi = s[0].max(s[1]).max(s[2]);
+            let (x0, y0) = (lo.x.floor().max(0.0) as u32, lo.y.floor().max(0.0) as u32);
+            let (x1, y1) = (
+                (hi.x.ceil() as i64).clamp(0, fine as i64) as u32,
+                (hi.y.ceil() as i64).clamp(0, fine as i64) as u32,
+            );
+            for y in y0..y1 {
+                for x in x0..x1 {
+                    let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
+                    let e =
+                        |a: Vec3, b: Vec3| (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+                    let w = Vec3::new(e(s[1], s[2]), e(s[2], s[0]), e(s[0], s[1])) / area;
+                    if w.min_element() < 0.0 {
+                        continue;
+                    }
+                    let z = w.x * s[0].z + w.y * s[1].z + w.z * s[2].z;
+                    let at = (y * fine + x) as usize;
+                    if z <= depth[at] {
+                        continue;
+                    }
+                    let uv = t.uv[0] * w.x + t.uv[1] * w.y + t.uv[2] * w.z;
+                    let vc = t.color[0] * w.x + t.color[1] * w.y + t.color[2] * w.z;
+                    let c = t.base * sample(t.texture, true, uv) * vc;
+                    // A cut-out texel (alpha under half) leaves it uncovered.
+                    if c.w < 0.5 {
+                        continue;
+                    }
+                    depth[at] = z;
+                    col[at] = c.truncate().extend(1.0);
+                    let mr = sample(t.mr_texture, false, uv);
+                    mat[at] = Vec3::new(
+                        (t.roughness * mr.y).clamp(0.0, 1.0),
+                        t.translucency,
+                        (t.metallic * mr.z).clamp(0.0, 1.0),
+                    );
+                    let mut n = (t.n[0] * w.x + t.n[1] * w.y + t.n[2] * w.z).normalize_or(d);
+                    // The side seen: a back face shows its normal turned to the viewer.
+                    if n.dot(d) < 0.0 {
+                        n = -n;
+                    }
+                    nrm[at] = Vec3::new(n.dot(right), n.dot(up), n.dot(d));
+                }
+            }
+        }
+        Fine {
+            depth,
+            col,
+            nrm,
+            mat,
+        }
+    };
+    // The model's depth from a spread of sun directions: every third
+    // frame's.
+    let suns: Vec<(Vec3, Vec<f32>)> = (1..grid)
+        .step_by(3)
+        .flat_map(|j| {
+            (1..grid)
+                .step_by(3)
+                .map(move |i| frame_direction(i, j, grid))
+        })
+        .map(|d| (d, raster(d).depth))
+        .collect();
     for j in 0..grid {
         for i in 0..grid {
             let d = frame_direction(i, j, grid);
             let (right, up) = frame_basis(d);
-            // Per fine pixel: depth, albedo (linear rgba), normal and
-            // material (roughness, translucency, metallic).
-            let n_px = (fine * fine) as usize;
-            let mut depth = vec![f32::MIN; n_px];
-            let mut col = vec![Vec4::ZERO; n_px];
-            let mut nrm = vec![Vec3::ZERO; n_px];
-            let mut mat = vec![Vec3::ZERO; n_px];
-            let to_px = |p: Vec3| {
-                let q = p - center;
-                let x = q.dot(right) / radius;
-                let y = q.dot(up) / radius;
-                Vec3::new(
-                    (x * 0.5 + 0.5) * fine as f32,
-                    (0.5 - y * 0.5) * fine as f32,
-                    q.dot(d) / radius,
-                )
+            let Fine {
+                depth,
+                col,
+                nrm,
+                mat,
+            } = raster(d);
+            // How much of `suns` reaches the fine pixel (x, y), whose normal
+            // in the frame's basis is `n`, past the model's faces near it
+            // ([`near_shade`]), and how much would in the open: each sun
+            // by its cosine on the face (either side of a leaf, which
+            // light passes through), so one grazing it counts for nothing.
+            let sunlit = |x: u32, y: u32, z: f32, n: Vec3, leaf: bool| {
+                let at = |v: u32| (v as f32 + 0.5) / fine as f32 * 2.0 - 1.0;
+                let q = right * at(x) - up * at(y) + d * z;
+                let n = right * n.x + up * n.y + d * n.z;
+                suns.iter().fold(Vec2::ZERO, |sum, (sun, front)| {
+                    let cos = n.dot(*sun);
+                    let cos = if leaf { cos.abs() } else { cos.max(0.0) };
+                    let (r, u) = frame_basis(*sun);
+                    let px = (Vec2::new(q.dot(r), -q.dot(u)) * 0.5 + 0.5) * fine as f32;
+                    let shade = if px.min_element() < 0.0 || px.max_element() >= fine as f32 {
+                        0.0
+                    } else {
+                        let ahead =
+                            front[px.y as usize * fine as usize + px.x as usize] - q.dot(*sun);
+                        near_shade(ahead, 2.0 / fine as f32)
+                    };
+                    sum + Vec2::new(1.0 - shade, 1.0) * cos
+                })
             };
-            for t in &tris {
-                let s = t.p.map(to_px);
-                let area =
-                    (s[1].x - s[0].x) * (s[2].y - s[0].y) - (s[1].y - s[0].y) * (s[2].x - s[0].x);
-                if area.abs() < 1e-12 {
-                    continue;
-                }
-                // The texture's footprint: the triangle's uv area over its
-                // fine pixels (affine, one level of detail a triangle).
-                let uv_area = (t.uv[1].x - t.uv[0].x) * (t.uv[2].y - t.uv[0].y)
-                    - (t.uv[1].y - t.uv[0].y) * (t.uv[2].x - t.uv[0].x);
-                let sample = |index: Option<usize>, srgb: bool, uv: Vec2| {
-                    index
-                        .and_then(|i| images.get(&(i, srgb)))
-                        .map_or(Vec4::ONE, |m| {
-                            m.sample(uv - uv.floor(), m.lod(uv_area, area))
-                        })
-                };
-                let lo = s[0].min(s[1]).min(s[2]);
-                let hi = s[0].max(s[1]).max(s[2]);
-                let (x0, y0) = (lo.x.floor().max(0.0) as u32, lo.y.floor().max(0.0) as u32);
-                let (x1, y1) = (
-                    (hi.x.ceil() as i64).clamp(0, fine as i64) as u32,
-                    (hi.y.ceil() as i64).clamp(0, fine as i64) as u32,
-                );
-                for y in y0..y1 {
-                    for x in x0..x1 {
-                        let p = Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
-                        let e = |a: Vec3, b: Vec3| {
-                            (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
-                        };
-                        let w = Vec3::new(e(s[1], s[2]), e(s[2], s[0]), e(s[0], s[1])) / area;
-                        if w.min_element() < 0.0 {
-                            continue;
-                        }
-                        let z = w.x * s[0].z + w.y * s[1].z + w.z * s[2].z;
-                        let at = (y * fine + x) as usize;
-                        if z <= depth[at] {
-                            continue;
-                        }
-                        let uv = t.uv[0] * w.x + t.uv[1] * w.y + t.uv[2] * w.z;
-                        let vc = t.color[0] * w.x + t.color[1] * w.y + t.color[2] * w.z;
-                        let c = t.base * sample(t.texture, true, uv) * vc;
-                        // A cut-out texel (alpha under half) leaves it uncovered.
-                        if c.w < 0.5 {
-                            continue;
-                        }
-                        depth[at] = z;
-                        col[at] = c.truncate().extend(1.0);
-                        let mr = sample(t.mr_texture, false, uv);
-                        mat[at] = Vec3::new(
-                            (t.roughness * mr.y).clamp(0.0, 1.0),
-                            t.translucency,
-                            (t.metallic * mr.z).clamp(0.0, 1.0),
-                        );
-                        let mut n = (t.n[0] * w.x + t.n[1] * w.y + t.n[2] * w.z).normalize_or(d);
-                        // The side seen: a back face shows its normal turned to the viewer.
-                        if n.dot(d) < 0.0 {
-                            n = -n;
-                        }
-                        nrm[at] = Vec3::new(n.dot(right), n.dot(up), n.dot(d));
-                    }
-                }
-            }
             // Box filter down to the frame's pixels and write them.
             let (ox, oy) = (i * b.frame, j * b.frame);
             for y in 0..b.frame {
                 for x in 0..b.frame {
                     let (mut c, mut n, mut m, mut z, mut k) =
                         (Vec4::ZERO, Vec3::ZERO, Vec3::ZERO, 0.0f32, 0.0f32);
+                    let mut lit = Vec2::ZERO;
                     for sy in 0..ss {
                         for sx in 0..ss {
                             let at = ((y * ss + sy) * fine + x * ss + sx) as usize;
@@ -491,6 +627,16 @@ pub fn bake(
                                 m += mat[at];
                                 z += depth[at];
                                 k += 1.0;
+                                // One sample in four, a rotated grid.
+                                if (sx + 2 * sy) % 4 == 0 {
+                                    lit += sunlit(
+                                        x * ss + sx,
+                                        y * ss + sy,
+                                        depth[at],
+                                        nrm[at],
+                                        mat[at].y > 0.0,
+                                    );
+                                }
                             }
                         }
                     }
@@ -505,13 +651,17 @@ pub fn bake(
                     albedo[at + 1] = q(linear_to_srgb(c.y));
                     albedo[at + 2] = q(linear_to_srgb(c.z));
                     albedo[at + 3] = q(a);
-                    let n = n.normalize_or(Vec3::Z) * 0.5 + 0.5;
+                    // The mean, not normalised: its length says how far
+                    // the texel's normals agree (impostor.wgsl imp_direct).
+                    let n = n / k * 0.5 + 0.5;
                     let z = (z / k).clamp(-1.0, 1.0) * 0.5 + 0.5;
                     for (o, v) in [n.x, n.y, n.z, z].into_iter().enumerate() {
                         normal[at + o] = q(v);
                     }
                     let m = m / k;
-                    for (o, v) in [m.x, m.y, m.z, a].into_iter().enumerate() {
+                    // A texel no sun faces takes the open sky's.
+                    let lit = if lit.y > 1e-4 { lit.x / lit.y } else { 1.0 };
+                    for (o, v) in [m.x, m.y, m.z, lit].into_iter().enumerate() {
                         material[at + o] = q(v);
                     }
                 }
@@ -540,8 +690,8 @@ pub fn bake(
 }
 
 /// Gives a frame's uncovered texels their nearest covered neighbour's
-/// colour, normal and material (the albedo's and material's alpha kept
-/// 0), a few texels out from the silhouette.
+/// colour, normal and material (the albedo's alpha kept 0), a few texels
+/// out from the silhouette.
 fn dilate([albedo, normal, material]: [&mut [u8]; 3], size: u32, ox: u32, oy: u32, frame: u32) {
     let mut filled: Vec<bool> = (0..frame * frame)
         .map(|k| albedo[((((oy + k / frame) * size) + ox + k % frame) * 4 + 3) as usize] > 0)
@@ -571,10 +721,10 @@ fn dilate([albedo, normal, material]: [&mut [u8]; 3], size: u32, ox: u32, oy: u3
                     let dst = ((((oy + y) * size) + ox + x) * 4) as usize;
                     for o in 0..3 {
                         albedo[dst + o] = albedo[src + o];
-                        material[dst + o] = material[src + o];
                     }
                     for o in 0..4 {
                         normal[dst + o] = normal[src + o];
+                        material[dst + o] = material[src + o];
                     }
                     filled[(y * frame + x) as usize] = true;
                 }
@@ -598,6 +748,11 @@ pub(crate) mod tests {
 
     /// The two boxes with their two `materials` (glTF JSON).
     fn boxes(materials: serde_json::Value) -> Vec<u8> {
+        boxes_at(materials, serde_json::json!([{"mesh": 0}, {"mesh": 1}]))
+    }
+
+    /// [`boxes`] placed by `nodes` (glTF JSON, node k drawing mesh k).
+    fn boxes_at(materials: serde_json::Value, nodes: serde_json::Value) -> Vec<u8> {
         let mut bin: Vec<u8> = Vec::new();
         let mut views = Vec::new();
         let mut accessors = Vec::new();
@@ -658,7 +813,7 @@ pub(crate) mod tests {
             "asset": {"version": "2.0"},
             "scene": 0,
             "scenes": [{"nodes": [0, 1]}],
-            "nodes": [{"mesh": 0}, {"mesh": 1}],
+            "nodes": nodes,
             "meshes": meshes,
             "materials": materials,
             "accessors": accessors,
@@ -789,6 +944,53 @@ pub(crate) mod tests {
             "{m:?}"
         );
         assert_eq!(texel(&b.material, grid, frame, (1, 1), (0, 0))[3], 0);
+    }
+
+    /// Ways this could fail: the material atlas's alpha left as coverage
+    /// (the card then takes the whole sun where its mesh's leaves shade
+    /// each other, and stands lighter than the mesh past the switch), the
+    /// shade baked everywhere rather than where a face stands near, or a
+    /// sun grazing a face counted as shading it. A floor (x and z from -1
+    /// to 1, its top at y 0.1) under a thin plate over its +x half, 0.04
+    /// above it: seen from above, the floor beside the plate's edge is
+    /// shaded by the low suns from +x (about a fifth of the spread's
+    /// cosines), the floor far from it by none.
+    #[test]
+    fn the_material_atlas_alpha_is_the_sun_reaching_past_near_faces() {
+        let grey =
+            serde_json::json!({"pbrMetallicRoughness": {"baseColorFactor": [0.5, 0.5, 0.5, 1.0]}});
+        let glb = boxes_at(
+            serde_json::json!([grey, grey]),
+            serde_json::json!([
+                {"mesh": 0, "scale": [2.0, 0.2, 2.0], "translation": [-2.0, 0.0, 0.0]},
+                {"mesh": 1, "scale": [1.0, 0.02, 2.0], "translation": [1.5, 0.15, 0.0]}
+            ]),
+        );
+        let src = super::super::load(&glb, std::path::Path::new(".")).unwrap();
+        // Nine frames a side: the middle one looks straight down, and the
+        // suns are a 3 x 3 spread in from the horizon.
+        let (grid, frame) = (9, 64);
+        let b = src.impostor(ImpostorBake { grid, frame }).unwrap();
+        assert!((b.center - Vec3::new(0.0, 0.03, 0.0)).length() < 1e-4);
+        assert_eq!(frame_direction(4, 4, grid), Vec3::Y);
+        let (right, up) = frame_basis(Vec3::Y);
+        let lit = |p: Vec3| {
+            let q = (p - b.center) / b.radius;
+            let px = (
+                ((q.dot(right) * 0.5 + 0.5) * frame as f32) as u32,
+                ((0.5 - q.dot(up) * 0.5) * frame as f32) as u32,
+            );
+            assert_eq!(texel(&b.albedo, grid, frame, (4, 4), px)[3], 255);
+            texel(&b.material, grid, frame, (4, 4), px)[3]
+        };
+        let (open, edge) = (
+            lit(Vec3::new(-0.8, 0.1, 0.0)),
+            lit(Vec3::new(-0.05, 0.1, 0.0)),
+        );
+        assert!(open >= 250, "{open}");
+        assert!(edge < 225, "{edge}");
+        // The plate's top stands in the open too.
+        assert!(lit(Vec3::new(0.5, 0.16, 0.0)) >= 250);
     }
 
     /// Ways this could fail: a frame's texel taking one point sample of a

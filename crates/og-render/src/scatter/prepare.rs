@@ -177,6 +177,7 @@ impl ScatterRenderer {
             impostor_grid: [0.0; 4],
             impostor_light: [0.0; 4],
             trample: [0.0; 4],
+            canopy: [0.0; 4],
         };
         let impostors = self.prepare_impostors(
             device,
@@ -602,6 +603,9 @@ impl ScatterRenderer {
                 impostor_grid: [0.0; 4],
                 impostor_light: [0.0; 4],
                 trample,
+                canopy: scene
+                    .mesh_foliage(d.mesh)
+                    .map_or([0.0; 4], |f| f.canopy_center.extend(1.0).to_array()),
             };
             let impostor = d.impostor.filter(|_| d.impostor_distance > 0.0);
             if let Some(i) = &impostor {

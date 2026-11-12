@@ -104,7 +104,7 @@ fn weld<T: bytemuck::Pod>(
 /// vertex's `_OG_PIVOT` (branch pivot, stiffness) and `_OG_ANCHOR` (leaf
 /// anchor, flutter), VEC4 floats in the mesh's own space. `None` without
 /// them; both or neither, stiffness and flutter within 0..1.
-fn read_foliage(
+pub(super) fn read_foliage(
     src: &GltfSource,
     prim: &gltf::Primitive,
     count: usize,
@@ -145,7 +145,7 @@ fn read_foliage(
 
 /// Whether a primitive's triangles are leaf cards: its glTF `extras`
 /// `{ "ogFoliage": { "leaves": true } }`.
-fn leaf_cards(prim: &gltf::Primitive) -> bool {
+pub(super) fn leaf_cards(prim: &gltf::Primitive) -> bool {
     prim.extras()
         .as_ref()
         .and_then(|e| serde_json::from_str::<serde_json::Value>(e.get()).ok())
