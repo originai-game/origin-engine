@@ -219,7 +219,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::json($crate::og_world_prefab_of(world, entity))
             }
             fn og_world_name_of(&self, world: u32, entity: f64) -> String {
-                $crate::og_world_name_of(world, entity)
+                $crate::host_impl::json($crate::og_world_name_of(world, entity))
             }
             fn og_world_query(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_world_query(world, desc))
@@ -310,10 +310,10 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_system_get_name(system)
             }
             fn og_system_get_reads(&self, system: u32) -> String {
-                $crate::og_system_get_reads(system)
+                $crate::host_impl::json($crate::og_system_get_reads(system))
             }
             fn og_system_get_writes(&self, system: u32) -> String {
-                $crate::og_system_get_writes(system)
+                $crate::host_impl::json($crate::og_system_get_writes(system))
             }
             fn og_hook_get_name(&self, hook: u32) -> String {
                 $crate::og_hook_get_name(hook)
@@ -337,7 +337,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_game_get_tick(game)
             }
             fn og_game_get_systems(&self, game: u32) -> String {
-                $crate::og_game_get_systems(game)
+                $crate::host_impl::json($crate::og_game_get_systems(game))
             }
             fn og_game_game(&self, desc: Option<String>) -> u32 {
                 $crate::og_game_game(desc)
@@ -1663,7 +1663,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::json($crate::og_ui_action_bar(world))
             }
             fn og_ui_document_schema(&self) -> String {
-                $crate::og_ui_document_schema()
+                $crate::host_impl::json($crate::og_ui_document_schema())
             }
             fn og_ui_set_prop(
                 &self,
