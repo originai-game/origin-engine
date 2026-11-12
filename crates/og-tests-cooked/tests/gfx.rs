@@ -82,3 +82,22 @@ references! {
     environment => "environment-map",
     decals => "decals",
 }
+
+/// A frame at a limited tier, on a full device: each of
+/// [`MINI_GAME_SCENES`](og_tests_cooked::scenes::MINI_GAME_SCENES) matches
+/// its own reference, drawn by a renderer whose capabilities the tier
+/// clamped (no MRT, asynchronous pipelines or timestamps, whatever the
+/// adapter has), so a pass that ignores the clamp or a fallback that
+/// stops drawing moves a frame here.
+#[test]
+#[ignore = "requires GPU"]
+fn frames_at_the_mini_game_tier() {
+    use og_render::{Caps, Tier};
+    for scene in og_tests_cooked::scenes::MINI_GAME_SCENES {
+        let report = check(scene);
+        assert_eq!(report.info.tier, Tier::MiniGame, "{scene}");
+        for lacking in [Caps::MRT, Caps::ASYNC_PIPELINES, Caps::TIMESTAMPS] {
+            assert!(!report.info.caps.contains(lacking), "{scene}: {lacking:?}");
+        }
+    }
+}

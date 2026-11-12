@@ -329,8 +329,29 @@ fn crowd_perf(g: &mut GfxScene, count: u32) -> Result<(), String> {
     Ok(())
 }
 
+/// Scenes drawn at the mini-game WebGPU tier (`Tier::MiniGame`: no
+/// multiple render targets, asynchronous pipelines or timestamps): each is
+/// the scene after `mini-game-`, made for that tier on whatever device runs
+/// it. These are the scenes the tier draws whole today: a 3D scene with
+/// shadows and the sky, physical materials, lit tiles, 2D effects and the
+/// UI's shapes. A scene whose passes read the depth prepass (AO, contact
+/// shadows, outlines, soft particles) cannot build its graph at this tier
+/// yet, and secondary views draw nothing (docs/roadmap.md §Structure).
+pub const MINI_GAME_SCENES: &[&str] = &[
+    "mini-game-gltf-reference",
+    "mini-game-materials",
+    "mini-game-tilemap-lit",
+    "mini-game-fx-2d",
+    "mini-game-ui-shapes",
+];
+
 /// Builds the scene called `name`.
 pub fn build(name: &str) -> Result<GfxScene, String> {
+    if let Some(scene) = name.strip_prefix("mini-game-") {
+        let mut g = build(scene)?;
+        g.desc.tier = og_render::Tier::MiniGame;
+        return Ok(g);
+    }
     let mut g = GfxScene {
         desc: base_desc(),
         scene: RenderScene::new(),
