@@ -168,7 +168,12 @@ mod tests {
         // A script's whole numbers arrive as integers whichever way they
         // were written, so a u32 field such as a span's position takes them.
         let span = serde_json::json!({"name":"gold","position":2.0,"length":4.0,"properties":{}});
-        let span: crate::TextSpan =
+        #[derive(serde::Deserialize)]
+        struct TextSpan {
+            position: u32,
+            length: u32,
+        }
+        let span: TextSpan =
             serde_json::from_value(decode(&encode(&span).unwrap()).unwrap()).unwrap();
         assert_eq!((span.position, span.length), (2, 4));
         for end in 0..bytes.len() {

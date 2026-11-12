@@ -142,6 +142,9 @@ impl RetainedHost {
                 index,
                 context: written,
             }) => {
+                let document = (document as Arc<dyn std::any::Any + Send + Sync>)
+                    .downcast::<UiDocument>()
+                    .map_err(|_| format!("content '{name}' is not a document"))?;
                 return self.compile_block(
                     ui,
                     (document, index),

@@ -54,12 +54,18 @@ pub struct PropRef {
     pub context: Arc<BindingContext>,
 }
 
+/// A snippet's document, opaque to the bindings: the documents that render
+/// it know its type.
+pub trait SnippetDocument: std::any::Any + std::fmt::Debug + Send + Sync {}
+
+impl<T: std::any::Any + std::fmt::Debug + Send + Sync> SnippetDocument for T {}
+
 /// Content passed by reference: a snippet (or a component's children)
 /// rendered in the context it was written in, or a whole document.
 #[derive(Clone, Debug)]
 pub enum ContentRef {
     Snippet {
-        document: Arc<crate::doc::UiDocument>,
+        document: Arc<dyn SnippetDocument>,
         index: usize,
         context: Arc<BindingContext>,
     },
@@ -843,7 +849,7 @@ mod tests {
                 Some(if self.0 == "fr" { "Bonjour" } else { "Hello" }.into())
             }
         }
-        let mut ui = crate::Ui::new(Default::default());
+        let mut session = Session::default();
         let mut bindings = Bindings::default();
         let context = BindingContext {
             node: MountedNode {
@@ -857,30 +863,30 @@ mod tests {
             rows: Arc::default(),
         };
         let translated = bindings.insert(
-            &mut ui.docs.reactive,
+            &mut session,
             context.clone(),
             Expr::Translate(Box::new(Expr::Lit(json!("greeting"))), Vec::new()),
             &Messages("en"),
             |_, _| false,
         );
         let literal = bindings.insert(
-            &mut ui.docs.reactive,
+            &mut session,
             context,
             Expr::Lit(json!("unchanged")),
             &Messages("en"),
             |_, _| false,
         );
         assert_eq!(bindings.value(translated).unwrap(), &json!("Hello"));
-        ui.set_locale("fr");
-        let changed = bindings.refresh(&mut ui.docs.reactive, &Messages("fr"), |_, _| false);
+        session.graph.locale_changed();
+        let changed = bindings.refresh(&mut session, &Messages("fr"), |_, _| false);
         assert_eq!(changed.evaluated, 1);
         assert_eq!(changed.changed, vec![translated]);
         assert_eq!(bindings.value(translated).unwrap(), &json!("Bonjour"));
         assert_eq!(bindings.value(literal).unwrap(), &json!("unchanged"));
-        ui.set_locale("fr");
+        // The locale is unchanged: no locale_changed.
         assert_eq!(
             bindings
-                .refresh(&mut ui.docs.reactive, &Messages("fr"), |_, _| panic!(
+                .refresh(&mut session, &Messages("fr"), |_, _| panic!(
                     "locale unchanged"
                 ))
                 .evaluated,
