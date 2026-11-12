@@ -9,7 +9,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 ## Ownership
 
 - This repository owns the engine runtime, its TypeScript API, the cook, the
-  `og` tool, the project skeleton, the UI packs (kits and style packs) and the
+  `og` tool, the project skeleton, the built-in UI components, the style packs and the
   generated wiki. Accounts, money, publishing, threads and the agent loop stay
   in the platform, reached through the host ABI with game-scoped tokens. No
   platform code imports engine internals; no engine code imports platform code.
@@ -50,13 +50,13 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Feature checks live in fixtures** under `tests/fixtures/`, one per
   feature, a few seconds each, run only when their inputs change.
 - **Fix at the root; port the state of the art.** A problem is fixed in the
-  engine where it arises, never worked around in a game, kit or test. A
+  engine where it arises, never worked around in a game, component or test. A
   missing feature starts from a search of current papers and permissive
   implementations; keep their licences under `third_party/` or in the header.
 - **Size cuts never cost features.** Data only some games need is loaded or
   packed on demand, not removed. Growth from a feature is accepted within the
   size gate.
-- **Frozen is not obsolete.** A frozen kit, style pack or feature is one
+- **Frozen is not obsolete.** A frozen component, style pack or feature is one
   whose quality is not there yet; it stays in the tree until it is rebuilt.
   A cleanup deletes only what the owner names obsolete.
 
