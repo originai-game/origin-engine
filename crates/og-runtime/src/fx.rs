@@ -241,6 +241,8 @@ pub(crate) struct FxState {
     pub baked_now: IdMap<u64, (u32, f32, Mat4)>,
 }
 
+// Its readers are 3D (terrain.rs).
+#[cfg(not(feature = "profile2d"))]
 pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
     v[key].as_f64().map_or(default, |x| x as f32)
 }

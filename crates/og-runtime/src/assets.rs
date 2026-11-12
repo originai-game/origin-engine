@@ -533,6 +533,7 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
 }
 
 /// Place each primitive in the same model space used by its impostor bake.
+#[cfg(not(feature = "profile2d"))]
 fn scatter_meshes(
     scene: &mut og_render::RenderScene,
     parts: &super::extract::Parts,
@@ -633,6 +634,7 @@ pub(crate) fn insert_model(
         rs.decoded.ids.insert(*h, t.id.clone());
     }
     let texture_handles = parts.textures.clone();
+    #[cfg(not(feature = "profile2d"))]
     let scatter_meshes = if impostor.is_some() {
         scatter_meshes(&mut rs.scene, &parts.parts)
     } else {
@@ -712,6 +714,7 @@ pub(crate) fn insert_model(
                     parts,
                     center: (model.min + model.max) * 0.5,
                     radius: ((model.max - model.min) * 0.5).length().max(1e-3),
+                    #[cfg(not(feature = "profile2d"))]
                     scatter_meshes,
                     impostor,
                 }
