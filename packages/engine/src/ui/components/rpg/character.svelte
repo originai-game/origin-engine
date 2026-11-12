@@ -77,7 +77,7 @@
 .art { width: stretch; height: stretch; }
 .attributes { display: flex; width: stretch; gap: var(--space-md); flex: none; padding: var(--space-sm) var(--space-xs) 0; }
 .attr-column { display: flex; flex-direction: column; width: stretch; }
-.attr-split { width: 1px; align-self: stretch; }
+.attr-split { width: var(--stroke-hairline); align-self: stretch; }
 [part="RpgCharacter.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) 0; }
 .attr-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .attr-label { width: stretch; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }

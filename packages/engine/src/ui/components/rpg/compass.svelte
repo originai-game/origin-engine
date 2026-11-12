@@ -26,7 +26,7 @@
 .end { width: var(--size-md); height: stretch; flex: none; }
 .strip { position: relative; width: stretch; height: stretch; }
 .mark { position: absolute; left: calc(var(--at) * 100%); top: 0; height: stretch; translate: -50% 0; align-items: center; justify-content: center; }
-.mark[data-kind=tick] { width: 1px; height: 30%; top: 35%; }
+.mark[data-kind=tick] { width: var(--stroke-hairline); height: 30%; top: 35%; }
 .mark[data-kind=quest], .mark[data-kind=waypoint], .mark[data-kind=danger] { width: var(--space-lg); height: var(--space-lg); top: 0; }
 .needle { position: absolute; left: 50%; top: 0; width: var(--size-md); height: stretch; translate: -50% 0; }
 </style>
