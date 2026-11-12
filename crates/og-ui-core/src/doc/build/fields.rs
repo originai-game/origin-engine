@@ -159,7 +159,9 @@ impl Ui {
             for s in crate::doc::boxes::shadows(text).unwrap_or_default() {
                 let color = match s.color.as_deref() {
                     None => Some(current),
-                    Some([og_core::ogt::Value::String(hex)]) => crate::style_file::parse_color(hex),
+                    Some([og_core::ogt::Value::String(text)]) => crate::css_color::parse_str(text)
+                        .ok()
+                        .map(|c| c.resolve(&crate::css_color::Context::of(theme))),
                     Some([_, og_core::ogt::Value::Word(token)]) => theme.color(token),
                     Some(_) => None,
                 };
