@@ -345,8 +345,9 @@ fn target(
         .get_bytes(e, id)
         .map_err(|_| "motion performance needs og.Skeleton")?;
     let st = eng.state.borrow();
-    let record = st.layouts["og.Skeleton"].decode(&bytes);
-    let h = record["asset"].as_f64().unwrap_or(0.0) as u64;
+    let h = st.layouts["og.Skeleton"]
+        .read::<wire::record::Skeleton>(&bytes)?
+        .asset;
     let sys = st
         .anim
         .as_ref()
@@ -422,27 +423,35 @@ pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> Result<
                     .motion_action(id, bytes.bytes())
                     .map_err(|e| e.to_string())?
             };
-            let loaded = crate::anim::load_animation(&eng, &action.source)?;
-            let source_h = loaded["skeleton"].as_f64().unwrap() as u64;
-            let clip = loaded["clips"]
-                .as_array()
-                .unwrap()
+            let loaded =
+                wire::Animation::from_json(&crate::anim::load_animation(&eng, &action.source)?)?;
+            let source_h = loaded.skeleton;
+            let clip = loaded
+                .clips
                 .iter()
-                .find(|c| c["name"] == action.clip)
+                .find(|c| c.name == action.clip)
                 .ok_or_else(|| format!("{} has no clip '{}'", action.source, action.clip))?;
-            let length = clip["duration"].as_f64().unwrap() as f32;
+            let length = clip.duration;
             if action.hold_end >= length {
                 return Err("motion-action holdEnd must precede the clip's end".into());
             }
             let source_rig = if action.rig.is_empty() {
                 0
             } else {
-                crate::anim::load_rig(&eng, &action.rig)?.as_f64().unwrap() as u64
+                u64::from_json(&crate::anim::load_rig(&eng, &action.rig)?)?
             };
-            let retargeted = crate::anim::retarget(
+            let retargeted = wire::ClipInfo::from_json(&crate::anim::retarget(
                 &eng,
-                &json!({"clip": clip["clip"], "source": source_h as f64, "target": target_h as f64, "sourceRig": source_rig as f64, "targetRig": s.rig as f64}),
-            )?;
+                &wire::RetargetDesc {
+                    clip: clip.clip,
+                    source: source_h,
+                    target: target_h,
+                    source_rig,
+                    target_rig: s.rig,
+                    ..Default::default()
+                }
+                .to_json(),
+            )?)?;
             let mut hand_target = Vec3::from_array(action.hand_target);
             if !action.hand.is_empty() {
                 arm(&target_map, &action.hand)?;
@@ -475,7 +484,7 @@ pub fn og_motion_react(world: u32, entity: f64, desc: Option<String>) -> Result<
                 return Err("reaction duration is too long".into());
             }
             Some(Reaction {
-                clip: retargeted["clip"].as_f64().unwrap() as u64,
+                clip: retargeted.clip,
                 direction: finite(d.direction, "desc.direction")?.to_array(),
                 strength: bounded(d.strength, "strength", 1.0)?,
                 hold_start: action.hold_start,

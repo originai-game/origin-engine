@@ -30,7 +30,7 @@ use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, Mount, engine};
 use super::parse;
 use super::wire::{
-    self, FaceGoalDesc, JumpGoalDesc, MotionBackend, MotionCapabilities, MotionGoalKind,
+    self, FaceGoalDesc, FromJson, JumpGoalDesc, MotionBackend, MotionCapabilities, MotionGoalKind,
     MotionStatus, PlaceGoalDesc, PoseGoalDesc, ToJson, WalkGoalDesc,
 };
 use glam::{Quat, Vec3};
@@ -241,16 +241,16 @@ pub(crate) struct Settings {
 }
 
 impl Settings {
-    pub(crate) fn of(v: &Value) -> Settings {
+    pub(crate) fn of(v: &wire::record::MotionAgent) -> Settings {
         Settings {
-            drive: v["drive"].as_bool().unwrap_or(false),
+            drive: v.drive,
             controller: false,
             gravity: GRAVITY,
             grounded: true,
             vertical: 0.0,
-            turn_speed: v["turnSpeed"].as_f64().unwrap_or(6.0) as f32,
-            lookahead: v["lookahead"].as_f64().unwrap_or(0.6) as f32,
-            rig: v["rig"].as_f64().map_or(0, |x| x as u64),
+            turn_speed: v.turn_speed,
+            lookahead: v.lookahead,
+            rig: v.rig,
         }
     }
 }
@@ -613,19 +613,21 @@ fn system(
         let Some(a) = goals.agents.get_mut(&e.to_bits()) else {
             continue;
         };
-        let mut s = Settings::of(&agent.1.decode(&ctx.get_bytes(e, agent.0)?));
+        let mut s = Settings::of(&agent.1.read(&ctx.get_bytes(e, agent.0)?).map_err(invalid)?);
         let cb = ctx.get_bytes(e, controller.0).ok();
         s.controller = cb.is_some();
         s.gravity = gravity;
         let c0 = cb.as_ref().map(|b| controller.1.decode(b));
         if let Some(c) = &c0 {
-            s.gravity = gravity * c["gravityScale"].as_f64().unwrap_or(1.0) as f32;
-            s.grounded = c["grounded"].as_bool().unwrap_or(false);
-            s.vertical = c["velocity"]["y"].as_f64().unwrap_or(0.0) as f32;
+            let row = wire::record::CharacterController::from_json(c).map_err(invalid)?;
+            s.gravity = gravity * row.gravity_scale;
+            s.grounded = row.grounded;
+            s.vertical = row.velocity.y;
         }
         let tb = ctx.get_bytes(e, transform.0)?;
         let mut t = transform.1.decode(&tb);
-        let (mut position, q) = transform_of(&t);
+        let (mut position, q) =
+            transform_of(&wire::record::Transform::from_json(&t).map_err(invalid)?);
         let mut heading = heading_of(q);
         let (p0, h0) = (position, heading);
         advance(a, &s, &mut position, &mut heading, dt);
@@ -690,20 +692,8 @@ fn system(
 }
 
 /// og.Transform's position and rotation.
-pub(crate) fn transform_of(t: &Value) -> (Vec3, Quat) {
-    let n = |v: &Value, k: &str, d: f64| v[k].as_f64().unwrap_or(d) as f32;
-    let p = &t["position"];
-    let q = &t["quaternion"];
-    (
-        Vec3::new(n(p, "x", 0.0), n(p, "y", 0.0), n(p, "z", 0.0)),
-        Quat::from_xyzw(
-            n(q, "x", 0.0),
-            n(q, "y", 0.0),
-            n(q, "z", 0.0),
-            n(q, "w", 1.0),
-        )
-        .normalize(),
-    )
+pub(crate) fn transform_of(t: &wire::record::Transform) -> (Vec3, Quat) {
+    (t.position, t.quaternion.normalize())
 }
 
 // ── the state block ──────────────────────────────────────────────────────────
@@ -971,7 +961,7 @@ fn agent_of(eng: &Engine, e: Entity) -> Result<Settings, String> {
         .get(AGENT)
         .cloned()
         .ok_or("og.MotionAgent has no layout")?;
-    Ok(Settings::of(&layout.decode(&bytes)))
+    Ok(Settings::of(&layout.read(&bytes)?))
 }
 
 fn pose_named(pose: &str) -> Result<u32, String> {
@@ -1417,7 +1407,10 @@ mod tests {
         assert_eq!(a.speed, 0.0);
         assert_eq!(a.queue[0], walk(f32::INFINITY));
         // As MOTION4 ran it: at full speed in the first tick.
-        let s = Settings::of(&json!({ "drive": true }));
+        let s = Settings::of(&wire::record::MotionAgent {
+            drive: true,
+            ..Default::default()
+        });
         let (mut p, mut h) = (Vec3::ZERO, std::f32::consts::FRAC_PI_2);
         advance(a, &s, &mut p, &mut h, 1.0 / 60.0);
         assert!((p.x - 1.4 / 60.0).abs() < 1e-6, "{}", p.x);

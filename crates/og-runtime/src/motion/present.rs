@@ -68,6 +68,7 @@ use super::{
 use crate::RenderBackend;
 use crate::engine::{Engine, hooks};
 use crate::extract::rows;
+use crate::wire::{FromJson, record};
 use glam::{Mat4, Vec3};
 use og_anim::{HumanoidMap, NONE, Pose as AnimPose, RetargetOptions, SkeletonAsset, Trs};
 use og_core::IdMap;
@@ -1173,17 +1174,17 @@ fn seen(eng: &Engine) -> Vec<Seen> {
         .into_iter()
         .filter_map(|(bits, a)| {
             let e = og_ecs::Entity::from_bits(bits);
-            let t = transform.decode(&world.get_bytes(e, tid).ok()?);
-            let s = skeleton.decode(&world.get_bytes(e, sid).ok()?);
+            let t: record::Transform = transform.read(&world.get_bytes(e, tid).ok()?).ok()?;
+            let s: record::Skeleton = skeleton.read(&world.get_bytes(e, sid).ok()?).ok()?;
             let (position, rotation) = transform_of(&t);
             Some(Seen {
                 entity: bits,
-                settings: Settings::of(&a),
+                settings: Settings::of(&record::MotionAgent::from_json(&a).ok()?),
                 position,
                 rotation,
-                scale: t["scale"]["x"].as_f64().unwrap_or(1.0) as f32,
-                skeleton: s["asset"].as_f64().map_or(0, |x| x as u64),
-                skin: s["skin"].as_u64().unwrap_or(0) as u32,
+                scale: t.scale.x,
+                skeleton: s.asset,
+                skin: s.skin,
             })
         })
         .collect()
@@ -2850,7 +2851,10 @@ mod tests {
     fn initial_face_to_idle_keeps_the_first_generated_window() {
         let a = Seen {
             entity: 1,
-            settings: Settings::of(&json!({"drive":true})),
+            settings: Settings::of(&record::MotionAgent {
+                drive: true,
+                ..Default::default()
+            }),
             position: Vec3::new(2.0, 0.0, -3.0),
             rotation: glam::Quat::IDENTITY,
             scale: 1.0,
@@ -2960,7 +2964,10 @@ mod tests {
         };
         let a = Seen {
             entity: 1,
-            settings: Settings::of(&json!({"drive":true})),
+            settings: Settings::of(&record::MotionAgent {
+                drive: true,
+                ..Default::default()
+            }),
             position: Vec3::ZERO,
             rotation: glam::Quat::IDENTITY,
             scale: 1.0,
@@ -3025,7 +3032,10 @@ mod tests {
         };
         let a = Seen {
             entity: 1,
-            settings: Settings::of(&json!({"drive":true})),
+            settings: Settings::of(&record::MotionAgent {
+                drive: true,
+                ..Default::default()
+            }),
             position: Vec3::ZERO,
             rotation: rotation_of(std::f32::consts::FRAC_PI_2),
             scale: 1.0,
