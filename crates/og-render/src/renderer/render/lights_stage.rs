@@ -73,15 +73,16 @@ impl Renderer {
         // shaders' `contact_shadow` reads.
         let mut contact_rows = [[0.0f32; 4]; 4];
         if contact {
+            let mut ranges = [0.0f32; frame::CONTACT_LIGHTS];
             for (c, ls) in
                 frame::contact_lights(&local_shadows, &scene.lighting.lights, camera.position)
                     .into_iter()
                     .enumerate()
             {
-                let p = cam
-                    .view
-                    .transform_point3(scene.lighting.lights[ls.light].position);
+                let light = &scene.lighting.lights[ls.light];
+                let p = cam.view.transform_point3(light.position);
                 contact_rows[c] = p.extend(1.0).to_array();
+                ranges[c] = light.range;
                 lights_gpu[ls.record].direction_slot[3] += 0.25 * (c + 1) as f32;
             }
             contact_rows[3] = CONTACT_PARAMS;
@@ -89,7 +90,8 @@ impl Renderer {
                 &self.queue,
                 cam,
                 camera.far,
-                &contact_rows,
+                &mut contact_rows,
+                ranges,
                 (self.width, self.height),
             );
         }

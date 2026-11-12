@@ -16,7 +16,7 @@
 use super::fsr::{self, B};
 use crate::deferred::Deferred;
 use crate::frame::{CONTACT_LIGHTS, CameraFrame};
-use glam::Vec4;
+use glam::{Mat4, Vec3, Vec4};
 
 const WGSL: &str = concat!(wgsl!("fxpost_uniform.wgsl"), wgsl!("contact.wgsl"));
 
@@ -92,16 +92,62 @@ pub(crate) fn light_coordinate(
     [x, y, z, if clip.w > 0.0 { 1.0 } else { -1.0 }]
 }
 
+/// The pixels of a screen of `size` a light can reach, `[min, max)`: the
+/// projection (`proj`) of the box around its sphere of `range` at
+/// view-space `centre`, two pixels wider. The whole screen when the box
+/// reaches behind the camera, `None` when it lies off the screen.
+pub(crate) fn light_bounds(
+    proj: Mat4,
+    centre: Vec3,
+    range: f32,
+    size: (u32, u32),
+) -> Option<([i32; 2], [i32; 2])> {
+    let (w, h) = (size.0 as i32, size.1 as i32);
+    let (mut lo, mut hi) = ([f32::MAX; 2], [f32::MIN; 2]);
+    for corner in 0..8 {
+        let sign = Vec3::new(
+            if corner & 1 == 0 { -1.0 } else { 1.0 },
+            if corner & 2 == 0 { -1.0 } else { 1.0 },
+            if corner & 4 == 0 { -1.0 } else { 1.0 },
+        );
+        let clip = proj * (centre + sign * range).extend(1.0);
+        if clip.w <= 1e-4 || !clip.is_finite() {
+            return Some(([0, 0], [w, h]));
+        }
+        let px = [
+            (clip.x / clip.w * 0.5 + 0.5) * w as f32,
+            (clip.y / clip.w * -0.5 + 0.5) * h as f32,
+        ];
+        for a in 0..2 {
+            lo[a] = lo[a].min(px[a]);
+            hi[a] = hi[a].max(px[a]);
+        }
+    }
+    let min = [
+        (lo[0].floor() as i32 - 2).max(0),
+        (lo[1].floor() as i32 - 2).max(0),
+    ];
+    let max = [
+        (hi[0].ceil() as i32 + 2).min(w),
+        (hi[1].ceil() as i32 + 2).min(h),
+    ];
+    (min[0] < max[0] && min[1] < max[1]).then_some((min, max))
+}
+
 /// Bend's `BuildDispatchList` for a light at pixel `light_xy` (its
-/// [`light_coordinate`]) over the whole screen of `size` pixels: the
-/// dispatches whose runs cover every pixel (the runs read and write up to
-/// two runs past the screen, which the shader bounds).
-pub(crate) fn dispatch_list(light_xy: [f32; 2], size: (u32, u32)) -> Vec<Dispatch> {
+/// [`light_coordinate`]) over the pixels `[min, max)` of the screen: the
+/// dispatches whose runs cover every one of them (the runs read and write
+/// up to two runs past the bounds; the shader stops them at the screen).
+pub(crate) fn dispatch_list(light_xy: [f32; 2], min: [i32; 2], max: [i32; 2]) -> Vec<Dispatch> {
     let wave = WAVE_SIZE;
     let light = [(light_xy[0] + 0.5) as i32, (light_xy[1] + 0.5) as i32];
-    let (w, h) = (size.0 as i32, size.1 as i32);
     // The bounds, inclusive, relative to the light.
-    let biased = [-light[0], -(h - light[1]), w - light[0], -(0 - light[1])];
+    let biased = [
+        min[0] - light[0],
+        -(max[1] - light[1]),
+        max[0] - light[0],
+        -(min[1] - light[1]),
+    ];
     let mut list = Vec::with_capacity(MAX_DISPATCHES);
     // The four quadrants around the light, each a rectangle with one
     // corner on it: 0 bottom left, 1 bottom right, 2 top left, 3 top right.
@@ -355,27 +401,41 @@ impl ContactPasses {
     }
 
     /// Records the frame's lights (`rows`: `FxPostUniform::contact`, the
-    /// view-space positions with w 1 drawn) for a screen of `size`
-    /// pixels: their dispatch lists, and the uniforms the dispatches read.
+    /// view-space positions with w 1 drawn; `ranges`: how far each
+    /// reaches) for a screen of `size` pixels: their dispatch lists over
+    /// the pixels they reach, and the uniforms the dispatches read. Each
+    /// drawn row's w becomes the frame's tag, by which the compose tells
+    /// the pixels written this frame.
     pub fn prepare(
         &mut self,
         queue: &wgpu::Queue,
         cam: &CameraFrame,
         far: f32,
-        rows: &[[f32; 4]; 4],
+        rows: &mut [[f32; 4]; 4],
+        ranges: [f32; CONTACT_LIGHTS],
         size: (u32, u32),
     ) {
         self.lights.clear();
         self.size = size;
         self.frame = self.frame % 255 + 1;
         let mut uniforms = Vec::with_capacity(CONTACT_LIGHTS * MAX_DISPATCHES);
-        for (index, row) in rows.iter().take(CONTACT_LIGHTS).enumerate() {
+        for (index, row) in rows.iter_mut().take(CONTACT_LIGHTS).enumerate() {
             if row[3] < 0.5 {
                 continue;
             }
-            let view = Vec4::new(row[0], row[1], row[2], 1.0);
-            let light = light_coordinate(cam.proj * view, row[2], cam.orthographic, far, size);
-            let list = dispatch_list([light[0], light[1]], size);
+            row[3] = self.frame as f32;
+            let centre = Vec3::new(row[0], row[1], row[2]);
+            let light = light_coordinate(
+                cam.proj * centre.extend(1.0),
+                row[2],
+                cam.orthographic,
+                far,
+                size,
+            );
+            let bounds = light_bounds(cam.proj, centre, ranges[index], size);
+            let list = bounds.map_or_else(Vec::new, |(min, max)| {
+                dispatch_list([light[0], light[1]], min, max)
+            });
             uniforms.extend(list.iter().map(|d| DispatchUniform {
                 light,
                 wave_offset: d.wave_offset,
@@ -455,7 +515,8 @@ mod tests {
             ((300, 200), [-1000.0, -1000.0, 0.5, -1.0]),
             ((300, 200), [150.5, 100.5, 0.5, 1.0]),
         ] {
-            let list = dispatch_list([light[0], light[1]], size);
+            let (w, h) = size;
+            let list = dispatch_list([light[0], light[1]], [0, 0], [w, h]);
             assert!(list.len() <= MAX_DISPATCHES);
             let mut written = HashSet::new();
             for d in &list {
@@ -472,8 +533,8 @@ mod tests {
             // The light's own pixel is no run's (the runs end one pixel
             // short of it): the shader writes it apart.
             let own = [light[0].floor() as i32, light[1].floor() as i32];
-            let missed: Vec<_> = (0..size.1 as i32)
-                .flat_map(|y| (0..size.0 as i32).map(move |x| [x, y]))
+            let missed: Vec<_> = (0..size.1)
+                .flat_map(|y| (0..size.0).map(move |x| [x, y]))
                 .filter(|p| *p != own && !written.contains(p))
                 .take(8)
                 .collect();
@@ -483,6 +544,95 @@ mod tests {
                 list.len()
             );
         }
+    }
+
+    /// A light's dispatches over the pixels it reaches cover them all, and
+    /// are fewer workgroups than the whole screen's.
+    #[test]
+    fn dispatch_list_covers_the_bounds() {
+        let whole =
+            |l: &[Dispatch]| -> u32 { l.iter().map(|d| d.workgroups[1] * d.workgroups[2]).sum() };
+        for (light, min, max) in [
+            ([320.3, 180.7, 0.5, 1.0], [250, 110], [391, 252]),
+            ([40.0, 30.0, 0.5, 1.0], [0, 0], [170, 161]),
+            ([-200.0, 100.0, 0.5, 1.0], [0, 37], [93, 163]),
+            ([900.0, 500.0, 0.5, 1.0], [601, 301], [640, 360]),
+            ([320.0, 180.0, 0.5, -1.0], [300, 0], [640, 200]),
+        ] {
+            let list = dispatch_list([light[0], light[1]], min, max);
+            assert!(list.len() <= MAX_DISPATCHES);
+            let mut written = HashSet::new();
+            for d in &list {
+                for gy in 0..d.workgroups[1] {
+                    for gz in 0..d.workgroups[2] {
+                        for gx in 0..d.workgroups[0] {
+                            for tid in 0..WAVE_SIZE as u32 {
+                                written.insert(thread_pixel(light, *d, [gx, gy, gz], tid));
+                            }
+                        }
+                    }
+                }
+            }
+            let own = [light[0].floor() as i32, light[1].floor() as i32];
+            let missed: Vec<_> = (min[1]..max[1])
+                .flat_map(|y| (min[0]..max[0]).map(move |x| [x, y]))
+                .filter(|p| *p != own && !written.contains(p))
+                .take(8)
+                .collect();
+            assert!(
+                missed.is_empty(),
+                "light {light:?} {min:?}..{max:?}: {missed:?}"
+            );
+            let screen = dispatch_list([light[0], light[1]], [0, 0], [640, 360]);
+            assert!(
+                whole(&list) < whole(&screen),
+                "light {light:?} {min:?}..{max:?}"
+            );
+        }
+    }
+
+    /// Every point a light reaches projects inside its bounds; a light
+    /// around the camera takes the whole screen, one off it none.
+    #[test]
+    fn light_bounds_hold_the_lights_reach() {
+        let size = (640, 360);
+        let proj = glam::camera::rh::proj::directx::perspective(1.0, 16.0 / 9.0, 0.1, 200.0);
+        for (centre, range) in [
+            (Vec3::new(0.0, 0.0, -10.0), 2.0),
+            (Vec3::new(4.0, -1.5, -8.0), 3.0),
+            (Vec3::new(-9.0, 3.0, -12.0), 1.0),
+            (Vec3::new(1.0, 0.5, -6.0), 1.5),
+        ] {
+            let (min, max) = light_bounds(proj, centre, range, size).expect("on the screen");
+            assert!(
+                max[0] - min[0] < 640 || max[1] - min[1] < 360,
+                "{centre} {range}"
+            );
+            for i in 0..4096u32 {
+                // Points over the sphere (a Fibonacci spiral).
+                let y = 1.0 - 2.0 * (i as f32 + 0.5) / 4096.0;
+                let r = (1.0 - y * y).sqrt();
+                let a = i as f32 * 2.399_963_1;
+                let p = centre + Vec3::new(r * a.cos(), y, r * a.sin()) * range;
+                let clip = proj * p.extend(1.0);
+                let x = (clip.x / clip.w * 0.5 + 0.5) * 640.0;
+                let yy = (clip.y / clip.w * -0.5 + 0.5) * 360.0;
+                let on = (0.0..640.0).contains(&x) && (0.0..360.0).contains(&yy);
+                let inside = x >= min[0] as f32
+                    && x < max[0] as f32
+                    && yy >= min[1] as f32
+                    && yy < max[1] as f32;
+                assert!(!on || inside, "{centre} {range}: {p} at {x} {yy}");
+            }
+        }
+        assert_eq!(
+            light_bounds(proj, Vec3::new(0.0, 0.0, -1.0), 5.0, size),
+            Some(([0, 0], [640, 360]))
+        );
+        assert_eq!(
+            light_bounds(proj, Vec3::new(-60.0, 0.0, -10.0), 2.0, size),
+            None
+        );
     }
 
     /// A light's pixel and depth as the pass reads them: in front of the

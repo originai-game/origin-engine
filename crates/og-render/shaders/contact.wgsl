@@ -248,7 +248,11 @@ fn cs_contact_compose(@builtin(global_invocation_id) id: vec3<u32>) {
   let screen = size.x * size.y;
   let at = id.y * size.x + id.x;
   for (var i = 0u; i < 3u; i++) {
-    if (fxp.contact[i].w > 0.5) { lit[i] = f32(mask_keys[i * screen + at] & 255u) / 255.0; }
+    // A pixel no run wrote this frame lies past the light's reach
+    // (contact.rs `light_bounds`): lit.
+    let key = mask_keys[i * screen + at];
+    let tag = u32(fxp.contact[i].w);
+    if (tag != 0u && key >> 24u == tag) { lit[i] = f32(key & 255u) / 255.0; }
   }
   textureStore(composed, px, vec4<f32>(ao, lit));
 }
