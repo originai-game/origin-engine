@@ -197,7 +197,7 @@ impl MaterialShader {
 }
 
 /// Whether `code` defines function `name`.
-pub(crate) fn defines(code: &str, name: &str) -> bool {
+pub fn defines(code: &str, name: &str) -> bool {
     code.match_indices(name).any(|(i, _)| {
         let before = code[..i].trim_end();
         let after = code[i + name.len()..].trim_start();
@@ -249,7 +249,7 @@ const DEFAULT_HOOKS: [&str; 4] = [
 /// Placed after material.wgsl (it reads `material.custom`, and the previous
 /// parameters only in the frame `material.stamp` names: `params_moved`,
 /// frame.wgsl, false in the casters' shadow_pass.wgsl; engine s100).
-pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
+pub fn hooks_section(params: &[ShaderParam], code: &str) -> String {
     let mut s = hook_functions_from(
         params,
         code,
@@ -268,7 +268,7 @@ pub(crate) fn hooks_section(params: &[ShaderParam], code: &str) -> String {
 /// `custom` and draws no motion (the sprite module, `sprite_hooks.rs`):
 /// [`hooks_section`]'s without `moved_clip`, its previous parameters the
 /// current ones.
-pub(crate) fn hook_functions(params: &[ShaderParam], code: &str) -> String {
+pub fn hook_functions(params: &[ShaderParam], code: &str) -> String {
     hook_functions_from(params, code, "material.custom", None)
 }
 
@@ -280,7 +280,7 @@ pub(crate) fn hook_functions(params: &[ShaderParam], code: &str) -> String {
 /// (without `previous`, always: a draw without motion), the snippet and
 /// the built-in hooks it leaves out. An effect draw reads its entry's
 /// parameters (`effect.rs`).
-pub(crate) fn hook_functions_from(
+pub fn hook_functions_from(
     params: &[ShaderParam],
     code: &str,
     current: &str,
@@ -344,7 +344,7 @@ const MOVED_CLIP_OFFSET: &str =
     "fn moved_clip(m: mat4x4<f32>, p: vec4<f32>) -> vec4<f32> { return m * p; }\n";
 
 /// The built-in hooks (identities).
-pub(crate) fn default_hooks() -> String {
+pub fn default_hooks() -> String {
     hooks_section(&[], "")
 }
 

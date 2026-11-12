@@ -70,6 +70,7 @@
 
 use crate::scene::{MaterialHandle, MeshHandle};
 use glam::{Mat4, Vec3};
+pub use og_render_data::skin::*;
 
 /// Per-vertex skin of a mesh: four joint indices into the palette and their
 /// weights (normalized by the shader; all-zero weights leave the vertex in
@@ -465,12 +466,6 @@ pub(crate) const SKINNED_INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'static> =
         step_mode: wgpu::VertexStepMode::Instance,
         attributes: &wgpu::vertex_attr_array![4 => Float32x3, 5 => Float32x3, 6 => Float32x3, 7 => Float32x3, 8 => Float32x4, 11 => Float32x4, 12 => Float32x4, 13 => Float32x4],
     };
-
-/// The WGSL that defines `joint_matrix` and `morph_delta` (the palette and
-/// the morph deltas as read-only storage buffers), in bind group `group`.
-pub(crate) fn palette_wgsl(group: u32) -> String {
-    wgsl!("skin_storage.wgsl").replace("SKIN_GROUP", &group.to_string())
-}
 
 /// The palette group's layout: the joint palette (binding 0) and the morph
 /// deltas (binding 1) and immutable bakes (binding 2), read by the vertex shader.

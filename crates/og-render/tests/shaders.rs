@@ -119,7 +119,7 @@ fn every_module_validates_and_translates_to_msl_spirv_and_hlsl() {
 #[test]
 fn the_compiled_wgsl_is_the_source_without_its_comments() {
     let source = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("shaders");
-    let built = std::path::Path::new(env!("OUT_DIR")).join("shaders");
+    let built = std::path::Path::new(env!("OG_RENDER_SHADERS"));
     let mut files = 0;
     let mut removed = 0;
     for entry in std::fs::read_dir(&source).expect("shaders/") {

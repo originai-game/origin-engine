@@ -28,17 +28,7 @@
 
 use crate::scene::{Camera, Projection};
 use glam::Vec3;
-
-/// The most a drawn level's error may cover on the screen, in pixels of
-/// the render target's height, at bias 1.
-pub const LOD_PIXEL_ERROR: f32 = 1.0;
-
-/// How far past its threshold (a fraction of it) the projected error must
-/// go before the level changes.
-pub const LOD_HYSTERESIS: f32 = 0.15;
-
-/// The most levels a chain keeps (the cook writes at most eight).
-pub const MAX_LOD_LEVELS: usize = 8;
+pub use og_render_data::lod::*;
 
 /// How many pixels of a view `view_height` pixels tall one unit of length
 /// covers at the near side of the sphere `radius` about `center` (the
@@ -163,5 +153,29 @@ mod tests {
         assert!(
             (pixels_per_unit(&ortho, Vec3::new(5.0, 0.0, -100.0), 2.0, 720.0) - 36.0).abs() < 1e-6
         );
+    }
+
+    #[test]
+    fn per_cluster_selection_draws_the_level_lod_select_picks() {
+        // A chain like lod.rs's tree: each level's clusters carry its error
+        // and the next level's.
+        let chain = [0.0, 0.03, 0.12, 0.5];
+        let parent = |k: usize| chain.get(k + 1).copied().unwrap_or(f32::MAX);
+        for per_unit in [0.5, 1.9, 2.1, 3.9, 8.0, 19.0, 33.0, 34.0, 77.0, 1e4] {
+            for bias in [0.5, 1.0, 2.0] {
+                let drawn: Vec<usize> = (0..chain.len())
+                    .filter(|&k| crate::meshlet::selected(chain[k], parent(k), per_unit, bias))
+                    .collect();
+                let picked = crate::lod::select(&chain, per_unit, bias, None);
+                assert_eq!(drawn, vec![picked], "{per_unit} px/unit, bias {bias}");
+            }
+        }
+        // Bias 0 or the eye inside the sphere: the full mesh alone.
+        for (per_unit, bias) in [(19.0, 0.0), (f32::INFINITY, 1.0)] {
+            let drawn: Vec<usize> = (0..chain.len())
+                .filter(|&k| crate::meshlet::selected(chain[k], parent(k), per_unit, bias))
+                .collect();
+            assert_eq!(drawn, vec![0]);
+        }
     }
 }

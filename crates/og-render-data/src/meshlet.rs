@@ -631,30 +631,6 @@ mod tests {
     }
 
     #[test]
-    fn per_cluster_selection_draws_the_level_lod_select_picks() {
-        // A chain like lod.rs's tree: each level's clusters carry its error
-        // and the next level's.
-        let chain = [0.0, 0.03, 0.12, 0.5];
-        let parent = |k: usize| chain.get(k + 1).copied().unwrap_or(f32::MAX);
-        for per_unit in [0.5, 1.9, 2.1, 3.9, 8.0, 19.0, 33.0, 34.0, 77.0, 1e4] {
-            for bias in [0.5, 1.0, 2.0] {
-                let drawn: Vec<usize> = (0..chain.len())
-                    .filter(|&k| selected(chain[k], parent(k), per_unit, bias))
-                    .collect();
-                let picked = crate::lod::select(&chain, per_unit, bias, None);
-                assert_eq!(drawn, vec![picked], "{per_unit} px/unit, bias {bias}");
-            }
-        }
-        // Bias 0 or the eye inside the sphere: the full mesh alone.
-        for (per_unit, bias) in [(19.0, 0.0), (f32::INFINITY, 1.0)] {
-            let drawn: Vec<usize> = (0..chain.len())
-                .filter(|&k| selected(chain[k], parent(k), per_unit, bias))
-                .collect();
-            assert_eq!(drawn, vec![0]);
-        }
-    }
-
-    #[test]
     fn spheres_outside_a_plane_by_more_than_their_radius_are_culled() {
         // x >= 0, with an unnormalised normal (length 2).
         let planes = [Vec4::new(2.0, 0.0, 0.0, 0.0)];
@@ -978,32 +954,5 @@ mod tests {
         );
         let perspective = uv[0] * b.x + uv[1] * b.y + uv[2] * b.z;
         assert!((perspective - affine).length() > 0.05);
-    }
-
-    /// Retro 3D snaps a vertex to the nearest multiple of the snap size in
-    /// pixels and floors its depth to the bits' steps.
-    #[test]
-    fn retro_vertices_snap_to_the_pixel_grid_and_depth_steps() {
-        let stylise = crate::Retro3d::uniform(
-            Some(crate::Retro3d {
-                vertex_snap: 4.0,
-                affine: 0.0,
-                depth_bits: 8,
-            }),
-            640,
-            480,
-        );
-        let w = 3.0;
-        // Pixel x (0.1234 / 2 + 0.5) 640 = 359.49 snaps to 360, ndc 0.125;
-        // pixel y from the top (0.5 + 0.2 / 2) 480 = 288 stays on the grid.
-        let c = retro_clip(Vec4::new(0.1234 * w, -0.2 * w, 0.5004 * w, w), stylise);
-        assert!((c.x / w - 0.125).abs() < 1e-6, "{c:?}");
-        assert!((c.y / w + 0.2).abs() < 1e-6, "{c:?}");
-        // 0.5004 x 256 = 128.1: step 128, depth 0.5.
-        assert!((c.z / w - 0.5).abs() < 1e-6, "{c:?}");
-        assert_eq!(c.w, w);
-        // Without retro 3D, the identity.
-        let p = Vec4::new(0.3, 0.2, 0.1, 2.0);
-        assert_eq!(retro_clip(p, crate::Retro3d::uniform(None, 640, 480)), p);
     }
 }

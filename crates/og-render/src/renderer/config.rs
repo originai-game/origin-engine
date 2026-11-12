@@ -337,9 +337,7 @@ pub struct RenderDesc {
     pub tier: Tier,
 }
 
-/// The most planar reflections one frame draws
-/// ([`RenderDesc::planar_reflections`]).
-pub const MAX_PLANAR_REFLECTIONS: u32 = 2;
+pub use og_render_data::MAX_PLANAR_REFLECTIONS;
 
 /// Where instances are culled ([`RenderDesc::culling`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]

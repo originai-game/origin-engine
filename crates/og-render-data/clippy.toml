@@ -1,0 +1,4 @@
+# Not a simulation crate: the renderer's data and shader text, drawn and
+# cooked, never read by the tick. The root clippy.toml's ban on host libm
+# does not apply here (as in og-render, where this code was).
+disallowed-methods = []

@@ -1071,4 +1071,37 @@ mod tests {
         assert!(s.material.is_active());
         assert!(s.is_active());
     }
+
+    /// Retro 3D snaps a vertex to the nearest multiple of the snap size in
+    /// pixels and floors its depth to the bits' steps.
+    #[test]
+    fn retro_vertices_snap_to_the_pixel_grid_and_depth_steps() {
+        let stylise = crate::Retro3d::uniform(
+            Some(crate::Retro3d {
+                vertex_snap: 4.0,
+                affine: 0.0,
+                depth_bits: 8,
+            }),
+            640,
+            480,
+        );
+        let w = 3.0;
+        // Pixel x (0.1234 / 2 + 0.5) 640 = 359.49 snaps to 360, ndc 0.125;
+        // pixel y from the top (0.5 + 0.2 / 2) 480 = 288 stays on the grid.
+        let c = crate::meshlet::retro_clip(
+            glam::Vec4::new(0.1234 * w, -0.2 * w, 0.5004 * w, w),
+            stylise,
+        );
+        assert!((c.x / w - 0.125).abs() < 1e-6, "{c:?}");
+        assert!((c.y / w + 0.2).abs() < 1e-6, "{c:?}");
+        // 0.5004 x 256 = 128.1: step 128, depth 0.5.
+        assert!((c.z / w - 0.5).abs() < 1e-6, "{c:?}");
+        assert_eq!(c.w, w);
+        // Without retro 3D, the identity.
+        let p = glam::Vec4::new(0.3, 0.2, 0.1, 2.0);
+        assert_eq!(
+            crate::meshlet::retro_clip(p, crate::Retro3d::uniform(None, 640, 480)),
+            p
+        );
+    }
 }

@@ -17,11 +17,11 @@ use crate::HDR_FORMAT;
 use crate::atmosphere::SkyLook;
 use crate::deferred::Deferred;
 use glam::Vec3;
+pub use og_render_data::ibl::*;
 
 pub const SKY_SIZE: u32 = 256;
 const IRRADIANCE_SIZE: u32 = 32;
 pub const PREFILTER_SIZE: u32 = 128;
-pub const PREFILTER_MIPS: u32 = 5;
 const LUT_SIZE: u32 = 256;
 /// Uniform slots: one per pass, a multiple of the 256-byte dynamic offset
 /// alignment that holds [`Params`].
@@ -1046,6 +1046,3 @@ impl IblGenerator {
 
 /// The IBL generator's module (`crate::shaders` validates it).
 pub(crate) const IBL_WGSL: &str = wgsl!("ibl.wgsl");
-/// The sheen lobe (Estevez and Kulla's Charlie), shared with the physical
-/// lit shader: the table's blue channel is its directional albedo.
-pub(crate) const SHEEN_WGSL: &str = wgsl!("sheen.wgsl");
