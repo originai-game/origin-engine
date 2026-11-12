@@ -43,3 +43,6 @@ pub use crate::layers::LayersUi;
 pub(crate) use crate::layers::LayersUi2;
 pub use crate::probe::ProbeUi;
 pub use crate::style_pack::StylePackUi;
+
+#[cfg(test)]
+mod core_tests;
