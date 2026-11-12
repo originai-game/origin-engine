@@ -726,6 +726,168 @@ pub const STATE: State = State {
     touch_target: 44.0,
 };
 
+/// The built-in controls' own sizes, ratios and motion (the tokens'
+/// `controls`; CSS `--<control>-<property>`, docs/ui.md §3.1).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Controls {
+    /// `--action-size`, og-ui units.
+    pub action_size: f32,
+    /// `--checkbox-mark-ratio`, a ratio or number.
+    pub checkbox_mark_ratio: f32,
+    /// `--checkbox-pop-bounce`, a ratio or number.
+    pub checkbox_pop_bounce: f32,
+    /// `--checkbox-pop-duration`, ms.
+    pub checkbox_pop_duration: f32,
+    /// `--checkbox-radius-ratio`, a ratio or number.
+    pub checkbox_radius_ratio: f32,
+    /// `--checkbox-size`, og-ui units.
+    pub checkbox_size: f32,
+    /// `--checkbox-unmark-duration`, ms.
+    pub checkbox_unmark_duration: f32,
+    /// `--details-icon`, og-ui units.
+    pub details_icon: f32,
+    /// `--dpad-size`, og-ui units.
+    pub dpad_size: f32,
+    /// `--dropdown-option-row`, og-ui units.
+    pub dropdown_option_row: f32,
+    /// `--dropdown-row`, og-ui units.
+    pub dropdown_row: f32,
+    /// `--dropdown-width`, og-ui units.
+    pub dropdown_width: f32,
+    /// `--joystick-size`, og-ui units.
+    pub joystick_size: f32,
+    /// `--keyboard-candidate-height`, og-ui units.
+    pub keyboard_candidate_height: f32,
+    /// `--keyboard-key-height`, og-ui units.
+    pub keyboard_key_height: f32,
+    /// `--keyboard-key-min-height`, og-ui units.
+    pub keyboard_key_min_height: f32,
+    /// `--menu-open-duration`, ms.
+    pub menu_open_duration: f32,
+    /// `--modal-width`, og-ui units.
+    pub modal_width: f32,
+    /// `--radio-dot-ratio`, a ratio or number.
+    pub radio_dot_ratio: f32,
+    /// `--radio-pop-bounce`, a ratio or number.
+    pub radio_pop_bounce: f32,
+    /// `--radio-pop-duration`, ms.
+    pub radio_pop_duration: f32,
+    /// `--radio-size`, og-ui units.
+    pub radio_size: f32,
+    /// `--segmented-pad-ratio`, a ratio or number.
+    pub segmented_pad_ratio: f32,
+    /// `--slider-bubble-exit-duration`, ms.
+    pub slider_bubble_exit_duration: f32,
+    /// `--slider-bubble-height`, og-ui units.
+    pub slider_bubble_height: f32,
+    /// `--slider-knob`, og-ui units.
+    pub slider_knob: f32,
+    /// `--slider-knob-touch`, og-ui units.
+    pub slider_knob_touch: f32,
+    /// `--slider-rail`, og-ui units.
+    pub slider_rail: f32,
+    /// `--slider-rail-touch`, og-ui units.
+    pub slider_rail_touch: f32,
+    /// `--slider-tick-width`, og-ui units.
+    pub slider_tick_width: f32,
+    /// `--state-press-duration`, ms.
+    pub state_press_duration: f32,
+    /// `--switch-height-lg`, og-ui units.
+    pub switch_height_lg: f32,
+    /// `--switch-height-md`, og-ui units.
+    pub switch_height_md: f32,
+    /// `--switch-height-sm`, og-ui units.
+    pub switch_height_sm: f32,
+    /// `--switch-inset-ratio`, a ratio or number.
+    pub switch_inset_ratio: f32,
+    /// `--switch-width-ratio`, a ratio or number.
+    pub switch_width_ratio: f32,
+}
+
+impl Controls {
+    /// Every field by its CSS name (without `--`) and unit (`px`, `ms` or
+    /// none), as the root tokens read and write them.
+    pub fn fields_mut(&mut self) -> [(&'static str, &'static str, &mut f32); 36] {
+        [
+            ("action-size", "px", &mut self.action_size),
+            ("checkbox-mark-ratio", "", &mut self.checkbox_mark_ratio),
+            ("checkbox-pop-bounce", "", &mut self.checkbox_pop_bounce),
+            ("checkbox-pop-duration", "ms", &mut self.checkbox_pop_duration),
+            ("checkbox-radius-ratio", "", &mut self.checkbox_radius_ratio),
+            ("checkbox-size", "px", &mut self.checkbox_size),
+            ("checkbox-unmark-duration", "ms", &mut self.checkbox_unmark_duration),
+            ("details-icon", "px", &mut self.details_icon),
+            ("dpad-size", "px", &mut self.dpad_size),
+            ("dropdown-option-row", "px", &mut self.dropdown_option_row),
+            ("dropdown-row", "px", &mut self.dropdown_row),
+            ("dropdown-width", "px", &mut self.dropdown_width),
+            ("joystick-size", "px", &mut self.joystick_size),
+            ("keyboard-candidate-height", "px", &mut self.keyboard_candidate_height),
+            ("keyboard-key-height", "px", &mut self.keyboard_key_height),
+            ("keyboard-key-min-height", "px", &mut self.keyboard_key_min_height),
+            ("menu-open-duration", "ms", &mut self.menu_open_duration),
+            ("modal-width", "px", &mut self.modal_width),
+            ("radio-dot-ratio", "", &mut self.radio_dot_ratio),
+            ("radio-pop-bounce", "", &mut self.radio_pop_bounce),
+            ("radio-pop-duration", "ms", &mut self.radio_pop_duration),
+            ("radio-size", "px", &mut self.radio_size),
+            ("segmented-pad-ratio", "", &mut self.segmented_pad_ratio),
+            ("slider-bubble-exit-duration", "ms", &mut self.slider_bubble_exit_duration),
+            ("slider-bubble-height", "px", &mut self.slider_bubble_height),
+            ("slider-knob", "px", &mut self.slider_knob),
+            ("slider-knob-touch", "px", &mut self.slider_knob_touch),
+            ("slider-rail", "px", &mut self.slider_rail),
+            ("slider-rail-touch", "px", &mut self.slider_rail_touch),
+            ("slider-tick-width", "px", &mut self.slider_tick_width),
+            ("state-press-duration", "ms", &mut self.state_press_duration),
+            ("switch-height-lg", "px", &mut self.switch_height_lg),
+            ("switch-height-md", "px", &mut self.switch_height_md),
+            ("switch-height-sm", "px", &mut self.switch_height_sm),
+            ("switch-inset-ratio", "", &mut self.switch_inset_ratio),
+            ("switch-width-ratio", "", &mut self.switch_width_ratio),
+        ]
+    }
+}
+
+pub const CONTROLS: Controls = Controls {
+    action_size: 64.0,
+    checkbox_mark_ratio: 0.78,
+    checkbox_pop_bounce: 0.45,
+    checkbox_pop_duration: 260.0,
+    checkbox_radius_ratio: 0.24,
+    checkbox_size: 22.0,
+    checkbox_unmark_duration: 90.0,
+    details_icon: 16.0,
+    dpad_size: 132.0,
+    dropdown_option_row: 40.0,
+    dropdown_row: 36.0,
+    dropdown_width: 240.0,
+    joystick_size: 128.0,
+    keyboard_candidate_height: 36.0,
+    keyboard_key_height: 40.0,
+    keyboard_key_min_height: 32.0,
+    menu_open_duration: 140.0,
+    modal_width: 420.0,
+    radio_dot_ratio: 0.46,
+    radio_pop_bounce: 0.4,
+    radio_pop_duration: 240.0,
+    radio_size: 20.0,
+    segmented_pad_ratio: 0.08,
+    slider_bubble_exit_duration: 90.0,
+    slider_bubble_height: 26.0,
+    slider_knob: 20.0,
+    slider_knob_touch: 26.0,
+    slider_rail: 4.0,
+    slider_rail_touch: 6.0,
+    slider_tick_width: 2.0,
+    state_press_duration: 60.0,
+    switch_height_lg: 32.0,
+    switch_height_md: 28.0,
+    switch_height_sm: 22.0,
+    switch_inset_ratio: 0.11,
+    switch_width_ratio: 1.72,
+};
+
 /// The `ui` transition's spring: perceptual duration (ms) and bounce.
 pub const MOTION_UI: [f32; 2] = [300.0, 0.0];
 /// The `panel` transition's spring: perceptual duration (ms) and bounce.

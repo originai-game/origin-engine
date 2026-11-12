@@ -170,8 +170,8 @@ impl Unit {
 
 /// Every number the theme reads from the root CSS tokens, by its variable
 /// name without `--`: the lengths, the motion durations, the press scales
-/// and control states, each input's densities and the named transitions'
-/// springs.
+/// and control states, each input's densities, the named transitions'
+/// springs and the controls' own values.
 fn scalars(theme: &mut Theme, mut visit: impl FnMut(&str, Unit, &mut f32)) {
     lengths(theme, |name, value| visit(name, Unit::Px, value));
     let d = &mut theme.durations_ms;
@@ -230,6 +230,14 @@ fn scalars(theme: &mut Theme, mut visit: impl FnMut(&str, Unit, &mut f32)) {
     }
     visit("motion-named-enter-duration", Unit::Ms, &mut m.enter_ms);
     visit("motion-named-exit-duration", Unit::Ms, &mut m.exit_ms);
+    for (name, unit, value) in theme.controls.fields_mut() {
+        let unit = match unit {
+            "px" => Unit::Px,
+            "ms" => Unit::Ms,
+            _ => Unit::Number,
+        };
+        visit(name, unit, value);
+    }
 }
 
 /// A density's sizes by their CSS names.

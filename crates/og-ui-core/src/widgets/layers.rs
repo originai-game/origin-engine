@@ -254,9 +254,13 @@ impl Ui {
             }
         }
         let vw = self.env.viewport.width - self.env.viewport.safe_area.horizontal();
-        let width = desc
-            .width
-            .unwrap_or(Size::Fixed(420.0f32.min(vw - 2.0 * self.sizes().gutter)));
+        let width = desc.width.unwrap_or(Size::Fixed(
+            self.env
+                .theme
+                .controls
+                .modal_width
+                .min(vw - 2.0 * self.sizes().gutter),
+        ));
         let panel = self.push(
             "panel",
             Id::from("Panel"),

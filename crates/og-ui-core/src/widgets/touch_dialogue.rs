@@ -248,7 +248,12 @@ impl Ui {
     /// does not take it. Disabled, it answers nothing and shows faded.
     pub fn joystick(&mut self, id: impl Into<Id>, desc: JoystickDesc) -> JoystickResponse {
         let p = self.env.theme.palette;
-        let size = if desc.size > 0.0 { desc.size } else { 128.0 }.max(3.0 * self.min_target());
+        let size = if desc.size > 0.0 {
+            desc.size
+        } else {
+            self.env.theme.controls.joystick_size
+        }
+        .max(3.0 * self.min_target());
         let i = self.leaf(
             "joystick",
             id.into(),
@@ -417,7 +422,12 @@ impl Ui {
     /// joystick does; disabled, it answers nothing and shows faded.
     pub fn dpad(&mut self, id: impl Into<Id>, desc: DpadDesc) -> DpadResponse {
         let p = self.env.theme.palette;
-        let arm = (if desc.size > 0.0 { desc.size } else { 132.0 } / 3.0).max(self.min_target());
+        let arm = (if desc.size > 0.0 {
+            desc.size
+        } else {
+            self.env.theme.controls.dpad_size
+        } / 3.0)
+            .max(self.min_target());
         // Nine cells in a wrapping row three wide: the arms are the pad's
         // children. The probe names the row `dpad` (a touch control).
         let pad = self.push(
@@ -542,7 +552,12 @@ impl Ui {
     ) -> Response {
         let t = self.env.theme;
         let p = t.palette;
-        let size = if desc.size > 0.0 { desc.size } else { 64.0 }.max(self.min_target());
+        let size = if desc.size > 0.0 {
+            desc.size
+        } else {
+            t.controls.action_size
+        }
+        .max(self.min_target());
         // An icon the atlas has draws in place of the label; else the label.
         let s = size * 0.45;
         let has_icon = !desc.icon.is_empty() && self.has_icon(&desc.icon);

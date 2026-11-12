@@ -4,7 +4,7 @@
 
 use crate::theme as tokens;
 pub use crate::theme::{
-    Density, Durations, Palette, Radius, Space, Spring, Srgba, State, TypeRamp, TypeStep,
+    Controls, Density, Durations, Palette, Radius, Space, Spring, Srgba, State, TypeRamp, TypeStep,
 };
 
 /// The control sizes of each input (CSS `--density-compact-*`,
@@ -250,6 +250,9 @@ pub struct Theme {
     /// points (CSS `--motion-easing-out`, `--motion-easing-exit`).
     pub ease_out: [f32; 4],
     pub ease_exit: [f32; 4],
+    /// The built-in controls' own sizes, ratios and motion (CSS
+    /// `--<control>-<property>`, docs/ui.md §3.1).
+    pub controls: Controls,
     /// Standard or high contrast.
     pub contrast: Contrast,
     /// Controls draw a `lineStrong` edge (high contrast).
@@ -358,6 +361,7 @@ impl Theme {
             },
             ease_out: tokens::EASE_OUT,
             ease_exit: tokens::EASE_EXIT,
+            controls: tokens::CONTROLS,
             contrast: Contrast::Standard,
             outline: false,
             reduced_motion: false,

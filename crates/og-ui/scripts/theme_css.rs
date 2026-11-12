@@ -28,7 +28,7 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     (
         "Button::base.ghost",
         "button.ghost::part(base)",
-        "border: var(--stroke-hairline) solid var(--line-strong);",
+        "border: var(--button-border-width) solid var(--line-strong);",
     ),
     (
         "Field::frame",
@@ -261,6 +261,18 @@ pub fn generate(text: &str) -> Result<String, String> {
     for group in ["size", "stroke", "state"] {
         variables(&mut out, group, &t[group]);
     }
+    // The controls' own tokens are `--<control>-<property>`, no group prefix.
+    for (name, value) in super::get(&t, &["controls"])?
+        .as_object()
+        .ok_or("tokens.json: controls is not an object")?
+        .iter()
+        .filter(|(name, _)| !name.starts_with('_'))
+    {
+        match value {
+            Value::String(s) => writeln!(out, "    --{name}: {s};").unwrap(),
+            v => writeln!(out, "    --{name}: {v};").unwrap(),
+        }
+    }
     for (name, value) in super::get(&t, &["derived", "alias"])?
         .as_object()
         .ok_or("tokens.json: derived.alias is not an object")?
@@ -462,8 +474,8 @@ const FALLBACKS: &str = r#"
   button.primary::part(base):hover { background: var(--primary-hover); }
   button.primary::part(base):active { background: var(--primary-active); }
   button.quiet::part(base), button.ghost::part(base) { background: transparent; }
-  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - var(--stroke-hairline)); }
-  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - var(--stroke-hairline)); }
+  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
+  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - var(--button-border-width)); }
   button.ghost.square::part(base) { padding-inline: 0; }
   button.quiet::part(base):hover, button.quiet::part(base):active,
   button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
@@ -496,16 +508,16 @@ const FALLBACKS: &str = r#"
   panel::part(frame), tooltip::part(frame), dialog::part(panel),
   select::part(list), input[type=range]::part(bubble) {
     box-sizing: border-box;
-    border: var(--stroke-hairline) solid var(--line);
-    border-radius: var(--radius-panel);
+    border: var(--panel-border-width) solid var(--line);
+    border-radius: var(--panel-radius);
   }
   select::part(list), input[type=range]::part(bubble) {
-    box-shadow: var(--elevation-floating);
+    box-shadow: var(--dropdown-list-shadow);
   }
   /* Hud */
   hud::part(frame), minimap::part(frame) {
     border: var(--stroke-hairline) solid var(--line-70);
-    border-radius: var(--radius-button);
+    border-radius: var(--hud-radius);
   }
   joystick::part(base):disabled, dpad::part(base):disabled,
   actionbutton::part(face):disabled {
@@ -517,13 +529,13 @@ const FALLBACKS: &str = r#"
   stepper::part(button), details::part(summary),
   keyboard::part(key), keyboard::part(candidate) {
     box-sizing: border-box;
-    border: var(--stroke-hairline) solid var(--line);
-    border-radius: var(--radius-button);
-    box-shadow: var(--shadow-sheen);
+    border: var(--button-border-width) solid var(--line);
+    border-radius: var(--button-radius);
+    box-shadow: var(--button-shadow);
   }
   stepper::part(button):active, details::part(summary):active,
   keyboard::part(key):active, keyboard::part(candidate):active {
-    box-shadow: var(--shadow-pressed);
+    box-shadow: var(--button-pressed-shadow);
   }
   stepper::part(button):disabled, details::part(summary):disabled,
   keyboard::part(key):disabled, keyboard::part(candidate):disabled {
@@ -534,11 +546,11 @@ const FALLBACKS: &str = r#"
   stepper::part(frame), stepper::part(value), input[type=checkbox]::part(box),
   input[type=radio]::part(ring) {
     box-sizing: border-box;
-    border: var(--stroke-thin) solid var(--line);
-    border-radius: var(--radius-button);
-    box-shadow: var(--shadow-well);
+    border: var(--field-border-width) solid var(--line);
+    border-radius: var(--field-radius);
+    box-shadow: var(--field-shadow);
   }
-  select::part(trigger) { padding-inline: calc(var(--space-md) - var(--stroke-thin)); }
+  select::part(trigger) { padding-inline: calc(var(--space-md) - var(--field-border-width)); }
   input[type=checkbox]::part(box), input[type=radio]::part(ring) {
     border: var(--stroke-hairline) solid var(--well-rim);
   }
@@ -550,25 +562,25 @@ const FALLBACKS: &str = r#"
   input[type=checkbox][aria-invalid=true]::part(box),
   select[aria-invalid=true]::part(trigger),
   stepper[aria-invalid=true]::part(frame), stepper[aria-invalid=true]::part(value) {
-    border: var(--stroke-thin) solid var(--danger);
+    border: var(--field-border-width) solid var(--danger);
   }
   /* Slot / Avatar / Chip / Badge / Tab / Bar */
   slot::part(frame) {
     border: var(--stroke-hairline) solid var(--line);
-    border-radius: var(--radius-control);
-    box-shadow: var(--shadow-well);
+    border-radius: var(--slot-radius);
+    box-shadow: var(--slot-shadow);
   }
   chip::part(base), input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
   input[type=checkbox][switch]::part(knob) {
-    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-button);
+    border: var(--stroke-hairline) solid var(--line); border-radius: var(--chip-radius);
   }
   chip[aria-selected=true]::part(base) { border: none; }
   badge::part(base), tabs::part(tab), tabs::part(track), tabs::part(indicator) {
-    border: none; border-radius: var(--radius-button);
+    border: none; border-radius: var(--tabs-radius);
   }
   input[type=radio]::part(card) {
-    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-panel);
-    box-shadow: var(--elevation-raised);
+    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radio-card-radius);
+    box-shadow: var(--radio-card-shadow);
   }
   input[type=radio]::part(card):active, input[type=radio]::part(card):disabled { box-shadow: none; }
   input[type=radio]::part(ring), input[type=radio]::part(dot),
@@ -578,10 +590,10 @@ const FALLBACKS: &str = r#"
   }
   meter::part(track), meter::part(fill), progress::part(track), progress::part(fill), input[type=range]::part(track),
   input[type=range]::part(fill), input[type=range]::part(tick) {
-    border: none; border-radius: var(--radius-capsule);
-    box-shadow: var(--shadow-groove);
+    border: none; border-radius: var(--meter-radius);
+    box-shadow: var(--meter-shadow);
   }
-  meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: var(--shadow-fill-sheen); }
+  meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: var(--meter-fill-shadow); }
   /* node_draw focus rings: outside the part, gap only for navigation. */
   button::part(focus):focus-visible, input::part(focus):focus-visible,
   textarea::part(focus):focus-visible, select::part(focus):focus-visible,

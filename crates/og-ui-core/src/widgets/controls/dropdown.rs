@@ -193,13 +193,13 @@ impl Ui {
         let row_h = self.by_text(if self.touch_frame() {
             self.touch_target()
         } else {
-            36.0
+            self.env.theme.controls.dropdown_row
         });
         let content = Element {
             direction: Direction::Column,
             width: Size::px(
                 self.last_bounds(self.tree.nodes[field].key)
-                    .map_or(240.0, |b| b.width),
+                    .map_or(self.env.theme.controls.dropdown_width, |b| b.width),
             ),
             padding: Insets::xy(0.0, t.space.xxs),
             radius: t.radius.control,
@@ -448,7 +448,11 @@ impl Ui {
         }
         let anchor = self.bounds_of(&trig_path);
         let list_id = format!("{key}.list");
-        let row_h = self.by_text(40f32.max(if touch { self.touch_target() } else { 0.0 }));
+        let row_h = self.by_text(self.env.theme.controls.dropdown_option_row.max(if touch {
+            self.touch_target()
+        } else {
+            0.0
+        }));
         let mut dismissed = false;
         if let Some(anchor) = anchor {
             let filter_key = format!("{key}~f");

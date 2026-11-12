@@ -431,6 +431,57 @@ pub fn generate(tokens: &str) -> Result<String, String> {
     }
     o.push_str("};\n\n");
 
+    // The controls' numbers (a value that names a semantic token is the
+    // stylesheet's alone): each field, its CSS unit and its value.
+    let mut controls = Vec::new();
+    for (key, value) in get(&t, &["controls"])?
+        .as_object()
+        .ok_or("tokens.json: controls is not an object")?
+        .iter()
+        .filter(|(key, _)| !key.starts_with('_'))
+    {
+        let (unit, n) = match value {
+            Value::Number(n) => ("", n.as_f64().unwrap_or_default() as f32),
+            Value::String(s) if s.starts_with("var(") => continue,
+            Value::String(_) => match ["px", "ms"]
+                .into_iter()
+                .find(|u| value.as_str().is_some_and(|s| s.ends_with(u)))
+            {
+                Some(u) => (u, unit(&t, &["controls", key], u)?),
+                None => {
+                    return Err(format!(
+                        "tokens.json: controls.{key} is not px, ms or a number"
+                    ));
+                }
+            },
+            _ => return Err(format!("tokens.json: controls.{key} is not a value")),
+        };
+        controls.push((key.as_str(), key.replace('-', "_"), unit, n));
+    }
+    o.push_str(CONTROLS_HEAD);
+    for (key, field, unit, _) in &controls {
+        let what = match *unit {
+            "px" => "og-ui units",
+            "ms" => "ms",
+            _ => "a ratio or number",
+        };
+        writeln!(o, "    /// `--{key}`, {what}.\n    pub {field}: f32,").unwrap();
+    }
+    writeln!(
+        o,
+        "}}\n\nimpl Controls {{\n    /// Every field by its CSS name (without `--`) and unit (`px`, `ms` or\n    /// none), as the root tokens read and write them.\n    pub fn fields_mut(&mut self) -> [(&'static str, &'static str, &mut f32); {}] {{\n        [",
+        controls.len()
+    )
+    .unwrap();
+    for (key, field, unit, _) in &controls {
+        writeln!(o, "            (\"{key}\", \"{unit}\", &mut self.{field}),").unwrap();
+    }
+    o.push_str("        ]\n    }\n}\n\npub const CONTROLS: Controls = Controls {\n");
+    for (_, field, _, n) in &controls {
+        writeln!(o, "    {field}: {},", num(*n)).unwrap();
+    }
+    o.push_str("};\n\n");
+
     for name in ["ui", "panel", "emphasis", "playful"] {
         let bounce = get(&t, &["motion", "named", name, "bounce"])?
             .as_f64()
@@ -792,6 +843,12 @@ pub struct State {
 }
 
 pub const STATE: State = State {
+"#;
+
+const CONTROLS_HEAD: &str = r#"/// The built-in controls' own sizes, ratios and motion (the tokens'
+/// `controls`; CSS `--<control>-<property>`, docs/ui.md §3.1).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Controls {
 "#;
 
 const SPRING_HEAD: &str = r#"/// A spring: damping ratio (1 critically damped, below 1 overshoots) and
