@@ -1,8 +1,10 @@
 //! View render pass.
 //!
-//! The views' lists: each view's transparent meshes on its layers back to
-//! front from its eye, and its opaque meshes on its layers (under GPU culling
-//! a pass of its own, drawn indirect; on the CPU path culled here).
+//! Its plan step lists the views' meshes: each view's transparent meshes
+//! on its layers back to front from its eye, and its opaque meshes on its
+//! layers (under GPU culling a pass of its own, drawn indirect; on the CPU
+//! path culled here). Its bind step makes each view's groups over its own
+//! camera's uniforms.
 
 use super::*;
 
@@ -292,6 +294,53 @@ impl Renderer {
 
 pub(super) struct ViewPass;
 
+/// A frame's views: each view's lists and meshlet view (0: none), and its
+/// groups over its own camera's uniforms.
+#[derive(Default)]
+pub(super) struct ViewFrame {
+    pub blended: Vec<DrawList>,
+    pub views: Vec<u32>,
+    pub lists: Vec<DrawList>,
+    /// Its frame group, its effect group and that without the planar
+    /// reflection (views.rs `view_groups`).
+    pub groups: Vec<(wgpu::BindGroup, wgpu::BindGroup, Option<wgpu::BindGroup>)>,
+    /// Its metaball field groups (its own fields' textures).
+    pub fields: Vec<Vec<wgpu::BindGroup>>,
+    /// Its sprite effect group: its 2D light map and its image's size.
+    pub sprite_fx: Vec<wgpu::BindGroup>,
+    pub particle_groups: Vec<Option<wgpu::BindGroup>>,
+    pub line_groups: Vec<wgpu::BindGroup>,
+}
+
+/// What the views' plan reads: the frame's culling, the views, their
+/// billboards and the particles (a view with soft particles draws a depth
+/// prepass).
+pub(super) struct ViewIn<'a> {
+    pub cull: &'a mut FrameCulling,
+    pub seen: CullFrame<'a>,
+    pub view_plans: &'a [views::ViewPlan],
+    pub view_boards: &'a [sprites::Billboards],
+    pub particle_frame: &'a particles_gpu::ParticleFrame,
+}
+
+/// What the views' bind reads beyond their frame.
+pub(super) struct ViewBindIn<'f> {
+    pub scene: &'f RenderScene,
+    pub batches: &'f [Batch],
+    pub view_plans: &'f [views::ViewPlan],
+    /// The 2D lights the frame draws (pass_light_2d.rs).
+    pub lights_2d: u32,
+    pub view_skinned: &'f [Vec<Batch>],
+    pub terrain_draws: &'f [terrain::TerrainDraw],
+    pub view_boards: &'f [sprites::Billboards],
+    pub particle_frame: &'f particles_gpu::ParticleFrame,
+    pub view_ribbons: &'f [Vec<ribbons::RibbonRun>],
+    pub line_frame: &'f lines::LineFrame,
+    pub view_sprites: &'f [Vec<sprites::SpriteRun>],
+    pub view_glow_runs: &'f [Vec<sprites::SpriteRun>],
+    pub post_fx: &'f PostEffects,
+}
+
 impl Pass for ViewPass {
     /// Its own depth prepass, as the probes' faces.
     const DESC: PassDesc = PassDesc {
@@ -300,83 +349,42 @@ impl Pass for ViewPass {
         needs: Caps::MRT,
     };
     type State = views::Views;
+    type Frame = ViewFrame;
+    type PlanIn<'a> = ViewIn<'a>;
+    type UploadIn<'a> = ListsMoved;
+    type BindIn<'f> = ViewBindIn<'f>;
     type Plan<'f> = ViewPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.views
     }
 
-    fn encode<'f>(
-        _: &Self::State,
-        plan: &ViewPlan<'f>,
-        pass: FramePass,
-        cx: &mut EncodeCx<'_, 'f>,
-    ) {
-        let FramePass::View(i) = pass else {
-            unreachable!("a view pass")
-        };
-        cx.ctx.r.encode_view(plan, i, cx);
-    }
-}
-
-pub(super) struct PlanViewListsInputs<'a> {
-    pub batches: &'a [Batch],
-    pub vis: &'a mut FrameVisibility,
-    pub gpu_cull: bool,
-    pub spheres: &'a [(Vec3, f32)],
-    pub transforms: &'a mut Vec<instances::GpuTransform>,
-    pub origins: &'a mut Vec<u32>,
-    pub cull_inside: &'a mut CullScratch,
-    pub submission: &'a [u32],
-    pub in_meshlet: &'a dyn Fn(&Batch) -> bool,
-    pub on_layers: &'a dyn Fn(u32) -> Vec<u32>,
-    pub view_plans: &'a [views::ViewPlan],
-    pub view_boards: &'a [sprites::Billboards],
-    pub particle_frame: &'a particles_gpu::ParticleFrame,
-    pub cull_n: u32,
-}
-
-pub(super) struct PlanViewListsOutputs {
-    pub view_blended: Vec<DrawList>,
-    pub view_views: Vec<u32>,
-    pub view_lists: Vec<DrawList>,
-}
-
-impl Renderer {
     /// Sorts and culls each view's meshes.
-    #[allow(clippy::too_many_lines)]
-    pub(super) fn plan_view_lists(
-        &self,
-        PlanViewListsInputs {
-            batches,
-            vis,
-            gpu_cull,
-            spheres,
-            transforms,
-            origins,
-            cull_inside,
-            submission,
-            in_meshlet,
-            on_layers,
+    fn plan(
+        r: &mut Renderer,
+        ViewIn {
+            cull,
+            seen,
             view_plans,
             view_boards,
             particle_frame,
-            cull_n,
-        }: PlanViewListsInputs<'_>,
-    ) -> PlanViewListsOutputs {
-        let meshlet_gpu = self.visibility.meshlet.as_ref();
+        }: ViewIn<'_>,
+    ) -> ViewFrame {
+        let r = &*r;
+        let batches = seen.batches;
+        let meshlet_gpu = r.visibility.meshlet.as_ref();
         // Each view's transparent meshes on its layers, back to front from
         // its eye.
-        let view_blended: Vec<DrawList> = view_plans
+        let blended: Vec<DrawList> = view_plans
             .iter()
             .zip(view_boards)
             .map(|(p, boards)| {
-                self.sort_transparent(
+                r.sort_transparent(
                     batches,
-                    spheres,
-                    submission,
-                    transforms,
-                    origins,
+                    seen.spheres,
+                    seen.submission,
+                    &mut cull.transforms,
+                    &mut cull.origins,
                     &Frustum::from_view_proj(p.frame.view_proj),
                     p.position,
                     p.frame.forward,
@@ -389,8 +397,8 @@ impl Renderer {
         // Each view's opaque meshes on its layers: under GPU culling a pass
         // of its own (its planes and layers, as the planar reflection's),
         // drawn indirect; on the CPU path culled here.
-        let mut view_views: Vec<u32> = Vec::new();
-        let view_lists: Vec<DrawList> = view_plans
+        let mut views: Vec<u32> = Vec::new();
+        let lists: Vec<DrawList> = view_plans
             .iter()
             .map(|p| {
                 // A view with a depth prepass (a depth texture, soft
@@ -400,38 +408,40 @@ impl Renderer {
                 let view = if depth {
                     0
                 } else {
-                    vis.meshlet_view(
+                    cull.vis.meshlet_view(
                         meshlet_gpu,
                         batches,
                         meshlet_gpu::MeshletView::seen(
                             Frustum::from_view_proj(p.frame.view_proj).planes(),
-                            on_layers(p.layers),
+                            (seen.on_layers)(p.layers),
                             p.position,
                             p.frame.view_proj,
                             p.size.1,
                         ),
                     )
                 };
-                view_views.push(view);
+                views.push(view);
                 let frustum = Frustum::from_view_proj(p.frame.view_proj);
                 let include = |b: &Batch| {
-                    !b.transparent && b.layers & p.layers != 0 && !(view > 0 && in_meshlet(b))
+                    !b.transparent
+                        && b.layers & p.layers != 0
+                        && !(view > 0 && (seen.in_meshlet)(b))
                 };
-                if gpu_cull {
-                    let g = vis.gpu_pass(
+                if seen.gpu_cull {
+                    let g = cull.vis.gpu_pass(
                         cull_gpu::PassKind::Reflection,
                         &frustum,
                         None,
                         Some(p.layers),
                     );
-                    return indirect_list(batches, cull_n, g, include);
+                    return indirect_list(batches, seen.cull_n, g, include);
                 }
-                self.cull(
+                r.cull(
                     batches,
-                    spheres,
-                    transforms,
-                    origins,
-                    cull_inside,
+                    seen.spheres,
+                    &mut cull.transforms,
+                    &mut cull.origins,
+                    &mut cull.cull_inside,
                     &frustum,
                     true,
                     include,
@@ -439,10 +449,145 @@ impl Renderer {
                 .0
             })
             .collect();
-        PlanViewListsOutputs {
-            view_blended,
-            view_views,
-            view_lists,
+        ViewFrame {
+            blended,
+            views,
+            lists,
+            ..Default::default()
         }
+    }
+
+    /// The CPU-culled lists after the uploaded records' move.
+    fn upload(_: &mut Renderer, frame: &mut ViewFrame, moved: ListsMoved) {
+        moved.apply(
+            frame
+                .lists
+                .iter_mut()
+                .filter(|l| l.indirect.is_none())
+                .chain(frame.blended.iter_mut()),
+        );
+    }
+
+    /// Each view's groups over its own camera's uniforms, then the views'
+    /// plan when there are any.
+    fn bind<'f>(
+        r: &'f Renderer,
+        frame: &'f mut ViewFrame,
+        ViewBindIn {
+            scene,
+            batches,
+            view_plans,
+            lights_2d,
+            view_skinned,
+            terrain_draws,
+            view_boards,
+            particle_frame,
+            view_ribbons,
+            line_frame,
+            view_sprites,
+            view_glow_runs,
+            post_fx,
+        }: ViewBindIn<'f>,
+    ) -> Option<ViewPlan<'f>> {
+        frame.groups = r.view_groups(scene, view_plans);
+        // Each view's metaball field groups (its own fields' textures).
+        frame.fields = view_plans
+            .iter()
+            .map(|p| {
+                let slot = r.views.slots[p.index].as_ref().expect("written");
+                slot.fields
+                    .iter()
+                    .map(|v| r.world.metaballs.group(&r.device, v))
+                    .collect()
+            })
+            .collect();
+        // Each view's sprite effect group: its 2D light map (white
+        // without 2D lighting) and its image's size.
+        frame.sprite_fx = view_plans
+            .iter()
+            .map(|p| {
+                let slot = r.views.slots[p.index].as_ref().expect("written");
+                bind_group(
+                    &r.device,
+                    "sprite fx (view)",
+                    &r.sprite.sprite_fx_layout,
+                    &[
+                        wgpu::BindingResource::TextureView(
+                            slot.light_map.as_ref().map_or(&r.default_white, |(_, v)| v),
+                        ),
+                        wgpu::BindingResource::Sampler(&r.sprite.sprite_sampler),
+                        slot.sprite_fx_buffer.as_entire_binding(),
+                        wgpu::BindingResource::TextureView(
+                            slot.light_dir.as_ref().unwrap_or(&r.post.black),
+                        ),
+                    ],
+                )
+            })
+            .collect();
+        // Each view's particle and line groups over its own camera's
+        // uniforms (views.rs).
+        frame.particle_groups = view_plans
+            .iter()
+            .map(|p| {
+                let slot = r.views.slots[p.index].as_ref().expect("written");
+                // Soft particles fade against the view's own depth.
+                let depth = slot
+                    .prepass
+                    .as_ref()
+                    .map_or(&r.post.far_depth, |pre| &pre.lindepth);
+                (!particle_frame.systems.is_empty()).then(|| {
+                    r.particles.gpu.draw_group_of(
+                        &r.device,
+                        &slot.particle_buffer,
+                        depth,
+                        &r.post.white,
+                    )
+                })
+            })
+            .collect();
+        frame.line_groups = view_plans
+            .iter()
+            .map(|p| {
+                let slot = r.views.slots[p.index].as_ref().expect("written");
+                r.lines.view_group(&r.device, &slot.line_buffer)
+            })
+            .collect();
+        let frame = &*frame;
+        (!view_plans.is_empty()).then(|| ViewPlan {
+            meshlet_views: &frame.views,
+            batches,
+            scene,
+            view_plans,
+            lights_2d,
+            view_groups: &frame.groups,
+            view_lists: &frame.lists,
+            view_skinned,
+            terrain_indices: r.world.terrain.index_buffer(),
+            terrain_draws,
+            view_blended: &frame.blended,
+            view_boards,
+            view_sprite_fx: &frame.sprite_fx,
+            view_particle_groups: &frame.particle_groups,
+            particle_frame,
+            view_ribbons,
+            line_frame,
+            view_line_groups: &frame.line_groups,
+            view_sprites,
+            view_fields: &frame.fields,
+            view_glow_runs,
+            post_fx,
+        })
+    }
+
+    fn encode<'f>(
+        _: &Self::State,
+        plan: &ViewPlan<'f>,
+        pass: FramePass,
+        cx: &mut EncodeCx<'_, 'f>,
+    ) {
+        let FramePass::View(i) = pass else {
+            unreachable!("a view pass")
+        };
+        cx.ctx.r.encode_view(plan, i, cx);
     }
 }

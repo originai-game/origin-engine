@@ -12,10 +12,19 @@ impl Pass for LiveSkyPass {
         needs: Caps::NONE,
     };
     type State = Option<crate::sky_capture::SkyCapture>;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    type BindIn<'f> = ();
     type Plan<'f> = ();
 
     fn state(r: &Renderer) -> &Self::State {
         &r.sky.sky_capture
+    }
+
+    /// The pass runs while the scene's sky is live.
+    fn bind<'f>(r: &'f Renderer, _: &'f mut (), _: ()) -> Option<()> {
+        Self::state(r).is_some().then_some(())
     }
 
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
@@ -50,11 +59,6 @@ impl Pass for LiveSkyPass {
 }
 
 impl LiveSkyPass {
-    /// The frame's plan: the pass runs while the scene's sky is live.
-    pub(super) fn plan(st: &<Self as Pass>::State) -> Option<()> {
-        st.is_some().then_some(())
-    }
-
     /// The due faces' uniforms: the frame's, seen from each face.
     pub(super) fn write(
         st: &<Self as Pass>::State,

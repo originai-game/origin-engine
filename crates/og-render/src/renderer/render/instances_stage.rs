@@ -1,5 +1,6 @@
 //! The instances' stage: under GPU culling the culling's encode (its sorted
-//! instances to its own buffer) and the CPU-culled lists moved past them;
+//! instances to its own buffer) and the camera's blended list moved past
+//! them (the other passes' lists move in their upload steps, `ListsMoved`);
 //! then the records a draw reads and the debris step, and the sorted
 //! instances' scratch given back.
 
@@ -26,13 +27,7 @@ pub(super) struct UploadInstancesInputs<'a> {
     pub skinned_plain: usize,
     pub skinned_data: &'a [crate::skin::SkinnedInstanceGpu],
     pub skinned: &'a SkinnedFrame,
-    pub reflection_list: &'a mut [DrawList],
-    pub reflection_blended: &'a mut [DrawList],
     pub blended_list: &'a mut DrawList,
-    pub probe_lists: &'a mut [DrawList],
-    pub probe_blended: &'a mut [DrawList],
-    pub view_lists: &'a mut [DrawList],
-    pub view_blended: &'a mut [DrawList],
 }
 
 pub(super) struct UploadInstancesOutputs {
@@ -68,13 +63,7 @@ impl Renderer {
             skinned_plain,
             skinned_data,
             skinned,
-            reflection_list,
-            reflection_blended,
             blended_list,
-            probe_lists,
-            probe_blended,
-            view_lists,
-            view_blended,
         }: UploadInstancesInputs<'_>,
     ) -> UploadInstancesOutputs {
         // Upload instances, previous transforms, skinned data, strips and
@@ -103,25 +92,7 @@ impl Renderer {
                 copy_counts,
             });
             // The CPU-culled lists sit after the sorted instances, in this buffer.
-            for list in reflection_list
-                .iter_mut()
-                .filter(|l| l.indirect.is_none())
-                .chain(reflection_blended.iter_mut())
-                .chain(std::iter::once(&mut *blended_list))
-            {
-                for r in &mut list.ranges {
-                    r.1 -= sorted;
-                }
-            }
-            for r in probe_lists
-                .iter_mut()
-                .chain(probe_blended.iter_mut())
-                .chain(view_lists.iter_mut().filter(|l| l.indirect.is_none()))
-                .chain(view_blended.iter_mut())
-                .flat_map(|l| &mut l.ranges)
-            {
-                r.1 -= sorted;
-            }
+            ListsMoved { gpu_cull, sorted }.apply(std::iter::once(blended_list));
             (commands, Some(counts))
         } else {
             if let Some(m) = self.visibility.meshlet.as_mut() {

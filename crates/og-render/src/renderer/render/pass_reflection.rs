@@ -1,8 +1,9 @@
 //! Reflection render pass.
 //!
-//! The planar reflections' lists: each mirror's opaque meshes, the first
-//! through the GPU cull's reflection pass, the rest culled on the CPU, and
-//! its transparent meshes back to front from the mirrored eye.
+//! Its plan step lists the planar reflections' meshes: each mirror's
+//! opaque meshes, the first through the GPU cull's reflection pass, the
+//! rest culled on the CPU, and its transparent meshes back to front from
+//! the mirrored eye. Its bind step makes each mirror's effect groups.
 
 use super::*;
 
@@ -10,6 +11,9 @@ pub(super) struct ReflectionPlan<'f> {
     pub(super) scene: &'f RenderScene,
     pub(super) reflection_frame_group: &'f [wgpu::BindGroup],
     pub(super) reflection_fx_group: &'f [wgpu::BindGroup],
+    /// Each mirror's effect group without the planar reflection
+    /// (`fx_lean_group`), which the frame's draws find by its own group.
+    pub(super) reflection_fx_lean: &'f [Option<wgpu::BindGroup>],
     pub(super) reflection_list: &'f [DrawList],
     pub(super) skinned_visible: &'f [Batch],
     pub(super) lit_skinned_standard: &'f [&'f wgpu::RenderPipeline],
@@ -35,6 +39,7 @@ impl Renderer {
             scene,
             reflection_frame_group,
             reflection_fx_group,
+            reflection_fx_lean: _,
             reflection_list,
             skinned_visible,
             lit_skinned_standard,
@@ -169,6 +174,39 @@ impl Renderer {
 
 pub(super) struct ReflectionPass;
 
+/// A frame's planar reflections: each mirror's lists and meshlet view (0:
+/// none), and its effect groups.
+#[derive(Default)]
+pub(super) struct ReflectionFrame {
+    pub list: Vec<DrawList>,
+    pub meshlets: Vec<u32>,
+    pub blended: Vec<DrawList>,
+    /// Each mirror's effect group: its decals, no AO.
+    pub fx_group: Vec<wgpu::BindGroup>,
+    /// Each one without the planar reflection, for its lightmapped draws
+    /// (`fx_lean_group`).
+    pub fx_lean: Vec<Option<wgpu::BindGroup>>,
+}
+
+/// What the planar reflections' plan reads: the frame's culling, the
+/// mirrors and the layers they see.
+pub(super) struct ReflectionIn<'a> {
+    pub cull: &'a mut FrameCulling,
+    pub seen: CullFrame<'a>,
+    pub reflections: &'a [camera::PlanarReflection],
+    pub mask: u32,
+}
+
+/// What the planar reflections' bind reads beyond their frame.
+pub(super) struct ReflectionBindIn<'f> {
+    pub scene: &'f RenderScene,
+    pub reflections: &'f [camera::PlanarReflection],
+    pub batches: &'f [Batch],
+    pub skinned_visible: &'f [Batch],
+    pub lit_skinned_standard: &'f [&'f wgpu::RenderPipeline],
+    pub terrain_draws: &'f [terrain::TerrainDraw],
+}
+
 impl Pass for ReflectionPass {
     const DESC: PassDesc = PassDesc {
         pass: FramePass::Reflection(0),
@@ -176,10 +214,183 @@ impl Pass for ReflectionPass {
         needs: Caps::NONE,
     };
     type State = Vec<wgpu::Buffer>;
+    type Frame = ReflectionFrame;
+    type PlanIn<'a> = ReflectionIn<'a>;
+    type UploadIn<'a> = ListsMoved;
+    type BindIn<'f> = ReflectionBindIn<'f>;
     type Plan<'f> = ReflectionPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.reflections.reflection_buffer
+    }
+
+    /// Culls and sorts each planar reflection's meshes.
+    fn plan(
+        r: &mut Renderer,
+        ReflectionIn {
+            cull,
+            seen,
+            reflections,
+            mask,
+        }: ReflectionIn<'_>,
+    ) -> ReflectionFrame {
+        let r = &*r;
+        let batches = seen.batches;
+        let meshlet_gpu = r.visibility.meshlet.as_ref();
+        // (The GPU culling has one reflection pass: the second slot is culled here.)
+        let mut list = Vec::new();
+        let mut meshlets: Vec<u32> = Vec::new();
+        for (k, m) in reflections.iter().enumerate() {
+            let frustum = Frustum::from_view_proj(m.3);
+            let view = cull.vis.meshlet_view(
+                meshlet_gpu,
+                batches,
+                meshlet_gpu::MeshletView::seen(
+                    frustum.planes(),
+                    (seen.on_layers)(mask),
+                    m.1.position,
+                    m.3,
+                    m.4.1,
+                ),
+            );
+            meshlets.push(view);
+            let include = |b: &Batch| {
+                !b.transparent && b.layers & mask != 0 && !(view > 0 && (seen.in_meshlet)(b))
+            };
+            list.push(if seen.gpu_cull && k == 0 {
+                let g = cull
+                    .vis
+                    .gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None, None);
+                indirect_list(batches, seen.cull_n, g, include)
+            } else {
+                r.cull(
+                    batches,
+                    seen.spheres,
+                    &mut cull.transforms,
+                    &mut cull.origins,
+                    &mut cull.cull_inside,
+                    &frustum,
+                    // Under GPU culling the sorted instances are the
+                    // culling's: append, never draw a batch whole (the
+                    // shift below would wrap).
+                    !seen.gpu_cull,
+                    include,
+                )
+                .0
+            });
+        }
+        // The transparent meshes in each mirror (three.js's Reflector renders the whole scene: the sky dome's clouds,
+        // the falls' curtains), back to front from the mirrored eye.
+        let mut blended = Vec::new();
+        for m in reflections {
+            let frustum = Frustum::from_view_proj(m.3);
+            blended.push(
+                r.sort_transparent(
+                    batches,
+                    seen.spheres,
+                    seen.submission,
+                    &mut cull.transforms,
+                    &mut cull.origins,
+                    &frustum,
+                    m.1.position,
+                    m.2.forward,
+                    mask,
+                    &[],
+                )
+                .0,
+            );
+        }
+        ReflectionFrame {
+            list,
+            meshlets,
+            blended,
+            ..Default::default()
+        }
+    }
+
+    /// The CPU-culled lists after the uploaded records' move.
+    fn upload(_: &mut Renderer, frame: &mut ReflectionFrame, moved: ListsMoved) {
+        moved.apply(
+            frame
+                .list
+                .iter_mut()
+                .filter(|l| l.indirect.is_none())
+                .chain(frame.blended.iter_mut()),
+        );
+    }
+
+    /// Each mirror's effect groups, then its plan.
+    fn bind<'f>(
+        r: &'f Renderer,
+        frame: &'f mut ReflectionFrame,
+        ReflectionBindIn {
+            scene,
+            reflections,
+            batches,
+            skinned_visible,
+            lit_skinned_standard,
+            terrain_draws,
+        }: ReflectionBindIn<'f>,
+    ) -> Option<ReflectionPlan<'f>> {
+        // The planar reflection's effect group: its decals, no AO.
+        frame.fx_group = (0..reflections.len())
+            .map(|k| {
+                let atlas_view = scene
+                    .effects
+                    .decal_atlas
+                    .map_or(&r.default_white, |t| &r.cache.textures[t.index()].view);
+                fx::fx_group(
+                    &r.device,
+                    "fx (planar reflection)",
+                    &r.fx_layout,
+                    &[
+                        r.reflections.reflection_fx_buffer[k].as_entire_binding(),
+                        wgpu::BindingResource::TextureView(&r.post.white),
+                        wgpu::BindingResource::TextureView(atlas_view),
+                        wgpu::BindingResource::Sampler(&r.trilinear_sampler),
+                        // Not the reflection itself: this pass draws it.
+                        wgpu::BindingResource::TextureView(&r.post.white),
+                    ][..if r.planar_slot() { 5 } else { 4 }],
+                    &r.lights.decal_buffers,
+                )
+            })
+            .collect();
+        // Each pass's effect group without the planar reflection, for its
+        // lightmapped draws (`fx_lean_group`), by the pass's own group.
+        frame.fx_lean = (0..reflections.len())
+            .map(|k| {
+                let atlas_view = scene
+                    .effects
+                    .decal_atlas
+                    .map_or(&r.default_white, |t| &r.cache.textures[t.index()].view);
+                r.fx_lean_group(
+                    &r.reflections.reflection_fx_buffer[k],
+                    &r.post.white,
+                    atlas_view,
+                )
+            })
+            .collect();
+        let frame = &*frame;
+        let (_, _, _, reflection_frame_group) = r
+            .lights
+            .environment
+            .as_ref()
+            .expect("environment generated above");
+        (!reflections.is_empty()).then(|| ReflectionPlan {
+            meshlet_views: &frame.meshlets,
+            batches,
+            scene,
+            reflection_frame_group,
+            reflection_fx_group: &frame.fx_group,
+            reflection_fx_lean: &frame.fx_lean,
+            reflection_list: &frame.list,
+            skinned_visible,
+            lit_skinned_standard,
+            terrain_indices: r.world.terrain.index_buffer(),
+            reflections,
+            terrain_draws,
+            reflection_blended: &frame.blended,
+        })
     }
 
     fn encode<'f>(
@@ -192,117 +403,5 @@ impl Pass for ReflectionPass {
             unreachable!("a planar-reflection pass")
         };
         cx.ctx.r.encode_reflection(plan, k, cx);
-    }
-}
-
-pub(super) struct PlanReflectionListsInputs<'a> {
-    pub batches: &'a [Batch],
-    pub vis: &'a mut FrameVisibility,
-    pub gpu_cull: bool,
-    pub spheres: &'a [(Vec3, f32)],
-    pub transforms: &'a mut Vec<instances::GpuTransform>,
-    pub origins: &'a mut Vec<u32>,
-    pub cull_inside: &'a mut CullScratch,
-    pub submission: &'a [u32],
-    pub in_meshlet: &'a dyn Fn(&Batch) -> bool,
-    pub on_layers: &'a dyn Fn(u32) -> Vec<u32>,
-    pub reflections: &'a [camera::PlanarReflection],
-    pub mask: u32,
-    pub cull_n: u32,
-}
-
-pub(super) struct PlanReflectionListsOutputs {
-    pub reflection_list: Vec<DrawList>,
-    pub reflection_meshlets: Vec<u32>,
-    pub reflection_blended: Vec<DrawList>,
-}
-
-impl Renderer {
-    /// Culls and sorts each planar reflection's meshes.
-    #[allow(clippy::too_many_lines)]
-    pub(super) fn plan_reflection_lists(
-        &self,
-        PlanReflectionListsInputs {
-            batches,
-            vis,
-            gpu_cull,
-            spheres,
-            transforms,
-            origins,
-            cull_inside,
-            submission,
-            in_meshlet,
-            on_layers,
-            reflections,
-            mask,
-            cull_n,
-        }: PlanReflectionListsInputs<'_>,
-    ) -> PlanReflectionListsOutputs {
-        let meshlet_gpu = self.visibility.meshlet.as_ref();
-        // (The GPU culling has one reflection pass: the second slot is culled here.)
-        let mut reflection_list = Vec::new();
-        let mut reflection_meshlets: Vec<u32> = Vec::new();
-        for (k, r) in reflections.iter().enumerate() {
-            let frustum = Frustum::from_view_proj(r.3);
-            let view = vis.meshlet_view(
-                meshlet_gpu,
-                batches,
-                meshlet_gpu::MeshletView::seen(
-                    frustum.planes(),
-                    on_layers(mask),
-                    r.1.position,
-                    r.3,
-                    r.4.1,
-                ),
-            );
-            reflection_meshlets.push(view);
-            let include =
-                |b: &Batch| !b.transparent && b.layers & mask != 0 && !(view > 0 && in_meshlet(b));
-            reflection_list.push(if gpu_cull && k == 0 {
-                let g = vis.gpu_pass(cull_gpu::PassKind::Reflection, &frustum, None, None);
-                indirect_list(batches, cull_n, g, include)
-            } else {
-                self.cull(
-                    batches,
-                    spheres,
-                    transforms,
-                    origins,
-                    cull_inside,
-                    &frustum,
-                    // Under GPU culling the sorted instances are the
-                    // culling's: append, never draw a batch whole (the
-                    // shift below would wrap).
-                    !gpu_cull,
-                    include,
-                )
-                .0
-            });
-        }
-        // The transparent meshes in each mirror (three.js's Reflector renders the whole scene: the sky dome's clouds,
-        // the falls' curtains), back to front from the mirrored eye.
-        let mut reflection_blended = Vec::new();
-        for r in reflections {
-            let frustum = Frustum::from_view_proj(r.3);
-            reflection_blended.push(
-                self.sort_transparent(
-                    batches,
-                    spheres,
-                    submission,
-                    transforms,
-                    origins,
-                    &frustum,
-                    r.1.position,
-                    r.2.forward,
-                    mask,
-                    &[],
-                )
-                .0,
-            );
-        }
-        PlanReflectionListsOutputs {
-            reflection_list,
-            reflection_meshlets,
-            reflection_blended,
-        }
     }
 }

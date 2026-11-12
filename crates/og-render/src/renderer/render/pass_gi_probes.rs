@@ -12,10 +12,22 @@ impl Pass for GiProbesPass {
         needs: Caps::COMPUTE,
     };
     type State = Option<crate::gi_probes::GiProbes>;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    type BindIn<'f> = ();
     type Plan<'f> = ();
 
     fn state(r: &Renderer) -> &Self::State {
         &r.gi_probes
+    }
+
+    /// The pass runs when probes are due.
+    fn bind<'f>(r: &'f Renderer, _: &'f mut (), _: ()) -> Option<()> {
+        Self::state(r)
+            .as_ref()
+            .is_some_and(|g| g.due())
+            .then_some(())
     }
 
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
@@ -41,13 +53,6 @@ impl Pass for GiProbesPass {
             &frame,
             &r.lights.lightmaps.probe_buffer,
         );
-    }
-}
-
-impl GiProbesPass {
-    /// The frame's plan: the pass runs when probes are due.
-    pub(super) fn plan(st: &<Self as Pass>::State) -> Option<()> {
-        st.as_ref().is_some_and(|g| g.due()).then_some(())
     }
 }
 

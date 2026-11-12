@@ -38,24 +38,6 @@ impl Particles {
             simulation,
         }
     }
-
-    /// The 2D particles simulated in compute: room for their ranges,
-    /// what each draws with, and the compute's parameters.
-    pub(super) fn upload(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        frame: &particles_gpu::ParticleFrame,
-        sprites: &sprites::GpuSprites,
-    ) {
-        let particle_sprites = u64::from(sprites.total) * SPRITE_STRIDE;
-        if particle_sprites > self.sprite_buffer.size() {
-            self.sprite_buffer =
-                buffers::particle_sprite_buffer(device, particle_sprites.next_power_of_two());
-        }
-        self.sprite_sources = sprites.ranges.iter().map(|r| r.source).collect();
-        self.gpu.prepare_sprites(device, queue, frame, sprites);
-    }
 }
 
 pub(super) struct ParticlesPass;
@@ -73,10 +55,38 @@ impl Pass for ParticlesPass {
         needs: Caps::COMPUTE,
     };
     type State = Particles;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    /// The frame's particles and the 2D ones' sprite ranges.
+    type UploadIn<'a> = ParticlesPlan<'a>;
+    type BindIn<'f> = ParticlesPlan<'f>;
     type Plan<'f> = ParticlesPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.particles
+    }
+
+    /// The 2D particles simulated in compute: room for their ranges,
+    /// what each draws with, and the compute's parameters.
+    fn upload(r: &mut Renderer, _: &mut (), plan: ParticlesPlan<'_>) {
+        let (st, device) = (&mut r.particles, &r.device);
+        let particle_sprites = u64::from(plan.sprites.total) * SPRITE_STRIDE;
+        if particle_sprites > st.sprite_buffer.size() {
+            st.sprite_buffer =
+                buffers::particle_sprite_buffer(device, particle_sprites.next_power_of_two());
+        }
+        st.sprite_sources = plan.sprites.ranges.iter().map(|r| r.source).collect();
+        st.gpu
+            .prepare_sprites(device, &r.queue, plan.frame, plan.sprites);
+    }
+
+    /// The pass runs when an emitter simulates on the GPU.
+    fn bind<'f>(
+        _: &'f Renderer,
+        _: &'f mut (),
+        plan: ParticlesPlan<'f>,
+    ) -> Option<ParticlesPlan<'f>> {
+        plan.frame.any_gpu.then_some(plan)
     }
 
     fn encode<'f>(

@@ -1,12 +1,69 @@
 //! A frame pass as one unit: what it needs of the device, what it keeps
-//! between frames, what a frame plans for it and how it encodes.
+//! between frames, its steps in a frame (plan, upload, bind) and how it
+//! encodes.
 //!
 //! A pass declares its kind and needs in [`Pass::DESC`], which is its
-//! entry in the capability table (`schedule.rs` `PASSES`). [`passes!`]
-//! lists the passes in frame order and makes [`FramePlans`], one plan per
-//! pass, and the dispatch from a graph pass to its pass, without boxing.
+//! entry in the capability table (`schedule.rs` `PASSES`). `render` calls
+//! each pass's steps among the frame's shared stages, handing each its
+//! typed inputs: [`Pass::plan`] decides the frame's work for the pass
+//! (its lists against the frame's culling, [`FrameCulling`]) into its
+//! [`Pass::Frame`], [`Pass::upload`] writes what that needs on the
+//! device, and [`Pass::bind`] makes its bind groups and the plan its
+//! encode reads. [`passes!`] lists the passes in frame order and makes
+//! [`PassFrames`] and [`FramePlans`], one of each per pass, and the
+//! dispatch from a graph pass to its pass, without boxing.
 
 use super::*;
+
+/// The frame's culling as the passes that cull after the main camera
+/// extend it (camera_lists.rs makes it): the passes registered with the
+/// GPU culling and the meshlet dispatch, the CPU cull's sorted copies and
+/// their origins, and its scratch.
+pub(super) struct FrameCulling {
+    pub vis: FrameVisibility,
+    pub transforms: Vec<instances::GpuTransform>,
+    pub origins: Vec<u32>,
+    pub cull_inside: CullScratch,
+}
+
+/// What the passes that cull read of the frame: its batches, the sorted
+/// instances' spheres and submission order, whether the GPU culls and
+/// its draws per pass, and the meshlet path's batches.
+#[derive(Clone, Copy)]
+pub(super) struct CullFrame<'a> {
+    pub batches: &'a [Batch],
+    pub spheres: &'a [(Vec3, f32)],
+    pub submission: &'a [u32],
+    pub gpu_cull: bool,
+    pub cull_n: u32,
+    /// Whether a batch is drawn by a meshlet view.
+    pub in_meshlet: &'a dyn Fn(&Batch) -> bool,
+    /// The meshlet batches on any of a mask's layers.
+    pub on_layers: &'a dyn Fn(u32) -> Vec<u32>,
+}
+
+/// Where the CPU-culled lists' instances are in the uploaded records:
+/// with the GPU culling, which takes the sorted instances to its own
+/// buffer, `sorted` places earlier (instances_stage.rs).
+#[derive(Clone, Copy)]
+pub(super) struct ListsMoved {
+    pub gpu_cull: bool,
+    pub sorted: u32,
+}
+
+impl ListsMoved {
+    /// Moves `lists`' CPU-culled ranges where the records put them.
+    pub(super) fn apply<'l>(self, lists: impl IntoIterator<Item = &'l mut DrawList>) {
+        if !self.gpu_cull {
+            return;
+        }
+        for list in lists {
+            for r in &mut list.ranges {
+                r.1 -= self.sorted;
+            }
+        }
+    }
+}
 
 /// What a pass encodes with: the frame's drawing state, its encoder and
 /// statistics, and the frame's shared bindings and targets.
@@ -31,10 +88,36 @@ pub(super) trait Pass {
     const DESC: PassDesc;
     /// What it keeps between frames.
     type State;
+    /// What it keeps of one frame until the frame is encoded: its draw
+    /// lists, views, cache plans and bind groups (`()` for a pass that
+    /// keeps nothing of its own).
+    type Frame: Default;
+    /// What its plan step reads.
+    type PlanIn<'a>;
+    /// What its upload step reads.
+    type UploadIn<'a>;
+    /// What its bind step reads: the frame's shared bindings and what the
+    /// stages before it made.
+    type BindIn<'f>;
     /// What a frame planned for it; it runs in the frames that plan it.
     type Plan<'f>;
     /// Its state in the renderer.
     fn state(r: &Renderer) -> &Self::State;
+    /// Decides the frame's work for the pass (its lists, against the
+    /// frame's culling where it culls): by default nothing.
+    fn plan(_r: &mut Renderer, _input: Self::PlanIn<'_>) -> Self::Frame {
+        Self::Frame::default()
+    }
+    /// Writes what its frame needs on the device, or moves its lists where
+    /// the frame's uploads put their instances: by default nothing.
+    fn upload(_r: &mut Renderer, _frame: &mut Self::Frame, _input: Self::UploadIn<'_>) {}
+    /// Makes its bind groups into its frame and answers what its encode
+    /// reads: `None` in a frame it does not run.
+    fn bind<'f>(
+        r: &'f Renderer,
+        frame: &'f mut Self::Frame,
+        input: Self::BindIn<'f>,
+    ) -> Option<Self::Plan<'f>>;
     /// What this frame's plan of it needs beyond [`Pass::DESC`]'s.
     fn needs(_plan: &Self::Plan<'_>) -> Caps {
         Caps::NONE
@@ -52,6 +135,13 @@ pub(super) trait Pass {
 /// graph passes it encodes`.
 macro_rules! passes {
     ($($field:ident: $ty:ty => $pat:pat),* $(,)?) => {
+        /// What this frame keeps for each pass of [`passes!`]
+        /// ([`Pass::Frame`]), from its plan step to its encode.
+        #[derive(Default)]
+        pub(super) struct PassFrames {
+            $(pub $field: <$ty as Pass>::Frame,)*
+        }
+
         /// What this frame planned for each pass of [`passes!`]; `None`
         /// for one that does not run.
         #[derive(Default)]

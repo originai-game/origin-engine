@@ -1,8 +1,9 @@
 //! Probes render pass.
 //!
-//! The reflection probes' lists: each due capture's six faces culled (a
-//! face with a depth prepass keeps its whole list), and their transparent
-//! meshes back to front from the probe.
+//! Its plan step lists the reflection probes' meshes: each due capture's
+//! six faces culled (a face with a depth prepass keeps its whole list),
+//! and their transparent meshes back to front from the probe. Its bind
+//! step makes each face's particle and line groups.
 
 use super::*;
 
@@ -355,6 +356,55 @@ impl Renderer {
 
 pub(super) struct ProbesPass;
 
+/// A frame's due probe faces: each face's lists and meshlet view (0:
+/// none), and its particle and line groups over its own camera's
+/// uniforms.
+#[derive(Default)]
+pub(super) struct ProbesFrame {
+    pub lists: Vec<DrawList>,
+    pub blended: Vec<DrawList>,
+    pub views: Vec<u32>,
+    pub particle_groups: Vec<Option<wgpu::BindGroup>>,
+    pub line_groups: Vec<wgpu::BindGroup>,
+}
+
+/// What the probe faces' plan reads: the frame's culling, the due faces'
+/// cameras and their probes, whether a face draws a depth prepass, the
+/// meshlet batches and each face's billboards.
+pub(super) struct ProbesIn<'a> {
+    pub cull: &'a mut FrameCulling,
+    pub seen: CullFrame<'a>,
+    pub probe_faces: &'a [[frame::CameraFrame; 6]],
+    pub active_probes: &'a [probes::ReflectionProbe],
+    pub probe_frame: &'a probes::ProbeFrame,
+    pub face_depth: bool,
+    pub meshlet_all: &'a [u32],
+    pub face_boards: &'a [sprites::Billboards],
+}
+
+/// What the probe faces' bind reads beyond their frame.
+pub(super) struct ProbesBindIn<'f> {
+    pub scene: &'f RenderScene,
+    pub batches: &'f [Batch],
+    pub probe_frame: &'f probes::ProbeFrame,
+    pub face_depth: bool,
+    pub face_water: &'f [Vec<water::WaterDraw>],
+    pub face_fluids: &'f [Option<fluid3d::Fluid3dFrame>],
+    pub probe_faces: &'f [[frame::CameraFrame; 6]],
+    pub active_probes: &'f [ReflectionProbe],
+    /// The faces' frame groups (frame_binds.rs).
+    pub face_groups: &'f [wgpu::BindGroup],
+    pub fx_group: &'f wgpu::BindGroup,
+    pub glow_fx_group: &'f wgpu::BindGroup,
+    pub probe_skinned: &'f [Vec<Batch>],
+    pub terrain_draws: &'f [terrain::TerrainDraw],
+    pub scatter_batches: &'f scatter::ScatterBatches,
+    pub face_boards: &'f [sprites::Billboards],
+    pub face_sprites: &'f [Vec<sprites::SpriteRun>],
+    pub particle_frame: &'f particles_gpu::ParticleFrame,
+    pub line_frame: &'f lines::LineFrame,
+}
+
 impl Pass for ProbesPass {
     /// Each face's depth prepass: the three targets of the camera's; and
     /// the light volumes' grid captures, projected in compute
@@ -365,70 +415,38 @@ impl Pass for ProbesPass {
         needs: Caps::MRT.union(Caps::COMPUTE),
     };
     type State = probes::Probes;
+    type Frame = ProbesFrame;
+    type PlanIn<'a> = ProbesIn<'a>;
+    type UploadIn<'a> = ListsMoved;
+    type BindIn<'f> = ProbesBindIn<'f>;
     type Plan<'f> = ProbesPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.probes
     }
 
-    fn encode<'f>(_: &Self::State, plan: &ProbesPlan<'f>, _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
-        cx.ctx.r.encode_probes(plan, cx);
-    }
-}
-
-pub(super) struct PlanProbeListsInputs<'a> {
-    pub batches: &'a [Batch],
-    pub vis: &'a mut FrameVisibility,
-    pub gpu_cull: bool,
-    pub spheres: &'a [(Vec3, f32)],
-    pub transforms: &'a mut Vec<instances::GpuTransform>,
-    pub origins: &'a mut Vec<u32>,
-    pub cull_inside: &'a mut CullScratch,
-    pub submission: &'a [u32],
-    pub in_meshlet: &'a dyn Fn(&Batch) -> bool,
-    pub probe_faces: &'a [[frame::CameraFrame; 6]],
-    pub active_probes: &'a [probes::ReflectionProbe],
-    pub probe_frame: &'a probes::ProbeFrame,
-    pub face_depth: bool,
-    pub meshlet_all: &'a [u32],
-    pub face_boards: &'a [sprites::Billboards],
-}
-
-pub(super) struct PlanProbeListsOutputs {
-    pub probe_lists: Vec<DrawList>,
-    pub probe_blended: Vec<DrawList>,
-    pub probe_views: Vec<u32>,
-}
-
-impl Renderer {
     /// Culls and sorts each due probe face's meshes.
-    #[allow(clippy::too_many_lines)]
-    pub(super) fn plan_probe_lists(
-        &self,
-        PlanProbeListsInputs {
-            batches,
-            vis,
-            gpu_cull,
-            spheres,
-            transforms,
-            origins,
-            cull_inside,
-            submission,
-            in_meshlet,
+    fn plan(
+        r: &mut Renderer,
+        ProbesIn {
+            cull,
+            seen,
             probe_faces,
             active_probes,
             probe_frame,
             face_depth,
             meshlet_all,
             face_boards,
-        }: PlanProbeListsInputs<'_>,
-    ) -> PlanProbeListsOutputs {
-        let meshlet_gpu = self.visibility.meshlet.as_ref();
+        }: ProbesIn<'_>,
+    ) -> ProbesFrame {
+        let r = &*r;
+        let batches = seen.batches;
+        let meshlet_gpu = r.visibility.meshlet.as_ref();
         // Reflection probes: each due capture's faces culled, their
         // transparent meshes sorted back to front from the probe (probes.rs).
-        let mut probe_lists: Vec<DrawList> = Vec::new();
-        let mut probe_blended: Vec<DrawList> = Vec::new();
-        let mut probe_views: Vec<u32> = Vec::new();
+        let mut lists: Vec<DrawList> = Vec::new();
+        let mut blended: Vec<DrawList> = Vec::new();
+        let mut views: Vec<u32> = Vec::new();
         for (d, cams) in probe_faces.iter().enumerate() {
             let probe = &active_probes[probe_frame.due[d].1];
             let eye = probe.position;
@@ -439,7 +457,7 @@ impl Renderer {
                 let view = if face_depth {
                     0
                 } else {
-                    vis.meshlet_view(
+                    cull.vis.meshlet_view(
                         meshlet_gpu,
                         batches,
                         meshlet_gpu::MeshletView::seen(
@@ -451,27 +469,27 @@ impl Renderer {
                         ),
                     )
                 };
-                probe_views.push(view);
-                probe_lists.push(
-                    self.cull(
+                views.push(view);
+                lists.push(
+                    r.cull(
                         batches,
-                        spheres,
-                        transforms,
-                        origins,
-                        cull_inside,
+                        seen.spheres,
+                        &mut cull.transforms,
+                        &mut cull.origins,
+                        &mut cull.cull_inside,
                         &frustum,
-                        !gpu_cull,
-                        |b| !b.transparent && !(view > 0 && in_meshlet(b)),
+                        !seen.gpu_cull,
+                        |b| !b.transparent && !(view > 0 && (seen.in_meshlet)(b)),
                     )
                     .0,
                 );
-                probe_blended.push(
-                    self.sort_transparent(
+                blended.push(
+                    r.sort_transparent(
                         batches,
-                        spheres,
-                        submission,
-                        transforms,
-                        origins,
+                        seen.spheres,
+                        seen.submission,
+                        &mut cull.transforms,
+                        &mut cull.origins,
                         &frustum,
                         eye,
                         f.forward,
@@ -482,10 +500,118 @@ impl Renderer {
                 );
             }
         }
-        PlanProbeListsOutputs {
-            probe_lists,
-            probe_blended,
-            probe_views,
+        ProbesFrame {
+            lists,
+            blended,
+            views,
+            ..Default::default()
         }
+    }
+
+    /// The faces' lists after the uploaded records' move.
+    fn upload(_: &mut Renderer, frame: &mut ProbesFrame, moved: ListsMoved) {
+        moved.apply(frame.lists.iter_mut().chain(frame.blended.iter_mut()));
+    }
+
+    /// Each due face's particle and line groups, then the pass's plan
+    /// while a capture is due.
+    fn bind<'f>(
+        r: &'f Renderer,
+        frame: &'f mut ProbesFrame,
+        ProbesBindIn {
+            scene,
+            batches,
+            probe_frame,
+            face_depth,
+            face_water,
+            face_fluids,
+            probe_faces,
+            active_probes,
+            face_groups,
+            fx_group,
+            glow_fx_group,
+            probe_skinned,
+            terrain_draws,
+            scatter_batches,
+            face_boards,
+            face_sprites,
+            particle_frame,
+            line_frame,
+        }: ProbesBindIn<'f>,
+    ) -> Option<ProbesPlan<'f>> {
+        // Each due probe face's particle and line groups over its own
+        // camera's uniforms (probes.rs); soft particles fade against the
+        // face's own depth prepass.
+        (frame.particle_groups, frame.line_groups) = probe_faces
+            .iter()
+            .enumerate()
+            .flat_map(|(d, cams)| {
+                let (slot, i) = probe_frame.due[d];
+                let size = active_probes[i].face_size();
+                let position = active_probes[i].position;
+                let depth = if face_depth {
+                    &r.probes.targets_of(slot).prepass.lindepth
+                } else {
+                    &r.post.far_depth
+                };
+                cams.iter().map(move |f| (f, position, size, depth))
+            })
+            .map(|(f, position, size, depth)| {
+                let (particles, lines) =
+                    views::camera_gpu(f, position, (size, size), scene.frame.css_height);
+                let buffer = |label, contents: &[u8]| {
+                    crate::buffer_init(
+                        &r.device,
+                        &r.queue,
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some(label),
+                            contents,
+                            usage: wgpu::BufferUsages::UNIFORM,
+                        },
+                    )
+                };
+                let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
+                let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
+                (
+                    (!particle_frame.systems.is_empty()).then(|| {
+                        r.particles
+                            .gpu
+                            .draw_group_of(&r.device, &pb, depth, &r.post.white)
+                    }),
+                    r.lines.view_group(&r.device, &lb),
+                )
+            })
+            .unzip();
+        let frame = &*frame;
+        (!probe_frame.due.is_empty()).then(|| ProbesPlan {
+            meshlet_views: &frame.views,
+            batches,
+            scene,
+            probe_frame,
+            face_depth,
+            face_water,
+            face_fluids,
+            probe_faces,
+            active_probes,
+            face_groups,
+            fx_group,
+            probe_lists: &frame.lists,
+            probe_skinned,
+            terrain_indices: r.world.terrain.index_buffer(),
+            terrain_draws,
+            scatter_batches,
+            probe_blended: &frame.blended,
+            face_boards,
+            glow_fx_group,
+            face_particle_groups: &frame.particle_groups,
+            particle_frame,
+            line_frame,
+            face_line_groups: &frame.line_groups,
+            face_sprites,
+        })
+    }
+
+    fn encode<'f>(_: &Self::State, plan: &ProbesPlan<'f>, _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
+        cx.ctx.r.encode_probes(plan, cx);
     }
 }

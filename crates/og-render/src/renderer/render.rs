@@ -27,16 +27,16 @@ mod post_uniforms;
 use post_uniforms::{FramePostHistory, WriteFramePostUniformsInputs};
 
 mod pass_probes;
-use pass_probes::{ProbesPass, ProbesPlan};
+use pass_probes::{ProbesBindIn, ProbesIn, ProbesPass};
 
 mod pass_view;
-use pass_view::{ViewPass, ViewPlan};
+use pass_view::{ViewBindIn, ViewIn, ViewPass};
 
 mod pass_prepass;
 use pass_prepass::{PrepassPass, PrepassPlan};
 
 mod pass_reflection;
-use pass_reflection::{ReflectionPass, ReflectionPlan};
+use pass_reflection::{ReflectionBindIn, ReflectionIn, ReflectionPass};
 
 mod pass_oit;
 use pass_oit::BlendedPart;
@@ -51,7 +51,7 @@ mod draw_ctx;
 mod schedule;
 use schedule::PassDesc;
 mod pass;
-use pass::{EncodeCx, FramePlans, Pass};
+use pass::{CullFrame, EncodeCx, FrameCulling, FramePlans, ListsMoved, Pass, PassFrames};
 mod pass_gi_probes;
 use draw_ctx::DrawCtx;
 use pass_gi_probes::GiProbesPass;
@@ -62,7 +62,7 @@ use pass_volumetric::VolumetricPass;
 mod pass_ssr;
 use pass_ssr::SsrPass;
 mod pass_light_2d;
-use pass_light_2d::Light2dPass;
+use pass_light_2d::{Light2dFrame, Light2dPass};
 mod pass_metaballs;
 use pass_metaballs::MetaballsPass;
 mod pass_fluid_3d;
@@ -73,9 +73,7 @@ use pass_particles::{ParticlesPass, ParticlesPlan};
 mod pre_graph;
 use pre_graph::pre_graph;
 mod pass_shadows;
-use pass_shadows::{
-    CascadePass, CascadePlan, LocalFacePass, LocalFacePlan, ShelterPass, ShelterPlan,
-};
+use pass_shadows::{CascadeIn, CascadePass, Casters, LocalFacePass, ShelterPass};
 mod pass_glow;
 use pass_glow::GlowPass;
 mod pass_custom_post;
@@ -87,10 +85,6 @@ use instance_uploads::InstanceUploadInputs;
 mod gpu_cull_stage;
 use gpu_cull_stage::GpuCullInputs;
 mod sprite_arenas;
-use pass_probes::PlanProbeListsInputs;
-use pass_reflection::PlanReflectionListsInputs;
-use pass_shadows::PlanShadowsInputs;
-use pass_view::PlanViewListsInputs;
 use sprite_arenas::SpriteArenaInputs;
 mod world_prepare;
 use world_prepare::PrepareWorldInputs;
@@ -188,7 +182,9 @@ impl Renderer {
             self.offscreen_submissions.pop_front();
         }
         self.sync(scene)?;
-        // What the frame plans for each of its passes (pass.rs).
+        // What the frame keeps for each of its passes from their plan
+        // steps to their encode, and what they encode from (pass.rs).
+        let mut frames = PassFrames::default();
         let mut plans = FramePlans::default();
         // The wind field's steps since the last tick drawn (wind_field.rs):
         // its grid is what every vegetation pass below reads it by, its
@@ -403,7 +399,7 @@ impl Renderer {
             particle_frame: &particle_frame,
             scene_water,
         });
-        plans.ssr = effects.ssr;
+        plans.ssr = SsrPass::bind(self, &mut frames.ssr, effects.ssr);
         // What the frame will draw with beyond its batches starts compiling
         // on worker threads before the batches' pipelines (deferred.rs):
         // the terrains', the frame's longest compiles, the sky's and the
@@ -507,7 +503,7 @@ impl Renderer {
             probe_faces: &probe_faces,
             active_probes: &active_probes,
         })?;
-        plans.metaballs = (arenas.fluids > 0).then_some(());
+        plans.metaballs = MetaballsPass::bind(self, &mut frames.metaballs, arenas.fluids);
         // Order-independent transparency's frame mode (oit_frame.rs).
         let oit = self.plan_oit_frame(PlanOitFrameInputs {
             scene,
@@ -635,57 +631,58 @@ impl Renderer {
             oit_frame: oit.oit_frame,
             oit_candidates: oit.oit_candidates,
         });
-        // The planar reflections' lists (reflection_lists.rs).
-        let mut mirror = self.plan_reflection_lists(PlanReflectionListsInputs {
+        // The frame's culling as the passes after the main camera extend
+        // it, and what they cull against (pass.rs).
+        let mut frame_cull = FrameCulling {
+            vis: camera_lists.vis,
+            transforms,
+            origins,
+            cull_inside: camera_lists.cull_inside,
+        };
+        let seen = CullFrame {
             batches: &batches,
-            vis: &mut camera_lists.vis,
-            gpu_cull: cull.gpu_cull,
             spheres: &spheres,
-            transforms: &mut transforms,
-            origins: &mut origins,
-            cull_inside: &mut camera_lists.cull_inside,
             submission: &submission,
+            gpu_cull: cull.gpu_cull,
+            cull_n: cull.cull_n,
             in_meshlet: &in_meshlet,
             on_layers: &on_layers,
-            reflections: &reflections,
-            mask: camera_lists.mask,
-            cull_n: cull.cull_n,
-        });
-        // The reflection probes' face lists (probe_lists.rs).
-        let mut faces = self.plan_probe_lists(PlanProbeListsInputs {
-            batches: &batches,
-            vis: &mut camera_lists.vis,
-            gpu_cull: cull.gpu_cull,
-            spheres: &spheres,
-            transforms: &mut transforms,
-            origins: &mut origins,
-            cull_inside: &mut camera_lists.cull_inside,
-            submission: &submission,
-            in_meshlet: &in_meshlet,
-            probe_faces: &probe_faces,
-            active_probes: &active_probes,
-            probe_frame: &probe_frame,
-            face_depth,
-            meshlet_all: &cull.meshlet_all,
-            face_boards: &arenas.face_boards,
-        });
-        // The views' lists (view_lists.rs).
-        let mut view_set = self.plan_view_lists(PlanViewListsInputs {
-            batches: &batches,
-            vis: &mut camera_lists.vis,
-            gpu_cull: cull.gpu_cull,
-            spheres: &spheres,
-            transforms: &mut transforms,
-            origins: &mut origins,
-            cull_inside: &mut camera_lists.cull_inside,
-            submission: &submission,
-            in_meshlet: &in_meshlet,
-            on_layers: &on_layers,
-            view_plans: &view_plans,
-            view_boards: &arenas.view_boards,
-            particle_frame: &particle_frame,
-            cull_n: cull.cull_n,
-        });
+        };
+        // The planar reflections', the probe faces' and the views' plan
+        // steps: their lists, in that order (pass_reflection.rs,
+        // pass_probes.rs, pass_view.rs).
+        frames.reflection = ReflectionPass::plan(
+            self,
+            ReflectionIn {
+                cull: &mut frame_cull,
+                seen,
+                reflections: &reflections,
+                mask: camera_lists.mask,
+            },
+        );
+        frames.probes = ProbesPass::plan(
+            self,
+            ProbesIn {
+                cull: &mut frame_cull,
+                seen,
+                probe_faces: &probe_faces,
+                active_probes: &active_probes,
+                probe_frame: &probe_frame,
+                face_depth,
+                meshlet_all: &cull.meshlet_all,
+                face_boards: &arenas.face_boards,
+            },
+        );
+        frames.view = ViewPass::plan(
+            self,
+            ViewIn {
+                cull: &mut frame_cull,
+                seen,
+                view_plans: &view_plans,
+                view_boards: &arenas.view_boards,
+                particle_frame: &particle_frame,
+            },
+        );
         // Terrains, scattered copies and grass (world_prepare.rs).
         let mut world_frame = self.prepare_world(PrepareWorldInputs {
             scene,
@@ -714,50 +711,66 @@ impl Renderer {
             cam: &cam,
             view_frustum: &view_frustum,
             contact: effects.contact,
-            volumetric_fog: &volumetric_fog,
             reflections: &reflections,
         });
-        plans.volumetric = lights_frame.volumetric;
-        // The shadow passes' plan and lists (shadow_plan.rs).
-        let shadow_plan = self.plan_shadows(PlanShadowsInputs {
-            scene,
-            camera: &camera,
-            cam: &cam,
-            batches: &batches,
-            light,
-            has_casters,
-            sphere_box,
-            to_light,
-            shadow_size,
-            aspect,
-            cull_n: cull.cull_n,
-            meshlet_casters: &cull.meshlet_casters,
-            shadow_split: &shadow_inputs.shadow_split,
-            skinned_batches: &skinned_batches,
-            scatter_batches: &world_frame.scatter_batches,
-            grass_frame: &world_frame.grass_frame,
-            terrain_casters: world_frame.terrain_casters,
-            terrain_draws: &world_frame.terrain_draws,
-            gpu_cull: cull.gpu_cull,
-            vis: &mut camera_lists.vis,
-            spheres: &spheres,
-            transforms: &mut transforms,
-            origins: &mut origins,
-            cull_inside: camera_lists.cull_inside,
-            shelter: &shadow_inputs.shelter,
-            local_shadows: &lights_frame.local_shadows,
-        });
+        // The volumetric fog's plan step (pass_volumetric.rs).
+        frames.volumetric = VolumetricPass::plan(self, (volumetric_fog.as_ref(), scene));
+        plans.volumetric = VolumetricPass::bind(self, &mut frames.volumetric, ());
+        // The shadow passes' plan steps: the cascades, the shelter map and
+        // the local faces, in that order (pass_shadows.rs).
+        let casters = Casters::new(
+            seen,
+            &cull.meshlet_casters,
+            &shadow_inputs.shadow_split,
+            &skinned_batches,
+            &world_frame.scatter_batches,
+            &world_frame.grass_frame,
+            world_frame.terrain_casters,
+            &world_frame.terrain_draws,
+        );
+        frames.cascade = CascadePass::plan(
+            self,
+            CascadeIn {
+                cull: &mut frame_cull,
+                casters: &casters,
+                scene,
+                camera: &camera,
+                cam: &cam,
+                light,
+                has_casters,
+                sphere_box,
+                to_light,
+                shadow_size,
+                aspect,
+            },
+        );
+        frames.shelter =
+            ShelterPass::plan(self, (&mut frame_cull, &casters, &shadow_inputs.shelter));
+        frames.local_face = LocalFacePass::plan(
+            self,
+            (
+                &mut frame_cull,
+                &casters,
+                scene,
+                &lights_frame.local_shadows,
+            ),
+        );
+        self.visibility.cull_inside = std::mem::take(&mut frame_cull.cull_inside);
+        // The shadow passes' upload steps: the cache textures their plans
+        // copy through.
+        CascadePass::upload(self, &mut frames.cascade, shadow_size);
+        LocalFacePass::upload(self, &mut frames.local_face, ());
         // The GPU culling's encode and the instance records (instances_stage.rs).
         let instance_uploads = self.upload_instances(UploadInstancesInputs {
             scene,
             cam: &cam,
             batches: &batches,
-            transforms,
+            transforms: frame_cull.transforms,
             spheres,
-            origins: &origins,
+            origins: &frame_cull.origins,
             debris_instances: &debris_instances,
             sorted,
-            vis: &camera_lists.vis,
+            vis: &frame_cull.vis,
             gpu_cull: cull.gpu_cull,
             max_passes: cull.max_passes,
             auxiliary_instances: cull.auxiliary_instances,
@@ -769,19 +782,21 @@ impl Renderer {
             skinned_plain,
             skinned_data: &skinned_data,
             skinned: &skinned,
-            reflection_list: &mut mirror.reflection_list,
-            reflection_blended: &mut mirror.reflection_blended,
             blended_list: &mut camera_lists.blended_list,
-            probe_lists: &mut faces.probe_lists,
-            probe_blended: &mut faces.probe_blended,
-            view_lists: &mut view_set.view_lists,
-            view_blended: &mut view_set.view_blended,
         });
+        // The CPU-culled lists of the passes after the camera, moved where
+        // the records put their instances (their upload steps).
+        let moved = ListsMoved {
+            gpu_cull: cull.gpu_cull,
+            sorted,
+        };
+        ReflectionPass::upload(self, &mut frames.reflection, moved);
+        ProbesPass::upload(self, &mut frames.probes, moved);
+        ViewPass::upload(self, &mut frames.view, moved);
         // The skinned, sprite, particle, overlay and 2D light uploads (uploads_stage.rs).
         let uploads = self.upload_frame(UploadFrameInputs {
             scene,
             target,
-            cam: &cam,
             crowd_gpu,
             skinned_data: &skinned_data,
             joint_matrices: &joint_matrices,
@@ -789,11 +804,25 @@ impl Renderer {
             scatter_batches: &mut world_frame.scatter_batches,
             ribbon_frame: &arenas.ribbon_frame,
             sprite_frame: &arenas.sprite_frame,
-            particle_frame: &particle_frame,
-            gpu_sprites: &arenas.gpu_sprites,
             overlay_frame: &overlay_frame,
             light_slots: &arenas.light_slots,
         });
+        // The particles' and the 2D lights' upload steps
+        // (pass_particles.rs, pass_light_2d.rs).
+        ParticlesPass::upload(
+            self,
+            &mut frames.particles,
+            ParticlesPlan {
+                frame: &particle_frame,
+                sprites: &arenas.gpu_sprites,
+            },
+        );
+        frames.light_2d = Light2dPass::plan(self, (scene, &arenas.light_slots));
+        Light2dPass::upload(
+            self,
+            &mut frames.light_2d,
+            (scene, &cam, &arenas.light_slots),
+        );
         // The frame uniform, its shadow slots and its copies (frame_uniform.rs).
         let frame_uniforms = self.write_frame_uniforms(WriteFrameUniformsInputs {
             scene,
@@ -806,7 +835,7 @@ impl Renderer {
             frame_fog: &frame_fog,
             scene_water,
             lights_gpu: &lights_frame.lights_gpu,
-            cascades: &shadow_plan.cascades,
+            cascades: &frames.cascade.cascades,
             local_shadows: &lights_frame.local_shadows,
             shelter: &shadow_inputs.shelter,
             probe_frame: &probe_frame,
@@ -894,17 +923,17 @@ impl Renderer {
         };
         self.shadows.shelter_key = shadow_inputs.shelter.as_ref().map(|s| s.2);
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
-        plans.live_sky = LiveSkyPass::plan(&self.sky.sky_capture);
-        plans.gi_probes = GiProbesPass::plan(&self.gi_probes);
-        plans.particles = particle_frame.any_gpu.then_some(ParticlesPlan {
-            frame: &particle_frame,
-            sprites: &arenas.gpu_sprites,
-        });
-        // The 2D light map's size, its directions target and the light
-        // pass's plan (pass_light_2d.rs).
-        let (light_2d, lightmap_size, lightdir_on) =
-            self.plan_light_2d(scene, &arenas.light_slots, uploads.lights_2d);
-        plans.light_2d = light_2d;
+        // The bind steps of the passes whose plans hold nothing of the
+        // frame's: the pass list reads them.
+        plans.live_sky = LiveSkyPass::bind(self, &mut frames.live_sky, ());
+        plans.gi_probes = GiProbesPass::bind(self, &mut frames.gi_probes, ());
+        plans.light_2d = Light2dPass::bind(self, &mut frames.light_2d, scene);
+        let Light2dFrame {
+            size: lightmap_size,
+            lightdir: lightdir_on,
+            lights: lights_2d,
+            occluders: occluders_2d,
+        } = frames.light_2d;
         // The frame's passes, compiled into the render graph (cached while
         // the pass list stays the same; pass_list.rs). It selects passes by
         // their plans, so every plan it reads is made above.
@@ -914,11 +943,11 @@ impl Renderer {
             effects: &effects,
             live_sky: plans.live_sky.is_some(),
             gi_probes: plans.gi_probes.is_some(),
-            particles: plans.particles.is_some(),
+            particles: particle_frame.any_gpu,
             light_2d: plans.light_2d.is_some(),
             metaballs: plans.metaballs.is_some(),
             froxels: plans.volumetric.is_some(),
-            cascades: shadow_plan.cascades.len() as u32,
+            cascades: frames.cascade.cascades.len() as u32,
             shelter_redraw: shadow_inputs.shelter_redraw,
             local_shadows: &lights_frame.local_shadows,
             probes: !probe_frame.due.is_empty(),
@@ -1046,9 +1075,6 @@ impl Renderer {
             fluids_3d: effects.fluids_3d,
             face_fluid,
         });
-        plans.fluid_3d = effects
-            .fluids_3d
-            .then_some(water_fluids.fluid_frame.as_ref());
         // The frame's encoder and the compute before the graph (pre_graph_stage.rs).
         let EncodePreGraphOutputs {
             mut encoder,
@@ -1062,7 +1088,7 @@ impl Renderer {
             crowd_gpu,
             crowd_frame: &crowd_frame,
             crowd_previous,
-            vis: &camera_lists.vis,
+            vis: &frame_cull.vis,
             gpu_cull: cull.gpu_cull,
             skinned: &skinned,
             skinned_motion,
@@ -1111,8 +1137,8 @@ impl Renderer {
             line_frame: &line_frame,
             decals: fx_frame.decals,
             decals_dropped: fx_frame.decals_dropped,
-            lights_2d: uploads.lights_2d,
-            occluders_2d: uploads.occluders_2d,
+            lights_2d,
+            occluders_2d,
             joints_drawn,
             taa_blend,
             oit_mode: camera_lists.oit_mode,
@@ -1130,16 +1156,11 @@ impl Renderer {
             batches: &batches,
             oit_mode: camera_lists.oit_mode,
             probe_frame: &probe_frame,
-            active_probes: &active_probes,
-            probe_faces: &probe_faces,
-            face_depth,
             skinned_visible: &skinned_visible,
             ao_target: effects.ao_target,
             contact: effects.contact,
             transmission_view,
             particle_frame: &particle_frame,
-            reflections: &reflections,
-            view_plans: &view_plans,
         });
         // The groups that select among them: the probes' (per active probe,
         // and with OIT's arena), and the effect groups' lean twins.
@@ -1157,18 +1178,9 @@ impl Renderer {
                 groups: &binds.oit_probe_groups,
                 frame,
             });
-        let fx_leans: Vec<(&wgpu::BindGroup, &wgpu::BindGroup)> =
-            std::iter::once((binds.fx_group, binds.fx_lean))
-                .chain(
-                    binds
-                        .reflection_fx_group
-                        .iter()
-                        .zip(binds.reflection_fx_lean.iter().map(Option::as_ref)),
-                )
-                .chain(binds.view_groups.iter().map(|g| (&g.1, g.2.as_ref())))
-                .filter_map(|(fx, lean)| Some((fx, lean?)))
-                .collect();
-        let palette_group = self.instances.palette.bind_group.as_ref();
+        // The bind steps of the passes the frame's culling lists for:
+        // their groups and their plans (pass_reflection.rs,
+        // pass_probes.rs, pass_view.rs).
         // The skinned batches' pipelines by pass (skinned_pipelines.rs).
         let SkinnedPipelines {
             lit: lit_skinned,
@@ -1184,6 +1196,79 @@ impl Renderer {
             .physical_fx_group
             .as_ref()
             .map(|p| (binds.fx_group, p));
+        plans.reflection = ReflectionPass::bind(
+            self,
+            &mut frames.reflection,
+            ReflectionBindIn {
+                scene,
+                reflections: &reflections,
+                batches: &batches,
+                skinned_visible: &skinned_visible,
+                lit_skinned_standard: &lit_skinned_standard,
+                terrain_draws: &world_frame.terrain_draws,
+            },
+        );
+        plans.probes = ProbesPass::bind(
+            self,
+            &mut frames.probes,
+            ProbesBindIn {
+                scene,
+                batches: &batches,
+                probe_frame: &probe_frame,
+                face_depth,
+                face_water: &water_fluids.face_water,
+                face_fluids: &water_fluids.face_fluids,
+                probe_faces: &probe_faces,
+                active_probes: &active_probes,
+                face_groups: &binds.face_groups,
+                fx_group: binds.fx_group,
+                glow_fx_group: binds.glow_fx_group,
+                probe_skinned: &probe_skinned,
+                terrain_draws: &world_frame.terrain_draws,
+                scatter_batches: &world_frame.scatter_batches,
+                face_boards: &arenas.face_boards,
+                face_sprites: &arenas.face_sprites,
+                particle_frame: &particle_frame,
+                line_frame: &line_frame,
+            },
+        );
+        plans.view = ViewPass::bind(
+            self,
+            &mut frames.view,
+            ViewBindIn {
+                scene,
+                batches: &batches,
+                view_plans: &view_plans,
+                lights_2d,
+                view_skinned: &view_skinned,
+                terrain_draws: &world_frame.terrain_draws,
+                view_boards: &arenas.view_boards,
+                particle_frame: &particle_frame,
+                view_ribbons: &arenas.view_ribbons,
+                line_frame: &line_frame,
+                view_sprites: &arenas.view_sprites,
+                view_glow_runs: &arenas.view_glow_runs,
+                post_fx,
+            },
+        );
+        // Each effect group's lean twin (`fx_lean_group`): the camera's,
+        // the planar reflections' and the views'.
+        let fx_leans: Vec<(&wgpu::BindGroup, &wgpu::BindGroup)> =
+            std::iter::once((binds.fx_group, binds.fx_lean))
+                .chain(plans.reflection.iter().flat_map(|p| {
+                    p.reflection_fx_group
+                        .iter()
+                        .zip(p.reflection_fx_lean.iter().map(Option::as_ref))
+                }))
+                .chain(
+                    plans
+                        .view
+                        .iter()
+                        .flat_map(|p| p.view_groups.iter().map(|g| (&g.1, g.2.as_ref()))),
+                )
+                .filter_map(|(fx, lean)| Some((fx, lean?)))
+                .collect();
+        let palette_group = self.instances.palette.bind_group.as_ref();
         // What every pass below draws with (draw_ctx.rs).
         let ctx = DrawCtx {
             r: self,
@@ -1212,7 +1297,7 @@ impl Renderer {
             terrain_casters: world_frame.terrain_casters,
         };
         let camera_cards = ctx.card_source(
-            camera_lists
+            frame_cull
                 .vis
                 .cull_passes
                 .iter()
@@ -1232,149 +1317,97 @@ impl Renderer {
             .into_iter()
             .chain(scatter_queries.into_iter().map(|(n, q)| (n.to_string(), q)))
             .collect();
-        plans.shelter = shadow_inputs
-            .shelter
-            .as_ref()
-            .zip(shadow_plan.shelter_list.as_ref())
-            .map(|(s, list)| ShelterPlan {
-                frustum: &s.1,
-                list,
-                view: shadow_plan.shelter_view,
-            });
-        plans.local_face = Some(LocalFacePlan {
-            lists: &shadow_plan.local_lists,
-            plans: &shadow_plan.local_plans,
-            frustums: &shadow_plan.local_frustums,
-            views: &shadow_plan.local_views,
-        });
-        plans.cascade = Some(CascadePlan {
-            cascades: &shadow_plan.cascades,
-            lists: &shadow_plan.cascade_lists,
-            plans: &shadow_plan.cascade_plans,
-            views: &shadow_plan.cascade_views,
-        });
-        plans.probes = (!probe_frame.due.is_empty()).then(|| ProbesPlan {
-            meshlet_views: &faces.probe_views,
-            batches: &batches,
-            scene,
-            probe_frame: &probe_frame,
-            face_depth,
-            face_water: &water_fluids.face_water,
-            face_fluids: &water_fluids.face_fluids,
-            probe_faces: &probe_faces,
-            active_probes: &active_probes,
-            face_groups: &binds.face_groups,
-            fx_group: binds.fx_group,
-            probe_lists: &faces.probe_lists,
-            probe_skinned: &probe_skinned,
-            terrain_indices,
-            terrain_draws: &world_frame.terrain_draws,
-            scatter_batches: &world_frame.scatter_batches,
-            probe_blended: &faces.probe_blended,
-            face_boards: &arenas.face_boards,
-            glow_fx_group: binds.glow_fx_group,
-            face_particle_groups: &binds.face_particle_groups,
-            particle_frame: &particle_frame,
-            line_frame: &line_frame,
-            face_line_groups: &binds.face_line_groups,
-            face_sprites: &arenas.face_sprites,
-        });
-        plans.reflection = (!reflections.is_empty()).then(|| ReflectionPlan {
-            meshlet_views: &mirror.reflection_meshlets,
-            batches: &batches,
-            scene,
-            reflection_frame_group: binds.reflection_frame_group,
-            reflection_fx_group: &binds.reflection_fx_group,
-            reflection_list: &mirror.reflection_list,
-            skinned_visible: &skinned_visible,
-            lit_skinned_standard: &lit_skinned_standard,
-            terrain_indices,
-            reflections: &reflections,
-            terrain_draws: &world_frame.terrain_draws,
-            reflection_blended: &mirror.reflection_blended,
-        });
-        plans.view = (!view_plans.is_empty()).then(|| ViewPlan {
-            meshlet_views: &view_set.view_views,
-            batches: &batches,
-            scene,
-            view_plans: &view_plans,
-            lights_2d: uploads.lights_2d,
-            view_groups: &binds.view_groups,
-            view_lists: &view_set.view_lists,
-            view_skinned: &view_skinned,
-            terrain_indices,
-            terrain_draws: &world_frame.terrain_draws,
-            view_blended: &view_set.view_blended,
-            view_boards: &arenas.view_boards,
-            view_sprite_fx: &binds.view_sprite_fx,
-            view_particle_groups: &binds.view_particle_groups,
-            particle_frame: &particle_frame,
-            view_ribbons: &arenas.view_ribbons,
-            line_frame: &line_frame,
-            view_line_groups: &binds.view_line_groups,
-            view_sprites: &arenas.view_sprites,
-            view_fields: &binds.view_fields,
-            view_glow_runs: &arenas.view_glow_runs,
-            post_fx,
-        });
-        plans.prepass = (effects.prepass).then(|| PrepassPlan {
-            water_draws: &water_fluids.water_draws,
-            object_space,
-            frame_bind_group: binds.frame_bind_group,
-            fx_group: binds.fx_group,
-            main_list: &camera_lists.main_list,
-            culled_gpu,
-            object_motion: cull.object_motion,
-            batches: &batches,
-            skinned_visible: &skinned_visible,
-            prepass_skinned: &prepass_skinned,
-            terrain_indices,
-            terrain_draws: &world_frame.terrain_draws,
-            view_frustum: &view_frustum,
-            scatter_batches: &world_frame.scatter_batches,
-            cards: camera_cards,
-            grass_frame: &world_frame.grass_frame,
-        });
-        plans.main = Some(MainPlan {
-            scene,
-            water_draws: &water_fluids.water_draws,
-            fluid_frame: &water_fluids.fluid_frame,
-            transmission_view,
-            taa: temporal,
-            frame_bind_group: binds.frame_bind_group,
-            fx_group: binds.fx_group,
-            main_list: &camera_lists.main_list,
-            batches: &batches,
-            physical_fx,
-            probe_binding,
-            skinned_visible: &skinned_visible,
-            lit_skinned: &lit_skinned,
-            terrain_indices,
-            terrain_draws: &world_frame.terrain_draws,
-            view_frustum: &view_frustum,
-            scatter_batches: &world_frame.scatter_batches,
-            cards: camera_cards,
-            grass_frame: &world_frame.grass_frame,
-            fluid_bounds: water_fluids.fluid_bounds,
-            blended_list: &camera_lists.blended_list,
-            sprite_frame: &arenas.sprite_frame,
-            sprite_fx_group: binds.sprite_fx_group,
-            particle_group: &binds.particle_group,
-            particle_frame: &particle_frame,
-            ribbon_frame: &arenas.ribbon_frame,
-            line_frame: &line_frame,
-            metaball_groups: &binds.metaball_groups,
-            volumetric_fog,
-            oit: camera_lists.oit_mode,
-            oit_frame_group: binds.oit_frame_group.as_ref(),
-            oit_probe_binding,
-            gi_copy,
-        });
-        plans.glow = glow.then_some(arenas.sprite_frame.glow_runs.as_slice());
-        plans.custom_post = (!effects.custom_posts.is_empty()).then(|| CustomPostPlan {
-            scene,
-            posts: &effects.custom_posts,
-        });
+        // The bind steps of the other passes, in frame order.
+        plans.cascade = CascadePass::bind(self, &mut frames.cascade, ());
+        plans.shelter = ShelterPass::bind(self, &mut frames.shelter, &shadow_inputs.shelter);
+        plans.local_face = LocalFacePass::bind(self, &mut frames.local_face, ());
+        plans.particles = ParticlesPass::bind(
+            self,
+            &mut frames.particles,
+            ParticlesPlan {
+                frame: &particle_frame,
+                sprites: &arenas.gpu_sprites,
+            },
+        );
+        plans.fluid_3d = Fluid3dPass::bind(
+            self,
+            &mut frames.fluid_3d,
+            (effects.fluids_3d, water_fluids.fluid_frame.as_ref()),
+        );
+        plans.prepass = PrepassPass::bind(
+            self,
+            &mut frames.prepass,
+            effects.prepass.then_some(PrepassPlan {
+                water_draws: &water_fluids.water_draws,
+                object_space,
+                frame_bind_group: binds.frame_bind_group,
+                fx_group: binds.fx_group,
+                main_list: &camera_lists.main_list,
+                culled_gpu,
+                object_motion: cull.object_motion,
+                batches: &batches,
+                skinned_visible: &skinned_visible,
+                prepass_skinned: &prepass_skinned,
+                terrain_indices,
+                terrain_draws: &world_frame.terrain_draws,
+                view_frustum: &view_frustum,
+                scatter_batches: &world_frame.scatter_batches,
+                cards: camera_cards,
+                grass_frame: &world_frame.grass_frame,
+            }),
+        );
+        plans.main = MainPass::bind(
+            self,
+            &mut frames.main,
+            MainPlan {
+                scene,
+                water_draws: &water_fluids.water_draws,
+                fluid_frame: &water_fluids.fluid_frame,
+                transmission_view,
+                taa: temporal,
+                frame_bind_group: binds.frame_bind_group,
+                fx_group: binds.fx_group,
+                main_list: &camera_lists.main_list,
+                batches: &batches,
+                physical_fx,
+                probe_binding,
+                skinned_visible: &skinned_visible,
+                lit_skinned: &lit_skinned,
+                terrain_indices,
+                terrain_draws: &world_frame.terrain_draws,
+                view_frustum: &view_frustum,
+                scatter_batches: &world_frame.scatter_batches,
+                cards: camera_cards,
+                grass_frame: &world_frame.grass_frame,
+                fluid_bounds: water_fluids.fluid_bounds,
+                blended_list: &camera_lists.blended_list,
+                sprite_frame: &arenas.sprite_frame,
+                sprite_fx_group: binds.sprite_fx_group,
+                particle_group: &binds.particle_group,
+                particle_frame: &particle_frame,
+                ribbon_frame: &arenas.ribbon_frame,
+                line_frame: &line_frame,
+                metaball_groups: &binds.metaball_groups,
+                volumetric_fog,
+                oit: camera_lists.oit_mode,
+                oit_frame_group: binds.oit_frame_group.as_ref(),
+                oit_probe_binding,
+                gi_copy,
+            },
+        );
+        plans.glow = GlowPass::bind(
+            self,
+            &mut frames.glow,
+            (glow, arenas.sprite_frame.glow_runs.as_slice()),
+        );
+        plans.custom_post = CustomPostPass::bind(
+            self,
+            &mut frames.custom_post,
+            CustomPostPlan {
+                scene,
+                posts: &effects.custom_posts,
+            },
+        );
         // The graph's passes in order (execute.rs).
         self.execute_graph(GraphRun {
             ctx: &ctx,

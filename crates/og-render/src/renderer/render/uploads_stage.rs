@@ -1,14 +1,14 @@
 //! The frame's uploads past the instance records: the skinned records and
-//! the joint palette, the crowds' card atlases, the strips, sprites and
-//! particles, the overlay's instances and uniform, and the 2D lights and
-//! occluders, in that order.
+//! the joint palette, the crowds' card atlases, the strips and sprites, the
+//! overlay's instances and uniform, and the sprites' 2D light strips and
+//! ambient, in that order. The particles' and the 2D lights' own uploads
+//! are their passes' upload steps.
 
 use super::*;
 
 pub(super) struct UploadFrameInputs<'a> {
     pub scene: &'a RenderScene,
     pub target: &'a RenderTarget<'a>,
-    pub cam: &'a frame::CameraFrame,
     pub crowd_gpu: bool,
     pub skinned_data: &'a [crate::skin::SkinnedInstanceGpu],
     pub joint_matrices: &'a [[[f32; 4]; 4]],
@@ -16,27 +16,22 @@ pub(super) struct UploadFrameInputs<'a> {
     pub scatter_batches: &'a mut scatter::ScatterBatches,
     pub ribbon_frame: &'a crate::ribbons::RibbonFrame,
     pub sprite_frame: &'a sprites::SpriteFrame,
-    pub particle_frame: &'a particles_gpu::ParticleFrame,
-    pub gpu_sprites: &'a sprites::GpuSprites,
     pub overlay_frame: &'a Option<crate::overlay::OverlayFrame>,
     pub light_slots: &'a crate::light2d::LightSlots,
 }
 
 pub(super) struct UploadFrameOutputs {
     pub ui_uniform: Option<[f32; 8]>,
-    pub lights_2d: u32,
-    pub occluders_2d: u32,
 }
 
 impl Renderer {
-    /// Uploads the frame's skinned, sprite, particle, overlay and 2D light data.
+    /// Uploads the frame's skinned, sprite and overlay data.
     #[allow(clippy::too_many_lines)]
     pub(super) fn upload_frame(
         &mut self,
         UploadFrameInputs {
             scene,
             target,
-            cam,
             crowd_gpu,
             skinned_data,
             joint_matrices,
@@ -44,8 +39,6 @@ impl Renderer {
             scatter_batches,
             ribbon_frame,
             sprite_frame,
-            particle_frame,
-            gpu_sprites,
             overlay_frame,
             light_slots,
         }: UploadFrameInputs<'_>,
@@ -84,8 +77,6 @@ impl Renderer {
             "sprites",
             bytemuck::cast_slice(&sprite_frame.instances),
         );
-        self.particles
-            .upload(&self.device, &self.queue, particle_frame, gpu_sprites);
         let mut ui_uniform = None;
         if let (Some(of), Some(o)) = (overlay_frame, &scene.ui.overlay) {
             grow_and_write(
@@ -118,22 +109,6 @@ impl Renderer {
                 ambient_2d.z,
             ]),
         );
-        let (lights_2d, occluders_2d) = match scene.sprite.lighting_2d {
-            Some(l) => self.lights_2d.write(
-                &self.device,
-                &self.queue,
-                cam.view_proj,
-                &scene.sprite.lights_2d,
-                &scene.sprite.occluders_2d,
-                light_slots,
-                l.shadow_angles,
-            ),
-            None => (0, 0),
-        };
-        UploadFrameOutputs {
-            ui_uniform,
-            lights_2d,
-            occluders_2d,
-        }
+        UploadFrameOutputs { ui_uniform }
     }
 }

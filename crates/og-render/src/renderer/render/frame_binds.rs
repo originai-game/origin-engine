@@ -1,9 +1,10 @@
 //! The frame's bind groups (the bind phase): the environment's frame and
 //! sky groups, the probes' groups (per active probe, per due face, and with
-//! OIT's arena), the effect groups, the physical pipelines' group, the
-//! particles', metaballs' and planar reflection's groups, and each view's
-//! and due probe face's groups. Built from the renderer's state after every
-//! upload; nothing here writes the queue.
+//! OIT's arena), the effect groups, the physical pipelines' group, and the
+//! particles' and metaballs' groups. Built from the renderer's state after
+//! every upload; nothing here writes the queue. The planar reflections',
+//! the views' and the due probe faces' own groups are their passes' bind
+//! steps.
 
 use super::*;
 
@@ -12,22 +13,16 @@ pub(super) struct BindFrameInputs<'a> {
     pub batches: &'a [Batch],
     pub oit_mode: Option<oit::Oit>,
     pub probe_frame: &'a probes::ProbeFrame,
-    pub active_probes: &'a [probes::ReflectionProbe],
-    pub probe_faces: &'a [[frame::CameraFrame; 6]],
-    pub face_depth: bool,
     pub skinned_visible: &'a [Batch],
     pub ao_target: bool,
     pub contact: bool,
     pub transmission_view: Option<(&'a wgpu::TextureView, &'a mips::MipChain)>,
     pub particle_frame: &'a particles_gpu::ParticleFrame,
-    pub reflections: &'a [camera::PlanarReflection],
-    pub view_plans: &'a [views::ViewPlan],
 }
 
 pub(super) struct BindFrameOutputs<'a> {
     pub frame_bind_group: &'a wgpu::BindGroup,
     pub sky_group: &'a wgpu::BindGroup,
-    pub reflection_frame_group: &'a Vec<wgpu::BindGroup>,
     pub probe_groups: Vec<wgpu::BindGroup>,
     pub oit_probe_groups: Vec<wgpu::BindGroup>,
     pub face_groups: Vec<wgpu::BindGroup>,
@@ -39,16 +34,7 @@ pub(super) struct BindFrameOutputs<'a> {
     pub scene_depth: &'a wgpu::TextureView,
     pub particle_group: Option<wgpu::BindGroup>,
     pub metaball_groups: Vec<wgpu::BindGroup>,
-    pub reflection_fx_group: Vec<wgpu::BindGroup>,
-    pub view_groups: Vec<(wgpu::BindGroup, wgpu::BindGroup, Option<wgpu::BindGroup>)>,
     pub fx_lean: Option<&'a wgpu::BindGroup>,
-    pub reflection_fx_lean: Vec<Option<wgpu::BindGroup>>,
-    pub view_fields: Vec<Vec<wgpu::BindGroup>>,
-    pub view_sprite_fx: Vec<wgpu::BindGroup>,
-    pub view_particle_groups: Vec<Option<wgpu::BindGroup>>,
-    pub view_line_groups: Vec<wgpu::BindGroup>,
-    pub face_particle_groups: Vec<Option<wgpu::BindGroup>>,
-    pub face_line_groups: Vec<wgpu::BindGroup>,
 }
 
 impl Renderer {
@@ -61,19 +47,14 @@ impl Renderer {
             batches,
             oit_mode,
             probe_frame,
-            active_probes,
-            probe_faces,
-            face_depth,
             skinned_visible,
             ao_target,
             contact,
             transmission_view,
             particle_frame,
-            reflections,
-            view_plans,
         }: BindFrameInputs<'a>,
     ) -> BindFrameOutputs<'a> {
-        let (_, frame_bind_group, sky_group, reflection_frame_group) = self
+        let (_, frame_bind_group, sky_group, _) = self
             .lights
             .environment
             .as_ref()
@@ -240,155 +221,10 @@ impl Renderer {
             .map_while(|name| self.graph.try_view(name))
             .map(|v| self.world.metaballs.group(&self.device, v))
             .collect();
-        // The planar reflection's effect group: its decals, no AO.
-        let reflection_fx_group: Vec<wgpu::BindGroup> = (0..reflections.len())
-            .map(|k| {
-                let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
-                    &self.cache.textures[t.index()].view
-                });
-                fx::fx_group(
-                    &self.device,
-                    "fx (planar reflection)",
-                    &self.fx_layout,
-                    &[
-                        self.reflections.reflection_fx_buffer[k].as_entire_binding(),
-                        wgpu::BindingResource::TextureView(&self.post.white),
-                        wgpu::BindingResource::TextureView(atlas_view),
-                        wgpu::BindingResource::Sampler(&self.trilinear_sampler),
-                        // Not the reflection itself: this pass draws it.
-                        wgpu::BindingResource::TextureView(&self.post.white),
-                    ][..if self.planar_slot() { 5 } else { 4 }],
-                    &self.lights.decal_buffers,
-                )
-            })
-            .collect();
-        let view_groups = self.view_groups(scene, view_plans);
-        // Each pass's effect group without the planar reflection, for its
-        // lightmapped draws (`fx_lean_group`), by the pass's own group.
-        let reflection_fx_lean: Vec<Option<wgpu::BindGroup>> = (0..reflections.len())
-            .map(|k| {
-                let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
-                    &self.cache.textures[t.index()].view
-                });
-                self.fx_lean_group(
-                    &self.reflections.reflection_fx_buffer[k],
-                    &self.post.white,
-                    atlas_view,
-                )
-            })
-            .collect();
         let fx_lean = groups.fx_lean.as_ref();
-        // Each view's metaball field groups (its own fields' textures).
-        let view_fields: Vec<Vec<wgpu::BindGroup>> = view_plans
-            .iter()
-            .map(|p| {
-                let slot = self.views.slots[p.index].as_ref().expect("written");
-                slot.fields
-                    .iter()
-                    .map(|v| self.world.metaballs.group(&self.device, v))
-                    .collect()
-            })
-            .collect();
-        // Each view's sprite effect group: its 2D light map (white
-        // without 2D lighting) and its image's size.
-        let view_sprite_fx: Vec<wgpu::BindGroup> = view_plans
-            .iter()
-            .map(|p| {
-                let slot = self.views.slots[p.index].as_ref().expect("written");
-                bind_group(
-                    &self.device,
-                    "sprite fx (view)",
-                    &self.sprite.sprite_fx_layout,
-                    &[
-                        wgpu::BindingResource::TextureView(
-                            slot.light_map
-                                .as_ref()
-                                .map_or(&self.default_white, |(_, v)| v),
-                        ),
-                        wgpu::BindingResource::Sampler(&self.sprite.sprite_sampler),
-                        slot.sprite_fx_buffer.as_entire_binding(),
-                        wgpu::BindingResource::TextureView(
-                            slot.light_dir.as_ref().unwrap_or(&self.post.black),
-                        ),
-                    ],
-                )
-            })
-            .collect();
-        // Each view's particle and line groups over its own camera's
-        // uniforms (views.rs).
-        let view_particle_groups: Vec<Option<wgpu::BindGroup>> = view_plans
-            .iter()
-            .map(|p| {
-                let slot = self.views.slots[p.index].as_ref().expect("written");
-                // Soft particles fade against the view's own depth.
-                let depth = slot
-                    .prepass
-                    .as_ref()
-                    .map_or(&self.post.far_depth, |pre| &pre.lindepth);
-                (!particle_frame.systems.is_empty()).then(|| {
-                    self.particles.gpu.draw_group_of(
-                        &self.device,
-                        &slot.particle_buffer,
-                        depth,
-                        &self.post.white,
-                    )
-                })
-            })
-            .collect();
-        // Each due probe face's particle and line groups over its own
-        // camera's uniforms (probes.rs); soft particles fade against the
-        // face's own depth prepass.
-        let (face_particle_groups, face_line_groups): (Vec<_>, Vec<_>) = probe_faces
-            .iter()
-            .enumerate()
-            .flat_map(|(d, cams)| {
-                let (slot, i) = probe_frame.due[d];
-                let size = active_probes[i].face_size();
-                let position = active_probes[i].position;
-                let depth = if face_depth {
-                    &self.probes.targets_of(slot).prepass.lindepth
-                } else {
-                    &self.post.far_depth
-                };
-                cams.iter().map(move |f| (f, position, size, depth))
-            })
-            .map(|(f, position, size, depth)| {
-                let (particles, lines) =
-                    views::camera_gpu(f, position, (size, size), scene.frame.css_height);
-                let buffer = |label, contents: &[u8]| {
-                    crate::buffer_init(
-                        &self.device,
-                        &self.queue,
-                        &wgpu::util::BufferInitDescriptor {
-                            label: Some(label),
-                            contents,
-                            usage: wgpu::BufferUsages::UNIFORM,
-                        },
-                    )
-                };
-                let pb = buffer("probe face particles", bytemuck::bytes_of(&particles));
-                let lb = buffer("probe face lines", bytemuck::bytes_of(&lines));
-                (
-                    (!particle_frame.systems.is_empty()).then(|| {
-                        self.particles
-                            .gpu
-                            .draw_group_of(&self.device, &pb, depth, &self.post.white)
-                    }),
-                    self.lines.view_group(&self.device, &lb),
-                )
-            })
-            .unzip();
-        let view_line_groups: Vec<wgpu::BindGroup> = view_plans
-            .iter()
-            .map(|p| {
-                let slot = self.views.slots[p.index].as_ref().expect("written");
-                self.lines.view_group(&self.device, &slot.line_buffer)
-            })
-            .collect();
         BindFrameOutputs {
             frame_bind_group,
             sky_group,
-            reflection_frame_group,
             probe_groups,
             oit_probe_groups,
             face_groups,
@@ -400,16 +236,7 @@ impl Renderer {
             scene_depth,
             particle_group,
             metaball_groups,
-            reflection_fx_group,
-            view_groups,
             fx_lean,
-            reflection_fx_lean,
-            view_fields,
-            view_sprite_fx,
-            view_particle_groups,
-            view_line_groups,
-            face_particle_groups,
-            face_line_groups,
         }
     }
 }
