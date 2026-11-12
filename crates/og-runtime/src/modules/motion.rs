@@ -2,12 +2,11 @@
 //! and `Transition` read into og-ui's types, and the calls that take them.
 
 use super::{paint, with_ui};
-use crate::wire::{self, ToJson};
+use crate::wire;
 use og_ui::{
     Choreo, Ease, EventKind, Key, KeyEase, MotionToken, PlayDesc, Prop, Repeat, SpringSpec,
     StaggerFrom, Theme, Timeline, TimelineEvent, TimelineTrack, Transition,
 };
-use serde_json::json;
 
 fn spring(s: &wire::SpringSpec) -> SpringSpec {
     SpringSpec::new(s.duration_ms, s.bounce)
@@ -68,7 +67,10 @@ fn event_kind(theme: &Theme, a: &wire::TimelineAction) -> EventKind {
             radius: e.radius,
             color: paint(
                 theme,
-                &json!({ "color": e.color.as_ref().map(ToJson::to_json) }),
+                &wire::Paint {
+                    color: e.color.clone(),
+                    ..Default::default()
+                },
             ),
             duration_ms: 0.0,
         },

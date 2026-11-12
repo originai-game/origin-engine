@@ -47,8 +47,8 @@ impl Feed {
         let vp = ui.viewport();
         let view = self.camera.as_ref().and_then(|(id, layout)| {
             let bytes = ctx.resource_bytes(*id).ok()?;
-            let cam = layout.decode(&bytes);
-            Some(crate::api::camera_view(
+            let cam: crate::wire::record::Camera = layout.read(&bytes).ok()?;
+            Some(crate::api::camera_of(
                 &cam,
                 vp.width.max(1.0),
                 vp.height.max(1.0),
@@ -91,12 +91,12 @@ impl Feed {
 
 // ── reading descs ───────────────────────────────────────────────────────────
 
-use crate::wire::{self, MassKind, MassTemplateDesc, ToJson};
+use crate::wire::{self, MassKind, MassTemplateDesc};
 use og_core::glam::Vec2;
 
 fn linear(theme: &Theme, p: &Option<wire::Paint>, d: [f32; 4]) -> [f32; 4] {
     p.as_ref()
-        .and_then(|p| paint(theme, &p.to_json()))
+        .and_then(|p| paint(theme, p))
         .map_or(d, |c| c.linear())
 }
 
@@ -179,7 +179,7 @@ fn template(
         outline: d
             .outline
             .as_ref()
-            .and_then(|p| paint(theme, &p.to_json()))
+            .and_then(|p| paint(theme, p))
             .map(|c| (d.outline_width.max(0.0), c.linear())),
     };
     let space = match d.space {

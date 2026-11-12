@@ -24,13 +24,13 @@ pub(crate) use ui_config::{LoadedStyle, load_style, new_ui, ui_font};
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
 use og_ui::prelude::*;
+use ui_desc::paint;
 pub use ui_desc::{
     THEME_COLORS, TYPE_STEPS, og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer,
     og_ui_frame_theme, og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds,
     og_ui_set_focus, og_ui_theme, og_ui_viewport,
 };
 pub(crate) use ui_desc::{anchor_of, step, texture_of, ui_engine, with_ui};
-use ui_desc::{insets, paint, ui_rect};
 mod widgets;
 pub(crate) use widgets::emit;
 mod game_widgets;
@@ -379,26 +379,31 @@ pub(crate) fn native_keys(v: Viewport) -> Viewport {
 /// is sized; native hosts take the render target's size.
 pub fn set_viewport(engine_id: u32, viewport: Value) -> Result<(), String> {
     let eng = engine(engine_id)?;
-    let num = |k: &str, d: f64| viewport[k].as_f64().unwrap_or(d) as f32;
+    let w: wire::Viewport = wire::value(&viewport, "viewport")?;
+    let s = w.safe_area;
+    let c = w.covered.unwrap_or_default();
     let v = Viewport {
-        width: num("width", 1280.0).max(1.0),
-        height: num("height", 720.0).max(1.0),
-        dpr: num("dpr", 1.0),
-        safe_area: insets(&viewport["safeArea"]),
-        small: [num("smallWidth", 0.0), num("smallHeight", 0.0)],
-        large: [num("largeWidth", 0.0), num("largeHeight", 0.0)],
-        coarse_pointer: viewport["coarsePointer"].as_bool().unwrap_or(false),
-        reduced_motion: viewport["reducedMotion"].as_bool().unwrap_or(false),
-        high_contrast: viewport["highContrast"].as_bool().unwrap_or(false),
-        reduced_transparency: viewport["reducedTransparency"].as_bool().unwrap_or(false),
+        width: w.width.max(1.0),
+        height: w.height.max(1.0),
+        dpr: w.dpr,
+        safe_area: Insets {
+            left: s.left,
+            top: s.top,
+            right: s.right,
+            bottom: s.bottom,
+        },
+        small: [w.small_width.unwrap_or(0.0), w.small_height.unwrap_or(0.0)],
+        large: [w.large_width.unwrap_or(0.0), w.large_height.unwrap_or(0.0)],
+        coarse_pointer: w.coarse_pointer,
+        reduced_motion: w.reduced_motion.unwrap_or(false),
+        high_contrast: w.high_contrast.unwrap_or(false),
+        reduced_transparency: w.reduced_transparency.unwrap_or(false),
         // Absent, the platform's own keys (the web host always says; a
         // native host's surface without a renderer, og-host-node's
         // og_node_attach_offscreen, leaves it to the platform, as
         // `native_keys` does for the rendered one).
-        mac_keys: viewport["macKeys"]
-            .as_bool()
-            .unwrap_or(cfg!(target_os = "macos")),
-        covered: ui_rect(&viewport["covered"]),
+        mac_keys: w.mac_keys.unwrap_or(cfg!(target_os = "macos")),
+        covered: og_ui::Rect::new(c.x, c.y, c.width, c.height),
     };
     eng.render.borrow_mut().viewport = Some(v);
     Ok(())

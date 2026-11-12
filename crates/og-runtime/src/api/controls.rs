@@ -1,25 +1,9 @@
 //! Transform, random, audio, input and camera binding calls.
 
 use super::*;
+use crate::wire::{FromJson, record};
 
 // ── transform ───────────────────────────────────────────────────────────────
-
-pub(super) fn vec3(v: &Value) -> glam::Vec3 {
-    glam::Vec3::new(
-        v["x"].as_f64().unwrap_or(0.0) as f32,
-        v["y"].as_f64().unwrap_or(0.0) as f32,
-        v["z"].as_f64().unwrap_or(0.0) as f32,
-    )
-}
-
-fn quat(v: &Value) -> glam::Quat {
-    glam::Quat::from_xyzw(
-        v["x"].as_f64().unwrap_or(0.0) as f32,
-        v["y"].as_f64().unwrap_or(0.0) as f32,
-        v["z"].as_f64().unwrap_or(0.0) as f32,
-        v["w"].as_f64().unwrap_or(1.0) as f32,
-    )
-}
 
 fn vec3_json(v: glam::Vec3) -> Value {
     json!({ "x": f64::from(v.x), "y": f64::from(v.y), "z": f64::from(v.z) })
@@ -525,9 +509,9 @@ fn surface_size(eng: &Engine) -> (f32, f32) {
 pub fn og_camera_look_at(world: u32, target: String) {
     let _ = (|| -> Result<(), String> {
         let eng = engine(world)?;
-        let cam = resource_value(&eng, "og.Camera")?;
+        let cam = record::Camera::from_json(&resource_value(&eng, "og.Camera")?)?;
         let q = look_rotation(
-            vec3(&cam["position"]),
+            cam.position,
             wire::arg(Some(&target), "target")?,
             glam::Vec3::Y,
         );
@@ -541,33 +525,36 @@ pub fn og_camera_look_at(world: u32, target: String) {
 }
 
 fn view_proj(eng: &Engine) -> Result<(glam::Mat4, glam::Mat4, f32, f32), String> {
-    let cam = resource_value(eng, "og.Camera")?;
+    let cam = record::Camera::from_json(&resource_value(eng, "og.Camera")?)?;
     let (w, h) = surface_size(eng);
     let vp = camera_view_proj(&cam, w, h);
     Ok((vp, vp.inverse(), w, h))
 }
 
+/// [`camera_of`] of og.Camera's JSON (a value that is not one: the default
+/// camera).
+pub(crate) fn camera_view(cam: &Value, w: f32, h: f32) -> og_ui::WorldView {
+    camera_of(&record::Camera::from_json(cam).unwrap_or_default(), w, h)
+}
+
 /// og.Camera's projection times view on a `w`×`h` surface, and its eye,
 /// forward axis and whether it is orthographic: what og.camera's
 /// worldToScreen projects with and the UI's world anchors follow.
-pub(crate) fn camera_view(cam: &Value, w: f32, h: f32) -> og_ui::WorldView {
-    let rot = quat(&cam["quaternion"]);
+pub(crate) fn camera_of(cam: &record::Camera, w: f32, h: f32) -> og_ui::WorldView {
     og_ui::WorldView {
         view_proj: camera_view_proj(cam, w, h),
-        eye: vec3(&cam["position"]),
-        forward: rot * glam::Vec3::NEG_Z,
-        orthographic: cam["orthographic"].as_bool().unwrap_or(false),
+        eye: cam.position,
+        forward: cam.quaternion * glam::Vec3::NEG_Z,
+        orthographic: cam.orthographic,
     }
 }
 
-fn camera_view_proj(cam: &Value, w: f32, h: f32) -> glam::Mat4 {
-    let rot = quat(&cam["quaternion"]);
-    let view = glam::Mat4::from_rotation_translation(rot, vec3(&cam["position"])).inverse();
-    let near = cam["near"].as_f64().unwrap_or(0.1) as f32;
-    let far = cam["far"].as_f64().unwrap_or(2000.0) as f32;
-    let zoom = cam["zoom"].as_f64().unwrap_or(1.0).max(0.01) as f32;
-    let proj = if cam["orthographic"].as_bool().unwrap_or(false) {
-        let half_h = cam["height"].as_f64().unwrap_or(10.0) as f32 / 2.0 / zoom;
+fn camera_view_proj(cam: &record::Camera, w: f32, h: f32) -> glam::Mat4 {
+    let view = glam::Mat4::from_rotation_translation(cam.quaternion, cam.position).inverse();
+    let (near, far) = (cam.near, cam.far);
+    let zoom = cam.zoom.max(0.01);
+    let proj = if cam.orthographic {
+        let half_h = cam.height / 2.0 / zoom;
         let half_w = half_h * w / h;
         let r = 1.0 / (near - far);
         glam::Mat4::from_cols(
@@ -578,7 +565,7 @@ fn camera_view_proj(cam: &Value, w: f32, h: f32) -> glam::Mat4 {
         )
     } else {
         // perspective_rh by hand: glam's calls the host libm, og_core::math does not.
-        let half = (cam["fov"].as_f64().unwrap_or(50.0) as f32).to_radians() / 2.0;
+        let half = cam.fov.to_radians() / 2.0;
         let (s, c) = og_core::math::sin_cos(half);
         let f = c / s * zoom;
         let r = far / (near - far);

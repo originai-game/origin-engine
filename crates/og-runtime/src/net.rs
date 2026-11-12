@@ -29,7 +29,8 @@
 use super::engine::{Engine, engine, running};
 use super::parse;
 use super::wire::{
-    self, LockstepSeat, LockstepStatus, RoomInfo, RoomMessageData, RoomPeer, ToJson,
+    self, LockstepSeat, LockstepStatus, NetMode, RoomInfo, RoomMessageData, RoomPeer, ToJson,
+    record,
 };
 use og_core::IdMap;
 use og_ecs::{QueryDesc, SystemDesc, World};
@@ -962,21 +963,21 @@ fn config(eng: &Engine, world: &World) -> Config {
     let layout = eng.state.borrow().layouts.get(LOCKSTEP).cloned();
     let v = layout.and_then(|l| {
         let id = world.id_by_name(LOCKSTEP).ok()?;
-        Some(l.decode(&world.resource_bytes(id).ok()?))
+        l.read::<record::Lockstep>(&world.resource_bytes(id).ok()?)
+            .ok()
     });
     let Some(v) = v else {
         return Config::default();
     };
-    let u = |k: &str, d: u32| v[k].as_u64().map_or(d, |x| x as u32);
     Config {
-        enabled: v["enabled"].as_bool().unwrap_or(false),
-        players: u("players", 2).clamp(1, 16),
-        input_delay: u("inputDelay", 2).clamp(1, 30),
-        hash_every: u("hashEvery", 10),
-        rollback: v["mode"] == json!("rollback"),
-        max_prediction: u("maxPrediction", 8).clamp(1, 30),
-        stall_timeout: u("stallTimeout", 5000).min(600_000),
-        rejoin: v["rejoin"].as_bool().unwrap_or(true),
+        enabled: v.enabled,
+        players: v.players.clamp(1, 16),
+        input_delay: v.input_delay.clamp(1, 30),
+        hash_every: v.hash_every,
+        rollback: v.mode == NetMode::Rollback,
+        max_prediction: v.max_prediction.clamp(1, 30),
+        stall_timeout: v.stall_timeout.min(600_000),
+        rejoin: v.rejoin,
         budget: with(eng.id, |n| n.cost.budget(f64::from(world.time().dt))),
         state_bytes: with(eng.id, |n| n.shape.state_bytes as u32),
         shape: with(eng.id, |n| n.shape.fingerprint),

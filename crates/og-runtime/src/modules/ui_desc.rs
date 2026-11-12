@@ -3,29 +3,6 @@ use std::collections::BTreeMap;
 
 // ── ui: decoding descs ──────────────────────────────────────────────────────
 
-pub(super) fn f(v: &Value, k: &str, d: f32) -> f32 {
-    v[k].as_f64().map_or(d, |x| x as f32)
-}
-
-/// A `UiRect` (`{ x, y, width, height }`); anything else is the empty one.
-pub(super) fn ui_rect(v: &Value) -> og_ui::Rect {
-    og_ui::Rect::new(
-        f(v, "x", 0.0),
-        f(v, "y", 0.0),
-        f(v, "width", 0.0),
-        f(v, "height", 0.0),
-    )
-}
-
-pub(super) fn insets(v: &Value) -> Insets {
-    Insets {
-        left: f(v, "left", 0.0),
-        top: f(v, "top", 0.0),
-        right: f(v, "right", 0.0),
-        bottom: f(v, "bottom", 0.0),
-    }
-}
-
 /// A colour role by its name: a ThemeColor, or one the style declares.
 fn token(theme: &Theme, name: &str) -> Option<Srgba> {
     theme.color(name)
@@ -90,22 +67,18 @@ pub const TYPE_STEPS: &[&str] = &[
 ];
 
 /// A Paint: a token, else an sRGB colour as authored (0–1), else white.
-pub(super) fn paint(theme: &Theme, v: &Value) -> Option<Srgba> {
-    if !v.is_object() {
-        return None;
-    }
-    let alpha = f(v, "alpha", 1.0).clamp(0.0, 1.0);
-    let base = match v["token"].as_str().or(v["role"].as_str()) {
+pub(super) fn paint(theme: &Theme, p: &wire::Paint) -> Option<Srgba> {
+    let alpha = p.alpha.clamp(0.0, 1.0);
+    let name = p.token.map(|t| t.as_str()).or(p.role.as_deref());
+    let base = match name {
         Some(t) => token(theme, t)?,
-        None => {
-            let c = &v["color"];
-            if c.is_object() {
-                let ch = |k: &str| (f(c, k, 1.0).clamp(0.0, 1.0) * 255.0).round() as u8;
-                Srgba::rgb(ch("r"), ch("g"), ch("b"))
-            } else {
-                Srgba::WHITE
+        None => match &p.color {
+            Some(c) => {
+                let ch = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;
+                Srgba::rgb(ch(c.r), ch(c.g), ch(c.b))
             }
-        }
+            None => Srgba::WHITE,
+        },
     };
     Some(base.fade(alpha))
 }
