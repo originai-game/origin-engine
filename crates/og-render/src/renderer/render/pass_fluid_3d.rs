@@ -12,11 +12,25 @@ impl Pass for Fluid3dPass {
         needs: Caps::NONE,
     };
     type State = fluid3d::Fluid3dRenderer;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    /// Whether the frame draws 3D fluids (effects.rs), and their frame
+    /// (water_fluids.rs).
+    type BindIn<'f> = (bool, Option<&'f fluid3d::Fluid3dFrame>);
     /// The fluids' frame, when there is one to draw.
     type Plan<'f> = Option<&'f fluid3d::Fluid3dFrame>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.world.fluid3d
+    }
+
+    fn bind<'f>(
+        _: &'f Renderer,
+        _: &'f mut (),
+        (fluids, frame): Self::BindIn<'f>,
+    ) -> Option<Option<&'f fluid3d::Fluid3dFrame>> {
+        fluids.then_some(frame)
     }
 
     fn encode<'f>(

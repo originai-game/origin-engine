@@ -560,10 +560,21 @@ impl Pass for MainPass {
         needs: Caps::NONE,
     };
     type State = LitPipelines;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    /// What the frame's shared stages made for it: its lists, its
+    /// world's draws and the frame's groups.
+    type BindIn<'f> = MainPlan<'f>;
     type Plan<'f> = MainPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.lit
+    }
+
+    /// Every frame draws its main pass.
+    fn bind<'f>(_: &'f Renderer, _: &'f mut (), plan: MainPlan<'f>) -> Option<MainPlan<'f>> {
+        Some(plan)
     }
 
     /// Order-independent transparency: its accumulation targets.

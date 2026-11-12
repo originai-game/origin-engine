@@ -1,7 +1,6 @@
 //! The local lights' stage: the clusters they reach, their records and
-//! shadow faces, the contact lights, the cookies past the shadow layers, the
-//! volumetric fog's plan, the records' upload and the planar reflections'
-//! clusters, in that order.
+//! shadow faces, the contact lights, the cookies past the shadow layers,
+//! the records' upload and the planar reflections' clusters, in that order.
 
 use super::*;
 
@@ -11,7 +10,6 @@ pub(super) struct PrepareLightsInputs<'a> {
     pub cam: &'a frame::CameraFrame,
     pub view_frustum: &'a Frustum,
     pub contact: bool,
-    pub volumetric_fog: &'a Option<crate::volumetric::VolumetricFog>,
     pub reflections: &'a [camera::PlanarReflection],
 }
 
@@ -20,7 +18,6 @@ pub(super) struct PrepareLightsOutputs {
     pub local_shadows: Vec<frame::LocalShadow>,
     pub shadowed_dropped: u32,
     pub contact_rows: [[f32; 4]; 4],
-    pub volumetric: Option<()>,
 }
 
 impl Renderer {
@@ -34,7 +31,6 @@ impl Renderer {
             cam,
             view_frustum,
             contact,
-            volumetric_fog,
             reflections,
         }: PrepareLightsInputs<'_>,
     ) -> PrepareLightsOutputs {
@@ -107,15 +103,6 @@ impl Renderer {
             cookie_base,
             |h| textures.get(h.index()).map(|t| &t.view),
         );
-        let volumetric = VolumetricPass::plan(
-            &mut self.volumetric,
-            &self.device,
-            &self.queue,
-            &self.frame_layout,
-            volumetric_fog.as_ref(),
-            (self.width, self.height),
-            scene,
-        );
         self.lights.write(&self.queue, &lights_gpu);
         // The planar reflection's clusters: the same light records seen by
         // the mirrored camera (its oblique projection moves only depth).
@@ -151,7 +138,6 @@ impl Renderer {
             local_shadows,
             shadowed_dropped,
             contact_rows,
-            volumetric,
         }
     }
 }

@@ -19,10 +19,23 @@ impl Pass for CustomPostPass {
         needs: Caps::NONE,
     };
     type State = post_custom::CustomPosts;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    /// The scene and its custom posts that run (effects.rs).
+    type BindIn<'f> = CustomPostPlan<'f>;
     type Plan<'f> = CustomPostPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.custom_posts
+    }
+
+    fn bind<'f>(
+        _: &'f Renderer,
+        _: &'f mut (),
+        plan: CustomPostPlan<'f>,
+    ) -> Option<CustomPostPlan<'f>> {
+        (!plan.posts.is_empty()).then_some(plan)
     }
 
     fn encode<'f>(

@@ -12,11 +12,24 @@ impl Pass for GlowPass {
         needs: Caps::NONE,
     };
     type State = ();
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    /// Whether the look glows, and the sprites' glowing runs.
+    type BindIn<'f> = (bool, &'f [sprites::SpriteRun]);
     /// The glowing sprites' runs.
     type Plan<'f> = &'f [sprites::SpriteRun];
 
     fn state(_: &Renderer) -> &Self::State {
         &()
+    }
+
+    fn bind<'f>(
+        _: &'f Renderer,
+        _: &'f mut (),
+        (glow, runs): Self::BindIn<'f>,
+    ) -> Option<&'f [sprites::SpriteRun]> {
+        glow.then_some(runs)
     }
 
     fn encode<'f>(

@@ -13,10 +13,24 @@ impl Pass for SsrPass {
         needs: Caps::COMPUTE,
     };
     type State = ssr::SsrRenderer;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    /// The frame's reflections ([`Renderer::frame_ssr`], decided with
+    /// the frame's effects).
+    type BindIn<'f> = Option<ssr::ScreenSpaceReflections>;
     type Plan<'f> = ssr::ScreenSpaceReflections;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.ssr
+    }
+
+    fn bind<'f>(
+        _: &'f Renderer,
+        _: &'f mut (),
+        ssr: Option<ssr::ScreenSpaceReflections>,
+    ) -> Option<ssr::ScreenSpaceReflections> {
+        ssr
     }
 
     fn encode<'f>(

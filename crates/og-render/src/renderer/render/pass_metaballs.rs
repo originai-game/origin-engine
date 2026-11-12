@@ -12,10 +12,19 @@ impl Pass for MetaballsPass {
         needs: Caps::NONE,
     };
     type State = metaballs::MetaballRenderer;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    /// The fields the frame's 2D fluids draw into (sprite_arenas.rs).
+    type BindIn<'f> = usize;
     type Plan<'f> = ();
 
     fn state(r: &Renderer) -> &Self::State {
         &r.world.metaballs
+    }
+
+    fn bind<'f>(_: &'f Renderer, _: &'f mut (), fields: usize) -> Option<()> {
+        (fields > 0).then_some(())
     }
 
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {

@@ -320,10 +320,24 @@ impl Pass for PrepassPass {
         needs: Caps::MRT,
     };
     type State = PrepassState;
+    type Frame = ();
+    type PlanIn<'a> = ();
+    type UploadIn<'a> = ();
+    /// What the frame's shared stages made for it, in a frame that draws
+    /// a prepass (effects.rs).
+    type BindIn<'f> = Option<PrepassPlan<'f>>;
     type Plan<'f> = PrepassPlan<'f>;
 
     fn state(r: &Renderer) -> &Self::State {
         &r.prepass
+    }
+
+    fn bind<'f>(
+        _: &'f Renderer,
+        _: &'f mut (),
+        plan: Option<PrepassPlan<'f>>,
+    ) -> Option<PrepassPlan<'f>> {
+        plan
     }
 
     fn encode<'f>(

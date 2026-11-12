@@ -12,10 +12,41 @@ impl Pass for VolumetricPass {
         needs: Caps::COMPUTE,
     };
     type State = crate::volumetric::Volumetric;
+    /// Whether the froxel pass runs.
+    type Frame = bool;
+    /// The frame's fog and its scene.
+    type PlanIn<'a> = (
+        Option<&'a crate::volumetric::VolumetricFog>,
+        &'a RenderScene,
+    );
+    type UploadIn<'a> = ();
+    type BindIn<'f> = ();
     type Plan<'f> = ();
 
     fn state(r: &Renderer) -> &Self::State {
         &r.volumetric
+    }
+
+    /// The frame's fog (both methods: the main pass applies the raymarched
+    /// one itself), and whether the froxel pass runs.
+    fn plan(r: &mut Renderer, (fog, scene): Self::PlanIn<'_>) -> bool {
+        let Some(fog) = fog else {
+            return false;
+        };
+        r.volumetric.prepare(
+            &r.device,
+            &r.queue,
+            &r.frame_layout,
+            fog,
+            (r.width, r.height),
+            scene.frame.tick,
+            &scene.frame.quality,
+        );
+        r.volumetric.method == VolumetricMethod::Froxel
+    }
+
+    fn bind<'f>(_: &'f Renderer, froxels: &'f mut bool, _: ()) -> Option<()> {
+        froxels.then_some(())
     }
 
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
@@ -32,32 +63,5 @@ impl Pass for VolumetricPass {
                 &r.lights.light_buffers[2],
             ],
         );
-    }
-}
-
-impl VolumetricPass {
-    /// The frame's fog (both methods: the main pass applies the raymarched
-    /// one itself), and the froxel pass's plan when it runs.
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn plan(
-        st: &mut <Self as Pass>::State,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        frame_layout: &wgpu::BindGroupLayout,
-        fog: Option<&crate::volumetric::VolumetricFog>,
-        size: (u32, u32),
-        scene: &RenderScene,
-    ) -> Option<()> {
-        let fog = fog?;
-        st.prepare(
-            device,
-            queue,
-            frame_layout,
-            fog,
-            size,
-            scene.frame.tick,
-            &scene.frame.quality,
-        );
-        (st.method == VolumetricMethod::Froxel).then_some(())
     }
 }
