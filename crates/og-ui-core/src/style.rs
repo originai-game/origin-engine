@@ -4,8 +4,18 @@
 
 use crate::theme as tokens;
 pub use crate::theme::{
-    Density, Durations, Palette, Radius, Space, Spring, Srgba, TypeRamp, TypeStep,
+    Density, Durations, Palette, Radius, Space, Spring, Srgba, State, TypeRamp, TypeStep,
 };
+
+/// The control sizes of each input (CSS `--density-compact-*`,
+/// `--density-pad-*`, `--density-touch-*`); [`Theme::sizes`] takes the
+/// input's, which documents read as `--control-sm` … `--section`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Densities {
+    pub mouse: Density,
+    pub pad: Density,
+    pub touch: Density,
+}
 
 /// The contrast a widget that picks its own ink holds it to on what it is
 /// drawn on (a badge, a meter's label): WCAG's 4.5:1 for body text.
@@ -231,6 +241,15 @@ pub struct Theme {
     pub durations_ms: Durations,
     /// How far a pressed control shrinks.
     pub press_scale: f32,
+    /// How a control answers: its hover wash, press, lift, disabled
+    /// opacity and touch target (CSS `--state-*`, `--touch-target`).
+    pub state: State,
+    /// The control sizes of each input ([`Theme::sizes`] picks one).
+    pub densities: Densities,
+    /// The curves controls enter and leave on, cubic Bézier control
+    /// points (CSS `--motion-easing-out`, `--motion-easing-exit`).
+    pub ease_out: [f32; 4],
+    pub ease_exit: [f32; 4],
     /// Standard or high contrast.
     pub contrast: Contrast,
     /// Controls draw a `lineStrong` edge (high contrast).
@@ -331,6 +350,14 @@ impl Theme {
             density: DensityMode::Auto,
             durations_ms: tokens::DURATIONS_MS,
             press_scale: tokens::PRESS_SCALE,
+            state: tokens::STATE,
+            densities: Densities {
+                mouse: tokens::MOUSE,
+                pad: tokens::PAD,
+                touch: tokens::TOUCH,
+            },
+            ease_out: tokens::EASE_OUT,
+            ease_exit: tokens::EASE_EXIT,
             contrast: Contrast::Standard,
             outline: false,
             reduced_motion: false,
@@ -568,20 +595,25 @@ impl Theme {
         ((ms * ticks_per_second as f32 / 1000.0).ceil() as u32).max(1)
     }
 
+    /// The density a viewport takes: its CSS name (`compact`, `pad`,
+    /// `touch`) and its sizes before the text scale.
+    pub fn active_density(&self, viewport: &crate::Viewport) -> (&'static str, Density) {
+        let touch = match self.density {
+            DensityMode::Mouse => false,
+            DensityMode::Pad => return ("pad", self.densities.pad),
+            DensityMode::Touch => true,
+            DensityMode::Auto => viewport.coarse_pointer || viewport.width < 768.0,
+        };
+        if touch {
+            ("touch", self.densities.touch)
+        } else {
+            ("compact", self.densities.mouse)
+        }
+    }
+
     /// The control sizes for a viewport.
     pub fn sizes(&self, viewport: &crate::Viewport) -> Density {
-        let d = match self.density {
-            DensityMode::Mouse => tokens::MOUSE,
-            DensityMode::Pad => tokens::PAD,
-            DensityMode::Touch => tokens::TOUCH,
-            DensityMode::Auto => {
-                if viewport.coarse_pointer || viewport.width < 768.0 {
-                    tokens::TOUCH
-                } else {
-                    tokens::MOUSE
-                }
-            }
-        };
+        let (_, d) = self.active_density(viewport);
         // Text at 200 % needs taller controls: each grows by the leading
         // body text gains.
         let grow = (self.ramp_scale - 1.0) * self.type_ramp.body.line_height / self.ramp_scale;

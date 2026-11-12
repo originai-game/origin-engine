@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui style tokens (document and style CSS `:root`)",
+      "summary": "Every value the built-in controls draw with is now a CSS variable a style sets in `:root`, and the controls read them back: motion durations (`--motion-duration-*`), easings (`--motion-easing-out`, `--motion-easing-exit`) and the named transitions' springs (`--motion-named-ui-duration`, `-bounce`, likewise panel, emphasis, playful, enter, exit); control states (`--state-hover-wash`, `--state-press-scale`, `--state-control-press-scale`, `--state-lift`, `--state-disabled-opacity`, `--state-touch-disabled-opacity`, the focus and player rings); each input's densities (`--density-compact-*`, `--density-pad-*`, `--density-touch-*`) and the input's own as `--control-sm`, `--control-md`, `--control-lg`, `--row`, `--header`, `--gutter`, `--section`, with `--touch-target`; sizes and strokes (`--size-*`, `--stroke-edge`); shadows (`--shadow-*`: the design language's per scheme and the controls' `--shadow-sheen`, `-well`, `-pressed`, `-groove`, `-fill-sheen`, `-minimap`, `-slot-selected`, `-tab-selected`); glass (`--glass-blur-thick`, `--glass-blur-regular`, `--glass-saturation`); and the engine colours `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge`. The defaults are the values drawn before, so no frame moves (docs/ui.md §3.1)."
+    }
+  ]
+}

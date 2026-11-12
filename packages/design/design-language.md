@@ -17,8 +17,19 @@ the engine requires none of them. A game's style may restyle, re-dress, re-shape
 or replace anything here above the accessibility floor of docs/ui.md §6.1.
 
 **Carriers.** og-ui reads the generated constants (palette, space, radii,
-type ramp, densities, durations, springs, eases, press scale) and the
-default style's part dressings; origin-agent's web components and its
+type ramp, densities, durations, springs, eases, press scale, control
+states, named transitions) and the default style's part dressings, and
+its default stylesheet (`crates/og-ui-core/default.css`) sets every value
+as a CSS variable that a game's style overrides: `--color-*` and the role
+names, `--space-*`, `--radius-*`, `--size-*`, `--stroke-*`, `--type-*` and
+`--text-*`, `--density-*` and the input's `--control-sm/md/lg`, `--row`,
+`--header`, `--gutter`, `--section`, `--touch-target`, `--motion-*`
+(durations, easings, springs, `--motion-named-*`), `--state-*` (hover
+wash, press scales, lift, disabled opacities, focus rings), `--shadow-*`
+(the `shadow` group per scheme and the controls' inset shadows),
+`--elevation-*`, `--glass-*` and the engine's control tokens
+(docs/ui.md §3.1). og-ui reads the theme back from them, so a value set
+there reaches every built-in control. origin-agent's web components and its
 SwiftUI views read the same file through their own generators. None of
 them defines a second palette, scale or component grammar.
 
@@ -480,6 +491,11 @@ From origingame d25f1f15 (2026-11-02):
 - `accent-ink` (light) #8f5600 → #7a4800: "Undo" on a light toast over warm
   light read 4.26.
 - `material-regular` (dark) 52 % → 64 %.
-- Added: the game roles, `density.pad`, `linear`, `glassContrast`.
+- Added: the game roles, `density.pad`, `linear`, `glassContrast`, and the
+  engine's stylesheet groups (`size`, `stroke`, `state`, `elevation`,
+  `glass`, `derived`, `motion.named`, the `track`, `minimap`,
+  `minimap-edge` and `slot-selected-edge` colours and the `minimap`,
+  `slot-selected` and `tab-selected` shadows), each the value the
+  engine drew before it was a token.
 - Left out: the platform's portal, console and page-template rules, which
   stay the platform's.

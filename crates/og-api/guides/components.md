@@ -405,7 +405,7 @@ These declarations also construct widget part identities and are exported by doc
 
 | Feature | Grammar | Reason and behavior |
 |---|---|---|
-| `-og-input` | `(-og-input: pad)` | Matches the configured gamepad input mode. Extension reason: standard media queries have no gamepad input feature. Forced Touch and Mouse instead set standard pointer/hover queries to coarse/none and fine/hover; Auto reports the device. No density metrics are exposed to CSS. |
+| `-og-input` | `(-og-input: pad)` | Matches the configured gamepad input mode. Extension reason: standard media queries have no gamepad input feature. Forced Touch and Mouse instead set standard pointer/hover queries to coarse/none and fine/hover; Auto reports the device. The input's density metrics are the root variables --control-sm, --control-md, --control-lg, --row, --header, --gutter and --section (the --density-compact-*, --density-pad-* or --density-touch-* set the input takes) and --touch-target. |
 
 ## 2. `<column>`, `<og-rive>` (`column`): Children top to bottom
 

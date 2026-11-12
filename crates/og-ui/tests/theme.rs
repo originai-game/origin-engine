@@ -375,6 +375,7 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
         rgb: [17, 83, 149],
         alpha: 0.137,
     };
+    theme.durations_ms.slow = 444.0;
     for bp in Breakpoint::ALL {
         theme.tokens.typography.steps[tokens::TypeRole::Body.index()][bp as usize].size = 21.0;
     }
@@ -383,7 +384,7 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
         ..Default::default()
     });
     ui.set_part_css(&format!(
-        "{DEFAULT_CSS}\n:root {{ --radius-button: 9px; --type-button-size: 19px; --type-button-font: 'Missing Face', monospace; }}"
+        "{DEFAULT_CSS}\n:root {{ --radius-button: 9px; --type-button-size: 19px; --type-button-font: 'Missing Face', monospace; --motion-named-ui-duration: 0.25s; --state-hover-wash: 0.2; --control-md: 41px; }}"
     ))
     .unwrap();
     let mut rebuilt = Ui::new(UiDesc {
@@ -429,5 +430,13 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
         assert_eq!(ui.type_step(tokens::TypeRole::Button).size, 19.0);
         assert_eq!(ui.type_font(tokens::TypeRole::Button), FontRole::Mono);
         assert_eq!(ui.type_step(tokens::TypeRole::Body).size, 21.0);
+        // Motion, state and density read back, written from a theme or set
+        // by a root rule: `--control-md` is the input's density's (mouse at
+        // 1280, touch under 768).
+        let t = ui.theme();
+        assert_eq!(t.durations_ms.slow, 444.0);
+        assert_eq!(t.motion.ui.duration_ms, 250.0);
+        assert_eq!(t.state.hover_wash, 0.2);
+        assert_eq!(ui.sizes().control_md, 41.0);
     }
 }
