@@ -670,20 +670,33 @@ impl Deref for ModuleCell {
 pub(crate) type Module = Arc<ModuleCell>;
 
 /// A WGSL module made on first use ([`Module`]).
+pub(crate) fn module(device: &wgpu::Device, label: &'static str, source: String) -> Module {
+    module_with(device, label, source, crate::shader)
+}
+
+/// [`module`] for a module in [`crate::UNBOUNDED_MODULES`].
+pub(crate) fn unbounded_module(
+    device: &wgpu::Device,
+    label: &'static str,
+    source: String,
+) -> Module {
+    module_with(device, label, source, crate::unbounded_shader)
+}
+
 // The web's wgpu objects are neither Send nor Sync; nothing there leaves
 // the renderer's thread.
 #[cfg_attr(target_arch = "wasm32", allow(clippy::arc_with_non_send_sync))]
-pub(crate) fn module(device: &wgpu::Device, label: &'static str, source: String) -> Module {
+fn module_with(
+    device: &wgpu::Device,
+    label: &'static str,
+    source: String,
+    make: fn(&wgpu::Device, &str, String) -> wgpu::ShaderModule,
+) -> Module {
     let device = device.clone();
     Arc::new(ModuleCell {
         declared: crate::pipeline_features::Features::declared(&source),
         value: OnceLock::new(),
-        make: Mutex::new(Some(Box::new(move || {
-            device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(source.into()),
-            })
-        }))),
+        make: Mutex::new(Some(Box::new(move || make(&device, label, source)))),
     })
 }
 

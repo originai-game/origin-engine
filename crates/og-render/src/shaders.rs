@@ -17,6 +17,18 @@ pub struct ShaderSource {
     pub constants: Vec<(String, f64)>,
 }
 
+/// The renderer's own modules made without wgpu's loop bounding
+/// (`unbounded_shader`), by their label in [`shader_sources`]
+/// (their variants too). `tests/shader_loops.rs` proves every loop in them
+/// ends.
+pub const UNBOUNDED_MODULES: &[&str] = &[
+    "stylise",
+    "terrain",
+    "terrain shadow",
+    "volumetric",
+    "volumetric raymarch",
+];
+
 /// Every module the renderer can compile, in each variant it has: with and
 /// without the planar reflection in the lit modules' effect group,
 /// multisampled or single depth for the occlusion pyramid, the volumetric

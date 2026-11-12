@@ -14,6 +14,8 @@ mod params_motion;
 mod png;
 #[path = "../profile2d.rs"]
 mod profile2d;
+#[path = "../shader_loops.rs"]
+mod shader_loops;
 #[path = "../shaders.rs"]
 mod shaders;
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]

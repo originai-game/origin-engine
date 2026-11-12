@@ -342,6 +342,9 @@ const PAINT_SHARPNESS: f32 = 8.0;
 const PAINT_HARDNESS: f32 = 8.0;
 const PAINT_ZERO_CROSSING: f32 = 0.58;
 const PAINT_ALPHA_FLOOR: f32 = 0.25;
+// The widest ellipse in pixels: Paint::radius is at most 8 and anisotropy
+// stretches an axis at most twice.
+const PAINT_REACH: i32 = 16;
 
 // The stroke frame at a pixel: the direction along the structure, its
 // anisotropy (0 to 1) and edge strength (the larger eigenvalue's root).
@@ -424,8 +427,8 @@ fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32, f: PaintFrame) -> vec3<
   // phi = -atan2(dir.y, dir.x): the rotation taking the stroke onto x.
   let cos_phi = f.dir.x;
   let sin_phi = -f.dir.y;
-  let max_x = i32(sqrt(a * a * cos_phi * cos_phi + b * b * sin_phi * sin_phi));
-  let max_y = i32(sqrt(a * a * sin_phi * sin_phi + b * b * cos_phi * cos_phi));
+  let max_x = min(i32(sqrt(a * a * cos_phi * cos_phi + b * b * sin_phi * sin_phi)), PAINT_REACH);
+  let max_y = min(i32(sqrt(a * a * sin_phi * sin_phi + b * b * cos_phi * cos_phi)), PAINT_REACH);
   let zeta = 1.0 / max(radius, 1.0);
   let sin_zc = sin(PAINT_ZERO_CROSSING);
   let eta = (zeta + cos(PAINT_ZERO_CROSSING)) / (sin_zc * sin_zc);
@@ -884,8 +887,11 @@ fn fade_in(threshold: f32, t: f32, levels: f32) -> f32 {
   return smoothstep(0.0, 1.0, (threshold - t) * (levels + 1.0) * 2.0);
 }
 
+// The most stroke sets (Hatching::levels).
+const HATCH_LEVELS: f32 = 6.0;
+
 fn hatch_screen(p: vec2<f32>, t: f32) -> f32 {
-  let levels = max(st.hatching.z, 1.0);
+  let levels = clamp(st.hatching.z, 1.0, HATCH_LEVELS);
   var ink = 0.0;
   for (var k = 0.0; k < levels; k += 1.0) {
     let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
@@ -911,7 +917,7 @@ fn stroke_on(q: vec2<f32>, angle: f32, spacing: f32, width: f32, aa: f32) -> f32
 // stroke sets and thresholds, laid in metres, each stroke one screen pixel
 // wide across itself (`j`: the plane's steps per pixel, plane_steps).
 fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>) -> f32 {
-  let levels = max(st.hatching.z, 1.0);
+  let levels = clamp(st.hatching.z, 1.0, HATCH_LEVELS);
   var ink = 0.0;
   for (var k = 0.0; k < levels; k += 1.0) {
     let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
@@ -1053,6 +1059,10 @@ fn halftone_region(p: vec2<f32>, t: f32) -> f32 {
   return 1.0;
 }
 
+// The widest ink line's reach in pixels to each side: an Ink::width of 32,
+// four times the widest Stylise.inkWidth declares.
+const INK_REACH: i32 = 16;
+
 fn lines(in: VsOut) -> vec3<f32> {
   let px = vec2<i32>(in.pos.xy);
   let p = in.pos.xy;
@@ -1151,7 +1161,7 @@ fn lines(in: VsOut) -> vec3<f32> {
   }
   if (st.ink.x > 0.5) {
     // Luminance edges, widened by the max over the line's width.
-    let w = max(i32(round(st.ink.z * 0.5)), 0);
+    let w = clamp(i32(round(st.ink.z * 0.5)), 0, INK_REACH);
     var edge = 0.0;
     for (var y = -w; y <= w; y++) {
       for (var x = -w; x <= w; x++) {

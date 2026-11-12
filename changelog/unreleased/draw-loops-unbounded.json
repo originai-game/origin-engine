@@ -1,0 +1,8 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"Terrain","summary":"Native builds draw terrain in about half the frame time with the same pixels: the renderer's own terrain, paint and volumetric modules are compiled without the loop counter the graphics layer adds to every loop, and a test proves each of their loops ends. At 1280x720 on an Apple M4 Pro a mid-range terrain frame takes 7.4 ms (14.9 before), a sea over terrain with shadows 10.9 (20.0), froxel fog 3.2 (3.9). The web is unchanged."},
+    {"member":"Stylise.paint","summary":"The paint pass costs a third on native builds with the same pixels: 13.9 ms a frame at radius 4 and 1280x720 on an Apple M4 Pro (42.9 before), 31.9 at radius 8 (167.3)."},
+    {"member":"Stylise.inkWidth","summary":"An ink width above 32 pixels, four times the declared maximum, draws as 32."}
+  ]
+}

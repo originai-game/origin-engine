@@ -578,10 +578,7 @@ impl PostPasses {
                 (&temporal.shader, &temporal.layout)
             } else {
                 let shader = self.stylise_shader.get_or_insert_with(|| {
-                    device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                        label: Some("stylise"),
-                        source: wgpu::ShaderSource::Wgsl(fullscreen_source(STYLISE_WGSL).into()),
-                    })
+                    crate::unbounded_shader(device, "stylise", fullscreen_source(STYLISE_WGSL))
                 });
                 (&*shader, &self.stylise_pl)
             };

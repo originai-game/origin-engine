@@ -14,8 +14,8 @@ pub(super) fn terrain_passes(
     holes: bool,
 ) -> TerrainPasses {
     // Made when a terrain is first drawn (deferred.rs).
-    let lit_module = crate::deferred::module(device, "terrain", lit_source);
-    let shadow_module = crate::deferred::module(device, "terrain shadow", shadow_source);
+    let lit_module = crate::deferred::unbounded_module(device, "terrain", lit_source);
+    let shadow_module = crate::deferred::unbounded_module(device, "terrain shadow", shadow_source);
     let corners_module = crate::deferred::module(device, "terrain corners", corners_source);
     let pl = |label, layouts: &[&wgpu::BindGroupLayout]| {
         let layouts: Vec<_> = layouts.iter().map(|l| Some(*l)).collect();
