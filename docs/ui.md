@@ -3006,6 +3006,8 @@ performance tests are independent measured work; this document claims no
 unmeasured performance budget has passed. Author knowledge belongs in guides, not shipped
 skills. No kit silently implements those missing facilities itself.
 
+og-ui is crates along its stages. `og-ui-model` holds the geometry and the codec primitives, `og-rive` the Rive artboards and their player, `og-reactive` the bindings and the reactive session. `og-ui-core` holds the immediate-mode toolkit: the stages and their state, input, layout, the CSS cascade (the style stage, which styles immediate widgets too), motion, paint and draw, the document model and the documents' state. `og-ui` holds the documents: the Svelte parse and writeback, the build and mount, the SVG element build, layers, style packs and the probe. Core calls them through `doc::build::Documents`, and they add their methods to core's types through the extension traits in `og_ui::prelude`. `og-ui` re-exports core under its existing paths, so code names `og_ui::...` as before.
+
 The [gate rules](ci.md) own test lanes, locks, and toolchain policy.
 `scripts/land.sh` owns landing on main. Release and platform installation
 follow [release rules](release.md), with separate release authorization.
