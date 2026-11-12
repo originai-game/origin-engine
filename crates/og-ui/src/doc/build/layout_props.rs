@@ -1,4 +1,5 @@
 use super::*;
+use crate::element::{DragSpec, DropSpec};
 
 impl Ui {
     /// The box of an element from its props, over `base`; `em` sizes its
@@ -328,7 +329,7 @@ impl Ui {
         let mut p = Self::box_props(&n.kind, r);
         p.enter = n.enter.clone();
         p.exit = n.exit.clone();
-        gestures::props(n, r, &mut p);
+        props(n, r, &mut p);
         p
     }
 
@@ -654,5 +655,35 @@ impl crate::ui::Style {
         r.str("step")
             .and_then(|name| crate::style_file::ramp_step(&mut ramp, name))
             .map_or(body, |s| s.size)
+    }
+}
+
+/// The element's drag and drop props from its attributes and handlers.
+pub(super) fn props(n: &DocNode, r: &Resolved, p: &mut Props) {
+    p.pointer = n.triggers.iter().any(|t| {
+        matches!(
+            t.when,
+            When::PointerDown | When::PointerMove | When::PointerUp | When::Wheel | When::Pinch
+        )
+    });
+    if r.flag("draggable") {
+        p.drag = Some(DragSpec {
+            return_home: true,
+            tag: r.str("dataDragType").unwrap_or_default().to_string(),
+            ..DragSpec::default()
+        });
+    }
+    if n.triggers
+        .iter()
+        .any(|t| matches!(t.when, When::DragOver | When::Drop))
+    {
+        p.drop = Some(DropSpec {
+            accept: r
+                .str("dataAccept")
+                .unwrap_or_default()
+                .split_whitespace()
+                .map(str::to_string)
+                .collect(),
+        });
     }
 }

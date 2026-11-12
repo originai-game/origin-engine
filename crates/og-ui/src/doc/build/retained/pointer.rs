@@ -5,21 +5,6 @@
 //! target are visited, never the tree.
 use super::*;
 
-/// What the input pass remembers between ticks.
-#[derive(Clone, Copy, Debug, Default)]
-pub(super) struct PointerMemory {
-    /// The element a press is held on, whether it was dragging, and the
-    /// drop target it was over.
-    drag: Option<(u64, bool, u64)>,
-    /// The element the last press went down on (`pointerup` goes to it,
-    /// as captured pointers do).
-    pressed: u64,
-    pointer: [f32; 2],
-    /// Two touches pinching: the element they went down on, their spread
-    /// then, and the scale last sent.
-    pinch: Option<(u64, f32, f32)>,
-}
-
 impl RetainedHost {
     /// The handler of `when` on the element of `key` or its nearest
     /// mounted ancestor with one: its element and the action it names.

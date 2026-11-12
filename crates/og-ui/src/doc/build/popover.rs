@@ -14,33 +14,8 @@
 //! there is more room. Its `::-og-arrow` draws on the side facing the
 //! anchor.
 
+pub(crate) use super::host::Mode;
 use super::*;
-
-/// What the controls naming a popover last did to it, by its key
-/// ([`popover_key`]): presentation, rebuilt from the controls as they build.
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct PopoverLink {
-    /// The control it is placed against (its node index and key).
-    pub invoker: (usize, u64),
-    /// An `interestfor` control holds the player's interest.
-    pub interest: bool,
-    /// Its layer's key, as last built (hovering it keeps a hint shown).
-    pub layer: u64,
-    /// It showed when last built (`ontoggle` fires as that changes).
-    pub shown: bool,
-    /// `auto`, `manual` or `hint`, as last built.
-    pub mode: Mode,
-    /// Opened by `contextmenu`: the point it opened at, its anchor.
-    pub point: Option<[f32; 2]>,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum Mode {
-    #[default]
-    Auto,
-    Manual,
-    Hint,
-}
 
 /// A popover's key in its mount: ids are unique in a document.
 pub(super) fn popover_key(mount: &str, id: &str) -> u64 {

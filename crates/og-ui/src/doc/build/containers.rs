@@ -4,29 +4,9 @@
 //! second build) and their render fields are replaced before paint. On the
 //! first frame every condition is unknown until its container is measured,
 //! so the first settlement runs this too.
+pub(crate) use super::host::Queried;
 use super::*;
 use crate::ui::settlement::{ContainerMeasurement, SettlementError};
-
-/// What an immediate build evaluated for one element under a container:
-/// its expression and property inputs, and its structural selector results.
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Replay {
-    pub(super) cached: retained::CachedInputs,
-    pub(super) decisions: Vec<(usize, bool)>,
-}
-
-/// One immediate-built element under a query container, in build order.
-#[derive(Clone, Debug)]
-pub(crate) struct Queried {
-    doc: Arc<UiDocument>,
-    node: usize,
-    path: String,
-    key: u64,
-    inherited: Arc<crate::doc::variables::Computed>,
-    computed: Arc<crate::doc::variables::Computed>,
-    reads: BTreeSet<u64>,
-    replay: Arc<Replay>,
-}
 
 impl Ui {
     /// Watches a query container for settlement as it is built: its first

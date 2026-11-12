@@ -42,6 +42,7 @@ pub use input_type::{InputMode, InputType};
 mod id;
 mod input;
 mod juice;
+pub(crate) mod layer_stack;
 pub mod layers;
 mod layout;
 pub mod markup;
@@ -100,7 +101,7 @@ pub use input::{GamepadFrame, InputFrame, InputSource, Nav, OgInput, UiKey};
 pub use juice::{
     BurstDesc, CounterDesc, ScreenTransitionDesc, ScreenWipe, ShakeDesc, Side, format_count,
 };
-pub use layers::{LayerInfo, LayerOp};
+pub use layer_stack::{LayerInfo, LayerOp};
 pub use layout::anchor;
 pub use layout::float::ImageAlpha;
 pub use layout::{

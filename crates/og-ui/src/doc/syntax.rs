@@ -1,5 +1,7 @@
 //! Svelte's non-executable markup subset. Offsets always refer to authored text.
 
+use crate::bind::Expr;
+
 #[derive(Clone, Debug)]
 pub(super) struct Attr {
     pub name: String,
@@ -571,4 +573,23 @@ fn decode(text: &str) -> Result<String, String> {
     }
     out.push_str(rest);
     Ok(out)
+}
+
+pub(super) fn expression(source: &str, at: usize) -> Result<Expr, Error> {
+    let expr = Expr::parse(source).map_err(|why| (
+        at,
+        format!("{why}; use a side-effect-free expression or t(key, {{ named: value }}); sources come from the game's mounted stores ($name)"),
+    ))?;
+    let mut paths = Vec::new();
+    expr.paths(&mut paths);
+    if paths.iter().any(|path| {
+        ["$state", "$derived", "$effect", "$props", "$bindable"]
+            .contains(&path.split('.').next().unwrap_or_default())
+    }) {
+        return Err((
+            at,
+            "runes are not allowed; sources come from the game's mounted stores ($name)".into(),
+        ));
+    }
+    Ok(expr)
 }

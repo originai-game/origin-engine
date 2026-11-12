@@ -1046,7 +1046,7 @@ impl Ui {
         };
         shown.ellipsis = true;
         let mut label = shown.clone();
-        label.text = super::nodes::FILE_LABEL.into();
+        label.text = FILE_LABEL.into();
         let pad = self.tree.nodes[slot].el.padding.horizontal() + el.padding.horizontal();
         let w = crate::layout::text_preferred(label.at(step), &self.env.fonts) + pad;
         el.width = Size::Fixed(w.min(max).max(min));
@@ -1367,6 +1367,9 @@ impl Resolved {
         }
     }
 }
+
+/// A file input's label while it names no file and its text says nothing.
+pub(super) const FILE_LABEL: &str = "Choose file…";
 
 #[cfg(test)]
 mod tests {

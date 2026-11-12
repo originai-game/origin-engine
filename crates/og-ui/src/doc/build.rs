@@ -10,9 +10,7 @@
 //! the slots and art slots, the probe's edits.
 
 use super::schema::{self, PROPS, Ty};
-use super::{
-    Act, DocNode, Lit, NodeKind, Paint, PropValue, StateValue, UiDocument, When, parse_probe_value,
-};
+use super::{Act, DocNode, Lit, NodeKind, Paint, PropValue, StateValue, UiDocument, When};
 use super::{css, motion};
 use crate::Rect;
 use crate::bind::{Env, Scope, number, set_path, text, truthy};
@@ -27,7 +25,7 @@ use std::sync::Arc;
 
 /// A resolved value of a prop.
 #[derive(Clone, Debug, PartialEq)]
-enum V {
+pub(crate) enum V {
     /// In f64, as JSON carries it: a bound handle (a texture's, `(1 << 32) |
     /// index`) needs every one of its 53 bits, which f32 would round to a
     /// power of two (texture 0). Layout reads it as f32 ([`Resolved::num`]).
@@ -57,7 +55,7 @@ pub(crate) struct Resolved {
     /// The layout key this element publishes as a query container.
     container: Option<u64>,
     /// An immediate build's inputs under a query container (settlement replay).
-    replay: Option<Arc<containers::Replay>>,
+    replay: Option<Arc<host::Replay>>,
     /// A numbered `<li>`'s number ([`super::lists::ordinal`]).
     ordinal: Option<i64>,
     /// Its effective CSS text and font style ([`super::text_css`]); `None`
@@ -101,7 +99,7 @@ pub(crate) struct PartHost {
 }
 
 #[derive(Clone)]
-struct ResolvedNode {
+pub(crate) struct ResolvedNode {
     id: String,
     path: String,
     key: u64,
@@ -430,10 +428,10 @@ struct Build<'a> {
     inherited: Arc<super::variables::Computed>,
     events: Vec<DocEvent>,
     writes: Vec<(String, Value)>,
-    cached: Option<&'a retained::CachedInputs>,
+    cached: Option<&'a instances::CachedInputs>,
     /// While resolving an element under a query container, what `eval` and
     /// `value` computed, so settlement can resolve it again without a model.
-    recording: std::cell::RefCell<Option<retained::CachedInputs>>,
+    recording: std::cell::RefCell<Option<instances::CachedInputs>>,
 }
 
 impl Build<'_> {
@@ -982,8 +980,7 @@ impl Ui {
         if !r.cascade.generated.is_empty() {
             let values = std::mem::take(&mut r.cascade.generated);
             if let Some((_, q)) = values.iter().find(|(name, _)| name == "quotes") {
-                Arc::make_mut(&mut r.cascade.computed)
-                    .insert(generated::QUOTES.into(), Some(q.clone()));
+                Arc::make_mut(&mut r.cascade.computed).insert(QUOTES.into(), Some(q.clone()));
             }
             r.generated = Some(Arc::new(super::generated::Generated::from_values(
                 &values,
@@ -1264,7 +1261,7 @@ impl Ui {
         });
         if recording {
             let cached = b.recording.borrow_mut().take().unwrap_or_default();
-            r.replay = Some(Arc::new(containers::Replay {
+            r.replay = Some(Arc::new(host::Replay {
                 cached,
                 decisions: decisions.clone(),
             }));
@@ -1411,6 +1408,8 @@ mod datetime;
 mod fields;
 mod generated;
 pub(crate) mod gestures;
+mod host;
+mod instances;
 mod kbd;
 mod layout_props;
 mod media;
@@ -1425,4 +1424,7 @@ mod text_motion;
 mod touch;
 mod viewport;
 mod world;
-pub use mount::{Built, DocEvent, DocHost, DocResponse, Edit};
+pub use host::{Built, DocEvent, DocHost, DocResponse, Edit};
+
+/// The computed-value entry carrying the inherited `quotes`.
+pub(super) const QUOTES: &str = "@quotes";

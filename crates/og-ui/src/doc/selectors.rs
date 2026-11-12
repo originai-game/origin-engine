@@ -14,7 +14,7 @@ pub(super) fn attribute_value(attr: &Attr) -> Result<Expr, super::syntax::Error>
     if !attr.bound && !attr.name.starts_with("class:") {
         return Ok(Expr::Lit(attr.value.clone().into()));
     }
-    let value = super::svelte::expression(&attr.value, attr.at)?;
+    let value = super::syntax::expression(&attr.value, attr.at)?;
     Ok(
         if matches!(
             attr.name.as_str(),
@@ -265,7 +265,7 @@ impl Selector {
             };
             let mut own = Expr::Lit(true.into());
             let expression = |attr: &Attr| {
-                super::svelte::expression(&attr.value, attr.at).map_err(|(_, error)| error)
+                super::syntax::expression(&attr.value, attr.at).map_err(|(_, error)| error)
             };
             for simple in &selector.compounds[part].0 {
                 let test = match simple {

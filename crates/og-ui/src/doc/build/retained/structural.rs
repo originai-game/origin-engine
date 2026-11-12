@@ -4,46 +4,9 @@ use crate::reactive::{
     bindings::{RowRef, SourceEnv},
 };
 
-#[derive(Clone, Debug)]
-pub(super) enum Child {
-    Element(MountedNode),
-    Each(MountedNode),
-    Branch(MountedNode),
-}
-
-#[derive(Clone)]
-pub(super) struct BranchInstance {
-    document: Arc<UiDocument>,
-    index: usize,
-    context: BindingContext,
-    parent: MountedNode,
-    suffix: String,
-    render_prefix: String,
-    binding: BindingId,
-    enabled: bool,
-    /// A `{#key}` block's value's hash: its children are new elements,
-    /// their ids carrying it, each time the value changes.
-    keyed: Option<u64>,
-    pub children: Vec<Child>,
-}
-
 /// A `{#key}` value's hash, carried in its children's ids.
 fn key_hash(value: &Value) -> u64 {
     crate::id::key_of_path(&value.to_string())
-}
-
-#[derive(Clone)]
-pub(super) struct EachInstance {
-    document: Arc<UiDocument>,
-    index: usize,
-    context: BindingContext,
-    pub parent: MountedNode,
-    source: SourceId,
-    pub revision: u64,
-    pub order: Vec<String>,
-    pub rows: BTreeMap<String, Vec<Child>>,
-    pub empty: Vec<Child>,
-    pub materialized: BTreeSet<String>,
 }
 
 impl RetainedHost {

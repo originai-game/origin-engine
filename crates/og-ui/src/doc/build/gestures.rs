@@ -6,7 +6,7 @@
 //! element, the one under the pointer and a drop's target are looked at,
 //! so the pass costs nothing more as the tree grows.
 use super::*;
-use crate::element::{DragSpec, DropSpec};
+use crate::element::DragSpec;
 
 /// A `data-detents` value's depths in CSS px (`%` of the viewport's
 /// height inside its safe area, or its width for a side sheet), in the
@@ -175,36 +175,6 @@ pub(crate) fn two_touches(
         });
     let (a, b) = (pts.position(held.next()?), pts.position(held.next()?));
     Some(((a + b) / 2.0, a.distance(b).max(1.0)))
-}
-
-/// The element's drag and drop props from its attributes and handlers.
-pub(super) fn props(n: &DocNode, r: &Resolved, p: &mut Props) {
-    p.pointer = n.triggers.iter().any(|t| {
-        matches!(
-            t.when,
-            When::PointerDown | When::PointerMove | When::PointerUp | When::Wheel | When::Pinch
-        )
-    });
-    if r.flag("draggable") {
-        p.drag = Some(DragSpec {
-            return_home: true,
-            tag: r.str("dataDragType").unwrap_or_default().to_string(),
-            ..DragSpec::default()
-        });
-    }
-    if n.triggers
-        .iter()
-        .any(|t| matches!(t.when, When::DragOver | When::Drop))
-    {
-        p.drop = Some(DropSpec {
-            accept: r
-                .str("dataAccept")
-                .unwrap_or_default()
-                .split_whitespace()
-                .map(str::to_string)
-                .collect(),
-        });
-    }
 }
 
 #[cfg(test)]

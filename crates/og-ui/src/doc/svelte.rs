@@ -1,4 +1,4 @@
-use super::syntax::{Attr, Error, Node, identifier};
+use super::syntax::{Attr, Error, Node, expression, identifier};
 use super::*;
 use std::collections::BTreeSet;
 
@@ -184,25 +184,6 @@ pub(crate) fn parse_with_pack(
         Ok(p.doc)
     };
     run().map_err(|e| vec![syntax::diagnostic(source, text, e)])
-}
-
-pub(super) fn expression(source: &str, at: usize) -> Result<Expr, Error> {
-    let expr = Expr::parse(source).map_err(|why| (
-        at,
-        format!("{why}; use a side-effect-free expression or t(key, {{ named: value }}); sources come from the game's mounted stores ($name)"),
-    ))?;
-    let mut paths = Vec::new();
-    expr.paths(&mut paths);
-    if paths.iter().any(|path| {
-        ["$state", "$derived", "$effect", "$props", "$bindable"]
-            .contains(&path.split('.').next().unwrap_or_default())
-    }) {
-        return Err((
-            at,
-            "runes are not allowed; sources come from the game's mounted stores ($name)".into(),
-        ));
-    }
-    Ok(expr)
 }
 
 pub(super) fn property(name: &str) -> String {

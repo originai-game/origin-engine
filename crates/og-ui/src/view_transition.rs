@@ -282,7 +282,7 @@ fn progress(list: &[CssAnimation], t: f32) -> f32 {
 fn ends(lists: &[&[CssAnimation]]) -> f32 {
     lists
         .iter()
-        .map(|l| crate::layers::ends(l))
+        .map(|l| crate::layer_stack::ends(l))
         .fold(0.0, f32::max)
 }
 
@@ -588,7 +588,7 @@ impl Ui {
             .layers
             .iter()
             .filter(|l| l.leaving)
-            .map(crate::layers::layer_id)
+            .map(crate::layer_stack::layer_id)
             .collect();
         let in_leaving = |ui: &Ui, mut j: usize| {
             while j != NONE {

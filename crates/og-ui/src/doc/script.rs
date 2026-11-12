@@ -163,7 +163,7 @@ pub(super) fn read(text: &str, base: usize) -> Result<Declared, Error> {
         if derived.iter().any(|(n, _)| n == name) || props.iter().any(|p| p.name == name) {
             return Err((at, format!("{name} is declared twice")));
         }
-        let mut expr = super::svelte::expression(&source, at)?;
+        let mut expr = super::syntax::expression(&source, at)?;
         let scope: BTreeMap<String, Expr> = derived.iter().cloned().collect();
         substitute(&mut expr, &scope).map_err(|e| (at, e))?;
         derived.push((name.into(), expr));

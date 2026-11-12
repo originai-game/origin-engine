@@ -1,10 +1,8 @@
+use super::fields::FILE_LABEL;
 use super::*;
 
 mod events;
 mod lists;
-
-/// A file input's label while it names no file and its text says nothing.
-pub(super) const FILE_LABEL: &str = "Choose file…";
 
 impl Ui {
     /// Builds node `i` (and its subtree); `root_id` names a mount's root.
@@ -654,7 +652,7 @@ impl Ui {
         let barred = r.flag("disabled") || r.flag("readonly");
         self.docs.host.validity.insert(
             key,
-            super::mount::FieldValidity {
+            super::host::FieldValidity {
                 mount: b.mount.clone(),
                 doc: doc.name.clone(),
                 node: i,
@@ -1660,7 +1658,7 @@ impl Ui {
         let barred = r.flag("disabled") || r.flag("readonly");
         self.docs.host.validity.insert(
             key,
-            super::mount::FieldValidity {
+            super::host::FieldValidity {
                 mount: b.mount.clone(),
                 doc: doc.name.clone(),
                 node: i,

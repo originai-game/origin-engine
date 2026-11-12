@@ -5,9 +5,6 @@
 use super::*;
 use crate::doc::generated::{self as gc, Content, PseudoBox, Quotes};
 
-/// The computed-value entry carrying the inherited `quotes`.
-pub(super) const QUOTES: &str = "@quotes";
-
 impl Ui {
     /// A box's `::before` or `::after`: its generated text, styled by the
     /// pseudo-element's text properties, in the pseudo-element's own box
