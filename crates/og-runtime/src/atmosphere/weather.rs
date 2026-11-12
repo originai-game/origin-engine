@@ -71,12 +71,14 @@ pub(super) fn extract(
         }
         scene.atmosphere.fog = Some(fog);
     }
-    if let Some(c) = scene.atmosphere.clouds {
+    let weather =
+        resource(world, layouts.weather.as_ref()).and_then(|w| record::Weather::from_json(&w).ok());
+    if weather.is_none()
+        && let Some(c) = scene.atmosphere.clouds
+    {
         c.light_scene(scene);
     }
-    if let Some(w) = resource(world, layouts.weather.as_ref())
-        && let Ok(w) = record::Weather::from_json(&w)
-    {
+    if let Some(w) = weather {
         let kind = w.kind;
         let layer = orthographic.then_some(w.layer);
         let wind = w.wind + world_wind.velocity;
@@ -89,6 +91,13 @@ pub(super) fn extract(
             w.dim,
             layer,
         );
+        // The sky closes to the weather's cover and the light dims once;
+        // a deck the weather brought drifts on the world's wind.
+        let declared = scene.atmosphere.clouds.is_some();
+        look.light_scene(scene);
+        if let Some(deck) = scene.atmosphere.clouds.as_mut().filter(|_| !declared) {
+            deck.wind += world_wind.aloft();
+        }
         if scene.atmosphere.fog.is_none()
             && let Some(mut fog) = look.fog
         {
@@ -100,10 +109,10 @@ pub(super) fn extract(
             }
             scene.atmosphere.fog = Some(fog);
         }
-        scene.lighting.light.cover(look.light);
-        scene.lighting.environment.intensity *= 0.5 + 0.5 * look.light;
         if let Some(emitter) = &look.emitter {
-            // The emitter is remade only when its inputs change.
+            // The emitter is set again only when its inputs change (its
+            // intensity changes its emission alone, so the particles in
+            // the air stay).
             let key: Vec<u32> = [
                 kind as f32,
                 w.intensity,

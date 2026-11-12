@@ -237,6 +237,14 @@ depth-normal prepass: the first one pays for it.
 - Clouds: bright tops, dark bases, silver edges against the sun. A broken
   sky hides the sun a share of the time; an overcast deck leaves flat grey
   light on every surface. `steps` is their cost.
+- Weather: og.Weather is one state for the air. Rain and snow close the
+  sky as they build (og.Clouds' cover raised to theirs over the first
+  half of `intensity`, or a deck of the weather's own under a procedural
+  sky), and the light is dimmed once, by the darker of clouds and
+  weather, so nothing is sunlit under heavy rain. Ramp `intensity` over
+  seconds to build or clear it: the particles in the air stay. The deck
+  costs what og.Clouds costs; `dim: 0` keeps the sky and the light as
+  they are.
 - Aurora: hard electrons give a low aurora with a pink-violet border, soft
   ones a high red-topped one; the air dims it near the horizon.
 - Weather on surfaces: porous surfaces darken when wet and smooth ones

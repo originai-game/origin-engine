@@ -17513,7 +17513,7 @@ export interface LightningStrike {
 }
 
 /**
- * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
+ * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence), the cloud cover rain and snow fall from (og.Clouds closed to it, or a deck of the weather's own under a procedural sky) and the light under it, dimmed once. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
  *
  * The `Weather` resource (token `og.Weather`).
  */
@@ -17526,7 +17526,7 @@ export interface Weather {
    */
   kind: number;
   /**
-   * How heavy: scales the particle rate, the fog and the dimming.
+   * How heavy: the share of the particles born, the fog, the cover and the dimming. A change keeps the particles in the air: ramp it to build or clear a weather.
    *
    * @default 1
    * @range 0..2
@@ -17556,7 +17556,7 @@ export interface Weather {
    */
   tint: Color;
   /**
-   * How much of the preset's dimming of the sunlight applies.
+   * How much of the preset's cloud cover and dimming of the sunlight applies.
    *
    * @default 1
    * @range 0..1
@@ -34570,7 +34570,7 @@ export declare namespace og {
    */
   const LightningStrike: EventType<LightningStrike>;
   /**
-   * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
+   * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence), the cloud cover rain and snow fall from (og.Clouds closed to it, or a deck of the weather's own under a procedural sky) and the light under it, dimmed once. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**

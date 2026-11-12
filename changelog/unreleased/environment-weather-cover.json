@@ -1,0 +1,22 @@
+{
+  "added": [
+    {
+      "member": "og.Weather",
+      "summary": "Rain and snow bring their sky: og.Clouds closes to the weather's cover as `intensity` builds, and under a procedural sky with no og.Clouds the weather draws a deck of its own, so it no longer rains from a clear sky with sharp sun shadows. `dim: 0` keeps the sky and the light as they were. The deck costs what og.Clouds costs."
+    },
+    {
+      "member": "og.Weather.intensity",
+      "summary": "Ramping `intensity` builds or clears a weather smoothly: it changes the share of the particles born and keeps those in the air. A change used to restart the particles."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.Weather",
+      "summary": "Weather under og.Clouds dims the light once, by the darker of the two, not by both: rain under an overcast drew a noon as dusk."
+    },
+    {
+      "member": "og.Weather",
+      "summary": "Rain is twice as dense at the same `intensity`, and snow at full intensity no longer overwrites flakes before they land."
+    }
+  ]
+}

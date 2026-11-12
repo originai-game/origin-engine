@@ -36,7 +36,7 @@ module atmosphere {
 | [`og.Aurora`](atmosphere/record-Aurora.md) | resource |  | The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling … |
 | [`og.WeatherState`](atmosphere/record-WeatherState.md) | resource |  | The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, d… |
 | [`og.LightningStrike`](atmosphere/record-LightningStrike.md) | event |  | Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first. |
-| [`og.Weather`](atmosphere/record-Weather.md) | resource |  | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. |
+| [`og.Weather`](atmosphere/record-Weather.md) | resource |  | A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence), the cloud cover rain and snow fall from (og.Clouds closed to it, or a dec… |
 | [`og.Wind`](atmosphere/record-Wind.md) | resource |  | The world's wind: where the air moves and how fast. |
 | [`WindMotorKind`](atmosphere/type-WindMotorKind.md) | enum |  | How an og.WindMotor pushes the wind. |
 | [`WindMotorKind()`](#column-WindMotorKind) | column kind |  | A WindMotorKind field: the variant's index. |

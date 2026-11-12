@@ -6,29 +6,29 @@ Module [`atmosphere`](../atmosphere.md) · [index](../index.md)
 
 ### `og.Weather` (resource)
 
-A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
+A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence), the cloud cover rain and snow fall from (og.Clouds closed to it, or a deck of the weather's own under a procedural sky) and the light under it, dimmed once. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
 
 Token `og.Weather`, registered under the schema name `og.Weather`; its value type is `Weather`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `kind` | `number` | `0` | 0 … 4 | — | label “Kind” | WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4. |
-| `intensity` | `number` | `1` | 0 … 2 | — | tunable | How heavy: scales the particle rate, the fog and the dimming. |
+| `intensity` | `number` | `1` | 0 … 2 | — | tunable | How heavy: the share of the particles born, the fog, the cover and the dimming. A change keeps the particles in the air: ramp it to build or clear a weather. |
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | A wind of the weather's own on the particles, added to og.Wind's. |
 | `radius` | `number` | `18` | 1 … 200 | `m` | tunable | The size of the region around the camera the particles fill. |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Multiplies the particles' colour. |
-| `dim` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the preset's dimming of the sunlight applies. |
+| `dim` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the preset's cloud cover and dimming of the sunlight applies. |
 | `layer` | `number` | `50` | — | — | — | With an orthographic camera (2D), the sprite layer the particles draw in. |
 
 ```ogt
 resource Weather {
-  doc "A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence) and dimmed sunlight. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation."
+  doc "A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence), the cloud cover rain and snow fall from (og.Clouds closed to it, or a deck of the weather's own under a procedural sky) and the light under it, dimmed once. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation."
   field kind u32 "WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4." {
     min 0
     max 4
     label "Kind"
   }
-  field intensity f32 "How heavy: scales the particle rate, the fog and the dimming." {
+  field intensity f32 "How heavy: the share of the particles born, the fog, the cover and the dimming. A change keeps the particles in the air: ramp it to build or clear a weather." {
     default 1
     min 0
     max 2
@@ -48,7 +48,7 @@ resource Weather {
   field tint Color "Multiplies the particles' colour." {
     default 1 1 1
   }
-  field dim f32 "How much of the preset's dimming of the sunlight applies." {
+  field dim f32 "How much of the preset's cloud cover and dimming of the sunlight applies." {
     default 1
     min 0
     max 1
