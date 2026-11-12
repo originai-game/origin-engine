@@ -1,202 +1,203 @@
 /* fantasy: every core control and its states. Painted with gradients,
    brass rims and inner shadows; hover lifts toward gold, pressed sinks
-   into the well, both inside the pack's palette. */
+   into the well, both inside the pack's palette. Every value is a token
+   set in base.css. */
 
 /* ── Buttons: painted plates with pointed ends, a gold rim, a dark inner
-   keyline and a lit top edge (button-*.svg). The ends keep their shape at
-   any width through border-image; the plate fills the middle. The default
-   is dark iron with gold ink; .primary is painted crimson.
+   keyline and a lit top edge (--button-image*). The ends keep their shape
+   at any width through border-image; the plate fills the middle. The
+   default is dark iron with gold ink; .primary is painted crimson.
    The resting primary rule takes :enabled so it outranks the default's
    :hover/:active rules, which have equal specificity. The resting ink is
    on the host, so the label and the button's content inherit it; each
    state's ink is on the part. Labels use the approved Newsreader face. */
-button { color: #e9c46f; }
-button.primary { color: #f8ecd6; }
+button { color: var(--button-ink); }
+button.primary { color: var(--on-primary); }
 button::part(base) {
   min-height: var(--size-touch);
-  padding: 0 calc(var(--space-lg) + 8px);
+  padding: 0 var(--space-xl);
   border: none;
   border-radius: 0;
-  border-image: url(art/button-iron.svg) 28 24 fill / 50% 24px stretch;
+  border-image: var(--button-image) 28 24 fill / 50% var(--button-image-end) stretch;
   background: none;
   box-shadow: none;
-  font-family: "Fantasy Text";
-  font-size: 1.3571em;
-  letter-spacing: 0.12em;
+  font-family: var(--button-font);
+  font-size: var(--fantasy-step-19);
+  letter-spacing: var(--fantasy-tracking-wide);
   text-transform: uppercase;
-  text-shadow: 0 1px 2px #000000d0;
+  text-shadow: var(--button-text-shadow);
 }
-button::part(base):hover { border-image-source: url(art/button-iron-hover.svg); color: #f6dc95; }
-button::part(base):active { border-image-source: url(art/button-iron-pressed.svg); color: #d9b45f; }
-button::part(base):disabled { border-image-source: url(art/button-disabled.svg); color: #7d705d; text-shadow: none; }
-button.primary::part(base):enabled { border-image-source: url(art/button-red.svg); }
-button.primary::part(base):hover { border-image-source: url(art/button-red-hover.svg); color: #fff6e4; }
-button.primary::part(base):active { border-image-source: url(art/button-red-pressed.svg); color: #f0dcc0; }
-button.primary::part(base):disabled { border-image-source: url(art/button-disabled.svg); color: #a08a78; }
-button.secondary::part(base) { border-image-source: url(art/button-iron.svg); }
+button::part(base):hover { border-image-source: var(--button-image-hover); color: var(--button-hover-ink); }
+button::part(base):active { border-image-source: var(--button-image-pressed); color: var(--button-pressed-ink); }
+button::part(base):disabled { border-image-source: var(--button-image-disabled); color: var(--button-disabled-ink); text-shadow: none; }
+button.primary::part(base):enabled { border-image-source: var(--button-primary-image); }
+button.primary::part(base):hover { border-image-source: var(--button-primary-image-hover); color: var(--button-primary-hover-ink); }
+button.primary::part(base):active { border-image-source: var(--button-primary-image-pressed); color: var(--button-primary-pressed-ink); }
+button.primary::part(base):disabled { border-image-source: var(--button-image-disabled); color: var(--button-primary-disabled-ink); }
+button.secondary::part(base) { border-image-source: var(--button-image); }
 button[variant=quiet]::part(base) { border-image: none; background: none; border: none; box-shadow: none; padding: 0 var(--space-xs); }
-button::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+button::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); border-radius: var(--radius-button); }
 /* ── Checkbox, switch and radio. */
 input[type=checkbox]::part(row), input[type=radio]::part(option) { border: none; box-shadow: none; background: none; }
-input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: #e9c46f14; }
-input[type=checkbox]::part(box), input[type=radio]::part(ring) { border: 1px solid #8f7650; background: #0b0805; box-shadow: inset 0 1px 3px #000; }
-input[type=checkbox]::part(box):hover, input[type=radio]::part(ring):hover { border-color: #d9b45f; }
-input[type=checkbox]::part(box):checked { border: 1px solid #d9b45f; background: linear-gradient(180deg, #8a6420, #5a3f12); }
-input[type=checkbox]::part(box):disabled, input[type=radio]::part(ring):disabled { border-color: #4a3c2b; background: #15100c; }
+input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: var(--accent-8); }
+input[type=checkbox]::part(box), input[type=radio]::part(ring) { border: var(--field-border-width) solid var(--line-strong); background: var(--fantasy-soot); box-shadow: var(--fantasy-well-shadow); }
+input[type=checkbox]::part(box):hover, input[type=radio]::part(ring):hover { border-color: var(--fantasy-brass-hi); }
+input[type=checkbox]::part(box):checked { border: var(--field-border-width) solid var(--fantasy-brass-hi); background: var(--checkbox-checked-fill); }
+input[type=checkbox]::part(box):disabled, input[type=radio]::part(ring):disabled { border-color: var(--line); background: var(--fantasy-soot-disabled); }
 input[type=checkbox]::part(box):invalid { border-color: var(--danger); }
-input[type=checkbox]::part(mark) { background: #f8ecd6; }
-input[type=radio]::part(ring):checked { border: 1px solid #d9b45f; }
+input[type=checkbox]::part(mark) { background: var(--on-primary); }
+input[type=radio]::part(ring):checked { border: var(--field-border-width) solid var(--fantasy-brass-hi); }
 input[type=radio]::part(dot) { background: var(--gold); }
-input[type=radio]::part(card) { border: 1px solid #8f7650; background: linear-gradient(180deg, #241a11, #160f0a); }
-input[type=radio]::part(card):hover { border-color: #d9b45f; }
-input[type=radio]::part(card):checked { border-color: var(--gold); background: linear-gradient(180deg, #3d2f1c, #22190e); box-shadow: 0 0 10px #e9c46f44; }
+input[type=radio]::part(card) { border: var(--field-border-width) solid var(--line-strong); background: var(--radio-card-fill); }
+input[type=radio]::part(card):hover { border-color: var(--fantasy-brass-hi); }
+input[type=radio]::part(card):checked { border-color: var(--gold); background: var(--radio-card-checked-fill); box-shadow: var(--radio-card-checked-shadow); }
 input[type=radio]::part(chosen) { background: var(--gold); }
-input[type=checkbox][switch]::part(track) { border: 1px solid #8f7650; background: #0b0805; box-shadow: inset 0 1px 3px #000; }
-input[type=checkbox][switch]::part(track):checked { background: linear-gradient(180deg, #9a2b1c, #6c1e12); border-color: #d9b45f; }
-input[type=checkbox][switch]::part(knob) { border: 1px solid #5b4220; background: radial-gradient(circle at 40% 35%, #f6dc95, #a7813f); }
+input[type=checkbox][switch]::part(track) { border: var(--field-border-width) solid var(--line-strong); background: var(--fantasy-soot); box-shadow: var(--fantasy-well-shadow); }
+input[type=checkbox][switch]::part(track):checked { background: var(--switch-checked-fill); border-color: var(--fantasy-brass-hi); }
+input[type=checkbox][switch]::part(knob) { border: var(--field-border-width) solid var(--fantasy-knob-rim); background: var(--switch-knob-fill); }
 input[type=checkbox]::part(focus):focus-visible, input[type=radio]::part(focus):focus-visible,
-input[type=checkbox][switch]::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+input[type=checkbox][switch]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Tabs: uppercase, underlined in gold when selected. */
-tabs::part(track) { background: none; border-bottom: 1px solid #8f765055; }
+tabs::part(track) { background: none; border-bottom: var(--stroke-hairline) solid var(--line-strong-33); }
 tabs::part(tab) { background: none; color: var(--ink-muted); font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
-tabs::part(tab):hover { background: linear-gradient(0deg, #e9c46f1f, #e9c46f00); }
-tabs::part(tab):active { background: #0b080580; }
-tabs::part(tab):checked { color: var(--gold); background: linear-gradient(0deg, #e9c46f2e, #e9c46f00 70%); }
-tabs::part(tab):disabled { color: #6b5e4c; }
-tabs::part(indicator) { height: 2px; background: var(--gold); border-radius: 0; box-shadow: 0 0 6px #e9c46f99; }
-tabs::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+tabs::part(tab):hover { background: var(--fantasy-tab-hover-wash); }
+tabs::part(tab):active { background: var(--fantasy-soot-50); }
+tabs::part(tab):checked { color: var(--gold); background: var(--fantasy-tab-selected-wash); }
+tabs::part(tab):disabled { color: var(--fantasy-ink-disabled); }
+tabs::part(indicator) { height: var(--stroke-regular); background: var(--gold); border-radius: 0; box-shadow: var(--tabs-indicator-glow); }
+tabs::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Slider. */
-input[type=range]::part(track) { background: #0b0805; border: 1px solid #4a3c2b; box-shadow: inset 0 1px 3px #000; }
-input[type=range]::part(fill) { background: linear-gradient(180deg, #f2d27f, #a7813f); }
-input[type=range]::part(tick) { background: #8f765099; }
-input[type=range]::part(knob) { border: 1px solid #5b4220; background: radial-gradient(circle at 40% 35%, #f6dc95, #a7813f 70%, #6e4f22); box-shadow: 0 2px 4px #000; }
-input[type=range]::part(knob):hover { box-shadow: 0 0 10px #e9c46f88, 0 2px 4px #000; }
-input[type=range]::part(knob):active { background: radial-gradient(circle at 50% 50%, #c79a4a, #6e4f22); }
-input[type=range]::part(knob):disabled { background: #4a3c2b; }
-input[type=range]::part(core) { background: #2a1d12; }
-input[type=range]::part(bubble) { border: 1px solid #8f7650; background: #18110b; color: var(--ink); }
-input[type=range]::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+input[type=range]::part(track) { background: var(--fantasy-soot); border: var(--stroke-hairline) solid var(--line); box-shadow: var(--fantasy-well-shadow); }
+input[type=range]::part(fill) { background: var(--fantasy-gold-fill); }
+input[type=range]::part(tick) { background: var(--line-strong-60); }
+input[type=range]::part(knob) { border: var(--stroke-hairline) solid var(--fantasy-knob-rim); background: var(--slider-knob-fill); box-shadow: var(--slider-knob-shadow); }
+input[type=range]::part(knob):hover { box-shadow: var(--slider-knob-hover-shadow); }
+input[type=range]::part(knob):active { background: var(--slider-knob-pressed-fill); }
+input[type=range]::part(knob):disabled { background: var(--line); }
+input[type=range]::part(core) { background: var(--fantasy-walnut-deep); }
+input[type=range]::part(bubble) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--panel); color: var(--ink); }
+input[type=range]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); }
 
 /* ── Fields, select and stepper. */
 input::part(frame), textarea::part(frame), select::part(trigger), stepper::part(frame),
 input[type=number]::part(frame) {
-  border: 1px solid #8f7650; border-radius: 3px;
-  background: linear-gradient(180deg, #0b0805, #15100b);
-  box-shadow: inset 0 2px 4px #000000c0;
+  border: var(--stroke-hairline) solid var(--line-strong); border-radius: var(--radius-field);
+  background: var(--field-fill);
+  box-shadow: var(--field-shadow);
 }
-input::part(frame):focus-visible, textarea::part(frame):focus-visible { border-color: var(--gold); box-shadow: inset 0 2px 4px #000000c0, 0 0 8px #e9c46f55; }
-input::part(frame):disabled, textarea::part(frame):disabled, select::part(trigger):disabled { border-color: #4a3c2b; background: #15100c; }
+input::part(frame):focus-visible, textarea::part(frame):focus-visible { border-color: var(--gold); box-shadow: var(--field-focus-shadow); }
+input::part(frame):disabled, textarea::part(frame):disabled, select::part(trigger):disabled { border-color: var(--line); background: var(--fantasy-soot-disabled); }
 input::part(frame):invalid, textarea::part(frame):invalid, select::part(trigger):invalid { border-color: var(--danger); }
 input::part(text), textarea::part(text) { color: var(--ink); font-family: var(--font-body); }
 input::part(placeholder), textarea::part(placeholder) { color: var(--ink-faint); }
-input::part(selection), textarea::part(selection) { background: #8a642066; }
+input::part(selection), textarea::part(selection) { background: var(--fantasy-amber-40); }
 input::part(caret), textarea::part(caret) { background: var(--gold); }
-input::part(reveal):hover, input::part(clear):hover { background: #e9c46f1c; }
-select::part(trigger):hover { border-color: #d9b45f; }
+input::part(reveal):hover, input::part(clear):hover { background: var(--accent-11); }
+select::part(trigger):hover { border-color: var(--fantasy-brass-hi); }
 select::part(trigger):open { border-color: var(--gold); }
-select::part(list) { border: 1px solid #8f7650; background: #18110b; box-shadow: 0 10px 24px #000000c0; }
+select::part(list) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--panel); box-shadow: var(--dropdown-list-shadow); }
 select::part(option) { border: none; box-shadow: none; background: none; color: var(--ink); }
-select::part(option):hover { background: #e9c46f1c; }
-select::part(option):active { background: #0b0805; }
-select::part(option):disabled { color: #6b5e4c; }
-select::part(group) { color: #d8bf86; font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+select::part(option):hover { background: var(--accent-11); }
+select::part(option):active { background: var(--fantasy-soot); }
+select::part(option):disabled { color: var(--fantasy-ink-disabled); }
+select::part(group) { color: var(--fantasy-ink-label); font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
 stepper::part(value) { border: none; background: none; box-shadow: none; color: var(--ink); }
-stepper::part(button), input[type=number]::part(button) { border: 1px solid #8f7650; background: linear-gradient(180deg, #4a423a, #2a2520); }
-stepper::part(button):hover, input[type=number]::part(button):hover { border-color: #d9b45f; }
-stepper::part(button):active, input[type=number]::part(button):active { background: #1a1612; box-shadow: inset 0 2px 5px #000; }
-stepper::part(button):disabled, input[type=number]::part(button):disabled { border-color: #4a3c2b; background: #1a1714; }
+stepper::part(button), input[type=number]::part(button) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-iron-fill); }
+stepper::part(button):hover, input[type=number]::part(button):hover { border-color: var(--fantasy-brass-hi); }
+stepper::part(button):active, input[type=number]::part(button):active { background: var(--fantasy-iron-pressed); box-shadow: var(--button-pressed-shadow); }
+stepper::part(button):disabled, input[type=number]::part(button):disabled { border-color: var(--line); background: var(--fantasy-iron-disabled); }
 input::part(focus):focus-visible, textarea::part(focus):focus-visible, select::part(focus):focus-visible,
-stepper::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+stepper::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Details. */
-details::part(summary) { border: none; border-bottom: 1px solid #8f765055; background: none; box-shadow: none; color: #d8bf86; font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
-details::part(summary):hover { background: #e9c46f14; }
+details::part(summary) { border: none; border-bottom: var(--stroke-hairline) solid var(--line-strong-33); background: none; box-shadow: none; color: var(--fantasy-ink-label); font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+details::part(summary):hover { background: var(--accent-8); }
 details::part(summary):open { color: var(--gold); }
-details::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+details::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Panels, dialogs, tooltips, HUD. */
 panel::part(frame), dialog::part(panel) {
-  border: 1px solid #8f7650; border-radius: 4px;
-  background: radial-gradient(ellipse at 50% 0%, #2f2216, #1a130c 55%, #110c08);
-  box-shadow: inset 0 0 0 3px #0b0805, inset 0 0 0 4px #8f765066, 0 10px 30px #000000b0;
+  border: var(--panel-border-width) solid var(--line-strong); border-radius: var(--panel-radius);
+  background: var(--panel-fill);
+  box-shadow: var(--panel-shadow);
 }
-dialog::part(backdrop) { background: #070504c4; }
-tooltip::part(frame) { border: 1px solid #8f7650; background: #140f0bf2; box-shadow: 0 6px 16px #000c; backdrop-filter: none; }
-hud::part(frame), minimap::part(frame) { border: 1px solid #8f7650; background: #140f0bea; backdrop-filter: none; }
+dialog::part(backdrop) { background: var(--scrim); }
+tooltip::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-tooltip); box-shadow: var(--fantasy-tooltip-shadow); backdrop-filter: none; }
+hud::part(frame), minimap::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--hud); backdrop-filter: none; }
 minimap::part(north) { color: var(--gold); }
 minimap::part(marker) { background: var(--gold); }
 toast::part(indicator) { background: var(--gold); }
-popover::part(arrow) { background: #18110b; }
-og-spotlight::part(edge) { border: 2px solid var(--gold); }
+popover::part(arrow) { background: var(--panel); }
+og-spotlight::part(edge) { border: var(--stroke-regular) solid var(--gold); }
 
 /* ── Slot (core), chip, badge. */
-slot::part(frame) { border: 2px solid #6f6658; background: radial-gradient(circle, #3a332a, #120e0a); box-shadow: inset 0 0 14px #000a; }
-slot::part(frame):hover { border-color: #d9b45f; }
-slot::part(frame):active { background: #0e0a07; }
-slot::part(focus):focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
-chip::part(base) { border: 1px solid #8f7650; background: #241a11; color: var(--ink); }
-chip::part(base):hover { border-color: #d9b45f; }
-chip::part(base):active { background: #0b0805; }
-chip::part(base):disabled { color: #6b5e4c; border-color: #4a3c2b; }
-badge::part(base) { background: #6e1c13; color: #f8ecd6; border: 1px solid #d9b45f; }
+slot::part(frame) { border: var(--stroke-regular) solid var(--fantasy-slot-rim); background: var(--slot-fill); box-shadow: var(--slot-shadow); }
+slot::part(frame):hover { border-color: var(--fantasy-brass-hi); }
+slot::part(frame):active { background: var(--fantasy-well-pressed); }
+slot::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); }
+chip::part(base) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-walnut); color: var(--ink); }
+chip::part(base):hover { border-color: var(--fantasy-brass-hi); }
+chip::part(base):active { background: var(--fantasy-soot); }
+chip::part(base):disabled { color: var(--fantasy-ink-disabled); border-color: var(--line); }
+badge::part(base) { background: var(--fantasy-crimson-deep); color: var(--on-primary); border: var(--stroke-hairline) solid var(--fantasy-brass-hi); }
 
 /* ── Bars, progress, meters, cooldowns. */
-progress::part(track), meter::part(track) { background: #0b0805; border: 1px solid #4a3c2b; box-shadow: inset 0 1px 3px #000; }
-progress::part(fill) { background: linear-gradient(180deg, #f2d27f, #a7813f); }
-meter::part(fill) { background: linear-gradient(180deg, #f2d27f, #a7813f); }
-meter.health::part(fill) { background: linear-gradient(180deg, #c8463a, #8a1e16); }
-meter.mana::part(fill) { background: linear-gradient(180deg, #4f7ed8, #213f86); }
-meter::part(trail) { background: #e9c46f88; }
-meter::part(separator) { background: #0b0805; }
+progress::part(track), meter::part(track) { background: var(--fantasy-soot); border: var(--stroke-hairline) solid var(--line); box-shadow: var(--fantasy-well-shadow); }
+progress::part(fill) { background: var(--fantasy-gold-fill); }
+meter::part(fill) { background: var(--fantasy-gold-fill); }
+meter.health::part(fill) { background: var(--fantasy-health-fill); }
+meter.mana::part(fill) { background: var(--fantasy-mana-fill); }
+meter::part(trail) { background: var(--accent-53); }
+meter::part(separator) { background: var(--fantasy-soot); }
 meter::part(label) { color: var(--ink); }
-cooldown::part(track) { background: #0b0805; }
-cooldown::part(sweep) { background: #000000a0; }
-cooldown::part(core):active { background: #e9c46f33; }
-skeleton::part(frame), skeleton::part(line) { background: #241a11; }
-skeleton::part(sheen) { background: linear-gradient(90deg, #e9c46f00, #e9c46f22, #e9c46f00); }
+cooldown::part(track) { background: var(--fantasy-soot); }
+cooldown::part(sweep) { background: var(--shadow-63); }
+cooldown::part(core):active { background: var(--accent-20); }
+skeleton::part(frame), skeleton::part(line) { background: var(--fantasy-walnut); }
+skeleton::part(sheen) { background: var(--fantasy-skeleton-sheen); }
 spinner::part(dot) { background: var(--gold); }
 
 /* ── Keyboard (on-screen). */
-keyboard::part(panel) { border-top: 1px solid #8f7650; background: #120d08; }
-keyboard::part(key), keyboard::part(candidate) { border: 1px solid #8f7650; background: linear-gradient(180deg, #3a322a, #241f1a); color: var(--ink); }
-keyboard::part(key):hover, keyboard::part(candidate):hover { border-color: #d9b45f; }
-keyboard::part(key):active, keyboard::part(candidate):active { background: #0b0805; }
-keyboard::part(key):disabled { color: #6b5e4c; }
-keyboard::part(focus):focus-visible { outline: 2px solid var(--focus); }
+keyboard::part(panel) { border-top: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-leather-deep); }
+keyboard::part(key), keyboard::part(candidate) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--keyboard-key-fill); color: var(--ink); }
+keyboard::part(key):hover, keyboard::part(candidate):hover { border-color: var(--fantasy-brass-hi); }
+keyboard::part(key):active, keyboard::part(candidate):active { background: var(--fantasy-soot); }
+keyboard::part(key):disabled { color: var(--fantasy-ink-disabled); }
+keyboard::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); }
 
 /* ── Touch controls. */
-joystick::part(base), dpad::part(base) { background: #140f0bb0; border: 1px solid #8f7650; }
+joystick::part(base), dpad::part(base) { background: var(--fantasy-touch-plate); border: var(--stroke-hairline) solid var(--line-strong); }
 joystick::part(rim):active { border-color: var(--gold); }
-joystick::part(knob) { background: radial-gradient(circle at 40% 35%, #f6dc95, #a7813f 70%, #6e4f22); }
+joystick::part(knob) { background: var(--slider-knob-fill); }
 dpad::part(indicator):active, dpad::part(chevron):active { background: var(--gold); }
-actionbutton::part(face) { border: 2px solid #8f7650; background: radial-gradient(circle, #3a2e22, #160f0a); }
-actionbutton::part(face):active { border-color: var(--gold); background: radial-gradient(circle, #241a11, #0b0805); }
-actionbutton::part(sweep) { background: #000000a0; }
+actionbutton::part(face) { border: var(--stroke-regular) solid var(--line-strong); background: var(--action-face-fill); }
+actionbutton::part(face):active { border-color: var(--gold); background: var(--action-face-pressed-fill); }
+actionbutton::part(sweep) { background: var(--shadow-63); }
 
 /* ── Dialogue (core), headings, scroll bars. */
 dialogue::part(continue) { color: var(--gold); }
 /* pending: heading flourish — the registry exposes h1..h6::part(flourish),
    but a text element.s ::part is read as a text span and refuses background
    ("unsupported text span property background"):
-   h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: url(art/rule.svg) center / 100% 12px no-repeat; } */
-scroll::part(bar) { background: #8f765099; border-radius: 2px; }
+   h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: var(--fantasy-rule-image) center / 100% var(--fantasy-rule-height) no-repeat; } */
+scroll::part(bar) { background: var(--line-strong-60); border-radius: var(--radius-xs); }
 
 /* ── The remaining registry parts: icon children take the gold ink, the
    IME composition its underline, the keyboard's preview and candidates the
    panel. `input[type=range]::part(reach)` is the knob's hit area and stays
    undrawn. */
-details::part(root) { border-bottom: 1px solid #8f765033; }
+details::part(root) { border-bottom: var(--stroke-hairline) solid var(--line-strong-20); }
 details::part(content) { padding: var(--space-xs) var(--space-sm) var(--space-sm); color: var(--ink); }
-keyboard::part(preview) { border-bottom: 1px solid #8f765066; background: #0b0805; color: var(--ink); font-family: var(--font-body); }
-keyboard::part(candidates) { border-bottom: 1px solid #8f765044; background: #160f0a; }
+keyboard::part(preview) { border-bottom: var(--stroke-hairline) solid var(--line-strong-40); background: var(--fantasy-soot); color: var(--ink); font-family: var(--font-body); }
+keyboard::part(candidates) { border-bottom: var(--stroke-hairline) solid var(--line-strong-27); background: var(--fantasy-walnut-dark); }
 input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--gold); }
 input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
 og-icon::part(secondary) { color: var(--gold); }
 og-icon::part(image), art::part(icon), artslot::part(icon), actionbutton::part(icon), cooldown::part(icon), dialogue::part(portraitIcon) { color: var(--ink); }
-cooldown::part(mask), actionbutton::part(mask) { background: #000000a0; }
+cooldown::part(mask), actionbutton::part(mask) { background: var(--shadow-63); }
 minimap::part(image) { filter: saturate(0.85) brightness(0.9); }
-minimap::part(markerOutline) { background: #0b0805; }
+minimap::part(markerOutline) { background: var(--fantasy-soot); }
 dialogue::part(initial) { color: var(--gold); font-family: var(--font-display); }
 joystick::part(direction) { background: var(--gold); }
