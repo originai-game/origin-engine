@@ -1,20 +1,20 @@
-# rpg: genre kit
+# rpg: built-in components
 
 Inventory, character and equipment, quests, the world map, conversation and
 the turn-based and exploration HUDs, as documents over core controls
-(docs/ui.md §4). The kit draws what the game tells it and returns intents
+(docs/ui.md §4). They draw what the game tells it and returns intents
 with stable row keys. It never computes stats, damage, turn order, legality
 or loot.
 
-Install it with `og ui add rpg`. Its manifest names the library `minimap`
-component, which installing the kit ejects into `assets/ui/` unless the game
-already has it. Load each document with `og.load.document(world,
-"ui-kits/rpg/<file>.svelte")`, and mount them from the game's own pages.
+They are built into the engine: a game's page uses one by name
+(`<RpgBackpack .../>`) and loading the page loads it, with the `Minimap`
+it uses. `og ui eject rpg/backpack` copies one into `assets/ui/rpg/` to
+change it; the game's copy of the same name wins.
 
 ## Structure and appearance
 
 Each member's `<style>` holds structure only: layout, sizes and spacing. It
-sets no colour, font or art, and it lands in the `og-kit` layer. A style pack
+sets no colour, font or art, and it lands in the `og-components` layer. A style pack
 (`og-pack`, above it) supplies every appearance with ordinary selectors on
 the members' root classes, their classes and their `data-*` attributes, for
 example `.rpg-backpack .cell[data-rarity=epic]`. `::part()` is used only for
@@ -63,40 +63,38 @@ and the enemy info drops its portrait.
 ## Review sheet and tests
 
 `og ui sheet rpg` renders the five review pages (inventory, journal,
-equipment, explore, combat) from `sheet/`, dressed by the fantasy pack, with
+equipment, explore, combat) from `packages/engine/sheets/rpg/`, dressed by
+the fantasy pack, with
 ja, zh-CN and ar string tables for the locale cells. The sheet's painted
 art (portraits, figure, item and skill icons, scene, map) was generated for
 it with gpt-image-2.6 through the OriginGame gateway and is sheet fixture
-data, not part of the kit.
+data, not part of the components.
 
-`bun test extensions/rpg/tests/rpg.test.ts` (from `packages/engine`) mounts
-every member from its fixture at desktop and phone, checks the intents,
-disabled states, keyed selection, keyboard and pad focus, and that a pack
-rule beats a kit rule of equal specificity.
+`bun test tests/rpg.test.ts` (from `packages/engine`) mounts every member
+by name from a game page at desktop and phone, checks the intents, disabled
+states, keyed selection, keyboard and pad focus, and that a pack rule beats
+a component rule of equal specificity.
 
-The sheet's fixture text goes through `sheet/assets/strings/` (en, ja,
+The sheet's fixture text goes through `assets/strings/` (en, ja,
 zh-CN, ar) as a game's data would, so pseudo brackets every label. Pack type
 is in `em` of the body step so the player's text scale applies.
 
 ### References
 
-`sheet/references/vulkan/` holds the 15 art-approved cells, recorded on the
+`references/vulkan/` holds the 15 art-approved cells, recorded on the
 GPU host (`references/metal/` keeps the Metal ones): the five
 pages at desktopHd, phonePortrait and phoneLandscape, 100 %, game locale.
 Capture the same cells and compare, from the repository root:
 
 ```sh
-P=.amp/in/rpg-sheet; K=packages/engine/extensions/rpg
-rsync -a --delete --exclude references $K/sheet/ $P/
-mkdir -p $P/assets/ui-kits/rpg $P/assets/ui
-cp $K/*.svelte $K/*.ogt $K/extension.json $P/assets/ui-kits/rpg/
-cp packages/engine/src/ui/components/minimap.svelte $P/assets/ui/
+P=.amp/in/rpg-sheet; K=packages/engine/sheets/rpg
+rsync -a --delete --exclude references $K/ $P/
 source scripts/lock.sh; og_gpu_acquire rpg-sheet
 S=""; for p in inventory journal equipment combat explore; do S="$S --screen $p=style:fantasy;page:$p"; done
 OG_ENGINE_PACKAGE="$PWD/packages/engine" OG_STYLES_DIR="$PWD/templates/styles" \
   og ui preview $P $S --breakpoints desktopHd,phonePortrait,phoneLandscape \
   --scales 100 --locales game --settle 2 --out "$PWD/.amp/in/rpg-capture"
-bun $K/sheet/verify.ts .amp/in/rpg-capture
+bun $K/verify.ts .amp/in/rpg-capture
 ```
 
 `verify.ts` rejects a missing cell or any changed pixel. Recording is

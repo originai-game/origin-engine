@@ -1,5 +1,5 @@
-//! Every engine UI document (`packages/engine`: the components, the screens
-//! and the extensions' documents) built from its `fixture:default` at
+//! Every engine UI document (`packages/engine`: the components, their groups
+//! included, and the screens) built from its `fixture:default` at
 //! 1280×720 and compared with `references/vulkan/doc-<path>.png`
 //! (og-tests' tolerance; `OG_UI_CAPTURE=1` records). What only drawing
 //! shows: how the default style dresses each document's own CSS, such as
@@ -40,11 +40,11 @@ const SCREEN: &str = "a screen that draws nothing from its fixture, pushed or bu
 #[test]
 #[ignore = "requires GPU"]
 fn engine_documents_match_their_reference_frames() {
-    let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens", "extensions"]);
+    let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens"]);
     let (width, height) = (1280, 720);
     let mut failures = Vec::new();
     let name_of = |path: &str| {
-        // `extensions/rpg/party.svelte` is `doc-extensions-rpg-party`.
+        // `src/ui/components/rpg/party.svelte` is `doc-components-rpg-party`.
         format!(
             "doc-{}",
             path.trim_start_matches("src/ui/")

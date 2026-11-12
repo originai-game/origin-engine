@@ -911,6 +911,10 @@ mod tests {
             std::fs::read(library()[1].join("ability-bar.svelte")).unwrap()
         );
         assert!(dir.join("assets/ui/ability-bar.en.ogt").is_file());
+        // A group's document keeps its directory, beside its group's strings.
+        let got = eject_from(&library(), "rpg/backpack", &dir, false).unwrap();
+        assert_eq!(got, dir.join("assets/ui/rpg/backpack.svelte"));
+        assert!(dir.join("assets/ui/rpg/rpg.en.ogt").is_file());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -945,14 +949,19 @@ mod tests {
     #[test]
     fn eject_list_names_every_document_with_its_appendix_b_row() {
         let screens = lib_screens(&library()).unwrap();
-        let mut files: Vec<String> = library()
-            .iter()
-            .flat_map(|d| std::fs::read_dir(d).unwrap())
-            .filter_map(|e| {
-                let f = e.unwrap().file_name().into_string().unwrap();
-                f.strip_suffix(".svelte").map(str::to_string)
-            })
-            .collect();
+        // A group's documents (`rpg/backpack`) are named by their path.
+        let mut files: Vec<String> = Vec::new();
+        for dir in library() {
+            let mut found = Vec::new();
+            super::collect_files(&dir, "svelte", &mut found);
+            files.extend(found.iter().map(|f| {
+                f.strip_prefix(&dir)
+                    .unwrap()
+                    .with_extension("")
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            }));
+        }
         files.sort();
         let mut names: Vec<String> = screens.iter().map(|s| s.name.clone()).collect();
         names.sort();

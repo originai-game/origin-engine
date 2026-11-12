@@ -6,14 +6,14 @@ corners, gold dividers with a centre diamond, painted button plates (crimson
 primary, dark iron secondary) and rarity rims that glow over a tinted well.
 Load it with `og.load.style(world, "@styles/fantasy")`.
 
-The pack's CSS applies in the `og-pack` layer, above a kit's structure
-(`og-kit`) and below a game's own styles (`og-game`, unlayered).
+The pack's CSS applies in the `og-pack` layer, above the built-in components'
+structure (`og-components`) and below a game's own styles (`og-game`, unlayered).
 
 | File | What it holds |
 | --- | --- |
 | `base.css` | Fonts (`@font-face` from `@styles/shared`), the root tokens for the dark and light schemes, the page ground |
 | `controls.css` | Every core control's parts and states through `host::part(name):state`: painted button plates by `border-image`, tabs, toggles, sliders, inputs, slots, tooltips and the rest |
-| `kit-rpg.css` | The rpg kit (`packages/engine/extensions/rpg`) through its root classes and `data-*` hooks: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass, minimap frame |
+| `kit-rpg.css` | The rpg components (`packages/engine/src/ui/components/rpg`) through its root classes and `data-*` hooks: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass, minimap frame |
 | `motion.css` | Transitions over a slow warm curve, `-og-spring()` on tab indicators, the acting portrait and fresh badges; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |
 | `sounds.css` | `-og-sound` sets from the shared library for press, hover, select, confirm, back, open, close, error and reward, with quieter variants on cells and HUD plates |
 | `art/` | Frame and button art (SVG), filigree corners, the glow and the ground (PNG), each with its import `.ogt` (colour art sRGB; masks linear) |

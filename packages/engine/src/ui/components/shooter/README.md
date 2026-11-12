@@ -1,16 +1,14 @@
-# shooter: genre kit
+# shooter: built-in components
 
 Aim, ammunition, damage direction, killfeed and loadout, as documents over
-core controls (docs/ui.md §4). The kit draws what the game tells it and
+core controls (docs/ui.md §4). They draw what the game tells it and
 returns intents with stable ids. It never computes damage, spread,
 reloads, kills or legality. Team and match scores belong to `arena`.
 
-Install it with `og ui add shooter`. Its manifest names the library
-`stat-bar` component that `CombatHud` composes, and installing the kit
-ejects that component into `assets/ui/` unless the game already has it.
-Load each document with `og.load.document(world,
-"ui-kits/shooter/<file>.svelte")`, and load `ui/stat-bar.svelte` for
-`CombatHud`.
+They are built into the engine: a game's page uses one by name
+(`<Killfeed .../>`) and loading the page loads it, with the `StatBar`
+that `CombatHud` composes. `og ui eject shooter/killfeed` copies one into
+`assets/ui/shooter/` to change it; the game's copy of the same name wins.
 
 ## Information-structure references (§6.1)
 
@@ -30,7 +28,7 @@ never for its art, brand or layout.
 | `AmmoCounter` | `weapon`, `mode` (auto, burst, single), `magazine`, `capacity`, `reserve`, `reloading` 0–1 (negative: not reloading), `low` (a fraction of capacity) | none |
 | `DamageDirection` | `hits` keyed `{ id, angle (rad, 0 ahead, clockwise), strength 0–1, kind (normal, shield, critical) }` | none |
 | `Killfeed` | `rows` keyed `{ id, killer, victim, weapon, headshot, self, team (ally or enemy, the killer's side) }`, newest first; a phone shows the three newest | none |
-| `Loadout` | `title` (empty: the kit's Loadout), `categories` keyed `{ id, label }` (an empty label: the kit's string for primary, secondary, melee or utility), `slots` keyed `{ id, category, name, icon, detail, equipped, locked, cost }`, `selected` (a slot id) | `select` (row key: a tap, Enter or A on a slot), `equip` (row key: the Equip button sends the selected slot's, X or pad Y the focused slot's), `back` (the Back button, Escape or B) |
+| `Loadout` | `title` (empty: the component's Loadout), `categories` keyed `{ id, label }` (an empty label: the component's string for primary, secondary, melee or utility), `slots` keyed `{ id, category, name, icon, detail, equipped, locked, cost }`, `selected` (a slot id) | `select` (row key: a tap, Enter or A on a slot), `equip` (row key: the Equip button sends the selected slot's, X or pad Y the focused slot's), `back` (the Back button, Escape or B) |
 | `CombatHud` | the members' inputs, plus `health`, `healthMax`, `shield`, `shieldMax` over core `StatBar`, and `feed` for the killfeed | none |
 
 A locked slot is disabled and sends nothing. The Equip button is disabled
@@ -64,8 +62,8 @@ blends in linear light, so a lighter plate drops a team name under 4.5:1.
 
 ## Pages and frames (§6.2)
 
-`og ui sheet shooter` renders `sheet/`. The kit is installed into the sheet
-as a game installs it.
+`og ui sheet shooter` renders `packages/engine/sheets/shooter/`. Its pages
+use the components by name, as a game does.
 
 - Normal: `combat` is the combat HUD over a bright sky and a dark ground,
   with a headshot mark and two incoming hits.
@@ -80,8 +78,8 @@ as a game installs it.
   and holds while the game holds `hit`; an arc fades in and out over
   300 ms. Under reduced motion both only fade, and both settle: the frame's
   `dump_ui:motion` lists nothing moving once they have.
-- Locales: the sheet loads the kit's strings in Japanese, Simplified
-  Chinese and Arabic (`sheet/assets/strings/`), so `og ui review shooter
+- Locales: the sheet loads the components' strings in Japanese, Simplified
+  Chinese and Arabic (`assets/strings/`), so `og ui review shooter
   --locales game,pseudo,ja,ar` shows CJK and right to left. Right to left
   the HUD's corners mirror (the feed and ammunition on the left, the vitals
   on the right); the crosshair and the damage arcs keep their screen

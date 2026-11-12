@@ -1,12 +1,13 @@
-// The rpg kit's members as a game mounts them (docs/ui.md §6.1): the kit
-// installed under assets/ui-kits/rpg with the library minimap its manifest
-// names, dressed by the fantasy pack, each member mounted from its own
+// The rpg components as a game uses them (docs/ui.md §6.1): built in, used
+// by name from the game's own pages with nothing copied or loaded but the
+// pages, dressed by the fantasy pack, each member mounted from its own
 // fixture:default and driven through the probe's touch, key and pad commands.
 //
 // Ways it could fail: an intent sent without its row key, or sent for a
 // disabled command or a skill still cooling down; the selection following a
-// row's index instead of its key; a member that only fits the desktop; the
-// pack losing to a kit rule of equal specificity (og-kit < og-pack).
+// row's index instead of its key; a member that only fits the desktop; a
+// member not loaded with the page that uses it; the pack losing to a
+// component rule of equal specificity (og-components < og-pack).
 import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
 
 // The tests run on ticks, not the clock; a time limit only guards a hang.
@@ -20,31 +21,25 @@ import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
 
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "ignore"; stderr: "pipe" }): { exitCode: number; stderr: Uint8Array } };
-import { loadNativeHost } from "../../../src/node/index.ts";
-import { createEngine, type Engine, type GameToken } from "../../../src/runtime.ts";
-import { ogBin } from "../../../tests/support/og-bin.ts";
+import { loadNativeHost } from "../src/node/index.ts";
+import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { ogBin } from "./support/og-bin.ts";
 
 type El = { id: string; path: string; text: string; x: number; y: number; width: number; height: number; states?: string[]; disabled?: boolean; name?: string; role?: string };
 type Event = { mount: string; path: string; rowKey: string; kind: string; name: string };
 
-const KIT = dirname(dirname(fileURLToPath(import.meta.url)));
-const ENGINE = join(KIT, "../..");
+const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
+const GROUP = join(ENGINE, "src/ui/components/rpg");
 const STYLES = join(ENGINE, "../../templates/styles");
 let root = "";
 let styles = "";
 
-/** Each member's component name and its fixture:default, read from the kit file as a game's tooling reads them. */
+/** Each member's component name and its fixture:default, read from its document as a game's tooling reads them. */
 const MEMBERS: Record<string, { component: string; fixture: Record<string, unknown> }> = {};
 
-// A kit rule and a pack rule of equal specificity on one property: the pack's must win.
-const PROBE_KIT = `<meta name="component" content="RpgCascadeProbe">
-<div class="rpg-cascade-probe"><div class="cascade-box"></div></div>
-<style>
-.rpg-cascade-probe { width: stretch; height: stretch; }
-.cascade-box { width: 100px; height: 20px; }
-</style>
-`;
-const PROBE_PACK = ".cascade-box { width: 240px; }\n";
+// The backpack's grid padding (`.grid { padding: var(--space-xs) }`) and a
+// pack rule of equal specificity on it: the pack's must win.
+const PROBE_PACK = ".grid { padding: 37px; }\n";
 
 beforeAll(() => {
   loadNativeHost();
@@ -52,28 +47,22 @@ beforeAll(() => {
   styles = mkdtempSync(join(tmpdir(), "og-rpg-styles-"));
   for (const d of ["fantasy", "shared"]) cpSync(join(STYLES, d), join(styles, d), { recursive: true });
   writeFileSync(join(styles, "fantasy/zz-cascade-probe.css"), PROBE_PACK);
-  const kit = join(root, "assets/ui-kits/rpg");
-  mkdirSync(kit, { recursive: true });
   mkdirSync(join(root, "assets/ui"), { recursive: true });
-  for (const f of readdirSync(KIT)) if (/\.(svelte|ogt|json)$/.test(f)) cpSync(join(KIT, f), join(kit, f));
-  writeFileSync(join(kit, "cascade-probe.svelte"), PROBE_KIT);
-  cpSync(join(ENGINE, "src/ui/components/minimap.svelte"), join(root, "assets/ui/minimap.svelte"));
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Rpg kit"\nid "rpg-kit"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   // A look naming the pack is what makes the cook bundle it (@styles/fantasy).
   mkdirSync(join(root, "assets/looks"), { recursive: true });
   writeFileSync(join(root, "assets/looks/fantasy.ogt"), 'type look\nversion 1\n---\nname "rpg kit fantasy"\nui "fantasy"\n');
-  for (const f of readdirSync(KIT).filter((f) => f.endsWith(".svelte"))) {
-    const text = readFileSync(join(KIT, f), "utf8");
+  for (const f of readdirSync(GROUP).filter((f) => f.endsWith(".svelte"))) {
+    const text = readFileSync(join(GROUP, f), "utf8");
     const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
     const fixture = /<meta name="fixture:default" content='([^']*)'>/.exec(text);
     const name = f.replace(".svelte", "");
     MEMBERS[name] = { component, fixture: fixture ? JSON.parse(fixture[1]!) : {} };
-    // A game mounts its own page, which holds the kit's member: one host page per member, its props from stores.
+    // A game mounts its own page, which uses the member by name: one host page per member, its props from stores.
     const props = Object.keys(MEMBERS[name]!.fixture).map((k) => `${k}={$${k}}`).join(" ");
     writeFileSync(join(root, `assets/ui/host-${name}.svelte`), `<meta name="screen" content="Host_${component}" data-layer="menu" data-input="menu">\n<div style="width: stretch; height: stretch; padding: 16px"><${component} ${props} /></div>\n`);
   }
-  writeFileSync(join(root, "assets/ui/host-cascade.svelte"), '<meta name="component" content="Host_RpgCascadeProbe">\n<div style="width: stretch; height: stretch"><RpgCascadeProbe /></div>\n');
   // og cook bundles the pack from OG_STYLES_DIR: the copy holding the probe sheet.
   const cook = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, env: { ...process.env, OG_STYLES_DIR: styles }, stdout: "ignore", stderr: "pipe" });
   if (cook.exitCode !== 0) throw new Error(`cooking ${root}: ${new TextDecoder().decode(cook.stderr)}`);
@@ -84,7 +73,7 @@ afterAll(() => {
   rmSync(styles, { recursive: true, force: true });
 });
 
-const DOCUMENTS = () => ["ui/minimap.svelte", ...Object.keys(MEMBERS).map((m) => `ui-kits/rpg/${m}.svelte`), "ui-kits/rpg/cascade-probe.svelte", ...Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`), "ui/host-cascade.svelte"];
+const DOCUMENTS = () => Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`);
 
 type View = { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean; breakpoint: string };
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
@@ -165,18 +154,22 @@ for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const
   }, 180_000);
 }
 
-test("the pack beats a kit rule of equal specificity (og-kit < og-pack), and the kit rule holds without the pack", () => {
-  const width = (pack: boolean) => {
-    const e = engine("RpgCascadeProbe", {}, { pack });
+test("the pack beats a component rule of equal specificity (og-components < og-pack), and the component rule holds without the pack", () => {
+  const inset = (pack: boolean) => {
+    const e = member("backpack", {}, { pack });
     try {
       e.advance(3);
-      return find(e, /\/node\d+\/node\d+$/)!.width;
+      const all = elements(e);
+      const grid = all.find((x) => x.role === "grid")!;
+      const cell = all.find((x) => x.role === "gridcell")!;
+      return Math.round(cell.x - grid.x);
     } finally {
       e.destroy();
     }
   };
-  expect(width(true)).toBe(240);
-  expect(width(false)).toBe(100);
+  expect(inset(true)).toBe(37);
+  expect(inset(false)).not.toBe(37);
+  expect(inset(false)).toBeGreaterThan(0);
 });
 
 test("RpgCommands: a tap chooses by key, the disabled command sends nothing, and each plate is named by its label", () => {

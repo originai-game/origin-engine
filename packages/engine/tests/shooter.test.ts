@@ -1,7 +1,7 @@
-// The shooter kit's members as a game mounts them (docs/ui.md §6.1): the kit
-// installed under assets/ui-kits/shooter with the library StatBar its
-// manifest names, using the default style, each member mounted from named
-// stores and driven through the probe's touch, key and pad commands.
+// The shooter components as a game uses them (docs/ui.md §6.1): built in,
+// used by name from the game's own pages with nothing copied or loaded but
+// the pages, using the default style, each member mounted from named stores
+// and driven through the probe's touch, key and pad commands.
 //
 // Ways it could fail: an intent sent without its row key or for a disabled
 // (locked) slot; selection following a row's index instead of its key
@@ -10,20 +10,19 @@
 // killfeed out of the collection's order or crowding a phone; HUD readouts
 // under the phone's safe area or on top of each other.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineSystem, og } from "@origingame/engine";
-import { loadNativeHost } from "../../../src/node/index.ts";
-import { createEngine, type Engine, type GameToken } from "../../../src/runtime.ts";
-import { cookProject } from "../../../tests/support/og-bin.ts";
+import { loadNativeHost } from "../src/node/index.ts";
+import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
+import { cookProject } from "./support/og-bin.ts";
 
 type El = { id: string; path: string; text: string; x: number; y: number; width: number; height: number; states?: string[]; disabled?: boolean; name?: string; role?: string };
 type Event = { mount: string; path: string; rowKey: string; kind: string; name: string };
 
-const KIT = dirname(dirname(fileURLToPath(import.meta.url)));
-const LIBRARY = join(KIT, "../../src/ui/components");
+const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 let root = "";
 
 const SLOTS = [
@@ -32,7 +31,7 @@ const SLOTS = [
   { id: "pike", category: "primary", name: "Pike .50", icon: "sword", detail: "5 / 10", equipped: false, locked: true, cost: "4,700" },
   { id: "wren", category: "secondary", name: "Wren Pistol", icon: "bolt", detail: "15 / 45", equipped: true, locked: false, cost: "500" },
 ];
-// A game's own label wins; an empty one (and the empty title) takes the kit's string.
+// A game's own label wins; an empty one (and the empty title) takes the component's string.
 const CATEGORIES = [{ id: "primary", label: "Rifles" }, { id: "secondary", label: "" }];
 const FEED = ["k4", "k3", "k2", "k1"].map((id, i) => ({ id, killer: `Killer${i}`, victim: `Victim${i}`, weapon: "Halcyon", headshot: i === 0, self: i === 1, team: i % 2 ? "enemy" : "ally" }));
 
@@ -46,15 +45,11 @@ const PAGES: Record<string, string> = {
 beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-shooter-kit-"));
-  const kit = join(root, "assets/ui-kits/shooter");
-  mkdirSync(kit, { recursive: true });
   mkdirSync(join(root, "assets/ui"), { recursive: true });
   mkdirSync(join(root, "assets/looks"), { recursive: true });
   mkdirSync(join(root, "assets/fonts"), { recursive: true });
-  cpSync(join(KIT, "../../../../templates/styles/shared/InstrumentSans-Regular.ttf"), join(root, "assets/fonts/body.ttf"));
+  cpSync(join(ENGINE, "../../templates/styles/shared/InstrumentSans-Regular.ttf"), join(root, "assets/fonts/body.ttf"));
   writeFileSync(join(root, "assets/fonts/body.ttf.ogt"), 'type import\nversion 1\n---\nfont {\n  charset latin\n}\n');
-  for (const f of readdirSync(KIT)) if (/\.(svelte|ogt|json)$/.test(f)) cpSync(join(KIT, f), join(kit, f));
-  for (const f of ["stat-bar.svelte", "stat-bar.en.ogt"]) cpSync(join(LIBRARY, f), join(root, "assets/ui", f));
   for (const [name, text] of Object.entries(PAGES)) writeFileSync(join(root, "assets/ui", `${name}.svelte`), text);
   writeFileSync(join(root, "assets/looks/clean.ogt"), 'type look\nversion 1\n---\nname "default"\nui "default"\n');
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Shooter kit"\nid "shooter-kit"\nentry "main.ts"\n');
@@ -64,7 +59,7 @@ beforeAll(() => {
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-const DOCUMENTS = ["ui/stat-bar.svelte", ...["crosshair", "ammo-counter", "damage-direction", "killfeed", "loadout", "combat-hud"].map((d) => `ui-kits/shooter/${d}.svelte`), "ui/loadoutTest.svelte", "ui/hudTest.svelte"];
+const DOCUMENTS = ["ui/loadoutTest.svelte", "ui/hudTest.svelte"];
 
 /** An engine mounting `page` with these stores; its document events are collected in `events`. */
 function engine(page: string, stores: Record<string, unknown>, events: Event[] = []): Engine {
