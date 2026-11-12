@@ -58,12 +58,14 @@ pub fn engine_documents(dirs: &[&str]) -> (Vec<EngineDocument>, Messages) {
     let mut docs = Vec::new();
     let mut messages = BTreeMap::new();
     for path in files {
+        // `/`-separated on every host: a reference is named after it.
         let name = path
             .strip_prefix(&root)
             .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string();
+            .components()
+            .map(|c| c.as_os_str().to_str().unwrap())
+            .collect::<Vec<_>>()
+            .join("/");
         let file = path.file_name().unwrap().to_str().unwrap().to_string();
         if file.ends_with(".svelte") {
             let text = std::fs::read_to_string(&path).unwrap();
