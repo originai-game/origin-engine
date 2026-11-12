@@ -36,7 +36,7 @@ pub trait Capture {
         true
     }
     /// The backend: `webgpu`, `vulkan`, `vulkan-cpu` (a software
-    /// rasterizer), `metal` or `dx12` (IDL `RenderTier`).
+    /// rasterizer), `metal` or `dx12` (IDL `RenderBackend`).
     fn tier(&self) -> &str;
     /// The render target's size in pixels.
     fn target_size(&self) -> (u32, u32);

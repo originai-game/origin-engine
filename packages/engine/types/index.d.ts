@@ -5888,14 +5888,49 @@ export declare function Material(value?: Material, options?: FieldOptions): Fiel
 export type Side = "front" | "back" | "double";
 
 /**
- * The backend the renderer runs on; the probe's hello reports it.
- * - `"webgpu"`: WebGPU in a browser: the full feature set.
+ * The backend the renderer runs on: RenderCapabilities.backend, and the probe's hello reports it as its tier. Reference frames are filed under it.
+ * - `"webgpu"`: WebGPU in a browser.
  * - `"vulkan"`: Native Vulkan on a GPU.
  * - `"vulkan-cpu"`: Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.
  * - `"metal"`: Native Metal.
+ * - `"dx12"`: Native Direct3D 12.
  * - `"none"`: No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null.
  */
-export type RenderTier = "webgpu" | "vulkan" | "vulkan-cpu" | "metal" | "none";
+export type RenderBackend = "webgpu" | "vulkan" | "vulkan-cpu" | "metal" | "dx12" | "none";
+
+/**
+ * The feature set the renderer was made for, as og-render's Tier: it caps what the device may use (RenderCapabilities.caps), and a pass whose needs it lacks draws its fallback or not at all. Chosen by the host, never by the backend.
+ * - `"full"`: Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer.
+ * - `"miniGame"`: The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps.
+ * - `"gl"`: The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it.
+ */
+export type RenderTier = "full" | "miniGame" | "gl";
+
+/**
+ * What the device can do under RenderCapabilities.tier, as og-render's Caps: every decision the renderer makes about the device reads this set. All false without a renderer.
+ */
+export interface RenderCaps {
+  /** Compute passes. */
+  readonly compute: boolean;
+  /** More than one colour attachment in a render pass. */
+  readonly mrt: boolean;
+  /**
+   * Pipelines compiled off the frame: on worker threads natively, asked for asynchronously on the web.
+   */
+  readonly asyncPipelines: boolean;
+  /**
+   * Timestamp queries granted by the device (gpuTimestamps also needs a build that keeps them).
+   */
+  readonly timestamps: boolean;
+  /** Indirect draws and dispatches. */
+  readonly indirect: boolean;
+  /** Indirect draws with a first instance. */
+  readonly indirectFirstInstance: boolean;
+  /** Storage written from fragment shaders. */
+  readonly fragmentStorage: boolean;
+  /** Storage read in the vertex stage. */
+  readonly vertexStorage: boolean;
+}
 
 /**
  * Antialiasing, as og-render's Antialias. RenderCapabilities.antialias reports what the device resolved.
@@ -10450,8 +10485,12 @@ export declare const UI_LAYER: 1000;
  */
 export interface RenderCapabilities {
   // ── Device ──
-  /** The backend. */
+  /** The backend (none without a renderer). */
+  readonly backend: RenderBackend;
+  /** The feature set the renderer was made for (full without a renderer). */
   readonly tier: RenderTier;
+  /** What the device can do under tier. */
+  readonly caps: RenderCaps;
   /** Whether compute passes run (GPU culling, GPU particles). */
   readonly compute: boolean;
   /** The antialiasing the device resolved RenderOptions.antialias to. */
@@ -27266,8 +27305,10 @@ export interface Hello {
    * @unit hz (ticks or cycles per second)
    */
   readonly ticksPerSecond: number;
-  /** The renderer backend. */
-  readonly tier: RenderTier;
+  /**
+   * The renderer backend (RenderCapabilities.backend), which names the reference frames' directory.
+   */
+  readonly tier: RenderBackend;
   /** The build configuration. */
   readonly build: BuildProfile;
   /** The probe members this build serves. */

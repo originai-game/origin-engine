@@ -103,6 +103,45 @@ fn the_capabilities_report_what_the_renderer_was_made_without() {
     set_render_backend(e, None).unwrap();
 }
 
+/// RenderCapabilities.backend, tier and caps: no renderer is `none` at the
+/// full tier with nothing in its set; a renderer made for the mini-game
+/// tier says so and lacks what that tier takes away, whatever the adapter
+/// has, while its backend is still the adapter's.
+#[test]
+#[ignore = "requires GPU"]
+fn the_capabilities_report_the_tier_and_its_set() {
+    let e = engine(json!({}));
+    let caps: Value = og_render_capabilities(e);
+    assert_eq!(caps["backend"], "none");
+    assert_eq!(caps["tier"], "full");
+    let set = caps["caps"].as_object().unwrap();
+    assert_eq!(set.len(), 8, "{set:?}");
+    assert!(set.values().all(|v| v == false), "{set:?}");
+    let desc = render_desc(
+        e,
+        RenderDesc {
+            width: 64,
+            height: 64,
+            tier: og_render::Tier::MiniGame,
+            ..RenderDesc::default()
+        },
+    );
+    let renderer = og_render::Renderer::new_blocking(&desc).expect("a headless adapter");
+    let backend = renderer.info().backend_tier();
+    let compute = renderer.info().caps.contains(og_render::Caps::COMPUTE);
+    set_render_backend(e, Some(Box::new(Made(renderer)))).unwrap();
+    let caps: Value = og_render_capabilities(e);
+    assert_eq!(caps["backend"], backend.as_str());
+    assert_eq!(caps["tier"], "miniGame");
+    for lacking in ["mrt", "asyncPipelines", "timestamps"] {
+        assert_eq!(caps["caps"][lacking], false, "{lacking}: {caps}");
+    }
+    assert_eq!(caps["caps"]["compute"], compute);
+    assert_eq!(caps["compute"], compute);
+    og_render::settle_pipelines();
+    set_render_backend(e, None).unwrap();
+}
+
 #[test]
 fn without_leaves_out_only_the_features_it_names() {
     assert_eq!(resolved(json!({})), LitFeatures::NONE);

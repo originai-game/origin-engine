@@ -1288,7 +1288,9 @@
   struct RenderCapabilities {
     doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
     group "Device"
-    field tier RenderTier "The backend."
+    field backend RenderBackend "The backend (none without a renderer)."
+    field tier RenderTier "The feature set the renderer was made for (full without a renderer)."
+    field caps RenderCaps "What the device can do under tier."
     field compute bool "Whether compute passes run (GPU culling, GPU particles)."
     field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
     field hdrSupported bool "Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface."

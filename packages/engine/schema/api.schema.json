@@ -4450,7 +4450,9 @@
         "Geometry",
         "Material",
         "Side",
+        "RenderBackend",
         "RenderTier",
+        "RenderCaps",
         "Antialias",
         "PointShadows",
         "TaaHistory",
@@ -21887,25 +21889,94 @@
         "double": "Both."
       }
     },
-    "RenderTier": {
+    "RenderBackend": {
       "x-og-kind": "enum",
       "x-og-module": "render",
-      "description": "The backend the renderer runs on; the probe's hello reports it.",
+      "description": "The backend the renderer runs on: RenderCapabilities.backend, and the probe's hello reports it as its tier. Reference frames are filed under it.",
       "type": "string",
       "enum": [
         "webgpu",
         "vulkan",
         "vulkan-cpu",
         "metal",
+        "dx12",
         "none"
       ],
       "x-og-variants": {
-        "webgpu": "WebGPU in a browser: the full feature set.",
+        "webgpu": "WebGPU in a browser.",
         "vulkan": "Native Vulkan on a GPU.",
         "vulkan-cpu": "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU.",
         "metal": "Native Metal.",
+        "dx12": "Native Direct3D 12.",
         "none": "No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null."
       }
+    },
+    "RenderTier": {
+      "x-og-kind": "enum",
+      "x-og-module": "render",
+      "description": "The feature set the renderer was made for, as og-render's Tier: it caps what the device may use (RenderCapabilities.caps), and a pass whose needs it lacks draws its fallback or not at all. Chosen by the host, never by the backend.",
+      "type": "string",
+      "enum": [
+        "full",
+        "miniGame",
+        "gl"
+      ],
+      "x-og-variants": {
+        "full": "Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer.",
+        "miniGame": "The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps.",
+        "gl": "The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it."
+      }
+    },
+    "RenderCaps": {
+      "x-og-kind": "struct",
+      "x-og-module": "render",
+      "description": "What the device can do under RenderCapabilities.tier, as og-render's Caps: every decision the renderer makes about the device reads this set. All false without a renderer.",
+      "type": "object",
+      "properties": {
+        "compute": {
+          "type": "boolean",
+          "description": "Compute passes."
+        },
+        "mrt": {
+          "type": "boolean",
+          "description": "More than one colour attachment in a render pass."
+        },
+        "asyncPipelines": {
+          "type": "boolean",
+          "description": "Pipelines compiled off the frame: on worker threads natively, asked for asynchronously on the web."
+        },
+        "timestamps": {
+          "type": "boolean",
+          "description": "Timestamp queries granted by the device (gpuTimestamps also needs a build that keeps them)."
+        },
+        "indirect": {
+          "type": "boolean",
+          "description": "Indirect draws and dispatches."
+        },
+        "indirectFirstInstance": {
+          "type": "boolean",
+          "description": "Indirect draws with a first instance."
+        },
+        "fragmentStorage": {
+          "type": "boolean",
+          "description": "Storage written from fragment shaders."
+        },
+        "vertexStorage": {
+          "type": "boolean",
+          "description": "Storage read in the vertex stage."
+        }
+      },
+      "required": [
+        "compute",
+        "mrt",
+        "asyncPipelines",
+        "timestamps",
+        "indirect",
+        "indirectFirstInstance",
+        "fragmentStorage",
+        "vertexStorage"
+      ],
+      "additionalProperties": false
     },
     "Antialias": {
       "x-og-kind": "enum",
@@ -26982,9 +27053,17 @@
       "description": "What the renderer can do on this device. Backend limits are reported here, never by missing members.",
       "type": "object",
       "properties": {
+        "backend": {
+          "$ref": "#/$defs/RenderBackend",
+          "description": "The backend (none without a renderer)."
+        },
         "tier": {
           "$ref": "#/$defs/RenderTier",
-          "description": "The backend."
+          "description": "The feature set the renderer was made for (full without a renderer)."
+        },
+        "caps": {
+          "$ref": "#/$defs/RenderCaps",
+          "description": "What the device can do under tier."
         },
         "compute": {
           "type": "boolean",
@@ -27152,7 +27231,9 @@
         }
       },
       "required": [
+        "backend",
         "tier",
+        "caps",
         "compute",
         "antialias",
         "hdrSupported",
@@ -48658,8 +48739,8 @@
           "x-og-unit": "hz"
         },
         "tier": {
-          "$ref": "#/$defs/RenderTier",
-          "description": "The renderer backend."
+          "$ref": "#/$defs/RenderBackend",
+          "description": "The renderer backend (RenderCapabilities.backend), which names the reference frames' directory."
         },
         "build": {
           "$ref": "#/$defs/BuildProfile",

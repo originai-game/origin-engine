@@ -3414,22 +3414,62 @@ impl ToJson for Side {
     }
 }
 
-/// `RenderTier`: packages/knowledge/wiki/render.md.
+/// `RenderBackend`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum RenderTier {
+pub enum RenderBackend {
     #[default]
     Webgpu,
     Vulkan,
     VulkanCpu,
     Metal,
+    Dx12,
     None,
+}
+
+impl RenderBackend {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["webgpu", "vulkan", "vulkan-cpu", "metal", "dx12", "none"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Webgpu, Self::Vulkan, Self::VulkanCpu, Self::Metal, Self::Dx12, Self::None];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("RenderBackend", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for RenderBackend {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "RenderBackend", Self::NAMES)?)
+    }
+}
+
+impl ToJson for RenderBackend {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `RenderTier`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum RenderTier {
+    #[default]
+    Full,
+    MiniGame,
+    Gl,
 }
 
 impl RenderTier {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["webgpu", "vulkan", "vulkan-cpu", "metal", "none"];
+    pub const NAMES: &'static [&'static str] = &["full", "miniGame", "gl"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Webgpu, Self::Vulkan, Self::VulkanCpu, Self::Metal, Self::None];
+    pub const ALL: &'static [Self] = &[Self::Full, Self::MiniGame, Self::Gl];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -3452,6 +3492,68 @@ impl FromJson for RenderTier {
 impl ToJson for RenderTier {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
+    }
+}
+
+/// `RenderCaps`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RenderCaps {
+    pub compute: bool,
+    pub mrt: bool,
+    pub async_pipelines: bool,
+    pub timestamps: bool,
+    pub indirect: bool,
+    pub indirect_first_instance: bool,
+    pub fragment_storage: bool,
+    pub vertex_storage: bool,
+}
+
+impl Default for RenderCaps {
+    fn default() -> Self {
+        Self {
+            compute: Default::default(),
+            mrt: Default::default(),
+            async_pipelines: Default::default(),
+            timestamps: Default::default(),
+            indirect: Default::default(),
+            indirect_first_instance: Default::default(),
+            fragment_storage: Default::default(),
+            vertex_storage: Default::default(),
+        }
+    }
+}
+
+impl FromJson for RenderCaps {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            compute: field(o, "compute", d.compute)?,
+            mrt: field(o, "mrt", d.mrt)?,
+            async_pipelines: field(o, "asyncPipelines", d.async_pipelines)?,
+            timestamps: field(o, "timestamps", d.timestamps)?,
+            indirect: field(o, "indirect", d.indirect)?,
+            indirect_first_instance: field(o, "indirectFirstInstance", d.indirect_first_instance)?,
+            fragment_storage: field(o, "fragmentStorage", d.fragment_storage)?,
+            vertex_storage: field(o, "vertexStorage", d.vertex_storage)?,
+        })
+    }
+}
+
+impl ToJson for RenderCaps {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("compute".into(), self.compute.to_json());
+        o.insert("mrt".into(), self.mrt.to_json());
+        o.insert("asyncPipelines".into(), self.async_pipelines.to_json());
+        o.insert("timestamps".into(), self.timestamps.to_json());
+        o.insert("indirect".into(), self.indirect.to_json());
+        o.insert("indirectFirstInstance".into(), self.indirect_first_instance.to_json());
+        o.insert("fragmentStorage".into(), self.fragment_storage.to_json());
+        o.insert("vertexStorage".into(), self.vertex_storage.to_json());
+        Value::Object(o)
     }
 }
 
@@ -5762,7 +5864,9 @@ impl ToJson for SphereGeometryDesc {
 /// `RenderCapabilities`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderCapabilities {
+    pub backend: RenderBackend,
     pub tier: RenderTier,
+    pub caps: RenderCaps,
     pub compute: bool,
     pub antialias: Antialias,
     pub hdr_supported: bool,
@@ -5799,7 +5903,9 @@ pub struct RenderCapabilities {
 impl Default for RenderCapabilities {
     fn default() -> Self {
         Self {
+            backend: Default::default(),
             tier: Default::default(),
+            caps: Default::default(),
             compute: Default::default(),
             antialias: Default::default(),
             hdr_supported: Default::default(),
@@ -5842,7 +5948,9 @@ impl FromJson for RenderCapabilities {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
+            backend: field(o, "backend", d.backend)?,
             tier: field(o, "tier", d.tier)?,
+            caps: field(o, "caps", d.caps)?,
             compute: field(o, "compute", d.compute)?,
             antialias: field(o, "antialias", d.antialias)?,
             hdr_supported: field(o, "hdrSupported", d.hdr_supported)?,
@@ -5881,7 +5989,9 @@ impl FromJson for RenderCapabilities {
 impl ToJson for RenderCapabilities {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
+        o.insert("backend".into(), self.backend.to_json());
         o.insert("tier".into(), self.tier.to_json());
+        o.insert("caps".into(), self.caps.to_json());
         o.insert("compute".into(), self.compute.to_json());
         o.insert("antialias".into(), self.antialias.to_json());
         o.insert("hdrSupported".into(), self.hdr_supported.to_json());
@@ -20363,7 +20473,7 @@ pub struct Hello {
     pub substrate: String,
     pub engine: String,
     pub ticks_per_second: u32,
-    pub tier: RenderTier,
+    pub tier: RenderBackend,
     pub build: BuildProfile,
     pub members: Vec<String>,
     pub modules: Vec<String>,

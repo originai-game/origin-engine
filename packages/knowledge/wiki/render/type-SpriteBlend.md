@@ -23,4 +23,4 @@ enum SpriteBlend {
 }
 ```
 
-<sub>Module `render` line 944</sub>
+<sub>Module `render` line 964</sub>

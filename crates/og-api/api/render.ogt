@@ -27,13 +27,33 @@ module render {
     variant double "Both."
   }
 
-  enum RenderTier {
-    doc "The backend the renderer runs on; the probe's hello reports it."
-    variant webgpu "WebGPU in a browser: the full feature set."
+  enum RenderBackend {
+    doc "The backend the renderer runs on: RenderCapabilities.backend, and the probe's hello reports it as its tier. Reference frames are filed under it."
+    variant webgpu "WebGPU in a browser."
     variant vulkan "Native Vulkan on a GPU."
     variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
     variant metal "Native Metal."
+    variant dx12 "Native Direct3D 12."
     variant none "No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null."
+  }
+
+  enum RenderTier {
+    doc "The feature set the renderer was made for, as og-render's Tier: it caps what the device may use (RenderCapabilities.caps), and a pass whose needs it lacks draws its fallback or not at all. Chosen by the host, never by the backend."
+    variant full "Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer."
+    variant miniGame "The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps."
+    variant gl "The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it."
+  }
+
+  struct RenderCaps {
+    doc "What the device can do under RenderCapabilities.tier, as og-render's Caps: every decision the renderer makes about the device reads this set. All false without a renderer."
+    field compute bool "Compute passes."
+    field mrt bool "More than one colour attachment in a render pass."
+    field asyncPipelines bool "Pipelines compiled off the frame: on worker threads natively, asked for asynchronously on the web."
+    field timestamps bool "Timestamp queries granted by the device (gpuTimestamps also needs a build that keeps them)."
+    field indirect bool "Indirect draws and dispatches."
+    field indirectFirstInstance bool "Indirect draws with a first instance."
+    field fragmentStorage bool "Storage written from fragment shaders."
+    field vertexStorage bool "Storage read in the vertex stage."
   }
 
   enum Antialias {
