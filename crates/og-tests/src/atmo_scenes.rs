@@ -654,8 +654,10 @@ pub fn hooks_scene_parts(tick: u64) -> (RenderScene, og_render::MaterialHandle) 
 /// Puts `scene` under weather `kind` (an og-render `WEATHER_*` preset) at
 /// `intensity` on `wind`, filling `radius` metres about its camera, as
 /// og-runtime applies og.Weather: the sky closed to its cover and the light
-/// dimmed once, its particles placed over the camera. The scene's fog is
-/// the caller's (a declared fog stays; the look's is the weather's own).
+/// dimmed once, the weather's fog where the scene declares none, its
+/// particles placed over the camera, and what lies on the scene's surfaces
+/// (its `surface_weather`, og.WeatherState's part) put under it: the rain
+/// on them and the way it falls are the weather's, never a scene's.
 pub fn add_weather(
     scene: &mut RenderScene,
     kind: u32,
@@ -665,6 +667,13 @@ pub fn add_weather(
 ) -> og_render::WeatherLook {
     let look = og_render::weather(kind, intensity, wind, radius, Vec3::ONE, 1.0, None);
     look.light_scene(scene);
+    if scene.atmosphere.fog.is_none() {
+        scene.atmosphere.fog = look.fog;
+    }
+    scene.atmosphere.surface_weather = scene
+        .atmosphere
+        .surface_weather
+        .map(|lying| lying.under(&look));
     if let Some(e) = look.emitter.clone() {
         let emitter = scene.add_emitter(e);
         scene.effects.particles.push(og_render::ParticleSystem::new(
@@ -687,8 +696,7 @@ pub fn add_weather(
 /// so the particles fill the view.
 pub fn weather_scene(kind: u32) -> RenderScene {
     let mut scene = day_night_scene(14.0, false);
-    let look = add_weather(&mut scene, kind, 1.0, Vec3::new(2.0, 0.0, 0.6), 18.0);
-    scene.atmosphere.fog = look.fog;
+    add_weather(&mut scene, kind, 1.0, Vec3::new(2.0, 0.0, 0.6), 18.0);
     scene
 }
 

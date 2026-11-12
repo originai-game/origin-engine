@@ -2,7 +2,10 @@
 //! its lamps lit, puddles drying after the rain, snow built up on ledges,
 //! crates and rocks, a dusty desert yard, and velvet and cotton drapes
 //! under the sky. Each frame is drawn from a [`SurfaceWeather`] the way the
-//! runtime fills it from og.WeatherState.
+//! runtime fills it from og.WeatherState: a scene sets what lies on its
+//! surfaces, and where it rains the rain is og.Weather's
+//! ([`crate::atmo_scenes::add_weather`]), which brings the drops on the
+//! puddles, the closed sky and the dimmed light with it.
 
 use crate::sky_scenes::physical_light;
 use glam::{Mat4, Quat, Vec3};
@@ -231,7 +234,6 @@ fn street() -> RenderScene {
     scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 1.0,
         puddles: 0.75,
-        rain: 1.0,
         puddle_size: 2.5,
         ..SurfaceWeather::default()
     });
@@ -243,6 +245,7 @@ fn street() -> RenderScene {
         exposure: Exposure::Manual { ev: 0.5 },
         ..Default::default()
     };
+    crate::atmo_scenes::add_weather(&mut scene, og_render::WEATHER_RAIN, 1.0, Vec3::ZERO, 18.0);
     scene
 }
 
@@ -619,10 +622,10 @@ fn cobbles_wet() -> RenderScene {
     scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 1.0,
         puddles: 0.55,
-        rain: 1.0,
         puddle_size: 1.5,
         shelter: 0.0,
         ..SurfaceWeather::default()
     });
+    crate::atmo_scenes::add_weather(&mut scene, og_render::WEATHER_RAIN, 1.0, Vec3::ZERO, 18.0);
     scene
 }

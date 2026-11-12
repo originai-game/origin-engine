@@ -1351,6 +1351,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             if name == "weather-shelter-meshlet" {
                 g.desc.culling = og_render::Culling::Gpu;
             }
+            // Where it rains, the rain fills the view over these frames.
+            if matches!(
+                name,
+                "weather-wet" | "weather-lightning" | "weather-shelter-rain"
+            ) {
+                g.frames = crate::atmo_scenes::WEATHER_FRAMES;
+                g.update = Some(fx::tick_update);
+            }
             Ok(())
         },
         // R5: the sea under the physical sky, and a stream's flow map.
@@ -1376,18 +1384,22 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Wave B: weather on surfaces (a rain-wet street, puddles drying,
         // snow built up, a dusty desert, rain on cobbles) and velvet and
         // cotton.
-        // The wet street and the puddles mirror through SSR, whose hits
-        // read the frame before: they draw its 16.
-        "weather-street-wet" | "weather-puddles" => |g, name| {
+        // The puddles mirror through SSR, whose hits read the frame
+        // before: they draw its 16.
+        "weather-puddles" => |g, name| {
             g.scene = crate::weather_scenes::weather_scene(name);
             g.frames = crate::SSR_FRAMES;
             Ok(())
         },
-        // Rain on T4's cobbles (a terrain).
-        "weather-snow-buildup"
-        | "weather-dust-desert"
-        | "materials-cloth"
-        | "weather-cobbles-wet" => |g, name| {
+        // The street and T4's cobbles (a terrain) in the rain, which fills
+        // the view over these frames (more than the street's SSR needs).
+        "weather-street-wet" | "weather-cobbles-wet" => |g, name| {
+            g.scene = crate::weather_scenes::weather_scene(name);
+            g.frames = crate::atmo_scenes::WEATHER_FRAMES;
+            g.update = Some(fx::tick_update);
+            Ok(())
+        },
+        "weather-snow-buildup" | "weather-dust-desert" | "materials-cloth" => |g, name| {
             g.scene = crate::weather_scenes::weather_scene(name);
             Ok(())
         },

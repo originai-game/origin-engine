@@ -145,36 +145,69 @@ pub fn live_sky_scene(clouds: bool) -> RenderScene {
 /// does, the camera tilted up to the sky.
 fn clouded(mut scene: RenderScene, clouds: Clouds) -> RenderScene {
     clouds.light_scene(&mut scene);
-    // A camera opens up under a deck that hides the sun by day, as a
-    // photographer's meter does (1.5 stops for a closed overcast at noon,
-    // as the deck closes over 0.6 to 0.95 cover): at the clear sky's
-    // exposure a noon overcast read as dusk (its sky 0.32 in sRGB).
-    let t = ((clouds.coverage - 0.6) / 0.35).clamp(0.0, 1.0);
-    if scene.lighting.environment.sky.sun_direction.y > 0.0 {
-        scene = exposed(scene, 1.5 * t * t * (3.0 - 2.0 * t));
-    }
     scene.atmosphere.clouds = Some(clouds);
+    scene = metered(scene);
     scene.frame.camera.target += Vec3::Y * 14.0;
     scene
 }
 
-/// The colonnade under a grey overcast at `hours` with `weather` on its
-/// surfaces, the camera lowered to look along the ground.
-fn weathered(hours: f32, weather: SurfaceWeather) -> RenderScene {
-    let mut scene = clouded(
-        physical_sky_scene(hours, PhysicalAtmosphere::EARTH, false),
-        Clouds {
-            coverage: 0.9,
-            color: Vec3::splat(0.75),
-            base: 900.0,
-            layer: 0.0,
-            ..Clouds::default()
-        },
-    );
-    scene.atmosphere.surface_weather = Some(weather);
+/// `scene` with its camera opened up for the cover over it. A camera
+/// opens up under a deck that hides the sun by day, as a photographer's
+/// meter does (1.5 stops for a closed overcast at noon, as the deck closes
+/// over 0.6 to 0.95 cover): at the clear sky's exposure a noon overcast
+/// read as dusk (its sky 0.32 in sRGB).
+fn metered(scene: RenderScene) -> RenderScene {
+    let cover = scene.atmosphere.clouds.map_or(0.0, |c| c.coverage);
+    let t = ((cover - 0.6) / 0.35).clamp(0.0, 1.0);
+    if scene.lighting.environment.sky.sun_direction.y > 0.0 {
+        exposed(scene, 1.5 * t * t * (3.0 - 2.0 * t))
+    } else {
+        scene
+    }
+}
+
+/// The grey overcast over the weathered colonnade.
+fn deck() -> Clouds {
+    Clouds {
+        coverage: 0.9,
+        color: Vec3::splat(0.75),
+        base: 900.0,
+        layer: 0.0,
+        ..Clouds::default()
+    }
+}
+
+/// The weathered colonnade's camera, lowered to look along the ground.
+fn along_the_ground(scene: &mut RenderScene) {
     scene.frame.camera.position = Vec3::new(1.5, 1.6, 4.0);
     scene.frame.camera.target = Vec3::new(-1.0, 0.2, -30.0);
+}
+
+/// The colonnade under a grey overcast at `hours` with `lying` on its
+/// surfaces: what a weather left there (og.WeatherState), nothing falling.
+fn weathered(hours: f32, lying: SurfaceWeather) -> RenderScene {
+    let mut scene = clouded(
+        physical_sky_scene(hours, PhysicalAtmosphere::EARTH, false),
+        deck(),
+    );
+    scene.atmosphere.surface_weather = Some(lying);
+    along_the_ground(&mut scene);
     scene
+}
+
+/// The same colonnade in the rain on `wind`, `lying` on its surfaces, as
+/// og.Weather and og.WeatherState compose: the rain in the air, the closed
+/// sky, the dimmed light, the drops on the puddles and the way the wind
+/// slants the rain past a roof all come from the one weather
+/// ([`crate::atmo_scenes::add_weather`]). Render
+/// [`crate::atmo_scenes::WEATHER_FRAMES`] frames so the rain fills the view.
+fn raining(hours: f32, lying: SurfaceWeather, wind: Vec3) -> RenderScene {
+    let mut scene = physical_sky_scene(hours, PhysicalAtmosphere::EARTH, false);
+    scene.atmosphere.clouds = Some(deck());
+    scene.atmosphere.surface_weather = Some(lying);
+    along_the_ground(&mut scene);
+    crate::atmo_scenes::add_weather(&mut scene, og_render::WEATHER_RAIN, 1.0, wind, 18.0);
+    metered(scene)
 }
 
 /// A flat canopy 8 m wide (x -4 to 4) and 6 m deep (z -9 to -3), its
@@ -261,17 +294,17 @@ fn exposed(mut scene: RenderScene, ev: f32) -> RenderScene {
     scene
 }
 
-/// The wet colonnade on a stormy night, 0.03 s after a strike 160 m
+/// The wet colonnade in the rain at night, 0.03 s after a strike 1.5 km
 /// ahead (`strike`), or the same night without it.
 pub fn storm(strike: bool) -> RenderScene {
-    let mut scene = weathered(
+    let mut scene = raining(
         22.5,
         SurfaceWeather {
             wetness: 1.0,
             puddles: 0.5,
-            rain: 1.0,
             ..SurfaceWeather::default()
         },
+        Vec3::ZERO,
     );
     scene.frame.camera.target = Vec3::new(-1.0, 8.0, -30.0);
     if strike {
@@ -310,14 +343,14 @@ pub fn sky_scene(name: &str) -> RenderScene {
         // live-sky with its clouds cleared (no reference; the live-sky
         // check compares against it).
         "live-sky-clear" => live_sky_scene(false),
-        "weather-wet" => weathered(
+        "weather-wet" => raining(
             11.0,
             SurfaceWeather {
                 wetness: 1.0,
                 puddles: 0.7,
-                rain: 1.0,
                 ..SurfaceWeather::default()
             },
+            Vec3::ZERO,
         ),
         "weather-snow-cover" => weathered(
             11.0,
@@ -353,17 +386,16 @@ pub fn sky_scene(name: &str) -> RenderScene {
             scene
         }
         "weather-shelter-rain" => {
-            // The rain slanted by a wind from -x: the dry patch shifts
-            // downwind (+x) of the canopy.
-            let mut scene = weathered(
+            // The rain on a 4 m/s wind from -x, which slants it 20
+            // degrees: the dry patch shifts downwind (+x) of the canopy.
+            let mut scene = raining(
                 11.0,
                 SurfaceWeather {
                     wetness: 1.0,
                     puddles: 0.8,
-                    rain: 1.0,
-                    fall: Vec3::new(0.35, -1.0, 0.0).normalize(),
                     ..SurfaceWeather::default()
                 },
+                Vec3::new(4.0, 0.0, 0.0),
             );
             canopy(&mut scene, false);
             scene
