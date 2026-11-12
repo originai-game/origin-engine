@@ -15,7 +15,7 @@ The wire's hello: who is speaking.
 | `substrate` | `string` | `""` | — | — | — | Always `origin-engine`. |
 | `engine` | `string` | `""` | — | — | — | `origin-engine <version>`. |
 | `ticksPerSecond` | `number` | `0` | — | `hz` | — | The fixed tick rate. |
-| `tier` | `RenderTier` | `"webgpu"` | — | — | — | The renderer backend. |
+| `tier` | `RenderBackend` | `"webgpu"` | — | — | — | The renderer backend (RenderCapabilities.backend), which names the reference frames' directory. |
 | `build` | `BuildProfile` | `"dev"` | — | — | — | The build configuration. |
 | `members` | `readonly string[]` | `[]` | — | — | — | The probe members this build serves. |
 | `modules` | `readonly string[]` | `[]` | — | — | — | The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something. |
@@ -30,7 +30,7 @@ struct Hello {
   field ticksPerSecond u32 "The fixed tick rate." {
     unit hz
   }
-  field tier RenderTier "The renderer backend."
+  field tier RenderBackend "The renderer backend (RenderCapabilities.backend), which names the reference frames' directory."
   field build BuildProfile "The build configuration."
   field members List.String "The probe members this build serves."
   field modules List.String "The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something."

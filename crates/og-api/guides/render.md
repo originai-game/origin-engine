@@ -8,9 +8,14 @@ feeds back into the simulation.
 
 ## 1. Tiers and quality presets
 
-- The tier is the backend (`RenderTier`, in the probe's hello). On
+- RenderCapabilities.backend names the backend (`RenderBackend`, the
+  tier in the probe's hello and the reference frames' directory). On
   `vulkan-cpu` (a CPU rasterizer in a sandbox) frame times say nothing
   about a player's GPU: measure cost on a real device only.
+- RenderCapabilities.tier is the feature set the host made the renderer
+  for (`full`, `miniGame`, `gl`), and RenderCapabilities.caps what the
+  device can do under it. A pass whose needs the set lacks draws its
+  fallback; no pass is chosen by backend.
 - `og.render.applyQuality` writes one row of RenderSettings' quality
   fields (its doc has the table). Medium is every default. Apply the
   player's saved preset at start; the renderer reads the fields, never

@@ -322,7 +322,9 @@ pub fn og_render_capabilities(world: u32) -> Value {
             let (w, h) = b.size();
             let info = b.info();
             json!({
-                "tier": tier,
+                "backend": tier,
+                "tier": info.as_ref().map_or(og_render::Tier::Full, |i| i.tier).name(),
+                "caps": render_caps(info.as_ref().map_or(og_render::Caps::FULL, |i| i.caps)),
                 "compute": info.as_ref().is_none_or(|i| i.caps.contains(og_render::Caps::COMPUTE)),
                 "antialias": b.antialias(),
                 "hdrSupported": info.as_ref().is_some_and(|i| i.hdr_supported),
@@ -365,7 +367,18 @@ pub fn og_render_capabilities(world: u32) -> Value {
             c
         })
     });
-    caps.unwrap_or_else(|| json!({ "tier": "none", "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "without": [], "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
+    caps.unwrap_or_else(|| json!({ "backend": "none", "tier": "full", "caps": render_caps(og_render::Caps::NONE), "compute": false, "antialias": "off", "hdrSupported": false, "hdr": false, "maxLights": 0, "maxShadowedLights": 0, "maxMsaaSamples": 0, "pointShadows": "cube", "width": 0, "height": 0, "stylise": [], "ssr": false, "reflectionProbes": 0, "renderTargetDepth": false, "maxRenderTargetSize": 0, "maxCustomPosts": 0, "volumetricFog": "raymarch", "volumetricLights": 0, "maxLightCookies": 0, "gpuTimestamps": false, "planarReflections": 0, "without": [], "visualSimulation": false, "upscalers": [], "transparency": "weighted", "gpuCrowds": false, "world3d": og_render::WORLD_3D, "exrDecode": crate::uncooked::EXR_DECODE, "visibilityBuffer": false, "visibilityBufferRefused": null }))
+}
+
+/// The IDL's `RenderCaps`: each of `Caps`'s names, and whether `caps` has it.
+fn render_caps(caps: og_render::Caps) -> Value {
+    let has: Vec<_> = caps.names().collect();
+    Value::Object(
+        og_render::Caps::FULL
+            .names()
+            .map(|n| (n.to_string(), has.contains(&n).into()))
+            .collect(),
+    )
 }
 
 /// `og.render.snap`: `entity` drawn at its tick until the next tick

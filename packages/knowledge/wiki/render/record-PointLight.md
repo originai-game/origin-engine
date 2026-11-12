@@ -51,4 +51,4 @@ component PointLight {
 }
 ```
 
-<sub>Module `render` line 516</sub>
+<sub>Module `render` line 536</sub>

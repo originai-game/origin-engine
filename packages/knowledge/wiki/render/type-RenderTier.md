@@ -6,27 +6,23 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `RenderTier` (enum)
 
-The backend the renderer runs on; the probe's hello reports it.
+The feature set the renderer was made for, as og-render's Tier: it caps what the device may use (RenderCapabilities.caps), and a pass whose needs it lacks draws its fallback or not at all. Chosen by the host, never by the backend.
 
-A string: one of the variants below. The zero value is `"webgpu"`.
+A string: one of the variants below. The zero value is `"full"`.
 
 | Variant | Doc |
 |---|---|
-| `"webgpu"` | WebGPU in a browser: the full feature set. |
-| `"vulkan"` | Native Vulkan on a GPU. |
-| `"vulkan-cpu"` | Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU. |
-| `"metal"` | Native Metal. |
-| `"none"` | No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null. |
+| `"full"` | Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer. |
+| `"miniGame"` | The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps. |
+| `"gl"` | The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it. |
 
 ```ogt
 enum RenderTier {
-  doc "The backend the renderer runs on; the probe's hello reports it."
-  variant webgpu "WebGPU in a browser: the full feature set."
-  variant vulkan "Native Vulkan on a GPU."
-  variant vulkan-cpu "Native Vulkan on a CPU rasterizer (Mesa lavapipe or llvmpipe, SwiftShader): the executors' sandboxes. Frame times there say nothing about a player's GPU."
-  variant metal "Native Metal."
-  variant none "No renderer (a sandbox without a GPU; natively also OG_RENDERER=none): the simulation, the dumps and the world hash are the same as with one, a screenshot step writes no PNG and reports its frame unchecked, and capture answers null."
+  doc "The feature set the renderer was made for, as og-render's Tier: it caps what the device may use (RenderCapabilities.caps), and a pass whose needs it lacks draws its fallback or not at all. Chosen by the host, never by the backend."
+  variant full "Whatever the device can do (WebGPU, Vulkan, Metal, DX12). Also without a renderer."
+  variant miniGame "The mini-game WebGPU set: no multiple render targets, asynchronous pipelines or timestamps."
+  variant gl "The GL tier: as miniGame, and no compute, nor the storage and indirect execution WebGL2 lacks with it."
 }
 ```
 
-<sub>Module `render` line 30</sub>
+<sub>Module `render` line 40</sub>

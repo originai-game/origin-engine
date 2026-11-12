@@ -502,6 +502,8 @@ pub struct RenderInfo {
     /// What the device can do under [`RenderDesc::tier`] (`caps.rs`):
     /// every decision about the device reads it.
     pub caps: Caps,
+    /// The tier the renderer was made for ([`RenderDesc::tier`]).
+    pub tier: Tier,
 }
 
 /// The anisotropy clamp of the sprite sampler where the device filters
@@ -564,7 +566,7 @@ pub fn is_software_adapter(device_type: wgpu::DeviceType, name: &str) -> bool {
 
 /// The tier name of an adapter: `metal`, `vulkan`, `vulkan-cpu` (a software
 /// rasterizer), `webgpu`, `dx12`. It names the reference-frame
-/// directories and is the probe's `RenderTier`, so a frame time measured on
+/// directories and is the IDL's `RenderBackend`, so a frame time measured on
 /// a CPU rasterizer is never read as a GPU's.
 pub fn tier_name(backend: wgpu::Backend, device_type: wgpu::DeviceType, adapter: &str) -> String {
     match backend {

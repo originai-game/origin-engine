@@ -12,7 +12,9 @@ What the renderer can do on this device. Backend limits are reported here, never
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `tier` | `RenderTier` | `"webgpu"` | — | — | — | The backend. |
+| `backend` | `RenderBackend` | `"webgpu"` | — | — | — | The backend (none without a renderer). |
+| `tier` | `RenderTier` | `"full"` | — | — | — | The feature set the renderer was made for (full without a renderer). |
+| `caps` | `RenderCaps` | `{ compute: false, mrt: false, asyncPipelines: false, timestamps: false, indirect: false, indirectFirstInstance: false, fragmentStorage: false, vertexStorage: false }` | — | — | — | What the device can do under tier. |
 | `compute` | `boolean` | `false` | — | — | — | Whether compute passes run (GPU culling, GPU particles). |
 | `antialias` | `Antialias` | `"tier"` | — | — | — | The antialiasing the device resolved RenderOptions.antialias to. |
 | `hdrSupported` | `boolean` | `false` | — | — | — | Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface. |
@@ -134,7 +136,9 @@ What the renderer can do on this device. Backend limits are reported here, never
 struct RenderCapabilities {
   doc "What the renderer can do on this device. Backend limits are reported here, never by missing members."
   group "Device"
-  field tier RenderTier "The backend."
+  field backend RenderBackend "The backend (none without a renderer)."
+  field tier RenderTier "The feature set the renderer was made for (full without a renderer)."
+  field caps RenderCaps "What the device can do under tier."
   field compute bool "Whether compute passes run (GPU culling, GPU particles)."
   field antialias Antialias "The antialiasing the device resolved RenderOptions.antialias to."
   field hdrSupported bool "Whether this surface can be configured for float extended-sRGB HDR output. This is surface-path support, not a measurement of the monitor or current OS HDR headroom. False without a surface."
@@ -200,4 +204,4 @@ struct RenderCapabilities {
 }
 ```
 
-<sub>Module `render` line 2761</sub>
+<sub>Module `render` line 2781</sub>

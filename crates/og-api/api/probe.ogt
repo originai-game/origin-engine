@@ -157,7 +157,7 @@ module probe {
     field ticksPerSecond u32 "The fixed tick rate." {
       unit hz
     }
-    field tier RenderTier "The renderer backend."
+    field tier RenderBackend "The renderer backend (RenderCapabilities.backend), which names the reference frames' directory."
     field build BuildProfile "The build configuration."
     field members List.String "The probe members this build serves."
     field modules List.String "The engine modules this build carries beyond the core (`physics`, `audio`, `ui`, `cook`), so a client knows which members do something."

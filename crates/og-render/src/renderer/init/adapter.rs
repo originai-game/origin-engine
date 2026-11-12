@@ -140,6 +140,7 @@ impl Renderer {
             visual_simulation: ribbons_gpu::GpuTrails::supported(flags),
             indirect_per_draw: desc.indirect_per_draw || webkit(),
             caps,
+            tier: desc.tier,
         };
         info.volumetric_lights = volumetric::lights(info.volumetric);
         log::info!(

@@ -195,6 +195,15 @@ pub enum Tier {
 }
 
 impl Tier {
+    /// The tier's name, as the IDL's `RenderTier` spells it.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Tier::Full => "full",
+            Tier::MiniGame => "miniGame",
+            Tier::Gl => "gl",
+        }
+    }
+
     /// The capabilities a device may have on this tier.
     pub const fn ceiling(self) -> Caps {
         let mini_game = Caps::FULL.without(Caps(

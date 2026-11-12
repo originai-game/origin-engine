@@ -1,0 +1,25 @@
+{
+  "breaking": [
+    {
+      "member": "render.RenderCapabilities.tier",
+      "change": "RenderCapabilities.tier is now the feature set the renderer was made for (RenderTier: `full`, `miniGame` or `gl`, `full` without a renderer), as og-render's tier is. The backend it used to name (`webgpu`, `vulkan`, `vulkan-cpu`, `metal`, `dx12`, `none`) is the new RenderCapabilities.backend, typed RenderBackend, the former RenderTier type; the probe's hello still names it `tier`.",
+      "fix": "Read `og.render.capabilities(world).backend` where you read `.tier` for the backend, and the type `RenderBackend` where you named `RenderTier`.",
+      "find": [
+        "RenderTier",
+        "tier"
+      ]
+    }
+  ],
+  "added": [
+    {
+      "member": "render.RenderCapabilities.caps",
+      "summary": "RenderCaps, what the device can do under the tier, as og-render's Caps: compute, mrt, asyncPipelines, timestamps, indirect, indirectFirstInstance, fragmentStorage and vertexStorage, all false without a renderer."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "render.RenderBackend",
+      "summary": "The type now has `dx12`, which the native host on Windows already reported."
+    }
+  ]
+}
