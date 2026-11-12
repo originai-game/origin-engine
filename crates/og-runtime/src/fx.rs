@@ -249,38 +249,6 @@ pub(crate) fn f(v: &Value, key: &str, default: f32) -> f32 {
 /// never written, so a one-shot emitter has not fired.
 const PARTICLES_ARMED: u32 = u32::MAX;
 
-pub(crate) fn u(v: &Value, key: &str, default: u32) -> u32 {
-    v[key].as_f64().map_or(default, |x| x as u32)
-}
-
-pub(crate) fn on(v: &Value, key: &str, default: bool) -> bool {
-    match &v[key] {
-        Value::Bool(b) => *b,
-        Value::Number(n) => n.as_f64().is_some_and(|x| x != 0.0),
-        _ => default,
-    }
-}
-
-pub(crate) fn color(v: &Value, default: Vec3) -> Vec3 {
-    if !v.is_object() {
-        return default;
-    }
-    Vec3::new(
-        f(v, "r", default.x),
-        f(v, "g", default.y),
-        f(v, "b", default.z),
-    )
-}
-
-pub(crate) fn vec3(v: &Value) -> Vec3 {
-    Vec3::new(f(v, "x", 0.0), f(v, "y", 0.0), f(v, "z", 0.0))
-}
-
-/// The load index of a handle field (`0` is none).
-pub(crate) fn handle_index(v: &Value) -> Option<usize> {
-    super::assets::index_of(v.as_f64()?)
-}
-
 /// Each og.LightMask2D's layers by entity (empty until a game names it:
 /// og.LightMask2D is lazy). A receiver without one is lit as mask 1.
 pub(crate) fn light_masks(world: &World, layouts: &FxLayouts) -> IdMap<u64, u32> {
@@ -298,14 +266,6 @@ pub(crate) fn gi_allowed(gi: Option<&Value>, preset: Option<bool>) -> bool {
     // A resource that does not read is skipped, as one not there.
     gi.is_none_or(|g| record::GlobalIllumination::from_json(g).map_or(true, |g| g.allowed))
         && preset.unwrap_or(true)
-}
-
-pub(crate) fn variant(v: &Value, names: &[&str]) -> usize {
-    match v {
-        Value::String(s) => names.iter().position(|n| n == s).unwrap_or(0),
-        Value::Number(n) => n.as_u64().unwrap_or(0) as usize,
-        _ => 0,
-    }
 }
 
 pub(crate) fn resource(world: &World, layout: Option<&Layout>) -> Option<Arc<Value>> {
