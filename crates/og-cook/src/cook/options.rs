@@ -136,7 +136,7 @@ impl MeshOptions {
             o.impostor = on.then(model::ImpostorBake::default);
         }
         for (key, lo, hi) in [
-            ("impostorGrid", 2u32, og_render::MAX_IMPOSTOR_GRID),
+            ("impostorGrid", 2u32, og_render_data::MAX_IMPOSTOR_GRID),
             ("impostorSize", 16, 512),
         ] {
             let Some(e) = b.get(key) else { continue };

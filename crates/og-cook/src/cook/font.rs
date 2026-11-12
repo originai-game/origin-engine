@@ -1661,8 +1661,8 @@ mod tests {
                 .unwrap_or_else(|| panic!("{c:?}'s glyph {id} by id"));
             let r = rows.iter().find(|r| r.codepoint == c as u32).unwrap();
             assert_eq!((by_id.atlas_w, by_id.atlas_h), (r.atlas_w, r.atlas_h));
-            assert_eq!(by_id.key(), Some(og_render::GlyphKey::Id(id)));
-            assert_eq!(r.key(), Some(og_render::GlyphKey::Char(c)));
+            assert_eq!(by_id.key(), Some(og_draw::GlyphKey::Id(id)));
+            assert_eq!(r.key(), Some(og_draw::GlyphKey::Char(c)));
         }
         assert!(
             rows.iter().all(|r| r.codepoint >= GLYPH_ID_KEYS
@@ -1743,13 +1743,9 @@ mod tests {
             .expect("a color-runtime section");
         assert_eq!(rt.em_px, 48.0);
         let c = '\u{F0100}';
-        let painted = og_ui::colr::render_runtime(
-            &bytes,
-            og_render::GlyphKey::Char(c),
-            rt.em_px,
-            &rt.palette,
-        )
-        .expect("painted at run time");
+        let painted =
+            og_ui::colr::render_runtime(&bytes, og_draw::GlyphKey::Char(c), rt.em_px, &rt.palette)
+                .expect("painted at run time");
         let (cooked, _) = cook(&bytes, &settings(false, "\u{F0100}"), 2, 0).expect("cooks");
         let b = og_blob::Blob::parse(&cooked, "test").unwrap();
         let rows = b

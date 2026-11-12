@@ -4,7 +4,7 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine cooked bundle: the blob formats og-cook writes and the runtime loaders that read cooked/ .ogb blobs into og-render's input types and plain scene data."
+description = "Origin Engine cooked bundle: the blob formats og-cook writes and the runtime loaders that read cooked/ .ogb blobs into og-render-data's types (what the renderer draws) and plain scene data."
 
 # Pure Rust by default, builds for wasm32-unknown-unknown.
 [features]
@@ -22,14 +22,21 @@ basis = ["dep:basis-universal", "dep:ruzstd"]
 [dependencies]
 og-blob = { path = "../og-blob" }
 og-core = { path = "../og-core" }
-og-render = { path = "../og-render" }
+# The cooked data the renderer draws (docs/design.md §2.1, "Formats below
+# features"), not the renderer.
+og-render-data = { path = "../og-render-data" }
+# The UI's vector shapes and paints and the glyph keys (og-draw's, as
+# the renderer draws them).
+og-draw = { path = "../og-draw" }
 og-anim = { path = "../og-anim" }
 og-tilemap = { path = "../og-tilemap" }
 og-timeline = { path = "../og-timeline" }
 # Cooked navmeshes load into og-nav's types (`nav`).
 og-nav = { path = "../og-nav", optional = true }
 glam = { workspace = true }
-bytemuck = { workspace = true }
+# pod_collect_to_vec (the vertex tables), which og-render's own
+# dependencies turned on before.
+bytemuck = { workspace = true, features = ["extern_crate_alloc"] }
 miniz_oxide = "0.8"
 serde_json = "1"
 opus-pure = { workspace = true }

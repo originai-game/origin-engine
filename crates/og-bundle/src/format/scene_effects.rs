@@ -419,7 +419,7 @@ row!(
     /// §5.1): its view box and counts.
     VectorMeta, "og.Vector", 1 {
         x: f32, y: f32, width: f32, height: f32,
-        /// `og_render::UiVectorVertex`es in `vertices` (24 bytes each).
+        /// `og_draw::ui::UiVectorVertex`es in `vertices` (24 bytes each).
         vertex_count: u32,
         /// `u32` triangle indices in `indices`.
         index_count: u32,

@@ -1,7 +1,7 @@
 //! The models an imported effect draws, written as glTF binaries: an
 //! `.efkmodel` (`Model/Effekseer.Model.cpp`, MIT, `third_party/effekseer/`).
 //! A ring is no file: its shape is lines of its `mesh ring` element
-//! (og_render::EffectRing).
+//! (og_render_data::EffectRing).
 
 /// A vertex: position, normal, uv, linear colour.
 pub struct V {

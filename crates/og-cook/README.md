@@ -20,7 +20,7 @@ change as it is saved: §Cook times).
 | Feature | Default | What it adds | Targets |
 |---|---|---|---|
 | `transcode` | yes | og-bundle's `transcode` (native Basis transcoding in the loaders) | native |
-| `cook` | yes | `cook_project` and the importers (gltf, image with PNG, JPEG, WebP, TGA, EXR and Radiance HDR, image_dds, the in-crate PSD reader, draco-core (pure-Rust Draco), meshopt, mikktspace, fdsm, ttf-parser, hound, ruzstd), og-render's `bake` (environment maps) | native |
+| `cook` | yes | `cook_project` and the importers (gltf, image with PNG, JPEG, WebP, TGA, EXR and Radiance HDR, image_dds, the in-crate PSD reader, draco-core (pure-Rust Draco), meshopt, mikktspace, fdsm, ttf-parser, hound, ruzstd), og-render-data's `bake` (environment maps) | native |
 | `basis` | yes | the basis-universal crate (basisu 1.16) as the texture encoder (and og-bundle's `basis`); without it the cook uses `toktx` from PATH | native |
 
 ## Pipeline

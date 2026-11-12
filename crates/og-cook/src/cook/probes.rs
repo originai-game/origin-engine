@@ -153,7 +153,7 @@ pub const KIND: &str = "probe";
 
 /// Writes the capture of the probe whose asset id is `id`
 /// (`probes/<16 hex digits>`): `levels` are its prefiltered levels of
-/// face size `size` (`og_render::bake::PrefilteredCube`'s layout), made an
+/// face size `size` (`og_render_data::bake::PrefilteredCube`'s layout), made an
 /// environment map as given (irradiance projected from level 0). Returns
 /// the file written.
 pub fn write_probe(
@@ -167,9 +167,9 @@ pub fn write_probe(
         .strip_prefix("probes/")
         .filter(|k| k.len() == 16 && k.bytes().all(|b| b.is_ascii_hexdigit()))
         .ok_or_else(|| CookError(format!("'{id}' is not a probe id (probes/<16 hex digits>)")))?;
-    let map = og_render::bake::from_prefiltered(
-        &og_render::bake::PrefilteredCube { size, levels },
-        &og_render::bake::BakeDesc {
+    let map = og_render_data::bake::from_prefiltered(
+        &og_render_data::bake::PrefilteredCube { size, levels },
+        &og_render_data::bake::BakeDesc {
             size,
             ..Default::default()
         },
@@ -230,7 +230,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("assets")).unwrap();
         let size = 16;
-        let levels: Vec<Vec<f32>> = (0..og_render::ENVIRONMENT_MAP_LEVELS)
+        let levels: Vec<Vec<f32>> = (0..og_render_data::ENVIRONMENT_MAP_LEVELS)
             .map(|m| {
                 let n = (size >> m).max(1) as usize;
                 vec![0.25; 6 * n * n * 3]

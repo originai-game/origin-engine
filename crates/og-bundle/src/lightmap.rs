@@ -48,7 +48,7 @@ use og_core::ogt::{Block, Document, Value};
 /// exactly when the lightmapped geometry moves; the blob around it (a
 /// cooker revision, the raycast BVH, the textures) is not read. Tangents
 /// are left out: the renderer generates them.
-pub fn geometry_hash<'a>(parts: impl IntoIterator<Item = &'a og_render::MeshData>) -> u64 {
+pub fn geometry_hash<'a>(parts: impl IntoIterator<Item = &'a og_render_data::MeshData>) -> u64 {
     let mut h = og_core::hash::StableHasher::new();
     for data in parts {
         h.write_u64(data.vertices.len() as u64);

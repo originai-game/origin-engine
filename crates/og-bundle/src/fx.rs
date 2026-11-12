@@ -94,8 +94,8 @@
 //! from its birth while it lives, born where it is at each tick.
 
 use og_core::ogt::{Document, Entry, Value};
-use og_render::{Attractor, MAX_ATTRACTORS, MAX_SPLINE_POINTS, VectorField};
-use og_render::{
+use og_render_data::{Attractor, MAX_ATTRACTORS, MAX_SPLINE_POINTS, VectorField};
+use og_render_data::{
     Burst, CollisionTarget, ColorCurve, ColorLut, Curve, EmitterHandle, EmitterShape,
     MAX_CURVE_KEYS, MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleBlend, ParticleCollision,
     ParticleEmitter, ParticleEventKind, ParticleRender, SheetMode, SimulationSpace, SubEmitter,
@@ -123,7 +123,8 @@ pub struct EmitterLinks<'a> {
     pub mesh: &'a mut dyn FnMut(ParticleMesh<'_>) -> Result<Option<MeshHandle>, String>,
     pub emitter: &'a mut dyn FnMut(&str) -> Result<Option<EmitterHandle>, String>,
     /// An `effect` line's effect material (`type effect`).
-    pub effect: &'a mut dyn FnMut(&str) -> Result<Option<og_render::EffectMaterialHandle>, String>,
+    pub effect:
+        &'a mut dyn FnMut(&str) -> Result<Option<og_render_data::EffectMaterialHandle>, String>,
 }
 
 /// The line `og cook` writes in place of `field "<texture>" ...`: the

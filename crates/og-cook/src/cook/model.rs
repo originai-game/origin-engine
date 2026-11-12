@@ -483,7 +483,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
             ),
         ];
         // The physical extensions' textures (`KHR_materials_*`).
-        og_render::gltf::physical_extensions(&doc, &m, |t, k| {
+        og_render_data::gltf::physical_extensions(&doc, &m, |t, k| {
             let u = TextureUse {
                 image: t.source().index(),
                 kind: texture_kind(k),

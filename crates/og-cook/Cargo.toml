@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render/bake", "dep:resvg", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx", "dep:libm"]
+cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx", "dep:libm"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -23,14 +23,19 @@ basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
 og-bundle = { path = "../og-bundle", features = ["nav"] }
 og-blob = { path = "../og-blob" }
 og-core = { path = "../og-core" }
-og-render = { path = "../og-render" }
+# The cooked data the renderer draws (docs/design.md §2.1, "Formats below
+# features"), not the renderer.
+og-render-data = { path = "../og-render-data" }
+# The UI's vector shapes and paints and the glyph keys (og-draw's, as
+# the renderer draws them).
+og-draw = { path = "../og-draw" }
 og-anim = { path = "../og-anim" }
 # The cook validates UI skins with og-ui's parser (the runtime only reads their text).
 og-ui = { path = "../og-ui", optional = true }
 og-tilemap = { path = "../og-tilemap" }
 # `model { collider true }`: each primitive's triangle-mesh collider baked
-# by the physics that loads it.
-og-physics = { path = "../og-physics", default-features = false, features = ["physics3d"] }
+# as the physics that loads it builds it (og-physics-data, below og-physics).
+og-physics-data = { path = "../og-physics-data", features = ["physics3d"] }
 # `type model`: the cook builds its parts with og-geom's generators.
 # A model's `fracture` block: its chunks and support graph (`cook/fracture.rs`).
 og-destruct = { path = "../og-destruct", optional = true }
@@ -105,6 +110,8 @@ libm = { version = "0.2.16", optional = true }
 resvg = { version = "0.48.1", default-features = false, features = ["text", "raster-images"], optional = true }
 
 [dev-dependencies]
+# Tests draw what the cook writes (RenderScene, Renderer).
+og-render = { path = "../og-render" }
 pollster = { workspace = true }
 # APNG test sources (the version image decodes with).
 png = "0.18.1"

@@ -1,5 +1,5 @@
 //! Material shaders as text (`.ogt` of `type shader`, the E5 round): the
-//! hooks of og-render's lit shader (`og_render::MaterialShader`) and the
+//! hooks of og-render's lit shader (`og_render_data::MaterialShader`) and the
 //! uniforms they read. The cook reads the WGSL (inline or from the file
 //! `source` names), compiles the lit shader with it through naga for every
 //! back end (WGSL validation, SPIR-V for Vulkan, MSL for Metal, each with
@@ -27,7 +27,7 @@
 //! mesh given such a shader draws plain.
 
 use og_core::ogt::{Document, Entry, Number, Value};
-use og_render::{MaterialShader, ParamKind, ShaderMode, ShaderParam};
+use og_render_data::{MaterialShader, ParamKind, ShaderMode, ShaderParam};
 
 /// The `.ogt` type of a shader file.
 pub const SHADER_TYPE: &str = "shader";
@@ -42,9 +42,9 @@ pub fn parse_post(
     name: &str,
     text: &str,
     read: &mut dyn FnMut(&str) -> Result<String, String>,
-) -> Result<og_render::PostShader, String> {
+) -> Result<og_render_data::PostShader, String> {
     let (code, params, _) = parse_entries(text, read, POST_TYPE)?;
-    let post = og_render::PostShader {
+    let post = og_render_data::PostShader {
         name: name.to_string(),
         code: code.ok_or("a post pass needs `code` or `source` (its WGSL `post` function)")?,
         params,
@@ -54,7 +54,7 @@ pub fn parse_post(
 }
 
 /// The canonical file of a post pass, its code inlined.
-pub fn post_text(post: &og_render::PostShader) -> String {
+pub fn post_text(post: &og_render_data::PostShader) -> String {
     entries_text(POST_TYPE, &post.code, &post.params, ShaderMode::Hooks)
 }
 
@@ -79,9 +79,9 @@ pub fn parse_ui_material(
     name: &str,
     text: &str,
     read: &mut dyn FnMut(&str) -> Result<String, String>,
-) -> Result<og_render::UiMaterialShader, String> {
+) -> Result<og_render_data::UiMaterialShader, String> {
     let (code, params, _) = parse_entries(text, read, UI_MATERIAL_TYPE)?;
-    let material = og_render::UiMaterialShader {
+    let material = og_render_data::UiMaterialShader {
         name: name.to_string(),
         code: code
             .ok_or("a UI material needs `code` or `source` (its WGSL `material` function)")?,
@@ -92,7 +92,7 @@ pub fn parse_ui_material(
 }
 
 /// The canonical file of a UI material, its code inlined.
-pub fn ui_material_text(material: &og_render::UiMaterialShader) -> String {
+pub fn ui_material_text(material: &og_render_data::UiMaterialShader) -> String {
     entries_text(
         UI_MATERIAL_TYPE,
         &material.code,

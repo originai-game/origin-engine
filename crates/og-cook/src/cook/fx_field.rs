@@ -65,12 +65,12 @@ pub(super) fn bake(s: &Source, text: &str) -> Result<String, String> {
             .map_err(|e| format!("line {line}: field {id}: {e}"))?
             .to_rgba8();
         let n = img.height();
-        if !(1..=og_render::MAX_FIELD_CELLS).contains(&n) || img.width() != n * n {
+        if !(1..=og_render_data::MAX_FIELD_CELLS).contains(&n) || img.width() != n * n {
             return Err(format!(
                 "line {line}: field {id} is {}x{}: a grid of N cells a side is N² wide and N high (N 1 to {})",
                 img.width(),
                 img.height(),
-                og_render::MAX_FIELD_CELLS
+                og_render_data::MAX_FIELD_CELLS
             ));
         }
         let mut out = format!("{} {n} {size} {strength}", og_bundle::fx::FIELD_GRID);

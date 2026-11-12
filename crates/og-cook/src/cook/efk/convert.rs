@@ -463,7 +463,7 @@ fn color_keys(node: &Node, life: f32) -> Vec<(f32, [f32; 4])> {
     if let Some((fr, _)) = fout {
         keep.push(1.0 - fr / l);
     }
-    curve::keys(f, &keep, og_render::MAX_CURVE_KEYS, 0.01)
+    curve::keys(f, &keep, og_render_data::MAX_CURVE_KEYS, 0.01)
 }
 
 /// A uniform scale over the node's life: (its largest value, keys of it over that).
@@ -491,7 +491,7 @@ fn scale_keys(node: &Node, life: f32) -> (f32, Vec<(f32, [f32; 1])>, bool) {
             [((v[0] * v[1]).sqrt() / peak).max(0.0)]
         },
         &[],
-        og_render::MAX_CURVE_KEYS,
+        og_render_data::MAX_CURVE_KEYS,
         0.01,
     );
     (peak, keys, square)
@@ -799,7 +799,7 @@ fn mesh(cx: &mut Ctx<'_>, chain: &[&Node], p: &Place, sch: &Schedule, copies: u3
                     [outer(t) * (s.x.abs() * s.y.abs()).sqrt()]
                 },
                 &[],
-                og_render::MAX_CURVE_KEYS,
+                og_render_data::MAX_CURVE_KEYS,
                 0.01 * o_peak,
             );
             let pk = keys.iter().map(|k| k.1[0]).fold(0.0, f32::max).max(1e-4);
@@ -1047,7 +1047,7 @@ fn motion(cx: &mut Ctx<'_>, chain: &[&Node], g: usize, life: f32) -> Motion {
                 [((pos(b) - pos(a)).length() / (b - a).max(1e-6)) / total]
             },
             &[],
-            og_render::MAX_CURVE_KEYS,
+            og_render_data::MAX_CURVE_KEYS,
             0.05,
         )
     } else {

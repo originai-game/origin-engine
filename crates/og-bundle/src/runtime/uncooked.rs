@@ -452,7 +452,7 @@ impl UncookedGltf {
                 occlusion_texture: tex(self, &m["occlusionTexture"], LINEAR)?,
                 physical: PhysicalExtensions::default(),
                 unlit: ext.get("KHR_materials_unlit").is_some(),
-                uv_transforms: [og_render::UvTransform::IDENTITY; 5],
+                uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
             };
             self.materials.push(material);
         }
@@ -475,7 +475,7 @@ impl UncookedGltf {
             occlusion_texture: None,
             physical: PhysicalExtensions::default(),
             unlit: false,
-            uv_transforms: [og_render::UvTransform::IDENTITY; 5],
+            uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
         });
         Ok(())
     }

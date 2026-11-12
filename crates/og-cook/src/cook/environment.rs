@@ -1,7 +1,7 @@
 //! The environment map cook step (phase 4): a `type environment` .ogt names
 //! an HDR image, an equirectangular one or a cube map, which is prefiltered
 //! here, at cook time, into og-render's `EnvironmentMapData`
-//! (`og_render::bake`): a cube of RGB9E5 levels, level `m` GGX-prefiltered
+//! (`og_render_data::bake`): a cube of RGB9E5 levels, level `m` GGX-prefiltered
 //! at roughness `m / 4` (level 0 the radiance), and the diffuse irradiance
 //! as nine harmonics. The runtime only uploads it (`og.load.environment`).
 //!
@@ -23,7 +23,7 @@
 //! `prefiltered true` takes a KTX2 cube map whose mip chain is already
 //! GGX-prefiltered (cmgen's, IBLBaker's, the glTF IBL sampler's: level `k`
 //! of `L` at roughness `k / (L - 1)`) as it is, instead of filtering its
-//! radiance again (`og_render::bake::from_prefiltered`): the map's level `m`
+//! radiance again (`og_render_data::bake::from_prefiltered`): the map's level `m`
 //! (roughness `m / 4`) reads the file at lod `m / 4 · (L - 1)`, a chain of
 //! five levels texel for texel; `size` is the file's face size (another is
 //! refused) and `samples` does not apply.
@@ -206,8 +206,8 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
     }
     let size = number(&doc, "size", 128.0)?;
     let (lo, hi) = (
-        og_render::ENVIRONMENT_MAP_MIN_SIZE,
-        og_render::ENVIRONMENT_MAP_MAX_SIZE,
+        og_render_data::ENVIRONMENT_MAP_MIN_SIZE,
+        og_render_data::ENVIRONMENT_MAP_MAX_SIZE,
     );
     if size.fract() != 0.0
         || !(lo as f32..=hi as f32).contains(&size)
@@ -275,7 +275,7 @@ pub(super) fn cook_environment(
         ))),
         None => Ok(()),
     };
-    let mut desc = og_render::bake::BakeDesc {
+    let mut desc = og_render_data::bake::BakeDesc {
         size: doc.size.unwrap_or(128),
         intensity: doc.intensity,
         rotation_degrees: doc.rotation,
@@ -294,8 +294,8 @@ pub(super) fn cook_environment(
             }
             let rgb = img.into_raw();
             finite(source, &rgb)?;
-            let map = og_render::bake::bake(
-                &og_render::bake::Equirect {
+            let map = og_render_data::bake::bake(
+                &og_render_data::bake::Equirect {
                     width,
                     height,
                     rgb: &rgb,
@@ -322,8 +322,8 @@ pub(super) fn cook_environment(
                 )));
             }
             desc.size = n;
-            let map = og_render::bake::from_prefiltered(
-                &og_render::bake::PrefilteredCube {
+            let map = og_render_data::bake::from_prefiltered(
+                &og_render_data::bake::PrefilteredCube {
                     size: n,
                     levels: &cube.levels,
                 },
@@ -344,8 +344,8 @@ pub(super) fn cook_environment(
         EnvironmentSource::Ktx2(source) => {
             let cube = super::cube_source::read_ktx2_cube(&read(source)?)
                 .map_err(|e| CookError(format!("{source}: {e}")))?;
-            let map = og_render::bake::bake_cube(
-                &og_render::bake::CubeFaces {
+            let map = og_render_data::bake::bake_cube(
+                &og_render_data::bake::CubeFaces {
                     size: cube.size,
                     rgb: &cube.rgb,
                 },
@@ -385,9 +385,11 @@ pub(super) fn cook_environment(
                 finite(face, &face_rgb)?;
                 rgb.extend(face_rgb.into_iter().map(|v| v.max(0.0)));
             }
-            let map =
-                og_render::bake::bake_cube(&og_render::bake::CubeFaces { size, rgb: &rgb }, &desc)
-                    .map_err(|e| CookError(format!("{}: {e}", faces[0])))?;
+            let map = og_render_data::bake::bake_cube(
+                &og_render_data::bake::CubeFaces { size, rgb: &rgb },
+                &desc,
+            )
+            .map_err(|e| CookError(format!("{}: {e}", faces[0])))?;
             (
                 map,
                 size,
@@ -408,7 +410,7 @@ pub(super) fn cook_environment(
     let note = format!(
         "environment: {what} into a {}² cube of {} levels (RGB9E5, {} KiB, {} KiB zlib'd){}",
         map.size,
-        og_render::ENVIRONMENT_MAP_LEVELS,
+        og_render_data::ENVIRONMENT_MAP_LEVELS,
         texels / 1024,
         packed / 1024,
         if doc.prefiltered {
@@ -424,7 +426,7 @@ pub(super) fn cook_environment(
 /// cook's intensity, turn and samples; 0 samples: levels taken as given),
 /// irradiance and zlib'd RGB9E5 texels; with the texels' raw and packed bytes.
 pub(super) fn environment_blob(
-    map: &og_render::EnvironmentMapData,
+    map: &og_render_data::EnvironmentMapData,
     (width, height): (u32, u32),
     intensity: f32,
     rotation: f32,
@@ -433,7 +435,7 @@ pub(super) fn environment_blob(
 ) -> (Vec<u8>, usize, usize) {
     let meta = format::EnvironmentMeta {
         size: map.size,
-        levels: og_render::ENVIRONMENT_MAP_LEVELS,
+        levels: og_render_data::ENVIRONMENT_MAP_LEVELS,
         texel_count: map.texels.len() as u32,
         source_width: width,
         source_height: height,

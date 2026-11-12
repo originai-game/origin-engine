@@ -90,7 +90,7 @@
 
 use crate::effect::{flag, nums, one, value};
 use og_core::ogt::{Document, Entry, Value};
-use og_render::{EffectValue, ParticleBlend};
+use og_render_data::{EffectValue, ParticleBlend};
 
 /// The `.ogt` type of a composed effect file.
 pub const VFX_TYPE: &str = "vfx";
@@ -166,8 +166,8 @@ pub enum VfxShape {
     Quad,
     /// The built-in ring (inner radius 0.5, its uv laid flat over it), or,
     /// with any of `inner`, `band`, `height`, `arc`, `segments` and `colors`, a ring
-    /// of that shape (og_render::EffectRing: u along its arc, v across).
-    Ring(Option<og_render::EffectRing>),
+    /// of that shape (og_render_data::EffectRing: u along its arc, v across).
+    Ring(Option<og_render_data::EffectRing>),
     Box,
     Cylinder,
     /// A model asset id (its first mesh).
@@ -618,7 +618,7 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                     ..
                 },
             ) => {
-                let r = ring.get_or_insert_with(og_render::EffectRing::default);
+                let r = ring.get_or_insert_with(og_render_data::EffectRing::default);
                 let v = nums(k, 0)?;
                 match (key, &v[..]) {
                     ("inner", [x]) => r.inner = x.clamp(0.0, 16.0),

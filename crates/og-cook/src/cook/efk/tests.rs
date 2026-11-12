@@ -122,8 +122,8 @@ fn ring_nodes_are_ring_meshes_at_their_start_times() {
     let og_bundle::vfx::VfxKind::Mesh { scale, blend, .. } = &e0.kind else {
         unreachable!()
     };
-    assert_eq!(*scale, og_render::EffectValue::Constant(4.0));
-    assert_eq!(*blend, og_render::ParticleBlend::Alpha);
+    assert_eq!(*scale, og_render_data::EffectValue::Constant(4.0));
+    assert_eq!(*blend, og_render_data::ParticleBlend::Alpha);
     // Inner radius 1 of the outer's 2, flat, its colours across: the
     // edges clear, the band opaque.
     assert_eq!(r0.inner, 0.5);
@@ -157,7 +157,7 @@ fn a_ring_whose_edges_differ_in_height_is_a_tube() {
         panic!("{}", c.vfx)
     };
     // Its triangles have area.
-    let m = og_render::effect_ring(r);
+    let m = og_render_data::effect_ring(r);
     let area: f32 = m
         .indices
         .chunks(3)

@@ -16,7 +16,7 @@ use crate::{ktx2, meshopt_codec, qoa};
 use glam::{Mat4, Quat, Vec3};
 use og_blob::{Blob, BlobError, Expect};
 use og_core::ogt::{Block, Document};
-use og_render::{
+use og_render_data::{
     AlphaMode, ColorSpace, Material, MaterialHandle, MeshData, MeshHandle, Mips,
     PhysicalExtensions, SceneResources, StandardMaterial, TextureData, TextureDesc, TextureFormat,
     TextureFormats, TextureHandle, TextureSource, TextureUpload, Vertex,
@@ -644,7 +644,7 @@ impl Bundle {
     }
 
     /// Decodes a colour LUT blob.
-    pub fn lut(&self, id: &str, bytes: &[u8]) -> Result<og_render::ColorLut, LoadError> {
+    pub fn lut(&self, id: &str, bytes: &[u8]) -> Result<og_render_data::ColorLut, LoadError> {
         let blob = self.blob::<format::Lut>(id, bytes)?;
         let meta = one::<format::LutMeta>(&blob)?;
         let rgba = blob.raw("rgba")?.to_vec();
@@ -659,7 +659,7 @@ impl Bundle {
                 ),
             ));
         }
-        Ok(og_render::ColorLut {
+        Ok(og_render_data::ColorLut {
             size: meta.size,
             rgba,
         })
@@ -705,7 +705,11 @@ impl Bundle {
     }
 
     /// The material shader of a shader blob.
-    pub fn shader(&self, id: &str, bytes: &[u8]) -> Result<og_render::MaterialShader, LoadError> {
+    pub fn shader(
+        &self,
+        id: &str,
+        bytes: &[u8],
+    ) -> Result<og_render_data::MaterialShader, LoadError> {
         let blob = self.blob::<format::Shader>(id, bytes)?;
         let meta = one::<format::ShaderMeta>(&blob)?;
         let text = blob.raw("text")?;
@@ -721,7 +725,7 @@ impl Bundle {
     }
 
     /// The custom post pass of a post blob.
-    pub fn post(&self, id: &str, bytes: &[u8]) -> Result<og_render::PostShader, LoadError> {
+    pub fn post(&self, id: &str, bytes: &[u8]) -> Result<og_render_data::PostShader, LoadError> {
         let blob = self.blob::<format::Post>(id, bytes)?;
         let meta = one::<format::PostMeta>(&blob)?;
         let text = blob.raw("text")?;
@@ -741,7 +745,7 @@ impl Bundle {
         &self,
         id: &str,
         bytes: &[u8],
-    ) -> Result<og_render::UiMaterialShader, LoadError> {
+    ) -> Result<og_render_data::UiMaterialShader, LoadError> {
         let blob = self.blob::<format::UiMaterial>(id, bytes)?;
         let meta = one::<format::UiMaterialMeta>(&blob)?;
         let text = blob.raw("text")?;
@@ -758,7 +762,7 @@ impl Bundle {
 
     /// The triangles and paints of a vector blob, for
     /// `og_render::RenderScene::add_ui_vector`.
-    pub fn vector(&self, id: &str, bytes: &[u8]) -> Result<og_render::UiVectorData, LoadError> {
+    pub fn vector(&self, id: &str, bytes: &[u8]) -> Result<og_draw::ui::UiVectorData, LoadError> {
         use og_core::glam::Vec2;
         let blob = self.blob::<format::Vector>(id, bytes)?;
         let meta = one::<format::VectorMeta>(&blob)?;
@@ -766,14 +770,14 @@ impl Bundle {
         let stops = table::<format::VectorStopRow>(&blob, "stops")?;
         let vertices = blob.raw("vertices")?;
         let indices = blob.raw("indices")?;
-        let vsize = std::mem::size_of::<og_render::UiVectorVertex>();
+        let vsize = std::mem::size_of::<og_draw::ui::UiVectorVertex>();
         if vertices.len() < meta.vertex_count as usize * vsize
             || indices.len() < meta.index_count as usize * 4
             || paints.len() != meta.paint_count as usize
         {
             return Err(invalid(&blob, "the vector's sections are cut short"));
         }
-        let vertices: Vec<og_render::UiVectorVertex> =
+        let vertices: Vec<og_draw::ui::UiVectorVertex> =
             bytemuck::pod_collect_to_vec(&vertices[..meta.vertex_count as usize * vsize]);
         let indices: Vec<u32> =
             bytemuck::pod_collect_to_vec(&indices[..meta.index_count as usize * 4]);
@@ -785,40 +789,40 @@ impl Bundle {
         let mut out = Vec::with_capacity(paints.len());
         for p in &paints {
             out.push(if p.kind == 0 {
-                og_render::UiVectorPaint::Solid([p.r, p.g, p.b, p.a])
+                og_draw::ui::UiVectorPaint::Solid([p.r, p.g, p.b, p.a])
             } else {
                 let range = p.first_stop as usize..(p.first_stop + p.stop_count) as usize;
                 let stops = stops
                     .get(range)
                     .ok_or_else(|| invalid(&blob, "a paint's stops out of range"))?
                     .iter()
-                    .map(|s| og_render::UiStop {
+                    .map(|s| og_draw::ui::UiStop {
                         offset: s.offset,
                         color: [s.r, s.g, s.b, s.a],
                     })
                     .collect();
-                og_render::UiVectorPaint::Gradient(og_render::UiGradient {
+                og_draw::ui::UiVectorPaint::Gradient(og_draw::ui::UiGradient {
                     kind: match p.kind {
-                        1 => og_render::UiGradientKind::Linear,
-                        2 => og_render::UiGradientKind::Radial,
-                        3 => og_render::UiGradientKind::Conic,
-                        4 => og_render::UiGradientKind::Diamond,
+                        1 => og_draw::ui::UiGradientKind::Linear,
+                        2 => og_draw::ui::UiGradientKind::Radial,
+                        3 => og_draw::ui::UiGradientKind::Conic,
+                        4 => og_draw::ui::UiGradientKind::Diamond,
                         _ => return Err(invalid(&blob, "a paint of an unknown kind")),
                     },
                     from: Vec2::new(p.from_x, p.from_y),
                     to: Vec2::new(p.to_x, p.to_y),
                     stops,
                     spread: match p.spread {
-                        1 => og_render::UiSpread::Repeat,
-                        2 => og_render::UiSpread::Reflect,
-                        3 => og_render::UiSpread::RepeatStops,
-                        _ => og_render::UiSpread::Pad,
+                        1 => og_draw::ui::UiSpread::Repeat,
+                        2 => og_draw::ui::UiSpread::Reflect,
+                        3 => og_draw::ui::UiSpread::RepeatStops,
+                        _ => og_draw::ui::UiSpread::Pad,
                     },
                     dither: p.dither != 0,
                 })
             });
         }
-        Ok(og_render::UiVectorData {
+        Ok(og_draw::ui::UiVectorData {
             view_box: [meta.x, meta.y, meta.width, meta.height],
             vertices,
             indices,
@@ -1147,7 +1151,7 @@ impl SceneResources for Meshes {
     fn add_texture_source(&mut self, _: TextureSource) -> TextureHandle {
         TextureHandle::from_index(0)
     }
-    fn set_texture_filter(&mut self, _: TextureHandle, _: og_render::TextureFilter) -> bool {
+    fn set_texture_filter(&mut self, _: TextureHandle, _: og_render_data::TextureFilter) -> bool {
         true
     }
     fn add_material(&mut self, _: Material) -> MaterialHandle {
@@ -1171,20 +1175,20 @@ impl SceneResources for Meshes {
     fn mesh(&self, handle: MeshHandle) -> Option<&MeshData> {
         self.meshes.get(handle.index())
     }
-    fn mesh_foliage(&self, _: MeshHandle) -> Option<&og_render::meshlet::MeshFoliage> {
+    fn mesh_foliage(&self, _: MeshHandle) -> Option<&og_render_data::meshlet::MeshFoliage> {
         None
     }
     fn set_mesh_clusters(
         &mut self,
         _: MeshHandle,
-        _: Option<og_render::meshlet::MeshClusters>,
+        _: Option<og_render_data::meshlet::MeshClusters>,
     ) -> bool {
         true
     }
     fn set_mesh_foliage(
         &mut self,
         _: MeshHandle,
-        _: Option<og_render::meshlet::MeshFoliage>,
+        _: Option<og_render_data::meshlet::MeshFoliage>,
     ) -> bool {
         true
     }

@@ -3,7 +3,7 @@
 
 use super::convert::artboards;
 use super::read::*;
-use og_render::UiPaint;
+use og_draw::ui::UiPaint;
 use og_ui::rive::{Artboard, Player};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -41,7 +41,7 @@ fn a_shape_draws_where_its_transforms_put_it() {
     // Under it, the artboard's background (0xFF313131); the circle's fill
     // has no colour of its own, so Rive's default grey (0xFF747474).
     let shapes = drawn_shapes(&p, [0.0, 0.0, 400.0, 200.0], 1.0);
-    let solid = |s: &og_render::UiShape| match &s.paint {
+    let solid = |s: &og_draw::ui::UiShape| match &s.paint {
         UiPaint::Solid(c) => *c,
         _ => panic!("solid"),
     };
@@ -167,12 +167,12 @@ fn an_image_draws_at_its_pixel_size_about_its_origin() {
     assert_eq!(a.images.len(), 1);
     assert_eq!(a.images[0].id, "#image0");
     assert_eq!(a.images[0].size, og_core::glam::Vec2::splat(15.0));
-    let texture = og_render::RenderScene::new().add_texture(og_render::TextureData {
+    let texture = og_render::RenderScene::new().add_texture(og_render_data::TextureData {
         width: 1,
         height: 1,
         rgba: vec![255; 4],
-        color_space: og_render::ColorSpace::Srgb,
-        mips: og_render::Mips::None,
+        color_space: og_render_data::ColorSpace::Srgb,
+        mips: og_render_data::Mips::None,
     });
     a.bind_images(&mut |id| (id == "#image0").then_some(texture));
     let p = Player::new(Arc::new(a), None);
@@ -207,7 +207,11 @@ fn a_hosted_image_is_an_error_naming_it() {
 }
 
 /// The shapes a player draws (its texts and cuts left out).
-fn drawn_shapes(p: &og_ui::rive::Player, rect: [f32; 4], opacity: f32) -> Vec<og_render::UiShape> {
+fn drawn_shapes(
+    p: &og_ui::rive::Player,
+    rect: [f32; 4],
+    opacity: f32,
+) -> Vec<og_draw::ui::UiShape> {
     p.draw(rect, opacity)
         .into_iter()
         .filter_map(|d| match d {

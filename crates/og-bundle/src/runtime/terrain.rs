@@ -11,7 +11,7 @@ pub struct CookedTerrainLayer {
     pub albedo: Option<String>,
     pub normal: Option<String>,
     /// The layer without its textures (`albedo` and `normal` are `None`).
-    pub layer: og_render::TerrainLayer,
+    pub layer: og_render_data::TerrainLayer,
 }
 
 /// A cooked terrain (`og.Terrain`): og-render's tile layout, the range of
@@ -24,7 +24,7 @@ pub struct CookedTerrainLayer {
 pub struct CookedTerrain {
     /// The asset id.
     pub id: String,
-    pub layout: og_render::TerrainLayout,
+    pub layout: og_render_data::TerrainLayout,
     /// The lowest and highest height (metres above the origin).
     pub range: (f32, f32),
     pub layers: Vec<CookedTerrainLayer>,
@@ -34,7 +34,7 @@ pub struct CookedTerrain {
     pub albedo_array: Option<String>,
     pub normal_array: Option<String>,
     pub height_blend: f32,
-    pub lod: og_render::TerrainLod,
+    pub lod: og_render_data::TerrainLod,
     pub cast_shadows: bool,
     /// Whether the game gets a height-field collider for it.
     pub collision: bool,
@@ -88,7 +88,7 @@ impl CookedTerrain {
 
     /// A tile's heights in metres from its inflated 16-bit values (with
     /// holes, each one's lowest bit its cell's hole flag:
-    /// `og_render::hole_bit`).
+    /// `og_render_data::hole_bit`).
     pub fn heights_from(&self, index: u32, raw: &[u8]) -> Result<Vec<f32>, LoadError> {
         let side = self.layout.heights_side() as usize;
         if raw.len() != self.stream_bytes() {
@@ -106,7 +106,7 @@ impl CookedTerrain {
                 let q = u16::from_le_bytes(*v);
                 let h = lo + q as f32 / 65535.0 * span;
                 if holes {
-                    og_render::with_hole_bit(h, q & 1 != 0)
+                    og_render_data::with_hole_bit(h, q & 1 != 0)
                 } else {
                     h
                 }
@@ -121,7 +121,7 @@ impl CookedTerrain {
         index: u32,
         heights: &[u8],
         control: Option<&[u8]>,
-    ) -> Result<og_render::TerrainTile, LoadError> {
+    ) -> Result<og_render_data::TerrainTile, LoadError> {
         let h = self.heights_from(index, heights)?;
         let c = match (self.layout.control, control) {
             (0, _) => None,
@@ -143,7 +143,7 @@ impl CookedTerrain {
             .iter()
             .map(|w| u32::from_le_bytes(*w))
             .collect();
-        Ok(og_render::TerrainTile::build(
+        Ok(og_render_data::TerrainTile::build(
             &self.layout,
             index,
             h,
@@ -174,7 +174,7 @@ impl CookedTerrain {
     }
 
     /// Inflates and decodes a tile.
-    pub fn tile(&self, index: u32) -> Result<og_render::TerrainTile, LoadError> {
+    pub fn tile(&self, index: u32) -> Result<og_render_data::TerrainTile, LoadError> {
         let (h, c) = self.inflate(index)?;
         self.tile_from(index, &h, c.as_deref())
     }
@@ -187,7 +187,7 @@ impl CookedTerrain {
 
     /// The whole field from its level-0 tiles: every height, and the
     /// control map at the tiles' resolution.
-    pub fn field(&self) -> Result<og_render::TerrainData, LoadError> {
+    pub fn field(&self) -> Result<og_render_data::TerrainData, LoadError> {
         let l = &self.layout;
         let (cols, rows) = (l.columns as usize, l.rows as usize);
         let t = l.tile as usize;
@@ -218,7 +218,7 @@ impl CookedTerrain {
                         let v = h[(j + 1) * side + i + 1];
                         heights[r * cols + col] = v;
                         if l.holes && r + 1 < rows && col + 1 < cols {
-                            holes[r * (cols - 1) + col] = u8::from(og_render::hole_bit(v));
+                            holes[r * (cols - 1) + col] = u8::from(og_render_data::hole_bit(v));
                         }
                     }
                 }
@@ -266,13 +266,13 @@ impl CookedTerrain {
                     }
                 }
             }
-            og_render::TerrainControl {
+            og_render_data::TerrainControl {
                 width: w as u32,
                 height: hgt as u32,
                 rgba: out.into(),
             }
         });
-        let data = og_render::TerrainData {
+        let data = og_render_data::TerrainData {
             size: l.size,
             columns: l.columns,
             rows: l.rows,
@@ -297,7 +297,7 @@ impl Bundle {
         let heights = blob.raw("heights")?.to_vec();
         let control = blob.raw("control")?.to_vec();
         let control_size = (m.control_width > 0).then_some((m.control_width, m.control_height));
-        let mut layout = og_render::TerrainLayout::new(
+        let mut layout = og_render_data::TerrainLayout::new(
             glam::Vec2::new(m.size_x, m.size_z),
             m.columns,
             m.rows,
@@ -335,7 +335,7 @@ impl Bundle {
             out.push(CookedTerrainLayer {
                 albedo: text(l.albedo_at, l.albedo_len)?,
                 normal: text(l.normal_at, l.normal_len)?,
-                layer: og_render::TerrainLayer {
+                layer: og_render_data::TerrainLayer {
                     albedo: None,
                     normal: None,
                     color: glam::Vec3::new(l.r, l.g, l.b),
@@ -366,7 +366,7 @@ impl Bundle {
             albedo_array: text(m.albedo_array_at, m.albedo_array_len)?,
             normal_array: text(m.normal_array_at, m.normal_array_len)?,
             height_blend: m.height_blend,
-            lod: og_render::TerrainLod {
+            lod: og_render_data::TerrainLod {
                 spacing: m.lod_spacing,
                 ring: m.lod_ring,
                 budget: 0,
@@ -395,20 +395,20 @@ impl Bundle {
         &self,
         id: &str,
         bytes: &[u8],
-    ) -> Result<og_render::EnvironmentMapData, LoadError> {
+    ) -> Result<og_render_data::EnvironmentMapData, LoadError> {
         let blob = self.blob::<format::EnvironmentMap>(id, bytes)?;
         let meta = one::<format::EnvironmentMeta>(&blob)?;
-        if meta.levels != og_render::ENVIRONMENT_MAP_LEVELS {
+        if meta.levels != og_render_data::ENVIRONMENT_MAP_LEVELS {
             return Err(invalid(
                 &blob,
                 format!(
                     "{} levels; this engine's environment maps have {}",
                     meta.levels,
-                    og_render::ENVIRONMENT_MAP_LEVELS
+                    og_render_data::ENVIRONMENT_MAP_LEVELS
                 ),
             ));
         }
-        let want = og_render::EnvironmentMapData::texel_count(meta.size);
+        let want = og_render_data::EnvironmentMapData::texel_count(meta.size);
         if meta.texel_count as usize != want {
             return Err(invalid(
                 &blob,
@@ -437,7 +437,7 @@ impl Bundle {
                 format!("{} irradiance rows, not 9", sh.len()),
             ));
         }
-        let map = og_render::EnvironmentMapData {
+        let map = og_render_data::EnvironmentMapData {
             size: meta.size,
             texels,
             irradiance: std::array::from_fn(|k| [sh[k].r, sh[k].g, sh[k].b]),
@@ -448,7 +448,10 @@ impl Bundle {
 
     /// Reads and decodes an environment map (native).
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn load_environment(&self, id: &str) -> Result<og_render::EnvironmentMapData, LoadError> {
+    pub fn load_environment(
+        &self,
+        id: &str,
+    ) -> Result<og_render_data::EnvironmentMapData, LoadError> {
         self.environment(id, &self.read(id)?)
     }
 }

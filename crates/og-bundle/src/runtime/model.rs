@@ -27,7 +27,7 @@ pub struct CookedPrimitive {
     pub lods: Vec<Lod>,
     /// Every level's clusters (og-render's `meshlet`), each a range of
     /// `cluster_indices`; empty for a primitive made without them.
-    pub clusters: Vec<og_render::meshlet::Cluster>,
+    pub clusters: Vec<og_render_data::meshlet::Cluster>,
     /// Draw order only: the simulation mesh keeps `indices` and its vertex order.
     pub cluster_indices: Vec<u32>,
     /// Exact local bounds of the source positions.
@@ -36,7 +36,7 @@ pub struct CookedPrimitive {
     /// The raycast BVH over LOD 0 the cook built (`None`: cooked with
     /// `raycast false`, or a blob of a cook before it): put together over
     /// [`CookedPrimitive::mesh`]`(0)` by [`CookedPrimitive::bvh`].
-    pub bvh_parts: Option<(Vec<og_render::geometry::BvhNode>, Vec<u32>)>,
+    pub bvh_parts: Option<(Vec<og_render_data::geometry::BvhNode>, Vec<u32>)>,
     /// The triangle-mesh collider the cook baked over [`Self::mesh`]`(0)`
     /// (`model { collider true }`): og-physics' `bake_trimesh` bytes, for
     /// `PhysicsSystem::set_baked_trimesh`. `None`: none was baked.
@@ -45,15 +45,15 @@ pub struct CookedPrimitive {
     /// vertex in [`Self::vertices`]' order, and whether its triangles are
     /// leaf cards; `None` without. [`CookedModel::mesh_foliage`] makes it
     /// og-render's.
-    pub foliage: Option<(Vec<og_render::foliage::FoliageVertex>, bool)>,
+    pub foliage: Option<(Vec<og_render_data::foliage::FoliageVertex>, bool)>,
 }
 
 impl CookedPrimitive {
     /// The cooked raycast BVH over `mesh` (LOD 0's, as [`Self::mesh`]
     /// answers it), without building anything; `None` when none was cooked.
-    pub fn bvh(&self, mesh: &MeshData) -> Option<Result<og_render::geometry::Bvh, String>> {
+    pub fn bvh(&self, mesh: &MeshData) -> Option<Result<og_render_data::geometry::Bvh, String>> {
         let (nodes, tris) = self.bvh_parts.as_ref()?;
-        Some(og_render::geometry::Bvh::from_parts(
+        Some(og_render_data::geometry::Bvh::from_parts(
             mesh,
             nodes.clone(),
             tris.clone(),
@@ -72,12 +72,12 @@ impl CookedPrimitive {
     /// Every level with its clusters and indices, for
     /// [`SceneResources::set_mesh_clusters`] on [`Self::mesh`]`(0)`'s mesh;
     /// `None` when a level has none.
-    pub fn mesh_clusters(&self) -> Option<og_render::meshlet::MeshClusters> {
+    pub fn mesh_clusters(&self) -> Option<og_render_data::meshlet::MeshClusters> {
         let levels = self
             .lods
             .iter()
             .map(|l| {
-                (l.cluster_count > 0).then(|| og_render::meshlet::ClusterLevel {
+                (l.cluster_count > 0).then(|| og_render_data::meshlet::ClusterLevel {
                     first: l.first as u32,
                     count: l.count as u32,
                     error: l.error,
@@ -85,7 +85,7 @@ impl CookedPrimitive {
                 })
             })
             .collect::<Option<Vec<_>>>()?;
-        Some(og_render::meshlet::MeshClusters {
+        Some(og_render_data::meshlet::MeshClusters {
             levels,
             clusters: self.clusters.clone(),
             indices: self.cluster_indices.clone(),
@@ -146,9 +146,9 @@ pub struct CookedMaterial {
     /// `KHR_materials_unlit`: drawn unlit (three.js MeshBasicMaterial).
     pub unlit: bool,
     /// Each texture slot's `KHR_texture_transform` (og-render's slot
-    /// order, [`og_render::StandardMaterial::uv_transforms`]): identity
+    /// order, [`og_render_data::StandardMaterial::uv_transforms`]): identity
     /// where none, or where the cook baked it into the primitives' uvs.
-    pub uv_transforms: [og_render::UvTransform; 5],
+    pub uv_transforms: [og_render_data::UvTransform; 5],
 }
 
 impl CookedMaterial {
@@ -454,7 +454,7 @@ impl CookedModel {
                     cluster_rows
                         [l.cluster_first as usize..(l.cluster_first + l.cluster_count) as usize]
                         .iter()
-                        .map(|c| og_render::meshlet::Cluster {
+                        .map(|c| og_render_data::meshlet::Cluster {
                             first: c.index_first,
                             triangles: c.triangle_count,
                             center: Vec3::new(c.center_x, c.center_y, c.center_z),
@@ -496,7 +496,7 @@ impl CookedModel {
                     |a: usize, q: u32| off[a] + (q & 0xffff) as u16 as f32 / 65535.0 * scale[a];
                 let nodes = nodes
                     .iter()
-                    .map(|n| og_render::geometry::BvhNode {
+                    .map(|n| og_render_data::geometry::BvhNode {
                         min: Vec3::new(
                             deq(0, n.min_xy),
                             deq(1, n.min_xy >> 16),
@@ -526,7 +526,7 @@ impl CookedModel {
                         .map_err(|e| bad(format!("primitive {i}: foliage: {e}")))?;
                     let vertices = bytemuck::cast_slice::<u8, [f32; 8]>(&raw)
                         .iter()
-                        .map(|v| og_render::foliage::FoliageVertex {
+                        .map(|v| og_render_data::foliage::FoliageVertex {
                             branch: [v[0], v[1], v[2], v[3]],
                             leaf: [v[4], v[5], v[6], v[7]],
                         })
@@ -603,7 +603,7 @@ impl CookedModel {
                 },
                 unlit: m.unlit != 0,
                 uv_transforms: {
-                    let t = |o: [f32; 2], sc: [f32; 2], r: f32| og_render::UvTransform {
+                    let t = |o: [f32; 2], sc: [f32; 2], r: f32| og_render_data::UvTransform {
                         offset: glam::Vec2::from(o),
                         scale: glam::Vec2::from(sc),
                         rotation: r,
@@ -922,7 +922,7 @@ impl CookedModel {
     /// (every foliage primitive in one space, the model's: its top is the
     /// highest of their vertices, its canopy centre the centre of the box
     /// of the leaf cards' anchors, of every anchor without leaf cards).
-    pub fn mesh_foliage(&self, i: usize) -> Option<og_render::meshlet::MeshFoliage> {
+    pub fn mesh_foliage(&self, i: usize) -> Option<og_render_data::meshlet::MeshFoliage> {
         let (vertices, leaves) = self.primitives.get(i)?.foliage.as_ref()?;
         let foliage = || {
             self.primitives
@@ -943,7 +943,7 @@ impl CookedModel {
                 (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
                 |(lo, hi), a| (lo.min(a), hi.max(a)),
             );
-        Some(og_render::meshlet::MeshFoliage {
+        Some(og_render_data::meshlet::MeshFoliage {
             vertices: vertices.clone(),
             top,
             canopy_center: (lo + hi) * 0.5,
@@ -1021,7 +1021,7 @@ impl CookedModel {
         // sampled nearest, as og.load.texture samples it.
         for (h, t) in handles.iter().zip(&self.textures) {
             if t.kind == crate::format::kind::PIXEL {
-                scene.set_texture_filter(*h, og_render::TextureFilter::Nearest);
+                scene.set_texture_filter(*h, og_render_data::TextureFilter::Nearest);
             }
         }
         // A material with physical extensions, unlit or a texture

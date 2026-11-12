@@ -8,7 +8,7 @@
 
 use super::GltfSource;
 use glam::{Mat4, Quat, Vec3};
-use og_render::UvTransform;
+use og_render_data::UvTransform;
 use serde_json::Value;
 
 fn f32_at(v: &Value, key: &str, d: f32) -> f32 {
