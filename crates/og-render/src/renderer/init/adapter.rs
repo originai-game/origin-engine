@@ -80,6 +80,7 @@ impl Renderer {
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));
         let cascades = desc.shadow_cascades.clamp(1, MAX_CASCADES);
+        use crate::texture::TextureFormatsChoice;
         let (mut features, texture_formats) =
             TextureFormats::choose(adapter_features, desc.texture_compression);
         let cache_dir = pipeline_cache::dir();

@@ -7,6 +7,7 @@
 //! camera's uniforms.
 
 use super::*;
+use crate::targets::TargetGpu;
 
 pub(super) struct ViewPlan<'f> {
     pub(super) scene: &'f RenderScene,

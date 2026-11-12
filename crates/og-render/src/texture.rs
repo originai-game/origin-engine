@@ -85,9 +85,18 @@ impl TextureFormat {
         let d = self.block_dim();
         (w.div_ceil(d) * h.div_ceil(d) * self.block_bytes()) as usize
     }
+}
 
+/// A [`TextureFormat`]'s form on the device.
+pub(crate) trait TextureFormatGpu {
     /// The wgpu format for `color_space` (`None`: no sRGB variant exists).
-    pub(crate) fn wgpu(self, color_space: ColorSpace) -> Option<wgpu::TextureFormat> {
+    fn wgpu(self, color_space: ColorSpace) -> Option<wgpu::TextureFormat>;
+    /// The device feature the format needs.
+    fn feature(self) -> wgpu::Features;
+}
+
+impl TextureFormatGpu for TextureFormat {
+    fn wgpu(self, color_space: ColorSpace) -> Option<wgpu::TextureFormat> {
         use wgpu::{AstcBlock, AstcChannel, TextureFormat as F};
         let srgb = color_space == ColorSpace::Srgb;
         Some(match (self, srgb) {
@@ -154,10 +163,18 @@ pub struct TextureFormats {
     pub supported: Vec<TextureFormat>,
 }
 
-impl TextureFormats {
+/// The renderer's choice of [`TextureFormats`] for a device.
+pub(crate) trait TextureFormatsChoice {
     /// The features to request and the choice for `preference`, given what
     /// the adapter offers.
-    pub(crate) fn choose(
+    fn choose(
+        adapter: wgpu::Features,
+        preference: TextureCompression,
+    ) -> (wgpu::Features, TextureFormats);
+}
+
+impl TextureFormatsChoice for TextureFormats {
+    fn choose(
         adapter: wgpu::Features,
         preference: TextureCompression,
     ) -> (wgpu::Features, TextureFormats) {
@@ -271,7 +288,7 @@ impl TextureDesc {
                 ));
             }
         }
-        if self.format.wgpu(self.color_space).is_none() {
+        if self.format.two_channel() && self.color_space == ColorSpace::Srgb {
             return Err(format!("{:?} has no sRGB variant", self.format));
         }
         Ok(())
