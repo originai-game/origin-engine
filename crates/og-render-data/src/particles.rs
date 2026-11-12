@@ -565,6 +565,13 @@ pub struct ParticleEmitter {
     /// from tick to tick) a world-space particle starts with: sparks
     /// thrown from a swung sword, exhaust from a moving ship.
     pub inherit_velocity: f32,
+    /// The share of the scheduled particles that are born (0..1; the rest
+    /// take their slot unborn), each chosen by its own index: an emitter
+    /// thins and thickens with it and no living particle is replaced. A
+    /// changed `rate` moves every later particle's index, so what is in
+    /// the air is overwritten at random (rain that builds, smoke that
+    /// dies down: keep the rate and change this).
+    pub emission: f32,
 }
 
 impl Default for ParticleEmitter {
@@ -614,6 +621,7 @@ impl Default for ParticleEmitter {
             attractors: Vec::new(),
             field: None,
             inherit_velocity: 0.0,
+            emission: 1.0,
         }
     }
 }

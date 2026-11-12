@@ -60,6 +60,53 @@ fn a_rate_curve_shapes_when_particles_are_born() {
     );
 }
 
+/// Emission thins an emitter by the share it names, and changing it
+/// replaces nothing in the air: every particle living before the change
+/// is the same particle after it.
+#[test]
+fn emission_thins_an_emitter_and_keeps_what_is_in_the_air() {
+    let full = ParticleEmitter {
+        rate: 600.0,
+        lifetime: [1.0, 1.0],
+        max_particles: 1024,
+        ..Default::default()
+    };
+    let half = ParticleEmitter {
+        emission: 0.5,
+        ..full.clone()
+    };
+    let mut sys = ParticleSystem::new(1, EmitterHandle(0), Mat4::IDENTITY, 5, 0);
+    let all = live(&full, &mut sys, 60).len();
+    assert!((590..=600).contains(&all), "{all} alive of 600 a second");
+    let n = live(&half, &mut sys, 60).len();
+    // Half of 600, within four standard deviations (12 each).
+    assert!((252..=348).contains(&n), "{n} alive at half the emission");
+
+    let mut cpu = CpuParticles::default();
+    let points = shape_points(&full.shape, None);
+    let mut step = |e: &ParticleEmitter, cpu: &mut CpuParticles, t: u64| {
+        sys.tick = t;
+        cpu.advance(e, &sys, 60.0, &points, &[], &[], None, None);
+    };
+    for t in 0..30 {
+        step(&full, &mut cpu, t);
+    }
+    let before = cpu.slots.clone();
+    let thin = ParticleEmitter {
+        emission: 0.25,
+        ..full.clone()
+    };
+    step(&thin, &mut cpu, 30);
+    let kept = before
+        .iter()
+        .zip(&cpu.slots)
+        .filter(|(b, a)| b.alive() && a.alive() && a.misc == b.misc)
+        .count();
+    let living = before.iter().filter(|p| p.alive()).count();
+    assert!(living >= 290, "{living} in the air before the change");
+    assert_eq!(kept, living, "every particle in the air stayed");
+}
+
 /// An attractor gathers particles, a speed curve of 0 holds them where
 /// they are, a spline sheds them along its curve and a moving emitter
 /// lends them its velocity.

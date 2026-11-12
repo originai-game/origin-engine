@@ -172,12 +172,22 @@ fn spawn(
         ((k - step.bursts) as f32 + 0.5) / c * dt
     };
     pos += vel * age;
+    // What the emission leaves out takes its slot unborn (its age its life).
+    let age = if r(EMISSION_STREAM) < e.emission {
+        age
+    } else {
+        life
+    };
     ParticleState {
         pos_age: pos.extend(age).to_array(),
         vel_life: vel.extend(life).to_array(),
         misc: [size, rot, spin, r(5)],
     }
 }
+
+/// The random stream that picks which particles
+/// [`ParticleEmitter::emission`] leaves out (particles_sim.wgsl `spawn`).
+const EMISSION_STREAM: u32 = 15;
 
 /// A solid shape of the scene ([`crate::RenderScene::colliders`]): what
 /// CPU-simulated particles bounce off and visual bodies meet, the scene's
@@ -756,6 +766,9 @@ impl CpuParticles {
                 match slot_spawn(slot as u32, max, step.first, step.count) {
                     Some((n, k)) => {
                         *p = spawn(e, seed, n, k, step, dt, points);
+                        if !p.alive() {
+                            continue;
+                        }
                         if births {
                             report(ParticleEventKind::Birth, n, p);
                         }

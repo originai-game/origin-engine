@@ -92,6 +92,8 @@ fn spawn(n: u32, k: u32) -> Particle {
     age = (f32(k - bursts) + 0.5) / c * dt;
   }
   pos += vel * age;
+  // What the emission leaves out takes its slot unborn (cpu.rs `spawn`).
+  if (rand(seed, n, 15u) >= emitter.counts.z) { age = life; }
   var p: Particle;
   p.pos_age = vec4<f32>(pos, age);
   p.vel_life = vec4<f32>(vel, life);

@@ -160,7 +160,7 @@ pub(super) fn emitter_gpu(
         counts: [
             e.size_over_life.keys.len().min(MAX_CURVE_KEYS) as f32,
             e.color_over_life.keys.len().min(MAX_CURVE_KEYS) as f32,
-            0.0,
+            e.emission,
             0.0,
         ],
         spawn: [first as u32, count, (first % max as u64) as u32, bursts],

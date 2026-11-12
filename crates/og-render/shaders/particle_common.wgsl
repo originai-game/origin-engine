@@ -20,7 +20,7 @@ struct Emitter {
   sheet: vec4<f32>,        // columns, rows, frames, mode (0 off, 1 over life, 2 fps, 3 random)
   sheet2: vec4<f32>,       // x: cycles or fps, y: 1 with a texture
   render: vec4<f32>,       // x: align (0 camera, 1 velocity), y: stretch, z: soft distance, w: blend (0 additive, 1 alpha)
-  counts: vec4<f32>,       // x: size keys, y: colour keys
+  counts: vec4<f32>,       // x: size keys, y: colour keys, z: the share of the spawns that are born
   spawn: vec4<u32>,        // first index (low 32 bits), count, first % max, bursts
   info: vec4<u32>,         // max particles, seed
   noise_origin: array<vec4<f32>, 2>,  // the turbulence's lattice at the render origin: xyz whole cells, then the rest (origin.rs)
