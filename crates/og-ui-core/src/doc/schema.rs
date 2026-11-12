@@ -147,7 +147,7 @@ pub const CSS_FUNCTIONS: &[(&str, &str, &str)] = &[(
 pub const MEDIA_FEATURES: &[(&str, &str, &str)] = &[(
     "-og-input",
     "(-og-input: pad)",
-    "Matches the configured gamepad input mode. Extension reason: standard media queries have no gamepad input feature. Forced Touch and Mouse instead set standard pointer/hover queries to coarse/none and fine/hover; Auto reports the device. No density metrics are exposed to CSS.",
+    "Matches the configured gamepad input mode. Extension reason: standard media queries have no gamepad input feature. Forced Touch and Mouse instead set standard pointer/hover queries to coarse/none and fine/hover; Auto reports the device. The input's density metrics are the root variables --control-sm, --control-md, --control-lg, --row, --header, --gutter and --section (the --density-compact-*, --density-pad-* or --density-touch-* set the input takes) and --touch-target.",
 )];
 
 pub const CORE_KINDS: &[KindSpec] = &[

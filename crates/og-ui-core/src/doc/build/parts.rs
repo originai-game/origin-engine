@@ -224,6 +224,7 @@ impl Ui {
         };
         let mut inline = self.style.root_tokens.clone();
         inline.extend_from_slice(&self.style.root_type_tokens[self.breakpoint() as usize]);
+        inline.extend(self.env.theme.density_tokens(&self.env.viewport));
         cascade::values_with(
             &self.style.part_rules,
             &cascade::Options {

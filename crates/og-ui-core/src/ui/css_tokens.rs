@@ -132,6 +132,167 @@ fn lengths(theme: &mut Theme, mut visit: impl FnMut(&str, &mut f32)) {
         reading => "reading", sm => "sm", xl => "xl", xs => "xs");
 }
 
+/// The unit a root token's number is written in.
+#[derive(Clone, Copy)]
+enum Unit {
+    Px,
+    Ms,
+    Number,
+}
+
+impl Unit {
+    fn suffix(self) -> &'static str {
+        match self {
+            Unit::Px => "px",
+            Unit::Ms => "ms",
+            Unit::Number => "",
+        }
+    }
+
+    /// A computed root value as a number of this unit (`calc()` reduced).
+    fn read(self, value: &str) -> Option<f32> {
+        let value = crate::doc::calc::reduce(value).unwrap_or_else(|_| value.to_owned());
+        let value = value.trim();
+        match self {
+            Unit::Ms => value
+                .strip_suffix("ms")
+                .and_then(|v| v.trim().parse().ok())
+                .or_else(|| {
+                    value
+                        .strip_suffix('s')
+                        .and_then(|v| v.trim().parse::<f32>().ok())
+                        .map(|s| s * 1000.0)
+                }),
+            unit => value.strip_suffix(unit.suffix())?.trim().parse().ok(),
+        }
+    }
+}
+
+/// Every number the theme reads from the root CSS tokens, by its variable
+/// name without `--`: the lengths, the motion durations, the press scales
+/// and control states, each input's densities and the named transitions'
+/// springs.
+fn scalars(theme: &mut Theme, mut visit: impl FnMut(&str, Unit, &mut f32)) {
+    lengths(theme, |name, value| visit(name, Unit::Px, value));
+    let d = &mut theme.durations_ms;
+    for (name, value) in [
+        ("base", &mut d.base),
+        ("bounce", &mut d.bounce),
+        ("fast", &mut d.fast),
+        ("instant", &mut d.instant),
+        ("slow", &mut d.slow),
+        ("spring", &mut d.spring),
+    ] {
+        visit(&format!("motion-duration-{name}"), Unit::Ms, value);
+    }
+    visit("state-press-scale", Unit::Number, &mut theme.press_scale);
+    let s = &mut theme.state;
+    visit("state-hover-wash", Unit::Number, &mut s.hover_wash);
+    visit(
+        "state-control-press-scale",
+        Unit::Number,
+        &mut s.control_press_scale,
+    );
+    visit("state-lift", Unit::Px, &mut s.lift);
+    visit(
+        "state-disabled-opacity",
+        Unit::Number,
+        &mut s.disabled_opacity,
+    );
+    visit("touch-target", Unit::Px, &mut s.touch_target);
+    let ds = &mut theme.densities;
+    for (set, d) in [
+        ("compact", &mut ds.mouse),
+        ("pad", &mut ds.pad),
+        ("touch", &mut ds.touch),
+    ] {
+        for (field, value) in density_fields(d) {
+            visit(&format!("density-{set}-{field}"), Unit::Px, value);
+        }
+    }
+    let m = &mut theme.motion;
+    for (name, spring) in [
+        ("ui", &mut m.ui),
+        ("panel", &mut m.panel),
+        ("emphasis", &mut m.emphasis),
+        ("playful", &mut m.playful),
+    ] {
+        visit(
+            &format!("motion-named-{name}-duration"),
+            Unit::Ms,
+            &mut spring.duration_ms,
+        );
+        visit(
+            &format!("motion-named-{name}-bounce"),
+            Unit::Number,
+            &mut spring.bounce,
+        );
+    }
+    visit("motion-named-enter-duration", Unit::Ms, &mut m.enter_ms);
+    visit("motion-named-exit-duration", Unit::Ms, &mut m.exit_ms);
+}
+
+/// A density's sizes by their CSS names.
+fn density_fields(d: &mut crate::Density) -> [(&'static str, &mut f32); 7] {
+    [
+        ("control-sm", &mut d.control_sm),
+        ("control-md", &mut d.control_md),
+        ("control-lg", &mut d.control_lg),
+        ("row", &mut d.row),
+        ("header", &mut d.header),
+        ("gutter", &mut d.gutter),
+        ("section", &mut d.section),
+    ]
+}
+
+/// The eases the theme reads from the root CSS tokens.
+fn eases(theme: &mut Theme, mut visit: impl FnMut(&str, &mut crate::motion::Ease)) {
+    for (name, bezier) in [
+        ("motion-easing-out", &mut theme.ease_out),
+        ("motion-easing-exit", &mut theme.ease_exit),
+    ] {
+        let mut ease = crate::motion::Ease::CubicBezier(*bezier);
+        visit(name, &mut ease);
+        if let crate::motion::Ease::CubicBezier(b) = ease {
+            *bezier = b;
+        }
+    }
+    visit("motion-named-enter-easing", &mut theme.motion.enter_ease);
+    visit("motion-named-exit-easing", &mut theme.motion.exit_ease);
+}
+
+/// The root tokens of a theme's numbers and eases, `--name` and value, in
+/// visiting order (a name two fields read, `space-md` of the v1 scale and
+/// the token scale, comes twice).
+fn scalar_css(theme: &Theme) -> Vec<(String, String)> {
+    let mut theme = *theme;
+    let mut out = Vec::new();
+    scalars(&mut theme, |name, unit, value| {
+        out.push((format!("--{name}"), format!("{value}{}", unit.suffix())));
+    });
+    eases(&mut theme, |name, ease| {
+        out.push((format!("--{name}"), ease.to_text()));
+    });
+    out
+}
+
+impl Theme {
+    /// The root tokens that select the density `viewport` takes: each
+    /// `--density-active-*` the input's set, which `--control-sm` …
+    /// `--section` read.
+    pub(crate) fn density_tokens(&self, viewport: &crate::Viewport) -> Vec<(String, String)> {
+        let (set, mut d) = self.active_density(viewport);
+        density_fields(&mut d)
+            .map(|(field, _)| {
+                (
+                    format!("--density-active-{field}"),
+                    format!("var(--density-{set}-{field})"),
+                )
+            })
+            .into()
+    }
+}
+
 fn palette_css(theme: &Theme) -> BTreeMap<String, String> {
     Palette::NAMES
         .iter()
@@ -194,16 +355,38 @@ impl Ui {
                     .expect("configured role fits");
             }
         }
-        lengths(&mut self.env.theme, |name, target| {
+        scalars(&mut self.env.theme, |name, unit, target| {
             if let Some(Some(value)) = root.get(&format!("--{name}"))
-                && let Ok(value) = crate::doc::calc::reduce(value)
-                && let Some(value) = value
-                    .strip_suffix("px")
-                    .and_then(|v| v.trim().parse::<f32>().ok())
+                && let Some(value) = unit.read(value)
             {
                 *target = value;
             }
         });
+        eases(&mut self.env.theme, |name, target| {
+            if let Some(Some(value)) = root.get(&format!("--{name}"))
+                && let Some(ease) = crate::motion::Ease::from_text(value.trim())
+                    .or_else(|| crate::motion::Ease::from_css(value))
+            {
+                *target = ease;
+            }
+        });
+        // `--control-sm` … `--section` are the input's density: a root
+        // rule that sets one sets that density's.
+        let viewport = self.env.viewport;
+        let theme = &mut self.env.theme;
+        let (set, _) = theme.active_density(&viewport);
+        let active = match set {
+            "pad" => &mut theme.densities.pad,
+            "touch" => &mut theme.densities.touch,
+            _ => &mut theme.densities.mouse,
+        };
+        for (field, target) in density_fields(active) {
+            if let Some(Some(value)) = root.get(&format!("--{field}"))
+                && let Some(value) = Unit::Px.read(value)
+            {
+                *target = value;
+            }
+        }
         let read_step = |name: &str, step: &mut TypeStep| {
             let value = |field: &str| {
                 root.get(&format!("--type-{name}-{field}"))
@@ -276,21 +459,19 @@ impl Ui {
 
 impl crate::ui::Style {
     pub(super) fn write_theme_tokens(&mut self, theme: Theme, env: &crate::ui::Env) {
-        let mut baseline = Theme::new(theme.scheme);
+        let baseline = Theme::new(theme.scheme);
         let mut old = palette_css(&baseline);
-        lengths(&mut baseline, |name, value| {
-            old.insert(format!("--{name}"), format!("{value}px"));
-        });
+        for (name, value) in scalar_css(&baseline) {
+            old.entry(name).or_insert(value);
+        }
         let mut values = palette_css(&theme);
-        let mut theme = theme;
-        lengths(&mut theme, |name, value| {
-            let name = format!("--{name}");
-            let value = format!("{value}px");
-            if old.get(&name) != Some(&value) {
-                values.insert(name, value);
-            }
-        });
         values.retain(|name, value| old.get(name) != Some(value));
+        // Of a name two fields read, the first that differs is written.
+        for (name, value) in scalar_css(&theme) {
+            if old.get(&name) != Some(&value) {
+                values.entry(name).or_insert(value);
+            }
+        }
         self.root_tokens = values.into_iter().collect();
         self.root_type_tokens = Breakpoint::ALL.map(|bp| {
             let baseline = typography(&Theme::new(theme.scheme), bp, &env.fonts);
