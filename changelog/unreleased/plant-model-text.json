@@ -1,0 +1,7 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"type model","summary":"A `plant` block grows a tree, a shrub or a flower from numbers and a seed: a trunk and up to three levels of branches, leaves and flowers in any colours, cooked with the wind's pivots and anchors so og.Model.sway bends it under og.Wind. The models guide (§3) gives the keys and four kinds to start from."},
+    {"member":"type model","summary":"A material's `translucency` and `domeNormals` make it a leaf's: drawn from both faces, with light through it and shading by its canopy's dome. A glTF material states them as KHR_materials_diffuse_transmission and extras.ogFoliage.domeNormals; cooked models draw with both, so a project's models cook again."}
+  ]
+}

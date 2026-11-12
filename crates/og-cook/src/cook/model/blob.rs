@@ -180,6 +180,8 @@ pub fn cook(
             name_offset,
             name_len,
             unlit: super::ext::unlit(&src.json, m.index().unwrap_or(usize::MAX)) as u32,
+            translucency: super::impostor::diffuse_transmission(&m).unwrap_or(0.0),
+            dome_normals: super::impostor::dome_normals(&m),
             ..Default::default()
         });
         let row = materials.last_mut().expect("pushed");

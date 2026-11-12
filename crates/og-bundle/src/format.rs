@@ -391,7 +391,8 @@ row!(
     /// (og-render's `PhysicalExtensions`). Texture fields index the model's
     /// `textures` table ([`NONE`] when absent). The last material of every
     /// model is the default one primitives without a material use.
-    MaterialRow, "og.ModelMaterial", 3 {
+    /// Version 4 added `translucency` and `dome_normals`.
+    MaterialRow, "og.ModelMaterial", 4 {
         base_r: f32, base_g: f32, base_b: f32, base_a: f32,
         emissive_r: f32, emissive_g: f32, emissive_b: f32,
         metallic: f32,
@@ -452,6 +453,15 @@ row!(
         normal_offset_x: f32, normal_offset_y: f32, normal_scale_x: f32, normal_scale_y: f32, normal_rotation: f32,
         emissive_offset_x: f32, emissive_offset_y: f32, emissive_scale_x: f32, emissive_scale_y: f32, emissive_rotation: f32,
         occlusion_offset_x: f32, occlusion_offset_y: f32, occlusion_scale_x: f32, occlusion_scale_y: f32, occlusion_rotation: f32,
+        /// How much light passes through to the far side (0..1, a leaf):
+        /// `KHR_materials_diffuse_transmission`'s factor, or 0.5 for a
+        /// double-sided alpha-masked material (a leaf card), as the
+        /// model's impostor is baked.
+        translucency: f32,
+        /// How far a leaf's normals turn to its canopy's dome (0..1; the
+        /// glTF material's `extras.ogFoliage.domeNormals`): one soft
+        /// crown from many flat leaves. It needs the primitives' foliage.
+        dome_normals: f32,
     }
 );
 

@@ -452,6 +452,13 @@ impl UncookedGltf {
                 occlusion_texture: tex(self, &m["occlusionTexture"], LINEAR)?,
                 physical: PhysicalExtensions::default(),
                 unlit: ext.get("KHR_materials_unlit").is_some(),
+                // A leaf, as the cook reads one.
+                translucency: ext
+                    .get("KHR_materials_diffuse_transmission")
+                    .map_or(0.0, |t| {
+                        num(t, "diffuseTransmissionFactor", 0.0).clamp(0.0, 1.0)
+                    }),
+                dome_normals: num(&m["extras"]["ogFoliage"], "domeNormals", 0.0).clamp(0.0, 1.0),
                 uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
             };
             self.materials.push(material);
@@ -475,6 +482,8 @@ impl UncookedGltf {
             occlusion_texture: None,
             physical: PhysicalExtensions::default(),
             unlit: false,
+            translucency: 0.0,
+            dome_normals: 0.0,
             uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
         });
         Ok(())

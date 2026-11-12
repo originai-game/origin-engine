@@ -69,6 +69,70 @@
 //! mesh under several nodes, which the renderer draws instanced. A mirrored
 //! placement (`mirror`, or a negative scale) is baked into its own mesh
 //! with its triangles turned, as mergeGeometries bakes one.
+//!
+//! A `plant` block grows a tree, a shrub or a flower from numbers and a
+//! seed ([`og_geom::plant`]) instead of parts: its wood, and its leaves
+//! and petals in vertex colours, as two primitives of one mesh, each
+//! vertex with the wind's pivot and anchor (`_OG_PIVOT`, `_OG_ANCHOR`), so
+//! `og.Model.sway` bends it under `og.Wind`. A model grows one plant, at
+//! its root (the wind bends a model as one tree).
+//!
+//! ```text
+//! plant "oak" {
+//!   seed 3                       # another seed: another tree of this kind
+//!   growth deciduous             # or evergreen: a leader and shortening boughs
+//!   levels 3                     # levels of branches past the trunk, 0 to 3
+//!   force 0 1 0 0.01             # a direction the limbs bend to, and how fast
+//!   barkColor 0.13 0.085 0.05    # or material "<name>"
+//!   trunk {                      # then branch1, branch2, branch3
+//!     length 7                   # metres
+//!     radius 0.3                 # metres; a branch's: a share of its parent's
+//!     sections 10                # rings along it
+//!     segments 8                 # sides round it
+//!     taper 0.7                  # how much radius is gone by its end
+//!     gnarliness 0.05            # how far each section wanders (radians)
+//!     twist 0                    # the turn round its axis each section
+//!     children 7                 # branches it grows
+//!   }
+//!   branch1 {
+//!     angle 60                   # from its parent (degrees)
+//!     start 0.4                  # where along its parent the first may grow
+//!   }
+//!   leaves {                     # none without the block
+//!     shape blade                # or card, cross: quads for a leaf texture
+//!     count 60                   # along each last-level branch
+//!     start 0.1                  # the part of the branch they grow along
+//!     end 1
+//!     angle 45                   # from the branch (degrees)
+//!     facing 0.8                 # how far their faces turn to the sky
+//!     size 0.3                   # a leaf's length (m)
+//!     width 0.55                 # as a share of its length
+//!     sizeVariance 0.4
+//!     color 0.09 0.24 0.04       # each leaf one between the two (linear)
+//!     color2 0.17 0.33 0.06
+//!     colorVariation 0.3
+//!     translucency 0.5           # light through a leaf, and
+//!     domeNormals 0.6            # its shading by the canopy's dome; or
+//!                                # material "<name>" with those keys
+//!   }
+//!   flowers {                    # none without the block
+//!     share 0.8                  # of the last-level branch ends
+//!     count 1                    # more along each such branch
+//!     petals 5
+//!     size 0.085                 # a petal's length (m)
+//!     width 0.75
+//!     cup 25                     # 0 flat as a daisy, 60 a tulip (degrees)
+//!     color 0.9 0.25 0.4
+//!     color2 1 0.6 0.7
+//!     centerColor 1 0.7 0.05
+//!   }
+//! }
+//! ```
+//!
+//! A material's `translucency` (0 to 1) is glTF's
+//! `KHR_materials_diffuse_transmission` and its `domeNormals` (0 to 1)
+//! `extras.ogFoliage.domeNormals`: a material with either is a leaf's,
+//! drawn from both faces.
 
 use super::vox::Bin;
 use glam::{DQuat, DVec2, DVec3};
@@ -913,6 +977,248 @@ fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Resul
     .map_err(|e| format!("{what}: {}", e.replacen("part 0: ", "", 1)))
 }
 
+// ── plants ──────────────────────────────────────────────────────────────────
+
+/// glTF's extension for light that crosses a thin surface: a leaf's
+/// translucency (the cook's `impostor::translucency` and the cooked
+/// material read its factor).
+const DIFFUSE_TRANSMISSION: &str = "KHR_materials_diffuse_transmission";
+
+/// A `plant` block's levels of branches, by their block's name.
+const PLANT_LEVELS: [&str; og_geom::plant::LEVELS] = ["trunk", "branch1", "branch2", "branch3"];
+
+/// What a `plant` block draws with, beside its meshes.
+struct PlantLook {
+    /// The wood's material by name, else one of `bark_color`.
+    wood: Option<(String, usize)>,
+    bark_color: DVec3,
+    /// The leaves' and flowers' material by name, else one that shows
+    /// their vertex colours from both sides with `translucency` and
+    /// `dome_normals`.
+    leaf: Option<(String, usize)>,
+    translucency: f64,
+    dome_normals: f64,
+}
+
+fn unit_field(f: &Fields, k: &str, default: f64) -> Result<f64, String> {
+    let v = f.num(k, default)?;
+    if !(0.0..=1.0).contains(&v) {
+        return Err(format!("{}.{k} is 0 to 1, got {v}", f.what));
+    }
+    Ok(v)
+}
+
+/// A linear colour: three numbers, none negative.
+fn color_field(f: &Fields, k: &str, default: [f32; 3]) -> Result<[f32; 3], String> {
+    let c = f.vec3(k, DVec3::from(default.map(f64::from)))?;
+    if c.min_element() < 0.0 {
+        return Err(format!(
+            "{}.{k} is a linear colour, no component under 0",
+            f.what
+        ));
+    }
+    Ok(c.as_vec3().to_array())
+}
+
+fn word_of<'a>(f: &Fields<'a>, k: &str, words: &[&str]) -> Result<Option<&'a str>, String> {
+    let Some(e) = f.get(k) else { return Ok(None) };
+    match e.values.as_slice() {
+        [v] if v.as_word().is_some_and(|w| words.contains(&w)) => Ok(v.as_word()),
+        _ => Err(at(e, format!("is one of: {}", words.join(", ")))),
+    }
+}
+
+/// A `plant` block as og-geom's [`og_geom::Plant`] (its fields by their
+/// names, a level a block: `trunk`, `branch1` to `branch3`; `leaves` and
+/// `flowers` only when their block is there) and its look.
+fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
+    use og_geom::plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant};
+    let mut keys = vec![
+        "seed",
+        "growth",
+        "levels",
+        "force",
+        "leaves",
+        "flowers",
+        "material",
+        "barkColor",
+    ];
+    keys.extend(PLANT_LEVELS);
+    let f = Fields::new(b, "plant", &keys)?;
+    let d = Plant::default();
+    let mut level = d.level;
+    for (k, l) in PLANT_LEVELS.iter().zip(&mut level) {
+        let Some(lb) = f.block(k)? else { continue };
+        let what = format!("plant.{k}");
+        let mut keys = vec![
+            "length",
+            "radius",
+            "sections",
+            "segments",
+            "taper",
+            "gnarliness",
+            "twist",
+            "children",
+        ];
+        if *k != "trunk" {
+            keys.extend(["angle", "start"]);
+        }
+        let lf = Fields::new(lb, &what, &keys)?;
+        *l = Level {
+            length: lf.size("length", l.length)?,
+            radius: lf.size("radius", l.radius)?,
+            sections: lf.uint("sections", l.sections, 1, 64)?,
+            segments: lf.uint("segments", l.segments, 3, 32)?,
+            taper: unit_field(&lf, "taper", l.taper)?,
+            gnarliness: lf.num("gnarliness", l.gnarliness)?,
+            twist: lf.num("twist", l.twist)?,
+            children: lf.uint("children", l.children, 0, 400)?,
+            angle: lf.num("angle", l.angle)?,
+            start: unit_field(&lf, "start", l.start)?,
+        };
+    }
+    let (force_direction, force_strength) = match f.get("force") {
+        Some(e) => {
+            let v = exactly(e, 4)?;
+            (DVec3::new(v[0], v[1], v[2]), v[3])
+        }
+        None => (d.force_direction, d.force_strength),
+    };
+    let mut look = PlantLook {
+        wood: None,
+        bark_color: f.vec3("barkColor", DVec3::new(0.13, 0.085, 0.05))?,
+        leaf: None,
+        translucency: 0.5,
+        dome_normals: 0.6,
+    };
+    if look.bark_color.min_element() < 0.0 {
+        return Err("plant.barkColor is a linear colour, no component under 0".into());
+    }
+    let named = |e: &Entry| -> Result<(String, usize), String> {
+        Ok((e.string(0).map_err(|x| at(e, x))?.to_string(), e.line))
+    };
+    look.wood = f.get("material").map(named).transpose()?;
+    let leaves = match f.block("leaves")? {
+        Some(lb) => {
+            let lf = Fields::new(
+                lb,
+                "plant.leaves",
+                &[
+                    "shape",
+                    "count",
+                    "start",
+                    "end",
+                    "angle",
+                    "facing",
+                    "size",
+                    "width",
+                    "sizeVariance",
+                    "color",
+                    "color2",
+                    "colorVariation",
+                    "material",
+                    "translucency",
+                    "domeNormals",
+                ],
+            )?;
+            let l = Leaves::default();
+            look.leaf = lf.get("material").map(named).transpose()?;
+            for k in ["translucency", "domeNormals"] {
+                if let (Some(_), Some(e)) = (&look.leaf, lf.get(k)) {
+                    return Err(at(
+                        e,
+                        "is its material's when the leaves name one (the same key in the material block)",
+                    ));
+                }
+            }
+            look.translucency = unit_field(&lf, "translucency", look.translucency)?;
+            look.dome_normals = unit_field(&lf, "domeNormals", look.dome_normals)?;
+            let color = color_field(&lf, "color", l.color)?;
+            let start = unit_field(&lf, "start", l.start)?;
+            let end = unit_field(&lf, "end", l.end)?;
+            if let (true, Some(e)) = (end < start, lf.get("end")) {
+                return Err(at(e, "is before start: the leaves grow from start to end"));
+            }
+            Some(Leaves {
+                shape: match word_of(&lf, "shape", &["blade", "card", "cross"])? {
+                    Some("card") => LeafShape::Card,
+                    Some("cross") => LeafShape::Cross,
+                    _ => LeafShape::Blade,
+                },
+                count: lf.uint("count", l.count, 0, 2000)?,
+                start,
+                end,
+                angle: lf.num("angle", l.angle)?,
+                facing: unit_field(&lf, "facing", l.facing)?,
+                size: lf.size("size", l.size)?,
+                width: lf.size("width", l.width)?,
+                size_variance: unit_field(&lf, "sizeVariance", l.size_variance)?,
+                color,
+                // One colour named: every leaf that colour.
+                color2: color_field(
+                    &lf,
+                    "color2",
+                    if lf.get("color").is_some() {
+                        color
+                    } else {
+                        l.color2
+                    },
+                )?,
+                color_variation: unit_field(&lf, "colorVariation", f64::from(l.color_variation))?
+                    as f32,
+            })
+        }
+        None => None,
+    };
+    let flowers = match f.block("flowers")? {
+        Some(fb) => {
+            let ff = Fields::new(
+                fb,
+                "plant.flowers",
+                &[
+                    "share",
+                    "count",
+                    "petals",
+                    "size",
+                    "width",
+                    "cup",
+                    "color",
+                    "color2",
+                    "centerColor",
+                ],
+            )?;
+            let l = Flowers::default();
+            let color = color_field(&ff, "color", l.color)?;
+            Some(Flowers {
+                share: unit_field(&ff, "share", l.share)?,
+                count: ff.uint("count", l.count, 0, 200)?,
+                petals: ff.uint("petals", l.petals, 1, 32)?,
+                size: ff.size("size", l.size)?,
+                width: ff.size("width", l.width)?,
+                cup: ff.num("cup", l.cup)?,
+                color,
+                color2: color_field(&ff, "color2", color)?,
+                center_color: color_field(&ff, "centerColor", l.center_color)?,
+            })
+        }
+        None => None,
+    };
+    let plant = Plant {
+        seed: f.uint("seed", d.seed, 0, u32::MAX)?,
+        growth: match word_of(&f, "growth", &["deciduous", "evergreen"])? {
+            Some("evergreen") => Growth::Evergreen,
+            _ => Growth::Deciduous,
+        },
+        levels: f.uint("levels", d.levels, 0, og_geom::plant::LEVELS as u32 - 1)?,
+        level,
+        force_direction,
+        force_strength,
+        leaves,
+        flowers,
+    };
+    Ok((plant, look))
+}
+
 // ── the model ───────────────────────────────────────────────────────────────
 
 /// A material as glTF writes it. Its maps (`map`, `normalMap`) name image
@@ -944,6 +1250,8 @@ pub(super) fn material(
             "thickness",
             "clearcoat",
             "clearcoatRoughness",
+            "translucency",
+            "domeNormals",
         ],
     )?;
     let c = f.vec3("color", DVec3::ONE)?;
@@ -1027,6 +1335,21 @@ pub(super) fn material(
             "KHR_materials_ior".into(),
             serde_json::json!({ "ior": ior }),
         );
+    }
+    // A leaf's: the light that crosses it to its far side (glTF's diffuse
+    // transmission; og-render's `foliage.translucency`).
+    let translucency = unit("translucency", f.num("translucency", 0.0)?)?;
+    if translucency > 0.0 {
+        ext.insert(
+            DIFFUSE_TRANSMISSION.into(),
+            serde_json::json!({ "diffuseTransmissionFactor": translucency }),
+        );
+    }
+    // A leaf's: how far its normals turn to the canopy's dome (og-render's
+    // `foliage.domeNormals`; it needs a plant's or a glTF's foliage).
+    let dome = unit("domeNormals", f.num("domeNormals", 0.0)?)?;
+    if dome > 0.0 {
+        m["extras"] = serde_json::json!({ "ogFoliage": { "domeNormals": dome } });
     }
     let coat = unit("clearcoat", f.num("clearcoat", 0.0)?)?;
     if coat > 0.0 {
@@ -1173,6 +1496,7 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
     // under another name draws the same mesh.
     let mut written: BTreeMap<(Vec<u32>, usize), usize> = BTreeMap::new();
     let mut drawn = 0;
+    let mut planted = false;
     let add_node = |n: serde_json::Value,
                     parent: Option<usize>,
                     nodes: &mut Vec<serde_json::Value>,
@@ -1329,6 +1653,87 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     add_node(n, pivot, &mut nodes, &mut children, &mut roots);
                 }
             }
+            // A plant grown from its numbers (og-geom's `plant`): its wood
+            // and its leaves and flowers as two primitives of one mesh,
+            // each vertex with its foliage, in the model's own space (the
+            // wind bends a model's foliage about its root and top), so
+            // unplaced and one a model.
+            "plant" => {
+                let name = name_of(e, "plant")?;
+                let b = block.ok_or_else(|| at(e, "is a block"))?;
+                if planted {
+                    return Err(at(
+                        e,
+                        "a model grows one plant (its wind is the model's): another plant is another model",
+                    ));
+                }
+                planted = true;
+                let (desc, look) = plant_desc(b).map_err(|x| format!("plant '{name}': {x}"))?;
+                let grown =
+                    og_geom::plant(&desc, detail).map_err(|x| format!("plant '{name}': {x}"))?;
+                let mut named = |m: Option<(String, usize)>,
+                                 own: serde_json::Value|
+                 -> Result<usize, String> {
+                    match m {
+                        Some((m, line)) => material_index.get(&m).copied().ok_or_else(|| {
+                            format!("line {line}: '{m}' is not a material defined above this plant")
+                        }),
+                        None => {
+                            materials.push(own);
+                            Ok(materials.len() - 1)
+                        }
+                    }
+                };
+                let wood = named(
+                    look.wood,
+                    serde_json::json!({
+                        "name": format!("{name} bark"),
+                        "pbrMetallicRoughness": {
+                            "baseColorFactor": [look.bark_color.x, look.bark_color.y, look.bark_color.z, 1.0],
+                            "metallicFactor": 0.0,
+                            "roughnessFactor": 0.9,
+                        },
+                    }),
+                )?;
+                let mut primitives = vec![write_primitive(
+                    &mut bin,
+                    &grown.wood,
+                    wood,
+                    Some((&grown.wood_wind, false)),
+                )];
+                drawn += grown.wood.triangle_count();
+                if !grown.leaves.indices.is_empty() {
+                    let mut own = serde_json::json!({
+                        "name": format!("{name} leaves"),
+                        "pbrMetallicRoughness": {
+                            "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+                            "metallicFactor": 0.0,
+                            "roughnessFactor": 0.6,
+                        },
+                        "doubleSided": true,
+                    });
+                    if look.translucency > 0.0 {
+                        own["extensions"] = serde_json::json!({
+                            DIFFUSE_TRANSMISSION: { "diffuseTransmissionFactor": look.translucency }
+                        });
+                    }
+                    if look.dome_normals > 0.0 {
+                        own["extras"] = serde_json::json!({ "ogFoliage": { "domeNormals": look.dome_normals } });
+                    }
+                    let leaf = named(look.leaf, own)?;
+                    primitives.push(write_primitive(
+                        &mut bin,
+                        &grown.leaves,
+                        leaf,
+                        Some((&grown.leaf_wind, true)),
+                    ));
+                    drawn += grown.leaves.triangle_count();
+                }
+                meshes.push(serde_json::json!({ "name": name, "primitives": primitives }));
+                let mut n = node(&name, &Placement::default());
+                n["mesh"] = (meshes.len() - 1).into();
+                add_node(n, None, &mut nodes, &mut children, &mut roots);
+            }
             // A `fracture` block: the cook cuts the built model into chunks
             // (`fracture.rs`).
             "fracture" if e.block.is_some() => {}
@@ -1343,14 +1748,14 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                     ) => {}
             k => {
                 return Err(format!(
-                    "line {}: '{k}' is not part of a model (material, pivot, part, conform off, conform character, conform effect)",
+                    "line {}: '{k}' is not part of a model (material, pivot, part, plant, conform off, conform character, conform effect)",
                     e.line
                 ));
             }
         }
     }
     if meshes.is_empty() {
-        return Err("a model needs at least one part".into());
+        return Err("a model needs at least one part or a plant".into());
     }
     // Parts without a material draw glTF's default, after the model's own.
     for m in &mut meshes {
@@ -1390,6 +1795,18 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
 
 /// One mesh's attributes in the binary chunk, as a glTF mesh.
 fn write_mesh(bin: &mut Bin, name: &str, m: &Mesh, material: usize) -> serde_json::Value {
+    serde_json::json!({ "name": name, "primitives": [write_primitive(bin, m, material, None)] })
+}
+
+/// One mesh's attributes in the binary chunk, as a glTF primitive; with
+/// `wind`, each vertex's foliage (`_OG_PIVOT`, `_OG_ANCHOR`: the cook's
+/// `read_foliage`) and whether its triangles are leaves.
+fn write_primitive(
+    bin: &mut Bin,
+    m: &Mesh,
+    material: usize,
+    wind: Option<(&[[f32; 8]], bool)>,
+) -> serde_json::Value {
     let count = m.positions.len();
     let (mut lo, mut hi) = ([f32::MAX; 3], [f32::MIN; 3]);
     for p in &m.positions {
@@ -1422,22 +1839,34 @@ fn write_mesh(bin: &mut Bin, name: &str, m: &Mesh, material: usize) -> serde_jso
             )
             .into();
     }
+    let mut vec4 = |v: &[[f32; 4]]| {
+        bin.add(
+            bytemuck::cast_slice(v),
+            Some(34962),
+            serde_json::json!({ "componentType": 5126, "count": count, "type": "VEC4" }),
+        )
+    };
     if m.colors.len() == count {
-        attributes["COLOR_0"] = bin
-            .add(
-                bytemuck::cast_slice(&m.colors),
-                Some(34962),
-                serde_json::json!({ "componentType": 5126, "count": count, "type": "VEC4" }),
-            )
-            .into();
+        attributes["COLOR_0"] = vec4(&m.colors).into();
+    }
+    if let Some((w, _)) = wind {
+        let half = |at: usize| -> Vec<[f32; 4]> {
+            w.iter()
+                .map(|v| [v[at], v[at + 1], v[at + 2], v[at + 3]])
+                .collect()
+        };
+        attributes["_OG_PIVOT"] = vec4(&half(0)).into();
+        attributes["_OG_ANCHOR"] = vec4(&half(4)).into();
     }
     let idx = bin.add(
         bytemuck::cast_slice(&m.indices),
         Some(34963),
         serde_json::json!({ "componentType": 5125, "count": m.indices.len(), "type": "SCALAR" }),
     );
-    serde_json::json!({
-        "name": name,
-        "primitives": [{ "attributes": attributes, "indices": idx, "material": material }]
-    })
+    let mut p =
+        serde_json::json!({ "attributes": attributes, "indices": idx, "material": material });
+    if matches!(wind, Some((_, true))) {
+        p["extras"] = serde_json::json!({ "ogFoliage": { "leaves": true } });
+    }
+    p
 }

@@ -12,14 +12,15 @@ default. The shapes and paths are og.Shape's and og.path's.
 ### `models §1` The file
 
 An `.ogt` under `assets/` (for example `assets/models/crate.ogt`) that starts `type model`, `version 1`,
-`---`, then three kinds of block:
+`---`, then these blocks (a plant in §3):
 
 - `material "<name>" { ... }`: glTF metallic-roughness, by three.js
   names: `color` (linear, as `baseColorFactor`), `opacity`, `metalness`,
   `roughness`, `emissive`, `emissiveIntensity`, `doubleSided`,
   `alphaTest`, `map` and `normalMap` (image files beside the model),
   `normalScale`, `transmission`, `ior`, `thickness`, `clearcoat`,
-  `clearcoatRoughness`. Unit fields are 0 to 1; an unknown key is an error.
+  `clearcoatRoughness`, and a leaf's `translucency` and `domeNormals`.
+  Unit fields are 0 to 1; an unknown key is an error.
 - `pivot "<name>" { position ...; parent "<pivot>" }`: a named node that
   animation and code find by name. A part hangs from its `pivot` (default:
   the model's root).
@@ -69,7 +70,65 @@ like any glTF. The look presets carry examples under
    the thresholds), then fix the largest error first.
 
 <a id="guide-models-3"></a>
-### `models §3` Pitfalls
+### `models §3` Plants
+
+A `plant "<name>" { ... }` block grows a tree, a shrub or a flower from
+numbers and a seed instead of parts: one a model, at its root. The cook
+makes its wood and its leaves and petals (in vertex colours, lit from both
+faces with light through them), each vertex with what the wind needs, so
+the instance sways once `og.Model.sway` is set and og.Wind blows.
+
+- The plant: `seed` (another seed is another individual of the same
+  kind), `growth` (`deciduous`, or `evergreen` for a leader with boughs
+  shortening to its top), `levels` (branch levels past the trunk, 0 to 3),
+  `force x y z strength` (the limbs bend towards the direction; a negative
+  strength droops them), `barkColor` or `material`.
+- A level, `trunk` and `branch1` to `branch3`: `length` (m), `radius` (m
+  for the trunk, a share of its parent's for a branch), `sections` and
+  `segments` (rings along it, sides round it), `taper`, `gnarliness` (how
+  far each section wanders), `twist`, `children` (the branches each one
+  grows), and for a branch `angle` from its parent (degrees) and `start`
+  (where along its parent the first may grow).
+- `leaves { ... }`: `shape` (`blade`, a pointed leaf without a texture;
+  `card` or `cross`, quads for a leaf texture through `material`), `count`
+  along each last-level branch, `start` and `end` (the part of the branch
+  they grow along), `angle`, `facing` (0 as they grow, 1 flat to the sky),
+  `size` (m), `width`, `sizeVariance`, `color` and `color2` (each leaf one
+  between the two, linear), `colorVariation`, `translucency`,
+  `domeNormals`.
+- `flowers { ... }`: `share` of the branch ends that flower, `count` more
+  along each branch, `petals`, `size` (a petal's length, m), `width`, `cup`
+  (degrees: 0 flat as a daisy, 60 a tulip), `color`, `color2`,
+  `centerColor`.
+
+Every key has a default (a small broadleaf tree of about 6 m), so start
+from the kind nearest to the plant and change what differs:
+
+| Kind | What makes it |
+|---|---|
+| Broadleaf tree (oak) | `levels 3`; trunk `length 7.4 radius 0.28 children 6`; branch1 `length 2.2 angle 54 start 0.49 children 4`; branch2 `length 2.5 angle 58 children 3`; branch3 `length 1.4 angle 32`; leaves `count 60 size 0.3 width 0.55` |
+| Conifer (pine) | `growth evergreen`, `levels 2`, `force 0 1 0 -0.004`; trunk `length 10 radius 0.21 gnarliness 0.012 children 60`; branch1 `length 4.4 radius 0.36 angle 105 start 0.22 children 9`; branch2 `length 1.5 angle 58`; leaves `count 16 size 0.24 width 0.2 facing 0.6`, dark `color 0.03 0.11 0.045` |
+| Flowering shrub | `levels 3`; trunk `length 0.05 radius 0.11 children 7` (it branches at the ground); branch1 `length 1.5 angle 21.5 start 0.53`; leaves `count 30 size 0.15 start 0`; flowers `share 0.8 count 1 size 0.085 cup 25` |
+| Flower (daisy) | `levels 0`, `force 0 1 0 0`, `barkColor 0.1 0.25 0.05` (a green stem); trunk `length 0.4 radius 0.006 gnarliness 0.02`; leaves `count 7 start 0 end 0.3 facing 1 size 0.09` (a rosette at its foot); flowers `petals 14 size 0.055 width 0.3 cup 8` |
+
+Colours make the variety: `color` and `color2` on leaves and flowers give
+autumn trees, pale grasses and flowers of any colour from the same shape,
+and three or four seeds of one kind stop a wood from repeating.
+
+A plant's triangles are mostly its leaves (`children` multiplied down
+the levels, times `count`, four triangles a blade), and leaves are never
+simplified with distance. As written above the oak is 37 000 triangles
+(34 000 of them leaves), the pine 48 000, the shrub 20 000, the daisy
+114. A plant that stands in tens or hundreds takes a lower `count` with
+a larger `size` first, then fewer `children`; the cook refuses one past
+20 000 branches or 120 000 leaves and petals.
+
+og.Wind's `strength` is lean per metre of height: 0.05 to 0.1 moves a
+10 m tree as a breeze does, and what suits grass (0.5 and up) lays a tree
+flat. Give trees their own lower `sway` when one wind blows over both.
+
+<a id="guide-models-4"></a>
+### `models §4` Pitfalls
 
 - Colours are linear. An sRGB colour picked from a reference reads too
   light: convert it (or take the palette's value from the look).
@@ -80,3 +139,7 @@ like any glTF. The look presets carry examples under
   model whose limbs hang from pivots and move by code or clips.
 - The cook's mesh LOD chain and raycast BVH treat it as any glTF: a
   `type model` needs no export step.
+- A model grows one plant: the wind bends a model as one tree about its
+  root, so two plants in one file are two files.
+- Leaves that name a `material` take `translucency` and `domeNormals` from
+  that material block; without either the leaves draw one face, as bark.
