@@ -13,8 +13,8 @@ use super::engine::{Engine, engine, running};
 use super::extract::RenderState;
 use super::fx::{f, rows};
 use super::wire::{
-    self, BonePose, PhysicsPhase, PhysicsStats, RagdollBoneDesc, RagdollRigDesc, SoftBodyPoints,
-    ToJson, WheelPose,
+    self, BonePose, FromJson, PhysicsPhase, PhysicsStats, RagdollBoneDesc, RagdollRigDesc,
+    SoftBodyPoints, ToJson, WheelPose, record,
 };
 use glam::{Mat4, Quat, Vec3};
 use og_ecs::{Entity, World};
@@ -336,9 +336,9 @@ impl<'a> Reader<'a> {
         if !c.has_resource_id(id).unwrap_or(false) {
             return Ok(glam::DVec3::ZERO);
         }
-        let v = layout.decode(&c.resource_bytes(id).map_err(|e| e.to_string())?);
-        let f = |k: &str| v[k].as_f64().unwrap_or(0.0);
-        Ok(glam::DVec3::new(f("x"), f("y"), f("z")))
+        let o: record::WorldOrigin =
+            layout.read(&c.resource_bytes(id).map_err(|e| e.to_string())?)?;
+        Ok(glam::DVec3::new(o.x, o.y, o.z))
     }
 
     fn time(&self) -> og_core::Time {
@@ -396,20 +396,18 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
     let zero = r.zero(origin.as_ref())?;
     Ok(rows
         .into_iter()
-        .filter(|(_, v)| v["geometry"].as_f64().unwrap_or(0.0) as u64 == 0)
         .filter_map(|(id, v)| {
+            let w = record::Water::from_json(&v).ok()?;
+            if w.geometry != 0 {
+                return None;
+            }
             let position = r.position(Entity::from_bits(id))?;
-            let pair = |k: &str, d: f32| super::fx::vec2(&v[k], glam::Vec2::splat(d));
-            let sea = og_core::ocean::Ocean::new(
-                pair("wind", 0.0),
-                f(&v, "swell", 1.0),
-                f(&v, "choppiness", 0.6),
-            );
+            let sea = og_core::ocean::Ocean::new(w.wind, w.swell, w.choppiness);
             Some(og_physics::WaterBody {
                 entity: id,
                 position,
-                size: pair("size", 16.0),
-                segments: f(&v, "segments", 1.0).max(1.0) as u32,
+                size: w.size,
+                segments: (w.segments as f32).max(1.0) as u32,
                 shore: super::seabed::coast(
                     &eng.render.borrow().terrain,
                     terrain.as_ref(),

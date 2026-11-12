@@ -8,6 +8,7 @@
 //! step and render times. Nothing here changes the world.
 
 use super::codec::{Layout, RecordKind};
+use crate::wire::FromJson;
 use og_ecs::World;
 use og_probe::UiTree;
 use serde_json::{Value, json};
@@ -47,10 +48,10 @@ pub(crate) fn pulse(engine: u32, world: &World) -> Result<Value, String> {
     let time = world.time();
     let scale = world.time_scale();
     let cam = camera(world, &st.layouts);
-    let num = |v: &Value, k: &str| v[k].as_f64().unwrap_or(0.0);
-    let kick = &cam["kick"];
+    let cam = crate::wire::record::Camera::from_json(&cam).ok();
+    let kick = cam.as_ref().map_or(glam::Vec3::ZERO, |c| c.kick);
     let kick_len =
-        (num(kick, "x").powi(2) + num(kick, "y").powi(2) + num(kick, "z").powi(2)).sqrt();
+        (f64::from(kick.x).powi(2) + f64::from(kick.y).powi(2) + f64::from(kick.z).powi(2)).sqrt();
     let (floating, spawned, texts, ghosts, tweens) = match st.feel.as_ref() {
         Some(f) => {
             let s = f.shared.lock().unwrap_or_else(|e| e.into_inner());
@@ -87,8 +88,11 @@ pub(crate) fn pulse(engine: u32, world: &World) -> Result<Value, String> {
     for (e, name) in world.names() {
         if let Ok(t) = world.get::<og_audio::Transform>(e) {
             let anim = flipbook
-                .and_then(|(id, layout)| world.get_bytes(e, id).ok().map(|b| layout.decode(&b)))
-                .map_or(-1.0, |f| num(&f, "clip") * 1000.0 + num(&f, "frame"));
+                .and_then(|(id, layout)| {
+                    let b = world.get_bytes(e, id).ok()?;
+                    layout.read::<crate::wire::record::Flipbook>(&b).ok()
+                })
+                .map_or(-1.0, |f| f64::from(f.clip) * 1000.0 + f64::from(f.frame));
             named.push(json!([
                 name,
                 round(t.position.x),
@@ -128,8 +132,8 @@ pub(crate) fn pulse(engine: u32, world: &World) -> Result<Value, String> {
         "tick": time.tick,
         "scale": round(scale.scale),
         "hitStop": scale.hit_stop,
-        "trauma": round(num(&cam, "trauma") as f32),
-        "punch": round(num(&cam, "punch") as f32),
+        "trauma": round(cam.as_ref().map_or(0.0, |c| c.trauma)),
+        "punch": round(cam.as_ref().map_or(0.0, |c| c.punch)),
         "kick": round(kick_len as f32),
         "floating": floating,
         "spawned": spawned,

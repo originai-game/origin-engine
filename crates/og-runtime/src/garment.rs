@@ -240,9 +240,10 @@ pub(crate) fn schedule(
                     let Ok(bytes) = ctx.get_bytes(e, model_id) else {
                         continue;
                     };
-                    let asset = layout.decode(&bytes)["asset"]
-                        .as_f64()
-                        .map_or(0, |x| x as u64);
+                    let Ok(model) = layout.read::<crate::wire::record::Model>(&bytes) else {
+                        continue;
+                    };
+                    let asset = model.asset;
                     let Some(out) = anim.output(e) else {
                         continue;
                     };
