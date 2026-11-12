@@ -217,6 +217,16 @@ and the dither cells.
   paintCanvasStrength's grain only darkens.
 - Turbulence uses a noise about a hundred canvas texels across, plus one
   of half that, so a wash is lighter here and darker there.
+- Dilution is the water in the wash. A lit 3D scene has darks no
+  watercolour holds: deep shade and saturated foliage read as oil paint
+  under the strokes. watercolorDilution thins the pigment over
+  watercolorPaper (a layer that much less dense, by Beer and Lambert), so
+  the darks lift towards the paper, hues keep and the paper stays the
+  paper. 0.3 to 0.45 suits a daylight scene; above 0.6 only the
+  silhouettes remain. Raise watercolorEdgeDarkening with it when shapes
+  lose their edge.
+- A rim pools only where there is pigment: the side of a boundary on
+  the paper or on a pale wash (the sky behind a branch) stays clean.
 
 ## 11. Depth bands
 

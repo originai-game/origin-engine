@@ -21,6 +21,7 @@ Stylise {
   watercolorTurbulence 0.4
   watercolorDryBrush 0.4
   watercolorWobble 1.0
+  watercolorDilution 0.4
 }
 RenderSettings {
   exposure 1.15

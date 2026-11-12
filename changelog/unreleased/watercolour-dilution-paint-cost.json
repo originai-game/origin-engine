@@ -1,0 +1,18 @@
+{
+  "added": [
+    {
+      "member": "Stylise.watercolorDilution",
+      "summary": "The watercolour wash thinned with water: the pigment over watercolorPaper is that much less dense, so a lit scene's heavy darks lift towards the paper, hues keep and the paper stays the paper. 0 (the default) leaves the frame as lit. The watercolor-wash look sets 0.4, so its frames are paler than before."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "rendering: Stylise.paintRadius",
+      "summary": "The paint pass reads its structure tensor from nine Sobel windows of four bilinear taps and, where a stroke is at least 1.5 pixels across, its Kuwahara taps as 2 x 2 blocks, instead of every pixel of both windows. A forest at 1280 x 720 with paintRadius 3 on an Apple M4 Pro: paint 7.8 -> 2.0 ms. Painted frames differ slightly (strokes over fine texture are a little softer)."
+    },
+    {
+      "member": "rendering: Stylise.watercolorEdgeDarkening",
+      "summary": "A wash's rim pools only where there is pigment: the side of a boundary on the paper or a pale wash (the sky behind branches) no longer gets a grey line. 2D art painted by the cook is re-cooked with the same rule."
+    }
+  ]
+}

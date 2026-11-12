@@ -393,6 +393,10 @@ pub struct Watercolor {
     pub dry_brush: f32,
     /// How far the paper's relief displaces the frame, logical pixels.
     pub wobble: f32,
+    /// How far the wash is thinned with water, 0 to 1: the pigment's
+    /// density scaled by one minus this, so the darks lift towards the
+    /// paper.
+    pub dilution: f32,
     /// The paper's colour (linear), what the wash thins towards.
     pub paper: [f32; 3],
 }
@@ -404,12 +408,14 @@ impl Watercolor {
         turbulence: 0.0,
         dry_brush: 0.0,
         wobble: 0.0,
+        dilution: 0.0,
         paper: [1.0; 3],
     };
 
     /// Whether the wash draws at all.
     pub fn active(&self) -> bool {
         self.edge_darkening > 0.0
+            || self.dilution > 0.0
             || self.granulation > 0.0
             || self.turbulence > 0.0
             || self.dry_brush > 0.0
@@ -428,6 +434,10 @@ impl Watercolor {
         self.edge_darkening > 0.0 || self.dry_brush > 0.0
     }
 }
+
+/// The most [`Watercolor::dilution`] thins a wash: past it the frame is
+/// the paper.
+pub const MAX_WASH_DILUTION: f32 = 0.9;
 
 /// [`Paint::detail`]'s default: detail keeps its shape fully.
 pub const DEFAULT_PAINT_DETAIL: f32 = 1.0;

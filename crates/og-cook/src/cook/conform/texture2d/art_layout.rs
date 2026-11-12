@@ -101,6 +101,7 @@ pub(in crate::cook) fn paint_of(full: &LookFile, assets: &Path) -> Result<Paint,
             turbulence: num(full, "Stylise", "watercolorTurbulence"),
             dry_brush: num(full, "Stylise", "watercolorDryBrush"),
             wobble: num(full, "Stylise", "watercolorWobble"),
+            dilution: num(full, "Stylise", "watercolorDilution"),
             paper,
         },
     };

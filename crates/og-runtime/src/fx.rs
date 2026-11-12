@@ -827,6 +827,7 @@ fn stylise(
                 turbulence: f(&s, "watercolorTurbulence", 0.0),
                 dry_brush: f(&s, "watercolorDryBrush", 0.0),
                 wobble: f(&s, "watercolorWobble", 0.0),
+                dilution: f(&s, "watercolorDilution", 0.0),
                 paper: rgb(&s["watercolorPaper"], Vec3::ONE),
             },
         };

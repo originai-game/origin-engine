@@ -55,6 +55,7 @@ struct Stylise {
   wash_paper: vec4<f32>,      // xyz: the wash's paper colour (linear), w: wobble (logical pixels)
   print: vec4<f32>,           // x: halftone mode (0 one ink, 1 cmyk), y: misregistration (logical pixels), z: halftone region (0 every tone, 1 shade, 2 highlight), w: 1 hatching keeps the colour under its strokes
   hatching_paper: vec4<f32>,  // rgb: the paper the hatching lies on (linear; white without hatching)
+  wash2: vec4<f32>,           // x: the wash's dilution (0 as painted, towards 1 thinned to the paper)
 };
 @group(0) @binding(0) var source: texture_2d<f32>;
 @group(0) @binding(1) var clamp_sampler: sampler;
@@ -316,12 +317,15 @@ fn gradient(px: vec2<i32>) -> vec2<f32> {
 
 // The painterly filter (stylise.rs `Paint`), as the cook's texel-space
 // paint (og-cook conform/texture2d/paint.rs, the same algorithm and
-// constants, so the frame and the cook agree):
+// constants, so the frame and the cook agree). The cook reads every
+// texel; the frame reads the same windows through the bilinear sampler,
+// a quarter of the taps or fewer, which is what a frame can pay:
 //
 // 1. the structure tensor: Sobel derivatives of the colour, their outer
 //    products summed over the channels and smoothed by a Gaussian (sigma
-//    2, radius 3): the stroke's direction and how coherent the structure
-//    is (Kyprianidis, Kang and Döllner 2009);
+//    2) over nine windows two pixels apart, each from four bilinear taps:
+//    the stroke's direction and how coherent the structure is
+//    (Kyprianidis, Kang and Döllner 2009);
 // 2. the anisotropic Kuwahara filter with eight sectors and polynomial
 //    weights (Kyprianidis 2010), its ellipse along the stroke, squeezed
 //    across it by the anisotropy: a port of Garrett Gunnell's (Acerola)
@@ -336,12 +340,14 @@ fn gradient(px: vec2<i32>) -> vec2<f32> {
 //    source itself at 1;
 // 4. pigment pooling as a density at the rims of regions (MNPR,
 //    Montesdeoca et al. 2018), bleeding, and the canvas.
-const PAINT_TENSOR_RADIUS: i32 = 3;
+const PAINT_TENSOR_STEP: f32 = 2.0;
 const PAINT_TENSOR_SIGMA: f32 = 2.0;
 const PAINT_SHARPNESS: f32 = 8.0;
 const PAINT_HARDNESS: f32 = 8.0;
 const PAINT_ZERO_CROSSING: f32 = 0.58;
 const PAINT_ALPHA_FLOOR: f32 = 0.25;
+// The ellipse's narrow axis, in pixels, from which its taps are 2 x 2 blocks.
+const PAINT_BLOCK_AXIS: f32 = 1.5;
 // The widest ellipse in pixels: Paint::radius is at most 8 and anisotropy
 // stretches an axis at most twice.
 const PAINT_REACH: i32 = 16;
@@ -355,23 +361,23 @@ struct PaintFrame {
 };
 
 fn paint_frame(px: vec2<i32>) -> PaintFrame {
-  // The 9 x 9 block the 7 x 7 Sobel window reads, loaded once.
-  var block: array<vec3<f32>, 81>;
-  for (var j = -4; j <= 4; j++) {
-    for (var i = -4; i <= 4; i++) {
-      block[(j + 4) * 9 + i + 4] = load(px + vec2<i32>(i, j));
-    }
-  }
+  // Nine Sobel windows two pixels apart, each from four bilinear taps on
+  // its texels' corners: the taps to the right less those to the left are
+  // the 3 x 3 Sobel's x over 4 exactly, those below less those above its y.
+  let centre = vec2<f32>(px) + 0.5;
   var t = vec3<f32>(0.0);
   var weight = 0.0;
-  for (var j = -PAINT_TENSOR_RADIUS; j <= PAINT_TENSOR_RADIUS; j++) {
-    for (var i = -PAINT_TENSOR_RADIUS; i <= PAINT_TENSOR_RADIUS; i++) {
-      let k = (j + 4) * 9 + i + 4;
-      let sx = ((block[k - 9 + 1] + 2.0 * block[k + 1] + block[k + 9 + 1])
-        - (block[k - 9 - 1] + 2.0 * block[k - 1] + block[k + 9 - 1])) * 0.25;
-      let sy = ((block[k + 9 - 1] + 2.0 * block[k + 9] + block[k + 9 + 1])
-        - (block[k - 9 - 1] + 2.0 * block[k - 9] + block[k - 9 + 1])) * 0.25;
-      let g = exp(-f32(i * i + j * j) / (2.0 * PAINT_TENSOR_SIGMA * PAINT_TENSOR_SIGMA));
+  for (var j = -1; j <= 1; j++) {
+    for (var i = -1; i <= 1; i++) {
+      let o = centre + vec2<f32>(f32(i), f32(j)) * PAINT_TENSOR_STEP;
+      let rb = wash_read(o + vec2<f32>(0.5, 0.5));
+      let rt = wash_read(o + vec2<f32>(0.5, -0.5));
+      let lb = wash_read(o + vec2<f32>(-0.5, 0.5));
+      let lt = wash_read(o + vec2<f32>(-0.5, -0.5));
+      let sx = (rb + rt) - (lb + lt);
+      let sy = (rb + lb) - (rt + lt);
+      let d = f32(i * i + j * j) * PAINT_TENSOR_STEP * PAINT_TENSOR_STEP;
+      let g = exp(-d / (2.0 * PAINT_TENSOR_SIGMA * PAINT_TENSOR_SIGMA));
       t += vec3<f32>(dot(sx, sx), dot(sx, sy), dot(sy, sy)) * g;
       weight += g;
     }
@@ -433,16 +439,37 @@ fn kuwahara(px: vec2<i32>, radius: f32, anisotropy: f32, f: PaintFrame) -> vec3<
   let sin_zc = sin(PAINT_ZERO_CROSSING);
   let eta = (zeta + cos(PAINT_ZERO_CROSSING)) / (sin_zc * sin_zc);
   let own = paint_object(px);
+  // The taps: every texel of the ellipse's box, or, where the ellipse is
+  // at least PAINT_BLOCK_AXIS pixels along its narrow axis, the frame's
+  // 2 x 2 blocks (each one bilinear tap on the corner its four texels
+  // share, weighed at its own centre): a quarter of the taps over the
+  // same texels. The blocks lie on the frame's even texels, the same for
+  // every pixel, so the filter reads a halved frame that does not move
+  // with the pixel.
+  let blocks = min(a, b) >= PAINT_BLOCK_AXIS;
+  let parity = px & vec2<i32>(1);
+  let nx = min(select(max_x, (max_x + 2) / 2, blocks), PAINT_REACH);
+  let ny = min(select(max_y, (max_y + 2) / 2, blocks), PAINT_REACH);
   var m: array<vec4<f32>, 8>;
   var s: array<vec3<f32>, 8>;
-  for (var y = -max_y; y <= max_y; y++) {
-    for (var x = -max_x; x <= max_x; x++) {
-      let o = vec2<f32>(f32(x), f32(y));
+  for (var y = -ny; y <= ny; y++) {
+    for (var x = -nx; x <= nx; x++) {
+      var o = vec2<f32>(f32(x), f32(y));
+      if (blocks) { o = o * 2.0 + 0.5 - vec2<f32>(parity); }
       var v = vec2<f32>((cos_phi * o.x - sin_phi * o.y) * 0.5 / a, (sin_phi * o.x + cos_phi * o.y) * 0.5 / b);
       if (dot(v, v) > 0.25) { continue; }
-      let q = px + vec2<i32>(x, y);
-      if (paint_object(q) != own) { continue; }
-      let c = clamp(load(q), vec3<f32>(0.0), vec3<f32>(1.0));
+      var c: vec3<f32>;
+      if (blocks) {
+        // The block's first texel; an object's edge through the block
+        // parts the two on its diagonal.
+        let q = px + vec2<i32>(x, y) * 2 - parity;
+        if (paint_object(q) != own || paint_object(q + vec2<i32>(1)) != own) { continue; }
+        c = wash_read(vec2<f32>(q) + 1.0);
+      } else {
+        let q = px + vec2<i32>(x, y);
+        if (paint_object(q) != own) { continue; }
+        c = load(q);
+      }
       var w: array<f32, 8>;
       var sum = 0.0;
       for (var h = 0; h < 2; h++) {
@@ -592,6 +619,7 @@ const WASH_TOOTH_CELL: f32 = 6.0;        // canvas texels per cell of a flat pap
 const WASH_WOBBLE_CELL: f32 = 14.0;      // canvas texels per cell of the waver's noise
 const WASH_RELIEF_GAIN: f32 = 4.0;       // waver per unit of the paper's relief gradient
 const WASH_STEP_REACH: f32 = 4.5;        // logical pixels from the pixel to the colour step's nearest box
+const WASH_POOL_LOAD: vec2<f32> = vec2<f32>(0.1, 0.35); // the pigment load a rim starts to pool at, and pools fully at
 const WASH_BOUNDARY_REACH: i32 = 2;      // pixels within which a wash's silhouette counts as near
 
 // A hash of an integer cell, 0 to 1 (the cook's `wash_hash`).
@@ -757,7 +785,10 @@ fn watercolor(in: VsOut) -> vec3<f32> {
   var c = wash_read(s);
   // The pigment's transmittance over the paper and its load: 0 bare
   // paper, 1 where the darkest channel is black.
-  let t = clamp(c / paper, vec3<f32>(0.0), vec3<f32>(1.0));
+  // Dilution thins the pigment with water: by Beer and Lambert a
+  // layer 1 - dilution as dense transmits t to that power, so the darks
+  // lift towards the paper, the hues stay and the paper stays the paper.
+  let t = pow(clamp(c / paper, vec3<f32>(0.0), vec3<f32>(1.0)), vec3<f32>(1.0 - st.wash2.x));
   let pig = 1.0 - min(t.x, min(t.y, t.z));
   // The wash's edge, where pigment pools and the dry brush skips: the fine
   // edge where the colour steps, and the silhouette within two pixels.
@@ -793,7 +824,10 @@ fn watercolor(in: VsOut) -> vec3<f32> {
   }
   c = t2 * paper;
   if (st.wash.x > 0.0 && edge > 0.0) {
-    c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 + st.wash.x * edge));
+    // Pigment pools where there is pigment: the rim's side on the paper
+    // or a pale wash (the sky behind a branch) stays clean.
+    let pool = edge * smoothstep(WASH_POOL_LOAD.x, WASH_POOL_LOAD.y, pig);
+    c = pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 + st.wash.x * pool));
   }
   return c;
 }

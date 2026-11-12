@@ -250,6 +250,8 @@ pub(crate) struct StyliseUniform {
     /// rgb: the paper the hatching lies on (`Hatching::paper`; white
     /// without hatching).
     pub hatching_paper: [f32; 4],
+    /// x: the wash's dilution (`Watercolor::dilution`).
+    pub wash2: [f32; 4],
 }
 
 /// The grid the surface patterns are measured from (metres): a whole

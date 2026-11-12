@@ -376,6 +376,13 @@
       max 4
       tunable true
     }
+    field watercolorDilution f32 "The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit." {
+      min 0
+      max 0.9
+      unit ratio
+      tunable true
+      guide "looks §10"
+    }
     field watercolorPaper Color "The paper's colour (linear): what the wash thins towards and the dry brush leaves bare." {
       default 1 1 1
     }
