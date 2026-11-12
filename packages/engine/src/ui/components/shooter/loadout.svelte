@@ -72,7 +72,7 @@
 .detail { text-align: start; font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
 /* Equipped is a tag on the detail line, so every row's price stands alone at its end
    and the name keeps the row's width. */
-.badge { flex: 0 1 auto; max-width: stretch; overflow: hidden; text-overflow: ellipsis; font: var(--text-caption); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: 1px solid var(--accent); border-radius: var(--radius-xs); }
+.badge { flex: 0 1 auto; max-width: stretch; overflow: hidden; text-overflow: ellipsis; font: var(--text-caption); color: var(--accent); text-transform: uppercase; white-space: nowrap; padding: 0 var(--space-xs); border: var(--stroke-hairline) solid var(--accent); border-radius: var(--radius-xs); }
 .cost { display: flex; flex: none; align-items: center; gap: var(--space-xxs); }
 .price { font: var(--text-caption); font-family: var(--font-mono); white-space: nowrap; }
 .coin { width: var(--size-xs); height: var(--size-xs); color: var(--gold); }

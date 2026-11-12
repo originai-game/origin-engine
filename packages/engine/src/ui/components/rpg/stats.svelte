@@ -48,7 +48,7 @@
 .body { width: stretch; flex: 1; min-height: 0; }
 .columns { display: flex; width: stretch; gap: var(--space-md); padding: 0 var(--space-xs); }
 .column { display: flex; flex-direction: column; width: stretch; gap: var(--space-sm); }
-.split { width: 1px; align-self: stretch; }
+.split { width: var(--stroke-hairline); align-self: stretch; }
 .group { display: flex; flex-direction: column; width: stretch; padding-bottom: var(--space-xs); }
 [part="RpgStats.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-sm) 0; }
 .row-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
