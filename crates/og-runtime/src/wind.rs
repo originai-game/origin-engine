@@ -7,8 +7,8 @@
 //! Each of those adds its record's own `wind` to it.
 
 use super::codec::Layout;
-use super::fx::resource;
-use super::wire::{FromJson, record};
+use super::fx::{kept_rows, resource};
+use super::wire::{FromJson, WindMotorKind, record};
 use glam::Vec3;
 use og_ecs::World;
 
@@ -64,6 +64,43 @@ pub(crate) fn before_tick(
     layout: Option<&Layout>,
 ) {
     physics.set_wind(WorldWind::read(world, layout).velocity);
+}
+
+/// og.Wind and the og.WindMotors into `scene`: what vegetation sways in.
+/// Returns the world's wind for what else moves in it this frame.
+pub(crate) fn extract(
+    world: &World,
+    scene: &mut og_render::RenderScene,
+    wind: Option<&Layout>,
+    motors: Option<&Layout>,
+    h: &mut super::extract::Hierarchy,
+) -> WorldWind {
+    // og.Wind: what vegetation sways in here; the clouds, the weather and
+    // the visual cloths below add their own to it.
+    let world_wind = WorldWind::read(world, wind);
+    scene.atmosphere.wind = world_wind.vegetation();
+    // og.WindMotor: local pushes on the simulated wind field, placed by
+    // their entities (wind_field.rs keeps the nearest).
+    scene.atmosphere.wind_motors.clear();
+    for (e, v) in kept_rows(world, motors) {
+        let Ok(v) = record::WindMotor::from_json(&v) else {
+            continue;
+        };
+        let m = h.world_of(e);
+        let kind = match v.kind {
+            WindMotorKind::Directional => og_render::WindMotorKind::Directional,
+            WindMotorKind::Vortex => og_render::WindMotorKind::Vortex,
+            WindMotorKind::Omni => og_render::WindMotorKind::Omni,
+        };
+        scene.atmosphere.wind_motors.push(og_render::WindMotor {
+            position: m.transform_point3(Vec3::ZERO),
+            direction: m.transform_vector3(Vec3::NEG_Z),
+            radius: v.radius,
+            strength: v.strength,
+            kind,
+        });
+    }
+    world_wind
 }
 
 #[cfg(test)]
