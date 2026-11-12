@@ -1,5 +1,6 @@
 <meta name="component" content="RpgBackpack">
 <meta name="strings" content="./rpg.en.ogt">
+<meta name="parts" content="RpgBackpack.frame RpgBackpack.band RpgBackpack.title RpgBackpack.tab RpgBackpack.cell">
 <meta name="prop:title" content="string" data-doc="The bag's heading (Backpack, Stash, a chest's name).">
 <meta name="prop:tabs" content="list" data-doc="The categories, a keyed collection of { id, label }.">
 <meta name="prop:tab" content="string" data-doc="The id of the category shown.">
@@ -21,13 +22,13 @@
   fills the height it is given and scrolls inside it. Each slot carries
   data-rarity, data-equipped and the like; a style pack draws them.
 -->
-<section id="RpgBackpack" class="rpg-backpack" aria-label={title}>
-  <header class="rpg-band"><div class="band-end start"></div><h2 class="rpg-title">{title}</h2><div class="band-end finish"></div></header>
+<section id="RpgBackpack" part="RpgBackpack.frame" aria-label={title}>
+  <header part="RpgBackpack.band"><div class="band-end start"></div><h2 part="RpgBackpack.title">{title}</h2><div class="band-end finish"></div></header>
   <div class="tabs" role="tablist" aria-label={t("rpg.backpack.tabs")} ontabNext={tabNext} ontabPrev={tabPrev}>
     <scroll class="tabs-scroll">
       <div class="tabs-row">
         {#each tabs as c (c.id)}
-          <button class="tab" variant="quiet" role="tab" aria-selected={c.id == tab} onclick={choosetab}>{c.label}</button>
+          <button part="RpgBackpack.tab" variant="quiet" role="tab" aria-selected={c.id == tab} onclick={choosetab}>{c.label}</button>
         {/each}
       </div>
     </scroll>
@@ -37,7 +38,7 @@
     <scroll class="grid-scroll">
       <div class="grid" role="grid" aria-label={title}>
         {#each items as i (i.id)}
-          <button class="cell" data-rarity={i.rarity} data-equipped={i.equipped} data-fresh={i.fresh} data-locked={i.locked} data-broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} onclick={choose}><div class="face">
+          <button part="RpgBackpack.cell" data-rarity={i.rarity} data-equipped={i.equipped} data-fresh={i.fresh} data-locked={i.locked} data-broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} onclick={choose}><div class="face">
             <og-icon class="art" icon={i.icon}></og-icon>
             <span class="count" hidden={!(i.count > 1)}>{formatNumber(i.count)}</span>
             <div class="badge equipped" hidden={!i.equipped} aria-label={t("rpg.backpack.equipped")}><og-icon icon="check"></og-icon></div>
@@ -63,27 +64,27 @@
 </section>
 
 <style>
-.rpg-backpack[hidden], .rpg-backpack [hidden] { display: none; }
-.rpg-backpack { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
-.rpg-band { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
+[part="RpgBackpack.frame"][hidden], [part="RpgBackpack.frame"] [hidden] { display: none; }
+[part="RpgBackpack.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
+[part="RpgBackpack.band"] { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
 .tabs { position: relative; display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .tabs-fade { display: none; position: absolute; right: 0; top: 0; width: var(--size-lg); height: stretch; pointer-events: none; }
 .tabs-fade:dir(rtl) { right: auto; left: 0; }
 @media (width < 600px), (height < 500px) {
   .tabs-fade { display: block; }
-  .rpg-band { min-height: var(--size-lg); padding-top: 0; padding-bottom: 0; }
+  [part="RpgBackpack.band"] { min-height: var(--size-lg); padding-top: 0; padding-bottom: 0; }
   .grid { gap: var(--space-xs); }
   .foot { gap: var(--space-sm); padding-top: var(--space-xs); }
-  .tab { min-height: calc(var(--size-touch) * 0.85); }
+  [part="RpgBackpack.tab"] { min-height: calc(var(--size-touch) * 0.85); }
 }
 .tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
 .tabs-row { display: flex; gap: 0; justify-content: space-between; width: stretch; }
-.tab { flex: none; min-height: var(--size-touch); padding: 0; }
+[part="RpgBackpack.tab"] { flex: none; min-height: var(--size-touch); padding: 0; }
 .grid-scroll { width: stretch; flex: 1; min-height: 0; }
 .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-sm); width: stretch; padding: var(--space-xs); }
-.cell { position: relative; width: stretch; aspect-ratio: 1; min-width: var(--size-touch); padding: var(--space-sm); align-items: center; justify-content: center; }
-.cell .face { position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
+[part="RpgBackpack.cell"] { position: relative; width: stretch; aspect-ratio: 1; min-width: var(--size-touch); padding: var(--space-sm); align-items: center; justify-content: center; }
+[part="RpgBackpack.cell"] .face { position: relative; width: stretch; height: stretch; align-items: center; justify-content: center; }
 .art { width: stretch; height: stretch; }
 .count { position: absolute; right: var(--space-xxs); bottom: 0; width: fit-content; text-align: end; }
 .badge { position: absolute; align-items: center; justify-content: center; }

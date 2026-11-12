@@ -1,5 +1,6 @@
 <meta name="component" content="RpgPlaceCard">
 <meta name="strings" content="./rpg.en.ogt">
+<meta name="parts" content="RpgPlaceCard.frame RpgPlaceCard.name">
 <meta name="prop:name" content="string" data-doc="The place's name.">
 <meta name="prop:about" content="string" data-doc="A line or two about it; empty hides it.">
 <meta name="prop:picture" content="number" data-doc="Its picture (og.load.texture); 0 hides it.">
@@ -14,11 +15,11 @@
   picture; narrow (under 560 px), the name sits over the buttons and the
   line about it is left out.
 -->
-<section id="RpgPlaceCard" class="rpg-place-card" aria-label={name}>
+<section id="RpgPlaceCard" part="RpgPlaceCard.frame" aria-label={name}>
   <img class="picture" src={picture} alt="" hidden={!picture}>
   <div class="side">
     <div class="text">
-      <h3 class="place-name">{name}</h3>
+      <h3 part="RpgPlaceCard.name">{name}</h3>
       <div class="rpg-rule" role="separator"></div>
       <p class="about" hidden={!about}>{about}</p>
     </div>
@@ -30,12 +31,12 @@
 </section>
 
 <style>
-.rpg-place-card[hidden], .rpg-place-card [hidden] { display: none; }
-.rpg-place-card { display: flex; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; padding: var(--space-sm); }
+[part="RpgPlaceCard.frame"][hidden], [part="RpgPlaceCard.frame"] [hidden] { display: none; }
+[part="RpgPlaceCard.frame"] { display: flex; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; padding: var(--space-sm); }
 .picture { width: 34%; height: stretch; object-fit: cover; flex: none; }
 .side { display: flex; width: stretch; gap: var(--space-md); align-items: center; }
 .text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-.place-name, .about { margin: 0; }
+[part="RpgPlaceCard.name"], .about { margin: 0; }
 .actions { display: flex; flex-direction: column; gap: var(--space-sm); flex: none; width: 40%; }
 .act { width: stretch; min-height: var(--size-touch); gap: var(--space-sm); }
 .act .face { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-sm); }
@@ -47,5 +48,5 @@
   .about { display: none; }
   .actions { width: stretch; }
 }
-@container (width < 360px) { .rpg-place-card { gap: var(--space-sm); } .picture { width: 36%; } .act .face { gap: var(--space-xs); } }
+@container (width < 360px) { [part="RpgPlaceCard.frame"] { gap: var(--space-sm); } .picture { width: 36%; } .act .face { gap: var(--space-xs); } }
 </style>
