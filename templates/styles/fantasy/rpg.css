@@ -46,7 +46,7 @@
   padding-inline-start: var(--space-md);
 }
 [part="RpgQuestLog.band"] [part="RpgQuestLog.title"] { font-size: var(--fantasy-step-17); letter-spacing: var(--fantasy-tracking); }
-[part="RpgQuestDetail.band"] { background: none; border-bottom: none; box-shadow: none; padding: var(--space-xs) var(--space-xs) 0; }
+[part="RpgQuestDetail.frame"] [part="RpgQuestDetail.band"] { background: none; border-bottom: none; box-shadow: none; padding: var(--space-xs) var(--space-xs) 0; }
 [part="RpgQuestDetail.band"] [part="RpgQuestDetail.title"] { font-size: var(--fantasy-step-22); letter-spacing: var(--fantasy-tracking-md); color: var(--fantasy-ink-title); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="RpgQuestDetail.band"] .band-mark { width: var(--fantasy-band-mark); height: var(--fantasy-band-mark); }
 
@@ -109,8 +109,9 @@ button::part(RpgBackpack\.cell), button::part(RpgCharacter\.cell) {
   border-radius: var(--radius-md);
   background: var(--fantasy-cell-fill);
   box-shadow: var(--fantasy-cell-shadow);
-  margin: var(--space-sm);
 }
+button::part(RpgBackpack\.cell) { margin: var(--space-sm); }
+button::part(RpgCharacter\.cell) { margin: var(--space-xxs); }
 button[data-rarity=common]::part(RpgBackpack\.cell), button[data-rarity=common]::part(RpgCharacter\.cell) { border-color: var(--common); background: var(--fantasy-cell-common-fill); box-shadow: var(--fantasy-cell-common-shadow); }
 button[data-rarity=uncommon]::part(RpgBackpack\.cell), button[data-rarity=uncommon]::part(RpgCharacter\.cell) { border-color: var(--uncommon); background: var(--fantasy-cell-uncommon-fill); box-shadow: var(--fantasy-cell-uncommon-shadow); }
 button[data-rarity=rare]::part(RpgBackpack\.cell), button[data-rarity=rare]::part(RpgCharacter\.cell) { border-color: var(--rare); background: var(--fantasy-cell-rare-fill); box-shadow: var(--fantasy-cell-rare-shadow); }
