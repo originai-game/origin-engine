@@ -109,10 +109,119 @@ fn grass_dry(clump: f32, at: vec2<f32>, dryness: f32) -> f32 {
   return step(fract(clump * 7.31 + 0.17), grass_dry_share(at, dryness));
 }
 
-// The field's average colour from its root and tip colours (grass.rs
-// far_color).
-fn grass_far_color(base: vec3<f32>, tip: vec3<f32>) -> vec3<f32> {
-  return mix(base, tip, 0.55) * 0.7;
+// What a field's blades show on average where they are too far to draw
+// one by one: the ground past them and the thinning far blades take it,
+// so the field looks from afar as its blades do near.
+struct GrassMean {
+  sun: f32,  // the sunlight on what is seen, for the light flat ground takes
+  through: f32,  // the sunlight its backlit blades scatter to the eye, for the sun's own
+  sky: f32,  // the sky it sees (grass_blade.wgsl grass_occlusion's)
+  t: f32,    // how far up a blade it is, 0 the root (and the floor), 1 the tip
+  reach: f32,  // how far along the ground the eye's ray runs through the blades, m
+};
+
+// How high what is seen of a blade stands for its height: a blade tapers
+// to its tip (grass_blade.wgsl, 1 - t^1.4), so its lower part shows more.
+const GRASS_MEAN_TAPER: f32 = 0.7;
+// The sky an upright blade's side takes for the ground's top: half the
+// sky, and the dim field around it.
+const GRASS_MEAN_SIDE_SKY: f32 = 0.6;
+// The glow of backlit blades for one blade's (grass.wgsl's forward lobe,
+// 1.5 times its translucency).
+const GRASS_MEAN_THROUGH: f32 = 1.5;
+
+// The mean of a canopy (extinction `k` per metre of a ray, `top` m high:
+// grass.wgsl grass_canopy's slab; its blades pass `through` of the light
+// behind them) on ground of normal `n`, seen from `v` under a sun
+// towards `l`. The eye's ray ends `d` deep with density
+// k/v_up·exp(-k·d/v_up), or on the floor; the sun reaches that depth with
+// exp(-k·d/l_up); both through the same gaps where the eye looks along
+// the sun (the hot spot: Kuusk, "The hot spot effect in plant canopy
+// reflectance", 1991, as one joint extinction), so a field seen down-sun
+// shows no shade and one seen from above shows its dark floor. Its
+// blades stand upright facing every way: they take 2/π of the level
+// sunlight on the side turned to it (more than flat ground under a low
+// sun, less under a high one), and show the eye that side down-sun and
+// the other up-sun, where the light comes through them (lighting.wgsl
+// leaf_transmission's two parts; it crosses the blades between as
+// grass.wgsl grass_transmittance has it, less than the canopy's shade:
+// here halfway between it and none). Fitted to the blades' own frames
+// from five heights under a high and a low sun.
+fn grass_mean(k: f32, top: f32, through: f32, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> GrassMean {
+  let v_up = dot(n, v);
+  let l_up = max(dot(n, l), 0.0);
+  let eye = 1.0 / max(v_up, 0.1);
+  let sun = 1.0 / max(l_up, 0.08);
+  let depth = k * top;
+  let hot = smoothstep(0.6, 1.0, dot(v, l));
+  // The floor the eye reaches, and the sun with it.
+  let floor_seen = exp(-depth * eye);
+  let floor_lit = floor_seen * exp(-depth * (sun - sqrt(eye * sun) * hot));
+  let joint = eye + sun - sqrt(eye * sun) * hot;
+  let blades_lit = eye / joint * (1.0 - exp(-depth * joint));
+  // The blades' sides for the ground's top.
+  let v_flat = v - n * v_up;
+  let l_flat = l - n * l_up;
+  let level = 0.637 * length(l_flat);
+  let down_sun = dot(v_flat, l_flat) / max(length(v_flat) * length(l_flat), 1e-4);
+  let front = 0.5 + 0.5 * down_sun * (1.0 - max(v_up, 0.0));
+  var m: GrassMean;
+  m.sun = min(min(level * front / max(l_up, 0.05), 3.0) * blades_lit + floor_lit, 1.0);
+  let into_sun = pow(max(-dot(v, l), 0.0), 6.0);
+  m.through = level * (1.0 - front) * sqrt(blades_lit * (1.0 - floor_seen))
+    * through * (GRASS_MEAN_THROUGH * into_sun + 0.16) * smoothstep(0.0, 0.1, dot(n, l));
+  // The mean depth seen, the floor at `top`, the blades GRASS_MEAN_TAPER
+  // as high as the slab has them.
+  let slab = (1.0 - floor_seen) / max(k * eye, 1e-4);
+  let deep = mix(top * (1.0 - floor_seen), slab - top * floor_seen, GRASS_MEAN_TAPER) + top * floor_seen;
+  let d = 1.0 + 0.6 * k * deep;
+  m.sky = mix(GRASS_MEAN_SIDE_SKY, 1.0, floor_seen) / (d * d);
+  m.t = clamp(1.0 - deep / max(top, 1e-4), 0.0, 1.0);
+  // How far along the ground the eye's ray runs through the blades.
+  m.reach = (1.0 - floor_seen) / max(k, 1e-4) * sqrt(max(1.0 - v_up * v_up, 0.0));
+  return m;
+}
+
+// The clumps of grass_clump at `p` as the ground shows them from afar:
+// x the tint, y how dry (a clump is dry or not: grass_dry, `dry_share` of
+// them), each the nearest clump's, turning to its neighbour's over the
+// edge between them (blades of both stand there) and to the field's mean
+// where a pixel, `footprint` m across, holds several clumps.
+fn grass_clump_far(p: vec2<f32>, size: f32, seed: u32, dry_share: f32, footprint: f32) -> vec2<f32> {
+  let q = p / size;
+  let base = floor(q);
+  var best = vec2<f32>(1e9);
+  var ids = vec2<u32>(0u);
+  for (var dz = -1; dz <= 1; dz++) {
+    for (var dx = -1; dx <= 1; dx++) {
+      let c = base + vec2<f32>(f32(dx), f32(dz));
+      let ci = vec2<i32>(c);
+      let h = wind_hash2(wind_hash2(bitcast<u32>(ci.x), bitcast<u32>(ci.y)), seed);
+      let site = c + vec2<f32>(wind_unit(h), wind_unit(wind_hash(h)));
+      let d = dot(site - q, site - q);
+      if (d < best.x) {
+        best = vec2<f32>(d, best.x);
+        ids = vec2<u32>(h, ids.x);
+      } else if (d < best.y) {
+        best.y = d;
+        ids.y = h;
+      }
+    }
+  }
+  // The tint as a blade stores it (8 bits), so the same clumps are dry.
+  let tint = round(vec2<f32>(wind_unit(wind_hash(ids.x ^ 0x5bd1e995u)), wind_unit(wind_hash(ids.y ^ 0x5bd1e995u))) * 255.0) / 255.0;
+  let dry = step(fract(tint * 7.31 + 0.17), vec2<f32>(dry_share));
+  let pixel = footprint / size;
+  let edge = clamp(0.12 + pixel, 0.12, 1.0);
+  let own = 0.5 + 0.5 * smoothstep(0.0, edge, sqrt(best.y) - sqrt(best.x));
+  let near = mix(vec2<f32>(tint.y, dry.y), vec2<f32>(tint.x, dry.x), own);
+  return mix(near, vec2<f32>(0.5, dry_share), smoothstep(0.5, 2.0, pixel));
+}
+
+// A blade's colour `t` up it, without its clump's and its own variation
+// (grass_blade.wgsl grass_color).
+fn grass_mean_color(base: vec3<f32>, tip: vec3<f32>, t: f32) -> vec3<f32> {
+  return mix(base, tip, pow(t, 0.7));
 }
 
 // The colour of dried grass as bright as `c`.

@@ -53,10 +53,12 @@ struct TerrainUniform {
 // The colour an og.Grass field gives the ground past and between its
 // blades (grass.rs FarGpu; grass_common.wgsl before this file).
 struct TerrainGrass {
-  color: vec4<f32>,   // rgb: the field's colour from afar (linear), w: its layer (< 0: no field)
+  color: vec4<f32>,   // rgb: its blades' tips (linear), w: its layer (< 0: no field)
   fade: vec4<f32>,    // x: where the tint starts (m from the camera), y: where it is whole, z: how much gusts brighten it, w: its strength (0..1)
   clump: vec4<f32>,   // x: clump size (the terrain's space), y: colour variation, z: dryness, w: the seed (24 bits)
   dry: vec4<f32>,     // rgb: dry grass (linear)
+  root: vec4<f32>,    // rgb: its blades' roots (linear), w: the colour patches' size (m)
+  canopy: vec4<f32>,  // x: the canopy's extinction (per metre), y: its top (m), z: the blades' spacing (m), w: their translucency: grass_common.wgsl grass_mean
   wind: WindField,
 };
 

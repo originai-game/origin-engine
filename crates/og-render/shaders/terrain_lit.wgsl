@@ -392,33 +392,62 @@ fn grass_layer_share(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>, layer: 
   return mine / sum;
 }
 
-// og.Grass's colour on the ground under and past its blades (grass.rs,
-// after bevy_grass's far.wesl): where its layer shows, the ground takes the
-// field's average colour from `fade.x` on, whole from `fade.y`, so the
-// gaps between blades and the ground past them read as the same field
-// and there is no seam where the blades thin out to nothing; per clump
-// and dry drift as the blades are, paler where a gust presses it down.
-// Whether a pipeline has og.Grass's far colour on the ground
+// og.Grass on the ground under and past its blades (grass.rs, after
+// bevy_grass's far.wesl): where its layer shows, the ground takes what
+// the field's blades show on average from where it is seen
+// (grass_common.wgsl grass_mean: their colour as deep as the eye sees
+// into them, the sun and sky their canopy leaves), from `fade.x` on,
+// whole from `fade.y`, so the gaps between blades and the ground past
+// them read as the same field and there is no seam where the blades thin
+// out to nothing; per clump, patch and dry clump as the blades are, with
+// the grain of their tufts while a pixel resolves it, paler where a gust
+// presses it down.
+// Whether a pipeline has og.Grass's far field on the ground
 // (pipeline_features.rs).
 override OG_GRASS: bool = true;
 
-fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> vec3<f32> {
-  if (!OG_GRASS) { return albedo; }
+struct GrassFar {
+  albedo: vec3<f32>,
+  // The shares of the sun's and the sky's light it takes (terrain_shade).
+  light: vec2<f32>,
+  // The sunlight its backlit blades scatter to the eye, for the sun's own.
+  through: vec3<f32>,
+};
+
+// `footprint`: how far a pixel reaches across the ground here (m).
+fn grass_far(albedo: vec3<f32>, p: vec3<f32>, local: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>, footprint: f32) -> GrassFar {
+  var o: GrassFar;
+  o.albedo = albedo;
+  o.light = vec2<f32>(1.0);
+  o.through = vec3<f32>(0.0);
+  if (!OG_GRASS) { return o; }
   let g = terrain.grass;
-  if (g.color.w < 0.0) { return albedo; }
+  if (g.color.w < 0.0) { return o; }
   let amount = smoothstep(g.fade.x, g.fade.y, distance(p, frame.view_pos.xyz)) * g.fade.w * grass_layer_share(p, n, c, u32(g.color.w));
-  if (amount <= 0.0) { return albedo; }
+  if (amount <= 0.0) { return o; }
   let at = p.xz + frame.origin.xz;
-  let sheen = grass_gust_sheen(g.wind, at, g.fade.z);
-  let clump = grass_clump(local.xz - terrain_min(), g.clump.x, u32(g.clump.w));
-  let v = g.clump.y;
-  var col = g.color.rgb * mix(1.0 - 0.35 * v, 1.0 + 0.25 * v, clump.x);
-  // The dry drifts as the ground's share of dry clumps, blended (a blade
-  // is dry or not; the ground under many shows their mix), a little
-  // more or less per clump.
-  let dry = clamp(grass_dry_share(at, g.clump.z) * mix(0.7, 1.3, clump.y), 0.0, 1.0);
-  col = mix(col, g.dry.rgb * 0.8, dry * 0.75);
-  return mix(albedo, col * sheen, amount);
+  let v = select(normalize(frame.view_pos.xyz - p), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
+  let m = grass_mean(g.canopy.x, g.canopy.y, g.canopy.w, n, v, normalize(frame.light_dir.xyz));
+  // Tufts of a few blades: lit tips beside the shade between them.
+  let tuft = g.canopy.z * 2.0;
+  let tq = at / tuft;
+  let grain = (0.65 * wind_noise(vec2<f32>(tq.x * 0.8 - tq.y * 0.6, tq.x * 0.6 + tq.y * 0.8)) + 0.35 * wind_noise(tq * 2.3 + vec2<f32>(17.0, 53.0)) - 0.5) * (1.0 - smoothstep(0.5, 2.0, footprint / tuft));
+  let t = clamp(m.t + 0.6 * grain, 0.0, 1.0);
+  let clump = grass_clump_far(local.xz - terrain_min(), g.clump.x, u32(g.clump.w), grass_dry_share(at, g.clump.z), footprint + m.reach);
+  // grass_blade.wgsl grass_color, without a blade's own variation.
+  let variation = g.clump.y;
+  let shade = mix(1.0 - 0.35 * variation, 1.0 + 0.25 * variation, clump.x);
+  var col = grass_mean_color(g.root.rgb, g.color.rgb, t) * shade;
+  let pq = at / max(g.root.w, 0.1);
+  let patch_noise = wind_noise(vec2<f32>(pq.x * 0.83 - pq.y * 0.56, pq.x * 0.56 + pq.y * 0.83) + vec2<f32>(91.0, 47.0));
+  col *= mix(1.0, mix(0.85, 1.12, patch_noise), variation);
+  let dry = g.dry.rgb * shade * mix(0.6, 1.0, pow(t, 0.7));
+  col = mix(col, dry, clamp(max(clump.y * 0.75, g.clump.z * smoothstep(0.45, 1.0, t)), 0.0, 1.0));
+  o.albedo = mix(albedo, col * grass_gust_sheen(g.wind, at, g.fade.z), amount);
+  o.light = mix(vec2<f32>(1.0), vec2<f32>(m.sun, m.sky) * (1.0 + 0.8 * grain), amount);
+  // Tinted through the blade as grass.wgsl's forward lobe is.
+  o.through = pow(max(col, vec3<f32>(1e-4)), vec3<f32>(0.85)) * m.through * amount;
+  return o;
 }
 
 // Six repeating colours, shared by the layer and mip diagnostic legends.
@@ -512,7 +541,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
     n_face = normalize(mix(n_geo, facet, near));
   }
   let look = terrain_look(p, n_geo, n_face, lift, point.control, dpx, dpy);
-  let albedo = grass_far(look.albedo, p, in.local, n_geo, point.control);
+  let grass = grass_far(look.albedo, p, in.local, n_geo, point.control, max(length(dpx), length(dpy)));
   let roughness = toksvig_roughness(look.roughness, point.variance);
   // A displaced ground's shading takes the relief no normal map draws.
   // Its weathering keeps the field's normal (the drawn one is faceted).
@@ -524,7 +553,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
   // and an interpolated normal is neither (its faces turned to a low sun
   // shadowed themselves in squares of shadow texels).
   let n_shade = terrain_tilt(point, look.normal, in.relief.zw);
-  return terrain_shade(in.clip.xy, p, first, 1.0, albedo, n_shade, roughness, n_geo, n_face, look.height);
+  return terrain_shade(in.clip.xy, p, first, 1.0, grass, n_shade, roughness, n_geo, n_face, look.height);
 }
 
 // The terrain's shading of a fragment at world `p` (the ground or one of
@@ -538,10 +567,10 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
 // the shadow lookup's offset (a stamp's blended foot takes the ground's
 // normal, but its wall still faces out: offset along the ground's, the
 // wall shadowed itself in a dark strip along its foot).
-fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, albedo: vec3<f32>, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>, n_shadow: vec3<f32>, height: f32) -> vec4<f32> {
+fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, grass: GrassFar, normal: vec3<f32>, roughness: f32, n_geo: vec3<f32>, n_shadow: vec3<f32>, height: f32) -> vec4<f32> {
   var n = normalize(normal);
   var s: Surface;
-  s.albedo = albedo;
+  s.albedo = grass.albedo;
   s.metallic = 0.0;
   s.roughness = clamp(roughness, 0.04, 1.0);
   s.f0 = vec3<f32>(0.04);
@@ -574,7 +603,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, al
   // Past the cascades (and with none) the horizon map shades the ground:
   // the sun behind a ridge (soft over 1.5°: the sun's disc and the bake's
   // reads), and the sky its horizon hides.
-  var sky = 1.0;
+  var sky = grass.light.y;
   if (terrain.params.w > 0.5) {
     let h = terrain_horizon_from(reads);
     if (h.ok) {
@@ -592,9 +621,13 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, al
         far = smoothstep(0.9 * last, last, depth);
       }
       shadow *= mix(1.0, sun, far);
-      sky = mix(1.0, horizon_occlusion(h), ground);
+      sky *= mix(1.0, horizon_occlusion(h), ground);
     }
   }
+  // og.Grass's canopy over the ground past its blades (grass_far), and
+  // the sunlight through them.
+  let through = grass.through * frame.light_color.rgb * shadow;
+  shadow *= grass.light.x;
   var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   // og.MaterialStyle's shadow tint: the sunlight a cast shadow takes moves towards the tint, as on a lit material.
   var tinted = (1.0 - shadow) * n_dot_l;
@@ -616,7 +649,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, al
     if (frame.outline_style.z > 0.5) { tint = min(tint, vec3<f32>(1.0 / PI)); }
     color += tinted * tint * s.albedo * frame.light_color.rgb;
   }
-  color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
+  color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p) + through;
   // Point, spot and rect lights: this fragment's cluster's, or every light
   // in a reflection probe's face (area.wgsl surface_local_lights).
   color += surface_local_lights(clip, s, p, n, v);
@@ -761,8 +794,11 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let dpy = dpdyFine(p);
   let g = stamp_ground(p, normalize(in.normal));
   let look = terrain_look(p, g.normal, g.normal, 0.0, g.control, dpx, dpy);
-  let albedo = mix(look.albedo, grass_far(look.albedo, p, g.local, g.normal, g.control), g.ground);
-  return terrain_shade(in.clip.xy, p, resident_from(0u, (g.reads.xz - terrain_min()) / terrain_cell()), g.ground, albedo, look.normal, look.roughness, g.normal, normalize(in.normal), look.height);
+  var grass = grass_far(look.albedo, p, g.local, g.normal, g.control, max(length(dpx), length(dpy)));
+  grass.albedo = mix(look.albedo, grass.albedo, g.ground);
+  grass.light = mix(vec2<f32>(1.0), grass.light, g.ground);
+  grass.through *= g.ground;
+  return terrain_shade(in.clip.xy, p, resident_from(0u, (g.reads.xz - terrain_min()) / terrain_cell()), g.ground, grass, look.normal, look.roughness, g.normal, normalize(in.normal), look.height);
 }
 
 @fragment
