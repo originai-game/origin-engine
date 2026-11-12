@@ -294,7 +294,11 @@ fn two_baked_scenes_both_draw_their_bakes() {
     drop(s);
 
     // The hall's box despawned: its bake stops drawing, the annex's stays.
-    let found: Value = serde_json::from_str(&og_world_find(engine, "hall-box".into())).unwrap();
+    let found: Value = serde_json::from_str(&og_runtime::host_impl::json(og_world_find(
+        engine,
+        "hall-box".into(),
+    )))
+    .unwrap();
     value(og_runtime::host_impl::answer(og_world_despawn(
         engine,
         found.as_f64().unwrap(),
@@ -326,7 +330,11 @@ fn a_render_snapshot_restores_the_bake_with_its_world() {
     assert!(!before.1.is_empty(), "the hall draws its bake");
     let snapshot = render_snapshot(engine).expect("snapshot");
 
-    let found: Value = serde_json::from_str(&og_world_find(engine, "hall-box".into())).unwrap();
+    let found: Value = serde_json::from_str(&og_runtime::host_impl::json(og_world_find(
+        engine,
+        "hall-box".into(),
+    )))
+    .unwrap();
     value(og_runtime::host_impl::answer(og_world_despawn(
         engine,
         found.as_f64().unwrap(),

@@ -114,10 +114,10 @@ fn value(text: String) -> Value {
 fn engine(root: &Path) -> u32 {
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
-    value(og_reflect_define_component(
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Health".into(),
         json!([{ "name": "hp", "kind": "f32", "default": 0, "options": {} }]).to_string(),
-    ));
+    )));
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     value(og_engine_create(game, options)).as_u64().unwrap() as u32
@@ -150,7 +150,7 @@ fn step(e: u32, n: u32) {
 }
 
 fn find(e: u32, name: &str) -> f64 {
-    serde_json::from_str::<Value>(&og_world_find(e, name.into()))
+    serde_json::from_str::<Value>(&og_runtime::host_impl::json(og_world_find(e, name.into())))
         .unwrap()
         .as_f64()
         .unwrap_or_else(|| panic!("no entity '{name}'"))
@@ -230,7 +230,11 @@ fn a_second_instance_of_a_named_scene_is_refused_with_what_works() {
     assert!(!reason.contains("under a root,"), "{reason}");
     assert!(reason.contains("unique in the world"), "{reason}");
     assert!(reason.contains("og.load.prefab"), "{reason}");
-    assert_eq!(og_world_find(e, "second".into()), "null", "{reason}");
+    assert_eq!(
+        og_runtime::host_impl::json(og_world_find(e, "second".into())),
+        "null",
+        "{reason}"
+    );
 }
 
 #[test]

@@ -150,7 +150,10 @@ impl Hooks for Game {
                 "og.TimelineMarker",
                 "og.TimelineEnded",
             ] {
-                let evs: Value = serde_json::from_str(&og_world_events(w, name.into())).unwrap();
+                let evs: Value = serde_json::from_str(&og_runtime::host_impl::json(
+                    og_world_events(w, name.into()),
+                ))
+                .unwrap();
                 for e in evs.as_array().into_iter().flatten() {
                     let m = e["name"].as_str().unwrap_or("").to_string();
                     self.0.borrow_mut().events.push((tick, name.into(), m));
@@ -247,7 +250,9 @@ fn hash(engine: u32) -> Value {
 }
 
 fn get(r: &Run, name: &str) -> Value {
-    let id: f64 = og_world_find(r.engine, name.into()).parse().unwrap();
+    let id: f64 = og_runtime::host_impl::json(og_world_find(r.engine, name.into()))
+        .parse()
+        .unwrap();
     value(og_runtime::host_impl::answer(og_world_get(
         r.engine,
         id,
@@ -360,7 +365,9 @@ fn a_system_plays_a_timeline_at_this_ticks_og_timeline() {
     // "box" has no og.Timeline: the system's call is queued all the same,
     // and og.timeline says once that nothing plays. A dead entity is
     // refused at the call. (The hooks are the last started run's: `b`.)
-    let the_box: f64 = og_world_find(b.engine, "box".into()).parse().unwrap();
+    let the_box: f64 = og_runtime::host_impl::json(og_world_find(b.engine, "box".into()))
+        .parse()
+        .unwrap();
     og_runtime::og_engine_take_log(b.engine);
     b.seen.borrow_mut().play = vec![the_box, 123_456.0];
     frame(b.engine, 1);

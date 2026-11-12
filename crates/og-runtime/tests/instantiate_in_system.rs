@@ -78,8 +78,11 @@ impl Hooks for Game {
                 }
             }
             LOOK => {
-                let lid: Value =
-                    serde_json::from_str(&og_world_find(w, "crate1/lid".into())).unwrap();
+                let lid: Value = serde_json::from_str(&og_runtime::host_impl::json(og_world_find(
+                    w,
+                    "crate1/lid".into(),
+                )))
+                .unwrap();
                 let health = lid.as_f64().map_or(Value::Null, |lid| {
                     value(og_runtime::host_impl::answer(og_world_get(
                         w,
@@ -120,10 +123,10 @@ fn a_system_instantiates_a_scene_and_the_next_system_finds_it() {
     let script = Rc::new(RefCell::new(Script::default()));
     set_hooks(Rc::new(Game(script.clone())));
     og_host_begin_bundle();
-    value(og_reflect_define_component(
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Health".into(),
         json!([{ "name": "hp", "kind": "f32", "default": 0, "options": {} }]).to_string(),
-    ));
+    )));
     let component = |name: &str| json!({ "kind": "component", "name": name });
     let systems = [
         og_system_define_system(
@@ -160,7 +163,10 @@ fn a_system_instantiates_a_scene_and_the_next_system_finds_it() {
     assert_eq!(s.answers.len(), 2);
     assert_eq!(s.answers[0]["ok"], json!(true), "{:?}", s.answers);
     let yard = s.answers[0]["value"].as_f64().unwrap();
-    assert_eq!(og_world_find(a, "yard".into()).parse(), Ok(yard));
+    assert_eq!(
+        og_runtime::host_impl::json(og_world_find(a, "yard".into())).parse(),
+        Ok(yard)
+    );
     assert_eq!(s.answers[1]["ok"], json!(false), "{:?}", s.answers);
     let reason = s.answers[1]["reason"].as_str().unwrap();
     assert!(reason.contains("already exists"), "{reason}");
@@ -169,7 +175,9 @@ fn a_system_instantiates_a_scene_and_the_next_system_finds_it() {
     assert!(lid.is_number(), "crate1/lid at the tick of the load: {lid}");
     assert_eq!(health["hp"], json!(40.0));
     // Under the root the call answered.
-    let crate1: f64 = og_world_find(a, "crate1".into()).parse().unwrap();
+    let crate1: f64 = og_runtime::host_impl::json(og_world_find(a, "crate1".into()))
+        .parse()
+        .unwrap();
     let parent = value(og_runtime::host_impl::answer(og_world_get(
         a,
         crate1,
@@ -218,7 +226,10 @@ fn a_system_instantiates_a_scene_and_the_next_system_finds_it() {
         "{failed}"
     );
     assert_eq!(script.borrow().answers[0]["ok"], json!(true));
-    assert_eq!(og_world_find(c, "yard".into()), "null");
+    assert_eq!(
+        og_runtime::host_impl::json(og_world_find(c, "yard".into())),
+        "null"
+    );
     script.borrow_mut().loader = u32::MAX;
     let again = og_runtime::host_impl::answer(og_world_instantiate(
         c,

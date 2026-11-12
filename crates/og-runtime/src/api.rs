@@ -8,7 +8,7 @@ use super::engine::{
     engine, queued_structural, running, world_query_views,
 };
 use super::probe::{self as rprobe, NameOp, with_probe};
-use super::{ok, parse, refuse, wire};
+use super::{parse, wire};
 use og_core::reflect::Reflect;
 use og_core::{Rng, Time};
 use og_ecs::{Entity, QueryDesc, World};
@@ -167,7 +167,7 @@ pub(crate) fn undeclared(eng: &Engine, system: usize, access: &str, name: &str) 
 
 // ── reflect ─────────────────────────────────────────────────────────────────
 
-fn define_record(name: String, fields: &str, kind: RecordKind) -> String {
+fn define_record(name: String, fields: &str, kind: RecordKind) -> Result<Value, String> {
     let declared = (|| {
         if name.starts_with("og.") {
             return Err(format!(
@@ -189,30 +189,30 @@ fn define_record(name: String, fields: &str, kind: RecordKind) -> String {
                     {
                         let reason = format!("'{name}' is declared twice with different layouts");
                         d.errors.push(reason.clone());
-                        return refuse(reason);
+                        return Err(reason);
                     }
                 } else {
                     d.records.push(layout);
                 }
-                ok(json!({ "kind": kind.as_str(), "name": name }))
+                Ok(json!({ "kind": kind.as_str(), "name": name }))
             }
             Err(reason) => {
                 d.errors.push(reason.clone());
-                refuse(reason)
+                Err(reason)
             }
         }
     })
 }
 
-pub fn og_reflect_define_component(name: String, fields: String) -> String {
+pub fn og_reflect_define_component(name: String, fields: String) -> Result<Value, String> {
     define_record(name, &fields, RecordKind::Component)
 }
 
-pub fn og_reflect_define_resource(name: String, fields: String) -> String {
+pub fn og_reflect_define_resource(name: String, fields: String) -> Result<Value, String> {
     define_record(name, &fields, RecordKind::Resource)
 }
 
-pub fn og_reflect_define_event(name: String, fields: String) -> String {
+pub fn og_reflect_define_event(name: String, fields: String) -> Result<Value, String> {
     define_record(name, &fields, RecordKind::Event)
 }
 
@@ -795,15 +795,12 @@ pub fn og_world_resource(world: u32, res: String) -> Result<serde_json::Value, S
     engine(world).and_then(|eng| resource_value(&eng, &res))
 }
 
-pub fn og_world_find(world: u32, name: String) -> String {
+pub fn og_world_find(world: u32, name: String) -> Option<u64> {
     let found = engine(world).ok().and_then(|eng| {
         let st = eng.state.borrow();
         st.names.get(&name).copied()
     });
-    match found {
-        Some(bits) if og_world_alive(world, bits as f64) => json!(bits).to_string(),
-        _ => "null".into(),
-    }
+    found.filter(|&bits| og_world_alive(world, bits as f64))
 }
 
 /// `world.prefabOf`: the entity's og.PrefabLink, or null (no link, a dead
@@ -889,7 +886,7 @@ fn event_layout(eng: &Engine, name: &str) -> Result<(Layout, og_ecs::SchemaId), 
 /// during the previous one), which the system must declare among its reads;
 /// between ticks, the events sent since the last tick, which the next tick
 /// delivers. The IDL answers a list, so a refusal is an empty list.
-pub fn og_world_events(world: u32, event: String) -> String {
+pub fn og_world_events(world: u32, event: String) -> Vec<Value> {
     let list = (|| -> Result<Vec<Value>, String> {
         let eng = engine(world)?;
         let bytes = if let Some(f) = running(world) {
@@ -909,7 +906,7 @@ pub fn og_world_events(world: u32, event: String) -> String {
         };
         Ok(bytes.1.iter().map(|b| bytes.0.decode(b)).collect())
     })();
-    Value::Array(list.unwrap_or_default()).to_string()
+    list.unwrap_or_default()
 }
 
 pub fn og_world_emit(world: u32, event: String, payload: String) -> Result<(), String> {

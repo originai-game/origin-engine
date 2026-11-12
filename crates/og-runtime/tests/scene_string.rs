@@ -96,10 +96,10 @@ fn a_cooked_scene_with_a_string_field_loads_into_a_live_world_with_the_text_inta
         { "name": "name", "kind": "str", "default": "", "options": {}, "capacity": 16 },
         { "name": "level", "kind": "u32", "default": 0, "options": {} },
     ]);
-    value(og_reflect_define_component(
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Profile".into(),
         fields.to_string(),
-    ));
+    )));
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
@@ -114,8 +114,11 @@ fn a_cooked_scene_with_a_string_field_loads_into_a_live_world_with_the_text_inta
         None,
     )));
     for (entity, name, level) in PEOPLE {
-        let found =
-            serde_json::from_str::<Value>(&og_world_find(engine, (*entity).into())).unwrap();
+        let found = serde_json::from_str::<Value>(&og_runtime::host_impl::json(og_world_find(
+            engine,
+            (*entity).into(),
+        )))
+        .unwrap();
         let e = found
             .as_f64()
             .unwrap_or_else(|| panic!("no entity '{entity}' after instantiate: {found}"));

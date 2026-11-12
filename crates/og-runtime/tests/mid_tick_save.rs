@@ -54,7 +54,11 @@ impl Hooks for Game {
         }
         let w = call.engine;
         let tick = og_world_get_tick(w);
-        let counter: f64 = serde_json::from_str(&og_world_find(w, "counter".into())).unwrap();
+        let counter: f64 = serde_json::from_str(&og_runtime::host_impl::json(og_world_find(
+            w,
+            "counter".into(),
+        )))
+        .unwrap();
         let mut c = value(og_runtime::host_impl::answer(og_world_get(
             w,
             counter,
@@ -84,7 +88,10 @@ impl Hooks for Game {
                     )));
                 }
                 if tick == PUSH_AT {
-                    let boxed: f64 = serde_json::from_str(&og_world_find(w, "box".into())).unwrap();
+                    let boxed: f64 = serde_json::from_str(&og_runtime::host_impl::json(
+                        og_world_find(w, "box".into()),
+                    ))
+                    .unwrap();
                     let up = json!({ "x": 0.5, "y": 6.0, "z": 0.0 }).to_string();
                     value(og_runtime::host_impl::answer(og_physics_apply_impulse(
                         w,
@@ -124,10 +131,10 @@ fn game() -> u32 {
         { "name": "x", "kind": "f64", "default": 1, "options": {} },
         { "name": "y", "kind": "f64", "default": 0, "options": {} },
     ]);
-    value(og_reflect_define_component(
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "RpCount".into(),
         fields.to_string(),
-    ));
+    )));
     let count = json!({ "kind": "component", "name": "RpCount" });
     let writes = json!({ "writes": [count] }).to_string();
     let reads = json!({ "reads": [count], "writes": [] }).to_string();
@@ -216,7 +223,11 @@ fn a_replay_from_a_save_taken_inside_a_system_matches_the_run_that_saved() {
     let replayed = run_to(b, 30);
     assert_eq!(replayed["hash"], ran["hash"], "the replay diverged");
     let n = |e: u32| {
-        let counter: f64 = serde_json::from_str(&og_world_find(e, "counter".into())).unwrap();
+        let counter: f64 = serde_json::from_str(&og_runtime::host_impl::json(og_world_find(
+            e,
+            "counter".into(),
+        )))
+        .unwrap();
         value(og_runtime::host_impl::answer(og_world_get(
             e,
             counter,
@@ -231,7 +242,9 @@ fn a_replay_from_a_save_taken_inside_a_system_matches_the_run_that_saved() {
     // the box (at rest on the floor at y 0.25 by then) is in the air at
     // tick 30; the counter, without a body, was refused.
     for e in [a, b] {
-        let boxed: f64 = serde_json::from_str(&og_world_find(e, "box".into())).unwrap();
+        let boxed: f64 =
+            serde_json::from_str(&og_runtime::host_impl::json(og_world_find(e, "box".into())))
+                .unwrap();
         let y = value(og_runtime::host_impl::answer(og_world_get(
             e,
             boxed,

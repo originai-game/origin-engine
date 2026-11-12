@@ -163,8 +163,11 @@ impl Hooks for Game {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         if call.kind == 0 && call.id == WATCH {
             let w = call.engine;
-            let evs: Value =
-                serde_json::from_str(&og_world_events(w, "og.TimelineMarker".into())).unwrap();
+            let evs: Value = serde_json::from_str(&og_runtime::host_impl::json(og_world_events(
+                w,
+                "og.TimelineMarker".into(),
+            )))
+            .unwrap();
             for e in evs.as_array().into_iter().flatten() {
                 let m = e["name"].as_str().unwrap_or("").to_string();
                 self.0.borrow_mut().push((w, og_world_get_tick(w), m));
@@ -335,7 +338,9 @@ fn hash(engine: u32) -> Value {
 }
 
 fn get(r: &Run, name: &str, rec: &str) -> Value {
-    let id: f64 = og_world_find(r.engine, name.into()).parse().unwrap();
+    let id: f64 = og_runtime::host_impl::json(og_world_find(r.engine, name.into()))
+        .parse()
+        .unwrap();
     value(og_runtime::host_impl::answer(og_world_get(
         r.engine,
         id,

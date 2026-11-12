@@ -33,7 +33,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_engine_write_resource(world, resource, value)
             }
             fn og_engine_resource_layout(&self, world: u32, resource: String) -> String {
-                $crate::og_engine_resource_layout(world, resource)
+                $crate::host_impl::answer($crate::og_engine_resource_layout(world, resource))
             }
             fn og_engine_read_resource(&self, world: u32, resource: String) -> Self::Bytes {
                 <Self as $crate::host_impl::HostWire>::bytes_out($crate::og_engine_read_resource(
@@ -55,7 +55,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::og_engine_component_id(world, component)
             }
             fn og_engine_component_layout(&self, world: u32, component: String) -> String {
-                $crate::og_engine_component_layout(world, component)
+                $crate::host_impl::answer($crate::og_engine_component_layout(world, component))
             }
             fn og_engine_read_component(&self, world: u32, entity: f64, component: u32) -> u32 {
                 $crate::og_engine_read_component(world, entity, component)
@@ -117,13 +117,13 @@ macro_rules! __og_host_bindings_base {
 
         impl $crate::host_impl::api::ReflectApi for $host {
             fn og_reflect_define_component(&self, name: String, fields: String) -> String {
-                $crate::og_reflect_define_component(name, fields)
+                $crate::host_impl::answer($crate::og_reflect_define_component(name, fields))
             }
             fn og_reflect_define_resource(&self, name: String, fields: String) -> String {
-                $crate::og_reflect_define_resource(name, fields)
+                $crate::host_impl::answer($crate::og_reflect_define_resource(name, fields))
             }
             fn og_reflect_define_event(&self, name: String, fields: String) -> String {
-                $crate::og_reflect_define_event(name, fields)
+                $crate::host_impl::answer($crate::og_reflect_define_event(name, fields))
             }
         }
 
@@ -171,7 +171,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_world_resource(world, resource))
             }
             fn og_world_find(&self, world: u32, name: String) -> String {
-                $crate::og_world_find(world, name)
+                $crate::host_impl::json($crate::og_world_find(world, name))
             }
             fn og_spatial_index_get_count(&self, spatial_index: u32) -> u32 {
                 $crate::og_spatial_index_get_count(spatial_index)
@@ -225,7 +225,7 @@ macro_rules! __og_host_bindings_base {
                 $crate::host_impl::answer($crate::og_world_query(world, desc))
             }
             fn og_world_events(&self, world: u32, event: String) -> String {
-                $crate::og_world_events(world, event)
+                $crate::host_impl::json($crate::og_world_events(world, event))
             }
             fn og_world_emit(&self, world: u32, event: String, payload: String) -> String {
                 $crate::host_impl::answer($crate::og_world_emit(world, event, payload))

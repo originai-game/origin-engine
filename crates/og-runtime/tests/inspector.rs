@@ -90,14 +90,14 @@ fn value(text: String) -> Value {
 fn engine(root: &Path) -> u32 {
     set_hooks(Rc::new(Disk));
     og_host_begin_bundle();
-    value(og_reflect_define_component(
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Health".into(),
         json!([
             { "name": "hp", "kind": "f32", "default": 0, "options": {} },
             { "name": "armor", "kind": "f32", "default": 0, "options": {} },
         ])
         .to_string(),
-    ));
+    )));
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
@@ -328,9 +328,12 @@ fn a_resource_edited_in_its_tab_saves_as_its_one_line() {
         let fields =
             json!([{ "name": field, "kind": "f32", "default": 0, "options": {} }]).to_string();
         value(if resource {
-            og_runtime::og_reflect_define_resource(name.into(), fields)
+            og_runtime::host_impl::answer(og_runtime::og_reflect_define_resource(
+                name.into(),
+                fields,
+            ))
         } else {
-            og_reflect_define_component(name.into(), fields)
+            og_runtime::host_impl::answer(og_reflect_define_component(name.into(), fields))
         });
     }
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));

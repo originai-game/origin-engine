@@ -39,8 +39,11 @@ struct Game(Cuts);
 impl Hooks for Game {
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
         if call.kind == 0 && call.id == WATCH {
-            let evs: Value =
-                serde_json::from_str(&og_world_events(call.engine, "og.CameraCut".into())).unwrap();
+            let evs: Value = serde_json::from_str(&og_runtime::host_impl::json(og_world_events(
+                call.engine,
+                "og.CameraCut".into(),
+            )))
+            .unwrap();
             for e in evs.as_array().into_iter().flatten() {
                 let n = |k: &str| e[k].as_f64().unwrap_or(0.0);
                 self.0

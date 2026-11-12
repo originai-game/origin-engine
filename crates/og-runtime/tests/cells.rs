@@ -158,10 +158,10 @@ fn engine(root: &Path) -> u32 {
 fn engine_on(root: &Path, host: Rc<dyn Hooks>) -> u32 {
     set_hooks(host);
     og_host_begin_bundle();
-    value(og_reflect_define_component(
+    value(og_runtime::host_impl::answer(og_reflect_define_component(
         "Health".into(),
         json!([{ "name": "hp", "kind": "f32", "default": 0, "options": {} }]).to_string(),
-    ));
+    )));
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
     value(og_engine_create(game, options)).as_u64().unwrap() as u32
@@ -193,7 +193,7 @@ fn step(e: u32, n: u32) {
 }
 
 fn find(e: u32, name: &str) -> Option<f64> {
-    serde_json::from_str::<Value>(&og_world_find(e, name.into()))
+    serde_json::from_str::<Value>(&og_runtime::host_impl::json(og_world_find(e, name.into())))
         .unwrap()
         .as_f64()
 }
