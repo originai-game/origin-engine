@@ -154,10 +154,7 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
         )
     };
     let doc = UiDocument::parse_with_imports(id, &text, imports).map_err(|e| e.join("\n"))?;
-    let doc = match eng.state.borrow().ui_desc["style"]
-        .as_f64()
-        .and_then(super::assets::index_of)
-    {
+    let doc = match configured_style(eng).and_then(|h| super::assets::index_of(h as f64)) {
         Some(index) => eng
             .assets
             .borrow()
@@ -533,12 +530,19 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             Err(e) => failed.push(format!("og dev: {e} (the old style stays)")),
         }
     }
-    if (changed || eng.state.borrow().ui_desc["style"].as_f64().is_some())
+    if (changed || configured_style(eng).is_some())
         && let Err(reason) = super::og_ui_configure(eng.id, Some("{}".into()))
     {
         failed.push(format!("og dev: the style did not apply: {reason}"));
     }
     failed
+}
+
+/// The style the last og.ui.configure named (its UiDesc, as configure
+/// merged and read it).
+fn configured_style(eng: &Engine) -> Option<u64> {
+    let st = eng.state.borrow();
+    wire::value::<wire::UiDesc>(&st.ui_desc, "desc").ok()?.style
 }
 
 /// The style hashes as loaded (so the first refresh compares against them).
