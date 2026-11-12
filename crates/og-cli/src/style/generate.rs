@@ -67,34 +67,44 @@ fn css(look: &str, scheme: &str, finish: Option<&str>) -> Result<String, String>
         ));
     }
     out.push_str(&format!(":root, :root[data-scheme=dark], :root[data-scheme=light] {{\n  --pack-accent: {accent};\n  --radius-button: {radius}; --radius-panel: {radius}; --radius-field: {radius};\n  --primary: var(--pack-accent);\n  --primary-hover: color-mix(in srgb, var(--pack-accent), white 20%);\n  --primary-active: color-mix(in srgb, var(--pack-accent), black 20%);\n  --on-primary: #101522;\n}}\n"));
-    let treatment = match finish {
-        "flat" => "box-shadow: none;",
-        "gradient" => {
-            "background-image: linear-gradient(180deg, #ffffff24, #00000024); box-shadow: inset 0 1px 0 #ffffff60, 0 3px 0 #00000070;"
-        }
-        "glass" => {
-            "background: #182434b0; backdrop-filter: blur(16px) saturate(130%); -og-material: glass regular lift;"
-        }
-        "hologram" => {
-            "background: #102c3eaa; border: 1px solid var(--pack-accent); background-image: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, #40f0ff12 4px);"
-        }
-        "neon" => {
-            "border: 2px solid var(--pack-accent); box-shadow: inset 0 0 8px #40f0ff40, 0 0 12px #40f0ff50;"
-        }
-        "paper" => {
-            "background-image: linear-gradient(110deg, #e1b37718, #fff5db20); border: 1px solid #86623c; box-shadow: 2px 3px 0 #33201050;"
-        }
-        "bevel" => {
-            "border: 3px outset var(--pack-accent); border-radius: 0; box-shadow: inset 2px 2px 0 #ffffff30, inset -2px -2px 0 #00000050;"
-        }
-        "brush" => {
-            "background-image: linear-gradient(125deg, #ffffff24, transparent 40%, #8b427c24); border: 2px solid var(--pack-accent); border-radius: 12px 5px 14px 7px;"
-        }
+    // The finish's values are root tokens; its rule names them with var(),
+    // as `og style check` requires (docs/ui.md §3.1).
+    let (tokens, treatment) = match finish {
+        "flat" => ("", "box-shadow: none;"),
+        "gradient" => (
+            "--pack-finish-image: linear-gradient(180deg, #ffffff24, #00000024); --pack-finish-shadow: inset 0 1px 0 #ffffff60, 0 3px 0 #00000070;",
+            "background-image: var(--pack-finish-image); box-shadow: var(--pack-finish-shadow);",
+        ),
+        "glass" => (
+            "--pack-finish-fill: #182434b0; --pack-finish-blur: blur(16px) saturate(130%);",
+            "background: var(--pack-finish-fill); backdrop-filter: var(--pack-finish-blur); -og-material: glass regular lift;",
+        ),
+        "hologram" => (
+            "--pack-finish-fill: #102c3eaa; --pack-finish-image: repeating-linear-gradient(0deg, transparent 0px, transparent 3px, #40f0ff12 4px);",
+            "background: var(--pack-finish-fill); border: var(--stroke-hairline) solid var(--pack-accent); background-image: var(--pack-finish-image);",
+        ),
+        "neon" => (
+            "--pack-finish-shadow: inset 0 0 8px #40f0ff40, 0 0 12px #40f0ff50;",
+            "border: var(--stroke-regular) solid var(--pack-accent); box-shadow: var(--pack-finish-shadow);",
+        ),
+        "paper" => (
+            "--pack-finish-image: linear-gradient(110deg, #e1b37718, #fff5db20); --pack-finish-edge: #86623c; --pack-finish-shadow: 2px 3px 0 #33201050;",
+            "background-image: var(--pack-finish-image); border: var(--stroke-hairline) solid var(--pack-finish-edge); box-shadow: var(--pack-finish-shadow);",
+        ),
+        "bevel" => (
+            "--pack-finish-shadow: inset 2px 2px 0 #ffffff30, inset -2px -2px 0 #00000050;",
+            "border: var(--stroke-thick) outset var(--pack-accent); border-radius: 0; box-shadow: var(--pack-finish-shadow);",
+        ),
+        "brush" => (
+            "--pack-finish-image: linear-gradient(125deg, #ffffff24, transparent 40%, #8b427c24); --pack-finish-radius: 12px 5px 14px 7px;",
+            "background-image: var(--pack-finish-image); border: var(--stroke-regular) solid var(--pack-accent); border-radius: var(--pack-finish-radius);",
+        ),
         _ => unreachable!(),
     };
+    out.push_str(&format!(":root {{\n  {tokens}\n  --pack-sfx-tap: url(/@styles/shared/sfx-tap.ogt); --pack-sfx-tap2: url(/@styles/shared/sfx-tap2.ogt); --pack-sfx-confirm: url(/@styles/shared/sfx-confirm.ogt);\n  --pack-sfx-back: url(/@styles/shared/sfx-back.ogt); --pack-sfx-open: url(/@styles/shared/sfx-open.ogt); --pack-sfx-error: url(/@styles/shared/sfx-error.ogt); --pack-sfx-reward: url(/@styles/shared/sfx-reward.ogt);\n}}\n"));
     out.push_str(&format!("button::part(base), panel::part(frame), dialog::part(panel), input::part(frame), textarea::part(frame), select::part(trigger), slot::part(frame) {{ {treatment} }}\n"));
-    out.push_str(":root { -og-sound: press url(/@styles/shared/sfx-tap.ogt) url(/@styles/shared/sfx-tap2.ogt) volume(0.24 0.3) pitch(0.98 1.02), select url(/@styles/shared/sfx-confirm.ogt) volume(0.3), confirm url(/@styles/shared/sfx-confirm.ogt) volume(0.3), cancel url(/@styles/shared/sfx-back.ogt) volume(0.25), back url(/@styles/shared/sfx-back.ogt) volume(0.25), open url(/@styles/shared/sfx-open.ogt) volume(0.2), close url(/@styles/shared/sfx-back.ogt) volume(0.2), error url(/@styles/shared/sfx-error.ogt) volume(0.3), reward url(/@styles/shared/sfx-reward.ogt) volume(0.3); }\n");
-    out.push_str("button::part(base) { -og-sound: press url(/@styles/shared/sfx-tap.ogt) volume(0.24 0.3) pitch(0.98 1.02), hover url(/@styles/shared/sfx-tap2.ogt) volume(0.12); }\n@media (prefers-reduced-motion: reduce) { button::part(base) { transition: none; animation: none; } }\n");
+    out.push_str(":root { -og-sound: press var(--pack-sfx-tap) var(--pack-sfx-tap2) volume(0.24 0.3) pitch(0.98 1.02), select var(--pack-sfx-confirm) volume(0.3), confirm var(--pack-sfx-confirm) volume(0.3), cancel var(--pack-sfx-back) volume(0.25), back var(--pack-sfx-back) volume(0.25), open var(--pack-sfx-open) volume(0.2), close var(--pack-sfx-back) volume(0.2), error var(--pack-sfx-error) volume(0.3), reward var(--pack-sfx-reward) volume(0.3); }\n");
+    out.push_str("button::part(base) { -og-sound: press var(--pack-sfx-tap) volume(0.24 0.3) pitch(0.98 1.02), hover var(--pack-sfx-tap2) volume(0.12); }\n@media (prefers-reduced-motion: reduce) { button::part(base) { transition: none; animation: none; } }\n");
     og_ui::style_pack::StylePack::parse("pack", vec![("pack/main.css".into(), out.clone())])?;
     Ok(out)
 }
