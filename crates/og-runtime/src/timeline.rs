@@ -35,6 +35,7 @@ pub use playback::{og_timeline_pause, og_timeline_play, og_timeline_seek, og_tim
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, engine};
 use super::parse;
+use super::wire::{Animation, FromJson, record};
 use glam::{Mat3, Quat, Vec3};
 use og_core::IdMap;
 use og_core::{Error, ErrorKind, Reflect, Str64};
@@ -95,26 +96,12 @@ fn invalid(m: impl Into<String>) -> Error {
     Error::new(ErrorKind::Invalid, m.into())
 }
 
-fn v3(v: &Value) -> Vec3 {
-    let n = |k: &str| v[k].as_f64().unwrap_or(0.0) as f32;
-    Vec3::new(n("x"), n("y"), n("z"))
-}
-
 fn jv3(v: Vec3) -> Value {
     json!({ "x": v.x, "y": v.y, "z": v.z })
 }
 
 fn jq(q: Quat) -> Value {
     json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w })
-}
-
-fn quat(v: &Value) -> Quat {
-    let n = |k: &str, d: f64| v[k].as_f64().unwrap_or(d) as f32;
-    Quat::from_xyzw(n("x", 0.0), n("y", 0.0), n("z", 0.0), n("w", 1.0))
-}
-
-fn bits(v: &Value) -> u64 {
-    v.as_f64().map_or(0, |x| x as u64)
 }
 
 // ── the registry: paths and loaded timelines, per engine ────────────────────
@@ -582,15 +569,9 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
 
 /// A model's skeleton and clips by name (og.load.animation of it).
 fn clip_set(eng: &Engine, model: &str) -> Result<(u64, BTreeMap<String, u64>), String> {
-    let v = super::anim::load_animation(eng, model)?;
-    let clips = og_core::sort::map(
-        v["clips"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|c| Some((c["name"].as_str()?.to_string(), bits(&c["clip"])))),
-    );
-    Ok((bits(&v["skeleton"]), clips))
+    let a = Animation::from_json(&super::anim::load_animation(eng, model)?)?;
+    let clips = og_core::sort::map(a.clips.into_iter().map(|c| (c.name, c.clip)));
+    Ok((a.skeleton, clips))
 }
 
 pub fn og_load_timeline(world: u32, path: String) -> Result<serde_json::Value, String> {
@@ -694,7 +675,11 @@ fn command(engine_id: u32, world: &mut World, args: &[String]) -> Result<(), Str
         let mut out = Vec::new();
         for e in world.entities() {
             if let Ok(b) = world.get_bytes(e, tid)
-                && want.is_none_or(|w| bits(&layout.decode(&b)["asset"]) == w)
+                && want.is_none_or(|w| {
+                    layout
+                        .read::<record::Timeline>(&b)
+                        .is_ok_and(|t| t.asset == w)
+                })
             {
                 out.push(e);
             }

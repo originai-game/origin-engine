@@ -75,7 +75,7 @@ fn has_timeline(eng: &Engine, e: Entity) -> Result<u64, String> {
         .get("og.Timeline")
         .cloned()
         .ok_or("og.Timeline is not registered")?;
-    Ok(bits(&layout.decode(&bytes)["asset"]))
+    Ok(layout.read::<record::Timeline>(&bytes)?.asset)
 }
 
 /// The same inside a system, where the step holds the world: the entity's
@@ -98,10 +98,10 @@ fn timeline_in_system(
     else {
         return Ok(None);
     };
-    Ok(ctx
-        .get_bytes(e, id)
-        .ok()
-        .map(|bytes| bits(&layout.decode(&bytes)["asset"])))
+    match ctx.get_bytes(e, id) {
+        Ok(bytes) => Ok(Some(layout.read::<record::Timeline>(&bytes)?.asset)),
+        Err(_) => Ok(None),
+    }
 }
 
 fn op(world: u32, entity: f64, op: Op) -> Result<(), String> {
@@ -448,8 +448,9 @@ fn path_system(ctx: &mut SystemContext<'_>, engine_id: u32, r: &Rec) -> og_core:
     for e in rows {
         let fb = ctx.get_bytes(e, r.follower.0)?;
         let mut f = r.follower.1.decode(&fb);
-        let h = bits(&f["path"]);
-        if h == 0 || !f["playing"].as_bool().unwrap_or(true) {
+        let row = record::PathFollower::from_json(&f).map_err(invalid)?;
+        let h = row.path;
+        if h == 0 || !row.playing {
             continue;
         }
         let Some(p) = path_of(engine_id, h) else {
@@ -462,11 +463,11 @@ fn path_system(ctx: &mut SystemContext<'_>, engine_id: u32, r: &Rec) -> og_core:
             continue;
         };
         let len = p.length();
-        let speed = f["speed"].as_f64().unwrap_or(1.0) as f32;
-        let mut d = f["distance"].as_f64().unwrap_or(0.0) as f32 + speed * dt;
+        let speed = row.speed;
+        let mut d = row.distance + speed * dt;
         let mut finished = false;
         if len > 0.0 {
-            if f["loop"].as_bool().unwrap_or(true) {
+            if row.r#loop {
                 d = d.rem_euclid(len);
             } else if d >= len || d <= 0.0 {
                 d = d.clamp(0.0, len);
@@ -474,8 +475,8 @@ fn path_system(ctx: &mut SystemContext<'_>, engine_id: u32, r: &Rec) -> og_core:
             }
         }
         let s = p.sample(if len > 0.0 { d / len } else { 0.0 });
-        let offset = v3(&f["offset"]);
-        let align = f["align"].as_bool().unwrap_or(false);
+        let offset = row.offset;
+        let align = row.align;
         let tb = ctx.get_bytes(e, r.transform.0)?;
         let mut t = r.transform.1.decode(&tb);
         let pos = if align {
@@ -541,12 +542,13 @@ fn timeline_system(
         let key = e.to_bits();
         let cb = ctx.get_bytes(e, r.timeline.0)?;
         let mut comp = r.timeline.1.decode(&cb);
-        let asset = bits(&comp["asset"]);
+        let row = record::Timeline::from_json(&comp).map_err(invalid)?;
+        let asset = row.asset;
         let mut run = lock(state).runs.remove(&key).unwrap_or_default();
         let loaded = lock(&reg).timeline(asset);
         // A new run starts where its `time` field is, stopped: nothing is
         // evaluated (the camera is not taken) until a play or a seek.
-        let field_time = comp["time"].as_f64().unwrap_or(0.0) as f32;
+        let field_time = row.time;
         if run.asset != asset {
             release(ctx, r, &mut run)?;
             run = Run {
@@ -568,7 +570,7 @@ fn timeline_system(
             lock(state).runs.insert(key, run);
             continue;
         };
-        let mut playing = comp["playing"].as_bool().unwrap_or(false);
+        let mut playing = row.playing;
         let mut stop = false;
         let mut seek: Option<f32> = None;
         if field_time != run.written {
@@ -633,7 +635,7 @@ fn timeline_system(
         let from = run.num;
         if playing {
             if run.advance {
-                let speed = comp["speed"].as_f64().unwrap_or(1.0).clamp(0.0, 16.0);
+                let speed = f64::from(row.speed).clamp(0.0, 16.0);
                 run.num += (speed * STEPS as f64).round() as i64;
             }
             run.advance = true;
@@ -643,7 +645,7 @@ fn timeline_system(
         let mut ended = false;
         let mut wrapped = false;
         if run.num >= dur {
-            if playing && comp["loop"].as_bool().unwrap_or(false) && dur > 0 {
+            if playing && row.r#loop && dur > 0 {
                 run.num %= dur;
                 wrapped = true;
             } else {
@@ -696,7 +698,7 @@ fn timeline_system(
                     spans: &spans,
                     retro,
                     dt: time.dt,
-                    speed: comp["speed"].as_f64().unwrap_or(1.0) as f32,
+                    speed: row.speed,
                     base: 0,
                     depth: 0,
                 },

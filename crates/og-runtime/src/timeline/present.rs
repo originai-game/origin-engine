@@ -170,12 +170,12 @@ fn material_of(
         && let Ok(id) = world.id_by_name("og.Mesh")
         && let Ok(b) = world.get_bytes(e, id)
     {
-        mesh.decode(&b)["material"].as_f64()?
+        mesh.read::<record::Mesh>(&b).ok()?.material as f64
     } else {
         let model = rs.draw.model.as_ref()?;
         let id = world.id_by_name("og.Model").ok()?;
         let b = world.get_bytes(e, id).ok()?;
-        let asset = model.decode(&b)["asset"].as_f64()?;
+        let asset = model.read::<record::Model>(&b).ok()?.asset as f64;
         let eng = engine(engine_id).ok()?;
         let a = eng.assets.try_borrow().ok()?;
         let entry = assets::index_of(asset).and_then(|i| a.entries.get(i))?;

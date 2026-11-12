@@ -14,9 +14,12 @@ pub(super) fn drop_ended_voices(
     for (tr, k, v) in std::mem::take(&mut run.voices) {
         let e = Entity::from_bits(v);
         let alive = ctx.is_alive(e)
-            && ctx
-                .get_bytes(e, r.source.0)
-                .is_ok_and(|b| r.source.1.decode(&b)["playing"].as_bool().unwrap_or(false));
+            && ctx.get_bytes(e, r.source.0).is_ok_and(|b| {
+                r.source
+                    .1
+                    .read::<record::AudioSource>(&b)
+                    .is_ok_and(|s| s.playing)
+            });
         if alive && playing {
             keep.push((tr, k, v));
         } else if ctx.is_alive(e) {
@@ -377,7 +380,7 @@ fn model_clips(
     let b = ctx.get_bytes(e, r.model.0).map_err(|_| {
         "it has no og.Model; name the glTF with `model \"<path>\"` in the track".to_string()
     })?;
-    let asset = r.model.1.decode(&b)["asset"].as_f64().unwrap_or(0.0);
+    let asset = r.model.1.read::<record::Model>(&b)?.asset as f64;
     let eng = engine(engine_id)?;
     let path = {
         let a = eng.assets.borrow();
@@ -455,8 +458,8 @@ fn solo_now(ctx: &SystemContext<'_>, r: &Rec) -> og_core::Result<Option<u64>> {
     let Some(l) = &r.brain else {
         return Ok(None);
     };
-    let v = l.decode(&ctx.resource_bytes(id)?);
-    Ok(Some(v["solo"].as_f64().map_or(0, |x| x as u64)))
+    let v: record::CameraBrain = l.read(&ctx.resource_bytes(id)?).map_err(invalid)?;
+    Ok(Some(v.solo))
 }
 
 /// Writes og.CameraBrain's solo and its blend (`blend` below 0: the
@@ -498,19 +501,10 @@ fn camera(
     let at = eval::camera_at(c, t);
     let bytes = ctx.resource_bytes(r.camera.0)?;
     let mut cam = r.camera.1.decode(&bytes);
+    let row = record::Camera::from_json(&cam).map_err(invalid)?;
     if run.camera.is_none() {
-        let p = v3(&cam["position"]);
-        let q = quat(&cam["quaternion"]);
-        run.camera = Some([
-            p.x,
-            p.y,
-            p.z,
-            q.x,
-            q.y,
-            q.z,
-            q.w,
-            cam["fov"].as_f64().unwrap_or(50.0) as f32,
-        ]);
+        let (p, q) = (row.position, row.quaternion);
+        run.camera = Some([p.x, p.y, p.z, q.x, q.y, q.z, q.w, row.fov]);
     }
     let (pos, target) = match &c.mode {
         CameraMode::Keys => (at.position, at.target),
@@ -548,7 +542,12 @@ fn camera(
                 return Ok(());
             };
             let b = ctx.get_bytes(e, r.transform.0)?;
-            let p = v3(&r.transform.1.decode(&b)["position"]);
+            let p = r
+                .transform
+                .1
+                .read::<record::Transform>(&b)
+                .map_err(invalid)?
+                .position;
             (
                 Some(p + at.position.unwrap_or(Vec3::new(0.0, 2.0, 6.0))),
                 Some(p + at.target.unwrap_or(Vec3::new(0.0, 1.0, 0.0))),
@@ -558,7 +557,7 @@ fn camera(
     if let Some(p) = pos {
         cam["position"] = jv3(p);
     }
-    let eye = pos.unwrap_or_else(|| v3(&cam["position"]));
+    let eye = pos.unwrap_or(row.position);
     let look = target.map(|target| super::feel::look_rotation(eye, target));
     if let Some(q) = look {
         cam["quaternion"] = jq(q);
@@ -590,7 +589,8 @@ fn camera(
         Some(name) => match ctx.find(name) {
             Some(e) => {
                 let b = ctx.get_bytes(e, r.transform.0)?;
-                Some((v3(&r.transform.1.decode(&b)["position"]) - eye).length())
+                let focus: record::Transform = r.transform.1.read(&b).map_err(invalid)?;
+                Some((focus.position - eye).length())
             }
             None => {
                 note(
@@ -626,15 +626,11 @@ fn camera(
         ),
     };
     if run.focus.is_none() {
-        let n = |k: &str| pv[k].as_f64().unwrap_or(0.0) as f32;
+        let p = record::PostEffects::from_json(&pv).map_err(invalid)?;
         run.focus = Some([
-            if pv["depthOfField"].as_bool().unwrap_or(false) {
-                1.0
-            } else {
-                0.0
-            },
-            n("dofFocusDistance"),
-            n("dofFocusRange"),
+            if p.depth_of_field { 1.0 } else { 0.0 },
+            p.dof_focus_distance,
+            p.dof_focus_range,
         ]);
     }
     pv["depthOfField"] = json!(true);
