@@ -97,6 +97,11 @@ pub struct Leaves {
     /// sky (0..1): 0 as it grows, 1 flat to the light, as most broadleaves
     /// hold theirs.
     pub facing: f64,
+    /// The rows the leaves stand in round the branch: 0 anywhere round
+    /// it; 2 in two rows, one to each side of it and level with the
+    /// ground (a palm's or a fern's frond, a conifer's flat spray); more
+    /// are spaced evenly round it from there.
+    pub rows: u32,
     /// A leaf's length (m) and its width as a share of it.
     pub size: f64,
     pub width: f64,
@@ -168,6 +173,7 @@ impl Default for Leaves {
             end: 1.0,
             angle: 45.0,
             facing: 0.8,
+            rows: 0,
             size: 0.4,
             width: 0.5,
             size_variance: 0.4,
@@ -324,6 +330,7 @@ fn spread(
     count: u32,
     (start, end): (f64, f64),
     angle: f64,
+    rows: u32,
     rng: &mut Rng,
 ) -> Vec<(f64, Section)> {
     let count = count as usize;
@@ -335,8 +342,22 @@ fn spread(
         .map(|i| {
             let at = start + (i as f64 + rng.next_f64()) * step;
             let mut s = along(sections, at);
-            let round =
-                trig::TAU * (offset + (slots[i] as f64 + rng.range(-0.5, 0.5)) / count as f64);
+            let jitter = rng.range(-0.5, 0.5);
+            let round = if rows == 0 {
+                trig::TAU * (offset + (slots[i] as f64 + jitter) / count as f64)
+            } else {
+                // In rows, taken in turn along the branch: the first to
+                // its side, where the ground's level crosses it (anywhere
+                // round a branch that stands upright).
+                let side = (s.q * DVec3::Y).cross(DVec3::Y);
+                let first = if side.length_squared() < 1e-6 {
+                    trig::TAU * offset
+                } else {
+                    let local = s.q.inverse() * side.normalize();
+                    trig::atan2(local.x, local.z)
+                };
+                first + trig::TAU * (i as u32 % rows) as f64 / f64::from(rows) + 0.3 * jitter
+            };
             s.q = (s.q * turn(DVec3::Y, round) * turn(DVec3::X, angle * trig::PI / 180.0))
                 .normalize();
             (at, s)
@@ -472,7 +493,14 @@ pub fn plant(p: &Plant, detail: f64) -> Result<PlantMesh, String> {
         if last_level {
             if let Some(lv) = &p.leaves {
                 let v = lv.size_variance.clamp(0.0, 1.0);
-                for (_, s) in spread(&sections, lv.count, (lv.start, lv.end), lv.angle, &mut rng) {
+                for (_, s) in spread(
+                    &sections,
+                    lv.count,
+                    (lv.start, lv.end),
+                    lv.angle,
+                    lv.rows,
+                    &mut rng,
+                ) {
                     leaf_list.push(Leaf {
                         origin: s.origin,
                         q: s.q,
@@ -490,7 +518,7 @@ pub fn plant(p: &Plant, detail: f64) -> Result<PlantMesh, String> {
                         sway: bud.sway,
                     });
                 }
-                for (_, s) in spread(&sections, f.count, (0.2, 1.0), 70.0, &mut flowering) {
+                for (_, s) in spread(&sections, f.count, (0.2, 1.0), 70.0, 0, &mut flowering) {
                     flower_list.push(Leaf {
                         origin: s.origin,
                         q: s.q,
@@ -501,7 +529,7 @@ pub fn plant(p: &Plant, detail: f64) -> Result<PlantMesh, String> {
             }
         } else {
             let c = p.level[bud.level + 1];
-            for (at, s) in spread(&sections, l.children, (c.start, 1.0), c.angle, &mut rng) {
+            for (at, s) in spread(&sections, l.children, (c.start, 1.0), c.angle, 0, &mut rng) {
                 let radius = (c.radius * s.radius).max(1e-4);
                 queue.push_back(Bud {
                     origin: s.origin,
@@ -964,6 +992,83 @@ mod tests {
             l.children = 100;
         }
         assert!(plant(&runaway, 1.0).unwrap_err().contains("branches"));
+    }
+
+    /// Ways this could fail: leaves in rows stand round the branch as
+    /// they do without (a frond that is a bottle brush), or all to one
+    /// side of it.
+    #[test]
+    fn leaves_in_two_rows_lie_level_to_both_sides_of_a_branch() {
+        let frond = |rows| {
+            let mut p = Plant {
+                levels: 1,
+                force_strength: 0.0,
+                leaves: Some(Leaves {
+                    rows,
+                    count: 24,
+                    start: 0.3,
+                    angle: 90.0,
+                    facing: 1.0,
+                    size: 0.3,
+                    size_variance: 0.0,
+                    ..Leaves::default()
+                }),
+                ..Plant::default()
+            };
+            p.level[0] = Level {
+                length: 2.0,
+                gnarliness: 0.0,
+                children: 1,
+                ..p.level[0]
+            };
+            p.level[1] = Level {
+                length: 2.0,
+                gnarliness: 0.0,
+                angle: 90.0,
+                ..p.level[1]
+            };
+            // The one branch out of the trunk's side, below the leader
+            // that carries the trunk on from 2 m (its leaves from 2.6 m).
+            let m = plant(&p, 1.0).unwrap();
+            let on: Vec<[f32; 3]> = m
+                .leaves
+                .positions
+                .iter()
+                .copied()
+                .filter(|p| p[1] < 2.3)
+                .collect();
+            assert!(on.len() > 60, "{}", on.len());
+            on
+        };
+        let spread = |on: &[[f32; 3]]| {
+            let (lo, hi) = on.iter().fold((f32::MAX, f32::MIN), |(lo, hi), p| {
+                (lo.min(p[1]), hi.max(p[1]))
+            });
+            hi - lo
+        };
+        let (round, rows) = (frond(0), frond(2));
+        assert!(spread(&round) > 0.4, "{}", spread(&round));
+        assert!(spread(&rows) < 0.12, "{}", spread(&rows));
+        // To both sides: across the branch (the narrow way of the leaves'
+        // footprint on the ground), as many one side as the other.
+        let n = rows.len() as f32;
+        let (cx, cz) = rows
+            .iter()
+            .fold((0.0, 0.0), |(x, z), p| (x + p[0] / n, z + p[2] / n));
+        let (mut xx, mut xz, mut zz) = (0.0f32, 0.0f32, 0.0f32);
+        for p in &rows {
+            let (x, z) = (p[0] - cx, p[2] - cz);
+            xx += x * x;
+            xz += x * z;
+            zz += z * z;
+        }
+        let along = 0.5 * og_core::math::atan2(2.0 * xz, xx - zz);
+        let (ax, az) = (-og_core::math::sin(along), og_core::math::cos(along));
+        let left = rows
+            .iter()
+            .filter(|p| (p[0] - cx) * ax + (p[2] - cz) * az > 0.0)
+            .count() as f32;
+        assert!(left > 0.35 * n && left < 0.65 * n, "{left} of {n}");
     }
 
     /// Ways this could fail: a lower detail grows another plant (its

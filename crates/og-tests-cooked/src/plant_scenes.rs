@@ -1,13 +1,18 @@
 //! Plants the cook grows (a `plant` block in a `type model`, og-geom's
 //! `plant`) and a wood scattered from them: og-tests' assets/plants, the
-//! models guide's four kinds (an oak, a pine, a flowering shrub, a daisy),
-//! cooked in a project of their own, the three woody ones with their
-//! impostors.
+//! models guide's kinds (each asset a `kind` and nothing else, two with a
+//! colour of their own), cooked in a project of their own, the oak, the
+//! pine and the shrub with their impostors.
 //!
 //! - `grown_scene()` (`plant-grown`): the oak, the pine and the shrub
 //!   standing in a row on a floor with three daisies near the camera, each drawn
 //!   as its cooked parts (the wood, then the leaves and petals with the
 //!   leaf's material), under a sun from the front right.
+//! - `kinds_scene()` (`plant-kinds`): the kinds `plant-grown` does not
+//!   show, under the same sun: a palm, a birch, a willow, three bamboo
+//!   canes and a cactus in a row with an autumn birch behind (`kind
+//!   birch` with its leaves' colours), and near the camera two ferns, two
+//!   reeds and red and yellow tulips.
 //! - `scatter_scene()` (`plant-scatter`): a 64 m hill with the three woody
 //!   plants scattered whole, as og.TerrainScatter.model has og-runtime make
 //!   them: one `ScatterDraw` per part, the parts after the first drawn
@@ -32,11 +37,21 @@ use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 
 /// The plants cooked once per process: `(name, impostor)`.
-const PLANTS: [(&str, bool); 4] = [
+const PLANTS: [(&str, bool); 14] = [
     ("oak", true),
     ("pine", true),
     ("bush", true),
     ("daisy", false),
+    ("palm", false),
+    ("birch", false),
+    ("willow", false),
+    ("bamboo", false),
+    ("cactus", false),
+    ("fern", false),
+    ("reed", false),
+    ("tulip", false),
+    ("tulip-yellow", false),
+    ("birch-autumn", false),
 ];
 
 fn cooked() -> Result<&'static PathBuf, String> {
@@ -211,6 +226,62 @@ pub fn grown_scene() -> Result<RenderScene, String> {
         far: 200.0,
         projection: Projection::Perspective {
             fov_y_degrees: 50.0,
+        },
+        ..Default::default()
+    };
+    Ok(scene)
+}
+
+/// `plant-kinds` ([module docs](self)).
+pub fn kinds_scene() -> Result<RenderScene, String> {
+    let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    let mut scene = RenderScene::new();
+    sun(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0);
+    let ground = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.3, 0.32, 0.28),
+        roughness: 1.0,
+        ..Default::default()
+    });
+    let floor = scene.add_mesh(shapes::plane(120.0, 1.0));
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    let stand: [(&str, Vec3); 15] = [
+        ("palm", Vec3::new(-11.0, 0.0, 0.0)),
+        ("birch", Vec3::new(-5.5, 0.0, -1.0)),
+        ("willow", Vec3::new(1.5, 0.0, -1.0)),
+        ("bamboo", Vec3::new(7.0, 0.0, 2.0)),
+        ("bamboo", Vec3::new(7.8, 0.0, 1.2)),
+        ("bamboo", Vec3::new(8.4, 0.0, 2.4)),
+        ("cactus", Vec3::new(11.5, 0.0, 6.0)),
+        ("fern", Vec3::new(-3.7, 0.0, 16.2)),
+        ("fern", Vec3::new(-3.0, 0.0, 15.0)),
+        ("reed", Vec3::new(-0.8, 0.0, 15.6)),
+        ("reed", Vec3::new(0.2, 0.0, 14.6)),
+        ("tulip", Vec3::new(2.2, 0.0, 16.4)),
+        ("tulip-yellow", Vec3::new(3.9, 0.0, 16.2)),
+        ("tulip-yellow", Vec3::new(4.3, 0.0, 15.7)),
+        ("birch-autumn", Vec3::new(5.0, 0.0, -9.0)),
+    ];
+    for (k, (name, at)) in stand.into_iter().enumerate() {
+        let p = plant(&mut scene, &bundle, name)?;
+        let at = Mat4::from_translation(at) * Mat4::from_rotation_y(1.3 * k as f32);
+        for (mesh, material, local) in p.parts {
+            scene.add_instance(mesh, material, at * local);
+        }
+    }
+    let tulip = plant(&mut scene, &bundle, "tulip")?;
+    for (k, x) in [2.6f32, 3.0, 3.5].into_iter().enumerate() {
+        let at = Mat4::from_translation(Vec3::new(x, 0.0, 15.6 + 0.35 * k as f32))
+            * Mat4::from_rotation_y(1.7 * k as f32);
+        for &(mesh, material, local) in &tulip.parts {
+            scene.add_instance(mesh, material, at * local);
+        }
+    }
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 2.2, 21.0),
+        target: Vec3::new(0.0, 3.6, 0.0),
+        far: 200.0,
+        projection: Projection::Perspective {
+            fov_y_degrees: 58.0,
         },
         ..Default::default()
     };

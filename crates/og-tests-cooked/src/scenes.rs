@@ -28,6 +28,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "baked-batches",
     "terrain-generated",
     "plant-grown",
+    "plant-kinds",
     "plant-scatter",
     "plant-scatter-switch",
     "ui-vector",
@@ -116,6 +117,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "plant-grown" => |g, _| {
             g.scene = crate::plant_scenes::grown_scene()?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-kinds" => |g, _| {
+            g.scene = crate::plant_scenes::kinds_scene()?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]

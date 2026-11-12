@@ -1,0 +1,37 @@
+type model
+version 1
+---
+plant "tulip" {
+  seed 8
+  levels 0
+  force 0 1 0 0
+  barkColor 0.1 0.26 0.05
+  trunk {
+    length 0.38
+    radius 0.007
+    sections 4
+    segments 3
+    taper 0.2
+    gnarliness 0.015
+  }
+  leaves {
+    rows 2
+    count 3
+    start 0
+    end 0.15
+    angle 18
+    facing 0.2
+    size 0.26
+    width 0.22
+    color 0.07 0.24 0.06
+  }
+  flowers {
+    petals 6
+    size 0.06
+    width 0.62
+    cup 68
+    color 0.85 0.05 0.06
+    color2 0.95 0.3 0.05
+    centerColor 0.1 0.08 0.02
+  }
+}

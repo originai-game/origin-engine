@@ -1,0 +1,49 @@
+type model
+version 1
+---
+plant "reed" {
+  seed 9
+  levels 1
+  force 0 1 0 -0.0004
+  barkColor 0.25 0.32 0.1
+  trunk {
+    length 0.03
+    radius 0.012
+    sections 1
+    segments 3
+    children 7
+  }
+  branch1 {
+    length 1.5
+    radius 0.4
+    sections 6
+    segments 3
+    taper 0.6
+    gnarliness 0.015
+    angle 7
+    start 0
+  }
+  leaves {
+    rows 2
+    count 4
+    start 0.1
+    end 0.7
+    angle 18
+    facing 0.2
+    size 0.55
+    width 0.05
+    sizeVariance 0.3
+    color 0.14 0.3 0.05
+    color2 0.3 0.4 0.1
+  }
+  flowers {
+    share 0.7
+    petals 9
+    size 0.13
+    width 0.2
+    cup 82
+    color 0.35 0.24 0.12
+    color2 0.5 0.4 0.22
+    centerColor 0.3 0.2 0.1
+  }
+}

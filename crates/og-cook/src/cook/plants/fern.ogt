@@ -1,0 +1,38 @@
+type model
+version 1
+---
+plant "fern" {
+  seed 2
+  levels 1
+  force 0 1 0 -0.0012
+  barkColor 0.08 0.2 0.04
+  trunk {
+    length 0.04
+    radius 0.02
+    sections 1
+    segments 3
+    children 11
+  }
+  branch1 {
+    length 0.75
+    radius 0.3
+    sections 7
+    segments 3
+    taper 0.9
+    gnarliness 0.03
+    angle 34
+    start 0.2
+  }
+  leaves {
+    rows 2
+    count 30
+    start 0.12
+    angle 72
+    facing 1
+    size 0.11
+    width 0.3
+    sizeVariance 0.1
+    color 0.05 0.2 0.03
+    color2 0.1 0.3 0.05
+  }
+}

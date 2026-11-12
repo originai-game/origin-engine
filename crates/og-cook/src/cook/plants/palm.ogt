@@ -1,0 +1,40 @@
+type model
+version 1
+---
+plant "palm" {
+  seed 4
+  levels 1
+  force 0 1 0 -0.016
+  barkColor 0.2 0.15 0.1
+  trunk {
+    length 7
+    radius 0.17
+    sections 10
+    segments 7
+    taper 0.3
+    gnarliness 0.025
+    children 17
+  }
+  branch1 {
+    length 3.3
+    radius 0.22
+    sections 8
+    segments 3
+    taper 0.8
+    gnarliness 0.02
+    angle 62
+    start 0.97
+  }
+  leaves {
+    rows 2
+    count 44
+    start 0.12
+    angle 62
+    facing 0.7
+    size 0.7
+    width 0.13
+    sizeVariance 0.15
+    color 0.06 0.2 0.04
+    color2 0.12 0.3 0.06
+  }
+}

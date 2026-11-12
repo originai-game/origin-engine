@@ -1028,12 +1028,47 @@ fn word_of<'a>(f: &Fields<'a>, k: &str, words: &[&str]) -> Result<Option<&'a str
     }
 }
 
+/// The kinds a `plant` block starts from (`kind`): each a plant block of
+/// its own under `plants/`, read as the block's defaults.
+const PLANT_KINDS: [(&str, &str); 12] = [
+    ("oak", include_str!("plants/oak.ogt")),
+    ("birch", include_str!("plants/birch.ogt")),
+    ("willow", include_str!("plants/willow.ogt")),
+    ("pine", include_str!("plants/pine.ogt")),
+    ("palm", include_str!("plants/palm.ogt")),
+    ("bamboo", include_str!("plants/bamboo.ogt")),
+    ("cactus", include_str!("plants/cactus.ogt")),
+    ("shrub", include_str!("plants/shrub.ogt")),
+    ("fern", include_str!("plants/fern.ogt")),
+    ("reed", include_str!("plants/reed.ogt")),
+    ("daisy", include_str!("plants/daisy.ogt")),
+    ("tulip", include_str!("plants/tulip.ogt")),
+];
+
+/// A kind's plant and look: its own block, read from the defaults.
+fn plant_kind(kind: &str) -> Result<(og_geom::Plant, PlantLook), String> {
+    let text = PLANT_KINDS
+        .iter()
+        .find(|(k, _)| *k == kind)
+        .map(|(_, text)| *text)
+        .expect("a kind of PLANT_KINDS");
+    let doc = Document::parse(text).map_err(|e| format!("kind {kind}: {}", e.reason()))?;
+    let block = doc
+        .body
+        .get("plant")
+        .and_then(|e| e.block.as_ref())
+        .ok_or_else(|| format!("kind {kind}: no plant block"))?;
+    plant_desc(block).map_err(|e| format!("kind {kind}: {e}"))
+}
+
 /// A `plant` block as og-geom's [`og_geom::Plant`] (its fields by their
-/// names, a level a block: `trunk`, `branch1` to `branch3`; `leaves` and
-/// `flowers` only when their block is there) and its look.
+/// names, a level a block: `trunk`, `branch1` to `branch3`) and its look.
+/// What it leaves out is its `kind`'s; without one the defaults', with
+/// `leaves` and `flowers` only when their block is there.
 fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
     use og_geom::plant::{Flowers, Growth, LeafShape, Leaves, Level, Plant};
     let mut keys = vec![
+        "kind",
         "seed",
         "growth",
         "levels",
@@ -1045,7 +1080,24 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
     ];
     keys.extend(PLANT_LEVELS);
     let f = Fields::new(b, "plant", &keys)?;
-    let d = Plant::default();
+    let kinds: Vec<&str> = PLANT_KINDS.iter().map(|(k, _)| *k).collect();
+    let (d, mut look) = match word_of(&f, "kind", &kinds)? {
+        Some(kind) => plant_kind(kind)?,
+        None => (
+            Plant {
+                leaves: None,
+                flowers: None,
+                ..Plant::default()
+            },
+            PlantLook {
+                wood: None,
+                bark_color: DVec3::new(0.13, 0.085, 0.05),
+                leaf: None,
+                translucency: 0.5,
+                dome_normals: 0.6,
+            },
+        ),
+    };
     let mut level = d.level;
     for (k, l) in PLANT_LEVELS.iter().zip(&mut level) {
         let Some(lb) = f.block(k)? else { continue };
@@ -1084,13 +1136,7 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
         }
         None => (d.force_direction, d.force_strength),
     };
-    let mut look = PlantLook {
-        wood: None,
-        bark_color: f.vec3("barkColor", DVec3::new(0.13, 0.085, 0.05))?,
-        leaf: None,
-        translucency: 0.5,
-        dome_normals: 0.6,
-    };
+    look.bark_color = f.vec3("barkColor", look.bark_color)?;
     if look.bark_color.min_element() < 0.0 {
         return Err("plant.barkColor is a linear colour, no component under 0".into());
     }
@@ -1110,6 +1156,7 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
                     "end",
                     "angle",
                     "facing",
+                    "rows",
                     "size",
                     "width",
                     "sizeVariance",
@@ -1121,7 +1168,7 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
                     "domeNormals",
                 ],
             )?;
-            let l = Leaves::default();
+            let l = d.leaves.unwrap_or_default();
             look.leaf = lf.get("material").map(named).transpose()?;
             for k in ["translucency", "domeNormals"] {
                 if let (Some(_), Some(e)) = (&look.leaf, lf.get(k)) {
@@ -1150,6 +1197,7 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
                 end,
                 angle: lf.num("angle", l.angle)?,
                 facing: unit_field(&lf, "facing", l.facing)?,
+                rows: lf.uint("rows", l.rows, 0, 8)?,
                 size: lf.size("size", l.size)?,
                 width: lf.size("width", l.width)?,
                 size_variance: unit_field(&lf, "sizeVariance", l.size_variance)?,
@@ -1168,7 +1216,7 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
                     as f32,
             })
         }
-        None => None,
+        None => d.leaves,
     };
     let flowers = match f.block("flowers")? {
         Some(fb) => {
@@ -1187,7 +1235,7 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
                     "centerColor",
                 ],
             )?;
-            let l = Flowers::default();
+            let l = d.flowers.unwrap_or_default();
             let color = color_field(&ff, "color", l.color)?;
             Some(Flowers {
                 share: unit_field(&ff, "share", l.share)?,
@@ -1197,17 +1245,27 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
                 width: ff.size("width", l.width)?,
                 cup: ff.num("cup", l.cup)?,
                 color,
-                color2: color_field(&ff, "color2", color)?,
+                // One colour named: every petal that colour.
+                color2: color_field(
+                    &ff,
+                    "color2",
+                    if ff.get("color").is_some() {
+                        color
+                    } else {
+                        l.color2
+                    },
+                )?,
                 center_color: color_field(&ff, "centerColor", l.center_color)?,
             })
         }
-        None => None,
+        None => d.flowers,
     };
     let plant = Plant {
         seed: f.uint("seed", d.seed, 0, u32::MAX)?,
         growth: match word_of(&f, "growth", &["deciduous", "evergreen"])? {
             Some("evergreen") => Growth::Evergreen,
-            _ => Growth::Deciduous,
+            Some(_) => Growth::Deciduous,
+            None => d.growth,
         },
         levels: f.uint("levels", d.levels, 0, og_geom::plant::LEVELS as u32 - 1)?,
         level,

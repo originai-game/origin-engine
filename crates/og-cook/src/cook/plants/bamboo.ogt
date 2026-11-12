@@ -1,0 +1,44 @@
+type model
+version 1
+---
+plant "bamboo" {
+  seed 6
+  levels 2
+  force 0 1 0 -0.004
+  barkColor 0.2 0.32 0.08
+  trunk {
+    length 7
+    radius 0.035
+    sections 12
+    segments 6
+    taper 0.35
+    gnarliness 0.006
+    children 16
+  }
+  branch1 {
+    length 0.8
+    radius 0.3
+    sections 3
+    segments 3
+    gnarliness 0.05
+    children 2
+    angle 55
+    start 0.35
+  }
+  branch2 {
+    length 0.45
+    radius 0.6
+    sections 2
+    segments 3
+    angle 40
+  }
+  leaves {
+    count 7
+    angle 30
+    facing 0.5
+    size 0.22
+    width 0.16
+    color 0.1 0.3 0.04
+    color2 0.2 0.42 0.08
+  }
+}

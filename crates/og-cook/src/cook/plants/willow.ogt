@@ -1,0 +1,56 @@
+type model
+version 1
+---
+plant "willow" {
+  seed 3
+  levels 3
+  force 0 1 0 -0.035
+  barkColor 0.12 0.1 0.07
+  trunk {
+    length 3.4
+    radius 0.3
+    sections 6
+    segments 7
+    gnarliness 0.05
+    children 6
+  }
+  branch1 {
+    length 2.6
+    radius 0.5
+    sections 5
+    segments 4
+    gnarliness 0.1
+    children 5
+    angle 55
+    start 0.6
+  }
+  branch2 {
+    length 2
+    radius 0.4
+    sections 5
+    segments 3
+    gnarliness 0.08
+    children 5
+    angle 50
+    start 0.3
+  }
+  branch3 {
+    length 3.2
+    radius 0.35
+    sections 8
+    segments 3
+    gnarliness 0.03
+    angle 40
+    start 0.2
+  }
+  leaves {
+    rows 2
+    count 26
+    angle 35
+    facing 0.3
+    size 0.2
+    width 0.18
+    color 0.12 0.26 0.05
+    color2 0.2 0.36 0.08
+  }
+}

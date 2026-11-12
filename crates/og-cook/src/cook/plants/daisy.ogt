@@ -1,0 +1,33 @@
+type model
+version 1
+---
+plant "daisy" {
+  seed 5
+  levels 0
+  force 0 1 0 0
+  barkColor 0.1 0.25 0.05
+  trunk {
+    length 0.4
+    radius 0.006
+    sections 4
+    segments 3
+    taper 0.3
+    gnarliness 0.02
+  }
+  leaves {
+    count 7
+    start 0
+    end 0.3
+    angle 65
+    facing 1
+    size 0.09
+    width 0.38
+  }
+  flowers {
+    petals 14
+    size 0.055
+    width 0.3
+    cup 8
+    color 1 1 1
+  }
+}

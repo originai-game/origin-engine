@@ -365,6 +365,79 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
     assert!(ml.validate(leaves.vertices.len()).is_ok());
 }
 
+/// Ways this could fail: a kind that does not cook or grows nothing; a
+/// block's own keys lost to its kind's (or the kind's lost to the
+/// defaults'); a colour named that moves the plant's shape.
+#[test]
+fn a_kind_is_a_plant_s_defaults_and_its_own_keys_change_only_what_they_name() {
+    const KINDS: [&str; 12] = [
+        "oak", "birch", "willow", "pine", "palm", "bamboo", "cactus", "shrub", "fern", "reed",
+        "daisy", "tulip",
+    ];
+    let text = |kind: &str, more: &str| {
+        format!("type model\nversion 1\n---\nplant \"p\" {{\n  kind {kind}\n{more}}}\n")
+    };
+    let mut files: Vec<(String, String)> = KINDS
+        .iter()
+        .map(|k| (format!("plants/{k}.ogt"), text(k, "")))
+        .collect();
+    files.push((
+        "plants/yellow.ogt".into(),
+        text("tulip", "  flowers {\n    color 1 0.7 0\n  }\n"),
+    ));
+    files.push(("plants/other.ogt".into(), text("tulip", "  seed 21\n")));
+    files.push((
+        "plants/tall.ogt".into(),
+        text("tulip", "  trunk {\n    length 0.8\n  }\n"),
+    ));
+    let files: Vec<(&str, &[u8])> = files
+        .iter()
+        .map(|(n, t)| (n.as_str(), t.as_bytes()))
+        .collect();
+    let root = cooked("og-cook-model-text-plant-kinds", &files);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let load = |name: &str| bundle.load_model(&format!("plants/{name}.ogt")).unwrap();
+    // Each kind is a plant of its own size: from a tulip to a pine.
+    let mut heights = Vec::new();
+    for kind in KINDS {
+        let model = load(kind);
+        let top = model.primitives.iter().map(|p| p.max.y).fold(0.0, f32::max);
+        let triangles: usize = model.primitives.iter().map(|p| p.lods[0].count / 3).sum();
+        assert!(top > 0.3 && triangles > 40, "{kind}: {top} m, {triangles}");
+        // Its wood, and its leaves or petals (a cactus its flowers).
+        assert_eq!(model.primitives.len(), 2, "{kind}");
+        heights.push(top);
+    }
+    assert!(heights[3] > 9.0 && heights[11] < 0.6, "{heights:?}");
+
+    // A tulip of another colour is the same tulip; another seed or a
+    // longer stem is another.
+    let positions = |name: &str| -> Vec<Vec<[f32; 3]>> {
+        load(name)
+            .primitives
+            .iter()
+            .map(|p| p.vertices.iter().map(|v| v.position).collect())
+            .collect()
+    };
+    let colors = |name: &str| -> Vec<[f32; 4]> {
+        load(name).primitives[1]
+            .vertices
+            .iter()
+            .map(|v| v.color)
+            .collect()
+    };
+    let tulip = positions("tulip");
+    assert_eq!(positions("yellow"), tulip);
+    assert_ne!(colors("yellow"), colors("tulip"));
+    assert_ne!(positions("other"), tulip);
+    let top = |name: &str| load(name).primitives[0].max.y;
+    assert!(
+        (top("tall") - top("tulip") - 0.42).abs() < 0.03,
+        "{}",
+        top("tall")
+    );
+}
+
 #[test]
 fn a_plant_s_mistakes_are_refused_with_their_line() {
     let refused = |name: &str, text: String, line: &str, says: &str| {
@@ -404,6 +477,13 @@ fn a_plant_s_mistakes_are_refused_with_their_line() {
             .replace("count 12\n", "count 12\n    material \"leaf\"\n"),
         "line 26",
         "is its material's",
+    );
+    // A kind the cook does not grow: the ones it does, by name.
+    refused(
+        "og-cook-model-text-plant-kind",
+        SHRUB.replace("seed 7\n", "seed 7\n  kind mangrove\n"),
+        "line 6",
+        "is one of: oak, birch, willow, pine, palm, bamboo, cactus, shrub, fern, reed, daisy, tulip",
     );
     // A number that would grow past what a model holds.
     refused(

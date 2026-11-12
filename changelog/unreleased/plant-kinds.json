@@ -1,0 +1,7 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"type model","summary":"A `plant` block takes `kind`: oak, birch, willow, pine, palm, bamboo, cactus, shrub, fern, reed, daisy or tulip. `plant \"palm\" { kind palm }` is a whole plant, and the keys beside it change only what they name (a colour, a seed, a trunk's length). The models guide (§3) lists each kind's height and triangles."},
+    {"member":"type model","summary":"A plant's leaves take `rows`: 2 puts them in two rows to the sides of their branch, level with the ground (a palm's or a fern's frond, a conifer's flat spray); 0, the default, anywhere round it as before."}
+  ]
+}
