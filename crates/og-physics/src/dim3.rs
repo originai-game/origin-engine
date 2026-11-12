@@ -159,21 +159,37 @@ fn field_rect(
 
 /// A shape built from a registered mesh, scaled.
 pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
-    let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
     match shape {
-        SHAPE_CONVEX => rp::SharedShape::convex_hull(&points).ok_or_else(|| {
-            Error::new(
-                ErrorKind::Invalid,
-                "the mesh's convex hull is degenerate (flat or a single point)",
-            )
-        }),
-        _ => rp::SharedShape::trimesh(points, mesh.indices.clone()).map_err(|e| {
-            Error::new(
-                ErrorKind::Invalid,
-                format!("the mesh is not a valid triangle mesh: {e}"),
-            )
-        }),
+        SHAPE_CONVEX => {
+            let points: Vec<rp::Vector> = mesh.positions.iter().map(|p| v(*p * s)).collect();
+            rp::SharedShape::convex_hull(&points).ok_or_else(|| {
+                Error::new(
+                    ErrorKind::Invalid,
+                    "the mesh's convex hull is degenerate (flat or a single point)",
+                )
+            })
+        }
+        _ => trimesh(mesh, s),
     }
+}
+
+/// The triangle mesh (rapier's, with its BVH) over `mesh` scaled by `s`:
+/// a SHAPE_TRIMESH collider's shape, and what [`bake`] bakes.
+pub(crate) fn trimesh(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
+    let points: Vec<rp::Vector> = mesh
+        .positions
+        .iter()
+        .map(|p| {
+            let p = *p * s;
+            rp::Vector::new(p.x, p.y, p.z)
+        })
+        .collect();
+    rp::SharedShape::trimesh(points, mesh.indices.clone()).map_err(|e| {
+        Error::new(
+            ErrorKind::Invalid,
+            format!("the mesh is not a valid triangle mesh: {e}"),
+        )
+    })
 }
 
 /// What starts a baked triangle mesh's bytes: the format and its version,
@@ -183,7 +199,7 @@ const BAKED: &[u8; 8] = b"OGTM\x01\x00\x00\x00";
 
 /// [`crate::bake_trimesh`].
 pub(crate) fn bake(mesh: &crate::MeshDesc) -> Result<Vec<u8>> {
-    let shape = from_mesh(SHAPE_TRIMESH, mesh, Vec3::ONE)?;
+    let shape = trimesh(mesh, Vec3::ONE)?;
     let mesh = shape.as_trimesh().expect("a triangle mesh");
     let mut out = BAKED.to_vec();
     crate::encode(&mut out, mesh)
