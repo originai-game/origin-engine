@@ -2,7 +2,10 @@
 //! one Rust type per struct, enum and union a binding takes as JSON (or, for
 //! enums, as a string), with its IDL defaults and a reader over
 //! `serde_json::Value`, so a field name, a type or a default the runtime
-//! reads is the IDL's and a mismatch is a build error.
+//! reads is the IDL's and a mismatch is a build error. `record` holds the
+//! rows of the engine's components, resources and events the same way, as
+//! their layouts decode them (og-runtime's `codec::Layout::read`), readers
+//! only: the runtime writes a row through its layout.
 //!
 //! The readers implement og-runtime's `wire::FromJson`. Their rules, the
 //! same for every type: an absent field takes its default, and so does a
@@ -351,14 +354,23 @@ impl<'a> Gen<'a, '_> {
     }
 
     fn structure(&self, out: &mut String, module: &str, s: &Struct) {
-        let _ = writeln!(
-            out,
-            "/// `{}`: packages/knowledge/wiki/{module}.md.",
-            s.name
-        );
+        self.fields_type(out, module, &s.name, &s.fields, true);
+    }
+
+    /// A struct of `fields` named `name`: its type, its IDL defaults, its
+    /// reader and, with `writer`, its writer.
+    fn fields_type(
+        &self,
+        out: &mut String,
+        module: &str,
+        name: &str,
+        fields: &[Field],
+        writer: bool,
+    ) {
+        let _ = writeln!(out, "/// `{}`: packages/knowledge/wiki/{module}.md.", name);
         let _ = writeln!(out, "#[derive(Clone, Debug, PartialEq)]");
-        let _ = writeln!(out, "pub struct {} {{", s.name);
-        for f in &s.fields {
+        let _ = writeln!(out, "pub struct {} {{", name);
+        for f in fields {
             let _ = writeln!(
                 out,
                 "    pub {}: {},",
@@ -367,13 +379,13 @@ impl<'a> Gen<'a, '_> {
             );
         }
         let _ = writeln!(out, "}}\n");
-        let _ = writeln!(out, "impl Default for {} {{", s.name);
+        let _ = writeln!(out, "impl Default for {} {{", name);
         let _ = writeln!(out, "    fn default() -> Self {{");
-        if s.fields.is_empty() {
+        if fields.is_empty() {
             let _ = writeln!(out, "        Self {{}}");
         } else {
             let _ = writeln!(out, "        Self {{");
-            for f in &s.fields {
+            for f in fields {
                 let _ = writeln!(
                     out,
                     "            {}: {},",
@@ -384,40 +396,43 @@ impl<'a> Gen<'a, '_> {
             let _ = writeln!(out, "        }}");
         }
         let _ = writeln!(out, "    }}\n}}\n");
-        let _ = writeln!(out, "impl FromJson for {} {{", s.name);
+        let _ = writeln!(out, "impl FromJson for {} {{", name);
         let _ = writeln!(
             out,
             "    fn from_json(v: &Value) -> Result<Self, String> {{"
         );
-        if s.fields.is_empty() {
+        if fields.is_empty() {
             let _ = writeln!(out, "        object(v)?;");
             let _ = writeln!(out, "        Ok(Self {{}})");
         } else {
             let _ = writeln!(out, "        Self::from_json_over(v, Self::default())");
         }
         let _ = writeln!(out, "    }}");
-        if !s.fields.is_empty() {
+        if !fields.is_empty() {
             let _ = writeln!(
                 out,
                 "    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {{"
             );
             let _ = writeln!(out, "        let o = object(v)?;");
             let _ = writeln!(out, "        Ok(Self {{");
-            for f in &s.fields {
+            for f in fields {
                 let n = field_name(&f.name);
                 let _ = writeln!(out, "            {n}: field(o, {:?}, d.{n})?,", f.name);
             }
             let _ = writeln!(out, "        }})\n    }}");
         }
         let _ = writeln!(out, "}}\n");
-        let _ = writeln!(out, "impl ToJson for {} {{", s.name);
+        if !writer {
+            return;
+        }
+        let _ = writeln!(out, "impl ToJson for {} {{", name);
         let _ = writeln!(out, "    fn to_json(&self) -> Value {{");
-        if s.fields.is_empty() {
+        if fields.is_empty() {
             let _ = writeln!(out, "        Value::Object(Map::new())\n    }}\n}}\n");
             return;
         }
         let _ = writeln!(out, "        let mut o = Map::new();");
-        for f in &s.fields {
+        for f in fields {
             let n = field_name(&f.name);
             if f.optional && f.ty.name() != "Option" {
                 let _ = writeln!(
@@ -646,6 +661,17 @@ pub fn wire_rs(ix: &Index<'_>) -> String {
     let _ = writeln!(out, "use glam::{{Mat4, Quat, Vec2, Vec3, Vec4}};");
     let _ = writeln!(out, "use serde_json::{{Map, Value}};");
     let _ = writeln!(out, "use std::collections::BTreeMap;\n");
+    // The engine's records, whose rows the runtime reads decoded
+    // (`codec::Layout::read`): their field types are wanted too.
+    for module in &ix.api.modules {
+        for item in &module.items {
+            if let Item::Record(r) = item {
+                for f in &r.fields {
+                    g.want(None, &f.ty);
+                }
+            }
+        }
+    }
     for module in &ix.api.modules {
         for item in &module.items {
             if !g.wanted.contains(item.name()) {
@@ -659,5 +685,25 @@ pub fn wire_rs(ix: &Index<'_>) -> String {
             }
         }
     }
+    let _ = writeln!(
+        out,
+        "/// The rows of the engine's records (IDL `component`, `resource` and\n/// `event`), as their layouts decode them: every field, with its IDL\n/// default, read through the same rules as the wire types.\npub mod record {{\n    use super::*;\n"
+    );
+    let mut rows = String::new();
+    for module in &ix.api.modules {
+        for item in &module.items {
+            if let Item::Record(r) = item {
+                g.fields_type(&mut rows, &module.name, &r.name, &r.fields, false);
+            }
+        }
+    }
+    for line in rows.lines() {
+        if line.is_empty() {
+            out.push('\n');
+        } else {
+            let _ = writeln!(out, "    {line}");
+        }
+    }
+    let _ = writeln!(out, "}}");
     out
 }
