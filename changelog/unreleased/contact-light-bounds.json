@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"Light.castShadows","summary":"A shadowed point or spot light's contact shadows are traced only over the pixels its range reaches, not the whole screen, with the same pixels. A light whose range covers the view costs what it did; one that covers part of it costs in proportion."}
+  ]
+}

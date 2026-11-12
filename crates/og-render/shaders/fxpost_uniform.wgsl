@@ -26,7 +26,8 @@ struct FxPost {
   gi1: vec4<f32>,             // x: rays, y: the noise's frame offset (px), z: 1 with last frame's lit image (tex_a), w: the occlusion from 0 the rays, 1 GTAO, 2 SSAO
   gi2: vec4<f32>,             // x: how much the rays' hits occlude the ambient light
   // Screen-space contact shadows (contact.wgsl): rows 0 to 2 the contact
-  // lights' view-space positions (w 1: drawn), row 3 Bend's x surface
+  // lights' view-space positions (w the frame's tag in the masks' keys,
+  // 0: not drawn), row 3 Bend's x surface
   // thickness, y bilinear threshold, z shadow contrast, w sample count.
   contact: array<vec4<f32>, 4>,
 };
