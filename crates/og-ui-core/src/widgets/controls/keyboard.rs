@@ -322,10 +322,10 @@ impl Ui {
         let panel_w = if wide { safe_w.min(980.0) } else { safe_w };
         let touch = self.touch_frame();
         let gap = t.space.xxs;
-        let base = (if touch { TOUCH } else { 40.0 })
+        let base = (if touch { self.touch_target() } else { 40.0 })
             .max(56.0f32.min((vp.width.min(980.0) - 2.0 * t.space.md) / 11.5 - gap));
         let room = (vp.height - vp.safe_area.top - vp.safe_area.bottom) * 0.6;
-        let key_h = (if touch { TOUCH } else { 32.0 })
+        let key_h = (if touch { self.touch_target() } else { 32.0 })
             .max(
                 self.by_text(base)
                     .min((room - gap * (rows.len() as f32 - 1.0)) / rows.len() as f32),
@@ -526,7 +526,11 @@ impl Ui {
                         crate::ui_idi("Candidate", i as u32),
                         Ctl {
                             part: "keyboard::part(candidate)",
-                            height: Some(Size::px(self.by_text(if touch { TOUCH } else { 36.0 }))),
+                            height: Some(Size::px(self.by_text(if touch {
+                                self.touch_target()
+                            } else {
+                                36.0
+                            }))),
                             padding: Insets::xy(t.space.md, 0.0),
                             fill: Some(if i == 0 {
                                 mix(control, primary, 0.16)
@@ -539,7 +543,7 @@ impl Ui {
                                 name: Some(c.clone()),
                                 ..Semantics::default()
                             }),
-                            ..Ctl::default()
+                            ..self.ctl_base()
                         },
                         |ui, _| ui.text("Text", c, body("ink")),
                     );
@@ -614,7 +618,7 @@ impl Ui {
                                 name: Some(label.clone()),
                                 ..Semantics::default()
                             }),
-                            ..Ctl::default()
+                            ..self.ctl_base()
                         },
                         |ui, _| {
                             if blank {

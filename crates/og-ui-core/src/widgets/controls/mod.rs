@@ -37,9 +37,6 @@ pub use ranges::{
     NumberResult, NumberStepperDesc, SliderMark, ValueFormat, ValueSliderDesc, ValueSliderResult,
 };
 
-/// The smallest touch target on a coarse pointer (docs/ui.md §6, XAG).
-const TOUCH: f32 = 44.0;
-
 // ── colour, as the controls mix it ──────────────────────────────────────────
 
 /// A colour as the controls compute with it: sRGB 0–1 and alpha, mixed in
@@ -263,8 +260,12 @@ struct Ctl<'a> {
     inert: bool,
 }
 
-impl Default for Ctl<'_> {
-    fn default() -> Self {
+impl Ui {
+    /// A control part as the theme's state tokens set one: its hover
+    /// wash, lift, press, disabled opacity and touch target (CSS
+    /// `--state-*`, `--touch-target`).
+    fn ctl_base(&self) -> Ctl<'static> {
+        let s = self.env.theme.state;
         Ctl {
             part: "",
             part_node: false,
@@ -276,7 +277,7 @@ impl Default for Ctl<'_> {
             arrows: 0,
             fill: None,
             wash: None,
-            wash_by: 0.1,
+            wash_by: s.hover_wash,
             direction: Direction::Row,
             width: None,
             height: None,
@@ -286,13 +287,13 @@ impl Default for Ctl<'_> {
             cross: Cross::Center,
             radius: None,
             semantics: None,
-            lift: -1.0,
-            press: 0.97,
-            dim: 0.5,
+            lift: s.lift,
+            press: s.control_press_scale,
+            dim: s.disabled_opacity,
             states: Vec::new(),
             state: Vec::new(),
             props: Props::default(),
-            touch: TOUCH,
+            touch: s.touch_target,
             inert: false,
         }
     }
@@ -365,6 +366,11 @@ impl Ui {
                 self.breakpoint(),
                 Breakpoint::PhonePortrait | Breakpoint::PhoneLandscape | Breakpoint::Tablet
             )
+    }
+
+    /// The smallest side a finger's target gets (CSS `--touch-target`).
+    fn touch_target(&self) -> f32 {
+        self.env.theme.state.touch_target
     }
 
     /// A size that holds text, at the player's text scale.
@@ -479,7 +485,7 @@ impl Ui {
                 to: "pressed".into(),
                 transition: tween(
                     if still { 0.0 } else { 60.0 },
-                    Ease::CubicBezier(crate::theme::EASE_OUT),
+                    Ease::CubicBezier(self.env.theme.ease_out),
                 ),
             }],
         }
@@ -1107,7 +1113,7 @@ impl Ui {
         let k = self.animate_key(
             crate::id::child_key(key, "~open"),
             if visible { 1.0 } else { 0.0 },
-            tween(140.0, Ease::CubicBezier(crate::theme::EASE_OUT)),
+            tween(140.0, Ease::CubicBezier(self.env.theme.ease_out)),
             Some(0.0),
         );
         let k = if self.still() || !visible { 1.0 } else { k };

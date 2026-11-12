@@ -72,7 +72,7 @@ impl Ui {
                     expanded: Some(open),
                     ..Semantics::default()
                 }),
-                ..Ctl::default()
+                ..self.ctl_base()
             },
             |ui, _| {
                 // Closed it points to the inline end (right, left in RTL),

@@ -338,7 +338,7 @@ impl Ui {
                 wash: Some(None),
                 lift: 0.0,
                 press: 1.0,
-                touch: if stop { TOUCH } else { 0.0 },
+                touch: if stop { self.touch_target() } else { 0.0 },
                 inert: !stop,
                 props: Props {
                     position: Position::Absolute,
@@ -363,7 +363,7 @@ impl Ui {
                     z: 2,
                     ..Props::default()
                 },
-                ..Ctl::default()
+                ..self.ctl_base()
             },
             |ui, _| {
                 // A dot of primary inside the knob while it is held or focused.
@@ -511,7 +511,7 @@ impl Ui {
             }),
             exit: Some(crate::motion::PresenceSpec {
                 values: vec![(Prop::Opacity, 0.0)],
-                transition: tween(90.0, Ease::CubicBezier(crate::theme::EASE_EXIT)),
+                transition: tween(90.0, Ease::CubicBezier(t.ease_exit)),
                 delay_ms: 0.0,
             }),
             reduced: Some(crate::motion::Reduced::Fade),
@@ -552,7 +552,7 @@ impl Ui {
             self.interaction_at(&format!("{track_path}/::part(reach)#0"))
         };
         let g = Geo {
-            h: (knob + 8.0).max(if touch { TOUCH } else { 28.0 }),
+            h: (knob + 8.0).max(if touch { self.touch_target() } else { 28.0 }),
             knob,
             rail: if touch { 6.0 } else { 4.0 },
             width: tb.map_or(0.0, |b| (b.width - knob).max(1.0)),
@@ -666,7 +666,7 @@ impl Ui {
                     value_now: Some(v),
                     ..Semantics::default()
                 }),
-                ..Ctl::default()
+                ..self.ctl_base()
             },
             |ui, _| {
                 ui.rail(g, f.min(of), f.max(of), &ticks, disabled);
@@ -760,7 +760,7 @@ impl Ui {
         let track_path = format!("{}/Track", self.child_path(&key));
         let tb = self.bounds_of(&track_path);
         let g = Geo {
-            h: (knob + 8.0).max(if touch { TOUCH } else { 28.0 }),
+            h: (knob + 8.0).max(if touch { self.touch_target() } else { 28.0 }),
             knob,
             rail: if touch { 6.0 } else { 4.0 },
             width: tb.map_or(0.0, |b| (b.width - knob).max(1.0)),
@@ -871,7 +871,7 @@ impl Ui {
                 wash: Some(None),
                 lift: 0.0,
                 press: 1.0,
-                ..Ctl::default()
+                ..self.ctl_base()
             },
             |ui, _| {
                 ui.rail(g, fl, fh, &[], disabled);
@@ -1028,7 +1028,10 @@ impl Ui {
         let disabled = desc.disabled;
         let wrap = desc.wrap && min.is_some() && max.is_some();
         let touch = self.touch_frame();
-        let h = self.sizes().control_md.max(if touch { TOUCH } else { 0.0 });
+        let h = self
+            .sizes()
+            .control_md
+            .max(if touch { self.touch_target() } else { 0.0 });
         let now = self.seconds();
         // A held button repeats: after 0.4 s, every 0.12 s, then 0.05 s; past a second by the large step.
         let since = self.memory(&format!("{key}~since"), -1.0);
@@ -1133,7 +1136,7 @@ impl Ui {
                         name: Some(if sign < 0 { "Decrease" } else { "Increase" }.into()),
                         ..Semantics::default()
                     }),
-                    ..Ctl::default()
+                    ..ui.ctl_base()
                 },
                 |ui, _| {
                     ui.drawn(
@@ -1186,7 +1189,7 @@ impl Ui {
                     value_now: Some(v),
                     ..Semantics::default()
                 }),
-                ..Ctl::default()
+                ..self.ctl_base()
             },
             |ui, _| {
                 ui.text(

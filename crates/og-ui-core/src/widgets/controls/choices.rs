@@ -301,7 +301,7 @@ impl Ui {
                     value,
                     ..Semantics::default()
                 }),
-                ..Ctl::default()
+                ..self.ctl_base()
             },
             |ui, ix| {
                 if desc.side == LabelSide::Start {
@@ -506,7 +506,7 @@ impl Ui {
                     value: mixed.then(|| "mixed".into()),
                     ..Semantics::default()
                 }),
-                ..Ctl::default()
+                ..self.ctl_base()
             },
             |ui, ix| {
                 if desc.side == LabelSide::Start {
@@ -571,7 +571,7 @@ impl Ui {
                             from: "off".into(),
                             to: "on".into(),
                             transition: if still {
-                                tween(0.0, Ease::CubicBezier(crate::theme::EASE_OUT))
+                                tween(0.0, Ease::CubicBezier(ui.env.theme.ease_out))
                             } else {
                                 spring(260.0, 0.45)
                             },
@@ -581,7 +581,7 @@ impl Ui {
                             to: "off".into(),
                             transition: tween(
                                 if still { 0.0 } else { 90.0 },
-                                Ease::CubicBezier(crate::theme::EASE_EXIT),
+                                Ease::CubicBezier(ui.env.theme.ease_exit),
                             ),
                         },
                     ],
@@ -678,7 +678,7 @@ impl Ui {
                 from: "off".into(),
                 to: "on".into(),
                 transition: if still {
-                    tween(0.0, Ease::CubicBezier(crate::theme::EASE_OUT))
+                    tween(0.0, Ease::CubicBezier(self.env.theme.ease_out))
                 } else {
                     spring(240.0, 0.4)
                 },
@@ -814,7 +814,7 @@ impl Ui {
                         checked: Some(on),
                         ..Semantics::default()
                     }),
-                    ..Ctl::default()
+                    ..self.ctl_base()
                 },
                 |ui, ix| {
                     if cards && !o.icon.is_empty() {
@@ -924,7 +924,7 @@ impl Ui {
         } else {
             sizes.control_md
         }) - 4.0)
-            .max(if touch { TOUCH } else { 0.0 });
+            .max(if touch { self.touch_target() } else { 0.0 });
         let pad = (inner * 0.08).round().max(2.0);
         let h = inner + 2.0 * pad;
         let n = desc.items.len();
@@ -1026,7 +1026,7 @@ impl Ui {
             });
         }
         let pad_x = self.by_text(if small { t.space.sm } else { t.space.md });
-        let min_w = if touch { TOUCH } else { 0.0 };
+        let min_w = if touch { self.touch_target() } else { 0.0 };
         for (i, it) in desc.items.iter().enumerate() {
             let on = i as i32 == selected;
             let off = desc.disabled || it.disabled;
@@ -1072,7 +1072,7 @@ impl Ui {
                         checked: Some(on),
                         ..Semantics::default()
                     }),
-                    ..Ctl::default()
+                    ..self.ctl_base()
                 },
                 |ui, _| {
                     let c = if on { ink } else { muted };
