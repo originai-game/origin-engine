@@ -201,6 +201,12 @@ and the dither cells.
 - Ink without inkDepth draws on luminance edges over every surface,
   sprite and texture alike, and needs no prepass. Add inkDepth for
   contours round flat colours that luminance alone misses.
+- With a prepass (an outline, inkDepth, hatchingDepth or a surface
+  space), scattered copies, impostors, grass and terrain are masses: ink
+  keeps to their silhouettes and their hatching is laid on the screen,
+  because strokes on each leaf and blade read as blots. Without one,
+  luminance ink still marks every leaf; give a hatched or inked 3D look
+  with vegetation an outline or inkDepth.
 
 <a id="guide-looks-10"></a>
 ### `looks §10` Paint and watercolour
@@ -256,7 +262,10 @@ from above, the play area lies at one depth and falls in one band.
 <a id="guide-looks-12"></a>
 ### `looks §12` MaterialStyle
 
-- A terrain takes toon (the built-in three bands, matte) and shadowTint.
+- One shading rule lights every surface. Terrain, grass, scattered
+  copies, model impostors and crowd cards take toon (the built-in three
+  bands, matte), shadowTint, shadowDarkness and the flat toon ambient,
+  as meshes do; a mesh's own ramp replaces the three bands.
 - toon passes over a material with a MeshPhysicalMaterial lobe
   (clearcoat, sheen, transmission, iridescence, anisotropy, ior), which
   keeps its physical shading. Set the material's own toon to override.
@@ -269,6 +278,15 @@ from above, the play area lies at one depth and falls in one band.
   At a grazing angle a surface is lined only where it ends, so a
   1,600 m ground under a chase camera keeps its far edge and gets no
   band along the horizon.
+- Foliage and ground are lined as masses. A scattered copy or an
+  impostor takes the outline round the whole copy, against the sky or
+  another copy, never between its own leaves; the line thins to nothing
+  with distance and never thickens. The terrain is lined on its
+  silhouette. A tree placed as a model is a mesh: every leaf card gets
+  the hull outline, so scatter the trees of an outlined look.
+- An outline on a 3D look runs the depth prepass over the whole scene,
+  scattered copies and terrain included. Its cost grows with the
+  vegetation drawn; measure it by pass (§5).
 - toonAmbient 1 brings back the smooth PBR ambient and reflections,
   which wash the bands out. Keep it low for clean cel shading.
 - wireframe draws edges over drawn faces, which hide the edges behind
