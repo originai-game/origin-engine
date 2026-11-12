@@ -252,7 +252,7 @@ impl Graph {
         self.pending_bindings.remove(&binding);
     }
 
-    pub(crate) fn clear_bindings(&mut self) {
+    pub fn clear_bindings(&mut self) {
         self.binding_reads.clear();
         self.binding_observers.clear();
         self.pending_bindings.clear();

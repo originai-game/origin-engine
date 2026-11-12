@@ -26,7 +26,7 @@ pub const DEFAULT_CSS: &str = include_str!("../default.css");
 
 mod a11y;
 pub mod actions;
-pub mod bind;
+pub use og_reactive::bind;
 pub mod colr;
 pub mod css_color;
 pub(crate) mod decor;
@@ -52,7 +52,7 @@ mod nav;
 pub mod paint;
 pub mod paint_entry;
 mod probe;
-pub mod reactive;
+pub use og_reactive::reactive;
 mod recognize;
 mod rich;
 pub use og_rive as rive;

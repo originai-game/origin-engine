@@ -1,4 +1,5 @@
 use super::*;
+use crate::reactive::{SourceId, session};
 
 /// A text field's constraint validity as last built ([`Act::Submit`]).
 #[derive(Clone, Debug)]
@@ -836,6 +837,56 @@ impl crate::ui::Docs {
                 .record(key)
                 .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
                 .map(|(_, fields)| fields)
+        })
+    }
+}
+
+impl Ui {
+    /// A same-process hot reload keeps live subscribers and named callback
+    /// registrations. Snapshot restore replaces values, not executable code.
+    pub fn inherit_store_registrations(&mut self, previous: &Self) {
+        self.docs.reactive = previous.docs.reactive.clone();
+        self.docs.reactive.graph.clear_bindings();
+        self.inherit_document_registrations(previous);
+    }
+
+    /// Apply the host's binary source/computation operations to this UI.
+    pub fn apply_reactive(&mut self, bytes: &[u8]) -> Vec<u8> {
+        use session::Command;
+        session::Session::apply_with(bytes, |command| {
+            match command {
+                Command::MountInputs => return Ok(self.docs.document_mount_inputs()),
+                Command::Mount {
+                    mount,
+                    document,
+                    inputs,
+                    content,
+                } => {
+                    self.register_document_mount(mount, document, inputs, content)?;
+                }
+                Command::Unmount { mount } => {
+                    mount.validate()?;
+                    self.docs.reactive.graph.check_idle(&mount)?;
+                    self.unmount_document(&mount);
+                }
+                Command::Registered { sources, mounts } => {
+                    self.docs.registered_document_mounts(mounts)?;
+                    self.docs.reactive.execute(Command::Registered {
+                        sources,
+                        mounts: Vec::new(),
+                    })?;
+                }
+                Command::Dispose { scope } => {
+                    self.docs
+                        .reactive
+                        .graph
+                        .check_idle(&SourceId::new(&scope, "dispose"))?;
+                    self.unmount_scope(&scope);
+                    return self.docs.reactive.execute(Command::Dispose { scope });
+                }
+                command => return self.docs.reactive.execute(command),
+            }
+            Ok(Value::Null)
         })
     }
 }

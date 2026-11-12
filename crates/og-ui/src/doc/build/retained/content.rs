@@ -328,12 +328,6 @@ fn literal(lit: &Lit) -> Value {
     }
 }
 
-impl From<Expr> for BindingExpression {
-    fn from(e: Expr) -> BindingExpression {
-        BindingExpression::Expression(e)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

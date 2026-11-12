@@ -134,7 +134,7 @@ struct Registration {
 pub struct Session {
     pub sources: Sources,
     defaults: Sources,
-    pub(crate) graph: Graph,
+    pub graph: Graph,
     computed: BTreeMap<SourceId, Option<Value>>,
     registration: Option<Registration>,
 }
@@ -181,7 +181,7 @@ impl Session {
         Ok(())
     }
 
-    pub(crate) fn save(&self) -> Value {
+    pub fn save(&self) -> Value {
         json!({
             "sources": self.sources.save(),
             "computed": self.computed.iter().collect::<Vec<_>>(),
@@ -189,7 +189,7 @@ impl Session {
         })
     }
 
-    pub(crate) fn restore(&mut self, value: &Value) -> Result<(), String> {
+    pub fn restore(&mut self, value: &Value) -> Result<(), String> {
         let mut sources = Sources::default();
         sources.restore(value["sources"].clone())?;
         let computed: Vec<(SourceId, Option<Value>)> =
@@ -489,7 +489,7 @@ impl Session {
         Self::apply_with(bytes, |command| self.execute(command))
     }
 
-    pub(super) fn apply_with(
+    pub fn apply_with(
         bytes: &[u8],
         mut execute: impl FnMut(Command) -> Result<Value, String>,
     ) -> Vec<u8> {

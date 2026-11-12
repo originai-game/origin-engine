@@ -3140,6 +3140,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-reactive"
+version = "0.7.7"
+dependencies = [
+ "og-draw",
+ "og-i18n",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "og-records"
 version = "0.7.7"
 
@@ -3374,6 +3384,7 @@ dependencies = [
  "og-i18n",
  "og-input",
  "og-probe",
+ "og-reactive",
  "og-rive",
  "og-text",
  "og-tween",

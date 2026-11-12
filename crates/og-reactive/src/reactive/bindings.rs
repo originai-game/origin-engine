@@ -138,6 +138,12 @@ pub enum BindingExpression {
     Template(Template),
 }
 
+impl From<Expr> for BindingExpression {
+    fn from(e: Expr) -> BindingExpression {
+        BindingExpression::Expression(e)
+    }
+}
+
 /// Compiled expressions and their last results. The source graph supplies the
 /// work queue; refreshing an idle set never iterates its bindings or nodes.
 #[derive(Clone, Debug, Default)]
