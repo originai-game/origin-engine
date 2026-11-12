@@ -2,6 +2,7 @@
 //! Dependency edges include fallback references even when the fallback is unused.
 use cssparser::{Delimiter, ParseError, Parser, Token};
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, PartialEq)]
 enum Piece {
@@ -17,9 +18,11 @@ pub struct Value(Vec<Piece>);
 
 /// Custom values and inherited standard declarations have separate namespaces.
 /// None is the guaranteed-invalid custom value; an empty string is valid.
+/// An element shares its parent's custom values until it sets one, so a
+/// root with many tokens costs a child nothing to inherit.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Computed {
-    custom: BTreeMap<String, Option<String>>,
+    custom: Arc<BTreeMap<String, Option<String>>>,
     pub(crate) properties: BTreeMap<String, String>,
 }
 
@@ -40,11 +43,14 @@ impl Computed {
         if name.starts_with("--og-") {
             return None;
         }
-        self.custom.insert(name, value)
+        Arc::make_mut(&mut self.custom).insert(name, value)
     }
 
     pub fn remove(&mut self, name: &str) -> Option<Option<String>> {
-        self.custom.remove(name)
+        if !self.custom.contains_key(name) {
+            return None;
+        }
+        Arc::make_mut(&mut self.custom).remove(name)
     }
 
     pub fn extend(&mut self, values: impl IntoIterator<Item = (String, Option<String>)>) {
