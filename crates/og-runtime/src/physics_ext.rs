@@ -11,7 +11,7 @@
 
 use super::engine::{Engine, engine, running};
 use super::extract::RenderState;
-use super::fx::{f, rows};
+use super::fx::rows;
 use super::wire::{
     self, BonePose, FromJson, PhysicsPhase, PhysicsStats, RagdollBoneDesc, RagdollRigDesc,
     SoftBodyPoints, ToJson, WheelPose, record,
@@ -509,7 +509,8 @@ pub fn og_physics_water_height(
                 .rows(layout.as_ref())?
                 .into_iter()
                 .find(|(id, _)| *id == e.to_bits())
-                .map_or(12.0, |(_, v)| f(&v, "width", 12.0));
+                .and_then(|(_, v)| record::WaterLine::from_json(&v).ok())
+                .map_or(12.0, |w| w.width);
             let n = line.len();
             if n < 2 {
                 return Ok(json!(at.y));
@@ -805,7 +806,10 @@ pub(crate) fn draw_ragdolls(
     };
     let layout = draw.atmo.ragdoll.as_ref();
     for (e, v) in rows(world, layout) {
-        let blend = f(&v, "blend", 0.0).clamp(0.0, 1.0);
+        let Ok(v) = record::Ragdoll::from_json(&v) else {
+            continue;
+        };
+        let blend = v.blend.clamp(0.0, 1.0);
         let (Some(kept), Some(&palette)) = (atmo.rigs.get(&e), atmo.palettes.get(&e)) else {
             continue;
         };

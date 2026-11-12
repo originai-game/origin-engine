@@ -14,7 +14,7 @@ struct Begun {
     /// The render target's size.
     size: (u32, u32),
     camera: Option<std::sync::Arc<Value>>,
-    settings: Option<std::sync::Arc<Value>>,
+    settings: Option<crate::wire::record::RenderSettings>,
     /// The world's zero in the absolute world (og.WorldOrigin).
     zero: glam::DVec3,
     /// The queued sprites and texts are this tick's (or a command's since).
@@ -71,10 +71,11 @@ fn begin(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Begun {
     rs.ids.instances = ids;
     let size = backend_size(rs);
     let camera = resource(world, rs.camera.as_ref());
-    let settings = resource(world, rs.settings.as_ref());
+    let settings = resource(world, rs.settings.as_ref())
+        .and_then(|s| crate::wire::record::RenderSettings::from_json(&s).ok());
     // A display frame between ticks: every world matrix and the camera
     // from here on are blended with the tick before (`super::interpolate`).
-    super::interpolate::begin(world, rs, settings.as_deref(), h);
+    super::interpolate::begin(world, rs, settings.as_ref(), h);
     let blended = rs.interp.drawn;
     rs.atmo.palettes.clear();
     rs.ids.sprites.clear();
@@ -141,14 +142,25 @@ fn begin(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Begun {
 // Rendering only: the drawn cameras' field of view.
 #[allow(clippy::disallowed_methods)]
 fn camera(rs: &mut RenderState, b: &Begun) -> View {
-    let (camera, zero, size, framed) = (b.camera.clone(), b.zero, b.size, b.framed);
+    let (zero, size, framed) = (b.zero, b.size, b.framed);
+    // An absent background lane read 0 by hand, where the IDL's default is
+    // the dark blue: kept.
+    let base = crate::wire::record::Camera {
+        background: crate::wire::Color {
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
+        },
+        ..Default::default()
+    };
+    let camera = b
+        .camera
+        .as_deref()
+        .and_then(|c| crate::wire::record::Camera::from_json_over(c, base).ok());
     let scene = &mut rs.scene;
     // Camera.
     let mut exposure = 1.0f32;
-    scene.frame.camera_layers = camera
-        .as_ref()
-        .and_then(|c| crate::wire::record::Camera::from_json(c).ok())
-        .map_or(1, |c| c.layers);
+    scene.frame.camera_layers = camera.as_ref().map_or(1, |c| c.layers);
     scene.frame.camera_cut = false;
     let (mut origin, mut look_along) = (Vec3::ZERO, None);
     if let Some(c) = &camera {
@@ -161,23 +173,24 @@ fn camera(rs: &mut RenderState, b: &Begun) -> View {
         cam.up = rot * Vec3::Y;
         origin = render_origin(position, zero);
         look_along = Some(rot * Vec3::NEG_Z);
-        cam.near = f(c, "near", 0.1);
-        cam.far = f(c, "far", 2000.0);
-        let zoom = f(c, "zoom", 1.0).max(0.01);
-        cam.projection = if on(c, "orthographic", false) {
+        cam.near = c.near;
+        cam.far = c.far;
+        let zoom = c.zoom.max(0.01);
+        cam.projection = if c.orthographic {
             og_render::Projection::Orthographic {
-                height: f(c, "height", 10.0) / zoom,
+                height: c.height / zoom,
             }
         } else {
             // three.js zoom narrows the field of view: tan(fov/2) / zoom.
-            let half = (f(c, "fov", 50.0).to_radians() / 2.0).tan() / zoom;
+            let half = (c.fov.to_radians() / 2.0).tan() / zoom;
             og_render::Projection::Perspective {
                 fov_y_degrees: (2.0 * half.atan()).to_degrees(),
             }
         };
-        exposure = f(c, "exposure", 1.0).max(0.0);
+        exposure = c.exposure.max(0.0);
+        let bg = &c.background;
         scene.lighting.environment.background =
-            og_render::Background::Color(color(&c["background"], 0.0));
+            og_render::Background::Color(Vec3::new(bg.r, bg.g, bg.b));
     }
     super::review::apply(&mut scene.frame.camera, rs.review.as_ref(), size, framed);
 
@@ -193,75 +206,77 @@ fn camera(rs: &mut RenderState, b: &Begun) -> View {
 // Rendering only: the exposure's log.
 #[allow(clippy::disallowed_methods)]
 fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
-    let settings = b.settings.clone();
+    let settings = b.settings.as_ref();
     let mut exposure = exposure;
     let layouts = &rs.draw;
     let scene = &mut rs.scene;
     // Settings: environment, sky, bloom, exposure, tone mapping.
-    if let Some(s) = &settings {
+    if let Some(s) = settings {
         // RenderSettings.exposure scales every camera's, as three.js
         // toneMappingExposure does the whole frame's.
-        exposure *= f(s, "exposure", 1.0).max(0.0);
-        scene.lighting.environment.intensity = f(s, "environmentIntensity", 0.55);
-        if on(s, "sky", false) {
+        exposure *= s.exposure.max(0.0);
+        scene.lighting.environment.intensity = s.environment_intensity;
+        if s.sky {
             scene.lighting.environment.background = og_render::Background::Sky;
         }
-        scene.look.post.bloom = on(s, "bloom", false).then(|| og_render::Bloom {
-            threshold: f(s, "bloomThreshold", 1.0),
-            knee: f(s, "bloomKnee", 0.5),
-            intensity: f(s, "bloomIntensity", 0.6),
+        scene.look.post.bloom = s.bloom.then_some(og_render::Bloom {
+            threshold: s.bloom_threshold,
+            knee: s.bloom_knee,
+            intensity: s.bloom_intensity,
         });
-        let radius = f(s, "bloomRadius", -1.0);
+        let radius = s.bloom_radius;
         scene.look.post.bloom_unreal = (radius >= 0.0).then(|| radius.min(1.0));
-        scene.look.post.bloom_contrast = f(s, "bloomContrast", 1.0).clamp(0.5, 2.0);
-        scene.look.post.tonemap = if on(s, "toneMapped", true) {
-            match crate::wire::ToneMapping::from_json(&s["toneMapping"]) {
-                Ok(crate::wire::ToneMapping::Agx) => og_render::Tonemap::Agx,
-                Ok(crate::wire::ToneMapping::None) => og_render::Tonemap::None,
-                Ok(crate::wire::ToneMapping::Neutral) => og_render::Tonemap::Neutral,
-                _ => og_render::Tonemap::Aces,
+        scene.look.post.bloom_contrast = s.bloom_contrast.clamp(0.5, 2.0);
+        scene.look.post.tonemap = if s.tone_mapped {
+            match s.tone_mapping {
+                crate::wire::ToneMapping::Agx => og_render::Tonemap::Agx,
+                crate::wire::ToneMapping::None => og_render::Tonemap::None,
+                crate::wire::ToneMapping::Neutral => og_render::Tonemap::Neutral,
+                crate::wire::ToneMapping::Aces => og_render::Tonemap::Aces,
             }
         } else {
             og_render::Tonemap::None
         };
-        scene.frame.camera.exposure = if on(s, "autoExposure", false) {
+        scene.frame.camera.exposure = if s.auto_exposure {
             og_render::Exposure::Auto {
                 compensation: exposure.max(1e-6).log2(),
                 min_ev: -10.0,
                 max_ev: 10.0,
-                adapt_speed_up: f(s, "adaptSpeedUp", 0.0).max(0.0),
-                adapt_speed_down: f(s, "adaptSpeedDown", 0.0).max(0.0),
+                adapt_speed_up: s.adapt_speed_up.max(0.0),
+                adapt_speed_down: s.adapt_speed_down.max(0.0),
             }
         } else {
             og_render::Exposure::linear(exposure)
         };
         // The quality fields, one to one (og.render.applyQuality writes a
         // preset's row of them; RenderSettings.quality is only its record).
-        let full = og_render::RenderQuality::default();
+        // The counts go through f32 as the hand read took them.
         scene.frame.quality = og_render::RenderQuality {
-            rect_shadows: on(s, "rectShadows", full.rect_shadows),
-            shadowed_lights: f(s, "shadowedLights", full.shadowed_lights as f32).max(0.0) as u32,
-            shadow_cascades: f(s, "shadowCascades", full.shadow_cascades as f32).max(1.0) as u32,
-            shadow_map_scale: f(s, "shadowMapScale", full.shadow_map_scale),
-            volumetric_fog: on(s, "volumetricFog", full.volumetric_fog),
-            soft_particles: on(s, "softParticles", full.soft_particles),
-            ssr: on(s, "screenSpaceReflections", full.ssr),
-            ambient_occlusion: on(s, "ambientOcclusion", full.ambient_occlusion),
+            rect_shadows: s.rect_shadows,
+            shadowed_lights: s.shadowed_lights as f32 as u32,
+            shadow_cascades: (s.shadow_cascades as f32).max(1.0) as u32,
+            shadow_map_scale: s.shadow_map_scale,
+            volumetric_fog: s.volumetric_fog,
+            soft_particles: s.soft_particles,
+            ssr: s.screen_space_reflections,
+            ambient_occlusion: s.ambient_occlusion,
             // On the lazy og.GlobalIllumination's `allowed` (crate::fx).
             global_illumination: crate::fx::gi_allowed(
                 crate::fx::resource(world, layouts.fx.global_illumination.as_ref()).as_deref(),
                 rs.fx.gi_preset,
             ),
-            ao_resolution: [
-                None,
-                Some(og_render::AoResolution::Full),
-                Some(og_render::AoResolution::Half),
-            ][crate::fx::variant(&s["aoResolution"], AO_RESOLUTION_SETTINGS).min(2)],
-            ssr_step_scale: f(s, "ssrStepScale", full.ssr_step_scale),
-            volumetric_step_scale: f(s, "volumetricStepScale", full.volumetric_step_scale),
-            msaa_samples: f(s, "msaaSamples", full.msaa_samples as f32).max(1.0) as u32,
-            upscaler: [og_render::Upscaler::Taau, og_render::Upscaler::Fsr3]
-                [crate::fx::variant(&s["upscaler"], super::UPSCALERS).min(1)],
+            ao_resolution: match s.ao_resolution {
+                crate::wire::AoResolutionSetting::PostEffects => None,
+                crate::wire::AoResolutionSetting::Full => Some(og_render::AoResolution::Full),
+                crate::wire::AoResolutionSetting::Half => Some(og_render::AoResolution::Half),
+            },
+            ssr_step_scale: s.ssr_step_scale,
+            volumetric_step_scale: s.volumetric_step_scale,
+            msaa_samples: (s.msaa_samples as f32).max(1.0) as u32,
+            upscaler: match s.upscaler {
+                crate::wire::Upscaler::Taau => og_render::Upscaler::Taau,
+                crate::wire::Upscaler::Fsr3 => og_render::Upscaler::Fsr3,
+            },
         };
     } else {
         scene.frame.camera.exposure = og_render::Exposure::linear(exposure);
@@ -285,11 +300,9 @@ fn models(
     b: &Begun,
     keys: &mut Vec<(u64, u32)>,
 ) {
-    let settings = b.settings.clone();
+    let settings = b.settings.as_ref();
     // Baked lighting (RenderSettings.bakedLighting, on by default).
-    let baked = settings
-        .as_ref()
-        .is_none_or(|s| on(s, "bakedLighting", true));
+    let baked = settings.is_none_or(|s| s.baked_lighting);
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
     // The models' parts and their lightmapped ones, lent to the rows until
     // the end of this read: a row borrows its model's parts and copies them
@@ -398,9 +411,7 @@ fn models(
     // under a pixel at its distance (og_render::lod), kept near a boundary
     // by the level it drew last. `RenderOptions.debugView lod` colours each
     // by its level.
-    let settings_bias = settings
-        .as_ref()
-        .map_or(1.0, |s| f(s, "lodBias", 1.0).max(0.0));
+    let settings_bias = settings.map_or(1.0, |s| s.lod_bias.max(0.0));
     let debug_lod = super::geometry::current_view(rs) == "lod";
     // The clustered instances' levels are picked by the renderer, with the
     // settings' bias (a model's own lodBias applies to the others only).
@@ -710,22 +721,23 @@ fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     scene.lighting.environment.sky = og_render::ProceduralSky::default();
     if let Some(dl) = &layouts.directional
         && let Some((e, v)) = rows(world, dl).into_iter().next()
+        && let Ok(v) = crate::wire::record::DirectionalLight::from_json(&v)
     {
         let m = h.world_of(e);
         let light = &mut scene.lighting.light;
         let dir = forward(m);
         light.direction_to_light = if dir == Vec3::ZERO { Vec3::Y } else { -dir };
-        light.color = color(&v["color"], 1.0);
-        light.intensity = f(&v, "intensity", 3.0);
-        light.cast_shadows = on(&v, "castShadow", true);
-        light.max_shadow_distance = f(&v, "shadowDistance", 200.0);
-        light.shadow_box = f(&v, "shadowBox", 0.0);
-        light.shadow_focus = f(&v, "shadowFocus", 0.0);
-        light.shadow_focus_drop = f(&v, "shadowFocusDrop", 0.0);
-        light.shadow_bias = f(&v, "shadowBias", 0.0);
-        light.shadow_normal_bias = f(&v, "shadowNormalBias", 0.0);
-        light.shadow_softness = f(&v, "shadowSoftness", 0.0);
-        light.cascade_blend = f(&v, "cascadeBlend", 0.0);
+        light.color = Vec3::new(v.color.r, v.color.g, v.color.b);
+        light.intensity = v.intensity;
+        light.cast_shadows = v.cast_shadow;
+        light.max_shadow_distance = v.shadow_distance;
+        light.shadow_box = v.shadow_box;
+        light.shadow_focus = v.shadow_focus;
+        light.shadow_focus_drop = v.shadow_focus_drop;
+        light.shadow_bias = v.shadow_bias;
+        light.shadow_normal_bias = v.shadow_normal_bias;
+        light.shadow_softness = v.shadow_softness;
+        light.cascade_blend = v.cascade_blend;
         scene.lighting.environment.sky.sun_direction = light.direction_to_light.normalize_or_zero();
     }
     // Each light with its cookie (PointLight.cookie, SpotLight.cookie).
@@ -781,6 +793,9 @@ fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     }
     if let Some(rl) = &layouts.rect {
         for (e, v) in rows(world, rl) {
+            let Ok(v) = crate::wire::record::RectLight::from_json(&v) else {
+                continue;
+            };
             let m = h.world_of(e);
             let light = super::baked::rect_light(m, &v);
             locals.push((e, light, None));
