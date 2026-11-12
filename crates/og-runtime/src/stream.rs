@@ -63,7 +63,7 @@ pub(crate) use residency::{
 use residency::{downgrade, release, retry_retained, upgrade};
 
 use super::engine::{Engine, engine, hooks};
-use super::wire::{StreamBudget, StreamState, StreamStatus, ToJson};
+use super::wire::{FromJson, StreamBudget, StreamState, StreamStatus, ToJson, record};
 use og_bundle::runtime::{CookedSound, ManifestStream, StreamTrigger};
 use og_core::IdMap;
 use og_core::{Reflect, Str64};
@@ -389,12 +389,8 @@ fn tick_of(eng: &Engine) -> u64 {
 
 fn camera(eng: &Engine) -> Option<glam::Vec3> {
     let v = super::api::resource_value(eng, "og.Camera").ok()?;
-    let p = &v["position"];
-    Some(glam::Vec3::new(
-        p["x"].as_f64()? as f32,
-        p["y"].as_f64()? as f32,
-        p["z"].as_f64()? as f32,
-    ))
+    // A NaN member (null in the row) is no camera position, as before.
+    Some(record::Camera::from_json(&v).ok()?.position).filter(|p| !p.is_nan())
 }
 
 fn set_state(
