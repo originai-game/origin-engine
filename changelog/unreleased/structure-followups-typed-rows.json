@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "Engine components and resources (og.*) read by the engine",
+      "change": "The engine now reads the og.* components and resources it uses as their IDL types. Two cases a well-formed game never meets behave differently: a NaN float field (written from a failed computation) reaches the engine as NaN instead of being replaced by the field's default, so whatever it drives (a camera's fov, a transform, a timeline's speed, a post-effect value, a world origin's step) goes NaN too, except where NaN would crash, which keeps the old fallback; and a row with an enum field set past its variants (for example PostEffects.aoMethod 7) is skipped as unreadable, or refused by the system that reads it, instead of being clamped to the first variant while the rest of the row still applied.",
+      "fix": "Write finite numbers and a declared variant (by name, or an index within the enum) to og.* fields; check a computed value with Number.isFinite before writing it."
+    }
+  ]
+}
