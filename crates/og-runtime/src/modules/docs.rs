@@ -776,8 +776,8 @@ pub fn og_ui_action_bar(world: u32) -> Vec<wire::UiActionHint> {
     .unwrap_or_default()
 }
 
-pub fn og_ui_document_schema() -> String {
-    og_ui::doc::schema::to_json().to_string()
+pub fn og_ui_document_schema() -> Value {
+    og_ui::doc::schema::to_json()
 }
 
 // ── live edits (Tune and the probe) ─────────────────────────────────────────

@@ -812,15 +812,12 @@ pub fn og_world_prefab_of(world: u32, entity_id: f64) -> Value {
     og_world_get(world, entity_id, super::prefab::LINK.to_string()).unwrap_or(Value::Null)
 }
 
-pub fn og_world_name_of(world: u32, entity_id: f64) -> String {
+pub fn og_world_name_of(world: u32, entity_id: f64) -> Option<String> {
     let name = engine(world).ok().and_then(|eng| {
         let st = eng.state.borrow();
         st.name_of.get(&(entity_id as u64)).cloned()
     });
-    match name {
-        Some(n) if og_world_alive(world, entity_id) => json!(n).to_string(),
-        _ => "null".into(),
-    }
+    name.filter(|_| og_world_alive(world, entity_id))
 }
 
 pub fn og_world_query(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
@@ -1238,15 +1235,9 @@ pub fn og_system_define_system(name: String, desc: String, run: u32) -> u32 {
     declare_system(name, &desc, run)
 }
 
-fn system_field(system: u32, f: impl FnOnce(&super::engine::SystemDecl) -> Value) -> String {
-    DECL.with(|d| {
-        d.borrow()
-            .systems
-            .get(system as usize)
-            .map(f)
-            .unwrap_or(Value::Null)
-            .to_string()
-    })
+/// `f` of a declared system; none for a handle no system has.
+fn system_field<T>(system: u32, f: impl FnOnce(&super::engine::SystemDecl) -> T) -> Option<T> {
+    DECL.with(|d| d.borrow().systems.get(system as usize).map(f))
 }
 
 pub fn og_system_get_name(system: u32) -> String {
@@ -1259,15 +1250,13 @@ pub fn og_system_get_name(system: u32) -> String {
     })
 }
 
-pub fn og_system_get_reads(system: u32) -> String {
-    system_field(system, |s| {
-        json!(s.reads.iter().map(|t| &t.name).collect::<Vec<_>>())
-    })
+pub fn og_system_get_reads(system: u32) -> Option<Vec<String>> {
+    system_field(system, |s| s.reads.iter().map(|t| t.name.clone()).collect())
 }
 
-pub fn og_system_get_writes(system: u32) -> String {
+pub fn og_system_get_writes(system: u32) -> Option<Vec<String>> {
     system_field(system, |s| {
-        json!(s.writes.iter().map(|t| &t.name).collect::<Vec<_>>())
+        s.writes.iter().map(|t| t.name.clone()).collect()
     })
 }
 
@@ -1280,15 +1269,12 @@ pub fn og_game_get_tick(game: u32) -> u32 {
     DECL.with(|d| d.borrow().games.get(game as usize).map_or(0, |g| g.tick))
 }
 
-pub fn og_game_get_systems(game: u32) -> String {
+pub fn og_game_get_systems(game: u32) -> Vec<u32> {
     DECL.with(|d| {
-        json!(
-            d.borrow()
-                .games
-                .get(game as usize)
-                .map(|g| g.systems.clone())
-                .unwrap_or_default()
-        )
-        .to_string()
+        d.borrow()
+            .games
+            .get(game as usize)
+            .map(|g| g.systems.clone())
+            .unwrap_or_default()
     })
 }
