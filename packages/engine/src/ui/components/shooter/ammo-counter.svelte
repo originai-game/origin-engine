@@ -42,7 +42,7 @@
 #Count.empty { color: var(--danger); }
 #Reserve { font: var(--text-lg); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000; }
 #Magazine { width: stretch; height: var(--stroke-thick); background: var(--sheen); }
-#MagazineFill { width: calc(var(--fill) * 100%); height: stretch; background: var(--scene-ink); transition: width var(--motion-ui); }
+#MagazineFill { width: calc(var(--fill) * 100%); height: stretch; background: var(--scene-ink); transition: width var(--motion-ui-duration) var(--motion-ui-easing); }
 .low #MagazineFill { background: var(--warn); }
 #Weapon { display: flex; align-items: baseline; gap: var(--space-sm); }
 #Name { font: var(--text-meta); color: var(--scene-ink); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: calc(var(--size-xxl) * 2); }

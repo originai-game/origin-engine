@@ -38,7 +38,7 @@
   width: var(--size-xxl); height: var(--size-xxl);
   pointer-events: none;
 }
-.arm { position: absolute; background: var(--scene-ink); border-radius: var(--radius-xs); transition: translate var(--motion-ui); }
+.arm { position: absolute; background: var(--scene-ink); border-radius: var(--radius-xs); transition: translate var(--motion-ui-duration) var(--motion-ui-easing); }
 .vertical { left: calc(50% - var(--line) / 2); width: var(--line); height: var(--arm); }
 .horizontal { top: calc(50% - var(--line) / 2); width: var(--arm); height: var(--line); }
 #Up { bottom: calc(50% + var(--gap)); }
@@ -53,7 +53,7 @@
 /* Hit marks: four short diagonal ticks just outside the arms, shown while
    the game holds `hit`, popped in again by a new `hitAt`. */
 #Hit { position: absolute; left: 0; top: 0; width: stretch; height: stretch; opacity: 0; transition: opacity var(--motion-exit); }
-#Hit.shown { opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-emphasis); }
+#Hit.shown { opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-duration-spring) var(--motion-easing-spring); }
 @starting-style { #Hit.shown { opacity: 0; scale: 1.5; } }
 .tick { position: absolute; width: var(--line); height: var(--space-md); background: var(--scene-ink); }
 #HitNE { left: calc(50% + var(--space-md)); top: calc(50% - var(--space-md) * 2); rotate: 45deg; }
