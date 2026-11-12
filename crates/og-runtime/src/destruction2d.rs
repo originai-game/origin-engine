@@ -30,7 +30,9 @@
 use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, Mount, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState};
-use super::wire::{self, Carve2dDesc, Explosion2dDesc, Fill2dDesc, Fracture2dDesc};
+use super::wire::{
+    self, Carve2dDesc, Explosion2dDesc, Fill2dDesc, Fracture2dDesc, FromJson, record,
+};
 use glam::{DVec2, Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind};
 use og_destruct::terrain2d::{BEDROCK, Cell, PixelTerrain};
@@ -165,20 +167,13 @@ fn invalid(m: impl Into<String>) -> Error {
 
 // ── reading records ─────────────────────────────────────────────────────────
 
-fn num(v: &Value, k: &str, d: f32) -> f32 {
-    v[k].as_f64().map_or(d, |x| x as f32)
+/// A row read through its IDL type, with the tick's error type.
+fn row<T: FromJson>(l: &Layout, bytes: &[u8]) -> og_core::Result<T> {
+    l.read(bytes).map_err(invalid)
 }
 
-fn uint(v: &Value, k: &str, d: u32) -> u32 {
-    v[k].as_f64().map_or(d, |x| x as u32)
-}
-
-fn rgb(v: &Value, d: [f32; 3]) -> [f32; 3] {
-    [num(v, "r", d[0]), num(v, "g", d[1]), num(v, "b", d[2])]
-}
-
-fn v3(v: &Value) -> Vec3 {
-    Vec3::new(num(v, "x", 0.0), num(v, "y", 0.0), num(v, "z", 0.0))
+fn rgb(c: &wire::Color) -> [f32; 3] {
+    [c.r, c.g, c.b]
 }
 
 fn jv(p: Vec3) -> Value {
@@ -198,31 +193,31 @@ struct Settings {
 }
 
 impl Settings {
-    fn of(v: &Value) -> Settings {
+    fn of(v: &record::PixelTerrain) -> Settings {
         Settings {
             shape: [
-                uint(v, "width", 256).clamp(1, 4096),
-                uint(v, "height", 128).clamp(1, 4096),
-                uint(v, "chunk", 32).clamp(4, 256),
+                v.width.clamp(1, 4096),
+                v.height.clamp(1, 4096),
+                v.chunk.clamp(4, 256),
             ],
-            ground: num(v, "ground", 0.5).clamp(0.0, 1.0),
-            bedrock: uint(v, "bedrock", 1),
-            tolerance: num(v, "tolerance", 0.5).clamp(0.0, 4.0),
-            min_piece: uint(v, "minPiece", 4),
-            max_pieces: uint(v, "maxPieces", 64).max(1),
+            ground: v.ground.clamp(0.0, 1.0),
+            bedrock: v.bedrock,
+            tolerance: v.tolerance.clamp(0.0, 4.0),
+            min_piece: v.min_piece,
+            max_pieces: v.max_pieces.max(1),
             look: Look {
-                cell: num(v, "cellSize", 0.0625).max(0.001),
-                color: rgb(&v["color"], [0.30, 0.18, 0.09]),
-                bedrock: rgb(&v["bedrockColor"], [0.10, 0.10, 0.11]),
-                grain: num(v, "grain", 0.15).clamp(0.0, 1.0),
-                seed: uint(v, "seed", 0),
-                layer: v["layer"].as_f64().map_or(0, |x| x as i32),
+                cell: v.cell_size.max(0.001),
+                color: rgb(&v.color),
+                bedrock: rgb(&v.bedrock_color),
+                grain: v.grain.clamp(0.0, 1.0),
+                seed: v.seed,
+                layer: v.layer,
             },
             body: Body {
-                friction: num(v, "friction", 0.6).max(0.0),
-                density: num(v, "density", 1000.0).max(1.0),
-                layers: uint(v, "layers", 1),
-                mask: v["mask"].as_f64().map_or(u32::MAX, |x| x as u32),
+                friction: v.friction.max(0.0),
+                density: v.density.max(1.0),
+                layers: v.layers,
+                mask: v.mask,
             },
         }
     }
@@ -723,15 +718,8 @@ fn pushed(blasts: &[([f32; 2], f32, f32)], at: Vec2) -> Vec2 {
     v
 }
 
-fn quat_of(t: &Value) -> Quat {
-    let q = &t["quaternion"];
-    Quat::from_xyzw(
-        num(q, "x", 0.0),
-        num(q, "y", 0.0),
-        num(q, "z", 0.0),
-        num(q, "w", 1.0),
-    )
-    .normalize()
+fn quat_of(t: &record::Transform) -> Quat {
+    t.quaternion.normalize()
 }
 
 fn run(
@@ -754,11 +742,12 @@ fn run(
     // changes), its colliders rebuilt when what they are built from moves.
     for e in rows {
         let key = e.to_bits();
-        let s = Settings::of(&l.terrain.1.decode(&ctx.get_bytes(e, l.terrain.0)?));
-        let origin = ctx
-            .get_bytes(e, l.transform.0)
-            .map_or(Vec3::ZERO, |b| v3(&l.transform.1.decode(&b)["position"]))
-            .to_array();
+        let s = Settings::of(&row(&l.terrain.1, &ctx.get_bytes(e, l.terrain.0)?)?);
+        let origin = match ctx.get_bytes(e, l.transform.0) {
+            Ok(b) => row::<record::Transform>(&l.transform.1, &b)?.position,
+            Err(_) => Vec3::ZERO,
+        }
+        .to_array();
         if st.terrains.get(&key).is_none_or(|t| t.shape != s.shape) {
             if let Some(old) = st.terrains.remove(&key) {
                 gone.extend(old.colliders.values().map(|c| c.0));
@@ -900,16 +889,17 @@ fn run(
                     ) else {
                         continue;
                     };
-                    let tr = l.transform.1.decode(&tb);
+                    let tr: record::Transform = row(&l.transform.1, &tb)?;
                     let half =
                         Vec3::new(p.width as f32, p.height as f32, 0.0) * (0.5 * p.look.cell);
-                    let at = (v3(&tr["position"]) + quat_of(&tr) * half).truncate();
+                    let at = (tr.position + quat_of(&tr) * half).truncate();
                     let push = pushed(&blasts[blasts.len() - 1..], at);
                     if push == Vec2::ZERO {
                         continue;
                     }
                     let mut vel = l.velocity.1.decode(&vb);
-                    let lin = v3(&vel["linear"]) + push.extend(0.0);
+                    let now = record::Velocity::from_json(&vel).map_err(invalid)?;
+                    let lin = now.linear + push.extend(0.0);
                     vel["linear"] = jv(lin);
                     ctx.set_bytes(e, l.velocity.0, &l.velocity.1.enc(&vel)?)?;
                 }
@@ -948,13 +938,16 @@ fn run(
                     }
                 } else if let Some(p) = st.pieces.get(&entity) {
                     let e = Entity::from_bits(entity);
-                    let tr = l.transform.1.decode(&ctx.get_bytes(e, l.transform.0)?);
-                    let (pos, rot) = (v3(&tr["position"]), quat_of(&tr));
-                    let vel = ctx
-                        .get_bytes(e, l.velocity.0)
-                        .map(|b| l.velocity.1.decode(&b))
-                        .unwrap_or(Value::Null);
-                    let (lin, spin) = (v3(&vel["linear"]).truncate(), v3(&vel["angular"]).z);
+                    let tr: record::Transform =
+                        row(&l.transform.1, &ctx.get_bytes(e, l.transform.0)?)?;
+                    let (pos, rot) = (tr.position, quat_of(&tr));
+                    let (lin, spin) = match ctx.get_bytes(e, l.velocity.0) {
+                        Ok(b) => {
+                            let v: record::Velocity = row(&l.velocity.1, &b)?;
+                            (v.linear.truncate(), v.angular.z)
+                        }
+                        Err(_) => (Vec2::ZERO, 0.0),
+                    };
                     let mut all = Vec::new();
                     for y in 0..p.height {
                         for x in 0..p.width {
@@ -1086,7 +1079,7 @@ fn run(
         let solid = t.grid.cells().iter().filter(|&&c| c != 0).count() as u32;
         let e = Entity::from_bits(k);
         let mut v = l.terrain.1.decode(&ctx.get_bytes(e, l.terrain.0)?);
-        if uint(&v, "solid", 0) != solid {
+        if record::PixelTerrain::from_json(&v).map_err(invalid)?.solid != solid {
             v["solid"] = json!(solid);
             ctx.set_bytes(e, l.terrain.0, &l.terrain.1.enc(&v)?)?;
         }
