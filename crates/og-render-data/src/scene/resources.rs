@@ -125,6 +125,16 @@ impl MeshData {
         let first = it.next()?;
         Some(it.fold((first, first), |(lo, hi), p| (lo.min(p), hi.max(p))))
     }
+
+    /// Axis-aligned bounds of the vertices its triangles use: within
+    /// [`Self::bounds`] where it holds vertices only its coarser levels
+    /// draw (a plant's thinned leaves, each larger than the mesh's).
+    pub fn drawn_bounds(&self) -> Option<(Vec3, Vec3)> {
+        let at = |&i: &u32| Vec3::from(self.vertices[i as usize].position);
+        let mut it = self.indices.iter().map(at);
+        let first = it.next()?;
+        Some(it.fold((first, first), |(lo, hi), p| (lo.min(p), hi.max(p))))
+    }
 }
 
 /// How the texel values of a colour texture are encoded.

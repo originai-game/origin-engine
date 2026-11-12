@@ -90,7 +90,7 @@ impl ScatterRenderer {
         queue: &wgpu::Queue,
         scene: &crate::RenderScene,
         camera: Vec3,
-        view_proj: Mat4,
+        (view_proj, height, lod_bias): (Mat4, u32, f32),
         prev_view_proj: Mat4,
         frame_index: u64,
         (wind_grid, lean_cap, trample): (crate::wind_field::WindGrid, f32, [f32; 4]),
@@ -208,7 +208,7 @@ impl ScatterRenderer {
         let view = crate::frame::Frustum::from_view_proj(view_proj);
         if scene.world.scatters.is_empty() {
             if let Some(cull) = &mut self.cull {
-                cull.prepare(device, queue, &[]);
+                cull.prepare(device, queue, &[], (view_proj, height, lod_bias));
             }
             self.chunks.retain(|_, c| self.frame - c.used < KEEP_FRAMES);
             self.shared.clear();
@@ -628,13 +628,29 @@ impl ScatterRenderer {
             for pass in [ScatterPass::Lit, ScatterPass::Prepass, ScatterPass::Shadow] {
                 self.pipeline(device, shader, side, pass, false);
             }
-            // The chunks the camera may see, culled copy by copy on the GPU.
+            // Its coarser levels, as far as they follow one another: each
+            // one's mesh, index count and error.
+            let mut lods = [None; crate::scatter_cull::SCATTER_LEVELS - 1];
+            for (to, l) in lods.iter_mut().zip(d.lods) {
+                let Some((m, error)) = l else { break };
+                let Some((_, _, indices)) = mesh_bounds(m.index()) else {
+                    break;
+                };
+                *to = Some((m.index(), indices, error));
+            }
+            // A scatter of several levels, of a card or thinned by a map
+            // lists its copies for the passes off the camera too: every
+            // chunk in reach is culled. Any other: the chunks the camera
+            // may see, copy by copy.
+            let off_camera = lods[0].is_some() || impostor.is_some() || s.density_map.is_some();
+            // A copy's scale is the scatter's on the terrain's.
+            let ground = t.transform.transform_vector3(Vec3::X).length();
             let culled = keys
                 .iter()
                 .map(|k| {
                     let c = self.chunks.get(k)?;
                     c.cull_group.as_ref()?;
-                    if !view.intersects_sphere(c.center, c.radius + sway) {
+                    if !off_camera && !view.intersects_sphere(c.center, c.radius + sway) {
                         return None;
                     }
                     self.culled_chunks.push(k.clone());
@@ -648,6 +664,16 @@ impl ScatterRenderer {
                         moves: sway,
                         distance: s.distance,
                         density_map: s.density_map,
+                        levels: lods.map(|l| l.map(|(_, indices, error)| (indices, error))),
+                        card_from: impostor.map_or(0.0, |_| d.impostor_distance),
+                        card: impostor.is_some() && d.with.is_none(),
+                        off_camera,
+                        reach: {
+                            let to = c.center - camera;
+                            let flat = to.x.hypot(to.z);
+                            (flat - c.radius, flat + c.radius)
+                        },
+                        scale: (ground * s.scale[0], ground * s.scale[1]),
                     });
                     Some(cull_items.len() - 1)
                 })
@@ -655,6 +681,7 @@ impl ScatterRenderer {
             planned.push(culled);
             batches.push(ScatterBatch {
                 culled: Vec::new(),
+                lods: lods.map(|l| l.map(|(mesh, ..)| mesh)),
                 mesh: d.mesh.index(),
                 material: d.material.index(),
                 shader,
@@ -675,7 +702,7 @@ impl ScatterRenderer {
         }
         // Where each culled chunk draws from, in the order planned.
         if let Some(cull) = &mut self.cull {
-            let places = cull.prepare(device, queue, &cull_items);
+            let places = cull.prepare(device, queue, &cull_items, (view_proj, height, lod_bias));
             for (b, items) in batches.iter_mut().zip(planned) {
                 b.culled = items.into_iter().map(|i| i.map(|i| places[i])).collect();
             }

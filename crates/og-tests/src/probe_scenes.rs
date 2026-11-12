@@ -96,6 +96,7 @@ fn meadow() -> RenderScene {
         impostor: None,
         impostor_distance: 0.0,
         with: None,
+        lods: [None; 2],
     });
     let sun = Vec3::new(0.62, 0.45, 0.4);
     scene.lighting.light = DirectionalLight {

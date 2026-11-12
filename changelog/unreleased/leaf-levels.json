@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"type model","summary":"A plant's leaves and petals thin with distance: the cook gives leaf cards two more levels of a half and a quarter of the leaves, each kept one larger so the crown covers as much (an oak's leaves are 34 000, 17 000 and 8 500 triangles). Plants and glTF leaf cards cook again; a model with fewer than 16 leaves is unchanged."},
+    {"member":"TerrainScatter","summary":"A scattered mesh draws its coarser levels with distance: the coarsest whose error is under 2 pixels on screen, under 8 in shadows, reflections and probes, moved by RenderSettings.lodBias as a model's are. A wood drawn as meshes to 200 m took 7.1 ms of GPU a frame at 720p on an M4 Pro against 10.9, and 4.9 against 9.4 with impostors from 30 m."}
+  ],
+  "fixed": [
+    {"member":"TerrainScatter","summary":"Copies a densityMap clears cast no shadow and show in no reflection or probe; those passes drew every copy of a chunk, cleared or not."}
+  ]
+}

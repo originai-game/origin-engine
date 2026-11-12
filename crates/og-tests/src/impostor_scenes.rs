@@ -330,6 +330,7 @@ pub fn impostor_scatter_scene(impostor_distance: f32) -> RenderScene {
         impostor: Some(impostor),
         impostor_distance,
         with: None,
+        lods: [None; 2],
     });
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 6.0, 26.0),

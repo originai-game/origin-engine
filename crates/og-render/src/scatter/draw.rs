@@ -51,8 +51,9 @@ impl ScatterRenderer {
     /// Draws `batches` into a pass (groups 0 and, for the lit passes, the
     /// frame bound by the caller): the chunks whose bounds `visible` keeps,
     /// with their copies' impostors, then the model impostors; `camera`:
-    /// the main camera's pass, which draws what the GPU cull kept. Answers
-    /// the draws and the copies in the chunks drawn.
+    /// the main camera's pass, which draws what the GPU cull kept for it
+    /// (any other draws the cull's second set, where a chunk has one).
+    /// Answers the draws and the copies in the chunks drawn.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn draw<'a>(
         &self,
@@ -73,11 +74,17 @@ impl ScatterRenderer {
             ScatterPass::Shadow => self.shadow_pipelines.get(key).map(|s| s.get(target)),
             _ => self.pipelines.get(key),
         };
-        // The main camera's prepass and lit pass draw the GPU cull's copies.
-        let list = self
-            .cull
-            .as_ref()
-            .filter(|_| camera && kind != ScatterPass::Shadow);
+        // The main camera's prepass and lit pass draw the copies the GPU
+        // cull kept for it; the other passes those it listed for them.
+        use crate::scatter_cull::CullSet;
+        let set = match camera && kind != ScatterPass::Shadow {
+            true => CullSet::Camera,
+            false => CullSet::OffCamera,
+        };
+        let culled_of = |b: &ScatterBatch, n: usize| {
+            let at = b.culled.get(n).copied().flatten()?;
+            self.cull.as_ref().filter(|_| at.has(set)).map(|c| (c, at))
+        };
         let (mut draws, mut copies) = (0, 0);
         let bind_rest = |pass: &mut wgpu::RenderPass, group, offset| {
             pass.set_bind_group(1, group, &[]);
@@ -94,56 +101,78 @@ impl ScatterRenderer {
                 continue;
             }
             let shader = b.shader.filter(|_| kind != ScatterPass::Shadow);
-            let (Some(group), Some((vertices, indices, count)), Some(p)) = (
+            let (Some(group), Some(p)) = (
                 material_group(b.material),
-                mesh(b.mesh),
                 pipeline(&(shader, b.side, kind as u8)),
             ) else {
                 continue;
             };
+            if mesh(b.mesh).is_none() {
+                continue;
+            }
             let mut bound = false;
-            for (n, k) in b.chunks.iter().enumerate() {
-                let Some(c) = self.chunks.get(k) else {
+            // The mesh, then its coarser levels: each draws its region of
+            // the chunks' lists (a chunk drawn whole draws the mesh).
+            let levels = std::iter::once(Some(b.mesh)).chain(b.lods).map_while(|m| m);
+            for (l, m) in levels.enumerate() {
+                let Some((vertices, indices, count)) = mesh(m) else {
                     continue;
                 };
-                let Some(buffer) = &c.buffer else { continue };
-                if !visible(c.center, c.radius + b.sway) {
-                    continue;
-                }
-                let culled = list.zip(b.culled.get(n).copied().flatten());
-                if !bound {
-                    pass.set_pipeline(p);
-                    bind_rest(pass, group, b.offset);
-                    pass.set_vertex_buffer(0, vertices.slice(..));
-                    pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
-                    bound = true;
-                }
-                // Each chunk's reflection probe (probe_select.rs).
-                if let Some(b) = probes.as_deref_mut() {
-                    b.at(pass, c.center, c.radius);
-                }
-                match culled {
-                    Some((cull, at)) => {
-                        pass.set_vertex_buffer(1, cull.list.slice(at.list_offset()..));
-                        let (args, offset) = cull.mesh_args(&at);
-                        pass.draw_indexed_indirect(args, offset);
+                let mut mesh_bound = false;
+                for (n, k) in b.chunks.iter().enumerate() {
+                    let Some(c) = self.chunks.get(k) else {
+                        continue;
+                    };
+                    let Some(buffer) = &c.buffer else { continue };
+                    let culled = culled_of(b, n);
+                    let drawn = match culled {
+                        Some((_, at)) => at.lists_level(set, l as u32),
+                        None => l == 0,
+                    };
+                    if !drawn || !visible(c.center, c.radius + b.sway) {
+                        continue;
                     }
-                    None => {
-                        pass.set_vertex_buffer(1, buffer.slice(..));
-                        match c.placed {
-                            // Its job wrote its count into its draw.
-                            Some(_) => {
-                                pass.draw_indexed_indirect(buffer, crate::scatter_place::TAIL)
+                    if !bound {
+                        pass.set_pipeline(p);
+                        bind_rest(pass, group, b.offset);
+                        bound = true;
+                    }
+                    if !mesh_bound {
+                        pass.set_vertex_buffer(0, vertices.slice(..));
+                        pass.set_index_buffer(indices.slice(..), wgpu::IndexFormat::Uint32);
+                        mesh_bound = true;
+                    }
+                    // Each chunk's reflection probe (probe_select.rs).
+                    if let Some(b) = probes.as_deref_mut() {
+                        b.at(pass, c.center, c.radius);
+                    }
+                    match culled {
+                        Some((cull, at)) => {
+                            let from = at.level_offset(set, l as u32);
+                            pass.set_vertex_buffer(1, cull.list.slice(from..));
+                            let (args, offset) = cull.level_args(&at, set, l as u32);
+                            pass.draw_indexed_indirect(args, offset);
+                        }
+                        None => {
+                            pass.set_vertex_buffer(1, buffer.slice(..));
+                            match c.placed {
+                                // Its job wrote its count into its draw.
+                                Some(_) => {
+                                    pass.draw_indexed_indirect(buffer, crate::scatter_place::TAIL)
+                                }
+                                None => pass.draw_indexed(0..count, 0, 0..c.count),
                             }
-                            None => pass.draw_indexed(0..count, 0, 0..c.count),
                         }
                     }
+                    draws += 1;
+                    if l == 0 {
+                        copies += c.count;
+                    }
                 }
-                draws += 1;
-                copies += c.count;
             }
-            // The same chunks' far copies as the impostor: the vertex
-            // stages split each copy between the two by its distance.
+            // The same chunks' far copies as the impostor: the cull lists
+            // them apart, and the vertex stages split each copy between
+            // the two by its distance.
             let (Some(m), Some(ip)) = (b.impostor, impostor_pipeline) else {
                 continue;
             };
@@ -159,7 +188,10 @@ impl ScatterRenderer {
                 if !visible(c.center, c.radius) {
                     continue;
                 }
-                let culled = list.zip(b.culled.get(n).copied().flatten());
+                let culled = culled_of(b, n);
+                if culled.is_some_and(|(_, at)| !at.lists_card(set)) {
+                    continue;
+                }
                 if !bound {
                     pass.set_pipeline(ip);
                     bind_rest(pass, group, b.offset);
@@ -170,8 +202,8 @@ impl ScatterRenderer {
                 }
                 match culled {
                     Some((cull, at)) => {
-                        pass.set_vertex_buffer(0, cull.list.slice(at.list_offset()..));
-                        let (args, offset) = cull.card_args(&at);
+                        pass.set_vertex_buffer(0, cull.list.slice(at.card_offset(set)..));
+                        let (args, offset) = cull.card_args(&at, set);
                         pass.draw_indirect(args, offset);
                     }
                     None => {

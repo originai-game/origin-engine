@@ -25,7 +25,20 @@ impl Hooks for Disk {
 }
 
 type DrawBounds = (og_render::ScatterDraw, (Vec3, Vec3));
-struct Seen(Rc<RefCell<Vec<DrawBounds>>>);
+/// A frame's scatter draws, and beside each the triangles of its mesh and
+/// of each coarser level it carries.
+#[derive(Default)]
+struct Frame {
+    draws: Vec<DrawBounds>,
+    triangles: Vec<Vec<usize>>,
+}
+impl std::ops::Deref for Frame {
+    type Target = Vec<DrawBounds>;
+    fn deref(&self) -> &Self::Target {
+        &self.draws
+    }
+}
+struct Seen(Rc<RefCell<Frame>>);
 impl RenderBackend for Seen {
     fn tier(&self) -> String {
         "none".into()
@@ -34,12 +47,29 @@ impl RenderBackend for Seen {
         (320, 180)
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
-        *self.0.borrow_mut() = scene
-            .world
-            .scatters
-            .iter()
-            .map(|draw| (*draw, scene.mesh(draw.mesh).unwrap().bounds().unwrap()))
-            .collect();
+        let scatters = &scene.world.scatters;
+        let triangles = |m| scene.mesh(m).unwrap().indices.len() / 3;
+        *self.0.borrow_mut() = Frame {
+            draws: scatters
+                .iter()
+                .map(|draw| {
+                    (
+                        *draw,
+                        scene.mesh(draw.mesh).unwrap().drawn_bounds().unwrap(),
+                    )
+                })
+                .collect(),
+            triangles: scatters
+                .iter()
+                .map(|d| {
+                    let levels = d.lods.iter().map_while(|l| l.map(|(m, _)| m));
+                    std::iter::once(d.mesh)
+                        .chain(levels)
+                        .map(triangles)
+                        .collect()
+                })
+                .collect(),
+        };
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -84,6 +114,11 @@ fn project(test: &str) -> PathBuf {
     std::fs::write(assets.join("sprig.ogt"), sprig).unwrap();
     std::fs::write(assets.join("sprig.ogt.ogt"), card).unwrap();
     std::fs::write(assets.join("bare.ogt"), sprig).unwrap();
+    // The same plant with leaves enough to thin with distance.
+    let leafy = sprig
+        .replace("count 4", "count 40")
+        .replace("sprig", "leafy");
+    std::fs::write(assets.join("leafy.ogt"), leafy).unwrap();
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     std::fs::copy(
         repo.join("packages/engine/tests/fixtures/terrain/assets/terrain/hill.png"),
@@ -105,7 +140,7 @@ fn scaled_node_placements_match_scatter_impostor_bounds_and_report_mismatches() 
     let engine = value(og_engine_create(game, json!({"root":root}).to_string()))
         .as_u64()
         .unwrap() as u32;
-    let seen = Rc::new(RefCell::new(Vec::new()));
+    let seen = Rc::new(RefCell::new(Frame::default()));
     set_render_backend(engine, Some(Box::new(Seen(seen.clone())))).unwrap();
     let model = value(og_runtime::host_impl::answer(og_load_gltf(
         engine,
@@ -217,7 +252,7 @@ fn a_model_scatters_whole_with_every_part_as_one_copy() {
     let engine = value(og_engine_create(game, json!({"root":root}).to_string()))
         .as_u64()
         .unwrap() as u32;
-    let seen = Rc::new(RefCell::new(Vec::new()));
+    let seen = Rc::new(RefCell::new(Frame::default()));
     set_render_backend(engine, Some(Box::new(Seen(seen.clone())))).unwrap();
     let load = |path: &str| {
         value(og_runtime::host_impl::answer(og_load_gltf(
@@ -255,9 +290,11 @@ fn a_model_scatters_whole_with_every_part_as_one_copy() {
         Some(json!({"data":data}).to_string()),
     )));
     let (carded, bare, moved) = (spawn("carded"), spawn("bare"), spawn("moved"));
+    let leafy = spawn("leafy");
     scatter(carded, &load("sprig.ogt"), 3);
     scatter(bare, &load("bare.ogt"), 5);
     scatter(moved, &load("moved.gltf"), 7);
+    scatter(leafy, &load("leafy.ogt"), 9);
     value(og_engine_frame(engine, 1000.0 / 60.0));
     let draws = seen.borrow();
     for (seed, card) in [(3, true), (5, false)] {
@@ -279,6 +316,38 @@ fn a_model_scatters_whole_with_every_part_as_one_copy() {
                 assert!(hi.distance(c.center) <= c.radius * 1.001, "{hi:?} {c:?}");
             }
         }
+    }
+    // A part carries the levels its model cooked with, finest first, each
+    // with its error: the leaves a half and a quarter of themselves.
+    let leaves = |seed| {
+        let at = |(_, (d, _)): &(usize, &DrawBounds)| d.scatter.seed == seed && d.with.is_some();
+        let (i, (d, _)) = draws.iter().enumerate().find(at).expect("the leaves");
+        (
+            d.lods.map(|l| l.map(|(_, error)| error)),
+            &draws.triangles[i],
+        )
+    };
+    let (errors, triangles) = leaves(9);
+    let [Some(half), Some(quarter)] = errors else {
+        panic!("the leaves scatter without their levels: {errors:?}")
+    };
+    assert!(0.0 < half && half < quarter, "{errors:?}");
+    let [full, a, b] = triangles[..] else {
+        panic!("{triangles:?}")
+    };
+    let near = |part: usize, of: usize| part.abs_diff(of) * 8 <= of;
+    assert!(
+        full >= 80 && near(a * 2, full) && near(b * 4, full),
+        "{triangles:?}"
+    );
+    // The sprig's few leaves thin once, with a card or without.
+    for seed in [3, 5] {
+        let (errors, triangles) = leaves(seed);
+        assert!(matches!(errors, [Some(_), None]), "seed {seed}: {errors:?}");
+        assert!(
+            near(triangles[1] * 2, triangles[0]),
+            "seed {seed}: {triangles:?}"
+        );
     }
     assert!(
         draws.iter().all(|(d, _)| d.scatter.seed != 7),
