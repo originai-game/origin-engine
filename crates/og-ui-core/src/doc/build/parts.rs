@@ -432,8 +432,13 @@ impl Ui {
             };
             let mut values =
                 cascade::values_with(&rules, &options, |r| self.part_matches(r, &facts));
+            // The host's `font` shorthand is not carried over: its
+            // longhands come computed with the host's own (`h2 { font: … }`
+            // under `font-size: 2em`), and expanded again here it would
+            // undo the host's later longhands.
             for (name, value) in &inherited.properties {
                 if cascade::inherited_property(name)
+                    && name != "font"
                     && !super::super::text_css::longhand(name)
                     && !values.values.iter().any(|(own, ..)| own == name)
                 {
