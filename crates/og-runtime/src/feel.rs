@@ -20,6 +20,7 @@ use super::codec::{ColRow, Key, Layout, Rec, Slot};
 use super::engine::{Engine, engine, queued_structural, running};
 use super::extract::{Hierarchy, RenderState, column_rows};
 use super::parse;
+use super::wire::{FromJson, record};
 use glam::{Quat, Vec2, Vec3};
 use og_anim::{FlipbookSheet, FlipbookSystem};
 use og_core::IdMap;
@@ -97,10 +98,6 @@ fn v3(v: &Value, default: Vec3) -> Vec3 {
         f(v, "y", default.y),
         f(v, "z", default.z),
     )
-}
-
-fn bits(v: &Value) -> u64 {
-    v.as_f64().map_or(0, |x| x as u64)
 }
 
 // ── state ──────────────────────────────────────────────────────────────────
@@ -772,15 +769,17 @@ fn camera_system(
     }
     if let Some((_, v, target)) = rail {
         // A path handle (og.path) replaces the inline points.
-        let path = v["path"].as_f64().map_or(0, |h| h as u64);
+        let row =
+            record::CameraRail::from_json(&v).map_err(|e| Error::new(ErrorKind::Invalid, e))?;
+        let path = row.path;
         let goal = match super::timeline::path_of(engine_id, path).filter(|_| path != 0) {
             Some(p) => p.nearest(target).position,
             None => {
-                let n = (v["points"].as_u64().unwrap_or(2) as usize).clamp(2, 8);
-                let pts: Vec<Vec3> = (0..n)
-                    .map(|i| v3(&v[format!("p{i}").as_str()], Vec3::ZERO))
-                    .collect();
-                rail_nearest(&pts, target)
+                let n = (row.points as usize).clamp(2, 8);
+                let all = [
+                    row.p0, row.p1, row.p2, row.p3, row.p4, row.p5, row.p6, row.p7,
+                ];
+                rail_nearest(&all[..n], target)
             }
         };
         let pos = v3(&cam["position"], Vec3::ZERO);
@@ -834,7 +833,11 @@ fn camera_zone(
                 if p.x < lo.x || p.x > hi.x || p.y < lo.y || p.y > hi.y {
                     continue;
                 }
-                let pr = z["priority"].as_i64().unwrap_or(0);
+                let pr = i64::from(
+                    record::CameraZone::from_json(&z)
+                        .map_err(|e| Error::new(ErrorKind::Invalid, e))?
+                        .priority,
+                );
                 if best.is_none_or(|b| pr > b.0) {
                     best = Some((pr, lo, hi, f(&z, "scrollTime", 0.0).max(0.0)));
                 }
@@ -1160,20 +1163,22 @@ fn sprite_system(
         let a = r.afterimage.1.decode(&ctx.get_bytes(e, r.afterimage.0)?);
         let s = r.sprite.1.decode(&ctx.get_bytes(e, r.sprite.0)?);
         let t = r.transform.1.decode(&ctx.get_bytes(e, r.transform.0)?);
-        let count = a["count"].as_u64().unwrap_or(4).min(16) as usize;
-        let interval = a["interval"].as_u64().unwrap_or(3).max(1);
+        let row =
+            record::Afterimage::from_json(&a).map_err(|e| Error::new(ErrorKind::Invalid, e))?;
+        let count = row.count.min(16) as usize;
+        let interval = u64::from(row.interval).max(1);
         let list = sh.ghosts.entry(key).or_default();
         // Ghosts older than the whole trail have faded out.
         let span = interval * count as u64;
         list.retain(|g| tick.saturating_sub(g.tick) < span.max(1));
         if on(&a, "active", true) && tick.is_multiple_of(interval) && count > 0 {
             let (sheet, clip, frame) = if ctx.components_of(e)?.contains(&r.flipbook.0) {
-                let fb = r.flipbook.1.decode(&ctx.get_bytes(e, r.flipbook.0)?);
-                (
-                    bits(&fb["sheet"]),
-                    fb["clip"].as_u64().unwrap_or(0) as u32,
-                    fb["frame"].as_u64().unwrap_or(0) as u32,
-                )
+                let fb: record::Flipbook = r
+                    .flipbook
+                    .1
+                    .read(&ctx.get_bytes(e, r.flipbook.0)?)
+                    .map_err(|e| Error::new(ErrorKind::Invalid, e))?;
+                (fb.sheet, fb.clip, fb.frame)
             } else {
                 (0, 0, 0)
             };

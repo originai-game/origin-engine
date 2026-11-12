@@ -395,7 +395,9 @@ pub fn og_tilemap_resize(world: u32, desc: Option<String>) -> Result<(), String>
         let mut st = eng.state.borrow_mut();
         let info = map_info(handle, &map.asset);
         for v in st.feel_assets.loaded.values_mut() {
-            if v["map"].as_f64() == Some(handle as f64) && v.get("tileWidth").is_some() {
+            if v.get("tileWidth").is_some()
+                && TilemapInfo::from_json(v).is_ok_and(|i| i.map == handle)
+            {
                 *v = info.clone();
             }
         }
@@ -534,14 +536,15 @@ pub(super) fn tilemap_system(
         let key = e.to_bits();
         let v = r.tilemap.1.decode(&ctx.get_bytes(e, r.tilemap.0)?);
         let tr = r.transform.1.decode(&ctx.get_bytes(e, r.transform.0)?);
-        let map = bits(&v["map"]);
+        let row = record::Tilemap::from_json(&v).map_err(|e| Error::new(ErrorKind::Invalid, e))?;
+        let map = row.map;
         let Some(asset) = t.maps.get(&map).cloned() else {
             continue;
         };
         seen.insert(key);
         let origin = v3(&tr["position"], Vec3::ZERO);
         let collision = on(&v, "collision", true);
-        let layers = v["colliderLayers"].as_u64().unwrap_or(1) as u32;
+        let layers = row.collider_layers;
         let friction = f(&v, "friction", 0.5);
         let fresh = t.live.get(&key).is_none_or(|l| l.map != map);
         if fresh {
@@ -658,8 +661,12 @@ pub(super) fn tilemap_system(
                 if gone_set.contains(&c) || !ctx.is_alive(e) {
                     continue;
                 }
-                let v = r.collider.1.decode(&ctx.get_bytes(e, r.collider.0)?);
-                let mesh = bits(&v["mesh"]);
+                let mesh = r
+                    .collider
+                    .1
+                    .read::<record::Collider>(&ctx.get_bytes(e, r.collider.0)?)
+                    .map_err(|e| Error::new(ErrorKind::Invalid, e))?
+                    .mesh;
                 if mesh & og_physics::GENERATED_MESH != 0 {
                     meshes.insert(mesh);
                 }
