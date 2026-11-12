@@ -1200,9 +1200,9 @@ if (rippled() && !is_sea()) {
   let amb_up = ambient_light_level(in.normal, in.world) * frame.params.x;
   let amb_n = ambient_light_level(n, in.world) * frame.params.x;
   // Under a closed cloud deck the light reaches the sea as the deck's own radiance, from the whole sky above (its a:
-  // how much of the sky it closes): the foam and the crests take it (below). The sun itself is hidden by the deck
+  // how much of the sky it closes): the foam takes it (below). The sun itself is hidden by the deck
   // for every surface at its source (Clouds::light). The foam's light under a live sky is the captured deck that
-  // amb_up and amb_n already carry (the analytical deck over it lit the foam twice); the crests keep the deck's.
+  // amb_up and amb_n already carry (the analytical deck over it lit the foam twice).
   let deck = cloud_deck(vec3<f32>(0.0, 1.0, 0.0));
   let deck_up = select(deck, vec4<f32>(0.0), frame.clouds[4].w > 0.5);
   let sun_e = frame.light_color.rgb * sun;
@@ -1222,23 +1222,6 @@ if (sea) {
     let ambient = amb_up * 1.3 + amb_n * 0.5;
     deep += SEA_SSS.rgb * (sun_e * 0.05 + ambient * 0.35) * clamp(sea_f.cover, 0.0, 1.0);
     deep += vec3<f32>(0.10, 0.32, 0.30) * amb_up * sea_f.young * 0.35;
-    // Under a closed deck the deck is the light the crests carry: the Atlas talk's (GDC 2019) scatter terms with the
-    // deck for the sun, a Lambert share towards its bright side over the hidden sun and a share facing the eye, both
-    // through the thin upper part of a wave (its height, as the sun's term above), so the crests lift a faint
-    // blue-green from the troughs (the storm read as one dark sheet once the hidden sun no longer lit it).
-    let l_deck = normalize(vec3<f32>(l.x, 1.0, l.z));
-    let vn = max(dot(v, n), 0.0);
-    let k_deck = crest * (0.8 * max(dot(n, l_deck), 0.0) + 0.6 * vn * vn) * exp(-dist / 600.0);
-    deep += SEA_SSS.rgb * deck.rgb * 1.4 * deck.a * k_deck;
-    // Storm subsurface: the deck's light through a wave's thin, steep face (Sea of Thieves, Kozin SIGGRAPH 2018: the
-    // light carried through the wave scales with its thinness, the face's slope towards the eye, not its height alone).
-    // Under a closed deck the light comes from the whole sky, so the face lit through is any face turned to the eye
-    // whose wave rises above the troughs: strongest at the steep fronts of the crests, a green that the troughs lack.
-    let n_flat = normalize(vec2<f32>(n.x, n.z) + vec2<f32>(1e-5, 0.0));
-    let v_flat = normalize(vec2<f32>(v.x, v.z) + vec2<f32>(1e-5, 0.0));
-    let face = pow(clamp(1.0 - n.y, 0.0, 1.0), 0.7) * smoothstep(-0.2, 0.6, dot(n_flat, v_flat));
-    let k_face = smoothstep(0.15, 0.7, crest) * face * exp(-dist / 400.0);
-    deep += vec3<f32>(0.05, 0.2, 0.15) * deck.rgb * 2.2 * deck.a * k_face;
   }
   }
   if (water_js) {

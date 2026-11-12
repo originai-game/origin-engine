@@ -798,7 +798,7 @@ mod tests {
     /// cascades from their mips at its texel): the gale's coarse level, 2 m
     /// texels, is much smoother than its crests, and under the fine level's
     /// threshold it laid only a small part of it (r5 at 88d021868: two or
-    /// three whitecaps in the storm's view).
+    /// three whitecaps in a gale's view).
     #[test]
     fn each_foam_level_lays_the_whitecap_coverage_it_resolves() {
         let water = Water {

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Water.wind",
+      "summary": "A sea under a closed cloud deck no longer adds two scatter terms that were tuned for one storm view (a fixed teal on the upper half of every wave and on steep faces towards the eye, whatever the water's own colour). Its body is lit as every other surface under the deck is, by the dimmed sun and the sky's light, so an overcast sea reads grey-dark and takes its colour from Water.deep."
+    }
+  ]
+}
