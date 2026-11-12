@@ -173,52 +173,7 @@ pub(crate) fn from_mesh(shape: u32, mesh: &crate::MeshDesc, s: Vec3) -> Result<r
     }
 }
 
-/// The triangle mesh (rapier's, with its BVH) over `mesh` scaled by `s`:
-/// a SHAPE_TRIMESH collider's shape, and what [`bake`] bakes.
-pub(crate) fn trimesh(mesh: &crate::MeshDesc, s: Vec3) -> Result<rp::SharedShape> {
-    let points: Vec<rp::Vector> = mesh
-        .positions
-        .iter()
-        .map(|p| {
-            let p = *p * s;
-            rp::Vector::new(p.x, p.y, p.z)
-        })
-        .collect();
-    rp::SharedShape::trimesh(points, mesh.indices.clone()).map_err(|e| {
-        Error::new(
-            ErrorKind::Invalid,
-            format!("the mesh is not a valid triangle mesh: {e}"),
-        )
-    })
-}
-
-/// What starts a baked triangle mesh's bytes: the format and its version,
-/// moved with any rapier or parry update that changes `TriMesh`'s
-/// serialisation (`a_baked_trimesh_is_the_build_bit_for_bit` pins a bake).
-const BAKED: &[u8; 8] = b"OGTM\x01\x00\x00\x00";
-
-/// [`crate::bake_trimesh`].
-pub(crate) fn bake(mesh: &crate::MeshDesc) -> Result<Vec<u8>> {
-    let shape = trimesh(mesh, Vec3::ONE)?;
-    let mesh = shape.as_trimesh().expect("a triangle mesh");
-    let mut out = BAKED.to_vec();
-    crate::encode(&mut out, mesh)
-        .map_err(|e| Error::new(ErrorKind::Invalid, format!("baking a triangle mesh: {e}")))?;
-    Ok(out)
-}
-
-/// A [`bake`]'s shape.
-pub(crate) fn unbake(bytes: &[u8]) -> Result<rp::SharedShape> {
-    let body = bytes.strip_prefix(BAKED.as_slice()).ok_or_else(|| {
-        Error::new(
-            ErrorKind::Invalid,
-            "not a baked triangle mesh of this engine's format (cook the model again)",
-        )
-    })?;
-    let mesh: rp::TriMesh = crate::decode(body)
-        .map_err(|e| Error::new(ErrorKind::Invalid, format!("a baked triangle mesh: {e}")))?;
-    Ok(rp::SharedShape::new(mesh))
-}
+pub(crate) use og_physics_data::trimesh::{trimesh, unbake};
 
 /// The baked shape of a SHAPE_TRIMESH collider at scale 1 whose mesh is
 /// exactly the one baked (else `None`: it is built as before).
@@ -404,6 +359,7 @@ pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};
 #[cfg(test)]
 mod tests {
     use super::*;
+    use og_physics_data::trimesh::{BAKED, bake};
 
     /// A bumpy grid of `n` × `n` cells, two triangles each.
     fn grid(n: u32) -> crate::MeshDesc {

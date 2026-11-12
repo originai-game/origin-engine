@@ -1,0 +1,27 @@
+[package]
+name = "og-physics-data"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine physics data: the meshes colliders are built from, a baked triangle mesh's format and its bake, and the codec physics state is saved with. og-physics simulates them; og-cook bakes triangle meshes without linking the simulation."
+autotests = false
+
+[features]
+default = []
+# The triangle mesh bake (trimesh, bake_trimesh) and decode: rapier3d's.
+physics3d = ["dep:rapier3d"]
+
+[dependencies]
+og-core = { path = "../og-core" }
+serde = { version = "1", features = ["derive"] }
+bincode = "1.3.3"
+# As og-physics names it: a bake is the shape a collider builds there, bit
+# for bit, so the two build the same rapier3d.
+rapier3d = { version = "0.36.1", default-features = false, features = ["dim3", "f32", "std", "enhanced-determinism", "serde-serialize", "debug-render"], optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rapier3d = { version = "0.36.1", default-features = false, features = ["parallel"], optional = true }
+
+[target.'cfg(all(target_arch = "wasm32", target_feature = "atomics"))'.dependencies]
+rapier3d = { version = "0.36.1", default-features = false, features = ["parallel"], optional = true }

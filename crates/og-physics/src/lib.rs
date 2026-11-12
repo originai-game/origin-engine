@@ -101,15 +101,7 @@ use tick::*;
 /// The name of the scheduled system.
 pub const SYSTEM_NAME: &str = "og.physics";
 
-/// Geometry for convex and triangle-mesh colliders, registered under the
-/// mesh handle the colliders name ([`Collider::mesh`]).
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct MeshDesc {
-    /// Vertex positions in the mesh's own space (2D polygons use x and y).
-    pub positions: Vec<Vec3>,
-    /// Triangles as indices into `positions` (a convex hull ignores them).
-    pub indices: Vec<[u32; 3]>,
-}
+pub use og_physics_data::MeshDesc;
 
 /// The bit of a mesh handle that marks a mesh generated from world state
 /// (a tilemap's merged solid regions, G2-6) rather than loaded as an asset:
@@ -674,14 +666,8 @@ fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
 /// (none, 2 or 3) and the bincode of the profile's [`dim3::Sim`].
 struct PhysicsState(Arc<Mutex<Shared>>);
 
-/// A SHAPE_TRIMESH collider's shape over `mesh` at scale 1, as a collider
-/// naming the mesh builds it (rapier's triangle mesh with its BVH), in
-/// bytes for the cook to put beside the mesh: [`PhysicsSystem::set_baked_trimesh`]
-/// takes it back without building anything. 3D only.
 #[cfg(feature = "physics3d")]
-pub fn bake_trimesh(mesh: &MeshDesc) -> Result<Vec<u8>> {
-    dim3::bake(mesh)
-}
+pub use og_physics_data::bake_trimesh;
 
 /// Registers the physics types, inserts `settings` as the `og.Physics`
 /// resource (replacing one already there) and schedules the `og.physics`

@@ -3120,10 +3120,21 @@ dependencies = [
  "og-ecs",
  "og-lanes",
  "og-net",
+ "og-physics-data",
  "og-tilemap",
  "rapier2d",
  "rapier3d",
  "rayon",
+ "serde",
+]
+
+[[package]]
+name = "og-physics-data"
+version = "0.7.7"
+dependencies = [
+ "bincode",
+ "og-core",
+ "rapier3d",
  "serde",
 ]
 
