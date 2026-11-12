@@ -13,11 +13,11 @@ fn pack_selectors_cross_components_but_document_selectors_stay_local() {
         let mut ui = Ui::new(UiDesc::default());
         for (path, text) in [
             (
-                "ui-kits/test/child.svelte",
+                "@ui/test/child.svelte",
                 r#"<meta name="component" content="Child"><div><div id="Target"></div></div><style>#Target { width: 21px; height: 20px; }</style>"#,
             ),
             (
-                "ui-kits/test/parent.svelte",
+                "@ui/test/parent.svelte",
                 r#"<meta name="component" content="Parent"><div class:active={$on}><Child/></div><style>.active #Target { height: 99px; }</style>"#,
             ),
         ] {
@@ -102,7 +102,7 @@ fn pack_document_rules_respect_kit_game_layers_media_and_replacement() {
     .unwrap();
     for (source, local, expected) in [
         (
-            "ui-kits/test/main.svelte",
+            "@ui/test/main.svelte",
             "@layer structure { div { width: 91px; } }",
             73.0,
         ),
@@ -139,7 +139,7 @@ fn pack_document_rules_respect_kit_game_layers_media_and_replacement() {
                 .width
         };
         assert_eq!(width(&mut ui, 600.0), expected);
-        if source.starts_with("ui-kits/") {
+        if source.starts_with("@ui/") {
             assert_eq!(width(&mut ui, 300.0), 51.0);
             let mut theme = *ui.theme();
             theme.reduced_motion = true;

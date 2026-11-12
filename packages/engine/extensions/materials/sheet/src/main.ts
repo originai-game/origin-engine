@@ -1,7 +1,7 @@
-// The materials kit's review sheet (docs/ui.md §6): one card per preset
+// The materials pack's review sheet (docs/ui.md §6): one card per preset
 // of ../../*.ogt, each composited through its material by the document's
-// `-og-material: "ui-kits/materials/<preset>.ogt"`. The kit is installed as
-// a game installs it.
+// `-og-material: "materials/materials/<preset>.ogt"`. The pack is installed
+// as a game installs it.
 //
 // Commands: scheme:<light|dark>, burn:<0–1> (the burn card's progress).
 

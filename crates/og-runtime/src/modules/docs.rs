@@ -337,7 +337,17 @@ fn roots_of(doc: &UiDocument) -> Vec<String> {
 }
 
 pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> {
-    let id = og_bundle::runtime::asset_id(path).to_string();
+    let mut id = og_bundle::runtime::asset_id(path).to_string();
+    // A built-in document the game replaced is not bundled: its copy where
+    // `og ui eject` writes it (`@ui/screens/pause.svelte`: ui/pause.svelte)
+    // loads in its place.
+    if let Some(rest) = id
+        .strip_prefix("@ui/components/")
+        .or_else(|| id.strip_prefix("@ui/screens/"))
+        && eng.assets.borrow().bundle_for(&id).is_err()
+    {
+        id = format!("ui/{rest}");
+    }
     let doc = read_document(eng, &id)?;
     let rive = read_rive(eng, &doc)?;
     let materials = read_materials(eng, &doc)?;
@@ -366,22 +376,44 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
         crate::lazy::ensure(eng, eng.world()?, crate::video::MEDIA_INTENT)?;
     }
     let faces = family_faces(eng, &doc)?;
-    let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
-    let mut ui = ui.lock();
-    for (r, _, artboard) in rive {
-        ui.define_rive(&r, artboard);
+    {
+        let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
+        let mut ui = ui.lock();
+        for (r, _, artboard) in rive {
+            ui.define_rive(&r, artboard);
+        }
+        for (path, (handle, defaults)) in materials {
+            ui.define_material(&path, handle, defaults);
+        }
+        for (path, texture) in textures {
+            ui.define_texture(&path, texture);
+        }
+        for (path, alpha) in alphas {
+            ui.define_texture_alpha(&path, alpha);
+        }
+        define(&mut ui, doc, faces);
     }
-    for (path, (handle, defaults)) in materials {
-        ui.define_material(&path, handle, defaults);
-    }
-    for (path, texture) in textures {
-        ui.define_texture(&path, texture);
-    }
-    for (path, alpha) in alphas {
-        ui.define_texture_alpha(&path, alpha);
-    }
-    define(&mut ui, doc, faces);
+    load_uses(eng, &id)?;
     Ok(name)
+}
+
+/// Loads the components document `id` uses that are not loaded yet: the
+/// cook named their documents (the game's own, else the engine's built-in
+/// `@ui/` ones), so a screen needs only its own load.
+fn load_uses(eng: &Engine, id: &str) -> Result<(), String> {
+    let uses = {
+        let assets = eng.assets.borrow();
+        let (bytes, bundle) = assets.blob(id)?;
+        bundle
+            .document_uses(id, bytes.bytes())
+            .map_err(|e| e.to_string())?
+    };
+    for used in uses {
+        if !with(eng.id, |d| d.loaded.iter().any(|l| l.id == used)) {
+            load_document(eng, &used).map_err(|e| format!("{id}: {used}: {e}"))?;
+        }
+    }
+    Ok(())
 }
 
 /// The faces a document's `@font-face` rules declare, each from its first
@@ -501,6 +533,11 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
                     ui.define_texture_alpha(&path, alpha);
                 }
                 define(&mut ui, doc, faces);
+                drop(ui);
+                // A component the edit started using comes with it.
+                if let Err(e) = load_uses(eng, &l.id) {
+                    failed.push(format!("og dev: {e}"));
+                }
             }
             Err(e) => failed.push(format!("og dev: {e} (the old document stays)")),
         }

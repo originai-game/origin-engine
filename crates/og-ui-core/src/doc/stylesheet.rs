@@ -310,7 +310,7 @@ fn read(
     let mut rules = Vec::new();
     let mut reader = Reader {
         sheet,
-        layers: ["og-default", "og-kit", "og-pack", "og-game"]
+        layers: ["og-default", "og-components", "og-pack", "og-game"]
             .map(str::to_owned)
             .to_vec(),
         anonymous: 0,
@@ -337,11 +337,12 @@ fn read(
     }
     for (text, at) in styles {
         reader.imports_open = true;
+        // A built-in component's rules sit below every pack's.
         let context = Context {
             layer: source
                 .trim_start_matches('/')
-                .starts_with("ui-kits/")
-                .then(|| "og-kit".into()),
+                .starts_with("@ui/")
+                .then(|| "og-components".into()),
             ..Context::default()
         };
         reader.rules(text, *at, &context, &mut rules)?;

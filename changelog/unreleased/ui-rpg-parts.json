@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "rpg components",
+      "change": "Every built-in rpg component names its frame, bands, titles, tabs, cells and rows as parts (RpgBackpack.frame, RpgBackpack.cell, RpgQuestLog.row…), listed in its <meta name=\"parts\">, and the classes those elements carried (.rpg-backpack, .rpg-band, .rpg-title, .cell, .tab, .quest…) are gone; data-* state attributes are kept.",
+      "fix": "Dress them through their parts, RpgBackpack::cell[data-rarity=epic] in place of .rpg-backpack .cell[data-rarity=epic]; a game that needs the old classes ejects the component (og ui eject rpg/backpack) and keeps them in its copy."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "shooter components",
+      "summary": "Crosshair's arms and hit mark and AmmoCounter's magazine fill transition with the defined motion tokens (--motion-ui-duration and --motion-ui-easing, the spring pair for the mark's scale); they named --motion-ui and --motion-emphasis, which no style defines, so they did not animate and warned every frame."
+    }
+  ]
+}

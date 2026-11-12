@@ -13,7 +13,10 @@ fn component_documents_build_from_their_fixtures() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
     assert!(!docs.is_empty());
     let mut failures = Vec::new();
-    for doc in &docs {
+    // A group's documents (rpg/, shooter/) mount from their own fixtures,
+    // whose art is their sheet's, in packages/engine/tests/<group>.test.ts.
+    let top = |d: &&EngineDocument| !d.path["src/ui/components/".len()..].contains('/');
+    for doc in docs.iter().filter(top) {
         for (width, height) in [(1280.0, 720.0), (390.0, 844.0)] {
             let mut ui = ui_with_font(test_font_metrics());
             ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));

@@ -1,5 +1,5 @@
-//! The engine's UI documents (`packages/engine`: `src/ui/components`,
-//! `src/ui/screens` and the extensions' documents) with their
+//! The engine's UI documents (`packages/engine`: `src/ui/components` with
+//! its groups, and `src/ui/screens`) with their
 //! `fixture:default` props and the English strings beside them, and what a
 //! preview of one needs: the built-in icon sheet's names and a camera that
 //! puts world-anchored documents on screen.

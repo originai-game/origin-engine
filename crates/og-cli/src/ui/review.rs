@@ -1,12 +1,13 @@
-//! `og ui review <kit>` (docs/ui.md §6): every page of a kit's review
-//! sheet × state fixture × style, at 1920×1080 and on a phone both ways,
+//! `og ui review <group>` (docs/ui.md §6): every page of a component
+//! group's review sheet (`sheets/<group>` of the engine package, or a
+//! sheet directory) × state fixture × style, at 1920×1080 and on a phone both ways,
 //! 100 % and 150 % text, in the game's locale, Chinese, Arabic and the
 //! pseudo-locale; labelled contact sheets and the measures as read.
 use super::{Project, declared_screens, extensions, project, spawn};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og ui review <kit> [project] [--style <pack>]... [--states a,b] [--grid N] \
+const USAGE: &str = "usage: og ui review <group|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N] \
                      [--breakpoints ...] [--locales ...] [--scales ...] [--out DIR] [--json]";
 
 /// A sheet screen's commands without its `style:` steps, and those styles.
@@ -139,7 +140,10 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
         i += 1;
     }
     let package = project::engine_package(Some(root)).ok_or(project::NO_ENGINE)?;
-    let matches: Vec<_> = if Path::new(name).is_dir() {
+    let group = super::sheet::group_sheet(&package, name);
+    let matches: Vec<_> = if group.is_some() {
+        Vec::new()
+    } else if Path::new(name).is_dir() {
         vec![extensions::read(Path::new(name), false)?]
     } else {
         extensions::discover(root)?
@@ -147,14 +151,25 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
             .filter(|e| e.manifest.name == name)
             .collect()
     };
-    if matches.len() != 1 {
-        return Err(format!("`{name}` must identify one extension (og ui list)"));
+    if group.is_none() && matches.len() != 1 {
+        return Err(format!(
+            "`{name}` must identify one pack (og ui list), component group (a sheets/<group> of the engine package) or sheet directory"
+        ));
     }
-    let kit = &matches[0];
-    if kit.manifest.kind == "style" {
+    if matches.first().is_some_and(|e| e.manifest.kind == "style") {
         super::sheet::sheet(args, true)?;
         return Ok(ExitCode::SUCCESS);
     }
+    let name = match (&group, matches.first()) {
+        (Some(dir), _) => dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("sheet")
+            .to_owned(),
+        (None, Some(e)) => e.manifest.name.clone(),
+        (None, None) => unreachable!("checked above"),
+    };
+    let name = name.as_str();
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let out = cwd.join(out.unwrap_or_else(|| root.join("og-out/ui-review").join(name)));
     // Under the caller's worktree, so every review there shares its resident host.
@@ -166,12 +181,21 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
     if scratch.exists() {
         std::fs::remove_dir_all(&scratch).map_err(|e| format!("{}: {e}", scratch.display()))?;
     }
-    for file in extensions::files(&kit.directory)? {
+    // A group's sheet uses the built-in components by name; a pack's sheet
+    // is its `sheet/`, with the pack installed as a game installs it.
+    let source = group
+        .clone()
+        .unwrap_or_else(|| matches[0].directory.clone());
+    for file in extensions::files(&source)? {
         let dest = scratch.join(&file);
         std::fs::create_dir_all(dest.parent().unwrap()).map_err(|e| e.to_string())?;
-        std::fs::copy(kit.directory.join(&file), &dest).map_err(|e| e.to_string())?;
+        std::fs::copy(source.join(&file), &dest).map_err(|e| e.to_string())?;
     }
-    let demo = scratch.join("sheet");
+    let demo = if group.is_some() {
+        scratch.clone()
+    } else {
+        scratch.join("sheet")
+    };
     let screens = if demo.join("project.ogt").is_file() {
         declared_screens(&demo)?
     } else {
@@ -179,10 +203,12 @@ fn review(args: &[&str]) -> Result<ExitCode, String> {
     };
     if screens.is_empty() {
         return Err(format!(
-            "kit `{name}` needs sheet/project.ogt with fixed ui screen entries (docs/ui.md §6)"
+            "`{name}` needs a sheet project.ogt with fixed ui screen entries (docs/ui.md §6)"
         ));
     }
-    extensions::install(kit, &demo)?;
+    if group.is_none() {
+        extensions::install(&matches[0], &demo)?;
+    }
     install_font_packs(root, &demo, &forward)?;
     let (pages, worn) = pages(&screens);
     let styles = if styles.is_empty() { worn } else { styles };

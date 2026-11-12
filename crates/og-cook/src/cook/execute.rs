@@ -335,7 +335,7 @@ pub(super) fn run(
                 )],
             ))
         }
-        Work::Document(s) => {
+        Work::Document(s, uses) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a document is text (UTF-8)".into()))?;
             let imports = document_imports(s, text).map_err(CookError)?;
@@ -357,6 +357,10 @@ pub(super) fn run(
             if !imports.is_empty() {
                 let bytes = serde_json::to_vec(&imports).expect("strings serialize");
                 w.raw("imports", bytes, 16);
+            }
+            if !uses.is_empty() {
+                let bytes = serde_json::to_vec(uses).expect("strings serialize");
+                w.raw("uses", bytes, 16);
             }
             let slots = doc
                 .nodes
@@ -590,7 +594,7 @@ fn split_texture(
 
 /// The text of `rel` (an asset path) under the assets directory `s` came from.
 /// A file a source names, read relative to the source's own directory
-/// first (`foil.wgsl` beside `ui-kits/materials/foil.ogt`, so a kit's
+/// first (`foil.wgsl` beside `materials/materials/foil.ogt`, so a pack's
 /// relative references survive installation, docs/ui.md §5), then as an
 /// asset path from `assets/` ([`read_sibling`]), as a style resolves its
 /// references.
@@ -633,6 +637,10 @@ pub(super) fn read_sibling(s: &Source, rel: &str) -> Result<String, String> {
 
 /// The bytes of the asset at `rel` under `assets/` beside `s`.
 pub(super) fn read_sibling_bytes(s: &Source, rel: &str) -> Result<Vec<u8>, String> {
+    // A built-in component's files are the engine's, not the game's.
+    if rel.starts_with(ui_components::PREFIX) {
+        return ui_components::read(rel);
+    }
     let mut root = s.path.clone();
     for _ in s.rel.split('/') {
         root.pop();

@@ -51,7 +51,7 @@ mod literals;
 mod review;
 mod sheet;
 
-const USAGE: &str = "usage: og ui add <kit|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui literals [path...] [--json]\n       og ui eject <screen|kit/document> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <kit> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|kit> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
+const USAGE: &str = "usage: og ui add <materials|directory> [project]\n       og ui list [project] [--json]\n       og ui slots [project] [--json]\n       og ui types [project]\n       og ui literals [path...] [--json]\n       og ui eject <screen|component> [project] [--force]\n       og ui eject --list [project]\n       og ui migrate <file|dir>... [--check]\n       og ui review <group|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N] [--out DIR] [--json]\n       og ui sheet <pack|group|sheet-directory> [project] [--out DIR] [--json]\n       og ui check|preview [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b] [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet] [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S] [--film <commands> --at t,...] [--out DIR] [--json]";
 
 /// Options forwarded to ui-run.ts with their value.
 const VALUED: [&str; 10] = [
@@ -75,7 +75,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         return review::run(rest);
     }
     if let ["add", rest @ ..] = args {
-        return extensions::add(rest, "kit");
+        return extensions::add(rest, "materials");
     }
     if let ["list", rest @ ..] = args {
         return extensions::list(rest, None);
@@ -600,18 +600,6 @@ fn eject(args: &[&str]) -> ExitCode {
         }
     };
     let project = Path::new(project);
-    if let Some(name) = name.filter(|n| n.contains('/')) {
-        return match extensions::eject(name, project, force) {
-            Ok(path) => {
-                println!("og ui eject: {}", path.display());
-                ExitCode::SUCCESS
-            }
-            Err(e) => {
-                eprintln!("og ui eject: {e}");
-                ExitCode::FAILURE
-            }
-        };
-    }
     let Some(package) = project::engine_package(Some(project)) else {
         eprintln!("og ui eject: {}", project::NO_ENGINE);
         return ExitCode::FAILURE;
@@ -635,7 +623,7 @@ fn eject(args: &[&str]) -> ExitCode {
         Ok(_) if dirs[1].join(format!("{name}.svelte")).is_file() => {
             println!(
                 "og ui eject: the library's '{name}' component into assets/ui/{name}.svelte\n\
-                 load it once with og.load.document(world, \"ui/{name}.svelte\") and use it in a screen by the name its <meta name=\"component\"> declares;\n\
+                 it replaces the built-in one of the name its <meta name=\"component\"> declares, and loads with every screen that uses it;\n\
                  its header names its props, actions and fixture"
             );
             ExitCode::SUCCESS
@@ -643,7 +631,7 @@ fn eject(args: &[&str]) -> ExitCode {
         Ok(_) => {
             println!(
                 "og ui eject: the library's '{name}' into assets/ui/{name}.svelte\n\
-                 load it once with og.load.document(world, \"ui/{name}.svelte\") and mount its named stores;\n\
+                 it replaces the built-in screen of its name: og.load.document(world, \"ui/{name}.svelte\") (or the built-in id, \"@ui/screens/{name}.svelte\") loads it, then mount its named stores;\n\
                  its header names the viewmodel's props, its events and what fills each slot.\n\
                  preview it with og run --commands \"0.5:ui:push:{name}:default\", and add screen \"{name}\" \"<commands>\" to project.ogt's ui block so og ui check covers it"
             );
@@ -820,6 +808,28 @@ pub fn write_types(root: &Path) -> Result<Typed, String> {
             }
         }
     }
+    // The built-in screens the game's code names by id and does not
+    // replace are typed as its own, as the cook bundles them.
+    let mut builtin: Vec<og_ui::UiDocument> = Vec::new();
+    if let Ok(index) = og_cook::cook::ui_components::index() {
+        for path in og_cook::cook::assets::game_typescript(root).unwrap_or_default() {
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(refs) = og_cook::cook::ts_refs::parse(&path, &text) else {
+                continue;
+            };
+            for l in refs.literals {
+                if let Some(c) = index.values().find(|c| c.id == l.value)
+                    && c.doc.kind == og_ui::doc::DocKind::Screen
+                    && !docs.iter().chain(&builtin).any(|d| d.name == c.doc.name)
+                {
+                    builtin.push(c.doc.clone());
+                }
+            }
+        }
+    }
+    docs.extend(builtin);
     let dir = root.join(TYPES_DIR);
     if docs.is_empty() && !dir.is_dir() {
         return Ok(Typed {
@@ -833,7 +843,14 @@ pub fn write_types(root: &Path) -> Result<Typed, String> {
         .filter(|d| d.kind == og_ui::doc::DocKind::Component)
         .map(|d| (d.name.as_str(), d))
         .collect();
-    let lookup = |n: &str| components.get(n).copied();
+    // A name the game does not declare is the engine's built-in component,
+    // as the cook resolves it.
+    let lookup = |n: &str| {
+        components.get(n).copied().or_else(|| {
+            let index = og_cook::cook::ui_components::index().ok()?;
+            index.get(n).map(|c| &c.doc)
+        })
+    };
     let mut keep = std::collections::BTreeSet::new();
     for d in &docs {
         let file = format!("{}.d.ts", d.name.replace('/', "."));
@@ -898,75 +915,6 @@ mod tests {
     }
 
     #[test]
-    fn extension_install_discover_eject_and_refuse_overwrite() {
-        use super::extensions;
-        let dir = game("extension");
-        let source = dir.join("source");
-        std::fs::create_dir_all(source.join("pages")).unwrap();
-        std::fs::write(
-            source.join("extension.json"),
-            r#"{
-            "format":1,"kind":"kit","name":"test-racing","version":"1.2.0",
-            "description":"Race results","skill":"README.md"
-        }"#,
-        )
-        .unwrap();
-        std::fs::write(source.join("README.md"), "Edit pages/results.svelte").unwrap();
-        let document = "<meta name='screen' content='results'><meta name='strings' content='./results.en.ogt'><column id='Root'><text>{t('title')}</text></column>";
-        let strings =
-            "type strings\nversion 1\n---\nlocale \"en\"\nstring \"title\" \"Race results\"\n";
-        std::fs::write(source.join("pages/results.svelte"), document).unwrap();
-        std::fs::write(source.join("pages/results.en.ogt"), strings).unwrap();
-        assert_eq!(
-            extensions::add(&[source.to_str().unwrap(), dir.to_str().unwrap()], "kit"),
-            std::process::ExitCode::SUCCESS
-        );
-        let found = extensions::discover(&dir).unwrap();
-        let kit = found
-            .iter()
-            .find(|e| e.manifest.name == "test-racing")
-            .unwrap();
-        assert!(kit.installed);
-        assert_eq!(kit.documents, ["pages/results.svelte"]);
-        assert_eq!(
-            std::fs::read_to_string(kit.directory.join("pages/results.svelte")).unwrap(),
-            document
-        );
-        let target = extensions::eject("test-racing/pages/results", &dir, false).unwrap();
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), document);
-        assert_eq!(
-            std::fs::read_to_string(target.with_extension("en.ogt")).unwrap(),
-            strings
-        );
-        crate::cook::cook(&dir, 0, false).unwrap();
-        let bundle = og_cook::runtime::Bundle::open(&dir.join("cooked")).unwrap();
-        assert!(
-            bundle
-                .read("ui-kits/test-racing/pages/results.svelte")
-                .is_ok()
-        );
-        assert!(bundle.read("ui/test-racing/pages/results.svelte").is_ok());
-        std::fs::write(&target, "game edit").unwrap();
-        assert!(extensions::eject("test-racing/pages/results", &dir, false).is_err());
-        assert!(extensions::eject("test-racing/../../escape", &dir, false).is_err());
-        assert_eq!(
-            extensions::add(&[source.to_str().unwrap(), dir.to_str().unwrap()], "kit"),
-            std::process::ExitCode::FAILURE
-        );
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), "game edit");
-        std::fs::write(
-            source.join("extension.json"),
-            r#"{
-            "format":1,"kind":"kit","name":"evil","version":"1.0.0",
-            "description":"Invalid path","skill":"../project.ogt"
-        }"#,
-        )
-        .unwrap();
-        assert!(extensions::read(&source, false).is_err());
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-
-    #[test]
     fn eject_copies_the_library_document_into_assets_ui() {
         let dir = game("copies");
         let got = eject_from(&library(), "pause", &dir, false).unwrap();
@@ -985,6 +933,10 @@ mod tests {
             std::fs::read(library()[1].join("ability-bar.svelte")).unwrap()
         );
         assert!(dir.join("assets/ui/ability-bar.en.ogt").is_file());
+        // A group's document keeps its directory, beside its group's strings.
+        let got = eject_from(&library(), "rpg/backpack", &dir, false).unwrap();
+        assert_eq!(got, dir.join("assets/ui/rpg/backpack.svelte"));
+        assert!(dir.join("assets/ui/rpg/rpg.en.ogt").is_file());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -1019,14 +971,19 @@ mod tests {
     #[test]
     fn eject_list_names_every_document_with_its_appendix_b_row() {
         let screens = lib_screens(&library()).unwrap();
-        let mut files: Vec<String> = library()
-            .iter()
-            .flat_map(|d| std::fs::read_dir(d).unwrap())
-            .filter_map(|e| {
-                let f = e.unwrap().file_name().into_string().unwrap();
-                f.strip_suffix(".svelte").map(str::to_string)
-            })
-            .collect();
+        // A group's documents (`rpg/backpack`) are named by their path.
+        let mut files: Vec<String> = Vec::new();
+        for dir in library() {
+            let mut found = Vec::new();
+            super::collect_files(&dir, "svelte", &mut found);
+            files.extend(found.iter().map(|f| {
+                f.strip_prefix(&dir)
+                    .unwrap()
+                    .with_extension("")
+                    .to_string_lossy()
+                    .replace('\\', "/")
+            }));
+        }
         files.sort();
         let mut names: Vec<String> = screens.iter().map(|s| s.name.clone()).collect();
         names.sort();

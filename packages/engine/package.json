@@ -33,8 +33,6 @@
     "./bindings.json": "./types/bindings.json",
     "./schema.json": "./schema/api.schema.json",
     "./playtest": "./src/playtest.ts",
-    "./ui-extensions": "./src/ui-extensions.ts",
-    "./extensions/*": "./extensions/*",
     "./ui-check": "./src/node/ui-check.ts"
   },
   "bin": {

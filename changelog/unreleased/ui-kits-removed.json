@@ -1,0 +1,20 @@
+{
+  "breaking": [
+    {
+      "member": "genre kits",
+      "change": "Genre kits are removed: extension.json's kind \"kit\" and its entry, types and components fields are refused, og ui add no longer installs a kit into assets/ui-kits/, nothing discovers assets/ui-kits/, og ui eject no longer takes <kit>/<document>, and documents under assets/ui-kits/ no longer land in a cascade layer of their own. The rpg and shooter documents are built-in components.",
+      "fix": "Use a component by the name its document declares (<RpgBackpack/>, <Killfeed/>); the screen that uses it loads it. Delete assets/ui-kits/ and the og.load.document calls naming it, or keep a document you edited as the game's own (it then replaces the built-in one of its name); og ui eject <group>/<document> (rpg/backpack) copies one to edit."
+    },
+    {
+      "member": "@origingame/engine/ui-extensions",
+      "change": "registerUiExtension, uiExtensionNames and the @origingame/engine/ui-extensions and @origingame/engine/extensions/* exports are removed, with the tsconfig paths og check and the project skeleton wrote for them.",
+      "fix": "Delete the import; a component is a document used by name, and TypeScript helpers live in the game's own modules."
+    },
+    {
+      "member": "materials pack",
+      "change": "The materials pack is a resource pack of its own kind (extension.json kind \"materials\"): og ui add materials installs it into assets/materials/materials/, so its presets' ids are materials/materials/<preset>.ogt instead of ui-kits/materials/<preset>.ogt.",
+      "fix": "Run og ui add materials again and write -og-material: \"materials/materials/foil.ogt\" (holo, burn, rarity) where a style named \"ui-kits/materials/…\"; delete assets/ui-kits/materials/.",
+      "find": ["ui-kits/materials/"]
+    }
+  ]
+}

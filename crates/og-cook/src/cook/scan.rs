@@ -1,4 +1,5 @@
 use super::*;
+use og_ui::prelude::*;
 
 fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Result<()> {
     let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<Result<_, _>>()?;
@@ -14,11 +15,6 @@ fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Res
             format!("{rel}/{name}")
         };
         if e.file_type()?.is_dir() {
-            // An installed kit's `sheet/` is a review project of its own
-            // (docs/ui.md §6), `og ui sheet` cooks it apart.
-            if name == "sheet" && dir.join("extension.json").is_file() {
-                continue;
-            }
             walk(&e.path(), &r, out)?;
         } else {
             out.push((r, e.path()));
@@ -40,6 +36,9 @@ pub(super) struct Scan {
     pub(super) sources: Vec<Source>,
     pub(super) ignored: Vec<String>,
     pub(super) early_errors: Vec<(String, &'static str, String)>,
+    /// Each component name the documents use or declare, by the id of the
+    /// document that defines it: the game's own, else a built-in one.
+    pub(super) components: BTreeMap<String, String>,
 }
 
 pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
@@ -128,7 +127,7 @@ pub fn own_lines(ty: &str) -> bool {
 }
 
 /// The extensions of the texts the scan reads more than once.
-const TEXTS: [&str; 3] = ["ogt", "css", "json"];
+const TEXTS: [&str; 4] = ["ogt", "css", "json", "svelte"];
 
 pub(super) fn scan_with(
     assets_dir: &Path,
@@ -193,6 +192,62 @@ pub(super) fn scan_with(
             }
         }
     }
+    // The built-in components the game's documents use and the built-in
+    // screens its code names, that it does not declare, join it as well
+    // (`@ui/components/rpg/backpack.svelte`, with its strings), and those
+    // they use in turn; a game's document of the same name wins.
+    let mut game = BTreeMap::new();
+    let mut used = BTreeSet::new();
+    let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
+    for (rel, path) in &files {
+        if ext(rel) != "svelte" {
+            continue;
+        }
+        let Ok(text) =
+            read_file(path).and_then(|b| String::from_utf8(b).map_err(std::io::Error::other))
+        else {
+            continue;
+        };
+        // One that does not parse is the plan's error.
+        let imports = disk_imports(assets_dir, rel, &text);
+        let Ok(doc) = og_ui::UiDocument::parse_with_imports(rel, &text, imports) else {
+            continue;
+        };
+        game.entry(doc.name.clone()).or_insert_with(|| rel.clone());
+        used.extend(ui_components::uses(&doc));
+    }
+    // The built-in screens the game's code names by id
+    // (`og.load.document(world, "@ui/screens/pause.svelte")`).
+    if let Some(root) = assets_dir
+        .parent()
+        .filter(|r| r.join("project.ogt").is_file())
+    {
+        for path in super::assets::game_typescript(root).unwrap_or_default() {
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            // Code that does not parse is the asset index's to report.
+            let Ok(refs) = super::ts_refs::parse(&path, &text) else {
+                continue;
+            };
+            used.extend(
+                refs.literals
+                    .into_iter()
+                    .map(|l| l.value)
+                    .filter(|v| v.starts_with(ui_components::PREFIX)),
+            );
+        }
+    }
+    let components = match ui_components::resolve(game.clone(), used) {
+        Ok(r) => {
+            builtins.extend(r.files);
+            r.components
+        }
+        Err(e) => {
+            early_errors.push(("@ui".into(), "document", e));
+            game
+        }
+    };
     for id in builtins.keys() {
         files.push((id.clone(), assets_dir.join(id)));
     }
@@ -210,7 +265,6 @@ pub(super) fn scan_with(
     let mut settings: BTreeMap<String, (String, Document)> = BTreeMap::new();
     let mut defaults: Vec<import_defaults::Defaults> = Vec::new();
     let mut ignored = Vec::new();
-    let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
     for (rel, path) in &files {
         if rel.starts_with('@') && !builtins.contains_key(rel) {
             early_errors.push((
@@ -364,7 +418,34 @@ pub(super) fn scan_with(
         sources,
         ignored,
         early_errors,
+        components,
     })
+}
+
+/// The stylesheets a game document's `@import`s name, read from `assets/`
+/// (one that cannot be read is left out: the plan reports it).
+fn disk_imports(assets_dir: &Path, rel: &str, text: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    let mut pending: Vec<(String, String)> = og_ui::UiDocument::imports(text)
+        .into_iter()
+        .map(|p| (rel.to_string(), p))
+        .collect();
+    while let Some((from, path)) = pending.pop() {
+        let at = og_ui::doc::at_rules::resolve(&from, &path);
+        if out.iter().any(|(p, _)| *p == at) || at.split('/').any(|c| c == ".." || c.is_empty()) {
+            continue;
+        }
+        let Ok(css) = std::fs::read_to_string(assets_dir.join(&at)) else {
+            continue;
+        };
+        pending.extend(
+            og_ui::UiDocument::imports(&css)
+                .into_iter()
+                .map(|p| (at.clone(), p)),
+        );
+        out.push((at, css));
+    }
+    out
 }
 
 /// The group of a planned output: its asset's, except a glTF's `#proxy`
