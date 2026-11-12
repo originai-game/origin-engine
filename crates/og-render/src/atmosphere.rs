@@ -159,7 +159,8 @@ impl SkyLook {
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub(crate) struct AtmosphereGpu {
-    /// rgb: colour, w: 1 when fog is on.
+    /// rgb: colour, w: 1 when fog is on, 2 under water
+    /// ([`AtmosphereGpu::underwater`]).
     pub fog_color: [f32; 4],
     /// x: density, y: start, z: end, w: max opacity.
     pub fog_distance: [f32; 4],
@@ -277,6 +278,16 @@ impl AtmosphereGpu {
         // Seconds wrap every 2^16 ticks so f32 keeps sub-tick precision.
         a.time = [(tick % 65536) as f32 / rate, tick as f32, rate, 0.0];
         a
+    }
+
+    /// Makes the fog the underwater view's (frame.wgsl `underwater_light`):
+    /// `light` the surface's height, the daylight's attenuation per metre
+    /// of depth and the light shafts' strength
+    /// ([`crate::water::underwater_light`]).
+    pub(crate) fn underwater(&mut self, light: [f32; 3]) {
+        self.fog_color[3] = 2.0;
+        self.fog_height = [light[0], light[1], 0.0, 0.0];
+        self.fog_sun[3] = light[2];
     }
 
     /// The share of `p`'s light the fog lets through to a perspective eye at

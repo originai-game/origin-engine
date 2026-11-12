@@ -36,7 +36,7 @@ struct Frame {
   cluster: vec4<f32>,         // x, y: clusters per pixel across and down, z, w: depth slice scale and bias (of log2 depth in perspective)
   local_view_proj: array<mat4x4<f32>, LOCAL_SHADOW_LAYERS>,  // per layer: a spot's view or a cube face (paraboloid layers: unused)
   // The atmosphere (`AtmosphereGpu` in atmosphere.rs).
-  fog_color: vec4<f32>,       // rgb: colour, w: 1 when fog is on
+  fog_color: vec4<f32>,       // rgb: colour, w: 1 when fog is on, 2 under water (`underwater_light`: fog_height is x the surface's height, y the daylight's attenuation per metre; fog_sun.w the shafts' strength)
   fog_distance: vec4<f32>,    // x: density, y: start, z: end, w: max opacity
   fog_height: vec4<f32>,      // x: height, y: falloff, z: height density, w: sky amount
   fog_sun: vec4<f32>,         // rgb: scattering colour, w: power
@@ -260,8 +260,72 @@ fn fog_amount_scaled(p: vec3<f32>, height: f32) -> vec4<f32> {
     clear *= exp(-max(column, 0.0) * height);
   }
   let amount = min(1.0 - clear, fd.w);
+  if (frame.fog_color.w > 1.5) { return vec4<f32>(underwater_light(origin, dir, d, amount), amount); }
   let sun = pow(max(dot(dir, normalize(frame.light_dir.xyz)), 0.0), max(frame.fog_sun.w, 1e-3));
   return vec4<f32>(mix(frame.fog_color.rgb, frame.fog_sun.rgb, sun), amount);
+}
+
+// The mean of the shafts' pattern (`underwater_body`), and how far over the water's even light a shaft at its
+// brightest stands.
+const SHAFT_MEAN: f32 = 0.165;
+const SHAFT_GAIN: f32 = 1.4;
+
+// A smooth value noise on the integer lattice (the light shafts' pattern below).
+fn shaft_noise(p: vec2<f32>) -> f32 {
+  let i = floor(p);
+  let f = p - i;
+  let u = f * f * (3.0 - 2.0 * f);
+  let c = vec2<i32>(i);
+  return mix(mix(lattice_hash(vec3<i32>(c, 5)), lattice_hash(vec3<i32>(c + vec2<i32>(1, 0), 5)), u.x),
+             mix(lattice_hash(vec3<i32>(c + vec2<i32>(0, 1), 5)), lattice_hash(vec3<i32>(c + vec2<i32>(1, 1), 5)), u.x), u.y);
+}
+
+// The underwater view's light (fog_color.w 2, water.rs `underwater_fog`) on a ray from `origin` along `dir` for `d`
+// metres, as the colour the fog's `amount` mixes in. The fog colour is the water looking level just under the surface.
+// Daylight falls off with depth (fog_height: x the surface's height, y its attenuation per metre), so the light a ray
+// gathers is the integral of e^{-K depth(s)} e^{-c s} over it (the single-scattering water body of Premoze and
+// Ashikhmin, "Rendering natural waters", 2001): brighter looking up than down, and darker the deeper the eye.
+// The sun's light comes down in shafts (fog_sun.w their strength), below.
+fn underwater_light(origin: vec3<f32>, dir: vec3<f32>, d: f32, amount: f32) -> vec3<f32> {
+  return underwater_body(origin, dir, d, amount, frame.fog_sun.w);
+}
+
+// `underwater_light` with the shafts at `shafts` of their strength (0: the water's even light alone, as the surface
+// mirrors it from below: water.wgsl).
+//
+// The shafts are parallel, along the sun's refracted direction, so the eye sees them as lines through that
+// direction's vanishing point: a pattern of the view ray's bearing around it alone, read as a noise on a circle
+// (seamless all the way round), two drifting layers bright only where both are. That is what a march through the
+// surface's light pattern converges to, at two noise reads and with no bars from too few steps. The eye's own
+// position slides the pattern, so the shafts stay in the water as it moves. They fade at the vanishing point, where
+// the eye looks along one shaft, lose contrast looking across them, where many overlap, and blur into the water's
+// even light with depth.
+fn underwater_body(origin: vec3<f32>, dir: vec3<f32>, d: f32, amount: f32, shafts: f32) -> vec3<f32> {
+  let c = max(frame.fog_distance.x, 1e-5);
+  let k = frame.fog_height.y;
+  let depth0 = max(frame.fog_height.x - origin.y, 0.0);
+  let slant = max(c - k * dir.y, 0.2 * c);
+  let reach = 1.0 - exp(-slant * d);
+  var colour = frame.fog_color.rgb * exp(-k * depth0) * reach * c / (slant * max(amount, 1e-4));
+  let l = normalize(frame.light_dir.xyz);
+  if (shafts > 0.0 && l.y > 0.0) {
+    // Never more than 49 degrees off the vertical, so the x axis is a safe second axis.
+    let t = refract(-l, vec3<f32>(0.0, 1.0, 0.0), 1.0 / 1.33);
+    let u = normalize(cross(t, vec3<f32>(1.0, 0.0, 0.0)));
+    let v = cross(t, u);
+    let e = vec2<f32>(dot(dir, u), dot(dir, v));
+    let off = length(e);
+    let bearing = e / max(off, 1e-4);
+    let eye = vec2<f32>(dot(origin, u), dot(origin, v));
+    let time = frame.time.x;
+    let a = shaft_noise(bearing * 6.0 + eye * 0.23 + vec2<f32>(time * 0.07, -time * 0.05));
+    let b = shaft_noise(bearing * 17.0 + eye * 0.41 + vec2<f32>(-time * 0.09, time * 0.11) + 7.3 + off * 1.3);
+    let pattern = smoothstep(0.35, 0.8, a) * smoothstep(0.3, 0.8, b);
+    let seen = smoothstep(0.04, 0.3, off) * mix(1.0, 0.45, off * off) * exp(-0.05 * depth0);
+    // About the pattern's mean, so the water keeps its brightness.
+    colour *= max(1.0 + shafts * smoothstep(0.0, 0.15, l.y) * (pattern - SHAFT_MEAN) * seen * SHAFT_GAIN, 0.4);
+  }
+  return colour;
 }
 
 fn apply_fog(color: vec3<f32>, p: vec3<f32>) -> vec3<f32> {

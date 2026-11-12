@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"Water.underwaterDensity","summary":"The underwater view has depth: the water's light falls off with depth (brighter looking up than down, darker the deeper the eye), the sun comes down in moving shafts as strong as `caustics` (0: none), and outside Snell's window the surface mirrors the water below it, with total internal reflection at the window's edge. No measurable cost (7.9 ms before and after at 720p on an Apple M4 Pro)."}
+  ]
+}

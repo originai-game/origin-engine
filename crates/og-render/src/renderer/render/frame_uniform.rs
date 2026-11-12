@@ -14,6 +14,8 @@ pub(super) struct WriteFrameUniformsInputs<'a> {
     pub shadow_size: u32,
     pub taa: bool,
     pub frame_fog: &'a Option<atmosphere::Fog>,
+    /// The underwater view's light, if the camera is under a surface ([`water::underwater_light`]).
+    pub underwater: Option<[f32; 3]>,
     pub scene_water: &'a [Water],
     pub lights_gpu: &'a [frame::LightGpu],
     pub cascades: &'a [Cascade],
@@ -46,6 +48,7 @@ impl Renderer {
             shadow_size,
             taa,
             frame_fog,
+            underwater,
             scene_water,
             lights_gpu,
             cascades,
@@ -175,6 +178,9 @@ impl Renderer {
             // this frame (`sync_assets`; engine s100).
             drawn: [self.frame_index as u32, 0, 0, 0],
         };
+        if let Some(light) = underwater {
+            uniform.atmosphere.underwater(light);
+        }
         uniform.atmosphere.time[3] = self
             .history
             .previous_time

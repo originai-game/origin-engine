@@ -462,6 +462,20 @@ pub fn water_underwater_scene() -> RenderScene {
     scene
 }
 
+/// Under the lake, looking up towards the sun: its light coming down in
+/// shafts from the bright side of Snell's window, the water darker below
+/// them than above, the caustics where they reach the bed.
+pub fn water_underwater_shafts_scene() -> RenderScene {
+    let mut scene = water_underwater_scene();
+    let sun = scene.lighting.light.direction_to_light.normalize();
+    let eye = Vec3::new(LAKE.x - 40.0, LAKE_LEVEL - 3.2, LAKE.y + 70.0);
+    scene.frame.camera = camera_at(
+        eye,
+        eye + Vec3::new(sun.x, 0.0, sun.z).normalize() * 20.0 + Vec3::Y * 5.0,
+    );
+    scene
+}
+
 /// A tuft of five grass blades, 0.5 m tall: each a tapered quad drawn on
 /// both sides, darker at the root, its normals leaning up so the tuft
 /// shades like the meadow under it.

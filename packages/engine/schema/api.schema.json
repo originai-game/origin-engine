@@ -35335,7 +35335,7 @@
         },
         "underwaterDensity": {
           "type": "number",
-          "description": "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.",
+          "description": "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it.",
           "default": 0.09,
           "minimum": 0,
           "maximum": 2,

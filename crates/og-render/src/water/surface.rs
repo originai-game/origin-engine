@@ -150,6 +150,8 @@ pub(crate) fn underwater(waters: &[Water], eye: Vec3, seconds: f64, origin: Vec3
 
 /// The fog of the underwater view: the water's colour, thickening by its
 /// density from the eye, the sky left clear (Snell's window shows it).
+/// Its light falls off with depth and comes down in shafts
+/// (frame.wgsl `underwater_light`), which [`underwater_light`] sets.
 pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
     crate::Fog {
         color: w.underwater_color,
@@ -163,6 +165,24 @@ pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
         sun_power: 8.0,
         ..Default::default()
     }
+}
+
+/// How the water's light falls off under surface `w` (`mesh` its data):
+/// the surface's height in the frame, the daylight's attenuation per metre
+/// of depth and the light shafts' strength.
+///
+/// The attenuation is 0.45 of the fog's density: the diffuse attenuation
+/// of coastal water is its absorption and backscatter, between a third
+/// and a half of its beam attenuation (Mobley, Light and Water, 1994,
+/// ch. 3 and 5). The shafts are the same focusing of the sun by the
+/// waves that draws the caustics, so they take the caustics' strength.
+pub(crate) fn underwater_light(w: &Water, mesh: Option<&crate::scene::MeshData>) -> [f32; 3] {
+    let (_, at, _, _) = surface(w, mesh);
+    [
+        at.y,
+        0.45 * w.underwater_density.max(0.0),
+        w.caustics.clamp(0.0, 1.0),
+    ]
 }
 
 /// The camera mirrored in the plane through `at` with unit normal `n`.

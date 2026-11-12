@@ -17862,7 +17862,7 @@ export interface Water {
    */
   underwaterColor: Color;
   /**
-   * Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window.
+   * Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it.
    *
    * @default 0.09
    * @range 0..2

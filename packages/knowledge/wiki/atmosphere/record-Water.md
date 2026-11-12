@@ -65,7 +65,7 @@ Token `og.Water`, registered under the schema name `og.Water`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `underwaterColor` | `Color` | `{ r: 0.03, g: 0.16, b: 0.2 }` | — | — | — | With the camera below the surface: the water's fog colour. |
-| `underwaterDensity` | `number` | `0.09` | 0 … 2 | — | tunable | Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window. |
+| `underwaterDensity` | `number` | `0.09` | 0 … 2 | — | tunable | Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it. |
 
 #### Caustics
 
@@ -241,7 +241,7 @@ component Water {
   field underwaterColor Color "With the camera below the surface: the water's fog colour." {
     default 0.03 0.16 0.2
   }
-  field underwaterDensity f32 "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, and the surface seen from below shows the sky inside Snell's window." {
+  field underwaterDensity f32 "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it." {
     default 0.09
     min 0
     max 2

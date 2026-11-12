@@ -231,7 +231,7 @@ impl Renderer {
         let (aspect, temporal, camera, cam, view_frustum) = self.prepare_frame_camera(scene);
         let taa = self.info.antialias == Antialias::Taa;
         let smaa_t2x = self.info.antialias == Antialias::SmaaT2x;
-        let (volumetric_fog, frame_fog, reflections) = self.prepare_frame_reflections(
+        let (volumetric_fog, frame_fog, underwater, reflections) = self.prepare_frame_reflections(
             scene,
             scene_water,
             &camera,
@@ -845,6 +845,7 @@ impl Renderer {
             shadow_size,
             taa,
             frame_fog: &frame_fog,
+            underwater,
             scene_water,
             lights_gpu: &lights_frame.lights_gpu,
             cascades: &frames.cascade.cascades,

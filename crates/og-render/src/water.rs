@@ -15,9 +15,10 @@
 //! on the surface, **caustics** on what lies below it (the lit and terrain
 //! shaders read them from the frame), and the **underwater view**: with
 //! the camera below the surface the frame's fog becomes the water's
-//! (`underwater_color`, `underwater_density`) and the surface, seen from
-//! below, shows what is above inside Snell's window and reflects the
-//! water's colour outside it.
+//! (`underwater_color`, `underwater_density`), darker with depth and lit
+//! by the sun in shafts (`caustics` their strength), and the surface, seen
+//! from below, shows what is above inside Snell's window and mirrors the
+//! water outside it.
 //!
 //! [`Water2d`]: a side-on water body (og-physics' `og.WaterLine`), drawn
 //! through the sprite order as a strip: the surface line's columns over a

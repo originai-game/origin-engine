@@ -96,6 +96,7 @@ pub const SCENES: &[&str] = &[
     "water-planar",
     "water-shadows",
     "water-underwater",
+    "water-underwater-shafts",
     "terrain-grass",
     "lights-256",
     "atmosphere-moon",
@@ -1423,6 +1424,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "water-underwater" => |g, _| {
             g.scene = crate::terrain_scenes::water_underwater_scene();
+            Ok(())
+        },
+        "water-underwater-shafts" => |g, _| {
+            g.scene = crate::terrain_scenes::water_underwater_shafts_scene();
             Ok(())
         },
         "terrain-grass" => |g, _| {

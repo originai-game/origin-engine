@@ -49,7 +49,12 @@ impl Renderer {
         cam: &frame::CameraFrame,
         view_frustum: &Frustum,
         &aspect: &f32,
-    ) -> (Option<VolumetricFog>, Option<Fog>, Vec<PlanarReflection>) {
+    ) -> (
+        Option<VolumetricFog>,
+        Option<Fog>,
+        Option<[f32; 3]>,
+        Vec<PlanarReflection>,
+    ) {
         // Water: the surface the camera is under (its fog replaces the
         // frame's), and the one drawn with a planar reflection (the camera
         // mirrored in it, clipped at the surface by an oblique near plane).
@@ -78,6 +83,16 @@ impl Renderer {
             None if volumetric_fog.is_some() => None,
             None => scene.atmosphere.fog,
         };
+        let underwater = under.map(|i| {
+            let w = &scene_water[i];
+            let mut light = water::underwater_light(w, w.mesh.and_then(|m| scene.mesh(m)));
+            // The shafts are the caustics' light (water::underwater_light):
+            // none in a renderer made without them (RenderDesc::without).
+            if self.info.without.contains(LitFeatures::CAUSTICS) {
+                light[2] = 0.0;
+            }
+            light
+        });
         // Up to `planar_reflections` surfaces mirror the scene, each in its own pass: slot 0 a grid surface first,
         // such as a lake, else the first that asks (with two, the one material shaders read: `planar_reflection`),
         // slot 1 a second surface, only while it is in view (only it reads its mirror). With one, a second surface
@@ -133,6 +148,6 @@ impl Renderer {
                 (i, mirrored, f, view_proj, size)
             })
             .collect();
-        (volumetric_fog, frame_fog, reflections)
+        (volumetric_fog, frame_fog, underwater, reflections)
     }
 }

@@ -484,8 +484,16 @@ if (rippled() && !is_sea()) {
     // From below: what is above shows inside Snell's window (the view
     // steeper than the critical angle, about 49 degrees from the normal),
     // outside it the surface reflects the water's own colour.
-    let window = smoothstep(0.6, 0.7, abs(dot(n, v)));
-    let colour = mix(water.under.rgb, below * water.shallow.rgb, window);
+    // The share that comes through is Fresnel's at the angle the ray leaves into the air (Snell, 1.33), none past the
+    // critical angle: there the surface mirrors the water below it, the body's own light along the mirrored ray (dark
+    // looking down, so the window stands bright in a dark surface the waves break up).
+    let ci = abs(dot(n, v));
+    let st2 = 1.7689 * (1.0 - ci * ci);
+    let ct = sqrt(max(1.0 - st2, 0.0));
+    let window = (0.98 - 0.98 * pow(1.0 - ct, 5.0)) * step(st2, 1.0);
+    var mirror = water.under.rgb;
+    if (frame.fog_color.w > 1.5) { mirror = underwater_body(in.world, reflect(-v, n), 1e4, 1.0, 0.0); }
+    let colour = mix(mirror, below * water.shallow.rgb, window);
     return vec4<f32>(apply_fog(colour, in.world), 1.0);
   }
   let thickness = max(scene_at - here, 0.0);
