@@ -15,11 +15,15 @@ change it; the game's copy of the same name wins.
 
 Each member's `<style>` holds structure only: layout, sizes and spacing. It
 sets no colour, font or art, and it lands in the `og-components` layer. A style pack
-(`og-pack`, above it) supplies every appearance with ordinary selectors on
-the members' root classes, their classes and their `data-*` attributes, for
-example `.rpg-backpack .cell[data-rarity=epic]`. `::part()` is used only for
-the core parts the registry lists (`button.command::part(base)`). The
-fantasy pack (`templates/styles/fantasy/`) is the reference dress.
+(`og-pack`, above it) supplies every appearance through the members' named
+parts (docs/ui.md §3.2), qualified by their states and `data-*` attributes,
+for example `RpgBackpack::cell[data-rarity=epic]`. Each member lists its
+parts in its `<meta name="parts">`: its `frame`, and as it has them its
+`band` and `title`, `tab`, `cell`, `row`, `name` and the like
+(`RpgBackpack.cell`, `RpgQuestLog.row`). Classes are left for inner
+structure and state. The fantasy pack (`templates/styles/fantasy/`) is the
+reference dress; its rules on the classes the parts replaced match nothing
+until it moves onto the parts.
 
 Hooks for a pack: `data-rarity` (common, uncommon, rare, epic, legendary,
 mythic) on backpack and equipment cells and on the item card;

@@ -1,5 +1,6 @@
 <meta name="component" content="RpgItemCard">
 <meta name="strings" content="./rpg.en.ogt">
+<meta name="parts" content="RpgItemCard.frame RpgItemCard.name RpgItemCard.lead RpgItemCard.row">
 <meta name="prop:name" content="string" data-doc="The item's name.">
 <meta name="prop:icon" content="string" data-doc="Its icon in the style's or the game's atlas, drawn large at the top.">
 <meta name="prop:art" content="number" data-doc="A painted picture of the item (og.load.texture) shown large in place of its icon; 0 shows the icon.">
@@ -24,16 +25,16 @@
   discard (the second button). It fills the height it is given: the
   figures and the lore scroll, the buttons keep the foot.
 -->
-<article id="RpgItemCard" class="rpg-item-card" data-rarity={rarity} aria-label={name} ondetails={equip}>
+<article id="RpgItemCard" part="RpgItemCard.frame" data-rarity={rarity} aria-label={name} ondetails={equip}>
   <div class="hero"><div class="hero-glow"></div><img class="hero-picture" src={art} alt="" hidden={!art}><og-icon class="hero-art" icon={icon} hidden={!!art}></og-icon></div>
   <header class="head">
-    <h2 class="item-name">{name}</h2>
+    <h2 part="RpgItemCard.name">{name}</h2>
     <p class="item-kind">{kind}</p>
   </header>
   <div class="rpg-rule" role="separator"></div>
   <scroll class="body">
     {#each lead as s (s.id)}
-      <div class="lead-row" aria-label={s.label}>
+      <div part="RpgItemCard.lead" aria-label={s.label}>
         <og-icon class="stat-mark" icon={s.icon}></og-icon>
         <div class="lead-main">
           <span class="caption">{s.label}</span>
@@ -47,7 +48,7 @@
     {/each}
     <div class="stats" role="table">
       {#each stats as s (s.id)}
-        <div class="stat-row" role="row">
+        <div part="RpgItemCard.row" role="row">
           <og-icon class="stat-mark" icon={s.icon}></og-icon>
           <span class="stat-label" role="rowheader">{s.label}</span>
           <span class="stat-value" role="cell">{s.value}</span>
@@ -66,22 +67,22 @@
 </article>
 
 <style>
-.rpg-item-card[hidden], .rpg-item-card [hidden] { display: none; }
-.rpg-item-card { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); container-type: inline-size; }
+[part="RpgItemCard.frame"][hidden], [part="RpgItemCard.frame"] [hidden] { display: none; }
+[part="RpgItemCard.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); container-type: inline-size; }
 .hero { position: relative; display: flex; width: stretch; height: calc(var(--size-xxl) * 1.25); flex: none; align-items: center; justify-content: center; }
 .hero-glow { position: absolute; left: 6%; top: 0; width: 88%; height: stretch; }
 .hero-picture { position: relative; width: stretch; height: stretch; object-fit: contain; }
 .hero-art { position: relative; width: calc(var(--size-xxl) * 1.8); height: calc(var(--size-xxl) * 1.8); }
 .head { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: center; text-align: center; }
-.item-name, .item-kind { margin: 0; }
+[part="RpgItemCard.name"], .item-kind { margin: 0; }
 .body { width: stretch; flex: 1; min-height: 0; gap: var(--space-sm); }
-.lead-row { display: flex; flex-wrap: wrap; width: stretch; align-items: center; row-gap: var(--space-xs); gap: var(--space-sm); padding: 0 0 var(--space-xxs); }
+[part="RpgItemCard.lead"] { display: flex; flex-wrap: wrap; width: stretch; align-items: center; row-gap: var(--space-xs); gap: var(--space-sm); padding: 0 0 var(--space-xxs); }
 .lead-main { display: flex; flex-direction: column; width: auto; flex: 1 0 auto; gap: var(--space-xxs); }
 .lead-figures { display: flex; align-items: baseline; gap: var(--space-sm); }
 .lead-current { display: flex; flex-direction: column; flex: none; gap: var(--space-xxs); padding-inline-start: var(--space-md); align-items: flex-start; }
 .stat-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .stats { width: stretch; }
-.stat-row { display: grid; grid-template-columns: var(--size-sm) 1fr auto 4.5em 3.5em; column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xxs) 0; }
+[part="RpgItemCard.row"] { display: grid; grid-template-columns: var(--size-sm) 1fr auto 4.5em 3.5em; column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xxs) 0; }
 .stat-value, .delta, .stat-current, .lead-value, .current-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-value, .stat-current { text-align: end; }
 .lore { margin: 0; padding: var(--space-xs) var(--space-xs); flex: none; }
@@ -94,5 +95,5 @@
   .actions { flex-direction: row; }
   .act { min-height: var(--size-touch); }
 }
-@container (width < 360px) { .stat-row { grid-template-columns: var(--size-sm) 1fr auto 4em; } .stat-current { display: none; } }
+@container (width < 360px) { [part="RpgItemCard.row"] { grid-template-columns: var(--size-sm) 1fr auto 4em; } .stat-current { display: none; } }
 </style>

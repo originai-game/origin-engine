@@ -1,5 +1,6 @@
 <meta name="component" content="RpgParty">
 <meta name="strings" content="./rpg.en.ogt">
+<meta name="parts" content="RpgParty.frame RpgParty.cell">
 <meta name="prop:members" content="list" data-doc="Keyed rows of { id, name, portrait, level, health, healthMax, mana, manaMax, down }: portrait a texture (og.load.texture), 0 none; down greys the card and marks it.">
 <meta name="prop:selected" content="string" data-doc="The member chosen; empty is none.">
 <meta name="fixture:default" content='{"members":[{"id":"a","name":"Aerin","portrait":0,"level":8,"health":62,"healthMax":72,"mana":48,"manaMax":72,"down":false},{"id":"l","name":"Lys","portrait":0,"level":8,"health":0,"healthMax":60,"mana":0,"manaMax":80,"down":true}],"selected":"a"}'>
@@ -10,11 +11,11 @@
   name, and health and mana bars with their figures. Reports choose (a
   member's key). The cards share the width evenly.
 -->
-<section id="RpgParty" class="rpg-party" aria-label={t("rpg.party.name")}>
+<section id="RpgParty" part="RpgParty.frame" aria-label={t("rpg.party.name")}>
   {#if members.length}
     <div class="cards" role="listbox" aria-label={t("rpg.party.name")}>
       {#each members as m (m.id)}
-        <button class="member" role="option" data-down={m.down} aria-selected={m.id == selected} aria-label={m.name} onclick={choose}><div class="face">
+        <button part="RpgParty.cell" role="option" data-down={m.down} aria-selected={m.id == selected} aria-label={m.name} onclick={choose}><div class="face">
           <div class="picture"><img class="portrait" src={m.portrait} alt="" hidden={!m.portrait}></div>
           <div class="seal" aria-label={m.down ? t("rpg.party.down") : t("rpg.party.level", { level: m.level })}><span class="seal-lv" hidden={m.down}>{t("rpg.party.lv")}</span><span class="seal-level" hidden={m.down}>{formatNumber(m.level)}</span></div>
           <span class="member-name">{m.name}</span>
@@ -29,11 +30,11 @@
 </section>
 
 <style>
-.rpg-party[hidden], .rpg-party [hidden] { display: none; }
-.rpg-party { width: stretch; }
+[part="RpgParty.frame"][hidden], [part="RpgParty.frame"] [hidden] { display: none; }
+[part="RpgParty.frame"] { width: stretch; }
 .cards { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-sm); width: stretch; }
-.member { position: relative; width: stretch; padding: var(--space-xs); gap: var(--space-xxs); align-items: stretch; justify-content: flex-start; }
-.member .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
+[part="RpgParty.cell"] { position: relative; width: stretch; padding: var(--space-xs); gap: var(--space-xxs); align-items: stretch; justify-content: flex-start; }
+[part="RpgParty.cell"] .face { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 .picture { width: stretch; aspect-ratio: 1.15; overflow: hidden; }
 @media (width >= 600px) and (height >= 500px) { .picture { aspect-ratio: 1.5; } }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
