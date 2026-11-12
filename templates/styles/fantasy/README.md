@@ -11,12 +11,45 @@ structure (`og-components`) and below a game's own styles (`og-game`, unlayered)
 
 | File | What it holds |
 | --- | --- |
-| `base.css` | Fonts (`@font-face` from `@styles/shared`), the root tokens for the dark and light schemes, the page ground |
+| `base.css` | Fonts (`@font-face` from `@styles/shared`) and every value the pack draws with, as `:root` tokens for the dark and light schemes: colours, gradients, shadows, lengths, durations, easings, font families, art and sound `url()`s |
 | `controls.css` | Every core control's parts and states through `host::part(name):state`: painted button plates by `border-image`, tabs, toggles, sliders, inputs, slots, tooltips and the rest |
-| `kit-rpg.css` | The rpg components (`packages/engine/src/ui/components/rpg`) through its root classes and `data-*` hooks: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass, minimap frame |
+| `rpg.css` | The rpg components (`packages/engine/src/ui/components/rpg`) through their named parts (`[part="RpgBackpack.frame"]`, `button::part(RpgBackpack\.cell)`) and `data-*` states: frames, bands, rarity rims, vitals bars, action bar, commands, map, compass; and the rpg sheet's `.rpg-ground`, `.rpg-fold` and `.rpg-minimap` wrappers |
 | `motion.css` | Transitions over a slow warm curve, `-og-spring()` on tab indicators, the acting portrait and fresh badges; a `prefers-reduced-motion` branch keeps the state changes and drops the movement |
 | `sounds.css` | `-og-sound` sets from the shared library for press, hover, select, confirm, back, open, close, error and reward, with quieter variants on cells and HUD plates |
 | `art/` | Frame and button art (SVG), filigree corners, the glow and the ground (PNG), each with its import `.ogt` (colour art sRGB; masks linear) |
+
+## Tokens
+
+Only `base.css` writes values; `controls.css`, `motion.css`, `rpg.css` and
+`sounds.css` name them with `var()` (`og style check` enforces it), so a
+variant restyles the pack by setting tokens alone
+(`templates/styles/tests/fantasy-frost`).
+
+- Engine tokens it sets: the palette roles (`--panel`, `--ink`, `--line`,
+  `--line-strong`, `--primary`, `--accent`, `--focus`, `--gold`, `--hud`,
+  `--scene-*`, `--color-shadow`…), `--font-*`, `--radius-*`,
+  `--field-border-width`, `--field-shadow`, `--slot-shadow`,
+  `--button-pressed-shadow`, `--dropdown-list-shadow`. `--line-strong` is
+  every brass rim and `--accent` every gold wash and glow, so changing one
+  restyles all of them.
+- Steps of a role: `--accent-N`, `--line-strong-N`, `--shadow-N` are the
+  role at N % alpha (`rgb(from var(--accent) r g b / …)`), the engine's
+  `--line-70` naming; they follow the role.
+- Control-named tokens the engine does not read (it has no image, ink or
+  fill token for these): `--button-image*`, `--button-primary-image*`,
+  `--button-*-ink`, `--button-font`, `--button-text-shadow`,
+  `--button-image-end` (the plate's slice), `--checkbox-checked-fill`,
+  `--radio-card-*`, `--switch-*-fill`, `--slider-knob-*`, `--field-fill`,
+  `--field-focus-shadow`, `--panel-fill`, `--panel-shadow`, `--slot-fill`,
+  `--tabs-indicator-glow`, `--keyboard-key-fill`, `--action-face-*`.
+- Pack-private `--fantasy-*`, where no engine token means that thing: its
+  materials (brass, walnut, soot, crimson), inks, the type steps in `em`
+  (`--fantasy-step-*`, so the player's text scale applies; the engine's
+  `--type-*` are px) and tracking, the art marks and filigree, the sound
+  files (`--fantasy-sfx-*`), the slow curve and its durations
+  (`--fantasy-ease`, `--fantasy-motion-*`), and the composite fills and
+  shadows of the rpg components (`--fantasy-cell-<rarity>-fill`/`-shadow`,
+  `--fantasy-frame-*`, `--fantasy-band*`…).
 
 ## Art provenance
 
