@@ -64,6 +64,11 @@ fn err(e: Error) -> String {
     e.reason().to_string()
 }
 
+/// A row the typed reader refused, as a system's error.
+fn invalid(e: String) -> Error {
+    Error::new(ErrorKind::Invalid, e)
+}
+
 fn f<R: Rec + ?Sized, K: Key + ?Sized>(v: &R, key: &K, default: f32) -> f32 {
     v.num(key).map_or(default, |x| x as f32)
 }
@@ -72,7 +77,7 @@ fn on<R: Rec + ?Sized, K: Key + ?Sized>(v: &R, key: &K, default: bool) -> bool {
     v.flag(key).unwrap_or(default)
 }
 
-/// `v2(&v[key], default)` of a record read in place.
+/// Vector field `key` of a record read in place, `default`'s lanes where absent.
 fn v2_of<R: Rec + ?Sized, K: Key + ?Sized>(v: &R, key: &K, default: Vec2) -> Vec2 {
     let lane = |l: &str, d: f32| v.lane(key, l).map_or(d, |x| x as f32);
     Vec2::new(lane("x", default.x), lane("y", default.y))
@@ -86,10 +91,6 @@ fn rgb_of<R: Rec + ?Sized, K: Key + ?Sized>(v: &R, key: &K, default: Vec3) -> Ve
         lane("g", default.y),
         lane("b", default.z),
     )
-}
-
-fn v2(v: &Value, default: Vec2) -> Vec2 {
-    Vec2::new(f(v, "x", default.x), f(v, "y", default.y))
 }
 
 fn v3(v: &Value, default: Vec3) -> Vec3 {
@@ -729,9 +730,12 @@ fn camera_system(
     let dt = ctx.time().dt;
     let bytes = ctx.resource_bytes(*cid)?;
     let mut cam = layout.decode(&bytes);
-    let mut trauma = f(&cam, "trauma", 0.0);
-    let mut punch = f(&cam, "punch", 0.0);
-    let mut kick = v3(&cam["kick"], Vec3::ZERO);
+    // The camera as the tick found it: what follows writes only trauma,
+    // punch, kick and the zone fields before reading the rest.
+    let row = record::Camera::from_json(&cam).map_err(invalid)?;
+    let mut trauma = row.trauma;
+    let mut punch = row.punch;
+    let mut kick = row.kick;
     for op in &ops {
         match *op {
             CameraOp::Shake(t) => trauma = (trauma + t).min(1.0),
@@ -742,9 +746,9 @@ fn camera_system(
     let decay = |v: f32, rate: f32| v * og_core::math::exp(-rate.max(0.0) * dt);
     // The decay starts the tick after the op, so a shake shows at full strength once.
     if ops.is_empty() {
-        trauma = (trauma - f(&cam, "traumaDecay", 1.5).max(0.0) * dt).max(0.0);
-        punch = decay(punch, f(&cam, "punchDecay", 8.0));
-        kick *= og_core::math::exp(-f(&cam, "kickDecay", 12.0).max(0.0) * dt);
+        trauma = (trauma - row.trauma_decay.max(0.0) * dt).max(0.0);
+        punch = decay(punch, row.punch_decay);
+        kick *= og_core::math::exp(-row.kick_decay.max(0.0) * dt);
     }
     // Below a thousandth they are invisible: snap to rest.
     if punch.abs() < 1e-3 {
@@ -756,40 +760,46 @@ fn camera_system(
     cam["trauma"] = json!(trauma);
     cam["punch"] = json!(punch);
     cam["kick"] = json!({ "x": kick.x, "y": kick.y, "z": kick.z });
-    camera_zone(ctx, r, &mut cam, dt)?;
+    camera_zone(ctx, r, &mut cam, &row, dt)?;
     // A rail: the camera eases to the rail point nearest the entity.
-    let mut rail: Option<(Entity, Value, Vec3)> = None;
+    let mut rail: Option<(record::CameraRail, Vec3)> = None;
     for a in ctx.query(0)? {
         if let Some(&e) = a.entities().first() {
-            let v = r.rail.1.decode(&ctx.get_bytes(e, r.rail.0)?);
-            let t = r.transform.1.decode(&ctx.get_bytes(e, r.transform.0)?);
-            rail = Some((e, v, v3(&t["position"], Vec3::ZERO)));
+            let v: record::CameraRail = r
+                .rail
+                .1
+                .read(&ctx.get_bytes(e, r.rail.0)?)
+                .map_err(invalid)?;
+            let t: record::Transform = r
+                .transform
+                .1
+                .read(&ctx.get_bytes(e, r.transform.0)?)
+                .map_err(invalid)?;
+            rail = Some((v, t.position));
             break;
         }
     }
-    if let Some((_, v, target)) = rail {
+    if let Some((rail, target)) = rail {
         // A path handle (og.path) replaces the inline points.
-        let row =
-            record::CameraRail::from_json(&v).map_err(|e| Error::new(ErrorKind::Invalid, e))?;
-        let path = row.path;
+        let path = rail.path;
         let goal = match super::timeline::path_of(engine_id, path).filter(|_| path != 0) {
             Some(p) => p.nearest(target).position,
             None => {
-                let n = (row.points as usize).clamp(2, 8);
+                let n = (rail.points as usize).clamp(2, 8);
                 let all = [
-                    row.p0, row.p1, row.p2, row.p3, row.p4, row.p5, row.p6, row.p7,
+                    rail.p0, rail.p1, rail.p2, rail.p3, rail.p4, rail.p5, rail.p6, rail.p7,
                 ];
                 rail_nearest(&all[..n], target)
             }
         };
-        let pos = v3(&cam["position"], Vec3::ZERO);
-        let smooth = f(&v, "smoothTime", 0.2);
+        let pos = row.position;
+        let smooth = rail.smooth_time;
         let k = if smooth > 0.0 {
             (dt / smooth).min(1.0)
         } else {
             1.0
         };
-        let ortho = on(&cam, "orthographic", false);
+        let ortho = row.orthographic;
         let mut next = pos + (goal - pos) * k;
         if ortho {
             next.z = pos.z;
@@ -814,13 +824,18 @@ fn camera_zone(
     ctx: &mut SystemContext<'_>,
     r: &Records,
     cam: &mut Value,
+    row: &record::Camera,
     dt: f32,
 ) -> og_core::Result<()> {
     let mut target: Option<Vec2> = None;
     for a in ctx.query(2)? {
         if let Some(&e) = a.entities().first() {
-            let t = r.transform.1.decode(&ctx.get_bytes(e, r.transform.0)?);
-            target = Some(v3(&t["position"], Vec3::ZERO).truncate());
+            let t: record::Transform = r
+                .transform
+                .1
+                .read(&ctx.get_bytes(e, r.transform.0)?)
+                .map_err(invalid)?;
+            target = Some(t.position.truncate());
             break;
         }
     }
@@ -828,33 +843,33 @@ fn camera_zone(
     if let Some(p) = target {
         for a in ctx.query(1)? {
             for &e in a.entities() {
-                let z = r.zone.1.decode(&ctx.get_bytes(e, r.zone.0)?);
-                let (lo, hi) = (v2(&z["min"], Vec2::ZERO), v2(&z["max"], Vec2::splat(10.0)));
+                let z: record::CameraZone = r
+                    .zone
+                    .1
+                    .read(&ctx.get_bytes(e, r.zone.0)?)
+                    .map_err(invalid)?;
+                let (lo, hi) = (z.min, z.max);
                 if p.x < lo.x || p.x > hi.x || p.y < lo.y || p.y > hi.y {
                     continue;
                 }
-                let pr = i64::from(
-                    record::CameraZone::from_json(&z)
-                        .map_err(|e| Error::new(ErrorKind::Invalid, e))?
-                        .priority,
-                );
+                let pr = i64::from(z.priority);
                 if best.is_none_or(|b| pr > b.0) {
-                    best = Some((pr, lo, hi, f(&z, "scrollTime", 0.0).max(0.0)));
+                    best = Some((pr, lo, hi, z.scroll_time.max(0.0)));
                 }
             }
         }
     }
-    let active = on(cam, "zoneActive", false);
-    let (lo0, hi0) = (
-        v2(&cam["zoneMin"], Vec2::ZERO),
-        v2(&cam["zoneMax"], Vec2::ZERO),
-    );
-    let mut scroll = f(cam, "zoneScroll", 1.0).clamp(0.0, 1.0);
-    let mut time = f(cam, "zoneScrollTime", 0.0).max(0.0);
+    // `row` is the camera before this function's writes.
+    let active = row.zone_active;
+    let (lo0, hi0) = (row.zone_min, row.zone_max);
+    let mut scroll = row.zone_scroll.clamp(0.0, 1.0);
+    let mut time = row.zone_scroll_time.max(0.0);
+    let mut from_active = row.zone_from_active;
     let xy = |v: Vec2| json!({ "x": v.x, "y": v.y });
     match best {
         Some((_, lo, hi, t)) if !active || lo != lo0 || hi != hi0 => {
             let scrolls = active && t > 0.0;
+            from_active = scrolls;
             cam["zoneFromActive"] = json!(scrolls);
             cam["zoneFromMin"] = xy(if scrolls { lo0 } else { Vec2::ZERO });
             cam["zoneFromMax"] = xy(if scrolls { hi0 } else { Vec2::ZERO });
@@ -875,11 +890,12 @@ fn camera_zone(
         }
         None => {
             cam["zoneActive"] = json!(false);
+            from_active = false;
             cam["zoneFromActive"] = json!(false);
             scroll = 1.0;
         }
     }
-    if scroll >= 1.0 && on(cam, "zoneFromActive", false) {
+    if scroll >= 1.0 && from_active {
         cam["zoneFromActive"] = json!(false);
     }
     cam["zoneScroll"] = json!(scroll);
@@ -1160,18 +1176,28 @@ fn sprite_system(
     for e in rows {
         let key = e.to_bits();
         seen.insert(key);
-        let a = r.afterimage.1.decode(&ctx.get_bytes(e, r.afterimage.0)?);
-        let s = r.sprite.1.decode(&ctx.get_bytes(e, r.sprite.0)?);
-        let t = r.transform.1.decode(&ctx.get_bytes(e, r.transform.0)?);
-        let row =
-            record::Afterimage::from_json(&a).map_err(|e| Error::new(ErrorKind::Invalid, e))?;
+        let row: record::Afterimage = r
+            .afterimage
+            .1
+            .read(&ctx.get_bytes(e, r.afterimage.0)?)
+            .map_err(invalid)?;
+        let s: record::Sprite = r
+            .sprite
+            .1
+            .read(&ctx.get_bytes(e, r.sprite.0)?)
+            .map_err(invalid)?;
+        let t: record::Transform = r
+            .transform
+            .1
+            .read(&ctx.get_bytes(e, r.transform.0)?)
+            .map_err(invalid)?;
         let count = row.count.min(16) as usize;
         let interval = u64::from(row.interval).max(1);
         let list = sh.ghosts.entry(key).or_default();
         // Ghosts older than the whole trail have faded out.
         let span = interval * count as u64;
         list.retain(|g| tick.saturating_sub(g.tick) < span.max(1));
-        if on(&a, "active", true) && tick.is_multiple_of(interval) && count > 0 {
+        if row.active && tick.is_multiple_of(interval) && count > 0 {
             let (sheet, clip, frame) = if ctx.components_of(e)?.contains(&r.flipbook.0) {
                 let fb: record::Flipbook = r
                     .flipbook
@@ -1182,24 +1208,16 @@ fn sprite_system(
             } else {
                 (0, 0, 0)
             };
-            let q = &t["quaternion"];
-            let quat = Quat::from_xyzw(
-                f(q, "x", 0.0),
-                f(q, "y", 0.0),
-                f(q, "z", 0.0),
-                f(q, "w", 1.0),
-            );
-            let scale = v3(&t["scale"], Vec3::ONE);
             list.insert(
                 0,
                 Ghost {
-                    position: v3(&t["position"], Vec3::ZERO),
-                    rotation: yaw_z(quat),
-                    scale: Vec2::new(scale.x, scale.y),
+                    position: t.position,
+                    rotation: yaw_z(t.quaternion),
+                    scale: Vec2::new(t.scale.x, t.scale.y),
                     sheet,
                     clip,
                     frame,
-                    flip: on(&s, "flipX", false) as u8 | (on(&s, "flipY", false) as u8) << 1,
+                    flip: s.flip_x as u8 | (s.flip_y as u8) << 1,
                     tick,
                 },
             );

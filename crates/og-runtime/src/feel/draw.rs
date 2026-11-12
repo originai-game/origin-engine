@@ -803,9 +803,11 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
     let Ok(bytes) = world.resource_bytes(r.camera.0) else {
         return;
     };
-    let cam = r.camera.1.decode(&bytes);
+    let Ok(cam) = r.camera.1.read::<record::Camera>(&bytes) else {
+        return;
+    };
     let scene = &mut rs.scene;
-    let trauma = f(&cam, "trauma", 0.0);
+    let trauma = cam.trauma;
     let held = scene.frame.shake != og_render::CameraShake::default();
     if trauma > 0.0 && !held {
         scene.frame.shake = og_render::CameraShake::trauma(
@@ -813,12 +815,12 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
             scene.frame.tick,
             scene.frame.tick_rate,
             0,
-            f(&cam, "shakeOffset", 0.04),
-            f(&cam, "shakeRoll", 2.0),
-            f(&cam, "shakeFrequency", 15.0),
+            cam.shake_offset,
+            cam.shake_roll,
+            cam.shake_frequency,
         );
     }
-    let punch = f(&cam, "punch", 0.0);
+    let punch = cam.punch;
     if punch != 0.0 {
         let k = (1.0 + punch).max(0.1);
         scene.frame.camera.projection = match scene.frame.camera.projection {
@@ -833,10 +835,10 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
             }
         };
     }
-    let mut shift = v3(&cam["kick"], Vec3::ZERO);
+    let mut shift = cam.kick;
     // The zone og.camera picked (and the one a room transition leaves).
     if let og_render::Projection::Orthographic { height } = scene.frame.camera.projection
-        && on(&cam, "zoneActive", false)
+        && cam.zone_active
     {
         let half = Vec2::new(height * 0.5 * aspect, height * 0.5);
         let c = scene.frame.camera.position.truncate() + shift.truncate();
@@ -853,16 +855,13 @@ pub(crate) fn camera_frame(world: &World, rs: &mut RenderState, aspect: f32) {
                 clamp(c.y, lo.y, hi.y, half.y),
             )
         };
-        let mut n = inside(
-            v2(&cam["zoneMin"], Vec2::ZERO),
-            v2(&cam["zoneMax"], Vec2::ZERO),
-        );
-        let k = f(&cam, "zoneScroll", 1.0).clamp(0.0, 1.0);
-        if k < 1.0 && on(&cam, "zoneFromActive", false) {
-            let from = inside(
-                v2(&cam["zoneFromMin"], Vec2::ZERO),
-                v2(&cam["zoneFromMax"], Vec2::ZERO),
-            );
+        // A non-finite bound reads 0, as the hand read had it: a NaN one
+        // would make `clamp` panic.
+        let finite = |v: Vec2| Vec2::select(v.is_finite_mask(), v, Vec2::ZERO);
+        let mut n = inside(finite(cam.zone_min), finite(cam.zone_max));
+        let k = cam.zone_scroll.clamp(0.0, 1.0);
+        if k < 1.0 && cam.zone_from_active {
+            let from = inside(finite(cam.zone_from_min), finite(cam.zone_from_max));
             // Eased in and out over the scroll.
             let e = k * k * (3.0 - 2.0 * k);
             n = from + (n - from) * e;
