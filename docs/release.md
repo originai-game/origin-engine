@@ -62,8 +62,10 @@ shape for every kind:
 ```
 
 The sections are `vfx` (effect packs; a downloadable one has `url` and
-`sha256`), `ui` (style packs and kits, with `kind: "style" | "kit"`),
-`fonts` and `looks` (`knowledge/looks/catalogue.json`). `size` is the
+`sha256`), `ui` (style packs and the materials resource pack, with
+`kind: "style" | "materials"`; the built-in components and screens are
+part of the engine and not listed), `fonts` and `looks`
+(`knowledge/looks/catalogue.json`). `size` is the
 installed bytes and `preview` the absolute https URL of
 `<version>/previews/<kind>/<name>.webp`. The other fields come from each
 pack's own manifest, never from a second list, and `release-dist.ts`
