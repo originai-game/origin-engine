@@ -25,8 +25,8 @@ use glam::{Mat4, Vec2, Vec3};
 use og_cook::runtime::Bundle;
 use og_render::{
     Camera, DirectionalLight, Impostor, MaterialHandle, MeshHandle, Projection, RenderScene,
-    ScatterDraw, StandardMaterial, Terrain, TerrainData, TerrainLayer, TerrainScatter, Wind,
-    shapes,
+    ScatterDraw, StandardMaterial, Terrain, TerrainData, TerrainLayer, TerrainScatter,
+    TextureSource, Wind, shapes,
 };
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -76,8 +76,13 @@ fn cooked() -> Result<&'static PathBuf, String> {
 /// when it was cooked with one.
 struct Plant {
     parts: Vec<(MeshHandle, MaterialHandle, Mat4)>,
+    /// Per part, its mesh's coarser levels ([`ScatterDraw::lods`]): the
+    /// cook's thinned leaves and simplified wood.
+    levels: Vec<Levels>,
     impostor: Option<Impostor>,
 }
+
+type Levels = [Option<(MeshHandle, f32)>; 2];
 
 fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, String> {
     let id = format!("plants/{name}.ogt");
@@ -93,7 +98,23 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
         .iter()
         .map(|t| texture(&t.id))
         .collect::<Result<_, _>>()?;
-    let parts = model.add_to(scene, &textures).parts;
+    let sources: Vec<_> = textures.into_iter().map(TextureSource::Rgba).collect();
+    let (added, meshes) = model.add_to_shared(scene, &sources, None);
+    let parts = added.parts;
+    // Each part's own levels, as og-runtime gives a scattered model whose
+    // parts stand as made (terrain.rs `extract`).
+    let coarser = model.add_lod_levels(scene);
+    let levels = parts
+        .iter()
+        .map(|&(mesh, ..)| {
+            let mut levels = [None; 2];
+            let own = meshes.iter().position(|&m| m == mesh);
+            for (to, &level) in levels.iter_mut().zip(own.iter().flat_map(|&p| &coarser[p])) {
+                *to = Some(level);
+            }
+            levels
+        })
+        .collect();
     // The card, as og-runtime makes it (assets.rs `insert_model`).
     let impostor = match &model.impostor {
         Some(i) => {
@@ -122,7 +143,11 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
         }
         None => None,
     };
-    Ok(Plant { parts, impostor })
+    Ok(Plant {
+        parts,
+        levels,
+        impostor,
+    })
 }
 
 /// Where a card's texel covers one pixel of the capture (720 rows, 50
@@ -264,6 +289,7 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
                 impostor: p.impostor,
                 impostor_distance: p.impostor.map_or(0.0, card_distance),
                 with: (k > 0).then_some(first),
+                lods: p.levels[k],
             });
         }
     }
@@ -325,6 +351,7 @@ pub fn switch_scene() -> Result<RenderScene, String> {
                 impostor: p.impostor,
                 impostor_distance: p.impostor.map_or(0.0, card_distance),
                 with: (k > 0).then_some(first),
+                lods: p.levels[k],
             });
         }
     }
