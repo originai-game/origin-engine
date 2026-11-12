@@ -31,8 +31,8 @@
 use super::codec::{Layout, RecordKind};
 use super::engine::Engine;
 use super::extract::RenderState;
-use super::fx::{f, on, resource, variant};
-use super::wire::{ArtLinePlace, ArtRotation, FromJson, record};
+use super::fx::resource;
+use super::wire::{ArtLinePlace, ArtProjection, ArtRotation, FromJson, record};
 use glam::{Quat, Vec3};
 use og_ecs::World;
 use og_render::{TextureFilter, TextureHandle};
@@ -396,25 +396,32 @@ pub(crate) fn apply_camera(eng: &Engine, look: &Map<String, Value>) -> Result<()
     {
         return Ok(());
     }
-    let art = Value::Object(look.clone());
+    let mut art = Value::Object(look.clone());
+    // The resource's codec takes an enum by its index too, as the hand read
+    // did (an index past the variants: no projection constraint).
+    if art["projection"].is_number() {
+        let i = art["projection"].as_u64().unwrap_or(0) as usize;
+        art["projection"] = json!(ArtProjection::NAMES.get(i).copied().unwrap_or("any"));
+    }
+    let art = record::ArtCamera::from_json(&art).map_err(|e| format!("ArtCamera: {e}"))?;
     let mut set = Map::new();
-    match variant(&art["projection"], &["any", "perspective", "orthographic"]) {
-        1 => {
+    match art.projection {
+        ArtProjection::Perspective => {
             set.insert("orthographic".into(), json!(false));
         }
-        2 => {
+        ArtProjection::Orthographic => {
             set.insert("orthographic".into(), json!(true));
         }
-        _ => {}
+        ArtProjection::Any => {}
     }
-    if on(&art, "fixedAngle", false) {
-        let q = angle(f(&art, "pitch", 0.0), f(&art, "yaw", 0.0));
+    if art.fixed_angle {
+        let q = angle(art.pitch, art.yaw);
         set.insert(
             "quaternion".into(),
             json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w }),
         );
     }
-    let (lo, hi) = (f(&art, "fovMin", 0.0), f(&art, "fovMax", 0.0));
+    let (lo, hi) = (art.fov_min, art.fov_max);
     if lo > 0.0 || hi > 0.0 {
         let fov = camera_fov(eng).unwrap_or(50.0);
         let mut v = fov;
@@ -464,16 +471,16 @@ pub(crate) fn squash_amount(eng: &Engine) -> f32 {
     if !contract(eng) {
         return 0.0;
     }
-    resource_field(eng, "og.ArtMotion", "squash", 0.0)
+    resource_row::<record::ArtMotion>(eng, "og.ArtMotion").map_or(0.0, |m| m.squash)
 }
 
 fn camera_fov(eng: &Engine) -> Option<f32> {
-    Some(resource_field(eng, "og.Camera", "fov", 50.0))
+    Some(resource_row::<record::Camera>(eng, "og.Camera").map_or(50.0, |c| c.fov))
 }
 
-/// A resource's number field, `default` when the resource is absent.
-fn resource_field(eng: &Engine, name: &str, field: &str, default: f32) -> f32 {
-    resource_json(eng, name).map_or(default, |v| f(&v, field, default))
+/// A resource as its IDL row (`None` when it is absent or refused).
+fn resource_row<T: FromJson>(eng: &Engine, name: &str) -> Option<T> {
+    T::from_json(&resource_json(eng, name)?).ok()
 }
 
 fn resource_json(eng: &Engine, name: &str) -> Option<Value> {
