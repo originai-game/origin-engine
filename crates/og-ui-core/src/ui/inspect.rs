@@ -341,6 +341,7 @@ impl Ui {
     /// The `aria-live` and `aria-atomic` written on the node `key` names
     /// (what a screen reader's bridge reads for a node it already holds;
     /// its role's setting is [`crate::a11y::live_of`]'s).
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn a11y_live(&self, key: u64) -> (Option<crate::a11y::Live>, Option<bool>, bool) {
         self.tree
             .index
@@ -355,6 +356,7 @@ impl Ui {
     /// frame's screen, as [`Ui::a11y`] lists it, made alone: what a screen
     /// reader's bridge reads for a node that changed. `reach` is
     /// [`Ui::a11y_reach`]'s.
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn a11y_node(&self, key: u64, reach: &[u64]) -> Option<crate::a11y::A11yNode> {
         let i = self.tree.index.by_key.get(&key).copied()?;
         if i == 0 {
@@ -375,6 +377,7 @@ impl Ui {
     }
 
     /// The controls keys and pads reach (`focusable` in the tree).
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn a11y_reach(&self) -> Vec<u64> {
         self.reach()
     }
@@ -383,6 +386,7 @@ impl Ui {
     /// accessibility tree: the node itself when it has a role and `own`,
     /// else its nearest ancestor with one; `Some(0)` for the frame's root
     /// (`key` 0 is the root), `None` for a node not in the trees.
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn a11y_owner(&self, key: u64, own: bool) -> Option<u64> {
         let mut i = if key == 0 {
             return Some(0);
@@ -407,6 +411,7 @@ impl Ui {
     /// the layers placed against it. Read without the whole tree; `None`
     /// where the whole tree must be read (a world layer reorders it, a
     /// rich text's links are records of their own).
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn a11y_children(&self, owner: u64) -> Option<Vec<(u64, String)>> {
         let at = if owner == 0 {
             0

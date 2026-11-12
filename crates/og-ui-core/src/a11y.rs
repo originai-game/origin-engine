@@ -149,6 +149,7 @@ pub struct Announcement {
 pub const ANNOUNCEMENTS: usize = 16;
 
 /// Appends `new` to `queue`, dropping the oldest past [`ANNOUNCEMENTS`].
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn queue_announcements(
     queue: &mut std::collections::VecDeque<Announcement>,
     new: impl IntoIterator<Item = Announcement>,
