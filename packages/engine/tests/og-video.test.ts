@@ -7,9 +7,9 @@ import { gpuUnavailable } from "./support/gpu.ts";
 // 90 is the one the rendered frame is nearest. A seek stops the sound for a
 // tick and starts it again at the new time.
 //
-// The reference frame is references/<tier>/video-90.png beside the fixture
-// (vulkan on the GPU host, metal on Metal); without one for this tier the
-// frame is checked against the source only.
+// The reference frame is references/<tier>/video-90.png beside the fixture,
+// recorded on the GPU host (vulkan); a tier without its own is held to that
+// one under the cross-platform RMSE (support/png.ts `toleranceFor`).
 //
 // Two players of the video (the fixture's `pair`, the second half a second ahead)
 // each show their own frame: their textures differ and each half of the
@@ -31,6 +31,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ogBin } from "./support/og-bin.ts";
+import { RECORDING, toleranceFor } from "./support/png.ts";
 
 declare const Bun: { spawnSync(cmd: string[], o?: { cwd?: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 const text = (b: Uint8Array) => new TextDecoder().decode(b);
@@ -94,8 +95,9 @@ test.skipIf(!hasFfmpeg || gpuUnavailable)("a cooked video plays on a sprite: tic
     expect(errors[1]!).toBeLessThan(errors[2]!);
     expect(errors[1]!).toBeLessThan(0.12);
 
-    const ref = join(fixture, "references", run.tier, "video-90.png");
-    if (existsSync(ref)) expect(rmse(frame, rgb(["-i", ref], ""))).toBeLessThan(0.01);
+    const own = join(fixture, "references", run.tier, "video-90.png");
+    const ref = existsSync(own) ? own : join(fixture, "references", RECORDING, "video-90.png");
+    expect(rmse(frame, rgb(["-i", ref], ""))).toBeLessThan(toleranceFor(run.tier, ref).rmse);
   } finally {
     rmSync(out, { recursive: true, force: true });
   }

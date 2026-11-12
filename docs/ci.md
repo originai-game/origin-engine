@@ -834,11 +834,11 @@ and the test says so (`gfx <scene>: no <tier> reference …; comparing with
 vulkan's`); a scene on neither fails. Commit the new references with the
 change and describe what each moved frame now shows (AGENTS.md §Building
 and testing). Record on the GPU host; a frame from another tier never
-replaces a recording-tier reference. `references/metal/` stays as Metal's
-compatibility set from before the set moved to the L4 (2026-11-10); no new
-frame is recorded there. A project fixture whose playtest names
-`references/metal/<frame>.png` itself keeps that frame until it is
-re-recorded with its project. The browser tiers' own frames (`webgpu`)
+replaces a recording-tier reference. Metal keeps no set of its own: its
+twins of the L4 frames are gone, so Metal is judged against
+`references/vulkan/` like every other tier. A project whose check names
+`references/metal/` itself (`tests/fixtures/ui-css-pack`) keeps those frames
+until the L4 records them. The browser tiers' own frames (`webgpu`)
 were recorded against Metal's and are re-checked against the L4 set
 later.
 
