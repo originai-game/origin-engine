@@ -100,22 +100,23 @@ for f in $(bun -e 'console.log(require(process.argv[1]).files.join(" "))' "$know
   cp -R "$knowledge/$f" "$here/knowledge/$f"
 done
 rm -rf "$here/knowledge/scripts/sync-rules.ts" "$here/knowledge/scaffold/template/node_modules"
-# The built-in UI styles (templates/styles: each pack's style.ogt, atlases at
-# every density, icons, fonts, licences; not its art/ sources) ship as files
-# in styles/, read by og's cook (og-cook's look_styles.rs) rather than
-# compiled into og; the copy is ignored by Git.
+# The built-in UI styles (templates/styles: each pack's CSS, the art its CSS
+# names, fonts, licences) ship as files in styles/, read by og's cook
+# (og-cook's look_styles.rs) rather than compiled into og; the copy is
+# ignored by Git. A pack is a directory with an extension.json or a CSS file,
+# as og style add reads it (og-cli's extensions.rs css_pack).
 rm -rf "$here/styles"
 for pack in "$here"/../../templates/styles/*/; do
   name=$(basename "$pack")
   case "$name" in
     shared|cjk) ;;
-    *) [ -f "$pack/extension.json" ] || continue ;;
+    *) [ -f "$pack/extension.json" ] || ls "$pack"*.css >/dev/null 2>&1 || continue ;;
   esac
   mkdir -p "$here/styles/$name"
-  # Preserve nested assets and each extension's authoring skill, not art sources.
+  # Preserve nested assets and each extension's authoring skill.
   # Name the top-level entries rather than excluding by pattern: macOS bsdtar
   # matched `./.*` against `.` itself and wrote an empty archive.
-  (cd "$pack" && find . -mindepth 1 -maxdepth 1 ! -name '.*' ! -name art -print0 | xargs -0 tar -cf -) |
+  (cd "$pack" && find . -mindepth 1 -maxdepth 1 ! -name '.*' -print0 | xargs -0 tar -cf -) |
     (cd "$here/styles/$name" && tar -xf -)
 done
 [ -f "$here/styles/shared/LICENSES.md" ] || { echo "pack: shared style assets were not copied into styles/" >&2; exit 1; }
