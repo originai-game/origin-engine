@@ -984,6 +984,45 @@ impl ToJson for ExploreIntent {
     }
 }
 
+/// `WorldOriginPlane`: packages/knowledge/wiki/transform.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum WorldOriginPlane {
+    #[default]
+    Xz,
+    Xyz,
+    Xy,
+}
+
+impl WorldOriginPlane {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["xz", "xyz", "xy"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Xz, Self::Xyz, Self::Xy];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("WorldOriginPlane", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for WorldOriginPlane {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "WorldOriginPlane", Self::NAMES)?)
+    }
+}
+
+impl ToJson for WorldOriginPlane {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `NoiseKind`: packages/knowledge/wiki/procgen.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum NoiseKind {
@@ -3536,6 +3575,44 @@ impl ToJson for TaaHistory {
     }
 }
 
+/// `Upscaler`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Upscaler {
+    #[default]
+    Taau,
+    Fsr3,
+}
+
+impl Upscaler {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["taau", "fsr3"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Taau, Self::Fsr3];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("Upscaler", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for Upscaler {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "Upscaler", Self::NAMES)?)
+    }
+}
+
+impl ToJson for Upscaler {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `DebugView`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DebugView {
@@ -4167,6 +4244,46 @@ impl ToJson for StandardMaterialDesc {
     }
 }
 
+/// `ToneMapping`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ToneMapping {
+    #[default]
+    Aces,
+    Agx,
+    None,
+    Neutral,
+}
+
+impl ToneMapping {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["aces", "agx", "none", "neutral"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Aces, Self::Agx, Self::None, Self::Neutral];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ToneMapping", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ToneMapping {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ToneMapping", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ToneMapping {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `GraphicsQuality`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum GraphicsQuality {
@@ -4201,6 +4318,241 @@ impl FromJson for GraphicsQuality {
 }
 
 impl ToJson for GraphicsQuality {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `AoResolutionSetting`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AoResolutionSetting {
+    #[default]
+    PostEffects,
+    Full,
+    Half,
+}
+
+impl AoResolutionSetting {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["postEffects", "full", "half"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::PostEffects, Self::Full, Self::Half];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("AoResolutionSetting", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for AoResolutionSetting {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "AoResolutionSetting", Self::NAMES)?)
+    }
+}
+
+impl ToJson for AoResolutionSetting {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `QualityPreset`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum QualityPreset {
+    #[default]
+    None,
+    Low,
+    Medium,
+    High,
+}
+
+impl QualityPreset {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["none", "low", "medium", "high"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::None, Self::Low, Self::Medium, Self::High];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("QualityPreset", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for QualityPreset {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "QualityPreset", Self::NAMES)?)
+    }
+}
+
+impl ToJson for QualityPreset {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `AoMethod`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AoMethod {
+    #[default]
+    Auto,
+    Gtao,
+    Ssao,
+    Screen,
+}
+
+impl AoMethod {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["auto", "gtao", "ssao", "screen"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Auto, Self::Gtao, Self::Ssao, Self::Screen];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("AoMethod", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for AoMethod {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "AoMethod", Self::NAMES)?)
+    }
+}
+
+impl ToJson for AoMethod {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `AoResolution`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AoResolution {
+    #[default]
+    Full,
+    Half,
+}
+
+impl AoResolution {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["full", "half"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Full, Self::Half];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("AoResolution", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for AoResolution {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "AoResolution", Self::NAMES)?)
+    }
+}
+
+impl ToJson for AoResolution {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `DofQuality`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DofQuality {
+    #[default]
+    Low,
+    High,
+}
+
+impl DofQuality {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["low", "high"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Low, Self::High];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("DofQuality", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for DofQuality {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "DofQuality", Self::NAMES)?)
+    }
+}
+
+impl ToJson for DofQuality {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ScreenBlur`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ScreenBlur {
+    #[default]
+    None,
+    Zoom,
+    Spin,
+    Directional,
+}
+
+impl ScreenBlur {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["none", "zoom", "spin", "directional"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::None, Self::Zoom, Self::Spin, Self::Directional];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ScreenBlur", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ScreenBlur {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ScreenBlur", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ScreenBlur {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
     }
@@ -4321,6 +4673,320 @@ impl ToJson for StripBlend {
     }
 }
 
+/// `GiMethod`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum GiMethod {
+    #[default]
+    Screen,
+    Probes,
+    Both,
+}
+
+impl GiMethod {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["screen", "probes", "both"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Screen, Self::Probes, Self::Both];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("GiMethod", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for GiMethod {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "GiMethod", Self::NAMES)?)
+    }
+}
+
+impl ToJson for GiMethod {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `DitherPattern`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DitherPattern {
+    #[default]
+    None,
+    Bayer2,
+    Bayer4,
+    Bayer8,
+    BlueNoise,
+    InterleavedGradient,
+}
+
+impl DitherPattern {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["none", "bayer2", "bayer4", "bayer8", "blueNoise", "interleavedGradient"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::None, Self::Bayer2, Self::Bayer4, Self::Bayer8, Self::BlueNoise, Self::InterleavedGradient];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("DitherPattern", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for DitherPattern {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "DitherPattern", Self::NAMES)?)
+    }
+}
+
+impl ToJson for DitherPattern {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `MaterialSurface`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum MaterialSurface {
+    #[default]
+    None,
+    Clay,
+    Paper,
+    Plastic,
+}
+
+impl MaterialSurface {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["none", "clay", "paper", "plastic"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::None, Self::Clay, Self::Paper, Self::Plastic];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("MaterialSurface", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for MaterialSurface {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "MaterialSurface", Self::NAMES)?)
+    }
+}
+
+impl ToJson for MaterialSurface {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `OutlinePlace`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum OutlinePlace {
+    #[default]
+    Inside,
+    Outside,
+    Both,
+}
+
+impl OutlinePlace {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["inside", "outside", "both"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Inside, Self::Outside, Self::Both];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("OutlinePlace", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for OutlinePlace {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "OutlinePlace", Self::NAMES)?)
+    }
+}
+
+impl ToJson for OutlinePlace {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `StyliseSpace`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum StyliseSpace {
+    #[default]
+    Screen,
+    Surface,
+    Object,
+}
+
+impl StyliseSpace {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["screen", "surface", "object"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Screen, Self::Surface, Self::Object];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("StyliseSpace", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for StyliseSpace {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "StyliseSpace", Self::NAMES)?)
+    }
+}
+
+impl ToJson for StyliseSpace {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `PosterizeMode`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum PosterizeMode {
+    #[default]
+    Channel,
+    Tone,
+}
+
+impl PosterizeMode {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["channel", "tone"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Channel, Self::Tone];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("PosterizeMode", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for PosterizeMode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "PosterizeMode", Self::NAMES)?)
+    }
+}
+
+impl ToJson for PosterizeMode {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `HalftoneMode`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum HalftoneMode {
+    #[default]
+    Ink,
+    Cmyk,
+}
+
+impl HalftoneMode {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["ink", "cmyk"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Ink, Self::Cmyk];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("HalftoneMode", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for HalftoneMode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "HalftoneMode", Self::NAMES)?)
+    }
+}
+
+impl ToJson for HalftoneMode {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `HalftoneRegion`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum HalftoneRegion {
+    #[default]
+    All,
+    Shade,
+    Highlight,
+}
+
+impl HalftoneRegion {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["all", "shade", "highlight"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::All, Self::Shade, Self::Highlight];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("HalftoneRegion", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for HalftoneRegion {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "HalftoneRegion", Self::NAMES)?)
+    }
+}
+
+impl ToJson for HalftoneRegion {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `LookInfo`: packages/knowledge/wiki/render.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LookInfo {
@@ -4380,6 +5046,84 @@ impl ToJson for LookInfo {
         o.insert("style".into(), self.style.to_json());
         o.insert("antialias".into(), self.antialias.to_json());
         Value::Object(o)
+    }
+}
+
+/// `Light2DKind`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Light2DKind {
+    #[default]
+    Point,
+    Spot,
+    Global,
+}
+
+impl Light2DKind {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["point", "spot", "global"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Point, Self::Spot, Self::Global];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("Light2DKind", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for Light2DKind {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "Light2DKind", Self::NAMES)?)
+    }
+}
+
+impl ToJson for Light2DKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ParticleEventKind`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ParticleEventKind {
+    #[default]
+    Birth,
+    Death,
+    Collision,
+}
+
+impl ParticleEventKind {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["birth", "death", "collision"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Birth, Self::Death, Self::Collision];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ParticleEventKind", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ParticleEventKind {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ParticleEventKind", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ParticleEventKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
     }
 }
 
@@ -5170,6 +5914,44 @@ impl ToJson for RenderCapabilities {
         o.insert("visualSimulation".into(), self.visual_simulation.to_json());
         o.insert("world3d".into(), self.world3d.to_json());
         Value::Object(o)
+    }
+}
+
+/// `ReflectionProbeMode`: packages/knowledge/wiki/render.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ReflectionProbeMode {
+    #[default]
+    Baked,
+    Realtime,
+}
+
+impl ReflectionProbeMode {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["baked", "realtime"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Baked, Self::Realtime];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ReflectionProbeMode", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ReflectionProbeMode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ReflectionProbeMode", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ReflectionProbeMode {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
     }
 }
 
@@ -7919,6 +8701,45 @@ impl ToJson for LoadCompletion {
     }
 }
 
+/// `RigidBodyType`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum RigidBodyType {
+    #[default]
+    Dynamic,
+    Fixed,
+    Kinematic,
+}
+
+impl RigidBodyType {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["dynamic", "fixed", "kinematic"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Dynamic, Self::Fixed, Self::Kinematic];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("RigidBodyType", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for RigidBodyType {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "RigidBodyType", Self::NAMES)?)
+    }
+}
+
+impl ToJson for RigidBodyType {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `QueryFilter`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct QueryFilter {
@@ -8756,6 +9577,274 @@ impl ToJson for PhysicsStats {
         o.insert("ms".into(), self.ms.to_json());
         o.insert("phases".into(), self.phases.to_json());
         Value::Object(o)
+    }
+}
+
+/// `WindMotorKind`: packages/knowledge/wiki/atmosphere.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum WindMotorKind {
+    #[default]
+    Omni,
+    Directional,
+    Vortex,
+}
+
+impl WindMotorKind {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["omni", "directional", "vortex"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Omni, Self::Directional, Self::Vortex];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("WindMotorKind", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for WindMotorKind {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "WindMotorKind", Self::NAMES)?)
+    }
+}
+
+impl ToJson for WindMotorKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `RootMotion`: packages/knowledge/wiki/anim.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum RootMotion {
+    #[default]
+    Off,
+    Planar,
+    Full,
+}
+
+impl RootMotion {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["off", "planar", "full"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Off, Self::Planar, Self::Full];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("RootMotion", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for RootMotion {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "RootMotion", Self::NAMES)?)
+    }
+}
+
+impl ToJson for RootMotion {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `BlendshapeSource`: packages/knowledge/wiki/anim.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum BlendshapeSource {
+    #[default]
+    Component,
+    Clips,
+}
+
+impl BlendshapeSource {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["component", "clips"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Component, Self::Clips];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("BlendshapeSource", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for BlendshapeSource {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "BlendshapeSource", Self::NAMES)?)
+    }
+}
+
+impl ToJson for BlendshapeSource {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `IkSolver`: packages/knowledge/wiki/anim.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum IkSolver {
+    #[default]
+    TwoBone,
+    Fabrik,
+}
+
+impl IkSolver {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["twoBone", "fabrik"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::TwoBone, Self::Fabrik];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("IkSolver", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for IkSolver {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "IkSolver", Self::NAMES)?)
+    }
+}
+
+impl ToJson for IkSolver {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `IkSpace`: packages/knowledge/wiki/anim.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum IkSpace {
+    #[default]
+    World,
+    Model,
+}
+
+impl IkSpace {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["world", "model"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::World, Self::Model];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("IkSpace", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for IkSpace {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "IkSpace", Self::NAMES)?)
+    }
+}
+
+impl ToJson for IkSpace {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `SpringSpace`: packages/knowledge/wiki/anim.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SpringSpace {
+    #[default]
+    World,
+    Model,
+}
+
+impl SpringSpace {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["world", "model"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::World, Self::Model];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("SpringSpace", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for SpringSpace {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "SpringSpace", Self::NAMES)?)
+    }
+}
+
+impl ToJson for SpringSpace {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `SpringColliderShape`: packages/knowledge/wiki/anim.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SpringColliderShape {
+    #[default]
+    Sphere,
+    Capsule,
+}
+
+impl SpringColliderShape {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["sphere", "capsule"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Sphere, Self::Capsule];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("SpringColliderShape", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for SpringColliderShape {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "SpringColliderShape", Self::NAMES)?)
+    }
+}
+
+impl ToJson for SpringColliderShape {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
     }
 }
 
@@ -10576,6 +11665,161 @@ impl ToJson for FillDesc {
         o.insert("width".into(), self.width.to_json());
         o.insert("tiles".into(), self.tiles.to_json());
         Value::Object(o)
+    }
+}
+
+/// `AudioBus`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AudioBus {
+    #[default]
+    Master,
+    Music,
+    Sfx,
+    Ui,
+}
+
+impl AudioBus {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["master", "music", "sfx", "ui"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Master, Self::Music, Self::Sfx, Self::Ui];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("AudioBus", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for AudioBus {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "AudioBus", Self::NAMES)?)
+    }
+}
+
+impl ToJson for AudioBus {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `PanningModel`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum PanningModel {
+    #[default]
+    Equalpower,
+    Hrtf,
+}
+
+impl PanningModel {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["equalpower", "hrtf"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Equalpower, Self::Hrtf];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("PanningModel", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for PanningModel {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "PanningModel", Self::NAMES)?)
+    }
+}
+
+impl ToJson for PanningModel {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `AudioResampler`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AudioResampler {
+    #[default]
+    Linear,
+    Sinc,
+}
+
+impl AudioResampler {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["linear", "sinc"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Linear, Self::Sinc];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("AudioResampler", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for AudioResampler {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "AudioResampler", Self::NAMES)?)
+    }
+}
+
+impl ToJson for AudioResampler {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `AudioEventOrder`: packages/knowledge/wiki/audio.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum AudioEventOrder {
+    #[default]
+    Random,
+    RoundRobin,
+    Shuffle,
+}
+
+impl AudioEventOrder {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["random", "roundRobin", "shuffle"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Random, Self::RoundRobin, Self::Shuffle];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("AudioEventOrder", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for AudioEventOrder {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "AudioEventOrder", Self::NAMES)?)
+    }
+}
+
+impl ToJson for AudioEventOrder {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
     }
 }
 
@@ -13163,6 +14407,46 @@ impl FromJson for AdKind {
 }
 
 impl ToJson for AdKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `PlatformNoticeKind`: packages/knowledge/wiki/platform.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum PlatformNoticeKind {
+    #[default]
+    Purchase,
+    Entitlements,
+    Invite,
+    Host,
+}
+
+impl PlatformNoticeKind {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["purchase", "entitlements", "invite", "host"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Purchase, Self::Entitlements, Self::Invite, Self::Host];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("PlatformNoticeKind", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for PlatformNoticeKind {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "PlatformNoticeKind", Self::NAMES)?)
+    }
+}
+
+impl ToJson for PlatformNoticeKind {
     fn to_json(&self) -> Value {
         Value::String(self.as_str().into())
     }
@@ -23202,6 +24486,44 @@ impl ToJson for TimelineInfo {
     }
 }
 
+/// `NetMode`: packages/knowledge/wiki/net.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum NetMode {
+    #[default]
+    Lockstep,
+    Rollback,
+}
+
+impl NetMode {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["lockstep", "rollback"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Lockstep, Self::Rollback];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("NetMode", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for NetMode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "NetMode", Self::NAMES)?)
+    }
+}
+
+impl ToJson for NetMode {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `InputDesc`: packages/knowledge/wiki/net.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InputDesc {
@@ -23455,6 +24777,281 @@ impl ToJson for LockstepStatus {
         o.insert("drops".into(), self.drops.to_json());
         o.insert("snapshotBytes".into(), self.snapshot_bytes.to_json());
         Value::Object(o)
+    }
+}
+
+/// `ArtRotation`: packages/knowledge/wiki/art.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ArtRotation {
+    #[default]
+    Free,
+    Nearest,
+    CleanEdge,
+    Prerotated,
+}
+
+impl ArtRotation {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["free", "nearest", "cleanEdge", "prerotated"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Free, Self::Nearest, Self::CleanEdge, Self::Prerotated];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ArtRotation", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ArtRotation {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ArtRotation", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ArtRotation {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ArtFilter`: packages/knowledge/wiki/art.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ArtFilter {
+    #[default]
+    Any,
+    Nearest,
+    Linear,
+}
+
+impl ArtFilter {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["any", "nearest", "linear"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Any, Self::Nearest, Self::Linear];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ArtFilter", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ArtFilter {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ArtFilter", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ArtFilter {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ArtMips`: packages/knowledge/wiki/art.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ArtMips {
+    #[default]
+    Any,
+    Full,
+    None,
+}
+
+impl ArtMips {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["any", "full", "none"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Any, Self::Full, Self::None];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ArtMips", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ArtMips {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ArtMips", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ArtMips {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ArtNormals`: packages/knowledge/wiki/art.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ArtNormals {
+    #[default]
+    Any,
+    Smooth,
+    Flat,
+    Angle,
+}
+
+impl ArtNormals {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["any", "smooth", "flat", "angle"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Any, Self::Smooth, Self::Flat, Self::Angle];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ArtNormals", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ArtNormals {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ArtNormals", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ArtNormals {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ArtLinePlace`: packages/knowledge/wiki/art.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ArtLinePlace {
+    #[default]
+    Outside,
+    Inside,
+    Both,
+}
+
+impl ArtLinePlace {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["outside", "inside", "both"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Outside, Self::Inside, Self::Both];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ArtLinePlace", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ArtLinePlace {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ArtLinePlace", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ArtLinePlace {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ArtBrush`: packages/knowledge/wiki/art.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ArtBrush {
+    #[default]
+    Diamond,
+    Circle,
+    Square,
+}
+
+impl ArtBrush {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["diamond", "circle", "square"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Diamond, Self::Circle, Self::Square];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ArtBrush", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ArtBrush {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ArtBrush", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ArtBrush {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `ArtProjection`: packages/knowledge/wiki/art.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ArtProjection {
+    #[default]
+    Any,
+    Perspective,
+    Orthographic,
+}
+
+impl ArtProjection {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["any", "perspective", "orthographic"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Any, Self::Perspective, Self::Orthographic];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ArtProjection", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ArtProjection {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ArtProjection", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ArtProjection {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
     }
 }
 
@@ -24605,3 +26202,10556 @@ impl ToJson for VfxInfo {
     }
 }
 
+/// The rows of the engine's records (IDL `component`, `resource` and
+/// `event`), as their layouts decode them: every field, with its IDL
+/// default, read through the same rules as the wire types.
+pub mod record {
+    use super::*;
+
+    /// `WorldRestored`: packages/knowledge/wiki/world.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct WorldRestored {
+        pub from: u32,
+        pub tick: u32,
+    }
+
+    impl Default for WorldRestored {
+        fn default() -> Self {
+            Self {
+                from: Default::default(),
+                tick: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for WorldRestored {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                from: field(o, "from", d.from)?,
+                tick: field(o, "tick", d.tick)?,
+            })
+        }
+    }
+
+    /// `Transform`: packages/knowledge/wiki/transform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Transform {
+        pub position: Vec3,
+        pub quaternion: Quat,
+        pub scale: Vec3,
+    }
+
+    impl Default for Transform {
+        fn default() -> Self {
+            Self {
+                position: Default::default(),
+                quaternion: Default::default(),
+                scale: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+            }
+        }
+    }
+
+    impl FromJson for Transform {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                position: field(o, "position", d.position)?,
+                quaternion: field(o, "quaternion", d.quaternion)?,
+                scale: field(o, "scale", d.scale)?,
+            })
+        }
+    }
+
+    /// `Parent`: packages/knowledge/wiki/transform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Parent {
+        pub entity: u64,
+    }
+
+    impl Default for Parent {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Parent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+            })
+        }
+    }
+
+    /// `MatrixWorld`: packages/knowledge/wiki/transform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct MatrixWorld {
+        pub matrix: Mat4,
+    }
+
+    impl Default for MatrixWorld {
+        fn default() -> Self {
+            Self {
+                matrix: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for MatrixWorld {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                matrix: field(o, "matrix", d.matrix)?,
+            })
+        }
+    }
+
+    /// `WorldOrigin`: packages/knowledge/wiki/transform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct WorldOrigin {
+        pub step: f32,
+        pub plane: WorldOriginPlane,
+        pub focus: u64,
+        pub off: bool,
+        pub x: f64,
+        pub y: f64,
+        pub z: f64,
+        pub shifts: u32,
+    }
+
+    impl Default for WorldOrigin {
+        fn default() -> Self {
+            Self {
+                step: 2048.0_f32,
+                plane: Default::default(),
+                focus: Default::default(),
+                off: Default::default(),
+                x: Default::default(),
+                y: Default::default(),
+                z: Default::default(),
+                shifts: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for WorldOrigin {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                step: field(o, "step", d.step)?,
+                plane: field(o, "plane", d.plane)?,
+                focus: field(o, "focus", d.focus)?,
+                off: field(o, "off", d.off)?,
+                x: field(o, "x", d.x)?,
+                y: field(o, "y", d.y)?,
+                z: field(o, "z", d.z)?,
+                shifts: field(o, "shifts", d.shifts)?,
+            })
+        }
+    }
+
+    /// `OriginShifted`: packages/knowledge/wiki/transform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct OriginShifted {
+        pub delta: Vec3,
+        pub x: f64,
+        pub y: f64,
+        pub z: f64,
+    }
+
+    impl Default for OriginShifted {
+        fn default() -> Self {
+            Self {
+                delta: Default::default(),
+                x: Default::default(),
+                y: Default::default(),
+                z: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for OriginShifted {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                delta: field(o, "delta", d.delta)?,
+                x: field(o, "x", d.x)?,
+                y: field(o, "y", d.y)?,
+                z: field(o, "z", d.z)?,
+            })
+        }
+    }
+
+    /// `Time`: packages/knowledge/wiki/time.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Time {
+        pub tick: u32,
+        pub dt: f32,
+        pub elapsed: f64,
+        pub rate: u32,
+        pub scale: f32,
+        pub hit_stop: u32,
+        pub scaled_dt: f32,
+        pub scaled_elapsed: f64,
+    }
+
+    impl Default for Time {
+        fn default() -> Self {
+            Self {
+                tick: Default::default(),
+                dt: Default::default(),
+                elapsed: Default::default(),
+                rate: Default::default(),
+                scale: 1.0_f32,
+                hit_stop: Default::default(),
+                scaled_dt: Default::default(),
+                scaled_elapsed: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Time {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                tick: field(o, "tick", d.tick)?,
+                dt: field(o, "dt", d.dt)?,
+                elapsed: field(o, "elapsed", d.elapsed)?,
+                rate: field(o, "rate", d.rate)?,
+                scale: field(o, "scale", d.scale)?,
+                hit_stop: field(o, "hitStop", d.hit_stop)?,
+                scaled_dt: field(o, "scaledDt", d.scaled_dt)?,
+                scaled_elapsed: field(o, "scaledElapsed", d.scaled_elapsed)?,
+            })
+        }
+    }
+
+    /// `TimeGroup`: packages/knowledge/wiki/time.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TimeGroup {
+        pub group: u32,
+    }
+
+    impl Default for TimeGroup {
+        fn default() -> Self {
+            Self {
+                group: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TimeGroup {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                group: field(o, "group", d.group)?,
+            })
+        }
+    }
+
+    /// `TimeGroups`: packages/knowledge/wiki/time.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TimeGroups {
+        pub scales: Vec<f32>,
+    }
+
+    impl Default for TimeGroups {
+        fn default() -> Self {
+            Self {
+                scales: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TimeGroups {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                scales: field(o, "scales", d.scales)?,
+            })
+        }
+    }
+
+    /// `Rng`: packages/knowledge/wiki/rng.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Rng {
+        pub seed: u32,
+        pub state: u32,
+    }
+
+    impl Default for Rng {
+        fn default() -> Self {
+            Self {
+                seed: Default::default(),
+                state: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Rng {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                seed: field(o, "seed", d.seed)?,
+                state: field(o, "state", d.state)?,
+            })
+        }
+    }
+
+    /// `PauseIntent`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PauseIntent {
+        pub scale: f32,
+    }
+
+    impl Default for PauseIntent {
+        fn default() -> Self {
+            Self {
+                scale: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PauseIntent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                scale: field(o, "scale", d.scale)?,
+            })
+        }
+    }
+
+    /// `Input`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Input {
+        pub pointer: Vec2,
+        pub pointer_inside: bool,
+        pub wheel: Vec2,
+        pub buttons: u32,
+        pub buttons_pressed: u32,
+        pub buttons_released: u32,
+        pub buttons_release_next: u32,
+        pub keys0: u32,
+        pub keys1: u32,
+        pub keys2: u32,
+        pub keys3: u32,
+        pub pressed0: u32,
+        pub pressed1: u32,
+        pub pressed2: u32,
+        pub pressed3: u32,
+        pub released0: u32,
+        pub released1: u32,
+        pub released2: u32,
+        pub released3: u32,
+        pub release_next0: u32,
+        pub release_next1: u32,
+        pub release_next2: u32,
+        pub release_next3: u32,
+    }
+
+    impl Default for Input {
+        fn default() -> Self {
+            Self {
+                pointer: Default::default(),
+                pointer_inside: Default::default(),
+                wheel: Default::default(),
+                buttons: Default::default(),
+                buttons_pressed: Default::default(),
+                buttons_released: Default::default(),
+                buttons_release_next: Default::default(),
+                keys0: Default::default(),
+                keys1: Default::default(),
+                keys2: Default::default(),
+                keys3: Default::default(),
+                pressed0: Default::default(),
+                pressed1: Default::default(),
+                pressed2: Default::default(),
+                pressed3: Default::default(),
+                released0: Default::default(),
+                released1: Default::default(),
+                released2: Default::default(),
+                released3: Default::default(),
+                release_next0: Default::default(),
+                release_next1: Default::default(),
+                release_next2: Default::default(),
+                release_next3: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Input {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                pointer: field(o, "pointer", d.pointer)?,
+                pointer_inside: field(o, "pointerInside", d.pointer_inside)?,
+                wheel: field(o, "wheel", d.wheel)?,
+                buttons: field(o, "buttons", d.buttons)?,
+                buttons_pressed: field(o, "buttonsPressed", d.buttons_pressed)?,
+                buttons_released: field(o, "buttonsReleased", d.buttons_released)?,
+                buttons_release_next: field(o, "buttonsReleaseNext", d.buttons_release_next)?,
+                keys0: field(o, "keys0", d.keys0)?,
+                keys1: field(o, "keys1", d.keys1)?,
+                keys2: field(o, "keys2", d.keys2)?,
+                keys3: field(o, "keys3", d.keys3)?,
+                pressed0: field(o, "pressed0", d.pressed0)?,
+                pressed1: field(o, "pressed1", d.pressed1)?,
+                pressed2: field(o, "pressed2", d.pressed2)?,
+                pressed3: field(o, "pressed3", d.pressed3)?,
+                released0: field(o, "released0", d.released0)?,
+                released1: field(o, "released1", d.released1)?,
+                released2: field(o, "released2", d.released2)?,
+                released3: field(o, "released3", d.released3)?,
+                release_next0: field(o, "releaseNext0", d.release_next0)?,
+                release_next1: field(o, "releaseNext1", d.release_next1)?,
+                release_next2: field(o, "releaseNext2", d.release_next2)?,
+                release_next3: field(o, "releaseNext3", d.release_next3)?,
+            })
+        }
+    }
+
+    /// `Pointers`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Pointers {
+        pub held_mask: u32,
+        pub pressed_mask: u32,
+        pub released_mask: u32,
+        pub release_next_mask: u32,
+        pub position0: Vec2,
+        pub position1: Vec2,
+        pub position2: Vec2,
+        pub position3: Vec2,
+        pub position4: Vec2,
+        pub start0: Vec2,
+        pub start1: Vec2,
+        pub start2: Vec2,
+        pub start3: Vec2,
+        pub start4: Vec2,
+        pub movement: Vec2,
+    }
+
+    impl Default for Pointers {
+        fn default() -> Self {
+            Self {
+                held_mask: Default::default(),
+                pressed_mask: Default::default(),
+                released_mask: Default::default(),
+                release_next_mask: Default::default(),
+                position0: Default::default(),
+                position1: Default::default(),
+                position2: Default::default(),
+                position3: Default::default(),
+                position4: Default::default(),
+                start0: Default::default(),
+                start1: Default::default(),
+                start2: Default::default(),
+                start3: Default::default(),
+                start4: Default::default(),
+                movement: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Pointers {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                held_mask: field(o, "heldMask", d.held_mask)?,
+                pressed_mask: field(o, "pressedMask", d.pressed_mask)?,
+                released_mask: field(o, "releasedMask", d.released_mask)?,
+                release_next_mask: field(o, "releaseNextMask", d.release_next_mask)?,
+                position0: field(o, "position0", d.position0)?,
+                position1: field(o, "position1", d.position1)?,
+                position2: field(o, "position2", d.position2)?,
+                position3: field(o, "position3", d.position3)?,
+                position4: field(o, "position4", d.position4)?,
+                start0: field(o, "start0", d.start0)?,
+                start1: field(o, "start1", d.start1)?,
+                start2: field(o, "start2", d.start2)?,
+                start3: field(o, "start3", d.start3)?,
+                start4: field(o, "start4", d.start4)?,
+                movement: field(o, "movement", d.movement)?,
+            })
+        }
+    }
+
+    /// `PointerLock`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PointerLock {
+        pub wanted: bool,
+        pub locked: bool,
+    }
+
+    impl Default for PointerLock {
+        fn default() -> Self {
+            Self {
+                wanted: Default::default(),
+                locked: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PointerLock {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                wanted: field(o, "wanted", d.wanted)?,
+                locked: field(o, "locked", d.locked)?,
+            })
+        }
+    }
+
+    /// `Gamepad`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Gamepad {
+        pub connected_mask: u32,
+        pub devices: u32,
+        pub buttons0: u32,
+        pub buttons1: u32,
+        pub buttons2: u32,
+        pub buttons3: u32,
+        pub buttons4: u32,
+        pub buttons5: u32,
+        pub buttons6: u32,
+        pub buttons7: u32,
+        pub pressed0: u32,
+        pub pressed1: u32,
+        pub pressed2: u32,
+        pub pressed3: u32,
+        pub pressed4: u32,
+        pub pressed5: u32,
+        pub pressed6: u32,
+        pub pressed7: u32,
+        pub released0: u32,
+        pub released1: u32,
+        pub released2: u32,
+        pub released3: u32,
+        pub released4: u32,
+        pub released5: u32,
+        pub released6: u32,
+        pub released7: u32,
+        pub left_stick0: Vec2,
+        pub left_stick1: Vec2,
+        pub left_stick2: Vec2,
+        pub left_stick3: Vec2,
+        pub left_stick4: Vec2,
+        pub left_stick5: Vec2,
+        pub left_stick6: Vec2,
+        pub left_stick7: Vec2,
+        pub right_stick0: Vec2,
+        pub right_stick1: Vec2,
+        pub right_stick2: Vec2,
+        pub right_stick3: Vec2,
+        pub right_stick4: Vec2,
+        pub right_stick5: Vec2,
+        pub right_stick6: Vec2,
+        pub right_stick7: Vec2,
+        pub triggers0: Vec2,
+        pub triggers1: Vec2,
+        pub triggers2: Vec2,
+        pub triggers3: Vec2,
+        pub triggers4: Vec2,
+        pub triggers5: Vec2,
+        pub triggers6: Vec2,
+        pub triggers7: Vec2,
+    }
+
+    impl Default for Gamepad {
+        fn default() -> Self {
+            Self {
+                connected_mask: Default::default(),
+                devices: Default::default(),
+                buttons0: Default::default(),
+                buttons1: Default::default(),
+                buttons2: Default::default(),
+                buttons3: Default::default(),
+                buttons4: Default::default(),
+                buttons5: Default::default(),
+                buttons6: Default::default(),
+                buttons7: Default::default(),
+                pressed0: Default::default(),
+                pressed1: Default::default(),
+                pressed2: Default::default(),
+                pressed3: Default::default(),
+                pressed4: Default::default(),
+                pressed5: Default::default(),
+                pressed6: Default::default(),
+                pressed7: Default::default(),
+                released0: Default::default(),
+                released1: Default::default(),
+                released2: Default::default(),
+                released3: Default::default(),
+                released4: Default::default(),
+                released5: Default::default(),
+                released6: Default::default(),
+                released7: Default::default(),
+                left_stick0: Default::default(),
+                left_stick1: Default::default(),
+                left_stick2: Default::default(),
+                left_stick3: Default::default(),
+                left_stick4: Default::default(),
+                left_stick5: Default::default(),
+                left_stick6: Default::default(),
+                left_stick7: Default::default(),
+                right_stick0: Default::default(),
+                right_stick1: Default::default(),
+                right_stick2: Default::default(),
+                right_stick3: Default::default(),
+                right_stick4: Default::default(),
+                right_stick5: Default::default(),
+                right_stick6: Default::default(),
+                right_stick7: Default::default(),
+                triggers0: Default::default(),
+                triggers1: Default::default(),
+                triggers2: Default::default(),
+                triggers3: Default::default(),
+                triggers4: Default::default(),
+                triggers5: Default::default(),
+                triggers6: Default::default(),
+                triggers7: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Gamepad {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                connected_mask: field(o, "connectedMask", d.connected_mask)?,
+                devices: field(o, "devices", d.devices)?,
+                buttons0: field(o, "buttons0", d.buttons0)?,
+                buttons1: field(o, "buttons1", d.buttons1)?,
+                buttons2: field(o, "buttons2", d.buttons2)?,
+                buttons3: field(o, "buttons3", d.buttons3)?,
+                buttons4: field(o, "buttons4", d.buttons4)?,
+                buttons5: field(o, "buttons5", d.buttons5)?,
+                buttons6: field(o, "buttons6", d.buttons6)?,
+                buttons7: field(o, "buttons7", d.buttons7)?,
+                pressed0: field(o, "pressed0", d.pressed0)?,
+                pressed1: field(o, "pressed1", d.pressed1)?,
+                pressed2: field(o, "pressed2", d.pressed2)?,
+                pressed3: field(o, "pressed3", d.pressed3)?,
+                pressed4: field(o, "pressed4", d.pressed4)?,
+                pressed5: field(o, "pressed5", d.pressed5)?,
+                pressed6: field(o, "pressed6", d.pressed6)?,
+                pressed7: field(o, "pressed7", d.pressed7)?,
+                released0: field(o, "released0", d.released0)?,
+                released1: field(o, "released1", d.released1)?,
+                released2: field(o, "released2", d.released2)?,
+                released3: field(o, "released3", d.released3)?,
+                released4: field(o, "released4", d.released4)?,
+                released5: field(o, "released5", d.released5)?,
+                released6: field(o, "released6", d.released6)?,
+                released7: field(o, "released7", d.released7)?,
+                left_stick0: field(o, "leftStick0", d.left_stick0)?,
+                left_stick1: field(o, "leftStick1", d.left_stick1)?,
+                left_stick2: field(o, "leftStick2", d.left_stick2)?,
+                left_stick3: field(o, "leftStick3", d.left_stick3)?,
+                left_stick4: field(o, "leftStick4", d.left_stick4)?,
+                left_stick5: field(o, "leftStick5", d.left_stick5)?,
+                left_stick6: field(o, "leftStick6", d.left_stick6)?,
+                left_stick7: field(o, "leftStick7", d.left_stick7)?,
+                right_stick0: field(o, "rightStick0", d.right_stick0)?,
+                right_stick1: field(o, "rightStick1", d.right_stick1)?,
+                right_stick2: field(o, "rightStick2", d.right_stick2)?,
+                right_stick3: field(o, "rightStick3", d.right_stick3)?,
+                right_stick4: field(o, "rightStick4", d.right_stick4)?,
+                right_stick5: field(o, "rightStick5", d.right_stick5)?,
+                right_stick6: field(o, "rightStick6", d.right_stick6)?,
+                right_stick7: field(o, "rightStick7", d.right_stick7)?,
+                triggers0: field(o, "triggers0", d.triggers0)?,
+                triggers1: field(o, "triggers1", d.triggers1)?,
+                triggers2: field(o, "triggers2", d.triggers2)?,
+                triggers3: field(o, "triggers3", d.triggers3)?,
+                triggers4: field(o, "triggers4", d.triggers4)?,
+                triggers5: field(o, "triggers5", d.triggers5)?,
+                triggers6: field(o, "triggers6", d.triggers6)?,
+                triggers7: field(o, "triggers7", d.triggers7)?,
+            })
+        }
+    }
+
+    /// `KeyDown`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct KeyDown {
+        pub key: String,
+        pub repeat: bool,
+        pub at: f32,
+    }
+
+    impl Default for KeyDown {
+        fn default() -> Self {
+            Self {
+                key: Default::default(),
+                repeat: Default::default(),
+                at: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for KeyDown {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                key: field(o, "key", d.key)?,
+                repeat: field(o, "repeat", d.repeat)?,
+                at: field(o, "at", d.at)?,
+            })
+        }
+    }
+
+    /// `TextInput`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TextInput {
+        pub text: String,
+        pub composing: bool,
+        pub more: bool,
+    }
+
+    impl Default for TextInput {
+        fn default() -> Self {
+            Self {
+                text: Default::default(),
+                composing: Default::default(),
+                more: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TextInput {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                text: field(o, "text", d.text)?,
+                composing: field(o, "composing", d.composing)?,
+                more: field(o, "more", d.more)?,
+            })
+        }
+    }
+
+    /// `KeyUp`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct KeyUp {
+        pub key: String,
+        pub at: f32,
+    }
+
+    impl Default for KeyUp {
+        fn default() -> Self {
+            Self {
+                key: Default::default(),
+                at: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for KeyUp {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                key: field(o, "key", d.key)?,
+                at: field(o, "at", d.at)?,
+            })
+        }
+    }
+
+    /// `PointerDown`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PointerDown {
+        pub x: f32,
+        pub y: f32,
+        pub button: PointerButton,
+        pub id: u32,
+        pub at: f32,
+    }
+
+    impl Default for PointerDown {
+        fn default() -> Self {
+            Self {
+                x: Default::default(),
+                y: Default::default(),
+                button: Default::default(),
+                id: Default::default(),
+                at: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PointerDown {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                x: field(o, "x", d.x)?,
+                y: field(o, "y", d.y)?,
+                button: field(o, "button", d.button)?,
+                id: field(o, "id", d.id)?,
+                at: field(o, "at", d.at)?,
+            })
+        }
+    }
+
+    /// `PointerUp`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PointerUp {
+        pub x: f32,
+        pub y: f32,
+        pub button: PointerButton,
+        pub id: u32,
+        pub at: f32,
+    }
+
+    impl Default for PointerUp {
+        fn default() -> Self {
+            Self {
+                x: Default::default(),
+                y: Default::default(),
+                button: Default::default(),
+                id: Default::default(),
+                at: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PointerUp {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                x: field(o, "x", d.x)?,
+                y: field(o, "y", d.y)?,
+                button: field(o, "button", d.button)?,
+                id: field(o, "id", d.id)?,
+                at: field(o, "at", d.at)?,
+            })
+        }
+    }
+
+    /// `PointerMove`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PointerMove {
+        pub x: f32,
+        pub y: f32,
+        pub id: u32,
+        pub movement_x: f32,
+        pub movement_y: f32,
+    }
+
+    impl Default for PointerMove {
+        fn default() -> Self {
+            Self {
+                x: Default::default(),
+                y: Default::default(),
+                id: Default::default(),
+                movement_x: Default::default(),
+                movement_y: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PointerMove {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                x: field(o, "x", d.x)?,
+                y: field(o, "y", d.y)?,
+                id: field(o, "id", d.id)?,
+                movement_x: field(o, "movementX", d.movement_x)?,
+                movement_y: field(o, "movementY", d.movement_y)?,
+            })
+        }
+    }
+
+    /// `Wheel`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Wheel {
+        pub delta_x: f32,
+        pub delta_y: f32,
+    }
+
+    impl Default for Wheel {
+        fn default() -> Self {
+            Self {
+                delta_x: Default::default(),
+                delta_y: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Wheel {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                delta_x: field(o, "deltaX", d.delta_x)?,
+                delta_y: field(o, "deltaY", d.delta_y)?,
+            })
+        }
+    }
+
+    /// `A11yAction`: packages/knowledge/wiki/input.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct A11yAction {
+        pub action: A11yActionKind,
+        pub path: String,
+    }
+
+    impl Default for A11yAction {
+        fn default() -> Self {
+            Self {
+                action: Default::default(),
+                path: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for A11yAction {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                action: field(o, "action", d.action)?,
+                path: field(o, "path", d.path)?,
+            })
+        }
+    }
+
+    /// `Camera`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Camera {
+        pub position: Vec3,
+        pub quaternion: Quat,
+        pub fov: f32,
+        pub near: f32,
+        pub far: f32,
+        pub zoom: f32,
+        pub orthographic: bool,
+        pub height: f32,
+        pub background: Color,
+        pub exposure: f32,
+        pub trauma: f32,
+        pub trauma_decay: f32,
+        pub shake_offset: f32,
+        pub shake_roll: f32,
+        pub shake_frequency: f32,
+        pub punch: f32,
+        pub punch_decay: f32,
+        pub kick: Vec3,
+        pub kick_decay: f32,
+        pub zone_active: bool,
+        pub zone_min: Vec2,
+        pub zone_max: Vec2,
+        pub zone_from_active: bool,
+        pub zone_from_min: Vec2,
+        pub zone_from_max: Vec2,
+        pub zone_scroll: f32,
+        pub zone_scroll_time: f32,
+        pub layers: u32,
+    }
+
+    impl Default for Camera {
+        fn default() -> Self {
+            Self {
+                position: Default::default(),
+                quaternion: Default::default(),
+                fov: 50.0_f32,
+                near: 0.1_f32,
+                far: 2000.0_f32,
+                zoom: 1.0_f32,
+                orthographic: Default::default(),
+                height: 10.0_f32,
+                background: Color { r: 0.00699_f32, g: 0.00803_f32, b: 0.01096_f32 },
+                exposure: 1.0_f32,
+                trauma: Default::default(),
+                trauma_decay: 1.5_f32,
+                shake_offset: 0.04_f32,
+                shake_roll: 2.0_f32,
+                shake_frequency: 15.0_f32,
+                punch: Default::default(),
+                punch_decay: 8.0_f32,
+                kick: Default::default(),
+                kick_decay: 12.0_f32,
+                zone_active: Default::default(),
+                zone_min: Default::default(),
+                zone_max: Default::default(),
+                zone_from_active: Default::default(),
+                zone_from_min: Default::default(),
+                zone_from_max: Default::default(),
+                zone_scroll: 1.0_f32,
+                zone_scroll_time: Default::default(),
+                layers: 1,
+            }
+        }
+    }
+
+    impl FromJson for Camera {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                position: field(o, "position", d.position)?,
+                quaternion: field(o, "quaternion", d.quaternion)?,
+                fov: field(o, "fov", d.fov)?,
+                near: field(o, "near", d.near)?,
+                far: field(o, "far", d.far)?,
+                zoom: field(o, "zoom", d.zoom)?,
+                orthographic: field(o, "orthographic", d.orthographic)?,
+                height: field(o, "height", d.height)?,
+                background: field(o, "background", d.background)?,
+                exposure: field(o, "exposure", d.exposure)?,
+                trauma: field(o, "trauma", d.trauma)?,
+                trauma_decay: field(o, "traumaDecay", d.trauma_decay)?,
+                shake_offset: field(o, "shakeOffset", d.shake_offset)?,
+                shake_roll: field(o, "shakeRoll", d.shake_roll)?,
+                shake_frequency: field(o, "shakeFrequency", d.shake_frequency)?,
+                punch: field(o, "punch", d.punch)?,
+                punch_decay: field(o, "punchDecay", d.punch_decay)?,
+                kick: field(o, "kick", d.kick)?,
+                kick_decay: field(o, "kickDecay", d.kick_decay)?,
+                zone_active: field(o, "zoneActive", d.zone_active)?,
+                zone_min: field(o, "zoneMin", d.zone_min)?,
+                zone_max: field(o, "zoneMax", d.zone_max)?,
+                zone_from_active: field(o, "zoneFromActive", d.zone_from_active)?,
+                zone_from_min: field(o, "zoneFromMin", d.zone_from_min)?,
+                zone_from_max: field(o, "zoneFromMax", d.zone_from_max)?,
+                zone_scroll: field(o, "zoneScroll", d.zone_scroll)?,
+                zone_scroll_time: field(o, "zoneScrollTime", d.zone_scroll_time)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `OrbitCamera`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct OrbitCamera {
+        pub target: Vec3,
+        pub distance: f32,
+        pub min_distance: f32,
+        pub max_distance: f32,
+        pub azimuth: f32,
+        pub polar: f32,
+        pub min_polar_angle: f32,
+        pub max_polar_angle: f32,
+        pub rotate_speed: f32,
+        pub zoom_speed: f32,
+        pub auto_rotate: bool,
+        pub auto_rotate_speed: f32,
+        pub enabled: bool,
+        pub dragging: bool,
+        pub pointer: Vec2,
+    }
+
+    impl Default for OrbitCamera {
+        fn default() -> Self {
+            Self {
+                target: Default::default(),
+                distance: 10.0_f32,
+                min_distance: 1.0_f32,
+                max_distance: 100.0_f32,
+                azimuth: Default::default(),
+                polar: 1.1_f32,
+                min_polar_angle: 0.05_f32,
+                max_polar_angle: 3.0916_f32,
+                rotate_speed: 1.0_f32,
+                zoom_speed: 1.0_f32,
+                auto_rotate: Default::default(),
+                auto_rotate_speed: 0.5_f32,
+                enabled: true,
+                dragging: Default::default(),
+                pointer: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for OrbitCamera {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                target: field(o, "target", d.target)?,
+                distance: field(o, "distance", d.distance)?,
+                min_distance: field(o, "minDistance", d.min_distance)?,
+                max_distance: field(o, "maxDistance", d.max_distance)?,
+                azimuth: field(o, "azimuth", d.azimuth)?,
+                polar: field(o, "polar", d.polar)?,
+                min_polar_angle: field(o, "minPolarAngle", d.min_polar_angle)?,
+                max_polar_angle: field(o, "maxPolarAngle", d.max_polar_angle)?,
+                rotate_speed: field(o, "rotateSpeed", d.rotate_speed)?,
+                zoom_speed: field(o, "zoomSpeed", d.zoom_speed)?,
+                auto_rotate: field(o, "autoRotate", d.auto_rotate)?,
+                auto_rotate_speed: field(o, "autoRotateSpeed", d.auto_rotate_speed)?,
+                enabled: field(o, "enabled", d.enabled)?,
+                dragging: field(o, "dragging", d.dragging)?,
+                pointer: field(o, "pointer", d.pointer)?,
+            })
+        }
+    }
+
+    /// `FollowCamera`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FollowCamera {
+        pub offset: Vec3,
+        pub look_offset: Vec3,
+        pub follow_rotation: bool,
+        pub smooth_time: f32,
+    }
+
+    impl Default for FollowCamera {
+        fn default() -> Self {
+            Self {
+                offset: Vec3::new(0.0_f32, 2.0_f32, 6.0_f32),
+                look_offset: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
+                follow_rotation: Default::default(),
+                smooth_time: 0.25_f32,
+            }
+        }
+    }
+
+    impl FromJson for FollowCamera {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                offset: field(o, "offset", d.offset)?,
+                look_offset: field(o, "lookOffset", d.look_offset)?,
+                follow_rotation: field(o, "followRotation", d.follow_rotation)?,
+                smooth_time: field(o, "smoothTime", d.smooth_time)?,
+            })
+        }
+    }
+
+    /// `Follow2D`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Follow2D {
+        pub offset: Vec2,
+        pub dead_zone: Vec2,
+        pub smooth_time: f32,
+        pub smooth_time_y: f32,
+        pub look_ahead: f32,
+        pub look_ahead_max: Vec2,
+        pub look_ahead_smoothing: f32,
+        pub lead: Vec2,
+        pub last: Vec2,
+        pub clamp: bool,
+        pub bounds_min: Vec2,
+        pub bounds_max: Vec2,
+    }
+
+    impl Default for Follow2D {
+        fn default() -> Self {
+            Self {
+                offset: Default::default(),
+                dead_zone: Default::default(),
+                smooth_time: 0.15_f32,
+                smooth_time_y: -1.0_f32,
+                look_ahead: Default::default(),
+                look_ahead_max: Vec2::new(3.0_f32, 1.5_f32),
+                look_ahead_smoothing: 0.4_f32,
+                lead: Default::default(),
+                last: Default::default(),
+                clamp: Default::default(),
+                bounds_min: Default::default(),
+                bounds_max: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Follow2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                offset: field(o, "offset", d.offset)?,
+                dead_zone: field(o, "deadZone", d.dead_zone)?,
+                smooth_time: field(o, "smoothTime", d.smooth_time)?,
+                smooth_time_y: field(o, "smoothTimeY", d.smooth_time_y)?,
+                look_ahead: field(o, "lookAhead", d.look_ahead)?,
+                look_ahead_max: field(o, "lookAheadMax", d.look_ahead_max)?,
+                look_ahead_smoothing: field(o, "lookAheadSmoothing", d.look_ahead_smoothing)?,
+                lead: field(o, "lead", d.lead)?,
+                last: field(o, "last", d.last)?,
+                clamp: field(o, "clamp", d.clamp)?,
+                bounds_min: field(o, "boundsMin", d.bounds_min)?,
+                bounds_max: field(o, "boundsMax", d.bounds_max)?,
+            })
+        }
+    }
+
+    /// `CameraZone`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CameraZone {
+        pub min: Vec2,
+        pub max: Vec2,
+        pub priority: i32,
+        pub scroll_time: f32,
+    }
+
+    impl Default for CameraZone {
+        fn default() -> Self {
+            Self {
+                min: Default::default(),
+                max: Vec2::new(10.0_f32, 10.0_f32),
+                priority: Default::default(),
+                scroll_time: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CameraZone {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                min: field(o, "min", d.min)?,
+                max: field(o, "max", d.max)?,
+                priority: field(o, "priority", d.priority)?,
+                scroll_time: field(o, "scrollTime", d.scroll_time)?,
+            })
+        }
+    }
+
+    /// `CameraRail`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CameraRail {
+        pub points: u32,
+        pub p0: Vec3,
+        pub p1: Vec3,
+        pub p2: Vec3,
+        pub p3: Vec3,
+        pub p4: Vec3,
+        pub p5: Vec3,
+        pub p6: Vec3,
+        pub p7: Vec3,
+        pub smooth_time: f32,
+        pub path: u64,
+    }
+
+    impl Default for CameraRail {
+        fn default() -> Self {
+            Self {
+                points: 2,
+                p0: Default::default(),
+                p1: Vec3::new(10.0_f32, 0.0_f32, 0.0_f32),
+                p2: Default::default(),
+                p3: Default::default(),
+                p4: Default::default(),
+                p5: Default::default(),
+                p6: Default::default(),
+                p7: Default::default(),
+                smooth_time: 0.2_f32,
+                path: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CameraRail {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                points: field(o, "points", d.points)?,
+                p0: field(o, "p0", d.p0)?,
+                p1: field(o, "p1", d.p1)?,
+                p2: field(o, "p2", d.p2)?,
+                p3: field(o, "p3", d.p3)?,
+                p4: field(o, "p4", d.p4)?,
+                p5: field(o, "p5", d.p5)?,
+                p6: field(o, "p6", d.p6)?,
+                p7: field(o, "p7", d.p7)?,
+                smooth_time: field(o, "smoothTime", d.smooth_time)?,
+                path: field(o, "path", d.path)?,
+            })
+        }
+    }
+
+    /// `VirtualCamera`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct VirtualCamera {
+        pub priority: i32,
+        pub enabled: bool,
+        pub follow: u64,
+        pub follow_offset: Vec3,
+        pub follow_rotation: bool,
+        pub smooth_time: f32,
+        pub look_at: u64,
+        pub look_offset: Vec3,
+        pub fov: f32,
+        pub roll: f32,
+        pub focus: f32,
+        pub focus_range: f32,
+        pub blend_time: f32,
+        pub blend_ease: String,
+        pub collide: bool,
+        pub radius: f32,
+        pub damping: f32,
+        pub collision_layers: u32,
+        pub eased: Vec3,
+        pub pull: f32,
+        pub activated: u32,
+        pub primed: bool,
+    }
+
+    impl Default for VirtualCamera {
+        fn default() -> Self {
+            Self {
+                priority: Default::default(),
+                enabled: true,
+                follow: Default::default(),
+                follow_offset: Vec3::new(0.0_f32, 2.0_f32, 6.0_f32),
+                follow_rotation: Default::default(),
+                smooth_time: 0.25_f32,
+                look_at: Default::default(),
+                look_offset: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
+                fov: 50.0_f32,
+                roll: Default::default(),
+                focus: Default::default(),
+                focus_range: 1.0_f32,
+                blend_time: -1.0_f32,
+                blend_ease: String::from("power2.inOut"),
+                collide: Default::default(),
+                radius: 0.2_f32,
+                damping: 0.4_f32,
+                collision_layers: Default::default(),
+                eased: Default::default(),
+                pull: Default::default(),
+                activated: Default::default(),
+                primed: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for VirtualCamera {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                priority: field(o, "priority", d.priority)?,
+                enabled: field(o, "enabled", d.enabled)?,
+                follow: field(o, "follow", d.follow)?,
+                follow_offset: field(o, "followOffset", d.follow_offset)?,
+                follow_rotation: field(o, "followRotation", d.follow_rotation)?,
+                smooth_time: field(o, "smoothTime", d.smooth_time)?,
+                look_at: field(o, "lookAt", d.look_at)?,
+                look_offset: field(o, "lookOffset", d.look_offset)?,
+                fov: field(o, "fov", d.fov)?,
+                roll: field(o, "roll", d.roll)?,
+                focus: field(o, "focus", d.focus)?,
+                focus_range: field(o, "focusRange", d.focus_range)?,
+                blend_time: field(o, "blendTime", d.blend_time)?,
+                blend_ease: field(o, "blendEase", d.blend_ease)?,
+                collide: field(o, "collide", d.collide)?,
+                radius: field(o, "radius", d.radius)?,
+                damping: field(o, "damping", d.damping)?,
+                collision_layers: field(o, "collisionLayers", d.collision_layers)?,
+                eased: field(o, "eased", d.eased)?,
+                pull: field(o, "pull", d.pull)?,
+                activated: field(o, "activated", d.activated)?,
+                primed: field(o, "primed", d.primed)?,
+            })
+        }
+    }
+
+    /// `CameraBrain`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CameraBrain {
+        pub enabled: bool,
+        pub blend_time: f32,
+        pub blend_ease: String,
+        pub solo: u64,
+        pub solo_blend: f32,
+        pub solo_ease: String,
+        pub live: u64,
+        pub from: u64,
+        pub blend: f32,
+        pub blend_duration: f32,
+        pub blend_curve: String,
+        pub from_position: Vec3,
+        pub from_quaternion: Quat,
+        pub from_fov: f32,
+        pub from_focus: f32,
+        pub from_focus_range: f32,
+        pub activations: u32,
+        pub focus_held: bool,
+        pub held_depth_of_field: bool,
+        pub held_focus_distance: f32,
+        pub held_focus_range: f32,
+    }
+
+    impl Default for CameraBrain {
+        fn default() -> Self {
+            Self {
+                enabled: true,
+                blend_time: 1.0_f32,
+                blend_ease: String::from("power2.inOut"),
+                solo: Default::default(),
+                solo_blend: -1.0_f32,
+                solo_ease: String::from("power2.inOut"),
+                live: Default::default(),
+                from: Default::default(),
+                blend: 1.0_f32,
+                blend_duration: Default::default(),
+                blend_curve: Default::default(),
+                from_position: Default::default(),
+                from_quaternion: Default::default(),
+                from_fov: Default::default(),
+                from_focus: Default::default(),
+                from_focus_range: Default::default(),
+                activations: Default::default(),
+                focus_held: Default::default(),
+                held_depth_of_field: Default::default(),
+                held_focus_distance: Default::default(),
+                held_focus_range: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CameraBrain {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                blend_time: field(o, "blendTime", d.blend_time)?,
+                blend_ease: field(o, "blendEase", d.blend_ease)?,
+                solo: field(o, "solo", d.solo)?,
+                solo_blend: field(o, "soloBlend", d.solo_blend)?,
+                solo_ease: field(o, "soloEase", d.solo_ease)?,
+                live: field(o, "live", d.live)?,
+                from: field(o, "from", d.from)?,
+                blend: field(o, "blend", d.blend)?,
+                blend_duration: field(o, "blendDuration", d.blend_duration)?,
+                blend_curve: field(o, "blendCurve", d.blend_curve)?,
+                from_position: field(o, "fromPosition", d.from_position)?,
+                from_quaternion: field(o, "fromQuaternion", d.from_quaternion)?,
+                from_fov: field(o, "fromFov", d.from_fov)?,
+                from_focus: field(o, "fromFocus", d.from_focus)?,
+                from_focus_range: field(o, "fromFocusRange", d.from_focus_range)?,
+                activations: field(o, "activations", d.activations)?,
+                focus_held: field(o, "focusHeld", d.focus_held)?,
+                held_depth_of_field: field(o, "heldDepthOfField", d.held_depth_of_field)?,
+                held_focus_distance: field(o, "heldFocusDistance", d.held_focus_distance)?,
+                held_focus_range: field(o, "heldFocusRange", d.held_focus_range)?,
+            })
+        }
+    }
+
+    /// `CameraCut`: packages/knowledge/wiki/camera.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CameraCut {
+        pub from: u64,
+        pub to: u64,
+        pub blend: f32,
+    }
+
+    impl Default for CameraCut {
+        fn default() -> Self {
+            Self {
+                from: Default::default(),
+                to: Default::default(),
+                blend: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CameraCut {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                from: field(o, "from", d.from)?,
+                to: field(o, "to", d.to)?,
+                blend: field(o, "blend", d.blend)?,
+            })
+        }
+    }
+
+    /// `Mesh`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Mesh {
+        pub geometry: u64,
+        pub material: u64,
+        pub cast_shadow: bool,
+        pub receive_shadow: bool,
+        pub visible: bool,
+        pub flash: f32,
+        pub flash_color: Color,
+        pub material_layer: i32,
+        pub layers: u32,
+    }
+
+    impl Default for Mesh {
+        fn default() -> Self {
+            Self {
+                geometry: Default::default(),
+                material: Default::default(),
+                cast_shadow: Default::default(),
+                receive_shadow: true,
+                visible: true,
+                flash: Default::default(),
+                flash_color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                material_layer: -1,
+                layers: 1,
+            }
+        }
+    }
+
+    impl FromJson for Mesh {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                geometry: field(o, "geometry", d.geometry)?,
+                material: field(o, "material", d.material)?,
+                cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+                receive_shadow: field(o, "receiveShadow", d.receive_shadow)?,
+                visible: field(o, "visible", d.visible)?,
+                flash: field(o, "flash", d.flash)?,
+                flash_color: field(o, "flashColor", d.flash_color)?,
+                material_layer: field(o, "materialLayer", d.material_layer)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `DirectionalLight`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct DirectionalLight {
+        pub color: Color,
+        pub intensity: f32,
+        pub cast_shadow: bool,
+        pub shadow_distance: f32,
+        pub shadow_softness: f32,
+        pub shadow_box: f32,
+        pub shadow_focus: f32,
+        pub shadow_focus_drop: f32,
+        pub shadow_bias: f32,
+        pub shadow_normal_bias: f32,
+        pub cascade_blend: f32,
+    }
+
+    impl Default for DirectionalLight {
+        fn default() -> Self {
+            Self {
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                intensity: 3.0_f32,
+                cast_shadow: true,
+                shadow_distance: 200.0_f32,
+                shadow_softness: Default::default(),
+                shadow_box: Default::default(),
+                shadow_focus: Default::default(),
+                shadow_focus_drop: Default::default(),
+                shadow_bias: Default::default(),
+                shadow_normal_bias: Default::default(),
+                cascade_blend: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for DirectionalLight {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                color: field(o, "color", d.color)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+                shadow_distance: field(o, "shadowDistance", d.shadow_distance)?,
+                shadow_softness: field(o, "shadowSoftness", d.shadow_softness)?,
+                shadow_box: field(o, "shadowBox", d.shadow_box)?,
+                shadow_focus: field(o, "shadowFocus", d.shadow_focus)?,
+                shadow_focus_drop: field(o, "shadowFocusDrop", d.shadow_focus_drop)?,
+                shadow_bias: field(o, "shadowBias", d.shadow_bias)?,
+                shadow_normal_bias: field(o, "shadowNormalBias", d.shadow_normal_bias)?,
+                cascade_blend: field(o, "cascadeBlend", d.cascade_blend)?,
+            })
+        }
+    }
+
+    /// `PointLight`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PointLight {
+        pub color: Color,
+        pub intensity: f32,
+        pub distance: f32,
+        pub cast_shadow: bool,
+        pub cookie: u64,
+    }
+
+    impl Default for PointLight {
+        fn default() -> Self {
+            Self {
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                intensity: 10.0_f32,
+                distance: 10.0_f32,
+                cast_shadow: Default::default(),
+                cookie: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PointLight {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                color: field(o, "color", d.color)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                distance: field(o, "distance", d.distance)?,
+                cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+                cookie: field(o, "cookie", d.cookie)?,
+            })
+        }
+    }
+
+    /// `SpotLight`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SpotLight {
+        pub color: Color,
+        pub intensity: f32,
+        pub distance: f32,
+        pub angle: f32,
+        pub penumbra: f32,
+        pub cast_shadow: bool,
+        pub cookie: u64,
+    }
+
+    impl Default for SpotLight {
+        fn default() -> Self {
+            Self {
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                intensity: 10.0_f32,
+                distance: 10.0_f32,
+                angle: 0.5236_f32,
+                penumbra: Default::default(),
+                cast_shadow: Default::default(),
+                cookie: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SpotLight {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                color: field(o, "color", d.color)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                distance: field(o, "distance", d.distance)?,
+                angle: field(o, "angle", d.angle)?,
+                penumbra: field(o, "penumbra", d.penumbra)?,
+                cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+                cookie: field(o, "cookie", d.cookie)?,
+            })
+        }
+    }
+
+    /// `RenderSettings`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RenderSettings {
+        pub environment_intensity: f32,
+        pub sky: bool,
+        pub bloom: bool,
+        pub bloom_threshold: f32,
+        pub bloom_knee: f32,
+        pub bloom_intensity: f32,
+        pub bloom_radius: f32,
+        pub bloom_contrast: f32,
+        pub auto_exposure: bool,
+        pub adapt_speed_up: f32,
+        pub adapt_speed_down: f32,
+        pub tone_mapped: bool,
+        pub tone_mapping: ToneMapping,
+        pub exposure: f32,
+        pub decal_atlas: u64,
+        pub lod_bias: f32,
+        pub baked_lighting: bool,
+        pub quality: QualityPreset,
+        pub rect_shadows: bool,
+        pub shadowed_lights: u32,
+        pub shadow_cascades: u32,
+        pub shadow_map_scale: f32,
+        pub volumetric_fog: bool,
+        pub soft_particles: bool,
+        pub screen_space_reflections: bool,
+        pub ambient_occlusion: bool,
+        pub ao_resolution: AoResolutionSetting,
+        pub ssr_step_scale: f32,
+        pub volumetric_step_scale: f32,
+        pub msaa_samples: u32,
+        pub upscaler: Upscaler,
+        pub interpolate: bool,
+        pub snap_distance: f32,
+    }
+
+    impl Default for RenderSettings {
+        fn default() -> Self {
+            Self {
+                environment_intensity: 0.55_f32,
+                sky: Default::default(),
+                bloom: Default::default(),
+                bloom_threshold: 1.0_f32,
+                bloom_knee: 0.5_f32,
+                bloom_intensity: 0.6_f32,
+                bloom_radius: -1.0_f32,
+                bloom_contrast: 1.0_f32,
+                auto_exposure: Default::default(),
+                adapt_speed_up: Default::default(),
+                adapt_speed_down: Default::default(),
+                tone_mapped: true,
+                tone_mapping: Default::default(),
+                exposure: 1.0_f32,
+                decal_atlas: Default::default(),
+                lod_bias: 1.0_f32,
+                baked_lighting: true,
+                quality: Default::default(),
+                rect_shadows: true,
+                shadowed_lights: 8,
+                shadow_cascades: 3,
+                shadow_map_scale: 1.0_f32,
+                volumetric_fog: true,
+                soft_particles: true,
+                screen_space_reflections: true,
+                ambient_occlusion: true,
+                ao_resolution: Default::default(),
+                ssr_step_scale: 1.0_f32,
+                volumetric_step_scale: 1.0_f32,
+                msaa_samples: 4,
+                upscaler: Default::default(),
+                interpolate: true,
+                snap_distance: 10.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for RenderSettings {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                environment_intensity: field(o, "environmentIntensity", d.environment_intensity)?,
+                sky: field(o, "sky", d.sky)?,
+                bloom: field(o, "bloom", d.bloom)?,
+                bloom_threshold: field(o, "bloomThreshold", d.bloom_threshold)?,
+                bloom_knee: field(o, "bloomKnee", d.bloom_knee)?,
+                bloom_intensity: field(o, "bloomIntensity", d.bloom_intensity)?,
+                bloom_radius: field(o, "bloomRadius", d.bloom_radius)?,
+                bloom_contrast: field(o, "bloomContrast", d.bloom_contrast)?,
+                auto_exposure: field(o, "autoExposure", d.auto_exposure)?,
+                adapt_speed_up: field(o, "adaptSpeedUp", d.adapt_speed_up)?,
+                adapt_speed_down: field(o, "adaptSpeedDown", d.adapt_speed_down)?,
+                tone_mapped: field(o, "toneMapped", d.tone_mapped)?,
+                tone_mapping: field(o, "toneMapping", d.tone_mapping)?,
+                exposure: field(o, "exposure", d.exposure)?,
+                decal_atlas: field(o, "decalAtlas", d.decal_atlas)?,
+                lod_bias: field(o, "lodBias", d.lod_bias)?,
+                baked_lighting: field(o, "bakedLighting", d.baked_lighting)?,
+                quality: field(o, "quality", d.quality)?,
+                rect_shadows: field(o, "rectShadows", d.rect_shadows)?,
+                shadowed_lights: field(o, "shadowedLights", d.shadowed_lights)?,
+                shadow_cascades: field(o, "shadowCascades", d.shadow_cascades)?,
+                shadow_map_scale: field(o, "shadowMapScale", d.shadow_map_scale)?,
+                volumetric_fog: field(o, "volumetricFog", d.volumetric_fog)?,
+                soft_particles: field(o, "softParticles", d.soft_particles)?,
+                screen_space_reflections: field(o, "screenSpaceReflections", d.screen_space_reflections)?,
+                ambient_occlusion: field(o, "ambientOcclusion", d.ambient_occlusion)?,
+                ao_resolution: field(o, "aoResolution", d.ao_resolution)?,
+                ssr_step_scale: field(o, "ssrStepScale", d.ssr_step_scale)?,
+                volumetric_step_scale: field(o, "volumetricStepScale", d.volumetric_step_scale)?,
+                msaa_samples: field(o, "msaaSamples", d.msaa_samples)?,
+                upscaler: field(o, "upscaler", d.upscaler)?,
+                interpolate: field(o, "interpolate", d.interpolate)?,
+                snap_distance: field(o, "snapDistance", d.snap_distance)?,
+            })
+        }
+    }
+
+    /// `Interpolation`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Interpolation {
+        pub off: bool,
+    }
+
+    impl Default for Interpolation {
+        fn default() -> Self {
+            Self {
+                off: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Interpolation {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                off: field(o, "off", d.off)?,
+            })
+        }
+    }
+
+    /// `Environment`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Environment {
+        pub map: u64,
+        pub intensity: f32,
+        pub rotation: f32,
+        pub background: bool,
+        pub background_intensity: f32,
+        pub background_blurriness: f32,
+        pub ground_height: f32,
+        pub ground_radius: f32,
+        pub ground_center: Vec3,
+        pub blend_to: u64,
+        pub blend_weight: f32,
+        pub hemi_sky: Color,
+        pub hemi_ground: Color,
+        pub hemi_intensity: f32,
+    }
+
+    impl Default for Environment {
+        fn default() -> Self {
+            Self {
+                map: Default::default(),
+                intensity: 1.0_f32,
+                rotation: Default::default(),
+                background: Default::default(),
+                background_intensity: 1.0_f32,
+                background_blurriness: 0.0_f32,
+                ground_height: 0.0_f32,
+                ground_radius: 100.0_f32,
+                ground_center: Default::default(),
+                blend_to: Default::default(),
+                blend_weight: 0.0_f32,
+                hemi_sky: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                hemi_ground: Color { r: 0.0_f32, g: 0.0_f32, b: 0.0_f32 },
+                hemi_intensity: 0.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Environment {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                map: field(o, "map", d.map)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                rotation: field(o, "rotation", d.rotation)?,
+                background: field(o, "background", d.background)?,
+                background_intensity: field(o, "backgroundIntensity", d.background_intensity)?,
+                background_blurriness: field(o, "backgroundBlurriness", d.background_blurriness)?,
+                ground_height: field(o, "groundHeight", d.ground_height)?,
+                ground_radius: field(o, "groundRadius", d.ground_radius)?,
+                ground_center: field(o, "groundCenter", d.ground_center)?,
+                blend_to: field(o, "blendTo", d.blend_to)?,
+                blend_weight: field(o, "blendWeight", d.blend_weight)?,
+                hemi_sky: field(o, "hemiSky", d.hemi_sky)?,
+                hemi_ground: field(o, "hemiGround", d.hemi_ground)?,
+                hemi_intensity: field(o, "hemiIntensity", d.hemi_intensity)?,
+            })
+        }
+    }
+
+    /// `PostEffects`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PostEffects {
+        pub ao: bool,
+        pub ao_radius: f32,
+        pub ao_intensity: f32,
+        pub ao_method: AoMethod,
+        pub ao_resolution: AoResolution,
+        pub ao_direct: f32,
+        pub ao_radius_scale: f32,
+        pub outline: bool,
+        pub outline_color: Color,
+        pub outline_width: f32,
+        pub outline_depth_threshold: f32,
+        pub outline_normal_threshold: f32,
+        pub depth_of_field: bool,
+        pub dof_focus_distance: f32,
+        pub dof_focus_range: f32,
+        pub dof_max_blur: f32,
+        pub dof_falloff: f32,
+        pub dof_quality: DofQuality,
+        pub motion_blur: bool,
+        pub motion_blur_shutter: f32,
+        pub motion_blur_samples: u32,
+        pub motion_blur_max_pixels: f32,
+        pub screen_blur: ScreenBlur,
+        pub screen_blur_strength: f32,
+        pub screen_blur_center: Vec2,
+        pub screen_blur_angle: f32,
+        pub screen_blur_samples: u32,
+        pub god_rays: bool,
+        pub god_rays_intensity: f32,
+        pub god_rays_decay: f32,
+        pub god_rays_density: f32,
+        pub god_rays_tint: Color,
+        pub god_rays_samples: u32,
+        pub god_rays_threshold: f32,
+        pub glow: bool,
+        pub glow_intensity: f32,
+        pub lut: u64,
+        pub lut_intensity: f32,
+        pub temperature: f32,
+        pub tint: f32,
+        pub brightness: f32,
+        pub contrast: f32,
+        pub balance_shadows: Vec3,
+        pub balance_midtones: Vec3,
+        pub balance_highlights: Vec3,
+        pub preserve_luminosity: bool,
+        pub hue: f32,
+        pub saturation: f32,
+        pub vibrance: f32,
+        pub grayscale: f32,
+        pub invert: f32,
+        pub threshold: f32,
+        pub vignette: bool,
+        pub vignette_intensity: f32,
+        pub vignette_radius: f32,
+        pub vignette_smoothness: f32,
+        pub vignette_color: Color,
+        pub chromatic_aberration: f32,
+        pub lens_distortion: f32,
+        pub lens_distortion_center: Vec2,
+        pub film_grain: f32,
+        pub film_grain_size: f32,
+        pub sharpen: f32,
+        pub flash: f32,
+        pub flash_color: Color,
+        pub shake_trauma: f32,
+        pub shake_max_offset: f32,
+        pub shake_max_roll: f32,
+        pub shake_frequency: f32,
+        pub shake_seed: u32,
+        pub ssr: bool,
+        pub ssr_max_distance: f32,
+        pub ssr_thickness: f32,
+        pub ssr_steps: u32,
+        pub ssr_fade: f32,
+        pub ssr_intensity: f32,
+        pub ssr_max_roughness: f32,
+        pub ssr_resolution: AoResolution,
+        pub custom: Vec<u64>,
+    }
+
+    impl Default for PostEffects {
+        fn default() -> Self {
+            Self {
+                ao: Default::default(),
+                ao_radius: 0.6_f32,
+                ao_intensity: 1.0_f32,
+                ao_method: Default::default(),
+                ao_resolution: Default::default(),
+                ao_direct: 0.0_f32,
+                ao_radius_scale: Default::default(),
+                outline: Default::default(),
+                outline_color: Color { r: 0.02_f32, g: 0.02_f32, b: 0.03_f32 },
+                outline_width: 2.0_f32,
+                outline_depth_threshold: 0.04_f32,
+                outline_normal_threshold: 0.4_f32,
+                depth_of_field: Default::default(),
+                dof_focus_distance: 10.0_f32,
+                dof_focus_range: 2.0_f32,
+                dof_max_blur: 0.012_f32,
+                dof_falloff: 4.0_f32,
+                dof_quality: Default::default(),
+                motion_blur: Default::default(),
+                motion_blur_shutter: 0.5_f32,
+                motion_blur_samples: 12,
+                motion_blur_max_pixels: 40.0_f32,
+                screen_blur: Default::default(),
+                screen_blur_strength: Default::default(),
+                screen_blur_center: Vec2::new(0.5_f32, 0.5_f32),
+                screen_blur_angle: Default::default(),
+                screen_blur_samples: 16,
+                god_rays: Default::default(),
+                god_rays_intensity: 0.5_f32,
+                god_rays_decay: 0.965_f32,
+                god_rays_density: 1.0_f32,
+                god_rays_tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                god_rays_samples: 48,
+                god_rays_threshold: 2.0_f32,
+                glow: Default::default(),
+                glow_intensity: 1.0_f32,
+                lut: Default::default(),
+                lut_intensity: 1.0_f32,
+                temperature: Default::default(),
+                tint: Default::default(),
+                brightness: Default::default(),
+                contrast: Default::default(),
+                balance_shadows: Default::default(),
+                balance_midtones: Default::default(),
+                balance_highlights: Default::default(),
+                preserve_luminosity: true,
+                hue: Default::default(),
+                saturation: Default::default(),
+                vibrance: Default::default(),
+                grayscale: Default::default(),
+                invert: Default::default(),
+                threshold: Default::default(),
+                vignette: Default::default(),
+                vignette_intensity: 0.35_f32,
+                vignette_radius: 0.55_f32,
+                vignette_smoothness: 0.45_f32,
+                vignette_color: Default::default(),
+                chromatic_aberration: Default::default(),
+                lens_distortion: Default::default(),
+                lens_distortion_center: Vec2::new(0.5_f32, 0.5_f32),
+                film_grain: Default::default(),
+                film_grain_size: 1.5_f32,
+                sharpen: -1.0_f32,
+                flash: Default::default(),
+                flash_color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                shake_trauma: Default::default(),
+                shake_max_offset: 0.05_f32,
+                shake_max_roll: 3.0_f32,
+                shake_frequency: 12.0_f32,
+                shake_seed: Default::default(),
+                ssr: Default::default(),
+                ssr_max_distance: 100.0_f32,
+                ssr_thickness: 0.3_f32,
+                ssr_steps: 64,
+                ssr_fade: 0.15_f32,
+                ssr_intensity: 1.0_f32,
+                ssr_max_roughness: 0.6_f32,
+                ssr_resolution: AoResolution::Half,
+                custom: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PostEffects {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                ao: field(o, "ao", d.ao)?,
+                ao_radius: field(o, "aoRadius", d.ao_radius)?,
+                ao_intensity: field(o, "aoIntensity", d.ao_intensity)?,
+                ao_method: field(o, "aoMethod", d.ao_method)?,
+                ao_resolution: field(o, "aoResolution", d.ao_resolution)?,
+                ao_direct: field(o, "aoDirect", d.ao_direct)?,
+                ao_radius_scale: field(o, "aoRadiusScale", d.ao_radius_scale)?,
+                outline: field(o, "outline", d.outline)?,
+                outline_color: field(o, "outlineColor", d.outline_color)?,
+                outline_width: field(o, "outlineWidth", d.outline_width)?,
+                outline_depth_threshold: field(o, "outlineDepthThreshold", d.outline_depth_threshold)?,
+                outline_normal_threshold: field(o, "outlineNormalThreshold", d.outline_normal_threshold)?,
+                depth_of_field: field(o, "depthOfField", d.depth_of_field)?,
+                dof_focus_distance: field(o, "dofFocusDistance", d.dof_focus_distance)?,
+                dof_focus_range: field(o, "dofFocusRange", d.dof_focus_range)?,
+                dof_max_blur: field(o, "dofMaxBlur", d.dof_max_blur)?,
+                dof_falloff: field(o, "dofFalloff", d.dof_falloff)?,
+                dof_quality: field(o, "dofQuality", d.dof_quality)?,
+                motion_blur: field(o, "motionBlur", d.motion_blur)?,
+                motion_blur_shutter: field(o, "motionBlurShutter", d.motion_blur_shutter)?,
+                motion_blur_samples: field(o, "motionBlurSamples", d.motion_blur_samples)?,
+                motion_blur_max_pixels: field(o, "motionBlurMaxPixels", d.motion_blur_max_pixels)?,
+                screen_blur: field(o, "screenBlur", d.screen_blur)?,
+                screen_blur_strength: field(o, "screenBlurStrength", d.screen_blur_strength)?,
+                screen_blur_center: field(o, "screenBlurCenter", d.screen_blur_center)?,
+                screen_blur_angle: field(o, "screenBlurAngle", d.screen_blur_angle)?,
+                screen_blur_samples: field(o, "screenBlurSamples", d.screen_blur_samples)?,
+                god_rays: field(o, "godRays", d.god_rays)?,
+                god_rays_intensity: field(o, "godRaysIntensity", d.god_rays_intensity)?,
+                god_rays_decay: field(o, "godRaysDecay", d.god_rays_decay)?,
+                god_rays_density: field(o, "godRaysDensity", d.god_rays_density)?,
+                god_rays_tint: field(o, "godRaysTint", d.god_rays_tint)?,
+                god_rays_samples: field(o, "godRaysSamples", d.god_rays_samples)?,
+                god_rays_threshold: field(o, "godRaysThreshold", d.god_rays_threshold)?,
+                glow: field(o, "glow", d.glow)?,
+                glow_intensity: field(o, "glowIntensity", d.glow_intensity)?,
+                lut: field(o, "lut", d.lut)?,
+                lut_intensity: field(o, "lutIntensity", d.lut_intensity)?,
+                temperature: field(o, "temperature", d.temperature)?,
+                tint: field(o, "tint", d.tint)?,
+                brightness: field(o, "brightness", d.brightness)?,
+                contrast: field(o, "contrast", d.contrast)?,
+                balance_shadows: field(o, "balanceShadows", d.balance_shadows)?,
+                balance_midtones: field(o, "balanceMidtones", d.balance_midtones)?,
+                balance_highlights: field(o, "balanceHighlights", d.balance_highlights)?,
+                preserve_luminosity: field(o, "preserveLuminosity", d.preserve_luminosity)?,
+                hue: field(o, "hue", d.hue)?,
+                saturation: field(o, "saturation", d.saturation)?,
+                vibrance: field(o, "vibrance", d.vibrance)?,
+                grayscale: field(o, "grayscale", d.grayscale)?,
+                invert: field(o, "invert", d.invert)?,
+                threshold: field(o, "threshold", d.threshold)?,
+                vignette: field(o, "vignette", d.vignette)?,
+                vignette_intensity: field(o, "vignetteIntensity", d.vignette_intensity)?,
+                vignette_radius: field(o, "vignetteRadius", d.vignette_radius)?,
+                vignette_smoothness: field(o, "vignetteSmoothness", d.vignette_smoothness)?,
+                vignette_color: field(o, "vignetteColor", d.vignette_color)?,
+                chromatic_aberration: field(o, "chromaticAberration", d.chromatic_aberration)?,
+                lens_distortion: field(o, "lensDistortion", d.lens_distortion)?,
+                lens_distortion_center: field(o, "lensDistortionCenter", d.lens_distortion_center)?,
+                film_grain: field(o, "filmGrain", d.film_grain)?,
+                film_grain_size: field(o, "filmGrainSize", d.film_grain_size)?,
+                sharpen: field(o, "sharpen", d.sharpen)?,
+                flash: field(o, "flash", d.flash)?,
+                flash_color: field(o, "flashColor", d.flash_color)?,
+                shake_trauma: field(o, "shakeTrauma", d.shake_trauma)?,
+                shake_max_offset: field(o, "shakeMaxOffset", d.shake_max_offset)?,
+                shake_max_roll: field(o, "shakeMaxRoll", d.shake_max_roll)?,
+                shake_frequency: field(o, "shakeFrequency", d.shake_frequency)?,
+                shake_seed: field(o, "shakeSeed", d.shake_seed)?,
+                ssr: field(o, "ssr", d.ssr)?,
+                ssr_max_distance: field(o, "ssrMaxDistance", d.ssr_max_distance)?,
+                ssr_thickness: field(o, "ssrThickness", d.ssr_thickness)?,
+                ssr_steps: field(o, "ssrSteps", d.ssr_steps)?,
+                ssr_fade: field(o, "ssrFade", d.ssr_fade)?,
+                ssr_intensity: field(o, "ssrIntensity", d.ssr_intensity)?,
+                ssr_max_roughness: field(o, "ssrMaxRoughness", d.ssr_max_roughness)?,
+                ssr_resolution: field(o, "ssrResolution", d.ssr_resolution)?,
+                custom: field(o, "custom", d.custom)?,
+            })
+        }
+    }
+
+    /// `LensFlare`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LensFlare {
+        pub enabled: bool,
+        pub intensity: f32,
+        pub ghosts: u32,
+        pub ghost_spacing: f32,
+        pub ghost_threshold: f32,
+        pub halo_radius: f32,
+        pub halo_thickness: f32,
+        pub halo_threshold: f32,
+        pub chromatic_aberration: f32,
+        pub starburst: bool,
+        pub sun: f32,
+        pub lights: f32,
+    }
+
+    impl Default for LensFlare {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                intensity: 0.1_f32,
+                ghosts: 4,
+                ghost_spacing: 0.6_f32,
+                ghost_threshold: 10.0_f32,
+                halo_radius: 0.28_f32,
+                halo_thickness: 0.1_f32,
+                halo_threshold: 10.0_f32,
+                chromatic_aberration: 0.001_f32,
+                starburst: true,
+                sun: 1.0_f32,
+                lights: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for LensFlare {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                ghosts: field(o, "ghosts", d.ghosts)?,
+                ghost_spacing: field(o, "ghostSpacing", d.ghost_spacing)?,
+                ghost_threshold: field(o, "ghostThreshold", d.ghost_threshold)?,
+                halo_radius: field(o, "haloRadius", d.halo_radius)?,
+                halo_thickness: field(o, "haloThickness", d.halo_thickness)?,
+                halo_threshold: field(o, "haloThreshold", d.halo_threshold)?,
+                chromatic_aberration: field(o, "chromaticAberration", d.chromatic_aberration)?,
+                starburst: field(o, "starburst", d.starburst)?,
+                sun: field(o, "sun", d.sun)?,
+                lights: field(o, "lights", d.lights)?,
+            })
+        }
+    }
+
+    /// `GlobalIllumination`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GlobalIllumination {
+        pub enabled: bool,
+        pub method: GiMethod,
+        pub intensity: f32,
+        pub max_distance: f32,
+        pub thickness: f32,
+        pub steps: u32,
+        pub rays: u32,
+        pub occlusion: f32,
+        pub resolution: AoResolution,
+        pub probe_spacing: f32,
+        pub probe_cascades: u32,
+        pub probe_rays: u32,
+        pub allowed: bool,
+    }
+
+    impl Default for GlobalIllumination {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                method: Default::default(),
+                intensity: 1.0_f32,
+                max_distance: 16.0_f32,
+                thickness: 0.5_f32,
+                steps: 12,
+                rays: 4,
+                occlusion: 1.0_f32,
+                resolution: Default::default(),
+                probe_spacing: 1.0_f32,
+                probe_cascades: 3,
+                probe_rays: 64,
+                allowed: true,
+            }
+        }
+    }
+
+    impl FromJson for GlobalIllumination {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                method: field(o, "method", d.method)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                max_distance: field(o, "maxDistance", d.max_distance)?,
+                thickness: field(o, "thickness", d.thickness)?,
+                steps: field(o, "steps", d.steps)?,
+                rays: field(o, "rays", d.rays)?,
+                occlusion: field(o, "occlusion", d.occlusion)?,
+                resolution: field(o, "resolution", d.resolution)?,
+                probe_spacing: field(o, "probeSpacing", d.probe_spacing)?,
+                probe_cascades: field(o, "probeCascades", d.probe_cascades)?,
+                probe_rays: field(o, "probeRays", d.probe_rays)?,
+                allowed: field(o, "allowed", d.allowed)?,
+            })
+        }
+    }
+
+    /// `Stylise`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Stylise {
+        pub pixel_height: u32,
+        pub pixel_upscale: u32,
+        pub pixel_snap: bool,
+        pub posterize: u32,
+        pub posterize_mode: PosterizeMode,
+        pub palette: u64,
+        pub dither: DitherPattern,
+        pub dither_strength: f32,
+        pub dither_scale: u32,
+        pub halftone: f32,
+        pub halftone_size: f32,
+        pub halftone_angle: f32,
+        pub halftone_color: Color,
+        pub halftone_space: StyliseSpace,
+        pub hatching: f32,
+        pub hatching_scale: f32,
+        pub hatching_levels: u32,
+        pub hatching_angle: f32,
+        pub hatching_color: Color,
+        pub hatching_paper: Color,
+        pub hatching_space: StyliseSpace,
+        pub hatching_depth: f32,
+        pub paint_radius: f32,
+        pub paint_anisotropy: f32,
+        pub paint_edge_darkening: f32,
+        pub paint_bleed: f32,
+        pub paint_canvas: u64,
+        pub paint_canvas_strength: f32,
+        pub paint_canvas_scale: f32,
+        pub paint_canvas_space: StyliseSpace,
+        pub paint_canvas_world_scale: f32,
+        pub ink: bool,
+        pub ink_threshold: f32,
+        pub ink_width: f32,
+        pub ink_color: Color,
+        pub ink_depth: f32,
+        pub ink_depth_threshold: f32,
+        pub ink_normal_threshold: f32,
+        pub depth_bands: u32,
+        pub depth_bands_near: f32,
+        pub depth_bands_far: f32,
+        pub depth_bands_near_color: Color,
+        pub depth_bands_far_color: Color,
+        pub depth_bands_flatten: f32,
+        pub vertex_snap: f32,
+        pub affine_texturing: f32,
+        pub depth_bits: u32,
+        pub paint_detail: f32,
+        pub paint_character_detail: f32,
+        pub watercolor_edge_darkening: f32,
+        pub watercolor_granulation: f32,
+        pub watercolor_turbulence: f32,
+        pub watercolor_dry_brush: f32,
+        pub watercolor_wobble: f32,
+        pub watercolor_paper: Color,
+        pub dither_space: StyliseSpace,
+        pub halftone_mode: HalftoneMode,
+        pub halftone_misregistration: f32,
+        pub halftone_region: HalftoneRegion,
+        pub hatching_keep_color: bool,
+    }
+
+    impl Default for Stylise {
+        fn default() -> Self {
+            Self {
+                pixel_height: Default::default(),
+                pixel_upscale: Default::default(),
+                pixel_snap: true,
+                posterize: Default::default(),
+                posterize_mode: Default::default(),
+                palette: Default::default(),
+                dither: Default::default(),
+                dither_strength: 1.0_f32,
+                dither_scale: 1,
+                halftone: Default::default(),
+                halftone_size: 6.0_f32,
+                halftone_angle: 45.0_f32,
+                halftone_color: Color { r: 0.02_f32, g: 0.02_f32, b: 0.03_f32 },
+                halftone_space: Default::default(),
+                hatching: Default::default(),
+                hatching_scale: 6.0_f32,
+                hatching_levels: 4,
+                hatching_angle: 45.0_f32,
+                hatching_color: Color { r: 0.04_f32, g: 0.035_f32, b: 0.03_f32 },
+                hatching_paper: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                hatching_space: Default::default(),
+                hatching_depth: Default::default(),
+                paint_radius: Default::default(),
+                paint_anisotropy: Default::default(),
+                paint_edge_darkening: Default::default(),
+                paint_bleed: Default::default(),
+                paint_canvas: Default::default(),
+                paint_canvas_strength: Default::default(),
+                paint_canvas_scale: 1.0_f32,
+                paint_canvas_space: Default::default(),
+                paint_canvas_world_scale: 128.0_f32,
+                ink: Default::default(),
+                ink_threshold: 0.1_f32,
+                ink_width: 1.0_f32,
+                ink_color: Color { r: 0.02_f32, g: 0.02_f32, b: 0.03_f32 },
+                ink_depth: Default::default(),
+                ink_depth_threshold: 0.04_f32,
+                ink_normal_threshold: 0.4_f32,
+                depth_bands: Default::default(),
+                depth_bands_near: 5.0_f32,
+                depth_bands_far: 60.0_f32,
+                depth_bands_near_color: Color { r: 0.02_f32, g: 0.02_f32, b: 0.03_f32 },
+                depth_bands_far_color: Color { r: 0.55_f32, g: 0.6_f32, b: 0.7_f32 },
+                depth_bands_flatten: 1.0_f32,
+                vertex_snap: Default::default(),
+                affine_texturing: Default::default(),
+                depth_bits: Default::default(),
+                paint_detail: 1.0_f32,
+                paint_character_detail: 0.8_f32,
+                watercolor_edge_darkening: Default::default(),
+                watercolor_granulation: Default::default(),
+                watercolor_turbulence: Default::default(),
+                watercolor_dry_brush: Default::default(),
+                watercolor_wobble: Default::default(),
+                watercolor_paper: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                dither_space: Default::default(),
+                halftone_mode: Default::default(),
+                halftone_misregistration: Default::default(),
+                halftone_region: Default::default(),
+                hatching_keep_color: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Stylise {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                pixel_height: field(o, "pixelHeight", d.pixel_height)?,
+                pixel_upscale: field(o, "pixelUpscale", d.pixel_upscale)?,
+                pixel_snap: field(o, "pixelSnap", d.pixel_snap)?,
+                posterize: field(o, "posterize", d.posterize)?,
+                posterize_mode: field(o, "posterizeMode", d.posterize_mode)?,
+                palette: field(o, "palette", d.palette)?,
+                dither: field(o, "dither", d.dither)?,
+                dither_strength: field(o, "ditherStrength", d.dither_strength)?,
+                dither_scale: field(o, "ditherScale", d.dither_scale)?,
+                halftone: field(o, "halftone", d.halftone)?,
+                halftone_size: field(o, "halftoneSize", d.halftone_size)?,
+                halftone_angle: field(o, "halftoneAngle", d.halftone_angle)?,
+                halftone_color: field(o, "halftoneColor", d.halftone_color)?,
+                halftone_space: field(o, "halftoneSpace", d.halftone_space)?,
+                hatching: field(o, "hatching", d.hatching)?,
+                hatching_scale: field(o, "hatchingScale", d.hatching_scale)?,
+                hatching_levels: field(o, "hatchingLevels", d.hatching_levels)?,
+                hatching_angle: field(o, "hatchingAngle", d.hatching_angle)?,
+                hatching_color: field(o, "hatchingColor", d.hatching_color)?,
+                hatching_paper: field(o, "hatchingPaper", d.hatching_paper)?,
+                hatching_space: field(o, "hatchingSpace", d.hatching_space)?,
+                hatching_depth: field(o, "hatchingDepth", d.hatching_depth)?,
+                paint_radius: field(o, "paintRadius", d.paint_radius)?,
+                paint_anisotropy: field(o, "paintAnisotropy", d.paint_anisotropy)?,
+                paint_edge_darkening: field(o, "paintEdgeDarkening", d.paint_edge_darkening)?,
+                paint_bleed: field(o, "paintBleed", d.paint_bleed)?,
+                paint_canvas: field(o, "paintCanvas", d.paint_canvas)?,
+                paint_canvas_strength: field(o, "paintCanvasStrength", d.paint_canvas_strength)?,
+                paint_canvas_scale: field(o, "paintCanvasScale", d.paint_canvas_scale)?,
+                paint_canvas_space: field(o, "paintCanvasSpace", d.paint_canvas_space)?,
+                paint_canvas_world_scale: field(o, "paintCanvasWorldScale", d.paint_canvas_world_scale)?,
+                ink: field(o, "ink", d.ink)?,
+                ink_threshold: field(o, "inkThreshold", d.ink_threshold)?,
+                ink_width: field(o, "inkWidth", d.ink_width)?,
+                ink_color: field(o, "inkColor", d.ink_color)?,
+                ink_depth: field(o, "inkDepth", d.ink_depth)?,
+                ink_depth_threshold: field(o, "inkDepthThreshold", d.ink_depth_threshold)?,
+                ink_normal_threshold: field(o, "inkNormalThreshold", d.ink_normal_threshold)?,
+                depth_bands: field(o, "depthBands", d.depth_bands)?,
+                depth_bands_near: field(o, "depthBandsNear", d.depth_bands_near)?,
+                depth_bands_far: field(o, "depthBandsFar", d.depth_bands_far)?,
+                depth_bands_near_color: field(o, "depthBandsNearColor", d.depth_bands_near_color)?,
+                depth_bands_far_color: field(o, "depthBandsFarColor", d.depth_bands_far_color)?,
+                depth_bands_flatten: field(o, "depthBandsFlatten", d.depth_bands_flatten)?,
+                vertex_snap: field(o, "vertexSnap", d.vertex_snap)?,
+                affine_texturing: field(o, "affineTexturing", d.affine_texturing)?,
+                depth_bits: field(o, "depthBits", d.depth_bits)?,
+                paint_detail: field(o, "paintDetail", d.paint_detail)?,
+                paint_character_detail: field(o, "paintCharacterDetail", d.paint_character_detail)?,
+                watercolor_edge_darkening: field(o, "watercolorEdgeDarkening", d.watercolor_edge_darkening)?,
+                watercolor_granulation: field(o, "watercolorGranulation", d.watercolor_granulation)?,
+                watercolor_turbulence: field(o, "watercolorTurbulence", d.watercolor_turbulence)?,
+                watercolor_dry_brush: field(o, "watercolorDryBrush", d.watercolor_dry_brush)?,
+                watercolor_wobble: field(o, "watercolorWobble", d.watercolor_wobble)?,
+                watercolor_paper: field(o, "watercolorPaper", d.watercolor_paper)?,
+                dither_space: field(o, "ditherSpace", d.dither_space)?,
+                halftone_mode: field(o, "halftoneMode", d.halftone_mode)?,
+                halftone_misregistration: field(o, "halftoneMisregistration", d.halftone_misregistration)?,
+                halftone_region: field(o, "halftoneRegion", d.halftone_region)?,
+                hatching_keep_color: field(o, "hatchingKeepColor", d.hatching_keep_color)?,
+            })
+        }
+    }
+
+    /// `MaterialStyle`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct MaterialStyle {
+        pub toon: bool,
+        pub gradient_map: u64,
+        pub shadow_tint: Color,
+        pub shadow_tint_amount: f32,
+        pub shadow_darkness: f32,
+        pub rim_color: Color,
+        pub rim_intensity: f32,
+        pub rim_power: f32,
+        pub outline_color: Color,
+        pub outline_width: f32,
+        pub outline_distance: f32,
+        pub flat_shading: bool,
+        pub surface: MaterialSurface,
+        pub surface_strength: f32,
+        pub surface_scale: f32,
+        pub toon_ambient: f32,
+        pub toon_softness: f32,
+        pub outline_place: OutlinePlace,
+        pub wireframe: bool,
+        pub wireframe_angle: f32,
+        pub wireframe_color: Color,
+    }
+
+    impl Default for MaterialStyle {
+        fn default() -> Self {
+            Self {
+                toon: Default::default(),
+                gradient_map: Default::default(),
+                shadow_tint: Color { r: 0.18_f32, g: 0.16_f32, b: 0.32_f32 },
+                shadow_tint_amount: Default::default(),
+                shadow_darkness: Default::default(),
+                rim_color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                rim_intensity: Default::default(),
+                rim_power: 3.0_f32,
+                outline_color: Color { r: 0.02_f32, g: 0.02_f32, b: 0.03_f32 },
+                outline_width: Default::default(),
+                outline_distance: Default::default(),
+                flat_shading: Default::default(),
+                surface: Default::default(),
+                surface_strength: 1.0_f32,
+                surface_scale: Default::default(),
+                toon_ambient: Default::default(),
+                toon_softness: 1.0_f32,
+                outline_place: Default::default(),
+                wireframe: Default::default(),
+                wireframe_angle: 30.0_f32,
+                wireframe_color: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for MaterialStyle {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                toon: field(o, "toon", d.toon)?,
+                gradient_map: field(o, "gradientMap", d.gradient_map)?,
+                shadow_tint: field(o, "shadowTint", d.shadow_tint)?,
+                shadow_tint_amount: field(o, "shadowTintAmount", d.shadow_tint_amount)?,
+                shadow_darkness: field(o, "shadowDarkness", d.shadow_darkness)?,
+                rim_color: field(o, "rimColor", d.rim_color)?,
+                rim_intensity: field(o, "rimIntensity", d.rim_intensity)?,
+                rim_power: field(o, "rimPower", d.rim_power)?,
+                outline_color: field(o, "outlineColor", d.outline_color)?,
+                outline_width: field(o, "outlineWidth", d.outline_width)?,
+                outline_distance: field(o, "outlineDistance", d.outline_distance)?,
+                flat_shading: field(o, "flatShading", d.flat_shading)?,
+                surface: field(o, "surface", d.surface)?,
+                surface_strength: field(o, "surfaceStrength", d.surface_strength)?,
+                surface_scale: field(o, "surfaceScale", d.surface_scale)?,
+                toon_ambient: field(o, "toonAmbient", d.toon_ambient)?,
+                toon_softness: field(o, "toonSoftness", d.toon_softness)?,
+                outline_place: field(o, "outlinePlace", d.outline_place)?,
+                wireframe: field(o, "wireframe", d.wireframe)?,
+                wireframe_angle: field(o, "wireframeAngle", d.wireframe_angle)?,
+                wireframe_color: field(o, "wireframeColor", d.wireframe_color)?,
+            })
+        }
+    }
+
+    /// `Lighting2D`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Lighting2D {
+        pub enabled: bool,
+        pub ambient: Color,
+        pub min_layer: i32,
+        pub max_layer: i32,
+        pub resolution: f32,
+        pub shadow_angles: u32,
+    }
+
+    impl Default for Lighting2D {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                ambient: Color { r: 0.15_f32, g: 0.15_f32, b: 0.15_f32 },
+                min_layer: -1000000,
+                max_layer: 99,
+                resolution: 0.5_f32,
+                shadow_angles: 1024,
+            }
+        }
+    }
+
+    impl FromJson for Lighting2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                ambient: field(o, "ambient", d.ambient)?,
+                min_layer: field(o, "minLayer", d.min_layer)?,
+                max_layer: field(o, "maxLayer", d.max_layer)?,
+                resolution: field(o, "resolution", d.resolution)?,
+                shadow_angles: field(o, "shadowAngles", d.shadow_angles)?,
+            })
+        }
+    }
+
+    /// `Light2D`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Light2D {
+        pub color: Color,
+        pub intensity: f32,
+        pub radius: f32,
+        pub falloff: f32,
+        pub source_radius: f32,
+        pub cast_shadows: bool,
+        pub kind: Light2DKind,
+        pub inner_angle: f32,
+        pub outer_angle: f32,
+        pub height: f32,
+        pub layers: u32,
+    }
+
+    impl Default for Light2D {
+        fn default() -> Self {
+            Self {
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                intensity: 1.0_f32,
+                radius: 5.0_f32,
+                falloff: 2.0_f32,
+                source_radius: 0.25_f32,
+                cast_shadows: true,
+                kind: Default::default(),
+                inner_angle: 0.35_f32,
+                outer_angle: 0.6_f32,
+                height: 1.0_f32,
+                layers: 4294967295,
+            }
+        }
+    }
+
+    impl FromJson for Light2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                color: field(o, "color", d.color)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                radius: field(o, "radius", d.radius)?,
+                falloff: field(o, "falloff", d.falloff)?,
+                source_radius: field(o, "sourceRadius", d.source_radius)?,
+                cast_shadows: field(o, "castShadows", d.cast_shadows)?,
+                kind: field(o, "kind", d.kind)?,
+                inner_angle: field(o, "innerAngle", d.inner_angle)?,
+                outer_angle: field(o, "outerAngle", d.outer_angle)?,
+                height: field(o, "height", d.height)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `Occluder2D`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Occluder2D {
+        pub width: f32,
+        pub height: f32,
+        pub points: Vec<f32>,
+        pub layers: u32,
+    }
+
+    impl Default for Occluder2D {
+        fn default() -> Self {
+            Self {
+                width: 1.0_f32,
+                height: 1.0_f32,
+                points: Default::default(),
+                layers: 4294967295,
+            }
+        }
+    }
+
+    impl FromJson for Occluder2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                width: field(o, "width", d.width)?,
+                height: field(o, "height", d.height)?,
+                points: field(o, "points", d.points)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `LightMask2D`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LightMask2D {
+        pub layers: u32,
+    }
+
+    impl Default for LightMask2D {
+        fn default() -> Self {
+            Self {
+                layers: 1,
+            }
+        }
+    }
+
+    impl FromJson for LightMask2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `Decal`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Decal {
+        pub color: Color,
+        pub opacity: f32,
+        pub uv_min: Vec2,
+        pub uv_max: Vec2,
+        pub emissive: Color,
+        pub roughness: f32,
+        pub angle_fade: f32,
+        pub normal_min: Vec2,
+        pub normal_max: Vec2,
+        pub normal_scale: f32,
+        pub visible: bool,
+    }
+
+    impl Default for Decal {
+        fn default() -> Self {
+            Self {
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                uv_min: Default::default(),
+                uv_max: Vec2::new(1.0_f32, 1.0_f32),
+                emissive: Default::default(),
+                roughness: -1.0_f32,
+                angle_fade: 75.0_f32,
+                normal_min: Default::default(),
+                normal_max: Default::default(),
+                normal_scale: 1.0_f32,
+                visible: true,
+            }
+        }
+    }
+
+    impl FromJson for Decal {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                uv_min: field(o, "uvMin", d.uv_min)?,
+                uv_max: field(o, "uvMax", d.uv_max)?,
+                emissive: field(o, "emissive", d.emissive)?,
+                roughness: field(o, "roughness", d.roughness)?,
+                angle_fade: field(o, "angleFade", d.angle_fade)?,
+                normal_min: field(o, "normalMin", d.normal_min)?,
+                normal_max: field(o, "normalMax", d.normal_max)?,
+                normal_scale: field(o, "normalScale", d.normal_scale)?,
+                visible: field(o, "visible", d.visible)?,
+            })
+        }
+    }
+
+    /// `ParticleSystem`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ParticleSystem {
+        pub emitter: u64,
+        pub seed: u32,
+        pub start_tick: u32,
+        pub stop_tick: u32,
+        pub visible: bool,
+        pub layers: u32,
+    }
+
+    impl Default for ParticleSystem {
+        fn default() -> Self {
+            Self {
+                emitter: Default::default(),
+                seed: Default::default(),
+                start_tick: 4294967295,
+                stop_tick: Default::default(),
+                visible: true,
+                layers: 1,
+            }
+        }
+    }
+
+    impl FromJson for ParticleSystem {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                emitter: field(o, "emitter", d.emitter)?,
+                seed: field(o, "seed", d.seed)?,
+                start_tick: field(o, "startTick", d.start_tick)?,
+                stop_tick: field(o, "stopTick", d.stop_tick)?,
+                visible: field(o, "visible", d.visible)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `ParticleEvent`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ParticleEvent {
+        pub entity: u64,
+        pub kind: ParticleEventKind,
+        pub index: u32,
+        pub position: Vec3,
+        pub velocity: Vec3,
+    }
+
+    impl Default for ParticleEvent {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                kind: Default::default(),
+                index: Default::default(),
+                position: Default::default(),
+                velocity: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ParticleEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                kind: field(o, "kind", d.kind)?,
+                index: field(o, "index", d.index)?,
+                position: field(o, "position", d.position)?,
+                velocity: field(o, "velocity", d.velocity)?,
+            })
+        }
+    }
+
+    /// `Trail`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Trail {
+        pub lifetime: f32,
+        pub min_distance: f32,
+        pub width_start: f32,
+        pub width_end: f32,
+        pub color: Color,
+        pub opacity: f32,
+        pub color_end: Color,
+        pub opacity_end: f32,
+        pub texture: u64,
+        pub uv_tile: f32,
+        pub blend: StripBlend,
+        pub layered: bool,
+        pub layer: i32,
+    }
+
+    impl Default for Trail {
+        fn default() -> Self {
+            Self {
+                lifetime: 0.4_f32,
+                min_distance: 0.05_f32,
+                width_start: 0.15_f32,
+                width_end: Default::default(),
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                color_end: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity_end: Default::default(),
+                texture: Default::default(),
+                uv_tile: Default::default(),
+                blend: Default::default(),
+                layered: Default::default(),
+                layer: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Trail {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                lifetime: field(o, "lifetime", d.lifetime)?,
+                min_distance: field(o, "minDistance", d.min_distance)?,
+                width_start: field(o, "widthStart", d.width_start)?,
+                width_end: field(o, "widthEnd", d.width_end)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                color_end: field(o, "colorEnd", d.color_end)?,
+                opacity_end: field(o, "opacityEnd", d.opacity_end)?,
+                texture: field(o, "texture", d.texture)?,
+                uv_tile: field(o, "uvTile", d.uv_tile)?,
+                blend: field(o, "blend", d.blend)?,
+                layered: field(o, "layered", d.layered)?,
+                layer: field(o, "layer", d.layer)?,
+            })
+        }
+    }
+
+    /// `Beam`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Beam {
+        pub end: Vec3,
+        pub width: f32,
+        pub color: Color,
+        pub opacity: f32,
+        pub texture: u64,
+        pub tile: f32,
+        pub scroll: f32,
+        pub segments: u32,
+        pub jitter: f32,
+        pub seed: u32,
+        pub blend: StripBlend,
+    }
+
+    impl Default for Beam {
+        fn default() -> Self {
+            Self {
+                end: Default::default(),
+                width: 0.1_f32,
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                texture: Default::default(),
+                tile: 1.0_f32,
+                scroll: Default::default(),
+                segments: 1,
+                jitter: Default::default(),
+                seed: Default::default(),
+                blend: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Beam {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                end: field(o, "end", d.end)?,
+                width: field(o, "width", d.width)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                texture: field(o, "texture", d.texture)?,
+                tile: field(o, "tile", d.tile)?,
+                scroll: field(o, "scroll", d.scroll)?,
+                segments: field(o, "segments", d.segments)?,
+                jitter: field(o, "jitter", d.jitter)?,
+                seed: field(o, "seed", d.seed)?,
+                blend: field(o, "blend", d.blend)?,
+            })
+        }
+    }
+
+    /// `Sprite`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Sprite {
+        pub texture: u64,
+        pub array: u64,
+        pub array_layer: u32,
+        pub width: f32,
+        pub height: f32,
+        pub anchor: Vec2,
+        pub color: Color,
+        pub opacity: f32,
+        pub uv_min: Vec2,
+        pub uv_max: Vec2,
+        pub layer: i32,
+        pub sort_y: bool,
+        pub facing: SpriteFacing,
+        pub flip_x: bool,
+        pub flip_y: bool,
+        pub flash: f32,
+        pub flash_color: Color,
+        pub glow: f32,
+        pub blend: SpriteBlend,
+        pub cast_shadow: bool,
+        pub slice_x: Vec2,
+        pub slice_y: Vec2,
+        pub slice_scale: f32,
+        pub shadow: f32,
+        pub shadow_size: Vec2,
+        pub shadow_offset: Vec2,
+        pub drop_shadow: f32,
+        pub drop_shadow_height: f32,
+        pub tone_mapped: bool,
+        pub visible: bool,
+        pub layers: u32,
+        pub outline: f32,
+        pub outline_color: Color,
+        pub palette: u64,
+        pub palette_row: u32,
+        pub material: u64,
+    }
+
+    impl Default for Sprite {
+        fn default() -> Self {
+            Self {
+                texture: Default::default(),
+                array: Default::default(),
+                array_layer: Default::default(),
+                width: 1.0_f32,
+                height: 1.0_f32,
+                anchor: Vec2::new(0.5_f32, 0.5_f32),
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                uv_min: Default::default(),
+                uv_max: Vec2::new(1.0_f32, 1.0_f32),
+                layer: Default::default(),
+                sort_y: Default::default(),
+                facing: Default::default(),
+                flip_x: Default::default(),
+                flip_y: Default::default(),
+                flash: Default::default(),
+                flash_color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                glow: Default::default(),
+                blend: Default::default(),
+                cast_shadow: Default::default(),
+                slice_x: Default::default(),
+                slice_y: Default::default(),
+                slice_scale: 0.0625_f32,
+                shadow: Default::default(),
+                shadow_size: Default::default(),
+                shadow_offset: Default::default(),
+                drop_shadow: Default::default(),
+                drop_shadow_height: Default::default(),
+                tone_mapped: true,
+                visible: true,
+                layers: 1,
+                outline: Default::default(),
+                outline_color: Color { r: 0.02_f32, g: 0.02_f32, b: 0.03_f32 },
+                palette: Default::default(),
+                palette_row: Default::default(),
+                material: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Sprite {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                texture: field(o, "texture", d.texture)?,
+                array: field(o, "array", d.array)?,
+                array_layer: field(o, "arrayLayer", d.array_layer)?,
+                width: field(o, "width", d.width)?,
+                height: field(o, "height", d.height)?,
+                anchor: field(o, "anchor", d.anchor)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                uv_min: field(o, "uvMin", d.uv_min)?,
+                uv_max: field(o, "uvMax", d.uv_max)?,
+                layer: field(o, "layer", d.layer)?,
+                sort_y: field(o, "sortY", d.sort_y)?,
+                facing: field(o, "facing", d.facing)?,
+                flip_x: field(o, "flipX", d.flip_x)?,
+                flip_y: field(o, "flipY", d.flip_y)?,
+                flash: field(o, "flash", d.flash)?,
+                flash_color: field(o, "flashColor", d.flash_color)?,
+                glow: field(o, "glow", d.glow)?,
+                blend: field(o, "blend", d.blend)?,
+                cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+                slice_x: field(o, "sliceX", d.slice_x)?,
+                slice_y: field(o, "sliceY", d.slice_y)?,
+                slice_scale: field(o, "sliceScale", d.slice_scale)?,
+                shadow: field(o, "shadow", d.shadow)?,
+                shadow_size: field(o, "shadowSize", d.shadow_size)?,
+                shadow_offset: field(o, "shadowOffset", d.shadow_offset)?,
+                drop_shadow: field(o, "dropShadow", d.drop_shadow)?,
+                drop_shadow_height: field(o, "dropShadowHeight", d.drop_shadow_height)?,
+                tone_mapped: field(o, "toneMapped", d.tone_mapped)?,
+                visible: field(o, "visible", d.visible)?,
+                layers: field(o, "layers", d.layers)?,
+                outline: field(o, "outline", d.outline)?,
+                outline_color: field(o, "outlineColor", d.outline_color)?,
+                palette: field(o, "palette", d.palette)?,
+                palette_row: field(o, "paletteRow", d.palette_row)?,
+                material: field(o, "material", d.material)?,
+            })
+        }
+    }
+
+    /// `Afterimage`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Afterimage {
+        pub count: u32,
+        pub interval: u32,
+        pub opacity: f32,
+        pub color: Color,
+        pub additive: bool,
+        pub active: bool,
+    }
+
+    impl Default for Afterimage {
+        fn default() -> Self {
+            Self {
+                count: 4,
+                interval: 3,
+                opacity: 0.5_f32,
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                additive: Default::default(),
+                active: true,
+            }
+        }
+    }
+
+    impl FromJson for Afterimage {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                count: field(o, "count", d.count)?,
+                interval: field(o, "interval", d.interval)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                color: field(o, "color", d.color)?,
+                additive: field(o, "additive", d.additive)?,
+                active: field(o, "active", d.active)?,
+            })
+        }
+    }
+
+    /// `ReflectionProbe`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ReflectionProbe {
+        pub size: Vec3,
+        pub resolution: u32,
+        pub mode: ReflectionProbeMode,
+        pub interval: u32,
+        pub intensity: f32,
+        pub blend_distance: f32,
+        pub visible: bool,
+    }
+
+    impl Default for ReflectionProbe {
+        fn default() -> Self {
+            Self {
+                size: Vec3::new(10.0_f32, 10.0_f32, 10.0_f32),
+                resolution: 128,
+                mode: Default::default(),
+                interval: 30,
+                intensity: 1.0_f32,
+                blend_distance: 1.0_f32,
+                visible: true,
+            }
+        }
+    }
+
+    impl FromJson for ReflectionProbe {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                size: field(o, "size", d.size)?,
+                resolution: field(o, "resolution", d.resolution)?,
+                mode: field(o, "mode", d.mode)?,
+                interval: field(o, "interval", d.interval)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                blend_distance: field(o, "blendDistance", d.blend_distance)?,
+                visible: field(o, "visible", d.visible)?,
+            })
+        }
+    }
+
+    /// `Lines`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Lines {
+        pub geometry: u64,
+        pub mode: LineMode,
+        pub color: Color,
+        pub opacity: f32,
+        pub width: f32,
+        pub world_units: bool,
+        pub depth_test: bool,
+        pub dash_size: f32,
+        pub gap_size: f32,
+        pub visible: bool,
+        pub layers: u32,
+    }
+
+    impl Default for Lines {
+        fn default() -> Self {
+            Self {
+                geometry: Default::default(),
+                mode: Default::default(),
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                width: 1.0_f32,
+                world_units: Default::default(),
+                depth_test: true,
+                dash_size: Default::default(),
+                gap_size: 1.0_f32,
+                visible: true,
+                layers: 1,
+            }
+        }
+    }
+
+    impl FromJson for Lines {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                geometry: field(o, "geometry", d.geometry)?,
+                mode: field(o, "mode", d.mode)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                width: field(o, "width", d.width)?,
+                world_units: field(o, "worldUnits", d.world_units)?,
+                depth_test: field(o, "depthTest", d.depth_test)?,
+                dash_size: field(o, "dashSize", d.dash_size)?,
+                gap_size: field(o, "gapSize", d.gap_size)?,
+                visible: field(o, "visible", d.visible)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `Points`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Points {
+        pub geometry: u64,
+        pub color: Color,
+        pub opacity: f32,
+        pub size: f32,
+        pub size_attenuation: bool,
+        pub depth_test: bool,
+        pub visible: bool,
+        pub layers: u32,
+    }
+
+    impl Default for Points {
+        fn default() -> Self {
+            Self {
+                geometry: Default::default(),
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                size: 1.0_f32,
+                size_attenuation: true,
+                depth_test: true,
+                visible: true,
+                layers: 1,
+            }
+        }
+    }
+
+    impl FromJson for Points {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                geometry: field(o, "geometry", d.geometry)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                size: field(o, "size", d.size)?,
+                size_attenuation: field(o, "sizeAttenuation", d.size_attenuation)?,
+                depth_test: field(o, "depthTest", d.depth_test)?,
+                visible: field(o, "visible", d.visible)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `CameraView`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CameraView {
+        pub target: u64,
+        pub viewport_x: f32,
+        pub viewport_y: f32,
+        pub viewport_width: f32,
+        pub viewport_height: f32,
+        pub fov: f32,
+        pub near: f32,
+        pub far: f32,
+        pub zoom: f32,
+        pub orthographic: bool,
+        pub height: f32,
+        pub exposure: f32,
+        pub layers: u32,
+        pub order: i32,
+        pub clear: bool,
+        pub clear_color: Color,
+        pub every: u32,
+        pub active: bool,
+    }
+
+    impl Default for CameraView {
+        fn default() -> Self {
+            Self {
+                target: Default::default(),
+                viewport_x: Default::default(),
+                viewport_y: Default::default(),
+                viewport_width: 1.0_f32,
+                viewport_height: 1.0_f32,
+                fov: 50.0_f32,
+                near: 0.1_f32,
+                far: 2000.0_f32,
+                zoom: 1.0_f32,
+                orthographic: Default::default(),
+                height: 10.0_f32,
+                exposure: 1.0_f32,
+                layers: 1,
+                order: Default::default(),
+                clear: Default::default(),
+                clear_color: Color { r: 0.0_f32, g: 0.0_f32, b: 0.0_f32 },
+                every: 1,
+                active: true,
+            }
+        }
+    }
+
+    impl FromJson for CameraView {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                target: field(o, "target", d.target)?,
+                viewport_x: field(o, "viewportX", d.viewport_x)?,
+                viewport_y: field(o, "viewportY", d.viewport_y)?,
+                viewport_width: field(o, "viewportWidth", d.viewport_width)?,
+                viewport_height: field(o, "viewportHeight", d.viewport_height)?,
+                fov: field(o, "fov", d.fov)?,
+                near: field(o, "near", d.near)?,
+                far: field(o, "far", d.far)?,
+                zoom: field(o, "zoom", d.zoom)?,
+                orthographic: field(o, "orthographic", d.orthographic)?,
+                height: field(o, "height", d.height)?,
+                exposure: field(o, "exposure", d.exposure)?,
+                layers: field(o, "layers", d.layers)?,
+                order: field(o, "order", d.order)?,
+                clear: field(o, "clear", d.clear)?,
+                clear_color: field(o, "clearColor", d.clear_color)?,
+                every: field(o, "every", d.every)?,
+                active: field(o, "active", d.active)?,
+            })
+        }
+    }
+
+    /// `Mirror`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Mirror {
+        pub target: u64,
+        pub width: f32,
+        pub height: f32,
+        pub layers: u32,
+        pub every: u32,
+        pub active: bool,
+    }
+
+    impl Default for Mirror {
+        fn default() -> Self {
+            Self {
+                target: Default::default(),
+                width: 1.0_f32,
+                height: 1.0_f32,
+                layers: 1,
+                every: 1,
+                active: true,
+            }
+        }
+    }
+
+    impl FromJson for Mirror {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                target: field(o, "target", d.target)?,
+                width: field(o, "width", d.width)?,
+                height: field(o, "height", d.height)?,
+                layers: field(o, "layers", d.layers)?,
+                every: field(o, "every", d.every)?,
+                active: field(o, "active", d.active)?,
+            })
+        }
+    }
+
+    /// `RectLight`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RectLight {
+        pub color: Color,
+        pub intensity: f32,
+        pub width: f32,
+        pub height: f32,
+        pub two_sided: bool,
+        pub cast_shadow: bool,
+    }
+
+    impl Default for RectLight {
+        fn default() -> Self {
+            Self {
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                intensity: 1.0_f32,
+                width: 10.0_f32,
+                height: 10.0_f32,
+                two_sided: Default::default(),
+                cast_shadow: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for RectLight {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                color: field(o, "color", d.color)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                width: field(o, "width", d.width)?,
+                height: field(o, "height", d.height)?,
+                two_sided: field(o, "twoSided", d.two_sided)?,
+                cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+            })
+        }
+    }
+
+    /// `LightVolume`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LightVolume {
+        pub size: Vec3,
+        pub spacing: f32,
+    }
+
+    impl Default for LightVolume {
+        fn default() -> Self {
+            Self {
+                size: Vec3::new(4.0_f32, 4.0_f32, 4.0_f32),
+                spacing: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for LightVolume {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                size: field(o, "size", d.size)?,
+                spacing: field(o, "spacing", d.spacing)?,
+            })
+        }
+    }
+
+    /// `RealtimeLightVolume`: packages/knowledge/wiki/render.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RealtimeLightVolume {
+        pub updates_per_frame: u32,
+        pub intensity: f32,
+    }
+
+    impl Default for RealtimeLightVolume {
+        fn default() -> Self {
+            Self {
+                updates_per_frame: 2,
+                intensity: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for RealtimeLightVolume {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                updates_per_frame: field(o, "updatesPerFrame", d.updates_per_frame)?,
+                intensity: field(o, "intensity", d.intensity)?,
+            })
+        }
+    }
+
+    /// `Model`: packages/knowledge/wiki/load.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Model {
+        pub asset: u64,
+        pub tint: Color,
+        pub flash: f32,
+        pub flash_color: Color,
+        pub cast_shadow: bool,
+        pub receive_shadow: bool,
+        pub visible: bool,
+        pub lod_bias: f32,
+        pub layers: u32,
+        pub sway: f32,
+        pub r#static: bool,
+        pub variant: i32,
+    }
+
+    impl Default for Model {
+        fn default() -> Self {
+            Self {
+                asset: Default::default(),
+                tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                flash: Default::default(),
+                flash_color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                cast_shadow: true,
+                receive_shadow: true,
+                visible: true,
+                lod_bias: 1.0_f32,
+                layers: 1,
+                sway: Default::default(),
+                r#static: Default::default(),
+                variant: -1,
+            }
+        }
+    }
+
+    impl FromJson for Model {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                asset: field(o, "asset", d.asset)?,
+                tint: field(o, "tint", d.tint)?,
+                flash: field(o, "flash", d.flash)?,
+                flash_color: field(o, "flashColor", d.flash_color)?,
+                cast_shadow: field(o, "castShadow", d.cast_shadow)?,
+                receive_shadow: field(o, "receiveShadow", d.receive_shadow)?,
+                visible: field(o, "visible", d.visible)?,
+                lod_bias: field(o, "lodBias", d.lod_bias)?,
+                layers: field(o, "layers", d.layers)?,
+                sway: field(o, "sway", d.sway)?,
+                r#static: field(o, "static", d.r#static)?,
+                variant: field(o, "variant", d.variant)?,
+            })
+        }
+    }
+
+    /// `PrefabLink`: packages/knowledge/wiki/load.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PrefabLink {
+        pub prefab: u64,
+        pub node: u32,
+        pub root: u64,
+    }
+
+    impl Default for PrefabLink {
+        fn default() -> Self {
+            Self {
+                prefab: Default::default(),
+                node: Default::default(),
+                root: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PrefabLink {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                prefab: field(o, "prefab", d.prefab)?,
+                node: field(o, "node", d.node)?,
+                root: field(o, "root", d.root)?,
+            })
+        }
+    }
+
+    /// `AssetReady`: packages/knowledge/wiki/load.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AssetReady {
+        pub asset: u64,
+        pub path: String,
+    }
+
+    impl Default for AssetReady {
+        fn default() -> Self {
+            Self {
+                asset: Default::default(),
+                path: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AssetReady {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                asset: field(o, "asset", d.asset)?,
+                path: field(o, "path", d.path)?,
+            })
+        }
+    }
+
+    /// `AssetFailed`: packages/knowledge/wiki/load.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AssetFailed {
+        pub asset: u64,
+        pub path: String,
+        pub reason: String,
+    }
+
+    impl Default for AssetFailed {
+        fn default() -> Self {
+            Self {
+                asset: Default::default(),
+                path: Default::default(),
+                reason: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AssetFailed {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                asset: field(o, "asset", d.asset)?,
+                path: field(o, "path", d.path)?,
+                reason: field(o, "reason", d.reason)?,
+            })
+        }
+    }
+
+    /// `RigidBody`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RigidBody {
+        pub kind: RigidBodyType,
+        pub mass: f32,
+        pub linear_damping: f32,
+        pub angular_damping: f32,
+        pub gravity_scale: f32,
+        pub lock: u32,
+        pub ccd: bool,
+        pub center_of_mass: Vec3,
+        pub can_sleep: bool,
+        pub sleeping: bool,
+    }
+
+    impl Default for RigidBody {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+                mass: Default::default(),
+                linear_damping: Default::default(),
+                angular_damping: Default::default(),
+                gravity_scale: 1.0_f32,
+                lock: Default::default(),
+                ccd: Default::default(),
+                center_of_mass: Default::default(),
+                can_sleep: true,
+                sleeping: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for RigidBody {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+                mass: field(o, "mass", d.mass)?,
+                linear_damping: field(o, "linearDamping", d.linear_damping)?,
+                angular_damping: field(o, "angularDamping", d.angular_damping)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                lock: field(o, "lock", d.lock)?,
+                ccd: field(o, "ccd", d.ccd)?,
+                center_of_mass: field(o, "centerOfMass", d.center_of_mass)?,
+                can_sleep: field(o, "canSleep", d.can_sleep)?,
+                sleeping: field(o, "sleeping", d.sleeping)?,
+            })
+        }
+    }
+
+    /// `Collider`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Collider {
+        pub shape: u32,
+        pub size: Vec3,
+        pub radius: f32,
+        pub height: f32,
+        pub mesh: u64,
+        pub offset: Vec3,
+        pub rotation: Quat,
+        pub friction: f32,
+        pub restitution: f32,
+        pub density: f32,
+        pub sensor: bool,
+        pub layers: u32,
+        pub mask: u32,
+    }
+
+    impl Default for Collider {
+        fn default() -> Self {
+            Self {
+                shape: Default::default(),
+                size: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+                radius: 0.5_f32,
+                height: 1.0_f32,
+                mesh: Default::default(),
+                offset: Default::default(),
+                rotation: Default::default(),
+                friction: 0.5_f32,
+                restitution: Default::default(),
+                density: 1.0_f32,
+                sensor: Default::default(),
+                layers: 1,
+                mask: 4294967295,
+            }
+        }
+    }
+
+    impl FromJson for Collider {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                shape: field(o, "shape", d.shape)?,
+                size: field(o, "size", d.size)?,
+                radius: field(o, "radius", d.radius)?,
+                height: field(o, "height", d.height)?,
+                mesh: field(o, "mesh", d.mesh)?,
+                offset: field(o, "offset", d.offset)?,
+                rotation: field(o, "rotation", d.rotation)?,
+                friction: field(o, "friction", d.friction)?,
+                restitution: field(o, "restitution", d.restitution)?,
+                density: field(o, "density", d.density)?,
+                sensor: field(o, "sensor", d.sensor)?,
+                layers: field(o, "layers", d.layers)?,
+                mask: field(o, "mask", d.mask)?,
+            })
+        }
+    }
+
+    /// `Velocity`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Velocity {
+        pub linear: Vec3,
+        pub angular: Vec3,
+    }
+
+    impl Default for Velocity {
+        fn default() -> Self {
+            Self {
+                linear: Default::default(),
+                angular: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Velocity {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                linear: field(o, "linear", d.linear)?,
+                angular: field(o, "angular", d.angular)?,
+            })
+        }
+    }
+
+    /// `Physics`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Physics {
+        pub profile: u32,
+        pub gravity: Vec3,
+        pub substeps: u32,
+        pub solver_iterations: u32,
+        pub rest_speed: f32,
+        pub sleep_ticks: u32,
+        pub sleep_speed: f32,
+    }
+
+    impl Default for Physics {
+        fn default() -> Self {
+            Self {
+                profile: 3,
+                gravity: Vec3::new(0.0_f32, -9.81_f32, 0.0_f32),
+                substeps: 1,
+                solver_iterations: 4,
+                rest_speed: 0.02_f32,
+                sleep_ticks: Default::default(),
+                sleep_speed: 0.1_f32,
+            }
+        }
+    }
+
+    impl FromJson for Physics {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                profile: field(o, "profile", d.profile)?,
+                gravity: field(o, "gravity", d.gravity)?,
+                substeps: field(o, "substeps", d.substeps)?,
+                solver_iterations: field(o, "solverIterations", d.solver_iterations)?,
+                rest_speed: field(o, "restSpeed", d.rest_speed)?,
+                sleep_ticks: field(o, "sleepTicks", d.sleep_ticks)?,
+                sleep_speed: field(o, "sleepSpeed", d.sleep_speed)?,
+            })
+        }
+    }
+
+    /// `CollisionStarted`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CollisionStarted {
+        pub a: u64,
+        pub b: u64,
+        pub point: Vec3,
+        pub normal: Vec3,
+        pub impulse: f32,
+        pub relative_velocity: Vec3,
+    }
+
+    impl Default for CollisionStarted {
+        fn default() -> Self {
+            Self {
+                a: Default::default(),
+                b: Default::default(),
+                point: Default::default(),
+                normal: Default::default(),
+                impulse: Default::default(),
+                relative_velocity: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CollisionStarted {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                a: field(o, "a", d.a)?,
+                b: field(o, "b", d.b)?,
+                point: field(o, "point", d.point)?,
+                normal: field(o, "normal", d.normal)?,
+                impulse: field(o, "impulse", d.impulse)?,
+                relative_velocity: field(o, "relativeVelocity", d.relative_velocity)?,
+            })
+        }
+    }
+
+    /// `CollisionEnded`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CollisionEnded {
+        pub a: u64,
+        pub b: u64,
+    }
+
+    impl Default for CollisionEnded {
+        fn default() -> Self {
+            Self {
+                a: Default::default(),
+                b: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CollisionEnded {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                a: field(o, "a", d.a)?,
+                b: field(o, "b", d.b)?,
+            })
+        }
+    }
+
+    /// `SensorEntered`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SensorEntered {
+        pub sensor: u64,
+        pub other: u64,
+    }
+
+    impl Default for SensorEntered {
+        fn default() -> Self {
+            Self {
+                sensor: Default::default(),
+                other: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SensorEntered {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sensor: field(o, "sensor", d.sensor)?,
+                other: field(o, "other", d.other)?,
+            })
+        }
+    }
+
+    /// `SensorExited`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SensorExited {
+        pub sensor: u64,
+        pub other: u64,
+    }
+
+    impl Default for SensorExited {
+        fn default() -> Self {
+            Self {
+                sensor: Default::default(),
+                other: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SensorExited {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sensor: field(o, "sensor", d.sensor)?,
+                other: field(o, "other", d.other)?,
+            })
+        }
+    }
+
+    /// `JointBroken`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct JointBroken {
+        pub joint: u64,
+        pub body: u64,
+        pub other: u64,
+        pub force: f32,
+        pub torque: f32,
+    }
+
+    impl Default for JointBroken {
+        fn default() -> Self {
+            Self {
+                joint: Default::default(),
+                body: Default::default(),
+                other: Default::default(),
+                force: Default::default(),
+                torque: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for JointBroken {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                joint: field(o, "joint", d.joint)?,
+                body: field(o, "body", d.body)?,
+                other: field(o, "other", d.other)?,
+                force: field(o, "force", d.force)?,
+                torque: field(o, "torque", d.torque)?,
+            })
+        }
+    }
+
+    /// `ContactHook`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ContactHook {
+        pub one_way: Vec3,
+        pub surface_velocity: Vec3,
+        pub friction: f32,
+        pub restitution: f32,
+        pub ignore: Vec<u64>,
+    }
+
+    impl Default for ContactHook {
+        fn default() -> Self {
+            Self {
+                one_way: Default::default(),
+                surface_velocity: Default::default(),
+                friction: -1.0_f32,
+                restitution: -1.0_f32,
+                ignore: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ContactHook {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                one_way: field(o, "oneWay", d.one_way)?,
+                surface_velocity: field(o, "surfaceVelocity", d.surface_velocity)?,
+                friction: field(o, "friction", d.friction)?,
+                restitution: field(o, "restitution", d.restitution)?,
+                ignore: field(o, "ignore", d.ignore)?,
+            })
+        }
+    }
+
+    /// `BodySlept`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct BodySlept {
+        pub entity: u64,
+    }
+
+    impl Default for BodySlept {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for BodySlept {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+            })
+        }
+    }
+
+    /// `BodyWoke`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct BodyWoke {
+        pub entity: u64,
+    }
+
+    impl Default for BodyWoke {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for BodyWoke {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+            })
+        }
+    }
+
+    /// `Contact`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Contact {
+        pub a: u64,
+        pub b: u64,
+        pub sensor: u32,
+    }
+
+    impl Default for Contact {
+        fn default() -> Self {
+            Self {
+                a: Default::default(),
+                b: Default::default(),
+                sensor: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Contact {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                a: field(o, "a", d.a)?,
+                b: field(o, "b", d.b)?,
+                sensor: field(o, "sensor", d.sensor)?,
+            })
+        }
+    }
+
+    /// `Joint`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Joint {
+        pub kind: u32,
+        pub body: u64,
+        pub other: u64,
+        pub anchor: Vec3,
+        pub other_anchor: Vec3,
+        pub axis: Vec3,
+        pub limits: bool,
+        pub min: f32,
+        pub max: f32,
+        pub motor: u32,
+        pub motor_target: f32,
+        pub motor_stiffness: f32,
+        pub motor_damping: f32,
+        pub motor_max_force: f32,
+        pub rest_length: f32,
+        pub stiffness: f32,
+        pub damping: f32,
+        pub length: f32,
+        pub collide: bool,
+        pub value: f32,
+        pub break_force: f32,
+        pub break_torque: f32,
+        pub broken: bool,
+    }
+
+    impl Default for Joint {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+                body: Default::default(),
+                other: Default::default(),
+                anchor: Default::default(),
+                other_anchor: Default::default(),
+                axis: Vec3::new(1.0_f32, 0.0_f32, 0.0_f32),
+                limits: Default::default(),
+                min: Default::default(),
+                max: Default::default(),
+                motor: Default::default(),
+                motor_target: Default::default(),
+                motor_stiffness: 50.0_f32,
+                motor_damping: 5.0_f32,
+                motor_max_force: Default::default(),
+                rest_length: 1.0_f32,
+                stiffness: 40.0_f32,
+                damping: 2.0_f32,
+                length: 2.0_f32,
+                collide: Default::default(),
+                value: Default::default(),
+                break_force: Default::default(),
+                break_torque: Default::default(),
+                broken: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Joint {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+                body: field(o, "body", d.body)?,
+                other: field(o, "other", d.other)?,
+                anchor: field(o, "anchor", d.anchor)?,
+                other_anchor: field(o, "otherAnchor", d.other_anchor)?,
+                axis: field(o, "axis", d.axis)?,
+                limits: field(o, "limits", d.limits)?,
+                min: field(o, "min", d.min)?,
+                max: field(o, "max", d.max)?,
+                motor: field(o, "motor", d.motor)?,
+                motor_target: field(o, "motorTarget", d.motor_target)?,
+                motor_stiffness: field(o, "motorStiffness", d.motor_stiffness)?,
+                motor_damping: field(o, "motorDamping", d.motor_damping)?,
+                motor_max_force: field(o, "motorMaxForce", d.motor_max_force)?,
+                rest_length: field(o, "restLength", d.rest_length)?,
+                stiffness: field(o, "stiffness", d.stiffness)?,
+                damping: field(o, "damping", d.damping)?,
+                length: field(o, "length", d.length)?,
+                collide: field(o, "collide", d.collide)?,
+                value: field(o, "value", d.value)?,
+                break_force: field(o, "breakForce", d.break_force)?,
+                break_torque: field(o, "breakTorque", d.break_torque)?,
+                broken: field(o, "broken", d.broken)?,
+            })
+        }
+    }
+
+    /// `CharacterController`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CharacterController {
+        pub r#move: Vec3,
+        pub jump: bool,
+        pub jump_speed: f32,
+        pub gravity_scale: f32,
+        pub max_slope: f32,
+        pub step_height: f32,
+        pub snap_distance: f32,
+        pub skin: f32,
+        pub coyote_time: f32,
+        pub max_fall_speed: f32,
+        pub push_bodies: bool,
+        pub push_strength: f32,
+        pub grounded: bool,
+        pub sliding: bool,
+        pub velocity: Vec3,
+        pub ground_normal: Vec3,
+        pub coyote: f32,
+        pub jump_was_held: bool,
+        pub ground: u64,
+    }
+
+    impl Default for CharacterController {
+        fn default() -> Self {
+            Self {
+                r#move: Default::default(),
+                jump: Default::default(),
+                jump_speed: 6.0_f32,
+                gravity_scale: 1.0_f32,
+                max_slope: 45.0_f32,
+                step_height: 0.3_f32,
+                snap_distance: 0.2_f32,
+                skin: 0.02_f32,
+                coyote_time: 0.1_f32,
+                max_fall_speed: 40.0_f32,
+                push_bodies: true,
+                push_strength: 1000.0_f32,
+                grounded: Default::default(),
+                sliding: Default::default(),
+                velocity: Default::default(),
+                ground_normal: Default::default(),
+                coyote: Default::default(),
+                jump_was_held: Default::default(),
+                ground: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CharacterController {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                r#move: field(o, "move", d.r#move)?,
+                jump: field(o, "jump", d.jump)?,
+                jump_speed: field(o, "jumpSpeed", d.jump_speed)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                max_slope: field(o, "maxSlope", d.max_slope)?,
+                step_height: field(o, "stepHeight", d.step_height)?,
+                snap_distance: field(o, "snapDistance", d.snap_distance)?,
+                skin: field(o, "skin", d.skin)?,
+                coyote_time: field(o, "coyoteTime", d.coyote_time)?,
+                max_fall_speed: field(o, "maxFallSpeed", d.max_fall_speed)?,
+                push_bodies: field(o, "pushBodies", d.push_bodies)?,
+                push_strength: field(o, "pushStrength", d.push_strength)?,
+                grounded: field(o, "grounded", d.grounded)?,
+                sliding: field(o, "sliding", d.sliding)?,
+                velocity: field(o, "velocity", d.velocity)?,
+                ground_normal: field(o, "groundNormal", d.ground_normal)?,
+                coyote: field(o, "coyote", d.coyote)?,
+                jump_was_held: field(o, "jumpWasHeld", d.jump_was_held)?,
+                ground: field(o, "ground", d.ground)?,
+            })
+        }
+    }
+
+    /// `PlatformerController`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PlatformerController {
+        pub move_x: f32,
+        pub jump: bool,
+        pub down: bool,
+        pub impulse: Vec2,
+        pub max_speed: f32,
+        pub acceleration: f32,
+        pub deceleration: f32,
+        pub air_acceleration: f32,
+        pub air_deceleration: f32,
+        pub jump_height: f32,
+        pub time_to_apex: f32,
+        pub fall_gravity: f32,
+        pub jump_cut: f32,
+        pub apex_gravity: f32,
+        pub apex_threshold: f32,
+        pub max_fall_speed: f32,
+        pub coyote_time: f32,
+        pub jump_buffer: f32,
+        pub air_jumps: u32,
+        pub wall_jumps: bool,
+        pub wall_slide_speed: f32,
+        pub wall_jump: Vec2,
+        pub wall_jump_lock: f32,
+        pub one_way_layers: u32,
+        pub corner_correction: f32,
+        pub max_slope: f32,
+        pub snap_distance: f32,
+        pub skin: f32,
+        pub push_bodies: bool,
+        pub push_strength: f32,
+        pub grounded: bool,
+        pub on_wall: i32,
+        pub facing: i32,
+        pub velocity: Vec3,
+        pub jumping: bool,
+        pub air_jumps_left: u32,
+        pub coyote: f32,
+        pub buffer: f32,
+        pub wall_lock: f32,
+        pub drop_time: f32,
+        pub jump_was_held: bool,
+        pub ground: u64,
+    }
+
+    impl Default for PlatformerController {
+        fn default() -> Self {
+            Self {
+                move_x: Default::default(),
+                jump: Default::default(),
+                down: Default::default(),
+                impulse: Default::default(),
+                max_speed: 8.0_f32,
+                acceleration: 70.0_f32,
+                deceleration: 80.0_f32,
+                air_acceleration: 45.0_f32,
+                air_deceleration: 25.0_f32,
+                jump_height: 3.2_f32,
+                time_to_apex: 0.4_f32,
+                fall_gravity: 1.8_f32,
+                jump_cut: 2.5_f32,
+                apex_gravity: 0.6_f32,
+                apex_threshold: 1.5_f32,
+                max_fall_speed: 20.0_f32,
+                coyote_time: 0.1_f32,
+                jump_buffer: 0.12_f32,
+                air_jumps: Default::default(),
+                wall_jumps: true,
+                wall_slide_speed: 3.0_f32,
+                wall_jump: Vec2::new(8.0_f32, 12.0_f32),
+                wall_jump_lock: 0.14_f32,
+                one_way_layers: Default::default(),
+                corner_correction: 0.15_f32,
+                max_slope: 50.0_f32,
+                snap_distance: 0.1_f32,
+                skin: 0.01_f32,
+                push_bodies: true,
+                push_strength: 1000.0_f32,
+                grounded: Default::default(),
+                on_wall: Default::default(),
+                facing: 1,
+                velocity: Default::default(),
+                jumping: Default::default(),
+                air_jumps_left: Default::default(),
+                coyote: Default::default(),
+                buffer: Default::default(),
+                wall_lock: Default::default(),
+                drop_time: Default::default(),
+                jump_was_held: Default::default(),
+                ground: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PlatformerController {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                move_x: field(o, "moveX", d.move_x)?,
+                jump: field(o, "jump", d.jump)?,
+                down: field(o, "down", d.down)?,
+                impulse: field(o, "impulse", d.impulse)?,
+                max_speed: field(o, "maxSpeed", d.max_speed)?,
+                acceleration: field(o, "acceleration", d.acceleration)?,
+                deceleration: field(o, "deceleration", d.deceleration)?,
+                air_acceleration: field(o, "airAcceleration", d.air_acceleration)?,
+                air_deceleration: field(o, "airDeceleration", d.air_deceleration)?,
+                jump_height: field(o, "jumpHeight", d.jump_height)?,
+                time_to_apex: field(o, "timeToApex", d.time_to_apex)?,
+                fall_gravity: field(o, "fallGravity", d.fall_gravity)?,
+                jump_cut: field(o, "jumpCut", d.jump_cut)?,
+                apex_gravity: field(o, "apexGravity", d.apex_gravity)?,
+                apex_threshold: field(o, "apexThreshold", d.apex_threshold)?,
+                max_fall_speed: field(o, "maxFallSpeed", d.max_fall_speed)?,
+                coyote_time: field(o, "coyoteTime", d.coyote_time)?,
+                jump_buffer: field(o, "jumpBuffer", d.jump_buffer)?,
+                air_jumps: field(o, "airJumps", d.air_jumps)?,
+                wall_jumps: field(o, "wallJumps", d.wall_jumps)?,
+                wall_slide_speed: field(o, "wallSlideSpeed", d.wall_slide_speed)?,
+                wall_jump: field(o, "wallJump", d.wall_jump)?,
+                wall_jump_lock: field(o, "wallJumpLock", d.wall_jump_lock)?,
+                one_way_layers: field(o, "oneWayLayers", d.one_way_layers)?,
+                corner_correction: field(o, "cornerCorrection", d.corner_correction)?,
+                max_slope: field(o, "maxSlope", d.max_slope)?,
+                snap_distance: field(o, "snapDistance", d.snap_distance)?,
+                skin: field(o, "skin", d.skin)?,
+                push_bodies: field(o, "pushBodies", d.push_bodies)?,
+                push_strength: field(o, "pushStrength", d.push_strength)?,
+                grounded: field(o, "grounded", d.grounded)?,
+                on_wall: field(o, "onWall", d.on_wall)?,
+                facing: field(o, "facing", d.facing)?,
+                velocity: field(o, "velocity", d.velocity)?,
+                jumping: field(o, "jumping", d.jumping)?,
+                air_jumps_left: field(o, "airJumpsLeft", d.air_jumps_left)?,
+                coyote: field(o, "coyote", d.coyote)?,
+                buffer: field(o, "buffer", d.buffer)?,
+                wall_lock: field(o, "wallLock", d.wall_lock)?,
+                drop_time: field(o, "dropTime", d.drop_time)?,
+                jump_was_held: field(o, "jumpWasHeld", d.jump_was_held)?,
+                ground: field(o, "ground", d.ground)?,
+            })
+        }
+    }
+
+    /// `CharacterEvent`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CharacterEvent {
+        pub entity: u64,
+        pub kind: u32,
+        pub speed: f32,
+    }
+
+    impl Default for CharacterEvent {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                kind: Default::default(),
+                speed: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CharacterEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                kind: field(o, "kind", d.kind)?,
+                speed: field(o, "speed", d.speed)?,
+            })
+        }
+    }
+
+    /// `Vehicle`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Vehicle {
+        pub throttle: f32,
+        pub steer: f32,
+        pub brake: f32,
+        pub wheel_base: f32,
+        pub track: f32,
+        pub wheel_radius: f32,
+        pub mount_height: f32,
+        pub suspension_rest: f32,
+        pub suspension_travel: f32,
+        pub suspension_stiffness: f32,
+        pub suspension_damping: f32,
+        pub grip: f32,
+        pub engine_force: f32,
+        pub max_speed: f32,
+        pub brake_force: f32,
+        pub max_steer: f32,
+        pub drive: u32,
+        pub wheel_mass: f32,
+        pub roll_influence: f32,
+        pub speed: f32,
+        pub contacts: u32,
+        pub slip: f32,
+        pub model: u32,
+        pub handbrake: f32,
+        pub handbrake_grip: f32,
+        pub drift_grip: f32,
+        pub gears: Vec<f32>,
+        pub reverse_ratio: f32,
+        pub final_drive: f32,
+        pub idle_rpm: f32,
+        pub max_rpm: f32,
+        pub torque_curve: Vec<f32>,
+        pub automatic: bool,
+        pub shift_up_rpm: f32,
+        pub shift_down_rpm: f32,
+        pub clutch_time: f32,
+        pub gear: i32,
+        pub rpm: f32,
+    }
+
+    impl Default for Vehicle {
+        fn default() -> Self {
+            Self {
+                throttle: Default::default(),
+                steer: Default::default(),
+                brake: Default::default(),
+                wheel_base: 2.6_f32,
+                track: 1.6_f32,
+                wheel_radius: 0.4_f32,
+                mount_height: 0.2_f32,
+                suspension_rest: 0.35_f32,
+                suspension_travel: 0.25_f32,
+                suspension_stiffness: 30.0_f32,
+                suspension_damping: 4.0_f32,
+                grip: 2.0_f32,
+                engine_force: 2500.0_f32,
+                max_speed: 40.0_f32,
+                brake_force: 2000.0_f32,
+                max_steer: 0.55_f32,
+                drive: Default::default(),
+                wheel_mass: 20.0_f32,
+                roll_influence: Default::default(),
+                speed: Default::default(),
+                contacts: Default::default(),
+                slip: Default::default(),
+                model: Default::default(),
+                handbrake: Default::default(),
+                handbrake_grip: 0.2_f32,
+                drift_grip: 1.0_f32,
+                gears: Default::default(),
+                reverse_ratio: 3.2_f32,
+                final_drive: 3.6_f32,
+                idle_rpm: 900.0_f32,
+                max_rpm: 6800.0_f32,
+                torque_curve: Default::default(),
+                automatic: true,
+                shift_up_rpm: 6000.0_f32,
+                shift_down_rpm: 2800.0_f32,
+                clutch_time: 0.25_f32,
+                gear: Default::default(),
+                rpm: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Vehicle {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                throttle: field(o, "throttle", d.throttle)?,
+                steer: field(o, "steer", d.steer)?,
+                brake: field(o, "brake", d.brake)?,
+                wheel_base: field(o, "wheelBase", d.wheel_base)?,
+                track: field(o, "track", d.track)?,
+                wheel_radius: field(o, "wheelRadius", d.wheel_radius)?,
+                mount_height: field(o, "mountHeight", d.mount_height)?,
+                suspension_rest: field(o, "suspensionRest", d.suspension_rest)?,
+                suspension_travel: field(o, "suspensionTravel", d.suspension_travel)?,
+                suspension_stiffness: field(o, "suspensionStiffness", d.suspension_stiffness)?,
+                suspension_damping: field(o, "suspensionDamping", d.suspension_damping)?,
+                grip: field(o, "grip", d.grip)?,
+                engine_force: field(o, "engineForce", d.engine_force)?,
+                max_speed: field(o, "maxSpeed", d.max_speed)?,
+                brake_force: field(o, "brakeForce", d.brake_force)?,
+                max_steer: field(o, "maxSteer", d.max_steer)?,
+                drive: field(o, "drive", d.drive)?,
+                wheel_mass: field(o, "wheelMass", d.wheel_mass)?,
+                roll_influence: field(o, "rollInfluence", d.roll_influence)?,
+                speed: field(o, "speed", d.speed)?,
+                contacts: field(o, "contacts", d.contacts)?,
+                slip: field(o, "slip", d.slip)?,
+                model: field(o, "model", d.model)?,
+                handbrake: field(o, "handbrake", d.handbrake)?,
+                handbrake_grip: field(o, "handbrakeGrip", d.handbrake_grip)?,
+                drift_grip: field(o, "driftGrip", d.drift_grip)?,
+                gears: field(o, "gears", d.gears)?,
+                reverse_ratio: field(o, "reverseRatio", d.reverse_ratio)?,
+                final_drive: field(o, "finalDrive", d.final_drive)?,
+                idle_rpm: field(o, "idleRpm", d.idle_rpm)?,
+                max_rpm: field(o, "maxRpm", d.max_rpm)?,
+                torque_curve: field(o, "torqueCurve", d.torque_curve)?,
+                automatic: field(o, "automatic", d.automatic)?,
+                shift_up_rpm: field(o, "shiftUpRpm", d.shift_up_rpm)?,
+                shift_down_rpm: field(o, "shiftDownRpm", d.shift_down_rpm)?,
+                clutch_time: field(o, "clutchTime", d.clutch_time)?,
+                gear: field(o, "gear", d.gear)?,
+                rpm: field(o, "rpm", d.rpm)?,
+            })
+        }
+    }
+
+    /// `VehicleWheel`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct VehicleWheel {
+        pub radius: f32,
+        pub suspension_rest: f32,
+        pub suspension_travel: f32,
+        pub suspension_stiffness: f32,
+        pub suspension_damping: f32,
+        pub grip: f32,
+        pub steer: f32,
+        pub drive: bool,
+        pub brake: bool,
+        pub handbrake: bool,
+    }
+
+    impl Default for VehicleWheel {
+        fn default() -> Self {
+            Self {
+                radius: 0.4_f32,
+                suspension_rest: 0.35_f32,
+                suspension_travel: 0.25_f32,
+                suspension_stiffness: 30.0_f32,
+                suspension_damping: 4.0_f32,
+                grip: 2.0_f32,
+                steer: Default::default(),
+                drive: Default::default(),
+                brake: true,
+                handbrake: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for VehicleWheel {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                radius: field(o, "radius", d.radius)?,
+                suspension_rest: field(o, "suspensionRest", d.suspension_rest)?,
+                suspension_travel: field(o, "suspensionTravel", d.suspension_travel)?,
+                suspension_stiffness: field(o, "suspensionStiffness", d.suspension_stiffness)?,
+                suspension_damping: field(o, "suspensionDamping", d.suspension_damping)?,
+                grip: field(o, "grip", d.grip)?,
+                steer: field(o, "steer", d.steer)?,
+                drive: field(o, "drive", d.drive)?,
+                brake: field(o, "brake", d.brake)?,
+                handbrake: field(o, "handbrake", d.handbrake)?,
+            })
+        }
+    }
+
+    /// `Rope`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Rope {
+        pub segments: u32,
+        pub length: f32,
+        pub offset: Vec3,
+        pub end: u64,
+        pub end_offset: Vec3,
+        pub iterations: u32,
+        pub damping: f32,
+        pub gravity_scale: f32,
+        pub wind: Vec3,
+        pub radius: f32,
+        pub width: f32,
+        pub color: Vec3,
+        pub visible: bool,
+    }
+
+    impl Default for Rope {
+        fn default() -> Self {
+            Self {
+                segments: 16,
+                length: 4.0_f32,
+                offset: Default::default(),
+                end: Default::default(),
+                end_offset: Default::default(),
+                iterations: 12,
+                damping: 0.99_f32,
+                gravity_scale: 1.0_f32,
+                wind: Default::default(),
+                radius: 0.05_f32,
+                width: 0.08_f32,
+                color: Vec3::new(0.55_f32, 0.42_f32, 0.28_f32),
+                visible: true,
+            }
+        }
+    }
+
+    impl FromJson for Rope {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                segments: field(o, "segments", d.segments)?,
+                length: field(o, "length", d.length)?,
+                offset: field(o, "offset", d.offset)?,
+                end: field(o, "end", d.end)?,
+                end_offset: field(o, "endOffset", d.end_offset)?,
+                iterations: field(o, "iterations", d.iterations)?,
+                damping: field(o, "damping", d.damping)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                wind: field(o, "wind", d.wind)?,
+                radius: field(o, "radius", d.radius)?,
+                width: field(o, "width", d.width)?,
+                color: field(o, "color", d.color)?,
+                visible: field(o, "visible", d.visible)?,
+            })
+        }
+    }
+
+    /// `Cloth`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Cloth {
+        pub columns: u32,
+        pub rows: u32,
+        pub spacing: f32,
+        pub pins: u32,
+        pub iterations: u32,
+        pub damping: f32,
+        pub gravity_scale: f32,
+        pub wind: Vec3,
+        pub gust: f32,
+        pub radius: f32,
+        pub thickness: f32,
+        pub substeps: u32,
+        pub friction: f32,
+        pub material: u64,
+        pub visible: bool,
+        pub simulation: u32,
+    }
+
+    impl Default for Cloth {
+        fn default() -> Self {
+            Self {
+                columns: 12,
+                rows: 12,
+                spacing: 0.15_f32,
+                pins: 1,
+                iterations: 8,
+                damping: 0.985_f32,
+                gravity_scale: 1.0_f32,
+                wind: Default::default(),
+                gust: 0.6_f32,
+                radius: 0.04_f32,
+                thickness: Default::default(),
+                substeps: 1,
+                friction: Default::default(),
+                material: Default::default(),
+                visible: true,
+                simulation: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Cloth {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                columns: field(o, "columns", d.columns)?,
+                rows: field(o, "rows", d.rows)?,
+                spacing: field(o, "spacing", d.spacing)?,
+                pins: field(o, "pins", d.pins)?,
+                iterations: field(o, "iterations", d.iterations)?,
+                damping: field(o, "damping", d.damping)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                wind: field(o, "wind", d.wind)?,
+                gust: field(o, "gust", d.gust)?,
+                radius: field(o, "radius", d.radius)?,
+                thickness: field(o, "thickness", d.thickness)?,
+                substeps: field(o, "substeps", d.substeps)?,
+                friction: field(o, "friction", d.friction)?,
+                material: field(o, "material", d.material)?,
+                visible: field(o, "visible", d.visible)?,
+                simulation: field(o, "simulation", d.simulation)?,
+            })
+        }
+    }
+
+    /// `Garment`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Garment {
+        pub mesh: u32,
+        pub max_distance: f32,
+        pub pin_top: f32,
+        pub backstop: f32,
+        pub stiffness: f32,
+        pub bending: f32,
+        pub iterations: u32,
+        pub substeps: u32,
+        pub damping: f32,
+        pub gravity_scale: f32,
+        pub wind: Vec3,
+        pub gust: f32,
+        pub radius: f32,
+        pub friction: f32,
+        pub simulation: u32,
+    }
+
+    impl Default for Garment {
+        fn default() -> Self {
+            Self {
+                mesh: Default::default(),
+                max_distance: 0.2_f32,
+                pin_top: 0.04_f32,
+                backstop: Default::default(),
+                stiffness: 1.0_f32,
+                bending: 0.1_f32,
+                iterations: 6,
+                substeps: 1,
+                damping: 0.97_f32,
+                gravity_scale: 1.0_f32,
+                wind: Default::default(),
+                gust: 0.6_f32,
+                radius: Default::default(),
+                friction: Default::default(),
+                simulation: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Garment {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                mesh: field(o, "mesh", d.mesh)?,
+                max_distance: field(o, "maxDistance", d.max_distance)?,
+                pin_top: field(o, "pinTop", d.pin_top)?,
+                backstop: field(o, "backstop", d.backstop)?,
+                stiffness: field(o, "stiffness", d.stiffness)?,
+                bending: field(o, "bending", d.bending)?,
+                iterations: field(o, "iterations", d.iterations)?,
+                substeps: field(o, "substeps", d.substeps)?,
+                damping: field(o, "damping", d.damping)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                wind: field(o, "wind", d.wind)?,
+                gust: field(o, "gust", d.gust)?,
+                radius: field(o, "radius", d.radius)?,
+                friction: field(o, "friction", d.friction)?,
+                simulation: field(o, "simulation", d.simulation)?,
+            })
+        }
+    }
+
+    /// `SoftBody`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SoftBody {
+        pub shape: u32,
+        pub radius: f32,
+        pub size: Vec3,
+        pub detail: u32,
+        pub mesh: u64,
+        pub stiffness: f32,
+        pub pressure: f32,
+        pub volume_stiffness: f32,
+        pub iterations: u32,
+        pub substeps: u32,
+        pub damping: f32,
+        pub gravity_scale: f32,
+        pub thickness: f32,
+        pub friction: f32,
+        pub pin_top: f32,
+        pub material: u64,
+        pub visible: bool,
+        pub simulation: u32,
+        pub volume: f32,
+        pub center: Vec3,
+    }
+
+    impl Default for SoftBody {
+        fn default() -> Self {
+            Self {
+                shape: Default::default(),
+                radius: 0.5_f32,
+                size: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+                detail: 2,
+                mesh: Default::default(),
+                stiffness: 1.0_f32,
+                pressure: 1.0_f32,
+                volume_stiffness: 1.0_f32,
+                iterations: 8,
+                substeps: 2,
+                damping: 0.995_f32,
+                gravity_scale: 1.0_f32,
+                thickness: 0.03_f32,
+                friction: 0.3_f32,
+                pin_top: Default::default(),
+                material: Default::default(),
+                visible: true,
+                simulation: Default::default(),
+                volume: 1.0_f32,
+                center: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SoftBody {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                shape: field(o, "shape", d.shape)?,
+                radius: field(o, "radius", d.radius)?,
+                size: field(o, "size", d.size)?,
+                detail: field(o, "detail", d.detail)?,
+                mesh: field(o, "mesh", d.mesh)?,
+                stiffness: field(o, "stiffness", d.stiffness)?,
+                pressure: field(o, "pressure", d.pressure)?,
+                volume_stiffness: field(o, "volumeStiffness", d.volume_stiffness)?,
+                iterations: field(o, "iterations", d.iterations)?,
+                substeps: field(o, "substeps", d.substeps)?,
+                damping: field(o, "damping", d.damping)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                thickness: field(o, "thickness", d.thickness)?,
+                friction: field(o, "friction", d.friction)?,
+                pin_top: field(o, "pinTop", d.pin_top)?,
+                material: field(o, "material", d.material)?,
+                visible: field(o, "visible", d.visible)?,
+                simulation: field(o, "simulation", d.simulation)?,
+                volume: field(o, "volume", d.volume)?,
+                center: field(o, "center", d.center)?,
+            })
+        }
+    }
+
+    /// `Fluid2D`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Fluid2D {
+        pub count: u32,
+        pub size: Vec2,
+        pub bounds: Vec2,
+        pub radius: f32,
+        pub rest_density: f32,
+        pub stiffness: f32,
+        pub near_stiffness: f32,
+        pub viscosity: f32,
+        pub group: u32,
+        pub density: f32,
+        pub mixing: f32,
+        pub gravity_scale: f32,
+        pub substeps: u32,
+        pub seed: u32,
+        pub color: Vec3,
+        pub opacity: f32,
+        pub blob_scale: f32,
+        pub threshold: f32,
+        pub layer: i32,
+        pub visible: bool,
+    }
+
+    impl Default for Fluid2D {
+        fn default() -> Self {
+            Self {
+                count: 1000,
+                size: Vec2::new(4.0_f32, 3.0_f32),
+                bounds: Default::default(),
+                radius: 0.18_f32,
+                rest_density: 1.0_f32,
+                stiffness: 0.1_f32,
+                near_stiffness: 0.5_f32,
+                viscosity: 0.15_f32,
+                group: Default::default(),
+                density: 1.0_f32,
+                mixing: Default::default(),
+                gravity_scale: 1.0_f32,
+                substeps: 2,
+                seed: Default::default(),
+                color: Vec3::new(0.15_f32, 0.45_f32, 0.95_f32),
+                opacity: 0.9_f32,
+                blob_scale: 1.6_f32,
+                threshold: 0.45_f32,
+                layer: Default::default(),
+                visible: true,
+            }
+        }
+    }
+
+    impl FromJson for Fluid2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                count: field(o, "count", d.count)?,
+                size: field(o, "size", d.size)?,
+                bounds: field(o, "bounds", d.bounds)?,
+                radius: field(o, "radius", d.radius)?,
+                rest_density: field(o, "restDensity", d.rest_density)?,
+                stiffness: field(o, "stiffness", d.stiffness)?,
+                near_stiffness: field(o, "nearStiffness", d.near_stiffness)?,
+                viscosity: field(o, "viscosity", d.viscosity)?,
+                group: field(o, "group", d.group)?,
+                density: field(o, "density", d.density)?,
+                mixing: field(o, "mixing", d.mixing)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                substeps: field(o, "substeps", d.substeps)?,
+                seed: field(o, "seed", d.seed)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                blob_scale: field(o, "blobScale", d.blob_scale)?,
+                threshold: field(o, "threshold", d.threshold)?,
+                layer: field(o, "layer", d.layer)?,
+                visible: field(o, "visible", d.visible)?,
+            })
+        }
+    }
+
+    /// `Fluid3D`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Fluid3D {
+        pub count: u32,
+        pub size: Vec3,
+        pub bounds: Vec3,
+        pub radius: f32,
+        pub rest_density: f32,
+        pub stiffness: f32,
+        pub near_stiffness: f32,
+        pub viscosity: f32,
+        pub group: u32,
+        pub density: f32,
+        pub mixing: f32,
+        pub gravity_scale: f32,
+        pub substeps: u32,
+        pub seed: u32,
+        pub max_count: u32,
+        pub emit_rate: f32,
+        pub emit_offset: Vec3,
+        pub emit_velocity: Vec3,
+        pub emit_radius: f32,
+        pub sink_offset: Vec3,
+        pub sink_size: Vec3,
+        pub color: Vec3,
+        pub opacity: f32,
+        pub reflectivity: f32,
+        pub refraction: f32,
+        pub draw_scale: f32,
+        pub smoothing: f32,
+        pub visible: bool,
+        pub simulation: u32,
+    }
+
+    impl Default for Fluid3D {
+        fn default() -> Self {
+            Self {
+                count: 2000,
+                size: Vec3::new(2.0_f32, 1.0_f32, 2.0_f32),
+                bounds: Default::default(),
+                radius: 0.2_f32,
+                rest_density: 10.0_f32,
+                stiffness: 0.02_f32,
+                near_stiffness: 0.4_f32,
+                viscosity: 0.4_f32,
+                group: Default::default(),
+                density: 1.0_f32,
+                mixing: Default::default(),
+                gravity_scale: 1.0_f32,
+                substeps: 2,
+                seed: Default::default(),
+                max_count: 8192,
+                emit_rate: Default::default(),
+                emit_offset: Default::default(),
+                emit_velocity: Default::default(),
+                emit_radius: 0.1_f32,
+                sink_offset: Default::default(),
+                sink_size: Default::default(),
+                color: Vec3::new(0.2_f32, 0.55_f32, 0.9_f32),
+                opacity: 0.6_f32,
+                reflectivity: 1.0_f32,
+                refraction: 1.0_f32,
+                draw_scale: 0.6_f32,
+                smoothing: 1.0_f32,
+                visible: true,
+                simulation: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Fluid3D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                count: field(o, "count", d.count)?,
+                size: field(o, "size", d.size)?,
+                bounds: field(o, "bounds", d.bounds)?,
+                radius: field(o, "radius", d.radius)?,
+                rest_density: field(o, "restDensity", d.rest_density)?,
+                stiffness: field(o, "stiffness", d.stiffness)?,
+                near_stiffness: field(o, "nearStiffness", d.near_stiffness)?,
+                viscosity: field(o, "viscosity", d.viscosity)?,
+                group: field(o, "group", d.group)?,
+                density: field(o, "density", d.density)?,
+                mixing: field(o, "mixing", d.mixing)?,
+                gravity_scale: field(o, "gravityScale", d.gravity_scale)?,
+                substeps: field(o, "substeps", d.substeps)?,
+                seed: field(o, "seed", d.seed)?,
+                max_count: field(o, "maxCount", d.max_count)?,
+                emit_rate: field(o, "emitRate", d.emit_rate)?,
+                emit_offset: field(o, "emitOffset", d.emit_offset)?,
+                emit_velocity: field(o, "emitVelocity", d.emit_velocity)?,
+                emit_radius: field(o, "emitRadius", d.emit_radius)?,
+                sink_offset: field(o, "sinkOffset", d.sink_offset)?,
+                sink_size: field(o, "sinkSize", d.sink_size)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                reflectivity: field(o, "reflectivity", d.reflectivity)?,
+                refraction: field(o, "refraction", d.refraction)?,
+                draw_scale: field(o, "drawScale", d.draw_scale)?,
+                smoothing: field(o, "smoothing", d.smoothing)?,
+                visible: field(o, "visible", d.visible)?,
+                simulation: field(o, "simulation", d.simulation)?,
+            })
+        }
+    }
+
+    /// `WaterSurface`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct WaterSurface {
+        pub resolution: u32,
+        pub size: f32,
+        pub wave_speed: f32,
+        pub damping: f32,
+        pub splash: f32,
+        pub buoyancy: f32,
+        pub drag: f32,
+    }
+
+    impl Default for WaterSurface {
+        fn default() -> Self {
+            Self {
+                resolution: 64,
+                size: 16.0_f32,
+                wave_speed: 3.0_f32,
+                damping: 0.4_f32,
+                splash: 1.0_f32,
+                buoyancy: 9.81_f32,
+                drag: 1.5_f32,
+            }
+        }
+    }
+
+    impl FromJson for WaterSurface {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                resolution: field(o, "resolution", d.resolution)?,
+                size: field(o, "size", d.size)?,
+                wave_speed: field(o, "waveSpeed", d.wave_speed)?,
+                damping: field(o, "damping", d.damping)?,
+                splash: field(o, "splash", d.splash)?,
+                buoyancy: field(o, "buoyancy", d.buoyancy)?,
+                drag: field(o, "drag", d.drag)?,
+            })
+        }
+    }
+
+    /// `WaterLine`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct WaterLine {
+        pub width: f32,
+        pub depth: f32,
+        pub columns: u32,
+        pub tension: f32,
+        pub damping: f32,
+        pub spread: f32,
+        pub splash: f32,
+        pub buoyancy: f32,
+        pub drag: f32,
+    }
+
+    impl Default for WaterLine {
+        fn default() -> Self {
+            Self {
+                width: 12.0_f32,
+                depth: 3.0_f32,
+                columns: 96,
+                tension: 60.0_f32,
+                damping: 2.5_f32,
+                spread: 0.25_f32,
+                splash: 0.04_f32,
+                buoyancy: 12.0_f32,
+                drag: 2.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for WaterLine {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                width: field(o, "width", d.width)?,
+                depth: field(o, "depth", d.depth)?,
+                columns: field(o, "columns", d.columns)?,
+                tension: field(o, "tension", d.tension)?,
+                damping: field(o, "damping", d.damping)?,
+                spread: field(o, "spread", d.spread)?,
+                splash: field(o, "splash", d.splash)?,
+                buoyancy: field(o, "buoyancy", d.buoyancy)?,
+                drag: field(o, "drag", d.drag)?,
+            })
+        }
+    }
+
+    /// `Buoyancy`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Buoyancy {
+        pub water_density: f32,
+        pub samples: u32,
+        pub drag: f32,
+        pub angular_drag: f32,
+        pub submerged: f32,
+    }
+
+    impl Default for Buoyancy {
+        fn default() -> Self {
+            Self {
+                water_density: 2.0_f32,
+                samples: 4,
+                drag: 4.0_f32,
+                angular_drag: 3.0_f32,
+                submerged: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Buoyancy {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                water_density: field(o, "waterDensity", d.water_density)?,
+                samples: field(o, "samples", d.samples)?,
+                drag: field(o, "drag", d.drag)?,
+                angular_drag: field(o, "angularDrag", d.angular_drag)?,
+                submerged: field(o, "submerged", d.submerged)?,
+            })
+        }
+    }
+
+    /// `Splash`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Splash {
+        pub water: u64,
+        pub entity: u64,
+        pub point: Vec3,
+        pub speed: f32,
+    }
+
+    impl Default for Splash {
+        fn default() -> Self {
+            Self {
+                water: Default::default(),
+                entity: Default::default(),
+                point: Default::default(),
+                speed: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Splash {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                water: field(o, "water", d.water)?,
+                entity: field(o, "entity", d.entity)?,
+                point: field(o, "point", d.point)?,
+                speed: field(o, "speed", d.speed)?,
+            })
+        }
+    }
+
+    /// `Ragdoll`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Ragdoll {
+        pub weight: f32,
+        pub blend_time: f32,
+        pub mass: f32,
+        pub thickness: f32,
+        pub joint_limit: f32,
+        pub damping: f32,
+        pub impulse: Vec3,
+        pub blend: f32,
+    }
+
+    impl Default for Ragdoll {
+        fn default() -> Self {
+            Self {
+                weight: Default::default(),
+                blend_time: 0.25_f32,
+                mass: 60.0_f32,
+                thickness: 0.22_f32,
+                joint_limit: 0.9_f32,
+                damping: 0.6_f32,
+                impulse: Default::default(),
+                blend: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Ragdoll {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                weight: field(o, "weight", d.weight)?,
+                blend_time: field(o, "blendTime", d.blend_time)?,
+                mass: field(o, "mass", d.mass)?,
+                thickness: field(o, "thickness", d.thickness)?,
+                joint_limit: field(o, "jointLimit", d.joint_limit)?,
+                damping: field(o, "damping", d.damping)?,
+                impulse: field(o, "impulse", d.impulse)?,
+                blend: field(o, "blend", d.blend)?,
+            })
+        }
+    }
+
+    /// `Fog`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Fog {
+        pub enabled: bool,
+        pub color: Color,
+        pub density: f32,
+        pub start: f32,
+        pub end: f32,
+        pub height_density: f32,
+        pub height: f32,
+        pub falloff: f32,
+        pub sun_color: Color,
+        pub sun_power: f32,
+        pub max_opacity: f32,
+        pub sky: f32,
+        pub volumetric: bool,
+        pub scattering: f32,
+        pub anisotropy: f32,
+        pub volumetric_distance: f32,
+    }
+
+    impl Default for Fog {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                color: Color { r: 0.62_f32, g: 0.68_f32, b: 0.76_f32 },
+                density: 0.02_f32,
+                start: Default::default(),
+                end: Default::default(),
+                height_density: Default::default(),
+                height: Default::default(),
+                falloff: 0.5_f32,
+                sun_color: Color { r: 1.0_f32, g: 0.86_f32, b: 0.62_f32 },
+                sun_power: 8.0_f32,
+                max_opacity: 1.0_f32,
+                sky: 1.0_f32,
+                volumetric: Default::default(),
+                scattering: 0.8_f32,
+                anisotropy: 0.6_f32,
+                volumetric_distance: 48.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Fog {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                color: field(o, "color", d.color)?,
+                density: field(o, "density", d.density)?,
+                start: field(o, "start", d.start)?,
+                end: field(o, "end", d.end)?,
+                height_density: field(o, "heightDensity", d.height_density)?,
+                height: field(o, "height", d.height)?,
+                falloff: field(o, "falloff", d.falloff)?,
+                sun_color: field(o, "sunColor", d.sun_color)?,
+                sun_power: field(o, "sunPower", d.sun_power)?,
+                max_opacity: field(o, "maxOpacity", d.max_opacity)?,
+                sky: field(o, "sky", d.sky)?,
+                volumetric: field(o, "volumetric", d.volumetric)?,
+                scattering: field(o, "scattering", d.scattering)?,
+                anisotropy: field(o, "anisotropy", d.anisotropy)?,
+                volumetric_distance: field(o, "volumetricDistance", d.volumetric_distance)?,
+            })
+        }
+    }
+
+    /// `Sky`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Sky {
+        pub enabled: bool,
+        pub zenith: Color,
+        pub horizon: Color,
+        pub ground: Color,
+        pub sun_direction: Vec3,
+        pub sun_color: Color,
+        pub sun_size: f32,
+        pub sun_intensity: f32,
+        pub glow: f32,
+        pub glow_power: f32,
+        pub stars: f32,
+        pub brightness: f32,
+        pub moon_size: f32,
+        pub moon_phase: f32,
+        pub moon_intensity: f32,
+        pub moon_color: Color,
+        pub moon_direction: Vec3,
+    }
+
+    impl Default for Sky {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                zenith: Color { r: 0.18_f32, g: 0.36_f32, b: 0.78_f32 },
+                horizon: Color { r: 0.78_f32, g: 0.84_f32, b: 0.92_f32 },
+                ground: Color { r: 0.16_f32, g: 0.14_f32, b: 0.12_f32 },
+                sun_direction: Vec3::new(0.45_f32, 0.8_f32, 0.35_f32),
+                sun_color: Color { r: 1.0_f32, g: 0.95_f32, b: 0.88_f32 },
+                sun_size: 1.8_f32,
+                sun_intensity: 40.0_f32,
+                glow: 0.6_f32,
+                glow_power: 24.0_f32,
+                stars: Default::default(),
+                brightness: 1.1_f32,
+                moon_size: Default::default(),
+                moon_phase: 0.5_f32,
+                moon_intensity: 1.4_f32,
+                moon_color: Color { r: 0.9_f32, g: 0.92_f32, b: 1.0_f32 },
+                moon_direction: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Sky {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                zenith: field(o, "zenith", d.zenith)?,
+                horizon: field(o, "horizon", d.horizon)?,
+                ground: field(o, "ground", d.ground)?,
+                sun_direction: field(o, "sunDirection", d.sun_direction)?,
+                sun_color: field(o, "sunColor", d.sun_color)?,
+                sun_size: field(o, "sunSize", d.sun_size)?,
+                sun_intensity: field(o, "sunIntensity", d.sun_intensity)?,
+                glow: field(o, "glow", d.glow)?,
+                glow_power: field(o, "glowPower", d.glow_power)?,
+                stars: field(o, "stars", d.stars)?,
+                brightness: field(o, "brightness", d.brightness)?,
+                moon_size: field(o, "moonSize", d.moon_size)?,
+                moon_phase: field(o, "moonPhase", d.moon_phase)?,
+                moon_intensity: field(o, "moonIntensity", d.moon_intensity)?,
+                moon_color: field(o, "moonColor", d.moon_color)?,
+                moon_direction: field(o, "moonDirection", d.moon_direction)?,
+            })
+        }
+    }
+
+    /// `DayNight`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct DayNight {
+        pub enabled: bool,
+        pub start: f32,
+        pub speed: f32,
+        pub tilt: f32,
+        pub azimuth: f32,
+        pub light_intensity: f32,
+        pub tint_fog: bool,
+        pub step: f32,
+        pub moon_size: f32,
+        pub moon_phase: f32,
+    }
+
+    impl Default for DayNight {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                start: 9.0_f32,
+                speed: 0.05_f32,
+                tilt: 25.0_f32,
+                azimuth: Default::default(),
+                light_intensity: 1.0_f32,
+                tint_fog: true,
+                step: 10.0_f32,
+                moon_size: 1.6_f32,
+                moon_phase: 0.5_f32,
+            }
+        }
+    }
+
+    impl FromJson for DayNight {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                start: field(o, "start", d.start)?,
+                speed: field(o, "speed", d.speed)?,
+                tilt: field(o, "tilt", d.tilt)?,
+                azimuth: field(o, "azimuth", d.azimuth)?,
+                light_intensity: field(o, "lightIntensity", d.light_intensity)?,
+                tint_fog: field(o, "tintFog", d.tint_fog)?,
+                step: field(o, "step", d.step)?,
+                moon_size: field(o, "moonSize", d.moon_size)?,
+                moon_phase: field(o, "moonPhase", d.moon_phase)?,
+            })
+        }
+    }
+
+    /// `PhysicalSky`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PhysicalSky {
+        pub enabled: bool,
+        pub haze: f32,
+        pub air_density: f32,
+        pub ozone: f32,
+        pub ground_albedo: Color,
+        pub altitude: f32,
+        pub night: Color,
+    }
+
+    impl Default for PhysicalSky {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                haze: 1.0_f32,
+                air_density: 1.0_f32,
+                ozone: 1.0_f32,
+                ground_albedo: Color { r: 0.3_f32, g: 0.3_f32, b: 0.3_f32 },
+                altitude: Default::default(),
+                night: Color { r: 0.0022_f32, g: 0.0032_f32, b: 0.0075_f32 },
+            }
+        }
+    }
+
+    impl FromJson for PhysicalSky {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                haze: field(o, "haze", d.haze)?,
+                air_density: field(o, "airDensity", d.air_density)?,
+                ozone: field(o, "ozone", d.ozone)?,
+                ground_albedo: field(o, "groundAlbedo", d.ground_albedo)?,
+                altitude: field(o, "altitude", d.altitude)?,
+                night: field(o, "night", d.night)?,
+            })
+        }
+    }
+
+    /// `Clouds`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Clouds {
+        pub enabled: bool,
+        pub coverage: f32,
+        pub density: f32,
+        pub base: f32,
+        pub thickness: f32,
+        pub scale: f32,
+        pub wind: Vec3,
+        pub color: Color,
+        pub detail: f32,
+        pub layer: f32,
+        pub layer_altitude: f32,
+        pub steps: u32,
+    }
+
+    impl Default for Clouds {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                coverage: 0.45_f32,
+                density: 0.04_f32,
+                base: 1500.0_f32,
+                thickness: 1800.0_f32,
+                scale: 9000.0_f32,
+                wind: Vec3::new(12.0_f32, 0.4_f32, 4.0_f32),
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                detail: 0.35_f32,
+                layer: 0.3_f32,
+                layer_altitude: 8000.0_f32,
+                steps: 48,
+            }
+        }
+    }
+
+    impl FromJson for Clouds {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                coverage: field(o, "coverage", d.coverage)?,
+                density: field(o, "density", d.density)?,
+                base: field(o, "base", d.base)?,
+                thickness: field(o, "thickness", d.thickness)?,
+                scale: field(o, "scale", d.scale)?,
+                wind: field(o, "wind", d.wind)?,
+                color: field(o, "color", d.color)?,
+                detail: field(o, "detail", d.detail)?,
+                layer: field(o, "layer", d.layer)?,
+                layer_altitude: field(o, "layerAltitude", d.layer_altitude)?,
+                steps: field(o, "steps", d.steps)?,
+            })
+        }
+    }
+
+    /// `Aurora`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Aurora {
+        pub enabled: bool,
+        pub intensity: f32,
+        pub activity: f32,
+        pub curtains: u32,
+        pub direction: f32,
+        pub distance: f32,
+        pub spread: f32,
+        pub energy: f32,
+        pub speed: f32,
+        pub seed: u32,
+        pub green_color: Color,
+        pub red_color: Color,
+        pub nitrogen_color: Color,
+    }
+
+    impl Default for Aurora {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                intensity: 1.0_f32,
+                activity: 0.4_f32,
+                curtains: 3,
+                direction: 90.0_f32,
+                distance: 150000.0_f32,
+                spread: 70000.0_f32,
+                energy: 2.0_f32,
+                speed: 1.0_f32,
+                seed: Default::default(),
+                green_color: Color { r: 0.29_f32, g: 1.0_f32, b: 0.0_f32 },
+                red_color: Color { r: 1.0_f32, g: 0.0_f32, b: 0.06_f32 },
+                nitrogen_color: Color { r: 0.57_f32, g: 0.0_f32, b: 1.0_f32 },
+            }
+        }
+    }
+
+    impl FromJson for Aurora {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                activity: field(o, "activity", d.activity)?,
+                curtains: field(o, "curtains", d.curtains)?,
+                direction: field(o, "direction", d.direction)?,
+                distance: field(o, "distance", d.distance)?,
+                spread: field(o, "spread", d.spread)?,
+                energy: field(o, "energy", d.energy)?,
+                speed: field(o, "speed", d.speed)?,
+                seed: field(o, "seed", d.seed)?,
+                green_color: field(o, "greenColor", d.green_color)?,
+                red_color: field(o, "redColor", d.red_color)?,
+                nitrogen_color: field(o, "nitrogenColor", d.nitrogen_color)?,
+            })
+        }
+    }
+
+    /// `WeatherState`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct WeatherState {
+        pub soak_time: f32,
+        pub dry_time: f32,
+        pub puddle_time: f32,
+        pub drain_time: f32,
+        pub snowfall: f32,
+        pub melt: f32,
+        pub snow_cover: f32,
+        pub dust_time: f32,
+        pub wash_time: f32,
+        pub dust_color: Color,
+        pub lightning: f32,
+        pub lightning_center: Vec3,
+        pub lightning_radius: f32,
+        pub shelter_size: f32,
+        pub wetness: f32,
+        pub puddles: f32,
+        pub dust: f32,
+        pub snow_depth: f32,
+        pub strikes: u32,
+        pub last_strike: u32,
+        pub strike_position: Vec3,
+        pub stream: u32,
+    }
+
+    impl Default for WeatherState {
+        fn default() -> Self {
+            Self {
+                soak_time: 60.0_f32,
+                dry_time: 300.0_f32,
+                puddle_time: 120.0_f32,
+                drain_time: 600.0_f32,
+                snowfall: 0.01_f32,
+                melt: 0.004_f32,
+                snow_cover: 0.08_f32,
+                dust_time: 600.0_f32,
+                wash_time: 90.0_f32,
+                dust_color: Color { r: 0.62_f32, g: 0.5_f32, b: 0.36_f32 },
+                lightning: Default::default(),
+                lightning_center: Default::default(),
+                lightning_radius: 300.0_f32,
+                shelter_size: 64.0_f32,
+                wetness: Default::default(),
+                puddles: Default::default(),
+                dust: Default::default(),
+                snow_depth: Default::default(),
+                strikes: Default::default(),
+                last_strike: Default::default(),
+                strike_position: Default::default(),
+                stream: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for WeatherState {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                soak_time: field(o, "soakTime", d.soak_time)?,
+                dry_time: field(o, "dryTime", d.dry_time)?,
+                puddle_time: field(o, "puddleTime", d.puddle_time)?,
+                drain_time: field(o, "drainTime", d.drain_time)?,
+                snowfall: field(o, "snowfall", d.snowfall)?,
+                melt: field(o, "melt", d.melt)?,
+                snow_cover: field(o, "snowCover", d.snow_cover)?,
+                dust_time: field(o, "dustTime", d.dust_time)?,
+                wash_time: field(o, "washTime", d.wash_time)?,
+                dust_color: field(o, "dustColor", d.dust_color)?,
+                lightning: field(o, "lightning", d.lightning)?,
+                lightning_center: field(o, "lightningCenter", d.lightning_center)?,
+                lightning_radius: field(o, "lightningRadius", d.lightning_radius)?,
+                shelter_size: field(o, "shelterSize", d.shelter_size)?,
+                wetness: field(o, "wetness", d.wetness)?,
+                puddles: field(o, "puddles", d.puddles)?,
+                dust: field(o, "dust", d.dust)?,
+                snow_depth: field(o, "snowDepth", d.snow_depth)?,
+                strikes: field(o, "strikes", d.strikes)?,
+                last_strike: field(o, "lastStrike", d.last_strike)?,
+                strike_position: field(o, "strikePosition", d.strike_position)?,
+                stream: field(o, "stream", d.stream)?,
+            })
+        }
+    }
+
+    /// `LightningStrike`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LightningStrike {
+        pub position: Vec3,
+        pub strike: u32,
+    }
+
+    impl Default for LightningStrike {
+        fn default() -> Self {
+            Self {
+                position: Default::default(),
+                strike: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for LightningStrike {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                position: field(o, "position", d.position)?,
+                strike: field(o, "strike", d.strike)?,
+            })
+        }
+    }
+
+    /// `Weather`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Weather {
+        pub kind: u32,
+        pub intensity: f32,
+        pub wind: Vec3,
+        pub radius: f32,
+        pub tint: Color,
+        pub dim: f32,
+        pub layer: i32,
+    }
+
+    impl Default for Weather {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+                intensity: 1.0_f32,
+                wind: Vec3::new(1.5_f32, 0.0_f32, 0.5_f32),
+                radius: 18.0_f32,
+                tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                dim: 1.0_f32,
+                layer: 50,
+            }
+        }
+    }
+
+    impl FromJson for Weather {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+                intensity: field(o, "intensity", d.intensity)?,
+                wind: field(o, "wind", d.wind)?,
+                radius: field(o, "radius", d.radius)?,
+                tint: field(o, "tint", d.tint)?,
+                dim: field(o, "dim", d.dim)?,
+                layer: field(o, "layer", d.layer)?,
+            })
+        }
+    }
+
+    /// `Wind`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Wind {
+        pub strength: f32,
+        pub direction: Vec3,
+        pub speed: f32,
+        pub gust: f32,
+        pub turbulence: f32,
+        pub gust_size: f32,
+    }
+
+    impl Default for Wind {
+        fn default() -> Self {
+            Self {
+                strength: Default::default(),
+                direction: Vec3::new(1.0_f32, 0.0_f32, 0.0_f32),
+                speed: 3.0_f32,
+                gust: 0.6_f32,
+                turbulence: 0.3_f32,
+                gust_size: 14.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Wind {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                strength: field(o, "strength", d.strength)?,
+                direction: field(o, "direction", d.direction)?,
+                speed: field(o, "speed", d.speed)?,
+                gust: field(o, "gust", d.gust)?,
+                turbulence: field(o, "turbulence", d.turbulence)?,
+                gust_size: field(o, "gustSize", d.gust_size)?,
+            })
+        }
+    }
+
+    /// `WindMotor`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct WindMotor {
+        pub kind: WindMotorKind,
+        pub radius: f32,
+        pub strength: f32,
+    }
+
+    impl Default for WindMotor {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+                radius: 6.0_f32,
+                strength: 10.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for WindMotor {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+                radius: field(o, "radius", d.radius)?,
+                strength: field(o, "strength", d.strength)?,
+            })
+        }
+    }
+
+    /// `Water`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Water {
+        pub size: Vec2,
+        pub geometry: u64,
+        pub river: u64,
+        pub river_width: f32,
+        pub river_speed: f32,
+        pub segments: u32,
+        pub shallow: Color,
+        pub deep: Color,
+        pub depth_fade: f32,
+        pub absorption: Color,
+        pub scattering: Color,
+        pub opacity: f32,
+        pub foam: Color,
+        pub foam_width: f32,
+        pub wave_scale: f32,
+        pub wave_speed: f32,
+        pub wave_strength: f32,
+        pub refraction: f32,
+        pub reflectivity: f32,
+        pub planar_reflection: f32,
+        pub shadows: f32,
+        pub f0: f32,
+        pub reflection_bias: f32,
+        pub underwater_color: Color,
+        pub underwater_density: f32,
+        pub caustics: f32,
+        pub caustics_scale: f32,
+        pub normal_map: u64,
+        pub normal_scale: f32,
+        pub glint: f32,
+        pub flow: Vec2,
+        pub flow_map: u64,
+        pub wind: Vec2,
+        pub swell: f32,
+        pub choppiness: f32,
+        pub endless: bool,
+        pub seabed: u64,
+        pub shore: f32,
+        pub shore_wave_length: f32,
+        pub shore_foam: f32,
+        pub foam_streaks: f32,
+        pub meniscus: f32,
+        pub dynamic_waves: f32,
+        pub spray: f32,
+    }
+
+    impl Default for Water {
+        fn default() -> Self {
+            Self {
+                size: Vec2::new(16.0_f32, 16.0_f32),
+                geometry: Default::default(),
+                river: Default::default(),
+                river_width: 6.0_f32,
+                river_speed: 1.5_f32,
+                segments: 64,
+                shallow: Color { r: 0.55_f32, g: 0.85_f32, b: 0.82_f32 },
+                deep: Color { r: 0.02_f32, g: 0.09_f32, b: 0.14_f32 },
+                depth_fade: 2.5_f32,
+                absorption: Color { r: 0.0_f32, g: 0.0_f32, b: 0.0_f32 },
+                scattering: Color { r: 0.0_f32, g: 0.0_f32, b: 0.0_f32 },
+                opacity: 0.92_f32,
+                foam: Color { r: 0.95_f32, g: 0.97_f32, b: 1.0_f32 },
+                foam_width: 0.35_f32,
+                wave_scale: 0.6_f32,
+                wave_speed: 1.0_f32,
+                wave_strength: 0.35_f32,
+                refraction: 1.0_f32,
+                reflectivity: 1.0_f32,
+                planar_reflection: Default::default(),
+                shadows: Default::default(),
+                f0: 0.02_f32,
+                reflection_bias: Default::default(),
+                underwater_color: Color { r: 0.03_f32, g: 0.16_f32, b: 0.2_f32 },
+                underwater_density: 0.09_f32,
+                caustics: Default::default(),
+                caustics_scale: 0.6_f32,
+                normal_map: Default::default(),
+                normal_scale: 1.0_f32,
+                glint: Default::default(),
+                flow: Vec2::new(0.0_f32, 0.0_f32),
+                flow_map: Default::default(),
+                wind: Vec2::new(0.0_f32, 0.0_f32),
+                swell: 1.0_f32,
+                choppiness: 0.6_f32,
+                endless: Default::default(),
+                seabed: Default::default(),
+                shore: 1.0_f32,
+                shore_wave_length: Default::default(),
+                shore_foam: 1.0_f32,
+                foam_streaks: 1.0_f32,
+                meniscus: 2.0_f32,
+                dynamic_waves: 1.0_f32,
+                spray: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Water {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                size: field(o, "size", d.size)?,
+                geometry: field(o, "geometry", d.geometry)?,
+                river: field(o, "river", d.river)?,
+                river_width: field(o, "riverWidth", d.river_width)?,
+                river_speed: field(o, "riverSpeed", d.river_speed)?,
+                segments: field(o, "segments", d.segments)?,
+                shallow: field(o, "shallow", d.shallow)?,
+                deep: field(o, "deep", d.deep)?,
+                depth_fade: field(o, "depthFade", d.depth_fade)?,
+                absorption: field(o, "absorption", d.absorption)?,
+                scattering: field(o, "scattering", d.scattering)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                foam: field(o, "foam", d.foam)?,
+                foam_width: field(o, "foamWidth", d.foam_width)?,
+                wave_scale: field(o, "waveScale", d.wave_scale)?,
+                wave_speed: field(o, "waveSpeed", d.wave_speed)?,
+                wave_strength: field(o, "waveStrength", d.wave_strength)?,
+                refraction: field(o, "refraction", d.refraction)?,
+                reflectivity: field(o, "reflectivity", d.reflectivity)?,
+                planar_reflection: field(o, "planarReflection", d.planar_reflection)?,
+                shadows: field(o, "shadows", d.shadows)?,
+                f0: field(o, "f0", d.f0)?,
+                reflection_bias: field(o, "reflectionBias", d.reflection_bias)?,
+                underwater_color: field(o, "underwaterColor", d.underwater_color)?,
+                underwater_density: field(o, "underwaterDensity", d.underwater_density)?,
+                caustics: field(o, "caustics", d.caustics)?,
+                caustics_scale: field(o, "causticsScale", d.caustics_scale)?,
+                normal_map: field(o, "normalMap", d.normal_map)?,
+                normal_scale: field(o, "normalScale", d.normal_scale)?,
+                glint: field(o, "glint", d.glint)?,
+                flow: field(o, "flow", d.flow)?,
+                flow_map: field(o, "flowMap", d.flow_map)?,
+                wind: field(o, "wind", d.wind)?,
+                swell: field(o, "swell", d.swell)?,
+                choppiness: field(o, "choppiness", d.choppiness)?,
+                endless: field(o, "endless", d.endless)?,
+                seabed: field(o, "seabed", d.seabed)?,
+                shore: field(o, "shore", d.shore)?,
+                shore_wave_length: field(o, "shoreWaveLength", d.shore_wave_length)?,
+                shore_foam: field(o, "shoreFoam", d.shore_foam)?,
+                foam_streaks: field(o, "foamStreaks", d.foam_streaks)?,
+                meniscus: field(o, "meniscus", d.meniscus)?,
+                dynamic_waves: field(o, "dynamicWaves", d.dynamic_waves)?,
+                spray: field(o, "spray", d.spray)?,
+            })
+        }
+    }
+
+    /// `Water2D`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Water2D {
+        pub top: Color,
+        pub top_opacity: f32,
+        pub bottom: Color,
+        pub bottom_opacity: f32,
+        pub lip: Color,
+        pub lip_width: f32,
+        pub layer: i32,
+    }
+
+    impl Default for Water2D {
+        fn default() -> Self {
+            Self {
+                top: Color { r: 0.16_f32, g: 0.5_f32, b: 0.72_f32 },
+                top_opacity: 0.72_f32,
+                bottom: Color { r: 0.02_f32, g: 0.1_f32, b: 0.25_f32 },
+                bottom_opacity: 0.92_f32,
+                lip: Color { r: 0.8_f32, g: 0.95_f32, b: 1.0_f32 },
+                lip_width: 0.06_f32,
+                layer: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Water2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                top: field(o, "top", d.top)?,
+                top_opacity: field(o, "topOpacity", d.top_opacity)?,
+                bottom: field(o, "bottom", d.bottom)?,
+                bottom_opacity: field(o, "bottomOpacity", d.bottom_opacity)?,
+                lip: field(o, "lip", d.lip)?,
+                lip_width: field(o, "lipWidth", d.lip_width)?,
+                layer: field(o, "layer", d.layer)?,
+            })
+        }
+    }
+
+    /// `Skeleton`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Skeleton {
+        pub asset: u64,
+        pub skin: u32,
+        pub root_motion: RootMotion,
+        pub root_joint: u32,
+        pub joint_count: u32,
+    }
+
+    impl Default for Skeleton {
+        fn default() -> Self {
+            Self {
+                asset: Default::default(),
+                skin: Default::default(),
+                root_motion: Default::default(),
+                root_joint: Default::default(),
+                joint_count: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Skeleton {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                asset: field(o, "asset", d.asset)?,
+                skin: field(o, "skin", d.skin)?,
+                root_motion: field(o, "rootMotion", d.root_motion)?,
+                root_joint: field(o, "rootJoint", d.root_joint)?,
+                joint_count: field(o, "jointCount", d.joint_count)?,
+            })
+        }
+    }
+
+    /// `CrowdAnimation`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CrowdAnimation {
+        pub skeleton: u64,
+        pub skin: u32,
+        pub clip: u64,
+        pub offset: f32,
+        pub speed: f32,
+        pub r#loop: bool,
+        pub rate: f32,
+    }
+
+    impl Default for CrowdAnimation {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                skin: Default::default(),
+                clip: Default::default(),
+                offset: Default::default(),
+                speed: 1.0_f32,
+                r#loop: true,
+                rate: 30.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for CrowdAnimation {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                skin: field(o, "skin", d.skin)?,
+                clip: field(o, "clip", d.clip)?,
+                offset: field(o, "offset", d.offset)?,
+                speed: field(o, "speed", d.speed)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+                rate: field(o, "rate", d.rate)?,
+            })
+        }
+    }
+
+    /// `AnimationPlayer`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AnimationPlayer {
+        pub clip: u64,
+        pub time: f32,
+        pub speed: f32,
+        pub r#loop: bool,
+        pub weight: f32,
+        pub fade: f32,
+        pub step_fps: f32,
+        pub finished: bool,
+    }
+
+    impl Default for AnimationPlayer {
+        fn default() -> Self {
+            Self {
+                clip: Default::default(),
+                time: Default::default(),
+                speed: 1.0_f32,
+                r#loop: true,
+                weight: 1.0_f32,
+                fade: 0.2_f32,
+                step_fps: Default::default(),
+                finished: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AnimationPlayer {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                clip: field(o, "clip", d.clip)?,
+                time: field(o, "time", d.time)?,
+                speed: field(o, "speed", d.speed)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+                weight: field(o, "weight", d.weight)?,
+                fade: field(o, "fade", d.fade)?,
+                step_fps: field(o, "stepFps", d.step_fps)?,
+                finished: field(o, "finished", d.finished)?,
+            })
+        }
+    }
+
+    /// `AnimationGraph`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AnimationGraph {
+        pub asset: u64,
+        pub weight: f32,
+        pub speed: f32,
+        pub p0: f32,
+        pub p1: f32,
+        pub p2: f32,
+        pub p3: f32,
+        pub p4: f32,
+        pub p5: f32,
+        pub p6: f32,
+        pub p7: f32,
+        pub state: u32,
+        pub state_time: f32,
+    }
+
+    impl Default for AnimationGraph {
+        fn default() -> Self {
+            Self {
+                asset: Default::default(),
+                weight: 1.0_f32,
+                speed: 1.0_f32,
+                p0: Default::default(),
+                p1: Default::default(),
+                p2: Default::default(),
+                p3: Default::default(),
+                p4: Default::default(),
+                p5: Default::default(),
+                p6: Default::default(),
+                p7: Default::default(),
+                state: Default::default(),
+                state_time: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AnimationGraph {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                asset: field(o, "asset", d.asset)?,
+                weight: field(o, "weight", d.weight)?,
+                speed: field(o, "speed", d.speed)?,
+                p0: field(o, "p0", d.p0)?,
+                p1: field(o, "p1", d.p1)?,
+                p2: field(o, "p2", d.p2)?,
+                p3: field(o, "p3", d.p3)?,
+                p4: field(o, "p4", d.p4)?,
+                p5: field(o, "p5", d.p5)?,
+                p6: field(o, "p6", d.p6)?,
+                p7: field(o, "p7", d.p7)?,
+                state: field(o, "state", d.state)?,
+                state_time: field(o, "stateTime", d.state_time)?,
+            })
+        }
+    }
+
+    /// `Blendshapes`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Blendshapes {
+        pub source: BlendshapeSource,
+        pub mesh: u32,
+        pub w0: f32,
+        pub w1: f32,
+        pub w2: f32,
+        pub w3: f32,
+        pub w4: f32,
+        pub w5: f32,
+        pub w6: f32,
+        pub w7: f32,
+        pub influences: Vec<f32>,
+    }
+
+    impl Default for Blendshapes {
+        fn default() -> Self {
+            Self {
+                source: Default::default(),
+                mesh: Default::default(),
+                w0: Default::default(),
+                w1: Default::default(),
+                w2: Default::default(),
+                w3: Default::default(),
+                w4: Default::default(),
+                w5: Default::default(),
+                w6: Default::default(),
+                w7: Default::default(),
+                influences: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Blendshapes {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                source: field(o, "source", d.source)?,
+                mesh: field(o, "mesh", d.mesh)?,
+                w0: field(o, "w0", d.w0)?,
+                w1: field(o, "w1", d.w1)?,
+                w2: field(o, "w2", d.w2)?,
+                w3: field(o, "w3", d.w3)?,
+                w4: field(o, "w4", d.w4)?,
+                w5: field(o, "w5", d.w5)?,
+                w6: field(o, "w6", d.w6)?,
+                w7: field(o, "w7", d.w7)?,
+                influences: field(o, "influences", d.influences)?,
+            })
+        }
+    }
+
+    /// `IkChain`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct IkChain {
+        pub skeleton: u64,
+        pub tip: u32,
+        pub bones: u32,
+        pub solver: IkSolver,
+        pub target: Vec3,
+        pub pole: Vec3,
+        pub space: IkSpace,
+        pub weight: f32,
+        pub iterations: u32,
+        pub tolerance: f32,
+        pub reached: bool,
+        pub error: f32,
+    }
+
+    impl Default for IkChain {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                tip: Default::default(),
+                bones: 2,
+                solver: Default::default(),
+                target: Default::default(),
+                pole: Default::default(),
+                space: Default::default(),
+                weight: 1.0_f32,
+                iterations: 10,
+                tolerance: 0.001_f32,
+                reached: Default::default(),
+                error: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for IkChain {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                tip: field(o, "tip", d.tip)?,
+                bones: field(o, "bones", d.bones)?,
+                solver: field(o, "solver", d.solver)?,
+                target: field(o, "target", d.target)?,
+                pole: field(o, "pole", d.pole)?,
+                space: field(o, "space", d.space)?,
+                weight: field(o, "weight", d.weight)?,
+                iterations: field(o, "iterations", d.iterations)?,
+                tolerance: field(o, "tolerance", d.tolerance)?,
+                reached: field(o, "reached", d.reached)?,
+                error: field(o, "error", d.error)?,
+            })
+        }
+    }
+
+    /// `LookAt`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct LookAt {
+        pub skeleton: u64,
+        pub joint: u32,
+        pub bones: u32,
+        pub target: Vec3,
+        pub space: IkSpace,
+        pub axis: Vec3,
+        pub up_axis: Vec3,
+        pub up: Vec3,
+        pub max_yaw: f32,
+        pub max_pitch: f32,
+        pub weight: f32,
+        pub clamped: bool,
+    }
+
+    impl Default for LookAt {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                joint: Default::default(),
+                bones: 1,
+                target: Default::default(),
+                space: Default::default(),
+                axis: Vec3::new(0.0_f32, 0.0_f32, 1.0_f32),
+                up_axis: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
+                up: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
+                max_yaw: 3.1416_f32,
+                max_pitch: 1.5708_f32,
+                weight: 1.0_f32,
+                clamped: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for LookAt {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                joint: field(o, "joint", d.joint)?,
+                bones: field(o, "bones", d.bones)?,
+                target: field(o, "target", d.target)?,
+                space: field(o, "space", d.space)?,
+                axis: field(o, "axis", d.axis)?,
+                up_axis: field(o, "upAxis", d.up_axis)?,
+                up: field(o, "up", d.up)?,
+                max_yaw: field(o, "maxYaw", d.max_yaw)?,
+                max_pitch: field(o, "maxPitch", d.max_pitch)?,
+                weight: field(o, "weight", d.weight)?,
+                clamped: field(o, "clamped", d.clamped)?,
+            })
+        }
+    }
+
+    /// `JointLimit`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct JointLimit {
+        pub skeleton: u64,
+        pub joint: u32,
+        pub axis: Vec3,
+        pub swing: f32,
+        pub twist_min: f32,
+        pub twist_max: f32,
+    }
+
+    impl Default for JointLimit {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                joint: Default::default(),
+                axis: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
+                swing: 3.1416_f32,
+                twist_min: -3.1416_f32,
+                twist_max: 3.1416_f32,
+            }
+        }
+    }
+
+    impl FromJson for JointLimit {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                joint: field(o, "joint", d.joint)?,
+                axis: field(o, "axis", d.axis)?,
+                swing: field(o, "swing", d.swing)?,
+                twist_min: field(o, "twistMin", d.twist_min)?,
+                twist_max: field(o, "twistMax", d.twist_max)?,
+            })
+        }
+    }
+
+    /// `FootLock`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FootLock {
+        pub skeleton: u64,
+        pub foot: u32,
+        pub weight: f32,
+        pub release: f32,
+        pub max_distance: f32,
+        pub planted: bool,
+        pub locked: bool,
+    }
+
+    impl Default for FootLock {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                foot: Default::default(),
+                weight: 1.0_f32,
+                release: 0.15_f32,
+                max_distance: 0.5_f32,
+                planted: Default::default(),
+                locked: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FootLock {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                foot: field(o, "foot", d.foot)?,
+                weight: field(o, "weight", d.weight)?,
+                release: field(o, "release", d.release)?,
+                max_distance: field(o, "maxDistance", d.max_distance)?,
+                planted: field(o, "planted", d.planted)?,
+                locked: field(o, "locked", d.locked)?,
+            })
+        }
+    }
+
+    /// `SpringBone`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SpringBone {
+        pub skeleton: u64,
+        pub joint: u32,
+        pub bones: u32,
+        pub frequency: f32,
+        pub damping: f32,
+        pub tip_frequency: f32,
+        pub tip_damping: f32,
+        pub gravity: Vec3,
+        pub space: SpringSpace,
+        pub weight: f32,
+        pub radius: f32,
+        pub colliders: u32,
+        pub lag: f32,
+    }
+
+    impl Default for SpringBone {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                joint: Default::default(),
+                bones: 1,
+                frequency: 3.0_f32,
+                damping: 0.3_f32,
+                tip_frequency: 1.0_f32,
+                tip_damping: 1.0_f32,
+                gravity: Default::default(),
+                space: Default::default(),
+                weight: 1.0_f32,
+                radius: Default::default(),
+                colliders: 4294967295,
+                lag: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SpringBone {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                joint: field(o, "joint", d.joint)?,
+                bones: field(o, "bones", d.bones)?,
+                frequency: field(o, "frequency", d.frequency)?,
+                damping: field(o, "damping", d.damping)?,
+                tip_frequency: field(o, "tipFrequency", d.tip_frequency)?,
+                tip_damping: field(o, "tipDamping", d.tip_damping)?,
+                gravity: field(o, "gravity", d.gravity)?,
+                space: field(o, "space", d.space)?,
+                weight: field(o, "weight", d.weight)?,
+                radius: field(o, "radius", d.radius)?,
+                colliders: field(o, "colliders", d.colliders)?,
+                lag: field(o, "lag", d.lag)?,
+            })
+        }
+    }
+
+    /// `SpringCollider`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SpringCollider {
+        pub skeleton: u64,
+        pub joint: u32,
+        pub shape: SpringColliderShape,
+        pub offset: Vec3,
+        pub tail: Vec3,
+        pub radius: f32,
+        pub layers: u32,
+    }
+
+    impl Default for SpringCollider {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                joint: Default::default(),
+                shape: Default::default(),
+                offset: Default::default(),
+                tail: Default::default(),
+                radius: 0.1_f32,
+                layers: 1,
+            }
+        }
+    }
+
+    impl FromJson for SpringCollider {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                joint: field(o, "joint", d.joint)?,
+                shape: field(o, "shape", d.shape)?,
+                offset: field(o, "offset", d.offset)?,
+                tail: field(o, "tail", d.tail)?,
+                radius: field(o, "radius", d.radius)?,
+                layers: field(o, "layers", d.layers)?,
+            })
+        }
+    }
+
+    /// `AnimationEvent`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AnimationEvent {
+        pub entity: u64,
+        pub clip: u64,
+        pub name: String,
+        pub time: f32,
+        pub weight: f32,
+    }
+
+    impl Default for AnimationEvent {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                clip: Default::default(),
+                name: Default::default(),
+                time: Default::default(),
+                weight: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AnimationEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                clip: field(o, "clip", d.clip)?,
+                name: field(o, "name", d.name)?,
+                time: field(o, "time", d.time)?,
+                weight: field(o, "weight", d.weight)?,
+            })
+        }
+    }
+
+    /// `Flipbook`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Flipbook {
+        pub sheet: u64,
+        pub clip: u32,
+        pub speed: f32,
+        pub playing: bool,
+        pub frame: u32,
+        pub time: f32,
+        pub finished: bool,
+        pub loops: u32,
+    }
+
+    impl Default for Flipbook {
+        fn default() -> Self {
+            Self {
+                sheet: Default::default(),
+                clip: Default::default(),
+                speed: 1.0_f32,
+                playing: true,
+                frame: Default::default(),
+                time: Default::default(),
+                finished: Default::default(),
+                loops: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Flipbook {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sheet: field(o, "sheet", d.sheet)?,
+                clip: field(o, "clip", d.clip)?,
+                speed: field(o, "speed", d.speed)?,
+                playing: field(o, "playing", d.playing)?,
+                frame: field(o, "frame", d.frame)?,
+                time: field(o, "time", d.time)?,
+                finished: field(o, "finished", d.finished)?,
+                loops: field(o, "loops", d.loops)?,
+            })
+        }
+    }
+
+    /// `FlipbookEvent`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FlipbookEvent {
+        pub entity: u64,
+        pub clip: u32,
+        pub frame: u32,
+        pub name: String,
+    }
+
+    impl Default for FlipbookEvent {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                clip: Default::default(),
+                frame: Default::default(),
+                name: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for FlipbookEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                clip: field(o, "clip", d.clip)?,
+                frame: field(o, "frame", d.frame)?,
+                name: field(o, "name", d.name)?,
+            })
+        }
+    }
+
+    /// `Skeleton2D`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Skeleton2D {
+        pub rig: u64,
+        pub clip: u32,
+        pub time: f32,
+        pub speed: f32,
+        pub r#loop: bool,
+        pub flip_x: bool,
+        pub layer: i32,
+        pub skin: u32,
+        pub finished: bool,
+        pub blend_clip: u32,
+        pub blend_time: f32,
+        pub blend: f32,
+    }
+
+    impl Default for Skeleton2D {
+        fn default() -> Self {
+            Self {
+                rig: Default::default(),
+                clip: Default::default(),
+                time: Default::default(),
+                speed: 1.0_f32,
+                r#loop: true,
+                flip_x: Default::default(),
+                layer: Default::default(),
+                skin: Default::default(),
+                finished: Default::default(),
+                blend_clip: Default::default(),
+                blend_time: Default::default(),
+                blend: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Skeleton2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                rig: field(o, "rig", d.rig)?,
+                clip: field(o, "clip", d.clip)?,
+                time: field(o, "time", d.time)?,
+                speed: field(o, "speed", d.speed)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+                flip_x: field(o, "flipX", d.flip_x)?,
+                layer: field(o, "layer", d.layer)?,
+                skin: field(o, "skin", d.skin)?,
+                finished: field(o, "finished", d.finished)?,
+                blend_clip: field(o, "blendClip", d.blend_clip)?,
+                blend_time: field(o, "blendTime", d.blend_time)?,
+                blend: field(o, "blend", d.blend)?,
+            })
+        }
+    }
+
+    /// `Skeleton2DEvent`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Skeleton2DEvent {
+        pub entity: u64,
+        pub clip: u32,
+        pub name: String,
+        pub time: f32,
+        pub armature: String,
+    }
+
+    impl Default for Skeleton2DEvent {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                clip: Default::default(),
+                name: Default::default(),
+                time: Default::default(),
+                armature: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Skeleton2DEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                clip: field(o, "clip", d.clip)?,
+                name: field(o, "name", d.name)?,
+                time: field(o, "time", d.time)?,
+                armature: field(o, "armature", d.armature)?,
+            })
+        }
+    }
+
+    /// `IkTarget2D`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct IkTarget2D {
+        pub skeleton: u64,
+        pub constraint: u32,
+        pub target: Vec2,
+        pub weight: f32,
+        pub tolerance: f32,
+        pub reached: bool,
+        pub error: f32,
+    }
+
+    impl Default for IkTarget2D {
+        fn default() -> Self {
+            Self {
+                skeleton: Default::default(),
+                constraint: Default::default(),
+                target: Default::default(),
+                weight: 1.0_f32,
+                tolerance: 0.01_f32,
+                reached: Default::default(),
+                error: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for IkTarget2D {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                skeleton: field(o, "skeleton", d.skeleton)?,
+                constraint: field(o, "constraint", d.constraint)?,
+                target: field(o, "target", d.target)?,
+                weight: field(o, "weight", d.weight)?,
+                tolerance: field(o, "tolerance", d.tolerance)?,
+                reached: field(o, "reached", d.reached)?,
+                error: field(o, "error", d.error)?,
+            })
+        }
+    }
+
+    /// `TweenCompleted`: packages/knowledge/wiki/tween.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TweenCompleted {
+        pub tween: u64,
+        pub entity: u64,
+        pub tag: u32,
+    }
+
+    impl Default for TweenCompleted {
+        fn default() -> Self {
+            Self {
+                tween: Default::default(),
+                entity: Default::default(),
+                tag: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TweenCompleted {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                tween: field(o, "tween", d.tween)?,
+                entity: field(o, "entity", d.entity)?,
+                tag: field(o, "tag", d.tag)?,
+            })
+        }
+    }
+
+    /// `TweenEvent`: packages/knowledge/wiki/tween.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TweenEvent {
+        pub tween: u64,
+        pub entity: u64,
+        pub name: String,
+        pub progress: f32,
+        pub tag: u32,
+    }
+
+    impl Default for TweenEvent {
+        fn default() -> Self {
+            Self {
+                tween: Default::default(),
+                entity: Default::default(),
+                name: Default::default(),
+                progress: Default::default(),
+                tag: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TweenEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                tween: field(o, "tween", d.tween)?,
+                entity: field(o, "entity", d.entity)?,
+                name: field(o, "name", d.name)?,
+                progress: field(o, "progress", d.progress)?,
+                tag: field(o, "tag", d.tag)?,
+            })
+        }
+    }
+
+    /// `Tilemap`: packages/knowledge/wiki/tilemap.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Tilemap {
+        pub map: u64,
+        pub layer: i32,
+        pub color: Color,
+        pub opacity: f32,
+        pub visible: bool,
+        pub collision: bool,
+        pub collider_layers: u32,
+        pub friction: f32,
+        pub palette: u64,
+        pub palette_row: u32,
+    }
+
+    impl Default for Tilemap {
+        fn default() -> Self {
+            Self {
+                map: Default::default(),
+                layer: -10,
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                opacity: 1.0_f32,
+                visible: true,
+                collision: true,
+                collider_layers: 1,
+                friction: 0.5_f32,
+                palette: Default::default(),
+                palette_row: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Tilemap {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                map: field(o, "map", d.map)?,
+                layer: field(o, "layer", d.layer)?,
+                color: field(o, "color", d.color)?,
+                opacity: field(o, "opacity", d.opacity)?,
+                visible: field(o, "visible", d.visible)?,
+                collision: field(o, "collision", d.collision)?,
+                collider_layers: field(o, "colliderLayers", d.collider_layers)?,
+                friction: field(o, "friction", d.friction)?,
+                palette: field(o, "palette", d.palette)?,
+                palette_row: field(o, "paletteRow", d.palette_row)?,
+            })
+        }
+    }
+
+    /// `AudioSource`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AudioSource {
+        pub sound: u64,
+        pub bus: AudioBus,
+        pub volume: f32,
+        pub playback_rate: f32,
+        pub pan: f32,
+        pub r#loop: bool,
+        pub loop_start: f32,
+        pub loop_end: f32,
+        pub spatial: bool,
+        pub ref_distance: f32,
+        pub max_distance: f32,
+        pub rolloff_factor: f32,
+        pub playing: bool,
+        pub priority: u32,
+        pub lowpass: f32,
+        pub occlude: bool,
+        pub distance_cutoff: f32,
+        pub start_at: f64,
+        pub start_offset: f64,
+        pub fade: f32,
+        pub doppler_factor: f32,
+        pub cone_inner_angle: f32,
+        pub cone_outer_angle: f32,
+        pub cone_outer_gain: f32,
+        pub virtualize: bool,
+        pub retrigger: bool,
+        pub user_bus: u32,
+    }
+
+    impl Default for AudioSource {
+        fn default() -> Self {
+            Self {
+                sound: Default::default(),
+                bus: AudioBus::Sfx,
+                volume: 1.0_f32,
+                playback_rate: 1.0_f32,
+                pan: Default::default(),
+                r#loop: Default::default(),
+                loop_start: Default::default(),
+                loop_end: Default::default(),
+                spatial: Default::default(),
+                ref_distance: 1.0_f32,
+                max_distance: 100.0_f32,
+                rolloff_factor: 1.0_f32,
+                playing: true,
+                priority: 128,
+                lowpass: Default::default(),
+                occlude: Default::default(),
+                distance_cutoff: Default::default(),
+                start_at: Default::default(),
+                start_offset: Default::default(),
+                fade: Default::default(),
+                doppler_factor: 1.0_f32,
+                cone_inner_angle: 360.0_f32,
+                cone_outer_angle: 360.0_f32,
+                cone_outer_gain: Default::default(),
+                virtualize: Default::default(),
+                retrigger: Default::default(),
+                user_bus: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AudioSource {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sound: field(o, "sound", d.sound)?,
+                bus: field(o, "bus", d.bus)?,
+                volume: field(o, "volume", d.volume)?,
+                playback_rate: field(o, "playbackRate", d.playback_rate)?,
+                pan: field(o, "pan", d.pan)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+                loop_start: field(o, "loopStart", d.loop_start)?,
+                loop_end: field(o, "loopEnd", d.loop_end)?,
+                spatial: field(o, "spatial", d.spatial)?,
+                ref_distance: field(o, "refDistance", d.ref_distance)?,
+                max_distance: field(o, "maxDistance", d.max_distance)?,
+                rolloff_factor: field(o, "rolloffFactor", d.rolloff_factor)?,
+                playing: field(o, "playing", d.playing)?,
+                priority: field(o, "priority", d.priority)?,
+                lowpass: field(o, "lowpass", d.lowpass)?,
+                occlude: field(o, "occlude", d.occlude)?,
+                distance_cutoff: field(o, "distanceCutoff", d.distance_cutoff)?,
+                start_at: field(o, "startAt", d.start_at)?,
+                start_offset: field(o, "startOffset", d.start_offset)?,
+                fade: field(o, "fade", d.fade)?,
+                doppler_factor: field(o, "dopplerFactor", d.doppler_factor)?,
+                cone_inner_angle: field(o, "coneInnerAngle", d.cone_inner_angle)?,
+                cone_outer_angle: field(o, "coneOuterAngle", d.cone_outer_angle)?,
+                cone_outer_gain: field(o, "coneOuterGain", d.cone_outer_gain)?,
+                virtualize: field(o, "virtualize", d.virtualize)?,
+                retrigger: field(o, "retrigger", d.retrigger)?,
+                user_bus: field(o, "userBus", d.user_bus)?,
+            })
+        }
+    }
+
+    /// `AudioListener`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AudioListener {
+        pub volume: f32,
+        pub doppler_factor: f32,
+        pub panning_model: PanningModel,
+    }
+
+    impl Default for AudioListener {
+        fn default() -> Self {
+            Self {
+                volume: 1.0_f32,
+                doppler_factor: 1.0_f32,
+                panning_model: PanningModel::Equalpower,
+            }
+        }
+    }
+
+    impl FromJson for AudioListener {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                volume: field(o, "volume", d.volume)?,
+                doppler_factor: field(o, "dopplerFactor", d.doppler_factor)?,
+                panning_model: field(o, "panningModel", d.panning_model)?,
+            })
+        }
+    }
+
+    /// `Audio`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Audio {
+        pub master: f32,
+        pub music: f32,
+        pub sfx: f32,
+        pub ui: f32,
+        pub max_voices: u32,
+        pub occlusion_gain: f32,
+        pub occlusion_cutoff: f32,
+        pub reverb_room: f32,
+        pub reverb_damping: f32,
+        pub output_latency: f64,
+        pub speed_of_sound: f32,
+        pub resampler: AudioResampler,
+    }
+
+    impl Default for Audio {
+        fn default() -> Self {
+            Self {
+                master: 1.0_f32,
+                music: 1.0_f32,
+                sfx: 1.0_f32,
+                ui: 1.0_f32,
+                max_voices: 32,
+                occlusion_gain: 0.35_f32,
+                occlusion_cutoff: 900.0_f32,
+                reverb_room: 0.6_f32,
+                reverb_damping: 0.4_f32,
+                output_latency: Default::default(),
+                speed_of_sound: 343.3_f32,
+                resampler: AudioResampler::Sinc,
+            }
+        }
+    }
+
+    impl FromJson for Audio {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                master: field(o, "master", d.master)?,
+                music: field(o, "music", d.music)?,
+                sfx: field(o, "sfx", d.sfx)?,
+                ui: field(o, "ui", d.ui)?,
+                max_voices: field(o, "maxVoices", d.max_voices)?,
+                occlusion_gain: field(o, "occlusionGain", d.occlusion_gain)?,
+                occlusion_cutoff: field(o, "occlusionCutoff", d.occlusion_cutoff)?,
+                reverb_room: field(o, "reverbRoom", d.reverb_room)?,
+                reverb_damping: field(o, "reverbDamping", d.reverb_damping)?,
+                output_latency: field(o, "outputLatency", d.output_latency)?,
+                speed_of_sound: field(o, "speedOfSound", d.speed_of_sound)?,
+                resampler: field(o, "resampler", d.resampler)?,
+            })
+        }
+    }
+
+    /// `AudioBusFx`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AudioBusFx {
+        pub bus: AudioBus,
+        pub lowpass: f32,
+        pub highpass: f32,
+        pub reverb: f32,
+        pub threshold: f32,
+        pub ratio: f32,
+        pub attack: f32,
+        pub release: f32,
+        pub makeup: f32,
+        pub duck: bool,
+        pub duck_bus: AudioBus,
+        pub duck_depth: f32,
+        pub duck_threshold: f32,
+        pub duck_attack: f32,
+        pub duck_release: f32,
+        pub user_bus: u32,
+        pub eq_low: f32,
+        pub eq_low_freq: f32,
+        pub eq_mid: f32,
+        pub eq_mid_freq: f32,
+        pub eq_mid_q: f32,
+        pub eq_high: f32,
+        pub eq_high_freq: f32,
+        pub delay: f32,
+        pub delay_feedback: f32,
+        pub delay_mix: f32,
+        pub distortion: f32,
+        pub distortion_mix: f32,
+    }
+
+    impl Default for AudioBusFx {
+        fn default() -> Self {
+            Self {
+                bus: AudioBus::Music,
+                lowpass: Default::default(),
+                highpass: Default::default(),
+                reverb: Default::default(),
+                threshold: Default::default(),
+                ratio: 4.0_f32,
+                attack: 0.005_f32,
+                release: 0.15_f32,
+                makeup: Default::default(),
+                duck: Default::default(),
+                duck_bus: AudioBus::Sfx,
+                duck_depth: 9.0_f32,
+                duck_threshold: -36.0_f32,
+                duck_attack: 0.02_f32,
+                duck_release: 0.4_f32,
+                user_bus: Default::default(),
+                eq_low: Default::default(),
+                eq_low_freq: 200.0_f32,
+                eq_mid: Default::default(),
+                eq_mid_freq: 1000.0_f32,
+                eq_mid_q: 0.7_f32,
+                eq_high: Default::default(),
+                eq_high_freq: 5000.0_f32,
+                delay: Default::default(),
+                delay_feedback: 0.35_f32,
+                delay_mix: 0.35_f32,
+                distortion: Default::default(),
+                distortion_mix: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for AudioBusFx {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                bus: field(o, "bus", d.bus)?,
+                lowpass: field(o, "lowpass", d.lowpass)?,
+                highpass: field(o, "highpass", d.highpass)?,
+                reverb: field(o, "reverb", d.reverb)?,
+                threshold: field(o, "threshold", d.threshold)?,
+                ratio: field(o, "ratio", d.ratio)?,
+                attack: field(o, "attack", d.attack)?,
+                release: field(o, "release", d.release)?,
+                makeup: field(o, "makeup", d.makeup)?,
+                duck: field(o, "duck", d.duck)?,
+                duck_bus: field(o, "duckBus", d.duck_bus)?,
+                duck_depth: field(o, "duckDepth", d.duck_depth)?,
+                duck_threshold: field(o, "duckThreshold", d.duck_threshold)?,
+                duck_attack: field(o, "duckAttack", d.duck_attack)?,
+                duck_release: field(o, "duckRelease", d.duck_release)?,
+                user_bus: field(o, "userBus", d.user_bus)?,
+                eq_low: field(o, "eqLow", d.eq_low)?,
+                eq_low_freq: field(o, "eqLowFreq", d.eq_low_freq)?,
+                eq_mid: field(o, "eqMid", d.eq_mid)?,
+                eq_mid_freq: field(o, "eqMidFreq", d.eq_mid_freq)?,
+                eq_mid_q: field(o, "eqMidQ", d.eq_mid_q)?,
+                eq_high: field(o, "eqHigh", d.eq_high)?,
+                eq_high_freq: field(o, "eqHighFreq", d.eq_high_freq)?,
+                delay: field(o, "delay", d.delay)?,
+                delay_feedback: field(o, "delayFeedback", d.delay_feedback)?,
+                delay_mix: field(o, "delayMix", d.delay_mix)?,
+                distortion: field(o, "distortion", d.distortion)?,
+                distortion_mix: field(o, "distortionMix", d.distortion_mix)?,
+            })
+        }
+    }
+
+    /// `AudioBusNode`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AudioBusNode {
+        pub index: u32,
+        pub parent: u32,
+        pub volume: f32,
+    }
+
+    impl Default for AudioBusNode {
+        fn default() -> Self {
+            Self {
+                index: 4,
+                parent: Default::default(),
+                volume: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for AudioBusNode {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                index: field(o, "index", d.index)?,
+                parent: field(o, "parent", d.parent)?,
+                volume: field(o, "volume", d.volume)?,
+            })
+        }
+    }
+
+    /// `AudioSnapshot`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AudioSnapshot {
+        pub active: bool,
+        pub fade: f32,
+        pub weight: f32,
+        pub volume: Vec<f32>,
+        pub lowpass: Vec<f32>,
+        pub highpass: Vec<f32>,
+    }
+
+    impl Default for AudioSnapshot {
+        fn default() -> Self {
+            Self {
+                active: Default::default(),
+                fade: 0.5_f32,
+                weight: Default::default(),
+                volume: Default::default(),
+                lowpass: Default::default(),
+                highpass: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AudioSnapshot {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                active: field(o, "active", d.active)?,
+                fade: field(o, "fade", d.fade)?,
+                weight: field(o, "weight", d.weight)?,
+                volume: field(o, "volume", d.volume)?,
+                lowpass: field(o, "lowpass", d.lowpass)?,
+                highpass: field(o, "highpass", d.highpass)?,
+            })
+        }
+    }
+
+    /// `AudioEvent`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AudioEvent {
+        pub sounds: Vec<u64>,
+        pub weights: Vec<f32>,
+        pub order: AudioEventOrder,
+        pub volume: f32,
+        pub volume_jitter: f32,
+        pub playback_rate: f32,
+        pub pitch_jitter: f32,
+        pub cooldown: f32,
+        pub max_voices: u32,
+        pub steal: bool,
+        pub bus: AudioBus,
+        pub user_bus: u32,
+        pub spatial: bool,
+        pub ref_distance: f32,
+        pub max_distance: f32,
+        pub priority: u32,
+        pub trigger: bool,
+        pub played: u32,
+        pub last: f64,
+        pub index: u32,
+        pub bag: u32,
+        pub voices: u32,
+    }
+
+    impl Default for AudioEvent {
+        fn default() -> Self {
+            Self {
+                sounds: Default::default(),
+                weights: Default::default(),
+                order: AudioEventOrder::Random,
+                volume: 1.0_f32,
+                volume_jitter: Default::default(),
+                playback_rate: 1.0_f32,
+                pitch_jitter: Default::default(),
+                cooldown: Default::default(),
+                max_voices: Default::default(),
+                steal: true,
+                bus: AudioBus::Sfx,
+                user_bus: Default::default(),
+                spatial: Default::default(),
+                ref_distance: 1.0_f32,
+                max_distance: 100.0_f32,
+                priority: 128,
+                trigger: Default::default(),
+                played: Default::default(),
+                last: Default::default(),
+                index: Default::default(),
+                bag: Default::default(),
+                voices: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AudioEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sounds: field(o, "sounds", d.sounds)?,
+                weights: field(o, "weights", d.weights)?,
+                order: field(o, "order", d.order)?,
+                volume: field(o, "volume", d.volume)?,
+                volume_jitter: field(o, "volumeJitter", d.volume_jitter)?,
+                playback_rate: field(o, "playbackRate", d.playback_rate)?,
+                pitch_jitter: field(o, "pitchJitter", d.pitch_jitter)?,
+                cooldown: field(o, "cooldown", d.cooldown)?,
+                max_voices: field(o, "maxVoices", d.max_voices)?,
+                steal: field(o, "steal", d.steal)?,
+                bus: field(o, "bus", d.bus)?,
+                user_bus: field(o, "userBus", d.user_bus)?,
+                spatial: field(o, "spatial", d.spatial)?,
+                ref_distance: field(o, "refDistance", d.ref_distance)?,
+                max_distance: field(o, "maxDistance", d.max_distance)?,
+                priority: field(o, "priority", d.priority)?,
+                trigger: field(o, "trigger", d.trigger)?,
+                played: field(o, "played", d.played)?,
+                last: field(o, "last", d.last)?,
+                index: field(o, "index", d.index)?,
+                bag: field(o, "bag", d.bag)?,
+                voices: field(o, "voices", d.voices)?,
+            })
+        }
+    }
+
+    /// `ReverbZone`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ReverbZone {
+        pub size: Vec3,
+        pub radius: f32,
+        pub fade: f32,
+        pub bus: AudioBus,
+        pub send: f32,
+        pub room: f32,
+        pub damping: f32,
+        pub weight: f32,
+    }
+
+    impl Default for ReverbZone {
+        fn default() -> Self {
+            Self {
+                size: Vec3::new(10.0_f32, 4.0_f32, 10.0_f32),
+                radius: Default::default(),
+                fade: 2.0_f32,
+                bus: AudioBus::Sfx,
+                send: 0.5_f32,
+                room: 0.85_f32,
+                damping: 0.3_f32,
+                weight: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ReverbZone {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                size: field(o, "size", d.size)?,
+                radius: field(o, "radius", d.radius)?,
+                fade: field(o, "fade", d.fade)?,
+                bus: field(o, "bus", d.bus)?,
+                send: field(o, "send", d.send)?,
+                room: field(o, "room", d.room)?,
+                damping: field(o, "damping", d.damping)?,
+                weight: field(o, "weight", d.weight)?,
+            })
+        }
+    }
+
+    /// `Music`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Music {
+        pub bpm: f32,
+        pub beats_per_bar: u32,
+        pub start: f64,
+        pub bar: u32,
+        pub beat: u32,
+        pub next_beat: f64,
+        pub next_bar: f64,
+    }
+
+    impl Default for Music {
+        fn default() -> Self {
+            Self {
+                bpm: 120.0_f32,
+                beats_per_bar: 4,
+                start: Default::default(),
+                bar: Default::default(),
+                beat: Default::default(),
+                next_beat: Default::default(),
+                next_bar: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Music {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                bpm: field(o, "bpm", d.bpm)?,
+                beats_per_bar: field(o, "beatsPerBar", d.beats_per_bar)?,
+                start: field(o, "start", d.start)?,
+                bar: field(o, "bar", d.bar)?,
+                beat: field(o, "beat", d.beat)?,
+                next_beat: field(o, "nextBeat", d.next_beat)?,
+                next_bar: field(o, "nextBar", d.next_bar)?,
+            })
+        }
+    }
+
+    /// `MusicBeat`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct MusicBeat {
+        pub entity: u64,
+        pub bar: u32,
+        pub beat: u32,
+        pub time: f64,
+    }
+
+    impl Default for MusicBeat {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                bar: Default::default(),
+                beat: Default::default(),
+                time: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for MusicBeat {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                bar: field(o, "bar", d.bar)?,
+                beat: field(o, "beat", d.beat)?,
+                time: field(o, "time", d.time)?,
+            })
+        }
+    }
+
+    /// `SoundStarted`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SoundStarted {
+        pub entity: u64,
+        pub sound: u64,
+        pub voice: u32,
+    }
+
+    impl Default for SoundStarted {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                sound: Default::default(),
+                voice: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SoundStarted {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                sound: field(o, "sound", d.sound)?,
+                voice: field(o, "voice", d.voice)?,
+            })
+        }
+    }
+
+    /// `SoundEnded`: packages/knowledge/wiki/audio.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SoundEnded {
+        pub entity: u64,
+        pub sound: u64,
+        pub voice: u32,
+        pub reason: u32,
+    }
+
+    impl Default for SoundEnded {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                sound: Default::default(),
+                voice: Default::default(),
+                reason: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SoundEnded {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                sound: field(o, "sound", d.sound)?,
+                voice: field(o, "voice", d.voice)?,
+                reason: field(o, "reason", d.reason)?,
+            })
+        }
+    }
+
+    /// `NavAgent`: packages/knowledge/wiki/nav.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct NavAgent {
+        pub nav: u64,
+        pub target: Vec3,
+        pub seeking: bool,
+        pub speed: f32,
+        pub acceleration: f32,
+        pub radius: f32,
+        pub stop_distance: f32,
+        pub slow_radius: f32,
+        pub repath_ticks: u32,
+        pub repath_distance: f32,
+        pub smooth: bool,
+        pub face_movement: bool,
+        pub turn_speed: f32,
+        pub drive: bool,
+        pub status: u32,
+        pub velocity: Vec3,
+        pub waypoint: Vec3,
+        pub remaining: f32,
+        pub plans: u32,
+    }
+
+    impl Default for NavAgent {
+        fn default() -> Self {
+            Self {
+                nav: Default::default(),
+                target: Default::default(),
+                seeking: Default::default(),
+                speed: 3.5_f32,
+                acceleration: 20.0_f32,
+                radius: 0.4_f32,
+                stop_distance: 0.1_f32,
+                slow_radius: 1.0_f32,
+                repath_ticks: 30,
+                repath_distance: 0.5_f32,
+                smooth: true,
+                face_movement: Default::default(),
+                turn_speed: 10.0_f32,
+                drive: true,
+                status: Default::default(),
+                velocity: Default::default(),
+                waypoint: Default::default(),
+                remaining: Default::default(),
+                plans: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for NavAgent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                nav: field(o, "nav", d.nav)?,
+                target: field(o, "target", d.target)?,
+                seeking: field(o, "seeking", d.seeking)?,
+                speed: field(o, "speed", d.speed)?,
+                acceleration: field(o, "acceleration", d.acceleration)?,
+                radius: field(o, "radius", d.radius)?,
+                stop_distance: field(o, "stopDistance", d.stop_distance)?,
+                slow_radius: field(o, "slowRadius", d.slow_radius)?,
+                repath_ticks: field(o, "repathTicks", d.repath_ticks)?,
+                repath_distance: field(o, "repathDistance", d.repath_distance)?,
+                smooth: field(o, "smooth", d.smooth)?,
+                face_movement: field(o, "faceMovement", d.face_movement)?,
+                turn_speed: field(o, "turnSpeed", d.turn_speed)?,
+                drive: field(o, "drive", d.drive)?,
+                status: field(o, "status", d.status)?,
+                velocity: field(o, "velocity", d.velocity)?,
+                waypoint: field(o, "waypoint", d.waypoint)?,
+                remaining: field(o, "remaining", d.remaining)?,
+                plans: field(o, "plans", d.plans)?,
+            })
+        }
+    }
+
+    /// `Steering`: packages/knowledge/wiki/nav.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Steering {
+        pub seek: f32,
+        pub flee: f32,
+        pub flee_from: Vec3,
+        pub flee_radius: f32,
+        pub wander: f32,
+        pub wander_radius: f32,
+        pub wander_distance: f32,
+        pub wander_jitter: f32,
+        pub pursue: u64,
+        pub pursue_weight: f32,
+        pub evade: u64,
+        pub evade_weight: f32,
+        pub separation: f32,
+        pub separation_radius: f32,
+        pub avoidance: f32,
+        pub avoid_distance: f32,
+        pub avoid_mask: u32,
+        pub wander_angle: f32,
+    }
+
+    impl Default for Steering {
+        fn default() -> Self {
+            Self {
+                seek: 1.0_f32,
+                flee: Default::default(),
+                flee_from: Default::default(),
+                flee_radius: 6.0_f32,
+                wander: Default::default(),
+                wander_radius: 1.0_f32,
+                wander_distance: 2.0_f32,
+                wander_jitter: 3.0_f32,
+                pursue: Default::default(),
+                pursue_weight: 1.0_f32,
+                evade: Default::default(),
+                evade_weight: 1.0_f32,
+                separation: Default::default(),
+                separation_radius: 1.0_f32,
+                avoidance: Default::default(),
+                avoid_distance: 2.0_f32,
+                avoid_mask: Default::default(),
+                wander_angle: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Steering {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                seek: field(o, "seek", d.seek)?,
+                flee: field(o, "flee", d.flee)?,
+                flee_from: field(o, "fleeFrom", d.flee_from)?,
+                flee_radius: field(o, "fleeRadius", d.flee_radius)?,
+                wander: field(o, "wander", d.wander)?,
+                wander_radius: field(o, "wanderRadius", d.wander_radius)?,
+                wander_distance: field(o, "wanderDistance", d.wander_distance)?,
+                wander_jitter: field(o, "wanderJitter", d.wander_jitter)?,
+                pursue: field(o, "pursue", d.pursue)?,
+                pursue_weight: field(o, "pursueWeight", d.pursue_weight)?,
+                evade: field(o, "evade", d.evade)?,
+                evade_weight: field(o, "evadeWeight", d.evade_weight)?,
+                separation: field(o, "separation", d.separation)?,
+                separation_radius: field(o, "separationRadius", d.separation_radius)?,
+                avoidance: field(o, "avoidance", d.avoidance)?,
+                avoid_distance: field(o, "avoidDistance", d.avoid_distance)?,
+                avoid_mask: field(o, "avoidMask", d.avoid_mask)?,
+                wander_angle: field(o, "wanderAngle", d.wander_angle)?,
+            })
+        }
+    }
+
+    /// `NavFilter`: packages/knowledge/wiki/nav.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct NavFilter {
+        pub area_costs: Vec<f32>,
+        pub excluded: Vec<u32>,
+    }
+
+    impl Default for NavFilter {
+        fn default() -> Self {
+            Self {
+                area_costs: Default::default(),
+                excluded: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for NavFilter {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                area_costs: field(o, "areaCosts", d.area_costs)?,
+                excluded: field(o, "excluded", d.excluded)?,
+            })
+        }
+    }
+
+    /// `Crowd`: packages/knowledge/wiki/nav.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Crowd {
+        pub neighbours: u32,
+        pub horizon: f32,
+        pub obstacle_horizon: f32,
+        pub weight: f32,
+    }
+
+    impl Default for Crowd {
+        fn default() -> Self {
+            Self {
+                neighbours: 8,
+                horizon: 2.0_f32,
+                obstacle_horizon: 0.5_f32,
+                weight: 0.5_f32,
+            }
+        }
+    }
+
+    impl FromJson for Crowd {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                neighbours: field(o, "neighbours", d.neighbours)?,
+                horizon: field(o, "horizon", d.horizon)?,
+                obstacle_horizon: field(o, "obstacleHorizon", d.obstacle_horizon)?,
+                weight: field(o, "weight", d.weight)?,
+            })
+        }
+    }
+
+    /// `NavLinkReached`: packages/knowledge/wiki/nav.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct NavLinkReached {
+        pub agent: u64,
+        pub mesh: u64,
+        pub link: u32,
+        pub kind: u32,
+        pub start: Vec3,
+        pub end: Vec3,
+        pub game: bool,
+    }
+
+    impl Default for NavLinkReached {
+        fn default() -> Self {
+            Self {
+                agent: Default::default(),
+                mesh: Default::default(),
+                link: Default::default(),
+                kind: Default::default(),
+                start: Default::default(),
+                end: Default::default(),
+                game: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for NavLinkReached {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                agent: field(o, "agent", d.agent)?,
+                mesh: field(o, "mesh", d.mesh)?,
+                link: field(o, "link", d.link)?,
+                kind: field(o, "kind", d.kind)?,
+                start: field(o, "start", d.start)?,
+                end: field(o, "end", d.end)?,
+                game: field(o, "game", d.game)?,
+            })
+        }
+    }
+
+    /// `AiAgent`: packages/knowledge/wiki/ai.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AiAgent {
+        pub behaviour: u64,
+        pub active: bool,
+        pub think_every: u32,
+        pub status: u32,
+        pub state: u32,
+        pub node: u32,
+        pub changes: u32,
+    }
+
+    impl Default for AiAgent {
+        fn default() -> Self {
+            Self {
+                behaviour: Default::default(),
+                active: true,
+                think_every: 1,
+                status: Default::default(),
+                state: Default::default(),
+                node: Default::default(),
+                changes: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AiAgent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                behaviour: field(o, "behaviour", d.behaviour)?,
+                active: field(o, "active", d.active)?,
+                think_every: field(o, "thinkEvery", d.think_every)?,
+                status: field(o, "status", d.status)?,
+                state: field(o, "state", d.state)?,
+                node: field(o, "node", d.node)?,
+                changes: field(o, "changes", d.changes)?,
+            })
+        }
+    }
+
+    /// `Perception`: packages/knowledge/wiki/ai.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Perception {
+        pub sight: f32,
+        pub fov: f32,
+        pub eye_height: f32,
+        pub occlude: bool,
+        pub occluders: u32,
+        pub hearing: f32,
+        pub memory: f32,
+        pub team: u32,
+        pub forward: Vec3,
+        pub target: u64,
+        pub sees: bool,
+        pub last_seen: Vec3,
+        pub since_seen: f32,
+        pub heard: bool,
+        pub heard_at: Vec3,
+        pub since_heard: f32,
+    }
+
+    impl Default for Perception {
+        fn default() -> Self {
+            Self {
+                sight: 8.0_f32,
+                fov: 120.0_f32,
+                eye_height: Default::default(),
+                occlude: true,
+                occluders: Default::default(),
+                hearing: 6.0_f32,
+                memory: 3.0_f32,
+                team: Default::default(),
+                forward: Default::default(),
+                target: Default::default(),
+                sees: Default::default(),
+                last_seen: Default::default(),
+                since_seen: 1000000.0_f32,
+                heard: Default::default(),
+                heard_at: Default::default(),
+                since_heard: 1000000.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Perception {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sight: field(o, "sight", d.sight)?,
+                fov: field(o, "fov", d.fov)?,
+                eye_height: field(o, "eyeHeight", d.eye_height)?,
+                occlude: field(o, "occlude", d.occlude)?,
+                occluders: field(o, "occluders", d.occluders)?,
+                hearing: field(o, "hearing", d.hearing)?,
+                memory: field(o, "memory", d.memory)?,
+                team: field(o, "team", d.team)?,
+                forward: field(o, "forward", d.forward)?,
+                target: field(o, "target", d.target)?,
+                sees: field(o, "sees", d.sees)?,
+                last_seen: field(o, "lastSeen", d.last_seen)?,
+                since_seen: field(o, "sinceSeen", d.since_seen)?,
+                heard: field(o, "heard", d.heard)?,
+                heard_at: field(o, "heardAt", d.heard_at)?,
+                since_heard: field(o, "sinceHeard", d.since_heard)?,
+            })
+        }
+    }
+
+    /// `Perceivable`: packages/knowledge/wiki/ai.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Perceivable {
+        pub team: u32,
+        pub eye_height: f32,
+    }
+
+    impl Default for Perceivable {
+        fn default() -> Self {
+            Self {
+                team: 1,
+                eye_height: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Perceivable {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                team: field(o, "team", d.team)?,
+                eye_height: field(o, "eyeHeight", d.eye_height)?,
+            })
+        }
+    }
+
+    /// `AiChanged`: packages/knowledge/wiki/ai.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AiChanged {
+        pub entity: u64,
+        pub state: u32,
+        pub node: u32,
+        pub status: u32,
+    }
+
+    impl Default for AiChanged {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                state: Default::default(),
+                node: Default::default(),
+                status: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AiChanged {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                state: field(o, "state", d.state)?,
+                node: field(o, "node", d.node)?,
+                status: field(o, "status", d.status)?,
+            })
+        }
+    }
+
+    /// `AiActionStarted`: packages/knowledge/wiki/ai.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AiActionStarted {
+        pub entity: u64,
+        pub node: u32,
+        pub name: String,
+        pub args: String,
+    }
+
+    impl Default for AiActionStarted {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                node: Default::default(),
+                name: Default::default(),
+                args: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AiActionStarted {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                node: field(o, "node", d.node)?,
+                name: field(o, "name", d.name)?,
+                args: field(o, "args", d.args)?,
+            })
+        }
+    }
+
+    /// `AiActionStopped`: packages/knowledge/wiki/ai.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct AiActionStopped {
+        pub entity: u64,
+        pub node: u32,
+        pub name: String,
+        pub result: u32,
+    }
+
+    impl Default for AiActionStopped {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                node: Default::default(),
+                name: Default::default(),
+                result: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for AiActionStopped {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                node: field(o, "node", d.node)?,
+                name: field(o, "name", d.name)?,
+                result: field(o, "result", d.result)?,
+            })
+        }
+    }
+
+    /// `Story`: packages/knowledge/wiki/story.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Story {
+        pub lines: u32,
+        pub conversations: u32,
+        pub active_quests: u32,
+    }
+
+    impl Default for Story {
+        fn default() -> Self {
+            Self {
+                lines: Default::default(),
+                conversations: Default::default(),
+                active_quests: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Story {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                lines: field(o, "lines", d.lines)?,
+                conversations: field(o, "conversations", d.conversations)?,
+                active_quests: field(o, "activeQuests", d.active_quests)?,
+            })
+        }
+    }
+
+    /// `DialogueShown`: packages/knowledge/wiki/story.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct DialogueShown {
+        pub conversation: u32,
+        pub seq: u32,
+    }
+
+    impl Default for DialogueShown {
+        fn default() -> Self {
+            Self {
+                conversation: Default::default(),
+                seq: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for DialogueShown {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                conversation: field(o, "conversation", d.conversation)?,
+                seq: field(o, "seq", d.seq)?,
+            })
+        }
+    }
+
+    /// `DialogueEnded`: packages/knowledge/wiki/story.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct DialogueEnded {
+        pub conversation: u32,
+    }
+
+    impl Default for DialogueEnded {
+        fn default() -> Self {
+            Self {
+                conversation: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for DialogueEnded {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                conversation: field(o, "conversation", d.conversation)?,
+            })
+        }
+    }
+
+    /// `DialogueCheck`: packages/knowledge/wiki/story.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct DialogueCheck {
+        pub conversation: u32,
+        pub stat: String,
+        pub target: f32,
+        pub roll: u32,
+        pub passed: bool,
+    }
+
+    impl Default for DialogueCheck {
+        fn default() -> Self {
+            Self {
+                conversation: Default::default(),
+                stat: Default::default(),
+                target: Default::default(),
+                roll: Default::default(),
+                passed: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for DialogueCheck {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                conversation: field(o, "conversation", d.conversation)?,
+                stat: field(o, "stat", d.stat)?,
+                target: field(o, "target", d.target)?,
+                roll: field(o, "roll", d.roll)?,
+                passed: field(o, "passed", d.passed)?,
+            })
+        }
+    }
+
+    /// `QuestUpdated`: packages/knowledge/wiki/story.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct QuestUpdated {
+        pub quest: String,
+        pub status: String,
+    }
+
+    impl Default for QuestUpdated {
+        fn default() -> Self {
+            Self {
+                quest: Default::default(),
+                status: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for QuestUpdated {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                quest: field(o, "quest", d.quest)?,
+                status: field(o, "status", d.status)?,
+            })
+        }
+    }
+
+    /// `BarkSaid`: packages/knowledge/wiki/story.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct BarkSaid {
+        pub entity: u64,
+        pub bark: String,
+        pub key: String,
+        pub seq: u32,
+    }
+
+    impl Default for BarkSaid {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                bark: Default::default(),
+                key: Default::default(),
+                seq: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for BarkSaid {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                bark: field(o, "bark", d.bark)?,
+                key: field(o, "key", d.key)?,
+                seq: field(o, "seq", d.seq)?,
+            })
+        }
+    }
+
+    /// `StoryEvent`: packages/knowledge/wiki/story.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct StoryEvent {
+        pub conversation: u32,
+        pub name: String,
+        pub arg: String,
+    }
+
+    impl Default for StoryEvent {
+        fn default() -> Self {
+            Self {
+                conversation: Default::default(),
+                name: Default::default(),
+                arg: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for StoryEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                conversation: field(o, "conversation", d.conversation)?,
+                name: field(o, "name", d.name)?,
+                arg: field(o, "arg", d.arg)?,
+            })
+        }
+    }
+
+    /// `PlatformAnswered`: packages/knowledge/wiki/platform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PlatformAnswered {
+        pub request: u32,
+        pub ok: bool,
+    }
+
+    impl Default for PlatformAnswered {
+        fn default() -> Self {
+            Self {
+                request: Default::default(),
+                ok: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PlatformAnswered {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                request: field(o, "request", d.request)?,
+                ok: field(o, "ok", d.ok)?,
+            })
+        }
+    }
+
+    /// `PlatformNotice`: packages/knowledge/wiki/platform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PlatformNotice {
+        pub notice: u32,
+        pub kind: PlatformNoticeKind,
+    }
+
+    impl Default for PlatformNotice {
+        fn default() -> Self {
+            Self {
+                notice: Default::default(),
+                kind: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PlatformNotice {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                notice: field(o, "notice", d.notice)?,
+                kind: field(o, "kind", d.kind)?,
+            })
+        }
+    }
+
+    /// `PlatformGrants`: packages/knowledge/wiki/platform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PlatformGrants {
+        pub ids: Vec<u32>,
+    }
+
+    impl Default for PlatformGrants {
+        fn default() -> Self {
+            Self {
+                ids: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PlatformGrants {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                ids: field(o, "ids", d.ids)?,
+            })
+        }
+    }
+
+    /// `RoomJoined`: packages/knowledge/wiki/platform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RoomJoined {
+        pub ok: bool,
+        pub room: String,
+        pub peer: u32,
+        pub peers: u32,
+        pub reason: String,
+    }
+
+    impl Default for RoomJoined {
+        fn default() -> Self {
+            Self {
+                ok: Default::default(),
+                room: Default::default(),
+                peer: Default::default(),
+                peers: Default::default(),
+                reason: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for RoomJoined {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                ok: field(o, "ok", d.ok)?,
+                room: field(o, "room", d.room)?,
+                peer: field(o, "peer", d.peer)?,
+                peers: field(o, "peers", d.peers)?,
+                reason: field(o, "reason", d.reason)?,
+            })
+        }
+    }
+
+    /// `RoomPeerJoined`: packages/knowledge/wiki/platform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RoomPeerJoined {
+        pub peer: u32,
+        pub peers: u32,
+    }
+
+    impl Default for RoomPeerJoined {
+        fn default() -> Self {
+            Self {
+                peer: Default::default(),
+                peers: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for RoomPeerJoined {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                peer: field(o, "peer", d.peer)?,
+                peers: field(o, "peers", d.peers)?,
+            })
+        }
+    }
+
+    /// `RoomPeerLeft`: packages/knowledge/wiki/platform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RoomPeerLeft {
+        pub peer: u32,
+        pub peers: u32,
+    }
+
+    impl Default for RoomPeerLeft {
+        fn default() -> Self {
+            Self {
+                peer: Default::default(),
+                peers: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for RoomPeerLeft {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                peer: field(o, "peer", d.peer)?,
+                peers: field(o, "peers", d.peers)?,
+            })
+        }
+    }
+
+    /// `RoomMessage`: packages/knowledge/wiki/platform.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RoomMessage {
+        pub from: u32,
+        pub message: u32,
+        pub binary: bool,
+    }
+
+    impl Default for RoomMessage {
+        fn default() -> Self {
+            Self {
+                from: Default::default(),
+                message: Default::default(),
+                binary: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for RoomMessage {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                from: field(o, "from", d.from)?,
+                message: field(o, "message", d.message)?,
+                binary: field(o, "binary", d.binary)?,
+            })
+        }
+    }
+
+    /// `Terrain`: packages/knowledge/wiki/terrain.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Terrain {
+        pub data: u64,
+        pub visible: bool,
+        pub cast_shadows: bool,
+        pub horizon_shadows: bool,
+        pub lod_spacing: f32,
+        pub lod_ring: u32,
+        pub lod_error: f32,
+        pub displacement_distance: f32,
+    }
+
+    impl Default for Terrain {
+        fn default() -> Self {
+            Self {
+                data: Default::default(),
+                visible: true,
+                cast_shadows: true,
+                horizon_shadows: true,
+                lod_spacing: Default::default(),
+                lod_ring: Default::default(),
+                lod_error: Default::default(),
+                displacement_distance: 40.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Terrain {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                data: field(o, "data", d.data)?,
+                visible: field(o, "visible", d.visible)?,
+                cast_shadows: field(o, "castShadows", d.cast_shadows)?,
+                horizon_shadows: field(o, "horizonShadows", d.horizon_shadows)?,
+                lod_spacing: field(o, "lodSpacing", d.lod_spacing)?,
+                lod_ring: field(o, "lodRing", d.lod_ring)?,
+                lod_error: field(o, "lodError", d.lod_error)?,
+                displacement_distance: field(o, "displacementDistance", d.displacement_distance)?,
+            })
+        }
+    }
+
+    /// `TerrainStamp`: packages/knowledge/wiki/terrain.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TerrainStamp {
+        pub data: u64,
+        pub geometry: u64,
+        pub blend: f32,
+        pub visible: bool,
+        pub cast_shadows: bool,
+    }
+
+    impl Default for TerrainStamp {
+        fn default() -> Self {
+            Self {
+                data: Default::default(),
+                geometry: Default::default(),
+                blend: 1.0_f32,
+                visible: true,
+                cast_shadows: true,
+            }
+        }
+    }
+
+    impl FromJson for TerrainStamp {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                data: field(o, "data", d.data)?,
+                geometry: field(o, "geometry", d.geometry)?,
+                blend: field(o, "blend", d.blend)?,
+                visible: field(o, "visible", d.visible)?,
+                cast_shadows: field(o, "castShadows", d.cast_shadows)?,
+            })
+        }
+    }
+
+    /// `TerrainScatter`: packages/knowledge/wiki/terrain.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TerrainScatter {
+        pub data: u64,
+        pub geometry: u64,
+        pub material: u64,
+        pub layer: u32,
+        pub density: f32,
+        pub distance: f32,
+        pub fade: f32,
+        pub min_scale: f32,
+        pub max_scale: f32,
+        pub align: f32,
+        pub seed: u32,
+        pub cast_shadows: bool,
+        pub sway: f32,
+        pub impostor: u64,
+        pub impostor_distance: f32,
+        pub noise_scale: f32,
+        pub noise_threshold: f32,
+        pub footprint: f32,
+        pub priority: u32,
+        pub avoid_water: f32,
+        pub density_map: u64,
+        pub gpu_placement: bool,
+    }
+
+    impl Default for TerrainScatter {
+        fn default() -> Self {
+            Self {
+                data: Default::default(),
+                geometry: Default::default(),
+                material: Default::default(),
+                layer: Default::default(),
+                density: 2.0_f32,
+                distance: 40.0_f32,
+                fade: 0.3_f32,
+                min_scale: 0.8_f32,
+                max_scale: 1.2_f32,
+                align: Default::default(),
+                seed: 1,
+                cast_shadows: true,
+                sway: 1.0_f32,
+                impostor: Default::default(),
+                impostor_distance: Default::default(),
+                noise_scale: 8.0_f32,
+                noise_threshold: Default::default(),
+                footprint: Default::default(),
+                priority: Default::default(),
+                avoid_water: Default::default(),
+                density_map: Default::default(),
+                gpu_placement: true,
+            }
+        }
+    }
+
+    impl FromJson for TerrainScatter {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                data: field(o, "data", d.data)?,
+                geometry: field(o, "geometry", d.geometry)?,
+                material: field(o, "material", d.material)?,
+                layer: field(o, "layer", d.layer)?,
+                density: field(o, "density", d.density)?,
+                distance: field(o, "distance", d.distance)?,
+                fade: field(o, "fade", d.fade)?,
+                min_scale: field(o, "minScale", d.min_scale)?,
+                max_scale: field(o, "maxScale", d.max_scale)?,
+                align: field(o, "align", d.align)?,
+                seed: field(o, "seed", d.seed)?,
+                cast_shadows: field(o, "castShadows", d.cast_shadows)?,
+                sway: field(o, "sway", d.sway)?,
+                impostor: field(o, "impostor", d.impostor)?,
+                impostor_distance: field(o, "impostorDistance", d.impostor_distance)?,
+                noise_scale: field(o, "noiseScale", d.noise_scale)?,
+                noise_threshold: field(o, "noiseThreshold", d.noise_threshold)?,
+                footprint: field(o, "footprint", d.footprint)?,
+                priority: field(o, "priority", d.priority)?,
+                avoid_water: field(o, "avoidWater", d.avoid_water)?,
+                density_map: field(o, "densityMap", d.density_map)?,
+                gpu_placement: field(o, "gpuPlacement", d.gpu_placement)?,
+            })
+        }
+    }
+
+    /// `Grass`: packages/knowledge/wiki/terrain.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Grass {
+        pub data: u64,
+        pub layer: u32,
+        pub density: f32,
+        pub distance: f32,
+        pub far_tint: bool,
+        pub height: f32,
+        pub height_variation: f32,
+        pub width: f32,
+        pub curve: f32,
+        pub lean: f32,
+        pub clump_size: f32,
+        pub clump_lean: f32,
+        pub tufts: f32,
+        pub base_color: Color,
+        pub tip_color: Color,
+        pub dry_color: Color,
+        pub color_variation: f32,
+        pub dryness: f32,
+        pub translucency: f32,
+        pub sheen: f32,
+        pub roughness: f32,
+        pub sway: f32,
+        pub stiffness: f32,
+        pub flutter: f32,
+        pub cast_shadows: bool,
+        pub seed: u32,
+        pub recovery: f32,
+        pub types: Vec<u64>,
+        pub type_map: u64,
+        pub density_map: u64,
+        pub height_map: u64,
+    }
+
+    impl Default for Grass {
+        fn default() -> Self {
+            Self {
+                data: Default::default(),
+                layer: Default::default(),
+                density: 300.0_f32,
+                distance: 150.0_f32,
+                far_tint: true,
+                height: 0.45_f32,
+                height_variation: 0.4_f32,
+                width: 0.012_f32,
+                curve: 0.5_f32,
+                lean: 0.3_f32,
+                clump_size: 1.2_f32,
+                clump_lean: 0.4_f32,
+                tufts: Default::default(),
+                base_color: Color { r: 0.04_f32, g: 0.085_f32, b: 0.024_f32 },
+                tip_color: Color { r: 0.235_f32, g: 0.39_f32, b: 0.11_f32 },
+                dry_color: Color { r: 0.45_f32, g: 0.38_f32, b: 0.17_f32 },
+                color_variation: 0.3_f32,
+                dryness: 0.15_f32,
+                translucency: 0.6_f32,
+                sheen: 0.4_f32,
+                roughness: 0.6_f32,
+                sway: 1.0_f32,
+                stiffness: 0.5_f32,
+                flutter: 0.3_f32,
+                cast_shadows: true,
+                seed: 1,
+                recovery: 4.0_f32,
+                types: Default::default(),
+                type_map: Default::default(),
+                density_map: Default::default(),
+                height_map: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Grass {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                data: field(o, "data", d.data)?,
+                layer: field(o, "layer", d.layer)?,
+                density: field(o, "density", d.density)?,
+                distance: field(o, "distance", d.distance)?,
+                far_tint: field(o, "farTint", d.far_tint)?,
+                height: field(o, "height", d.height)?,
+                height_variation: field(o, "heightVariation", d.height_variation)?,
+                width: field(o, "width", d.width)?,
+                curve: field(o, "curve", d.curve)?,
+                lean: field(o, "lean", d.lean)?,
+                clump_size: field(o, "clumpSize", d.clump_size)?,
+                clump_lean: field(o, "clumpLean", d.clump_lean)?,
+                tufts: field(o, "tufts", d.tufts)?,
+                base_color: field(o, "baseColor", d.base_color)?,
+                tip_color: field(o, "tipColor", d.tip_color)?,
+                dry_color: field(o, "dryColor", d.dry_color)?,
+                color_variation: field(o, "colorVariation", d.color_variation)?,
+                dryness: field(o, "dryness", d.dryness)?,
+                translucency: field(o, "translucency", d.translucency)?,
+                sheen: field(o, "sheen", d.sheen)?,
+                roughness: field(o, "roughness", d.roughness)?,
+                sway: field(o, "sway", d.sway)?,
+                stiffness: field(o, "stiffness", d.stiffness)?,
+                flutter: field(o, "flutter", d.flutter)?,
+                cast_shadows: field(o, "castShadows", d.cast_shadows)?,
+                seed: field(o, "seed", d.seed)?,
+                recovery: field(o, "recovery", d.recovery)?,
+                types: field(o, "types", d.types)?,
+                type_map: field(o, "typeMap", d.type_map)?,
+                density_map: field(o, "densityMap", d.density_map)?,
+                height_map: field(o, "heightMap", d.height_map)?,
+            })
+        }
+    }
+
+    /// `GrassType`: packages/knowledge/wiki/terrain.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GrassType {
+        pub height: f32,
+        pub width: f32,
+        pub curve: f32,
+        pub base_color: Color,
+        pub tip_color: Color,
+        pub share: f32,
+    }
+
+    impl Default for GrassType {
+        fn default() -> Self {
+            Self {
+                height: 0.45_f32,
+                width: 0.012_f32,
+                curve: 0.5_f32,
+                base_color: Color { r: 0.04_f32, g: 0.085_f32, b: 0.024_f32 },
+                tip_color: Color { r: 0.235_f32, g: 0.39_f32, b: 0.11_f32 },
+                share: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for GrassType {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                height: field(o, "height", d.height)?,
+                width: field(o, "width", d.width)?,
+                curve: field(o, "curve", d.curve)?,
+                base_color: field(o, "baseColor", d.base_color)?,
+                tip_color: field(o, "tipColor", d.tip_color)?,
+                share: field(o, "share", d.share)?,
+            })
+        }
+    }
+
+    /// `GrassPusher`: packages/knowledge/wiki/terrain.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct GrassPusher {
+        pub radius: f32,
+        pub height: f32,
+        pub strength: f32,
+    }
+
+    impl Default for GrassPusher {
+        fn default() -> Self {
+            Self {
+                radius: 0.5_f32,
+                height: 1.8_f32,
+                strength: 1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for GrassPusher {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                radius: field(o, "radius", d.radius)?,
+                height: field(o, "height", d.height)?,
+                strength: field(o, "strength", d.strength)?,
+            })
+        }
+    }
+
+    /// `StreamCell`: packages/knowledge/wiki/stream.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct StreamCell {
+        pub scene: u64,
+        pub size: Vec3,
+        pub load: f32,
+        pub unload: f32,
+        pub pin: bool,
+        pub persist: bool,
+        pub budget: u32,
+        pub loaded: bool,
+    }
+
+    impl Default for StreamCell {
+        fn default() -> Self {
+            Self {
+                scene: Default::default(),
+                size: Default::default(),
+                load: Default::default(),
+                unload: Default::default(),
+                pin: Default::default(),
+                persist: Default::default(),
+                budget: Default::default(),
+                loaded: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for StreamCell {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                scene: field(o, "scene", d.scene)?,
+                size: field(o, "size", d.size)?,
+                load: field(o, "load", d.load)?,
+                unload: field(o, "unload", d.unload)?,
+                pin: field(o, "pin", d.pin)?,
+                persist: field(o, "persist", d.persist)?,
+                budget: field(o, "budget", d.budget)?,
+                loaded: field(o, "loaded", d.loaded)?,
+            })
+        }
+    }
+
+    /// `StreamAnchor`: packages/knowledge/wiki/stream.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct StreamAnchor {
+        pub reach: f32,
+        pub max_speed: f32,
+    }
+
+    impl Default for StreamAnchor {
+        fn default() -> Self {
+            Self {
+                reach: Default::default(),
+                max_speed: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for StreamAnchor {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                reach: field(o, "reach", d.reach)?,
+                max_speed: field(o, "maxSpeed", d.max_speed)?,
+            })
+        }
+    }
+
+    /// `CellMember`: packages/knowledge/wiki/stream.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CellMember {
+        pub cell: u64,
+    }
+
+    impl Default for CellMember {
+        fn default() -> Self {
+            Self {
+                cell: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CellMember {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                cell: field(o, "cell", d.cell)?,
+            })
+        }
+    }
+
+    /// `CellEvent`: packages/knowledge/wiki/stream.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct CellEvent {
+        pub cell: u64,
+        pub loaded: bool,
+        pub entities: u32,
+    }
+
+    impl Default for CellEvent {
+        fn default() -> Self {
+            Self {
+                cell: Default::default(),
+                loaded: Default::default(),
+                entities: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for CellEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                cell: field(o, "cell", d.cell)?,
+                loaded: field(o, "loaded", d.loaded)?,
+                entities: field(o, "entities", d.entities)?,
+            })
+        }
+    }
+
+    /// `StreamEvent`: packages/knowledge/wiki/stream.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct StreamEvent {
+        pub group: String,
+        pub state: u32,
+    }
+
+    impl Default for StreamEvent {
+        fn default() -> Self {
+            Self {
+                group: Default::default(),
+                state: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for StreamEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                group: field(o, "group", d.group)?,
+                state: field(o, "state", d.state)?,
+            })
+        }
+    }
+
+    /// `MediaIntent`: packages/knowledge/wiki/video.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct MediaIntent {
+        pub player: u64,
+        pub playing: i32,
+        pub seek: f64,
+        pub gain: f32,
+        pub repeat: i32,
+    }
+
+    impl Default for MediaIntent {
+        fn default() -> Self {
+            Self {
+                player: Default::default(),
+                playing: -1,
+                seek: -1.0_f64,
+                gain: -1.0_f32,
+                repeat: -1,
+            }
+        }
+    }
+
+    impl FromJson for MediaIntent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                player: field(o, "player", d.player)?,
+                playing: field(o, "playing", d.playing)?,
+                seek: field(o, "seek", d.seek)?,
+                gain: field(o, "gain", d.gain)?,
+                repeat: field(o, "repeat", d.repeat)?,
+            })
+        }
+    }
+
+    /// `VideoPlayer`: packages/knowledge/wiki/video.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct VideoPlayer {
+        pub video: u64,
+        pub playing: bool,
+        pub time: f64,
+        pub speed: f32,
+        pub r#loop: bool,
+        pub frame: u32,
+        pub finished: bool,
+        pub texture: u64,
+    }
+
+    impl Default for VideoPlayer {
+        fn default() -> Self {
+            Self {
+                video: Default::default(),
+                playing: true,
+                time: Default::default(),
+                speed: 1.0_f32,
+                r#loop: Default::default(),
+                frame: Default::default(),
+                finished: Default::default(),
+                texture: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for VideoPlayer {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                video: field(o, "video", d.video)?,
+                playing: field(o, "playing", d.playing)?,
+                time: field(o, "time", d.time)?,
+                speed: field(o, "speed", d.speed)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+                frame: field(o, "frame", d.frame)?,
+                finished: field(o, "finished", d.finished)?,
+                texture: field(o, "texture", d.texture)?,
+            })
+        }
+    }
+
+    /// `WorldBounds`: packages/knowledge/wiki/assert.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct WorldBounds {
+        pub min: Vec3,
+        pub max: Vec3,
+        pub off: bool,
+    }
+
+    impl Default for WorldBounds {
+        fn default() -> Self {
+            Self {
+                min: Vec3::new(-1000.0_f32, -1000.0_f32, -1000.0_f32),
+                max: Vec3::new(1000.0_f32, 1000.0_f32, 1000.0_f32),
+                off: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for WorldBounds {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                min: field(o, "min", d.min)?,
+                max: field(o, "max", d.max)?,
+                off: field(o, "off", d.off)?,
+            })
+        }
+    }
+
+    /// `PathFollower`: packages/knowledge/wiki/path.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PathFollower {
+        pub path: u64,
+        pub speed: f32,
+        pub distance: f32,
+        pub r#loop: bool,
+        pub align: bool,
+        pub offset: Vec3,
+        pub playing: bool,
+        pub finished: bool,
+    }
+
+    impl Default for PathFollower {
+        fn default() -> Self {
+            Self {
+                path: Default::default(),
+                speed: 1.0_f32,
+                distance: Default::default(),
+                r#loop: true,
+                align: Default::default(),
+                offset: Default::default(),
+                playing: true,
+                finished: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PathFollower {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                path: field(o, "path", d.path)?,
+                speed: field(o, "speed", d.speed)?,
+                distance: field(o, "distance", d.distance)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+                align: field(o, "align", d.align)?,
+                offset: field(o, "offset", d.offset)?,
+                playing: field(o, "playing", d.playing)?,
+                finished: field(o, "finished", d.finished)?,
+            })
+        }
+    }
+
+    /// `Timeline`: packages/knowledge/wiki/timeline.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Timeline {
+        pub asset: u64,
+        pub playing: bool,
+        pub time: f32,
+        pub speed: f32,
+        pub r#loop: bool,
+    }
+
+    impl Default for Timeline {
+        fn default() -> Self {
+            Self {
+                asset: Default::default(),
+                playing: Default::default(),
+                time: Default::default(),
+                speed: 1.0_f32,
+                r#loop: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Timeline {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                asset: field(o, "asset", d.asset)?,
+                playing: field(o, "playing", d.playing)?,
+                time: field(o, "time", d.time)?,
+                speed: field(o, "speed", d.speed)?,
+                r#loop: field(o, "loop", d.r#loop)?,
+            })
+        }
+    }
+
+    /// `TimelineStarted`: packages/knowledge/wiki/timeline.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TimelineStarted {
+        pub entity: u64,
+        pub asset: u64,
+    }
+
+    impl Default for TimelineStarted {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                asset: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TimelineStarted {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                asset: field(o, "asset", d.asset)?,
+            })
+        }
+    }
+
+    /// `TimelineMarker`: packages/knowledge/wiki/timeline.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TimelineMarker {
+        pub entity: u64,
+        pub asset: u64,
+        pub name: String,
+        pub time: f32,
+    }
+
+    impl Default for TimelineMarker {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                asset: Default::default(),
+                name: Default::default(),
+                time: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TimelineMarker {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                asset: field(o, "asset", d.asset)?,
+                name: field(o, "name", d.name)?,
+                time: field(o, "time", d.time)?,
+            })
+        }
+    }
+
+    /// `TimelineEnded`: packages/knowledge/wiki/timeline.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct TimelineEnded {
+        pub entity: u64,
+        pub asset: u64,
+    }
+
+    impl Default for TimelineEnded {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                asset: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for TimelineEnded {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                asset: field(o, "asset", d.asset)?,
+            })
+        }
+    }
+
+    /// `Lockstep`: packages/knowledge/wiki/net.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Lockstep {
+        pub enabled: bool,
+        pub players: u32,
+        pub local_player: u32,
+        pub input_delay: u32,
+        pub hash_every: u32,
+        pub running: bool,
+        pub mode: NetMode,
+        pub stall_timeout: u32,
+        pub rejoin: bool,
+        pub max_prediction: u32,
+    }
+
+    impl Default for Lockstep {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                players: 2,
+                local_player: Default::default(),
+                input_delay: 2,
+                hash_every: 10,
+                running: Default::default(),
+                mode: Default::default(),
+                stall_timeout: 5000,
+                rejoin: true,
+                max_prediction: 8,
+            }
+        }
+    }
+
+    impl FromJson for Lockstep {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                players: field(o, "players", d.players)?,
+                local_player: field(o, "localPlayer", d.local_player)?,
+                input_delay: field(o, "inputDelay", d.input_delay)?,
+                hash_every: field(o, "hashEvery", d.hash_every)?,
+                running: field(o, "running", d.running)?,
+                mode: field(o, "mode", d.mode)?,
+                stall_timeout: field(o, "stallTimeout", d.stall_timeout)?,
+                rejoin: field(o, "rejoin", d.rejoin)?,
+                max_prediction: field(o, "maxPrediction", d.max_prediction)?,
+            })
+        }
+    }
+
+    /// `PlayerInput`: packages/knowledge/wiki/net.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PlayerInput {
+        pub player: u32,
+        pub buttons: u32,
+        pub x: f32,
+        pub y: f32,
+        pub aim_x: f32,
+        pub aim_y: f32,
+        pub tick: u32,
+    }
+
+    impl Default for PlayerInput {
+        fn default() -> Self {
+            Self {
+                player: Default::default(),
+                buttons: Default::default(),
+                x: Default::default(),
+                y: Default::default(),
+                aim_x: Default::default(),
+                aim_y: Default::default(),
+                tick: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PlayerInput {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                player: field(o, "player", d.player)?,
+                buttons: field(o, "buttons", d.buttons)?,
+                x: field(o, "x", d.x)?,
+                y: field(o, "y", d.y)?,
+                aim_x: field(o, "aimX", d.aim_x)?,
+                aim_y: field(o, "aimY", d.aim_y)?,
+                tick: field(o, "tick", d.tick)?,
+            })
+        }
+    }
+
+    /// `Desync`: packages/knowledge/wiki/net.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Desync {
+        pub tick: u32,
+        pub peer: u32,
+        pub peers: u32,
+    }
+
+    impl Default for Desync {
+        fn default() -> Self {
+            Self {
+                tick: Default::default(),
+                peer: Default::default(),
+                peers: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Desync {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                tick: field(o, "tick", d.tick)?,
+                peer: field(o, "peer", d.peer)?,
+                peers: field(o, "peers", d.peers)?,
+            })
+        }
+    }
+
+    /// `SeatDropped`: packages/knowledge/wiki/net.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SeatDropped {
+        pub seat: u32,
+        pub peer: u32,
+        pub tick: u32,
+        pub left: bool,
+    }
+
+    impl Default for SeatDropped {
+        fn default() -> Self {
+            Self {
+                seat: Default::default(),
+                peer: Default::default(),
+                tick: Default::default(),
+                left: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SeatDropped {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                seat: field(o, "seat", d.seat)?,
+                peer: field(o, "peer", d.peer)?,
+                tick: field(o, "tick", d.tick)?,
+                left: field(o, "left", d.left)?,
+            })
+        }
+    }
+
+    /// `SeatRejoined`: packages/knowledge/wiki/net.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SeatRejoined {
+        pub seat: u32,
+        pub peer: u32,
+        pub tick: u32,
+    }
+
+    impl Default for SeatRejoined {
+        fn default() -> Self {
+            Self {
+                seat: Default::default(),
+                peer: Default::default(),
+                tick: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SeatRejoined {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                seat: field(o, "seat", d.seat)?,
+                peer: field(o, "peer", d.peer)?,
+                tick: field(o, "tick", d.tick)?,
+            })
+        }
+    }
+
+    /// `PeerStalled`: packages/knowledge/wiki/net.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PeerStalled {
+        pub peer: u32,
+        pub seat: u32,
+        pub silent_ms: u32,
+    }
+
+    impl Default for PeerStalled {
+        fn default() -> Self {
+            Self {
+                peer: Default::default(),
+                seat: Default::default(),
+                silent_ms: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PeerStalled {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                peer: field(o, "peer", d.peer)?,
+                seat: field(o, "seat", d.seat)?,
+                silent_ms: field(o, "silentMs", d.silent_ms)?,
+            })
+        }
+    }
+
+    /// `ArtPalette`: packages/knowledge/wiki/art.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ArtPalette {
+        pub colors: u64,
+        pub strict: bool,
+        pub max_colors: u32,
+        pub ramp_steps: u32,
+        pub accents: Vec<u32>,
+        pub dither: DitherPattern,
+    }
+
+    impl Default for ArtPalette {
+        fn default() -> Self {
+            Self {
+                colors: Default::default(),
+                strict: Default::default(),
+                max_colors: Default::default(),
+                ramp_steps: Default::default(),
+                accents: Default::default(),
+                dither: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ArtPalette {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                colors: field(o, "colors", d.colors)?,
+                strict: field(o, "strict", d.strict)?,
+                max_colors: field(o, "maxColors", d.max_colors)?,
+                ramp_steps: field(o, "rampSteps", d.ramp_steps)?,
+                accents: field(o, "accents", d.accents)?,
+                dither: field(o, "dither", d.dither)?,
+            })
+        }
+    }
+
+    /// `ArtPixels`: packages/knowledge/wiki/art.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ArtPixels {
+        pub unit: f32,
+        pub logical_height: u32,
+        pub sprite_sizes: Vec<u32>,
+        pub rotation: ArtRotation,
+        pub rotation_steps: u32,
+        pub snap: bool,
+    }
+
+    impl Default for ArtPixels {
+        fn default() -> Self {
+            Self {
+                unit: Default::default(),
+                logical_height: Default::default(),
+                sprite_sizes: Default::default(),
+                rotation: Default::default(),
+                rotation_steps: Default::default(),
+                snap: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ArtPixels {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                unit: field(o, "unit", d.unit)?,
+                logical_height: field(o, "logicalHeight", d.logical_height)?,
+                sprite_sizes: field(o, "spriteSizes", d.sprite_sizes)?,
+                rotation: field(o, "rotation", d.rotation)?,
+                rotation_steps: field(o, "rotationSteps", d.rotation_steps)?,
+                snap: field(o, "snap", d.snap)?,
+            })
+        }
+    }
+
+    /// `ArtTexels`: packages/knowledge/wiki/art.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ArtTexels {
+        pub density: f32,
+        pub max_size: u32,
+        pub filter: ArtFilter,
+        pub mips: ArtMips,
+    }
+
+    impl Default for ArtTexels {
+        fn default() -> Self {
+            Self {
+                density: Default::default(),
+                max_size: Default::default(),
+                filter: Default::default(),
+                mips: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ArtTexels {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                density: field(o, "density", d.density)?,
+                max_size: field(o, "maxSize", d.max_size)?,
+                filter: field(o, "filter", d.filter)?,
+                mips: field(o, "mips", d.mips)?,
+            })
+        }
+    }
+
+    /// `ArtShape`: packages/knowledge/wiki/art.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ArtShape {
+        pub prop_faces: u32,
+        pub character_faces: u32,
+        pub normals: ArtNormals,
+        pub normal_angle: f32,
+        pub bevel: f32,
+        pub voxel: f32,
+        pub silhouette: f32,
+    }
+
+    impl Default for ArtShape {
+        fn default() -> Self {
+            Self {
+                prop_faces: Default::default(),
+                character_faces: Default::default(),
+                normals: Default::default(),
+                normal_angle: 30.0_f32,
+                bevel: Default::default(),
+                voxel: Default::default(),
+                silhouette: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ArtShape {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                prop_faces: field(o, "propFaces", d.prop_faces)?,
+                character_faces: field(o, "characterFaces", d.character_faces)?,
+                normals: field(o, "normals", d.normals)?,
+                normal_angle: field(o, "normalAngle", d.normal_angle)?,
+                bevel: field(o, "bevel", d.bevel)?,
+                voxel: field(o, "voxel", d.voxel)?,
+                silhouette: field(o, "silhouette", d.silhouette)?,
+            })
+        }
+    }
+
+    /// `ArtLine`: packages/knowledge/wiki/art.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ArtLine {
+        pub width: f32,
+        pub color: Color,
+        pub place: ArtLinePlace,
+        pub distance_falloff: f32,
+        pub brush: ArtBrush,
+    }
+
+    impl Default for ArtLine {
+        fn default() -> Self {
+            Self {
+                width: Default::default(),
+                color: Color { r: 0.02_f32, g: 0.02_f32, b: 0.03_f32 },
+                place: Default::default(),
+                distance_falloff: Default::default(),
+                brush: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ArtLine {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                width: field(o, "width", d.width)?,
+                color: field(o, "color", d.color)?,
+                place: field(o, "place", d.place)?,
+                distance_falloff: field(o, "distanceFalloff", d.distance_falloff)?,
+                brush: field(o, "brush", d.brush)?,
+            })
+        }
+    }
+
+    /// `ArtMotion`: packages/knowledge/wiki/art.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ArtMotion {
+        pub step_fps: f32,
+        pub max_frames: u32,
+        pub squash: f32,
+    }
+
+    impl Default for ArtMotion {
+        fn default() -> Self {
+            Self {
+                step_fps: Default::default(),
+                max_frames: Default::default(),
+                squash: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ArtMotion {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                step_fps: field(o, "stepFps", d.step_fps)?,
+                max_frames: field(o, "maxFrames", d.max_frames)?,
+                squash: field(o, "squash", d.squash)?,
+            })
+        }
+    }
+
+    /// `ArtCamera`: packages/knowledge/wiki/art.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ArtCamera {
+        pub projection: ArtProjection,
+        pub fixed_angle: bool,
+        pub pitch: f32,
+        pub yaw: f32,
+        pub fov_min: f32,
+        pub fov_max: f32,
+        pub pixel_perfect: bool,
+    }
+
+    impl Default for ArtCamera {
+        fn default() -> Self {
+            Self {
+                projection: Default::default(),
+                fixed_angle: Default::default(),
+                pitch: Default::default(),
+                yaw: Default::default(),
+                fov_min: Default::default(),
+                fov_max: Default::default(),
+                pixel_perfect: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for ArtCamera {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                projection: field(o, "projection", d.projection)?,
+                fixed_angle: field(o, "fixedAngle", d.fixed_angle)?,
+                pitch: field(o, "pitch", d.pitch)?,
+                yaw: field(o, "yaw", d.yaw)?,
+                fov_min: field(o, "fovMin", d.fov_min)?,
+                fov_max: field(o, "fovMax", d.fov_max)?,
+                pixel_perfect: field(o, "pixelPerfect", d.pixel_perfect)?,
+            })
+        }
+    }
+
+    /// `MotionAgent`: packages/knowledge/wiki/motion.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct MotionAgent {
+        pub rig: u64,
+        pub drive: bool,
+        pub turn_speed: f32,
+        pub lookahead: f32,
+    }
+
+    impl Default for MotionAgent {
+        fn default() -> Self {
+            Self {
+                rig: Default::default(),
+                drive: Default::default(),
+                turn_speed: 6.0_f32,
+                lookahead: 0.6_f32,
+            }
+        }
+    }
+
+    impl FromJson for MotionAgent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                rig: field(o, "rig", d.rig)?,
+                drive: field(o, "drive", d.drive)?,
+                turn_speed: field(o, "turnSpeed", d.turn_speed)?,
+                lookahead: field(o, "lookahead", d.lookahead)?,
+            })
+        }
+    }
+
+    /// `Destructible`: packages/knowledge/wiki/destruction.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Destructible {
+        pub toughness: f32,
+        pub strength: f32,
+        pub friction: f32,
+        pub tension: f32,
+        pub density: f32,
+        pub impact_threshold: f32,
+        pub impact_radius: f32,
+        pub anchored: bool,
+        pub break_fx: u64,
+        pub hit_fx: u64,
+        pub debris: u64,
+        pub fractured: bool,
+        pub broken: u32,
+        pub loose: u32,
+    }
+
+    impl Default for Destructible {
+        fn default() -> Self {
+            Self {
+                toughness: 800.0_f32,
+                strength: 30000.0_f32,
+                friction: 0.7_f32,
+                tension: 1.0_f32,
+                density: 1000.0_f32,
+                impact_threshold: 30.0_f32,
+                impact_radius: 0.4_f32,
+                anchored: true,
+                break_fx: Default::default(),
+                hit_fx: Default::default(),
+                debris: Default::default(),
+                fractured: Default::default(),
+                broken: Default::default(),
+                loose: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Destructible {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                toughness: field(o, "toughness", d.toughness)?,
+                strength: field(o, "strength", d.strength)?,
+                friction: field(o, "friction", d.friction)?,
+                tension: field(o, "tension", d.tension)?,
+                density: field(o, "density", d.density)?,
+                impact_threshold: field(o, "impactThreshold", d.impact_threshold)?,
+                impact_radius: field(o, "impactRadius", d.impact_radius)?,
+                anchored: field(o, "anchored", d.anchored)?,
+                break_fx: field(o, "breakFx", d.break_fx)?,
+                hit_fx: field(o, "hitFx", d.hit_fx)?,
+                debris: field(o, "debris", d.debris)?,
+                fractured: field(o, "fractured", d.fractured)?,
+                broken: field(o, "broken", d.broken)?,
+                loose: field(o, "loose", d.loose)?,
+            })
+        }
+    }
+
+    /// `Chunk`: packages/knowledge/wiki/destruction.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Chunk {
+        pub destructible: u64,
+        pub chunk: u32,
+        pub level: u32,
+        pub body: u64,
+        pub loose_tick: u32,
+    }
+
+    impl Default for Chunk {
+        fn default() -> Self {
+            Self {
+                destructible: Default::default(),
+                chunk: Default::default(),
+                level: Default::default(),
+                body: Default::default(),
+                loose_tick: 4294967295,
+            }
+        }
+    }
+
+    impl FromJson for Chunk {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                destructible: field(o, "destructible", d.destructible)?,
+                chunk: field(o, "chunk", d.chunk)?,
+                level: field(o, "level", d.level)?,
+                body: field(o, "body", d.body)?,
+                loose_tick: field(o, "looseTick", d.loose_tick)?,
+            })
+        }
+    }
+
+    /// `Fractured`: packages/knowledge/wiki/destruction.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Fractured {
+        pub entity: u64,
+        pub body: u64,
+        pub chunks: u32,
+        pub point: Vec3,
+        pub volume: f32,
+        pub mass: f32,
+        pub cause: u32,
+    }
+
+    impl Default for Fractured {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                body: Default::default(),
+                chunks: Default::default(),
+                point: Default::default(),
+                volume: Default::default(),
+                mass: Default::default(),
+                cause: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for Fractured {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                body: field(o, "body", d.body)?,
+                chunks: field(o, "chunks", d.chunks)?,
+                point: field(o, "point", d.point)?,
+                volume: field(o, "volume", d.volume)?,
+                mass: field(o, "mass", d.mass)?,
+                cause: field(o, "cause", d.cause)?,
+            })
+        }
+    }
+
+    /// `Destruction`: packages/knowledge/wiki/destruction.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Destruction {
+        pub max_chunks: u32,
+        pub debris_volume: f32,
+        pub debris_lifetime: f32,
+        pub fx_lifetime: f32,
+        pub stress_iterations: u32,
+        pub stress_budget: u32,
+    }
+
+    impl Default for Destruction {
+        fn default() -> Self {
+            Self {
+                max_chunks: 256,
+                debris_volume: 0.004_f32,
+                debris_lifetime: 8.0_f32,
+                fx_lifetime: 3.0_f32,
+                stress_iterations: 0,
+                stress_budget: 200000,
+            }
+        }
+    }
+
+    impl FromJson for Destruction {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                max_chunks: field(o, "maxChunks", d.max_chunks)?,
+                debris_volume: field(o, "debrisVolume", d.debris_volume)?,
+                debris_lifetime: field(o, "debrisLifetime", d.debris_lifetime)?,
+                fx_lifetime: field(o, "fxLifetime", d.fx_lifetime)?,
+                stress_iterations: field(o, "stressIterations", d.stress_iterations)?,
+                stress_budget: field(o, "stressBudget", d.stress_budget)?,
+            })
+        }
+    }
+
+    /// `PixelTerrain`: packages/knowledge/wiki/destruction.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PixelTerrain {
+        pub width: u32,
+        pub height: u32,
+        pub cell_size: f32,
+        pub chunk: u32,
+        pub ground: f32,
+        pub bedrock: u32,
+        pub seed: u32,
+        pub color: Color,
+        pub bedrock_color: Color,
+        pub grain: f32,
+        pub layer: i32,
+        pub friction: f32,
+        pub density: f32,
+        pub layers: u32,
+        pub mask: u32,
+        pub tolerance: f32,
+        pub min_piece: u32,
+        pub max_pieces: u32,
+        pub solid: u32,
+    }
+
+    impl Default for PixelTerrain {
+        fn default() -> Self {
+            Self {
+                width: 256,
+                height: 128,
+                cell_size: 0.0625_f32,
+                chunk: 32,
+                ground: 0.5_f32,
+                bedrock: 1,
+                seed: Default::default(),
+                color: Color { r: 0.30_f32, g: 0.18_f32, b: 0.09_f32 },
+                bedrock_color: Color { r: 0.10_f32, g: 0.10_f32, b: 0.11_f32 },
+                grain: 0.15_f32,
+                layer: Default::default(),
+                friction: 0.6_f32,
+                density: 1000.0_f32,
+                layers: 1,
+                mask: 4294967295,
+                tolerance: 0.5_f32,
+                min_piece: 4,
+                max_pieces: 64,
+                solid: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PixelTerrain {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                width: field(o, "width", d.width)?,
+                height: field(o, "height", d.height)?,
+                cell_size: field(o, "cellSize", d.cell_size)?,
+                chunk: field(o, "chunk", d.chunk)?,
+                ground: field(o, "ground", d.ground)?,
+                bedrock: field(o, "bedrock", d.bedrock)?,
+                seed: field(o, "seed", d.seed)?,
+                color: field(o, "color", d.color)?,
+                bedrock_color: field(o, "bedrockColor", d.bedrock_color)?,
+                grain: field(o, "grain", d.grain)?,
+                layer: field(o, "layer", d.layer)?,
+                friction: field(o, "friction", d.friction)?,
+                density: field(o, "density", d.density)?,
+                layers: field(o, "layers", d.layers)?,
+                mask: field(o, "mask", d.mask)?,
+                tolerance: field(o, "tolerance", d.tolerance)?,
+                min_piece: field(o, "minPiece", d.min_piece)?,
+                max_pieces: field(o, "maxPieces", d.max_pieces)?,
+                solid: field(o, "solid", d.solid)?,
+            })
+        }
+    }
+
+    /// `PixelPiece`: packages/knowledge/wiki/destruction.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PixelPiece {
+        pub terrain: u64,
+        pub width: u32,
+        pub height: u32,
+        pub cells: u32,
+        pub tick: u32,
+    }
+
+    impl Default for PixelPiece {
+        fn default() -> Self {
+            Self {
+                terrain: Default::default(),
+                width: Default::default(),
+                height: Default::default(),
+                cells: Default::default(),
+                tick: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PixelPiece {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                terrain: field(o, "terrain", d.terrain)?,
+                width: field(o, "width", d.width)?,
+                height: field(o, "height", d.height)?,
+                cells: field(o, "cells", d.cells)?,
+                tick: field(o, "tick", d.tick)?,
+            })
+        }
+    }
+
+    /// `PixelDetached`: packages/knowledge/wiki/destruction.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PixelDetached {
+        pub terrain: u64,
+        pub piece: u64,
+        pub cells: u32,
+        pub point: Vec3,
+        pub cause: u32,
+    }
+
+    impl Default for PixelDetached {
+        fn default() -> Self {
+            Self {
+                terrain: Default::default(),
+                piece: Default::default(),
+                cells: Default::default(),
+                point: Default::default(),
+                cause: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PixelDetached {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                terrain: field(o, "terrain", d.terrain)?,
+                piece: field(o, "piece", d.piece)?,
+                cells: field(o, "cells", d.cells)?,
+                point: field(o, "point", d.point)?,
+                cause: field(o, "cause", d.cause)?,
+            })
+        }
+    }
+
+    /// `Vfx`: packages/knowledge/wiki/vfx.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Vfx {
+        pub asset: u64,
+        pub seed: u32,
+        pub start_tick: u32,
+        pub scale: f32,
+        pub tint: Color,
+        pub despawn: bool,
+        pub ran: u32,
+    }
+
+    impl Default for Vfx {
+        fn default() -> Self {
+            Self {
+                asset: Default::default(),
+                seed: Default::default(),
+                start_tick: 4294967295,
+                scale: 1.0_f32,
+                tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                despawn: true,
+                ran: 4294967295,
+            }
+        }
+    }
+
+    impl FromJson for Vfx {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                asset: field(o, "asset", d.asset)?,
+                seed: field(o, "seed", d.seed)?,
+                start_tick: field(o, "startTick", d.start_tick)?,
+                scale: field(o, "scale", d.scale)?,
+                tint: field(o, "tint", d.tint)?,
+                despawn: field(o, "despawn", d.despawn)?,
+                ran: field(o, "ran", d.ran)?,
+            })
+        }
+    }
+
+    /// `VfxEvent`: packages/knowledge/wiki/vfx.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct VfxEvent {
+        pub entity: u64,
+        pub asset: u64,
+        pub name: String,
+        pub time: f32,
+    }
+
+    impl Default for VfxEvent {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                asset: Default::default(),
+                name: Default::default(),
+                time: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for VfxEvent {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                asset: field(o, "asset", d.asset)?,
+                name: field(o, "name", d.name)?,
+                time: field(o, "time", d.time)?,
+            })
+        }
+    }
+
+}

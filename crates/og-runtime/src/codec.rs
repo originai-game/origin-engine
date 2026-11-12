@@ -619,6 +619,13 @@ impl Layout {
         Ok(())
     }
 
+    /// Packed bytes as the row type the IDL generates for the record
+    /// (`wire::record`): [`Layout::decode`] read by its fields' rules, so a
+    /// field the runtime reads is the IDL's by name, type and default.
+    pub fn read<T: crate::wire::FromJson>(&self, bytes: &[u8]) -> Result<T, String> {
+        T::from_json(&self.decode(bytes)).map_err(|e| format!("'{}': {e}", self.schema))
+    }
+
     /// The value of packed bytes as JSON.
     pub fn decode(&self, bytes: &[u8]) -> Value {
         let mut map = Map::new();
