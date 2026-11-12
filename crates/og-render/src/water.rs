@@ -35,6 +35,7 @@ mod prepare;
 mod renderer;
 mod sea;
 mod surface;
+mod wakes;
 use build::*;
 pub use caustics::*;
 pub(crate) use renderer::*;
@@ -206,8 +207,9 @@ pub struct Water {
     pub foam_streaks: f32,
     /// W4: how much spray its breaking crests throw (0: none).
     pub spray: f32,
-    /// W3: how high the waves its og.Buoyancy hulls raise are drawn (their
-    /// bow waves, Kelvin wakes and contact foam; 0: none, not simulated).
+    /// W3: how high the waves the bodies in it raise are drawn (their bow
+    /// waves, Kelvin wakes and contact foam; 0: none, not simulated): on a
+    /// sea's surface, in a lake's or a river's normal and foam.
     pub dynamic_waves: f32,
     /// W6: where the camera's near plane crosses the surface, the width
     /// (px) of the meniscus line drawn along the waterline between the air
@@ -411,8 +413,9 @@ struct WaterGpu {
     /// y the underwater fog's density, z the meniscus's width (px); w 1 for
     /// a river (W5: its fronts turn with its flow, and it falls).
     waterline: [f32; 4],
-    /// W3: the hulls' wakes ([`crate::sea_wakes`]): xy the square's centre
-    /// (frame xz), z one over its side (1/m), w 1 with them.
+    /// W3: the wakes of the bodies in this water ([`crate::sea_wakes`]): xy
+    /// the square's centre (frame xz), z one over its side (1/m), w 1 with
+    /// them (the one water the square stands on, [`wakes::stirred`]).
     wake: [f32; 4],
 }
 
@@ -571,10 +574,11 @@ pub(crate) struct WaterRenderer {
     /// module reads its grid).
     caustics: Option<CausticsPass>,
     caustics_left_out: bool,
-    /// W3: the sea's hulls' wakes, made with the first sea with hulls in
-    /// it, and the square's centre (frame xz) this frame when they ran.
+    /// W3: the wakes of the bodies in a water (water/wakes.rs), made with
+    /// the first one stirred; and this frame's surface with them (its index)
+    /// with the square's centre (frame xz), when they ran.
     wakes: Option<crate::sea_wakes::SeaWakes>,
-    wake_centre: Option<Vec2>,
+    wake: Option<(usize, Vec2)>,
     /// What a surface without wakes binds there (one calm texel).
     no_wake: wgpu::TextureView,
     /// W5: the rivers' ribbons of this frame's surfaces.

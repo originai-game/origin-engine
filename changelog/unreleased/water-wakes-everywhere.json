@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Water.dynamicWaves",
+      "summary": "Wakes are drawn on every og.Water, not a sea alone: a body that cuts a lake or a river bends its reflections with its bow wave and Kelvin wake and leaves foam along its sides and astern (the surface stays flat: a sea's alone rises with them). One 64 m square round the camera serves the water being cut, and rests two minutes after the last cut; a water nothing cuts costs nothing. An entity with og.WaterSurface too draws its own ripples instead."
+    }
+  ]
+}

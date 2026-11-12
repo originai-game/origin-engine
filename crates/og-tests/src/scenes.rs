@@ -243,6 +243,7 @@ pub const SCENES: &[&str] = &[
     "water-shore",
     "water-shallows",
     "water-wake",
+    "water-wake-lake",
     "water-river",
 ];
 
@@ -1366,7 +1367,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(fx::tick_update);
             Ok(())
         },
-        "water-wake" => |g, name| {
+        "water-wake" | "water-wake-lake" => |g, name| {
             g.scene = crate::ocean_scenes::ocean_scene(name);
             g.frames = crate::ocean_scenes::WAKE_FRAMES;
             g.update = Some(crate::ocean_scenes::wake_update);

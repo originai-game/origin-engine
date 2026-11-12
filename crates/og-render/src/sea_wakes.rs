@@ -1,10 +1,11 @@
-//! W3: the wakes of the hulls in a sea (`shaders/sea_wakes.wgsl`): a
+//! W3: the wakes of the bodies in a water (`shaders/sea_wakes.wgsl`): a
 //! camera-centred square of dynamic waves (eWave, linear deep water solved
-//! per Fourier mode) over the FFT sea, stirred by the og.Buoyancy hulls
-//! that cut it ([`WaterWakes`]: their footprints, drafts and motion), drawn
-//! on top of the sea's waves with its foam. Picture only: nothing reads it
-//! back but the height probe, and the tick floats the hulls on its own
-//! waves.
+//! per Fourier mode), stirred by the bodies that cut the water
+//! ([`WaterWakes`]: their footprints, drafts and motion) and drawn on top
+//! of its own waves with their foam: a sea's displace it, a lake's and a
+//! river's bend its normal. Picture only: nothing reads it back but the
+//! sea's height probe, and the tick floats the hulls on its own waves.
+//! Which water it runs over is `water/wakes.rs`'s choice.
 //!
 //! It steps once per tick of the wakes, never by the wall clock, as
 //! [`crate::water_ripples`]: a frame steps the ticks the world took since the
@@ -33,6 +34,10 @@ const CREST: f32 = 1.2;
 const FOAM_HALF_LIFE: f32 = 2.0;
 /// The fraction of the square over which the waves fade out at its edge.
 const EDGE_FADE: f32 = 0.15;
+/// How long after the last cut the square is at rest (s): [`DAMPING`] has
+/// taken the highest crest under a millimetre, so it is not stepped or
+/// drawn until something cuts the water again.
+const QUIET: f32 = 120.0;
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -55,7 +60,7 @@ const STATE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 /// What the sea draws: (height, its slopes along x and z, foam), filterable.
 const OUT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
-/// A sea's wakes: their pipelines, state and the square's place.
+/// A water's wakes: their pipelines, state and the square's place.
 pub(crate) struct SeaWakes {
     press: wgpu::ComputePipeline,
     rows: wgpu::ComputePipeline,
@@ -68,7 +73,7 @@ pub(crate) struct SeaWakes {
     _state: [wgpu::Texture; 2],
     _spectrum: wgpu::Buffer,
     _out: wgpu::Texture,
-    /// What the sea samples (water binding 11).
+    /// What the water samples (water binding 11).
     pub(crate) view: wgpu::TextureView,
     uniform: wgpu::Buffer,
     cuts: wgpu::Buffer,
@@ -79,12 +84,25 @@ pub(crate) struct SeaWakes {
     cell: Option<glam::I64Vec2>,
     /// Whether both states were set calm since the last reset.
     cleared: bool,
+    /// The seconds stepped since a body last cut the water.
+    quiet: f32,
 }
 
 /// The square's cell nearest `eye` (absolute world xz).
 fn centre_cell(eye: DVec2) -> glam::I64Vec2 {
     let c = (eye / f64::from(CELL)).round();
     glam::I64Vec2::new(c.x as i64, c.y as i64)
+}
+
+/// The seconds since a body last cut the water, `quiet` of them before
+/// these `steps` of `dt` each.
+fn unstirred(quiet: f32, steps: &[(Option<&[WaterCut]>, &[WaterCut])], dt: f32) -> f32 {
+    steps.iter().fold(
+        quiet,
+        |q, (_, now)| {
+            if now.is_empty() { q + dt } else { 0.0 }
+        },
+    )
 }
 
 /// The hulls of `now` as the shader reads them, at the frame's `at` (the
@@ -291,7 +309,17 @@ impl SeaWakes {
             at: None,
             cell: None,
             cleared: false,
+            quiet: 0.0,
         }
+    }
+
+    /// Calm water again, wherever the camera is next: for another water, or
+    /// one left alone for [`QUIET`].
+    pub(crate) fn rest(&mut self) {
+        self.at = None;
+        self.cell = None;
+        self.cleared = false;
+        self.quiet = 0.0;
     }
 
     /// The square's centre in the frame (xz) at the scene's `origin`
@@ -301,11 +329,12 @@ impl SeaWakes {
         c.as_vec2()
     }
 
-    /// Steps the ticks of `wakes` since the last frame into `encoder` (the
-    /// sea's, submitted with its fields), the square moved to `eye`
-    /// (absolute world xz) at the first; `at` is the surface's centre (frame
-    /// xz), `origin` the frame's (absolute world xz) and `scale` the
-    /// surface's dynamicWaves.
+    /// Steps the ticks of `wakes` since the last frame into `encoder`, the
+    /// square moved to `eye` (absolute world xz) at the first; `at` is the
+    /// surface's centre (frame xz), `origin` the frame's (absolute world xz)
+    /// and `scale` the surface's dynamicWaves. False, with nothing encoded
+    /// and the square at rest, once nothing has cut the water for
+    /// [`QUIET`]: there is nothing left to draw.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn update(
         &mut self,
@@ -316,12 +345,17 @@ impl SeaWakes {
         at: Vec2,
         origin: DVec2,
         scale: f32,
-    ) {
+    ) -> bool {
         let ticks = crate::water_ripples::plan(self.at, wakes);
         if ticks.reset {
             self.cleared = false;
         }
         self.at = wakes.ticks.last().map(|(t, _)| (wakes.epoch, *t));
+        self.quiet = unstirred(self.quiet, &ticks.steps, wakes.dt);
+        if self.quiet > QUIET {
+            self.rest();
+            return false;
+        }
         let target = centre_cell(eye);
         // The cells the square moves at the first step (none without one:
         // it stays where the state is until the next).
@@ -407,6 +441,7 @@ impl SeaWakes {
         pass.set_bind_group(0, &self.groups[0], &[compose]);
         pass.set_pipeline(&self.compose);
         pass.dispatch_workgroups(groups, groups, 1);
+        true
     }
 }
 
@@ -443,6 +478,20 @@ mod tests {
         assert_eq!(g[0].extra[2], MAX_DRAFT);
         assert_eq!(&g[0].frame[..2], &[110.0, 49.9]);
         assert_eq!(g[1].extra[3], 0.0);
+    }
+
+    /// The square counts the seconds since a body last cut its water: a
+    /// cut starts the count again, and ticks without one add up to its rest.
+    #[test]
+    fn the_square_rests_once_nothing_cuts_it() {
+        let cuts = [cut(1, Vec2::ZERO)];
+        let dt = 0.5;
+        let still: [(Option<&[WaterCut]>, &[WaterCut]); 2] = [(None, &[]), (None, &[])];
+        assert_eq!(unstirred(3.0, &still, dt), 4.0);
+        let stirred: [(Option<&[WaterCut]>, &[WaterCut]); 3] =
+            [(None, &[]), (None, &cuts), (Some(&cuts), &[])];
+        assert_eq!(unstirred(QUIET, &stirred, dt), dt);
+        assert!(unstirred(QUIET, &still, dt) > QUIET);
     }
 
     /// The square's centre is a whole cell of the absolute world, so the

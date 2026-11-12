@@ -35474,7 +35474,7 @@
         },
         "dynamicWaves": {
           "type": "number",
-          "description": "How high the waves an og.Buoyancy hull raises on a sea are drawn (0: none): a hull presses the water down by its draft and, moving, throws a bow wave and leaves a Kelvin wake, foaming where they break, within some 64 m of the camera. Rendering only: the tick floats every hull on the sea's own waves.\nSee `render §8`.",
+          "description": "How high the waves bodies raise in the water are drawn (0: none): each presses the water down and, moving, throws a bow wave and a Kelvin wake that foams, within some 64 m of the camera. A sea's surface rises with them; a lake or a river shows them in its reflections and foam. Rendering only.\nSee `render §8`.",
           "default": 1,
           "minimum": 0,
           "maximum": 4,

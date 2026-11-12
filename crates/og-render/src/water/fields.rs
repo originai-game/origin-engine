@@ -20,7 +20,6 @@ impl WaterRenderer {
     ) -> Option<FftSea> {
         use crate::ocean_fft::FftOcean;
         let (water, sea) = waters.iter().find_map(|w| Some((w, ocean(w)?)))?;
-        let centre = water.transform.w_axis;
         let key = (water.wind, water.swell, water.choppiness, cascades);
         if self.fft.as_ref().is_none_or(|(_, f)| f.key != key) {
             let mut fft = match self.fft.take() {
@@ -74,26 +73,6 @@ impl WaterRenderer {
                 shore_gpu(water, at)
             }),
         );
-        // W3: the hulls' wakes, stepped to this frame's tick in the same submit.
-        if let Some(wakes) = water
-            .wakes
-            .as_deref()
-            .filter(|_| water.dynamic_waves > 0.0 && self.compute)
-        {
-            let pass = self
-                .wakes
-                .get_or_insert_with(|| crate::sea_wakes::SeaWakes::new(device));
-            pass.update(
-                queue,
-                &mut encoder,
-                wakes,
-                world(camera.position) + world(origin),
-                Vec2::new(centre.x, centre.z),
-                world(origin),
-                water.dynamic_waves,
-            );
-            self.wake_centre = Some(pass.centre(world(origin)));
-        }
         // W2: the sea's curvature about the camera, for the caustics under it.
         if water.caustics > 0.0 && self.compute && !self.caustics_left_out {
             let pass = self

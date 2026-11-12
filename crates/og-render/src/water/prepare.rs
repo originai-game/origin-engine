@@ -76,7 +76,6 @@ impl WaterRenderer {
         }
         let (sea_segments, sea_cascades) = sea_tier(quality);
         self.submitted = (0, 0);
-        self.wake_centre = None;
         let sea = self.fft_sea(
             device,
             queue,
@@ -87,6 +86,7 @@ impl WaterRenderer {
             origin,
             caustic_grid,
         );
+        self.step_wakes(device, queue, waters, camera, origin);
         let levels = clipmap(camera.position, origin, sea_segments);
         let line = waterline(waters, camera, seconds, origin);
         let mut draws = Vec::with_capacity(waters.len());
@@ -269,8 +269,8 @@ impl WaterRenderer {
                     water.meniscus.max(0.0),
                     f32::from(river.is_some()),
                 ],
-                wake: match self.wake_centre {
-                    Some(c) if drawn_sea.is_some() && water.dynamic_waves > 0.0 => {
+                wake: match self.wake {
+                    Some((stirred, c)) if stirred == index => {
                         let side = crate::sea_wakes::SIDE as f32 * crate::sea_wakes::CELL;
                         [c.x, c.y, 1.0 / side, 1.0]
                     }
