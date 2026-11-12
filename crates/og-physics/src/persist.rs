@@ -23,30 +23,8 @@ pub(crate) struct Restored {
     sections: Vec<(u16, Vec<u8>)>,
 }
 
-pub(super) fn codec() -> impl bincode::Options {
-    use bincode::Options;
-    bincode::DefaultOptions::new().reject_trailing_bytes()
-}
-
-/// `value`'s bytes appended to `out` through [`codec`]. Everything a save
-/// writes goes through this one encoder, so each type's serialisation is
-/// compiled once: bincode's `serialize` and `serialized_size` would each
-/// compile the whole rapier world's again (a size pass, a writer of
-/// another type), tens of kilobytes of wasm (`the former test sample`).
-pub(crate) fn encode<T: serde::Serialize + ?Sized>(
-    out: &mut Vec<u8>,
-    value: &T,
-) -> bincode::Result<()> {
-    use bincode::Options;
-    codec().serialize_into(out, value)
-}
-
-/// A value [`encode`] wrote, alone in `bytes`.
-#[cfg(feature = "physics3d")]
-pub(crate) fn decode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> bincode::Result<T> {
-    use bincode::Options;
-    codec().deserialize(bytes)
-}
+pub(super) use og_physics_data::codec;
+pub(crate) use og_physics_data::encode;
 
 /// What follows the profile tag in a saved `og.physics` block: the pushes
 /// not yet applied, then the simulation's bytes without its asset shapes

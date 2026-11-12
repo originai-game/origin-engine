@@ -10,12 +10,14 @@ autotests = false
 [features]
 default = ["physics2d", "physics3d"]
 physics2d = ["dep:rapier2d"]
-physics3d = ["dep:rapier3d"]
+physics3d = ["dep:rapier3d", "og-physics-data/physics3d"]
 
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-lanes = { path = "../og-lanes" }
+# The meshes colliders are built from, the triangle mesh bake and the save codec.
+og-physics-data = { path = "../og-physics-data" }
 glam = { workspace = true, features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 bincode = "1.3.3"
