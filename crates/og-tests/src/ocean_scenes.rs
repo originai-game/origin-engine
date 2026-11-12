@@ -22,6 +22,7 @@ pub const OCEAN_SCENES: &[&str] = &[
     "water-shore",
     "water-shallows",
     "water-wake",
+    "water-wake-lake",
     "water-river",
 ];
 
@@ -156,8 +157,10 @@ pub fn wake_update(scene: &mut RenderScene, frame: u32) {
 
 /// A boat running at 5 m/s over a light breeze's sea (`water-wake`, before
 /// [`wake_update`]): its bow wave, its Kelvin wake and the foam along its
-/// sides, seen from behind and above.
-fn wake(scene: &mut RenderScene) {
+/// sides, seen from behind and above. On a `lake` (`water-wake-lake`), a
+/// windless water 400 m across, the same wake bends the flat surface's
+/// reflections: any og.Water draws the bodies that cut it.
+fn wake(scene: &mut RenderScene, lake: bool) {
     physical_light(scene, 14.0, PhysicalAtmosphere::EARTH);
     let hull = scene.add_mesh(shapes::cuboid(WAKE_HALF * 2.0));
     let paint = scene.add_standard_material(StandardMaterial {
@@ -166,8 +169,18 @@ fn wake(scene: &mut RenderScene) {
         ..Default::default()
     });
     scene.add_instance(hull, paint, Mat4::IDENTITY);
-    scene.world.water.push(sea(Vec2::new(-1.2, -2.6), 0.4));
-    sea_haze(scene);
+    if lake {
+        scene.world.water.push(Water {
+            size: Vec2::splat(400.0),
+            deep: Vec3::new(0.01, 0.06, 0.09),
+            shallow: Vec3::new(0.2, 0.5, 0.55),
+            depth_fade: 30.0,
+            ..Default::default()
+        });
+    } else {
+        scene.world.water.push(sea(Vec2::new(-1.2, -2.6), 0.4));
+        sea_haze(scene);
+    }
     scene.frame.camera = Camera {
         position: Vec3::new(9.0, 16.0, 22.0),
         target: Vec3::new(0.0, 0.0, -6.0),
@@ -424,7 +437,8 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             physical_light(&mut scene, 10.5, earth);
             shallows(&mut scene);
         }
-        "water-wake" => wake(&mut scene),
+        "water-wake" => wake(&mut scene, false),
+        "water-wake-lake" => wake(&mut scene, true),
         "water-river" => river(&mut scene),
         // The breeze's sea at night under a clear, starry sky and a moon
         // behind the camera: dark water, the moonlight on it faint.

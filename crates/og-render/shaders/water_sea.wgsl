@@ -1,14 +1,6 @@
 // The sea of water.wgsl (appended to it): its waves and their slopes, its surf and foam, its vertices and the
 // probe of its heights.
 
-// The wakes at frame point p (xz): none off their square or without one.
-fn sea_wake(p: vec2<f32>) -> vec4<f32> {
-  if (water.wake.w < 0.5) { return vec4<f32>(0.0); }
-  let uv = (p - water.wake.xy) * water.wake.z + 0.5;
-  if (any(uv <= vec2<f32>(0.0)) || any(uv >= vec2<f32>(1.0))) { return vec4<f32>(0.0); }
-  return textureSampleLevel(wake_tex, ripple_sampler, uv, 0.0);
-}
-
 // How much of a wave of wavenumber k samples `cell` metres apart hold: all of one eight cells long, none under four
 // (water/sea.rs sea_keep).
 fn sea_keep(k: f32, cell: f32) -> f32 {
@@ -45,7 +37,7 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
   let sh = shoaling(p);
   let d = ocean_swell(p, cell, sh) + ocean_cascades(p, cell, sh);
   // W3: the hulls' wakes on top, where the waves carry the point.
-  return d + vec3<f32>(0.0, sea_wake(p + d.xz).x, 0.0);
+  return d + vec3<f32>(0.0, water_wake(p + d.xz).x, 0.0);
 }
 
 // ocean_displace's waves of og_core::ocean at rest point p (Ocean::displacement).
@@ -142,7 +134,7 @@ fn ocean_normal(p: vec2<f32>, at: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> Se
   }
   var o: SeaNormal;
   // W3: the hulls' wakes' own slopes on top, where the point is drawn.
-  o.slope = s / vec2<f32>(max(1.0 + j.x, 0.15), max(1.0 + j.y, 0.15)) + sea_wake(at).yz;
+  o.slope = s / vec2<f32>(max(1.0 + j.x, 0.15), max(1.0 + j.y, 0.15)) + water_wake(at).yz;
   o.n = normalize(vec3<f32>(-o.slope.x, 1.0, -o.slope.y));
   o.jac = (1.0 + j.x) * (1.0 + j.y) - j.z * j.z;
   o.cov = cov;
@@ -230,7 +222,7 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let shoals = sh.inside * (1.0 - smoothstep(0.4 * shoal_half, shoal_half, sh.depth));
   let fresh_gain = mix(water.ocean.w, 2.5, shoals);
   // W3: the wakes' foam (their breaking crests and the hulls' sides) is fresh foam too.
-  let fresh = max(max(clamp((water.ocean.z - jac) * fresh_gain, 0.0, 1.0), surf), sea_wake(p).w);
+  let fresh = max(max(clamp((water.ocean.z - jac) * fresh_gain, 0.0, 1.0), surf), water_wake(p).w);
   let fresh_k = clamp(fwl.g * 2.0 + fresh, 0.0, 1.0);
   // Only the crest breaking now is a solid white (Monahan's stage A, a few tenths of a percent of a gale's sea). The
   // foam it leaves is no longer fed: a sheet of bubbles thinning as they burst, always open between its patches
@@ -466,6 +458,6 @@ fn probe_sea(@builtin(global_invocation_id) id: vec3<u32>) {
     own = goal - ocean_swell(own, 0.0, shoaling(own)).xz;
   }
   let swell = ocean_swell(own, 0.0, shoaling(own)).y;
-  let wake = sea_wake(goal).x;
+  let wake = water_wake(goal).x;
   probe_out[id.x] = vec4<f32>(water.model[3].y + drawn + wake, swell, drawn - swell, wake);
 }

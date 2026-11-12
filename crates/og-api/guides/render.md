@@ -306,9 +306,15 @@ depth-normal prepass: the first one pays for it.
   hold them; whitecaps foam where crests fold. A seabed is re-read when
   the water, the terrain's placement or its edits change. Ageing foam: a
   whitecap's dense foam bursts within seconds and leaves lace for some ten
-  seconds, gathered by currents of about 1 % of the wind. Hull wakes are
-  Kelvin's 19.5 degree wedge at deep water's speeds, foaming along the
-  hull's sides too.
+  seconds, gathered by currents of about 1 % of the wind.
+- Wakes (`dynamicWaves`): every body that cuts an og.Water raises them, a
+  hull by its shape and any other body by its box, on one 64 m square
+  round the camera: the water being cut holds it (the first of several),
+  and it rests two minutes after the last cut. Kelvin's 19.5 degree wedge
+  at deep water's speeds, on a shallow lake too. A sea's surface rises
+  with them; a lake or a river stays flat and shows them in its
+  reflections and foam. An og.WaterSurface on the same entity draws its
+  own ripples instead.
 
 ## 9. Interpolation
 

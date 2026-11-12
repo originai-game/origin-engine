@@ -112,7 +112,7 @@ A wind-driven ocean on the grid.
 |---|---|---|---|---|---|---|
 | `foamStreaks` | `number` | `1` | 0 … 4 | `ratio` | tunable | How strongly a sea's ageing foam is drawn into streaks along the wind (0: none): the lace a whitecap leaves, gathered into windrows by the surface's Langmuir circulation. Rendering only. |
 | `meniscus` | `number` | `2` | -1 … 16 | — | tunable | Where the camera's near plane crosses the surface, the width in pixels of the meniscus along the waterline between the air and the water's fog, each pixel under or above as the waves put it; 0: the line alone; below 0: no waterline, the frame above or under as the eye is. Needs underwaterDensity. |
-| `dynamicWaves` | `number` | `1` | 0 … 4 | `ratio` | tunable | How high the waves an og.Buoyancy hull raises on a sea are drawn (0: none): a hull presses the water down by its draft and, moving, throws a bow wave and leaves a Kelvin wake, foaming where they break, within some 64 m of the camera. Rendering only: the tick floats every hull on the sea's own waves. See `render §8`. |
+| `dynamicWaves` | `number` | `1` | 0 … 4 | `ratio` | tunable | How high the waves bodies raise in the water are drawn (0: none): each presses the water down and, moving, throws a bow wave and a Kelvin wake that foams, within some 64 m of the camera. A sea's surface rises with them; a lake or a river shows them in its reflections and foam. Rendering only. See `render §8`. |
 | `spray` | `number` | `1` | 0 … 4 | `ratio` | tunable | How much spray a sea's breaking crests throw (0: none): droplets torn off where the foam is freshest and the crests steepest, carried by the wind and falling back, more of them as the wind rises past a moderate breeze. Rendering only; the tick never sees them. |
 
 ```ogt
@@ -341,7 +341,7 @@ component Water {
     max 16
     tunable true
   }
-  field dynamicWaves f32 "How high the waves an og.Buoyancy hull raises on a sea are drawn (0: none): a hull presses the water down by its draft and, moving, throws a bow wave and leaves a Kelvin wake, foaming where they break, within some 64 m of the camera. Rendering only: the tick floats every hull on the sea's own waves." {
+  field dynamicWaves f32 "How high the waves bodies raise in the water are drawn (0: none): each presses the water down and, moving, throws a bow wave and a Kelvin wake that foams, within some 64 m of the camera. A sea's surface rises with them; a lake or a river shows them in its reflections and foam. Rendering only." {
     guide "render §8"
     default 1
     min 0

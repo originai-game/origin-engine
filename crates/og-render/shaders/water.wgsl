@@ -67,7 +67,8 @@ struct WaterUniform {
   // W6: x 1 when the near plane crosses the surface (water.rs waterline), y the underwater fog's density, z the
   // meniscus's width (px).
   waterline: vec4<f32>,
-  // W3: the hulls' wakes (sea_wakes.rs): xy the grid's centre (frame xz), z one over its side (1/m), w 1 with one.
+  // W3: the wakes of the bodies in this water (sea_wakes.rs): xy the grid's centre (frame xz), z one over its side
+  // (1/m), w 1 with one.
   wake: vec4<f32>,
 };
 
@@ -121,7 +122,8 @@ const SUN_DISC: f32 = 5.5e-6;
 // The seabed (Water::shore, og_core::shore): per sample its depth under the rest level, the signed distance to the
 // waterline and that distance's gradient (xz).
 @group(1) @binding(10) var shore_tex: texture_2d<f32>;
-// W3: the hulls' wakes over a sea (sea_wakes.wgsl): (height, its slopes along x and z, foam), a camera-centred square.
+// W3: the wakes of the bodies in the water (sea_wakes.wgsl): (height, its slopes along world x and z, foam), a
+// camera-centred square.
 @group(1) @binding(11) var wake_tex: texture_2d<f32>;
 
 struct WaterOut {
@@ -179,14 +181,23 @@ fn hg_water(cos_t: f32) -> f32 {
   return mix(hg, 0.0795775, 0.2);
 }
 
-// The light on white water (a bank's or a ripple's foam, a fall's sheet), over its colour: a cloud of bubbles and
-// drops, lit through its depth by the sun from any side (wrapped: under Lambert's cosine the flecks on a face turned
-// from the sun went ambient grey and read as grit) and by the whole sky. The sun's share is Lambert's, its irradiance
-// over pi as the sea's foam: without it white water glowed three times brighter than a white wall.
+// The light on white water (a bank's or a ripple's foam, a wake's, a fall's sheet), over its colour: a cloud of
+// bubbles and drops, lit through its depth by the sun from any side (wrapped: under Lambert's cosine the flecks on a
+// face turned from the sun went ambient grey and read as grit) and by the whole sky. The sun's share is Lambert's,
+// its irradiance over pi as the sea's foam: without it white water glowed three times brighter than a white wall.
 // (n: the surface's own normal; sun: how much of the sun reaches it.)
 fn white_water_light(n: vec3<f32>, l: vec3<f32>, sun: f32) -> vec3<f32> {
   let wrap = clamp((dot(n, l) + 0.6) / 1.6, 0.0, 1.0);
   return wrap * frame.light_color.rgb * sun * 0.31831 + vec3<f32>(frame.params.x * 0.6);
+}
+
+// The wakes at frame point p (xz), as wake_tex holds them: none off their square or without one. A sea's waves
+// carry them (water_sea.wgsl); any other water draws them on its surface (fs).
+fn water_wake(p: vec2<f32>) -> vec4<f32> {
+  if (water.wake.w < 0.5) { return vec4<f32>(0.0); }
+  let uv = (p - water.wake.xy) * water.wake.z + 0.5;
+  if (any(uv <= vec2<f32>(0.0)) || any(uv >= vec2<f32>(1.0))) { return vec4<f32>(0.0); }
+  return textureSampleLevel(wake_tex, ripple_sampler, uv, 0.0);
 }
 
 // The height field's texels at local point (x, z) of the surface, bilinear: r the height; with ripples
@@ -446,6 +457,14 @@ if (rippled() && !is_sea()) {
     base = normalize(base - tangent_x * (rx / (2.0 * e)) - tangent_z * (rz / (2.0 * e)));
     ripple_foam = field_at(in.local).b;
   }
+  }
+  // The wakes of the bodies in a lake or a river, likewise: their slopes (along world x and z) bend its normal and
+  // their foam lies on it, open lace at its thickest (half the lumps' cover: a wake is not a closed sheet). The
+  // surface itself stays where it is: its grid is far coarser than their waves.
+  if (water.wake.w > 0.5 && !is_sea()) {
+    let wake = water_wake(in.world.xz);
+    base = normalize(base - vec3<f32>(wake.y, 0.0, wake.z));
+    ripple_foam = max(ripple_foam, wake.w * 0.5);
   }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);

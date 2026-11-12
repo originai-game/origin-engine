@@ -82,8 +82,8 @@ impl WaterRenderer {
                     },
                     count: None,
                 },
-                // W3: the sea's hulls' wakes (sea_wakes.rs; one calm texel without), read by the vertices and the
-                // height probe too.
+                // W3: the wakes of the bodies in the water (sea_wakes.rs; one calm texel without), read by a sea's
+                // vertices and the height probe too.
                 wgpu::BindGroupLayoutEntry {
                     binding: 11,
                     visibility: wgpu::ShaderStages::VERTEX_FRAGMENT
@@ -305,7 +305,7 @@ impl WaterRenderer {
             last_sea: None,
             submitted: (0, 0),
             wakes: None,
-            wake_centre: None,
+            wake: None,
             rivers: Vec::new(),
             no_wake,
             caustics: None,

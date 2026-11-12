@@ -4,7 +4,8 @@
 //! same water becalmed) that moves with the tick; a gale's steep crests
 //! foam white where a round swell of the same waves does not; the low sun
 //! lays a glitter path on the sea under it; a flow map that holds one
-//! direction everywhere draws the stream that flow draws without one.
+//! direction everywhere draws the stream that flow draws without one; a
+//! boat's wake shows on a lake as on a sea.
 
 use glam::{Vec2, Vec3};
 use og_render::{RenderScene, RenderTarget, Renderer, RgbaImage};
@@ -144,4 +145,50 @@ fn the_sea_moves_between_ticks_in_step_with_the_tick() {
     let d = difference(&frames[0], &frames[1]);
     println!("one tick at alphas 0.1 and 0.6: mean difference {d}");
     assert!(d > 0.5, "the sea did not move between ticks ({d})");
+}
+
+/// Any water draws the bodies that cut it, not a sea alone. `water-wake-lake`
+/// (a windless lake, a boat at 5 m/s) two seconds in, against the same
+/// frames with nothing recorded as cutting the water: the wake's slopes and
+/// its foam change the lake astern of the boat, and nowhere else (the
+/// frame's top fifth, the far water and the sky, is the same to a level).
+#[test]
+#[ignore = "requires GPU"]
+fn a_lake_draws_the_wake_of_the_boat_that_cuts_it() {
+    use og_tests::ocean_scenes::{ocean_scene, wake_update};
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut frames = Vec::new();
+    // The uncut run first: the renderer then holds no wake when the cut one starts.
+    for cut in [false, true] {
+        let mut scene = ocean_scene("water-wake-lake");
+        for frame in 0..=120 {
+            wake_update(&mut scene, frame);
+            if !cut {
+                scene.world.water[0].wakes = None;
+            }
+            renderer
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        frames.push(renderer.read_offscreen().expect("capture"));
+    }
+    let (calm, cut) = (&frames[0], &frames[1]);
+    let row = calm.width as usize * 4;
+    let far = (calm.height as usize / 5) * row;
+    let band = |image: &RgbaImage, from: usize, to: usize| RgbaImage {
+        width: image.width,
+        height: ((to - from) / row) as u32,
+        pixels: image.pixels[from..to].to_vec(),
+    };
+    let end = calm.pixels.len();
+    let near = difference(&band(calm, far, end), &band(cut, far, end));
+    let away = difference(&band(calm, 0, far), &band(cut, 0, far));
+    println!(
+        "a lake with a wake against the same lake calm: mean difference {near} astern, {away} far off"
+    );
+    assert!(near > 0.2, "the lake drew no wake ({near})");
+    assert!(
+        away < 0.02,
+        "the wake changed the lake far from the boat ({away})"
+    );
 }
