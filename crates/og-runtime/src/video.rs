@@ -25,7 +25,7 @@ use super::assets;
 use super::codec::Layout;
 use super::engine::{Engine, engine};
 use super::extract::RenderState;
-use super::wire::{VideoCapabilities, VideoInfo};
+use super::wire::{FromJson, VideoCapabilities, VideoInfo, record};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, SchemaId, SystemContext, SystemDesc, World};
 use serde_json::{Value, json};
@@ -123,12 +123,10 @@ fn apply_media(
     };
     let player = ctx.id_by_name(PLAYER).ok();
     for bytes in ctx.events_bytes(id)? {
-        let i = intent.decode(&bytes);
-        let e = Entity::from_bits(i["player"].as_f64().unwrap_or(0.0) as u64);
-        let playing = i["playing"].as_i64().unwrap_or(-1);
-        let repeat = i["repeat"].as_i64().unwrap_or(-1);
-        let seek = i["seek"].as_f64().unwrap_or(-1.0);
-        let gain = i["gain"].as_f64().unwrap_or(-1.0);
+        let i: record::MediaIntent = intent.read(&bytes).map_err(bad)?;
+        let e = Entity::from_bits(i.player);
+        let (playing, repeat, seek) = (i.playing, i.repeat, i.seek);
+        let gain = f64::from(i.gain);
         named.push(e);
         let is_video = match player {
             Some(p) => match ctx.get_bytes(e, p) {
@@ -343,10 +341,6 @@ pub(crate) fn install(
         .map_err(|e| e.reason().to_string())
 }
 
-fn num(v: &Value, k: &str, or: f64) -> f64 {
-    v[k].as_f64().unwrap_or(or)
-}
-
 /// The frame shown at `time` (a hair of slack, so a sum of ticks that lands
 /// a rounding short of a frame's start shows that frame).
 fn frame_at(time: f64, c: &Clip) -> u32 {
@@ -361,14 +355,15 @@ fn run(
     layouts: &MediaLayouts,
     audio: &(SchemaId, Layout),
 ) -> og_core::Result<()> {
+    let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
     let named = apply_media(ctx, layouts, audio)?;
     let mut media = Media::new();
     // A sound a document names: whether it plays.
     for e in named {
         if let Ok(ab) = ctx.get_bytes(e, audio.0) {
-            let s = audio.1.decode(&ab);
+            let s: record::AudioSource = audio.1.read(&ab).map_err(bad)?;
             let state = og_ui::bind::MediaState {
-                playing: s["playing"].as_bool().unwrap_or(false),
+                playing: s.playing,
                 ..Default::default()
             };
             media.insert(e.to_bits(), (state, 0.0));
@@ -397,30 +392,29 @@ fn run(
         entities.extend_from_slice(a.entities());
     }
     let clips = shared.lock().unwrap_or_else(|e| e.into_inner()).clone();
-    let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
-    let decoded: Vec<(Entity, Vec<u8>, Value)> = entities
+    let decoded: Vec<(Entity, Vec<u8>, Value, record::VideoPlayer)> = entities
         .into_iter()
         .map(|e| {
             let bytes = ctx.get_bytes(e, player.0)?;
             let v = player.1.decode(&bytes);
-            Ok((e, bytes, v))
+            let row = record::VideoPlayer::from_json(&v).map_err(bad)?;
+            Ok((e, bytes, v, row))
         })
         .collect::<og_core::Result<_>>()?;
-    let textures = assign(engine_id, &decoded).map_err(bad)?;
-    for ((e, bytes, mut v), texture) in decoded.into_iter().zip(textures) {
-        let handle = v["video"].as_f64().unwrap_or(0.0) as u64;
-        let Some(c) = clips.get(&handle).copied() else {
+    let textures = assign(engine_id, decoded.iter().map(|d| &d.3)).map_err(bad)?;
+    for ((e, bytes, mut v, row), texture) in decoded.into_iter().zip(textures) {
+        let Some(c) = clips.get(&row.video).copied() else {
             continue;
         };
         let fps = f64::from(c.fps);
-        let speed = num(&v, "speed", 1.0).clamp(0.0, 4.0);
-        let playing = v["playing"].as_bool().unwrap_or(true);
-        let looped = v["loop"].as_bool().unwrap_or(false);
-        let start = num(&v, "time", 0.0).max(0.0);
+        let speed = f64::from(row.speed).clamp(0.0, 4.0);
+        let playing = row.playing;
+        let looped = row.r#loop;
+        let start = row.time.max(0.0);
         // A player this system has not written yet starts where it says;
         // afterwards a time outside the frame last written is a seek.
-        let fresh = v["texture"].as_f64().unwrap_or(0.0) == 0.0;
-        let last = v["frame"].as_f64().unwrap_or(0.0);
+        let fresh = row.texture == 0;
+        let last = f64::from(row.frame);
         let seek = !fresh && (start < last / fps - 1e-4 || start >= (last + 1.0) / fps + 1e-4);
         let mut time = start;
         if playing {
@@ -484,18 +478,21 @@ fn run(
 /// video no earlier player kept, else the first view nobody keeps, else a
 /// new view of the video's frames. Kept textures go first, so a player that
 /// has one never loses it to a newcomer earlier in the query.
-fn assign(engine_id: u32, players: &[(Entity, Vec<u8>, Value)]) -> Result<Vec<u64>, String> {
+fn assign<'a>(
+    engine_id: u32,
+    players: impl Iterator<Item = &'a record::VideoPlayer> + Clone,
+) -> Result<Vec<u64>, String> {
     let eng = super::engine::engine(engine_id)?;
     let mut rs = eng
         .render
         .try_borrow_mut()
         .map_err(|_| "og.video: the render state is busy".to_string())?;
-    let video = |v: &Value| v["video"].as_f64().and_then(assets::index_of);
-    let mut out = vec![0u64; players.len()];
+    let video = |p: &record::VideoPlayer| assets::index_of(p.video as f64);
+    let mut out = vec![0u64; players.clone().count()];
     let mut taken: std::collections::BTreeSet<u64> = Default::default();
     // Kept: a view of its own video, the first player to name it.
-    for (k, (_, _, v)) in players.iter().enumerate() {
-        let (Some(i), Some(t)) = (video(v), v["texture"].as_f64().map(|t| t as u64)) else {
+    for (k, p) in players.clone().enumerate() {
+        let (Some(i), t) = (video(p), p.texture) else {
             continue;
         };
         let is_view = rs
@@ -507,11 +504,11 @@ fn assign(engine_id: u32, players: &[(Entity, Vec<u8>, Value)]) -> Result<Vec<u6
         }
     }
     // The others: a free view, or a new one.
-    for (k, (_, _, v)) in players.iter().enumerate() {
+    for (k, p) in players.enumerate() {
         if out[k] != 0 {
             continue;
         }
-        let Some(i) = video(v) else {
+        let Some(i) = video(p) else {
             continue;
         };
         let Some(lv) = rs.videos.get(i) else {
@@ -567,15 +564,11 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
                 let Ok(b) = world.get_bytes(*e, id) else {
                     continue;
                 };
-                let v = layout.decode(&b);
-                if let (Some(i), Some(t)) = (
-                    v["video"].as_f64().and_then(assets::index_of),
-                    v["texture"].as_f64(),
-                ) {
-                    want.entry((i, t as u64)).or_insert((
-                        v["frame"].as_u64().unwrap_or(0) as u32,
-                        v["loop"].as_bool().unwrap_or(false),
-                    ));
+                let Ok(p) = layout.read::<record::VideoPlayer>(&b) else {
+                    continue;
+                };
+                if let Some(i) = assets::index_of(p.video as f64) {
+                    want.entry((i, p.texture)).or_insert((p.frame, p.r#loop));
                 }
             }
         }
