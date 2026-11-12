@@ -7,10 +7,11 @@ threads linked here; rules are in `AGENTS.md`, the UI contract in
 ## Order (the owner, 2026-11-08)
 
 1. **Engine and UI infrastructure:** done 2026-11-09.
-2. **UI catalogue (now).** Pilot first (clean and fantasy packs, rpg and shooter
-   kits, a separate art-review stream), then the remaining kits and packs
-   (`docs/ui.md`: 9 kits, 6 packs) until the whole acceptance matrix
-   passes.
+2. **UI catalogue (now).** Pilot first (clean and fantasy packs, the rpg
+   and shooter component groups, a separate art-review stream), then the
+   remaining component groups and packs (`docs/ui.md` §4: strategy,
+   racing, card, puzzle, idle, rhythm, arena and general; 6 packs) until
+   the whole acceptance matrix passes.
 3. **0.8.0** ships when the UI catalogue is accepted and every Below target
    item is met. Release and its platform asks per `docs/release.md`.
 4. **The engine's showcase page**, rebuilt from scratch as a page of the
@@ -30,40 +31,22 @@ meanwhile.
 
 Landed in phase 1:
 
-- The rpg kit and the fantasy pack (pure CSS), art-approved: 7407166332.
-- The core and G1 UI parts: 8ef79ce29a; select lists and groups as part
-  boxes, with the fantasy pack keeping its approved labels: 0d556d0379.
-- `og-rive` and `og-emitter` as owned nodes: 7e4888f5d1.
-- `-og` migration: control sizes replaced by CSS dimensions (0f48e47397),
-  forced input on the standard pointer and hover media features plus
-  `(-og-input: pad)` (fadefff678);
-  enter and exit on `@starting-style` and standard transitions with
-  discrete `display` exits (fea25ade37).
-- CSS gaps: digits beside CJK and `rem` (748b1ef9ef), MIME parameters
-  (2428c753ea), file URLs and document CSS textures (312ca93f08), cursors
-  over passive boxes in both builders (b964756669), `field-sizing` for text
-  controls (096fc69039), `shape-outside` basic shapes (9e130c45e6),
-  `shape-margin` (3904d7a21f). `docs/ui.md` §8: 101 of 454 with output
-  proofs.
 - Terrain debug views wait for complete diagnostic pipelines (209c656dfb);
   PRs #16, #20 and #21 (c8e5ed5dff).
 
 Still open in phase 1:
 
-- Parts as nodes. Landed: text fields and textarea, the number spinner
-  (0724b886f) and range (21fd314855). On PR #40, not landed: the progress
+- Parts as nodes, for the controls not yet on them. On PR #40: the progress
   and meter tracks and the stepper's button and value. Open, behind two
   behaviours of the shared part-box painter (a part box draws its CSS
   background before its backdrop, and a `background:` shorthand image lies
   over the widget's own fill): panel and tooltip, slots, the HUD and touch
   controls, and the fills and frames left drawn on their hosts. The rpg
-  kit's flourish marker is the heading's part and stays.
-- `-og` migration. Landed: reduced-motion on the media query (cc9ce594a),
-  overlaps through `og.ui` (3e9d4059e), `og-overlay` (b9faa8313). Open:
-  the revision-3 extras and the final reflection audit.
+  components' flourish marker is the heading's part and stays.
+- `-og` migration: the revision-3 extras and the final reflection audit.
   `-og-scroll-fade`, `-og-layout-transition` and `-og-text-path` stay
-  `-og` properties (the owner, 2026-11-10): standard CSS has no equivalent
-  that keeps their output.
+  `-og` properties: standard CSS has no equivalent that keeps their
+  output.
 - The `docs/ui.md` §8 inventory (101 of 454 with output proofs). Its named
   gaps are on PR #40, not landed: cursors inside clip paths, `field-sizing`
   for select, file and vertical fields, image-alpha shape contours (on the
@@ -76,7 +59,9 @@ Next, in order:
 
 1. The docs pass (`docs/ui.md` rewritten, the generated wiki).
 2. The web-tier re-records.
-3. Phase 2: the remaining kits and packs, from generated boards.
+3. Phase 2: the remaining component groups and packs, from generated
+   boards: each group token- and part-only, with state fixtures and a
+   review sheet in `packages/engine/sheets/<group>/`.
 4. The performance pass.
 5. The real-device run.
 6. 0.8.0.
@@ -106,23 +91,6 @@ reference set on the L4, art-reviewed, which moves `RECORDING_TIER` off
 
 ## Landed this round (2026-11-08 to 2026-11-09)
 
-- **CSS completion** (the gap audit's sections A, B and C): cascade
-  features, `::selection`, pseudo-element boxes, `@font-face`; units,
-  box model, flex, grid, table, positioning and anchor positioning,
-  multi-column, floats, `direction` and writing modes with vertical text;
-  colour, fonts, corner shapes, blend modes and isolation, 3D, `linear()`,
-  every property animatable, scroll-driven animations, shared-element and
-  nested view transitions, clip-path, inline SVG `<filter>` and
-  backdrop-filter, backgrounds, border-image and masks, interaction,
-  scrolling, images, `cursor: url()`, `resize`, `contain`,
-  `content-visibility`. Head of the round: ae321c70a.
-- **Svelte, HTML, SVG and GSAP:** forms with validity, date and time
-  pickers, file input, `<video>`/`<audio>`, table display.
-- **Retained UI finished:** every TS builder removed (ea7f1ae40,
-  708635b81, d4f4d4d1d, 11a2b2488); popovers on CSS anchors;
-  `env(safe-area-inset-*)` honours the covered controls and
-  `env(-og-hud-inset-*)` keeps the ultrawide HUD band; the og-ui suite
-  passes under `OG_UI_CHECK_BOUNDED` (2421a23eb).
 - **Publish names:** platform ask 18 landed; publish builds carry
   content-hashed names only (64b33dede).
 
@@ -175,8 +143,8 @@ under Running. The showcase page follows 0.8.0.
   cancelled.
 - **Mobile (the owner, 2026-11-08):** the current CSS round delivers
   `svh`/`lvh`/`dvh` and `env(safe-area-inset-*)` on both hosts; the UI
-  pilot accepts every kit at 390 px wide and by touch as well as at 1280;
-  before 0.8.0 the whole UI catalogue runs on at least one real iPhone and
+  pilot accepts every component group at 390 px wide and by touch as well
+  as at 1280; before 0.8.0 the whole UI catalogue runs on at least one real iPhone and
   one real Android phone.
 
 ## Direction (the owner, 2026-11-10)
@@ -274,7 +242,7 @@ collected on PR #40.
   beside locl glyphs, never reviewed), `archive/platform-scaffold-contract`
   (creation schema labels; the platform asks cover it at release).
 - Platform asks for 0.8.0 are collected by the coordinator: creation schema
-  and labels default-only, retired kit and pack recommendations removed,
+  and labels default-only, retired genre-kit and pack recommendations removed,
   the engine pin and mounted knowledge refreshed together, the Svelte and
   store APIs consumed once final.
 - The 0.8.0 release publishes the pack catalogue (`docs/release.md`
@@ -306,4 +274,4 @@ collected on PR #40.
   CRIU or process fork, VLM gating, Rust hot patching, splitting tests
   across machines.
 - **Landing:** authors land their own heads with `scripts/land.sh`; new
-  kits and packs need a separate art sign-off.
+  component groups and packs need a separate art sign-off.

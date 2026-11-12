@@ -98,8 +98,9 @@ All slots are held for one measured run, never across a pack.
 The engine's own effect packs ship two ways (the coordinator, 2026-11-07):
 
 - **Bundled**: a few, in `packages/engine/extensions/<pack>/` like the UI
-  kits. They are in every engine archive's `engine/extensions/`, `og ui
-  list` names them, and `og vfx add <pack>` copies one without a network.
+  materials pack. They are in every engine archive's
+  `engine/extensions/`, `og ui list` names them, and `og vfx add <pack>`
+  copies one without a network.
 - **Downloadable**: the rest, as plain Git files (no LFS) in
   `packages/vfx-packs/<pack>/`, outside the engine package and every engine
   archive. Each release carries one archive per pack,

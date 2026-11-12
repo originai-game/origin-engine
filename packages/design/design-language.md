@@ -3,11 +3,10 @@
 One design language for the engine's own UI (og-ui's default style, the
 engine's tools) and origin-agent's surfaces (its web, Stage and iOS
 clients), decoupled from the platform's (`origingame/docs/design-language.md`
-styles the portal, ops and mail; the owner, 2026-11-02). Values live in
-[`tokens.json`](tokens.json); this document says how they are used. It was
-seeded from the platform's language and tokens at origingame d25f1f15
-(2026-11-02) and evolves here: §Changes from the seed lists where it
-already differs.
+styles the portal, ops and mail). Values live in
+[`tokens.json`](tokens.json); this document says how they are used.
+§Changes from the seed lists where it differs from the platform's
+language at origingame d25f1f15.
 
 **Where it binds.** The language binds the engine's **default style** alone
 (`crates/og-ui-core/src/theme.rs`, generated from `tokens.json`; docs/ui.md
@@ -20,23 +19,15 @@ or replace anything here above the accessibility floor of docs/ui.md §6.1.
 type ramp, densities, durations, springs, eases, press scale, control
 states, named transitions) and the default style's part dressings, and
 its default stylesheet (`crates/og-ui-core/default.css`) sets every value
-as a CSS variable that a game's style overrides: `--color-*` and the role
-names, `--space-*`, `--radius-*`, `--size-*`, `--stroke-*`, `--type-*` and
-`--text-*`, `--density-*` and the input's `--control-sm/md/lg`, `--row`,
-`--header`, `--gutter`, `--section`, `--touch-target`, `--motion-*`
-(durations, easings, springs, `--motion-named-*`), `--state-*` (hover
-wash, press scales, lift, disabled opacities, focus rings), `--shadow-*`
-(the `shadow` group per scheme and the controls' inset shadows),
-`--elevation-*`, `--glass-*` and the engine's control tokens
-(docs/ui.md §3.1). og-ui reads the theme back from them, so a value set
+as a CSS variable that a game's style overrides (the token families of
+docs/ui.md §3.1). og-ui reads the theme back from them, so a value set
 there reaches every built-in control. origin-agent's web components and its
 SwiftUI views read the same file through their own generators. None of
 them defines a second palette, scale or component grammar.
 
 ## Principles
 
-The language is **editorial** (owner decision 2026-10-11, direction C: Apple
-Arcade / App Store Today), for the public site and the creation workspace
+The language is **editorial** (Apple Arcade / App Store Today), for the public site and the creation workspace
 alike.
 
 - **Content leads, chrome floats.** Game art — covers, Stage frames, captured
@@ -48,11 +39,11 @@ alike.
   never stock art.
 - **A flat neutral ladder.** Surfaces are neutral steps on a black (dark) or
   grouped-grey (light) ground, separated by spacing and a 0.5px hairline
-  edge; nothing on the content layer is lit, glossed or raised (owner,
-  2026-10-25: Apple keeps content flat and depth to the floating layer). Hairlines only where material separation
+  edge; nothing on the content layer is lit, glossed or raised (content
+  stays flat; depth belongs to the floating layer). Hairlines only where material separation
   is insufficient (tables, lists, split panes).
 - **The chrome is neutral; meaning has hue.** The one primary is the
-  high-contrast neutral (2026-11-02); selection is a neutral fill or light
+  high-contrast neutral; selection is a neutral fill or light
   edge; only semantic and game roles are coloured.
 - **Glass is for floating chrome only**: never on content cards or rows; at
   most three glass layers on screen; solid under `prefers-reduced-transparency`.
@@ -101,8 +92,8 @@ Light and dark are peers; dark is `data-theme="dark"` on any element, never
   tracks, skeletons, hover and **selection**. A selected row, current
   navigation item or palette option sits on `fill-strong`; a segmented thumb
   is `thumb`; a selected filter chip inverts to `fg`.
-- **The primary is neutral** (the owner, 2026-11-02: every game brings its
-  own colours, so the default chrome carries no hue). `accent`,
+- **The primary is neutral** (every game brings its own colours, so the
+  default chrome carries no hue). `accent`,
   `accent-hover` and `accent-active` are the high-contrast neutral: a
   near-white fill (#e8e8ed) with dark ink (`accent-fg` #111113) on dark
   surfaces, a near-black fill with light ink on light ones. It marks the
@@ -212,7 +203,7 @@ CSS px. The player's text scale (1 to 2) multiplies over it.
 
 ## Shape, elevation, material
 
-**Radii** are one concentric scale, kept small (owner, 2026-10-25):
+**Radii** are one concentric scale, kept small:
 `rounded-control` 4, `rounded-field` 6, `rounded-block` 8, `rounded-card` 10
 (cards, art tiles), `rounded-panel` 12 (panes, dialogs, docks),
 `rounded-sheet` 16 (phone sheets), `rounded-button` 6 (buttons, segmented
@@ -343,8 +334,7 @@ gestures the runtime spring in `ui-svelte` `motion/spring.ts`, Swift
   | Screen transition | cover then reveal over twice `slow` | `screen <ms>` |
 
   The engine's widgets read these rows (og-ui's `theme::TIMING`, generated
-  from `tokens.json`), and the defaults are the numbers the widgets drew
-  with before the table, so no frame moved when it arrived.
+  from `tokens.json`).
 - `prefers-reduced-motion` keeps state changes and drops spatial movement:
   colour and opacity still transition (overlays and views cross-fade), every
   rise, scale, slide, glide and drag spring jumps. Motion never delays a
@@ -352,9 +342,9 @@ gestures the runtime spring in `ui-svelte` `motion/spring.ts`, Swift
 
 ## Components
 
-The components are the engine's og-ui widgets and the ui-kit components,
-and origin-agent's web components; each draws the grammar below from the
-tokens and never hard-codes a colour, size or curve. The inventory: primitives
+The components are the engine's og-ui widgets and its built-in component
+documents, and origin-agent's web components; each draws the grammar below
+from the tokens and never hard-codes a colour, size or curve. The inventory: primitives
 (Button, IconButton, Field, Select, Checkbox, Switch, Menu, Dialog, Sheet,
 Popover, Tooltip, Tabs, SegmentedControl, Toast, Badge, Avatar, Kbd), data
 (tables, lists, pagination, metric cards, charts, timelines, empty and async
@@ -482,7 +472,7 @@ So the page states things, it does not explain them:
 
 ## Changes from the seed
 
-From origingame d25f1f15 (2026-11-02):
+Against origingame d25f1f15:
 
 - `fg-muted` #5f5f66 → #46464c (light) and #aeaeb2 → #c8c8cd (dark): it held
   3.0–3.8 on a selected row and 3.85–4.29 on a thick menu over a scene of
@@ -495,7 +485,6 @@ From origingame d25f1f15 (2026-11-02):
   engine's stylesheet groups (`size`, `stroke`, `state`, `elevation`,
   `glass`, `derived`, `motion.named`, the `track`, `minimap`,
   `minimap-edge` and `slot-selected-edge` colours and the `minimap`,
-  `slot-selected` and `tab-selected` shadows), each the value the
-  engine drew before it was a token.
+  `slot-selected` and `tab-selected` shadows).
 - Left out: the platform's portal, console and page-template rules, which
   stay the platform's.

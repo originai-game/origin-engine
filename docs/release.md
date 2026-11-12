@@ -76,8 +76,8 @@ it, so the one signature covers it. They are not in any target archive:
 `engine/`, `overlay/` or `files/`, or an `engine/extensions/<pack>` of a
 downloadable pack's name. A pack is installed with `og vfx add <pack>`,
 which verifies the signed SHA256SUMS as the launcher does (below). The
-few bundled packs are kits' peers in `packages/engine/extensions/` and
-ship inside `engine/`.
+few bundled packs are the materials resource pack's peers in
+`packages/engine/extensions/` and ship inside `engine/`.
 
 **The pack catalogue** (from 0.8.0; origin-agent's Engine page reads it,
 in Web and Desktop, and nothing else of the engine tree). `manifest.json`
@@ -93,9 +93,11 @@ sections keyed by pack name, one shape for every kind:
   downloadable (`vfx/<pack>.tar.gz`, with `url` and `sha256`); `tags` are
   its `extension.json` tags; the preview is its effect sheet's impact
   frame.
-- `ui`: every UI style pack and kit (`templates/styles/<pack>/`,
-  `templates/ui-kit/`), with `kind: "style" | "kit"`; `tags` are the
-  style; the preview is the pack's reviewed reference sheet.
+- `ui`: every UI style pack (`templates/styles/<pack>/`) and resource
+  pack (`packages/engine/extensions/materials/`), with
+  `kind: "style" | "materials"`; `tags` are the style; the preview is the
+  pack's reviewed reference sheet. The built-in components and screens
+  are part of the engine, not packs, and are not listed.
 - `fonts`: every font pack (`templates/fonts/<pack>/`); `tags` are the
   scripts and languages it covers; the preview is a specimen of its script.
 - `looks`: every look of `knowledge/looks/catalogue.json` (which stays in
@@ -174,7 +176,7 @@ each target's archive (§1) from them.
 
 | Package | Contents | Built by |
 |---|---|---|
-| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs`, and `knowledge/`: `wiki/` (generated from `api/<module>.ogt` and the guides beside it), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack), and `styles/`: the built-in UI styles (`templates/styles/<pack>/`'s `style.ogt`, atlases at 1×, 2× and 3×, icons, fonts, licences; not `art/`), which og's cook reads from disk and copies into a game's bundle only for the style it names; no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first), in `scripts/release.sh pack` on macrunner |
+| `@origingame/engine` | the TypeScript API and runtime (`src/`, `types/*.d.ts`, `schema/api.schema.json`, `bindings.json`), the web hosts (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`, each publish directory with its lanes variant), the player shell, the Basis transcoder, `bin/og.mjs`, and `knowledge/`: `wiki/` (generated from `api/<module>.ogt` and the guides beside it), `looks/catalogue.json`, `scaffold/` (`origin-engine.json`, `distribution.json`, the template's text), `knowledge.json`, `scripts/mount.ts` and `validate.ts` (copied from `packages/knowledge` at pack), and `styles/`: the built-in UI style packs (each `templates/styles/<pack>/` directory of CSS and assets, its fonts and licences, and `shared/` and `cjk/`; not `art/`), which og's cook reads from disk and copies into a game's bundle only for the style it names; no native code | `packages/engine/scripts/pack.sh` (`OG_RELEASE=1 build.sh --linux-x64` first), in `scripts/release.sh pack` on macrunner |
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile | both in the Mac's `scripts/release.sh pack`: linux-x64 by cargo zigbuild (glibc 2.31), darwin-arm64 natively |
 | `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile; the same API, DX12 renderer, tsgo checker fallback | `build.sh --native` then `pack.sh --native` in Git Bash on studio-win (§3) |
 | `@origingame/create-game` | `bin/create.ts`, `template/` (one empty skeleton), `looks/` (the catalogue), presets, previews, styles and locales | `packages/create` `prepack` |

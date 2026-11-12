@@ -1,10 +1,12 @@
 # UI materials
 
-Per-element shader finishes for a game's UI: the foil, holo, burn and rarity presets of the `materials` kit, how to put one on a styled part or an element, how to tune it, and how to write a new one.
+Per-element shader finishes for a game's UI: the foil, holo, burn and rarity presets of the `materials` resource pack, how to put one on a styled part or an element, how to tune it, and how to write a new one.
 
-`og ui add materials` installs the presets into `assets/ui-kits/materials/`
-as ordinary `type ui-material` assets (an `.ogt` with `param` lines beside
-its WGSL), the game's own to edit. The built-in `dissolve`, `shine` and
+`og ui add materials` installs the presets into
+`assets/materials/materials/` as ordinary `type ui-material` assets (an
+`.ogt` with `param` lines beside its WGSL), the game's own to edit, named
+`materials/materials/<preset>.ogt`. An installed copy is not replaced
+silently. The built-in `dissolve`, `shine` and
 `hologram` materials need no install (`material shine -0.4 0.2 0.8 0.6` in
 a dressing).
 
@@ -25,7 +27,7 @@ defaults in `param` order, four per parameter vector:
 
 ```text
 Slot::frame[rarity=legendary] {
-  -og-material: "ui-kits/materials/rarity.ogt" 1.0 0.5 0.05 0  12 0 0 0  0.6 0 0 0  1.2
+  -og-material: "materials/materials/rarity.ogt" 1.0 0.5 0.05 0  12 0 0 0  0.6 0 0 0  1.2
 }
 ```
 
@@ -39,7 +41,7 @@ property, so a store drives it through `style:`:
 ```svelte
 <div id="Card" style:--burn={$burn}>…</div>
 <style>
-#Card { -og-material: "ui-kits/materials/burn.ogt" var(--burn) 0 0 0 6; }
+#Card { -og-material: "materials/materials/burn.ogt" var(--burn) 0 0 0 6; }
 </style>
 ```
 
@@ -71,4 +73,4 @@ straight alpha), `layer_texel()` is one CSS px in uv, `m.pixel` and
 `m.size` are CSS px, `m.time` is the UI clock (deterministic), and
 `value_noise(p)` and `hash12(p)` are lattice noise. At most four `param`
 lines; the cook validates the WGSL for Metal, Vulkan and DX12. A new
-preset adds its card to the kit's sheet.
+preset adds its card to the pack's sheet.
