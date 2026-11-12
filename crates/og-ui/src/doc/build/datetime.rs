@@ -339,11 +339,11 @@ impl DatetimeUi for Ui {
             },
         );
         let at = self.tree.parent();
-        self.tree.nodes_mut()[at].a11y.role = Some("group");
+        self.tree.semantics_mut(at).role = Some("group");
         if let Some(name) = r.str("name") {
-            self.tree.nodes_mut()[at].a11y.name = Some(name.to_string());
+            self.tree.semantics_mut(at).name = Some(name.to_string());
         }
-        self.tree.nodes_mut()[at].a11y.value = Some(format(ty, now, seconds));
+        self.tree.semantics_mut(at).value = Some(format(ty, now, seconds));
         let mut values: Vec<i64> = Vec::new();
         let mut changed = false;
         let mut keep_day = false;

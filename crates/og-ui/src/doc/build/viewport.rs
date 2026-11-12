@@ -239,7 +239,7 @@ impl ViewportUi for Ui {
         p.state = props.state;
         *self.tree.props_mut(i) = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
+            self.tree.semantics_mut(i).name = Some(name.to_string());
         }
         // Svelte's dimension bindings: written when its box changes (a
         // resized node is built again), so the game sizes its target.

@@ -126,9 +126,9 @@ impl MediaUi for Ui {
             },
         );
         let at = self.tree.parent();
-        self.tree.nodes_mut()[at].a11y.role = Some(if video { "img" } else { "group" });
+        self.tree.semantics_mut(at).role = Some(if video { "img" } else { "group" });
         if let Some(name) = r.str("name") {
-            self.tree.nodes_mut()[at].a11y.name = Some(name.to_string());
+            self.tree.semantics_mut(at).name = Some(name.to_string());
         }
         if video {
             // The frame once the player has shown one, else the poster.

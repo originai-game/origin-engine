@@ -638,13 +638,13 @@ impl SvgElementsUi for Ui {
         }
         *self.tree.props_mut(i) = p;
         if let Some(role) = n.role {
-            self.tree.nodes_mut()[i].a11y.role = Some(role);
+            self.tree.semantics_mut(i).role = Some(role);
         }
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
+            self.tree.semantics_mut(i).name = Some(name.to_string());
             // A named `<svg>` is an image, as browsers expose one.
             if kind == "svg" && n.role.is_none() {
-                self.tree.nodes_mut()[i].a11y.role = Some("image");
+                self.tree.semantics_mut(i).role = Some("image");
             }
         }
         let t = computed

@@ -426,11 +426,33 @@ pub struct Tree {
 
 /// The fields of the tree the documents (og-ui) reach.
 impl Tree {
-    pub fn nodes(&self) -> &Vec<Node> {
+    pub fn nodes(&self) -> &[Node] {
         &self.nodes
     }
-    pub fn nodes_mut(&mut self) -> &mut Vec<Node> {
-        &mut self.nodes
+    /// Node `i`'s accessibility semantics, to write.
+    pub fn semantics_mut(&mut self, i: usize) -> &mut crate::a11y::A11y {
+        &mut self.nodes[i].a11y
+    }
+    /// Hides node `i` this frame.
+    pub fn hide(&mut self, i: usize) {
+        self.nodes[i].hidden = true;
+    }
+    /// Places node `i` (a popover) at `point` with its `arrow` (size, colour).
+    pub fn anchor_at(
+        &mut self,
+        i: usize,
+        point: Option<[f32; 2]>,
+        arrow: Option<(f32, crate::Srgba)>,
+    ) {
+        let n = &mut self.nodes[i];
+        n.anchor_point = point;
+        n.arrow = arrow;
+    }
+    /// Whether node `i` (a layer) catches the pointer behind it and scopes focus.
+    pub fn capture(&mut self, i: usize, backdrop: bool, scope: bool) {
+        let n = &mut self.nodes[i];
+        n.backdrop = backdrop;
+        n.scope = scope;
     }
     pub fn kinds(&self) -> &Vec<(&'static str, bool)> {
         &self.kinds

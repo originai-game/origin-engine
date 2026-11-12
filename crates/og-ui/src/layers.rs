@@ -587,14 +587,13 @@ impl LayersUi2 for Ui {
         );
         let key = self.tree.nodes()[idx].key;
         {
-            let build = self.tree.build();
-            let n = &mut self.tree.nodes_mut()[idx];
-            n.backdrop = spec.capture || dim;
-            n.scope = spec.input != InputMode::Game;
-            n.props.write(build).inert = info.inert;
-            n.props.write(build).enter = spec.enter.clone();
-            n.props.write(build).exit = spec.exit.clone();
-            n.props.write(build).animations = animations;
+            self.tree
+                .capture(idx, spec.capture || dim, spec.input != InputMode::Game);
+            let props = self.tree.props_mut(idx);
+            props.inert = info.inert;
+            props.enter = spec.enter.clone();
+            props.exit = spec.exit.clone();
+            props.animations = animations;
         }
         // UI actions go to the top layer that takes input; with none, to every game layer.
         let top_taker = infos.iter().rposition(|l| l.spec.input != InputMode::Game);

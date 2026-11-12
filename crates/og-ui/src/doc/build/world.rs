@@ -610,7 +610,7 @@ impl WorldUi for Ui {
         p.state = props.state;
         *self.tree.props_mut(i) = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
+            self.tree.semantics_mut(i).name = Some(name.to_string());
         }
         self.tree.keep_world_panel(i, key, &mut self.world);
         self.docs.note_built(built);
@@ -766,7 +766,7 @@ impl WorldUi for Ui {
                 ..Element::default()
             },
         );
-        self.tree.nodes_mut()[i].hidden = true;
+        self.tree.hide(i);
         let owner = self.tree.nodes()[i].key;
         debug_assert_eq!(owner, key, "the leaf takes the element's key");
         self.document_mass(
@@ -831,7 +831,7 @@ impl WorldUi for Ui {
         p.state = props.state;
         *self.tree.props_mut(i) = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
+            self.tree.semantics_mut(i).name = Some(name.to_string());
         }
         self.world
             .declared

@@ -101,7 +101,7 @@ impl PopoverUi for Ui {
         }
         if let Some(title) = r.str("title").filter(|t| !t.is_empty()) {
             if self.tree.nodes()[at].a11y.description.is_none() {
-                self.tree.nodes_mut()[at].a11y.description = Some(title.to_string());
+                self.tree.semantics_mut(at).description = Some(title.to_string());
             }
             self.tooltip(title);
         }
@@ -119,7 +119,7 @@ impl PopoverUi for Ui {
                 link.point = None;
                 self.set_popover_open(pk, next);
             }
-            self.tree.nodes_mut()[at].a11y.expanded = Some(self.popover_open(pk));
+            self.tree.semantics_mut(at).expanded = Some(self.popover_open(pk));
         }
         // HTML's former `contextmenu` attribute: a secondary press or a long
         // press on it opens the popover at the pointer.
@@ -287,13 +287,11 @@ impl PopoverUi for Ui {
 
     fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>) {
         let (spec, authored) = Self::anchor_spec(r, &mut Props::default());
-        let build = self.tree.build();
-        let n = &mut self.tree.nodes_mut()[at];
         if authored {
-            n.props.write(build).anchor = Some(Box::new(spec));
+            self.tree.props_mut(at).anchor = Some(Box::new(spec));
         }
-        n.anchor_point = point;
-        n.arrow = r
+        let background = self.tree.nodes()[at].el.background;
+        let arrow = r
             .pseudo
             .iter()
             .find(|(w, ..)| *w == "arrow")
@@ -306,9 +304,10 @@ impl PopoverUi for Ui {
                 // usually is.
                 let color = p
                     .color("background")
-                    .or(n.el.background)
+                    .or(background)
                     .unwrap_or(self.env.theme().palette.panel_raised);
                 (size, color)
             });
+        self.tree.anchor_at(at, point, arrow);
     }
 }

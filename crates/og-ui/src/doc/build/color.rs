@@ -97,8 +97,8 @@ impl ColorUi for Ui {
             },
         );
         let key = self.tree.nodes()[swatch].key;
-        self.tree.nodes_mut()[swatch].a11y.role = Some("button");
-        self.tree.nodes_mut()[swatch].a11y.value = Some(to_hex(rgb));
+        self.tree.semantics_mut(swatch).role = Some("button");
+        self.tree.semantics_mut(swatch).value = Some(to_hex(rgb));
         let pressed = self.respond(key);
         let open_key = crate::id::child_key(key, "~open");
         let mut open = self.has_anim(open_key) && self.anim(open_key).h != 0;
@@ -138,8 +138,8 @@ impl ColorUi for Ui {
             );
             let square = ui.tree.parent();
             let square_key = ui.tree.nodes()[square].key;
-            ui.tree.nodes_mut()[square].a11y.role = Some("slider");
-            ui.tree.nodes_mut()[square].a11y.name = Some("Saturation and brightness".into());
+            ui.tree.semantics_mut(square).role = Some("slider");
+            ui.tree.semantics_mut(square).name = Some("Saturation and brightness".into());
             let lit = |c: [f32; 3], a: f32| ColorRef::Literal(srgba(c, a));
             let across = |from: [f32; 2], to: [f32; 2], a: ColorRef, z: ColorRef| {
                 Paint::Gradient(Gradient {
