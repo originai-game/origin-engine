@@ -31,43 +31,22 @@ meanwhile.
 
 Landed in phase 1:
 
-- The rpg components (then a kit) and the fantasy pack (pure CSS),
-  art-approved: 7407166332. The rpg components are now built in and
-  dressed through their parts; the fantasy pack moves onto the parts and
-  the pair goes back to art review.
-- The core and G1 UI parts: 8ef79ce29a; select lists and groups as part
-  boxes, with the fantasy pack keeping its approved labels: 0d556d0379.
-- `og-rive` and `og-emitter` as owned nodes: 7e4888f5d1.
-- `-og` migration: control sizes replaced by CSS dimensions (0f48e47397),
-  forced input on the standard pointer and hover media features plus
-  `(-og-input: pad)` (fadefff678);
-  enter and exit on `@starting-style` and standard transitions with
-  discrete `display` exits (fea25ade37).
-- CSS gaps: digits beside CJK and `rem` (748b1ef9ef), MIME parameters
-  (2428c753ea), file URLs and document CSS textures (312ca93f08), cursors
-  over passive boxes in both builders (b964756669), `field-sizing` for text
-  controls (096fc69039), `shape-outside` basic shapes (9e130c45e6),
-  `shape-margin` (3904d7a21f). `docs/ui.md` §8: 101 of 454 with output
-  proofs.
 - Terrain debug views wait for complete diagnostic pipelines (209c656dfb);
   PRs #16, #20 and #21 (c8e5ed5dff).
 
 Still open in phase 1:
 
-- Parts as nodes. Landed: text fields and textarea, the number spinner
-  (0724b886f) and range (21fd314855). On PR #40, not landed: the progress
+- Parts as nodes, for the controls not yet on them. On PR #40: the progress
   and meter tracks and the stepper's button and value. Open, behind two
   behaviours of the shared part-box painter (a part box draws its CSS
   background before its backdrop, and a `background:` shorthand image lies
   over the widget's own fill): panel and tooltip, slots, the HUD and touch
   controls, and the fills and frames left drawn on their hosts. The rpg
   components' flourish marker is the heading's part and stays.
-- `-og` migration. Landed: reduced-motion on the media query (cc9ce594a),
-  overlaps through `og.ui` (3e9d4059e), `og-overlay` (b9faa8313). Open:
-  the revision-3 extras and the final reflection audit.
+- `-og` migration: the revision-3 extras and the final reflection audit.
   `-og-scroll-fade`, `-og-layout-transition` and `-og-text-path` stay
-  `-og` properties (the owner, 2026-11-10): standard CSS has no equivalent
-  that keeps their output.
+  `-og` properties: standard CSS has no equivalent that keeps their
+  output.
 - The `docs/ui.md` §8 inventory (101 of 454 with output proofs). Its named
   gaps are on PR #40, not landed: cursors inside clip paths, `field-sizing`
   for select, file and vertical fields, image-alpha shape contours (on the
@@ -112,23 +91,6 @@ reference set on the L4, art-reviewed, which moves `RECORDING_TIER` off
 
 ## Landed this round (2026-11-08 to 2026-11-09)
 
-- **CSS completion** (the gap audit's sections A, B and C): cascade
-  features, `::selection`, pseudo-element boxes, `@font-face`; units,
-  box model, flex, grid, table, positioning and anchor positioning,
-  multi-column, floats, `direction` and writing modes with vertical text;
-  colour, fonts, corner shapes, blend modes and isolation, 3D, `linear()`,
-  every property animatable, scroll-driven animations, shared-element and
-  nested view transitions, clip-path, inline SVG `<filter>` and
-  backdrop-filter, backgrounds, border-image and masks, interaction,
-  scrolling, images, `cursor: url()`, `resize`, `contain`,
-  `content-visibility`. Head of the round: ae321c70a.
-- **Svelte, HTML, SVG and GSAP:** forms with validity, date and time
-  pickers, file input, `<video>`/`<audio>`, table display.
-- **Retained UI finished:** every TS builder removed (ea7f1ae40,
-  708635b81, d4f4d4d1d, 11a2b2488); popovers on CSS anchors;
-  `env(safe-area-inset-*)` honours the covered controls and
-  `env(-og-hud-inset-*)` keeps the ultrawide HUD band; the og-ui suite
-  passes under `OG_UI_CHECK_BOUNDED` (2421a23eb).
 - **Publish names:** platform ask 18 landed; publish builds carry
   content-hashed names only (64b33dede).
 
