@@ -28,7 +28,7 @@ use super::codec::{Layout, RecordKind};
 use super::engine::{Engine, Mount, engine};
 use super::wire::{
     self, DamageDesc, DestructibleInfo, DestructibleMaterial, DestructionCapabilities,
-    ExplosionDesc,
+    ExplosionDesc, FromJson, record,
 };
 use glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind};
@@ -562,11 +562,6 @@ impl Enc for Layout {
     }
 }
 
-fn v3(v: &Value) -> Vec3 {
-    let c = |k: &str| v[k].as_f64().unwrap_or(0.0) as f32;
-    Vec3::new(c("x"), c("y"), c("z"))
-}
-
 fn jv(p: Vec3) -> Value {
     json!({ "x": p.x, "y": p.y, "z": p.z })
 }
@@ -575,12 +570,9 @@ fn jq(q: Quat) -> Value {
     json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w })
 }
 
-fn num(v: &Value, k: &str, d: f32) -> f32 {
-    v[k].as_f64().map_or(d, |x| x as f32)
-}
-
-fn bits(v: &Value, k: &str) -> u64 {
-    v[k].as_f64().map_or(0, |x| x as u64)
+/// A row read through its IDL type, with the tick's error type.
+fn row<T: FromJson>(l: &Layout, bytes: &[u8]) -> og_core::Result<T> {
+    l.read(bytes).map_err(invalid)
 }
 
 /// An og.Destructible's settings, as the tick reads them.
@@ -595,23 +587,23 @@ struct Settings {
 }
 
 impl Settings {
-    fn of(v: &Value) -> Settings {
+    fn of(v: &record::Destructible) -> Settings {
         Settings {
             mat: Material {
-                toughness: num(v, "toughness", 800.0).max(1e-3),
+                toughness: v.toughness.max(1e-3),
                 limits: StressLimits::from_strength(
-                    num(v, "strength", 30000.0),
-                    num(v, "friction", 0.7),
-                    num(v, "tension", 1.0).clamp(0.0, 1.0),
+                    v.strength,
+                    v.friction,
+                    v.tension.clamp(0.0, 1.0),
                 ),
-                density: num(v, "density", 1000.0).max(1.0),
+                density: v.density.max(1.0),
             },
-            threshold: num(v, "impactThreshold", 30.0).max(0.0),
-            radius: num(v, "impactRadius", 0.4).max(0.01),
-            anchored: v["anchored"].as_bool().unwrap_or(true),
-            break_fx: bits(v, "breakFx"),
-            hit_fx: bits(v, "hitFx"),
-            debris: bits(v, "debris"),
+            threshold: v.impact_threshold.max(0.0),
+            radius: v.impact_radius.max(0.01),
+            anchored: v.anchored,
+            break_fx: v.break_fx,
+            hit_fx: v.hit_fx,
+            debris: v.debris,
         }
     }
 }
@@ -636,24 +628,13 @@ enum Role {
 /// chunk's body), as og_core::math::world_pose composes it.
 fn world_pose(ctx: &SystemContext<'_>, l: &Ls, e: Entity) -> Option<Pose> {
     let pose = |e: Entity| -> Option<Pose> {
-        let t = l.transform.1.decode(&ctx.get_bytes(e, l.transform.0).ok()?);
-        let q = &t["quaternion"];
-        let s = &t["scale"];
-        Some((
-            v3(&t["position"]),
-            Quat::from_xyzw(
-                num(q, "x", 0.0),
-                num(q, "y", 0.0),
-                num(q, "z", 0.0),
-                num(q, "w", 1.0),
-            )
-            .normalize(),
-            Vec3::new(num(s, "x", 1.0), num(s, "y", 1.0), num(s, "z", 1.0)),
-        ))
+        let t: record::Transform =
+            row(&l.transform.1, &ctx.get_bytes(e, l.transform.0).ok()?).ok()?;
+        Some((t.position, t.quaternion.normalize(), t.scale))
     };
     let parent = |e: Entity| -> Option<Entity> {
-        let p = l.parent.1.decode(&ctx.get_bytes(e, l.parent.0).ok()?);
-        let b = bits(&p, "entity");
+        let p: record::Parent = row(&l.parent.1, &ctx.get_bytes(e, l.parent.0).ok()?).ok()?;
+        let b = p.entity;
         (b != 0).then(|| Entity::from_bits(b))
     };
     let local = pose(e)?;
@@ -704,9 +685,9 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
         bursts,
         ..Broken::default()
     };
-    let mut stress_budget = match t.res["stressBudget"].as_u64().unwrap_or(200_000) {
+    let mut stress_budget = match t.res.stress_budget {
         0 => u64::MAX,
-        n => n,
+        n => u64::from(n),
     };
     let keys: Vec<u64> = st.props.keys().copied().collect();
     for k in keys {
@@ -743,8 +724,8 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
 struct Clock {
     tick: u64,
     dt: f32,
-    /// og.Destruction, decoded.
-    res: Value,
+    /// og.Destruction, read.
+    res: record::Destruction,
     debris_volume: f32,
     gravity: Vec3,
 }
@@ -752,12 +733,13 @@ struct Clock {
 impl Clock {
     fn read(ctx: &SystemContext<'_>, l: &Ls) -> og_core::Result<Clock> {
         let time = ctx.time();
-        let res = l.resource.1.decode(&ctx.resource_bytes(l.resource.0)?);
+        let res: record::Destruction = row(&l.resource.1, &ctx.resource_bytes(l.resource.0)?)?;
+        let physics: record::Physics = row(&l.physics.1, &ctx.resource_bytes(l.physics.0)?)?;
         Ok(Clock {
             tick: time.tick,
             dt: time.dt.max(1e-6),
-            debris_volume: num(&res, "debrisVolume", 0.004),
-            gravity: v3(&l.physics.1.decode(&ctx.resource_bytes(l.physics.0)?)["gravity"]),
+            debris_volume: res.debris_volume,
+            gravity: physics.gravity,
             res,
         })
     }
@@ -804,19 +786,16 @@ fn survey(
     let mut settings: BTreeMap<u64, Settings> = BTreeMap::new();
     let mut current: BTreeMap<u64, (u64, Option<Pose>, bool)> = BTreeMap::new();
     for &e in &rows {
-        let d = l
-            .destructible
-            .1
-            .decode(&ctx.get_bytes(e, l.destructible.0)?);
+        let d: record::Destructible = row(&l.destructible.1, &ctx.get_bytes(e, l.destructible.0)?)?;
         let Ok(mb) = ctx.get_bytes(e, l.model.0) else {
             continue;
         };
-        let asset = bits(&l.model.1.decode(&mb), "asset");
+        let asset = row::<record::Model>(&l.model.1, &mb)?.asset;
         // A prop that moves (a dynamic or kinematic body) breaks free whole.
-        let moving = ctx
-            .get_bytes(e, l.rigid.0)
-            .ok()
-            .is_some_and(|b| bits(&l.rigid.1.decode(&b), "kind") != 1);
+        // og.RigidBody.kind is an enum, which the hand read this replaced
+        // always took as 0 (dynamic): any body counts as moving, a fixed
+        // one too (kept as it was).
+        let moving = ctx.get_bytes(e, l.rigid.0).is_ok();
         settings.insert(e.to_bits(), Settings::of(&d));
         current.insert(e.to_bits(), (asset, world_pose(ctx, l, e), moving));
     }
@@ -963,14 +942,14 @@ fn gather_hits(
     }
     let mut strikes: Vec<Strike> = Vec::new();
     for ev in ctx.events_bytes(l.collision.0)? {
-        let v = l.collision.1.decode(&ev);
-        let point = v3(&v["point"]);
+        let v: record::CollisionStarted = row(&l.collision.1, &ev)?;
+        let point = v.point;
         // The solver's impulse is that of the step that made the contact,
         // which for a fast body is a speculative one (rapier opens it
         // before they touch, and that step barely pushes): the hit is at
         // least its closing speed times the pair's reduced mass.
-        let (ea, eb) = (bits(&v, "a"), bits(&v, "b"));
-        let closing = v3(&v["relativeVelocity"]).dot(v3(&v["normal"])).max(0.0);
+        let (ea, eb) = (v.a, v.b);
+        let closing = v.relative_velocity.dot(v.normal).max(0.0);
         let (reduced_a, reduced_b) = (
             mass_of(ctx, l, &st.props, assets, settings, ea),
             mass_of(ctx, l, &st.props, assets, settings, eb),
@@ -980,10 +959,10 @@ fn gather_hits(
             (Mass::Finite(m), Mass::Infinite) | (Mass::Infinite, Mass::Finite(m)) => m,
             _ => 0.0,
         };
-        let impulse = num(&v, "impulse", 0.0).max(closing * reduced);
+        let impulse = v.impulse.max(closing * reduced);
         let mut seen = None;
-        for side in ["a", "b"] {
-            let Some(&k) = owner.get(&bits(&v, side)) else {
+        for (side, of) in [("a", ea), ("b", eb)] {
+            let Some(&k) = owner.get(&of) else {
                 continue;
             };
             if seen == Some(k) {
@@ -1004,8 +983,8 @@ fn gather_hits(
                     (eb, reduced_b)
                 };
                 if matches!(me.1, Mass::Infinite) {
-                    let rel = v3(&v["relativeVelocity"]) * if side == "b" { 1.0 } else { -1.0 };
-                    let along = v3(&v["normal"]) * if side == "b" { 1.0 } else { -1.0 };
+                    let rel = v.relative_velocity * if side == "b" { 1.0 } else { -1.0 };
+                    let along = v.normal * if side == "b" { 1.0 } else { -1.0 };
                     strikes.push((k, point, rel.normalize_or(along), s.radius, amount, closing));
                 }
                 hits.entry(k).or_default().damage.push((
@@ -1198,8 +1177,8 @@ fn break_prop(
     if !p.placed {
         let e = Entity::from_bits(k);
         if let Ok(vb) = ctx.get_bytes(e, l.velocity.0) {
-            let v = l.velocity.1.decode(&vb);
-            inherit = (v3(&v["linear"]), v3(&v["angular"]), frame.0);
+            let v: record::Velocity = row(&l.velocity.1, &vb)?;
+            inherit = (v.linear, v.angular, frame.0);
         }
         place(ctx, l, k, p, a)?;
     }
@@ -1276,7 +1255,7 @@ fn solve_stress(
 ) {
     let (a, s, pose) = (at.a, at.s, at.pose);
     let (tick, gravity) = (t.tick, t.gravity);
-    let iterations = t.res["stressIterations"].as_u64().unwrap_or(0) as u32;
+    let iterations = t.res.stress_iterations;
     let anchors = p.anchors;
     if anchors && p.inst.dirty {
         let islands = islands_of(&p.inst, a, anchors);
@@ -1317,8 +1296,9 @@ fn solve_stress(
             }
             let speed = ctx
                 .get_bytes(Entity::from_bits(body), l.velocity.0)
-                .map(|vb| v3(&l.velocity.1.decode(&vb)["linear"]).length())
-                .unwrap_or(0.0);
+                .ok()
+                .and_then(|vb| row::<record::Velocity>(&l.velocity.1, &vb).ok())
+                .map_or(0.0, |v| v.linear.length());
             // Moving or not, what rests on something is solved on it: a
             // long run of loose courses pivoting off a pier is a
             // cantilever, and cracks at the pivot as it swings rather
@@ -1507,8 +1487,8 @@ fn free_islands(
                 let b = Entity::from_bits(p.entities[r as usize]);
                 match ctx.get_bytes(b, l.velocity.0) {
                     Ok(vb) => {
-                        let v = l.velocity.1.decode(&vb);
-                        let (lin, ang) = (v3(&v["linear"]), v3(&v["angular"]));
+                        let v: record::Velocity = row(&l.velocity.1, &vb)?;
+                        let (lin, ang) = (v.linear, v.angular);
                         let at = pose[r as usize].map_or(root_pose.0, |x| x.0);
                         (lin + ang.cross(root_pose.0 - at), ang)
                     }
@@ -1623,8 +1603,8 @@ fn shatter_chunks(
             0 => (Vec3::ZERO, Vec3::ZERO),
             b => match ctx.get_bytes(Entity::from_bits(b), l.velocity.0) {
                 Ok(vb) => {
-                    let v = l.velocity.1.decode(&vb);
-                    (v3(&v["linear"]), v3(&v["angular"]))
+                    let v: record::Velocity = row(&l.velocity.1, &vb)?;
+                    (v.linear, v.angular)
                 }
                 Err(_) => (Vec3::ZERO, Vec3::ZERO),
             },
@@ -1735,8 +1715,9 @@ fn push_blasted_bodies(
                         let e = Entity::from_bits(b);
                         if let Ok(vb) = ctx.get_bytes(e, l.velocity.0) {
                             let mut v = l.velocity.1.decode(&vb);
-                            v["linear"] = jv(v3(&v["linear"]) + dv);
-                            v["angular"] = jv(v3(&v["angular"]) + dw);
+                            let now = record::Velocity::from_json(&v).map_err(invalid)?;
+                            v["linear"] = jv(now.linear + dv);
+                            v["angular"] = jv(now.angular + dw);
                             let vel = l.velocity.1.enc(Some(&vb), Some(&v))?;
                             ctx.set_bytes(e, l.velocity.0, &vel)?;
                         }
@@ -1889,9 +1870,9 @@ fn enforce_budgets(
     t: &Clock,
 ) -> og_core::Result<()> {
     let tick = t.tick;
-    let max = t.res["maxChunks"].as_u64().unwrap_or(256) as usize;
+    let max = t.res.max_chunks as usize;
 
-    let lifetime = num(&t.res, "debrisLifetime", 8.0);
+    let lifetime = t.res.debris_lifetime;
     struct Loose {
         tick: u64,
         volume: f32,
@@ -1997,7 +1978,7 @@ fn publish(
     for ev in events {
         ctx.send_bytes(l.fractured.0, &ev)?;
     }
-    let fx_life = t.ticks_of(num(&t.res, "fxLifetime", 3.0)).max(1);
+    let fx_life = t.ticks_of(t.res.fx_lifetime).max(1);
     for (i, (emitter, at)) in bursts.into_iter().take(MAX_BURSTS).enumerate() {
         let tr = l
             .transform
@@ -2069,24 +2050,28 @@ fn mass_of(
     let Ok(rb) = ctx.get_bytes(e, l.rigid.0) else {
         return Mass::Infinite;
     };
-    let rb = l.rigid.1.decode(&rb);
-    if bits(&rb, "kind") != 0 {
-        return Mass::Infinite;
-    }
-    let m = num(&rb, "mass", 0.0);
+    let Ok(rb) = row::<record::RigidBody>(&l.rigid.1, &rb) else {
+        return Mass::Unknown;
+    };
+    // og.RigidBody.kind is an enum, which the hand read this replaced
+    // always took as 0 (dynamic): a fixed or kinematic body is weighed as
+    // a dynamic one (kept as it was).
+    let m = rb.mass;
     if m > 0.0 {
         return Mass::Finite(m);
     }
     let Ok(cb) = ctx.get_bytes(e, l.collider.0) else {
         return Mass::Unknown;
     };
-    let c = l.collider.1.decode(&cb);
+    let Ok(c) = row::<record::Collider>(&l.collider.1, &cb) else {
+        return Mass::Unknown;
+    };
     let s = world_pose(ctx, l, e).map_or(Vec3::ONE, |p| p.2.abs());
-    let (r, h) = (num(&c, "radius", 0.5), num(&c, "height", 1.0));
+    let (r, h) = (c.radius, c.height);
     let pi = std::f32::consts::PI;
-    let volume = match bits(&c, "shape") as u32 {
+    let volume = match c.shape {
         og_physics::SHAPE_BOX => {
-            let z = v3(&c["size"]);
+            let z = c.size;
             z.x * z.y * z.z * s.x * s.y * s.z
         }
         og_physics::SHAPE_SPHERE => 4.0 / 3.0 * pi * r * r * r * s.x * s.y * s.z,
@@ -2096,7 +2081,7 @@ fn mass_of(
         og_physics::SHAPE_CYLINDER => pi * r * r * h * s.x * s.y * s.z,
         _ => return Mass::Unknown,
     };
-    Mass::Finite(volume * num(&c, "density", 1000.0).max(0.0))
+    Mass::Finite(volume * c.density.max(0.0))
 }
 
 fn set_transform(ctx: &mut SystemContext<'_>, l: &Ls, e: Entity, p: &Pose) -> og_core::Result<()> {
@@ -2438,12 +2423,12 @@ pub(crate) fn drawn(engine: u32) -> Vec<Drawn> {
 
 // ── the API ──────────────────────────────────────────────────────────────────
 
-fn record(eng: &Engine, name: &str, e: Entity) -> Option<Value> {
+fn row_of<T: FromJson>(eng: &Engine, name: &str, e: Entity) -> Option<T> {
     let w = eng.world().ok()?;
     let id = w.id_by_name(name).ok()?;
     let bytes = w.get_bytes(e, id).ok()?;
     let layout = eng.state.borrow().layouts.get(name).cloned()?;
-    Some(layout.decode(&bytes))
+    layout.read(&bytes).ok()
 }
 
 /// The og.Destructible `e` names: itself, or the one its og.Chunk is of.
@@ -2452,11 +2437,11 @@ fn destructible_of(eng: &Engine, e: Entity, chunks: bool) -> Result<Entity, Stri
     if !w.is_alive(e) {
         return Err(format!("entity {} is not alive", e.to_bits()));
     }
-    if record(eng, DESTRUCTIBLE, e).is_some() {
+    if row_of::<record::Destructible>(eng, DESTRUCTIBLE, e).is_some() {
         return Ok(e);
     }
-    if chunks && let Some(c) = record(eng, CHUNK, e) {
-        return Ok(Entity::from_bits(bits(&c, "destructible")));
+    if chunks && let Some(c) = row_of::<record::Chunk>(eng, CHUNK, e) {
+        return Ok(Entity::from_bits(c.destructible));
     }
     Err(format!(
         "entity {} has no og.Destructible{}",
@@ -2538,9 +2523,9 @@ pub fn og_destruction_info(
     (|| {
         let eng = engine(world)?;
         let e = destructible_of(&eng, Entity::from_bits(entity as u64), false)?;
-        let model = record(&eng, "og.Model", e)
+        let model: record::Model = row_of(&eng, "og.Model", e)
             .ok_or_else(|| format!("entity {} has no og.Model", e.to_bits()))?;
-        let asset = bits(&model, "asset");
+        let asset = model.asset;
         let m = &eng.modules.destruction;
         let a = lock(&m.assets).get(&asset).cloned().ok_or_else(|| {
             format!(
