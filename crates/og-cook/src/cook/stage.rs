@@ -55,6 +55,7 @@ pub(super) struct Scanned {
     pub(super) ignored: Vec<String>,
     pub(super) early_errors: Vec<EarlyError>,
     pub(super) consumed: BTreeSet<String>,
+    pub(super) components: BTreeMap<String, String>,
 }
 
 pub(super) fn scan_sources(
@@ -66,6 +67,7 @@ pub(super) fn scan_sources(
         mut sources,
         ignored,
         early_errors,
+        components,
     } = scan::scan_with(assets_dir, &|path| cook_index.read(path), threads)?;
     let mut consumed: BTreeSet<String> = BTreeSet::new();
     // Pixel effects and flipbooks of animated sources become ordinary
@@ -79,6 +81,7 @@ pub(super) fn scan_sources(
         ignored,
         early_errors,
         consumed,
+        components,
     })
 }
 

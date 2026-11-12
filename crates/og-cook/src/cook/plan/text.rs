@@ -41,8 +41,10 @@ pub(super) fn plan_document<'a>(
         known,
         style_tokens_hash,
         document_themes,
+        components,
         ..
     } = *cx;
+    let mut uses = Vec::new();
     let PlanState {
         early_errors,
         parsed_refs,
@@ -88,6 +90,14 @@ pub(super) fn plan_document<'a>(
             og_i18n::StringTable::parse(text).map_err(|error| vec![format!("{id}: {error}")])?;
             dependencies.push(format!("{id}={:016x}", table.hash));
         }
+        // Each component it uses is loaded with it: the game's document of
+        // that name, else the engine's built-in one.
+        for name in crate::cook::ui_components::uses(&doc) {
+            if let Some(id) = components.get(&name).filter(|id| **id != s.rel) {
+                dependencies.push(format!("{id}=<{name}>"));
+                uses.push(id.clone());
+            }
+        }
         if options.publish && !doc.warnings.is_empty() {
             Err(doc.warnings)
         } else {
@@ -105,7 +115,12 @@ pub(super) fn plan_document<'a>(
         &style_tokens_hash,
         dependencies.as_bytes(),
     ]);
-    outs.push((s.rel.clone(), format::Document::NAME, st, Work::Document(s)));
+    outs.push((
+        s.rel.clone(),
+        format::Document::NAME,
+        st,
+        Work::Document(s, uses),
+    ));
 }
 
 pub(super) fn plan_behaviour<'a>(

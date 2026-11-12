@@ -188,6 +188,63 @@ fn css_tokens_cook_symbolically_and_missing_values_fail_when_computed() {
     }
 }
 
+/// The document ids a cooked document loads with it.
+fn uses(root: &std::path::Path, id: &str) -> Vec<String> {
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let bytes = std::fs::read(root.join("cooked").join(&bundle.output(id).unwrap().file)).unwrap();
+    bundle.document_uses(id, &bytes).unwrap()
+}
+
+const VITALS: &str = r#"<meta name="screen" content="vitals">
+<column id="Vitals"><StatBar value={50} max={100} /></column>
+"#;
+
+/// A screen that uses a built-in component by name cooks it in: the
+/// engine's document joins the bundle under `@ui/` with its string table,
+/// and the screen names it to load with it. Ways it could fail: the
+/// component left out (the screen mounts nothing in its place), its
+/// strings left out (its labels show their keys), or the screen not
+/// naming it (it is never defined).
+#[test]
+fn a_screen_cooks_in_the_built_in_components_it_uses() {
+    let root = project("built-in", &[("ui/vitals.svelte", VITALS)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{}", report.errors().join("\n"));
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert_eq!(
+        bundle.output("@ui/stat-bar.svelte").unwrap().ty,
+        "og.UiDocument"
+    );
+    assert!(bundle.output("@ui/stat-bar.en.ogt").is_ok());
+    assert!(
+        bundle.output("@ui/ability-bar.svelte").is_err(),
+        "only what it uses"
+    );
+    assert_eq!(uses(&root, "ui/vitals.svelte"), ["@ui/stat-bar.svelte"]);
+}
+
+/// A game's own document declaring a built-in component's name (what
+/// `og ui eject` writes) replaces it: the screen loads the game's, and
+/// the engine's is not bundled. Ways it could fail: both bundled, and the
+/// built-in one loaded over the game's edit.
+#[test]
+fn a_game_component_of_a_built_in_name_wins() {
+    let mine = r#"<meta name="component" content="StatBar">
+<meta name="prop:value" content="number" data-doc="The value.">
+<meta name="prop:max" content="number" data-doc="Its maximum.">
+<div id="Mine"></div>
+"#;
+    let root = project(
+        "built-in-override",
+        &[("ui/vitals.svelte", VITALS), ("ui/my-bar.svelte", mine)],
+    );
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{}", report.errors().join("\n"));
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    assert!(bundle.output("@ui/stat-bar.svelte").is_err());
+    assert_eq!(uses(&root, "ui/vitals.svelte"), ["ui/my-bar.svelte"]);
+}
+
 /// An installed kit (docs/ui.md §5) cooks with the game: its documents
 /// are the game's assets under `ui-kits/<kit>/`, and its review sheet, a
 /// project of its own, is left out.
