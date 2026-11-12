@@ -30,6 +30,7 @@ use super::super::assets::{self, Payload, Placement};
 use super::super::engine::Engine;
 use super::cell_store::{self, Loading, Source, lock};
 use super::kept;
+use crate::wire::{FromJson, record};
 use og_core::math::Pose;
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
@@ -62,9 +63,9 @@ fn layout(eng: &Engine, name: &str) -> Option<super::super::codec::Layout> {
     eng.state.borrow().layouts.get(name).cloned()
 }
 
-fn value(world: &World, layout: &super::super::codec::Layout, e: Entity) -> Option<Value> {
+fn row<T: FromJson>(world: &World, layout: &super::super::codec::Layout, e: Entity) -> Option<T> {
     let id = world.id_by_name(&layout.schema).ok()?;
-    world.get_bytes(e, id).ok().map(|b| layout.decode(&b))
+    layout.read(&world.get_bytes(e, id).ok()?).ok()
 }
 
 fn vec3(v: &Value) -> glam::Vec3 {
@@ -87,12 +88,8 @@ fn xyz(v: glam::Vec3) -> Value {
 fn pose_of(world: &World, transform: &super::super::codec::Layout, e: Entity) -> Pose {
     let parent = layout_parent(world);
     let local = |e: Entity| -> Option<Pose> {
-        let v = value(world, transform, e)?;
-        Some((
-            vec3(&v["position"]),
-            quat(&v["quaternion"]),
-            v.get("scale").map_or(glam::Vec3::ONE, vec3),
-        ))
+        let t: record::Transform = row(world, transform, e)?;
+        Some((t.position, t.quaternion, t.scale))
     };
     let own = local(e).unwrap_or((glam::Vec3::ZERO, glam::Quat::IDENTITY, glam::Vec3::ONE));
     og_core::math::world_pose(
@@ -172,13 +169,12 @@ fn anchors(eng: &Engine, world: &World) -> Result<Vec<Anchor>, String> {
         }
         og_core::sort::sort_by_key(&mut list, |e| (e.index(), e.generation()));
         for e in list {
-            let v = world.get_bytes(e, id).ok().map(|b| al.decode(&b));
-            let f = |k: &str| {
-                v.as_ref()
-                    .and_then(|v| v[k].as_f64())
-                    .map_or(0.0, |x| (x as f32).max(0.0))
-            };
-            out.push((pose_of(world, &transform, e).0, f("reach"), f("maxSpeed")));
+            let a = world
+                .get_bytes(e, id)
+                .ok()
+                .and_then(|b| al.read::<record::StreamAnchor>(&b).ok());
+            let (reach, speed) = a.map_or((0.0, 0.0), |a| (a.reach.max(0.0), a.max_speed.max(0.0)));
+            out.push((pose_of(world, &transform, e).0, reach, speed));
         }
     }
     if !out.is_empty() {
@@ -189,10 +185,11 @@ fn anchors(eng: &Engine, world: &World) -> Result<Vec<Anchor>, String> {
     }
     let camera = layout(eng, "og.Camera").and_then(|l| {
         let id = world.id_by_name("og.Camera").ok()?;
-        Some(l.decode(&world.resource_bytes(id).ok()?))
+        l.read::<record::Camera>(&world.resource_bytes(id).ok()?)
+            .ok()
     });
     Ok(camera
-        .map(|c| vec![(vec3(&c["position"]), 0.0, 0.0)])
+        .map(|c| vec![(c.position, 0.0, 0.0)])
         .unwrap_or_default())
 }
 
@@ -229,8 +226,8 @@ pub(crate) fn in_session(eng: &Engine, world: &World) -> bool {
         .unwrap_or(false)
 }
 
-/// Every cell, by entity: its entity and og.StreamCell value.
-fn cells(eng: &Engine, world: &World) -> Vec<(Entity, Value)> {
+/// Every cell, by entity: its entity and og.StreamCell row.
+fn cells(eng: &Engine, world: &World) -> Vec<(Entity, record::StreamCell)> {
     let (Ok(id), Some(l)) = (world.id_by_name(CELL), layout(eng, CELL)) else {
         return Vec::new();
     };
@@ -246,7 +243,7 @@ fn cells(eng: &Engine, world: &World) -> Vec<(Entity, Value)> {
     }
     og_core::sort::sort_by_key(&mut list, |e| (e.index(), e.generation()));
     list.into_iter()
-        .filter_map(|e| world.get_bytes(e, id).ok().map(|b| (e, l.decode(&b))))
+        .filter_map(|e| Some((e, l.read(&world.get_bytes(e, id).ok()?).ok()?)))
         .collect()
 }
 
@@ -264,21 +261,11 @@ fn distance_sq(cell: Pose, size: glam::Vec3, p: glam::Vec3) -> f32 {
 /// further along at their `maxSpeed` (the fetch's question).
 struct Seen {
     cell: Entity,
-    v: Value,
+    v: record::StreamCell,
     pose: Pose,
     loading: bool,
     want: bool,
     ahead: bool,
-}
-
-impl Seen {
-    fn loaded(&self) -> bool {
-        self.v["loaded"] == json!(true)
-    }
-
-    fn scene(&self) -> u64 {
-        self.v["scene"].as_f64().unwrap_or(0.0) as u64
-    }
 }
 
 /// Every cell, by entity, with what the anchors want of it ([`Seen`]);
@@ -304,21 +291,19 @@ fn seen(
     let transform = layout(eng, "og.Transform")?;
     let mut out = Vec::with_capacity(list.len());
     for (cell, v) in list {
-        let loaded = v["loaded"] == json!(true);
         let loading = lock(store).loading.contains_key(&cell.to_bits());
-        let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
+        let scene = v.scene;
         let pose = pose_of(world, &transform, cell);
-        let reach = reach_of(&v, loaded || loading);
-        let size = vec3(&v["size"]);
+        let reach = reach_of(&v, v.loaded || loading);
+        let size = v.size;
         let within = |lead: f32| {
             anchors.iter().any(|&(p, extra, speed)| {
                 let r = reach + extra + speed * lead;
                 distance_sq(pose, size, p) <= r * r
             })
         };
-        let pin = v["pin"] == json!(true);
-        let want = scene != 0 && (pin || within(0.0));
-        let ahead = scene != 0 && (pin || within(ahead));
+        let want = scene != 0 && (v.pin || within(0.0));
+        let ahead = scene != 0 && (v.pin || within(ahead));
         out.push(Seen {
             cell,
             v,
@@ -346,7 +331,7 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
         }
     };
     for c in list {
-        let loaded = c.loaded();
+        let loaded = c.v.loaded;
         if c.want && !loaded {
             step_load(eng, world, &store, c.cell, &c.v, c.pose, tick);
         } else if !c.want && c.loading {
@@ -365,7 +350,7 @@ pub(crate) fn waiting(eng: &Engine, world: &World) -> Option<(Entity, String)> {
     let list = seen(eng, world, &store, 0.0)?.ok()?;
     let a = eng.assets.borrow();
     for c in list {
-        if !c.want || c.loaded() {
+        if !c.want || c.v.loaded {
             continue;
         }
         // A load from kept rows needs no blob.
@@ -374,13 +359,13 @@ pub(crate) fn waiting(eng: &Engine, world: &World) -> Option<(Entity, String)> {
             let s = lock(&store);
             match s.loading.get(&bits) {
                 Some(l) => l.source == Source::Kept,
-                None => c.v["persist"] == json!(true) && s.kept.contains_key(&bits),
+                None => c.v.persist && s.kept.contains_key(&bits),
             }
         };
         if from_kept {
             continue;
         }
-        if let Some(Payload::SceneWaiting { group }) = assets::index_of(c.scene() as f64)
+        if let Some(Payload::SceneWaiting { group }) = assets::index_of(c.v.scene as f64)
             .and_then(|i| a.entries.get(i))
             .map(|e| &e.payload)
         {
@@ -404,10 +389,10 @@ pub(crate) fn wanted_groups(eng: &Engine, ahead: f32) -> std::collections::BTree
     };
     let a = eng.assets.borrow();
     for c in list {
-        if !(c.ahead || c.loading || c.loaded()) {
+        if !(c.ahead || c.loading || c.v.loaded) {
             continue;
         }
-        let Some(i) = assets::index_of(c.scene() as f64) else {
+        let Some(i) = assets::index_of(c.v.scene as f64) else {
             continue;
         };
         if let Some(g) = a.stream.group_of_scene(i) {
@@ -419,12 +404,12 @@ pub(crate) fn wanted_groups(eng: &Engine, ahead: f32) -> std::collections::BTree
 
 /// How far from its box a cell is wanted: `load` while it is not loaded,
 /// `unload` (at least `load`; 1.25 × load when 0) while it is or is loading.
-fn reach_of(v: &Value, held: bool) -> f32 {
-    let load = v["load"].as_f64().unwrap_or(0.0).max(0.0) as f32;
+fn reach_of(v: &record::StreamCell, held: bool) -> f32 {
+    let load = v.load.max(0.0);
     if !held {
         return load;
     }
-    match v["unload"].as_f64().unwrap_or(0.0) as f32 {
+    match v.unload {
         u if u > 0.0 => u.max(load),
         _ => load * 1.25,
     }
@@ -503,16 +488,16 @@ fn step_load(
     world: &mut World,
     store: &cell_store::Shared,
     cell: Entity,
-    v: &Value,
+    v: &record::StreamCell,
     pose: Pose,
     tick: u64,
 ) {
     let bits = cell.to_bits();
-    let budget = match v["budget"].as_u64().unwrap_or(0) {
+    let budget = match v.budget {
         0 => usize::MAX,
         n => n as usize,
     };
-    let persist = v["persist"] == json!(true);
+    let persist = v.persist;
     let mut progress = {
         let mut s = lock(store);
         match s.loading.get(&bits) {
@@ -555,7 +540,7 @@ fn step_load(
         .collect();
     let (result, total) = match progress.source {
         Source::Scene => {
-            let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
+            let scene = v.scene;
             let Some(desc) = scene_of(eng, scene) else {
                 // Its cell group's pack has not landed: the hold gate
                 // holds such a tick, so only a tick run without the probe
@@ -640,11 +625,11 @@ fn unload_cell(
     world: &mut World,
     store: &cell_store::Shared,
     cell: Entity,
-    v: &Value,
+    v: &record::StreamCell,
     tick: u64,
 ) {
     let order = subtree(world, cell);
-    if v["persist"] == json!(true) {
+    if v.persist {
         match kept::capture(eng, world, &order) {
             Ok(rows) => {
                 lock(store).kept.insert(cell.to_bits(), rows);
@@ -809,7 +794,7 @@ pub(crate) fn dump(eng: &Engine) -> Value {
     let out: Vec<Value> = list
         .iter()
         .map(|(e, v)| {
-            let scene = v["scene"].as_f64().unwrap_or(0.0) as u64;
+            let scene = v.scene;
             let id = assets::index_of(scene as f64)
                 .and_then(|i| a.entries.get(i))
                 .map_or(String::new(), |entry| entry.path.clone());
@@ -823,8 +808,8 @@ pub(crate) fn dump(eng: &Engine) -> Value {
                 "entity": e.to_bits() as f64,
                 "name": world.name(*e),
                 "scene": id,
-                "loaded": v["loaded"],
-                "pin": v["pin"],
+                "loaded": v.loaded,
+                "pin": v.pin,
                 "entities": log.entities,
                 "loads": log.loads,
                 "loadedAt": log.loaded_at.map(|t| t as f64),
