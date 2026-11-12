@@ -13,8 +13,8 @@ use super::assets::{handle, index_of};
 use super::codec::Layout;
 use super::engine::engine;
 use super::extract::{Hierarchy, RenderState};
-use super::fx::{color, f, on, resource, rows};
-use super::wire::{PostError, RenderTargetInfo};
+use super::fx::{resource, rows};
+use super::wire::{FromJson, PostError, RenderTargetInfo, record};
 use glam::{Mat4, Vec3};
 use og_ecs::{Entity, QueryDesc, World};
 use serde_json::{Value, json};
@@ -234,46 +234,38 @@ fn masks(world: &World, layout: Option<&Layout>, out: &mut HashMap<u64, u32>) {
     }
 }
 
-/// A handle field's record value as an index.
-fn index(v: &Value) -> Option<usize> {
-    v.as_f64().and_then(index_of)
+/// A handle field's value as an index.
+fn index(h: u64) -> Option<usize> {
+    index_of(h as f64)
 }
 
 /// The camera of an entity's world matrix: at its origin, looking down
 /// its local -Z with its +Y up, as og.Camera.
 // Rendering only: a view's projection.
 #[allow(clippy::disallowed_methods)]
-fn camera_of(m: Mat4, v: &Value) -> og_render::Camera {
+fn camera_of(m: Mat4, v: &record::CameraView) -> og_render::Camera {
     let position = m.transform_point3(Vec3::ZERO);
     let forward = m.transform_vector3(Vec3::NEG_Z).normalize_or(Vec3::NEG_Z);
     let up = m.transform_vector3(Vec3::Y).normalize_or(Vec3::Y);
-    let zoom = f(v, "zoom", 1.0).max(0.01);
+    let zoom = v.zoom.max(0.01);
     og_render::Camera {
         position,
         target: position + forward,
         up,
-        projection: if on(v, "orthographic", false) {
+        projection: if v.orthographic {
             og_render::Projection::Orthographic {
-                height: f(v, "height", 10.0) / zoom,
+                height: v.height / zoom,
             }
         } else {
-            let half = (f(v, "fov", 50.0).to_radians() / 2.0).tan() / zoom;
+            let half = (v.fov.to_radians() / 2.0).tan() / zoom;
             og_render::Projection::Perspective {
                 fov_y_degrees: (2.0 * half.atan()).to_degrees(),
             }
         },
-        near: f(v, "near", 0.1),
-        far: f(v, "far", 2000.0),
-        exposure: og_render::Exposure::linear(f(v, "exposure", 1.0).max(0.0)),
+        near: v.near,
+        far: v.far,
+        exposure: og_render::Exposure::linear(v.exposure.max(0.0)),
     }
-}
-
-fn mask(v: &Value) -> u32 {
-    v["layers"].as_u64().map_or(1, |x| x as u32)
-}
-
-fn every(v: &Value) -> u32 {
-    v["every"].as_u64().map_or(1, |x| x as u32)
 }
 
 /// Every component's rows in entity order (views tie on it).
@@ -316,50 +308,57 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
     scene.frame.views.clear();
     rs.views.entities.clear();
     let targets = &rs.views.targets;
-    let target = |v: &Value| index(&v["target"]).and_then(|i| targets.get(i).copied());
+    let target = |h: u64| index(h).and_then(|i| targets.get(i).copied());
     for (e, v) in sorted_rows(world, rs.draw.views.camera_view.as_ref()) {
-        if !on(&v, "active", true) {
+        let Ok(v) = record::CameraView::from_json(&v) else {
+            continue;
+        };
+        if !v.active {
             continue;
         }
-        let view_target = match target(&v) {
+        let view_target = match target(v.target) {
             Some(t) => og_render::ViewTarget::Texture(t),
-            None if index(&v["target"]).is_some() => continue,
+            None if index(v.target).is_some() => continue,
             None => og_render::ViewTarget::Viewport([
-                f(&v, "viewportX", 0.0),
-                f(&v, "viewportY", 0.0),
-                f(&v, "viewportWidth", 1.0),
-                f(&v, "viewportHeight", 1.0),
+                v.viewport_x,
+                v.viewport_y,
+                v.viewport_width,
+                v.viewport_height,
             ]),
         };
+        let c = &v.clear_color;
         scene.frame.views.push(og_render::View {
             camera: camera_of(h.world_of(e), &v),
             target: view_target,
-            layers: mask(&v),
-            order: v["order"].as_i64().unwrap_or(0) as i32,
-            clear: on(&v, "clear", false).then(|| color(&v["clearColor"], Vec3::ZERO)),
-            every: every(&v),
+            layers: v.layers,
+            order: v.order,
+            clear: v.clear.then(|| Vec3::new(c.r, c.g, c.b)),
+            every: v.every,
             mirror: None,
         });
         rs.views.entities.push(e);
     }
     for (e, v) in sorted_rows(world, rs.draw.views.mirror.as_ref()) {
-        if !on(&v, "active", true) {
+        let Ok(v) = record::Mirror::from_json(&v) else {
+            continue;
+        };
+        if !v.active {
             continue;
         }
-        let Some(t) = target(&v) else {
+        let Some(t) = target(v.target) else {
             continue;
         };
         scene.frame.views.push(og_render::View {
             camera: scene.frame.camera,
             target: og_render::ViewTarget::Texture(t),
-            layers: mask(&v),
+            layers: v.layers,
             order: 0,
             clear: None,
-            every: every(&v),
+            every: v.every,
             mirror: Some(og_render::MirrorQuad {
                 transform: h.world_of(e),
-                width: f(&v, "width", 1.0),
-                height: f(&v, "height", 1.0),
+                width: v.width,
+                height: v.height,
             }),
         });
         rs.views.entities.push(e);
@@ -367,9 +366,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
 
     // PostEffects.custom, in order, a 0 (or a pass not loaded) skipped.
     scene.look.custom_post.clear();
-    if let Some(p) = resource(world, rs.draw.fx.post.as_ref()) {
-        let passes = p["custom"].as_array().map_or(&[][..], Vec::as_slice);
-        for v in passes.iter().take(POST_SLOTS) {
+    if let Some(p) = resource(world, rs.draw.fx.post.as_ref())
+        && let Ok(p) = record::PostEffects::from_json(&p)
+    {
+        for &v in p.custom.iter().take(POST_SLOTS) {
             if let Some(h) = index(v).and_then(|i| rs.views.posts.get(i).copied()) {
                 scene.look.custom_post.push(h);
             }

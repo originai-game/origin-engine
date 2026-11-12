@@ -15,6 +15,7 @@
 
 use super::engine::Engine;
 use super::extract::RenderState;
+use super::wire::{FromJson, record};
 use og_ecs::World;
 use std::collections::BTreeMap;
 
@@ -90,47 +91,44 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
     let Some(v) = super::extract::resource(world, rs.draw.environment.as_ref()) else {
         return;
     };
-    let f = |k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
-    rs.scene.lighting.environment.background_blurriness =
-        f("backgroundBlurriness", 0.0).clamp(0.0, 1.0);
-    let height = f("groundHeight", 0.0);
+    let Ok(v) = record::Environment::from_json(&v) else {
+        return;
+    };
+    rs.scene.lighting.environment.background_blurriness = v.background_blurriness.clamp(0.0, 1.0);
+    let height = v.ground_height;
     if height > 0.0 {
         rs.scene.lighting.environment.ground = Some(og_render::GroundProjection {
             height,
-            radius: f("groundRadius", 100.0),
-            center: super::fx::vec3(&v["groundCenter"]),
+            radius: v.ground_radius,
+            center: v.ground_center,
         });
     }
-    let hi = v["hemiIntensity"]
-        .as_f64()
-        .map_or(0.0, |x| x as f32)
-        .max(0.0);
+    let hi = v.hemi_intensity.max(0.0);
     if hi > 0.0 {
-        let s = super::fx::color(&v["hemiSky"], glam::Vec3::ONE);
-        let g = super::fx::color(&v["hemiGround"], glam::Vec3::ZERO);
-        rs.scene.lighting.hemisphere = (s.to_array(), g.to_array(), hi);
+        let (s, g) = (v.hemi_sky, v.hemi_ground);
+        rs.scene.lighting.hemisphere = ([s.r, s.g, s.b], [g.r, g.g, g.b], hi);
     }
-    let map = super::fx::handle_index(&v["map"])
-        .and_then(|i| rs.env.maps.get(i))
-        .and_then(|(_, h)| *h);
-    let Some(map) = map else {
-        return;
-    };
-    rs.scene.lighting.environment.intensity = f("intensity", 1.0).max(0.0);
-    rs.scene.lighting.environment_map = Some(og_render::EnvironmentMap {
-        map,
-        rotation: f("rotation", 0.0).to_radians(),
-        background_intensity: f("backgroundIntensity", 1.0).max(0.0),
-        // Live maps only: a pending one (its group not resident) is no blend.
-        blend: super::fx::handle_index(&v["blendTo"])
+    let live = |h: u64| {
+        super::assets::index_of(h as f64)
             .and_then(|i| rs.env.maps.get(i))
             .and_then(|(_, h)| *h)
-            .map(|to| og_render::EnvironmentBlend {
-                to,
-                weight: f("blendWeight", 0.0),
-            }),
+    };
+    let Some(map) = live(v.map) else {
+        return;
+    };
+    // Live maps only: a pending one (its group not resident) is no blend.
+    let blend = live(v.blend_to).map(|to| og_render::EnvironmentBlend {
+        to,
+        weight: v.blend_weight,
     });
-    if v["background"].as_bool().unwrap_or(false) {
+    rs.scene.lighting.environment.intensity = v.intensity.max(0.0);
+    rs.scene.lighting.environment_map = Some(og_render::EnvironmentMap {
+        map,
+        rotation: v.rotation.to_radians(),
+        background_intensity: v.background_intensity.max(0.0),
+        blend,
+    });
+    if v.background {
         rs.scene.lighting.environment.background = og_render::Background::Sky;
     }
 }

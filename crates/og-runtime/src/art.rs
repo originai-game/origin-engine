@@ -31,7 +31,8 @@
 use super::codec::{Layout, RecordKind};
 use super::engine::Engine;
 use super::extract::RenderState;
-use super::fx::{color, f, handle_index, on, resource, u, variant};
+use super::fx::{f, on, resource, variant};
+use super::wire::{ArtLinePlace, ArtRotation, FromJson, record};
 use glam::{Quat, Vec3};
 use og_ecs::World;
 use og_render::{TextureFilter, TextureHandle};
@@ -181,14 +182,21 @@ pub(crate) fn frame(world: &World, rs: &mut RenderState) {
 
 fn read(world: &World, rs: &RenderState) -> ArtFrame {
     let l = &rs.draw.fx;
-    let pixels = resource(world, l.art_pixels.as_ref()).unwrap_or_default();
-    let line = resource(world, l.art_line.as_ref()).unwrap_or_default();
-    let camera = resource(world, l.art_camera.as_ref()).unwrap_or_default();
-    let palette = resource(world, l.art_palette.as_ref()).unwrap_or_default();
-    let unit = f(&pixels, "unit", 0.0).max(0.0);
-    let width = f(&line, "width", 0.0).max(0.0);
-    let colors = handle_index(&palette["colors"]).and_then(|i| rs.fx.look.palettes.get(i)?.1);
-    let strict = if on(&palette, "strict", false) {
+    // An absent resource reads as the IDL's defaults.
+    fn row<T: FromJson + Default>(world: &World, layout: Option<&Layout>) -> T {
+        resource(world, layout)
+            .and_then(|v| T::from_json(&v).ok())
+            .unwrap_or_default()
+    }
+    let pixels: record::ArtPixels = row(world, l.art_pixels.as_ref());
+    let line: record::ArtLine = row(world, l.art_line.as_ref());
+    let camera: record::ArtCamera = row(world, l.art_camera.as_ref());
+    let palette: record::ArtPalette = row(world, l.art_palette.as_ref());
+    let unit = pixels.unit.max(0.0);
+    let width = line.width.max(0.0);
+    let colors =
+        super::assets::index_of(palette.colors as f64).and_then(|i| rs.fx.look.palettes.get(i)?.1);
+    let strict = if palette.strict {
         colors
             .and_then(|h| rs.scene.palette(h))
             .map(|p| p.colors.clone())
@@ -196,40 +204,26 @@ fn read(world: &World, rs: &RenderState) -> ArtFrame {
     } else {
         Vec::new()
     };
-    let line_color = rgb(&line["color"], Vec3::from(OUTLINE_COLOR)).to_array();
+    let line_color = [line.color.r, line.color.g, line.color.b];
     ArtFrame {
         line: (width > 0.0 && unit > 0.0).then_some((width, line_color)),
         mesh_line: (width > 0.0).then(|| MeshLine {
             width,
             color: line_color,
             // ArtLinePlace's order: outside (its zero value), inside, both.
-            place: match variant(&line["place"], &["outside", "inside", "both"]) {
-                1 => og_render::OutlinePlace::Inside,
-                2 => og_render::OutlinePlace::Both,
-                _ => og_render::OutlinePlace::Outside,
+            place: match line.place {
+                ArtLinePlace::Inside => og_render::OutlinePlace::Inside,
+                ArtLinePlace::Both => og_render::OutlinePlace::Both,
+                ArtLinePlace::Outside => og_render::OutlinePlace::Outside,
             },
-            distance: f(&line, "distanceFalloff", 0.0).max(0.0),
+            distance: line.distance_falloff.max(0.0),
         }),
         unit,
-        logical_height: u(&pixels, "logicalHeight", 0),
-        clean_edge: variant(
-            &pixels["rotation"],
-            &["free", "nearest", "cleanEdge", "prerotated"],
-        ) == 2,
-        pixel_perfect: on(&camera, "pixelPerfect", false),
+        logical_height: pixels.logical_height,
+        clean_edge: pixels.rotation == ArtRotation::CleanEdge,
+        pixel_perfect: camera.pixel_perfect,
         strict,
         palette: colors,
-    }
-}
-
-/// A colour field as decoded: `{r, g, b}` or `[r, g, b]`.
-fn rgb(v: &Value, default: Vec3) -> Vec3 {
-    match v.as_array() {
-        Some(a) if a.len() >= 3 => {
-            let at = |i: usize| a[i].as_f64().map_or(0.0, |x| x as f32);
-            Vec3::new(at(0), at(1), at(2))
-        }
-        _ => color(v, default),
     }
 }
 

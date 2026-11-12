@@ -14,11 +14,12 @@
 
 use super::engine::Engine;
 use super::extract::{Hierarchy, RenderState};
+use super::wire::{FromJson, record};
 use og_core::IdMap;
 use og_core::hash::StableHasher;
 use og_ecs::World;
 use og_render::{MAX_REFLECTION_PROBES, ProbeMode, ReflectionProbe};
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::BTreeMap;
 
 /// The baked captures tried, by key: the map once loaded (`None`: not in
@@ -51,27 +52,24 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     let Some(layout) = rs.draw.probe.clone() else {
         return;
     };
-    let f = |v: &Value, k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
     let mut probes: Vec<ReflectionProbe> = Vec::new();
     for (e, v) in super::extract::rows(world, &layout) {
-        if !v["visible"].as_bool().unwrap_or(true) {
+        let Ok(v) = record::ReflectionProbe::from_json(&v) else {
+            continue;
+        };
+        if !v.visible {
             continue;
         }
         let m = h.world_of(e);
-        let size = &v["size"];
-        let mut p = ReflectionProbe::new(
-            e,
-            m.transform_point3(glam::Vec3::ZERO),
-            glam::Vec3::new(f(size, "x", 10.0), f(size, "y", 10.0), f(size, "z", 10.0)),
-        );
-        p.resolution = v["resolution"].as_u64().unwrap_or(128) as u32;
-        p.mode = match v["mode"].as_u64().unwrap_or(0) {
-            1 => ProbeMode::Realtime,
-            _ => ProbeMode::Baked,
-        };
-        p.interval = v["interval"].as_u64().unwrap_or(30).max(1) as u32;
-        p.intensity = f(&v, "intensity", 1.0).max(0.0);
-        p.blend_distance = f(&v, "blendDistance", 1.0).max(0.0);
+        let mut p = ReflectionProbe::new(e, m.transform_point3(glam::Vec3::ZERO), v.size);
+        p.resolution = v.resolution;
+        // `mode` decodes as its variant's name, which the former hand read
+        // (`as_u64`) never matched: every probe has drawn as baked. Kept so
+        // until that is fixed on purpose (`v.mode` is the field).
+        p.mode = ProbeMode::Baked;
+        p.interval = v.interval.max(1);
+        p.intensity = v.intensity.max(0.0);
+        p.blend_distance = v.blend_distance.max(0.0);
         probes.push(p);
     }
     let eye = rs.scene.frame.camera.position;
@@ -104,24 +102,27 @@ pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut
     if live.is_empty() {
         return;
     }
-    let boxes: BTreeMap<u64, Value> = super::extract::rows(world, &volume).into_iter().collect();
-    let f = |v: &Value, k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
+    let boxes: BTreeMap<u64, record::LightVolume> = super::extract::rows(world, &volume)
+        .into_iter()
+        .filter_map(|(e, v)| Some((e, record::LightVolume::from_json(&v).ok()?)))
+        .collect();
     let mut volumes = Vec::new();
     for (e, v) in live {
         let Some(b) = boxes.get(&e) else {
             continue;
         };
+        let Ok(v) = record::RealtimeLightVolume::from_json(&v) else {
+            continue;
+        };
         let centre = h.world_of(e).transform_point3(glam::Vec3::ZERO);
-        let size = &b["size"];
-        let half =
-            glam::Vec3::new(f(size, "x", 4.0), f(size, "y", 4.0), f(size, "z", 4.0)).abs() * 0.5;
+        let half = b.size.abs() * 0.5;
         volumes.push(og_render::RealtimeLightVolume {
             id: e,
             min: centre - half,
             max: centre + half,
-            spacing: f(b, "spacing", 1.0).max(0.1),
-            updates_per_frame: v["updatesPerFrame"].as_u64().unwrap_or(2) as u32,
-            intensity: f(&v, "intensity", 1.0).max(0.0),
+            spacing: b.spacing.max(0.1),
+            updates_per_frame: v.updates_per_frame,
+            intensity: v.intensity.max(0.0),
         });
     }
     let eye = rs.scene.frame.camera.position;

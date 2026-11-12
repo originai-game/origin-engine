@@ -11,7 +11,7 @@
 //! pow, which differ by vendor).
 
 use super::engine::{engine, running};
-use super::fx::{color, f, on, variant};
+use super::wire::{FromJson, record};
 use glam::{Quat, Vec2, Vec3};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::Value;
@@ -226,19 +226,8 @@ fn gather(
         let Ok(b) = r.bytes(e, id) else {
             return Ok(None);
         };
-        let v = layout.decode(&b);
-        let v3 = |v: &Value, d: f32| Vec3::new(f(v, "x", d), f(v, "y", d), f(v, "z", d));
-        let q = &v["quaternion"];
-        Ok(Some((
-            v3(&v["position"], 0.0),
-            Quat::from_xyzw(
-                f(q, "x", 0.0),
-                f(q, "y", 0.0),
-                f(q, "z", 0.0),
-                f(q, "w", 1.0),
-            ),
-            v.get("scale").map_or(Vec3::ONE, |s| v3(s, 1.0)),
-        )))
+        let t: record::Transform = layout.read(&b)?;
+        Ok(Some((t.position, t.quaternion, t.scale)))
     };
     let pose = |e: Entity| -> Pose {
         let own = local(e)
@@ -275,50 +264,43 @@ fn gather(
     let lights = lights
         .into_iter()
         .map(|(e, v)| {
+            let v = record::Light2D::from_json(&v)?;
             let (p, q, _) = pose(e);
             let x = q * Vec3::X;
             let axis = Vec2::new(x.x, x.y);
             let len = axis.length();
-            Light {
+            Ok(Light {
                 position: Vec2::new(p.x, p.y),
                 axis: if len > 0.0 { axis / len } else { Vec2::X },
-                color: color(&v["color"], Vec3::ONE) * f(&v, "intensity", 1.0),
-                radius: f(&v, "radius", 5.0),
-                falloff: f(&v, "falloff", 2.0),
-                cast_shadows: on(&v, "castShadows", true),
-                kind: variant(&v["kind"], &["point", "spot", "global"]) as u32,
-                inner_angle: f(&v, "innerAngle", 0.35),
-                outer_angle: f(&v, "outerAngle", 0.6),
-                layers: v["layers"].as_u64().map_or(u32::MAX, |x| x as u32),
-            }
+                color: Vec3::new(v.color.r, v.color.g, v.color.b) * v.intensity,
+                radius: v.radius,
+                falloff: v.falloff,
+                cast_shadows: v.cast_shadows,
+                kind: v.kind as u32,
+                inner_angle: v.inner_angle,
+                outer_angle: v.outer_angle,
+                layers: v.layers,
+            })
         })
-        .collect();
+        .collect::<Result<_, String>>()?;
     let occluders = occluders
         .into_iter()
         .map(|(e, v)| {
+            let v = record::Occluder2D::from_json(&v)?;
             let (p, q, s) = pose(e);
-            let points: Vec<f32> = v["points"]
-                .as_array()
-                .map(|a| {
-                    a.iter()
-                        .filter_map(|x| x.as_f64())
-                        .map(|x| x as f32)
-                        .collect()
-                })
-                .unwrap_or_default();
-            let outline = local_outline(&points, f(&v, "width", 1.0), f(&v, "height", 1.0))
+            let outline = local_outline(&v.points, v.width, v.height)
                 .into_iter()
                 .map(|l| {
                     let w = p + q * (s * Vec3::new(l.x, l.y, 0.0));
                     Vec2::new(w.x, w.y)
                 })
                 .collect();
-            Occluder {
+            Ok(Occluder {
                 outline,
-                layers: v["layers"].as_u64().map_or(u32::MAX, |x| x as u32),
-            }
+                layers: v.layers,
+            })
         })
-        .collect();
+        .collect::<Result<_, String>>()?;
     Ok((lights, occluders))
 }
 
