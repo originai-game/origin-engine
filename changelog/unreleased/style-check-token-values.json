@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "og style check",
+      "change": "A declaration outside a :root rule may no longer write a literal colour (#hex, a named colour, rgb()/hsl()/… without var()), a length other than 0, a duration or a url(); the check fails with <file>:<line>: <property>: literal … for each. Keywords, 0, unitless numbers, percentages and angles stay allowed, and @font-face src and -og-sound may name url()s anywhere. og style new writes packs that pass.",
+      "fix": "Move each value into a :root (or :root[data-scheme=…]) custom property and name it with var() in the rule: button::part(base) { border: 2px solid #8f7650 } becomes :root { --line-strong: #8f7650 } and button::part(base) { border: var(--stroke-regular) solid var(--line-strong) }."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ui parts",
+      "summary": "A part's box-shadow colour written as a CSS colour function (rgb(from var(--x) r g b / 0.4), color-mix()…) is drawn; it was dropped because only #hex was read. A part named on a heading (<h2 part=\"…\">) keeps the font size its rules give it; the host's font shorthand no longer undid it."
+    }
+  ]
+}

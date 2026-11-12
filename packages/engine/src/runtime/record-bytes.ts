@@ -11,9 +11,9 @@ interface RecordField {
   readonly capacity?: number;
 }
 
-// Read from globalThis, not the DOM lib's globals: kits import this module
-// (through @origingame/engine) into games typechecked with lib
-// ES2022 alone, which has no TextEncoder.
+// Read from globalThis, not the DOM lib's globals: games import this module
+// (through @origingame/engine) and are typechecked with lib ES2022 alone,
+// which has no TextEncoder.
 const utf8 = globalThis as unknown as {
   TextEncoder: new () => { encode(text: string): Uint8Array };
   TextDecoder: new (label?: string, options?: { fatal?: boolean; ignoreBOM?: boolean }) => { decode(bytes: Uint8Array): string };

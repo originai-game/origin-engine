@@ -11,8 +11,8 @@ pub struct Manifest {
     pub name: String,
     pub version: String,
     pub description: String,
-    /// Retired: the engine ships no skills (`og api show kits` documents the
-    /// bundled kits). Still read, and checked when present, so a game's older
+    /// Retired: the engine ships no skills (its built-in components are
+    /// documented in their own READMEs). Still read, and checked when present, so a game's older
     /// pack keeps loading.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub skill: Option<String>,

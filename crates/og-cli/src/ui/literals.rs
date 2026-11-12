@@ -1,6 +1,7 @@
 //! `og ui literals [path...] [--json]` (docs/ui.md §6, §5): the style
-//! values written into kits and components instead of taken from the
-//! style. A kit holds structure and behaviour; its look comes from tokens
+//! values written into screens and components (the engine's built-in ones
+//! or a game's) instead of taken from the style. A component holds
+//! structure and behaviour; its look comes from a style pack's tokens
 //! and part dressing, so a colour, a corner radius or a font family it
 //! writes itself is a value no style pack can change. Each finding names
 //! the file, line and column, what was found and the token to use.

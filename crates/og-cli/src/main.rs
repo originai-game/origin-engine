@@ -219,7 +219,11 @@ commands:
                       write editable CSS with both palettes, core-control states and shared sounds;
                       finishes: flat, gradient, glass, hologram, neon, paper, bevel, brush
   style check <directory> [--json]
-                      validate CSS and asset URLs; report root-token contrast ratios without grading
+                      validate CSS and asset URLs; report root-token contrast ratios without grading;
+                      outside :root a declaration names its colours, lengths (other than 0),
+                      durations and url()s with var(): the values are :root tokens (keywords,
+                      unitless numbers, percentages and angles stay; @font-face src and
+                      -og-sound declare assets and may name url()s anywhere)
                       (style upgrade, art and pack are removed; use CSS images and border-image)
   style check-project [project] [--title <commands>] [--play <commands>] [--results <commands>] [--size WxH]
       [--no-frames] [--json]
@@ -233,9 +237,11 @@ commands:
                       render fixed baseline pages on the pack's own ground, or a component group's
                       review sheet (the engine package's sheets/<group>), at desktop and phone,
                       100% and 150%; frames, UI dumps and sheets for review, never a gate step
-  ui review <pack-directory> [project] [--locales game,pseudo,zh,ar] [--out DIR] [--json]
-                      render the core-control sheet at desktopHd and phonePortrait, 100% and 150%,
-                      across locales; packs need no extension.json
+  ui review <group|sheet-directory> [project] [--style <pack>]... [--states a,b] [--grid N]
+      [--breakpoints ...] [--locales game,pseudo,zh,ar] [--scales ...] [--out DIR] [--json]
+                      every page of a component group's review sheet (the engine package's
+                      sheets/<group>, or a sheet directory) per state fixture and style, at desktop
+                      and phone, 100% and 150%, across locales; labelled contact sheets
   ui check [project] [--screen <name>[=<commands>]]... [--show <template>] [--styles a,b]
       [--style-cmd <template>] [--breakpoints desktop,phonePortrait,phoneLandscape,tablet]
       [--locales game,pseudo,<cjk>,<rtl>] [--scales 100,150] [--high-contrast] [--settle S]

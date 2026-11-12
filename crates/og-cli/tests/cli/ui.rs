@@ -102,11 +102,33 @@ fn css_style_authoring_checks_sources_and_installs_without_a_manifest() {
     .unwrap();
     std::fs::write(
         pack.join("main.css"),
-        "button::part(authored):hover { color: red; } game-card::part(trim) { color: blue; }",
+        ":root { --hot: red; --trim: blue; }\nbutton::part(authored):hover { color: var(--hot); } game-card::part(trim) { color: var(--trim); }",
     )
     .unwrap();
     let custom = run(&["style", "check", pack.to_str().unwrap()]);
     assert!(custom.status.success(), "{}", text(&custom));
+    // A value outside :root fails with its file, line and property; the same
+    // value as a :root token, named by var(), passes. Built-in components'
+    // parts (RpgBackpack.cell) are known parts.
+    std::fs::write(
+        pack.join("main.css"),
+        ":root { --rim: #8f7650; }\n\nbutton::part(RpgBackpack\\.cell) { border: 2px solid #8f7650; }",
+    )
+    .unwrap();
+    let literal = run(&["style", "check", pack.to_str().unwrap()]);
+    assert!(!literal.status.success(), "{}", text(&literal));
+    assert!(
+        text(&literal).contains("main.css:3: border: literal length `2px`"),
+        "{}",
+        text(&literal)
+    );
+    std::fs::write(
+        pack.join("main.css"),
+        ":root { --rim: #8f7650; --rim-width: 2px; }\n\nbutton::part(RpgBackpack\\.cell) { border: var(--rim-width) solid var(--rim); }",
+    )
+    .unwrap();
+    let tokens = run(&["style", "check", pack.to_str().unwrap()]);
+    assert!(tokens.status.success(), "{}", text(&tokens));
     std::fs::write(pack.join("main.css"), "@import 'nested.css';").unwrap();
     std::fs::write(
         pack.join("nested.css"),
