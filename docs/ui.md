@@ -1389,7 +1389,10 @@ accepted. Every component and screen document under
 `packages/engine/src/ui/` is built into the engine (§5): the generic
 components and screens, and the component groups below, each a directory
 of `packages/engine/src/ui/components/`. The six style packs below are
-approved scope; none is released before its acceptance is complete.
+approved scope. `fantasy` ships with the engine package
+(`engine/styles/fantasy/`, with the art its CSS names), so a look's
+`ui "fantasy"` resolves in an installed engine; it is not yet a creation
+choice. The others are not released before their acceptance is complete.
 `materials` is an optional resource pack for UI shader finishes, neither a
 component group nor a seventh style. VFX and unrelated extensions are
 outside this catalogue.
@@ -1421,7 +1424,7 @@ card targets, or note timing.
 | --- | --- | --- | --- |
 | `clean` | Clear numeric hierarchy, restrained menus, low-interference HUD | Forza Horizon 5, Portal 2 | Pilot, in progress (references only) |
 | `cartoon` | Rounded forms, deliberate thickness, clear primary actions | Mario Kart 8 Deluxe, Bloons TD 6 | Not yet built |
-| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, art-approved (pilot) |
+| `fantasy` | Painted frames and materials with room for dense content | Baldur's Gate 3, Diablo IV | Built, art-approved (pilot); shipped with the engine |
 | `pixel` | Consistent pixel grid, integer scaling, readable glyphs | Stardew Valley, Octopath Traveler | Not yet built |
 | `scifi` | Instrument hierarchy, precise geometry, sparse emphasis | Elite Dangerous, Starfield | Not yet built |
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
