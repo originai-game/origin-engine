@@ -8,7 +8,7 @@
 <list id="Tree" role="tree" aria-label={$label}>
   {#each $rows as r (r.id)}
     <div class="row" role="treeitem" aria-level={r.depth + 1} aria-selected={r.selected} aria-expanded={r.open} style:--depth={r.depth}>
-      <button id="Twisty" class="twisty" variant="quiet" hidden={r.open == null} onclick={toggle} aria-label={r.label}><og-icon name={r.open ? "chevronDown" : "chevronRight"}/></button>
+      <button id="Twisty" class="twisty" variant="quiet" hidden={r.open == null} onclick={toggle} aria-label={r.label}><og-icon icon={r.open ? "chevronDown" : "chevronRight"}/></button>
       <button id="Item" class="item" variant={r.selected ? "primary" : "quiet"} onclick={choose}>{r.label}</button>
     </div>
   {/each}

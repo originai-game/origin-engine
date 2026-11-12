@@ -9,9 +9,9 @@
 
 <section id="Calendar" aria-label={$month}>
   <header id="Head">
-    <button id="Prev" variant="quiet" onclick={previous} aria-label={$month}><og-icon name="chevronLeft"/></button>
+    <button id="Prev" variant="quiet" onclick={previous} aria-label={$month}><og-icon icon="chevronLeft"/></button>
     <h3 id="Month">{$month}</h3>
-    <button id="Next" variant="quiet" onclick={next} aria-label={$month}><og-icon name="chevronRight"/></button>
+    <button id="Next" variant="quiet" onclick={next} aria-label={$month}><og-icon icon="chevronRight"/></button>
   </header>
   <grid id="Days" role="grid">
     {#each $weekdays as w (w.id)}<small class="weekday">{w.label}</small>{/each}

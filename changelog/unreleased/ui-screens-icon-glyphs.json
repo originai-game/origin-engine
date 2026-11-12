@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui screens (calendar, notifications, pagination, star-rating, tree)",
+      "summary": "Moves frames: their `<og-icon>`s draw their glyphs. They named the glyph with `name=`, which on an `<og-icon>` element is what a screen reader calls it (only an icon inline in text takes its glyph from `name`), so the previous and next chevrons, the close cross, the stars and the tree's twisty drew nothing and were announced as \"chevronLeft\" and the like. They now write `icon=`; each button keeps its own `aria-label`."
+    }
+  ]
+}
