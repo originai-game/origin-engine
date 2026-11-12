@@ -8,6 +8,8 @@ Module [`procgen`](../procgen.md) · [index](../index.md)
 
 A grid of tiles whose edges all fit, by wave function collapse.
 
+Also known as: wave function collapse, WFC, wavefunction collapse, tile constraint solver, socket tiles, procedural tilemap
+
 ```ts
 og.procgen.wfc(desc?: WfcDesc): Result<WfcResult>
 ```
@@ -23,6 +25,7 @@ Binding symbol `og_procgen_wfc` · publish builds: kept
 ```ogt
 fn wfc {
   doc "A grid of tiles whose edges all fit, by wave function collapse."
+  aliases "wave function collapse, WFC, wavefunction collapse, tile constraint solver, socket tiles, procedural tilemap"
   param desc WfcDesc "The grid, the tiles and the seed."
   returns Result.WfcResult "Refused for an empty tile list, a fixed cell outside the grid or naming no tile, or no tiling in `attempts` tries (naming the cell the last try ran out at)."
 }

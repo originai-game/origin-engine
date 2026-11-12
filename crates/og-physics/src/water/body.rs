@@ -35,6 +35,18 @@ impl WaterBody {
         self.surface(x, z, seconds).map(|s| s.height)
     }
 
+    /// The most the surface stands over or under its rest level anywhere
+    /// (m): nothing for flat water, for a sea every wave's amplitude and
+    /// its shore trains' together (shoaling only lowers a wave). A body
+    /// further from the rest level than this is clear of the water.
+    pub fn reach(&self) -> f32 {
+        let Some(sea) = &self.sea else {
+            return 0.0;
+        };
+        let trains = self.shore.as_ref().map_or(0.0, |(_, t)| t.amplitude);
+        sea.waves.iter().map(|w| w.amplitude).sum::<f32>() + trains
+    }
+
     /// [`Self::height`] with the water's velocity and acceleration there
     /// (its particles' orbital motion,
     /// [`og_core::ocean::Ocean::surface`]; still water without a

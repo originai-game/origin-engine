@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.Splash` (event)
 
-Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
+Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick.
 
 Token `og.Splash`, registered under the schema name `og.Splash`; its value type is `Splash`.
 
@@ -19,7 +19,7 @@ Token `og.Splash`, registered under the schema name `og.Splash`; its value type 
 
 ```ogt
 event Splash {
-  doc "Something crossed a water surface (og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick."
+  doc "Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. Read the next tick."
   field water Entity "The water's entity."
   field entity Entity "What crossed it."
   field point Vector3 "Where it crossed the surface." {

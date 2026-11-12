@@ -5,7 +5,7 @@ use crate::schema_ext::WaterSurface;
 use og_core::glam::{Vec2, Vec3};
 
 /// A body cutting a surface in one tick, for the renderer: an
-/// og.WaterSurface's ripples, an og.Water sea's hull wave suppression. Its
+/// og.WaterSurface's ripples, an og.Water's wakes and hull wave suppression. Its
 /// entity; its footprint in the surface's frame (xz relative to the
 /// entity), as a box (`min`, `max`) and as the rectangle it turns with
 /// (`centre`, `half` its half extents along its own axes, `axis` its own x
@@ -39,11 +39,11 @@ impl WaterCut {
     }
 }
 
-/// What the renderer reads of the bodies in a water: of an
-/// og.WaterSurface (its ripple layer), the bodies that cut it in each of
-/// the last [`Wakes::TICKS`] ticks and the wave settings they travel at; of
-/// an og.Water sea, the og.Buoyancy hulls in it (its hull wave
-/// suppression). Not world state: never saved, never read
+/// What the renderer reads of the bodies in a water: the bodies that cut
+/// it in each of the last [`Wakes::TICKS`] ticks; of an og.WaterSurface
+/// (its ripple layer) with the wave settings they travel at, of an og.Water
+/// the boxes at its surface and the og.Buoyancy hulls in it (its wakes and
+/// hull wave suppression). Not world state: never saved, never read
 /// by the tick. A world made or restored starts a new `epoch`, so the
 /// ripples drawn from it start again too.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -106,9 +106,10 @@ impl Wakes {
         self.push(tick, cuts);
     }
 
-    /// Records `tick`'s og.Buoyancy hulls in an og.Water sea (`cuts`, from
-    /// og.Buoyancy's step): no ripples travel on a sea, so no wave settings.
-    pub(crate) fn record_sea(&mut self, dt: f32, tick: u64, cuts: Vec<WaterCut>) {
+    /// Records `tick`'s bodies in an og.Water (`cuts`: the boxes at its
+    /// surface and og.Buoyancy's hulls): its waves are its own function, so
+    /// no wave settings travel with them.
+    pub(crate) fn record_water(&mut self, dt: f32, tick: u64, cuts: Vec<WaterCut>) {
         self.wave_speed = 0.0;
         self.damping = 0.0;
         self.splash = 0.0;
@@ -145,6 +146,7 @@ mod tests {
             centre: Vec3::new(1.0, 0.25, 1.5),
             velocity: Vec3::new(0.0, -2.0, 0.0),
             dynamic: true,
+            hull: false,
         };
         let above = Floater {
             entity: 8,

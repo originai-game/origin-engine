@@ -351,6 +351,24 @@ sea's waves are the absolute world's, so a body moved by og.WorldOrigin rides
 the same water. Raise `samples` for long hulls that should pitch on the
 waves.
 
+**Water.** Every water answers the same three things, whichever component
+draws or simulates it: an og.Water (a lake at its level, a sea with a
+`wind`, a river along its course), an og.WaterSurface and an og.WaterLine.
+
+- A body or character whose centre crosses the surface is an og.Splash,
+  read the next tick: spawn the spray and the sound at its `point`, sized
+  by its `speed` (negative going in).
+- `og.physics.waterHeight` is the surface as it is drawn, waves and
+  ripples included; outside the water it is the rest level.
+- og.Buoyancy floats a hull on any of them.
+
+What differs is the lift. An og.Water alone lifts only bodies with
+og.Buoyancy; everything else sinks through it. og.WaterSurface and
+og.WaterLine also lift every body's box by their own `buoyancy`, so a pool
+of crates floats without a component on each. An og.Water drawn over a
+mesh (`geometry`) is a look only: it has no height to ask for and nothing
+crosses it.
+
 <a id="guide-physics-9"></a>
 ### `physics §9` Destruction
 

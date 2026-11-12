@@ -1,0 +1,17 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "Splash",
+      "summary": "Every og.Water is crossed like an og.WaterSurface: a body or character whose centre crosses a lake's level, a sea's waves or a river's course is an og.Splash, without an og.WaterSurface on the entity. Which side each body near a water is on is world state, saved and restored with the simulation."
+    },
+    {
+      "member": "physics.waterHeight",
+      "summary": "It answers for every og.Water: a lake without a `wind` answers its level and a river its course (both were refused), a sea its waves as before, each with the waves bodies raised on an og.WaterSurface on the same entity. An og.Water drawn over a mesh (`geometry`) is still refused."
+    },
+    {
+      "member": "Buoyancy",
+      "summary": "A hull floats on a river as on a lake or a sea, and cuts the water it sits in on all three. An og.Water alone still lifts only og.Buoyancy bodies; og.WaterSurface and og.WaterLine keep lifting every body's box by their `buoyancy`."
+    }
+  ]
+}

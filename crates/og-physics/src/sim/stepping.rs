@@ -317,7 +317,7 @@ fn step_here(
     laps.lap(Phase::Joints);
     super::ragdolls(scene, dt, sim, shared, &mut out)?;
     laps.lap(Phase::Ragdolls);
-    ext::water(
+    let cuts = ext::water(
         scene,
         settings,
         dt,
@@ -336,6 +336,7 @@ fn step_here(
         sim,
         &handles,
         &mut out,
+        cuts,
     );
     laps.lap(Phase::Water);
     let sleeping = sleep::before_step(settings, scene, sim, &handles);

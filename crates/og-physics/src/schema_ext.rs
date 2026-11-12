@@ -1563,8 +1563,8 @@ impl Default for ContactHook {
     }
 }
 
-/// Something crossed a water surface (og.WaterSurface or og.WaterLine):
-/// for splash particles and sounds. Read the next tick.
+/// Something crossed a water surface (an og.Water, og.WaterSurface or
+/// og.WaterLine): for splash particles and sounds. Read the next tick.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
 #[reflect(name = "og.Splash")]
 pub struct Splash {

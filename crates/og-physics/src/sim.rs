@@ -144,6 +144,9 @@ pub(crate) struct SimExt {
     /// ([`crate::FIELD_CHUNK`]), by entity: its chunks' colliders in chunk
     /// order (the first is its [`TrackedStatic::handle`]).
     pub(crate) fields: IdMap<u64, Vec<rp::ColliderHandle>>,
+    /// The bodies near each og.Water's surface and which side of it they
+    /// were on ([`crate::water::Under`]).
+    pub(crate) under: crate::water::Under,
 }
 
 /// A vehicle's state beyond its controller ([`SimExt::vehicles`]).
@@ -166,6 +169,7 @@ pub(crate) const EXT_GARMENTS: u16 = 6;
 pub(crate) const EXT_FIELDS: u16 = 7;
 /// The joints' part, kept with them ([`ext::joint_section`]), not in [`SimExt`].
 pub(crate) const EXT_JOINTS: u16 = 8;
+pub(crate) const EXT_UNDER: u16 = 9;
 
 impl SimExt {
     /// Its sections, each `(tag, bytes)`; none for what is empty.
@@ -210,6 +214,11 @@ impl SimExt {
             crate::encode(&mut bytes, &list).expect("field chunks serialize into memory");
             out.push((EXT_FIELDS, bytes));
         }
+        if !self.under.is_empty() {
+            let mut bytes = Vec::new();
+            crate::encode(&mut bytes, &self.under).expect("wet bodies serialize into memory");
+            out.push((EXT_UNDER, bytes));
+        }
         out
     }
 
@@ -250,6 +259,8 @@ impl SimExt {
                 let list: Vec<(u64, Vec<rp::ColliderHandle>)> =
                     crate::codec().deserialize(bytes).map_err(parse)?;
                 ext.fields = list.into_iter().collect();
+            } else if tag == EXT_UNDER {
+                ext.under = crate::codec().deserialize(bytes).map_err(parse)?;
             }
         }
         Ok(ext)
@@ -285,10 +296,9 @@ pub(crate) struct Sim {
     pub(crate) lines: IdMap<u64, crate::water::LineState>,
     pub(crate) ragdolls: IdMap<u64, super::RagdollState>,
     pub(crate) fluids3: IdMap<u64, crate::fluid3d::Fluid3State>,
-    /// Per og.WaterSurface, the bodies that cut it in the last ticks, for
-    /// the renderer's ripples; per og.Water sea, the og.Buoyancy hulls in
-    /// it, for its hull wave suppression: not world state (never saved,
-    /// never read by the tick).
+    /// Per og.WaterSurface and og.Water, the bodies that cut it in the last
+    /// ticks, for the renderer's ripples, wakes and hull wave suppression:
+    /// not world state (never saved, never read by the tick).
     #[serde(skip)]
     pub(crate) wakes: IdMap<u64, crate::water::Wakes>,
     /// The scene's static colliders, by archetype, as the last [`sync`]

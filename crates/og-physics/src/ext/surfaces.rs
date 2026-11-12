@@ -1,4 +1,4 @@
-//! og.WaterSurface and og.WaterLine: splashed by and pushing the bodies in them.
+//! Water before the step: every og.Water, og.WaterSurface and og.WaterLine splashed by the bodies in it.
 
 use super::*;
 
@@ -48,6 +48,7 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
             centre: (min + max) * 0.5,
             velocity: flat(velocity),
             dynamic,
+            hull: floats,
         });
     }
     list
@@ -55,7 +56,10 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
 
 /// Water before the step: each surface and line is splashed by and pushes
 /// the bodies in it (buoyancy and drag on dynamic bodies), then its waves
-/// travel one tick.
+/// travel one tick; each og.Water (`waters`, 3D) is crossed and cut by the
+/// bodies at its surface ([`crate::water::submersion`]). Every crossing is
+/// an og.Splash. Returns the og.Water cuts, for [`buoyancy`] to add its
+/// hulls to and record.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn water(
     scene: &Scene,
@@ -66,20 +70,22 @@ pub(crate) fn water(
     sim: &mut Sim,
     handles: &super::super::sim::Handles<'_>,
     out: &mut StepOut,
-) -> Result<()> {
-    // The wakes of every surface and sea still there (a sea's are og.Buoyancy's: `buoyancy`).
+) -> Result<BTreeMap<u64, Vec<crate::water::WaterCut>>> {
+    let waters = if DIM == 3 { waters } else { &[] };
+    // The wakes of every surface and og.Water still there.
     let live: BTreeSet<u64> = og_core::sort::set(
         scene
             .surfaces
             .iter()
             .map(|s| s.0.to_bits())
-            .chain(waters.iter().filter(|w| w.sea.is_some()).map(|w| w.entity)),
+            .chain(waters.iter().map(|w| w.entity)),
     );
     sim.wakes.retain(|e, _| live.contains(e));
-    if scene.surfaces.is_empty() && scene.lines.is_empty() {
+    if scene.surfaces.is_empty() && scene.lines.is_empty() && waters.is_empty() {
         sim.surfaces.clear();
         sim.lines.clear();
-        return Ok(());
+        sim.ext.under.clear();
+        return Ok(BTreeMap::new());
     }
     let list = floaters(scene, sim, handles);
     let g = -settings.gravity.y;
@@ -144,5 +150,18 @@ pub(crate) fn water(
         rb.set_linvel(linvel * f.keep, true);
         rb.apply_impulse(v(flat(f.impulse)), true);
     }
-    Ok(())
+    // An og.Water with an og.WaterSurface is that surface's: it has splashed above.
+    let alone = waters
+        .iter()
+        .filter(|w| !scene.surfaces.iter().any(|s| s.0.to_bits() == w.entity));
+    let wet = crate::water::submersion::step(alone, &list, scene.seconds, dt, &mut sim.ext.under);
+    for (water, c) in wet.crossings {
+        out.splashes.push(Splash {
+            water,
+            entity: c.entity,
+            point: c.point,
+            speed: c.speed,
+        });
+    }
+    Ok(wet.cuts)
 }

@@ -1,24 +1,40 @@
-//! Water that bodies disturb: a height field for 3D (the wave equation on a
-//! grid) and a line of springs for 2D side-scrollers (each column pulled to
-//! its rest height, waves passed to the neighbours). Both are stepped by the
-//! og.physics system after the rigid-body step, splashed by the bodies that
-//! cross them (og.Splash) and push those bodies up (buoyancy) and slow them
-//! (drag) before the next one. Their heights are part of the og.physics
-//! state block.
+//! Water and the bodies in it. Every kind answers the same questions the
+//! same way: where its surface is at a point ([`level`], and [`ripple`] for
+//! the waves bodies raised), what crossed it this tick (og.Splash) and what
+//! cuts it now (the renderer's disturbance, [`Wakes`]).
 //!
-//! Determinism: `+ - * /` on f32 in index order, no transcendental
-//! functions (damping per tick is precomputed from per-second factors with
-//! og-core's deterministic `pow`).
+//! - og.Water ([`WaterBody`]): a lake, a sea or a river, a function of the
+//!   place and the time. Bodies cross and cut it ([`submersion`]); it lifts
+//!   only the hulls of og.Buoyancy.
+//! - og.WaterSurface ([`SurfaceState`]): a height field for 3D (the wave
+//!   equation on a grid) that the bodies crossing it splash, with a box
+//!   buoyancy of its own.
+//! - og.WaterLine ([`LineState`]): a line of springs for 2D side-scrollers
+//!   (each column pulled to its rest height, waves passed to the
+//!   neighbours), with the same box buoyancy.
+//!
+//! All are stepped by the og.physics system before the rigid-body step.
+//! The heights and which bodies are under are part of the og.physics state
+//! block.
+//!
+//! Determinism: the fields are `+ - * /` on f32 in index order, no
+//! transcendental functions (damping per tick is precomputed from
+//! per-second factors with og-core's deterministic `pow`); a sea is
+//! og-core's own deterministic function.
 
 use og_core::glam::Vec3;
 
 mod body;
 mod line;
+mod query;
+pub(crate) mod submersion;
 mod surface;
 mod wakes;
 
 pub use body::WaterBody;
 pub(crate) use line::LineState;
+pub(crate) use query::{level, ripple};
+pub(crate) use submersion::Under;
 pub(crate) use surface::SurfaceState;
 pub use wakes::{Wakes, WaterCut};
 
@@ -32,6 +48,9 @@ pub(crate) struct Floater {
     pub velocity: Vec3,
     /// Dynamic bodies float and slow down; kinematic ones (characters) only splash.
     pub dynamic: bool,
+    /// It floats by its own hull (og.Buoyancy): the water takes its splash
+    /// and leaves its lift and its cut to that.
+    pub hull: bool,
 }
 
 /// What water does to a body this step: an impulse and a velocity factor.
