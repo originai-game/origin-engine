@@ -736,5 +736,36 @@ impl Parser {
     }
 }
 
+impl UiDocument {
+    /// Parses and validates a document (`source`: its asset id, for errors
+    /// and the write-back). Every error has its line and its fix.
+    ///
+    /// Documents use scriptless Svelte markup and scoped CSS (docs/ui.md §3.2).
+    pub fn parse(source: &str, text: &str) -> Result<UiDocument, Vec<String>> {
+        super::svelte::parse(source, text, Vec::new())
+    }
+
+    /// [`UiDocument::parse`] with the stylesheets its `@import`s name, by
+    /// the path written ([`UiDocument::imports`] lists them).
+    pub fn parse_with_imports(
+        source: &str,
+        text: &str,
+        imports: Vec<(String, String)>,
+    ) -> Result<UiDocument, Vec<String>> {
+        super::svelte::parse(source, text, imports)
+    }
+}
+
+impl UiDocument {
+    /// Saves a probe edit as an authored attribute, text or scoped CSS rule.
+    /// Unrelated source is preserved; an invalid edit leaves the document unchanged.
+    pub fn set_prop(&mut self, node: usize, prop: &str, value: &str) -> Result<(), String> {
+        let text = super::writeback::edit(self, node, prop, value)?;
+        let doc = UiDocument::parse(&self.source, &text).map_err(|e| e.join("; "))?;
+        *self = doc;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests;

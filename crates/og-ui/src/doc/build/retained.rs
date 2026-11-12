@@ -23,34 +23,6 @@ mod virtualized;
 pub(crate) use super::instances::*;
 
 impl RetainedHost {
-    pub(crate) fn is_empty(&self) -> bool {
-        self.registrations.is_empty()
-    }
-
-    pub(crate) fn save(&self) -> Value {
-        serde_json::to_value(self.registrations.iter().collect::<Vec<_>>())
-            .expect("serializable mount registrations")
-    }
-
-    pub(crate) fn restore(value: &Value) -> Result<Self, String> {
-        let registrations: Vec<(SourceId, Registration)> = if value.is_null() {
-            Vec::new()
-        } else {
-            serde_json::from_value(value.clone())
-                .map_err(|error| format!("invalid UI mounts: {error}"))?
-        };
-        let mut out = Self::default();
-        for (id, registration) in registrations {
-            id.validate()?;
-            if out.registrations.insert(id, registration).is_some() {
-                return Err("duplicate UI mount in snapshot".into());
-            }
-        }
-        out.restoring = !out.registrations.is_empty();
-        out.pending_mounts.extend(out.registrations.keys().cloned());
-        Ok(out)
-    }
-
     fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         while let Some(mount) = self.pending_mounts.first().cloned() {
             let registration = self.registrations[&mount].clone();

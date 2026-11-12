@@ -56,24 +56,6 @@ impl Ui {
         Ok(())
     }
 
-    /// After a restore: a mounted layer whose mount is gone leaves the
-    /// stack, and a mounted screen without one joins it.
-    pub(crate) fn sync_mount_layers(&mut self) {
-        let mounted = &self.docs.host.retained.registrations;
-        self.docs
-            .host
-            .layers
-            .layers
-            .retain(|l| l.mount.as_ref().is_none_or(|m| mounted.contains_key(m)));
-        let all: Vec<_> = mounted
-            .iter()
-            .map(|(m, r)| (m.clone(), r.document.clone()))
-            .collect();
-        for (mount, document) in all {
-            self.sync_mount_layer(&mount, Some(&document));
-        }
-    }
-
     pub(crate) fn unmount_scope(&mut self, scope: &str) {
         let mounts: Vec<_> = self
             .docs
@@ -135,53 +117,6 @@ impl crate::ui::Docs {
         }
         self.host.retained.managed = Some(managed);
         Ok(())
-    }
-
-    pub(crate) fn document_registration_state(&self) -> Value {
-        json!(
-            self.host
-                .retained
-                .managed
-                .as_ref()
-                .map(|m| m.iter().collect::<Vec<_>>())
-        )
-    }
-
-    pub(crate) fn restore_document_mounts(
-        &self,
-        value: &Value,
-        managed: &Value,
-    ) -> Result<RetainedHost, String> {
-        let mut restored = RetainedHost::restore(value)?;
-        let saved = if managed.is_null() {
-            None
-        } else {
-            Some(RetainedHost::restore(managed)?.registrations)
-        };
-        if let Some(current) = &self.host.retained.managed {
-            if let Some(saved) = &saved {
-                for id in saved.keys().filter(|id| !current.contains_key(*id)) {
-                    restored.registrations.remove(id);
-                }
-            }
-            for (id, declaration) in current {
-                // Active mounts use current code. A newly declared mount takes
-                // its default; a saved runtime unmount remains unmounted.
-                if restored.registrations.contains_key(id)
-                    || saved.as_ref().is_none_or(|m| !m.contains_key(id))
-                {
-                    restored
-                        .registrations
-                        .insert(id.clone(), declaration.clone());
-                }
-            }
-            restored.managed = Some(current.clone());
-        } else {
-            restored.managed = saved;
-        }
-        restored.pending_mounts = restored.registrations.keys().cloned().collect();
-        restored.restoring = !restored.pending_mounts.is_empty();
-        Ok(restored)
     }
 }
 

@@ -356,3 +356,97 @@ impl RetainedHost {
         Some(&mut self.elements.get_mut(identity)?.record)
     }
 }
+
+impl RetainedHost {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.registrations.is_empty()
+    }
+
+    pub(crate) fn save(&self) -> Value {
+        serde_json::to_value(self.registrations.iter().collect::<Vec<_>>())
+            .expect("serializable mount registrations")
+    }
+
+    pub(crate) fn restore(value: &Value) -> Result<Self, String> {
+        let registrations: Vec<(SourceId, Registration)> = if value.is_null() {
+            Vec::new()
+        } else {
+            serde_json::from_value(value.clone())
+                .map_err(|error| format!("invalid UI mounts: {error}"))?
+        };
+        let mut out = Self::default();
+        for (id, registration) in registrations {
+            id.validate()?;
+            if out.registrations.insert(id, registration).is_some() {
+                return Err("duplicate UI mount in snapshot".into());
+            }
+        }
+        out.restoring = !out.registrations.is_empty();
+        out.pending_mounts.extend(out.registrations.keys().cloned());
+        Ok(out)
+    }
+
+    /// The layout keys of mounted query containers.
+    pub(crate) fn containers(&self) -> impl Iterator<Item = u64> + '_ {
+        self.elements
+            .values()
+            .filter_map(|e| e.resolved.as_ref()?.values.container)
+    }
+
+    /// The containers whose scroll state mounted elements read.
+    pub(crate) fn scroll_reads(&self) -> impl Iterator<Item = u64> + '_ {
+        self.elements
+            .values()
+            .filter_map(|e| e.resolved.as_ref())
+            .flat_map(|r| r.values.cascade.scroll_reads.iter().copied())
+    }
+}
+
+impl crate::ui::Docs {
+    pub(crate) fn document_registration_state(&self) -> Value {
+        json!(
+            self.host
+                .retained
+                .managed
+                .as_ref()
+                .map(|m| m.iter().collect::<Vec<_>>())
+        )
+    }
+
+    pub(crate) fn restore_document_mounts(
+        &self,
+        value: &Value,
+        managed: &Value,
+    ) -> Result<RetainedHost, String> {
+        let mut restored = RetainedHost::restore(value)?;
+        let saved = if managed.is_null() {
+            None
+        } else {
+            Some(RetainedHost::restore(managed)?.registrations)
+        };
+        if let Some(current) = &self.host.retained.managed {
+            if let Some(saved) = &saved {
+                for id in saved.keys().filter(|id| !current.contains_key(*id)) {
+                    restored.registrations.remove(id);
+                }
+            }
+            for (id, declaration) in current {
+                // Active mounts use current code. A newly declared mount takes
+                // its default; a saved runtime unmount remains unmounted.
+                if restored.registrations.contains_key(id)
+                    || saved.as_ref().is_none_or(|m| !m.contains_key(id))
+                {
+                    restored
+                        .registrations
+                        .insert(id.clone(), declaration.clone());
+                }
+            }
+            restored.managed = Some(current.clone());
+        } else {
+            restored.managed = saved;
+        }
+        restored.pending_mounts = restored.registrations.keys().cloned().collect();
+        restored.restoring = !restored.pending_mounts.is_empty();
+        Ok(restored)
+    }
+}

@@ -3,21 +3,6 @@
 use super::*;
 
 impl RetainedHost {
-    /// The layout keys of mounted query containers.
-    pub(crate) fn containers(&self) -> impl Iterator<Item = u64> + '_ {
-        self.elements
-            .values()
-            .filter_map(|e| e.resolved.as_ref()?.values.container)
-    }
-
-    /// The containers whose scroll state mounted elements read.
-    pub(crate) fn scroll_reads(&self) -> impl Iterator<Item = u64> + '_ {
-        self.elements
-            .values()
-            .filter_map(|e| e.resolved.as_ref())
-            .flat_map(|r| r.values.cascade.scroll_reads.iter().copied())
-    }
-
     /// Marks the mounted elements that read a `changed` scroll state dirty.
     pub(crate) fn rescroll(&mut self, changed: &BTreeSet<u64>) {
         if changed.is_empty() {
