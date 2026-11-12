@@ -242,6 +242,9 @@ pub(crate) struct QueuedText {
 /// transform within the model.
 pub(crate) type Parts = Vec<(MeshHandle, MaterialHandle, Mat4)>;
 
+/// The coarser levels a scattered mesh draws (`og_render::ScatterDraw::lods`).
+pub(crate) type ScatterLods = [Option<(MeshHandle, f32)>; 2];
+
 /// A model's levels of detail (`og-render`'s `lod.rs` picks one per
 /// entity): per part, the meshes of its coarser levels with their fraction
 /// of the full mesh's triangles, and the model's bounding sphere in its
@@ -253,8 +256,9 @@ pub(crate) struct ModelLods {
     pub parts: Vec<Vec<(MeshHandle, f32)>>,
     pub center: Vec3,
     pub radius: f32,
-    /// Raw primitive meshes paired with their placed, model-space scatter mesh.
-    pub scatter_meshes: Vec<(MeshHandle, MeshHandle)>,
+    /// Raw primitive meshes paired with their placed, model-space scatter
+    /// mesh and that mesh's coarser levels with their errors, placed alike.
+    pub scatter_meshes: Vec<(MeshHandle, MeshHandle, ScatterLods)>,
     /// The model's impostor and its error: the level after the parts'
     /// coarsest (`og_render::Impostor`).
     pub impostor: Option<(og_render::Impostor, f32)>,

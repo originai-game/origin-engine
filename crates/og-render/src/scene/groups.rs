@@ -327,8 +327,9 @@ pub struct SceneObjects {
     /// (`meshlet.rs`): their level picked and their clusters culled on the
     /// GPU. True by default; false draws them as any mesh, level 0.
     pub meshlets: bool,
-    /// The scene's level-of-detail bias for clustered meshes (`lod.rs`'s
-    /// bias: 2 keeps detail twice as far, 0 the full mesh), 1 by default.
+    /// The scene's level-of-detail bias for clustered meshes and scattered
+    /// copies (`lod.rs`'s bias: 2 keeps detail twice as far, 0 the full
+    /// mesh), 1 by default.
     pub lod_bias: f32,
     /// Colours each clustered instance by the level it draws (green the
     /// full mesh, yellow, orange, red: [`crate::lod::debug_color`]), as

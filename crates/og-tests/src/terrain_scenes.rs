@@ -521,6 +521,7 @@ pub fn grass_scene() -> RenderScene {
         impostor: None,
         impostor_distance: 0.0,
         with: None,
+        lods: [None; 2],
     });
     scene
 }

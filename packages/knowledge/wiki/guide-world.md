@@ -117,6 +117,16 @@ world.insert(ground, og.Collider, { shape: 6, mesh: t.geometry });  // SHAPE_HEI
   and a higher `priority` on the trees keep them apart and the bushes
   clear of them, `noiseThreshold` gathers each species into groves, and
   og.Grass grows under all of them.
+- A scattered mesh draws its coarser levels with distance (the cook's
+  levels of detail, a plant's thinned leaves): a copy takes the coarsest
+  level whose error is under 2 pixels on screen, and under 8 in shadows,
+  reflections and probes, which draw the copies within `distance` that
+  the densityMap keeps, in or out of view. A wood of oaks, pines and
+  bushes drawn as meshes to 200 m took 7.1 ms of GPU a frame at 720p on an
+  M4 Pro against 10.9 with every copy at its full mesh, and 4.9 against
+  9.4 with impostors from 30 m. RenderSettings.lodBias moves the levels
+  as it does a model's (2 keeps each twice as far, 0 draws full meshes).
+  Without compute every copy draws the full mesh.
 - A `densityMap` thins copies where its red channel is below 1 (a path
   cleared through flowers): its top row runs along the terrain's -z edge,
   as the control map, loaded linear. It needs GPU culling

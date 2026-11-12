@@ -111,12 +111,18 @@ autumn trees, pale grasses and flowers of any colour from the same shape,
 and three or four seeds of one kind stop a wood from repeating.
 
 A plant's triangles are mostly its leaves (`children` multiplied down
-the levels, times `count`, four triangles a blade), and leaves are never
-simplified with distance. As written above the oak is 37 000 triangles
-(34 000 of them leaves), the pine 48 000, the shrub 20 000, the daisy
-114. A plant that stands in tens or hundreds takes a lower `count` with
-a larger `size` first, then fewer `children`; the cook refuses one past
-20 000 branches or 120 000 leaves and petals.
+the levels, times `count`, four triangles a blade). As written above the
+oak is 37 000 triangles (34 000 of them leaves), the pine 48 000, the
+shrub 20 000, the daisy 114. With distance the cook thins the leaves
+instead of simplifying them: two more levels keep a half and a quarter
+of the leaves and petals, each kept one made larger so the crown covers
+as much (the oak's leaves are 34 000, 17 000 and 8 500 triangles), and a
+plant of fewer than 16 leaves keeps them all. A copy takes a level once
+what it moved the leaves by is under 2 pixels, so the copies near the
+camera are the full plant: one that stands close in tens or hundreds
+takes a lower `count` with a larger `size` first, then fewer `children`.
+The cook refuses a plant past 20 000 branches or 120 000 leaves and
+petals.
 
 A wood is plants scattered whole (og.TerrainScatter's `model`,
 `og api show "world §3"`). Far copies draw as one card when the plant is cooked

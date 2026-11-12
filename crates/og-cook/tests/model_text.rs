@@ -282,21 +282,56 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
     }
     assert!(wood.min.y.abs() < 1e-3, "the root is at {}", wood.min.y);
 
-    // The leaves and petals: flagged, never simplified, each vertex within
+    // The leaves and petals: flagged, each vertex of the full mesh within
     // a leaf's reach of its own anchor (so the anchors followed their
     // vertices through the weld and the reorder), which is on the wood.
     let (lf, leaf) = leaves.foliage.as_ref().expect("the leaves' wind");
     assert!(leaf);
-    assert_eq!(leaves.lods.len(), 1, "leaves are never simplified");
-    assert!(leaves.vertices.len() > 200, "{}", leaves.vertices.len());
+    let level = |l: usize| {
+        let lod = leaves.lods[l];
+        &leaves.indices[lod.first..lod.first + lod.count]
+    };
+    let anchor = |i: u32| Vec3::from_slice(&lf[i as usize].leaf[..3]);
+    let at = |i: u32| Vec3::from(leaves.vertices[i as usize].position);
+    assert!(level(0).len() > 600, "{}", level(0).len());
     let mut flutter = 0.0f32;
-    for (v, f) in leaves.vertices.iter().zip(lf) {
-        let anchor = Vec3::new(f.leaf[0], f.leaf[1], f.leaf[2]);
-        let reach = (Vec3::from(v.position) - anchor).length();
+    for &i in level(0) {
+        let reach = (at(i) - anchor(i)).length();
         // A leaf of 0.2 at its largest (sizeVariance up to 1.7 times).
-        assert!(reach < 0.36, "{reach} from its anchor at {:?}", v.position);
-        assert!(anchor.cmpge(lo).all() && anchor.cmple(hi).all(), "{anchor}");
-        flutter = flutter.max(f.leaf[3]);
+        assert!(reach < 0.36, "{reach} from its anchor at {:?}", at(i));
+        assert!(anchor(i).cmpge(lo).all() && anchor(i).cmple(hi).all());
+        flutter = flutter.max(lf[i as usize].leaf[3]);
+    }
+
+    // With distance they are thinned, not simplified: a level keeps every
+    // second leaf of the one before, whole, and makes each as much larger
+    // about its anchor, so the crown covers as much with half the
+    // triangles; its error is how far that moved the farthest corner.
+    assert_eq!(leaves.lods.len(), 3, "the mesh, a half and a quarter");
+    let leaves_of = |l: usize| -> std::collections::BTreeSet<[u32; 8]> {
+        let key = |&i: &u32| {
+            let f = &lf[i as usize];
+            std::array::from_fn(|k| if k < 4 { f.branch[k] } else { f.leaf[k - 4] }.to_bits())
+        };
+        level(l).iter().map(key).collect()
+    };
+    let area = |l: usize| -> f32 {
+        let tri = |t: &[u32]| 0.5 * (at(t[1]) - at(t[0])).cross(at(t[2]) - at(t[0])).length();
+        level(l).chunks(3).map(tri).sum()
+    };
+    for (l, stride) in [(1, 2usize), (2, 4)] {
+        let (kept, before) = (leaves_of(l), leaves_of(l - 1));
+        assert!(kept.is_subset(&before), "level {l} grew a leaf");
+        assert_eq!(kept.len(), leaves_of(0).len().div_ceil(stride), "level {l}");
+        let cover = area(l) / area(0);
+        assert!((cover - 1.0).abs() < 0.15, "level {l} covers {cover}");
+        let reach = level(l).iter().map(|&i| (at(i) - anchor(i)).length());
+        let moved = reach.fold(0.0, f32::max) * (1.0 - 1.0 / (stride as f32).sqrt());
+        let error = leaves.lods[l].error;
+        assert!(
+            (error - moved).abs() < 1e-4,
+            "level {l}: {error} for {moved}"
+        );
     }
     assert!(flutter > 0.5, "no leaf flutters: {flutter}");
 
@@ -319,8 +354,12 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
         model.mesh_foliage(1).unwrap(),
     );
     assert_eq!((mw.top, mw.canopy_center), (ml.top, ml.canopy_center));
-    let top = wood.max.y.max(leaves.max.y);
+    // The top is the full meshes': the thinned levels' larger leaves
+    // reach past it, and the plant must sway the same at every level.
+    let reach = |i: &u32| at(*i).y;
+    let top = level(0).iter().map(reach).fold(wood.max.y, f32::max);
     assert!((mw.top - top).abs() < 1e-3 && top > 1.0, "{} {top}", mw.top);
+    assert!(level(2).iter().map(reach).fold(top, f32::max) > top + 1e-3);
     assert!(mw.canopy_center.y > 0.4 && mw.canopy_center.y < top);
     assert!(mw.validate(wood.vertices.len()).is_ok());
     assert!(ml.validate(leaves.vertices.len()).is_ok());

@@ -84,7 +84,7 @@ impl Renderer {
                 &self.queue,
                 scene,
                 camera.position,
-                cam.view_proj,
+                (cam.view_proj, self.height, scene.objects.lod_bias),
                 prev_view_proj,
                 self.phase(),
                 (

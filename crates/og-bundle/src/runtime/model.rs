@@ -941,7 +941,7 @@ impl CookedModel {
     /// its mesh, `None` without: its vertices' pivots and anchors and what
     /// the model's foliage shares, so its bark and leaves bend as one tree
     /// (every foliage primitive in one space, the model's: its top is the
-    /// highest of their vertices, its canopy centre the centre of the box
+    /// highest their full meshes reach, its canopy centre the centre of the box
     /// of the leaf cards' anchors, of every anchor without leaf cards).
     pub fn mesh_foliage(&self, i: usize) -> Option<og_render::meshlet::MeshFoliage> {
         let (vertices, leaves) = self.primitives.get(i)?.foliage.as_ref()?;
@@ -950,8 +950,13 @@ impl CookedModel {
                 .iter()
                 .filter_map(|p| Some((p, p.foliage.as_ref()?)))
         };
+        // Of the full meshes: a thinned level's larger leaves reach past it.
         let top = foliage()
-            .flat_map(|(p, _)| p.vertices.iter().map(|v| v.position[1]))
+            .flat_map(|(p, _)| {
+                let full = p.lods[0];
+                let drawn = &p.indices[full.first..full.first + full.count];
+                drawn.iter().map(|&i| p.vertices[i as usize].position[1])
+            })
             .fold(f32::MIN, f32::max);
         let any_leaves = foliage().any(|(_, f)| f.1);
         let (lo, hi) = foliage()

@@ -162,6 +162,78 @@ fn foliage_key(f: &[f32; 8]) -> [u32; 2] {
     [v as u32, (v >> 32) as u32]
 }
 
+/// The fewest leaves a thinned level keeps: fewer no longer cover a crown
+/// as the full mesh's do.
+const THIN_LEAVES_MIN: usize = 8;
+
+/// Leaf cards' coarser levels: level `k` keeps every `1 / fractions[k]`th
+/// leaf (the triangles of one anchor, in the order the mesh draws them, so
+/// a coarser level's leaves are among the finer one's) and makes each as
+/// much larger in area about its anchor, so the crown covers as much.
+/// The kept leaves' vertices are appended (`sources` to the vertex each
+/// came from); returns each level's range of `indices` and its error, the
+/// farthest any kept vertex moved. `foliage` is per source vertex and
+/// `full` the full mesh's range of `indices`.
+fn thin_leaves(
+    verts: &mut Vec<FVertex>,
+    indices: &mut Vec<u32>,
+    sources: &mut Vec<u32>,
+    foliage: &[[f32; 8]],
+    full: std::ops::Range<usize>,
+    fractions: &[f32],
+) -> Vec<(std::ops::Range<usize>, f32)> {
+    // Each triangle's leaf: the anchor (and pivot) of its first corner.
+    let mut leaf_of: std::collections::HashMap<[u32; 8], usize> = Default::default();
+    let triangles: Vec<([u32; 3], usize)> = indices[full]
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|&tri| {
+            let key = foliage[sources[tri[0] as usize] as usize].map(f32::to_bits);
+            let next = leaf_of.len();
+            (tri, *leaf_of.entry(key).or_insert(next))
+        })
+        .collect();
+    let leaves = leaf_of.len();
+    let mut out = Vec::new();
+    let mut previous = 1;
+    for &fraction in fractions.iter().skip(1) {
+        if !(fraction > 0.0 && fraction < 1.0) {
+            continue;
+        }
+        let stride = (1.0 / fraction).round() as usize;
+        if stride <= previous || leaves.div_ceil(stride) < THIN_LEAVES_MIN {
+            break;
+        }
+        previous = stride;
+        let scale = (stride as f32).sqrt();
+        let start = indices.len();
+        let mut moved = 0.0f32;
+        let mut made: std::collections::HashMap<u32, u32> = Default::default();
+        for (tri, leaf) in &triangles {
+            if leaf % stride != 0 {
+                continue;
+            }
+            for &i in tri {
+                let at = *made.entry(i).or_insert_with(|| {
+                    let mut v = verts[i as usize];
+                    let f = &foliage[sources[i as usize] as usize];
+                    let anchor = Vec3::new(f[4], f[5], f[6]);
+                    let arm = Vec3::from(v.p) - anchor;
+                    moved = moved.max(arm.length() * (scale - 1.0));
+                    v.p = (anchor + arm * scale).to_array();
+                    verts.push(v);
+                    sources.push(sources[i as usize]);
+                    verts.len() as u32 - 1
+                });
+                indices.push(at);
+            }
+        }
+        out.push((start..indices.len(), moved));
+    }
+    out
+}
+
 /// The vertices a foliage mesh's simplification keeps in place: those on
 /// an edge between two pivots or two anchors (`foliage` per vertex), so a
 /// coarser level never joins two branches (or two leaves) that sway apart.
@@ -588,6 +660,26 @@ pub(crate) fn cook_primitive(
         }
         _ => None,
     };
+    // Leaf cards without levels of their own: thinned ones, each with the
+    // error `thin_leaves` measured.
+    let mut thinned: Vec<f32> = Vec::new();
+    if leaves
+        && given.len() == 1
+        && let Some(f) = &foliage
+    {
+        let full = given[0].clone();
+        for (range, error) in thin_leaves(
+            &mut verts,
+            &mut indices,
+            &mut sources,
+            f,
+            full,
+            &opts.fractions(),
+        ) {
+            given.push(range);
+            thinned.push(error);
+        }
+    }
     let want_tangents = opts.tangents && normal_mapped && uvs.is_some();
     let generate_tangents = want_tangents && tangents.is_none();
     if normals.is_none() || generate_tangents {
@@ -609,7 +701,7 @@ pub(crate) fn cook_primitive(
             return Err("mikktspace could not generate tangents".into());
         }
         let flat: Vec<u32> = (0..corners.len() as u32).collect();
-        sources = indices.clone();
+        sources = indices.iter().map(|&i| sources[i as usize]).collect();
         (verts, indices) = weld(&corners, &flat, &mut sources);
     } else {
         (verts, indices) = weld(&verts, &indices, &mut sources);
@@ -691,7 +783,8 @@ pub(crate) fn cook_primitive(
     meshopt::optimize_overdraw_in_place(&mut lod0, &adapter, opts.overdraw_threshold);
     let mut levels: Vec<(Vec<u32>, f32)> = vec![(lod0.clone(), 0.0)];
     if given.len() > 1 {
-        // MSFT_lod: the glTF's own levels, kept as they are.
+        // MSFT_lod: the glTF's own levels, kept as they are (and leaf
+        // cards' thinned ones).
         for r in &given[1..] {
             if r.len() >= 3 {
                 levels.push((
@@ -719,8 +812,8 @@ pub(crate) fn cook_primitive(
             foliage_locks(&lod0, &at)
         });
         // Leaf cards have no simplified levels: an edge collapse merges
-        // cards and changes their coverage (the cluster DAG keeps or drops
-        // whole cards instead).
+        // cards and changes their coverage (`thin_leaves` drops whole
+        // leaves instead, where there are enough of them).
         let fractions = if foliage.is_some() && leaves {
             Vec::new()
         } else {
@@ -869,8 +962,13 @@ pub(crate) fn cook_primitive(
         ]
     };
     let pos_all: Vec<[f32; 3]> = q.iter().map(deq).collect();
-    for l in levels.iter_mut().skip(1) {
-        l.1 = level_error(&pos_all, &lod0, &l.0);
+    // A thinned level's is how far its leaves moved: the leaves it drops
+    // are covered by the larger ones beside them, not by a nearby surface.
+    for (k, l) in levels.iter_mut().enumerate().skip(1) {
+        l.1 = match thinned.get(k - 1) {
+            Some(&moved) => moved,
+            None => level_error(&pos_all, &lod0, &l.0),
+        };
     }
     // A streaming proxy keeps only the coarsest level (and the vertices it uses).
     if coarsest && let Some((last, _)) = levels.pop() {

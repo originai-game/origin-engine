@@ -532,52 +532,79 @@ fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String
     Ok(index)
 }
 
-/// Place each primitive in the same model space used by its impostor bake.
+/// Place each primitive in the same model space used by its impostor bake,
+/// and its coarser levels (`levels`: per part, each level's mesh and its
+/// error at the part's scale) with it.
 fn scatter_meshes(
     scene: &mut og_render::RenderScene,
     parts: &super::extract::Parts,
-) -> Vec<(og_render::MeshHandle, og_render::MeshHandle)> {
-    let mut out = Vec::new();
+    levels: &[Vec<(og_render::MeshHandle, f32)>],
+) -> Vec<(
+    og_render::MeshHandle,
+    og_render::MeshHandle,
+    super::extract::ScatterLods,
+)> {
+    let mut out: Vec<(_, _, super::extract::ScatterLods)> = Vec::new();
     for &(mesh, _, _) in parts {
-        if out.iter().any(|&(source, _)| source == mesh) {
+        if out.iter().any(|&(source, ..)| source == mesh) {
             continue;
         }
         let placements: Vec<_> = parts.iter().filter(|p| p.0 == mesh).map(|p| p.2).collect();
-        if placements == [glam::Mat4::IDENTITY] {
-            out.push((mesh, mesh));
-            continue;
+        // A level's error where the part is placed largest.
+        let mut lods = [None; 2];
+        for (k, to) in lods.iter_mut().enumerate() {
+            let placed = parts.iter().zip(levels).filter(|(p, _)| p.0 == mesh);
+            let level: Option<Vec<_>> = placed.map(|(_, l)| l.get(k).copied()).collect();
+            let Some(level) = level.filter(|l| !l.is_empty()) else {
+                break;
+            };
+            let error = level.iter().map(|l| l.1).fold(0.0, f32::max);
+            *to = Some((placed_mesh(scene, level[0].0, &placements), error));
         }
-        let source = scene.mesh(mesh).expect("loaded model mesh");
-        let mut placed = og_render::MeshData {
-            vertices: Vec::new(),
-            indices: Vec::new(),
-        };
-        for transform in placements {
-            let normal = glam::Mat3::from_mat4(transform).inverse().transpose();
-            let mirrored = transform.determinant() < 0.0;
-            let base = placed.vertices.len() as u32;
-            placed.vertices.extend(source.vertices.iter().map(|v| {
-                let mut v = *v;
-                v.position = transform.transform_point3(v.position.into()).to_array();
-                v.normal = (normal * glam::Vec3::from(v.normal))
-                    .normalize_or_zero()
-                    .to_array();
-                let tangent = glam::Vec4::from(v.tangent);
-                v.tangent = transform
-                    .transform_vector3(tangent.truncate())
-                    .normalize_or_zero()
-                    .extend(if mirrored { -tangent.w } else { tangent.w })
-                    .to_array();
-                v
-            }));
-            for &[a, b, c] in source.indices.as_chunks::<3>().0 {
-                let triangle = if mirrored { [a, c, b] } else { [a, b, c] };
-                placed.indices.extend(triangle.map(|i| i + base));
-            }
-        }
-        out.push((mesh, scene.add_mesh(placed)));
+        out.push((mesh, placed_mesh(scene, mesh, &placements), lods));
     }
     out
+}
+
+/// `mesh` once at each of `placements`, as one mesh (itself where it
+/// stands once, as made).
+fn placed_mesh(
+    scene: &mut og_render::RenderScene,
+    mesh: og_render::MeshHandle,
+    placements: &[glam::Mat4],
+) -> og_render::MeshHandle {
+    if placements == [glam::Mat4::IDENTITY] {
+        return mesh;
+    }
+    let source = scene.mesh(mesh).expect("loaded model mesh");
+    let mut placed = og_render::MeshData {
+        vertices: Vec::new(),
+        indices: Vec::new(),
+    };
+    for &transform in placements {
+        let normal = glam::Mat3::from_mat4(transform).inverse().transpose();
+        let mirrored = transform.determinant() < 0.0;
+        let base = placed.vertices.len() as u32;
+        placed.vertices.extend(source.vertices.iter().map(|v| {
+            let mut v = *v;
+            v.position = transform.transform_point3(v.position.into()).to_array();
+            v.normal = (normal * glam::Vec3::from(v.normal))
+                .normalize_or_zero()
+                .to_array();
+            let tangent = glam::Vec4::from(v.tangent);
+            v.tangent = transform
+                .transform_vector3(tangent.truncate())
+                .normalize_or_zero()
+                .extend(if mirrored { -tangent.w } else { tangent.w })
+                .to_array();
+            v
+        }));
+        for &[a, b, c] in source.indices.as_chunks::<3>().0 {
+            let triangle = if mirrored { [a, c, b] } else { [a, b, c] };
+            placed.indices.extend(triangle.map(|i| i + base));
+        }
+    }
+    scene.add_mesh(placed)
 }
 
 /// Adds a decoded model and its textures (in [`CookedModel::textures`]
@@ -633,11 +660,7 @@ pub(crate) fn insert_model(
         rs.decoded.ids.insert(*h, t.id.clone());
     }
     let texture_handles = parts.textures.clone();
-    let scatter_meshes = if impostor.is_some() {
-        scatter_meshes(&mut rs.scene, &parts.parts)
-    } else {
-        Vec::new()
-    };
+    let scattered = impostor.is_some();
     // Each primitive's raycast BVH, cooked into the blob: loaded with the
     // mesh, so the first og.render.raycast builds nothing (a mesh shared
     // with a model loaded before has its own already).
@@ -665,8 +688,8 @@ pub(crate) fn insert_model(
             let prim_of = |mesh| prim_meshes.iter().position(|&m| m == mesh);
             // Each part's levels with their errors in the model's units: a
             // part's node scale is folded in.
-            let parts: Vec<Vec<(og_render::MeshHandle, f32)>> = parts
-                .parts
+            let model_parts = &parts.parts;
+            let parts: Vec<Vec<(og_render::MeshHandle, f32)>> = model_parts
                 .iter()
                 .map(|&(mesh, _, local)| {
                     let s = local.to_scale_rotation_translation().0.abs().max_element();
@@ -706,6 +729,10 @@ pub(crate) fn insert_model(
                     ))
                 }
                 _ => None,
+            };
+            let scatter_meshes = match scattered {
+                true => scatter_meshes(&mut rs.scene, model_parts, &parts),
+                false => Vec::new(),
             };
             (parts.iter().any(|l| !l.is_empty()) || impostor.is_some()).then(|| {
                 super::extract::ModelLods {

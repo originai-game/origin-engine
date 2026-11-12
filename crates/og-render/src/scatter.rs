@@ -355,6 +355,12 @@ pub struct ScatterDraw {
     /// one plant, and leaving the impostor's card to it. `None`: copies of
     /// its own.
     pub with: Option<usize>,
+    /// The mesh's coarser levels of detail, finest first: each one's mesh
+    /// and its error in the mesh's units (`og-cook`'s `Lod::error`). Where
+    /// the copies are culled on the GPU, a copy draws the coarsest level
+    /// whose error is under [`crate::scatter_cull::LOD_PIXELS`] on screen;
+    /// elsewhere the mesh. A level after a `None` is not drawn.
+    pub lods: [Option<(MeshHandle, f32)>; crate::scatter_cull::SCATTER_LEVELS - 1],
 }
 
 impl ScatterDraw {
@@ -558,8 +564,10 @@ pub(crate) struct ScatterBatch {
     pub side: Side,
     offset: u32,
     chunks: Vec<ChunkKey>,
-    /// Per chunk, where the GPU cull put its copies for the main camera
-    /// (`None`: drawn whole).
+    /// The mesh's coarser levels (`ScatterDraw::lods`): the scene's meshes.
+    lods: [Option<usize>; crate::scatter_cull::SCATTER_LEVELS - 1],
+    /// Per chunk, where the GPU cull listed its copies (`None`: drawn
+    /// whole).
     culled: Vec<Option<crate::scatter_cull::Culled>>,
     /// How far the wind moves a copy at most: the chunks' bounds grow by it.
     sway: f32,
@@ -834,6 +842,7 @@ mod tests {
             impostor: None,
             impostor_distance: 0.0,
             with,
+            lods: [None; 2],
         };
         let all = [
             draw(flowers, None),

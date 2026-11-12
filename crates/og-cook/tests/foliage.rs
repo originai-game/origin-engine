@@ -232,11 +232,12 @@ fn foliage_follows_its_vertices_and_keeps_its_seams_through_every_level() {
         }
     }
 
-    // The leaf cards: flagged, one level, each card's anchor and flutter.
+    // The leaf cards: flagged, one level (two leaves are too few to
+    // thin), each card's anchor and flutter.
     let leaf = &model.primitives[1];
     let (lf, leaves) = leaf.foliage.as_ref().expect("the leaves' foliage");
     assert!(leaves);
-    assert_eq!(leaf.lods.len(), 1, "leaf cards are never simplified");
+    assert_eq!(leaf.lods.len(), 1, "two leaves, thinned");
     for (v, f) in leaf.vertices.iter().zip(lf) {
         let want = if v.position[1] < 2.5 {
             [0.1, 2.0, 0.0, 0.5]
