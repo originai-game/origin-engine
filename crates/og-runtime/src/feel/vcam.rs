@@ -76,9 +76,8 @@ struct Pose {
     focus: Option<(f32, f32)>,
 }
 
-fn quat(v: &Value) -> Quat {
-    let n = |k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
-    let q = Quat::from_xyzw(n("x", 0.0), n("y", 0.0), n("z", 0.0), n("w", 1.0));
+/// `q` normalized (a zero quaternion: the identity).
+fn unit(q: Quat) -> Quat {
     if q.length_squared() > 0.0 {
         q.normalize()
     } else {
@@ -94,14 +93,12 @@ fn jq(q: Quat) -> Value {
     json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w })
 }
 
-fn ease_of(v: &Value) -> Ease {
-    v.as_str()
-        .and_then(Ease::from_text)
-        .expect("validated reflected timing value")
+fn ease_of(text: &str) -> Ease {
+    Ease::from_text(text).expect("validated reflected timing value")
 }
 
-fn entity(v: &Value) -> Option<Entity> {
-    match bits(v) {
+fn entity(bits: u64) -> Option<Entity> {
+    match bits {
         0 => None,
         b => Some(Entity::from_bits(b)),
     }
@@ -115,7 +112,10 @@ fn transform(ctx: &SystemContext<'_>, r: &Records, e: Entity) -> Option<(Vec3, Q
     }
     let b = ctx.get_bytes(e, r.transform.0).ok()?;
     let t = r.transform.1.decode(&b);
-    Some((v3(&t["position"], Vec3::ZERO), quat(&t["rotation"])))
+    // The rotation was read from og.Transform's `rotation`, a field it does
+    // not have (its rotation is `quaternion`), so it has always been the
+    // identity; kept as it is until the shots' follow rotation is fixed.
+    Some((v3(&t["position"], Vec3::ZERO), Quat::IDENTITY))
 }
 
 fn lerp(a: f32, b: f32, w: f32) -> f32 {
@@ -138,13 +138,13 @@ fn evaluate(
     ctx: &SystemContext<'_>,
     r: &Records,
     e: Entity,
-    v: &mut Value,
+    (v, row): (&mut Value, &record::VirtualCamera),
     dt: f32,
     snap: bool,
     physics: Option<&og_physics::PhysicsQuery>,
 ) -> Pose {
     let own = transform(ctx, r, e).unwrap_or((Vec3::ZERO, Quat::IDENTITY));
-    let follow = entity(&v["follow"]).and_then(|f| transform(ctx, r, f).map(|t| (f, t)));
+    let follow = entity(row.follow).and_then(|f| transform(ctx, r, f).map(|t| (f, t)));
     let look_offset = v3(&v["lookOffset"], Vec3::new(0.0, 1.0, 0.0));
     let mut position = own.0;
     if let Some((_, (fp, fr))) = follow {
@@ -169,7 +169,7 @@ fn evaluate(
     }
     v["eased"] = jv3(position);
     let look =
-        entity(&v["lookAt"]).and_then(|l| transform(ctx, r, l).map(|t| (l, t.0 + look_offset)));
+        entity(row.look_at).and_then(|l| transform(ctx, r, l).map(|t| (l, t.0 + look_offset)));
     // Collision keeps the way from the look point (else the followed
     // entity's, at lookOffset) to the camera clear.
     let origin = look.or_else(|| follow.map(|(fe, (fp, _))| (fe, fp + look_offset)));
@@ -192,7 +192,7 @@ fn evaluate(
                 direction: dir,
                 max_distance: dist,
                 filter: QueryFilter {
-                    mask: bits(&v["collisionLayers"]) as u32,
+                    mask: row.collision_layers,
                     include_sensors: false,
                     exclude: Some(follow.map_or(excluded, |(fe, _)| fe)),
                 },
@@ -270,9 +270,10 @@ pub(crate) fn brain(
     let bad = |e: String| Error::new(ErrorKind::Invalid, e);
     let brain_bytes = ctx.resource_bytes(bid)?;
     let mut brain = bl.decode(&brain_bytes);
-    let mut activations = bits(&brain["activations"]) as u32;
+    let brain_row = record::CameraBrain::from_json(&brain).map_err(bad)?;
+    let mut activations = brain_row.activations;
     // Every shot, in query order.
-    let mut shots: Vec<(Entity, Vec<u8>, Value)> = Vec::new();
+    let mut shots: Vec<(Entity, Vec<u8>, Value, record::VirtualCamera)> = Vec::new();
     let q = QueryDesc {
         write: vec![VCAM.into()],
         ..QueryDesc::default()
@@ -281,7 +282,8 @@ pub(crate) fn brain(
         for &e in a.entities() {
             let bytes = ctx.get_bytes(e, vid)?;
             let v = vl.decode(&bytes);
-            shots.push((e, bytes, v));
+            let row = record::VirtualCamera::from_json(&v).map_err(bad)?;
+            shots.push((e, bytes, v, row));
         }
     }
     // A shot not evaluated last tick (just enabled, or a disabled solo
@@ -289,72 +291,69 @@ pub(crate) fn brain(
     // so the later enabled wins a priority tie.
     let snapped: Vec<bool> = shots
         .iter()
-        .map(|(_, _, v)| !on(v, "primed", false))
+        .map(|(_, _, v, _)| !on(v, "primed", false))
         .collect();
-    for (_, _, v) in &mut shots {
+    for (_, _, v, row) in &mut shots {
         if on(v, "enabled", true) && !on(v, "primed", false) {
             activations = activations.wrapping_add(1);
             v["activated"] = json!(activations);
+            row.activated = activations;
         }
     }
     brain["activations"] = json!(activations);
     // The pick: the solo shot, else the highest priority, the later
     // enabled, the first in query order.
-    let solo = entity(&brain["solo"]).filter(|s| shots.iter().any(|(e, _, _)| e == s));
+    let solo = entity(brain_row.solo).filter(|s| shots.iter().any(|(e, ..)| e == s));
     let mut best: Option<(usize, i64, u64)> = None;
-    for (i, (_, _, v)) in shots.iter().enumerate() {
+    for (i, (_, _, v, row)) in shots.iter().enumerate() {
         if !on(v, "enabled", true) {
             continue;
         }
-        let key = (v["priority"].as_i64().unwrap_or(0), bits(&v["activated"]));
+        let key = (i64::from(row.priority), u64::from(row.activated));
         if best.is_none_or(|b| key > (b.1, b.2)) {
             best = Some((i, key.0, key.1));
         }
     }
     let live = solo.or_else(|| best.map(|b| shots[b.0].0));
-    let prev = entity(&brain["live"]);
+    let prev = entity(brain_row.live);
     let order: Vec<Entity> = shots.iter().map(|s| s.0).collect();
     let index = |e: Entity| order.iter().position(|x| *x == e);
     let physics = physics.tick_query().ok();
     // Every enabled shot (and the live and outgoing ones) keeps its follow
     // state current, so a cut to a standby shot lands where it should.
-    let from_entity = entity(&brain["from"]);
+    let from_entity = entity(brain_row.from);
     let mut poses: Vec<Option<Pose>> = vec![None; shots.len()];
-    for i in 0..shots.len() {
-        let e = shots[i].0;
+    for (i, (e, _, v, row)) in shots.iter_mut().enumerate() {
+        let e = *e;
         let involved = Some(e) == live || Some(e) == prev || Some(e) == from_entity;
-        let evaluated = on(&shots[i].2, "enabled", true) || involved;
-        shots[i].2["primed"] = json!(evaluated);
+        let evaluated = on(v, "enabled", true) || involved;
+        v["primed"] = json!(evaluated);
         if !evaluated {
             continue;
         }
         let collide = if involved { physics.as_ref() } else { None };
-        poses[i] = Some(evaluate(
-            ctx,
-            r,
-            e,
-            &mut shots[i].2,
-            dt,
-            snapped[i],
-            collide,
-        ));
+        poses[i] = Some(evaluate(ctx, r, e, (v, &*row), dt, snapped[i], collide));
     }
     let mut blend = f(&brain, "blend", 1.0).clamp(0.0, 1.0);
     let mut from = from_entity;
+    // The blend's curve and held rotation, as the brain has them after
+    // this tick's writes.
+    let mut curve_now = brain_row.blend_curve.clone();
+    let mut held_rotation = unit(brain_row.from_quaternion);
     if live != prev {
         let solo_blend = f(&brain, "soloBlend", -1.0);
         let (duration, curve) = match live.and_then(index) {
             // A blend to the solo shot by the solo's own (a timeline's shot key).
             Some(_) if live == solo && solo_blend >= 0.0 => {
-                (solo_blend, ease_of(&brain["soloEase"]))
+                (solo_blend, ease_of(&brain_row.solo_ease))
             }
             Some(i) if f(&shots[i].2, "blendTime", -1.0) >= 0.0 => (
                 f(&shots[i].2, "blendTime", -1.0),
-                ease_of(&shots[i].2["blendEase"]),
+                ease_of(&shots[i].3.blend_ease),
             ),
             _ => (
                 f(&brain, "blendTime", 1.0).max(0.0),
-                ease_of(&brain["blendEase"]),
+                ease_of(&brain_row.blend_ease),
             ),
         };
         // The first live shot, a shot going away and a zero blend cut.
@@ -362,9 +361,10 @@ pub(crate) fn brain(
         if blends && blend < 1.0 {
             // Interrupted: from the blended pose as shown, held.
             // What the camera shows now: the last pose written.
+            let shown = record::Camera::from_json(cam).map_err(bad)?;
             let p = Pose {
                 position: v3(&cam["position"], Vec3::ZERO),
-                rotation: quat(&cam["quaternion"]),
+                rotation: unit(shown.quaternion),
                 fov: f(cam, "fov", 50.0),
                 focus: if on(&brain, "focusHeld", false) {
                     post_focus(ctx, l)
@@ -374,6 +374,7 @@ pub(crate) fn brain(
             };
             brain["fromPosition"] = jv3(p.position);
             brain["fromQuaternion"] = jq(p.rotation);
+            held_rotation = unit(p.rotation);
             brain["fromFov"] = json!(p.fov);
             brain["fromFocus"] = json!(p.focus.map_or(0.0, |x| x.0));
             brain["fromFocusRange"] = json!(p.focus.map_or(0.0, |x| x.1));
@@ -383,7 +384,8 @@ pub(crate) fn brain(
         }
         blend = if blends { 0.0 } else { 1.0 };
         brain["blendDuration"] = json!(if blends { duration } else { 0.0 });
-        brain["blendCurve"] = json!(curve.to_text());
+        curve_now = curve.to_text();
+        brain["blendCurve"] = json!(curve_now);
         if let (Some(cl), Ok(cid)) = (&l.cut, ctx.id_by_name(CUT)) {
             let ev = json!({
                 "from": prev.map_or(0, Entity::to_bits),
@@ -412,11 +414,11 @@ pub(crate) fn brain(
         if blend >= 1.0 {
             return to;
         }
-        let w = ease_of(&brain["blendCurve"]).apply(blend);
+        let w = ease_of(&curve_now).apply(blend);
         let from_pose = from
             .and_then(index)
             .and_then(|i| poses[i])
-            .unwrap_or_else(|| held(&brain));
+            .unwrap_or_else(|| held(&brain, held_rotation));
         mix(from_pose, to, w)
     });
     // A held pose outlives the shot it came from.
@@ -432,7 +434,7 @@ pub(crate) fn brain(
         }
         focus(ctx, l, &mut brain, out.and_then(|p| p.focus))?;
     }
-    for (e, bytes, v) in &shots {
+    for (e, bytes, v, _) in &shots {
         let next = vl.encode(Some(bytes), Some(v)).map_err(bad)?;
         if next != *bytes {
             ctx.set_bytes(*e, vid, &next)?;
@@ -445,12 +447,13 @@ pub(crate) fn brain(
     Ok(())
 }
 
-/// The brain's held pose: an interrupted blend starts from it.
-fn held(brain: &Value) -> Pose {
+/// The brain's held pose: an interrupted blend starts from it (`rotation`:
+/// its fromQuaternion, normalized).
+fn held(brain: &Value, rotation: Quat) -> Pose {
     let focus = f(brain, "fromFocus", 0.0);
     Pose {
         position: v3(&brain["fromPosition"], Vec3::ZERO),
-        rotation: quat(&brain["fromQuaternion"]),
+        rotation,
         fov: f(brain, "fromFov", 50.0),
         focus: (focus > 0.0).then(|| (focus, f(brain, "fromFocusRange", 1.0))),
     }
