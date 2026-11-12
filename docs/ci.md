@@ -456,10 +456,12 @@ for byte before committing, so no frame flips on the host. Commit the new
 references in a batch and say what each moved frame now shows, not by how
 much it moved.
 A frame from another tier never replaces a recording-tier reference.
-`references/metal/` is kept as Metal's compatibility set and nothing new
-is recorded there; a project fixture whose playtest names a
-`references/metal/` frame keeps it until it is re-recorded with its
-project.
+A scene with no reference on the adapter's tier is compared with
+`references/vulkan/` under the cross-platform tolerance (§Reference
+frames), and the test says so. Metal keeps no set of its own: it is judged
+against `references/vulkan/` like every other tier. A project whose check
+names `references/metal/` itself (`tests/fixtures/ui-css-pack`) keeps
+those frames until the L4 records them.
 
 ## When the size gate fails
 

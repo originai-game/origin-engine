@@ -14,7 +14,7 @@ ttf-parser (a font file's metrics and outlines) and, behind the default
 `shaping` feature, rustybuzz only. No layout or GUI library: the layout is
 ~600 lines in `src/layout.rs`.
 
-![The sample screen](references/metal/sample-screen.png)
+![The sample screen](../og-tests-ui/references/vulkan/sample-screen.png)
 
 ## Using it
 
