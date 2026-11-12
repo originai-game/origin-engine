@@ -352,9 +352,9 @@ gestures the runtime spring in `ui-svelte` `motion/spring.ts`, Swift
 
 ## Components
 
-The components are the engine's og-ui widgets and the ui-kit components,
-and origin-agent's web components; each draws the grammar below from the
-tokens and never hard-codes a colour, size or curve. The inventory: primitives
+The components are the engine's og-ui widgets and its built-in component
+documents, and origin-agent's web components; each draws the grammar below
+from the tokens and never hard-codes a colour, size or curve. The inventory: primitives
 (Button, IconButton, Field, Select, Checkbox, Switch, Menu, Dialog, Sheet,
 Popover, Tooltip, Tabs, SegmentedControl, Toast, Badge, Avatar, Kbd), data
 (tables, lists, pagination, metric cards, charts, timelines, empty and async

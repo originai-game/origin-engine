@@ -76,8 +76,8 @@ it, so the one signature covers it. They are not in any target archive:
 `engine/`, `overlay/` or `files/`, or an `engine/extensions/<pack>` of a
 downloadable pack's name. A pack is installed with `og vfx add <pack>`,
 which verifies the signed SHA256SUMS as the launcher does (below). The
-few bundled packs are kits' peers in `packages/engine/extensions/` and
-ship inside `engine/`.
+few bundled packs are the materials resource pack's peers in
+`packages/engine/extensions/` and ship inside `engine/`.
 
 **The pack catalogue** (from 0.8.0; origin-agent's Engine page reads it,
 in Web and Desktop, and nothing else of the engine tree). `manifest.json`
@@ -93,9 +93,11 @@ sections keyed by pack name, one shape for every kind:
   downloadable (`vfx/<pack>.tar.gz`, with `url` and `sha256`); `tags` are
   its `extension.json` tags; the preview is its effect sheet's impact
   frame.
-- `ui`: every UI style pack and kit (`templates/styles/<pack>/`,
-  `templates/ui-kit/`), with `kind: "style" | "kit"`; `tags` are the
-  style; the preview is the pack's reviewed reference sheet.
+- `ui`: every UI style pack (`templates/styles/<pack>/`) and resource
+  pack (`packages/engine/extensions/materials/`), with
+  `kind: "style" | "materials"`; `tags` are the style; the preview is the
+  pack's reviewed reference sheet. The built-in components and screens
+  are part of the engine, not packs, and are not listed.
 - `fonts`: every font pack (`templates/fonts/<pack>/`); `tags` are the
   scripts and languages it covers; the preview is a specimen of its script.
 - `looks`: every look of `knowledge/looks/catalogue.json` (which stays in

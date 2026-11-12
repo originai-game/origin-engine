@@ -1,17 +1,18 @@
 # Game UI contract
 
 This document defines the boundaries and acceptance rules for core UI,
-genre kits, and style packs. API signatures belong in the generated API;
-author workflows belong in the guides. The catalogue below distinguishes
-available functionality from packages that are not yet built.
+the built-in component and screen documents, and style packs. API
+signatures belong in the generated API; author workflows belong in the
+guides. The catalogue below distinguishes what is built from what is
+planned.
 
 ## 1. Scope and ownership
 
 | Owner | Responsibility | Boundary |
 | --- | --- | --- |
 | Core | Elements, layout, drawing, controls, documents, layers, focus, gestures, motion, text, accessibility, semantic tokens, and public composition helpers | One control set and one API on native and web |
-| Genre kit | Domain-specific presentation composed from core controls, editable screens, typed inputs, and returned intents | No gameplay rules, private engine imports, or second widget toolkit |
-| Style pack | Palette, typography, spacing, shape, dressings, art, icons, motion, sound, and haptic definitions | No gameplay code or domain state |
+| Built-in components (core) | Component documents by group (`rpg/`, `shooter/`…) and screen documents, built into the engine under `@ui/`: presentation composed from core controls, named parts, typed inputs, and returned intents | No gameplay rules, literal visual values, private engine imports, or second widget toolkit |
+| Style pack | Palette, typography, spacing, shape, dressings, art, icons, motion, sound, and haptic definitions, as `:root` tokens and `var()` part rules | No gameplay code or domain state |
 | Game | Content, rules, world state, domain validation, and applying UI intents | Owns its screens and chosen style assets |
 | Platform | Accounts, money, publishing, threads, agent orchestration, and engine version selection | Consumes released archives and the public host ABI, never engine internals |
 
@@ -22,7 +23,7 @@ both hosts. Game authors never need Rust.
 
 Screen UI, world anchors, world panels, and embedded camera views use the
 same element model. Backend limits are capability queries, not separate
-kit implementations. Web rendering stays off the main thread.
+implementations. Web rendering stays off the main thread.
 
 UI presentation state is tick-driven and checkpointed beside the world,
 outside `world_hash`. Focus, selection, scroll, caret, and animation state
@@ -1213,19 +1214,18 @@ room left. `justify-content` and `align-content` align the tracks,
 `justify-items`, `justify-self`, `align-items` and `align-self` align
 an item in its area, and `normal` and `stretch` fill the area.
 
-Kits use `@origingame/engine` and `@origingame/engine/ui-extensions`. Private source-path imports, unsafe
-casts that evade the API, and game-side Rust are not kit extension points.
+Built-in components are documents, not code: a game's document uses one
+by the name its `<meta name="component">` declares, and a game's own
+component is a document of the same form (§5). Game code reaches the UI
+through `@origingame/engine` only. Private source-path imports, unsafe
+casts that evade the API, and game-side Rust are not extension points.
 
-`registerUiExtension` returns a shallow-frozen typed namespace. Games
-explicitly import its entry. Registration does not mutate `og.ui`, install
-a host binding, or execute discovered manifests. Hot reload can return a
-fresh namespace; callers retain the namespace they imported.
-
-Every kit declares its input and output types, semantic parts, state
-combinations, documents, and interactions before implementation. Types
-describe caller data and returned intents. An intent names the affected
-item or command by stable ID, not by a transient row index. The game
-decides whether that intent is legal and applies its effects.
+Every component group declares its members' input and output types,
+semantic parts, state combinations, documents, and interactions before
+implementation. Types describe caller data and returned intents. An
+intent names the affected item or command by stable ID, not by a
+transient row index. The game decides whether that intent is legal and
+applies its effects.
 
 UI state lives in the scope's sources and core interaction state (§2.1),
 not module globals.
@@ -1235,7 +1235,7 @@ state needed to resume an interaction.
 
 Core owns buttons, fields, toggles, tabs, sliders, menus, selection,
 drag-and-drop mechanisms, scrolling, focus, and keyboard or gamepad
-navigation. Kits compose these controls rather than draw substitutes.
+navigation. Components compose these controls rather than draw substitutes.
 Generic meters, counters, timers, slots, lists, grids, tables, charts,
 tooltips, cards, rewards, confirmations, and node graphs stay in core.
 Domain names do not justify duplicate controls.
@@ -1854,7 +1854,7 @@ Core structured text and the template binding
 Both-host execution verification of this binding remains pending.
 Regression coverage includes overlapping styles and motion, literal
 brackets and escaped text, speaker prefixes, Unicode offsets, wrapping,
-active-style changes, and reduced motion. Kits use this core text path,
+active-style changes, and reduced motion. Components use this core text path,
 not a private renderer.
 
 ### 2.3 Text input types
@@ -2140,8 +2140,8 @@ update must announce the same as the incremental update.
 
 ### 2.4 Select, dialog, details and meter
 
-These four are core controls with HTML's elements and attributes; kits
-dress them and never draw substitutes.
+These four are core controls with HTML's elements and attributes;
+components and packs dress them and never draw substitutes.
 
 `<select bind:value={$x}>` lists literal `<option>`s, one level of
 `<optgroup label>` around them. An option without `value` is valued by its
@@ -2244,15 +2244,17 @@ upgrade with no region.
 
 ### 3.1 Tokens and literal values
 
-Kit TypeScript and screen documents take visual values from semantic
-tokens or named parts. This covers colour, typography, spacing, radius,
-stroke, shadow, feedback, and motion. Games that customize these values
-define them in their style rather than scatter them through widgets.
+Built-in components, screen documents and a style pack's part rules take
+visual values from semantic tokens or named parts. This covers colour,
+typography, spacing, size, radius, stroke, shadow, feedback, and motion.
+Games that customize these values define them in their style rather than
+scatter them through widgets.
 
 Literal values belong in these places:
 
-- Core default definitions and pack-owned token, typography, motion, and
-  dressing definitions, where the visual language acquires actual values.
+- Core default definitions (`packages/design/tokens.json`) and a style
+  pack's `:root` token rules, where the visual language acquires actual
+  values, art URLs included.
 - Art metadata, including atlas coordinates, slice insets, resource
   dimensions, and import settings.
 - Fixture data, including health, elapsed time, scores, and item counts.
@@ -2261,12 +2263,19 @@ Literal values belong in these places:
   of these values; structural labels cannot disguise visual tuning.
 
 Hex colours, literal font paths, arbitrary pixel spacing, and hard-coded
-animation durations do not belong in kit composition. `u(17)`, `ts(15)`,
-token values multiplied by arbitrary constants, and radius clamps with
-literal minima do not become semantic tokens by passing through helpers.
-Adding a token for every arbitrary number does not meet this contract.
-If the public API cannot express a needed semantic value, the core owner
-fixes that API before the kit depends on it.
+animation durations do not belong in a component's or screen's `<style>`.
+`u(17)`, `ts(15)`, token values multiplied by arbitrary constants, and
+radius clamps with literal minima do not become semantic tokens by
+passing through helpers. Adding a token for every arbitrary number does
+not meet this contract. If the public API cannot express a needed
+semantic value, the core owner fixes that API before a component depends
+on it.
+
+A style pack sets its literal values and art URLs only in its `:root`
+rules (`:root[data-scheme=light]` among them), as tokens; its `::part`
+and other rules read them with `var()`. `og style check` fails a pack
+when a declaration outside a `:root` rule uses a literal colour, a length
+other than 0, a duration or a `url()`.
 
 The default stylesheet (`crates/og-ui-core/default.css`, generated from
 `packages/design/tokens.json`) sets every value the core controls and
@@ -2414,7 +2423,7 @@ overriding `--a` in a child does not recompute inherited `--b: var(--a)`.
 Cycles invalidate participating properties and report their names. An
 invalid winning declaration does not revive a lower-priority declaration.
 Unshadowed engine tokens resolve against the active style, and `::part`
-declarations use the same cascade. These rules do not relax the kit's
+declarations use the same cascade. These rules do not relax the
 token-only rule (§3.1).
 
 Data reaches the cascade through bound custom properties, Svelte's
@@ -2605,18 +2614,26 @@ its own variant and states: `<button part="Loadout.item">` is
 `Loadout::item.secondary:hover` under the pointer, and its label's ink reads
 against that dressing.
 
-Core parts keep their existing names and meanings. Each kit documents its
-additional parts with its own API, so packs can dress them without private
-imports. A missing custom dressing uses the readable core token fallback.
-It is not permission to leave a required state unfinished.
+Core parts keep their existing names and meanings. Each built-in
+component lists its parts in its `<meta name="parts">`
+(`RpgBackpack.frame RpgBackpack.band RpgBackpack.cell`…) and its group's
+README documents them, so packs can dress them without private imports.
+A missing custom dressing uses the readable core token fallback. It is
+not permission to leave a required state unfinished.
 
-A kit names every frame it draws as a part (`<column part="Inventory.frame">`)
-and gives it only a token background as the fallback. A kit's own background,
-border image or border on the element outranks the pack's dressing of
-that part, so a kit that paints its own frame leaves the pack nothing to
-dress. Rarity, selection and other states a pack dresses reach the part as
-qualifiers or classes, such as `part={"Slot.frame[rarity=" + item.rarity + "]"}`
-or `class:selected`; the kit does not draw its own band or rim for them.
+A component names every frame, band, title, row and cell it draws as a
+part (`<column part="RpgBackpack.frame">`), and its structure rules select
+the part (`[part="RpgBackpack.frame"]`); classes stay for inner structure
+and `data-*` attributes for state. Its `<style>` holds structure only
+(layout, sizes and spacing from tokens) and gives a frame at most a token
+background as the fallback. A component's own background, border image
+or border on the element outranks the pack's dressing of that part, so a
+component that paints its own frame leaves the pack nothing to dress.
+Rarity, selection and other states a pack dresses reach the part as
+qualifiers, classes or `data-*` attributes, such as
+`part={"Slot.frame[rarity=" + item.rarity + "]"}`, `class:selected` or
+`RpgBackpack::cell[data-rarity=epic]`; the component does not draw its own
+band or rim for them.
 
 Missing art uses a small mark fitted to the slot's shorter side and capped
 at 32 UI units, centred in a quiet token-defined well. It does not stretch
@@ -2657,7 +2674,7 @@ elements that read the feature when the setting changes.
 
 Button glyphs and input prompts follow the active device and switch live:
 keyboard and mouse, Xbox, PlayStation, Switch, generic gamepad, and touch.
-Core input glyphs and UI action prompts own this behaviour; kits do not
+Core input glyphs and UI action prompts own this behaviour; components do not
 hard-code button letters or assume that every gamepad uses Xbox labels.
 Actions declare `actionMap`, and `og.input.setActionMaps` selects the active
 maps. `isActionPressed` reads held state; `isActionJustPressed` and
@@ -2667,7 +2684,7 @@ threshold semantics, and physical controls retain their W3C codes.
 Selection uses `selection` and `onSelection`; the main action uses
 `primary` and `onPrimary`; small emphasis uses `accent`. HUD content over
 the scene uses `sceneInk`, `scenePlate`, and `sceneShadow`, with the public
-`onScene` treatment. Kits do not choose their own scene-separation colours.
+`onScene` treatment. Components do not choose their own scene-separation colours.
 
 Drawing orders ground and fills, rim, content and selection, hollow focus,
 then children and raised badges. Focus does not erase art with an opaque
@@ -2685,12 +2702,12 @@ and respect player settings.
 
 ### 3.3 Assets and generation
 
-Each pack dresses the core control set and the kit parts its acceptance
-samples require. Art, icons, fonts, import settings, and licences travel
-with their owning pack or the shared resource directory. Placeholder
-characters are not finished icons. Shared resources and CJK fonts are not
-genre kits or style choices. Core font fixtures must not depend on the
-survival of a commercial style pack.
+Each pack dresses the core control set and the component parts its
+acceptance samples require. Art, icons, fonts, import settings, and
+licences travel with their owning pack or the shared resource directory.
+Placeholder characters are not finished icons. Shared resources and CJK
+fonts are not components or style choices. Core font fixtures must not
+depend on the survival of a commercial style pack.
 
 `og style new <name> [--look <preset>] [--scheme dark|light] [--finish
 <treatment>] [--out DIR]` writes a CSS directory, normally under
@@ -2701,17 +2718,19 @@ treatments are flat, gradient, glass, hologram, neon, paper, bevel and brush.
 `--scheme` chooses the fallback root palette; an explicit `data-scheme`
 still selects the corresponding runtime palette.
 
-`og style check <directory> [--json]` checks CSS and asset URLs and reports
-root-token contrast ratios as facts. Ratios do not describe text over an
-image or gradient. The separate `og style check-project` retains the
-game's art-contract checker. `og style upgrade`, `art` and `pack` are
+`og style check <directory> [--json]` checks CSS and asset URLs, fails a
+literal outside the `:root` rules (§3.1), and reports root-token contrast
+ratios as facts. Ratios do not describe text over an image or gradient.
+The separate `og style check-project` retains the game's art-contract
+checker. `og style upgrade`, `art` and `pack` are
 removed: CSS uses images directly without style-file or atlas conversion.
 
-`og ui sheet <directory>` renders the core-control pages at desktopHd and
-phonePortrait with 100% and 150% text, capturing overlapping scroll pages
-to the bottom. `og ui review <directory> --locales
+`og ui sheet <directory>` renders a pack's core-control pages at desktopHd
+and phonePortrait with 100% and 150% text, capturing overlapping scroll
+pages to the bottom. `og ui review <directory> --locales
 game,pseudo,zh,ar` adds locale coverage. Both accept `--out DIR` and
-`--json`. Review the frames before recording references. The
+`--json`, and both take a component group's sheet as well (§6). Review
+the frames before recording references. The
 [screens guide](../crates/og-api/guides/screens.md#3-style-packs) shows
 directory loading, selectors, tokens and asset URLs.
 
@@ -2790,30 +2809,38 @@ The reference frames are `color-emoji-1280` and `color-emoji-390`.
 ## 4. Shipped catalogue
 
 Core default UI is the only creation `ui` choice during the rebuild.
-The nine genre kits and six style packs below are approved scope, not
-available packages. None is released before its acceptance is complete.
+Every component and screen document under `packages/engine/src/ui/` is
+built into the engine (§5): the generic components and screens, and the
+component groups below, each a directory of
+`packages/engine/src/ui/components/`. The six style packs below are
+approved scope; none is released before its acceptance is complete.
 `materials` remains available as an optional resource pack for UI shader
-finishes; it is neither a genre kit nor a seventh style. VFX and unrelated
-extensions are outside this rebuild.
+finishes; it is neither a component group nor a seventh style. VFX and
+unrelated extensions are outside this rebuild.
 
-| Genre kit | Required presentation | Status |
+| Component group | Required presentation | Status |
 | --- | --- | --- |
-| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Built, art-approved (pilot) |
+| `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Built; art-approved before, now dressed through its parts, re-review pending |
 | `shooter` | Aim, ammunition, damage-direction HUD, killfeed, loadout | Built (pilot), not yet accepted |
-| `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection | Not yet built |
-| `racing` | Telemetry, laps and standings, race banner, garage selection, results document | Not yet built |
-| `card` | Hand and piles, collection and deck building, reward-choice and run-map documents | Not yet built |
-| `puzzle` | Level path, goals and moves, level summary | Not yet built |
-| `idle` | Production and purchase rows, prestige preview, offline-summary document | Not yet built |
-| `rhythm` | Song and difficulty selection, judgement presentation, results breakdown | Not yet built |
-| `arena` | Roster and character selection, draft, versus, team scoreboard, round HUD, lobby document | Not yet built |
+| `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection | Planned |
+| `racing` | Telemetry, laps and standings, race banner, garage selection, results screen | Planned |
+| `card` | Hand and piles, collection and deck building, reward-choice and run-map screens | Planned |
+| `puzzle` | Level path, goals and moves, level summary | Planned |
+| `idle` | Production and purchase rows, prestige preview, offline-summary screen | Planned |
+| `rhythm` | Song and difficulty selection, judgement presentation, results breakdown | Planned |
+| `arena` | Roster and character selection, draft, versus, team scoreboard, round HUD, lobby screen | Planned |
+| `general` | Shop, achievements, daily quests and rewards, chat, friends | Planned |
 
-Member signatures belong in each kit's API and the
-[kits guide](../crates/og-api/guides/kits.md), not this catalogue.
+Each group is built token- and part-only (§3.1, §3.2), with state
+fixtures (§6.1) and a review sheet (§6.2). Member inputs, intents and
+parts are documented in each group's README
+(`packages/engine/src/ui/components/<group>/README.md`) and the
+document's own `<meta>` header, not this catalogue.
 Arena owns team and match scores; shooter does not duplicate them.
 RPG also serves open-world games. Action-platformer and runner use core,
-with RPG or puzzle compositions when needed. Kits never calculate damage,
-production, purchases, rewards, legal card targets, or note timing.
+with RPG or puzzle compositions when needed. Components never calculate
+damage, production, purchases, rewards, legal card targets, or note
+timing.
 
 | Style pack | Visual language | Commercial review references | Status |
 | --- | --- | --- | --- |
@@ -2839,36 +2866,67 @@ creation block records the initial constraint, not the current asset path.
 
 ## 5. Package lifecycle
 
-Official kits live in `packages/engine/extensions/<name>`; official styles
-live in `templates/styles/<name>` and ship under `styles/<name>`.
-`extension.json` describes each package. Discovery reads manifests and
-document headers, not a hard-coded runtime name registry. A style has no
-executable entry; document-only kits need no TypeScript entry.
+Built-in documents live in the engine package: components in
+`packages/engine/src/ui/components/` (a group's in `<group>/`), screens
+in `packages/engine/src/ui/screens/`. Their ids are under the reserved
+`@ui/` root: `@ui/components/<path>` and `@ui/screens/<file>`.
 
-`og ui add` copies a kit to `assets/ui-kits/<name>`, except its review
-`sheet/` and its `tests/`, which stay with the kit so no game cooks the
-sheet's sample art; `og style add` copies a style to `assets/styles/<name>`. A kit that composes library component
-documents names them in its manifest's `components` (`["stat-bar"]`), and
-`og ui add` ejects each the game does not already have into `assets/ui/`. Installed copies win over bundled copies
-of the same kind and name. Discovery never evaluates kit code. Games
-import the chosen TypeScript entry explicitly. Installation preserves
-relative paths and licences and does not silently replace existing edits.
+- A game's document uses a built-in component by the name its
+  `<meta name="component">` declares (`<RpgBackpack items={$items} />`),
+  with no copy and no load of its own. The cook resolves every name a
+  game's documents use and no game component declares, transitively, and
+  bundles those documents with their string tables and the files they
+  name; two built-in components of one name fail the cook. Each cooked
+  document records the documents defining the components it uses, and
+  `og.load.document` loads them with it, once each.
+- A game shows a built-in screen by loading its id and pushing its name:
+  `og.load.document(world, "@ui/screens/pause.svelte")`, then
+  `og.ui.push(world, "pause", vm)`. The cook bundles each built-in screen
+  whose id the game's code names as a string literal, with its strings
+  and the components it uses. `og ui types` types the built-in screens
+  and components the game uses.
+- A game document of the same name wins over the built-in one. `og ui
+  eject <name>` (`rpg/backpack` in a group, `--list` names them all)
+  copies a built-in document and its companions into `assets/ui/` to
+  customise; the copy then replaces the built-in one wherever it is used,
+  and loading a screen's `@ui/` id loads the game's copy at
+  `ui/<file>`. Companion edits survive; `--force` replaces only the
+  requested document.
 
-`og ui eject` copies a document and its companion assets to the game's UI
-directory. Companion edits survive; force replacement applies to the
-requested document. Add, eject, list, and manifest options are documented
-in CLI help rather than duplicated here.
+A built-in document's `<style>` rules (any source under `@ui/`) land in
+the `og-components` cascade layer. Normal declarations rise through
+`og-default` (the default stylesheet), `og-components`, `og-pack` (the
+style pack) and `og-game`, then unlayered CSS, so a pack dresses every
+built-in component and a game overrides both.
+
+Official styles live in `templates/styles/<name>` and ship under
+`styles/<name>`: a directory of CSS and assets with no manifest and no
+executable entry. Resource and effect packs live in
+`packages/engine/extensions/<name>` and font packs in
+`templates/fonts/<name>`, each described by its `extension.json`.
+Discovery reads directories and manifests, not a hard-coded runtime name
+registry, and never evaluates pack code.
+
+`og style add` copies a style to `assets/styles/<name>`. `og ui add`
+installs a resource pack: `og ui add materials` copies the materials pack
+(kind `materials`) to `assets/materials/materials/`, except its review
+`sheet/`, so its presets are `materials/materials/<preset>.ogt`.
+Installed copies win over bundled copies of the same kind and name.
+Installation preserves relative paths and licences and does not silently
+replace existing edits. Add, eject, list, and manifest options are
+documented in CLI help rather than duplicated here.
 
 A look resolves an installed style before a bundled style of the same
 slug. Explicit asset paths remain valid. The cook includes referenced
 style resources and their shared dependencies, not every pack. Tests,
 reference frames, and art source files are not runtime asset payload.
 
-Public helper signatures, kit inputs and outputs, parts, and creation
-schema are contracts. Breaking changes require a minor release and a
-breaking entry with its fix in a new `changelog/unreleased/` fragment.
-The rebuild has no old-game migration or legacy aliases. Incomplete kits
-and packs can be absent on main; incomplete engine archives cannot ship.
+Public helper signatures, built-in component names, inputs, intents and
+parts, and creation schema are contracts. Breaking changes require a
+minor release and a breaking entry with its fix in a new
+`changelog/unreleased/` fragment. The rebuild has no old-game migration
+or legacy aliases. Planned component groups and packs can be absent on
+main; incomplete engine archives cannot ship.
 Release waits for the complete approved catalogue and platform schema and
 pin coordination. See [release rules](release.md).
 
@@ -2876,8 +2934,9 @@ pin coordination. See [release rules](release.md).
 
 ### 6.1 State fixtures
 
-Each kit starts with an input/output and parts inventory, its two primary
-pages, and two named commercial games as information-structure references.
+Each component group starts with an input/output and parts inventory, its
+two primary pages, and two named commercial games as information-structure
+references.
 References identify an actual page, platform, and screenshot source.
 Authors do not copy commercial assets, brands, or layouts.
 
@@ -2895,10 +2954,16 @@ for the applicable cases below. An inapplicable case needs a reason.
 | Accessibility and localization | 100% and 150% text; pseudo-locale +40%, CJK, RTL; semantic names, roles, states, focus order, and safe areas |
 | Motion | Start, midpoint, completion, interruption, and reduced motion; a short clip as well as stills |
 
-A kit's sheet loads its strings in the review's CJK and right-to-left
+A group's review sheet is a project in the engine package's
+`packages/engine/sheets/<group>/`, outside the package's shipped files.
+Its pages use the group's built-in components by name, as a game's do,
+with fixtures from its `src/fixtures.ts` and sample art under its
+`assets/`. It loads its strings in the review's CJK and right-to-left
 locales from its own `assets/strings/`, as a game does, and `og ui
 review` installs those locales' font packs into its copy of the sheet.
-A sheet without them repeats the game locale in those cells.
+A sheet without them repeats the game locale in those cells. The group's
+behaviour tests (`packages/engine/tests/<group>.test.ts`) mount its
+members the same way.
 
 Core tests use small self-contained styles for core behaviour, including
 specificity, font pixel snapping, and probe paths. Pack tests check pack
@@ -2906,11 +2971,15 @@ art and resources. Removing a pack cannot remove core regression coverage.
 
 ### 6.2 Frame matrix
 
-Each kit maintains two primary pages, one normal high-frequency page and
-one stress/state page. Behaviour tests cover every member. An extra page
-requires a named visual behaviour that those two pages cannot cover.
+Each component group's review sheet maintains two primary pages, one
+normal high-frequency page and one stress/state page. Behaviour tests
+cover every member. An extra page requires a named visual behaviour that
+those two pages cannot cover. `og ui sheet <group>` and `og ui review
+<group>` take the group's sheet (`packages/engine/sheets/<group>/`, or a
+sheet project directory); a pack's own sheet is reviewed the same way by
+its directory.
 
-| Kit | Primary pack | Contrast sample | Normal page; stress/state page |
+| Group | Primary pack | Contrast sample | Normal page; stress/state page |
 | --- | --- | --- | --- |
 | rpg | fantasy | pixel | Inventory and equipment; journal, dialogue, party, map |
 | shooter | clean | scifi | Combat HUD; loadout and killfeed |
@@ -2922,11 +2991,14 @@ requires a named visual behaviour that those two pages cannot cover.
 | rhythm | scifi | pixel | Songs and difficulty; judgement and results |
 | arena | clean | fantasy | Selection, draft, lobby; teams, scores, round results |
 
+The `general` group's pages and pairing are set when it is built; the
+counts below cover the nine groups above.
+
 Each sampled pair retains four frames: normal desktop at 100%, normal
 phone at 100%, stress desktop at 150%, and stress phone at 150%.
 Desktop is 1920×1080; phone portrait is 390×844. Landscape-heavy content
 also has a genuine landscape fixture, not a rotated portrait capture.
-Nine kits × two packs × four frames yields 72 primary references.
+Nine groups × two packs × four frames yields 72 primary references.
 
 `og ui sheet` retains its four cells per page, desktop and phone at both
 text scales. Two pages therefore produce eight review captures per pair;
@@ -2939,7 +3011,7 @@ whole control set, with desktop and phone references. These 12 references
 make 84 baseline frames in total. Large text and localization still need
 review on each pack. Additional references name the regression they guard.
 
-All 54 kit/pack combinations run nonvisual loading, parsing, resource
+All 54 group/pack combinations run nonvisual loading, parsing, resource
 resolution, and runnability checks. Eighteen sampled pairs are not visual
 coverage of all combinations. A game's actual combination needs review.
 
@@ -2964,7 +3036,7 @@ author's call; there is no style property that hides one (the removed
 automatic aesthetic failures. Author thresholds remain in the screens
 and art-review guides, not in a second table here.
 
-The author reviews the core sheet, both kit sample pages, phone and large
+The author reviews the core sheet, both group sample pages, phone and large
 text, empty and overflow states, and bright and dark HUD backgrounds.
 Motion review includes interruption and cancellation. Commercial page
 references must have comparable information density, not just a logo or
@@ -2972,16 +3044,17 @@ promotional image. Review compares hierarchy, numeric readability, focus,
 selection, reachability, feedback, and consistency across components.
 
 The designated art reviewer is a separate review stream assigned by the
-coordinator. It signs off the actual frames and clips before a new kit or
-pack lands through `scripts/land.sh`. A rejection names the
-problem and screenshot region; the author fixes and recaptures it. A
-palette swap, decorative background, or desktop-only success is not
-acceptance. Core-default kit captures prove behaviour, not final art.
+coordinator. It signs off the actual frames and clips before a new
+component group or pack lands through `scripts/land.sh`. A rejection
+names the problem and screenshot region; the author fixes and recaptures
+it. A palette swap, decorative
+background, or desktop-only success is not acceptance. Core-default
+captures of a group prove behaviour, not final art.
 
-The first accepted group is clean and fantasy with RPG and shooter.
+The first accepted set is clean and fantasy with RPG and shooter.
 Acceptance covers each available pairing; matrix samples that depend on
 unbuilt packs remain explicitly pending. The remaining catalogue follows
-only after that group proves the complete author-to-review process.
+only after that set proves the complete author-to-review process.
 Release still requires the complete matrix. Quality failures delay release
 rather than lower the scope or silently waive sign-off.
 
@@ -3025,11 +3098,18 @@ states, what is moving, what plays and whether it is leaving.
 ## 7. Maintenance boundaries
 
 The integration owner owns shared schema, labels, looks, creation,
-packaging, this contract, and guides. Kit and pack authors own their
-package directories and acceptance fixtures. Shared API changes go through
-the integration owner before consumers adopt them.
+packaging, this contract, and guides. Component group and pack authors own
+their group or package directories, review sheets and acceptance
+fixtures. Shared API changes go through the integration owner before
+consumers adopt them.
 
-Pack tests and references live outside runtime pack roots under
+Built-in components are core: a group's documents, string tables and
+README live in `packages/engine/src/ui/components/<group>/`, its review
+sheet in `packages/engine/sheets/<group>/` (with its sheet references),
+its behaviour tests in `packages/engine/tests/<group>.test.ts`, and each
+document's cooked frames in og-tests-ui's
+`references/vulkan/doc-components-<group>-<document>.png`. Pack tests and
+references live outside runtime pack roots under
 `templates/styles/tests/<pack>` and `templates/styles/references/<pack>`.
 Core fixtures live with core tests. Reference changes identify the affected
 frames and their reason; reference recording alone is not art approval.
@@ -3042,11 +3122,10 @@ the default appearance on game-authored styles.
 
 Missing core capabilities are tracked in [the roadmap](roadmap.md).
 Variable-height virtualization and localized number/date formatting
-needed by kits are core prerequisites,
-not invitations to private kit workarounds. Per-frame UI cost and its
-performance tests are independent measured work; this document claims no
+needed by components are core prerequisites, not invitations to private
+workarounds in a component. Per-frame UI cost and its performance tests are independent measured work; this document claims no
 unmeasured performance budget has passed. Author knowledge belongs in guides, not shipped
-skills. No kit silently implements those missing facilities itself.
+skills. No component silently implements those missing facilities itself.
 
 og-ui is crates along its stages. `og-ui-model` holds the geometry and the codec primitives, `og-rive` the Rive artboards and their player, `og-reactive` the bindings and the reactive session. `og-ui-core` holds the immediate-mode toolkit: the stages and their state, input, layout, the CSS cascade (the style stage, which styles immediate widgets too), motion, paint and draw, the document model and the documents' state. `og-ui` holds the documents: the Svelte parse and writeback, the build and mount, the SVG element build, layers, style packs and the probe. Core calls them through `doc::build::Documents`, and they add their methods to core's types through the extension traits in `og_ui::prelude`. They read and write the stages' state through each stage's accessors, never its fields. Their own state (`DocState`: the build cursor, the tick's outputs, the mounts' memory and the reactive session) is theirs; core holds it behind `doc::build::DocumentState` and reaches it only through that trait's operations, and a UI that has built no document holds core's `NoDocuments`, with what a snapshot carries (`DocMemory`). `og-ui` re-exports core under its existing paths, so code names `og_ui::...` as before.
 
@@ -3055,9 +3134,9 @@ The [gate rules](ci.md) own test lanes, locks, and toolchain policy.
 follow [release rules](release.md), with separate release authorization.
 
 **The CSS dialect is the §8 inventory at its pinned version, and it is closed.**
-og-ui implements game-UI CSS, not a browser: a row is in scope when a kit,
-a style pack or a guide needs it, and work goes to proving the rows in use
-before adding rows. A feature outside the pinned inventory, or a row the
+og-ui implements game-UI CSS, not a browser: a row is in scope when a
+component, a style pack or a guide needs it, and work goes to proving the
+rows in use before adding rows. A feature outside the pinned inventory, or a row the
 owner marks out of scope, is refused by the parser with its name, never
 half-rendered. Moving the pin to a newer web-features version is a decision
 of its own, not a side effect of a feature.

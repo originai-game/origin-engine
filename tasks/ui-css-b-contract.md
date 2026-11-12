@@ -16,12 +16,13 @@ path, including `/@styles/shared/` and `/@styles/cjk/`.
 ## Cascade order
 
 Normal declarations increase in priority as follows:
-`og-default < og-kit < og-pack < og-game < unlayered`.
+`og-default < og-components < og-pack < og-game < unlayered`.
 CSS important declarations reverse layer priority. Sublayers stay below their
 parent's normal declarations, even when sheets merge after parsing.
 
 `crates/og-ui-core/default.css` declares `og-default`. A document whose asset ID
-starts with `ui-kits/` places its `<style>` blocks and imports in `og-kit`.
+starts with `@ui/` (a built-in component or screen) places its `<style>`
+blocks and imports in `og-components`.
 The pack loader wraps its imports in `og-pack`. Game styles can declare
 `og-game`; unlayered game styles retain standard CSS precedence.
 
