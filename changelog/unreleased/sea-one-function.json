@@ -1,0 +1,13 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    {
+      "member": "physics.waterHeight",
+      "summary": "The sea is one function of place and time: og.physics.waterHeight and og.Buoyancy evaluate all 32 waves of a wind's sea whole at any point (no grid, no surface size, no camera), and the renderer draws the same function at the same tick. The drawn surface differs from it only by the short waves the renderer adds (under 2% of the significant height in RMS: 2 cm at 10 m/s, 14 cm at 20 m/s) and the waves its vertices cannot hold far from the eye. The sea's waves now run from 1.6 times the peak's length down to 1/32 of it at the spectrum's own heights, so a body's motion on a sea differs from the version before."
+    },
+    {
+      "member": "Water.wind",
+      "summary": "A sea's look changes with its waves: the mid-length waves are no longer raised to carry the sea's slopes, which the short rendered waves carry instead. A gale reads as a long swell under small chop with fewer whitecaps; every reference frame of a sea moves."
+    }
+  ]
+}

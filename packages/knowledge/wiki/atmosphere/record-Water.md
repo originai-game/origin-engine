@@ -92,7 +92,7 @@ A wind-driven ocean on the grid.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `wind` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | tunable | The wind over an open sea, direction in xz, speed (m/s) as length: the grid rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a camera clipmap from a seeded JONSWAP spectrum; og.physics.waterHeight reads its longest waves. Within size unless endless; a mesh has none. See `render §8`. |
+| `wind` | `Vector2` | `{ x: 0, y: 0 }` | — | `mps` | tunable | The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none. See `render §8`. |
 | `swell` | `number` | `1` | 0 … 4 | `ratio` | tunable | The sea's height, as a fraction of a fully developed sea's for the wind. |
 | `choppiness` | `number` | `0.6` | 0 … 1 | `ratio` | tunable | How far the sea's crests lean and sharpen (Gerstner steepness): 0 round swell, 1 the most that never folds over. Whitecaps foam where the crests bunch, by as much. |
 | `endless` | `boolean` | `false` | — | — | — | A sea (wind) to the horizon all round the camera, wherever it goes, not only within size: its waves stay where they are in the world. false: the sea ends at the size rectangle (a bay, a lake in a gale). |
@@ -281,7 +281,7 @@ component Water {
     guide "render §8"
   }
   group "Sea" "A wind-driven ocean on the grid."
-  field wind Vector2 "The wind over an open sea, direction in xz, speed (m/s) as length: the grid rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a camera clipmap from a seeded JONSWAP spectrum; og.physics.waterHeight reads its longest waves. Within size unless endless; a mesh has none." {
+  field wind Vector2 "The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none." {
     guide "render §8"
     default 0 0
     unit mps

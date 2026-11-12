@@ -15,7 +15,7 @@
 // R5: a sea (Water::wind) is a clipmap about the camera (water.rs
 // `clipmap`), out to a horizon ring, displaced over the absolute world's xz
 // by every wave the tick floats bodies on (og_core::ocean, as Gerstner
-// waves) and the FFT's cascades where the tick leaves their band out
+// waves) and the FFT's cascades, the waves shorter than the shortest of them
 // (ocean_fft), every one faded where the cells or the pixel cannot hold it;
 // its normal and its facets' slope covariance from the cascades' slopes and
 // their moments (LEAN). Shaded and foamed as web-ocean's sea (MIT,
@@ -38,23 +38,20 @@ struct WaterUniform {
   normals: vec4<f32>,     // x: the normal map's repeats, yz: its flow (0: the lake's layers), w: 1 with a normal map
   ao: vec4<f32>,          // x: PostEffects.aoDirect, how much the screen AO darkens the reflection and the body (0: not at all), y: 1 with a flow map, z: 1 over a mesh
   layers: array<vec4<f32>, 2>,  // the lake's four layers' uv at the frame's origin, whole repeats dropped (xy, zw; origin.rs)
-  ocean: vec4<f32>,       // x: 1 with a sea, y: the tick's grid's even cell (m), z: the Jacobian under which a crest foams as it folds, w: how fast it grows
+  ocean: vec4<f32>,       // x: 1 with a sea, y: unused, z: the Jacobian under which a crest foams as it folds, w: how fast it grows
   sea_wind: vec4<f32>,    // xy: the wind's direction in the frame's xz, z: its speed (m/s; 0 without a sea), w: foamStreaks
   clip: vec4<f32>,        // the sea's clipmap: x levels, y cells along a level's edge, z the horizon ring's radius, w 1 endless
   levels: array<vec4<f32>, 10>,  // per level: its centre (frame xz), its cell (m)
   inverse: mat4x4<f32>,   // the surface's frame from the world
-  fft: vec4<f32>,         // x cascades, y the hulls in the sea, z the slope variance under the finest cascade, w Hs (m)
+  fft: vec4<f32>,         // x cascades, y unused, z the slope variance under the finest cascade, w Hs (m)
   cascades: array<vec4<f32>, 3>,  // per cascade: 1 / tile (1/m), its uv at the frame's origin, the tile (m)
-  bands: vec4<f32>,       // each cascade's band's middle wavenumber (xyz; cascade_weight)
+  bands: vec4<f32>,       // each cascade's band's middle wavenumber (xyz: what the seabed's shoaling keeps of it)
   // The persistent foam's two levels (ocean_fft/foam.rs), in the fields' layers after the cascades: per level 1 / its
   // edge (1/m), its uv at the frame's origin, its edge (m).
   foam_levels: array<vec4<f32>, 2>,
   // The foam micro-structure's uv at the frame's origin (whole repeats dropped): its lace (xy), finer lace (zw); its
   // bubbles (xy), its streaks along and across the wind (zw).
   foam_uv: array<vec4<f32>, 2>,
-  // The og.Buoyancy hulls in the sea (water.rs `hulls`, fft.y of them): per hull its centre (frame xz) and its own x
-  // axis (xz), then its half extents along its axes.
-  hulls: array<vec4<f32>, 32>,
   // Per wave of og_core::ocean: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
   // (water.rs ocean_gpu).
   swell: array<vec4<f32>, 64>,
@@ -147,10 +144,17 @@ struct WaterOut {
   @location(5) rest: vec2<f32>,
 };
 
-// How much of a wave of wavenumber k a spacing of `cell` metres holds: all of one eight cells long, none under four
-// (og_core::ocean::grid_keep).
+// How much of a wave of wavenumber k samples `cell` metres apart hold: all of one eight cells long, none under four
+// (water/sea.rs sea_keep).
 fn sea_keep(k: f32, cell: f32) -> f32 {
   return 1.0 - smoothstep(0.785, 1.571, k * cell);
+}
+
+// sea_keep of the wave of vector k (rad/m) for a pixel that moves gx and gy metres over the surface across and down
+// the screen: by the phase the wave turns across it, so the filter is the pixel's own shape (stretched tens of times
+// along the view near the horizon), not a circle about its longest side.
+fn pixel_keep(k: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> f32 {
+  return 1.0 - smoothstep(0.785, 1.571, max(abs(dot(k, gx)), abs(dot(k, gy))));
 }
 
 // The FFT cascade c's uv at rest point p (frame xz).
@@ -159,28 +163,7 @@ fn cascade_uv(c: u32, p: vec2<f32>) -> vec2<f32> {
   return p * t.x + t.yz;
 }
 
-// The tick's grid cell (m) at rest point p (frame xz): og_core::ocean::grid_cell over the surface's size about the
-// entity (og-physics' WaterBody::surface), the cell a floating body's waves are faded by. g w(g) = u solved by
-// Newton's method for each axis, as there.
-fn tick_cell(p: vec2<f32>) -> f32 {
-  let half = max(water.size.xy * 0.5, vec2<f32>(1e-3));
-  let u = clamp((p - water.model[3].xz) / half, vec2<f32>(-1.0), vec2<f32>(1.0));
-  var g = u;
-  for (var i = 0; i < 8; i++) {
-    let w = g * (0.15 + 0.85 * g * g);
-    g -= (w - u) / (0.15 + 2.55 * g * g);
-  }
-  let slope = 0.15 + 2.55 * g * g;
-  return water.ocean.y * max(slope.x, slope.y);
-}
-
-// How much of cascade c's height is drawn where the tick's cell is `tc`: none where the tick's waves cover its band,
-// all where the tick fades them (water.rs cascade_weight).
-fn cascade_weight(c: u32, tc: f32) -> f32 {
-  return 1.0 - sea_keep(water.bands[c], tc);
-}
-
-// The seabed's rows and the tick's waves for shore.wgsl (prepended).
+// The seabed's rows and the sea's waves for shore.wgsl (prepended).
 fn sea_shore(i: u32) -> vec4<f32> {
   return water.shore[i];
 }
@@ -190,85 +173,53 @@ fn sea_wave(i: u32) -> vec4<f32> {
 }
 
 // The sea's displacement (x, height, z) at rest point p (frame xz) as vertices `cell` metres apart draw it: every wave
-// of og_core::ocean as the tick floats bodies on it (faded at the tick's cell here, or the vertices' where those are
-// coarser, and shoaled by the seabed under p), then each cascade where the tick leaves its band out, read at the mip
-// whose texels are the cells and faded once its longest waves are under four cells.
+// of og_core::ocean, the function the tick floats bodies on (og.physics.waterHeight), each left out only where the
+// vertices are too far apart to hold it and shoaled by the seabed under p; then the FFT's waves, shorter than the
+// shortest of those, read at the mip whose texels are the cells.
 fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
   let sh = shoaling(p);
-  let swell = ocean_swell(p, cell, sh);
-  let d = swell + ocean_cascades(p, cell, p + swell.xz, sh);
+  let d = ocean_swell(p, cell, sh) + ocean_cascades(p, cell, sh);
   // W3: the hulls' wakes on top, where the waves carry the point.
   return d + vec3<f32>(0.0, sea_wake(p + d.xz).x, 0.0);
 }
 
-// ocean_displace's waves of og_core::ocean (the tick's) at rest point p, faded at the tick's cell where they carry p
-// to: og-physics reads that cell at the floater's own point (WaterBody::surface), and in a gale the crests lean the
-// rest point 2 to 3 m from it, where the tick's grid is some 3 % coarser or finer and the half-faded waves drew the
-// surface up to 4.6 cm off og.physics.waterHeight. The cell at p places the point to within a few centimetres, where
-// the cell is the same to a thousandth.
+// ocean_displace's waves of og_core::ocean at rest point p (Ocean::displacement).
 fn ocean_swell(p: vec2<f32>, cell: f32, sh: Shoal) -> vec3<f32> {
-  let first = ocean_swell_at(p, max(cell, tick_cell(p)), sh);
-  return ocean_swell_at(p, max(cell, tick_cell(p + first.xz)), sh);
-}
-
-fn ocean_swell_at(p: vec2<f32>, spacing: f32, sh: Shoal) -> vec3<f32> {
   var d = vec3<f32>(0.0);
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
     let k = length(a.xy);
-    let keep = sea_keep(k, spacing) * shoal_keep(k, sh);
+    let keep = sea_keep(k, cell) * shoal_keep(k, sh);
     let th = dot(a.xy, p) + a.w;
     d += vec3<f32>(b.x * cos(th), a.z * sin(th), b.y * cos(th)) * keep;
   }
   if (sh.amp > 0.0) {
-    let keep = sea_keep(water.shore[1].z, spacing);
+    let keep = sea_keep(water.shore[1].z, cell);
     d += vec3<f32>(sh.inshore.x * sh.lean * cos(sh.phase), sh.amp * sin(sh.phase),
       sh.inshore.y * sh.lean * cos(sh.phase)) * keep;
   }
   return d;
 }
 
-// How much of the FFT's chop is drawn where the surface lies over world point p (frame xz: the displaced point, not
-// the rest point; the gale's crests lean metres, which put the calm metres off the hull): none under an og.Buoyancy hull, all from HULL_CALM metres
-// beyond its footprint. The tick floats a hull on its own waves alone, so under it the drawn surface is the tick's (the
-// chop it does not ride bared a keel corner by centimetres in a trough), and a hull damps the short waves round it as
-// it displaces the water there.
-const HULL_CALM: f32 = 1.5;
-
-fn hull_calm(p: vec2<f32>) -> f32 {
-  var k = 1.0;
-  for (var i = 0u; i < u32(water.fft.y); i++) {
-    let a = water.hulls[2u * i];
-    let h = water.hulls[2u * i + 1u].xy;
-    let q = p - a.xy;
-    let u = vec2<f32>(dot(q, a.zw), dot(q, vec2<f32>(-a.w, a.z)));
-    let out = length(max(abs(u) - h, vec2<f32>(0.0)));
-    k = min(k, smoothstep(0.0, HULL_CALM, out));
-  }
-  return k;
-}
-
-// ocean_displace's FFT cascades (render only) at rest point p, calmed under the hulls: `at` is where the tick's waves
-// carry p (its displaced point, frame xz).
-fn ocean_cascades(p: vec2<f32>, cell: f32, at: vec2<f32>, sh: Shoal) -> vec3<f32> {
+// ocean_displace's FFT waves (render only) at rest point p, each cascade faded once its longest waves are under four
+// cells.
+fn ocean_cascades(p: vec2<f32>, cell: f32, sh: Shoal) -> vec3<f32> {
   var d = vec3<f32>(0.0);
-  let tc = tick_cell(at);
-  let calm = hull_calm(at);
-  if (calm <= 0.0) { return d; }
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let lod = log2(max(cell * 256.0 / water.cascades[c].w, 1.0));
-    let fade = (1.0 - smoothstep(4.0, 6.0, lod)) * cascade_weight(c, tc) * shoal_keep(water.bands[c], sh);
+    let fade = (1.0 - smoothstep(4.0, 6.0, lod)) * shoal_keep(water.bands[c], sh);
     if (fade <= 0.0) { continue; }
     d += textureSampleLevel(heights, ripple_sampler, cascade_uv(c, p), 3u * c, min(lod, 4.0)).xyz * fade;
   }
-  return d * calm;
+  return d;
 }
 
-// The sea's normal at rest point p (frame xz), each long wave faded where it is shorter than four of the pixel's
-// `footprint` (m) and the cascades filtered over the pixel; the Jacobian of its horizontal displacement (`jac`: under 1
+// The sea's normal at rest point p (frame xz), each wave faded by the phase it turns across the pixel (gx, gy: a wave
+// whose crests run along the view is held to the horizon, one across it only near; pixel_keep) and the cascades
+// filtered over the same pixel; the Jacobian of its horizontal displacement (`jac`: under 1
 // where the crests bunch, under 0 where they fold); and as `cov`, the covariance of the slopes the pixel holds
-// unresolved (xx, zz, xz): the faded long waves' ((k a)² / 2 along each one's direction), the cascades' within the pixel
+// unresolved (xx, zz, xz): the faded waves' ((k a)² / 2 along each one's direction), the cascades' within the pixel
 // (their slopes' second moments less the squared mean: LEAN mapping, Olano and Baker 2010) and the spectrum's tail finer
 // than the finest cascade. A pixel of sea is a rough mirror, not a glass one (Bruneton, Neyret and Holzschuch 2010).
 // The slopes are the displaced surface's (each divided by the stretch of its axis), as web-ocean's (`ocean.js` fs).
@@ -279,48 +230,44 @@ struct SeaNormal {
   cov: vec3<f32>,
 };
 
-// (gx, gy: how far p moves a pixel across and down the screen, metres, for the cascades' filtering.)
-// (at: the point drawn, frame xz, where the hulls calm the cascades.)
-fn ocean_normal(p: vec2<f32>, at: vec2<f32>, footprint: f32, gx: vec2<f32>, gy: vec2<f32>) -> SeaNormal {
+// (gx, gy: how far p moves a pixel across and down the screen, metres.)
+// (at: the point drawn, frame xz, where the hulls' wakes are read.)
+fn ocean_normal(p: vec2<f32>, at: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> SeaNormal {
   var s = vec2<f32>(0.0);
   var cov = vec3<f32>(water.fft.z * 0.5, water.fft.z * 0.5, 0.0);
   var j = vec3<f32>(0.0);
-  let calm = hull_calm(at);
   let sh = shoaling(p);
-  // og_core's waves as the surface carries them (faded at the tick's cell where they are drawn: ocean_swell, and shoaled
-  // by the seabed), those the pixel cannot hold left to the facets' roughness.
-  let tc = tick_cell(at);
+  // og_core's waves as the surface carries them (shoaled by the seabed), those the pixel cannot hold left to the facets'
+  // roughness.
   for (var i = 0u; i < 32u; i++) {
     let a = water.swell[2u * i];
     let b = water.swell[2u * i + 1u];
     let k = length(a.xy);
     let f = shoal_keep(k, sh);
-    let carried = sea_keep(k, tc) * f;
-    let keep = sea_keep(k, max(footprint, tc)) * f;
+    let keep = pixel_keep(a.xy, gx, gy) * f;
     let th = dot(a.xy, p) + a.w;
     s += a.xy * (a.z * cos(th) * keep);
     let sn = sin(th) * keep;
     j -= vec3<f32>(b.x * a.x, b.y * a.y, b.x * a.y) * sn;
     let ka = k * a.z;
     let d = a.xy / max(k, 1e-6);
-    cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (ka * ka * 0.5 * max(carried * carried - keep * keep, 0.0));
+    cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (ka * ka * 0.5 * max(f * f - keep * keep, 0.0));
   }
   if (sh.amp > 0.0) {
     // The shore trains: crests along the distance's lines, travelling inshore (their wave vector k · inshore).
     let k = water.shore[1].z;
     let kv = sh.inshore * k;
-    let carried = sea_keep(k, tc);
-    let keep = sea_keep(k, max(footprint, tc));
+    let keep = pixel_keep(kv, gx, gy);
     s += kv * (sh.amp * cos(sh.phase) * keep);
     j -= vec3<f32>(sh.inshore.x * kv.x, sh.inshore.y * kv.y, sh.inshore.x * kv.y) * (sh.lean * sin(sh.phase) * keep);
     let ka = k * sh.amp;
     let d = sh.inshore;
-    cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (ka * ka * 0.5 * max(carried * carried - keep * keep, 0.0));
+    cov += vec3<f32>(d.x * d.x, d.y * d.y, d.x * d.y) * (ka * ka * 0.5 * max(1.0 - keep * keep, 0.0));
   }
   for (var c = 0u; c < u32(water.fft.x); c++) {
     let uv = cascade_uv(c, p);
     let k = water.cascades[c].x;
-    let w = cascade_weight(c, tc) * calm * shoal_keep(water.bands[c], sh);
+    let w = shoal_keep(water.bands[c], sh);
     let first = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 1u, gx * k, gy * k);
     let second = textureSampleGrad(heights, ripple_sampler, uv, 3u * c + 2u, gx * k, gy * k);
     s += first.xy * w;
@@ -638,9 +585,11 @@ fn sea_vertex(vi: u32) -> SeaVertex {
 }
 
 // The drawn sea's height probe (water.rs `WaterRenderer::probe_sea`, Renderer::sea_heights): per point (frame xz),
-// the height the clipmap's vertices draw there, the rest point found by undoing the crests' lean as the tick does, at
-// the spacing sea_vertex reads its level's vertices at (its cell, growing to twice at its edge): (the height, the tick's
-// waves' share, the cascades' share, the hulls' wakes' share).
+// the height the clipmap's vertices draw there (the rest point found by undoing the whole surface's lean, at the
+// spacing sea_vertex reads its level's vertices at: its cell, growing to twice at its edge); the height of the sea's
+// own function there as the GPU evaluates it (every wave of og_core::ocean, its rest point found as the tick finds it:
+// Ocean::height on the GPU); what the drawn surface differs from that by (the cascades, the waves the vertices'
+// spacing leaves out, and the cascades' lean moving the rest point); and the hulls' wakes' share.
 @group(2) @binding(0) var<storage, read> probe_in: array<vec2<f32>>;
 @group(2) @binding(1) var<storage, read_write> probe_out: array<vec4<f32>>;
 
@@ -665,11 +614,14 @@ fn probe_sea(@builtin(global_invocation_id) id: vec3<u32>) {
   }
   let cell = probe_spacing(rest);
   let sh = shoaling(rest);
-  let swell3 = ocean_swell(rest, cell, sh);
-  let swell = swell3.y;
-  let cascades = ocean_cascades(rest, cell, rest + swell3.xz, sh).y;
+  let drawn = ocean_swell(rest, cell, sh).y + ocean_cascades(rest, cell, sh).y;
+  var own = goal;
+  for (var i = 0; i < 8; i++) {
+    own = goal - ocean_swell(own, 0.0, shoaling(own)).xz;
+  }
+  let swell = ocean_swell(own, 0.0, shoaling(own)).y;
   let wake = sea_wake(goal).x;
-  probe_out[id.x] = vec4<f32>(water.model[3].y + swell + cascades + wake, swell, cascades, wake);
+  probe_out[id.x] = vec4<f32>(water.model[3].y + drawn + wake, swell, drawn - swell, wake);
 }
 
 // The height field's texels at local point (x, z) of the surface, bilinear: r the height; with ripples
@@ -1151,7 +1103,7 @@ if (is_sea()) {
       gy = dpdyFine(in.rest);
       footprint = max(length(gx), length(gy));
     }
-    let sea = ocean_normal(in.rest, in.world.xz, footprint, gx, gy);
+    let sea = ocean_normal(in.rest, in.world.xz, gx, gy);
     base = sea.n;
     // web-ocean: the slopes' change across the pixel widens the lobe (specular anti-aliasing).
     let dsx = dpdxFine(sea.slope);
@@ -1665,7 +1617,8 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     let fw = textureSampleLevel(heights, ripple_sampler, rest * lv.x + lv.yz, first + pop, 0.0);
     // (At the fine level's texel, for either population: the coarse level's 2 m smoothed every gale crest's fold
     // away, and its spume never found a crest to leave.)
-    let jac = ocean_normal(rest, rest, water.foam_levels[0].w / 256.0, vec2<f32>(0.0), vec2<f32>(0.0)).jac;
+    let texel = water.foam_levels[0].w / 256.0;
+    let jac = ocean_normal(rest, rest, vec2<f32>(texel, 0.0), vec2<f32>(0.0, texel)).jac;
     // The spume is torn off every steep crest in a full gale, breaking or not (Beaufort 9 and past: dense streaks of
     // spume blown off the crests): its test takes crests within a third of folding as the wind rises past 17 m/s.
     let torn = select(0.0, 0.35 * smoothstep(17.0, 25.0, wind), pop == 1u);

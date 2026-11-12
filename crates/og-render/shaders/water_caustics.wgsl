@@ -8,17 +8,17 @@
 // irradiance 1 / |det(I + d c H)|. The Hessian does not depend on the depth, so one grid serves every receiver; the
 // shading evaluates the determinant at the receiver's own depth.
 //
-// The Hessian is the cascades' slopes differenced (their mips chosen so a texel of the grid holds them), weighted as
-// water.wgsl ocean_cascades weights them where the tick's waves leave their band out.
+// The Hessian is the drawn sea's slopes differenced: og_core::ocean's waves (those a texel of the grid holds) and the
+// cascades' shorter waves (their mips chosen so a texel holds them).
 
 struct CausticParams {
   // xy the grid's texel (0, 0) centre in the frame's xz, z its texel (m), w its texels along an edge.
   grid: vec4<f32>,
-  // x the cascades, y the tick's grid's even cell (m), zw unused.
+  // x the cascades, yzw unused.
   sea: vec4<f32>,
   // As water.wgsl's WaterUniform.
   cascades: array<vec4<f32>, 3>,
-  bands: vec4<f32>,
+  swell: array<vec4<f32>, 64>,
 };
 
 @group(0) @binding(0) var<uniform> cp: CausticParams;
@@ -38,16 +38,19 @@ fn sea_keep(k: f32, cell: f32) -> f32 {
   return 1.0 - smoothstep(0.785, 1.571, k * cell);
 }
 
-// The cascades' slope (∂h/∂x, ∂h/∂z) at frame point p, each read at the mip that holds the grid's texel.
+// The sea's slope (∂h/∂x, ∂h/∂z) at frame point p: its waves the grid's texel holds, and each cascade read at the mip
+// that holds the texel.
 fn slope_at(p: vec2<f32>) -> vec2<f32> {
   var s = vec2<f32>(0.0);
   let ts = cp.grid.z;
+  for (var i = 0u; i < 32u; i++) {
+    let a = cp.swell[2u * i];
+    s += a.xy * (a.z * cos(dot(a.xy, p) + a.w) * sea_keep(length(a.xy), ts));
+  }
   for (var c = 0u; c < u32(cp.sea.x); c++) {
     let t = cp.cascades[c];
-    let w = 1.0 - sea_keep(cp.bands[c], cp.sea.y);
-    if (w <= 0.0) { continue; }
     let lod = log2(max(ts / (t.w / 256.0), 1.0));
-    s += textureSampleLevel(fields, lin, p * t.x + t.yz, 3u * c + 1u, lod).xy * w;
+    s += textureSampleLevel(fields, lin, p * t.x + t.yz, 3u * c + 1u, lod).xy;
   }
   return s;
 }

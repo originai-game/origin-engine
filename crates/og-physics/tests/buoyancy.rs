@@ -30,7 +30,6 @@ fn lake() -> WaterBody {
         entity: 1 << 40,
         position: Vec3::ZERO,
         size: Vec2::splat(200.0),
-        segments: 64,
         sea: None,
         zero: DVec3::ZERO,
         shore: None,
@@ -46,7 +45,6 @@ fn sea(zero: DVec3) -> WaterBody {
         position: -zero.as_vec3(),
         sea: Ocean::new(Vec2::new(7.0, -18.7), 1.0, 1.0),
         size: Vec2::splat(6000.0),
-        segments: 256,
         zero,
         ..lake()
     }

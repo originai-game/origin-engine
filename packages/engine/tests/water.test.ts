@@ -97,7 +97,10 @@ function waters(world: World): void {
   world.insert(sea, og.Water, { size: { x: 6000, y: 6000 }, segments: 256, wind: { x: 7, y: -18.7 }, choppiness: 1 });
   const pond = must(world.spawn({ name: "pond", position: { x: 4000, y: 1, z: 0 } }));
   world.insert(pond, og.Water, { size: { x: 20, y: 20 } });
-  body(world, "hull", { x: 0, y: -4, z: -30 }, { x: 2, y: 0.8, z: 5 }, 0.5);
+  // The hull starts at its resting draft (a quarter of its 1.6 m under) on
+  // the sea where it is, not dropped onto it.
+  const level = must(og.physics.waterHeight(world, sea, 0, -30));
+  body(world, "hull", { x: 0, y: level + 0.4, z: -30 }, { x: 2, y: 0.8, z: 5 }, 0.5);
   body(world, "crate", { x: 4000, y: 2, z: 0 }, { x: 2, y: 0.5, z: 2 }, 0.6);
 }
 

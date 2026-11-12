@@ -501,10 +501,6 @@ impl WaterRenderer {
             };
             let (mut ocean, swell) = ocean_gpu(water, seconds, origin);
             let drawn_sea = sea.filter(|_| ocean[0] > 0.0);
-            let (hull_count, hull_rows) = match drawn_sea {
-                Some(_) => hulls(water, camera.position),
-                None => (0, [[0.0; 4]; 2 * MAX_HULLS]),
-            };
             if let Some(f) = drawn_sea {
                 ocean[2] = f.foam.fresh;
             }
@@ -580,13 +576,12 @@ impl WaterRenderer {
                 fft: match drawn_sea {
                     Some(f) => [
                         f.tiles.iter().filter(|t| **t > 0.0).count() as f32,
-                        hull_count as f32,
+                        0.0,
                         f.tail,
                         self::ocean(water).map_or(0.0, |o| o.significant_height()),
                     ],
                     None => [0.0; 4],
                 },
-                hulls: hull_rows,
                 bands: drawn_sea.map_or([0.0; 4], |f| f.bands),
                 cascades: cascade_uv(drawn_sea, origin),
                 foam_levels: match drawn_sea {
@@ -842,8 +837,7 @@ impl WaterRenderer {
         use crate::ocean_fft::FftOcean;
         let (water, sea) = waters.iter().find_map(|w| Some((w, ocean(w)?)))?;
         let centre = water.transform.w_axis;
-        let finest = tick_cell(water, Vec2::new(centre.x, centre.z));
-        let key = (water.wind, water.swell, water.choppiness, cascades, finest);
+        let key = (water.wind, water.swell, water.choppiness, cascades);
         if self.fft.as_ref().is_none_or(|(_, f)| f.key != key) {
             let mut fft = match self.fft.take() {
                 Some((f, ..)) if f.cascades() == cascades => f,
@@ -874,8 +868,6 @@ impl WaterRenderer {
             label: Some("ocean fft"),
         });
         let foam_sea = crate::ocean_fft::foam::FoamSea {
-            tick: [centre.x, centre.z, tick_even_cell(water), 0.0],
-            half: [water.size.x * 0.5, water.size.y * 0.5, 0.0, 0.0],
             cascades: cascade_uv(Some(info), origin),
             bands: info.bands,
             wind: water.wind,
@@ -924,9 +916,9 @@ impl WaterRenderer {
                 .get_or_insert_with(|| CausticsPass::new(device));
             let params = CausticsGpu {
                 grid: self::caustic_grid(camera.position, origin),
-                sea: [fft.cascades() as f32, tick_even_cell(water), 0.0, 0.0],
+                sea: [fft.cascades() as f32, 0.0, 0.0, 0.0],
                 cascades: cascade_uv(Some(info), origin),
-                bands: info.bands,
+                swell: ocean_gpu(water, seconds, origin).1,
             };
             pass.encode(
                 device,

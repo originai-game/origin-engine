@@ -4,8 +4,7 @@
 //
 // Ported from Noniv/web-ocean's js/wgsl/sim.js (FOAM_TEX, FOAM_UPDATE) and common.js (pcgHash, gnoise, pnoise, pfbm)
 // (MIT, Copyright (c) 2026 Maksymilian Dendura; third_party/ocean/). Changed here: the Jacobian is the drawn surface's,
-// the tick's Gerstner waves (og_core::ocean, faded at the tick's grid cell, water.wgsl ocean_displace) with the
-// cascades weighted where the tick leaves their band out; 256 texels a level, not 1024; the threshold from the wind's
+// the sea's Gerstner waves (og_core::ocean, water.wgsl ocean_displace) with the cascades' shorter waves; 256 texels a level, not 1024; the threshold from the wind's
 // whitecap cover at each level's resolution (water.rs foam_thresholds) rather than a slider.
 //
 // W4: the foam ages (b: the mean age of what a texel holds, s) and leaves a lace (a) that outlives the dense cover the
@@ -119,14 +118,11 @@ struct FoamParams {
   p0: vec4<f32>,
   // x the growth of foam held by a fold, yz its drift downwind (m/s), w the cascades.
   p1: vec4<f32>,
-  // xy the surface's centre (frame xz), z the tick's grid's even cell (m), w unused; then its half size (xy).
-  tick: vec4<f32>,
-  half: vec4<f32>,
   // Per level the Jacobian, as that level resolves it, under which foam is injected (water.rs foam_thresholds); z the
   // lace's decay (1/s), w unused.
   thresholds: vec4<f32>,
   // As water.wgsl's WaterUniform: per cascade 1 / tile, uv at the frame's origin, tile; each band's middle; the
-  // tick's waves.
+  // sea's waves.
   cascades: array<vec4<f32>, 3>,
   bands: vec4<f32>,
   swell: array<vec4<f32>, 64>,
@@ -156,22 +152,8 @@ fn sea_keep(k: f32, cell: f32) -> f32 {
   return 1.0 - smoothstep(0.785, 1.571, k * cell);
 }
 
-// water.wgsl tick_cell.
-fn tick_cell(p: vec2<f32>) -> f32 {
-  let u = clamp((p - foam.tick.xy) / max(foam.half.xy, vec2<f32>(1e-3)), vec2<f32>(-1.0), vec2<f32>(1.0));
-  var g = u;
-  for (var i = 0; i < 8; i++) {
-    let w = g * (0.15 + 0.85 * g * g);
-    g -= (w - u) / (0.15 + 2.55 * g * g);
-  }
-  let slope = 0.15 + 2.55 * g * g;
-  return foam.tick.z * max(slope.x, slope.y);
-}
-
 // The drawn surface's Jacobian at frame point p, its waves resolved at `ts` metres.
 fn jacobian(p: vec2<f32>, ts: f32) -> f32 {
-  let tc = tick_cell(p);
-  let spacing = max(ts, tc);
   // Shoaled over the seabed as the drawn surface is (water.wgsl ocean_normal): the open sea's crests bunched over the
   // shallows would lay whitecaps where the sea there is low.
   let sh = shoaling(p);
@@ -182,21 +164,21 @@ fn jacobian(p: vec2<f32>, ts: f32) -> f32 {
     let a = foam.swell[2u * i];
     let b = foam.swell[2u * i + 1u];
     let k = length(a.xy);
-    let s = sin(dot(a.xy, p) + a.w) * sea_keep(k, spacing) * shoal_keep(k, sh);
+    let s = sin(dot(a.xy, p) + a.w) * sea_keep(k, ts) * shoal_keep(k, sh);
     jxx -= b.x * a.x * s;
     jzz -= b.y * a.y * s;
     jxz -= b.x * a.y * s;
   }
   if (sh.amp > 0.0) {
     let kv = sh.inshore * foam.shore[1].z;
-    let s = sin(sh.phase) * sea_keep(foam.shore[1].z, spacing) * sh.lean;
+    let s = sin(sh.phase) * sea_keep(foam.shore[1].z, ts) * sh.lean;
     jxx -= sh.inshore.x * kv.x * s;
     jzz -= sh.inshore.y * kv.y * s;
     jxz -= sh.inshore.x * kv.y * s;
   }
   for (var c = 0u; c < u32(foam.p1.w); c++) {
     let t = foam.cascades[c];
-    let w = (1.0 - sea_keep(foam.bands[c], tc)) * shoal_keep(foam.bands[c], sh);
+    let w = shoal_keep(foam.bands[c], sh);
     let lod = log2(max(ts / (t.w / 256.0), 1.0));
     if (w <= 0.0 || lod >= 4.5) { continue; }
     let uv = p * t.x + t.yz;

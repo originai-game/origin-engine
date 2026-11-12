@@ -418,9 +418,9 @@ pub(crate) struct Shared {
 /// A body of water from an og.Water (a renderer's record the host reads),
 /// for og.Buoyancy: a square of `size` centred on `position` (its y the
 /// rest level), flat or raised by its `sea` (og.Water.wind), whose waves
-/// are the absolute world's (`zero`, og.WorldOrigin's, added to a point)
-/// as its grid of `segments` cells a side draws them
-/// ([`og_core::ocean::Ocean::height_on_grid`]). With a `shore` (W1: the
+/// are the absolute world's (`zero`, og.WorldOrigin's, added to a point):
+/// the sea's own function ([`og_core::ocean::Ocean::surface`]), the one
+/// the renderer draws. With a `shore` (W1: the
 /// seabed og.Water.seabed names, in the frame's xz, and the trains rolling
 /// in on it) the sea feels the depth ([`og_core::ocean::Ocean::surface_near`]):
 /// a body in the shallows rides the shoaled, broken sea the renderer draws.
@@ -433,7 +433,6 @@ pub struct WaterBody {
     pub entity: u64,
     pub position: Vec3,
     pub size: og_core::glam::Vec2,
-    pub segments: u32,
     pub sea: Option<og_core::ocean::Ocean>,
     pub zero: og_core::glam::DVec3,
     pub shore: Option<(Arc<og_core::ocean::Shore>, og_core::ocean::ShoreTrains)>,
@@ -450,7 +449,7 @@ impl WaterBody {
 
     /// [`Self::height`] with the water's velocity and acceleration there
     /// (its particles' orbital motion,
-    /// [`og_core::ocean::Ocean::surface_on_grid`]; still water without a
+    /// [`og_core::ocean::Ocean::surface`]; still water without a
     /// sea).
     pub fn surface(&self, x: f64, z: f64, seconds: f64) -> Option<og_core::ocean::SurfacePoint> {
         if let Some(river) = &self.river {
@@ -472,9 +471,6 @@ impl WaterBody {
         let Some(sea) = &self.sea else {
             return Some(og_core::ocean::SurfacePoint::default());
         };
-        let extent = self.size.max_element();
-        let segments = og_core::ocean::grid_segments(self.segments.max(1), extent);
-        let cell = og_core::ocean::grid_cell(local, half, extent / segments as f32);
         let coast = self
             .shore
             .as_ref()
@@ -486,7 +482,6 @@ impl WaterBody {
         Some(sea.surface_near(
             og_core::glam::DVec2::new(x + self.zero.x, z + self.zero.z),
             seconds,
-            cell,
             coast.as_ref(),
         ))
     }

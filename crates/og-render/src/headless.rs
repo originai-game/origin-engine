@@ -43,11 +43,13 @@ impl Renderer {
 
     /// The height of the sea the last frame drew (its first og.Water with a
     /// wind) at each world point's xz, read back from the GPU (blocking;
-    /// native only): per point the height the clipmap's vertices draw there
-    /// (`probe_sea` in water.wgsl), the share of it the tick's waves draw
-    /// (og_core::ocean, what og.physics.waterHeight floats bodies on) and
-    /// the share the FFT cascades draw (render only). Empty without a sea.
-    /// A diagnostic of the drawn waterline (the former test sample
+    /// native only; `probe_sea` in water.wgsl): per point the height the
+    /// clipmap's vertices draw there, the height of the sea's own function
+    /// there as the GPU evaluates it from the frame's uniforms (every wave
+    /// of og_core::ocean: what og.physics.waterHeight floats bodies on),
+    /// and what the drawn surface differs from that by (the FFT cascades
+    /// and the waves the vertices' spacing leaves out). Empty without a
+    /// sea. A diagnostic of the drawn waterline.
     pub fn sea_heights(&self, points: &[glam::Vec2]) -> Result<Vec<[f32; 3]>, RenderError> {
         let origin = self.history.drawn_origin;
         let frame: Vec<glam::Vec2> = points

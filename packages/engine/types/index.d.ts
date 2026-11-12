@@ -17923,7 +17923,7 @@ export interface Water {
   // ── Sea ──
   // A wind-driven ocean on the grid.
   /**
-   * The wind over an open sea, direction in xz, speed (m/s) as length: the grid rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a camera clipmap from a seeded JONSWAP spectrum; og.physics.waterHeight reads its longest waves. Within size unless endless; a mesh has none.
+   * The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none.
    * See `render §8`.
    *
    * @default { x: 0, y: 0 }

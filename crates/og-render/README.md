@@ -1463,34 +1463,40 @@ tests in `og-tests/tests/terrain.rs`.
 
 Each off by default on `Water`:
 
-- **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): the grid is
-  displaced by `og_core::ocean`'s 32 Gerstner waves of a Pierson–Moskowitz
-  sea for the wind with JONSWAP's peak enhancement (γ 3.3) (peak
-  `0.877 g / U`, significant height `0.21 U² / g × swell`, one wave placed
-  at random in each of 32 bands of length from 1.6 to 1/80 of the peak's;
-  deep-water dispersion; a random spread about the wind, wider the
-  shorter; fixed phases; the waves under a sixth of the peak's length
-  raised to Cox and Munk's mean square slope `0.003 + 0.00512 U`; each
-  wave's steepness `choppiness / 32`, so the sum never folds). A sea's
-  grid is finest at its centre, `w(g) = g (0.15 + 0.85 g²)` across it. The
-  waves lie over the absolute world's xz, their phases at the scene's
-  origin computed in f64 from the tick (`water::seconds`), so the pattern
-  stays put as the origin moves. The vertices take the waves at least four
-  grid cells long, the fragments every wave's analytic normal (faded under
-  the pixel's footprint) and foam whitecaps where the crests bunch, after
-  Monahan's whitecap cover for the wind (`3.84e-6 U^3.41`). The simulation
-  reads the same surface: `og.physics.waterHeight` evaluates
-  `og_core::ocean::Ocean::height` at the tick, never the GPU; the
-  underwater view tests the eye against it too. A level surface only; a
-  surface over a mesh has none. Tests `water::tests`,
+- **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): one function of
+  the place and the time, `og_core::ocean`'s 32 Gerstner waves of a
+  Pierson–Moskowitz sea for the wind with JONSWAP's peak enhancement
+  (γ 3.3) (peak `0.877 g / U`, significant height `0.21 U² / g × swell`,
+  one wave placed at random in each of 32 bands of length from 1.6 to 1/32
+  of the peak's, 2.6 m at 10 m/s and 10 m at 20 m/s; deep-water
+  dispersion; a random spread about the wind, wider the shorter; fixed
+  phases; each wave's steepness `choppiness / 32`, so the sum never
+  folds). These carry all but a hundredth of the sea's height. The function knows no grid, surface size or
+  camera. The waves lie over the absolute world's xz, their phases at the
+  scene's origin computed in f64 from the tick (`water::seconds`), so the
+  pattern stays put as the origin moves.
+- **Drawing it.** A clipmap about the eye (`water::sea::clipmap`) is
+  displaced by the same 32 waves, each left out only where the vertices
+  cannot hold it (`sea_keep`: whole at eight cells a wavelength, none
+  under four); the fragments take every wave's analytic normal, faded
+  under the pixel's footprint, and foam whitecaps where the crests bunch,
+  after Monahan's whitecap cover for the wind (`3.84e-6 U^3.41`). Over the
+  waves the FFT cascades (`ocean_fft`) add the shorter waves only, from
+  the sea's shortest down (`og_core::ocean::shortest_wavenumber`), raised
+  until the two hold 0.7 of the clean sea's slopes (`0.003 + 0.00512 U`)
+  and never over 2% of the sea's height in RMS; the rest is roughness.
+- **The drawn sea is the tick's sea.** `og.physics.waterHeight` and
+  og.Buoyancy evaluate `og_core::ocean::Ocean::surface` at the tick, never
+  the GPU; the underwater view tests the eye against it too. The drawn
+  height is that function to a centimetre plus two things the tick does
+  not float bodies on: the waves the clipmap's spacing leaves out (none
+  within about 10 m of the eye at 10 m/s or 40 m at 20 m/s, and at any
+  distance under a hundredth of it), and the cascades' short waves
+  (0.004 m RMS at 5 m/s, 0.023 m at 10 m/s, 0.14 m at 20 m/s). A level surface only; a surface
+  over a mesh has none. Tests
+  `water::tests::the_vertices_draw_the_sea_the_tick_floats_bodies_on`,
+  `og-tests` `the_drawn_sea_is_the_sea_bodies_float_on`,
   `og_core::ocean::tests`.
-- **The drawn sea and the tick's sea.** The drawn sea adds render-only
-  FFT cascades (`ocean_cascades` in `water.wgsl`) to the Gerstner waves
-  the tick reads, so it lies off `og.physics.waterHeight` by decimetres.
-  Under a hull `hull_calm` fades the FFT chop over each floater's
-  footprint, so a floater sits in the sea that is drawn
-  (`shallow_floaters_sit_in_the_drawn_shoaled_sea`). A deterministic CPU
-  FFT band the tick reads is not implemented.
 - **Flow map** (`flow_map`; three.js Water2's flowMap): rg × 2 - 1 is the
   flow's direction per point over the mesh's uv or the grid from its -x -z
   corner (the image's top at +z), `flow`'s length the speed (zero: 0.03),

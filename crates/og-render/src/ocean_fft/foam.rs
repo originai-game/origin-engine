@@ -87,10 +87,6 @@ pub fn schedule(last: Option<i64>, now: i64) -> (Vec<(i64, i64)>, bool) {
 /// ocean_foam.wgsl, frame coordinates).
 #[derive(Clone, Copy, Debug)]
 pub struct FoamSea {
-    /// The surface's centre (frame xz) and the tick's grid's even cell (m).
-    pub tick: [f32; 4],
-    /// The surface's half size (xy).
-    pub half: [f32; 4],
     /// As `WaterGpu::cascades` and `bands`.
     pub cascades: [[f32; 4]; 3],
     pub bands: [f32; 4],
@@ -113,8 +109,6 @@ pub(super) struct FoamGpu {
     base: [[f32; 4]; 2],
     p0: [f32; 4],
     p1: [f32; 4],
-    tick: [f32; 4],
-    half: [f32; 4],
     thresholds: [f32; 4],
     cascades: [[f32; 4]; 3],
     bands: [f32; 4],
@@ -169,8 +163,6 @@ pub(super) fn step_gpu(
             sea.gain,
         ],
         p1: [1.0, drift.x, drift.y, cascades as f32],
-        tick: sea.tick,
-        half: sea.half,
         thresholds: [sea.thresholds[0], sea.thresholds[1], LACE_DECAY, 0.0],
         cascades: sea.cascades,
         bands: sea.bands,

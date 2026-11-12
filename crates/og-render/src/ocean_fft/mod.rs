@@ -1,11 +1,12 @@
-//! The FFT sea (R5, the owner's direction of 2026-11-03): og.Water's wind
-//! sea drawn from Tessendorf's FFT of a seeded JONSWAP spectrum in up to
-//! three 256² cascades on disjoint bands, the tick's long waves drawn as
-//! they are over it.
+//! The sea's short waves (R5): those shorter than the shortest of
+//! `og_core::ocean`'s (a 32nd of the peak's length), drawn from
+//! Tessendorf's FFT of a seeded JONSWAP spectrum in up to three 256²
+//! cascades on disjoint bands. The sea itself is og_core's function, drawn
+//! as it is; these stand under 2% of its height over it (2 cm RMS at
+//! 10 m/s, 14 cm at 20 m/s) and carry the slopes its waves do not.
 //!
 //! - [`spectrum`]: the spectrum, built on the CPU once per sea (ported from
-//!   blue-water's `spectrum.rs`), without the band the tick's long waves
-//!   carry and rescaled so the whole is the sea's significant height.
+//!   blue-water's `spectrum.rs`), from the sea's shortest wave down.
 //! - `shaders/ocean_fft.wgsl`: each frame, the spectrum evolved to the
 //!   scene's tick time and inverse-transformed in workgroup memory (rows,
 //!   then columns, after web-ocean's `sim.js`) into one rgba16float array,
@@ -16,8 +17,7 @@
 //!
 //! Render only: the tick never reads these fields (`og.physics.waterHeight`
 //! and og.Buoyancy are og_core::ocean's, evaluated in the tick). Every pass
-//! here is compute with its own bind groups, outside the lit layouts; the
-//! water pass will sample the fields array in place of its height field.
+//! here is compute with its own bind groups, outside the lit layouts.
 
 pub mod foam;
 pub mod spectrum;

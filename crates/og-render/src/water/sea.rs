@@ -122,11 +122,10 @@ pub(crate) fn ocean(water: &Water) -> Option<og_core::ocean::Ocean> {
 /// The sea's block of [`WaterGpu`] at `seconds` and the scene's `origin`:
 /// the header and og_core's waves, their phases at the origin in f64 so the
 /// pattern stays put in the world as the origin moves. The vertices draw
-/// every one of them as the tick floats bodies on them (og-physics'
-/// `WaterBody::surface`): each faded by [`og_core::ocean::grid_keep`] at the
-/// tick's grid cell there ([`tick_cell`]), so a floater rides the drawn
-/// surface; the FFT's cascades fill in only the waves the tick leaves out.
-/// The header's y is that grid's even cell.
+/// every one of them as the tick floats bodies on them
+/// ([`og_core::ocean::Ocean::surface`]), each left out only where the
+/// clipmap's own vertices cannot hold it ([`sea_keep`]); the FFT's cascades
+/// add the ripples shorter than the shortest of them.
 pub(super) fn ocean_gpu(
     water: &Water,
     seconds: f64,
@@ -148,35 +147,15 @@ pub(super) fn ocean_gpu(
     }
     // z and w: the foam's threshold and gain, [`foam_thresholds`]'s (set
     // with the FFT sea's).
-    ([1.0, tick_even_cell(water), 0.0, FRESH_GAIN], swell)
+    ([1.0, 0.0, 0.0, FRESH_GAIN], swell)
 }
 
-/// The even cell (m) of the grid the tick floats bodies on for `water`
-/// (og-physics' `WaterBody::surface`: its size's longer side over its
-/// segments, as og_core::ocean::grid_segments splits them).
-pub(super) fn tick_even_cell(water: &Water) -> f32 {
-    let extent = water.size.max_element();
-    extent / og_core::ocean::grid_segments(water.segments.max(1), extent) as f32
-}
-
-/// The tick's grid cell (m) at world point `at` (xz) of `water`: what
-/// water.wgsl `tick_cell` computes.
-pub(super) fn tick_cell(water: &Water, at: Vec2) -> f32 {
-    let centre = water.transform.w_axis;
-    og_core::ocean::grid_cell(
-        at - Vec2::new(centre.x, centre.z),
-        water.size * 0.5,
-        tick_even_cell(water),
-    )
-}
-
-/// How much of FFT cascade c's height the surface draws where the tick's
-/// cell is `tick_cell`: none where the tick's own waves cover its band (its
-/// band's middle wavenumber `k_mid` within them), all where the tick fades
-/// them (water.wgsl `cascade_weight`).
-#[cfg(test)]
-pub(super) fn cascade_weight(k_mid: f32, tick_cell: f32) -> f32 {
-    1.0 - og_core::ocean::grid_keep(k_mid, tick_cell)
+/// How much of a wave of wavenumber `k` samples `cell` metres apart hold:
+/// all of one at least eight cells long, none of one under four (water.wgsl
+/// `sea_keep`: the clipmap's vertices, a pixel's footprint, a foam texel).
+pub(super) fn sea_keep(k: f32, cell: f32) -> f32 {
+    let x = ((k * cell - 0.785) / 0.786).clamp(0.0, 1.0);
+    1.0 - x * x * (3.0 - 2.0 * x)
 }
 
 /// How fast foam grows to full as the Jacobian falls under its threshold
@@ -192,15 +171,11 @@ pub(super) fn jacobians(
     built: &crate::ocean_fft::spectrum::Spectrum,
     resolve: f32,
 ) -> Vec<f64> {
-    let centre = water.transform.w_axis;
-    let tc = tick_cell(water, Vec2::new(centre.x, centre.z));
     let lam = built.choppiness;
-    // The covariance of the cascades' (∂Dx/∂x, ∂Dz/∂z, ∂Dx/∂z), each
-    // weighted as drawn there (cascade_weight), and its Cholesky factor.
+    // The covariance of the cascades' (∂Dx/∂x, ∂Dz/∂z, ∂Dx/∂z) and its
+    // Cholesky factor.
     let mut c = [[0f64; 3]; 3];
     for cs in &built.cascades {
-        let k_mid = (cs.band.lo.max(1e-6) * cs.band.hi).sqrt() as f32;
-        let w2 = f64::from(1.0 - og_core::ocean::grid_keep(k_mid, tc)).powi(2);
         let n = cs.resolution as i64;
         let dk = std::f64::consts::TAU / cs.size;
         // Read from the fields' mip at ocean_foam.wgsl's lod: a box of 2^lod
@@ -233,7 +208,7 @@ pub(super) fn jacobians(
             ];
             for r in 0..3 {
                 for q in 0..3 {
-                    c[r][q] += a2 * v[r] * v[q] * w2;
+                    c[r][q] += a2 * v[r] * v[q];
                 }
             }
         }
@@ -270,10 +245,7 @@ pub(super) fn jacobians(
             for w in swell.chunks(2) {
                 let (a, b) = (w[0], w[1]);
                 let k = Vec2::new(a[0], a[1]);
-                let s = f64::from(
-                    (k.dot(p) + a[3]).sin()
-                        * og_core::ocean::grid_keep(k.length(), tc.max(resolve)),
-                );
+                let s = f64::from((k.dot(p) + a[3]).sin() * sea_keep(k.length(), resolve));
                 j[0] -= f64::from(b[0] * a[0]) * s;
                 j[1] -= f64::from(b[1] * a[1]) * s;
                 j[2] -= f64::from(b[0] * a[1]) * s;
@@ -328,8 +300,8 @@ pub(super) fn clipmap(eye: Vec3, origin: Vec3, segments: u32) -> [[f32; 4]; CLIP
 /// frame's quality: desktop presets 128 and three, the low preset (phones)
 /// 64 and two. A vertex d metres from the camera lies at most d / (s / 4)
 /// from the next (s the cells along an edge, with the edge's geomorph): on
-/// desktop no coarser than the tick's 3.5 m centre cell (a 6 km sea of 256)
-/// within 110 m, so every wave a floater rides there is drawn whole.
+/// desktop under 0.25 m within 8 m and under 3.5 m within 110 m, so a wave
+/// eight times that long is drawn whole there.
 pub(super) fn sea_tier(quality: &crate::RenderQuality) -> (u32, u32) {
     if quality.volumetric_step_scale < 1.0 {
         (64, 2)
@@ -363,50 +335,17 @@ pub(super) fn cascade_uv(sea: Option<FftSea>, origin: Vec3) -> [[f32; 4]; 3] {
     out
 }
 
-/// The FFT spectrum of `water`'s sea `sea` in `cascades` cascades: without
-/// the tick's long band, and its cascades parted where the tick's waves end
-/// at its finest cell (the surface's centre).
+/// The FFT spectrum of `water`'s sea `sea` in `cascades` cascades: the
+/// ripples shorter than the shortest of its waves.
 pub(super) fn sea_spectrum(
     water: &Water,
     sea: &og_core::ocean::Ocean,
     cascades: u32,
 ) -> crate::ocean_fft::spectrum::Spectrum {
     use crate::ocean_fft::spectrum;
-    let centre = water.transform.w_axis;
     let params =
-        spectrum::SeaParameters::from_ocean(water.wind, water.swell, water.choppiness, Some(sea))
-            .with_tick_cell(tick_cell(water, Vec2::new(centre.x, centre.z)));
+        spectrum::SeaParameters::from_ocean(water.wind, water.swell, water.choppiness, Some(sea));
     spectrum::build(&spectrum::cascades(cascades as usize, &params), &params)
-}
-
-/// The most og.Buoyancy hulls a sea calms its chop under (the nearest the
-/// camera).
-pub(super) const MAX_HULLS: usize = 16;
-
-/// The og.Buoyancy hulls in `water`'s sea at its newest tick
-/// ([`Water::wakes`]), the [`MAX_HULLS`] nearest `eye` (frame
-/// coordinates): how many, and per hull its centre (frame xz) and its own x
-/// axis, then its half extents along its axes. water.wgsl `hull_calm`
-/// leaves the FFT's chop out under each: the tick floats a hull on its own
-/// waves alone, so the drawn surface under a hull is the tick's.
-pub(super) fn hulls(water: &Water, eye: Vec3) -> (usize, [[f32; 4]; 2 * MAX_HULLS]) {
-    let mut rows = [[0.0; 4]; 2 * MAX_HULLS];
-    let Some((_, cuts)) = water.wakes.as_deref().and_then(|w| w.ticks.last()) else {
-        return (0, rows);
-    };
-    let at = Vec2::new(water.transform.w_axis.x, water.transform.w_axis.z);
-    let eye = Vec2::new(eye.x, eye.z);
-    let mut near: Vec<(f32, Vec2, &WaterCut)> = cuts
-        .iter()
-        .map(|c| ((at + c.centre).distance_squared(eye), at + c.centre, c))
-        .collect();
-    near.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.2.entity.cmp(&b.2.entity)));
-    near.truncate(MAX_HULLS);
-    for (i, (_, centre, c)) in near.iter().enumerate() {
-        rows[2 * i] = [centre.x, centre.y, c.axis.x, c.axis.y];
-        rows[2 * i + 1] = [c.half.x, c.half.y, 0.0, 0.0];
-    }
-    (near.len(), rows)
 }
 
 /// The foam micro-structure's uv at the scene's `origin` (water.wgsl
@@ -464,12 +403,29 @@ pub(super) fn f16_bits(v: f32) -> u16 {
 /// The largest height field accepted.
 pub(super) const MAX_RESOLUTION: u32 = 512;
 
-/// Grid cells per side: the surface's own `segments`, or more where a cell
-/// would be longer than [`og_core::ocean::GRID_MAX_CELL`] (at most
-/// [`og_core::ocean::GRID_MAX_SEGMENTS`]).
+/// The most cells a flat water's grid has per side (256² cells, 131,072
+/// triangles per surface). It caps [`GRID_MAX_CELL`]'s split: a surface
+/// longer than 65.5 km gets cells longer than 256 m again.
+pub(super) const GRID_MAX_SEGMENTS: u32 = 256;
+/// The longest a flat water's grid cell may be, in world metres. A
+/// rasterizer interpolates a triangle's attributes and depth from its
+/// corners in f32, so on a kilometres-long triangle that the near plane
+/// clips both land metres off at the far side (og-tests' `terrain-far` lost
+/// its shore foam); cells of at most 256 m draw the same thin band
+/// everywhere.
+pub(super) const GRID_MAX_CELL: f32 = 256.0;
+
+/// Grid cells per side of a flat water (a sea is a clipmap: [`clipmap`]):
+/// the surface's own `segments`, more where a cell of its longer side would
+/// pass [`GRID_MAX_CELL`], at most [`GRID_MAX_SEGMENTS`].
 pub(super) fn grid_segments(water: &Water) -> u32 {
     let scale = |axis: Vec4| axis.truncate().length();
     let extent = (water.size.x * scale(water.transform.x_axis))
         .max(water.size.y * scale(water.transform.z_axis));
-    og_core::ocean::grid_segments(water.segments, extent)
+    let wanted = if extent.is_finite() {
+        (extent / GRID_MAX_CELL).ceil() as u32
+    } else {
+        1
+    };
+    water.segments.max(wanted).clamp(1, GRID_MAX_SEGMENTS)
 }

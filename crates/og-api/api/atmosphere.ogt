@@ -802,7 +802,7 @@ module atmosphere {
       guide "render §8"
     }
     group "Sea" "A wind-driven ocean on the grid."
-    field wind Vector2 "The wind over an open sea, direction in xz, speed (m/s) as length: the grid rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a camera clipmap from a seeded JONSWAP spectrum; og.physics.waterHeight reads its longest waves. Within size unless endless; a mesh has none." {
+    field wind Vector2 "The wind over an open sea, direction in xz, speed (m/s) as length: the water rises in Gerstner waves of a fully developed sea (Pierson–Moskowitz), drawn as a clipmap about the camera; og.physics.waterHeight and og.Buoyancy read the same waves. Within size unless endless; a mesh has none." {
       guide "render §8"
       default 0 0
       unit mps

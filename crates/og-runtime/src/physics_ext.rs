@@ -407,7 +407,6 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
                 entity: id,
                 position,
                 size: w.size,
-                segments: (w.segments as f32).max(1.0) as u32,
                 shore: super::seabed::coast(
                     &eng.render.borrow().terrain,
                     terrain.as_ref(),

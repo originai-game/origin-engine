@@ -96,7 +96,7 @@ fn surface_height(w: &Water, at: Vec2, seconds: f64, origin: Vec3) -> f32 {
         .y;
     let sea = ocean(w).map_or(0.0, |sea| {
         let a = glam::DVec2::new(f64::from(at.x + origin.x), f64::from(at.y + origin.z));
-        sea.surface_near(a, seconds, tick_cell(w, at), coast(w, origin).as_ref())
+        sea.surface_near(a, seconds, coast(w, origin).as_ref())
             .height
     });
     plane + local_height(w, Vec2::new(local.x, local.z)) + sea
@@ -105,9 +105,7 @@ fn surface_height(w: &Water, at: Vec2, seconds: f64, origin: Vec3) -> f32 {
 /// W6: the surface the camera's near plane crosses, if any, among those
 /// with an underwater view: the eye within the near plane's reach of the
 /// surface over it (its half diagonal, at most about twice `near` for a
-/// field of view up to 90° at 16:9, and over a sea half its significant
-/// height more: the drawn chop the tick's waves leave out), inside the
-/// surface's extent. The frame
+/// field of view up to 90° at 16:9), inside the surface's extent. The frame
 /// then draws with the air's fog, and the waterline pass fogs what lies
 /// under the surface pixel by pixel, the line between them its meniscus.
 pub(crate) fn waterline(
@@ -118,8 +116,7 @@ pub(crate) fn waterline(
 ) -> Option<usize> {
     let eye = camera.position;
     waters.iter().position(|w| {
-        let reach =
-            2.1 * camera.near.max(1e-3) + ocean(w).map_or(0.0, |o| 0.5 * o.significant_height());
+        let reach = 2.1 * camera.near.max(1e-3);
         if w.underwater_density.is_nan() || w.underwater_density <= 0.0 || w.meniscus < 0.0 {
             return false;
         }
@@ -142,7 +139,7 @@ pub(crate) fn underwater(waters: &[Water], eye: Vec3, seconds: f64, origin: Vec3
         let sea = ocean(w).map_or(0.0, |sea| {
             let at = (eye + origin).as_dvec3();
             let at = glam::DVec2::new(at.x, at.z);
-            sea.surface_near(at, seconds, 0.0, coast(w, origin).as_ref())
+            sea.surface_near(at, seconds, coast(w, origin).as_ref())
                 .height
         });
         local.x.abs() <= w.size.x * 0.5

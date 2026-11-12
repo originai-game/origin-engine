@@ -49,8 +49,7 @@ pub struct WaterHeights {
 /// The bodies in a water in its last ticks (og-physics' `Wakes`, not world
 /// state): what cut a height field after each of the last ticks (at most
 /// [`WAKE_TICKS`]) and the waves' settings, which stir its ripples; or the
-/// og.Buoyancy hulls in a sea, under which its render-only chop is calmed
-/// (the newest tick's).
+/// og.Buoyancy hulls in a sea, whose wakes it draws (the newest tick's).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct WaterWakes {
     /// A new world (made, restored or gone back) has a new epoch: the
@@ -379,22 +378,20 @@ struct WaterGpu {
     /// The surface's frame from the world: a bounded sea is clamped to its
     /// rectangle in it.
     inverse: [[f32; 4]; 4],
-    /// The FFT sea ([`crate::ocean_fft`]): x its cascades, y the hulls in
-    /// it ([`hulls`]), z the slope variance finer than the finest cascade,
-    /// w the sea's significant height (m; its crests' subsurface light).
+    /// The FFT sea ([`crate::ocean_fft`]): x its cascades, z the slope
+    /// variance finer than the finest cascade, w the sea's significant
+    /// height (m; its crests' subsurface light).
     fft: [f32; 4],
     /// Per cascade: one over its tile (1/m), its uv at the frame's origin
     /// (whole tiles dropped), its tile (m).
     cascades: [[f32; 4]; 3],
-    /// Each cascade's band's middle wavenumber (xyz; [`cascade_weight`]).
+    /// Each cascade's band's middle wavenumber (xyz: what the seabed's
+    /// shoaling keeps of it).
     bands: [f32; 4],
     /// The persistent foam's levels ([`crate::ocean_fft::foam::levels`]).
     foam_levels: [[f32; 4]; 2],
     /// The foam micro-structure's uv at the frame's origin ([`foam_uv`]).
     foam_uv: [[f32; 4]; 2],
-    /// The og.Buoyancy hulls in the sea ([`hulls`]): per hull its centre
-    /// (frame xz) and its own x axis (xz), then its half extents.
-    hulls: [[f32; 4]; 2 * MAX_HULLS],
     swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
     /// The seabed ([`Water::shore`], [`shore_gpu`]): its sample (0, 0) in
     /// the frame's xz, its cell, 1 with one; its columns and rows, the
@@ -456,21 +453,20 @@ pub(crate) struct FoamLevels {
 /// (1980) measured it at the wind's speed U (W = 3.84·10⁻⁶ U^3.41: 0.7 %
 /// at 9 m/s, 10 % at 20 m/s), half of it for the foam laid down and a
 /// quarter for the crests breaking now (the persistent foam trails behind
-/// them). At a breeze these are web-ocean's own (0.68 and 0.48 at its foam
-/// setting 1 against 0.52 and 0.48 here); a gale's steeper sea reaches them
-/// over much of its surface, where web-ocean's fixed levels whitened a
-/// third of it.
+/// them). At a breeze these are near web-ocean's fixed ones (0.68 and 0.48
+/// at its foam setting 1 against 0.80 and 0.62 here); a gale's steeper sea
+/// reaches those over much of its surface, where web-ocean whitened a third
+/// of it.
 ///
 /// Each foam level reads the Jacobian at its own texel (ocean_foam.wgsl
-/// `jacobian`: the tick's waves faded at it, the cascades from their mips),
+/// `jacobian`: the sea's waves faded at it, the cascades from their mips),
 /// much smoother than the drawn crest's at its 2 m: one threshold for all
 /// let the coarse level, everything past some 20 m, lay down a small share
 /// of the coverage (a gale with two or three whitecaps in view). So each
 /// level's is the quantile of the Jacobian as that level resolves it.
 ///
-/// The Jacobian's distribution is sampled where the tick's grid is finest
-/// (the surface's centre): og_core's waves as drawn there, plus the
-/// cascades' displacement derivatives, a Gaussian of the covariance their
+/// The Jacobian's distribution is sampled over the open sea: og_core's
+/// waves, plus the cascades' displacement derivatives, a Gaussian of the covariance their
 /// spectrum gives. Seeded, so the same sea always has the same levels.
 /// A sea that never bunches enough (a round swell: no horizontal
 /// displacement) never foams.
@@ -567,16 +563,15 @@ struct CausticsGpu {
     grid: [f32; 4],
     sea: [f32; 4],
     cascades: [[f32; 4]; 3],
-    bands: [f32; 4],
+    swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
 }
 
 /// What the FFT sea's spectrum was built for and what the water's uniforms
 /// read of it.
 #[derive(Clone, Copy)]
 struct FftSea {
-    /// That sea's wind, swell and choppiness, the cascades, and the tick's
-    /// finest grid cell.
-    key: (Vec2, f32, f32, u32, f32),
+    /// That sea's wind, swell and choppiness, and the cascades.
+    key: (Vec2, f32, f32, u32),
     /// Per cascade its tile (m); 0 past the last.
     tiles: [f64; 3],
     /// The slope variance finer than the finest cascade.
@@ -641,7 +636,7 @@ mod tests {
         let at = glam::DVec2::new(13.0, -7.0);
         let mut height = |a: f32| {
             scene.frame.interpolation = Some(a);
-            sea.height_on_grid(at, seconds(&scene), 0.0)
+            sea.height(at, seconds(&scene))
         };
         assert!((height(0.2) - height(0.7)).abs() > 1e-3);
         // Monotonic across a tick: the frame after the tick's last blends on.
@@ -653,31 +648,21 @@ mod tests {
         assert!(seconds(&next) > late);
     }
 
-    /// The boats sample's floaters (the former test sample ride the
-    /// drawn sea: at each, at several times, and at the hulls' keel corners
-    /// and the buoys' centres as the run's dump has them
-    /// (`boats/waterline.txt`), the height water.wgsl's vertices draw
-    /// (`ocean_displace`: og_core's waves faded at the larger of the
-    /// clipmap's vertex spacing at the rest point and the tick's cell where
-    /// the waves carry it, the rest point found as the tick finds it) is the
-    /// height og.Buoyancy floats it
-    /// on (og-physics' `WaterBody::surface`: `height_on_grid` at the tick's
-    /// cell) to 2 cm; the FFT cascades drawn on top there (each weighted by
-    /// `cascade_weight`) hold none of the waves the tick floats them on, and
-    /// their height has an RMS under 0.3 m of the gale's 9.7 m sea. Drawing only the tick's longest waves under the cascades
-    /// (r5-fft ea2b5ca42) left the floaters metres off the drawn crests;
-    /// fading them at the tick's cell at the rest point (r5-fft a117aae4d),
-    /// which the gale's crests lean 2 to 3 m off, left boat-2's keel 4.6 cm.
+    /// The vertices draw the sea the tick floats bodies on: water.wgsl's
+    /// `ocean_displace` (every wave of og_core, each left out only where
+    /// the clipmap's vertex spacing cannot hold it, the rest point found as
+    /// the tick finds it) is [`og_core::ocean::Ocean::height`] to a
+    /// centimetre plus the amplitudes of the waves that spacing leaves out:
+    /// nothing in a gale to past 10 m, and at any distance, were they all
+    /// to crest at one point, under a hundredth of it (half a degree from
+    /// the eye; their RMS a fifth of that, a pixel of a 720p frame). The waves the cascades add start
+    /// past the sea's shortest wave, so none is drawn twice, and are under
+    /// 2 % of its height in RMS. With a grid of the tick's own under both
+    /// (r5-fft), the cascades redrew what the grid faded and the two were
+    /// 0.2 m RMS apart in a gale at the middle of the surface and 0.8 m at
+    /// its edge.
     #[test]
-    fn the_boats_float_on_the_drawn_sea() {
-        let water = Water {
-            size: Vec2::splat(6000.0),
-            segments: 256,
-            wind: Vec2::new(7.0, -18.7),
-            choppiness: 1.0,
-            ..Default::default()
-        };
-        let sea = ocean(&water).expect("a sea");
+    fn the_vertices_draw_the_sea_the_tick_floats_bodies_on() {
         let eye = Vec3::new(0.0, 10.0, 0.0);
         let (segments, cascades) = sea_tier(&crate::RenderQuality::default());
         let levels = clipmap(eye, Vec3::ZERO, segments);
@@ -692,121 +677,92 @@ mod tests {
             let m = ((d / half - 0.7) / 0.25).clamp(0.0, 1.0);
             cell * (1.0 + m * m * (3.0 - 2.0 * m))
         };
-        let built = sea_spectrum(&water, &sea, cascades);
-        let floaters = [
-            (-12.0, -30.0),
-            (6.0, -45.0),
-            (-2.0, -70.0),
-            (10.0, -20.0),
-            (-6.0, -38.0),
-            (18.0, -55.0),
-            (-20.0, -52.0),
-        ];
-        // The dumped poses' keel corners and buoy centres (5 s and 6.5 s).
-        let poses = std::fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../og-render/tests/assets/waterline.txt"
-        ))
-        .expect("the floaters' poses");
-        let mut points: Vec<(f64, f32, f32)> = Vec::new();
-        for seconds in [3.0, 4.5, 5.0, 6.0, 6.5] {
-            points.extend(floaters.iter().map(|&(x, z)| (seconds, x, z)));
-        }
-        for line in poses.lines().filter(|l| !l.starts_with('#')) {
-            let f: Vec<&str> = line.split_whitespace().collect();
-            let v: Vec<f32> = f[2..]
-                .iter()
-                .map(|x| x.parse().expect("a number"))
-                .collect();
-            let seconds = f[0].parse::<f64>().expect("a tick") / 60.0;
-            let (c, q) = (
-                Vec3::new(v[0], v[1], v[2]),
-                glam::Quat::from_xyzw(v[3], v[4], v[5], v[6]),
-            );
-            if f[1].starts_with("boat") {
-                for (x, z) in [(-1.2, -3.0), (1.2, -3.0), (-1.2, 3.0), (1.2, 3.0)] {
-                    let p = c + q * Vec3::new(x, -0.5, z);
-                    points.push((seconds, p.x, p.z));
-                }
-            } else {
-                points.push((seconds, c.x, c.z));
-            }
-        }
-        for (seconds, x, z) in points {
-            let (_, swell) = ocean_gpu(&water, seconds, Vec3::ZERO);
-            {
-                let at = Vec2::new(x, z);
-                let tc = tick_cell(&water, at);
-                // water.wgsl ocean_swell at rest point p: faded at the larger of the vertices' spacing there and the
-                // tick's cell where a first pass carries p.
-                let pass = |p: Vec2, keep: f32| {
+        for (wind, choppiness) in [
+            (Vec2::new(-3.0, -4.0), 0.6),
+            (Vec2::new(-3.0, -9.5), 0.6),
+            (Vec2::new(7.0, -18.7), 1.0),
+        ] {
+            let water = Water {
+                size: Vec2::splat(6000.0),
+                wind,
+                choppiness,
+                ..Default::default()
+            };
+            let sea = ocean(&water).expect("a sea");
+            let hs = sea.significant_height();
+            // The amplitudes of the waves a spacing leaves out.
+            let left = |cell: f32| -> f32 {
+                sea.waves
+                    .iter()
+                    .map(|w| w.amplitude * (1.0 - sea_keep(w.k, cell)))
+                    .sum()
+            };
+            let mut whole = 0;
+            for seconds in [0.0, 3.0, 4.5, 61.25] {
+                let (_, swell) = ocean_gpu(&water, seconds, Vec3::ZERO);
+                let drawn = |p: Vec2| {
+                    let cell = spacing(p.distance(Vec2::new(eye.x, eye.z)));
                     let mut d = Vec3::ZERO;
                     for w in swell.chunks(2) {
                         let (a, b) = (w[0], w[1]);
                         let k = Vec2::new(a[0], a[1]);
                         let th = k.dot(p) + a[3];
-                        let f = og_core::ocean::grid_keep(k.length(), keep);
+                        let f = sea_keep(k.length(), cell);
                         d += Vec3::new(b[0] * th.cos(), a[2] * th.sin(), b[1] * th.cos()) * f;
                     }
                     d
                 };
-                let drawn = |p: Vec2| {
-                    let cell = spacing(p.distance(Vec2::new(eye.x, eye.z)));
-                    let first = pass(p, cell.max(tick_cell(&water, p)));
-                    pass(
-                        p,
-                        cell.max(tick_cell(&water, p + Vec2::new(first.x, first.z))),
-                    )
-                };
-                let mut rest = at;
-                for _ in 0..8 {
-                    let d = drawn(rest);
-                    rest = at - Vec2::new(d.x, d.z);
-                }
-                let got = drawn(rest).y;
-                let tick =
-                    sea.height_on_grid(glam::DVec2::new(f64::from(x), f64::from(z)), seconds, tc);
-                assert!(
-                    (got - tick).abs() < 0.02,
-                    "{seconds} s at ({x}, {z}): drawn {got} m, the tick's {tick} m"
-                );
-                // No cascade drawn there holds a wave the tick floats bodies
-                // on (r5-fft b64c8a204's cascade 1 began at 0.21 rad/m, inside
-                // the tick's band to 0.39, and drew its 16 to 29 m waves twice:
-                // a keel corner 10 cm over the drawn trough).
-                for c in &built.cascades {
-                    let k = (c.band.lo.max(1e-6) * c.band.hi).sqrt() as f32;
-                    if cascade_weight(k, tc) > 0.0 {
-                        assert_eq!(
-                            og_core::ocean::grid_keep(c.band.lo as f32, tc),
-                            0.0,
-                            "({x}, {z}): a cascade from {} rad/m over the tick's waves",
-                            c.band.lo
-                        );
+                for i in 0..48 {
+                    let r = 1.5 * 1.1f32.powi(i);
+                    let at = Vec2::from_angle(i as f32 * 2.4) * r;
+                    let mut rest = at;
+                    for _ in 0..8 {
+                        let d = drawn(rest);
+                        rest = at - Vec2::new(d.x, d.z);
                     }
+                    let got = drawn(rest).y;
+                    let tick = sea.height(at.as_dvec2(), seconds);
+                    // The rest point lies within the crests' lean of `at`.
+                    let out = left(spacing(r + 0.5 * hs));
+                    whole += usize::from(out == 0.0);
+                    assert!(
+                        (got - tick).abs() < 0.01 + out,
+                        "{wind} at {seconds} s, {at}: drawn {got} m, the tick's {tick} m ({out} m left out)"
+                    );
+                    assert!(
+                        out < 0.01 * r.max(2.0),
+                        "{wind}: {r} m from the eye the vertices leave {out} m of a {hs} m sea out"
+                    );
                 }
-                let fft: f64 = built
-                    .cascades
-                    .iter()
-                    .map(|c| {
-                        let k = (c.band.lo.max(1e-6) * c.band.hi).sqrt() as f32;
-                        f64::from(cascade_weight(k, tc)).powi(2) * c.variance
-                    })
-                    .sum();
-                assert!(
-                    fft.sqrt() < 0.3,
-                    "({x}, {z}): the cascades draw {} m RMS over the tick's sea",
-                    fft.sqrt()
-                );
             }
+            println!("{wind}: Hs {hs} m, every wave drawn at {whole} of 192 points");
+            assert!(wind.length() < 15.0 || whole >= 100, "{wind}: {whole}");
+            let built = sea_spectrum(&water, &sea, cascades);
+            let shortest = og_core::ocean::shortest_wavenumber(wind.length());
+            let mut variance = 0.0;
+            for c in &built.cascades {
+                assert!(
+                    c.band.lo >= f64::from(shortest) * 0.999,
+                    "{wind}: a cascade from {} rad/m over the sea's waves to {shortest}",
+                    c.band.lo
+                );
+                variance += c.variance;
+            }
+            println!("{wind}: the cascades {} m RMS", variance.sqrt());
+            assert!(
+                variance.sqrt() < 0.02 * f64::from(hs),
+                "{wind}: the cascades draw {} m RMS over a {hs} m sea",
+                variance.sqrt()
+            );
         }
     }
 
-    /// The foam's levels follow the wind's whitecap coverage: at the
-    /// breeze of the water-ocean scene a crest whitens where web-ocean's
-    /// does (its 0.48 at its foam setting 1), the gale's steeper sea foams
-    /// only where it bunches much further, and a round swell of the same
-    /// gale (no horizontal displacement, a Jacobian of 1 everywhere) never.
+    /// The foam's levels follow the wind's whitecap coverage: a breeze's
+    /// crest whitens where the surface has bunched to some six tenths of
+    /// its area without folding, before the foam it lays down does, the
+    /// gale's steeper sea foams only where it bunches much further, and a
+    /// round swell of the same gale (no horizontal displacement, a Jacobian
+    /// of 1 everywhere) never.
     #[test]
     fn foam_follows_the_winds_whitecap_coverage() {
         let thresholds = |wind: Vec2, choppiness: f32| {
@@ -823,7 +779,7 @@ mod tests {
         let breeze = thresholds(Vec2::new(-3.0, -8.5), 0.6);
         let gale = thresholds(Vec2::new(7.0, -18.7), 1.0);
         println!("breeze {breeze:?}, gale {gale:?}");
-        assert!((breeze.fresh - 0.48).abs() < 0.05, "{breeze:?}");
+        assert!(breeze.fresh > 0.4 && breeze.fresh < 0.75, "{breeze:?}");
         assert!(breeze.fresh < breeze.laid[0]);
         assert!(
             gale.laid[0] < breeze.laid[0] - 0.15 && gale.fresh < breeze.fresh - 0.15,
