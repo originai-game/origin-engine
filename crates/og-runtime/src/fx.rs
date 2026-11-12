@@ -7,6 +7,7 @@
 
 use super::codec::Layout;
 use super::extract::{Hierarchy, RenderState};
+use super::wire::{FromJson, StripBlend, record};
 use glam::{Mat4, Vec2, Vec3};
 use og_core::IdMap;
 use og_ecs::{Entity, World};
@@ -653,14 +654,15 @@ pub(crate) fn settings(world: &World, rs: &mut RenderState) {
         });
     }
     if let Some(l) = resource(world, layouts.lighting_2d.as_ref())
-        && on(&l, "enabled", false)
+        && let Ok(l) = record::Lighting2D::from_json(&l)
+        && l.enabled
     {
         scene.sprite.lighting_2d = Some(Lighting2d {
-            ambient: color(&l["ambient"], Vec3::splat(0.15)),
-            min_layer: l["minLayer"].as_i64().unwrap_or(-1_000_000) as i32,
-            max_layer: l["maxLayer"].as_i64().unwrap_or(99) as i32,
-            resolution: f(&l, "resolution", 0.5),
-            shadow_angles: u(&l, "shadowAngles", 1024),
+            ambient: Vec3::new(l.ambient.r, l.ambient.g, l.ambient.b),
+            min_layer: l.min_layer,
+            max_layer: l.max_layer,
+            resolution: l.resolution,
+            shadow_angles: l.shadow_angles,
         });
     }
 }
@@ -959,19 +961,13 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         });
     }
     for (e, v) in rows(world, layouts.occluder_2d.as_ref()) {
+        let Ok(v) = record::Occluder2D::from_json(&v) else {
+            continue;
+        };
         let (pos, rot, scale) = planar(h.world_of(e));
         // The same outline light2dAt reads (`super::light2d_at`).
-        let points: Vec<f32> = v["points"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(Value::as_f64)
-                    .map(|x| x as f32)
-                    .collect()
-            })
-            .unwrap_or_default();
-        let polygon: Vec<Vec2> = if points.len() >= 6 {
-            super::light2d_at::local_outline(&points, 0.0, 0.0)
+        let polygon: Vec<Vec2> = if v.points.len() >= 6 {
+            super::light2d_at::local_outline(&v.points, 0.0, 0.0)
                 .into_iter()
                 .map(|p| p * scale)
                 .collect()
@@ -979,8 +975,8 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             Vec::new()
         };
         scene.sprite.occluders_2d.push(Occluder2d {
-            half_size: Vec2::new(f(&v, "width", 1.0), f(&v, "height", 1.0)) * scale * 0.5,
-            layers: mask(&v, "layers", u32::MAX),
+            half_size: Vec2::new(v.width, v.height) * scale * 0.5,
+            layers: v.layers,
             ..Occluder2d::polygon(pos, rot, &polygon)
         });
     }
@@ -1008,10 +1004,13 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         });
     }
     for (e, v) in rows(world, layouts.particles.as_ref()) {
-        if !on(&v, "visible", true) {
+        let Ok(v) = record::ParticleSystem::from_json(&v) else {
+            continue;
+        };
+        if !v.visible {
             continue;
         }
-        let Some(index) = handle_index(&v["emitter"]) else {
+        let Some(index) = super::assets::index_of(v.emitter as f64) else {
             continue;
         };
         let Some(&emitter) = fx.emitters.get(index) else {
@@ -1032,15 +1031,15 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                 scene.set_emitter(emitter, e);
             }
         }
-        let stop = u(&v, "stopTick", 0);
+        let stop = v.stop_tick;
         // An unwritten startTick (PARTICLES_ARMED): a looping emitter runs
         // as if started at tick 0, a one-shot waits for its tick.
-        let start = match u(&v, "startTick", PARTICLES_ARMED) {
+        let start = match v.start_tick {
             PARTICLES_ARMED if scene.emitter(emitter).is_some_and(|e| !e.looping) => continue,
             PARTICLES_ARMED => 0,
             t => t,
         };
-        let layers = v["layers"].as_u64().map_or(1, |x| x as u32);
+        let layers = v.layers;
         if layers != 1 {
             scene
                 .effects
@@ -1058,7 +1057,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             id: e,
             emitter,
             transform: h.world_of(e),
-            seed: u64::from(u(&v, "seed", 0)),
+            seed: u64::from(v.seed),
             start_tick: u64::from(start),
             stop_tick: (stop > 0).then_some(u64::from(stop)),
             tick,
@@ -1069,19 +1068,22 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
         });
     }
     for (e, v) in rows(world, layouts.trail.as_ref()) {
-        let c0 = color(&v["color"], Vec3::ONE);
-        let c1 = color(&v["colorEnd"], Vec3::ONE);
-        let tile = f(&v, "uvTile", 0.0);
-        let additive = variant(&v["blend"], &["additive", "alpha"]) == 0;
+        let Ok(v) = record::Trail::from_json(&v) else {
+            continue;
+        };
+        let (c0, c1) = (v.color, v.color_end);
+        let tile = v.uv_tile;
+        let additive = v.blend == StripBlend::Additive;
         let style = TrailStyle {
-            lifetime: f(&v, "lifetime", 0.4),
-            min_distance: f(&v, "minDistance", 0.05),
-            width: Curve::linear(f(&v, "widthStart", 0.15), f(&v, "widthEnd", 0.0)),
+            lifetime: v.lifetime,
+            min_distance: v.min_distance,
+            width: Curve::linear(v.width_start, v.width_end),
             color: ColorCurve::new(&[
-                (0.0, [c0.x, c0.y, c0.z, f(&v, "opacity", 1.0)]),
-                (1.0, [c1.x, c1.y, c1.z, f(&v, "opacityEnd", 0.0)]),
+                (0.0, [c0.r, c0.g, c0.b, v.opacity]),
+                (1.0, [c1.r, c1.g, c1.b, v.opacity_end]),
             ]),
-            texture: texture(&v["texture"]),
+            texture: super::assets::index_of(v.texture as f64)
+                .and_then(|i| textures.get(i).copied()),
             uv: if tile > 0.0 {
                 RibbonUv::Tile { length: tile }
             } else {
@@ -1103,11 +1105,8 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                 h
             }
         };
-        if on(&v, "layered", false) {
-            scene
-                .effects
-                .trail_layers
-                .push((e, v["layer"].as_i64().unwrap_or(0) as i32));
+        if v.layered {
+            scene.effects.trail_layers.push((e, v.layer));
         }
         scene.effects.trails.push(Trail {
             id: e,
@@ -1298,7 +1297,7 @@ pub(crate) fn skeletons(
     fx.pose_issues.clear();
     fx.pose_sources = rows(world, layout)
         .into_iter()
-        .map(|(e, v)| (e, v["asset"].as_f64().unwrap_or(0.0) as u64))
+        .filter_map(|(e, v)| Some((e, record::Skeleton::from_json(&v).ok()?.asset)))
         .collect();
     fx.pose_sources.keys().copied().collect()
 }

@@ -14,14 +14,15 @@
 //! particle systems are the renderer's alone, as before.
 
 use super::codec::{Layout, RecordKind};
-use glam::{Mat4, Quat, Vec3};
+use super::wire::record;
+use glam::{Mat4, Vec3};
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
 use og_render::{
     CpuParticles, ParticleClock, ParticleEmitter, ParticleEvent, ParticleEventKind, ParticleState,
     ParticleSystem, SceneCollider, SimulationSpace,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -139,16 +140,6 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
     world.add_state_block(SYSTEM, Box::new(Block(state)))
 }
 
-fn v3(v: &Value, d: Vec3) -> Vec3 {
-    let c = |k: &str, d: f32| v[k].as_f64().map_or(d, |x| x as f32);
-    Vec3::new(c("x", d.x), c("y", d.y), c("z", d.z))
-}
-
-fn quat(v: &Value) -> Quat {
-    let c = |k: &str, d: f64| v[k].as_f64().unwrap_or(d) as f32;
-    Quat::from_xyzw(c("x", 0.0), c("y", 0.0), c("z", 0.0), c("w", 1.0)).normalize()
-}
-
 /// Where entities are this tick: og.Transform composed down og.Parent.
 struct Places<'a> {
     r: &'a Records,
@@ -157,16 +148,13 @@ struct Places<'a> {
 
 impl Places<'_> {
     fn pose(&self, ctx: &SystemContext<'_>, e: Entity) -> Option<og_core::math::Pose> {
-        let t = self
+        let t: record::Transform = self
             .r
             .transform
             .1
-            .decode(&ctx.get_bytes(e, self.r.transform.0).ok()?);
-        Some((
-            v3(&t["position"], Vec3::ZERO),
-            quat(&t["quaternion"]),
-            v3(&t["scale"], Vec3::ONE),
-        ))
+            .read(&ctx.get_bytes(e, self.r.transform.0).ok()?)
+            .ok()?;
+        Some((t.position, t.quaternion.normalize(), t.scale))
     }
 
     fn world(&self, ctx: &SystemContext<'_>, e: Entity) -> Mat4 {
@@ -197,22 +185,17 @@ fn colliders(
     let mut out = Vec::new();
     for a in ctx.query(query)? {
         for &e in a.entities() {
-            let v = l.decode(&ctx.get_bytes(e, *id)?);
+            let v: record::Collider = l.read(&ctx.get_bytes(e, *id)?).map_err(invalid)?;
             let world = places.world(ctx, e);
-            let m = world
-                * Mat4::from_rotation_translation(
-                    quat(&v["rotation"]),
-                    v3(&v["offset"], Vec3::ZERO),
-                );
-            out.push(match v["shape"].as_u64().unwrap_or(0) {
+            let m = world * Mat4::from_rotation_translation(v.rotation.normalize(), v.offset);
+            out.push(match v.shape {
                 0 => SceneCollider::Box {
                     transform: m,
-                    half_extents: v3(&v["size"], Vec3::ONE) * 0.5,
+                    half_extents: v.size * 0.5,
                 },
                 1 => SceneCollider::Sphere {
                     center: m.transform_point3(Vec3::ZERO),
-                    radius: v["radius"].as_f64().map_or(0.5, |x| x as f32)
-                        * world.to_scale_rotation_translation().0.max_element(),
+                    radius: v.radius * world.to_scale_rotation_translation().0.max_element(),
                 },
                 _ => continue,
             });
@@ -244,8 +227,8 @@ fn system(ctx: &mut SystemContext<'_>, state: &Mutex<Hosted>, r: &Records) -> og
     if let Some((id, l)) = &r.parent {
         for a in ctx.query(next)? {
             for &e in a.entities() {
-                let v = l.decode(&ctx.get_bytes(e, *id)?);
-                let p = v["entity"].as_u64().unwrap_or(0);
+                let v: record::Parent = l.read(&ctx.get_bytes(e, *id)?).map_err(invalid)?;
+                let p = v.entity;
                 if p != 0 {
                     parents.insert(e.to_bits(), Entity::from_bits(p));
                 }
@@ -260,27 +243,30 @@ fn system(ctx: &mut SystemContext<'_>, state: &Mutex<Hosted>, r: &Records) -> og
     let mut solid: Option<Vec<SceneCollider>> = None;
     let mut events = Vec::new();
     for e in rows {
-        let v = r.systems.1.decode(&ctx.get_bytes(e, r.systems.0)?);
-        if !v["visible"].as_bool().unwrap_or(true) {
+        let v: record::ParticleSystem = r
+            .systems
+            .1
+            .read(&ctx.get_bytes(e, r.systems.0)?)
+            .map_err(invalid)?;
+        if !v.visible {
             continue;
         }
-        let Some(def) = super::fx::handle_index(&v["emitter"]).and_then(|i| emitters.get(&i))
+        let Some(def) = super::assets::index_of(v.emitter as f64).and_then(|i| emitters.get(&i))
         else {
             continue;
         };
         let em = &def.emitter;
-        let u = |k: &str, d: u64| v[k].as_u64().unwrap_or(d);
-        let start = match u("startTick", ARMED) {
+        let start = match u64::from(v.start_tick) {
             ARMED if !em.looping => continue,
             ARMED => 0,
             t => t,
         };
-        let stop = u("stopTick", 0);
+        let stop = u64::from(v.stop_tick);
         let sys = ParticleSystem {
             id: e.to_bits(),
             emitter: def.handle,
             transform: places.world(ctx, e),
-            seed: u("seed", 0),
+            seed: u64::from(v.seed),
             start_tick: start,
             stop_tick: (stop > 0).then_some(stop),
             tick,

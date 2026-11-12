@@ -10,6 +10,7 @@
 
 use super::codec::{Layout, RecordKind};
 use super::extract::{Hierarchy, RenderState};
+use super::wire::{FlipbookInfo, FromJson, record};
 use glam::{Mat4, Quat, Vec3};
 use og_bundle::vfx::{Vfx, VfxKind, VfxShape};
 use og_core::{Error, ErrorKind};
@@ -36,8 +37,7 @@ fn handle(index: usize) -> f64 {
 }
 
 /// A VfxAsset handle's load index.
-fn index(v: &Value) -> Option<usize> {
-    let h = v.as_f64()? as u64;
+fn index(h: u64) -> Option<usize> {
     (h & !0xffff_ffff == TAG && h & 0xffff_ffff > 0).then(|| (h & 0xffff_ffff) as usize - 1)
 }
 
@@ -167,14 +167,14 @@ fn link(eng: &super::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
             Link::Sound(super::assets::handle(super::assets::load_sound(eng, id)?) as f64)
         }
         VfxKind::Flipbook { id, .. } => {
-            let info = super::feel::load_flipbook(eng, id)?;
-            let w = info["frameWidth"].as_f64().unwrap_or(1.0);
-            let h = info["frameHeight"].as_f64().unwrap_or(1.0).max(1.0);
+            let info = FlipbookInfo::from_json(&super::feel::load_flipbook(eng, id)?)?;
+            let w = f64::from(info.frame_width);
+            let h = f64::from(info.frame_height).max(1.0);
             Link::Flipbook {
-                sheet: info["sheet"].as_f64().unwrap_or(0.0),
-                texture: info["texture"].as_f64().unwrap_or(0.0),
+                sheet: info.sheet as f64,
+                texture: info.texture as f64,
                 aspect: (w / h) as f32,
-                clip: info["clips"][0]["duration"].as_f64().unwrap_or(0.0) as f32,
+                clip: info.clips.first().map_or(0.0, |c| c.duration),
             }
         }
         VfxKind::Light { .. } | VfxKind::Decal { .. } | VfxKind::Shake { .. } => Link::None,
@@ -210,7 +210,7 @@ pub(crate) fn load(eng: &super::engine::Engine, path: &str) -> Result<usize, Str
 
 fn loaded(engine: u32, asset: f64) -> Result<Arc<Loaded>, String> {
     let registry = super::engine::engine(engine).map(|e| e.modules.vfx.0.clone());
-    index(&json!(asset))
+    index(asset as u64)
         .and_then(|i| lock(registry.as_ref().ok()?).get(i).cloned())
         .ok_or_else(|| format!("{asset} is not a vfx loaded in this world (og.load.vfx)"))
 }
@@ -268,7 +268,7 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
             spawn.insert("parent".into(), json!(parent));
         }
         let e = super::api::og_world_spawn(world, Some(Value::Object(spawn).to_string()))?;
-        let bits = e.as_u64().ok_or("world.spawn answered no entity")?;
+        let bits = u64::from_json(&e).map_err(|_| "world.spawn answered no entity")?;
         let seed = match d.seed {
             0 => (splitmix(bits) as u32).max(1),
             s => s,
@@ -434,30 +434,33 @@ fn system(
     let mut parents: Vec<(Entity, Entity)> = Vec::new();
     for a in ctx.query(1)? {
         for &c in a.entities() {
-            let p = r.parent.1.decode(&ctx.get_bytes(c, r.parent.0)?);
-            parents.push((c, Entity::from_bits(p["entity"].as_u64().unwrap_or(0))));
+            let p: record::Parent = r
+                .parent
+                .1
+                .read(&ctx.get_bytes(c, r.parent.0)?)
+                .map_err(invalid)?;
+            parents.push((c, Entity::from_bits(p.entity)));
         }
     }
     // The events of an effect's flipbooks (sent last tick by og.flipbook),
     // passed on as the effect's: a vfx2d's impact is the effect's impact.
     for ev in ctx.events_bytes(r.flip_event.0)? {
-        let f = r.flip_event.1.decode(&ev);
-        let child = Entity::from_bits(f["entity"].as_u64().unwrap_or(0));
+        let f: record::FlipbookEvent = r.flip_event.1.read(&ev).map_err(invalid)?;
+        let child = Entity::from_bits(f.entity);
         let Some(&(_, e)) = parents.iter().find(|(c, _)| *c == child) else {
             continue;
         };
         if !rows.contains(&e) {
             continue;
         }
-        let v = r.vfx.1.decode(&ctx.get_bytes(e, r.vfx.0)?);
-        let start = v["startTick"].as_u64().unwrap_or(UNSET);
+        let v: record::Vfx = r.vfx.1.read(&ctx.get_bytes(e, r.vfx.0)?).map_err(invalid)?;
+        let start = u64::from(v.start_tick);
         if start == UNSET || tick < start {
             continue;
         }
         // The frame fired last tick, when og.flipbook ran.
         let at = (tick.saturating_sub(1).max(start) - start) as f64 / f64::from(rate);
-        let value =
-            json!({ "entity": e.to_bits(), "asset": v["asset"], "name": f["name"], "time": at });
+        let value = json!({ "entity": e.to_bits(), "asset": v.asset, "name": f.name, "time": at });
         let b = r.event.1.encode(None, Some(&value)).map_err(invalid)?;
         ctx.send_bytes(r.event.0, &b)?;
     }
@@ -467,8 +470,9 @@ fn system(
     for &e in &rows {
         let bytes = ctx.get_bytes(e, r.vfx.0)?;
         let mut v = r.vfx.1.decode(&bytes);
-        let start = v["startTick"].as_u64().unwrap_or(UNSET);
-        let Some(l) = index(&v["asset"]).and_then(|i| lock(registry).get(i).cloned()) else {
+        let row = record::Vfx::from_json(&v).map_err(invalid)?;
+        let start = u64::from(row.start_tick);
+        let Some(l) = index(row.asset).and_then(|i| lock(registry).get(i).cloned()) else {
             continue;
         };
         if start == UNSET || tick < start {
@@ -478,7 +482,7 @@ fn system(
         let len = ticks(fx.duration, rate).max(1);
         // The ticks to run: those after the last run (a startTick written
         // again starts over), at most one cycle back.
-        let ran = v["ran"].as_u64().unwrap_or(UNSET);
+        let ran = u64::from(row.ran);
         let from = if ran != UNSET && ran >= start {
             if ran >= tick {
                 continue;
@@ -488,8 +492,7 @@ fn system(
             start
         };
         let from = from.max(tick.saturating_sub(len));
-        let seed = v["seed"].as_u64().unwrap_or(0) as u32;
-        let scale = v["scale"].as_f64().unwrap_or(1.0) as f32;
+        let (seed, scale) = (row.seed, row.scale);
         // Whether a time lands on one of the ticks run (its tick in the
         // cycle; a looping effect's end is its next start).
         let due = |at: f32| -> bool {
@@ -502,7 +505,7 @@ fn system(
         };
         for ev in &fx.events {
             if due(ev.time) {
-                let value = json!({ "entity": e.to_bits(), "asset": v["asset"], "name": ev.name, "time": ev.time });
+                let value = json!({ "entity": e.to_bits(), "asset": row.asset, "name": ev.name, "time": ev.time });
                 let b = r.event.1.encode(None, Some(&value)).map_err(invalid)?;
                 ctx.send_bytes(r.event.0, &b)?;
             }
@@ -516,7 +519,10 @@ fn system(
                         if p == e
                             && !gone.contains(&c)
                             && ctx.get_bytes(c, r.flipbook.0).is_ok_and(|b| {
-                                r.flipbook.1.decode(&b)["sheet"].as_f64() == Some(*sheet)
+                                r.flipbook
+                                    .1
+                                    .read::<record::Flipbook>(&b)
+                                    .is_ok_and(|fb| fb.sheet as f64 == *sheet)
                             })
                         {
                             ctx.despawn(c)?;
@@ -574,7 +580,7 @@ fn system(
                     },
                 ) => {
                     let o = el.offset * scale;
-                    let tint = super::fx::color(&v["tint"], Vec3::ONE);
+                    let tint = Vec3::new(row.tint.r, row.tint.g, row.tint.b);
                     let sprite = json!({
                         "texture": texture,
                         "width": size * aspect * scale,
@@ -616,7 +622,7 @@ fn system(
         v["ran"] = json!(tick);
         let out = r.vfx.1.encode(Some(&bytes), Some(&v)).map_err(invalid)?;
         ctx.set_bytes(e, r.vfx.0, &out)?;
-        if !fx.looping && tick - start >= len && v["despawn"].as_bool().unwrap_or(true) {
+        if !fx.looping && tick - start >= len && row.despawn {
             ended.push(e);
         }
     }
@@ -639,10 +645,6 @@ fn system(
 }
 
 // ── extraction ──────────────────────────────────────────────────────────────
-
-fn f(v: &Value, k: &str, d: f32) -> f32 {
-    v[k].as_f64().map_or(d, |x| x as f32)
-}
 
 fn tinted(c: [f32; 4], t: Vec3) -> [f32; 4] {
     [c[0] * t.x, c[1] * t.y, c[2] * t.z, c[3]]
@@ -667,10 +669,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
     let loaded = lock(&registry).clone();
     let rate = rs.scene.frame.tick_rate.max(1.0);
     for (e, v) in rows {
-        let Some(l) = index(&v["asset"]).and_then(|i| loaded.get(i)) else {
+        let Ok(row) = record::Vfx::from_json(&v) else {
             continue;
         };
-        let start = v["startTick"].as_u64().unwrap_or(UNSET);
+        let Some(l) = index(row.asset).and_then(|i| loaded.get(i)) else {
+            continue;
+        };
+        let start = u64::from(row.start_tick);
         if start == UNSET {
             continue;
         }
@@ -678,9 +683,9 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
         let Some(cycle) = cycle_start(fx, start, tick, rate) else {
             continue;
         };
-        let seed = v["seed"].as_u64().unwrap_or(0) as u32;
-        let scale = f(&v, "scale", 1.0).max(0.0);
-        let tint = super::fx::color(&v["tint"], Vec3::ONE);
+        let seed = row.seed;
+        let scale = row.scale.max(0.0);
+        let tint = Vec3::new(row.tint.r, row.tint.g, row.tint.b);
         let m = h.world_of(e) * Mat4::from_scale(Vec3::splat(scale));
         let t = (tick - cycle) as f32 / rate;
         for (i, (el, link)) in fx.elements.iter().zip(&l.links).enumerate() {
