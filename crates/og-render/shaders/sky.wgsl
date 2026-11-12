@@ -24,15 +24,54 @@ struct SkyParams {
 // placeholder until a frame has an aurora.
 @group(1) @binding(6) var aurora_map: texture_2d<f32>;
 
-struct SkyOut { @builtin(position) pos: vec4<f32>, @location(0) ndc: vec2<f32> };
+// grey_black, grey_white: the overcast strip's shared grey (clouds_over) over a black background and over a white
+// one, made by vs_sky_look; zero from vs_sky, whose fragment stage draws no clouds.
+struct SkyOut {
+  @builtin(position) pos: vec4<f32>,
+  @location(0) ndc: vec2<f32>,
+  @location(1) @interpolate(flat) grey_black: vec3<f32>,
+  @location(2) @interpolate(flat) grey_white: vec3<f32>,
+};
 
-@vertex
-fn vs_sky(@builtin(vertex_index) i: u32) -> SkyOut {
+fn sky_triangle(i: u32) -> SkyOut {
   var o: SkyOut;
   let x = f32(i32(i & 1u) * 4 - 1);
   let y = f32(i32(i & 2u) * 2 - 1);
   o.pos = vec4<f32>(x, y, 1.0, 1.0);
   o.ndc = vec2<f32>(x, y);
+  o.grey_black = vec3<f32>(0.0);
+  o.grey_white = vec3<f32>(0.0);
+  return o;
+}
+
+@vertex
+fn vs_sky(@builtin(vertex_index) i: u32) -> SkyOut {
+  return sky_triangle(i);
+}
+
+// The sky's triangle for fs_sky_look, with the overcast strip's grey (clouds_over): the deck's mean along four fixed
+// azimuths about the view at the lowest elevation, undithered. It is the same for every pixel, so it is marched
+// here, at the triangle's three vertices, not at each pixel of the strip (four marches a pixel: most of a storm
+// sky's cost). A march is linear in its background, so the grey over a black one and over a white one give it over
+// any.
+@vertex
+fn vs_sky_look(@builtin(vertex_index) i: u32) -> SkyOut {
+  var o = sky_triangle(i);
+  let c = frame.clouds;
+  let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
+  if (c[3].w < 0.5 || viewer > c[0].z || cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a <= 0.0) { return o; }
+  let lowest = clamp((c[0].z - viewer) / 24000.0, 0.002, 0.2);
+  let ahead = frame.view_forward.xyz;
+  let f = normalize(vec3<f32>(ahead.x, 0.0, ahead.z) + vec3<f32>(1e-6, 0.0, 0.0));
+  // Every march in one loop (one copy of the march's code: DXC inlines every call).
+  for (var k = 0u; k < 8u; k++) {
+    let a = (f32(k & 3u) - 1.5) * 0.3;
+    let az = vec3<f32>(f.x * cos(a) - f.z * sin(a), 0.0, f.x * sin(a) + f.z * cos(a));
+    let flat_d = normalize(az + vec3<f32>(1e-6, 0.0, 0.0));
+    let ray = flat_d * sqrt(1.0 - lowest * lowest) + vec3<f32>(0.0, lowest, 0.0);
+    let m = clouds_march(vec3<f32>(f32(k >> 2u)), ray, vec2<f32>(-1.0)) * 0.25;
+    if (k < 4u) { o.grey_black += m; } else { o.grey_white += m; }
+  }
   return o;
 }
 
@@ -230,44 +269,38 @@ fn cloud_hg(cos_t: f32, g: f32) -> f32 {
 // there, not an estimate of it: the strip from there down past the horizon to the sea's or the land's far edge had
 // drawn a flat grey twice the deck's (cloud_deck alone, too bright). Each row of the strip would repeat that one
 // elevation (the deck's features drawn out into columns), so the strip fades from its own column's march there,
-// undithered, into one grey every pixel shares: the deck's mean there along four fixed azimuths about the view. The
+// undithered, into one grey every pixel shares: the deck's mean there along four fixed azimuths about the view
+// (`grey_black` and `grey_white`: over a black and over a white background, from vs_sky_look). The
 // far base fades into it towards the horizon and below it, with no copy of a feature to fan or streak.
-fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
+fn clouds_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>, grey_black: vec3<f32>, grey_white: vec3<f32>) -> vec3<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5) { return background; }
   let viewer = max(frame.view_pos.y + frame.origin.y, 0.0);
   let cover = cloud_deck(d).a;
   let lowest = clamp((c[0].z - viewer) / 24000.0, 0.002, 0.2);
   let low = cover > 0.0 && viewer <= c[0].z && d.y < lowest;
-  // Every march in one loop (one copy of the march's code: DXC inlines
+  // Both marches in one loop (one copy of the march's code: DXC inlines
   // every call): under the deck's strip the deck along this column's
-  // azimuth (k 0) and the four fixed ones about the view (1 to 4), each
-  // at the lowest elevation, undithered; then the column's own (5), unless
-  // the deck covers it.
-  let ahead = frame.view_forward.xyz;
-  let f = normalize(vec3<f32>(ahead.x, 0.0, ahead.z) + vec3<f32>(1e-6, 0.0, 0.0));
+  // azimuth at the lowest elevation, undithered (k 0); then the column's
+  // own (1), unless the deck covers it. The four fixed azimuths' mean is
+  // vs_sky_look's.
   var own = vec3<f32>(0.0);
-  var grey = vec3<f32>(0.0);
   var column = background;
-  for (var k = 0u; k < 6u; k++) {
-    if (k < 5u && !low) { continue; }
-    if (k == 5u && low && cover >= 0.999) { break; }
+  for (var k = 0u; k < 2u; k++) {
+    if (k == 0u && !low) { continue; }
+    if (k == 1u && low && cover >= 0.999) { break; }
     var ray = d;
     var at = pixel;
-    if (k < 5u) {
-      var az = d;
-      if (k > 0u) {
-        let a = (f32(k - 1u) - 1.5) * 0.3;
-        az = vec3<f32>(f.x * cos(a) - f.z * sin(a), 0.0, f.x * sin(a) + f.z * cos(a));
-      }
-      let flat_d = normalize(vec3<f32>(az.x, 0.0, az.z) + vec3<f32>(1e-6, 0.0, 0.0));
+    if (k == 0u) {
+      let flat_d = normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(1e-6, 0.0, 0.0));
       ray = flat_d * sqrt(1.0 - lowest * lowest) + vec3<f32>(0.0, lowest, 0.0);
       at = vec2<f32>(-1.0);
     }
     let m = clouds_march(background, ray, at);
-    if (k == 0u) { own = m; } else if (k < 5u) { grey += m * 0.25; } else { column = m; }
+    if (k == 0u) { own = m; } else { column = m; }
   }
   if (!low) { return column; }
+  let grey = grey_black + (grey_white - grey_black) * background;
   let deck = mix(own, grey, smoothstep(0.0, 0.5, (lowest - d.y) / lowest));
   if (cover >= 0.999) { return deck; }
   return mix(column, deck, cover);
@@ -655,7 +688,7 @@ fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   // Fog.sky applies to the distant background alone; clouds integrate
   // their own view fog at each scattering sample, never a second time here.
   sky = sky_fog(sky * (1.0 - frame.view_up.w), dir);
-  let color = clouds_over(sky, dir, in.pos.xy);
+  let color = clouds_over(sky, dir, in.pos.xy, in.grey_black, in.grey_white);
   // Storage bound only, not a display rolloff: avoid half-float infinity
   // before bloom. SDR/AgX and opt-in HDR/LPM own the display peak mapping.
   return vec4<f32>(clamp(color, vec3<f32>(0.0), vec3<f32>(65504.0)), 1.0);

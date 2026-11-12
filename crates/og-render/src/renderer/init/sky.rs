@@ -35,7 +35,7 @@ impl Renderer {
         }: SkyResourcesInputs<'_>,
     ) -> SkyResourcesOutputs {
         // At the far plane, after the opaque batches: only uncovered pixels pass.
-        let sky_state = |fs: &'static str| {
+        let sky_state = |vs: &'static str, fs: &'static str| {
             deferred_hdr(
                 device,
                 sky_pl,
@@ -46,7 +46,7 @@ impl Renderer {
                     label: "sky",
                     layout,
                     module,
-                    vs: "vs_sky",
+                    vs,
                     fs,
                     buffers: &[],
                     cull: None,
@@ -57,8 +57,8 @@ impl Renderer {
                 },
             )
         };
-        let sky_pipeline = sky_state("fs_sky");
-        let sky_look_pipeline = sky_state("fs_sky_look");
+        let sky_pipeline = sky_state("vs_sky", "fs_sky");
+        let sky_look_pipeline = sky_state("vs_sky_look", "fs_sky_look");
         let ibl = ibl::IblGenerator::new(device);
         let cloud_noise = clouds::CloudNoise::placeholder(device, queue);
         let sky_params = device.create_buffer(&wgpu::BufferDescriptor {

@@ -109,7 +109,7 @@ impl SkyCapture {
             layout: Some(&layout),
             vertex: wgpu::VertexState {
                 module: &module,
-                entry_point: Some("vs_sky"),
+                entry_point: Some("vs_sky_look"),
                 compilation_options: Default::default(),
                 buffers: &[],
             },
