@@ -61,7 +61,7 @@ struct Frame {
   // Water (`water.rs`): caustics on what lies below the first surface that has them.
   caustics: vec4<f32>,        // x: the surface's height, y: strength (0: none), z: cells per metre, w: fade per metre of depth
   caustics_area: vec4<f32>,   // xy: the surface's min xz, zw: its max xz
-  caustics_cells: array<vec4<f32>, 2>,  // the two cell layers at the frame's origin: xy whole cells, zw the rest (origin.rs)
+  caustics_cells: array<vec4<f32>, 2>,  // [0].xy: the frame's origin in the ripples' tile (cells); a sea: its grid, [1].w 1
   // W1: the shore a sea's surf wets (water.rs caustics; weather_surface.wgsl shore_wetness).
   shore_wet: vec4<f32>,       // x: the sea's rest level, y: how high above it the surf wets (m), z: how wet (0: none)
   shore_area: vec4<f32>,      // its seabed's xz rectangle: xy min, zw max
@@ -295,8 +295,9 @@ fn underwater_light(origin: vec3<f32>, dir: vec3<f32>, d: f32, amount: f32) -> v
 //
 // The shafts are parallel, along the sun's refracted direction, so the eye sees them as lines through that
 // direction's vanishing point: a pattern of the view ray's bearing around it alone, read as a noise on a circle
-// (seamless all the way round), two drifting layers bright only where both are. That is what a march through the
-// surface's light pattern converges to, at two noise reads and with no bars from too few steps. The eye's own
+// (seamless all the way round), two drifting layers bright only where both are, a third splitting each beam into
+// finer ones. That is what a march through the
+// surface's light pattern converges to, at three noise reads and with no bars from too few steps. The eye's own
 // position slides the pattern, so the shafts stay in the water as it moves. They fade at the vanishing point, where
 // the eye looks along one shaft, lose contrast looking across them, where many overlap, and blur into the water's
 // even light with depth.
@@ -320,7 +321,9 @@ fn underwater_body(origin: vec3<f32>, dir: vec3<f32>, d: f32, amount: f32, shaft
     let time = frame.time.x;
     let a = shaft_noise(bearing * 6.0 + eye * 0.23 + vec2<f32>(time * 0.07, -time * 0.05));
     let b = shaft_noise(bearing * 17.0 + eye * 0.41 + vec2<f32>(-time * 0.09, time * 0.11) + 7.3 + off * 1.3);
-    let pattern = smoothstep(0.35, 0.8, a) * smoothstep(0.3, 0.8, b);
+    let f = shaft_noise(bearing * 47.0 + eye * 0.97 + vec2<f32>(time * 0.13, time * 0.08) + 3.1 - off * 2.1);
+    // The fine layer splits each beam into the pencils of light the ripples make of it (its mean kept: SHAFT_MEAN).
+    let pattern = smoothstep(0.35, 0.8, a) * smoothstep(0.3, 0.8, b) * (0.55 + 1.3 * smoothstep(0.4, 0.8, f));
     let seen = smoothstep(0.04, 0.3, off) * mix(1.0, 0.45, off * off) * exp(-0.05 * depth0);
     // About the pattern's mean, so the water keeps its brightness.
     colour *= max(1.0 + shafts * smoothstep(0.0, 0.15, l.y) * (pattern - SHAFT_MEAN) * seen * SHAFT_GAIN, 0.4);

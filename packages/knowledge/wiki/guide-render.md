@@ -293,6 +293,12 @@ depth-normal prepass: the first one pays for it.
 - Physical water (`absorption`, `scattering`): shallows over sand turn
   turquoise and deep water dark blue-green by themselves; red is gone in a
   few metres. A silty coast scatters ten times clear ocean.
+- Underwater (`underwaterDensity` above 0, the camera below the surface):
+  the frame's fog is the water's, darker with depth, and the sun falls in
+  shafts as strong as `caustics`. Looking up, the sky and the sun show
+  inside Snell's window (48.6 degrees from straight up), bent as the
+  surface bends them, the horizon at its rim and broken by the ripples;
+  outside it the surface mirrors the water.
 - Rivers: a waterfall's pool churns white for about three widths. Use
   `flowMap` for a stream that bends round rocks.
 - Normal maps: the lake mode is three.js Water's getNoise. The flow mode

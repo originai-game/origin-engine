@@ -35335,7 +35335,7 @@
         },
         "underwaterDensity": {
           "type": "number",
-          "description": "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth and lit by the sun in shafts (as strong as `caustics`); the surface from below shows the sky inside Snell's window and mirrors the water outside it.",
+          "description": "Its fog per metre (0: no underwater view). Below the surface the frame's fog becomes the water's, darker with depth, the sun in shafts as strong as `caustics`; the surface from below shows the sky inside Snell's window and mirrors the water outside it.\nSee `render §8`.",
           "default": 0.09,
           "minimum": 0,
           "maximum": 2,
@@ -35343,7 +35343,7 @@
         },
         "caustics": {
           "type": "number",
-          "description": "Caustics of the sunlight on everything below the surface (0: none). One surface a frame, the first that has them.",
+          "description": "Caustics of the sunlight on everything below the surface (0: none): the bright net the surface's waves focus, a sea's by its own waves, a lake's by its ripples, its cells growing with depth. One surface a frame, the first that has them.",
           "default": 0,
           "minimum": 0,
           "maximum": 4,
@@ -35351,7 +35351,7 @@
         },
         "causticsScale": {
           "type": "number",
-          "description": "The caustics' cells per metre.",
+          "description": "How fine a lake's caustics are: the ripples that focus them, in cells per metre (a sea's follow its waves).",
           "default": 0.6,
           "minimum": 0.01,
           "maximum": 10,
