@@ -1364,6 +1364,11 @@ pub fn og_load_replay_completions(world: u32, completions: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_water_height(world: u32, entity: f64, x: f64, z: f64) -> String {
+    <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_cast_ray(world: u32, desc: Option<String>) -> String {
     <Host as PhysicsApi>::og_physics_cast_ray(&Host, world, desc)
 }
@@ -1441,11 +1446,6 @@ pub fn og_physics_fluid_particles(world: u32, entity: f64) -> String {
 #[wasm_bindgen]
 pub fn og_physics_fluid3d_particles(world: u32, entity: f64) -> String {
     <Host as PhysicsApi>::og_physics_fluid3d_particles(&Host, world, entity)
-}
-
-#[wasm_bindgen]
-pub fn og_physics_water_height(world: u32, entity: f64, x: f64, z: f64) -> String {
-    <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
 }
 
 #[wasm_bindgen]

@@ -7273,11 +7273,11 @@
         "SoftBody",
         "Fluid2D",
         "Fluid3D",
+        "Ragdoll",
         "WaterSurface",
         "WaterLine",
         "Buoyancy",
         "Splash",
-        "Ragdoll",
         "QueryFilter",
         "RaycastDesc",
         "RaycastHit",
@@ -7582,6 +7582,39 @@
         }
       ],
       "functions": [
+        {
+          "name": "waterHeight",
+          "doc": "The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The water's entity."
+            },
+            {
+              "name": "x",
+              "type": "f32",
+              "optional": false,
+              "doc": "World x, in metres."
+            },
+            {
+              "name": "z",
+              "type": "f32",
+              "optional": false,
+              "doc": "World z, in metres (3D)."
+            }
+          ],
+          "returns": "Result<f32>",
+          "returnsDoc": "Refused for an entity without water; outside the water, its rest level.",
+          "publish": true
+        },
         {
           "name": "castRay",
           "doc": "The nearest collider along a ray. Inside a system it sees the colliders as they were at the start of the tick (og.physics.queries records them before the game's systems); between ticks, as the world holds them.\nSee `physics §4`.",
@@ -7957,39 +7990,6 @@
           ],
           "returns": "Result<List<Vector3>>",
           "returnsDoc": "Refused for an entity without an og.Fluid3D.",
-          "publish": true
-        },
-        {
-          "name": "waterHeight",
-          "doc": "The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface.",
-          "params": [
-            {
-              "name": "world",
-              "type": "World",
-              "optional": false,
-              "doc": "The world."
-            },
-            {
-              "name": "entity",
-              "type": "Entity",
-              "optional": false,
-              "doc": "The water's entity."
-            },
-            {
-              "name": "x",
-              "type": "f32",
-              "optional": false,
-              "doc": "World x, in metres."
-            },
-            {
-              "name": "z",
-              "type": "f32",
-              "optional": false,
-              "doc": "World z, in metres (3D)."
-            }
-          ],
-          "returns": "Result<f32>",
-          "returnsDoc": "Refused for an entity without water; outside the water, its rest level.",
           "publish": true
         },
         {
@@ -33093,6 +33093,80 @@
       },
       "additionalProperties": false
     },
+    "Ragdoll": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.",
+      "type": "object",
+      "properties": {
+        "weight": {
+          "type": "number",
+          "description": "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "blendTime": {
+          "type": "number",
+          "description": "How long the blend between animation and physics takes, both ways.",
+          "default": 0.25,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "mass": {
+          "type": "number",
+          "description": "The whole body's mass, shared by the bones by length.",
+          "default": 60,
+          "minimum": 0.1,
+          "x-og-unit": "kg",
+          "x-og-tunable": true
+        },
+        "thickness": {
+          "type": "number",
+          "description": "A bone capsule's radius as a fraction of its length.",
+          "default": 0.22,
+          "minimum": 0.01,
+          "maximum": 1,
+          "x-og-tunable": true
+        },
+        "jointLimit": {
+          "type": "number",
+          "description": "How far each joint bends from the rest pose.",
+          "default": 0.9,
+          "minimum": 0,
+          "maximum": 3.1,
+          "x-og-unit": "rad",
+          "x-og-tunable": true
+        },
+        "damping": {
+          "type": "number",
+          "description": "How much of their motion the bones lose per second.",
+          "default": 0.6,
+          "minimum": 0,
+          "maximum": 20,
+          "x-og-unit": "perSecond",
+          "x-og-tunable": true
+        },
+        "impulse": {
+          "$ref": "#/$defs/Vector3",
+          "description": "An impulse given to every bone when weight first goes up (a hit).",
+          "default": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "blend": {
+          "type": "number",
+          "description": "Written: the blend in use (0 animation .. 1 physics).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
     "WaterSurface": {
       "x-og-kind": "component",
       "x-og-module": "physics",
@@ -33319,80 +33393,6 @@
         "point",
         "speed"
       ],
-      "additionalProperties": false
-    },
-    "Ragdoll": {
-      "x-og-kind": "component",
-      "x-og-module": "physics",
-      "description": "A ragdoll over an og.Skeleton: a capsule body per bone with a parent, joints with limits between them (ball joints with cone limits in 3D; in 2D hinges about z, the bones rapier2d bodies in the xy plane at their animated z, for a skeleton laid out in that plane), built from the skeleton's rest pose. `weight` is where the pose comes from: 0 the animation (the bodies follow it kinematically), 1 the physics (the bodies are dynamic, starting with the animation's velocity); the pose drawn blends between them over `blendTime`, both ways. The bodies are world state, not entities.",
-      "type": "object",
-      "properties": {
-        "weight": {
-          "type": "number",
-          "description": "0 animated, 1 ragdoll. Set it to 1 on a hit; back to 0 to recover.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1,
-          "x-og-tunable": true
-        },
-        "blendTime": {
-          "type": "number",
-          "description": "How long the blend between animation and physics takes, both ways.",
-          "default": 0.25,
-          "minimum": 0,
-          "x-og-unit": "s",
-          "x-og-tunable": true
-        },
-        "mass": {
-          "type": "number",
-          "description": "The whole body's mass, shared by the bones by length.",
-          "default": 60,
-          "minimum": 0.1,
-          "x-og-unit": "kg",
-          "x-og-tunable": true
-        },
-        "thickness": {
-          "type": "number",
-          "description": "A bone capsule's radius as a fraction of its length.",
-          "default": 0.22,
-          "minimum": 0.01,
-          "maximum": 1,
-          "x-og-tunable": true
-        },
-        "jointLimit": {
-          "type": "number",
-          "description": "How far each joint bends from the rest pose.",
-          "default": 0.9,
-          "minimum": 0,
-          "maximum": 3.1,
-          "x-og-unit": "rad",
-          "x-og-tunable": true
-        },
-        "damping": {
-          "type": "number",
-          "description": "How much of their motion the bones lose per second.",
-          "default": 0.6,
-          "minimum": 0,
-          "maximum": 20,
-          "x-og-unit": "perSecond",
-          "x-og-tunable": true
-        },
-        "impulse": {
-          "$ref": "#/$defs/Vector3",
-          "description": "An impulse given to every bone when weight first goes up (a hit).",
-          "default": {
-            "x": 0,
-            "y": 0,
-            "z": 0
-          }
-        },
-        "blend": {
-          "type": "number",
-          "description": "Written: the blend in use (0 animation .. 1 physics).",
-          "default": 0,
-          "readOnly": true
-        }
-      },
       "additionalProperties": false
     },
     "QueryFilter": {
