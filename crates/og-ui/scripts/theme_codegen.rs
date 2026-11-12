@@ -111,11 +111,16 @@ fn unit(v: &Value, path: &[&str], suffix: &str) -> Result<f32, String> {
         })
 }
 
-/// `#rrggbb` or `rgb(r g b / a)`.
+/// `#rrggbb`, `#rrggbbaa` or `rgb(r g b / a)`.
 fn colour(s: &str) -> Result<([u8; 3], f32), String> {
     if let Some(h) = s.strip_prefix('#').filter(|h| h.len() == 6) {
         let n = u32::from_str_radix(h, 16).map_err(|_| format!("`{s}` is not a colour"))?;
         return Ok(([(n >> 16) as u8, (n >> 8) as u8, n as u8], 1.0));
+    }
+    if let Some(h) = s.strip_prefix('#').filter(|h| h.len() == 8) {
+        let n = u32::from_str_radix(h, 16).map_err(|_| format!("`{s}` is not a colour"))?;
+        let a = f32::from(n as u8) / 255.0;
+        return Ok(([(n >> 24) as u8, (n >> 16) as u8, (n >> 8) as u8], a));
     }
     let inner = s
         .strip_prefix("rgb(")
@@ -403,10 +408,43 @@ pub fn generate(tokens: &str) -> Result<String, String> {
         .map_err(|_| "tokens.json: vars.press-scale".to_string())?;
     writeln!(
         o,
-        "/// How far a pressed control shrinks.\npub const PRESS_SCALE: f32 = {};",
+        "/// How far a pressed control shrinks.\npub const PRESS_SCALE: f32 = {};\n",
         num(press)
     )
     .unwrap();
+
+    o.push_str(STATE_HEAD);
+    let state = |k: &str| -> Result<f32, String> {
+        get(&t, &["state", k])?
+            .as_f64()
+            .map(|n| n as f32)
+            .ok_or_else(|| format!("tokens.json: state.{k} is not a number"))
+    };
+    for (field, value) in [
+        ("hover_wash", state("hover-wash")?),
+        ("control_press_scale", state("control-press-scale")?),
+        ("lift", unit(&t, &["state", "lift"], "px")?),
+        ("disabled_opacity", state("disabled-opacity")?),
+        ("touch_target", unit(&t, &["size", "touch"], "px")?),
+    ] {
+        writeln!(o, "    {field}: {},", num(value)).unwrap();
+    }
+    o.push_str("};\n\n");
+
+    for name in ["ui", "panel", "emphasis", "playful"] {
+        let bounce = get(&t, &["motion", "named", name, "bounce"])?
+            .as_f64()
+            .ok_or_else(|| format!("tokens.json: motion.named.{name}.bounce"))?
+            as f32;
+        writeln!(
+            o,
+            "/// The `{name}` transition's spring: perceptual duration (ms) and bounce.\npub const MOTION_{}: [f32; 2] = [{}, {}];",
+            name.to_uppercase(),
+            num(unit(&t, &["motion", "named", name, "duration"], "ms")?),
+            num(bounce)
+        )
+        .unwrap();
+    }
 
     Ok(o)
 }
@@ -733,6 +771,27 @@ pub struct Timing {
 }
 
 pub const TIMING: Timing = Timing {
+"#;
+
+const STATE_HEAD: &str = r#"/// How a control answers (the tokens' `state`; CSS `--state-*`,
+/// `--touch-target`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct State {
+    /// How far hover (half) and press (whole) move a control's fill
+    /// towards its wash.
+    pub hover_wash: f32,
+    /// What a pressed control row shrinks to (a button's part takes
+    /// `PRESS_SCALE`).
+    pub control_press_scale: f32,
+    /// The hover and focus rise, og-ui units (negative is up).
+    pub lift: f32,
+    /// A disabled control's opacity.
+    pub disabled_opacity: f32,
+    /// The smallest side a finger's target gets, og-ui units.
+    pub touch_target: f32,
+}
+
+pub const STATE: State = State {
 "#;
 
 const SPRING_HEAD: &str = r#"/// A spring: damping ratio (1 critically damped, below 1 overshoots) and

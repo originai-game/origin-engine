@@ -699,3 +699,38 @@ pub const EASE_OUT: [f32; 4] = [0.23, 1.0, 0.32, 1.0];
 
 /// How far a pressed control shrinks.
 pub const PRESS_SCALE: f32 = 0.96;
+
+/// How a control answers (the tokens' `state`; CSS `--state-*`,
+/// `--touch-target`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct State {
+    /// How far hover (half) and press (whole) move a control's fill
+    /// towards its wash.
+    pub hover_wash: f32,
+    /// What a pressed control row shrinks to (a button's part takes
+    /// `PRESS_SCALE`).
+    pub control_press_scale: f32,
+    /// The hover and focus rise, og-ui units (negative is up).
+    pub lift: f32,
+    /// A disabled control's opacity.
+    pub disabled_opacity: f32,
+    /// The smallest side a finger's target gets, og-ui units.
+    pub touch_target: f32,
+}
+
+pub const STATE: State = State {
+    hover_wash: 0.1,
+    control_press_scale: 0.97,
+    lift: -1.0,
+    disabled_opacity: 0.5,
+    touch_target: 44.0,
+};
+
+/// The `ui` transition's spring: perceptual duration (ms) and bounce.
+pub const MOTION_UI: [f32; 2] = [300.0, 0.0];
+/// The `panel` transition's spring: perceptual duration (ms) and bounce.
+pub const MOTION_PANEL: [f32; 2] = [420.0, 0.1];
+/// The `emphasis` transition's spring: perceptual duration (ms) and bounce.
+pub const MOTION_EMPHASIS: [f32; 2] = [520.0, 0.3];
+/// The `playful` transition's spring: perceptual duration (ms) and bounce.
+pub const MOTION_PLAYFUL: [f32; 2] = [600.0, 0.45];

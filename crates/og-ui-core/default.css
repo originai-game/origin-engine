@@ -146,6 +146,18 @@
     --motion-easing-out: cubic-bezier(0.23, 1, 0.32, 1);
     --motion-easing-snappy: linear(0, 0.016, 0.063 4.1%, 0.25 8.7%, 0.684 17.5%, 0.86 22.6%, 0.967 28%, 1.03 34%, 1.05 39.6%, 1.045 46.2%, 1.017 58.5%, 0.997 75.2%, 1);
     --motion-easing-spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001);
+    --motion-named-emphasis-bounce: 0.3;
+    --motion-named-emphasis-duration: 520ms;
+    --motion-named-enter-duration: var(--motion-duration-base);
+    --motion-named-enter-easing: var(--motion-easing-out);
+    --motion-named-exit-duration: var(--motion-duration-fast);
+    --motion-named-exit-easing: var(--motion-easing-exit);
+    --motion-named-panel-bounce: 0.1;
+    --motion-named-panel-duration: 420ms;
+    --motion-named-playful-bounce: 0.45;
+    --motion-named-playful-duration: 600ms;
+    --motion-named-ui-bounce: 0;
+    --motion-named-ui-duration: 300ms;
     --motion-spring-default-damping: 1;
     --motion-spring-default-response: 350ms;
     --motion-spring-momentum-damping: 0.8;
@@ -175,28 +187,53 @@
     --vars-material-saturate: 200%;
     --vars-press-scale: 0.96;
     --vars-scrim-blur: 8px;
-    --font-body: var(--font-sans);
-    --space-xl3: var(--space-3xl);
-    --size-xs: 16px;
-    --size-sm: 24px;
-    --size-md: 32px;
     --size-lg: 48px;
-    --size-xl: 64px;
-    --size-xxl: 96px;
+    --size-md: 32px;
+    --size-sm: 24px;
     --size-touch: 44px;
-    --radius-xs: var(--radius-control);
-    --radius-sm: var(--radius-button);
-    --radius-md: var(--radius-panel);
-    --radius-lg: calc(var(--radius-panel) * 1.5);
-    --radius-xl: calc(var(--radius-panel) * 2);
-    --radius-pill: var(--radius-capsule);
+    --size-xl: 64px;
+    --size-xs: 16px;
+    --size-xxl: 96px;
+    --stroke-edge: 0.5px;
+    --stroke-focus: 2px;
     --stroke-hairline: 1px;
-    --stroke-thin: 1.5px;
     --stroke-regular: 2px;
     --stroke-thick: 3px;
-    --stroke-focus: 2px;
+    --stroke-thin: 1.5px;
+    --state-control-press-scale: 0.97;
+    --state-disabled-opacity: 0.5;
+    --state-focus-ring-offset: var(--space-xxs);
+    --state-focus-ring-offset-field: 0;
+    --state-focus-ring-width: var(--stroke-focus);
+    --state-hover-wash: 0.1;
+    --state-lift: -1px;
+    --state-outline-width: var(--stroke-hairline);
+    --state-player-ring-offset-1: calc(var(--space-xxs) * 3);
+    --state-player-ring-offset-2: calc(var(--space-xxs) * 5);
+    --state-player-ring-offset-3: calc(var(--space-xxs) * 7);
+    --state-player-ring-width: var(--space-xxs);
+    --state-press-scale: var(--vars-press-scale);
+    --state-touch-disabled-opacity: 0.45;
+    --control-lg: var(--density-active-control-lg, var(--density-compact-control-lg));
+    --control-md: var(--density-active-control-md, var(--density-compact-control-md));
+    --control-sm: var(--density-active-control-sm, var(--density-compact-control-sm));
+    --density-touch-gutter: var(--density-compact-gutter);
+    --density-touch-section: var(--density-compact-section);
+    --font-body: var(--font-sans);
+    --gutter: var(--density-active-gutter, var(--density-compact-gutter));
+    --header: var(--density-active-header, var(--density-compact-header));
     --motion-enter: var(--motion-duration-base) ease-out;
     --motion-exit: var(--motion-duration-fast) ease-in;
+    --radius-lg: calc(var(--radius-panel) * 1.5);
+    --radius-md: var(--radius-panel);
+    --radius-pill: var(--radius-capsule);
+    --radius-sm: var(--radius-button);
+    --radius-xl: calc(var(--radius-panel) * 2);
+    --radius-xs: var(--radius-control);
+    --row: var(--density-active-row, var(--density-compact-row));
+    --section: var(--density-active-section, var(--density-compact-section));
+    --space-xl3: var(--space-3xl);
+    --touch-target: var(--size-touch);
     --type-xl2-size: 20px;
     --type-xl2-line-height: 28px;
     --type-xl2-weight: 600;
@@ -483,9 +520,12 @@
     --color-material-regular: rgb(30 30 34 / 0.64);
     --color-material-thick: rgb(28 28 30 / 0.78);
     --color-material-thin: rgb(44 44 48 / 0.28);
+    --color-minimap: #16161899;
+    --color-minimap-edge: #ffffff14;
     --color-scrim: rgb(0 0 0 / 0.42);
     --color-shadow: #000000;
     --color-sheen: rgb(255 255 255 / 0.12);
+    --color-slot-selected-edge: #ffffff8c;
     --color-stage: #000000;
     --color-stage-border: #2c2c2e;
     --color-stage-danger: #ff6b5e;
@@ -498,6 +538,7 @@
     --color-surface-hover: #3a3a3c;
     --color-surface-raised: #2c2c2e;
     --color-thumb: #636366;
+    --color-track: #707075;
     --color-warn: #ff8a3d;
     --color-xp: #bf5af2;
     --backdrop: rgb(0 0 0 / 1);
@@ -540,14 +581,32 @@
     --xp: rgb(191 90 242 / 1);
     --gold: rgb(255 214 10 / 1);
     --well-rim: rgb(117 117 120 / 1);
+    --glass-blur-regular: var(--vars-material-blur);
+    --glass-blur-thick: var(--vars-material-blur-thick);
     --glass-saturation: 120%;
+    --shadow-edge: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+    --shadow-float: inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+    --shadow-focus-tile: 0 12px 32px -10px rgb(0 0 0 / 0.55);
+    --shadow-lens: 0 0 0 rgb(0 0 0 / 0);
+    --shadow-lift: 0 10px 24px -8px rgb(0 0 0 / 0.6), 0 32px 64px -16px rgb(0 0 0 / 0.8);
+    --shadow-minimap: 0 6px 16px 0 #00000073;
+    --shadow-overlay: 0 16px 40px -12px rgb(0 0 0 / 0.35), 0 2px 6px -2px rgb(0 0 0 / 0.2);
+    --shadow-raised: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+    --shadow-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+    --shadow-slot-selected: 0 0 8px 0 #ffffff1f, 0 6px 14px 0 #00000066;
+    --shadow-tab-selected: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26;
+    --shadow-fill-sheen: inset 0 1px 0 0 var(--sheen-50);
+    --shadow-groove: inset 0 1px 2px 0 var(--shadow-35);
+    --shadow-pressed: inset 0 1px 3px 0 var(--shadow-45);
+    --shadow-sheen: inset 0 1px 0 0 var(--sheen-60);
+    --shadow-well: inset 0 1px 3px 0 var(--shadow-30);
+    --danger-45: rgb(255 138 130 / 0.45);
+    --line-70: rgb(56 56 58 / 0.7);
     --shadow-30: rgb(0 0 0 / 0.3);
     --shadow-35: rgb(0 0 0 / 0.35);
     --shadow-45: rgb(0 0 0 / 0.45);
     --sheen-50: rgb(255 255 255 / 0.06);
     --sheen-60: rgb(255 255 255 / 0.072000004);
-    --line-70: rgb(56 56 58 / 0.7);
-    --danger-45: rgb(255 138 130 / 0.45);
     --elevation-raised: 0 1px 3px 0 #0000004d;
     --elevation-floating: 0 4px 12px 0 #00000059;
   }
@@ -582,9 +641,12 @@
     --color-material-regular: rgb(250 250 252 / 0.58);
     --color-material-thick: rgb(246 246 248 / 0.8);
     --color-material-thin: rgb(255 255 255 / 0.36);
+    --color-minimap: #16161899;
+    --color-minimap-edge: #ffffff14;
     --color-scrim: rgb(0 0 0 / 0.22);
     --color-shadow: #000000;
     --color-sheen: rgb(255 255 255 / 0.5);
+    --color-slot-selected-edge: #ffffff8c;
     --color-stage: #000000;
     --color-stage-border: #2c2c2e;
     --color-stage-danger: #ff6b5e;
@@ -597,6 +659,7 @@
     --color-surface-hover: #e5e5ea;
     --color-surface-raised: #ffffff;
     --color-thumb: #ffffff;
+    --color-track: #707075;
     --color-warn: #c2410c;
     --color-xp: #7d3fc4;
     --backdrop: rgb(242 242 247 / 1);
@@ -639,14 +702,32 @@
     --xp: rgb(125 63 196 / 1);
     --gold: rgb(138 90 0 / 1);
     --well-rim: rgb(148 148 152 / 1);
+    --glass-blur-regular: var(--vars-material-blur);
+    --glass-blur-thick: var(--vars-material-blur-thick);
     --glass-saturation: 200%;
+    --shadow-edge: inset 0 0 0 0.5px rgb(0 0 0 / 0.08);
+    --shadow-float: 0 0 0 0.5px rgb(0 0 0 / 0.06), 0 6px 20px -8px rgb(0 0 0 / 0.16);
+    --shadow-focus-tile: 0 12px 32px -10px rgb(0 0 0 / 0.55);
+    --shadow-lens: 0 0 0 rgb(0 0 0 / 0);
+    --shadow-lift: 0 10px 24px -8px rgb(0 0 0 / 0.25), 0 32px 64px -16px rgb(0 0 0 / 0.4);
+    --shadow-minimap: 0 6px 16px 0 #00000073;
+    --shadow-overlay: 0 16px 40px -12px rgb(0 0 0 / 0.35), 0 2px 6px -2px rgb(0 0 0 / 0.2);
+    --shadow-raised: 0 0 0 0.5px rgb(0 0 0 / 0.08);
+    --shadow-rim: inset 0 0 0 0.5px rgb(0 0 0 / 0.06);
+    --shadow-slot-selected: 0 0 8px 0 #ffffff1f, 0 6px 14px 0 #00000066;
+    --shadow-tab-selected: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26;
+    --shadow-fill-sheen: inset 0 1px 0 0 var(--sheen-50);
+    --shadow-groove: inset 0 1px 2px 0 var(--shadow-35);
+    --shadow-pressed: inset 0 1px 3px 0 var(--shadow-45);
+    --shadow-sheen: inset 0 1px 0 0 var(--sheen-60);
+    --shadow-well: inset 0 1px 3px 0 var(--shadow-30);
+    --danger-45: rgb(178 0 17 / 0.45);
+    --line-70: rgb(220 220 225 / 0.7);
     --shadow-30: rgb(0 0 0 / 0.3);
     --shadow-35: rgb(0 0 0 / 0.35);
     --shadow-45: rgb(0 0 0 / 0.45);
     --sheen-50: rgb(255 255 255 / 0.25);
     --sheen-60: rgb(255 255 255 / 0.3);
-    --line-70: rgb(220 220 225 / 0.7);
-    --danger-45: rgb(178 0 17 / 0.45);
     --elevation-raised: 0 1px 3px 0 #0000004d;
     --elevation-floating: 0 4px 12px 0 #00000059;
   }
@@ -707,8 +788,8 @@
   button.primary::part(base):hover { background: var(--primary-hover); }
   button.primary::part(base):active { background: var(--primary-active); }
   button.quiet::part(base), button.ghost::part(base) { background: transparent; }
-  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - 1px); }
-  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - 1px); }
+  button.ghost::part(base) { padding-inline: calc(var(--space-lg) - var(--stroke-hairline)); }
+  button.ghost.small::part(base) { padding-inline: calc(var(--space-md) - var(--stroke-hairline)); }
   button.ghost.square::part(base) { padding-inline: 0; }
   button.quiet::part(base):hover, button.quiet::part(base):active,
   button.ghost::part(base):hover, button.ghost::part(base):active { background: var(--control); }
@@ -741,7 +822,7 @@
   panel::part(frame), tooltip::part(frame), dialog::part(panel),
   select::part(list), input[type=range]::part(bubble) {
     box-sizing: border-box;
-    border: 1px solid var(--line);
+    border: var(--stroke-hairline) solid var(--line);
     border-radius: var(--radius-panel);
   }
   select::part(list), input[type=range]::part(bubble) {
@@ -749,12 +830,12 @@
   }
   /* Hud */
   hud::part(frame), minimap::part(frame) {
-    border: 1px solid var(--line-70);
+    border: var(--stroke-hairline) solid var(--line-70);
     border-radius: var(--radius-button);
   }
   joystick::part(base):disabled, dpad::part(base):disabled,
   actionbutton::part(face):disabled {
-    opacity: 0.45;
+    opacity: var(--state-touch-disabled-opacity);
   }
   /* Button: untouched token defaults also serve secondary controls. */
   button::part(base), input[type=checkbox]::part(row),
@@ -762,13 +843,13 @@
   stepper::part(button), details::part(summary),
   keyboard::part(key), keyboard::part(candidate) {
     box-sizing: border-box;
-    border: 1px solid var(--line);
+    border: var(--stroke-hairline) solid var(--line);
     border-radius: var(--radius-button);
-    box-shadow: inset 0 1px 0 0 var(--sheen-60);
+    box-shadow: var(--shadow-sheen);
   }
   stepper::part(button):active, details::part(summary):active,
   keyboard::part(key):active, keyboard::part(candidate):active {
-    box-shadow: inset 0 1px 3px 0 var(--shadow-45);
+    box-shadow: var(--shadow-pressed);
   }
   stepper::part(button):disabled, details::part(summary):disabled,
   keyboard::part(key):disabled, keyboard::part(candidate):disabled {
@@ -779,13 +860,13 @@
   stepper::part(frame), stepper::part(value), input[type=checkbox]::part(box),
   input[type=radio]::part(ring) {
     box-sizing: border-box;
-    border: 1.5px solid var(--line);
+    border: var(--stroke-thin) solid var(--line);
     border-radius: var(--radius-button);
-    box-shadow: inset 0 1px 3px 0 var(--shadow-30);
+    box-shadow: var(--shadow-well);
   }
-  select::part(trigger) { padding-inline: calc(var(--space-md) - 1.5px); }
+  select::part(trigger) { padding-inline: calc(var(--space-md) - var(--stroke-thin)); }
   input[type=checkbox]::part(box), input[type=radio]::part(ring) {
-    border: 1px solid var(--well-rim);
+    border: var(--stroke-hairline) solid var(--well-rim);
   }
   input[type=checkbox]::part(box):checked,
   input[type=checkbox][aria-checked=mixed]::part(box),
@@ -795,115 +876,115 @@
   input[type=checkbox][aria-invalid=true]::part(box),
   select[aria-invalid=true]::part(trigger),
   stepper[aria-invalid=true]::part(frame), stepper[aria-invalid=true]::part(value) {
-    border: 1.5px solid var(--danger);
+    border: var(--stroke-thin) solid var(--danger);
   }
   /* Slot / Avatar / Chip / Badge / Tab / Bar */
   slot::part(frame) {
-    border: 1px solid var(--line);
+    border: var(--stroke-hairline) solid var(--line);
     border-radius: var(--radius-control);
-    box-shadow: inset 0 1px 3px 0 var(--shadow-30);
+    box-shadow: var(--shadow-well);
   }
   chip::part(base), input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
   input[type=checkbox][switch]::part(knob) {
-    border: 1px solid var(--line); border-radius: var(--radius-button);
+    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-button);
   }
   chip[aria-selected=true]::part(base) { border: none; }
   badge::part(base), tabs::part(tab), tabs::part(track), tabs::part(indicator) {
     border: none; border-radius: var(--radius-button);
   }
   input[type=radio]::part(card) {
-    border: 1px solid var(--line); border-radius: var(--radius-panel);
+    border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-panel);
     box-shadow: var(--elevation-raised);
   }
   input[type=radio]::part(card):active, input[type=radio]::part(card):disabled { box-shadow: none; }
   input[type=radio]::part(ring), input[type=radio]::part(dot),
   input[type=range]::part(knob), input[type=range]::part(core),
   input[type=checkbox][switch]::part(track), input[type=checkbox][switch]::part(knob) {
-    border-radius: 9999px;
+    border-radius: var(--radius-capsule);
   }
   meter::part(track), meter::part(fill), progress::part(track), progress::part(fill), input[type=range]::part(track),
   input[type=range]::part(fill), input[type=range]::part(tick) {
     border: none; border-radius: var(--radius-capsule);
-    box-shadow: inset 0 1px 2px 0 var(--shadow-35);
+    box-shadow: var(--shadow-groove);
   }
-  meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: inset 0 1px 0 0 var(--sheen-50); }
+  meter::part(fill), progress::part(fill), input[type=range]::part(fill) { box-shadow: var(--shadow-fill-sheen); }
   /* node_draw focus rings: outside the part, gap only for navigation. */
   button::part(focus):focus-visible, input::part(focus):focus-visible,
   textarea::part(focus):focus-visible, select::part(focus):focus-visible,
   tabs::part(focus):focus-visible, slot::part(focus):focus-visible,
   stepper::part(focus):focus-visible, details::part(focus):focus-visible,
   keyboard::part(focus):focus-visible {
-    outline: 2px solid var(--focus); outline-offset: var(--space-xxs);
+    outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset);
   }
-  input::part(focus):focus-visible, textarea::part(focus):focus-visible { outline-offset: 0; }
+  input::part(focus):focus-visible, textarea::part(focus):focus-visible { outline-offset: var(--state-focus-ring-offset-field); }
   input[type=range]::part(focus):focus-visible, input[type=checkbox]::part(focus):focus-visible,
-  input[type=radio]::part(focus):focus-visible { outline-offset: var(--space-xxs); }
-  button[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  button[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  button[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  button[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  input[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  input[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  input[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  input[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  textarea[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  textarea[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  textarea[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  textarea[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  select[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  select[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  select[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  select[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  tabs[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  tabs[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  tabs[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  tabs[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  slot[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  slot[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  slot[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  slot[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  stepper[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  stepper[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  stepper[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  stepper[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  details[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  details[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  details[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  details[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
-  keyboard[data-outline=true]::part(focus) { outline: 1px solid var(--line-strong); outline-offset: 0; }
-  keyboard[data-player="1"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--info); outline-offset: calc(var(--space-xxs) * 3); }
-  keyboard[data-player="2"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--success); outline-offset: calc(var(--space-xxs) * 5); }
-  keyboard[data-player="3"]::part(focus):focus-visible { outline: var(--space-xxs) solid var(--warn); outline-offset: calc(var(--space-xxs) * 7); }
+  input[type=radio]::part(focus):focus-visible { outline-offset: var(--state-focus-ring-offset); }
+  button[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  button[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  button[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  button[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  input[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  input[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  input[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  input[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  textarea[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  textarea[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  textarea[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  textarea[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  select[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  select[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  select[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  select[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  tabs[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  tabs[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  tabs[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  tabs[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  slot[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  slot[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  slot[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  slot[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  stepper[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  stepper[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  stepper[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  stepper[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  details[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  details[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  details[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  details[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
+  keyboard[data-outline=true]::part(focus) { outline: var(--state-outline-width) solid var(--line-strong); outline-offset: 0; }
+  keyboard[data-player="1"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--info); outline-offset: var(--state-player-ring-offset-1); }
+  keyboard[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
+  keyboard[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
   /* Panel::frame */
-  panel.glass::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick lift; }
+  panel.glass::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick lift; }
   /* Tooltip::frame */
-  tooltip::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(32px) saturate(var(--glass-saturation)); -og-material: glass thick float; }
+  tooltip::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick float; }
   /* Hud::frame */
-  hud::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(22px) saturate(var(--glass-saturation)); -og-material: glass regular float; }
+  hud::part(frame) { background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-regular)) saturate(var(--glass-saturation)); -og-material: glass regular float; }
   /* Minimap::frame */
-  minimap::part(frame) { background: #16161899; border: 0.5px solid #ffffff14; box-shadow: 0 6px 16px 0 #00000073; }
+  minimap::part(frame) { background: var(--color-minimap); border: var(--stroke-edge) solid var(--color-minimap-edge); box-shadow: var(--shadow-minimap); }
   /* Card::frame */
   panel::part(frame) { box-shadow: none; border-radius: var(--radius-card); }
   /* Button::base */
   button::part(base) { border: none; box-shadow: none; }
   /* Button::base.ghost */
-  button.ghost::part(base) { border: 1px solid var(--line-strong); }
+  button.ghost::part(base) { border: var(--stroke-hairline) solid var(--line-strong); }
   /* Field::frame */
   input::part(frame), textarea::part(frame) { border: none; box-shadow: none; }
   /* Field::frame.invalid */
-  input::part(frame):invalid, textarea::part(frame):invalid { border: 1px solid var(--danger); }
+  input::part(frame):invalid, textarea::part(frame):invalid { border: var(--stroke-hairline) solid var(--danger); }
   /* Chip::base */
   chip::part(base) { border: none; }
   /* Slot::frame */
   slot::part(frame) { border: none; box-shadow: none; }
   /* Slot::frame:selected */
-  slot[aria-selected=true]::part(frame) { border: 1px solid #ffffff8c; box-shadow: 0 0 8px 0 #ffffff1f, 0 6px 14px 0 #00000066; }
+  slot[aria-selected=true]::part(frame) { border: var(--stroke-hairline) solid var(--color-slot-selected-edge); box-shadow: var(--shadow-slot-selected); }
   /* Meter::track */
   meter::part(track), progress::part(track) { box-shadow: none; }
   /* Meter::fill */
   meter::part(fill), progress::part(fill) { box-shadow: none; }
   /* Slider::track */
-  input[type=range]::part(track) { background: #707075; box-shadow: none; }
+  input[type=range]::part(track) { background: var(--color-track); box-shadow: none; }
   /* Toggle::track */
   input[type=checkbox][switch]::part(track) { box-shadow: none; }
   /* Toggle::row */
@@ -913,7 +994,7 @@
   /* Radio::option */
   input[type=radio]::part(option) { border: none; box-shadow: none; }
   /* Dropdown::trigger.open */
-  select[aria-expanded=true]::part(trigger) { border: 2px solid var(--focus); padding-inline: calc(var(--space-md) - 2px); }
+  select[aria-expanded=true]::part(trigger) { border: var(--stroke-regular) solid var(--focus); padding-inline: calc(var(--space-md) - var(--stroke-regular)); }
   /* Dropdown::option */
   select::part(option) { border: none; box-shadow: none; }
   /* Radio::card */
@@ -921,7 +1002,7 @@
   /* Radio::card:selected */
   input[type=radio]::part(card):checked { background: var(--selection); }
   /* Radio::chosen */
-  input[type=radio]::part(chosen) { border: 2px solid var(--primary); }
+  input[type=radio]::part(chosen) { border: var(--stroke-regular) solid var(--primary); }
   /* Tabs::tab:selected */
-  tabs::part(tab):checked { background: var(--selection); box-shadow: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26; }
+  tabs::part(tab):checked { background: var(--selection); box-shadow: var(--shadow-tab-selected); }
 }

@@ -2,7 +2,7 @@
 //! eases, transitions and motion tokens, and one animated channel: a value
 //! with its velocity that keeps both when its target moves.
 
-use crate::theme::{EASE_EXIT, EASE_OUT};
+use crate::theme::{EASE_EXIT, EASE_OUT, MOTION_EMPHASIS, MOTION_PANEL, MOTION_PLAYFUL, MOTION_UI};
 pub use og_tween::Ease;
 
 /// A spring as a designer gives it: how long it takes to feel done
@@ -186,10 +186,10 @@ pub struct MotionTokens {
 impl Default for MotionTokens {
     fn default() -> MotionTokens {
         MotionTokens {
-            ui: SpringSpec::new(300.0, 0.0),
-            panel: SpringSpec::new(420.0, 0.1),
-            emphasis: SpringSpec::new(520.0, 0.3),
-            playful: SpringSpec::new(600.0, 0.45),
+            ui: SpringSpec::new(MOTION_UI[0], MOTION_UI[1]),
+            panel: SpringSpec::new(MOTION_PANEL[0], MOTION_PANEL[1]),
+            emphasis: SpringSpec::new(MOTION_EMPHASIS[0], MOTION_EMPHASIS[1]),
+            playful: SpringSpec::new(MOTION_PLAYFUL[0], MOTION_PLAYFUL[1]),
             enter_ease: Ease::CubicBezier(EASE_OUT),
             enter_ms: crate::theme::DURATIONS_MS.base,
             exit_ease: Ease::CubicBezier(EASE_EXIT),
