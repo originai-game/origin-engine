@@ -5,6 +5,21 @@ use super::*;
 /// One pass of a frame, as the render graph knows it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum FramePass {
+    /// The compute before the frame's draws, which the passes after it
+    /// read (renderer/render/pre_graph.rs): the crowds' cull on the GPU,
+    /// the GPU culling's counts copied for their readback, the wind
+    /// field's and the trample map's steps, the visual bodies' and fluids'
+    /// steps, the deforming surfaces' and garments' vertices, the terrain
+    /// levels' corners, the grass blades, and the scattered copies placed
+    /// and culled. Into their own buffers, not graph targets.
+    CrowdCull,
+    CullCounts,
+    Wind,
+    Visual,
+    Surfaces,
+    TerrainCorners,
+    Grass,
+    Scatter,
     /// Directional light cascade `i`.
     Cascade(u32),
     /// Local light shadow layer (6 per point light, 1 per spot).
@@ -130,6 +145,13 @@ pub(crate) enum FramePass {
     SmaaBlend,
     SmaaResolve,
     Upscale,
+    /// The passes over the finished frame (renderer/render/after_graph.rs):
+    /// the viewport views, the UI layers, the overlay with the glass and
+    /// the lines drawn among it, and the HDR output's encode.
+    ViewportViews,
+    UiLayers,
+    Overlay,
+    HdrOutput,
 }
 
 /// The outline jump flood's steps in pixels, one pass each (fxpost.wgsl
@@ -189,11 +211,20 @@ impl FramePass {
     /// Not the passes whose output later frames keep: the shadow maps
     /// (their static casters are kept), the weather map, the live sky's
     /// slices, the probe GI, the reflection probes' captures and the
-    /// secondary views.
+    /// secondary views; nor the compute before the frame's draws, encoded
+    /// before its span opens.
     pub fn redrawn(self) -> bool {
         !matches!(
             self,
-            FramePass::Cascade(_)
+            FramePass::CrowdCull
+                | FramePass::CullCounts
+                | FramePass::Wind
+                | FramePass::Visual
+                | FramePass::Surfaces
+                | FramePass::TerrainCorners
+                | FramePass::Grass
+                | FramePass::Scatter
+                | FramePass::Cascade(_)
                 | FramePass::LocalFace(_)
                 | FramePass::Shelter
                 | FramePass::LiveSky
@@ -244,6 +275,14 @@ impl FramePass {
 
     pub fn name(self) -> String {
         match self {
+            FramePass::CrowdCull => "cull: crowds".into(),
+            FramePass::CullCounts => "cull-counts".into(),
+            FramePass::Wind => "wind".into(),
+            FramePass::Visual => "visual simulation".into(),
+            FramePass::Surfaces => "surfaces".into(),
+            FramePass::TerrainCorners => "terrain corners".into(),
+            FramePass::Grass => "grass".into(),
+            FramePass::Scatter => "scatter".into(),
             FramePass::Cascade(i) => format!("cascade.{i}"),
             FramePass::LocalFace(i) => format!("local-shadow.{i}"),
             FramePass::Shelter => "shelter".into(),
@@ -302,6 +341,10 @@ impl FramePass {
             FramePass::SmaaBlend => "smaa-blend".into(),
             FramePass::SmaaResolve => "smaa-resolve".into(),
             FramePass::Upscale => "upscale".into(),
+            FramePass::ViewportViews => "views".into(),
+            FramePass::UiLayers => "ui-layers".into(),
+            FramePass::Overlay => "overlay".into(),
+            FramePass::HdrOutput => "hdr-output".into(),
         }
     }
 }
@@ -814,6 +857,24 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
     for &p in passes {
         let name = p.name();
         match p {
+            // Into their own buffers, before every pass: declared first,
+            // reading and writing no graph target, they keep their order at
+            // the frame's start and leave the targets' lifetimes as they are.
+            FramePass::CrowdCull
+            | FramePass::CullCounts
+            | FramePass::Wind
+            | FramePass::Visual
+            | FramePass::Surfaces
+            | FramePass::TerrainCorners
+            | FramePass::Grass
+            | FramePass::Scatter => g.pass(name, &[], &[]),
+            // Over the finished frame, after every pass that writes it:
+            // into the output (or the glass source on its way there) and
+            // their own targets, no transient one.
+            FramePass::ViewportViews
+            | FramePass::UiLayers
+            | FramePass::Overlay
+            | FramePass::HdrOutput => g.pass(name, &[], &["output"]),
             FramePass::Cascade(_) | FramePass::Shelter => g.pass(name, &[], &["cascades"]),
             FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
             FramePass::Prepass => {

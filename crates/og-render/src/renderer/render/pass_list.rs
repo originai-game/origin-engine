@@ -8,6 +8,9 @@ pub(super) struct PassListInputs<'a> {
     pub scene: &'a RenderScene,
     pub camera: &'a Camera,
     pub effects: &'a FrameEffects,
+    /// The crowds culled on the GPU, and GPU culling's counts copied.
+    pub crowd_cull: bool,
+    pub cull_counts: bool,
     pub live_sky: bool,
     pub gi_probes: bool,
     pub particles: bool,
@@ -23,6 +26,8 @@ pub(super) struct PassListInputs<'a> {
     pub glow: bool,
     pub taa: bool,
     pub smaa_t2x: bool,
+    /// What is drawn over the finished frame (after_graph.rs).
+    pub after: schedule::AfterGraph,
 }
 
 impl Renderer {
@@ -34,6 +39,8 @@ impl Renderer {
             scene,
             camera,
             effects,
+            crowd_cull,
+            cull_counts,
             live_sky,
             gi_probes,
             particles,
@@ -49,6 +56,7 @@ impl Renderer {
             glow,
             taa,
             smaa_t2x,
+            after,
         }: PassListInputs<'_>,
     ) -> Vec<FramePass> {
         let post_fx = &scene.look.post;
@@ -58,6 +66,8 @@ impl Renderer {
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
         let passes = schedule::frame_passes(
             &schedule::PassDecisions {
+                crowd_cull,
+                cull_counts,
                 live_sky,
                 gi_probes,
                 cascades,
@@ -109,6 +119,7 @@ impl Renderer {
                 smaa: self.info.antialias == Antialias::Smaa,
                 // Under TAAU the frame after TAA is already the output's size.
                 upscale: self.history_size() != (self.out_width, self.out_height),
+                after,
             },
             self.info.caps,
         );

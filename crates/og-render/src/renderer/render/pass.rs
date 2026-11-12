@@ -196,4 +196,8 @@ passes! {
     main: pass_main::MainPass => FramePass::Main,
     glow: pass_glow::GlowPass => FramePass::Glow,
     custom_post: pass_custom_post::CustomPostPass => FramePass::CustomPost(_),
+    viewport_views: after_graph::ViewportViewsPass => FramePass::ViewportViews,
+    ui_layers: after_graph::UiLayersPass => FramePass::UiLayers,
+    overlay: after_graph::OverlayPass => FramePass::Overlay,
+    hdr_output: after_graph::HdrOutputPass => FramePass::HdrOutput,
 }

@@ -1026,7 +1026,19 @@ impl FrameGraph {
             | FramePass::FlareOcclusion
             | FramePass::Flare
             | FramePass::FlareBlurX
-            | FramePass::FlareBlurY => 0,
+            | FramePass::FlareBlurY
+            | FramePass::CrowdCull
+            | FramePass::CullCounts
+            | FramePass::Wind
+            | FramePass::Visual
+            | FramePass::Surfaces
+            | FramePass::TerrainCorners
+            | FramePass::Grass
+            | FramePass::Scatter
+            | FramePass::ViewportViews
+            | FramePass::UiLayers
+            | FramePass::Overlay
+            | FramePass::HdrOutput => 0,
         }
     }
 }

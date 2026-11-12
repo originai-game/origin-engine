@@ -1,6 +1,7 @@
 //! The frame's pass list: which passes run, in the order the render graph
 //! is declared in (its ties keep that order), and the capabilities each
-//! pass needs (`caps.rs`).
+//! pass needs (`caps.rs`): from the compute before the frame's draws
+//! (pre_graph.rs) to the passes over the finished frame (after_graph.rs).
 //!
 //! [`PASSES`] is the one table of what a pass needs. A pass absent from it
 //! needs nothing beyond what every device has. [`frame_passes`] builds the
@@ -25,6 +26,13 @@ pub(crate) struct PassDesc {
 
 /// Every kind of graph pass that needs a capability; the rest need none.
 pub(crate) const PASSES: &[PassDesc] = &[
+    pre_graph::CROWD_CULL,
+    pre_graph::WIND,
+    pre_graph::VISUAL,
+    pre_graph::SURFACES,
+    pre_graph::TERRAIN_CORNERS,
+    pre_graph::GRASS,
+    pre_graph::SCATTER,
     LiveSkyPass::DESC,
     Light2dPass::DESC,
     MetaballsPass::DESC,
@@ -59,6 +67,62 @@ impl FramePass {
             .find(|d| std::mem::discriminant(&d.pass) == kind)
             .map_or(Caps::NONE, |d| d.needs)
     }
+
+    /// Whether the pass is compute before the frame's draws (pre_graph.rs):
+    /// the graph's first nodes, encoded before its draws are prepared
+    /// (`execute_pre_graph`).
+    pub(crate) fn pre_graph(self) -> bool {
+        matches!(
+            self,
+            FramePass::CrowdCull
+                | FramePass::CullCounts
+                | FramePass::Wind
+                | FramePass::Visual
+                | FramePass::Surfaces
+                | FramePass::TerrainCorners
+                | FramePass::Grass
+                | FramePass::Scatter
+        )
+    }
+
+    /// How the pass is timed (`Renderer::pass_timings`, `timing.rs`).
+    pub(crate) fn timed(self) -> Timed {
+        match self {
+            _ if self.pre_graph() => Timed::OwnQueries,
+            FramePass::ViewportViews
+            | FramePass::UiLayers
+            | FramePass::Overlay
+            | FramePass::HdrOutput => Timed::WhenDrawn,
+            _ => Timed::Always,
+        }
+    }
+}
+
+/// How a graph pass's encoding is listed in the frame's timings.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Timed {
+    /// Every frame it runs: its CPU time and its queries.
+    Always,
+    /// In a frame where it drew: its CPU time and its queries, so the UI's
+    /// budget (`docs/ui.md` §6.3) reads them from `gpuPasses`.
+    WhenDrawn,
+    /// Only the queries its encode names (the crowds' cull, the scatter's
+    /// steps); no CPU time.
+    OwnQueries,
+}
+
+/// What a frame draws over its finished image (after_graph.rs), each a
+/// pass of the graph in a frame that draws it.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct AfterGraph {
+    /// Viewport views (split-screen) over the frame.
+    pub viewport_views: bool,
+    /// UI layers, drawn into their own targets.
+    pub ui_layers: bool,
+    /// The overlay, the glass and the lines among it.
+    pub overlay: bool,
+    /// The HDR output's encode.
+    pub hdr_output: bool,
 }
 
 impl Renderer {
@@ -71,8 +135,9 @@ impl Renderer {
     /// capabilities its device (under [`RenderDesc::tier`]) lacks for it.
     /// Empty on the full tier.
     pub fn absent_passes(&self) -> impl Iterator<Item = (&'static str, Caps)> + '_ {
-        let pre = pre_graph::PRE_GRAPH.iter().map(|d| (d.name, d.needs));
-        pre.chain(PASSES.iter().map(|d| (d.name, d.needs)))
+        PASSES
+            .iter()
+            .map(|d| (d.name, d.needs))
             .filter(|&(_, needs)| !self.info.caps.contains(needs))
             .map(|(name, needs)| (name, self.info.caps.missing(needs)))
     }
@@ -82,6 +147,8 @@ impl Renderer {
 /// `render` decided from the scene, the quality and the renderer's options.
 #[derive(Default)]
 pub(crate) struct PassDecisions<'a> {
+    pub crowd_cull: bool,
+    pub cull_counts: bool,
     pub live_sky: bool,
     pub gi_probes: bool,
     pub cascades: u32,
@@ -129,6 +196,7 @@ pub(crate) struct PassDecisions<'a> {
     pub fxaa: bool,
     pub smaa: bool,
     pub upscale: bool,
+    pub after: AfterGraph,
 }
 
 /// The frame's passes in declaration order, less those `caps` lacks what
@@ -140,6 +208,25 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
             passes.push(p);
         }
     };
+    // The compute before the frame's draws, in the frame encoder's order
+    // (pre_graph.rs): the crowds' cull first, after GPU culling's commands
+    // and before its counts are copied, which the cull writes.
+    if d.crowd_cull {
+        push(FramePass::CrowdCull);
+    }
+    if d.cull_counts {
+        push(FramePass::CullCounts);
+    }
+    for p in [
+        FramePass::Wind,
+        FramePass::Visual,
+        FramePass::Surfaces,
+        FramePass::TerrainCorners,
+        FramePass::Grass,
+        FramePass::Scatter,
+    ] {
+        push(p);
+    }
     // The live sky's step first: what the frame's passes sample is its
     // last complete capture (sky_capture.rs).
     if d.live_sky {
@@ -309,6 +396,21 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     if d.upscale {
         push(FramePass::Upscale);
     }
+    // Over the finished frame (after_graph.rs): the viewport views under
+    // the UI layers, the overlay over them, then the HDR output's encode.
+    let a = d.after;
+    if a.viewport_views {
+        push(FramePass::ViewportViews);
+    }
+    if a.ui_layers {
+        push(FramePass::UiLayers);
+    }
+    if a.overlay {
+        push(FramePass::Overlay);
+    }
+    if a.hdr_output {
+        push(FramePass::HdrOutput);
+    }
     passes
 }
 
@@ -331,6 +433,8 @@ mod tests {
     /// A frame that asks for every pass.
     fn everything(local_shadows: &[frame::LocalShadow]) -> PassDecisions<'_> {
         PassDecisions {
+            crowd_cull: true,
+            cull_counts: true,
             live_sky: true,
             gi_probes: true,
             cascades: 3,
@@ -374,6 +478,12 @@ mod tests {
             fxaa: true,
             smaa: false,
             upscale: true,
+            after: AfterGraph {
+                viewport_views: true,
+                ui_layers: true,
+                overlay: true,
+                hdr_output: true,
+            },
         }
     }
 
@@ -397,7 +507,9 @@ mod tests {
                 .count(),
             7
         );
-        assert_eq!(passes.last(), Some(&FramePass::Upscale));
+        assert_eq!(passes.last(), Some(&FramePass::HdrOutput));
+        // The compute before the draws comes first.
+        assert_eq!(passes.first(), Some(&FramePass::CrowdCull));
     }
 
     #[test]
@@ -429,6 +541,62 @@ mod tests {
         let mini = frame_passes(&everything(&lights), Tier::MiniGame.ceiling());
         assert!(mini.contains(&FramePass::Ssr) && !mini.contains(&FramePass::Prepass));
         assert!(!mini.iter().any(|p| matches!(p, FramePass::View(_))));
+    }
+
+    /// The compute before the draws runs first and the passes over the
+    /// finished frame last, in the order they are declared, and neither
+    /// moves a pass between them or a transient target's slot.
+    #[test]
+    fn the_graph_begins_with_its_compute_and_ends_over_the_finished_frame() {
+        let lights = [light(0, 6), light(6, 1)];
+        let cfg = post::GraphConfig {
+            width: 1280,
+            height: 720,
+            post: (1280, 720),
+            chain_format: post::LDR_FORMAT,
+            samples: 1,
+            taa: true,
+            lightmap: (1, 1),
+            lightdir: false,
+            gtao: true,
+            gi: false,
+            ssr: true,
+            bent: false,
+            water: false,
+            water_ao: false,
+            transmission: false,
+            fluid_fields: 0,
+            reflection: [Some((32, 16)), Some((32, 16))],
+            object_space: false,
+            ui_depth: true,
+            oit: None,
+        };
+        let passes = frame_passes(&everything(&lights), Caps::FULL);
+        let plan = post::build_graph(&passes, &cfg).compile().unwrap();
+        let order: Vec<FramePass> = plan.order().iter().map(|&i| passes[i]).collect();
+        let outside = |p: &FramePass| p.pre_graph() || p.timed() == Timed::WhenDrawn;
+        let pre: Vec<FramePass> = passes.iter().copied().filter(|p| p.pre_graph()).collect();
+        let after: Vec<FramePass> = passes
+            .iter()
+            .copied()
+            .filter(|p| p.timed() == Timed::WhenDrawn)
+            .collect();
+        assert_eq!(pre.len(), 8);
+        assert_eq!(after.len(), 4);
+        assert_eq!(order[..pre.len()], pre[..]);
+        assert_eq!(order[order.len() - after.len()..], after[..]);
+        let inner: Vec<FramePass> = passes.iter().copied().filter(|p| !outside(p)).collect();
+        let without = post::build_graph(&inner, &cfg).compile().unwrap();
+        let without_order: Vec<FramePass> = without.order().iter().map(|&i| inner[i]).collect();
+        let kept: Vec<FramePass> = order.iter().copied().filter(|p| !outside(p)).collect();
+        assert_eq!(kept, without_order);
+        assert_eq!(plan.physical(), without.physical());
+        let slots = |g: &crate::graph::GraphPlan| {
+            g.transients()
+                .map(|(n, s)| (n.to_string(), s))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(slots(&plan), slots(&without));
     }
 
     #[test]
