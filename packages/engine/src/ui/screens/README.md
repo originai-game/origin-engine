@@ -1,11 +1,13 @@
 # Screen documents
 
-Generic screen documents built from og-ui's public elements. Copy one with
-`og ui eject <screen>` and edit it in `assets/ui/<screen>.svelte`.
-Genre kits are being rebuilt and are not bundled yet. Local kits install
-with `og ui add <directory>` and their documents can be copied with
-`og ui eject <kit>/<screen>`. The rebuild catalogue and acceptance contract
-are in `docs/ui.md` §4 and §6.
+Generic screen documents built from og-ui's public elements and built into
+the engine. A game loads one by its id without a copy,
+`og.load.document(world, "@ui/screens/pause.svelte")`, and shows it by its
+name, `og.ui.push(world, "pause")`; the cook bundles each one the game's
+code names, with the components it uses. Copy one with
+`og ui eject <screen>` and edit it in `assets/ui/<screen>.svelte`; the
+game's copy then replaces the built-in one, and loading the `@ui/` id loads
+it. The catalogue and acceptance contract are in `docs/ui.md` §4 and §6.
 
 Each document declares its name, layer, props, actions, and fixtures with
 standard `<meta>` elements. Structure belongs in scriptless Svelte markup,
@@ -34,7 +36,7 @@ collections; a nested list is flattened, as a retained `{#each}` reads a
 named collection (a table's `cells` row by row, a tree's visible `rows`).
 
 `og ui eject --list` prints these generic screens. Core document tests
-cook them independently of genre kits and style packs.
+cook them independently of style packs.
 
 | Purpose | Documents |
 |---|---|

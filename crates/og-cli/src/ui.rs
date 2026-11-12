@@ -631,7 +631,7 @@ fn eject(args: &[&str]) -> ExitCode {
         Ok(_) => {
             println!(
                 "og ui eject: the library's '{name}' into assets/ui/{name}.svelte\n\
-                 load it once with og.load.document(world, \"ui/{name}.svelte\") and mount its named stores;\n\
+                 it replaces the built-in screen of its name: og.load.document(world, \"ui/{name}.svelte\") (or the built-in id, \"@ui/screens/{name}.svelte\") loads it, then mount its named stores;\n\
                  its header names the viewmodel's props, its events and what fills each slot.\n\
                  preview it with og run --commands \"0.5:ui:push:{name}:default\", and add screen \"{name}\" \"<commands>\" to project.ogt's ui block so og ui check covers it"
             );
@@ -808,6 +808,28 @@ pub fn write_types(root: &Path) -> Result<Typed, String> {
             }
         }
     }
+    // The built-in screens the game's code names by id and does not
+    // replace are typed as its own, as the cook bundles them.
+    let mut builtin: Vec<og_ui::UiDocument> = Vec::new();
+    if let Ok(index) = og_cook::cook::ui_components::index() {
+        for path in og_cook::cook::assets::game_typescript(root).unwrap_or_default() {
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Ok(refs) = og_cook::cook::ts_refs::parse(&path, &text) else {
+                continue;
+            };
+            for l in refs.literals {
+                if let Some(c) = index.values().find(|c| c.id == l.value)
+                    && c.doc.kind == og_ui::doc::DocKind::Screen
+                    && !docs.iter().chain(&builtin).any(|d| d.name == c.doc.name)
+                {
+                    builtin.push(c.doc.clone());
+                }
+            }
+        }
+    }
+    docs.extend(builtin);
     let dir = root.join(TYPES_DIR);
     if docs.is_empty() && !dir.is_dir() {
         return Ok(Typed {

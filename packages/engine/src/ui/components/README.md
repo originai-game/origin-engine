@@ -6,7 +6,7 @@ TypeScript builders on `og.ui`, and, in a directory per group, a genre's
 components (`rpg/`, `shooter/`, each with its README). A game's document
 uses any of them by its declared name (`<AbilityBar slots={$slots} />`,
 `<RpgBackpack items={$items} />`) without a copy: the cook bundles it as
-`@ui/<path>` and the screen that uses it loads it. Copy one with
+`@ui/components/<path>` and the screen that uses it loads it. Copy one with
 `og ui eject <component>` (`og ui eject rpg/backpack` in a group) and edit
 it in `assets/ui/<component>.svelte`; the game's copy then replaces the
 built-in one of its name.

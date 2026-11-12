@@ -192,9 +192,10 @@ pub(super) fn scan_with(
             }
         }
     }
-    // The built-in components the game's documents use and do not declare
-    // join it as well (`@ui/rpg/backpack.svelte`, with its strings), and
-    // those they use in turn; a game's component of the same name wins.
+    // The built-in components the game's documents use and the built-in
+    // screens its code names, that it does not declare, join it as well
+    // (`@ui/components/rpg/backpack.svelte`, with its strings), and those
+    // they use in turn; a game's document of the same name wins.
     let mut game = BTreeMap::new();
     let mut used = BTreeSet::new();
     let mut early_errors: Vec<(String, &'static str, String)> = Vec::new();
@@ -212,10 +213,30 @@ pub(super) fn scan_with(
         let Ok(doc) = og_ui::UiDocument::parse_with_imports(rel, &text, imports) else {
             continue;
         };
-        if doc.kind == og_ui::doc::DocKind::Component {
-            game.entry(doc.name.clone()).or_insert_with(|| rel.clone());
-        }
+        game.entry(doc.name.clone()).or_insert_with(|| rel.clone());
         used.extend(ui_components::uses(&doc));
+    }
+    // The built-in screens the game's code names by id
+    // (`og.load.document(world, "@ui/screens/pause.svelte")`).
+    if let Some(root) = assets_dir
+        .parent()
+        .filter(|r| r.join("project.ogt").is_file())
+    {
+        for path in super::assets::game_typescript(root).unwrap_or_default() {
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            // Code that does not parse is the asset index's to report.
+            let Ok(refs) = super::ts_refs::parse(&path, &text) else {
+                continue;
+            };
+            used.extend(
+                refs.literals
+                    .into_iter()
+                    .map(|l| l.value)
+                    .filter(|v| v.starts_with(ui_components::PREFIX)),
+            );
+        }
     }
     let components = match ui_components::resolve(game.clone(), used) {
         Ok(r) => {

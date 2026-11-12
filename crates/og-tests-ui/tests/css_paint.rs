@@ -461,7 +461,7 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
 </style>"##;
     ui.define_document(
         UiDocument::parse(
-            "@ui/minimap.svelte",
+            "@ui/components/minimap.svelte",
             include_str!("../../../packages/engine/src/ui/components/minimap.svelte"),
         )
         .unwrap(),
