@@ -2,6 +2,7 @@ use crate::Ui;
 use crate::UiDocument;
 use crate::doc::build::Build;
 use crate::doc::build::Built;
+use crate::doc::build::DocsState;
 use crate::doc::build::ext::*;
 use serde_json::json;
 use std::sync::Arc;
@@ -75,7 +76,7 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
         // and the existing controls, not a viewmodel or a second build.
         let replacements: Vec<_> = patched
             .docs
-            .host()
+            .state()
             .built
             .iter()
             .map(|node| {
@@ -102,13 +103,13 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
         patched
             .end_with_layout_queries(|ui, _| {
                 let state = ui.save_state();
-                let events = ui.docs.host().queued.clone();
+                let events = ui.docs.state().queued.clone();
                 let count = ui.tree.nodes().len();
                 for (node, values, fields) in &replacements {
                     ui.apply_document_fields(&target, &target.nodes[*node], values, fields);
                 }
                 assert_eq!(ui.save_state(), state);
-                assert_eq!(ui.docs.host().queued, events);
+                assert_eq!(ui.docs.state().queued, events);
                 assert_eq!(ui.tree.nodes().len(), count);
                 Ok(replacements
                     .iter()
@@ -154,7 +155,9 @@ fn a_document_material_names_an_asset_and_binds_its_parameters() {
     ui.define_document(parsed);
     let burn = SourceId::new("test", "burn");
     ui.docs
-        .reactive_mut()
+        .state_mut()
+        .memory
+        .reactive
         .execute(Command::Signal {
             source: burn.clone(),
             initial: serde_json::json!(0.2),
@@ -197,7 +200,9 @@ fn a_document_material_names_an_asset_and_binds_its_parameters() {
         "written numbers over the defaults"
     );
     ui.docs
-        .reactive_mut()
+        .state_mut()
+        .memory
+        .reactive
         .execute(Command::Set {
             source: burn,
             value: serde_json::json!(0.8),

@@ -848,6 +848,7 @@ impl WorldUi for Ui {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::DocsState;
     use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
@@ -890,7 +891,9 @@ mod tests {
                 .collect()
         };
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Collection {
                 source: units.clone(),
                 key: "id".into(),
@@ -960,7 +963,9 @@ mod tests {
         );
         // One name: that tag alone.
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Patch {
                 source: units.clone(),
                 key: "u1".into(),
@@ -984,7 +989,9 @@ mod tests {
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
         // A row leaves: its anchor leaves.
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Remove {
                 source: units,
                 key: "u1".into(),
@@ -1083,7 +1090,9 @@ mod tests {
             (&units, json!([{"id": "u", "entity": 1, "hp": 50}])),
         ] {
             ui.docs
-                .reactive_mut()
+                .state_mut()
+                .memory
+                .reactive
                 .execute(Command::Collection {
                     source: source.clone(),
                     key: "id".into(),
@@ -1141,7 +1150,9 @@ mod tests {
         assert_eq!(bars(&ui), 1);
         // A second hit spawns one more; the first is not spawned again.
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Insert {
                 source: hits.clone(),
                 row: json!({"id": "b", "entity": 1, "amount": 30})
@@ -1156,7 +1167,9 @@ mod tests {
         assert!(hp != damage);
         // The unit leaves: its bar does.
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Remove {
                 source: units,
                 key: "u".into(),
@@ -1312,7 +1325,9 @@ mod tests {
         ui.define_document(parsed);
         let on = SourceId::new("test", "on");
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: on.clone(),
                 initial: json!(true),
@@ -1353,7 +1368,9 @@ mod tests {
         assert!(particles(&ui) > before, "the emitter stopped while idle");
         assert!(ui.world.declared.kept_effects.len() == 2);
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Set {
                 source: on,
                 value: json!(false),

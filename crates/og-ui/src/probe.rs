@@ -1,5 +1,6 @@
 //! The live tree for the probe, and the system that runs the UI in the tick.
 
+use crate::doc::build::DocsState;
 use crate::doc::build::ext::*;
 use crate::input::{InputFrame, OgInput};
 use crate::ui::{Ui, Viewport};
@@ -199,7 +200,7 @@ impl ProbeUi for Ui {
                         Value::Object(b.edits.iter().map(|(p, v)| (p.clone(), json!(v))).collect()),
                     );
                 }
-                if self.docs.host().slots.contains_key(&e.path) {
+                if self.docs.state().slots.contains_key(&e.path) {
                     d.insert("slot".into(), json!({ "kind": "code" }));
                 }
             }
@@ -276,7 +277,7 @@ impl ProbeUi for Ui {
             "edits".into(),
             Value::Array(
                 self.docs
-                    .host()
+                    .state()
                     .edits
                     .iter()
                     .map(|e| json!({ "path": e.path, "prop": e.prop, "value": e.source }))

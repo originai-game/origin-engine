@@ -74,6 +74,7 @@ impl RetainedQueriesRetainedHost for RetainedHost {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::DocsState;
     use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::{InputFrame, Ui, UiDesc, Viewport};
@@ -119,7 +120,11 @@ panel { width: 10px; height: 10px; }
                     .unwrap()
                     .width
             };
-            (width("Badge"), width("A"), ui.docs.host().retained.resolved)
+            (
+                width("Badge"),
+                width("A"),
+                ui.docs.state().memory.retained.resolved,
+            )
         };
         // 500: Shelf 300. The first build cannot know; settlement resolves
         // the one reader before paint.
@@ -179,7 +184,7 @@ panel { width: 10px; height: 10px; }
             };
             (
                 [width("A"), width("Badge"), width("Dot"), width("Unit")],
-                ui.docs.host().retained.resolved,
+                ui.docs.state().memory.retained.resolved,
             )
         };
         // 500: Shelf 300, warm.
@@ -238,7 +243,7 @@ panel { width: 10px; height: 10px; }
             };
             (
                 [width("Up"), width("Down"), width("Head/Mark")],
-                ui.docs.host().retained.resolved,
+                ui.docs.state().memory.retained.resolved,
             )
         };
         frame(&mut ui);

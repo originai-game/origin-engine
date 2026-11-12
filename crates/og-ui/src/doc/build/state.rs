@@ -1,0 +1,206 @@
+//! The documents' own state (docs/ui.md §7): what a build keeps as it goes,
+//! what it tells code and the probe this tick, and what its mounts keep
+//! between ticks. The stages hold it for the documents behind
+//! [`DocumentState`] and reach it through its operations.
+
+use super::host::{DocRecord, FieldValidity, PopoverLink, Revealing};
+use super::{Built, DocEvent, DocMemory, DocumentState, Edit, NoDocuments};
+use crate::style::Srgba;
+use serde_json::{Value, json};
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+#[derive(Clone, Debug, Default)]
+pub struct DocState {
+    /// What a snapshot carries: the mounts, the reactive session, the
+    /// elements seen and the triggers' last values.
+    pub memory: DocMemory,
+    /// The records of the retained elements being emitted, innermost last.
+    pub capture: Vec<DocRecord>,
+    pub edits: Vec<Edit>,
+    /// Immediately built elements with `use:` actions, by key: who they
+    /// are and their actions' names, for their `destroy` once not built.
+    pub uses: BTreeMap<u64, (DocEvent, Vec<String>)>,
+    /// Text fields' constraint validity as last built, by key: what a
+    /// form's submit reads. Kept while their element is.
+    pub validity: BTreeMap<u64, FieldValidity>,
+    /// What media elements asked of their players this frame, taken by
+    /// the host ([`crate::Ui::take_media_ops`]).
+    pub media_ops: Vec<crate::bind::MediaOp>,
+    /// What each media element last sent, the time it last read and the
+    /// frames a seek it sent is still on its way, by key.
+    pub media_sent: BTreeMap<u64, (f32, bool, f64, u8)>,
+    /// What happened to the element being built beyond its response
+    /// (`ontoggle`, `onclose`), taken by its triggers.
+    pub happened: Vec<crate::doc::When>,
+    /// The popovers documents name, by their key in their mount.
+    pub popovers: BTreeMap<u64, PopoverLink>,
+    /// The id the last `#fragment` link named: CSS `:target`.
+    pub target: Option<String>,
+    /// This tick's builds, slots and art slots.
+    pub built: Vec<Built>,
+    pub slots: BTreeMap<String, usize>,
+    pub arts: Vec<(String, crate::slot::SlotSpec)>,
+    pub render_fields: BTreeMap<u64, super::fields::RenderFields>,
+    /// Events queued for code (screens built at the end of a tick reach
+    /// code the next).
+    pub queued: Vec<DocEvent>,
+    /// Layer operations triggers asked for this tick, done after the build.
+    pub ops: Vec<crate::layer_stack::LayerOp>,
+    /// Plays a document or the probe started: `(path, timeline)` → play.
+    pub plays: BTreeMap<(String, String), u32>,
+    /// The tick the layers were last built.
+    pub built_tick: u64,
+    /// The mount being built is the top layer that takes input (its `on action` triggers fire).
+    pub accepts: bool,
+    /// The serial of the layer being built (0 outside one): what its `pop` pops.
+    pub building: u32,
+    /// The retained element being built holds its node: hidden
+    /// (`display: none`, `hidden`), it keeps the node and its subtree, as
+    /// the web keeps a hidden element's DOM, and showing it again is a field
+    /// change. One never built is not built while hidden.
+    pub keeps_hidden: bool,
+    /// How deep the element images being built are nested (an `feImage`
+    /// of an element whose filters draw element images): past 4, no more.
+    pub element_images: u32,
+    /// View-transition covers still opening after their layer left: the
+    /// covers, their colour and image and the tick it left.
+    pub revealing: Vec<Revealing>,
+    /// The on-screen controls documents lay out (`<joystick action>`,
+    /// `<dpad action>`, `<button data-og-touch>`), by render key, their
+    /// rects filled from the frame's hits; `zones_changed`: og-input's
+    /// copy is stale ([`crate::Ui::take_control_zones`]).
+    pub zones: BTreeMap<u64, og_input::ControlZone>,
+    pub zones_changed: bool,
+    /// The document-order counter and quote run of the tick being built,
+    /// kept only while some defined document uses generated content.
+    pub run: crate::doc::generated::Run,
+    /// The `::placeholder` color of the text control being built.
+    pub placeholder_ink: Option<Srgba>,
+    /// `::selection` styles by render key.
+    pub selection: BTreeMap<u64, Arc<crate::doc::generated::Selection>>,
+}
+
+impl DocState {
+    fn adopt(memory: DocMemory) -> Self {
+        Self {
+            memory,
+            ..Self::default()
+        }
+    }
+}
+
+impl DocumentState for DocState {
+    fn clone_state(&self) -> Box<dyn DocumentState> {
+        Box::new(self.clone())
+    }
+    fn memory(&self) -> &DocMemory {
+        &self.memory
+    }
+    fn memory_mut(&mut self) -> &mut DocMemory {
+        &mut self.memory
+    }
+    fn begin_tick(&mut self) {
+        self.run.clear();
+        self.memory.begin();
+        let d = self;
+        let gone: Vec<u64> = d
+            .uses
+            .keys()
+            .filter(|k| !d.memory.seen.contains(k))
+            .copied()
+            .collect();
+        for key in gone {
+            let (event, names) = d.uses.remove(&key).unwrap();
+            for (k, name) in names.into_iter().enumerate() {
+                d.memory.last.remove(&(key, usize::MAX - k));
+                d.queued.push(DocEvent {
+                    kind: "use".into(),
+                    name,
+                    value: json!({ "phase": "destroy", "params": Value::Null }),
+                    ..event.clone()
+                });
+            }
+        }
+        d.built.clear();
+        d.slots.clear();
+        d.arts.clear();
+        d.render_fields.clear();
+    }
+    fn restore(&mut self, v: &Value) -> Result<(), String> {
+        self.memory.restore(v)?;
+        self.built_tick = 0;
+        Ok(())
+    }
+    fn edits(&self) -> &[Edit] {
+        &self.edits
+    }
+    fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
+        self.render_fields.get(&key)
+    }
+    fn selection(&self, key: u64) -> Option<&Arc<crate::doc::generated::Selection>> {
+        self.selection.get(&key)
+    }
+    fn placeholder_ink(&self) -> Option<Srgba> {
+        self.placeholder_ink
+    }
+    fn last_art_entry(&self) -> Option<&(String, crate::slot::SlotSpec)> {
+        match self.capture.last() {
+            Some(record) => record.arts.last(),
+            None => self.arts.last(),
+        }
+    }
+    fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
+        if let Some((_, spec)) = self
+            .capture
+            .iter_mut()
+            .rev()
+            .flat_map(|r| r.arts.iter_mut())
+            .find(|(p, _)| p == path)
+        {
+            return Some(spec);
+        }
+        if let Some((_, spec)) = self.arts.iter_mut().find(|(p, _)| p == path) {
+            return Some(spec);
+        }
+        self.memory.record_art_slot_mut(path)
+    }
+    fn retain_element_memory(&mut self, built: &dyn Fn(u64) -> bool) {
+        let retained = &self.memory.retained;
+        self.validity
+            .retain(|k, _| built(*k) || retained.keeps_memory(*k));
+        self.media_sent
+            .retain(|k, _| built(*k) || retained.keeps_memory(*k));
+    }
+}
+
+/// The documents' state of a UI's [`crate::ui::Docs`].
+pub trait DocsState {
+    /// As the documents read it: a UI that has not built a document reads
+    /// a view of what it holds.
+    fn state(&self) -> &DocState;
+    /// As the documents write it: a UI that had not built a document takes
+    /// the documents' own state, with what it held.
+    fn state_mut(&mut self) -> &mut DocState;
+}
+
+impl DocsState for crate::ui::Docs {
+    fn state(&self) -> &DocState {
+        let state: &dyn std::any::Any = self.document_state();
+        match state.downcast_ref::<DocState>() {
+            Some(state) => state,
+            None => state
+                .downcast_ref::<NoDocuments>()
+                .expect("the documents' state or none")
+                .view(|memory| DocState::adopt(memory.clone())),
+        }
+    }
+
+    fn state_mut(&mut self) -> &mut DocState {
+        self.adopt_document_state(|memory| Box::new(DocState::adopt(memory)));
+        let state: &mut dyn std::any::Any = self.document_state_mut();
+        state
+            .downcast_mut::<DocState>()
+            .expect("the documents' own state")
+    }
+}

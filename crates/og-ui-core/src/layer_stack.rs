@@ -254,40 +254,21 @@ impl Ui {
     /// After a restore: a mounted layer whose mount is gone leaves the
     /// stack, and a mounted screen without one joins it.
     pub(crate) fn sync_mount_layers(&mut self) {
-        let mounted = &self.docs.host.retained.registrations;
-        self.docs
-            .host
-            .layers
-            .layers
-            .retain(|l| l.mount.as_ref().is_none_or(|m| mounted.contains_key(m)));
-        let all: Vec<_> = mounted
-            .iter()
-            .map(|(m, r)| (m.clone(), r.document.clone()))
-            .collect();
+        let all = self.docs.mounted_documents();
+        self.docs.host.layers.layers.retain(|l| {
+            l.mount
+                .as_ref()
+                .is_none_or(|m| all.iter().any(|(a, _)| a == m))
+        });
         for (mount, document) in all {
             self.sync_mount_layer(&mount, Some(&document));
         }
     }
 
     pub(crate) fn restore_docs_state(&mut self, v: &Value) -> Result<(), String> {
-        let retained = self
-            .docs
-            .restore_document_mounts(&v["mounts"], &v["mountRegistrations"])?;
-        if let Some(stores) = v.get("stores") {
-            self.docs.reactive.restore(stores)?;
-        } else {
-            self.docs.reactive = Default::default();
-        }
-        self.docs.reactive.graph.clear_bindings();
+        self.docs.state.restore(v)?;
         let d = &mut self.docs.host;
-        d.retained = retained;
-        d.built_tick = 0;
         let key = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
-        d.seen_now = v["seen"]
-            .as_array()
-            .map(|a| a.iter().map(key).collect())
-            .unwrap_or_default();
-        d.seen = d.seen_now.clone();
         d.layers.next = v["next"].as_u64().unwrap_or(0) as u32;
         d.layers.held_scale = v["heldScale"].as_f64().map(|x| x as f32);
         d.layers.layers = v["layers"]
@@ -322,19 +303,6 @@ impl Ui {
                     .collect()
             })
             .unwrap_or_default();
-        d.last = v["last"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|s| {
-                        (
-                            (key(&s[0]), s[1].as_u64().unwrap_or(0) as usize),
-                            s[2].clone(),
-                        )
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
         self.sync_mount_layers();
         Ok(())
     }
@@ -353,19 +321,20 @@ impl crate::ui::Docs {
     /// The layer state snapshots carry, as JSON.
     pub(crate) fn docs_state(&self) -> Value {
         let d = &self.host;
+        let m = self.state.memory();
         json!({
             "next": d.layers.next,
             "heldScale": d.layers.held_scale,
-            "stores": self.reactive.save(),
-            "mounts": d.retained.save(),
-            "mountRegistrations": self.document_registration_state(),
-            "seen": d.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
+            "stores": m.reactive.save(),
+            "mounts": m.retained.save(),
+            "mountRegistrations": m.document_registration_state(),
+            "seen": m.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
             "layers": d.layers.layers.iter().map(|l| json!({
                 "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
                 "mount": l.mount, "since": l.since, "leaving": l.leaving,
             })).collect::<Vec<_>>(),
             "states": d.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),
-            "last": d.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
+            "last": m.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
         })
     }
 }

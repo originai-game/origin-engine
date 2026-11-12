@@ -392,7 +392,9 @@ mod tests {
         }
         let rows = [("a", "Axe", "sharp"), ("b", "Bow", "far")];
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Collection {
                 source: SourceId::new("test", "items"),
                 key: "id".into(),
@@ -408,7 +410,9 @@ mod tests {
             })
             .unwrap();
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: SourceId::new("test", "footer"),
                 initial: json!("Ann"),
@@ -482,7 +486,9 @@ mod tests {
         let idle = step(&mut ui);
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Patch {
                 source: SourceId::new("test", "items"),
                 key: "b".into(),
@@ -499,7 +505,9 @@ mod tests {
             "{all:?}"
         );
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Set {
                 source: SourceId::new("test", "footer"),
                 value: json!("Bo"),

@@ -1568,9 +1568,8 @@ impl Ui {
         }
         let selection = self
             .docs
-            .host
-            .selection
-            .get(&n.key)
+            .state
+            .selection(n.key)
             .filter(|s| {
                 !selected.is_empty()
                     && (s.color.is_some() || s.decoration.is_some() || s.shadows.is_some())

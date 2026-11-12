@@ -22,26 +22,26 @@ pub trait TouchUi {
 
 impl TouchUi for Ui {
     fn take_control_zones(&mut self) -> Option<Vec<ControlZone>> {
-        if self.docs.host().zones.is_empty() && !self.docs.host().zones_changed {
+        if self.docs.state().zones.is_empty() && !self.docs.state().zones_changed {
             return None;
         }
-        let live = |key: &u64| self.docs.host().retained.owns(*key);
+        let live = |key: &u64| self.docs.state().memory.retained.owns(*key);
         let gone: Vec<u64> = self
             .docs
-            .host()
+            .state()
             .zones
             .keys()
             .copied()
             .filter(|k| !live(k))
             .collect();
         let mut changed =
-            std::mem::take(&mut self.docs.host_mut().zones_changed) || !gone.is_empty();
+            std::mem::take(&mut self.docs.state_mut().zones_changed) || !gone.is_empty();
         for key in gone {
-            self.docs.host_mut().zones.remove(&key);
+            self.docs.state_mut().zones.remove(&key);
         }
         let rects: Vec<(u64, Option<crate::layout::Rect>)> = self
             .docs
-            .host()
+            .state()
             .zones
             .keys()
             .map(|&k| (k, self.interaction.hit(k).map(|h| h.rect)))
@@ -52,7 +52,7 @@ impl TouchUi for Ui {
         for (key, rect) in rects {
             let z = self
                 .docs
-                .host_mut()
+                .state_mut()
                 .zones
                 .get_mut(&key)
                 .expect("a zone just listed");
@@ -65,7 +65,7 @@ impl TouchUi for Ui {
         }
         changed.then(|| {
             self.docs
-                .host()
+                .state()
                 .zones
                 .values()
                 .filter(|z| z.width > 0.0 && z.height > 0.0)
@@ -168,7 +168,7 @@ impl TouchDocs for crate::ui::Docs {
         dead_zone: f32,
         disabled: bool,
     ) {
-        let zones = &mut self.host_mut().zones;
+        let zones = &mut self.state_mut().zones;
         match action.filter(|a| !a.is_empty() && !disabled) {
             Some(action) => {
                 let next = ControlZone {
@@ -179,12 +179,12 @@ impl TouchDocs for crate::ui::Docs {
                 };
                 if zones.get(&key) != Some(&next) {
                     zones.insert(key, next);
-                    self.host_mut().zones_changed = true;
+                    self.state_mut().zones_changed = true;
                 }
             }
             None => {
                 if zones.remove(&key).is_some() {
-                    self.host_mut().zones_changed = true;
+                    self.state_mut().zones_changed = true;
                 }
             }
         }

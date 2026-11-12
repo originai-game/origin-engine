@@ -56,12 +56,10 @@ impl Ui {
             changed.insert(change.key);
         }
         let mut dirty = self.requery_immediate(&changed);
-        let mut host = std::mem::take(&mut self.docs.host.retained);
         let retained = match documents() {
-            Some(documents) => documents.requery(&mut host, self, &changed),
+            Some(documents) => documents.requery(self, &changed),
             None => Ok(Vec::new()),
         };
-        self.docs.host.retained = host;
         dirty.extend(retained.map_err(SettlementError::Resolver)?);
         Ok(dirty)
     }
@@ -113,7 +111,7 @@ impl Ui {
                 restyled.insert(q.path.clone(), r.cascade.computed.clone());
                 q.computed = r.cascade.computed.clone();
             }
-            let fields = self.docs.host.render_fields.get(&q.key).cloned();
+            let fields = self.docs.state.render_fields(q.key).cloned();
             if let Some(index) =
                 self.replace_fields(fields, &q.path, &q.doc, &q.doc.nodes[q.node], &r)
             {
@@ -220,7 +218,7 @@ impl crate::ui::Docs {
     ) {
         use crate::doc::media::scroll::*;
         let mut keys = std::mem::take(&mut self.host.scroll_now);
-        keys.extend(self.host.retained.scroll_reads());
+        keys.extend(self.state.memory().retained.scroll_reads());
         let mut states = BTreeMap::new();
         for key in keys {
             let offset = interaction.offset(key);

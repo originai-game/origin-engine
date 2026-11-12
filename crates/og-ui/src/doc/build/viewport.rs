@@ -266,6 +266,7 @@ impl ViewportUi for Ui {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::DocsState;
     use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
@@ -291,7 +292,9 @@ mod tests {
         for name in ["w", "h"] {
             let source = SourceId::new("test", name);
             ui.docs
-                .reactive_mut()
+                .state_mut()
+                .memory
+                .reactive
                 .execute(Command::Signal {
                     source: source.clone(),
                     initial: json!(0),
@@ -330,7 +333,9 @@ mod tests {
         }
         let read = |ui: &mut Ui, n: &str| {
             ui.docs
-                .reactive_mut()
+                .state_mut()
+                .memory
+                .reactive
                 .execute(Command::Read {
                     source: SourceId::new("test", n),
                 })
@@ -382,7 +387,9 @@ mod tests {
         ui.define_document(UiDocument::parse("turntable.svelte", doc).unwrap());
         let orbit = SourceId::new("test", "orbit");
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: orbit.clone(),
                 initial: json!("0deg 75deg 4m"),
@@ -404,7 +411,9 @@ mod tests {
             let events = ui.take_doc_events();
             let o = ui
                 .docs
-                .reactive_mut()
+                .state_mut()
+                .memory
+                .reactive
                 .execute(Command::Read {
                     source: orbit.clone(),
                 })

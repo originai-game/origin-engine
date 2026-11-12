@@ -86,7 +86,7 @@ impl TextMotionUi for Ui {
             ((elapsed * cps) as usize).min(total)
         };
         if shown == total && a.a < 1.0 {
-            self.docs.host_mut().happened.push(When::Revealed);
+            self.docs.state_mut().happened.push(When::Revealed);
         }
         a.a = if shown == total { 1.0 } else { 0.0 };
         self.set_anim(memory, a);

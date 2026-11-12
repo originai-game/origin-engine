@@ -1,4 +1,5 @@
 use crate::doc::UiDocument;
+use crate::doc::build::DocsState;
 use crate::doc::build::ext::*;
 use crate::reactive::SourceId;
 use crate::reactive::session::Command;
@@ -78,7 +79,9 @@ fn inline_svg_shapes_bind_attributes_and_repaint_only_what_changed() {
     for (name, v) in [("ready", 0.25), ("h", 10.0), ("size", 80.0)] {
         let source = SourceId::new("test", name);
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: source.clone(),
                 initial: json!(v),
@@ -118,7 +121,9 @@ fn inline_svg_shapes_bind_attributes_and_repaint_only_what_changed() {
     // One bound attribute: that shape alone (the store and the
     // expression `1 - $ready` are its two evaluations).
     ui.docs
-        .reactive_mut()
+        .state_mut()
+        .memory
+        .reactive
         .execute(Command::Set {
             source: SourceId::new("test", "ready"),
             value: json!(0.75),
@@ -146,7 +151,9 @@ fn inline_svg_shapes_bind_attributes_and_repaint_only_what_changed() {
     // Only the box changes: its shapes' attributes stay, their draws
     // are placed in the new box (a 1-unit stroke at 3× is 3 px).
     ui.docs
-        .reactive_mut()
+        .state_mut()
+        .memory
+        .reactive
         .execute(Command::Set {
             source: SourceId::new("test", "size"),
             value: json!(120.0),
@@ -209,7 +216,9 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
     ] {
         let source = SourceId::new("test", name);
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: source.clone(),
                 initial: v,
@@ -295,7 +304,9 @@ fn svg_definitions_draw_and_cost_only_what_changed() {
     assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
     let set = |ui: &mut Ui, n: &str, v: serde_json::Value| {
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Set {
                 source: SourceId::new("test", n),
                 value: v,
@@ -371,7 +382,9 @@ fn svg_text_sits_on_its_point_and_scales_with_the_view_box() {
     ] {
         let source = SourceId::new("test", name);
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: source.clone(),
                 initial: v,
@@ -395,7 +408,9 @@ fn svg_text_sits_on_its_point_and_scales_with_the_view_box() {
     };
     let set = |ui: &mut Ui, n: &str, v: serde_json::Value| {
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Set {
                 source: SourceId::new("test", n),
                 value: v,

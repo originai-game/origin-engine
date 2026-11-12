@@ -141,9 +141,9 @@ impl MountUi for Ui {
                         )
             })
         });
-        let mut retained = std::mem::take(&mut self.docs.host_mut().retained);
+        let mut retained = std::mem::take(&mut self.docs.state_mut().memory.retained);
         retained.document_replaced(self, &doc.name);
-        self.docs.host_mut().retained = retained;
+        self.docs.state_mut().memory.retained = retained;
         self.docs
             .host_mut()
             .docs
@@ -193,14 +193,14 @@ impl MountUi for Ui {
             vm.insert("$ui".into(), self.ui_store_value());
         }
         let game = self.game_input();
-        let accepts = std::mem::replace(&mut self.docs.host_mut().accepts, game);
+        let accepts = std::mem::replace(&mut self.docs.state_mut().accepts, game);
         let r = self.mount_doc(doc, mount, id, props, env, Arc::default());
-        self.docs.host_mut().accepts = accepts;
+        self.docs.state_mut().accepts = accepts;
         r
     }
 
     fn open_slot(&mut self, path: &str) -> bool {
-        match self.docs.host().slots.get(path) {
+        match self.docs.state().slots.get(path) {
             Some(&i) if i < self.tree.nodes().len() => {
                 self.tree.stack_mut().push(i);
                 true
@@ -208,7 +208,7 @@ impl MountUi for Ui {
             _ => {
                 self.out.warnings_mut().push(format!(
                     "Ui::open_slot: no slot '{path}' this tick (mount the document first; slots: {})",
-                    self.docs.host().slots.keys().cloned().collect::<Vec<_>>().join(", ")
+                    self.docs.state().slots.keys().cloned().collect::<Vec<_>>().join(", ")
                 ));
                 false
             }
@@ -216,18 +216,19 @@ impl MountUi for Ui {
     }
 
     fn take_media_ops(&mut self) -> Vec<crate::bind::MediaOp> {
-        std::mem::take(&mut self.docs.host_mut().media_ops)
+        std::mem::take(&mut self.docs.state_mut().media_ops)
     }
 
     fn take_doc_events(&mut self) -> Vec<DocEvent> {
-        std::mem::take(&mut self.docs.host_mut().queued)
+        std::mem::take(&mut self.docs.state_mut().queued)
     }
 
     fn doc_built(&self) -> Vec<Built> {
-        let mut out = self.docs.host().built.clone();
+        let mut out = self.docs.state().built.clone();
         out.extend(
             self.docs
-                .host()
+                .state()
+                .memory
                 .retained
                 .records()
                 .flat_map(|r| r.built.iter().cloned()),
@@ -236,10 +237,11 @@ impl MountUi for Ui {
     }
 
     fn art_slots(&self) -> Vec<(String, crate::slot::SlotSpec)> {
-        let mut out = self.docs.host().arts.clone();
+        let mut out = self.docs.state().arts.clone();
         out.extend(
             self.docs
-                .host()
+                .state()
+                .memory
                 .retained
                 .records()
                 .flat_map(|r| r.arts.iter().cloned()),
@@ -248,16 +250,16 @@ impl MountUi for Ui {
     }
 
     fn doc_edits(&self) -> &[Edit] {
-        &self.docs.host().edits
+        &self.docs.state().edits
     }
 
     fn set_doc_prop(&mut self, path: &str, prop: &str, value: &str) -> Result<(), String> {
         let (spec, v) = parse_probe_value(prop, value)?;
         self.docs
-            .host_mut()
+            .state_mut()
             .edits
             .retain(|e| !(e.path == path && e.prop == prop));
-        self.docs.host_mut().edits.push(Edit {
+        self.docs.state_mut().edits.push(Edit {
             path: path.to_string(),
             prop: prop.to_string(),
             spec,
@@ -269,14 +271,14 @@ impl MountUi for Ui {
 
     fn clear_doc_edits(&mut self, path: &str) {
         self.docs
-            .host_mut()
+            .state_mut()
             .edits
             .retain(|e| !path.is_empty() && e.path != path);
     }
 
     fn doc_element(&self, path: &str) -> Option<(&str, usize)> {
         self.docs
-            .host()
+            .state()
             .built
             .iter()
             .find(|b| b.path == path)
@@ -284,7 +286,7 @@ impl MountUi for Ui {
     }
 
     fn save_doc_edits(&mut self) -> Result<Vec<(String, String, String)>, String> {
-        let edits = self.docs.host().edits.clone();
+        let edits = self.docs.state().edits.clone();
         let mut changed: BTreeMap<String, UiDocument> = BTreeMap::new();
         let mut kept = Vec::new();
         for e in edits {
@@ -303,7 +305,7 @@ impl MountUi for Ui {
             d.set_prop(node, &e.prop, &e.source)
                 .map_err(|why| format!("{}: {}.{}: {why}", d.source, e.path, e.prop))?;
         }
-        self.docs.host_mut().edits = kept;
+        self.docs.state_mut().edits = kept;
         let mut out = Vec::new();
         for (name, d) in changed {
             out.push((name, d.source.clone(), d.text.clone()));
@@ -333,7 +335,7 @@ impl MountUi for Ui {
             self.pause(id);
         }
         self.docs
-            .host_mut()
+            .state_mut()
             .plays
             .insert((path.to_string(), timeline.to_string()), id);
         Ok(id)
@@ -342,7 +344,7 @@ impl MountUi for Ui {
     fn seek_doc_timeline(&mut self, path: &str, timeline: &str, ms: f32) -> Result<u32, String> {
         if let Some(&id) = self
             .docs
-            .host()
+            .state()
             .plays
             .get(&(path.to_string(), timeline.to_string()))
             && self.seek(id, ms)
@@ -420,7 +422,7 @@ impl MountUi2 for Ui {
             .or_else(|| {
                 // A path below a mount: the nearest built ancestor's document.
                 self.docs
-                    .host()
+                    .state()
                     .built
                     .iter()
                     .filter(|b| path.starts_with(&format!("{}/", b.path)))
@@ -467,25 +469,25 @@ pub(crate) trait MountDocs {
 
 impl MountDocs for crate::ui::Docs {
     fn note_built(&mut self, built: Built) {
-        match self.host_mut().capture.last_mut() {
+        match self.state_mut().capture.last_mut() {
             Some(record) => record.built.push(built),
-            None => self.host_mut().built.push(built),
+            None => self.state_mut().built.push(built),
         }
     }
 
     fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
-        match self.host_mut().capture.last_mut() {
+        match self.state_mut().capture.last_mut() {
             Some(record) => record.render_fields.push((key, fields)),
             None => {
-                self.host_mut().render_fields.insert(key, fields);
+                self.state_mut().render_fields.insert(key, fields);
             }
         }
     }
 
     fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
-        match self.host_mut().capture.last_mut() {
+        match self.state_mut().capture.last_mut() {
             Some(record) => record.arts.push((path, spec)),
-            None => self.host_mut().arts.push((path, spec)),
+            None => self.state_mut().arts.push((path, spec)),
         }
     }
 
@@ -495,8 +497,9 @@ impl MountDocs for crate::ui::Docs {
 
     #[cfg(test)]
     fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
-        self.host().render_fields.get(&key).or_else(|| {
-            self.host()
+        self.state().render_fields.get(&key).or_else(|| {
+            self.state()
+                .memory
                 .retained
                 .record(key)
                 .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
@@ -516,8 +519,8 @@ pub trait MountUi3 {
 
 impl MountUi3 for Ui {
     fn inherit_store_registrations(&mut self, previous: &Self) {
-        *self.docs.reactive_mut() = previous.docs.reactive().clone();
-        self.docs.reactive_mut().graph.clear_bindings();
+        self.docs.state_mut().memory.reactive = previous.docs.state().memory.reactive.clone();
+        self.docs.state_mut().memory.reactive.graph.clear_bindings();
         self.inherit_document_registrations(previous);
     }
 
@@ -536,25 +539,36 @@ impl MountUi3 for Ui {
                 }
                 Command::Unmount { mount } => {
                     mount.validate()?;
-                    self.docs.reactive().graph.check_idle(&mount)?;
+                    self.docs.state().memory.reactive.graph.check_idle(&mount)?;
                     self.unmount_document(&mount);
                 }
                 Command::Registered { sources, mounts } => {
                     self.docs.registered_document_mounts(mounts)?;
-                    self.docs.reactive_mut().execute(Command::Registered {
-                        sources,
-                        mounts: Vec::new(),
-                    })?;
+                    self.docs
+                        .state_mut()
+                        .memory
+                        .reactive
+                        .execute(Command::Registered {
+                            sources,
+                            mounts: Vec::new(),
+                        })?;
                 }
                 Command::Dispose { scope } => {
                     self.docs
-                        .reactive()
+                        .state()
+                        .memory
+                        .reactive
                         .graph
                         .check_idle(&SourceId::new(&scope, "dispose"))?;
                     self.unmount_scope(&scope);
-                    return self.docs.reactive_mut().execute(Command::Dispose { scope });
+                    return self
+                        .docs
+                        .state_mut()
+                        .memory
+                        .reactive
+                        .execute(Command::Dispose { scope });
                 }
-                command => return self.docs.reactive_mut().execute(command),
+                command => return self.docs.state_mut().memory.reactive.execute(command),
             }
             Ok(Value::Null)
         })

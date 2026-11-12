@@ -20,6 +20,7 @@
 //! this tick.
 
 use crate::bind::{Env, NoEnv};
+use crate::doc::build::DocsState;
 use crate::doc::build::ext::*;
 use crate::doc::build::{DocEvent, DocResponse};
 use crate::doc::{Back, InputMode, LayerSpec, Under};
@@ -199,7 +200,7 @@ impl LayersUi for Ui {
             .unwrap_or(0);
         let mut r = self.build_layer(k, env);
         let mut queued = Vec::new();
-        self.docs.host_mut().queued.retain(|e| {
+        self.docs.state_mut().queued.retain(|e| {
             if e.mount == screen {
                 queued.push(e.clone());
                 false
@@ -214,23 +215,23 @@ impl LayersUi for Ui {
 
     fn build_layers(&mut self, env: &dyn Env) {
         let tick = self.interaction.state().tick;
-        if self.docs.host().built_tick == tick {
+        if self.docs.state().built_tick == tick {
             return;
         }
-        if !self.docs.host().retained.is_empty()
+        if !self.docs.state().memory.retained.is_empty()
             && let Err(error) = self.build_retained_documents(env)
         {
             self.out.warnings_mut().push(error);
         }
-        self.docs.host_mut().built_tick = tick;
+        self.docs.state_mut().built_tick = tick;
         // The covers still opening over layers that have left.
-        let mut revealing = std::mem::take(&mut self.docs.host_mut().revealing);
+        let mut revealing = std::mem::take(&mut self.docs.state_mut().revealing);
         revealing.retain(|(covers, color, image, start)| {
             let t = tick.saturating_sub(*start) as f32 * 1000.0
                 / self.env.ticks_per_second().max(1) as f32;
             t < ends(covers) && self.draw_covers(covers, *color, image.as_deref(), t, true)
         });
-        self.docs.host_mut().revealing = revealing;
+        self.docs.state_mut().revealing = revealing;
         for k in 0..self.docs.host().layers.layers.len() {
             if self
                 .docs
@@ -241,10 +242,10 @@ impl LayersUi for Ui {
                 .is_some_and(|l| l.built != tick && l.mount.is_none())
             {
                 let r = self.build_layer(k, env);
-                self.docs.host_mut().queued.extend(r.events);
+                self.docs.state_mut().queued.extend(r.events);
             }
         }
-        for op in std::mem::take(&mut self.docs.host_mut().ops) {
+        for op in std::mem::take(&mut self.docs.state_mut().ops) {
             let done = match op {
                 LayerOp::Push(s, vm) => self.push_screen(&s, vm).map(|_| ()),
                 LayerOp::Replace(s, vm) => self.replace_screen(&s, vm).map(|_| ()),
@@ -415,7 +416,7 @@ impl LayersUi2 for Ui {
             // Skipped (a shared element's name twice): the update happens
             // without its animations.
             if leaving {
-                self.docs.host_mut().ops.push(LayerOp::Drop(serial));
+                self.docs.state_mut().ops.push(LayerOp::Drop(serial));
                 return (false, Vec::new());
             }
             self.docs.host_mut().layers.layers[k].since = 0;
@@ -429,11 +430,11 @@ impl LayersUi2 for Ui {
                 self.draw_covers(&covers, vt.color, vt.image.as_deref(), t, false);
                 return (true, plays);
             }
-            self.docs.host_mut().ops.push(LayerOp::Drop(serial));
+            self.docs.state_mut().ops.push(LayerOp::Drop(serial));
             let opening: Vec<_> = vt.new.iter().filter(|a| is_cover(a)).cloned().collect();
             if !opening.is_empty() {
                 self.draw_covers(&opening, vt.color, vt.image.as_deref(), 0.0, true);
-                self.docs.host_mut().revealing.push((
+                self.docs.state_mut().revealing.push((
                     opening,
                     vt.color,
                     vt.image.clone(),
@@ -598,13 +599,13 @@ impl LayersUi2 for Ui {
         // UI actions go to the top layer that takes input; with none, to every game layer.
         let top_taker = infos.iter().rposition(|l| l.spec.input != InputMode::Game);
         let accepts = std::mem::replace(
-            &mut self.docs.host_mut().accepts,
+            &mut self.docs.state_mut().accepts,
             match top_taker {
                 Some(t) => t == k,
                 None => true,
             },
         );
-        let building = std::mem::replace(&mut self.docs.host_mut().building, layer.serial);
+        let building = std::mem::replace(&mut self.docs.state_mut().building, layer.serial);
         (
             Some(LayerFrame {
                 key,
@@ -627,8 +628,8 @@ impl LayersUi2 for Ui {
             accepts,
             building,
         } = frame;
-        self.docs.host_mut().building = building;
-        self.docs.host_mut().accepts = accepts;
+        self.docs.state_mut().building = building;
+        self.docs.state_mut().accepts = accepts;
         self.close();
         let spec = &info.spec;
         let mut events = Vec::new();
@@ -637,7 +638,7 @@ impl LayersUi2 for Ui {
             match &spec.back {
                 Back::Pop => {
                     self.interaction.nav_mut().back = false;
-                    self.docs.host_mut().ops.push(LayerOp::Pop(layer.serial));
+                    self.docs.state_mut().ops.push(LayerOp::Pop(layer.serial));
                 }
                 Back::Emit(name) => {
                     self.interaction.nav_mut().back = false;
@@ -678,11 +679,13 @@ impl crate::doc::build::Documents for MountedDocuments {
 
     fn requery(
         &self,
-        host: &mut crate::doc::build::RetainedHost,
         ui: &mut Ui,
         changed: &std::collections::BTreeSet<u64>,
     ) -> Result<Vec<usize>, String> {
-        host.requery(ui, changed)
+        let mut host = std::mem::take(&mut ui.docs.state_mut().memory.retained);
+        let restyled = host.requery(ui, changed);
+        ui.docs.state_mut().memory.retained = host;
+        restyled
     }
 }
 
@@ -708,7 +711,9 @@ mod tests {
             ui.define_document(UiDocument::parse(name, text).unwrap());
         }
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: SourceId::new("test", "volume"),
                 initial: json!("half"),
@@ -721,7 +726,9 @@ mod tests {
     fn mount(ui: &mut Ui, id: &str, document: &str) {
         let inputs = BTreeMap::from([("volume".into(), SourceId::new("test", "volume"))]);
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Signal {
                 source: SourceId::new("test", "_"),
                 initial: json!(0),
@@ -800,7 +807,9 @@ mod tests {
         let idle = step(&mut ui, InputFrame::default());
         assert_eq!((idle.bindings, idle.reconciled), (0, 1), "{idle:?}");
         ui.docs
-            .reactive_mut()
+            .state_mut()
+            .memory
+            .reactive
             .execute(Command::Set {
                 source: SourceId::new("test", "volume"),
                 value: json!("full"),

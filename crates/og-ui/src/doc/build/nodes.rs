@@ -492,7 +492,7 @@ impl NodesUi for Ui {
             self.style
                 .commit_styles(commit, &mut self.interaction, &mut self.tree);
         }
-        let keeps = std::mem::take(&mut self.docs.host_mut().keeps_hidden);
+        let keeps = std::mem::take(&mut self.docs.state_mut().keeps_hidden);
         // A discrete display exit retains the subtree until the sampled
         // display becomes none, then completes its removal lifecycle.
         let exited = r
@@ -510,7 +510,7 @@ impl NodesUi for Ui {
         {
             return None;
         }
-        self.docs.host_mut().seen_now.insert(key);
+        self.docs.state_mut().memory.seen_now.insert(key);
         self.note_selection(key, &r);
         self.docs.remember_queried(b, i, &path, key, &r);
         self.docs
@@ -865,7 +865,7 @@ impl NodesUi for Ui {
     ) -> crate::ui::Response {
         let resp = self.datetime_input(b, n, id.as_str(), r);
         let barred = r.flag("disabled") || r.flag("readonly");
-        self.docs.host_mut().validity.insert(
+        self.docs.state_mut().validity.insert(
             key,
             super::host::FieldValidity {
                 mount: b.mount.clone(),
@@ -1089,9 +1089,9 @@ impl NodesUi for Ui {
         }
         if kind == "slot" {
             let at = self.tree.parent();
-            self.docs.host_mut().slots.insert(path.clone(), at);
+            self.docs.state_mut().slots.insert(path.clone(), at);
             let short = format!("{}/{}", b.mount, n.id);
-            self.docs.host_mut().slots.entry(short).or_insert(at);
+            self.docs.state_mut().slots.entry(short).or_insert(at);
         }
         self.docs.note_built(built);
         if shows_content {
@@ -1134,9 +1134,9 @@ impl NodesUi for Ui {
             _ => resp = self.close(),
         }
         if let Some(open) = opened {
-            self.docs.host_mut().happened.push(When::Toggle);
+            self.docs.state_mut().happened.push(When::Toggle);
             if kind == "dialog" && !open {
-                self.docs.host_mut().happened.push(When::Close);
+                self.docs.state_mut().happened.push(When::Close);
             }
             if !bound(n, "open") {
                 self.remember(
@@ -1766,7 +1766,7 @@ impl NodesUi for Ui {
             step: r.num("stepBy").map(f64::from),
         };
         resp = if r.flag("multiline") {
-            self.docs.host_mut().placeholder_ink = self.pseudo_ink(styled);
+            self.docs.state_mut().placeholder_ink = self.pseudo_ink(styled);
             let out = self.text_area(
                 id.as_str(),
                 &mut s,
@@ -1783,10 +1783,10 @@ impl NodesUi for Ui {
                     constraints: constraints.clone(),
                 },
             );
-            self.docs.host_mut().placeholder_ink = None;
+            self.docs.state_mut().placeholder_ink = None;
             out
         } else {
-            self.docs.host_mut().placeholder_ink = self.pseudo_ink(styled);
+            self.docs.state_mut().placeholder_ink = self.pseudo_ink(styled);
             let out = self.text_field(
                 id.as_str(),
                 &mut s,
@@ -1820,7 +1820,7 @@ impl NodesUi for Ui {
                     }),
                 },
             );
-            self.docs.host_mut().placeholder_ink = None;
+            self.docs.state_mut().placeholder_ink = None;
             out
         };
         if !r.flag("readonly") {
@@ -1859,7 +1859,7 @@ impl NodesUi for Ui {
         }
         // HTML bars disabled and read-only controls from validation.
         let barred = r.flag("disabled") || r.flag("readonly");
-        self.docs.host_mut().validity.insert(
+        self.docs.state_mut().validity.insert(
             key,
             super::host::FieldValidity {
                 mount: b.mount.clone(),
@@ -1893,7 +1893,7 @@ impl NodesUi for Ui {
                 None => r.str("href").unwrap_or_default().to_string(),
             };
             if let Some(id) = href.strip_prefix('#') {
-                self.docs.host_mut().target = (!id.is_empty()).then(|| id.to_string());
+                self.docs.state_mut().target = (!id.is_empty()).then(|| id.to_string());
             }
             b.event(path, "link", &href, Value::Null);
         }
