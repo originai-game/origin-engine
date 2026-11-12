@@ -1,6 +1,6 @@
 //! Origin Engine tests that cook a project: og-tests' gfx scenes whose
 //! content og-cook makes (`vox-keyframes`, `lod-levels`, the `meshlet-*` scenes,
-//! `terrain-generated`, `plant-grown`, `ui-vector`, `ui-rive`, the glTF extension scenes), and og-ui's frames drawn with cooked
+//! `terrain-generated`, `plant-grown`, `plant-scatter`, `ui-vector`, `ui-rive`, the glTF extension scenes), and og-ui's frames drawn with cooked
 //! fonts and icons (`tests/text_gfx.rs`, `materials_gfx.rs`,
 //! `pack_contrast.rs`). A package of its own so that og-tests and og-ui
 //! do not build on og-cook: a change to og-cook or og-api reruns these GPU

@@ -28,6 +28,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "baked-batches",
     "terrain-generated",
     "plant-grown",
+    "plant-scatter",
     "ui-vector",
     "ui-rive",
     "gltf-uv-transform",
@@ -109,10 +110,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::terrain_scenes::generated_scene()?;
             Ok(())
         },
-        // Plants the cook grows from a `plant` block (plant_scenes).
+        // Plants the cook grows from a `plant` block, and a wood of them
+        // scattered whole (plant_scenes).
         #[cfg(not(target_arch = "wasm32"))]
         "plant-grown" => |g, _| {
             g.scene = crate::plant_scenes::grown_scene()?;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-scatter" => |g, _| {
+            g.scene = crate::plant_scenes::scatter_scene()?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]

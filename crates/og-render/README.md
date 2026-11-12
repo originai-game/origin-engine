@@ -1402,7 +1402,10 @@ Scenes: `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km island of
 tick 90; the boulders, plain instances, stand still); tests in
 `og-tests/tests/terrain.rs`. `plant-grown` (og-tests-cooked's
 `plant_scenes`): an oak, a pine, a flowering shrub and daisies the cook
-grew from `plant` blocks, each drawn as its wood and its leaves.
+grew from `plant` blocks, each drawn as its wood and its leaves;
+`plant-scatter`: a 64 m hill with the oak, the pine and the shrub
+scattered whole (a `ScatterDraw` per part, the leaves `with` the wood),
+cards past 30 m, in a light wind.
 
 ## Water
 
