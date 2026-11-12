@@ -234,13 +234,12 @@ pub const SCENES: &[&str] = &[
     "aurora-breakup",
     "live-sky",
     "water-ocean",
-    "water-ocean-storm",
+    "water-ocean-gale",
+    "water-ocean-rain",
     "water-ocean-sunset",
     "water-flow-map",
-    "water-ocean-dusk-storm",
     "water-ocean-night",
     "water-shore",
-    "water-shore-storm",
     "water-shallows",
     "water-wake",
     "water-river",
@@ -1353,17 +1352,17 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // R5: the sea under the physical sky, and a stream's flow map.
-        "water-ocean"
-        | "water-ocean-storm"
-        | "water-ocean-sunset"
-        | "water-flow-map"
-        | "water-ocean-dusk-storm"
-        | "water-ocean-night"
-        | "water-shore"
-        | "water-shore-storm"
-        | "water-shallows"
-        | "water-river" => |g, name| {
+        "water-ocean" | "water-ocean-gale" | "water-ocean-sunset" | "water-flow-map"
+        | "water-ocean-night" | "water-shore" | "water-shallows" | "water-river" => |g, name| {
             g.scene = crate::ocean_scenes::ocean_scene(name);
+            Ok(())
+        },
+        // The sea under the weather: its rain fills the view over these
+        // frames.
+        "water-ocean-rain" => |g, name| {
+            g.scene = crate::ocean_scenes::ocean_scene(name);
+            g.frames = crate::atmo_scenes::WEATHER_FRAMES;
+            g.update = Some(fx::tick_update);
             Ok(())
         },
         "water-wake" => |g, name| {

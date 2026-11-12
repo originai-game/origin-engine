@@ -1,26 +1,25 @@
 //! The realism wave's water scenes (R5): an open sea under the physical
-//! sky (a fresh breeze in the afternoon, a gale with whitecaps under an
-//! overcast, a sunset's glitter path), and a stream that a flow map turns
-//! round a boulder.
+//! sky (a fresh breeze in the afternoon, the same sea in a gale and under
+//! the weather's rain, a sunset's glitter path), and a stream that a flow
+//! map turns round a boulder.
 
 use crate::scenes::texture;
 use crate::sky_scenes::physical_light;
 use glam::{Mat4, Vec2, Vec3};
 use og_render::{
-    Camera, Clouds, ColorSpace, Exposure, Fog, PhysicalAtmosphere, RenderScene, StandardMaterial,
-    Water, shapes,
+    Camera, ColorSpace, Exposure, Fog, PhysicalAtmosphere, RenderScene, StandardMaterial, Water,
+    shapes,
 };
 
 /// The scenes of this module, in `SCENES` order.
 pub const OCEAN_SCENES: &[&str] = &[
     "water-ocean",
-    "water-ocean-storm",
+    "water-ocean-gale",
+    "water-ocean-rain",
     "water-ocean-sunset",
     "water-flow-map",
-    "water-ocean-dusk-storm",
     "water-ocean-night",
     "water-shore",
-    "water-shore-storm",
     "water-shallows",
     "water-wake",
     "water-river",
@@ -68,6 +67,20 @@ fn sea_haze(scene: &mut RenderScene) {
         f.falloff = 1.0 / 300.0;
         f.start = 0.0;
         f.max_opacity = 1.0;
+    }
+}
+
+/// The gale's wind (m/s, xz): 20 m/s, away from the camera and to the right.
+const GALE: Vec2 = Vec2::new(7.0, -18.7);
+
+/// The gale's view: the breeze's, from a deck 10 m up.
+fn gale_camera() -> Camera {
+    Camera {
+        position: Vec3::new(0.0, 10.0, 0.0),
+        target: Vec3::new(0.0, 7.5, -60.0),
+        far: 5000.0,
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
     }
 }
 
@@ -358,37 +371,31 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 ..Default::default()
             };
         }
-        // A strong gale (20 m/s, waves some 330 m long, a significant
-        // height near 10 m, crests at full choppiness) under a dark
-        // overcast, whitecaps on the crests and old foam streaked along the
-        // wind, seen from a deck 10 m up (above every crest).
-        "water-ocean-storm" => {
-            physical_light(&mut scene, 13.0, earth);
-            let clouds = Clouds {
-                coverage: 0.97,
-                density: 0.09,
-                color: Vec3::splat(0.5),
-                base: 700.0,
-                layer: 0.0,
-                ..Clouds::default()
-            };
-            clouds.light_scene(&mut scene);
-            scene.atmosphere.clouds = Some(clouds);
-            let mut gale = sea(Vec2::new(7.0, -18.7), 1.0);
-            // Grey-green deep water under the overcast.
-            gale.deep = Vec3::new(0.012, 0.035, 0.035);
-            scene.world.water.push(gale);
+        // The same sea, afternoon and settings in a gale (20 m/s: waves
+        // some 330 m long, a significant height near 9 m), from 10 m up,
+        // above every crest. Only the wind differs from `water-ocean`.
+        "water-ocean-gale" => {
+            physical_light(&mut scene, 15.0, earth);
+            scene.world.water.push(sea(GALE, 0.6));
             sea_haze(&mut scene);
-            // 96 s in: the swell's crests under the near sea (at 90 s the
-            // view's first 50 m lay in one long trough, with no whitecaps).
-            scene.frame.tick = TICK + 360;
-            scene.frame.camera = Camera {
-                position: Vec3::new(0.0, 10.0, 0.0),
-                target: Vec3::new(-10.0, 1.0, -80.0),
-                far: 5000.0,
-                exposure: Exposure::linear(1.0),
-                ..Default::default()
-            };
+            scene.frame.camera = gale_camera();
+        }
+        // The gale under the world's rain on the same wind, as a game's
+        // og.Wind, og.Weather and og.Water compose: the weather closes the
+        // sky and dims the light, and the sea takes both from the frame
+        // (nothing on the water is set for it).
+        "water-ocean-rain" => {
+            physical_light(&mut scene, 15.0, earth);
+            scene.world.water.push(sea(GALE, 0.6));
+            sea_haze(&mut scene);
+            scene.frame.camera = gale_camera();
+            crate::atmo_scenes::add_weather(
+                &mut scene,
+                og_render::WEATHER_RAIN,
+                1.5,
+                Vec3::new(GALE.x, 0.0, GALE.y),
+                40.0,
+            );
         }
         // A light breeze (6 m/s) at sunset, looking into the low sun: the
         // glitter path of the sun's highlight on every wave facing it.
@@ -419,27 +426,6 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         }
         "water-wake" => wake(&mut scene),
         "water-river" => river(&mut scene),
-        // A gale building at dusk (the sun some 5° under the horizon) under a
-        // closing deck, seen as the breeze's frame is, metered: the sea as
-        // dark as the dim sky it mirrors, its body lit only by the dusk.
-        "water-ocean-dusk-storm" => {
-            physical_light(&mut scene, 18.4, earth);
-            let clouds = Clouds {
-                coverage: 0.9,
-                density: 0.09,
-                color: Vec3::splat(0.5),
-                base: 700.0,
-                layer: 0.0,
-                ..Clouds::default()
-            };
-            clouds.light_scene(&mut scene);
-            scene.atmosphere.clouds = Some(clouds);
-            let mut gale = sea(Vec2::new(5.0, -14.0), 0.85);
-            gale.deep = Vec3::new(0.012, 0.035, 0.035);
-            scene.world.water.push(gale);
-            sea_haze(&mut scene);
-            scene.frame.camera = metered(Vec3::new(0.0, 6.0, 0.0), -1.0);
-        }
         // The breeze's sea at night under a clear, starry sky and a moon
         // behind the camera: dark water, the moonlight on it faint.
         "water-ocean-night" => {
@@ -460,35 +446,6 @@ pub fn ocean_scene(name: &str) -> RenderScene {
                 target: Vec3::new(0.0, 0.0, -100.0),
                 far: 5000.0,
                 exposure: Exposure::linear(0.8),
-                ..Default::default()
-            };
-        }
-        // The same beach in a gale under an overcast: higher trains
-        // breaking further out, the surf zone white.
-        "water-shore-storm" => {
-            physical_light(&mut scene, 13.0, earth);
-            let clouds = Clouds {
-                coverage: 0.95,
-                density: 0.09,
-                color: Vec3::splat(0.5),
-                base: 700.0,
-                layer: 0.0,
-                ..Clouds::default()
-            };
-            clouds.light_scene(&mut scene);
-            if let Some(f) = scene.atmosphere.fog.as_mut() {
-                (f.color, f.sun_color) = clouds.fog_under(f.color, f.sun_color);
-            }
-            scene.atmosphere.clouds = Some(clouds);
-            let mut gale = sea(Vec2::new(4.0, -15.0), 1.0);
-            gale.deep = Vec3::new(0.012, 0.035, 0.035);
-            beach(&mut scene, gale, 1.5);
-            sea_haze(&mut scene);
-            scene.frame.camera = Camera {
-                position: Vec3::new(0.0, 8.0, 60.0),
-                target: Vec3::new(0.0, 0.0, -100.0),
-                far: 5000.0,
-                exposure: Exposure::linear(1.0),
                 ..Default::default()
             };
         }

@@ -651,23 +651,20 @@ pub fn hooks_scene_parts(tick: u64) -> (RenderScene, og_render::MaterialHandle) 
     (scene, teal)
 }
 
-/// The colonnade in weather `kind` (an og-render `WEATHER_*` preset) at
-/// intensity 1: its particles placed over the camera, its fog, its dimmed
-/// light. Render [`WEATHER_FRAMES`] frames with [`crate::fx_scenes::tick_update`]
-/// so the particles fill the view.
-pub fn weather_scene(kind: u32) -> RenderScene {
-    let mut scene = day_night_scene(14.0, false);
-    let look = og_render::weather(
-        kind,
-        1.0,
-        Vec3::new(2.0, 0.0, 0.6),
-        18.0,
-        Vec3::ONE,
-        1.0,
-        None,
-    );
-    look.light_scene(&mut scene);
-    scene.atmosphere.fog = look.fog;
+/// Puts `scene` under weather `kind` (an og-render `WEATHER_*` preset) at
+/// `intensity` on `wind`, filling `radius` metres about its camera, as
+/// og-runtime applies og.Weather: the sky closed to its cover and the light
+/// dimmed once, its particles placed over the camera. The scene's fog is
+/// the caller's (a declared fog stays; the look's is the weather's own).
+pub fn add_weather(
+    scene: &mut RenderScene,
+    kind: u32,
+    intensity: f32,
+    wind: Vec3,
+    radius: f32,
+) -> og_render::WeatherLook {
+    let look = og_render::weather(kind, intensity, wind, radius, Vec3::ONE, 1.0, None);
+    look.light_scene(scene);
     if let Some(e) = look.emitter.clone() {
         let emitter = scene.add_emitter(e);
         scene.effects.particles.push(og_render::ParticleSystem::new(
@@ -681,6 +678,17 @@ pub fn weather_scene(kind: u32) -> RenderScene {
             0,
         ));
     }
+    look
+}
+
+/// The colonnade in weather `kind` (an og-render `WEATHER_*` preset) at
+/// intensity 1: its particles placed over the camera, its fog, its dimmed
+/// light. Render [`WEATHER_FRAMES`] frames with [`crate::fx_scenes::tick_update`]
+/// so the particles fill the view.
+pub fn weather_scene(kind: u32) -> RenderScene {
+    let mut scene = day_night_scene(14.0, false);
+    let look = add_weather(&mut scene, kind, 1.0, Vec3::new(2.0, 0.0, 0.6), 18.0);
+    scene.atmosphere.fog = look.fog;
     scene
 }
 

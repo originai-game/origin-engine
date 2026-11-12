@@ -1506,8 +1506,8 @@ Each off by default on `Water`:
   apart and cross-faded. Binding 9 of the water group.
 
 Scenes (`og-tests/tests/ocean.rs`, `og_tests::ocean_scenes`):
-`water-ocean` (a 9 m/s breeze in the afternoon), `water-ocean-storm` (a
-17 m/s gale at full choppiness under an overcast, whitecaps),
+`water-ocean` (a 9 m/s breeze in the afternoon), `water-ocean-gale` (the
+same sea at 20 m/s), `water-ocean-rain` (the gale under the weather's rain),
 `water-ocean-sunset` (a 6 m/s breeze into the low sun: the glitter path),
 `water-flow-map` (a stream parting round a boulder).
 
