@@ -520,6 +520,7 @@ pub fn grass_scene() -> RenderScene {
         cast_shadows: true,
         impostor: None,
         impostor_distance: 0.0,
+        with: None,
     });
     scene
 }

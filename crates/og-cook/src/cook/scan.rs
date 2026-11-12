@@ -138,7 +138,9 @@ pub(super) fn scan_with(
                 };
                 match doc {
                     Ok(doc) if doc.ty == "import" => {
-                        let target = rel.trim_end_matches(".ogt");
+                        // One suffix only: `oak.ogt.ogt` sets how the model
+                        // text `oak.ogt` is cooked.
+                        let target = rel.strip_suffix(".ogt").unwrap_or(rel);
                         if names.contains(target) {
                             settings.insert(target.to_string(), (text, doc));
                         } else {

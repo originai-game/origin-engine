@@ -1222,7 +1222,7 @@ size.
 one parser (`gltf::physical_extensions`, the textures as their kinds: the
 sheen colour as sRGB colour, the coat's normal as a normal map, the rest
 linear) into `PhysicalExtensions`; a cooked model stores them in its
-material rows (`og.ModelMaterial` version 2) and adds a material with any
+material rows (`og.ModelMaterial` version 4) and adds a material with any
 as a standard material (`CookedModel::standard_material`).
 
 ## Array maps (materials and terrain layers)

@@ -36,6 +36,7 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `avoidWater` | `number` | `0` | 0 … 100 | `m` | tunable | Grows no copy whose ground stands less than this above an og.Water surface over it (an endless sea everywhere), nor under it: reeds stop short of the shore. 0: anywhere. |
 | `densityMap` | `Texture` | `0` | — | — | — | Thins the copies where its red channel is below 1, over the terrain's extent (top row along -z, loaded linear), each copy kept while its own value is below the map's. Drawn only, where the renderer culls on the GPU (RenderCapabilities.compute). 0: none. See `world §3`. |
 | `gpuPlacement` | `boolean` | `true` | — | — | — | Place the copies on the GPU, a chunk per compute pass by the same rules, nothing per copy on the CPU; matching the CPU's but for the last bits. Without compute (RenderCapabilities.compute), or for a footprint chain too long or wide, the CPU places them. False places every chunk on the CPU. See `world §3`. |
+| `model` | `Asset` | `0` | — | — | — | A glTF (og.load.gltf) scattered whole, in place of geometry and material: every part with its own material, as one copy, placed and swaying together (a grown tree's wood and its leaves). Cooked with an impostor, copies past impostorDistance draw as it. None: geometry and material. See `world §3`. |
 
 ```ogt
 component TerrainScatter {
@@ -136,6 +137,9 @@ component TerrainScatter {
   field gpuPlacement bool "Place the copies on the GPU, a chunk per compute pass by the same rules, nothing per copy on the CPU; matching the CPU's but for the last bits. Without compute (RenderCapabilities.compute), or for a footprint chain too long or wide, the CPU places them. False places every chunk on the CPU." {
     guide "world §3"
     default true
+  }
+  field model Asset "A glTF (og.load.gltf) scattered whole, in place of geometry and material: every part with its own material, as one copy, placed and swaying together (a grown tree's wood and its leaves). Cooked with an impostor, copies past impostorDistance draw as it. None: geometry and material." {
+    guide "world §3"
   }
 }
 ```

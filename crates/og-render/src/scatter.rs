@@ -349,6 +349,42 @@ pub struct ScatterDraw {
     /// How far from the camera (along x and z) copies draw as their mesh;
     /// 0 (or no impostor): always. Useful below the scatter's `distance`.
     pub impostor_distance: f32,
+    /// The scatter of the scene's list whose copies this one draws a
+    /// further part of (a tree's leaves, its wood the first part): placed
+    /// by that one's rules and where its copies are, swaying with them as
+    /// one plant, and leaving the impostor's card to it. `None`: copies of
+    /// its own.
+    pub with: Option<usize>,
+}
+
+impl ScatterDraw {
+    /// The scatter of `all` that places the copies scatter `index` draws:
+    /// itself, or the one it is a part of (which must be no part itself).
+    pub(crate) fn placed_by(all: &[ScatterDraw], index: usize) -> usize {
+        all[index]
+            .with
+            .filter(|&h| all.get(h).is_some_and(|d| d.with.is_none()))
+            .unwrap_or(index)
+    }
+
+    /// The scatters of `all` that place copies, each with its terrain's
+    /// index (what [`ScatterContext::of`] orders), and for every scatter
+    /// of `all` its place in that list: a part's is its first part's, so
+    /// it is placed as one with it and clears no footprint of its own.
+    pub(crate) fn placing(all: &[ScatterDraw]) -> (Vec<(usize, TerrainScatter)>, Vec<usize>) {
+        let mut placing = Vec::new();
+        let mut slot = vec![usize::MAX; all.len()];
+        for (i, d) in all.iter().enumerate() {
+            if Self::placed_by(all, i) == i {
+                slot[i] = placing.len();
+                placing.push((d.terrain, d.scatter));
+            }
+        }
+        for i in 0..all.len() {
+            slot[i] = slot[Self::placed_by(all, i)];
+        }
+        (placing, slot)
+    }
 }
 
 // ── drawing ─────────────────────────────────────────────────────────────────
@@ -764,6 +800,61 @@ mod tests {
             "{} of {} flowers",
             placed.len(),
             free.len()
+        );
+    }
+
+    /// A tree scattered whole is two draws, its wood and its leaves: the
+    /// leaves take the wood's place in the placing order, so its
+    /// footprint does not clear them, and what places after the tree
+    /// keeps clear of it once.
+    #[test]
+    fn a_models_further_part_is_placed_as_its_first() {
+        let mut scene = crate::RenderScene::new();
+        let mesh = scene.add_mesh(crate::shapes::plane(1.0, 1.0));
+        let material = scene.add_standard_material(Default::default());
+        let tree = TerrainScatter {
+            density: 0.05,
+            footprint: 3.0,
+            priority: 2,
+            seed: 3,
+            ..Default::default()
+        };
+        let flowers = TerrainScatter {
+            density: 4.0,
+            footprint: 0.25,
+            seed: 9,
+            ..Default::default()
+        };
+        let draw = |scatter, with| ScatterDraw {
+            terrain: 0,
+            mesh,
+            material,
+            scatter,
+            cast_shadows: true,
+            impostor: None,
+            impostor_distance: 0.0,
+            with,
+        };
+        let all = [
+            draw(flowers, None),
+            draw(tree, None),
+            draw(tree, Some(1)),
+            // A part of a part is no part: it places its own copies.
+            draw(flowers, Some(2)),
+        ];
+        let (placing, slots) = ScatterDraw::placing(&all);
+        assert_eq!(placing, vec![(0, flowers), (0, tree), (0, flowers)]);
+        assert_eq!(slots, vec![0, 1, 1, 2]);
+        assert!(
+            ScatterContext::of(&placing, slots[2], 1, [])
+                .before
+                .is_empty(),
+            "the leaves keep clear of nothing, as the wood"
+        );
+        assert_eq!(
+            ScatterContext::of(&placing, slots[0], 1, []).before,
+            vec![tree],
+            "the flowers keep clear of the tree once"
         );
     }
 
