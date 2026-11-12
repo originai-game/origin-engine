@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Water.foam",
+      "summary": "A lake's and a river's bank foam and ripple foam are lit as a sea's foam and a fall's white water: the sun's share is Lambert's, its irradiance over pi. It was three times too bright in the sun and clipped to flat white. Frames with such foam in sunlight get darker foam (up to 53 levels on an Apple M4 Pro); shaded foam, a fall's and a sea's are unchanged."
+    }
+  ]
+}
