@@ -29,7 +29,7 @@
 use glam::{Vec2, Vec3};
 
 /// Cells per side of an error block.
-pub(crate) const ERROR_BLOCK: u32 = 8;
+pub const ERROR_BLOCK: u32 = 8;
 
 /// Decimations up to `2^EXACT` samples apart have exact errors (every
 /// sample read against the cell's triangles); coarser ones an estimate
@@ -38,14 +38,14 @@ pub(crate) const ERROR_BLOCK: u32 = 8;
 const EXACT: usize = 7;
 
 /// The most decimations an error table answers (`2^31` samples apart).
-pub(crate) const ERROR_STEPS: usize = 32;
+pub const ERROR_STEPS: usize = 32;
 
 /// One block's error: its rectangle in the terrain's space (metres from
 /// its centre), the decimation it is of (`2^step` field samples between
 /// the drawn vertices) and the largest height error there (metres, the
 /// terrain's space).
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct ErrorBlock {
+pub struct ErrorBlock {
     pub lo: Vec2,
     pub hi: Vec2,
     pub step: u32,
@@ -55,7 +55,7 @@ pub(crate) struct ErrorBlock {
 /// The decimation errors of a grid of samples: for each decimation `2^j`
 /// (`j` from 1), its cells' error bounds and their blocks' largest.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(crate) struct Decimation {
+pub struct Decimation {
     /// Samples along x and z.
     samples: (u32, u32),
     /// Per decimation `j` (index `j - 1`): cells along x and z and each
@@ -74,7 +74,7 @@ fn split(h: [f32; 4], f: Vec2) -> f32 {
 impl Decimation {
     /// The errors of `sx` × `sz` samples read as `at(x, z)`, for every
     /// decimation up to `levels` (`2^levels` samples apart).
-    pub(crate) fn new(sx: u32, sz: u32, levels: u32, at: &dyn Fn(u32, u32) -> f32) -> Decimation {
+    pub fn new(sx: u32, sz: u32, levels: u32, at: &dyn Fn(u32, u32) -> f32) -> Decimation {
         let mut d = Decimation {
             samples: (sx.max(1), sz.max(1)),
             ..Default::default()
@@ -93,7 +93,7 @@ impl Decimation {
 
     /// Builds again what samples `lo`..=`hi` (x, z) reach, after they
     /// changed (`at`: the samples now).
-    pub(crate) fn update(&mut self, at: &dyn Fn(u32, u32) -> f32, lo: (u32, u32), hi: (u32, u32)) {
+    pub fn update(&mut self, at: &dyn Fn(u32, u32) -> f32, lo: (u32, u32), hi: (u32, u32)) {
         let (sx, sz) = self.samples;
         let sample = |x: u32, z: u32| at(x.min(sx - 1), z.min(sz - 1));
         for j in 0..self.cells.len() {
@@ -170,7 +170,7 @@ impl Decimation {
     /// The blocks' errors, decimation after decimation, each block's
     /// rectangle in samples ((x, z) to (x, z), clamped to the grid) and
     /// its decimation `j`.
-    pub(crate) fn blocks(&self) -> impl Iterator<Item = ((u32, u32), (u32, u32), u32, f32)> + '_ {
+    pub fn blocks(&self) -> impl Iterator<Item = ((u32, u32), (u32, u32), u32, f32)> + '_ {
         let (sx, sz) = self.samples;
         self.blocks
             .iter()
@@ -189,7 +189,7 @@ impl Decimation {
 
     /// The blocks' errors laid out as a tile keeps them
     /// ([`crate::TerrainTile::error`]): decimation after decimation, row by row.
-    pub(crate) fn flat(&self) -> Vec<f32> {
+    pub fn flat(&self) -> Vec<f32> {
         self.blocks
             .iter()
             .flat_map(|(_, _, e)| e.iter().copied())
@@ -198,7 +198,7 @@ impl Decimation {
 
     /// Decimations a tile of `tile` quads keeps errors for (`2^j` up to
     /// its size), and how many blocks each has along a side.
-    pub(crate) fn tile_shape(tile: u32) -> impl Iterator<Item = (u32, u32)> {
+    pub fn tile_shape(tile: u32) -> impl Iterator<Item = (u32, u32)> {
         let levels = 31 - tile.max(2).leading_zeros();
         (1..=levels).map(move |j| (j, tile.div_ceil(1 << j).max(1).div_ceil(ERROR_BLOCK)))
     }
@@ -211,7 +211,7 @@ impl Decimation {
 /// terrain's space; `range` its height range; `along` and `up` its
 /// horizontal and vertical scale to the world; blocks past `far` (the
 /// terrain's metres) are not seen.
-pub(crate) fn error_reach(
+pub fn error_reach(
     blocks: impl Iterator<Item = ErrorBlock>,
     eye: Vec3,
     range: (f32, f32),

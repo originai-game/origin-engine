@@ -41,7 +41,7 @@ mod gpu_tests;
 /// the comments stay in the sources and out of the wasm.
 macro_rules! wgsl {
     ($file:literal) => {
-        include_str!(concat!(env!("OUT_DIR"), "/shaders/", $file))
+        include_str!(concat!(env!("OG_RENDER_SHADERS"), "/", $file))
     };
 }
 
@@ -93,7 +93,7 @@ mod crowd;
 mod crowd_gpu;
 mod crowd_impostor;
 mod cull_gpu;
-mod custom;
+use og_render_data::custom;
 mod debris;
 pub mod debug;
 mod deferred;
@@ -105,13 +105,13 @@ mod fluid3d;
 pub mod foliage;
 mod frame;
 mod fx;
-pub mod geometry;
+pub use og_render_data::geometry;
 mod gi_probes;
 mod gi_scene;
 mod glass;
 pub mod graph;
 mod hdr;
-mod hooks;
+use og_render_data::hooks;
 mod ibl;
 mod id_pass;
 mod instances;
@@ -119,7 +119,7 @@ mod light2d;
 mod lightmap;
 mod lines;
 pub mod lod;
-pub mod meshlet;
+pub use og_render_data::meshlet;
 mod meshlet_gpu;
 mod pipeline_features;
 mod probe_content;
@@ -299,7 +299,7 @@ pub mod ocean_fft;
 mod shadow_cache;
 mod shadow_target;
 mod shadows;
-pub mod shapes;
+pub use og_render_data::shapes;
 mod skin;
 pub use garment::{GarmentDeformation, GarmentTopology};
 mod sky_physical;
@@ -322,7 +322,7 @@ pub mod caps;
 pub use caps::{Caps, Tier};
 mod targets;
 mod terrain;
-mod terrain_error;
+use og_render_data::terrain_error;
 mod terrain_tiles;
 mod texture;
 mod texture_array;

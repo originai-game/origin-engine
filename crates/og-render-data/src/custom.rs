@@ -70,7 +70,7 @@ fn user_section(shader: &MaterialShader) -> String {
 }
 
 /// The lit (and prepass) module of a full shader.
-pub(crate) fn lit_source(shader: &MaterialShader, lit: bool) -> String {
+pub fn lit_source(shader: &MaterialShader, lit: bool) -> String {
     format!(
         "const CUSTOM_LIT: bool = {lit};\n{}{}{}{}{}{}{}{}{}{}{}{}{}{}{LIT_WGSL}",
         crate::FRAME_WGSL,
@@ -106,7 +106,7 @@ fn fx_section() -> &'static str {
 }
 
 /// The shadow casters' module of a full shader.
-pub(crate) fn shadow_source(shader: &MaterialShader) -> String {
+pub fn shadow_source(shader: &MaterialShader) -> String {
     format!(
         "{}{}{}{}{}{}{}{}{}{SHADOW_WGSL}",
         crate::oit::OIT_WGSL,
@@ -124,7 +124,7 @@ pub(crate) fn shadow_source(shader: &MaterialShader) -> String {
 /// The lit and shadow module sources of any material shader, as the
 /// renderer compiles them (`planar`: its effect group carries the planar
 /// reflection, `crate::planar_slot`).
-pub(crate) fn module_sources(shader: &MaterialShader, planar: bool) -> (String, String) {
+pub fn module_sources(shader: &MaterialShader, planar: bool) -> (String, String) {
     match shader.mode {
         ShaderMode::Hooks => {
             let hooks = shader.hooks_wgsl();

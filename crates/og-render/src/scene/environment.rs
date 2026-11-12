@@ -326,11 +326,8 @@ impl Default for DirectionalLight {
     }
 }
 
-/// The most local lights one frame draws, after those outside the view are
-/// culled: past it the least important are dropped (the radiance at the
-/// camera; `clusters.rs`) and counted in [`crate::FrameStats::lights_dropped`].
-pub const MAX_LIGHTS: usize = 256;
 pub use crate::shadows::MAX_SHADOWED_LIGHTS;
+pub use og_render_data::clusters::MAX_LIGHTS;
 
 /// The shape of a local light.
 #[derive(Clone, Copy, Debug, PartialEq)]

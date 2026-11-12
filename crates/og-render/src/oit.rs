@@ -52,6 +52,7 @@
 //! blur and contact shadows see the opaque scene behind them.
 
 use crate::HdrPipeline;
+pub use og_render_data::oit::*;
 use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 
@@ -111,10 +112,6 @@ pub(crate) const REVEAL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rg16F
 /// fragment, or the coplanar ones that share the front).
 pub(crate) const FRONT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
-/// The participants' shared fragment code.
-pub(crate) const OIT_WGSL: &str = wgsl!("oit.wgsl");
-/// The arena binding and the node store (linked-list entry points).
-pub(crate) const ARENA_WGSL: &str = wgsl!("oit_arena.wgsl");
 const RESOLVE_WGSL: &str = wgsl!("oit_resolve.wgsl");
 const LIST_WGSL: &str = wgsl!("oit_list.wgsl");
 

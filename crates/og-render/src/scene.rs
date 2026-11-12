@@ -29,6 +29,7 @@ use crate::ribbons::{Beam, Ribbon, Trail, TrailStyle, TrailStyleHandle};
 use crate::skin::{JointPalette, MorphTargets, SkinData, SkinnedInstance};
 use crate::texture::TextureUpload;
 use glam::{Mat4, Vec3};
+pub use og_render_data::scene::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_SCENE_ID: AtomicU64 = AtomicU64::new(1);

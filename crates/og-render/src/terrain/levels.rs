@@ -173,23 +173,6 @@ pub(super) fn ring_indices(n: u32) -> (Vec<u32>, RingRanges) {
     (idx, ranges)
 }
 
-/// The height over a cell of corner heights `h` (-x -z, +x -z, -x +z,
-/// +x +z) at `f` (0 to 1 along x and z), on the triangle of its split
-/// (og_core's heightfield_zigzag; `terrain_vertex.wgsl` split_height).
-pub(crate) fn split_height(h: [f32; 4], f: Vec2) -> f32 {
-    if (h[0] - h[3]).abs() > (h[1] - h[2]).abs() {
-        if f.x + f.y <= 1.0 {
-            h[0] + f.x * (h[1] - h[0]) + f.y * (h[2] - h[0])
-        } else {
-            h[3] + (1.0 - f.x) * (h[2] - h[3]) + (1.0 - f.y) * (h[1] - h[3])
-        }
-    } else if f.x >= f.y {
-        h[0] + f.x * (h[1] - h[0]) + f.y * (h[3] - h[1])
-    } else {
-        h[0] + f.y * (h[2] - h[0]) + f.x * (h[3] - h[2])
-    }
-}
-
 /// One clipmap level's mesh as `terrain_vertex.wgsl` terrain_local_vertex makes
 /// it, on the CPU (the id pass draws what the frame drew): its (n + 1)²
 /// corners then its n² cells' centres, in the terrain's space. `height`

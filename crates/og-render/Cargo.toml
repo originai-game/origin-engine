@@ -11,10 +11,10 @@ autotests = false
 default = []
 # glTF 2.0 (.glb/.gltf) import into RenderScene meshes, materials and textures.
 # A bridge until the cook (M4) produces .ogb meshes; the runtime wasm leaves it off.
-gltf = ["dep:gltf"]
+gltf = ["dep:gltf", "og-render-data/gltf"]
 # Prefiltering equirectangular HDR images into environment maps on the CPU
 # (environment::bake): the cook's, never the runtime wasm's.
-bake = []
+bake = ["og-render-data/bake"]
 # A published game (og-host-web's `publish`): no GPU pass timing, so the
 # timestamp queries, their resolves and readbacks are not built in
 # (timing.rs); the CPU's pass timings stay.
@@ -30,6 +30,8 @@ profile2d = []
 og-core = { path = "../og-core" }
 # The draw commands the overlay and the UI pass draw.
 og-draw = { path = "../og-draw" }
+# What the renderer draws as data, and the WGSL it compiles (its build.rs).
+og-render-data = { path = "../og-render-data" }
 og-lanes = { path = "../og-lanes" }
 og-tween = { path = "../og-tween" }
 wgpu = { workspace = true }

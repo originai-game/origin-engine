@@ -1,0 +1,29 @@
+[package]
+name = "og-render-data"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine render data: what the renderer draws as cooked data (meshes, textures, materials, terrains, environment maps, particle emitters, effect materials, material shaders and the WGSL modules they compile into) and the CPU builders whose output is cooked data, with no GPU dependency. og-render draws it, og-cook writes it and og-bundle loads it."
+autotests = false
+# The WGSL build.rs strips: og-render's wgsl! includes it from here
+# (DEP_OG_RENDER_SHADERS_OUT).
+links = "og_render_shaders"
+
+[features]
+default = []
+# Prefiltering equirectangular HDR images into environment maps on the CPU
+# (environment::bake): the cook's, never the runtime wasm's.
+bake = []
+# The physical extensions of a glTF material (gltf::physical_extensions),
+# read by the cook and og-render's glTF import.
+gltf = ["dep:gltf"]
+
+[dependencies]
+# Reflection: StandardMaterial's schema is og-core's.
+og-core = { path = "../og-core" }
+# The resource handles, the overlay's glyphs and the UI's shapes and paints.
+og-draw = { path = "../og-draw" }
+glam = { workspace = true }
+bytemuck = { workspace = true }
+gltf = { workspace = true, optional = true }

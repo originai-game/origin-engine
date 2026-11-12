@@ -182,42 +182,6 @@ impl Ground for TileGround<'_> {
     }
 }
 
-impl TerrainData {
-    /// The control map's channels at `local` (four per page; 1 past its
-    /// pages), bilinear between texel centres (as the renderer's linear
-    /// sampler reads it), 0..1; all 1 without one.
-    pub fn control_at(&self, local: Vec2) -> [f32; MAX_TERRAIN_LAYERS] {
-        let Some(c) = &self.control else {
-            return [1.0; MAX_TERRAIN_LAYERS];
-        };
-        let pages = c.pages() as usize;
-        let page = (c.width * c.height * 4) as usize;
-        let uv = ((local + self.size * 0.5) / self.size).clamp(Vec2::ZERO, Vec2::ONE);
-        let t = uv * Vec2::new(c.width as f32, c.height as f32) - 0.5;
-        let i = t.floor();
-        let f = t - i;
-        let texel = |x: f32, y: f32| -> [f32; MAX_TERRAIN_LAYERS] {
-            let x = (x as i64).clamp(0, c.width as i64 - 1) as usize;
-            let y = (y as i64).clamp(0, c.height as i64 - 1) as usize;
-            let at = (y * c.width as usize + x) * 4;
-            std::array::from_fn(|k| {
-                if k / 4 < pages {
-                    c.rgba[(k / 4) * page + at + k % 4] as f32 / 255.0
-                } else {
-                    1.0
-                }
-            })
-        };
-        let (a, b) = (texel(i.x, i.y), texel(i.x + 1.0, i.y));
-        let (d, e) = (texel(i.x, i.y + 1.0), texel(i.x + 1.0, i.y + 1.0));
-        std::array::from_fn(|k| {
-            let lo = a[k] + (b[k] - a[k]) * f.x;
-            let hi = d[k] + (e[k] - d[k]) * f.x;
-            lo + (hi - lo) * f.y
-        })
-    }
-}
-
 /// Every weight on the first layer.
 fn first_layer() -> [f32; MAX_TERRAIN_LAYERS] {
     std::array::from_fn(|k| if k == 0 { 1.0 } else { 0.0 })

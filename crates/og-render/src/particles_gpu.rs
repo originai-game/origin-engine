@@ -17,13 +17,13 @@ mod emitter;
 mod prepare;
 mod renderer;
 pub(crate) use emitter::*;
+pub use og_render_data::particles_gpu::*;
 
 const COMMON_WGSL: &str = wgsl!("particle_common.wgsl");
 const SIM_WGSL: &str = wgsl!("particles_sim.wgsl");
 const COLLIDERS_WGSL: &str = wgsl!("scene_colliders.wgsl");
 const DRAW_WGSL: &str = wgsl!("particles.wgsl");
 const SPRITES_WGSL: &str = wgsl!("particle_sprites.wgsl");
-pub(crate) const NOISE_WGSL: &str = wgsl!("noise.wgsl");
 
 /// Bytes between emitter uniform entries (a multiple of the 256-byte
 /// dynamic offset alignment).
