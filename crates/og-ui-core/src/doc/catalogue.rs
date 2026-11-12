@@ -180,7 +180,7 @@ fn table(out: &mut String, props: &[&PropSpec]) {
 /// The catalogue's Markdown.
 pub fn markdown() -> String {
     let mut out = String::from(
-        "<!-- Generated from og-ui's document schema (crates/og-ui/src/doc/schema.rs) by `og api gen`. Do not edit: `og api check` fails on any difference. -->\n\
+        "<!-- Generated from og-ui-core's document schema (crates/og-ui-core/src/doc/schema.rs) by `og api gen`. Do not edit: `og api check` fails on any difference. -->\n\
          # The UI component catalogue\n\n\
          Core elements and their reflected properties for scriptless Svelte documents. Unknown elements, properties, and values fail cooking. The `screens` guide describes contracts, bindings, styles, and content composition.\n\n\
          Write `<button id=\"Buy\" onclick={buy}>Buy</button>`. Put CSS declarations such as `gap: 8px` in a scoped `<style>` block. Bind attributes with `value={$amount}` and writable controls with `bind:value={$amount}`. Use `<text>` for the reflected label kind and `<img>` for image. Named content uses snippets and `{@render name()}`, not legacy slot elements.\n\n",
