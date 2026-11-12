@@ -831,6 +831,7 @@ impl<'a> Iterator for Children<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use serde_json::json;
 

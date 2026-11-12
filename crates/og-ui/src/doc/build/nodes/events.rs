@@ -1,13 +1,47 @@
 use super::*;
 
-impl Ui {
+pub(crate) trait NodesEventsUi {
     /// The on-screen keyboard of the text input at `path`: it opens when a
     /// pad gives the input the focus (unless `inputmode="none"`, the
     /// game's own keyboard), edits `s` in place, and Done submits; Done or
     /// Back return the focus to the input, which opens it again only once
     /// it has lost the focus. Its layout follows `type` and `inputmode`,
     /// `enterkeyhint` labels Done and `lang="ja"` offers kana.
-    pub(super) fn pad_keyboard(
+    fn pad_keyboard(
+        &mut self,
+        path: &str,
+        r: &Resolved,
+        s: &mut String,
+        resp: &mut crate::Response,
+    );
+
+    /// A `data-hold` (or `onhold`) element's hold this tick: counts the
+    /// ticks it has been held (a press on it; Enter, Space or a pad's A
+    /// while it has the focus; or its `data-action`'s input down) and
+    /// whether the count reached its `data-hold` ms (default 500), then
+    /// draws its fill (`::-og-hold`) from its start edge across the share
+    /// reached, over its background and under its content. The count is
+    /// widget memory: in snapshots, and the element builds each tick while
+    /// it moves.
+    fn hold(&mut self, key: u64, n: &DocNode, r: &Resolved, at: usize);
+
+    /// Whether the press [`Self::hold`] counted on `key` reached its
+    /// `data-hold` ms this tick (once per press).
+    fn held(&mut self, key: u64, _n: &DocNode) -> bool;
+
+    /// Fires a node's triggers for what happened to it this tick.
+    fn fire(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        key: u64,
+        path: &str,
+        resp: crate::ui::Response,
+    );
+}
+
+impl NodesEventsUi for Ui {
+    fn pad_keyboard(
         &mut self,
         path: &str,
         r: &Resolved,
@@ -87,15 +121,7 @@ impl Ui {
         self.remember(&off_key, if done { 1.0 } else { f64::from(u8::from(off)) });
     }
 
-    /// A `data-hold` (or `onhold`) element's hold this tick: counts the
-    /// ticks it has been held (a press on it; Enter, Space or a pad's A
-    /// while it has the focus; or its `data-action`'s input down) and
-    /// whether the count reached its `data-hold` ms (default 500), then
-    /// draws its fill (`::-og-hold`) from its start edge across the share
-    /// reached, over its background and under its content. The count is
-    /// widget memory: in snapshots, and the element builds each tick while
-    /// it moves.
-    pub(super) fn hold(&mut self, key: u64, n: &DocNode, r: &Resolved, at: usize) {
+    fn hold(&mut self, key: u64, n: &DocNode, r: &Resolved, at: usize) {
         let fill = r.has("dataHold") || n.props.iter().any(|p| p.name() == "dataHold");
         if !fill && !n.triggers.iter().any(|t| t.when == When::Hold) {
             return;
@@ -150,15 +176,12 @@ impl Ui {
         });
     }
 
-    /// Whether the press [`Self::hold`] counted on `key` reached its
-    /// `data-hold` ms this tick (once per press).
     fn held(&mut self, key: u64, _n: &DocNode) -> bool {
         let a = self.anim(crate::id::child_key(key, "~hold"));
         a.h > 0 && a.h == a.t
     }
 
-    /// Fires a node's triggers for what happened to it this tick.
-    pub(in crate::doc::build) fn fire(
+    fn fire(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,

@@ -33,6 +33,7 @@
 //!   `<menu>` item's label centred → `a_button_label_takes_text_align`
 
 use crate::support::{Doc, both};
+use og_ui::prelude::*;
 
 use og_core::glam::Vec2;
 use og_ui::*;

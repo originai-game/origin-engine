@@ -61,10 +61,20 @@ fn srgba(c: [f32; 3], alpha: f32) -> crate::Srgba {
     }
 }
 
-impl Ui {
+pub(crate) trait ColorUi {
     /// Builds a colour input; answers its response (`changed` when it
     /// wrote a colour back).
-    pub(super) fn color_input(
+    fn color_input(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+    ) -> crate::ui::Response;
+}
+
+impl ColorUi for Ui {
+    fn color_input(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,

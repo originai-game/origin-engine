@@ -417,7 +417,7 @@ fn inline_link(k: usize) -> String {
 }
 
 /// One mount's build: the document, its viewmodel and the item variables in scope.
-struct Build<'a> {
+pub(crate) struct Build<'a> {
     doc: Arc<UiDocument>,
     mount: String,
     vm: &'a Value,
@@ -1402,28 +1402,30 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 mod animate;
 pub(crate) use animate::StyleCommit;
 pub mod cascade;
-mod color;
-mod containers;
-mod datetime;
+pub(crate) mod color;
+pub(crate) mod containers;
+pub(crate) mod datetime;
+pub(crate) mod ext;
 mod fields;
-mod generated;
+pub(crate) mod generated;
 pub(crate) mod gestures;
 mod host;
 mod instances;
-mod kbd;
+pub use ext::*;
+pub(crate) mod kbd;
 mod layout_props;
-mod media;
-mod mount;
-mod nodes;
+pub(crate) mod media;
+pub(crate) mod mount;
+pub(crate) mod nodes;
 mod parts;
-mod popover;
-mod retained;
+pub(crate) mod popover;
+pub(crate) mod retained;
 mod structure;
 pub(crate) mod svg;
-mod text_motion;
-mod touch;
-mod viewport;
-mod world;
+pub(crate) mod text_motion;
+pub(crate) mod touch;
+pub(crate) mod viewport;
+pub(crate) mod world;
 pub(crate) use host::documents;
 pub use host::{Built, DocEvent, DocHost, DocResponse, Documents, Edit, install_documents};
 pub use instances::RetainedHost;

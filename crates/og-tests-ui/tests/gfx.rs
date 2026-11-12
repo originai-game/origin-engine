@@ -7,6 +7,7 @@
 //! way, with the scroll clipping, glow and glass checks below.
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_core::glam::{Vec2, Vec3};
 use og_render::{Background, RenderDesc, RenderScene, RenderTarget, Renderer, Tonemap};

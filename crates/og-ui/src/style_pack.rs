@@ -2,6 +2,7 @@
 //! Direct child CSS files apply in lexical order in `og-pack`; nested
 //! sheets are opt-in through standard `@import` rules.
 
+use crate::doc::build::ext::*;
 use crate::doc::{
     StyleRule,
     at_rules::{self, Sheet},
@@ -91,20 +92,31 @@ impl StylePack {
     }
 }
 
-impl crate::Ui {
+pub trait StylePackUi {
     /// Bind cooked sound asset IDs used by the active CSS pack.
-    pub fn set_css_sounds(&mut self, sounds: std::collections::BTreeMap<String, u64>) {
-        self.style.css_sounds = sounds;
-    }
+    fn set_css_sounds(&mut self, sounds: std::collections::BTreeMap<String, u64>);
 
     /// Seed the checkpointed presentation random stream from the engine seed.
-    pub fn seed_feedback(&mut self, seed: u64) {
-        self.interaction.state.feedback_rng = seed ^ 0x9e37_79b9_7f4a_7c15;
-    }
+    fn seed_feedback(&mut self, seed: u64);
 
     /// Replace the active pack without retaining a previous pack's rules.
     /// Game document styles remain in their own scopes and higher layers.
-    pub fn set_style_pack(&mut self, pack: &StylePack) -> Result<(), String> {
+    fn set_style_pack(&mut self, pack: &StylePack) -> Result<(), String>;
+
+    /// Rebuild authored document rules when a pack changes or is cleared.
+    fn style_documents(&mut self, pack: Option<&StylePack>) -> Result<(), String>;
+}
+
+impl StylePackUi for crate::Ui {
+    fn set_css_sounds(&mut self, sounds: std::collections::BTreeMap<String, u64>) {
+        self.style.css_sounds = sounds;
+    }
+
+    fn seed_feedback(&mut self, seed: u64) {
+        self.interaction.state.feedback_rng = seed ^ 0x9e37_79b9_7f4a_7c15;
+    }
+
+    fn set_style_pack(&mut self, pack: &StylePack) -> Result<(), String> {
         self.style_documents(Some(pack))?;
         self.style.part_rules.clone_from(&pack.rules);
         self.style.part_sheet.clone_from(&pack.sheet);
@@ -115,8 +127,7 @@ impl crate::Ui {
         Ok(())
     }
 
-    /// Rebuild authored document rules when a pack changes or is cleared.
-    pub fn style_documents(&mut self, pack: Option<&StylePack>) -> Result<(), String> {
+    fn style_documents(&mut self, pack: Option<&StylePack>) -> Result<(), String> {
         let docs = self
             .documents()
             .iter()

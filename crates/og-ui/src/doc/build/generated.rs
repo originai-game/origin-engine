@@ -5,11 +5,58 @@
 use super::*;
 use crate::doc::generated::{self as gc, Content, PseudoBox, Quotes};
 
-impl Ui {
+pub(crate) trait GeneratedUi {
     /// A box's `::before` or `::after`: its generated text, styled by the
     /// pseudo-element's text properties, in the pseudo-element's own box
     /// when it has one ([`crate::doc::DocNode::pseudo`]).
-    pub(super) fn generated_box(
+    fn generated_box(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        path: &str,
+        before: bool,
+    );
+
+    /// Styles node `i`, a box a control draws itself (a modal's scrim, a
+    /// select's open list), as its element's pseudo-element `node`: every
+    /// box property of the pseudo-element's rules over the control's own.
+    fn style_pseudo_box(
+        &mut self,
+        b: &Build<'_>,
+        i: usize,
+        kind: &'static str,
+        _: &(usize, ResolvedNode),
+    );
+
+    /// A pseudo-element's text style from its declarations (`name:
+    /// value;`); invalid ones are reported and skipped.
+    fn pseudo_style(&mut self, body: &str, _r: &Resolved) -> crate::TextSpanStyle;
+
+    /// A text element's text with its `::before` and `::after` content and
+    /// the runs that style them and its `::first-letter`; `None` when it
+    /// generates nothing.
+    fn generated_text(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        key: u64,
+        text: &str,
+    ) -> Option<(String, Vec<(crate::TextSpan, crate::TextSpanStyle)>)>;
+
+    /// `::marker`'s content and ink for a list item: `None` content keeps
+    /// the list style's marker.
+    fn marker_override(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+    ) -> (Option<Option<String>>, Option<Srgba>);
+}
+
+impl GeneratedUi for Ui {
+    fn generated_box(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -51,10 +98,7 @@ impl Ui {
         }
     }
 
-    /// Styles node `i`, a box a control draws itself (a modal's scrim, a
-    /// select's open list), as its element's pseudo-element `node`: every
-    /// box property of the pseudo-element's rules over the control's own.
-    pub(super) fn style_pseudo_box(
+    fn style_pseudo_box(
         &mut self,
         b: &Build<'_>,
         i: usize,
@@ -76,9 +120,7 @@ impl Ui {
         self.apply_document_fields(&b.doc, n, &node.values, &fields);
     }
 
-    /// A pseudo-element's text style from its declarations (`name:
-    /// value;`); invalid ones are reported and skipped.
-    pub(super) fn pseudo_style(&mut self, body: &str, _r: &Resolved) -> crate::TextSpanStyle {
+    fn pseudo_style(&mut self, body: &str, _r: &Resolved) -> crate::TextSpanStyle {
         let body: String = crate::doc::css::split_decls(body)
             .unwrap_or_default()
             .into_iter()
@@ -103,10 +145,7 @@ impl Ui {
         }
     }
 
-    /// A text element's text with its `::before` and `::after` content and
-    /// the runs that style them and its `::first-letter`; `None` when it
-    /// generates nothing.
-    pub(super) fn generated_text(
+    fn generated_text(
         &mut self,
         b: &Build<'_>,
         n: &DocNode,
@@ -217,9 +256,7 @@ impl Ui {
         Some((full, spans))
     }
 
-    /// `::marker`'s content and ink for a list item: `None` content keeps
-    /// the list style's marker.
-    pub(super) fn marker_override(
+    fn marker_override(
         &mut self,
         b: &Build<'_>,
         n: &DocNode,
@@ -239,10 +276,27 @@ impl Ui {
     }
 }
 
-impl crate::ui::Docs {
+pub(crate) trait GeneratedDocs {
     /// Enters an element in the counter run and applies its counter
     /// properties; nothing unless some document uses generated content.
-    pub(super) fn run_enter(&mut self, r: &Resolved) {
+    fn run_enter(&mut self, r: &Resolved);
+
+    fn run_exit(&mut self);
+
+    /// A pseudo-element's generated text, evaluated at its place in the
+    /// run (its own counter properties apply first); `None` for `normal`
+    /// and `none`, or `display: none`.
+    fn pseudo_text(
+        &mut self,
+        b: &Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        which: &PseudoBox,
+    ) -> Option<String>;
+}
+
+impl GeneratedDocs for crate::ui::Docs {
+    fn run_enter(&mut self, r: &Resolved) {
         if !self.host.uses_run {
             return;
         }
@@ -259,16 +313,13 @@ impl crate::ui::Docs {
         }
     }
 
-    pub(super) fn run_exit(&mut self) {
+    fn run_exit(&mut self) {
         if self.host.uses_run {
             self.host.run.exit();
         }
     }
 
-    /// A pseudo-element's generated text, evaluated at its place in the
-    /// run (its own counter properties apply first); `None` for `normal`
-    /// and `none`, or `display: none`.
-    pub(super) fn pseudo_text(
+    fn pseudo_text(
         &mut self,
         b: &Build<'_>,
         n: &DocNode,
@@ -306,10 +357,20 @@ impl crate::ui::Docs {
     }
 }
 
-impl crate::ui::Style {
+pub(crate) trait GeneratedStyle {
     /// Element `r`'s box pseudo-element `which`, resolved, as the build
     /// takes it, with its node.
-    pub(super) fn pseudo_node(
+    fn pseudo_node(
+        &self,
+        b: &Build<'_>,
+        r: &Resolved,
+        path: &str,
+        which: &str,
+    ) -> Option<(usize, ResolvedNode)>;
+}
+
+impl GeneratedStyle for crate::ui::Style {
+    fn pseudo_node(
         &self,
         b: &Build<'_>,
         r: &Resolved,
@@ -338,15 +399,28 @@ impl crate::ui::Style {
     }
 }
 
-impl Ui {
+pub(crate) trait GeneratedUi2 {
     /// `::placeholder`'s color as declared.
-    pub(super) fn pseudo_ink(&self, r: &Resolved) -> Option<Srgba> {
+    fn pseudo_ink(&self, r: &Resolved) -> Option<Srgba>;
+
+    /// The last of `want` among `decls`, as a colour.
+    fn declared_color(&self, decls: &[(String, String)], want: &[&str]) -> Option<Srgba>;
+
+    /// Records a built element's `::selection` style for the draw.
+    fn note_selection(&mut self, key: u64, r: &Resolved);
+
+    /// `::selection`'s background, color, decoration and shadows (CSS
+    /// Pseudo-Elements 4 §3.2); `None` when it declares none of them.
+    fn selection_style(&self, body: &str) -> Option<crate::doc::generated::Selection>;
+}
+
+impl GeneratedUi2 for Ui {
+    fn pseudo_ink(&self, r: &Resolved) -> Option<Srgba> {
         let body = r.generated.as_ref()?.placeholder.as_ref()?;
         let decls = crate::doc::css::split_decls(body).ok()?;
         self.declared_color(&decls, &["color"])
     }
 
-    /// The last of `want` among `decls`, as a colour.
     fn declared_color(&self, decls: &[(String, String)], want: &[&str]) -> Option<Srgba> {
         let (_, value) = decls
             .iter()
@@ -363,8 +437,7 @@ impl Ui {
         }
     }
 
-    /// Records a built element's `::selection` style for the draw.
-    pub(super) fn note_selection(&mut self, key: u64, r: &Resolved) {
+    fn note_selection(&mut self, key: u64, r: &Resolved) {
         let style = r
             .generated
             .as_ref()
@@ -390,8 +463,6 @@ impl Ui {
         }
     }
 
-    /// `::selection`'s background, color, decoration and shadows (CSS
-    /// Pseudo-Elements 4 §3.2); `None` when it declares none of them.
     fn selection_style(&self, body: &str) -> Option<crate::doc::generated::Selection> {
         let decls = crate::doc::css::split_decls(body).ok()?;
         let color = self.declared_color(&decls, &["color"]);
@@ -421,9 +492,13 @@ impl Ui {
     }
 }
 
-impl crate::ui::Style {
+pub(crate) trait GeneratedStyle2 {
     /// How many characters the first line of text node `key` held in the
     /// last layout.
+    fn first_line_chars(&self, key: u64, tree: &crate::ui::Tree) -> Option<usize>;
+}
+
+impl GeneratedStyle2 for crate::ui::Style {
     fn first_line_chars(&self, key: u64, tree: &crate::ui::Tree) -> Option<usize> {
         let n = tree
             .previous_nodes()
@@ -447,6 +522,7 @@ fn hidden(style: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::{InputFrame, Ui, UiDesc, Viewport};
     use std::collections::BTreeMap;

@@ -2,13 +2,24 @@
 //! the device used last, and a rebind capture.
 use super::*;
 
-impl Ui {
+pub(crate) trait KbdUi {
     /// A `<kbd>` (G7): its text on a keycap, or with `data-action` the
     /// action's glyph on the device used last (its icon where the atlas has
     /// one, else its name on a cap), named by the action's label. With
     /// `data-og-rebind` it is a button: a press captures the next key,
     /// which it writes back as its binding (Escape cancels).
-    pub(super) fn kbd(
+    fn kbd(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+        text: String,
+    ) -> crate::Response;
+}
+
+impl KbdUi for Ui {
+    fn kbd(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,

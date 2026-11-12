@@ -9,7 +9,7 @@
 use super::*;
 use og_input::{ControlZone, ZoneKind};
 
-impl Ui {
+pub trait TouchUi {
     /// The on-screen controls documents laid out, for og-input's action
     /// map ([`og_input::ActionMap::set_zones`]), after [`Ui::end`]: `None`
     /// when nothing moved since the last call. Each zone is the rect its
@@ -17,7 +17,11 @@ impl Ui {
     /// included); one no longer mounted leaves. Work: a lookup per zone
     /// (HUD edit moves controls without laying anything out); none
     /// without on-screen controls.
-    pub fn take_control_zones(&mut self) -> Option<Vec<ControlZone>> {
+    fn take_control_zones(&mut self) -> Option<Vec<ControlZone>>;
+}
+
+impl TouchUi for Ui {
+    fn take_control_zones(&mut self) -> Option<Vec<ControlZone>> {
         if self.docs.host.zones.is_empty() && !self.docs.host.zones_changed {
             return None;
         }
@@ -70,10 +74,20 @@ impl Ui {
     }
 }
 
-impl Ui {
+pub(crate) trait TouchUi2 {
     /// A `<joystick>` or `<dpad>`: the native control, sized by its CSS
     /// width (or height: it is round) from `styled`, and its zone.
-    pub(super) fn build_touch_control(
+    fn build_touch_control(
+        &mut self,
+        kind: &str,
+        id: &str,
+        r: &Resolved,
+        styled: &Resolved,
+    ) -> crate::ui::Response;
+}
+
+impl TouchUi2 for Ui {
+    fn build_touch_control(
         &mut self,
         kind: &str,
         id: &str,
@@ -118,9 +132,13 @@ impl Ui {
     }
 }
 
-impl crate::ui::Tree {
+pub(crate) trait TouchTree {
     /// A touch `<button data-og-touch="jump">`'s zone (any element's).
-    pub(super) fn note_touch_button(&mut self, r: &Resolved, docs: &mut crate::ui::Docs) {
+    fn note_touch_button(&mut self, r: &Resolved, docs: &mut crate::ui::Docs);
+}
+
+impl TouchTree for crate::ui::Tree {
+    fn note_touch_button(&mut self, r: &Resolved, docs: &mut crate::ui::Docs) {
         if self.last_closed != NONE && self.last_closed < self.nodes.len() {
             let key = self.nodes[self.last_closed].key;
             let action = r.str("dataOgTouch");
@@ -129,7 +147,18 @@ impl crate::ui::Tree {
     }
 }
 
-impl crate::ui::Docs {
+pub(crate) trait TouchDocs {
+    fn note_zone(
+        &mut self,
+        key: u64,
+        action: Option<&str>,
+        kind: ZoneKind,
+        dead_zone: f32,
+        disabled: bool,
+    );
+}
+
+impl TouchDocs for crate::ui::Docs {
     fn note_zone(
         &mut self,
         key: u64,
@@ -164,6 +193,7 @@ impl crate::ui::Docs {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::{InputFrame, Ui, UiDesc, Viewport};
     use og_core::glam::Vec2;

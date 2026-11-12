@@ -20,9 +20,21 @@ fn clock(s: f64) -> String {
     }
 }
 
-impl Ui {
+pub(crate) trait MediaUi {
     /// Builds a `<video>` or `<audio>`; answers its response.
-    pub(super) fn media_element(
+    fn media_element(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        key: u64,
+        r: &Resolved,
+        video: bool,
+    ) -> crate::ui::Response;
+}
+
+impl MediaUi for Ui {
+    fn media_element(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -176,9 +188,21 @@ impl Ui {
     }
 }
 
-impl crate::ui::Docs {
+pub(crate) trait MediaDocs {
     /// Svelte's read-only media bindings, and `paused` and `currentTime`
     /// as the player moves them.
+    fn media_write_backs(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        r: &Resolved,
+        state: &MediaState,
+        paused: bool,
+        seeking: bool,
+    );
+}
+
+impl MediaDocs for crate::ui::Docs {
     fn media_write_backs(
         &mut self,
         b: &mut Build<'_>,

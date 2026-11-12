@@ -54,14 +54,18 @@ pub(crate) fn sheet_edge(text: &str) -> Result<SheetEdge, String> {
     }
 }
 
-impl Ui {
+pub(crate) trait GesturesUi {
     /// A modal `<dialog>` with `data-detents`, just opened by
     /// `open_dialog`: its backdrop docks the panel to `edge` (the bottom at
     /// full width, or the inline start or end at full height, mirrored right
     /// to left), as deep as its deepest detent, and the panel drags across
     /// that edge onto its detents (the first when it opens) and off it to
     /// close. Answers whether a swipe dismissed it.
-    pub(super) fn sheet(&mut self, id: &str, text: &str, edge: SheetEdge, open: bool) -> bool {
+    fn sheet(&mut self, id: &str, text: &str, edge: SheetEdge, open: bool) -> bool;
+}
+
+impl GesturesUi for Ui {
+    fn sheet(&mut self, id: &str, text: &str, edge: SheetEdge, open: bool) -> bool {
         let panel = self.tree.parent();
         let scrim = self.tree.nodes[panel].parent;
         let side = edge != SheetEdge::BlockEnd;
@@ -180,6 +184,7 @@ pub(crate) fn two_touches(
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
     use crate::{InputFrame, Ui, UiDesc, Viewport};

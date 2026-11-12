@@ -579,6 +579,7 @@ mod tests {
 #[cfg(test)]
 mod document_tests {
     use crate::doc::UiDocument;
+    use crate::prelude::*;
     use crate::{InputFrame, Ui, UiDesc, Viewport};
     use serde_json::{Value, json};
 

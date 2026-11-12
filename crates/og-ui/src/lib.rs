@@ -158,3 +158,12 @@ pub use world::{
 
 /// The probe's element type: what `dump_ui` lists and the id and text lookups search.
 pub use og_probe::UiElement;
+
+/// The document build's extension traits: `use og_ui::prelude::*` brings
+/// its methods on [`Ui`] and [`UiDocument`] into scope.
+pub mod prelude {
+    pub use crate::doc::build::{
+        LayersUi, MountUi, MountUi3, ProbeUi, RetainedMountingUi, StylePackUi, SvelteUiDocument,
+        SvelteUiDocument2, TouchUi,
+    };
+}

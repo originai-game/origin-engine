@@ -79,7 +79,7 @@ fn camera_at(r: &Resolved, aspect: f32, [yaw, pitch, radius]: [f32; 3]) -> Optio
     ))
 }
 
-impl Ui {
+pub(crate) trait ViewportUi {
     /// `<model-viewer>`'s camera-controls on viewport `id`: a drag orbits
     /// it (and keeps turning, slowing, when flung), the wheel and two
     /// fingers zoom it, and with the focus Left and Right turn it 15° and
@@ -87,6 +87,29 @@ impl Ui {
     /// `max-camera-orbit` (pitch 22.5°–157.5° and any yaw and radius by
     /// default). The orbit lives in the UI's memory, so snapshots carry it;
     /// a new authored orbit takes over. Answers the orbit this tick.
+    fn orbit_controls(
+        &mut self,
+        id: &str,
+        r: &Resolved,
+        out: &crate::viewport::ViewportResponse,
+        bound: bool,
+    ) -> [f32; 3];
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_viewport(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+        props: Props,
+        path: String,
+        key: u64,
+        built: Built,
+    ) -> Option<String>;
+}
+
+impl ViewportUi for Ui {
     fn orbit_controls(
         &mut self,
         id: &str,
@@ -173,7 +196,7 @@ impl Ui {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn build_viewport(
+    fn build_viewport(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -243,6 +266,7 @@ impl Ui {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
+    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
     use crate::{InputFrame, Ui, UiDesc, Viewport};

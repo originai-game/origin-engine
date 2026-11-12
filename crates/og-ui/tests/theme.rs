@@ -7,6 +7,7 @@
 #[path = "../scripts/theme_codegen.rs"]
 mod theme_codegen;
 
+use og_ui::prelude::*;
 use og_ui::{Srgba, dress::PartRef};
 use std::path::PathBuf;
 

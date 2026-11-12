@@ -1,7 +1,58 @@
 use super::*;
 
-impl RetainedHost {
-    pub(super) fn emit(
+pub(crate) trait RetainedEmitRetainedHost {
+    fn emit(
+        &mut self,
+        ui: &mut Ui,
+        child: &Child,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String>;
+
+    /// Writes element `identity`'s render node under the open element, or,
+    /// when nothing it is built from changed, puts the node it already has
+    /// back without visiting its subtree. `in_place`: the node is written
+    /// again into the slot its parent already lists (its parent is not
+    /// built this frame).
+    fn emit_element(
+        &mut self,
+        ui: &mut Ui,
+        identity: &MountedNode,
+        in_place: bool,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String>;
+
+    /// Writes again, into the slots they hold, the elements whose parents
+    /// were not built this frame: their ancestors' nodes stay as they are.
+    fn emit_in_place(
+        &mut self,
+        ui: &mut Ui,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String>;
+
+    /// The path element `p`'s children are built under, so their keys
+    /// are their nodes' own: a modal dialog's panel and a popover's layer
+    /// stand in the top layer, named apart from the element (a spotlight's
+    /// callout layer takes the element's own key and path).
+    fn content_path(&self, p: &MountedNode) -> String;
+
+    fn forget_memories(&mut self, keys: &[u64]);
+
+    /// Retires the render nodes of `child` and everything under it: it left
+    /// the render tree (removed, hidden, scrolled out of a virtual list).
+    fn release(&mut self, ui: &mut Ui, child: &Child);
+
+    /// Retires one element's own render nodes (not its descendants').
+    fn release_element(&mut self, ui: &mut Ui, identity: &MountedNode);
+}
+
+impl RetainedEmitRetainedHost for RetainedHost {
+    fn emit(
         &mut self,
         ui: &mut Ui,
         child: &Child,
@@ -35,11 +86,6 @@ impl RetainedHost {
         }
     }
 
-    /// Writes element `identity`'s render node under the open element, or,
-    /// when nothing it is built from changed, puts the node it already has
-    /// back without visiting its subtree. `in_place`: the node is written
-    /// again into the slot its parent already lists (its parent is not
-    /// built this frame).
     fn emit_element(
         &mut self,
         ui: &mut Ui,
@@ -238,9 +284,7 @@ impl RetainedHost {
         result
     }
 
-    /// Writes again, into the slots they hold, the elements whose parents
-    /// were not built this frame: their ancestors' nodes stay as they are.
-    pub(super) fn emit_in_place(
+    fn emit_in_place(
         &mut self,
         ui: &mut Ui,
         env: &dyn Env,
@@ -336,11 +380,7 @@ impl RetainedHost {
         Ok(())
     }
 
-    /// The path element `p`'s children are built under, so their keys
-    /// are their nodes' own: a modal dialog's panel and a popover's layer
-    /// stand in the top layer, named apart from the element (a spotlight's
-    /// callout layer takes the element's own key and path).
-    pub(super) fn content_path(&self, p: &MountedNode) -> String {
+    fn content_path(&self, p: &MountedNode) -> String {
         let e = &self.elements[p];
         let n = &e.document.nodes[e.index];
         let set = |name: &str| {
@@ -373,9 +413,7 @@ impl RetainedHost {
         }
     }
 
-    /// Retires the render nodes of `child` and everything under it: it left
-    /// the render tree (removed, hidden, scrolled out of a virtual list).
-    pub(super) fn release(&mut self, ui: &mut Ui, child: &Child) {
+    fn release(&mut self, ui: &mut Ui, child: &Child) {
         match child {
             Child::Element(identity) => {
                 if self.elements[identity].slot.is_none()
@@ -409,8 +447,7 @@ impl RetainedHost {
         }
     }
 
-    /// Retires one element's own render nodes (not its descendants').
-    pub(super) fn release_element(&mut self, ui: &mut Ui, identity: &MountedNode) {
+    fn release_element(&mut self, ui: &mut Ui, identity: &MountedNode) {
         let Some(element) = self.elements.get_mut(identity) else {
             return;
         };

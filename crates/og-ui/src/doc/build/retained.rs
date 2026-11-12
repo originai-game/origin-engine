@@ -7,22 +7,46 @@ use crate::reactive::{
     graph::MountedNode,
 };
 
-mod compile;
-mod content;
-mod emit;
-mod frame;
-mod mounting;
-mod pointer;
-mod queries;
-mod records;
-mod refresh;
-mod registration;
-mod selection;
-mod structural;
-mod virtualized;
+pub(crate) mod compile;
+pub(crate) mod content;
+pub(crate) mod emit;
+pub(crate) mod frame;
+pub(crate) mod mounting;
+pub(crate) mod pointer;
+pub(crate) mod queries;
+pub(crate) mod records;
+pub(crate) mod refresh;
+pub(crate) mod registration;
+pub(crate) mod selection;
+pub(crate) mod structural;
+pub(crate) mod virtualized;
 pub(crate) use super::instances::*;
 
-impl RetainedHost {
+pub(crate) trait RetainedRetainedHost {
+    fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String>;
+
+    fn document_replaced(&mut self, ui: &mut Ui, document: &str);
+
+    fn rebuild_mount(&mut self, ui: &mut Ui, mount: &SourceId);
+
+    fn bind(
+        &mut self,
+        ui: &mut Ui,
+        element: &mut ElementInstance,
+        input: Input,
+        expression: BindingExpression,
+        env: &dyn Env,
+    ) -> Result<(), String>;
+
+    fn remove_mount(&mut self, ui: &mut Ui, mount: &SourceId);
+
+    /// Queues `node`'s `use:` events of `phase` (`create`, `update`,
+    /// `destroy`): an update only for the action whose params are
+    /// `changed`'s expression, with its new value.
+    fn use_events(&mut self, node: &MountedNode, phase: &str, changed: Option<(&Expr, Value)>);
+}
+
+impl RetainedRetainedHost for RetainedHost {
     fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         while let Some(mount) = self.pending_mounts.first().cloned() {
             let registration = self.registrations[&mount].clone();
@@ -82,7 +106,7 @@ impl RetainedHost {
         Ok(())
     }
 
-    pub(super) fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
+    fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
         self.profiles.remove(document);
         let mounts: Vec<_> = self
             .registrations
@@ -209,9 +233,6 @@ impl RetainedHost {
         self.pending_mounts.remove(mount);
     }
 
-    /// Queues `node`'s `use:` events of `phase` (`create`, `update`,
-    /// `destroy`): an update only for the action whose params are
-    /// `changed`'s expression, with its new value.
     fn use_events(&mut self, node: &MountedNode, phase: &str, changed: Option<(&Expr, Value)>) {
         let Some(element) = self.elements.get(node) else {
             return;

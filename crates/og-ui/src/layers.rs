@@ -20,6 +20,7 @@
 //! this tick.
 
 use crate::bind::{Env, NoEnv};
+use crate::doc::build::ext::*;
 use crate::doc::build::{DocEvent, DocResponse};
 use crate::doc::{Back, InputMode, LayerSpec, Under};
 pub use crate::layer_stack::{Layer, LayerInfo, LayerOp, LayerStack};
@@ -34,25 +35,67 @@ fn is_cover(a: &CssAnimation) -> bool {
     crate::doc::view_transition::cover(&a.name).is_some()
 }
 
-impl Ui {
+pub trait LayersUi {
     /// Pushes a screen with its viewmodel, over the layers of its kind and
     /// below those of a later kind; the active layer remembers its focus.
     /// Answers the layer's serial.
-    pub fn push_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
+    fn push_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String>;
+
+    /// Pops the active layer; answers its screen.
+    fn pop_screen(&mut self) -> Option<String>;
+
+    /// Replaces the active layer (the others keep their focus memory).
+    fn replace_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String>;
+
+    /// Empties the stack (mounted layers are unmounted), with no transition.
+    fn clear_screens(&mut self);
+
+    /// A layer's viewmodel (the top one of that screen).
+    fn screen_vm(&self, screen: &str) -> Option<&Value>;
+
+    /// Sets a layer's viewmodel (the top one of that screen); false when it is not on the stack.
+    fn set_screen_vm(&mut self, screen: &str, vm: Value) -> bool;
+
+    /// Some layer pauses the game.
+    fn paused(&self) -> bool;
+
+    /// The time scale the game should take now, given its current one: 0
+    /// once a pausing layer is on the stack (the current one kept), the
+    /// kept one once none is; `None` when nothing changes.
+    fn pause_time_scale(&mut self, current: f32) -> Option<f32>;
+
+    /// The input mode of the top layer that takes input (`game` with none).
+    fn input_mode(&self) -> InputMode;
+
+    /// Gameplay takes input this tick: no menu layer holds it.
+    fn game_input(&self) -> bool;
+
+    /// Mounts a screen as a layer (pushed when it is not on the stack),
+    /// with its viewmodel for this tick, and builds it now, so code fills
+    /// its slots after this call. Its events since the last call come back.
+    fn screen(&mut self, screen: &str, vm: Value, env: &dyn Env) -> DocResponse;
+
+    /// Builds every layer code did not build this tick (bottom first);
+    /// their events wait for code ([`Ui::take_doc_events`]). Then the layer
+    /// changes triggers asked for. `end` calls it (with no host) when the
+    /// host did not.
+    fn build_layers(&mut self, env: &dyn Env);
+}
+
+impl LayersUi for Ui {
+    fn push_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
         if let Some(a) = self.active_layer() {
             self.docs.host.layers.layers[a].focus = self.interaction.state.focus;
         }
         self.insert_screen(screen, vm, None)
     }
 
-    /// Pops the active layer; answers its screen.
-    pub fn pop_screen(&mut self) -> Option<String> {
+    fn pop_screen(&mut self) -> Option<String> {
         let k = self.active_layer()?;
         Some(self.remove_layer(k).screen)
     }
 
-    /// Replaces the active layer (the others keep their focus memory).
-    pub fn replace_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
+    fn replace_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
         self.screen_spec(screen)?;
         if let Some(k) = self.active_layer() {
             self.remove_layer(k);
@@ -60,8 +103,7 @@ impl Ui {
         self.insert_screen(screen, vm, None)
     }
 
-    /// Empties the stack (mounted layers are unmounted), with no transition.
-    pub fn clear_screens(&mut self) {
+    fn clear_screens(&mut self) {
         for l in std::mem::take(&mut self.docs.host.layers.layers) {
             if let Some(mount) = &l.mount {
                 self.finish_unmount(mount);
@@ -69,8 +111,7 @@ impl Ui {
         }
     }
 
-    /// A layer's viewmodel (the top one of that screen).
-    pub fn screen_vm(&self, screen: &str) -> Option<&Value> {
+    fn screen_vm(&self, screen: &str) -> Option<&Value> {
         self.docs
             .host
             .layers
@@ -81,8 +122,7 @@ impl Ui {
             .map(|l| &l.vm)
     }
 
-    /// Sets a layer's viewmodel (the top one of that screen); false when it is not on the stack.
-    pub fn set_screen_vm(&mut self, screen: &str, vm: Value) -> bool {
+    fn set_screen_vm(&mut self, screen: &str, vm: Value) -> bool {
         match self
             .docs
             .host
@@ -100,15 +140,11 @@ impl Ui {
         }
     }
 
-    /// Some layer pauses the game.
-    pub fn paused(&self) -> bool {
+    fn paused(&self) -> bool {
         self.layer_stack().iter().any(|l| l.spec.pause)
     }
 
-    /// The time scale the game should take now, given its current one: 0
-    /// once a pausing layer is on the stack (the current one kept), the
-    /// kept one once none is; `None` when nothing changes.
-    pub fn pause_time_scale(&mut self, current: f32) -> Option<f32> {
+    fn pause_time_scale(&mut self, current: f32) -> Option<f32> {
         let paused = self.paused();
         let st = &mut self.docs.host.layers;
         match (paused, st.held_scale) {
@@ -124,8 +160,7 @@ impl Ui {
         }
     }
 
-    /// The input mode of the top layer that takes input (`game` with none).
-    pub fn input_mode(&self) -> InputMode {
+    fn input_mode(&self) -> InputMode {
         self.layer_stack()
             .iter()
             .rev()
@@ -134,15 +169,11 @@ impl Ui {
             .unwrap_or(InputMode::Game)
     }
 
-    /// Gameplay takes input this tick: no menu layer holds it.
-    pub fn game_input(&self) -> bool {
+    fn game_input(&self) -> bool {
         self.input_mode() != InputMode::Menu
     }
 
-    /// Mounts a screen as a layer (pushed when it is not on the stack),
-    /// with its viewmodel for this tick, and builds it now, so code fills
-    /// its slots after this call. Its events since the last call come back.
-    pub fn screen(&mut self, screen: &str, vm: Value, env: &dyn Env) -> DocResponse {
+    fn screen(&mut self, screen: &str, vm: Value, env: &dyn Env) -> DocResponse {
         if !self
             .docs
             .host
@@ -181,11 +212,7 @@ impl Ui {
         r
     }
 
-    /// Builds every layer code did not build this tick (bottom first);
-    /// their events wait for code ([`Ui::take_doc_events`]). Then the layer
-    /// changes triggers asked for. `end` calls it (with no host) when the
-    /// host did not.
-    pub fn build_layers(&mut self, env: &dyn Env) {
+    fn build_layers(&mut self, env: &dyn Env) {
         let tick = self.interaction.state.tick;
         if self.docs.host.built_tick == tick {
             return;
@@ -287,10 +314,51 @@ impl Ui {
     }
 }
 
-impl Ui {
+pub(crate) trait LayersUi2 {
     /// Removes layer `k` from the stack (a mounted one is unmounted), or,
     /// when its screen has a view transition, starts it leaving: the cover
     /// closes over it before it goes.
+    fn remove_layer(&mut self, k: usize) -> Layer;
+
+    /// Starts layer `k` leaving when its screen has a view transition;
+    /// true while it is leaving.
+    fn layer_leaves(&mut self, k: usize) -> bool;
+
+    /// Where layer `k`'s view transition is this tick: whether the layer
+    /// shows, and the animations its node plays (`new` while it joins, `old`
+    /// while it leaves). Covers named on `old` close first; on a join the
+    /// layer shows once they have closed, and `new`'s covers open on it. A
+    /// leaving layer is dropped when its `old` animations end, and `new`'s
+    /// covers then open on what is under it.
+    fn layer_transition(&mut self, k: usize, spec: &LayerSpec) -> (bool, Vec<CssAnimation>);
+
+    /// Draws the cover of the last of `covers` that has started at `t` ms:
+    /// closing (0 to 1 over its timing) or opening (1 to 0), in `color`, or
+    /// the texture asset `image` tinted by it. False when none is running.
+    fn draw_covers(
+        &mut self,
+        covers: &[CssAnimation],
+        color: Option<crate::Srgba>,
+        image: Option<&str>,
+        t: f32,
+        opening: bool,
+    ) -> bool;
+
+    /// Builds layer `k` of the stack.
+    fn build_layer(&mut self, k: usize, env: &dyn Env) -> DocResponse;
+
+    /// Opens layer `k`'s frame: its activation events, and, unless a layer
+    /// above hides it, its float with the spec's backdrop, scope and
+    /// presence, input routed to it as the stack decides. Its content
+    /// follows until [`Ui::close_layer_frame`].
+    fn open_layer_frame(&mut self, k: usize) -> (Option<LayerFrame>, Vec<DocEvent>);
+
+    /// Closes a layer's frame: Back, then the focus a layer that became the
+    /// active one takes. `path` is its content root's path.
+    fn close_layer_frame(&mut self, frame: LayerFrame, path: &str) -> Vec<DocEvent>;
+}
+
+impl LayersUi2 for Ui {
     fn remove_layer(&mut self, k: usize) -> Layer {
         let l = self.docs.host.layers.layers[k].clone();
         if self.layer_leaves(k) {
@@ -303,9 +371,7 @@ impl Ui {
         l
     }
 
-    /// Starts layer `k` leaving when its screen has a view transition;
-    /// true while it is leaving.
-    pub(crate) fn layer_leaves(&mut self, k: usize) -> bool {
+    fn layer_leaves(&mut self, k: usize) -> bool {
         let transition = self
             .screen_spec(&self.docs.host.layers.layers[k].screen)
             .is_ok_and(|s| s.transition.is_some());
@@ -320,12 +386,6 @@ impl Ui {
         true
     }
 
-    /// Where layer `k`'s view transition is this tick: whether the layer
-    /// shows, and the animations its node plays (`new` while it joins, `old`
-    /// while it leaves). Covers named on `old` close first; on a join the
-    /// layer shows once they have closed, and `new`'s covers open on it. A
-    /// leaving layer is dropped when its `old` animations end, and `new`'s
-    /// covers then open on what is under it.
     fn layer_transition(&mut self, k: usize, spec: &LayerSpec) -> (bool, Vec<CssAnimation>) {
         let l = &self.docs.host.layers.layers[k];
         let (Some(vt), true) = (&spec.transition, l.since != 0) else {
@@ -390,10 +450,7 @@ impl Ui {
         (true, plays)
     }
 
-    /// Draws the cover of the last of `covers` that has started at `t` ms:
-    /// closing (0 to 1 over its timing) or opening (1 to 0), in `color`, or
-    /// the texture asset `image` tinted by it. False when none is running.
-    pub(crate) fn draw_covers(
+    fn draw_covers(
         &mut self,
         covers: &[CssAnimation],
         color: Option<crate::Srgba>,
@@ -429,7 +486,6 @@ impl Ui {
         true
     }
 
-    /// Builds layer `k` of the stack.
     fn build_layer(&mut self, k: usize, env: &dyn Env) -> DocResponse {
         let (frame, lead) = self.open_layer_frame(k);
         let Some(frame) = frame else {
@@ -465,11 +521,7 @@ impl Ui {
         r
     }
 
-    /// Opens layer `k`'s frame: its activation events, and, unless a layer
-    /// above hides it, its float with the spec's backdrop, scope and
-    /// presence, input routed to it as the stack decides. Its content
-    /// follows until [`Ui::close_layer_frame`].
-    pub(crate) fn open_layer_frame(&mut self, k: usize) -> (Option<LayerFrame>, Vec<DocEvent>) {
+    fn open_layer_frame(&mut self, k: usize) -> (Option<LayerFrame>, Vec<DocEvent>) {
         let infos = self.layer_stack();
         let Some(info) = infos.get(k).cloned() else {
             return (None, Vec::new());
@@ -560,9 +612,7 @@ impl Ui {
         )
     }
 
-    /// Closes a layer's frame: Back, then the focus a layer that became the
-    /// active one takes. `path` is its content root's path.
-    pub(crate) fn close_layer_frame(&mut self, frame: LayerFrame, path: &str) -> Vec<DocEvent> {
+    fn close_layer_frame(&mut self, frame: LayerFrame, path: &str) -> Vec<DocEvent> {
         let LayerFrame {
             key,
             info,
@@ -634,6 +684,7 @@ impl crate::doc::build::Documents for MountedDocuments {
 mod tests {
     use super::*;
     use crate::doc::UiDocument;
+    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
     use crate::{InputFrame, UiDesc, UiKey, Viewport};

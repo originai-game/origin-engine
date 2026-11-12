@@ -1,5 +1,6 @@
 use super::*;
 use crate::wire;
+use og_ui::prelude::*;
 
 /// A UI with the theme and fonts of `previous` (a hot reload keeps them).
 pub(crate) fn new_ui(

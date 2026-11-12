@@ -10,6 +10,7 @@
 //! glyphs blurred by the scale.
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_ui::*;
 use support::*;

@@ -22,6 +22,7 @@
 //! - its look → `text_on_a_path_matches_its_reference_frames` (GPU)
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_ui::*;
 use serde_json::json;

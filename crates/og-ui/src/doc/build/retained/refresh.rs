@@ -1,7 +1,30 @@
 use super::*;
 
-impl RetainedHost {
-    pub(super) fn sync_facts(
+pub(crate) trait RetainedRefreshRetainedHost {
+    fn sync_facts(
+        &mut self,
+        ui: &mut Ui,
+        element: &ElementInstance,
+        env: &dyn Env,
+    ) -> Result<(), String>;
+
+    fn refresh(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String>;
+
+    /// Materialized nodes in invalidated style intervals resolve before they
+    /// draw; deferred rows keep their interval until they materialize.
+    fn resolve_invalidated_styles(&mut self);
+
+    /// The mounted elements whose interaction state the probe forced.
+    fn forced_keys(&self, ui: &Ui) -> Vec<u64>;
+
+    fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String>;
+
+    fn resolve(&mut self, ui: &mut Ui, identity: &MountedNode, env: &dyn Env)
+    -> Result<(), String>;
+}
+
+impl RetainedRefreshRetainedHost for RetainedHost {
+    fn sync_facts(
         &mut self,
         ui: &mut Ui,
         element: &ElementInstance,
@@ -184,7 +207,7 @@ impl RetainedHost {
         Ok(())
     }
 
-    pub(super) fn refresh(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
+    fn refresh(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         self.restore_instances(ui, env)?;
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
@@ -330,8 +353,6 @@ impl RetainedHost {
         Ok(())
     }
 
-    /// Materialized nodes in invalidated style intervals resolve before they
-    /// draw; deferred rows keep their interval until they materialize.
     fn resolve_invalidated_styles(&mut self) {
         for (parent, range) in self.topology.take_style_invalidations() {
             let virtual_rows = parent.as_ref().and_then(|parent| {
@@ -376,8 +397,7 @@ impl RetainedHost {
         }
     }
 
-    /// The mounted elements whose interaction state the probe forced.
-    pub(super) fn forced_keys(&self, ui: &Ui) -> Vec<u64> {
+    fn forced_keys(&self, ui: &Ui) -> Vec<u64> {
         if ui.interaction.state.motion.forced.is_empty() {
             return Vec::new();
         }
@@ -499,7 +519,7 @@ impl RetainedHost {
         Ok(())
     }
 
-    pub(super) fn resolve(
+    fn resolve(
         &mut self,
         ui: &mut Ui,
         identity: &MountedNode,

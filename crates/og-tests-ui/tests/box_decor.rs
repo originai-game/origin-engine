@@ -2,6 +2,7 @@
 //! What og-ui lays out and builds for them is checked in
 //! crates/og-ui/tests/box_decor.rs.
 
+use og_ui::prelude::*;
 use og_ui::*;
 
 const PAGE: &str = r#"<meta name="component" content="t">

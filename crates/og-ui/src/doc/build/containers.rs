@@ -271,6 +271,7 @@ impl crate::ui::Tree {
 
 #[cfg(test)]
 mod tests {
+    use crate::doc::build::ext::*;
     use crate::{InputFrame, Ui, UiDesc, Viewport};
     use serde_json::json;
 

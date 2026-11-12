@@ -9,12 +9,42 @@ use super::*;
 use crate::doc::Lit;
 use crate::reactive::bindings::{BindingExpression, ContentRef, Lexical, PropRef};
 
-impl RetainedHost {
+pub(crate) trait RetainedContentRetainedHost {
     /// `<Card title={item.name}>{#snippet body()}…{/snippet}<p>…</p></Card>`:
     /// the component's root, its props `title` and its content `body` and
     /// `children` (the instance's other children).
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn compile_component(
+    fn compile_component(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        component: &str,
+        context: BindingContext,
+        parent: Option<&MountedNode>,
+        id: String,
+        env: &dyn Env,
+    ) -> Result<Child, String>;
+
+    /// `{@render name()}`: the content passed under `name`, else the
+    /// document's snippet `name`; with `name?.()` nothing when there is
+    /// neither.
+    #[allow(clippy::too_many_arguments)]
+    fn compile_render(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        name: &str,
+        optional: bool,
+        context: BindingContext,
+        parent: Option<&MountedNode>,
+        id: String,
+        env: &dyn Env,
+    ) -> Result<Child, String>;
+}
+
+impl RetainedContentRetainedHost for RetainedHost {
+    #[allow(clippy::too_many_arguments)]
+    fn compile_component(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
@@ -111,11 +141,8 @@ impl RetainedHost {
         self.compile(ui, (instance, root), inner, parent, id, env)
     }
 
-    /// `{@render name()}`: the content passed under `name`, else the
-    /// document's snippet `name`; with `name?.()` nothing when there is
-    /// neither.
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn compile_render(
+    fn compile_render(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),

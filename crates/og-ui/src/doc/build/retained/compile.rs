@@ -1,7 +1,19 @@
 use super::*;
 
-impl RetainedHost {
-    pub(super) fn compile(
+pub(crate) trait RetainedCompileRetainedHost {
+    fn compile(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        context: BindingContext,
+        parent: Option<&MountedNode>,
+        id: String,
+        env: &dyn Env,
+    ) -> Result<Child, String>;
+}
+
+impl RetainedCompileRetainedHost for RetainedHost {
+    fn compile(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),

@@ -7,6 +7,7 @@
 //! its value from before the change; or a layout boundary goes unreported.
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_ui::reactive::{SourceId, wire};
 use og_ui::*;

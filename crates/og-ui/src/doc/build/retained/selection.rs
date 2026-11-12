@@ -8,8 +8,46 @@ use crate::doc::matching::Profile;
 use crate::doc::topology::{FactChange, SiblingChange};
 use std::ops::Range;
 
-impl RetainedHost {
-    pub(super) fn profile(&mut self, ui: &Ui, document: &str) -> &Profile {
+pub(crate) trait RetainedSelectionRetainedHost {
+    fn profile(&mut self, ui: &Ui, document: &str) -> &Profile;
+
+    /// The structural reads of the documents that can style `nodes`.
+    fn profile_of<'a>(
+        &mut self,
+        ui: &Ui,
+        nodes: impl IntoIterator<Item = &'a Arc<UiDocument>>,
+    ) -> Profile;
+
+    fn document_of(&self, node: &MountedNode) -> Option<Arc<UiDocument>>;
+
+    fn stale(&mut self, parent: Option<&MountedNode>, range: Range<usize>) -> Result<(), String>;
+
+    /// `:has()`: the elements whose descendants or later siblings include
+    /// `node` (its ancestors, and each one's earlier siblings a sibling
+    /// `:has()` reaches) restyle when a subject compound has it; when a
+    /// `:has()` is before the subject, only the descendants of a possible
+    /// anchor that can be the subject do. Nothing else can change a match.
+    fn stale_has(&mut self, profile: &Profile, node: Option<&MountedNode>) -> Result<(), String>;
+
+    /// The descendants of `anchor` down to the context's depth whose own
+    /// facts can be its subject.
+    fn stale_subjects(
+        &mut self,
+        anchor: &MountedNode,
+        context: &crate::doc::matching::HasContext,
+    ) -> Result<(), String>;
+
+    /// Runs after bindings and selector facts settle and before dirty styles
+    /// drain.
+    fn consume_selector_changes(&mut self, ui: &mut Ui) -> Result<(), String>;
+
+    fn sibling_change(&mut self, ui: &Ui, change: &SiblingChange) -> Result<(), String>;
+
+    fn fact_change(&mut self, ui: &Ui, fact: &FactChange) -> Result<(), String>;
+}
+
+impl RetainedSelectionRetainedHost for RetainedHost {
+    fn profile(&mut self, ui: &Ui, document: &str) -> &Profile {
         self.profiles.entry(document.to_owned()).or_insert_with(|| {
             ui.docs
                 .host
@@ -20,7 +58,6 @@ impl RetainedHost {
         })
     }
 
-    /// The structural reads of the documents that can style `nodes`.
     fn profile_of<'a>(
         &mut self,
         ui: &Ui,
@@ -46,11 +83,6 @@ impl RetainedHost {
         Ok(())
     }
 
-    /// `:has()`: the elements whose descendants or later siblings include
-    /// `node` (its ancestors, and each one's earlier siblings a sibling
-    /// `:has()` reaches) restyle when a subject compound has it; when a
-    /// `:has()` is before the subject, only the descendants of a possible
-    /// anchor that can be the subject do. Nothing else can change a match.
     fn stale_has(&mut self, profile: &Profile, node: Option<&MountedNode>) -> Result<(), String> {
         if !profile.has {
             return Ok(());
@@ -83,8 +115,6 @@ impl RetainedHost {
         Ok(())
     }
 
-    /// The descendants of `anchor` down to the context's depth whose own
-    /// facts can be its subject.
     fn stale_subjects(
         &mut self,
         anchor: &MountedNode,
@@ -120,9 +150,7 @@ impl RetainedHost {
         Ok(())
     }
 
-    /// Runs after bindings and selector facts settle and before dirty styles
-    /// drain.
-    pub(super) fn consume_selector_changes(&mut self, ui: &mut Ui) -> Result<(), String> {
+    fn consume_selector_changes(&mut self, ui: &mut Ui) -> Result<(), String> {
         for filter in &ui.docs.host.structure.filters {
             self.topology.register_filter(filter);
         }

@@ -2,10 +2,99 @@ use super::*;
 use crate::doc::parse_probe_value;
 use crate::reactive::{SourceId, session};
 
-impl Ui {
+pub trait MountUi {
     /// Registers a document (its timelines as `<name>/<timeline>`); one of
     /// the same name is replaced, the UI's state kept (a hot reload).
-    pub fn define_document(&mut self, doc: UiDocument) {
+    fn define_document(&mut self, doc: UiDocument);
+
+    /// Registers a Rive artboard by its id (`ui/chest.riv#Chest`, as og-cook
+    /// converted it, docs/ui.md §3.3): `<og-rive src="id">` plays it.
+    /// One of the same id is replaced (a hot
+    /// reload): an element playing the old one goes on from where it was
+    /// when it fits the new one, else starts it again.
+    fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>);
+
+    /// Binds the texture asset `path` a document names
+    /// ([`UiDocument::cover_image`]) to its loaded handle.
+    fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle);
+
+    /// Gives the texture asset `path` its alpha channel on the CPU, which
+    /// a float's `shape-outside: url(<path>)` takes its contour from
+    /// ([`UiDocument::shape_images`]); without it the float has no shape.
+    fn define_texture_alpha(&mut self, path: &str, alpha: crate::ImageAlpha);
+
+    /// Binds the UI material asset `path` a document's `-og-material`
+    /// names ([`UiDocument::material_assets`]) to its loaded handle and
+    /// its parameters' defaults.
+    fn define_material(
+        &mut self,
+        path: &str,
+        handle: og_draw::UiMaterialHandle,
+        defaults: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
+    );
+
+    /// Mounts a component here: `props` is its viewmodel (writes of its
+    /// two-way bindings land in it), `id` its root's id.
+    fn component(&mut self, id: &str, name: &str, props: &mut Value, env: &dyn Env) -> DocResponse;
+
+    /// Opens a document's slot so code fills it (its children follow until
+    /// [`Ui::close`]): a full path, or `<mount>/<slot id>`. False when no
+    /// such slot was built this tick.
+    fn open_slot(&mut self, path: &str) -> bool;
+
+    /// Events of documents built where code did not see them (screens
+    /// built at the end of a tick), taken.
+    /// The play, pause, seek, gain and loop requests documents' `<video>`
+    /// and `<audio>` made this frame, for the host to apply to their
+    /// players at the next tick.
+    fn take_media_ops(&mut self) -> Vec<crate::bind::MediaOp>;
+
+    fn take_doc_events(&mut self) -> Vec<DocEvent>;
+
+    /// What documents built this tick (the probe's `dump_ui`): the
+    /// immediate documents' elements, then the mounted ones' in tree order.
+    fn doc_built(&self) -> Vec<Built>;
+
+    /// The art slots documents declared this tick, by path.
+    fn art_slots(&self) -> Vec<(String, crate::slot::SlotSpec)>;
+
+    /// The probe's edits in effect.
+    fn doc_edits(&self) -> &[Edit];
+
+    /// `ui:set`: sets a prop of the element at `path` (presentation only:
+    /// it applies over the document's own line until cleared or saved).
+    fn set_doc_prop(&mut self, path: &str, prop: &str, value: &str) -> Result<(), String>;
+
+    /// Drops the probe's edits of `path` (all of them: empty).
+    fn clear_doc_edits(&mut self, path: &str);
+
+    /// The document element built at `path` last tick: its document's name
+    /// and node.
+    fn doc_element(&self, path: &str) -> Option<(&str, usize)>;
+
+    /// Writes the probe's edits into their documents' text (`ui:save`):
+    /// each edited element's line of that prop is replaced, or one added.
+    /// Answers the documents changed, each with its source and new text;
+    /// the edits written are dropped (the documents now say it).
+    fn save_doc_edits(&mut self) -> Result<Vec<(String, String, String)>, String>;
+
+    /// Plays a document timeline on the element at `path` (`ui:play`): a
+    /// name of the element's document, or `<doc>/<name>`.
+    fn play_doc_timeline(
+        &mut self,
+        path: &str,
+        timeline: &str,
+        from_ms: f32,
+        paused: bool,
+    ) -> Result<u32, String>;
+
+    /// `ui:seek`: a timeline playing on the element to `ms` (started there,
+    /// paused, when it is not playing).
+    fn seek_doc_timeline(&mut self, path: &str, timeline: &str, ms: f32) -> Result<u32, String>;
+}
+
+impl MountUi for Ui {
+    fn define_document(&mut self, doc: UiDocument) {
         super::install_documents(&crate::layers::MountedDocuments);
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
@@ -58,35 +147,22 @@ impl Ui {
         self.docs.host.docs.insert(doc.name.clone(), Arc::new(doc));
     }
 
-    /// Registers a Rive artboard by its id (`ui/chest.riv#Chest`, as og-cook
-    /// converted it, docs/ui.md §3.3): `<og-rive src="id">` plays it.
-    /// One of the same id is replaced (a hot
-    /// reload): an element playing the old one goes on from where it was
-    /// when it fits the new one, else starts it again.
-    pub fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
+    fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
         self.docs.host.rive.insert(id.to_owned(), artboard);
     }
 
-    /// Binds the texture asset `path` a document names
-    /// ([`UiDocument::cover_image`]) to its loaded handle.
-    pub fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle) {
+    fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle) {
         self.docs.host.textures.insert(path.to_owned(), texture);
     }
 
-    /// Gives the texture asset `path` its alpha channel on the CPU, which
-    /// a float's `shape-outside: url(<path>)` takes its contour from
-    /// ([`UiDocument::shape_images`]); without it the float has no shape.
-    pub fn define_texture_alpha(&mut self, path: &str, alpha: crate::ImageAlpha) {
+    fn define_texture_alpha(&mut self, path: &str, alpha: crate::ImageAlpha) {
         self.docs
             .host
             .alphas
             .insert(path.to_owned(), Arc::new(alpha));
     }
 
-    /// Binds the UI material asset `path` a document's `-og-material`
-    /// names ([`UiDocument::material_assets`]) to its loaded handle and
-    /// its parameters' defaults.
-    pub fn define_material(
+    fn define_material(
         &mut self,
         path: &str,
         handle: og_draw::UiMaterialHandle,
@@ -98,15 +174,7 @@ impl Ui {
             .insert(path.to_owned(), (handle, defaults));
     }
 
-    /// Mounts a component here: `props` is its viewmodel (writes of its
-    /// two-way bindings land in it), `id` its root's id.
-    pub fn component(
-        &mut self,
-        id: &str,
-        name: &str,
-        props: &mut Value,
-        env: &dyn Env,
-    ) -> DocResponse {
+    fn component(&mut self, id: &str, name: &str, props: &mut Value, env: &dyn Env) -> DocResponse {
         let Some(doc) = self.docs.host.docs.get(name).cloned() else {
             self.out.warnings.push(format!(
                 "Ui::component: no document named '{name}' (load its .ogt with og.load.document)"
@@ -125,10 +193,7 @@ impl Ui {
         r
     }
 
-    /// Opens a document's slot so code fills it (its children follow until
-    /// [`Ui::close`]): a full path, or `<mount>/<slot id>`. False when no
-    /// such slot was built this tick.
-    pub fn open_slot(&mut self, path: &str) -> bool {
+    fn open_slot(&mut self, path: &str) -> bool {
         match self.docs.host.slots.get(path) {
             Some(&i) if i < self.tree.nodes.len() => {
                 self.tree.stack.push(i);
@@ -144,22 +209,15 @@ impl Ui {
         }
     }
 
-    /// Events of documents built where code did not see them (screens
-    /// built at the end of a tick), taken.
-    /// The play, pause, seek, gain and loop requests documents' `<video>`
-    /// and `<audio>` made this frame, for the host to apply to their
-    /// players at the next tick.
-    pub fn take_media_ops(&mut self) -> Vec<crate::bind::MediaOp> {
+    fn take_media_ops(&mut self) -> Vec<crate::bind::MediaOp> {
         std::mem::take(&mut self.docs.host.media_ops)
     }
 
-    pub fn take_doc_events(&mut self) -> Vec<DocEvent> {
+    fn take_doc_events(&mut self) -> Vec<DocEvent> {
         std::mem::take(&mut self.docs.host.queued)
     }
 
-    /// What documents built this tick (the probe's `dump_ui`): the
-    /// immediate documents' elements, then the mounted ones' in tree order.
-    pub fn doc_built(&self) -> Vec<Built> {
+    fn doc_built(&self) -> Vec<Built> {
         let mut out = self.docs.host.built.clone();
         out.extend(
             self.docs
@@ -171,8 +229,7 @@ impl Ui {
         out
     }
 
-    /// The art slots documents declared this tick, by path.
-    pub fn art_slots(&self) -> Vec<(String, crate::slot::SlotSpec)> {
+    fn art_slots(&self) -> Vec<(String, crate::slot::SlotSpec)> {
         let mut out = self.docs.host.arts.clone();
         out.extend(
             self.docs
@@ -184,14 +241,11 @@ impl Ui {
         out
     }
 
-    /// The probe's edits in effect.
-    pub fn doc_edits(&self) -> &[Edit] {
+    fn doc_edits(&self) -> &[Edit] {
         &self.docs.host.edits
     }
 
-    /// `ui:set`: sets a prop of the element at `path` (presentation only:
-    /// it applies over the document's own line until cleared or saved).
-    pub fn set_doc_prop(&mut self, path: &str, prop: &str, value: &str) -> Result<(), String> {
+    fn set_doc_prop(&mut self, path: &str, prop: &str, value: &str) -> Result<(), String> {
         let (spec, v) = parse_probe_value(prop, value)?;
         self.docs
             .host
@@ -207,17 +261,14 @@ impl Ui {
         Ok(())
     }
 
-    /// Drops the probe's edits of `path` (all of them: empty).
-    pub fn clear_doc_edits(&mut self, path: &str) {
+    fn clear_doc_edits(&mut self, path: &str) {
         self.docs
             .host
             .edits
             .retain(|e| !path.is_empty() && e.path != path);
     }
 
-    /// The document element built at `path` last tick: its document's name
-    /// and node.
-    pub fn doc_element(&self, path: &str) -> Option<(&str, usize)> {
+    fn doc_element(&self, path: &str) -> Option<(&str, usize)> {
         self.docs
             .host
             .built
@@ -226,11 +277,7 @@ impl Ui {
             .map(|b| (b.doc.as_str(), b.node))
     }
 
-    /// Writes the probe's edits into their documents' text (`ui:save`):
-    /// each edited element's line of that prop is replaced, or one added.
-    /// Answers the documents changed, each with its source and new text;
-    /// the edits written are dropped (the documents now say it).
-    pub fn save_doc_edits(&mut self) -> Result<Vec<(String, String, String)>, String> {
+    fn save_doc_edits(&mut self) -> Result<Vec<(String, String, String)>, String> {
         let edits = self.docs.host.edits.clone();
         let mut changed: BTreeMap<String, UiDocument> = BTreeMap::new();
         let mut kept = Vec::new();
@@ -259,9 +306,7 @@ impl Ui {
         Ok(out)
     }
 
-    /// Plays a document timeline on the element at `path` (`ui:play`): a
-    /// name of the element's document, or `<doc>/<name>`.
-    pub fn play_doc_timeline(
+    fn play_doc_timeline(
         &mut self,
         path: &str,
         timeline: &str,
@@ -288,14 +333,7 @@ impl Ui {
         Ok(id)
     }
 
-    /// `ui:seek`: a timeline playing on the element to `ms` (started there,
-    /// paused, when it is not playing).
-    pub fn seek_doc_timeline(
-        &mut self,
-        path: &str,
-        timeline: &str,
-        ms: f32,
-    ) -> Result<u32, String> {
+    fn seek_doc_timeline(&mut self, path: &str, timeline: &str, ms: f32) -> Result<u32, String> {
         if let Some(&id) = self
             .docs
             .host
@@ -310,10 +348,25 @@ impl Ui {
     }
 }
 
-impl Ui {
+pub(crate) trait MountUi2 {
     /// Builds `doc` here with root id `id`.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn mount_doc(
+    fn mount_doc(
+        &mut self,
+        doc: Arc<UiDocument>,
+        mount: String,
+        id: &str,
+        vm: &mut Value,
+        env: &dyn Env,
+        inherited: Arc<super::super::variables::Computed>,
+    ) -> DocResponse;
+
+    fn timeline_name(&self, path: &str, timeline: &str) -> Result<String, String>;
+}
+
+impl MountUi2 for Ui {
+    #[allow(clippy::too_many_arguments)]
+    fn mount_doc(
         &mut self,
         doc: Arc<UiDocument>,
         mount: String,
@@ -391,15 +444,30 @@ impl Ui {
     }
 }
 
-impl crate::ui::Docs {
-    pub(crate) fn note_built(&mut self, built: Built) {
+pub(crate) trait MountDocs {
+    fn note_built(&mut self, built: Built);
+
+    fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields);
+
+    fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec);
+
+    /// The art slot registered last.
+    fn last_art(&self) -> &crate::slot::SlotSpec;
+
+    /// The render fields element `key` was emitted with.
+    #[cfg(test)]
+    fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields>;
+}
+
+impl MountDocs for crate::ui::Docs {
+    fn note_built(&mut self, built: Built) {
         match self.host.capture.last_mut() {
             Some(record) => record.built.push(built),
             None => self.host.built.push(built),
         }
     }
 
-    pub(crate) fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
+    fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
         match self.host.capture.last_mut() {
             Some(record) => record.render_fields.push((key, fields)),
             None => {
@@ -408,21 +476,19 @@ impl crate::ui::Docs {
         }
     }
 
-    pub(crate) fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
+    fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
         match self.host.capture.last_mut() {
             Some(record) => record.arts.push((path, spec)),
             None => self.host.arts.push((path, spec)),
         }
     }
 
-    /// The art slot registered last.
-    pub(crate) fn last_art(&self) -> &crate::slot::SlotSpec {
+    fn last_art(&self) -> &crate::slot::SlotSpec {
         &self.last_art_entry().1
     }
 
-    /// The render fields element `key` was emitted with.
     #[cfg(test)]
-    pub(crate) fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
+    fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
         self.host.render_fields.get(&key).or_else(|| {
             self.host
                 .retained
@@ -433,17 +499,23 @@ impl crate::ui::Docs {
     }
 }
 
-impl Ui {
+pub trait MountUi3 {
     /// A same-process hot reload keeps live subscribers and named callback
     /// registrations. Snapshot restore replaces values, not executable code.
-    pub fn inherit_store_registrations(&mut self, previous: &Self) {
+    fn inherit_store_registrations(&mut self, previous: &Self);
+
+    /// Apply the host's binary source/computation operations to this UI.
+    fn apply_reactive(&mut self, bytes: &[u8]) -> Vec<u8>;
+}
+
+impl MountUi3 for Ui {
+    fn inherit_store_registrations(&mut self, previous: &Self) {
         self.docs.reactive = previous.docs.reactive.clone();
         self.docs.reactive.graph.clear_bindings();
         self.inherit_document_registrations(previous);
     }
 
-    /// Apply the host's binary source/computation operations to this UI.
-    pub fn apply_reactive(&mut self, bytes: &[u8]) -> Vec<u8> {
+    fn apply_reactive(&mut self, bytes: &[u8]) -> Vec<u8> {
         use session::Command;
         session::Session::apply_with(bytes, |command| {
             match command {

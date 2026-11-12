@@ -11,6 +11,7 @@
 //! rewrites lines it did not touch, a snapshot that drops the stack.
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_ui::*;
 use serde_json::{Value, json};

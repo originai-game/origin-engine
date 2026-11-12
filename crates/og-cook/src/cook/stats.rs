@@ -46,6 +46,7 @@ use super::Report;
 use crate::format::{self, codec, kind};
 use crate::runtime::Bundle;
 use og_core::ogt::Block;
+use og_ui::prelude::*;
 use serde_json::{Value, json};
 use std::path::Path;
 

@@ -15,6 +15,7 @@
 //! `<clipPath>`'s units ignored.
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_ui::*;
 use support::*;

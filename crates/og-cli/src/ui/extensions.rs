@@ -1,4 +1,5 @@
 //! Directory extensions; discovery never evaluates an extension's code.
+use og_ui::prelude::*;
 use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 use std::process::ExitCode;

@@ -1,8 +1,24 @@
 use super::*;
 
-impl RetainedHost {
+pub(crate) trait RetainedVirtualizedRetainedHost {
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn emit_virtual(
+    fn emit_virtual(
+        &mut self,
+        ui: &mut Ui,
+        element: &ElementInstance,
+        build: &mut Build<'_>,
+        props: Props,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String>;
+
+    fn dematerialize(&mut self, child: &Child) -> Result<(), String>;
+}
+
+impl RetainedVirtualizedRetainedHost for RetainedHost {
+    #[allow(clippy::too_many_arguments)]
+    fn emit_virtual(
         &mut self,
         ui: &mut Ui,
         element: &ElementInstance,

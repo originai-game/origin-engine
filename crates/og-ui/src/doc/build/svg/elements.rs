@@ -1,6 +1,6 @@
 use super::*;
 
-impl Ui {
+pub(crate) trait SvgElementsUi {
     /// The elements the `feImage`s of the open element's filters name
     /// (`uses`, numbered as [`crate::paint::filter_uses`] numbers them),
     /// each built as `<use>` would draw it (Filter Effects 1 §15.17): in
@@ -12,7 +12,69 @@ impl Ui {
     /// layer only the filter reads, takes no input and is in no tree a
     /// reader walks. `of` is the filtered element's node, `computed` its
     /// computed values.
-    pub(in crate::doc::build) fn build_element_images(
+    fn build_element_images(
+        &mut self,
+        b: &Build<'_>,
+        of: &DocNode,
+        computed: &crate::doc::variables::Computed,
+        uses: &[&crate::paint::FilterUse],
+        space: ImageSpace,
+    );
+
+    /// An SVG `<text>`: one line shaped as any label, at its view-box size,
+    /// placed and scaled by layout through [`crate::element::ViewPlace`].
+    #[allow(clippy::too_many_arguments)]
+    fn build_svg_text(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+        props: Props,
+        path: &str,
+        key: u64,
+        vb: [f32; 4],
+    );
+
+    /// A `<foreignObject x y width height>`: a column box `width` by
+    /// `height` user units laid out at that size, its corner on `(x, y)`
+    /// fitted into the `<svg>`'s box and scaled with the view box, its
+    /// document elements cut to it (SVG's overflow hidden).
+    #[allow(clippy::too_many_arguments)]
+    fn build_svg_foreign(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+        props: Props,
+        path: String,
+        key: u64,
+        built: Built,
+        vb: [f32; 4],
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+    ) -> Option<String>;
+
+    /// Builds an SVG element: `<svg>` as a box of its size, a group or a
+    /// shape as a box over the whole `<svg>`, a definition as nothing.
+    #[allow(clippy::too_many_arguments)]
+    fn build_svg(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        kind: &'static str,
+        id: &str,
+        r: &Resolved,
+        props: Props,
+        path: String,
+        key: u64,
+        built: Built,
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+    ) -> Option<String>;
+}
+
+impl SvgElementsUi for Ui {
+    fn build_element_images(
         &mut self,
         b: &Build<'_>,
         of: &DocNode,
@@ -153,8 +215,6 @@ impl Ui {
         }
     }
 
-    /// An SVG `<text>`: one line shaped as any label, at its view-box size,
-    /// placed and scaled by layout through [`crate::element::ViewPlace`].
     #[allow(clippy::too_many_arguments)]
     fn build_svg_text(
         &mut self,
@@ -392,10 +452,6 @@ impl Ui {
         self.fire(b, n, key, path, crate::ui::Response::default());
     }
 
-    /// A `<foreignObject x y width height>`: a column box `width` by
-    /// `height` user units laid out at that size, its corner on `(x, y)`
-    /// fitted into the `<svg>`'s box and scaled with the view box, its
-    /// document elements cut to it (SVG's overflow hidden).
     #[allow(clippy::too_many_arguments)]
     fn build_svg_foreign(
         &mut self,
@@ -487,10 +543,8 @@ impl Ui {
         Some(path)
     }
 
-    /// Builds an SVG element: `<svg>` as a box of its size, a group or a
-    /// shape as a box over the whole `<svg>`, a definition as nothing.
     #[allow(clippy::too_many_arguments)]
-    pub(in crate::doc::build) fn build_svg(
+    fn build_svg(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -762,12 +816,36 @@ impl Ui {
     }
 }
 
-impl crate::ui::Docs {
+pub(crate) trait SvgElementsDocs {
     /// An `<image href x y width height preserveAspectRatio>`: an atlas
     /// icon by name, or a render texture by handle, filling its rect.
     /// An SVG element's `filter` reference: the `<filter>` in its user
     /// space (`t` takes it into the view box) and its bounding box there:
     /// a shape's geometry, a group's shapes' (literal ones).
+    #[allow(clippy::too_many_arguments)]
+    fn svg_filter(
+        &self,
+        b: &Build<'_>,
+        n: &DocNode,
+        kind: &str,
+        r: &Resolved,
+        reference: &str,
+        t: &Affine,
+        vb: [f32; 4],
+        env: &crate::ui::Env,
+    ) -> Result<std::sync::Arc<crate::paint::FilterUse>, String>;
+
+    fn image_draw(
+        &self,
+        b: &Build<'_>,
+        r: &Resolved,
+        t: &Affine,
+        vb: [f32; 4],
+        env: &crate::ui::Env,
+    ) -> Result<Option<ElementDraw>, String>;
+}
+
+impl SvgElementsDocs for crate::ui::Docs {
     #[allow(clippy::too_many_arguments)]
     fn svg_filter(
         &self,

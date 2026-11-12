@@ -24,7 +24,7 @@ use crate::svg::{Affine, GradientDef, PaintRef, Style, bounds, shape_path};
 use og_core::glam::Vec2;
 
 mod defs;
-mod elements;
+pub(crate) mod elements;
 mod shapes;
 mod smil;
 
@@ -352,7 +352,7 @@ fn baseline_shift(base: &str, ascender: f32, descender: f32, size: f32) -> Resul
 /// space (its map into the view box, and its bounding box there), or a
 /// CSS box's (CSS px from its border box's top left).
 #[derive(Clone, Copy)]
-pub(super) enum ImageSpace {
+pub(crate) enum ImageSpace {
     Svg(Affine, [f32; 4]),
     Css,
 }

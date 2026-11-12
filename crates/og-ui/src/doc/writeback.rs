@@ -147,6 +147,7 @@ pub(super) fn edit(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::doc::build::ext::*;
 
     #[test]
     fn probe_saves_change_only_targeted_markup_and_scope_css_to_one_element() {

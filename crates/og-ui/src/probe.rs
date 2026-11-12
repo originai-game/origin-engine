@@ -1,5 +1,6 @@
 //! The live tree for the probe, and the system that runs the UI in the tick.
 
+use crate::doc::build::ext::*;
 use crate::input::{InputFrame, OgInput};
 use crate::ui::{Ui, Viewport};
 use og_ecs::{SystemContext, SystemDesc, World};
@@ -105,12 +106,19 @@ impl UiTree for UiProbe {
     }
 }
 
-impl Ui {
+pub trait ProbeUi {
     /// The last frame's elements with what documents, layers and motion
     /// know of each (og-probe's `UiElement::detail`, docs/ui.md §6).
     /// Its rectangles are CSS px (the frame's are in og-ui units), so the
     /// probe's input (`touch_move_to`, `move_to_text`) lands on them.
-    pub fn probe_elements(&self) -> Vec<UiElement> {
+    fn probe_elements(&self) -> Vec<UiElement>;
+
+    /// The UI's state beyond its elements for `dump_ui` (docs/ui.md §6).
+    fn probe_extra(&self) -> serde_json::Map<String, serde_json::Value>;
+}
+
+impl ProbeUi for Ui {
+    fn probe_elements(&self) -> Vec<UiElement> {
         use serde_json::{Value, json};
         let mut out = self.elements().to_vec();
         let u = self.frame().unit.max(1.0);
@@ -221,8 +229,7 @@ impl Ui {
         out
     }
 
-    /// The UI's state beyond its elements for `dump_ui` (docs/ui.md §6).
-    pub fn probe_extra(&self) -> serde_json::Map<String, serde_json::Value> {
+    fn probe_extra(&self) -> serde_json::Map<String, serde_json::Value> {
         use serde_json::{Value, json};
         let mut m = serde_json::Map::new();
         m.insert("parts".into(), crate::doc::schema::parts::to_json());

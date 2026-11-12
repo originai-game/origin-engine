@@ -1,9 +1,32 @@
 use super::*;
 
-impl RetainedHost {
+pub(crate) trait RetainedFrameRetainedHost {
     /// Marks what this frame's interaction, clock and frame-wide inputs
     /// require to be built again, before anything is emitted.
-    pub(super) fn mark_frame(&mut self, ui: &mut Ui) {
+    fn mark_frame(&mut self, ui: &mut Ui);
+
+    /// Marks the listeners of the actions fired since the last mark.
+    fn mark_fired(&mut self, ui: &Ui);
+
+    /// Goes on one tick with each Rive frame not built this frame: its
+    /// player advances and its draw is replaced on its node, which paints
+    /// again on its own; nothing is resolved or built.
+    fn advance_rive(&mut self, ui: &mut Ui);
+
+    /// Builds the listeners of actions that triggers fired while this
+    /// frame was built and that are not built yet, as every listener after
+    /// the trigger in the frame reacts.
+    fn emit_fired(
+        &mut self,
+        ui: &mut Ui,
+        env: &dyn Env,
+        events: &mut Vec<DocEvent>,
+        writes: &mut Vec<(BindingContext, String, Value)>,
+    ) -> Result<(), String>;
+}
+
+impl RetainedFrameRetainedHost for RetainedHost {
+    fn mark_frame(&mut self, ui: &mut Ui) {
         let signature = Signature {
             viewport: ui.env.viewport,
             unit: ui.env.unit,
@@ -100,7 +123,6 @@ impl RetainedHost {
         self.mark_fired(ui);
     }
 
-    /// Marks the listeners of the actions fired since the last mark.
     fn mark_fired(&mut self, ui: &Ui) {
         // Whether a listener's layer takes input is the build's question
         // (`docs.accepts`): every listener of a fired action is built.
@@ -115,10 +137,7 @@ impl RetainedHost {
         self.fired = fired.len();
     }
 
-    /// Goes on one tick with each Rive frame not built this frame: its
-    /// player advances and its draw is replaced on its node, which paints
-    /// again on its own; nothing is resolved or built.
-    pub(super) fn advance_rive(&mut self, ui: &mut Ui) {
+    fn advance_rive(&mut self, ui: &mut Ui) {
         let elements = &self.elements;
         self.rive.retain(|identity| elements.contains_key(identity));
         self.unbuilt_hidden
@@ -164,10 +183,7 @@ impl RetainedHost {
         }
     }
 
-    /// Builds the listeners of actions that triggers fired while this
-    /// frame was built and that are not built yet, as every listener after
-    /// the trigger in the frame reacts.
-    pub(super) fn emit_fired(
+    fn emit_fired(
         &mut self,
         ui: &mut Ui,
         env: &dyn Env,

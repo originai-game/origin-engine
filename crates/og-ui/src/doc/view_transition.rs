@@ -631,6 +631,7 @@ fn pseudo(selector: &str, types: &[String]) -> Result<Option<(Part, Select, bool
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::doc::build::ext::*;
 
     fn spec(css: &str) -> Result<Option<ViewTransition>, String> {
         UiDocument::parse(

@@ -5,6 +5,7 @@
 //! tree the frame refuses fails here before a game ejects it.
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_core::glam::Vec3;
 use og_ui::*;

@@ -1,8 +1,17 @@
 use super::*;
 
-impl RetainedHost {
+pub(crate) trait RetainedRecordsRetainedHost {
     /// The retained elements' records, mounted ones in tree order.
-    pub(crate) fn records(&self) -> impl Iterator<Item = &super::host::DocRecord> {
+    fn records(&self) -> impl Iterator<Item = &super::host::DocRecord>;
+
+    fn collect_rendered<'a>(&'a self, child: &'a Child, out: &mut Vec<&'a MountedNode>);
+
+    #[cfg(test)]
+    fn record(&self, key: u64) -> Option<&super::host::DocRecord>;
+}
+
+impl RetainedRecordsRetainedHost for RetainedHost {
+    fn records(&self) -> impl Iterator<Item = &super::host::DocRecord> {
         let mut order = Vec::new();
         for root in self.roots.values() {
             self.collect_rendered(root, &mut order);
@@ -44,7 +53,7 @@ impl RetainedHost {
     }
 
     #[cfg(test)]
-    pub(crate) fn record(&self, key: u64) -> Option<&super::host::DocRecord> {
+    fn record(&self, key: u64) -> Option<&super::host::DocRecord> {
         let identity = self.by_key.get(&key)?;
         Some(&self.elements.get(identity)?.record)
     }

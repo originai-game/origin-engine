@@ -9,8 +9,99 @@ fn key_hash(value: &Value) -> u64 {
     crate::id::key_of_path(&value.to_string())
 }
 
-impl RetainedHost {
-    pub(super) fn compile_branch(
+pub(crate) trait RetainedStructuralRetainedHost {
+    fn compile_branch(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        context: BindingContext,
+        parent: Option<&MountedNode>,
+        id: String,
+        env: &dyn Env,
+    ) -> Result<Child, String>;
+
+    /// A block of `source`'s children, shown while `expression` holds: an
+    /// `{#if}`, a rendered snippet (always), or a snippet's definition and
+    /// an optional render of no snippet (never).
+    #[allow(clippy::too_many_arguments)]
+    fn compile_block(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        context: BindingContext,
+        parent: Option<&MountedNode>,
+        id: String,
+        expression: &Expr,
+        env: &dyn Env,
+    ) -> Result<Child, String>;
+
+    fn compile_branch_children(
+        &mut self,
+        ui: &mut Ui,
+        branch: &BranchInstance,
+        env: &dyn Env,
+    ) -> Result<Vec<Child>, String>;
+
+    fn refresh_branch(
+        &mut self,
+        ui: &mut Ui,
+        id: &MountedNode,
+        value: &Value,
+        env: &dyn Env,
+    ) -> Result<(), String>;
+
+    fn set_branch(
+        &mut self,
+        ui: &mut Ui,
+        id: &MountedNode,
+        enabled: bool,
+        env: &dyn Env,
+    ) -> Result<(), String>;
+
+    fn block_start(&self, children: &[Child], target: &MountedNode, at: usize) -> Option<usize>;
+
+    fn compile_each(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        context: BindingContext,
+        parent: Option<&MountedNode>,
+        id: String,
+        env: &dyn Env,
+    ) -> Result<Child, String>;
+
+    fn compile_row(
+        &mut self,
+        ui: &mut Ui,
+        each: &EachInstance,
+        key: Option<&str>,
+        env: &dyn Env,
+    ) -> Result<Vec<Child>, String>;
+
+    fn plan_len(&self, child: &Child) -> usize;
+
+    fn logical_roots(&self, child: &Child, out: &mut Vec<MountedNode>);
+
+    fn each_start(&self, id: &MountedNode) -> usize;
+
+    fn place_row(&mut self, children: &[Child], start: usize) -> Result<(), String>;
+
+    fn remove_child(&mut self, ui: &mut Ui, child: Child);
+
+    fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String>;
+
+    fn edit_each(
+        &mut self,
+        ui: &mut Ui,
+        each: &mut EachInstance,
+        edit: &CollectionEdit,
+        start: usize,
+        env: &dyn Env,
+    ) -> Result<(), String>;
+}
+
+impl RetainedStructuralRetainedHost for RetainedHost {
+    fn compile_branch(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
@@ -27,11 +118,8 @@ impl RetainedHost {
         self.compile_block(ui, source, context, parent, id, &expression, env)
     }
 
-    /// A block of `source`'s children, shown while `expression` holds: an
-    /// `{#if}`, a rendered snippet (always), or a snippet's definition and
-    /// an optional render of no snippet (never).
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn compile_block(
+    fn compile_block(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
@@ -124,7 +212,7 @@ impl RetainedHost {
         Ok(children)
     }
 
-    pub(super) fn refresh_branch(
+    fn refresh_branch(
         &mut self,
         ui: &mut Ui,
         id: &MountedNode,
@@ -221,7 +309,7 @@ impl RetainedHost {
         None
     }
 
-    pub(super) fn compile_each(
+    fn compile_each(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
@@ -485,7 +573,7 @@ impl RetainedHost {
         }
     }
 
-    pub(super) fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
+    fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         let mut error = None;
         for change in ui.docs.reactive.sources.take_changes() {
             let SourceChange::Collection(edit) = change.change else {

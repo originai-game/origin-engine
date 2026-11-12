@@ -10,6 +10,7 @@
 //! short of the shape's edge, or a path clip that draws uncut.
 
 use crate::support;
+use og_ui::prelude::*;
 
 use og_ui::*;
 use support::*;

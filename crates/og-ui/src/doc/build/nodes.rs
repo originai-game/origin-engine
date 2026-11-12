@@ -1,18 +1,240 @@
 use super::fields::FILE_LABEL;
 use super::*;
 
-mod events;
-mod lists;
+pub(crate) mod events;
+pub(crate) mod lists;
 
-impl Ui {
+pub(crate) trait NodesUi {
     /// Builds node `i` (and its subtree); `root_id` names a mount's root.
     /// Answers its path (none when it is not shown).
-    pub(super) fn build_node(
+    fn build_node(&mut self, b: &mut Build<'_>, i: usize, root_id: Option<&str>) -> Option<String>;
+
+    fn build_resolved_node(
         &mut self,
         b: &mut Build<'_>,
         i: usize,
-        root_id: Option<&str>,
-    ) -> Option<String> {
+        resolved: ResolvedNode,
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+    ) -> Option<String>;
+
+    /// The document's `art` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_art(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+    ) -> Option<og_draw::TextureHandle>;
+
+    /// The document's `image` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_image(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        r: &Resolved,
+    ) -> Option<og_draw::TextureHandle>;
+
+    /// The document's `icon` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_icon(&mut self, id: &String, r: &Resolved);
+
+    /// The document's `meter` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_meter(&mut self, id: &String, r: &Resolved);
+
+    /// The document's `progress` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_progress(&mut self, id: &String, r: &Resolved);
+
+    /// The document's `slider` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_slider_range(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response;
+
+    /// The document's `datetime` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_datetime(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        i: usize,
+        doc: &UiDocument,
+        id: &String,
+        key: u64,
+        r: &Resolved,
+    ) -> crate::ui::Response;
+
+    /// The document's `badge` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_badge(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    );
+
+    /// A container element and its content: a dialog, a disclosure, a
+    /// spotlight, a button with content and the rest.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_container(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        doc: &UiDocument,
+        kind: &'static str,
+        id: &String,
+        path: String,
+        key: u64,
+        r: &Resolved,
+        props: Props,
+        built: Built,
+        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
+    ) -> Option<String>;
+
+    /// The document's `dialog` element: the dialog it opens; whether it is opened and shows
+    /// its content.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_dialog(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+        dialog: &crate::widgets::DialogDesc,
+        open_now: &impl Fn(&mut Ui) -> bool,
+        opened: Option<bool>,
+    ) -> (Option<bool>, bool);
+
+    /// The document's `details` element: the disclosure it opens; whether it is opened and shows
+    /// its content.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_details(
+        &mut self,
+        b: &mut Build<'_>,
+        id: &String,
+        key: u64,
+        r: &Resolved,
+        open_now: &impl Fn(&mut Ui) -> bool,
+        opened: Option<bool>,
+    ) -> (Option<bool>, bool);
+
+    /// The document's `label` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_label(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        doc: &UiDocument,
+        id: &String,
+        path: &String,
+        key: u64,
+        r: &Resolved,
+        styled: &Resolved,
+        t: crate::style::Theme,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> Option<crate::ui::Response>;
+
+    /// The document's `select` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_select(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+        styled: &Resolved,
+    ) -> crate::ui::Response;
+
+    /// The document's `slider` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_slider(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response;
+
+    /// The document's `toggle` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_toggle(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        styled: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response;
+
+    /// The document's `file` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_file(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        doc: &UiDocument,
+        id: &String,
+        path: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> Option<crate::ui::Response>;
+
+    /// The document's `radio` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_radio(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response;
+
+    /// The document's `tabs` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_tabs(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &String,
+        r: &Resolved,
+        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+    ) -> crate::ui::Response;
+
+    /// The document's `field` element.
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
+    fn doc_field(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        i: usize,
+        doc: &UiDocument,
+        id: &String,
+        path: &String,
+        key: u64,
+        r: &Resolved,
+        styled: &Resolved,
+    ) -> crate::ui::Response;
+
+    /// A text's inline `<a href>`s: a click sends a `link` event named by
+    /// its href, through the document's events as `onclick` does.
+    fn inline_links(&mut self, b: &mut Build<'_>, n: &DocNode, r: &Resolved, path: &str, key: u64);
+}
+
+impl NodesUi for Ui {
+    fn build_node(&mut self, b: &mut Build<'_>, i: usize, root_id: Option<&str>) -> Option<String> {
         let doc = b.doc.clone();
         let n = &doc.nodes[i];
         match &n.kind {
@@ -247,7 +469,7 @@ impl Ui {
         built
     }
 
-    pub(super) fn build_resolved_node(
+    fn build_resolved_node(
         &mut self,
         b: &mut Build<'_>,
         i: usize,
@@ -486,7 +708,6 @@ impl Ui {
         Some(path)
     }
 
-    /// The document's `art` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_art(
         &mut self,
@@ -520,7 +741,6 @@ impl Ui {
         texture
     }
 
-    /// The document's `image` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_image(
         &mut self,
@@ -548,7 +768,6 @@ impl Ui {
         texture
     }
 
-    /// The document's `icon` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_icon(&mut self, id: &String, r: &Resolved) {
         let name = match (r.str("icon"), r.str("cue")) {
@@ -569,7 +788,6 @@ impl Ui {
         );
     }
 
-    /// The document's `meter` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_meter(&mut self, id: &String, r: &Resolved) {
         self.gauge(
@@ -586,7 +804,6 @@ impl Ui {
         );
     }
 
-    /// The document's `progress` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_progress(&mut self, id: &String, r: &Resolved) {
         let v = r.num("value").unwrap_or(0.0);
@@ -599,7 +816,6 @@ impl Ui {
         );
     }
 
-    /// The document's `slider` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_slider_range(
         &mut self,
@@ -636,7 +852,6 @@ impl Ui {
         resp
     }
 
-    /// The document's `datetime` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_datetime(
         &mut self,
@@ -663,7 +878,6 @@ impl Ui {
         resp
     }
 
-    /// The document's `badge` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_badge(
         &mut self,
@@ -684,8 +898,6 @@ impl Ui {
         self.badge(id.as_str(), &text, tone);
     }
 
-    /// A container element and its content: a dialog, a disclosure, a
-    /// spotlight, a button with content and the rest.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_container(
         &mut self,
@@ -940,8 +1152,6 @@ impl Ui {
         Some(path)
     }
 
-    /// The document's `dialog` element: the dialog it opens; whether it is opened and shows
-    /// its content.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_dialog(
         &mut self,
@@ -982,8 +1192,6 @@ impl Ui {
         (opened, shows_content)
     }
 
-    /// The document's `details` element: the disclosure it opens; whether it is opened and shows
-    /// its content.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_details(
         &mut self,
@@ -1044,7 +1252,6 @@ impl Ui {
         (opened, shows_content)
     }
 
-    /// The document's `label` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_label(
         &mut self,
@@ -1155,7 +1362,6 @@ impl Ui {
         Some(resp)
     }
 
-    /// The document's `select` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_select(
         &mut self,
@@ -1256,7 +1462,6 @@ impl Ui {
         resp
     }
 
-    /// The document's `slider` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_slider(
         &mut self,
@@ -1311,7 +1516,6 @@ impl Ui {
         resp
     }
 
-    /// The document's `toggle` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_toggle(
         &mut self,
@@ -1373,7 +1577,6 @@ impl Ui {
         resp
     }
 
-    /// The document's `file` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_file(
         &mut self,
@@ -1410,7 +1613,6 @@ impl Ui {
         Some(resp)
     }
 
-    /// The document's `radio` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_radio(
         &mut self,
@@ -1451,7 +1653,6 @@ impl Ui {
         resp
     }
 
-    /// The document's `tabs` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_tabs(
         &mut self,
@@ -1534,7 +1735,6 @@ impl Ui {
         resp
     }
 
-    /// The document's `field` element.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     fn doc_field(
         &mut self,
@@ -1672,8 +1872,6 @@ impl Ui {
         resp
     }
 
-    /// A text's inline `<a href>`s: a click sends a `link` event named by
-    /// its href, through the document's events as `onclick` does.
     fn inline_links(&mut self, b: &mut Build<'_>, n: &DocNode, r: &Resolved, path: &str, key: u64) {
         let ids: Vec<String> = n
             .inline
@@ -1699,9 +1897,13 @@ impl Ui {
     }
 }
 
-impl crate::ui::Docs {
+pub(crate) trait NodesDocs {
     /// A control's two-way prop: its binding's path takes the new value.
-    pub(super) fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value) {
+    fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value);
+}
+
+impl NodesDocs for crate::ui::Docs {
+    fn write_back(&mut self, b: &mut Build<'_>, n: &DocNode, prop: &str, v: Value) {
         let bound = n.props.iter().rev().find(|p| p.name() == prop);
         if let Some(p) = bound
             && let PropValue::Model(path) | PropValue::Bind(crate::bind::Expr::Path(path), _) =
@@ -1730,7 +1932,7 @@ pub(crate) fn details_action(name: &str) -> String {
     format!("~details/{name}")
 }
 
-impl Ui {
+pub(crate) trait NodesUi2 {
     /// Whether a declared action's handler at `path` takes the action: a
     /// handler outside any `{#each}` row is the page's and always does; one
     /// inside a row does only while a focus (shared or a pad's) is within
@@ -1739,6 +1941,10 @@ impl Ui {
     /// The row is the innermost element of `path` named `…#row_key` (an
     /// `{#each}` child, or a virtual list's `Row#`/`Cell#` with the key
     /// escaped); the handler's own last segment may still hold the raw key.
+    fn focus_in_row(&self, path: &str, row_key: &str) -> bool;
+}
+
+impl NodesUi2 for Ui {
     fn focus_in_row(&self, path: &str, row_key: &str) -> bool {
         if row_key.is_empty() {
             return true;

@@ -3,6 +3,7 @@
 //! crates/og-ui/tests/ui_debug.rs.
 
 use crate::support;
+use og_ui::prelude::*;
 use og_ui::reactive::{SourceId, wire};
 use og_ui::*;
 use serde_json::json;
