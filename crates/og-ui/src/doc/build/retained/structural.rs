@@ -135,7 +135,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         let identity = context.node.clone();
         let topology = &self.topology;
         let binding = self.bindings.insert(
-            &mut ui.docs.reactive,
+            ui.docs.reactive_mut(),
             context.clone(),
             expression.clone(),
             env,
@@ -331,7 +331,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
             ));
         };
         let source = super::content::collection(&context, path)?;
-        let collection = ui.docs.reactive.sources.keyed(&source)?;
+        let collection = ui.docs.reactive().sources.keyed(&source)?;
         let order = collection.keys().to_vec();
         let revision = collection.revision();
         context.node.key = crate::id::child_key(parent.key, &format!("$each:{id}"));
@@ -391,7 +391,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                 },
             );
             let result = SourceEnv {
-                session: &ui.docs.reactive,
+                session: ui.docs.reactive(),
                 inputs: &context.inputs,
                 rows: &context.rows,
                 selector_nodes: &context.selector_nodes,
@@ -518,7 +518,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                 for child in branch.children {
                     self.remove_child(ui, child);
                 }
-                self.bindings.remove(&mut ui.docs.reactive, branch.binding);
+                self.bindings.remove(ui.docs.reactive_mut(), branch.binding);
                 self.inputs.remove(&branch.binding);
                 self.pending_bindings.remove(&branch.binding);
             }
@@ -540,13 +540,13 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                     self.remove_child(ui, child);
                 }
                 for binding in element.bindings {
-                    self.bindings.remove(&mut ui.docs.reactive, binding);
+                    self.bindings.remove(ui.docs.reactive_mut(), binding);
                     self.inputs.remove(&binding);
                     self.pending_bindings.remove(&binding);
                 }
                 self.topology.remove(&id).expect("mounted element topology");
                 self.by_key.remove(&id.key);
-                ui.interaction.state.virtual_lists.remove(&id.key);
+                ui.interaction.state_mut().virtual_lists.remove(&id.key);
                 self.dirty.remove(&id);
                 for readers in &mut self.media {
                     readers.remove(&id);
@@ -575,7 +575,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
 
     fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         let mut error = None;
-        for change in ui.docs.reactive.sources.take_changes() {
+        for change in ui.docs.reactive_mut().sources.take_changes() {
             let SourceChange::Collection(edit) = change.change else {
                 continue;
             };
@@ -584,7 +584,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                     for id in readers {
                         if let Some(list) = ui
                             .interaction
-                            .state
+                            .state_mut()
                             .virtual_lists
                             .get_mut(&self.each[id].parent.key)
                         {
@@ -635,7 +635,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                 if each.rows.contains_key(key)
                     || ui
                         .docs
-                        .reactive
+                        .reactive()
                         .sources
                         .keyed(&each.source)?
                         .row(key)

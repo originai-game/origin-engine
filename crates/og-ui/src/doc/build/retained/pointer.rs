@@ -85,7 +85,7 @@ impl RetainedPointerRetainedHost for RetainedHost {
             env,
             key,
             when,
-            ui.interaction.input.pointer,
+            ui.interaction.input().pointer,
             extra,
             events,
         );
@@ -141,11 +141,11 @@ impl RetainedPointerRetainedHost for RetainedHost {
     }
 
     fn input_events(&mut self, ui: &Ui, env: &dyn Env, events: &mut Vec<DocEvent>) {
-        let input = &ui.interaction.input;
-        let (hot, active) = (ui.interaction.state.hot, ui.interaction.state.active);
+        let input = &ui.interaction.input();
+        let (hot, active) = (ui.interaction.state().hot, ui.interaction.state().active);
         let moved = [input.pointer.x, input.pointer.y] != self.pointer.pointer;
         // Drag and drop: the held element's gesture against last tick's.
-        let gesture = |k: u64| ui.interaction.state.motion.gestures.get(&k).copied();
+        let gesture = |k: u64| ui.interaction.state().motion.gestures.get(&k).copied();
         let now = (active != 0)
             .then(|| gesture(active))
             .flatten()
@@ -314,7 +314,7 @@ mod tests {
         ui.define_document(UiDocument::parse("board.svelte", BOARD).unwrap());
         let items = SourceId::new("test", "items");
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Collection {
                 source: items.clone(),
                 key: "id".into(),

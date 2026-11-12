@@ -28,25 +28,25 @@ pub(crate) trait RetainedFrameRetainedHost {
 impl RetainedFrameRetainedHost for RetainedHost {
     fn mark_frame(&mut self, ui: &mut Ui) {
         let signature = Signature {
-            viewport: ui.env.viewport,
-            unit: ui.env.unit,
-            direction: ui.env.direction,
-            locale: ui.env.locale.clone(),
-            style: ui.env.style_name.clone(),
-            style_epoch: ui.tree.invalidation.epoch,
-            players: ui.interaction.players,
-            nav_on: ui.interaction.nav_on,
+            viewport: *ui.env.viewport(),
+            unit: ui.env.unit(),
+            direction: ui.env.direction(),
+            locale: ui.env.locale().clone(),
+            style: ui.env.style_name().clone(),
+            style_epoch: ui.tree.invalidation().epoch,
+            players: ui.interaction.players(),
+            nav_on: ui.interaction.nav_on(),
         };
         self.restyled = self.signature.as_ref() != Some(&signature);
         if self.restyled {
             self.signature = Some(signature);
             self.emit.extend(self.elements.keys().cloned());
         }
-        let s = &ui.interaction.state;
-        let n = &ui.interaction.nav;
+        let s = &ui.interaction.state();
+        let n = &ui.interaction.nav();
         let mut input = vec![
             s.hot,
-            if ui.interaction.input.down {
+            if ui.interaction.input().down {
                 s.active
             } else {
                 0
@@ -63,19 +63,19 @@ impl RetainedFrameRetainedHost for RetainedHost {
         // On-screen controls follow their further touches (og.Pointers):
         // those a touch holds, and every one when a touch goes down.
         input.extend(s.touch_owners.keys());
-        if ui.interaction.input.pointers.pressed != 0 {
-            input.extend(ui.docs.host.zones.keys());
+        if ui.interaction.input().pointers.pressed != 0 {
+            input.extend(ui.docs.host().zones.keys());
         }
         if n.back {
             // Back belongs to the topmost scope (a modal, an open list),
             // else to what holds the focus (a dialog in place).
             input.push(s.scope);
             if s.focus != 0
-                && let Some(mut i) = ui.tree.nodes.iter().position(|node| node.key == s.focus)
+                && let Some(mut i) = ui.tree.nodes().iter().position(|node| node.key == s.focus)
             {
-                while ui.tree.nodes[i].parent != NONE {
-                    i = ui.tree.nodes[i].parent;
-                    input.push(ui.tree.nodes[i].key);
+                while ui.tree.nodes()[i].parent != NONE {
+                    i = ui.tree.nodes()[i].parent;
+                    input.push(ui.tree.nodes()[i].key);
                 }
             }
         }
@@ -91,7 +91,7 @@ impl RetainedFrameRetainedHost for RetainedHost {
         for (identity, offset) in &self.scrollers {
             if ui
                 .interaction
-                .state
+                .state()
                 .scroll
                 .get(&identity.key)
                 .copied()
@@ -103,14 +103,14 @@ impl RetainedFrameRetainedHost for RetainedHost {
         }
         // Nodes whose laid-out size moved: their widgets read last frame's
         // geometry (a narrow button, a list measuring its rows).
-        for slot in std::mem::take(&mut ui.layout.cache.resized) {
-            if let Some(owner) = self.owner_of.get(&ui.tree.nodes[slot].key) {
+        for slot in std::mem::take(&mut ui.layout.cache_mut().resized) {
+            if let Some(owner) = self.owner_of.get(&ui.tree.nodes()[slot].key) {
                 self.emit.insert(owner.clone());
             }
         }
         self.emit.extend(self.volatile.iter().cloned());
         // Computed values that follow a timeline that moved.
-        for key in std::mem::take(&mut ui.style.motion.timeline_restyle) {
+        for key in std::mem::take(&mut ui.style.motion_mut().timeline_restyle) {
             if let Some(identity) = self.by_key.get(&key) {
                 self.dirty.insert(identity.clone());
                 self.emit.insert(identity.clone());
@@ -126,7 +126,7 @@ impl RetainedFrameRetainedHost for RetainedHost {
     fn mark_fired(&mut self, ui: &Ui) {
         // Whether a listener's layer takes input is the build's question
         // (`docs.accepts`): every listener of a fired action is built.
-        let fired = &ui.interaction.actions.fired;
+        let fired = &ui.interaction.actions().fired;
         for action in &fired[self.fired.min(fired.len())..] {
             for listener in self.on_action.get(action).into_iter().flatten() {
                 if !self.built_now.contains(listener) {
@@ -165,11 +165,11 @@ impl RetainedFrameRetainedHost for RetainedHost {
             };
             let built = ui
                 .interaction
-                .state
+                .state()
                 .rive
-                .get(&ui.tree.nodes[index].key)
-                .is_some_and(|s| s.built == ui.interaction.state.tick);
-            if !built && !ui.tree.nodes[index].hidden {
+                .get(&ui.tree.nodes()[index].key)
+                .is_some_and(|s| s.built == ui.interaction.state().tick);
+            if !built && !ui.tree.nodes()[index].hidden {
                 ui.docs.play_rive(
                     index,
                     board,
@@ -190,7 +190,7 @@ impl RetainedFrameRetainedHost for RetainedHost {
         events: &mut Vec<DocEvent>,
         writes: &mut Vec<(BindingContext, String, Value)>,
     ) -> Result<(), String> {
-        while ui.interaction.actions.fired.len() > self.fired {
+        while ui.interaction.actions().fired.len() > self.fired {
             self.mark_fired(ui);
             self.emit_in_place(ui, env, events, writes)?;
         }

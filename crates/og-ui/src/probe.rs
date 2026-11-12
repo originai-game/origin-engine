@@ -97,7 +97,7 @@ impl UiTree for UiProbe {
         self.0
             .lock()
             .docs
-            .host
+            .host()
             .layers
             .layers
             .iter()
@@ -150,13 +150,13 @@ impl ProbeUi for Ui {
         let doc_arts = self.art_slots();
         if doc_built.is_empty()
             && self.motion_dump().is_empty()
-            && self.docs.host.layers.layers.is_empty()
+            && self.docs.host().layers.layers.is_empty()
         {
             return out;
         }
         let layers: Vec<String> = self
             .docs
-            .host
+            .host()
             .layers
             .layers
             .iter()
@@ -199,7 +199,7 @@ impl ProbeUi for Ui {
                         Value::Object(b.edits.iter().map(|(p, v)| (p.clone(), json!(v))).collect()),
                     );
                 }
-                if self.docs.host.slots.contains_key(&e.path) {
+                if self.docs.host().slots.contains_key(&e.path) {
                     d.insert("slot".into(), json!({ "kind": "code" }));
                 }
             }
@@ -263,13 +263,20 @@ impl ProbeUi for Ui {
         );
         m.insert(
             "documents".into(),
-            Value::Array(self.docs.host.docs.values().map(|d| d.to_json()).collect()),
+            Value::Array(
+                self.docs
+                    .host()
+                    .docs
+                    .values()
+                    .map(|d| d.to_json())
+                    .collect(),
+            ),
         );
         m.insert(
             "edits".into(),
             Value::Array(
                 self.docs
-                    .host
+                    .host()
                     .edits
                     .iter()
                     .map(|e| json!({ "path": e.path, "prop": e.prop, "value": e.source }))

@@ -25,16 +25,16 @@ impl RetainedRegistrationUi for Ui {
         content: BTreeMap<String, String>,
     ) -> Result<(), String> {
         mount.validate()?;
-        self.docs.reactive.graph.check_idle(&mount)?;
-        if !self.docs.host.docs.contains_key(&document) {
+        self.docs.reactive().graph.check_idle(&mount)?;
+        if !self.docs.host().docs.contains_key(&document) {
             return Err(format!("missing document '{document}'"));
         }
-        super::content::check_instances(&self.docs.host.docs, &document)?;
+        super::content::check_instances(&self.docs.host().docs, &document)?;
         for reference in content.values() {
             let name = reference
                 .split_once('#')
                 .map_or(reference.as_str(), |(d, _)| d);
-            if !self.docs.host.docs.contains_key(name) {
+            if !self.docs.host().docs.contains_key(name) {
                 return Err(format!("mount content names a missing document '{name}'"));
             }
         }
@@ -57,15 +57,15 @@ impl RetainedRegistrationUi for Ui {
             content,
         };
         let document = registration.document.clone();
-        if self.docs.host.retained.registrations.get(&mount) == Some(&registration) {
+        if self.docs.host().retained.registrations.get(&mount) == Some(&registration) {
             self.sync_mount_layer(&mount, Some(&document));
             return Ok(());
         }
-        let mut host = std::mem::take(&mut self.docs.host.retained);
+        let mut host = std::mem::take(&mut self.docs.host_mut().retained);
         host.remove_mount(self, &mount);
         host.registrations.insert(mount.clone(), registration);
         host.pending_mounts.insert(mount.clone());
-        self.docs.host.retained = host;
+        self.docs.host_mut().retained = host;
         self.sync_mount_layer(&mount, Some(&document));
         Ok(())
     }
@@ -73,7 +73,7 @@ impl RetainedRegistrationUi for Ui {
     fn unmount_scope(&mut self, scope: &str) {
         let mounts: Vec<_> = self
             .docs
-            .host
+            .host()
             .retained
             .registrations
             .keys()
@@ -83,21 +83,21 @@ impl RetainedRegistrationUi for Ui {
         // Disposal is immediate: a leaving cover would read removed stores.
         for mount in mounts {
             if let Some(k) = self.docs.mount_layer(&mount) {
-                self.docs.host.layers.layers.remove(k);
+                self.docs.host_mut().layers.layers.remove(k);
             }
             self.finish_unmount(&mount);
         }
-        if let Some(managed) = &mut self.docs.host.retained.managed {
+        if let Some(managed) = &mut self.docs.host_mut().retained.managed {
             managed.retain(|id, _| id.scope != scope);
         }
     }
 
     fn inherit_document_registrations(&mut self, previous: &Self) {
-        let registrations = previous.docs.host.retained.registrations.clone();
-        self.docs.host.retained = RetainedHost {
+        let registrations = previous.docs.host().retained.registrations.clone();
+        self.docs.host_mut().retained = RetainedHost {
             pending_mounts: registrations.keys().cloned().collect(),
             registrations,
-            managed: previous.docs.host.retained.managed.clone(),
+            managed: previous.docs.host().retained.managed.clone(),
             ..Default::default()
         };
     }
@@ -111,19 +111,19 @@ pub(crate) trait RetainedRegistrationDocs {
 
 impl RetainedRegistrationDocs for crate::ui::Docs {
     fn document_mount_inputs(&self) -> Value {
-        json!(self.host.retained.registrations.iter().map(|(mount, registration)| {
+        json!(self.host().retained.registrations.iter().map(|(mount, registration)| {
             json!({ "mount": mount, "inputs": registration.inputs.values().collect::<Vec<_>>() })
         }).collect::<Vec<_>>())
     }
 
     fn registered_document_mounts(&mut self, mounts: Vec<SourceId>) -> Result<(), String> {
-        self.reactive
+        self.reactive()
             .graph
             .check_idle(&SourceId::new("registration", "complete"))?;
         let mut managed = BTreeMap::new();
         for mount in mounts {
             let declaration = self
-                .host
+                .host()
                 .retained
                 .registrations
                 .get(&mount)
@@ -132,7 +132,7 @@ impl RetainedRegistrationDocs for crate::ui::Docs {
                 })?;
             managed.insert(mount, declaration.clone());
         }
-        self.host.retained.managed = Some(managed);
+        self.host_mut().retained.managed = Some(managed);
         Ok(())
     }
 }

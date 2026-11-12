@@ -33,21 +33,21 @@ impl RetainedMountingUi for Ui {
         mount.validate()?;
         let doc = self
             .docs
-            .host
+            .host()
             .docs
             .get(document)
             .cloned()
             .ok_or_else(|| format!("missing document '{document}'"))?;
-        content::check_instances(&self.docs.host.docs, document)?;
+        content::check_instances(&self.docs.host().docs, document)?;
         // Every mount reads the engine's `$ui` unless it binds its own.
         let mut inputs = inputs;
         if !inputs.contains_key("ui") {
             self.publish_ui_store();
             inputs.insert("ui".into(), crate::doc::UI_STORE.clone());
         }
-        let mut host = std::mem::take(&mut self.docs.host.retained);
+        let mut host = std::mem::take(&mut self.docs.host_mut().retained);
         if host.roots.contains_key(&mount) {
-            self.docs.host.retained = host;
+            self.docs.host_mut().retained = host;
             return Err(format!(
                 "mount '{}:{}' already exists",
                 mount.scope, mount.id
@@ -72,7 +72,7 @@ impl RetainedMountingUi for Ui {
         let lexical = match content::mount_content(self, &content, &context) {
             Ok(lexical) => lexical,
             Err(error) => {
-                self.docs.host.retained = host;
+                self.docs.host_mut().retained = host;
                 return Err(error);
             }
         };
@@ -92,7 +92,7 @@ impl RetainedMountingUi for Ui {
             Ok(root) => {
                 host.registrations.insert(mount.clone(), registration);
                 host.roots.insert(mount.clone(), root);
-                self.docs.host.retained = host;
+                self.docs.host_mut().retained = host;
                 self.sync_mount_layer(&mount, Some(document));
                 return Ok(());
             }
@@ -101,7 +101,7 @@ impl RetainedMountingUi for Ui {
                 Err(error)
             }
         };
-        self.docs.host.retained = host;
+        self.docs.host_mut().retained = host;
         result
     }
 
@@ -110,15 +110,15 @@ impl RetainedMountingUi for Ui {
             if self.layer_leaves(k) {
                 return;
             }
-            self.docs.host.layers.layers.remove(k);
+            self.docs.host_mut().layers.layers.remove(k);
         }
         self.finish_unmount(mount);
     }
 
     fn build_retained_documents(&mut self, env: &dyn Env) -> Result<(), String> {
-        let mut host = std::mem::take(&mut self.docs.host.retained);
+        let mut host = std::mem::take(&mut self.docs.host_mut().retained);
         if host.built_tick == Some(self.tick()) {
-            self.docs.host.retained = host;
+            self.docs.host_mut().retained = host;
             return Ok(());
         }
         let mut result = host.refresh(self, env);
@@ -141,7 +141,8 @@ impl RetainedMountingUi for Ui {
                     let (frame, lead) = self.open_layer_frame(k);
                     events.extend(lead);
                     let shown = frame.is_some();
-                    let was = std::mem::replace(&mut self.docs.host.layers.layers[k].shown, shown);
+                    let was =
+                        std::mem::replace(&mut self.docs.host_mut().layers.layers[k].shown, shown);
                     if was && !shown {
                         host.release(self, &root);
                     }
@@ -152,11 +153,11 @@ impl RetainedMountingUi for Ui {
                 }
                 host.contexts.insert(
                     mount.clone(),
-                    (self.docs.host.accepts, self.docs.host.building),
+                    (self.docs.host().accepts, self.docs.host().building),
                 );
                 let emitted = host.emit(self, &root, env, &mut events, &mut writes);
                 if let Some(Some(frame)) = frame {
-                    let doc = &self.docs.host.docs[&host.registrations[&mount].document];
+                    let doc = &self.docs.host().docs[&host.registrations[&mount].document];
                     let path = root_path(&mount, doc);
                     events.extend(self.close_layer_frame(frame, &path));
                 }
@@ -177,13 +178,13 @@ impl RetainedMountingUi for Ui {
             }
             events.append(&mut host.uses);
             host.input_events(self, env, &mut events);
-            self.docs.host.retained = std::mem::take(&mut host);
+            self.docs.host_mut().retained = std::mem::take(&mut host);
             self.keep_world_anchors();
-            host = std::mem::take(&mut self.docs.host.retained);
-            self.docs.host.queued.extend(events);
+            host = std::mem::take(&mut self.docs.host_mut().retained);
+            self.docs.host_mut().queued.extend(events);
             for (context, path, value) in writes {
-                if let Err(error) = context.write_model(&mut self.docs.reactive, &path, value) {
-                    self.docs.host.retained = host;
+                if let Err(error) = context.write_model(self.docs.reactive_mut(), &path, value) {
+                    self.docs.host_mut().retained = host;
                     return Err(error);
                 }
             }
@@ -191,12 +192,12 @@ impl RetainedMountingUi for Ui {
                 host.built_tick = Some(self.tick());
             }
         }
-        self.docs.host.retained = host;
+        self.docs.host_mut().retained = host;
         result
     }
 
     fn mounted_topology(&self) -> &Topology {
-        &self.docs.host.retained.topology
+        &self.docs.host().retained.topology
     }
 }
 
@@ -206,8 +207,8 @@ pub(crate) trait RetainedMountingUi2 {
 
 impl RetainedMountingUi2 for Ui {
     fn finish_unmount(&mut self, mount: &SourceId) {
-        let mut host = std::mem::take(&mut self.docs.host.retained);
+        let mut host = std::mem::take(&mut self.docs.host_mut().retained);
         host.remove_mount(self, mount);
-        self.docs.host.retained = host;
+        self.docs.host_mut().retained = host;
     }
 }

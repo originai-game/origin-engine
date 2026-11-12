@@ -56,7 +56,7 @@ impl RetainedContentRetainedHost for RetainedHost {
     ) -> Result<Child, String> {
         let (doc, index) = source;
         let node = &doc.nodes[index];
-        let instance = ui.docs.host.docs.get(component).cloned().ok_or_else(|| {
+        let instance = ui.docs.host().docs.get(component).cloned().ok_or_else(|| {
             format!(
                 "{}:{}: no component '{component}' (load its document)",
                 doc.source, node.line
@@ -185,7 +185,7 @@ impl RetainedContentRetainedHost for RetainedHost {
             Some(ContentRef::Document(name)) => {
                 let document = ui
                     .docs
-                    .host
+                    .host()
                     .docs
                     .get(&name)
                     .cloned()
@@ -289,7 +289,7 @@ pub(super) fn mount_content(
         };
         let doc = ui
             .docs
-            .host
+            .host()
             .docs
             .get(document)
             .cloned()
@@ -392,7 +392,7 @@ mod tests {
         }
         let rows = [("a", "Axe", "sharp"), ("b", "Bow", "far")];
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Collection {
                 source: SourceId::new("test", "items"),
                 key: "id".into(),
@@ -408,7 +408,7 @@ mod tests {
             })
             .unwrap();
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Signal {
                 source: SourceId::new("test", "footer"),
                 initial: json!("Ann"),
@@ -482,7 +482,7 @@ mod tests {
         let idle = step(&mut ui);
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Patch {
                 source: SourceId::new("test", "items"),
                 key: "b".into(),
@@ -499,7 +499,7 @@ mod tests {
             "{all:?}"
         );
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Set {
                 source: SourceId::new("test", "footer"),
                 value: json!("Bo"),

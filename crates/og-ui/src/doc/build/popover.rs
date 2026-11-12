@@ -64,10 +64,10 @@ impl PopoverUi for Ui {
         }
         // HTML: showing an auto popover closes the other auto ones, and a
         // hint the other hints.
-        if open && let Some(mode) = self.docs.host.popovers.get(&pk).map(|l| l.mode) {
+        if open && let Some(mode) = self.docs.host().popovers.get(&pk).map(|l| l.mode) {
             let others: Vec<u64> = self
                 .docs
-                .host
+                .host()
                 .popovers
                 .iter()
                 .filter(|(k, l)| **k != pk && l.mode == mode && mode != Mode::Manual)
@@ -95,13 +95,13 @@ impl PopoverUi for Ui {
         key: u64,
         resp: crate::ui::Response,
     ) {
-        let at = self.tree.last_closed;
-        if at == NONE || at >= self.tree.nodes.len() || self.tree.nodes[at].key != key {
+        let at = self.tree.last_closed();
+        if at == NONE || at >= self.tree.nodes().len() || self.tree.nodes()[at].key != key {
             return;
         }
         if let Some(title) = r.str("title").filter(|t| !t.is_empty()) {
-            if self.tree.nodes[at].a11y.description.is_none() {
-                self.tree.nodes[at].a11y.description = Some(title.to_string());
+            if self.tree.nodes()[at].a11y.description.is_none() {
+                self.tree.nodes_mut()[at].a11y.description = Some(title.to_string());
             }
             self.tooltip(title);
         }
@@ -114,23 +114,24 @@ impl PopoverUi for Ui {
                     Some("hide") => false,
                     _ => !open,
                 };
-                let link = self.docs.host.popovers.entry(pk).or_default();
+                let link = self.docs.host_mut().popovers.entry(pk).or_default();
                 link.invoker = (at, key);
                 link.point = None;
                 self.set_popover_open(pk, next);
             }
-            self.tree.nodes[at].a11y.expanded = Some(self.popover_open(pk));
+            self.tree.nodes_mut()[at].a11y.expanded = Some(self.popover_open(pk));
         }
         // HTML's former `contextmenu` attribute: a secondary press or a long
         // press on it opens the popover at the pointer.
         if let Some(target) = r.str("contextmenu") {
             let context = resp.long_pressed
                 || self.gesture_of(key).long_pressed
-                || (self.interaction.input.secondary_pressed && self.interaction.state.hot == key);
+                || (self.interaction.input().secondary_pressed
+                    && self.interaction.state().hot == key);
             if context {
                 let pk = popover_key(&b.mount, target);
-                let p = self.interaction.input.pointer;
-                let link = self.docs.host.popovers.entry(pk).or_default();
+                let p = self.interaction.input().pointer;
+                let link = self.docs.host_mut().popovers.entry(pk).or_default();
                 link.invoker = (at, key);
                 link.point = Some([p.x, p.y]);
                 self.set_popover_open(pk, true);
@@ -138,13 +139,13 @@ impl PopoverUi for Ui {
         }
         if let Some(target) = r.str("interestfor") {
             let pk = popover_key(&b.mount, target);
-            let delay = (self.env.theme.durations_ms.slow * self.env.ticks_per_second as f32
+            let delay = (self.env.theme().durations_ms.slow * self.env.ticks_per_second() as f32
                 / 1000.0)
                 .ceil() as u32;
-            let s = &self.interaction.state;
+            let s = &self.interaction.state();
             let interest =
                 (s.hot == key && s.hover_ticks >= delay) || (s.focus == key && s.focus_visible);
-            let link = self.docs.host.popovers.entry(pk).or_default();
+            let link = self.docs.host_mut().popovers.entry(pk).or_default();
             if interest {
                 link.invoker = (at, key);
                 link.interest = true;
@@ -166,7 +167,7 @@ impl PopoverUi for Ui {
         built: Built,
         build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
     ) -> Option<String> {
-        if let Some(owned) = self.tree.owning.last_mut() {
+        if let Some(owned) = self.tree.owning_mut().last_mut() {
             owned.moved = true;
         }
         let mode = match r.str("popover") {
@@ -176,12 +177,13 @@ impl PopoverUi for Ui {
         };
         let pk = popover_key(&b.mount, &n.id);
         let link = {
-            let l = self.docs.host.popovers.entry(pk).or_default();
+            let l = self.docs.host_mut().popovers.entry(pk).or_default();
             l.mode = mode;
             *l
         };
         let (anchor, invoker) = link.invoker;
-        let anchor = if anchor < self.tree.nodes.len() && self.tree.nodes[anchor].key == invoker {
+        let anchor = if anchor < self.tree.nodes().len() && self.tree.nodes()[anchor].key == invoker
+        {
             anchor
         } else {
             NONE
@@ -189,7 +191,7 @@ impl PopoverUi for Ui {
         let mut open = self.popover_open(pk);
         // A hint shows while its control holds interest, or while the
         // pointer rests on the hint itself.
-        let pointer = self.interaction.input.pointer;
+        let pointer = self.interaction.input().pointer;
         let over = link.layer != 0
             && self
                 .last_bounds(link.layer)
@@ -200,7 +202,7 @@ impl PopoverUi for Ui {
             open = false;
         }
         if open != link.shown {
-            self.docs.host.happened.push(When::Toggle);
+            self.docs.host_mut().happened.push(When::Toggle);
         }
         // The element's place in the tree, as a modal dialog's, out of the
         // flow: HTML's popover is in the top layer, never in the page.
@@ -213,10 +215,10 @@ impl PopoverUi for Ui {
                 ..Element::default()
             },
         );
-        let at = self.tree.last_closed;
+        let at = self.tree.last_closed();
         self.tree.props_mut(at).position = crate::element::Position::Absolute;
         self.docs.note_built(built);
-        let t = self.env.theme;
+        let t = *self.env.theme();
         let content = Self::box_of(
             r,
             // A raised panel, as a browser's popover has its own canvas
@@ -246,7 +248,7 @@ impl PopoverUi for Ui {
         if mode == Mode::Auto {
             let out = self.floating(&local, open, anchor, content, |ui| {
                 layer_at = ui.tree.parent();
-                layer = ui.tree.nodes[layer_at].key;
+                layer = ui.tree.nodes()[layer_at].key;
                 build_children(ui, b, None);
             });
             if out.dismissed {
@@ -265,7 +267,7 @@ impl PopoverUi for Ui {
                 float,
                 anchor,
             );
-            layer = self.tree.nodes[i].key;
+            layer = self.tree.nodes()[i].key;
             layer_at = i;
             build_children(self, b, None);
             self.close();
@@ -273,7 +275,7 @@ impl PopoverUi for Ui {
         if layer_at != NONE {
             self.place_popover(r, layer_at, link.point);
         }
-        let l = self.docs.host.popovers.entry(pk).or_default();
+        let l = self.docs.host_mut().popovers.entry(pk).or_default();
         if layer != 0 {
             l.layer = layer;
         }
@@ -286,7 +288,7 @@ impl PopoverUi for Ui {
     fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>) {
         let (spec, authored) = Self::anchor_spec(r, &mut Props::default());
         let build = self.tree.build();
-        let n = &mut self.tree.nodes[at];
+        let n = &mut self.tree.nodes_mut()[at];
         if authored {
             n.props.write(build).anchor = Some(Box::new(spec));
         }
@@ -305,7 +307,7 @@ impl PopoverUi for Ui {
                 let color = p
                     .color("background")
                     .or(n.el.background)
-                    .unwrap_or(self.env.theme.palette.panel_raised);
+                    .unwrap_or(self.env.theme().palette.panel_raised);
                 (size, color)
             });
     }

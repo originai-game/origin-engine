@@ -110,7 +110,7 @@ impl GeneratedUi for Ui {
         let props = self.props_of(b, n, node.key, &node.values, &mut built);
         let fields = fields::RenderFields::capture(
             self,
-            self.tree.nodes[i].key,
+            self.tree.nodes()[i].key,
             i,
             kind,
             Default::default(),
@@ -138,7 +138,7 @@ impl GeneratedUi for Ui {
             Ok(style) => style,
             Err(error) => {
                 self.out
-                    .warnings
+                    .warnings_mut()
                     .push(format!("generated content: {error}"));
                 crate::TextSpanStyle::default()
             }
@@ -228,7 +228,7 @@ impl GeneratedUi for Ui {
                 .first_line_chars(key, &self.tree)
                 .unwrap_or(total)
                 .min(total);
-            if let Some(owned) = self.tree.owning.last_mut() {
+            if let Some(owned) = self.tree.owning_mut().last_mut() {
                 owned.moved = true;
             }
             if first > 0 {
@@ -297,25 +297,25 @@ pub(crate) trait GeneratedDocs {
 
 impl GeneratedDocs for crate::ui::Docs {
     fn run_enter(&mut self, r: &Resolved) {
-        if !self.host.uses_run {
+        if !self.host().uses_run {
             return;
         }
         // Style containment scopes its counters and quotes to its subtree.
         if crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned))
             .has(crate::layout::Contain::STYLE)
         {
-            self.host.run.enter_contained();
+            self.host_mut().run.enter_contained();
         } else {
-            self.host.run.enter();
+            self.host_mut().run.enter();
         }
         if let Some(g) = &r.generated {
-            self.host.run.apply(&g.ops);
+            self.host_mut().run.apply(&g.ops);
         }
     }
 
     fn run_exit(&mut self) {
-        if self.host.uses_run {
-            self.host.run.exit();
+        if self.host().uses_run {
+            self.host_mut().run.exit();
         }
     }
 
@@ -348,7 +348,7 @@ impl GeneratedDocs for crate::ui::Docs {
                 v => v.to_string(),
             })
         };
-        let run = &mut self.host.run;
+        let run = &mut self.host_mut().run;
         run.enter();
         run.apply(&which.ops);
         let text = run.evaluate(pieces, &quotes, &b.doc.sheet, &attr, r.ordinal);
@@ -447,17 +447,17 @@ impl GeneratedUi2 for Ui {
             Some(s) => {
                 if self
                     .docs
-                    .host
+                    .host()
                     .selection
                     .get(&key)
                     .is_none_or(|old| **old != s)
                 {
-                    self.docs.host.selection.insert(key, Arc::new(s));
+                    self.docs.host_mut().selection.insert(key, Arc::new(s));
                 }
             }
             None => {
-                if !self.docs.host.selection.is_empty() {
-                    self.docs.host.selection.remove(&key);
+                if !self.docs.host().selection.is_empty() {
+                    self.docs.host_mut().selection.remove(&key);
                 }
             }
         }
@@ -503,7 +503,7 @@ impl GeneratedStyle2 for crate::ui::Style {
         let n = tree
             .previous_nodes()
             .find(|n| n.key == key)
-            .or_else(|| tree.index.find(key).map(|i| &tree.nodes[i]))?;
+            .or_else(|| tree.index().find(key).map(|i| &tree.nodes()[i]))?;
         if let Some(line) = n.layout.rich_lines.first() {
             return Some(line.pieces.iter().map(|p| p.text.chars().count()).sum());
         }
@@ -577,7 +577,7 @@ li::marker { content: "(" counter(list-item) ") "; }
                 .filter(|e| !e.text.is_empty())
                 .map(|e| e.text.clone())
                 .collect();
-            (texts, ui.docs.host.retained.reconciled)
+            (texts, ui.docs.host().retained.reconciled)
         };
         let (texts, _) = frame(&mut ui);
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);

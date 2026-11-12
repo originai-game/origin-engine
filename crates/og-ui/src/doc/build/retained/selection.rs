@@ -50,7 +50,7 @@ impl RetainedSelectionRetainedHost for RetainedHost {
     fn profile(&mut self, ui: &Ui, document: &str) -> &Profile {
         self.profiles.entry(document.to_owned()).or_insert_with(|| {
             ui.docs
-                .host
+                .host()
                 .docs
                 .get(document)
                 .map(|doc| Profile::of_document(doc))
@@ -63,7 +63,7 @@ impl RetainedSelectionRetainedHost for RetainedHost {
         ui: &Ui,
         nodes: impl IntoIterator<Item = &'a Arc<UiDocument>>,
     ) -> Profile {
-        let mut out = ui.docs.host.global_structure.clone();
+        let mut out = ui.docs.host().global_structure.clone();
         for doc in nodes {
             let profile = self.profile(ui, &doc.name).clone();
             out.merge(&profile);
@@ -151,12 +151,12 @@ impl RetainedSelectionRetainedHost for RetainedHost {
     }
 
     fn consume_selector_changes(&mut self, ui: &mut Ui) -> Result<(), String> {
-        for filter in &ui.docs.host.structure.filters {
+        for filter in &ui.docs.host().structure.filters {
             self.topology.register_filter(filter);
         }
         let changes = self.topology.take_changes();
         let facts = self.topology.take_fact_changes();
-        if !ui.docs.host.structure.any {
+        if !ui.docs.host().structure.any {
             return Ok(());
         }
         for change in changes {
@@ -350,7 +350,7 @@ mod tests {
     }
 
     fn styles(ui: &Ui, parent: &MountedNode, range: Range<usize>) -> Vec<Expected> {
-        let host = &ui.docs.host.retained;
+        let host = &ui.docs.host().retained;
         host.topology
             .children(Some(parent), range)
             .map(|id| {
@@ -396,7 +396,7 @@ mod tests {
         let source = SourceId::new("test", "rows");
         let extra = SourceId::new("test", "extra");
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Collection {
                 source: source.clone(),
                 key: "id".into(),
@@ -404,7 +404,7 @@ mod tests {
             })
             .unwrap();
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Signal {
                 source: extra.clone(),
                 initial: json!(""),
@@ -459,7 +459,7 @@ mod tests {
         let saved = ui.save_state();
         for (key, before) in [("f", Some("a")), ("c", Some("b")), ("a", None)] {
             ui.docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Move {
                     source: source.clone(),
                     key: key.into(),
@@ -481,7 +481,7 @@ mod tests {
         // breaks the `.item + .item` adjacency of the row after it.
         assert_eq!(order, ["f", "c", "b", "d", "e", "a"]);
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Set {
                 source: extra.clone(),
                 value: json!("b"),
@@ -522,7 +522,7 @@ mod tests {
         );
         for key in ["b", "d", "a"] {
             ui.docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Remove {
                     source: source.clone(),
                     key: key.into(),
@@ -550,9 +550,9 @@ mod tests {
         );
         let root = root(&ui);
         tick(&mut ui, 0.0);
-        assert_eq!(ui.docs.host.retained.resolved, 0);
+        assert_eq!(ui.docs.host().retained.resolved, 0);
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Move {
                 source,
                 key: "r500".into(),
@@ -561,7 +561,10 @@ mod tests {
             .unwrap();
         order.swap(500, 501);
         tick(&mut ui, 0.0);
-        let work = (ui.docs.host.retained.resolved, ui.docs.host.retained.css);
+        let work = (
+            ui.docs.host().retained.resolved,
+            ui.docs.host().retained.css,
+        );
         // The swapped rows, the rows after the old and new positions (`+`)
         // and the two ends: a constant, not a function of the 1,000 rows.
         assert!(work.0 <= 6, "restyled {work:?}");
@@ -600,7 +603,7 @@ mod tests {
         row.insert("id".into(), json!("front"));
         row.insert("label".into(), json!("front"));
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Insert {
                 source: source.clone(),
                 row,
@@ -610,14 +613,14 @@ mod tests {
         order.insert(0, "front".into());
         tick(&mut ui, 0.0);
         // Every rank changed, but only materialized rows restyle.
-        let resolved = ui.docs.host.retained.resolved;
+        let resolved = ui.docs.host().retained.resolved;
         let now = materialized(&ui).len();
         assert!(now < shown + 4, "{now} rows materialized");
         assert_eq!(
             resolved, now,
             "restyled {resolved} of {now} materialized rows"
         );
-        let css = ui.docs.host.retained.css;
+        let css = ui.docs.host().retained.css;
         // The insert plus the inserted row's facts; each costs a few intervals.
         assert!(css.changes <= 8 && css.intervals <= 2 * 8, "{css:?}");
         assert!(css.selectors <= now * 5, "{css:?}");
@@ -627,7 +630,7 @@ mod tests {
             .unwrap()
             .clone();
         assert_eq!(
-            ui.docs.host.retained.topology.style_is_stale(&far),
+            ui.docs.host().retained.topology.style_is_stale(&far),
             Some(true)
         );
         let pairs: Vec<_> = order.iter().map(|k| (k.clone(), true)).collect();
@@ -668,7 +671,7 @@ mod tests {
         let keys: Vec<String> = (0..200).map(|i| format!("r{i}")).collect();
         let keys: Vec<&str> = keys.iter().map(String::as_str).collect();
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Collection {
                 source: source.clone(),
                 key: "id".into(),
@@ -676,7 +679,7 @@ mod tests {
             })
             .unwrap();
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Signal {
                 source: extra.clone(),
                 initial: json!(""),
@@ -696,12 +699,13 @@ mod tests {
         tick(&mut ui, 0.0);
         tick(&mut ui, 0.0);
         assert_eq!(
-            ui.docs.host.retained.resolved, 0,
+            ui.docs.host().retained.resolved,
+            0,
             "an idle tick restyles nothing"
         );
         let root = root(&ui);
         let value = |ui: &Ui, i: usize, prop: &str| {
-            let host = &ui.docs.host.retained;
+            let host = &ui.docs.host().retained;
             let id = host.topology.child_at(Some(&root), i).unwrap();
             let v = &host.elements[id].resolved.as_ref().unwrap().values;
             match prop {
@@ -716,7 +720,7 @@ mod tests {
         assert_eq!(value(&ui, 199, "opacity").as_deref(), Some("0.5"));
         assert_eq!(value(&ui, 198, "opacity"), None);
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Set {
                 source: extra.clone(),
                 value: json!("r7"),
@@ -724,7 +728,7 @@ mod tests {
             })
             .unwrap();
         tick(&mut ui, 0.0);
-        let resolved = ui.docs.host.retained.resolved;
+        let resolved = ui.docs.host().retained.resolved;
         assert_eq!(value(&ui, 7, "width"), px(50.0));
         assert_eq!(value(&ui, 8, "width"), None);
         // The first <text> child of Root is "After", past the <button>.
@@ -788,7 +792,7 @@ mod tests {
         )
         .unwrap();
         tick(&mut ui, 0.0);
-        let host = &ui.docs.host.retained;
+        let host = &ui.docs.host().retained;
         let get = |id: &str| {
             let e = host
                 .elements

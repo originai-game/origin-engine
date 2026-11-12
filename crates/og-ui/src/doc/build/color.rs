@@ -81,7 +81,7 @@ impl ColorUi for Ui {
         id: &str,
         r: &Resolved,
     ) -> crate::ui::Response {
-        let t = self.env.theme;
+        let t = *self.env.theme();
         let disabled = r.flag("disabled");
         let rgb = r.str("colorValue").and_then(parse_hex).unwrap_or([0.0; 3]);
         let swatch = self.leaf(
@@ -96,9 +96,9 @@ impl ColorUi for Ui {
                 ..Element::default()
             },
         );
-        let key = self.tree.nodes[swatch].key;
-        self.tree.nodes[swatch].a11y.role = Some("button");
-        self.tree.nodes[swatch].a11y.value = Some(to_hex(rgb));
+        let key = self.tree.nodes()[swatch].key;
+        self.tree.nodes_mut()[swatch].a11y.role = Some("button");
+        self.tree.nodes_mut()[swatch].a11y.value = Some(to_hex(rgb));
         let pressed = self.respond(key);
         let open_key = crate::id::child_key(key, "~open");
         let mut open = self.has_anim(open_key) && self.anim(open_key).h != 0;
@@ -137,9 +137,9 @@ impl ColorUi for Ui {
                 },
             );
             let square = ui.tree.parent();
-            let square_key = ui.tree.nodes[square].key;
-            ui.tree.nodes[square].a11y.role = Some("slider");
-            ui.tree.nodes[square].a11y.name = Some("Saturation and brightness".into());
+            let square_key = ui.tree.nodes()[square].key;
+            ui.tree.nodes_mut()[square].a11y.role = Some("slider");
+            ui.tree.nodes_mut()[square].a11y.name = Some("Saturation and brightness".into());
             let lit = |c: [f32; 3], a: f32| ColorRef::Literal(srgba(c, a));
             let across = |from: [f32; 2], to: [f32; 2], a: ColorRef, z: ColorRef| {
                 Paint::Gradient(Gradient {
@@ -179,10 +179,10 @@ impl ColorUi for Ui {
             // Last tick's box: where a held press maps to a colour.
             let bounds = ui.last_bounds(square_key);
             let mut drag = ui.has_anim(drag_key) && ui.anim(drag_key).h != 0;
-            if ui.interaction.input.pressed && ui.interaction.state.hot == square_key {
+            if ui.interaction.input().pressed && ui.interaction.state().hot == square_key {
                 drag = true;
             }
-            if !ui.interaction.input.down {
+            if !ui.interaction.input().down {
                 drag = false;
             }
             ui.set_anim(
@@ -193,7 +193,7 @@ impl ColorUi for Ui {
                 },
             );
             if drag && let Some(rect) = bounds {
-                let p = ui.interaction.input.pointer;
+                let p = ui.interaction.input().pointer;
                 s = ((p.x - rect.x) / rect.width.max(1.0)).clamp(0.0, 1.0);
                 v = 1.0 - ((p.y - rect.y) / rect.height.max(1.0)).clamp(0.0, 1.0);
                 changed = true;

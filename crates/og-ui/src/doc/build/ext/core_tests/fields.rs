@@ -75,7 +75,7 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
         // and the existing controls, not a viewmodel or a second build.
         let replacements: Vec<_> = patched
             .docs
-            .host
+            .host()
             .built
             .iter()
             .map(|node| {
@@ -95,21 +95,21 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
                 )
             })
             .collect();
-        patched.watch_layout_container(patched.tree.nodes[0].key);
+        patched.watch_layout_container(patched.tree.nodes()[0].key);
         // The first measure of this subscription must run on every test frame.
-        patched.unwatch_layout_container(patched.tree.nodes[0].key);
-        patched.watch_layout_container(patched.tree.nodes[0].key);
+        patched.unwatch_layout_container(patched.tree.nodes()[0].key);
+        patched.watch_layout_container(patched.tree.nodes()[0].key);
         patched
             .end_with_layout_queries(|ui, _| {
                 let state = ui.save_state();
-                let events = ui.docs.host.queued.clone();
-                let count = ui.tree.nodes.len();
+                let events = ui.docs.host().queued.clone();
+                let count = ui.tree.nodes().len();
                 for (node, values, fields) in &replacements {
                     ui.apply_document_fields(&target, &target.nodes[*node], values, fields);
                 }
                 assert_eq!(ui.save_state(), state);
-                assert_eq!(ui.docs.host.queued, events);
-                assert_eq!(ui.tree.nodes.len(), count);
+                assert_eq!(ui.docs.host().queued, events);
+                assert_eq!(ui.tree.nodes().len(), count);
                 Ok(replacements
                     .iter()
                     .map(|(_, _, fields)| fields.index)
@@ -154,7 +154,7 @@ fn a_document_material_names_an_asset_and_binds_its_parameters() {
     ui.define_document(parsed);
     let burn = SourceId::new("test", "burn");
     ui.docs
-        .reactive
+        .reactive_mut()
         .execute(Command::Signal {
             source: burn.clone(),
             initial: serde_json::json!(0.2),
@@ -197,7 +197,7 @@ fn a_document_material_names_an_asset_and_binds_its_parameters() {
         "written numbers over the defaults"
     );
     ui.docs
-        .reactive
+        .reactive_mut()
         .execute(Command::Set {
             source: burn,
             value: serde_json::json!(0.8),

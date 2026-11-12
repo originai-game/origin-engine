@@ -58,7 +58,7 @@ impl NodesEventsUi for Ui {
         let was_open = self.memory(&open_key, 0.0) > 0.0;
         let off = self.memory(&off_key, 0.0) > 0.0;
         if resp.focused {
-            self.remember(&field_key, f64::from_bits(self.interaction.state.focus));
+            self.remember(&field_key, f64::from_bits(self.interaction.state().focus));
         }
         let wants =
             resp.focused && self.device().is_pad() && r.str("inputmode") != Some("none") && !off;
@@ -104,7 +104,7 @@ impl NodesEventsUi for Ui {
         };
         // Open, it builds each tick: its keys take input and its caret
         // blinks.
-        if let Some(owned) = self.tree.owning.last_mut() {
+        if let Some(owned) = self.tree.owning_mut().last_mut() {
             owned.moved = true;
         }
         let out = self.on_screen_keyboard(&id, open, s, &desc);
@@ -114,7 +114,7 @@ impl NodesEventsUi for Ui {
         if done {
             let back = self.memory(&field_key, 0.0).to_bits();
             if back != 0 {
-                self.interaction.request_focus = back;
+                *self.interaction.request_focus_mut() = back;
             }
         }
         self.remember(&open_key, if open && !done { 1.0 } else { 0.0 });
@@ -127,16 +127,16 @@ impl NodesEventsUi for Ui {
             return;
         }
         let ms = r.num("dataHold").unwrap_or(500.0);
-        let need = ((ms * self.env.ticks_per_second as f32 / 1000.0).ceil() as u64).max(1);
-        let focused = self.interaction.state.focus == key
+        let need = ((ms * self.env.ticks_per_second() as f32 / 1000.0).ceil() as u64).max(1);
+        let focused = self.interaction.state().focus == key
             && (self
                 .interaction
-                .input
+                .input()
                 .keys_held
                 .iter()
                 .any(|k| matches!(*k, "Enter" | "NumpadEnter" | "Space"))
-                || self.interaction.input.gamepad.held & crate::input::GamepadFrame::A != 0);
-        let pressing = (self.interaction.input.down && self.interaction.state.active == key)
+                || self.interaction.input().gamepad.held & crate::input::GamepadFrame::A != 0);
+        let pressing = (self.interaction.input().down && self.interaction.state().active == key)
             || focused
             || r.str("dataAction")
                 .is_some_and(|a| self.interaction.action_down(a));
@@ -153,7 +153,8 @@ impl NodesEventsUi for Ui {
             );
         }
         let frac = (ticks as f32 / need as f32).min(1.0);
-        if !fill || frac <= 0.0 || at >= self.tree.nodes.len() || self.tree.nodes[at].key != key {
+        if !fill || frac <= 0.0 || at >= self.tree.nodes().len() || self.tree.nodes()[at].key != key
+        {
             return;
         }
         // `::-og-hold`'s box (a pseudo-element node) colours it.
@@ -162,13 +163,13 @@ impl NodesEventsUi for Ui {
             .iter()
             .find(|(w, ..)| *w == "hold")
             .and_then(|(_, _, p)| p.color("background"))
-            .unwrap_or_else(|| self.env.theme.palette.primary.fade(0.33));
+            .unwrap_or_else(|| self.env.theme().palette.primary.fade(0.33));
         let frame = if self.direction() == og_i18n::Direction::Rtl {
             crate::layout::Frame::left(1.0 - frac, 1.0)
         } else {
             crate::layout::Frame::left(0.0, frac)
         };
-        let radius = self.tree.nodes[at].el.radius;
+        let radius = self.tree.nodes()[at].el.radius;
         self.tree.shapes_mut(at).push(crate::layout::Shape::Rect {
             frame,
             radius,
@@ -209,7 +210,7 @@ impl NodesEventsUi for Ui {
                 b.event(path, kind, &n.id, Value::Null);
             }
         }
-        let appeared = !self.docs.host.seen.contains(&key);
+        let appeared = !self.docs.host().seen.contains(&key);
         // `use:` in an immediate build: made the first tick it is built,
         // updated when its params change; gone is found in docs_begin. A
         // mounted element's are sent by the retained host.
@@ -218,7 +219,7 @@ impl NodesEventsUi for Ui {
                 let value = params.as_ref().map_or(Value::Null, |p| b.eval(p));
                 let old = self
                     .docs
-                    .host
+                    .host_mut()
                     .last
                     .insert((key, usize::MAX - k), value.clone());
                 let phase = match old {
@@ -240,12 +241,12 @@ impl NodesEventsUi for Ui {
                 row_key: b.row_key.clone(),
                 ..DocEvent::default()
             };
-            self.docs.host.uses.insert(key, (event, names));
+            self.docs.host_mut().uses.insert(key, (event, names));
         }
-        let happened = std::mem::take(&mut self.docs.host.happened);
+        let happened = std::mem::take(&mut self.docs.host_mut().happened);
         let held = n.triggers.iter().any(|t| t.when == When::Hold) && self.held(key, n);
-        let context =
-            long || (self.interaction.input.secondary_pressed && self.interaction.state.hot == key);
+        let context = long
+            || (self.interaction.input().secondary_pressed && self.interaction.state().hot == key);
         for (k, t) in n.triggers.iter().enumerate() {
             let go = match &t.when {
                 When::Click => resp.clicked,
@@ -258,19 +259,19 @@ impl NodesEventsUi for Ui {
                 When::ContextMenu => context,
                 When::Toggle | When::Close | When::Revealed => happened.contains(&t.when),
                 When::Action(a) => {
-                    self.docs.host.accepts
+                    self.docs.host().accepts
                         && self.interaction.action_fired(a)
                         // A disabled control's shortcut activates nothing,
                         // as its press does not (a `<fieldset disabled>`'s
                         // controls included).
-                        && !self.tree.index.find(key).is_some_and(|i| self.tree.nodes[i].disabled)
+                        && !self.tree.index().find(key).is_some_and(|i| self.tree.nodes()[i].disabled)
                         // An exclusive `<details name>`'s own action
                         // reaches every disclosure of its name.
                         && (a.starts_with('~') || self.focus_in_row(path, &b.row_key))
                 }
                 When::Change(e) => {
                     let v = b.eval(e);
-                    let old = self.docs.host.last.insert((key, k), v.clone());
+                    let old = self.docs.host_mut().last.insert((key, k), v.clone());
                     old.is_some_and(|o| o != v)
                 }
                 // The input pass fires these ([`super::pointer`]); the
@@ -285,12 +286,15 @@ impl NodesEventsUi for Ui {
                     let name = qualify(&b.doc.name, tl);
                     let id = self.play_timeline(path, &name, crate::motion::PlayDesc::default());
                     self.docs
-                        .host
+                        .host_mut()
                         .plays
                         .insert((path.to_string(), tl.clone()), id);
                 }
                 Act::State(g, s) => {
-                    self.docs.host.states.insert((key, g.clone()), s.clone());
+                    self.docs
+                        .host_mut()
+                        .states
+                        .insert((key, g.clone()), s.clone());
                 }
                 Act::Emit(name) => b.event(path, "emit", name, Value::Null),
                 Act::Submit {
@@ -302,7 +306,7 @@ impl NodesEventsUi for Ui {
                     // the focus, and the form is not submitted.
                     let first = self
                         .docs
-                        .host
+                        .host()
                         .validity
                         .iter()
                         .filter(|(_, v)| {
@@ -315,18 +319,21 @@ impl NodesEventsUi for Ui {
                         .min_by(|a, b| (a.1.node, &a.1.row_key).cmp(&(b.1.node, &b.1.row_key)))
                         .map(|(k, _)| *k);
                     match first {
-                        Some(k) => self.interaction.request_focus = k,
+                        Some(k) => *self.interaction.request_focus_mut() = k,
                         None => b.event(path, "emit", action, Value::Null),
                     }
                 }
                 Act::Push(screen) => self
                     .docs
-                    .host
+                    .host_mut()
                     .ops
                     .push(crate::layers::LayerOp::Push(screen.clone(), Value::Null)),
                 Act::Pop => {
-                    let l = self.docs.host.building;
-                    self.docs.host.ops.push(crate::layers::LayerOp::Pop(l))
+                    let l = self.docs.host().building;
+                    self.docs
+                        .host_mut()
+                        .ops
+                        .push(crate::layers::LayerOp::Pop(l))
                 }
                 Act::Action(a) => {
                     self.fire_action(a);

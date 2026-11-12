@@ -68,8 +68,8 @@ impl KbdUi for Ui {
             if resp.clicked {
                 self.remember(&capturing, 1.0);
             }
-            let at = self.tree.last_closed;
-            self.tree.nodes[at].a11y.name = Some(label);
+            let at = self.tree.last_closed();
+            self.tree.nodes_mut()[at].a11y.name = Some(label);
             return resp;
         }
         match glyph.filter(|g| self.icons().find(&g.icon).is_some()) {
@@ -84,9 +84,9 @@ impl KbdUi for Ui {
             ),
             None => {
                 self.badge(id, &cap, crate::widgets::Tone::Neutral);
-                let at = self.tree.last_closed;
+                let at = self.tree.last_closed();
                 if !label.is_empty() {
-                    self.tree.nodes[at].a11y.name = Some(label);
+                    self.tree.nodes_mut()[at].a11y.name = Some(label);
                 }
             }
         }

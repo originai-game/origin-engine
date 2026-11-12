@@ -567,7 +567,7 @@ impl WorldUi for Ui {
             }
             (Err(e), _) | (_, Err(e)) => self
                 .out
-                .warnings
+                .warnings_mut()
                 .push(format!("{}:{} ({path}): {e}", b.doc.source, n.line)),
         }
     }
@@ -598,7 +598,7 @@ impl WorldUi for Ui {
             Ok(d) => d,
             Err(e) => {
                 self.out
-                    .warnings
+                    .warnings_mut()
                     .push(format!("{}:{} ({path}): {e}", b.doc.source, n.line));
                 return None;
             }
@@ -610,7 +610,7 @@ impl WorldUi for Ui {
         p.state = props.state;
         *self.tree.props_mut(i) = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
         }
         self.tree.keep_world_panel(i, key, &mut self.world);
         self.docs.note_built(built);
@@ -635,7 +635,7 @@ impl WorldUi for Ui {
             (None, Some(p)) => match vec3(p) {
                 Some(v) => WorldTarget::Point(v),
                 None => {
-                    self.out.warnings.push(format!(
+                    self.out.warnings_mut().push(format!(
                         "{}:{} ({path}): at=\"{p}\" is three numbers, x y z",
                         b.doc.source, n.line
                     ));
@@ -643,7 +643,7 @@ impl WorldUi for Ui {
                 }
             },
             (None, None) => {
-                self.out.warnings.push(format!(
+                self.out.warnings_mut().push(format!(
                     "{}:{} ({path}): an <anchor mass> takes entity={{…}} or at=\"x y z\"",
                     b.doc.source, n.line
                 ));
@@ -687,10 +687,11 @@ impl WorldUi for Ui {
         let mut lifetime = 0;
         let mut keys = Vec::new();
         if let Some(a) = r.animations.first()
-            && let Some(frames) = self.docs.host.keyframes.get(&a.name).cloned()
+            && let Some(frames) = self.docs.host().keyframes.get(&a.name).cloned()
         {
-            lifetime =
-                ((a.duration_ms * self.env.ticks_per_second as f32 / 1000.0).round() as u32).max(1);
+            lifetime = ((a.duration_ms * self.env.ticks_per_second() as f32 / 1000.0).round()
+                as u32)
+                .max(1);
             let track = |prop: crate::element::Prop, t: f32, rest: f32| {
                 let Some(tr) = frames.tracks.iter().find(|tr| tr.prop == prop) else {
                     return rest;
@@ -765,8 +766,8 @@ impl WorldUi for Ui {
                 ..Element::default()
             },
         );
-        self.tree.nodes[i].hidden = true;
-        let owner = self.tree.nodes[i].key;
+        self.tree.nodes_mut()[i].hidden = true;
+        let owner = self.tree.nodes()[i].key;
         debug_assert_eq!(owner, key, "the leaf takes the element's key");
         self.document_mass(
             key,
@@ -818,7 +819,7 @@ impl WorldUi for Ui {
             Ok(d) => d,
             Err(e) => {
                 self.out
-                    .warnings
+                    .warnings_mut()
                     .push(format!("{}:{} ({path}): {e}", b.doc.source, n.line));
                 return None;
             }
@@ -830,12 +831,12 @@ impl WorldUi for Ui {
         p.state = props.state;
         *self.tree.props_mut(i) = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
         }
         self.world
             .declared
             .kept
-            .insert(self.tree.nodes[i].key, (desc, key));
+            .insert(self.tree.nodes()[i].key, (desc, key));
         self.docs.note_built(built);
         build_children(self, b, None);
         let resp = self.close();
@@ -889,7 +890,7 @@ mod tests {
                 .collect()
         };
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Collection {
                 source: units.clone(),
                 key: "id".into(),
@@ -959,7 +960,7 @@ mod tests {
         );
         // One name: that tag alone.
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Patch {
                 source: units.clone(),
                 key: "u1".into(),
@@ -983,7 +984,7 @@ mod tests {
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
         // A row leaves: its anchor leaves.
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Remove {
                 source: units,
                 key: "u1".into(),
@@ -1034,16 +1035,16 @@ mod tests {
         let path = "test:sign/Box/Line/Word";
         let word = ui
             .tree
-            .nodes
+            .nodes()
             .iter()
             .position(|n| n.id == "Word")
             .expect("the word is built");
-        assert_eq!(ui.tree.nodes[word].key, crate::id::key_of_path(path));
+        assert_eq!(ui.tree.nodes()[word].key, crate::id::key_of_path(path));
         assert!(ui.element(path).is_some(), "{path}");
-        let layer = ui.tree.nodes[ui.tree.nodes[ui.tree.nodes[word].parent].parent].parent;
-        assert_eq!(ui.tree.nodes[layer].parent, crate::layout::NONE);
+        let layer = ui.tree.nodes()[ui.tree.nodes()[ui.tree.nodes()[word].parent].parent].parent;
+        assert_eq!(ui.tree.nodes()[layer].parent, crate::layout::NONE);
         assert_eq!(
-            ui.tree.nodes[layer].key,
+            ui.tree.nodes()[layer].key,
             crate::id::key_of_path("test:sign")
         );
     }
@@ -1082,7 +1083,7 @@ mod tests {
             (&units, json!([{"id": "u", "entity": 1, "hp": 50}])),
         ] {
             ui.docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Collection {
                     source: source.clone(),
                     key: "id".into(),
@@ -1124,7 +1125,7 @@ mod tests {
         let hp = ui.mass_handle("hp").expect("the hp template");
         assert_eq!(ui.mass_count(damage), 1);
         let t = &ui.world.declared.templates[damage.0 as usize].1;
-        assert_eq!(t.lifetime, ui.env.ticks_per_second);
+        assert_eq!(t.lifetime, ui.env.ticks_per_second());
         let last = t.keys.last().expect("keys");
         assert_eq!((last.t, last.offset.y, last.alpha), (1.0, -40.0, 0.0));
         let bars = |ui: &Ui| {
@@ -1140,7 +1141,7 @@ mod tests {
         assert_eq!(bars(&ui), 1);
         // A second hit spawns one more; the first is not spawned again.
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Insert {
                 source: hits.clone(),
                 row: json!({"id": "b", "entity": 1, "amount": 30})
@@ -1155,7 +1156,7 @@ mod tests {
         assert!(hp != damage);
         // The unit leaves: its bar does.
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Remove {
                 source: units,
                 key: "u".into(),
@@ -1311,7 +1312,7 @@ mod tests {
         ui.define_document(parsed);
         let on = SourceId::new("test", "on");
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Signal {
                 source: on.clone(),
                 initial: json!(true),
@@ -1352,7 +1353,7 @@ mod tests {
         assert!(particles(&ui) > before, "the emitter stopped while idle");
         assert!(ui.world.declared.kept_effects.len() == 2);
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Set {
                 source: on,
                 value: json!(false),

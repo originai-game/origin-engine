@@ -99,7 +99,7 @@ impl MountUi for Ui {
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
-        self.docs.host.uses_run |= doc.nodes.iter().any(|n| {
+        self.docs.host_mut().uses_run |= doc.nodes.iter().any(|n| {
             n.rules.iter().any(|rule| {
                 rule.declarations
                     .iter()
@@ -108,17 +108,17 @@ impl MountUi for Ui {
         });
         let prefix = format!("{}/", doc.name);
         self.docs
-            .host
+            .host_mut()
             .keyframes
             .retain(|name, _| !name.starts_with(&prefix));
         for (n, k) in &doc.sheet.keyframes {
             self.docs
-                .host
+                .host_mut()
                 .keyframes
                 .insert(format!("{prefix}{n}"), Arc::new(k.clone()));
         }
         self.docs
-            .host
+            .host_mut()
             .structure
             .merge(&crate::doc::matching::Profile::of_document(&doc));
         for selector in doc
@@ -128,9 +128,9 @@ impl MountUi for Ui {
             .filter_map(|r| r.structure.as_ref())
             .filter(|s| s.global)
         {
-            self.docs.host.global_structure.add(selector);
+            self.docs.host_mut().global_structure.add(selector);
         }
-        self.docs.host.wide_keywords |= doc.nodes.iter().any(|n| {
+        self.docs.host_mut().wide_keywords |= doc.nodes.iter().any(|n| {
             n.rules.iter().flat_map(|r| &r.declarations).any(|d| {
                 d.value.binding().is_some()
                     || super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())
@@ -141,23 +141,29 @@ impl MountUi for Ui {
                         )
             })
         });
-        let mut retained = std::mem::take(&mut self.docs.host.retained);
+        let mut retained = std::mem::take(&mut self.docs.host_mut().retained);
         retained.document_replaced(self, &doc.name);
-        self.docs.host.retained = retained;
-        self.docs.host.docs.insert(doc.name.clone(), Arc::new(doc));
+        self.docs.host_mut().retained = retained;
+        self.docs
+            .host_mut()
+            .docs
+            .insert(doc.name.clone(), Arc::new(doc));
     }
 
     fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
-        self.docs.host.rive.insert(id.to_owned(), artboard);
+        self.docs.host_mut().rive.insert(id.to_owned(), artboard);
     }
 
     fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle) {
-        self.docs.host.textures.insert(path.to_owned(), texture);
+        self.docs
+            .host_mut()
+            .textures
+            .insert(path.to_owned(), texture);
     }
 
     fn define_texture_alpha(&mut self, path: &str, alpha: crate::ImageAlpha) {
         self.docs
-            .host
+            .host_mut()
             .alphas
             .insert(path.to_owned(), Arc::new(alpha));
     }
@@ -169,14 +175,14 @@ impl MountUi for Ui {
         defaults: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
     ) {
         self.docs
-            .host
+            .host_mut()
             .materials
             .insert(path.to_owned(), (handle, defaults));
     }
 
     fn component(&mut self, id: &str, name: &str, props: &mut Value, env: &dyn Env) -> DocResponse {
-        let Some(doc) = self.docs.host.docs.get(name).cloned() else {
-            self.out.warnings.push(format!(
+        let Some(doc) = self.docs.host().docs.get(name).cloned() else {
+            self.out.warnings_mut().push(format!(
                 "Ui::component: no document named '{name}' (load its .ogt with og.load.document)"
             ));
             return DocResponse::default();
@@ -187,22 +193,22 @@ impl MountUi for Ui {
             vm.insert("$ui".into(), self.ui_store_value());
         }
         let game = self.game_input();
-        let accepts = std::mem::replace(&mut self.docs.host.accepts, game);
+        let accepts = std::mem::replace(&mut self.docs.host_mut().accepts, game);
         let r = self.mount_doc(doc, mount, id, props, env, Arc::default());
-        self.docs.host.accepts = accepts;
+        self.docs.host_mut().accepts = accepts;
         r
     }
 
     fn open_slot(&mut self, path: &str) -> bool {
-        match self.docs.host.slots.get(path) {
-            Some(&i) if i < self.tree.nodes.len() => {
-                self.tree.stack.push(i);
+        match self.docs.host().slots.get(path) {
+            Some(&i) if i < self.tree.nodes().len() => {
+                self.tree.stack_mut().push(i);
                 true
             }
             _ => {
-                self.out.warnings.push(format!(
+                self.out.warnings_mut().push(format!(
                     "Ui::open_slot: no slot '{path}' this tick (mount the document first; slots: {})",
-                    self.docs.host.slots.keys().cloned().collect::<Vec<_>>().join(", ")
+                    self.docs.host().slots.keys().cloned().collect::<Vec<_>>().join(", ")
                 ));
                 false
             }
@@ -210,18 +216,18 @@ impl MountUi for Ui {
     }
 
     fn take_media_ops(&mut self) -> Vec<crate::bind::MediaOp> {
-        std::mem::take(&mut self.docs.host.media_ops)
+        std::mem::take(&mut self.docs.host_mut().media_ops)
     }
 
     fn take_doc_events(&mut self) -> Vec<DocEvent> {
-        std::mem::take(&mut self.docs.host.queued)
+        std::mem::take(&mut self.docs.host_mut().queued)
     }
 
     fn doc_built(&self) -> Vec<Built> {
-        let mut out = self.docs.host.built.clone();
+        let mut out = self.docs.host().built.clone();
         out.extend(
             self.docs
-                .host
+                .host()
                 .retained
                 .records()
                 .flat_map(|r| r.built.iter().cloned()),
@@ -230,10 +236,10 @@ impl MountUi for Ui {
     }
 
     fn art_slots(&self) -> Vec<(String, crate::slot::SlotSpec)> {
-        let mut out = self.docs.host.arts.clone();
+        let mut out = self.docs.host().arts.clone();
         out.extend(
             self.docs
-                .host
+                .host()
                 .retained
                 .records()
                 .flat_map(|r| r.arts.iter().cloned()),
@@ -242,16 +248,16 @@ impl MountUi for Ui {
     }
 
     fn doc_edits(&self) -> &[Edit] {
-        &self.docs.host.edits
+        &self.docs.host().edits
     }
 
     fn set_doc_prop(&mut self, path: &str, prop: &str, value: &str) -> Result<(), String> {
         let (spec, v) = parse_probe_value(prop, value)?;
         self.docs
-            .host
+            .host_mut()
             .edits
             .retain(|e| !(e.path == path && e.prop == prop));
-        self.docs.host.edits.push(Edit {
+        self.docs.host_mut().edits.push(Edit {
             path: path.to_string(),
             prop: prop.to_string(),
             spec,
@@ -263,14 +269,14 @@ impl MountUi for Ui {
 
     fn clear_doc_edits(&mut self, path: &str) {
         self.docs
-            .host
+            .host_mut()
             .edits
             .retain(|e| !path.is_empty() && e.path != path);
     }
 
     fn doc_element(&self, path: &str) -> Option<(&str, usize)> {
         self.docs
-            .host
+            .host()
             .built
             .iter()
             .find(|b| b.path == path)
@@ -278,7 +284,7 @@ impl MountUi for Ui {
     }
 
     fn save_doc_edits(&mut self) -> Result<Vec<(String, String, String)>, String> {
-        let edits = self.docs.host.edits.clone();
+        let edits = self.docs.host().edits.clone();
         let mut changed: BTreeMap<String, UiDocument> = BTreeMap::new();
         let mut kept = Vec::new();
         for e in edits {
@@ -290,14 +296,14 @@ impl MountUi for Ui {
             let d = match changed.get_mut(&doc) {
                 Some(d) => d,
                 None => {
-                    let d = (**self.docs.host.docs.get(&doc).ok_or("no document")?).clone();
+                    let d = (**self.docs.host().docs.get(&doc).ok_or("no document")?).clone();
                     changed.entry(doc.clone()).or_insert(d)
                 }
             };
             d.set_prop(node, &e.prop, &e.source)
                 .map_err(|why| format!("{}: {}.{}: {why}", d.source, e.path, e.prop))?;
         }
-        self.docs.host.edits = kept;
+        self.docs.host_mut().edits = kept;
         let mut out = Vec::new();
         for (name, d) in changed {
             out.push((name, d.source.clone(), d.text.clone()));
@@ -327,7 +333,7 @@ impl MountUi for Ui {
             self.pause(id);
         }
         self.docs
-            .host
+            .host_mut()
             .plays
             .insert((path.to_string(), timeline.to_string()), id);
         Ok(id)
@@ -336,7 +342,7 @@ impl MountUi for Ui {
     fn seek_doc_timeline(&mut self, path: &str, timeline: &str, ms: f32) -> Result<u32, String> {
         if let Some(&id) = self
             .docs
-            .host
+            .host()
             .plays
             .get(&(path.to_string(), timeline.to_string()))
             && self.seek(id, ms)
@@ -414,7 +420,7 @@ impl MountUi2 for Ui {
             .or_else(|| {
                 // A path below a mount: the nearest built ancestor's document.
                 self.docs
-                    .host
+                    .host()
                     .built
                     .iter()
                     .filter(|b| path.starts_with(&format!("{}/", b.path)))
@@ -461,25 +467,25 @@ pub(crate) trait MountDocs {
 
 impl MountDocs for crate::ui::Docs {
     fn note_built(&mut self, built: Built) {
-        match self.host.capture.last_mut() {
+        match self.host_mut().capture.last_mut() {
             Some(record) => record.built.push(built),
-            None => self.host.built.push(built),
+            None => self.host_mut().built.push(built),
         }
     }
 
     fn note_render_fields(&mut self, key: u64, fields: super::fields::RenderFields) {
-        match self.host.capture.last_mut() {
+        match self.host_mut().capture.last_mut() {
             Some(record) => record.render_fields.push((key, fields)),
             None => {
-                self.host.render_fields.insert(key, fields);
+                self.host_mut().render_fields.insert(key, fields);
             }
         }
     }
 
     fn note_art(&mut self, path: String, spec: crate::slot::SlotSpec) {
-        match self.host.capture.last_mut() {
+        match self.host_mut().capture.last_mut() {
             Some(record) => record.arts.push((path, spec)),
-            None => self.host.arts.push((path, spec)),
+            None => self.host_mut().arts.push((path, spec)),
         }
     }
 
@@ -489,8 +495,8 @@ impl MountDocs for crate::ui::Docs {
 
     #[cfg(test)]
     fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
-        self.host.render_fields.get(&key).or_else(|| {
-            self.host
+        self.host().render_fields.get(&key).or_else(|| {
+            self.host()
                 .retained
                 .record(key)
                 .and_then(|r| r.render_fields.iter().find(|(k, _)| *k == key))
@@ -510,8 +516,8 @@ pub trait MountUi3 {
 
 impl MountUi3 for Ui {
     fn inherit_store_registrations(&mut self, previous: &Self) {
-        self.docs.reactive = previous.docs.reactive.clone();
-        self.docs.reactive.graph.clear_bindings();
+        *self.docs.reactive_mut() = previous.docs.reactive().clone();
+        self.docs.reactive_mut().graph.clear_bindings();
         self.inherit_document_registrations(previous);
     }
 
@@ -530,25 +536,25 @@ impl MountUi3 for Ui {
                 }
                 Command::Unmount { mount } => {
                     mount.validate()?;
-                    self.docs.reactive.graph.check_idle(&mount)?;
+                    self.docs.reactive().graph.check_idle(&mount)?;
                     self.unmount_document(&mount);
                 }
                 Command::Registered { sources, mounts } => {
                     self.docs.registered_document_mounts(mounts)?;
-                    self.docs.reactive.execute(Command::Registered {
+                    self.docs.reactive_mut().execute(Command::Registered {
                         sources,
                         mounts: Vec::new(),
                     })?;
                 }
                 Command::Dispose { scope } => {
                     self.docs
-                        .reactive
+                        .reactive()
                         .graph
                         .check_idle(&SourceId::new(&scope, "dispose"))?;
                     self.unmount_scope(&scope);
-                    return self.docs.reactive.execute(Command::Dispose { scope });
+                    return self.docs.reactive_mut().execute(Command::Dispose { scope });
                 }
-                command => return self.docs.reactive.execute(command),
+                command => return self.docs.reactive_mut().execute(command),
             }
             Ok(Value::Null)
         })

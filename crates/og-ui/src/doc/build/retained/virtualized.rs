@@ -111,7 +111,7 @@ impl RetainedVirtualizedRetainedHost for RetainedHost {
         self.scrollers.insert(
             element.context.node.clone(),
             ui.interaction
-                .state
+                .state()
                 .scroll
                 .get(&element.context.node.key)
                 .copied()
@@ -119,10 +119,10 @@ impl RetainedVirtualizedRetainedHost for RetainedHost {
         );
         // Each row's materialization: on screen, or in the overscan.
         let shown: Vec<Materialization> = {
-            let list = &ui.interaction.state.virtual_lists[&element.context.node.key];
+            let list = &ui.interaction.state().virtual_lists[&element.context.node.key];
             let offset = ui
                 .interaction
-                .state
+                .state()
                 .scroll
                 .get(&element.context.node.key)
                 .copied()
@@ -144,7 +144,7 @@ impl RetainedVirtualizedRetainedHost for RetainedHost {
                 self.emit(ui, child, env, events, writes)?;
             }
             let list_slot = ui.tree.parent();
-            let list_key = ui.tree.nodes[list_slot].key;
+            let list_key = ui.tree.nodes()[list_slot].key;
             for (index, materialization) in (first..end).zip(shown) {
                 let index = index as u32;
                 // A row whose own node would be written as it stands (no

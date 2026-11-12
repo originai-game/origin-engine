@@ -53,7 +53,7 @@ impl TextMotionUi for Ui {
         );
         // Still counting: it builds again next tick (its memory is still).
         if shown != f64::from(value)
-            && let Some(owned) = self.tree.owning.last_mut()
+            && let Some(owned) = self.tree.owning_mut().last_mut()
         {
             owned.moved = true;
         }
@@ -65,7 +65,7 @@ impl TextMotionUi for Ui {
         };
         let memory = crate::id::child_key(key, "~reveal");
         let hash = og_core::hash::hash_bytes(text.as_bytes());
-        let now = self.interaction.state.tick;
+        let now = self.interaction.state().tick;
         let mut a = self.anim(memory);
         let fresh = !self.has_anim(memory) || a.h != hash;
         if fresh {
@@ -81,16 +81,17 @@ impl TextMotionUi for Ui {
         let shown = if self.still() {
             total
         } else {
-            let elapsed = now.saturating_sub(a.t) as f32 / self.env.ticks_per_second.max(1) as f32;
+            let elapsed =
+                now.saturating_sub(a.t) as f32 / self.env.ticks_per_second().max(1) as f32;
             ((elapsed * cps) as usize).min(total)
         };
         if shown == total && a.a < 1.0 {
-            self.docs.host.happened.push(When::Revealed);
+            self.docs.host_mut().happened.push(When::Revealed);
         }
         a.a = if shown == total { 1.0 } else { 0.0 };
         self.set_anim(memory, a);
         if shown < total
-            && let Some(owned) = self.tree.owning.last_mut()
+            && let Some(owned) = self.tree.owning_mut().last_mut()
         {
             owned.moved = true;
         }
@@ -128,7 +129,7 @@ impl TextMotionUi for Ui {
                 .unwrap_or_else(|| items.get(k).cloned().unwrap_or_default())
         };
         let text = label(now);
-        let t = self.env.theme;
+        let t = *self.env.theme();
         self.open(
             id,
             Element {
@@ -195,17 +196,17 @@ impl TextMotionUi for Ui {
         self.tree.props_mut(at).position = crate::element::Position::Absolute;
         let found = self
             .tree
-            .nodes
+            .nodes()
             .iter()
             .position(|node| node.id == target)
-            .filter(|&i| self.tree.nodes[i].key != 0);
-        let hole = found.and_then(|i| self.last_bounds(self.tree.nodes[i].key));
+            .filter(|&i| self.tree.nodes()[i].key != 0);
+        let hole = found.and_then(|i| self.last_bounds(self.tree.nodes()[i].key));
         let shade = self.spotlight(
             format!("{id}~spotlight").as_str(),
             hole,
             crate::widgets::SpotlightDesc::default(),
         );
-        let t = self.env.theme;
+        let t = *self.env.theme();
         let content = Self::box_of(
             r,
             Element {

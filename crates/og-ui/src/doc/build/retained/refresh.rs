@@ -201,7 +201,10 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                 != enabled
             {
                 self.topology.set_state(identity, state, enabled)?;
-                ui.docs.reactive.graph.interaction_changed(identity, state);
+                ui.docs
+                    .reactive_mut()
+                    .graph
+                    .interaction_changed(identity, state);
             }
         }
         Ok(())
@@ -212,26 +215,26 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
         let presentation_changed =
-            std::mem::replace(&mut self.presentation_epoch, ui.tree.invalidation.epoch)
-                != ui.tree.invalidation.epoch;
+            std::mem::replace(&mut self.presentation_epoch, ui.tree.invalidation().epoch)
+                != ui.tree.invalidation().epoch;
         if self
             .theme
             .replace(*ui.theme())
             .is_some_and(|old| old != *ui.theme())
             || self
                 .direction
-                .replace(ui.env.direction)
-                .is_some_and(|old| old != ui.env.direction)
+                .replace(ui.env.direction())
+                .is_some_and(|old| old != ui.env.direction())
             || presentation_changed
         {
             self.theme_epoch += 1;
         }
-        let scrolled = std::mem::take(&mut ui.docs.host.scroll_changed);
+        let scrolled = std::mem::take(&mut ui.docs.host_mut().scroll_changed);
         self.rescroll(&scrolled);
         let viewport = ui.media_context();
-        let [small, large] = ui.env.viewport.extremes();
-        let sa = ui.env.viewport.env_insets();
-        let hud = ui.env.viewport.hud_insets(ui.env.hud_max_aspect);
+        let [small, large] = ui.env.viewport().extremes();
+        let sa = ui.env.viewport().env_insets();
+        let hud = ui.env.viewport().hud_insets(ui.env.hud_max_aspect());
         let surface = [
             sa.top, sa.right, sa.bottom, sa.left, small[0], small[1], large[0], large[1], hud.left,
             hud.right,
@@ -256,7 +259,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             let topology = &self.topology;
             let changes = self
                 .bindings
-                .refresh(&mut ui.docs.reactive, env, |node, state| {
+                .refresh(ui.docs.reactive_mut(), env, |node, state| {
                     topology
                         .node(node)
                         .is_some_and(|n| n.states.contains(&state))
@@ -398,7 +401,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
     }
 
     fn forced_keys(&self, ui: &Ui) -> Vec<u64> {
-        if ui.interaction.state.motion.forced.is_empty() {
+        if ui.interaction.state().motion.forced.is_empty() {
             return Vec::new();
         }
         self.by_key
@@ -413,15 +416,15 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             Active, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen, Target,
         };
         let mut next: [Vec<u64>; 4] = [
-            vec![ui.interaction.state.hot],
-            vec![if ui.interaction.input.down {
-                ui.interaction.state.active
+            vec![ui.interaction.state().hot],
+            vec![if ui.interaction.input().down {
+                ui.interaction.state().active
             } else {
                 0
             }],
-            vec![ui.interaction.state.focus],
-            vec![if ui.interaction.state.focus_visible {
-                ui.interaction.state.focus
+            vec![ui.interaction.state().focus],
+            vec![if ui.interaction.state().focus_visible {
+                ui.interaction.state().focus
             } else {
                 0
             }],
@@ -446,7 +449,10 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             for (key, enabled) in off.map(|k| (k, false)).chain(on.map(|k| (k, true))) {
                 if let Some(node) = self.by_key.get(key) {
                     self.topology.set_state(node, state, enabled)?;
-                    ui.docs.reactive.graph.interaction_changed(node, state);
+                    ui.docs
+                        .reactive_mut()
+                        .graph
+                        .interaction_changed(node, state);
                 }
             }
         }
@@ -457,7 +463,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             .map(|(key, node)| {
                 (
                     node.clone(),
-                    ui.docs.host.popovers.get(key).is_some_and(|l| l.shown),
+                    ui.docs.host().popovers.get(key).is_some_and(|l| l.shown),
                 )
             })
             .collect();
@@ -474,14 +480,14 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             {
                 self.topology.set_state(&node, PopoverOpen, open)?;
                 ui.docs
-                    .reactive
+                    .reactive_mut()
                     .graph
                     .interaction_changed(&node, PopoverOpen);
             }
         }
-        if self.target.0 != ui.docs.host.target {
+        if self.target.0 != ui.docs.host().target {
             let old = std::mem::take(&mut self.target.1);
-            let id = ui.docs.host.target.clone();
+            let id = ui.docs.host().target.clone();
             let new: Vec<MountedNode> = match &id {
                 Some(id) => self
                     .elements
@@ -495,7 +501,10 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                 for node in nodes {
                     if self.topology.node(node).is_some() {
                         self.topology.set_state(node, Target, enabled)?;
-                        ui.docs.reactive.graph.interaction_changed(node, Target);
+                        ui.docs
+                            .reactive_mut()
+                            .graph
+                            .interaction_changed(node, Target);
                     }
                 }
             }
@@ -509,7 +518,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                 while let Some(node) = ancestor {
                     self.topology.set_state(&node, FocusWithin, enabled)?;
                     ui.docs
-                        .reactive
+                        .reactive_mut()
                         .graph
                         .interaction_changed(&node, FocusWithin);
                     ancestor = self.topology.parent(&node).cloned();
@@ -535,7 +544,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         {
             self.resolve(ui, parent, env)?;
         }
-        let structurally_stale = ui.docs.host.structure.ancestors
+        let structurally_stale = ui.docs.host().structure.ancestors
             && self.topology.style_is_stale(identity) == Some(true);
         let inherited = parent.as_ref().map_or_else(Arc::default, |p| {
             self.elements[p]
@@ -599,7 +608,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         self.css.selectors += work.selectors;
         self.css.candidates += work.candidates;
         ui.out
-            .warnings
+            .warnings_mut()
             .extend(values.cascade.diagnostics.iter().map(|error| {
                 format!(
                     "{}:{} ({}): {error}",

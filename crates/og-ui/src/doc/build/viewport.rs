@@ -144,9 +144,9 @@ impl ViewportUi for Ui {
         let reduced = self.theme().reduced_motion;
         let hit = self
             .interaction
-            .hit(self.tree.nodes[self.tree.last_closed].key)
+            .hit(self.tree.nodes()[self.tree.last_closed()].key)
             .copied();
-        let pinch = super::gestures::two_touches(&self.interaction.input, |x, y| {
+        let pinch = super::gestures::two_touches(self.interaction.input(), |x, y| {
             hit.is_some_and(|h| h.contains(x, y))
         });
         if let Some((_, now)) = pinch {
@@ -224,7 +224,7 @@ impl ViewportUi for Ui {
                 controls,
             },
         );
-        let i = self.tree.last_closed;
+        let i = self.tree.last_closed();
         if controls {
             let bound = super::nodes::bound(n, "cameraOrbit");
             let o = self.orbit_controls(id, r, &out, bound);
@@ -239,7 +239,7 @@ impl ViewportUi for Ui {
         p.state = props.state;
         *self.tree.props_mut(i) = p;
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
         }
         // Svelte's dimension bindings: written when its box changes (a
         // resized node is built again), so the game sizes its target.
@@ -291,7 +291,7 @@ mod tests {
         for name in ["w", "h"] {
             let source = SourceId::new("test", name);
             ui.docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Signal {
                     source: source.clone(),
                     initial: json!(0),
@@ -330,7 +330,7 @@ mod tests {
         }
         let read = |ui: &mut Ui, n: &str| {
             ui.docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Read {
                     source: SourceId::new("test", n),
                 })
@@ -382,7 +382,7 @@ mod tests {
         ui.define_document(UiDocument::parse("turntable.svelte", doc).unwrap());
         let orbit = SourceId::new("test", "orbit");
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Signal {
                 source: orbit.clone(),
                 initial: json!("0deg 75deg 4m"),
@@ -404,7 +404,7 @@ mod tests {
             let events = ui.take_doc_events();
             let o = ui
                 .docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Read {
                     source: orbit.clone(),
                 })

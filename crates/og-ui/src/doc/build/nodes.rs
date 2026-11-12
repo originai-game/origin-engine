@@ -265,7 +265,7 @@ impl NodesUi for Ui {
                         self.build_node(b, child, None);
                     }
                 } else if !optional {
-                    self.out.warnings.push(format!(
+                    self.out.warnings_mut().push(format!(
                         "{}:{}: supply content '{name}' at mount",
                         doc.source, n.line
                     ));
@@ -292,8 +292,8 @@ impl NodesUi for Ui {
                 return None;
             }
             NodeKind::Use(comp) => {
-                let Some(cdoc) = self.docs.host.docs.get(comp).cloned() else {
-                    self.out.warnings.push(format!(
+                let Some(cdoc) = self.docs.host().docs.get(comp).cloned() else {
+                    self.out.warnings_mut().push(format!(
                         "{}:{}: no component '{comp}' (load its document)",
                         doc.source, n.line
                     ));
@@ -354,8 +354,8 @@ impl NodesUi for Ui {
                 let rp = self.resolve(b, n, &mount, &mut built, &b.inherited, &mut |s| {
                     self.docs.structure_matches(&doc, s)
                 });
-                self.docs.host.component_root = self.docs.host.structure.any;
-                self.out.warnings.extend(
+                self.docs.host_mut().component_root = self.docs.host_mut().structure.any;
+                self.out.warnings_mut().extend(
                     rp.cascade
                         .diagnostics
                         .iter()
@@ -363,21 +363,21 @@ impl NodesUi for Ui {
                 );
                 let r =
                     self.mount_doc(cdoc, mount, id, &mut vm, b.env, rp.cascade.computed.clone());
-                self.docs.host.component_root = false;
+                self.docs.host_mut().component_root = false;
                 if opened {
-                    self.docs.host.levels.pop();
+                    self.docs.host_mut().levels.pop();
                 }
                 // The instance's own element props apply to its root.
                 if !rp.vals.is_empty()
-                    && let Some(&last) = Some(&self.tree.last_closed)
+                    && let Some(&last) = Some(&self.tree.last_closed())
                     && last != NONE
                 {
                     let el = Ui::box_of(
                         &rp,
-                        *self.tree.nodes[last].el,
+                        *self.tree.nodes()[last].el,
                         self.style.em_of(&rp, &self.env),
                     );
-                    let props = self.props_of(b, n, self.tree.nodes[last].key, &rp, &mut built);
+                    let props = self.props_of(b, n, self.tree.nodes()[last].key, &rp, &mut built);
                     *self.tree.el_mut(last) = el;
                     if props != Props::default() {
                         *self.tree.props_mut(last) = props;
@@ -434,14 +434,14 @@ impl NodesUi for Ui {
         r.ordinal = self.docs.ordinal_of(n, &r, |filter, item_values| {
             self.docs.structure_ordinal(filter, item_values)
         });
-        self.out.warnings.extend(
+        self.out.warnings_mut().extend(
             r.cascade
                 .diagnostics
                 .iter()
                 .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
         );
         let structural = children.is_some();
-        self.docs.host.levels.extend(children);
+        self.docs.host_mut().levels.extend(children);
         self.docs.run_enter(&r);
         let built = self.build_resolved_node(
             b,
@@ -461,10 +461,10 @@ impl NodesUi for Ui {
         );
         self.docs.run_exit();
         if structural {
-            self.docs.host.levels.pop();
+            self.docs.host_mut().levels.pop();
         }
         if opened {
-            self.docs.host.levels.pop();
+            self.docs.host_mut().levels.pop();
         }
         built
     }
@@ -492,7 +492,7 @@ impl NodesUi for Ui {
             self.style
                 .commit_styles(commit, &mut self.interaction, &mut self.tree);
         }
-        let keeps = std::mem::take(&mut self.docs.host.keeps_hidden);
+        let keeps = std::mem::take(&mut self.docs.host_mut().keeps_hidden);
         // A discrete display exit retains the subtree until the sampled
         // display becomes none, then completes its removal lifecycle.
         let exited = r
@@ -510,11 +510,11 @@ impl NodesUi for Ui {
         {
             return None;
         }
-        self.docs.host.seen_now.insert(key);
+        self.docs.host_mut().seen_now.insert(key);
         self.note_selection(key, &r);
         self.docs.remember_queried(b, i, &path, key, &r);
         self.docs
-            .host
+            .host_mut()
             .scroll_now
             .extend(r.cascade.scroll_reads.iter().copied());
         if let Some(container) = r.container {
@@ -547,7 +547,7 @@ impl NodesUi for Ui {
         if r.has("popover") {
             return self.build_popover(b, n, id.as_str(), &r, path, key, built, build_children);
         }
-        let t = self.env.theme;
+        let t = *self.env.theme();
         let raw_of = |r: &Resolved, b: &Build<'_>| -> String {
             if let Some(k) = r.str("key")
                 && let Some(s) = b.env.translate(k).map(|t| b.env.shown(t))
@@ -594,7 +594,7 @@ impl NodesUi for Ui {
         let styled = r;
         let r = styled.intrinsic();
         let mut texture = None;
-        self.front.accent = styled.text.as_deref().and_then(|t| t.accent);
+        *self.front.accent_mut() = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             "label" => {
                 resp = self.doc_label(b, n, &doc, &id, &path, key, &r, &styled, t, &text_of)?;
@@ -674,15 +674,15 @@ impl NodesUi for Ui {
             }
             other => {
                 self.out
-                    .warnings
+                    .warnings_mut()
                     .push(format!("{}:{}: '{other}' is not built", doc.source, n.line));
-                self.front.accent = None;
+                *self.front.accent_mut() = None;
                 return None;
             }
         }
-        self.front.accent = None;
-        let last = self.tree.last_closed;
-        if last != NONE && last < self.tree.nodes.len() {
+        *self.front.accent_mut() = None;
+        let last = self.tree.last_closed();
+        if last != NONE && last < self.tree.nodes().len() {
             let mut fields =
                 fields::RenderFields::capture(self, key, last, kind, resp, props, texture);
             // A text keeps its source: settlement shows it in its new style.
@@ -865,7 +865,7 @@ impl NodesUi for Ui {
     ) -> crate::ui::Response {
         let resp = self.datetime_input(b, n, id.as_str(), r);
         let barred = r.flag("disabled") || r.flag("readonly");
-        self.docs.host.validity.insert(
+        self.docs.host_mut().validity.insert(
             key,
             super::host::FieldValidity {
                 mount: b.mount.clone(),
@@ -992,8 +992,8 @@ impl NodesUi for Ui {
                     self.build_virtual(b, n, kind, id, r, props.clone(), &path);
                 }
                 b.inherited = inherited;
-                let at = self.tree.last_closed;
-                if at != NONE && at < self.tree.nodes.len() && self.tree.nodes[at].key == key {
+                let at = self.tree.last_closed();
+                if at != NONE && at < self.tree.nodes().len() && self.tree.nodes()[at].key == key {
                     // Settlement replaces the box the list was opened with;
                     // its window and stride follow on the next build.
                     let mut fields =
@@ -1089,15 +1089,15 @@ impl NodesUi for Ui {
         }
         if kind == "slot" {
             let at = self.tree.parent();
-            self.docs.host.slots.insert(path.clone(), at);
+            self.docs.host_mut().slots.insert(path.clone(), at);
             let short = format!("{}/{}", b.mount, n.id);
-            self.docs.host.slots.entry(short).or_insert(at);
+            self.docs.host_mut().slots.entry(short).or_insert(at);
         }
         self.docs.note_built(built);
         if shows_content {
             // Its filters' `feImage`s of elements, as its first children.
             let at = self.tree.parent();
-            let css = self.tree.nodes[at]
+            let css = self.tree.nodes()[at]
                 .decor
                 .as_ref()
                 .and_then(|d| d.css.as_ref());
@@ -1134,9 +1134,9 @@ impl NodesUi for Ui {
             _ => resp = self.close(),
         }
         if let Some(open) = opened {
-            self.docs.host.happened.push(When::Toggle);
+            self.docs.host_mut().happened.push(When::Toggle);
             if kind == "dialog" && !open {
-                self.docs.host.happened.push(When::Close);
+                self.docs.host_mut().happened.push(When::Close);
             }
             if !bound(n, "open") {
                 self.remember(
@@ -1147,7 +1147,7 @@ impl NodesUi for Ui {
             self.docs.write_back(b, n, "open", json!(open));
         }
         self.popover_invoker(b, r, key, resp);
-        self.hold(key, n, r, self.tree.last_closed);
+        self.hold(key, n, r, self.tree.last_closed());
         self.fire(b, n, key, &path, resp);
         Some(path)
     }
@@ -1169,7 +1169,7 @@ impl NodesUi for Ui {
         if dialog.modal
             && let Some(backdrop) = self.style.pseudo_node(b, r, path, "backdrop")
         {
-            let scrim = self.tree.nodes[self.tree.parent()].parent;
+            let scrim = self.tree.nodes()[self.tree.parent()].parent;
             self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
         }
         let shows_content = out.visible;
@@ -1246,7 +1246,10 @@ impl NodesUi for Ui {
             // The others of its name build again next tick, and close.
             if out.toggled && out.open {
                 let name = r.str("exclusive").unwrap_or_default();
-                self.interaction.actions.pending.push(details_action(name));
+                self.interaction
+                    .actions_mut()
+                    .pending
+                    .push(details_action(name));
             }
         }
         (opened, shows_content)
@@ -1302,11 +1305,11 @@ impl NodesUi for Ui {
             let spans = match spans {
                 Ok(spans) => spans,
                 Err(error) => {
-                    self.out.warnings.push(format!(
+                    self.out.warnings_mut().push(format!(
                         "{}:{}: {path}.spans: expected TextSpan[]: {error}",
                         doc.source, n.line
                     ));
-                    self.front.accent = None;
+                    *self.front.accent_mut() = None;
                     return None;
                 }
             };
@@ -1588,8 +1591,8 @@ impl NodesUi for Ui {
         r: &Resolved,
         text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> Option<crate::ui::Response> {
-        if !self.env.file_picker {
-            self.out.warnings.push(format!(
+        if !self.env.file_picker() {
+            self.out.warnings_mut().push(format!(
                 "{}:{}: <input type=\"file\"> needs a host file picker, which this host lacks (og.ui.filePicker is false); take files in a TS system",
                 doc.source, n.line
             ));
@@ -1763,7 +1766,7 @@ impl NodesUi for Ui {
             step: r.num("stepBy").map(f64::from),
         };
         resp = if r.flag("multiline") {
-            self.docs.host.placeholder_ink = self.pseudo_ink(styled);
+            self.docs.host_mut().placeholder_ink = self.pseudo_ink(styled);
             let out = self.text_area(
                 id.as_str(),
                 &mut s,
@@ -1780,10 +1783,10 @@ impl NodesUi for Ui {
                     constraints: constraints.clone(),
                 },
             );
-            self.docs.host.placeholder_ink = None;
+            self.docs.host_mut().placeholder_ink = None;
             out
         } else {
-            self.docs.host.placeholder_ink = self.pseudo_ink(styled);
+            self.docs.host_mut().placeholder_ink = self.pseudo_ink(styled);
             let out = self.text_field(
                 id.as_str(),
                 &mut s,
@@ -1811,13 +1814,13 @@ impl NodesUi for Ui {
                                 .str("dataFormat")
                                 .filter(|f| !f.is_empty())
                                 .and_then(|f| og_i18n::Message::parse(f).ok()),
-                            locale: self.env.locale.clone(),
+                            locale: self.env.locale().clone(),
                             ..Default::default()
                         },
                     }),
                 },
             );
-            self.docs.host.placeholder_ink = None;
+            self.docs.host_mut().placeholder_ink = None;
             out
         };
         if !r.flag("readonly") {
@@ -1843,7 +1846,7 @@ impl NodesUi for Ui {
                         .unwrap_or_else(|| labels.get(index).unwrap_or(value).clone())
                 })
                 .collect();
-            let field = self.tree.last_closed;
+            let field = self.tree.last_closed();
             if let Some(c) =
                 self.suggestions(path, field, (resp.focused, resp.changed), &s, all, &labels)
             {
@@ -1856,7 +1859,7 @@ impl NodesUi for Ui {
         }
         // HTML bars disabled and read-only controls from validation.
         let barred = r.flag("disabled") || r.flag("readonly");
-        self.docs.host.validity.insert(
+        self.docs.host_mut().validity.insert(
             key,
             super::host::FieldValidity {
                 mount: b.mount.clone(),
@@ -1890,7 +1893,7 @@ impl NodesUi for Ui {
                 None => r.str("href").unwrap_or_default().to_string(),
             };
             if let Some(id) = href.strip_prefix('#') {
-                self.docs.host.target = (!id.is_empty()).then(|| id.to_string());
+                self.docs.host_mut().target = (!id.is_empty()).then(|| id.to_string());
             }
             b.event(path, "link", &href, Value::Null);
         }

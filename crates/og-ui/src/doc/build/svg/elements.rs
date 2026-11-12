@@ -82,7 +82,7 @@ impl SvgElementsUi for Ui {
         uses: &[&crate::paint::FilterUse],
         space: ImageSpace,
     ) {
-        if self.docs.host.element_images >= 4 {
+        if self.docs.host().element_images >= 4 {
             return;
         }
         let doc = b.doc.clone();
@@ -108,7 +108,7 @@ impl SvgElementsUi for Ui {
                     up = doc.nodes[up].parent;
                 }
                 if inside {
-                    self.out.warnings.push(format!(
+                    self.out.warnings_mut().push(format!(
                         "{}:{}: <feImage href=\"#{id}\"> draws an element the filter is on or inside",
                         doc.source, doc.nodes[of].line
                     ));
@@ -207,9 +207,9 @@ impl SvgElementsUi for Ui {
                     cached: None,
                     recording: Default::default(),
                 };
-                self.docs.host.element_images += 1;
+                self.docs.host_mut().element_images += 1;
                 self.build_node(&mut ib, target, None);
-                self.docs.host.element_images -= 1;
+                self.docs.host_mut().element_images -= 1;
                 self.close();
             }
         }
@@ -302,11 +302,11 @@ impl SvgElementsUi for Ui {
             Some("italic" | "oblique")
         );
         let text = r.str("text").unwrap_or_default().to_string();
-        let font = r.label_desc(&self.env.theme, &self.env.fonts, false).font;
+        let font = r.label_desc(self.env.theme(), self.env.fonts(), false).font;
         let (ascender, descender) = {
             let m = &self
                 .env
-                .fonts
+                .fonts()
                 .for_styled(font, weight, italic, &text)
                 .0
                 .metrics;
@@ -326,7 +326,7 @@ impl SvgElementsUi for Ui {
             warnings.push(e);
             ascender * size
         });
-        let mut step = self.env.theme.type_ramp.body;
+        let mut step = self.env.theme().type_ramp.body;
         step.size = size;
         // One line exactly the font's extents tall: the baseline sits at
         // the ascender, so `dominant-baseline` is measured from its top.
@@ -336,7 +336,7 @@ impl SvgElementsUi for Ui {
             step.weight = weight;
         }
         let color = solid(&style.fill, style.fill_opacity).and_then(|p| match p {
-            Paint::Solid(c) => c.srgb(&self.env.theme),
+            Paint::Solid(c) => c.srgb(self.env.theme()),
             _ => None,
         });
         // `fill="none"`: transparent, still laid out and named.
@@ -416,7 +416,7 @@ impl SvgElementsUi for Ui {
             }
             None => self.label(id, &text, desc),
         }
-        let i = self.tree.last_closed;
+        let i = self.tree.last_closed();
         // Its anchor places it, so it keeps its text's width (a centred
         // label in a column would take the column's).
         self.tree.el_mut(i).width = width;
@@ -444,7 +444,7 @@ impl SvgElementsUi for Ui {
         *self.tree.props_mut(i) = p;
         for e in warnings {
             let tag = n.selector_tag.as_deref().unwrap_or("text");
-            self.out.warnings.push(format!(
+            self.out.warnings_mut().push(format!(
                 "{}:{} ({path}): <{tag}>: {e}",
                 b.doc.source, n.line
             ));
@@ -529,7 +529,7 @@ impl SvgElementsUi for Ui {
             ..ElementDraw::default()
         });
         for e in warnings {
-            self.out.warnings.push(format!(
+            self.out.warnings_mut().push(format!(
                 "{}:{} ({path}): <foreignObject>: {e}",
                 b.doc.source, n.line
             ));
@@ -566,7 +566,7 @@ impl SvgElementsUi for Ui {
             if self.has_anim(clock) {
                 self.anim(clock);
             } else {
-                let t = self.interaction.state.tick;
+                let t = self.interaction.state().tick;
                 self.set_anim(
                     clock,
                     crate::ui::Anim {
@@ -576,7 +576,7 @@ impl SvgElementsUi for Ui {
                 );
             }
             if r.smil
-                && let Some(owned) = self.tree.owning.last_mut()
+                && let Some(owned) = self.tree.owning_mut().last_mut()
             {
                 owned.restyle = true;
             }
@@ -638,13 +638,13 @@ impl SvgElementsUi for Ui {
         }
         *self.tree.props_mut(i) = p;
         if let Some(role) = n.role {
-            self.tree.nodes[i].a11y.role = Some(role);
+            self.tree.nodes_mut()[i].a11y.role = Some(role);
         }
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
-            self.tree.nodes[i].a11y.name = Some(name.to_string());
+            self.tree.nodes_mut()[i].a11y.name = Some(name.to_string());
             // A named `<svg>` is an image, as browsers expose one.
             if kind == "svg" && n.role.is_none() {
-                self.tree.nodes[i].a11y.role = Some("image");
+                self.tree.nodes_mut()[i].a11y.role = Some("image");
             }
         }
         let t = computed
@@ -655,7 +655,7 @@ impl SvgElementsUi for Ui {
             .unwrap_or(Affine::IDENTITY);
         let warn = |ui: &mut Ui, e: String| {
             let tag = n.selector_tag.as_deref().unwrap_or("svg");
-            ui.out.warnings.push(format!(
+            ui.out.warnings_mut().push(format!(
                 "{}:{} ({path}): <{tag}>: {e}",
                 b.doc.source, n.line
             ));
@@ -865,7 +865,7 @@ impl SvgElementsDocs for crate::ui::Docs {
                     .texture(h)
                     .map(|t| (t, [0.0, 0.0, 1.0, 1.0]))
                     .ok_or_else(|| format!("href {h} names no texture")),
-                Err(_) => match env.icons.find(href) {
+                Err(_) => match env.icons().find(href) {
                     Some(crate::ui::IconCell::Image(texture, uv)) => Ok((texture, uv)),
                     _ => Err(format!("href \"{href}\" names no atlas image")),
                 },
@@ -956,7 +956,7 @@ impl SvgElementsDocs for crate::ui::Docs {
                     .ok_or_else(|| format!("href {h} names no texture"))?,
                 [0.0, 0.0, 1.0, 1.0],
             ),
-            Err(_) => match env.icons.find(href) {
+            Err(_) => match env.icons().find(href) {
                 Some(crate::ui::IconCell::Image(texture, uv)) => (texture, uv),
                 Some(_) => {
                     return Err(format!(

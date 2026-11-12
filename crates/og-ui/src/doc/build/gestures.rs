@@ -67,10 +67,10 @@ pub(crate) trait GesturesUi {
 impl GesturesUi for Ui {
     fn sheet(&mut self, id: &str, text: &str, edge: SheetEdge, open: bool) -> bool {
         let panel = self.tree.parent();
-        let scrim = self.tree.nodes[panel].parent;
+        let scrim = self.tree.nodes()[panel].parent;
         let side = edge != SheetEdge::BlockEnd;
-        let vh = self.env.viewport.height - self.env.viewport.safe_area.vertical();
-        let vw = self.env.viewport.width - self.env.viewport.safe_area.horizontal();
+        let vh = self.env.viewport().height - self.env.viewport().safe_area.vertical();
+        let vw = self.env.viewport().width - self.env.viewport().safe_area.horizontal();
         let room = if side { vw } else { vh };
         let Ok(hs) = self::detents(text, room) else {
             return false;
@@ -122,7 +122,7 @@ impl GesturesUi for Ui {
                 p.height = Size::Fixed(max);
             }
         }
-        let key = self.tree.nodes[panel].key;
+        let key = self.tree.nodes()[panel].key;
         let at = |h: f32| sign * (max - h.min(max));
         let travel = max - min;
         let lo = if sign < 0.0 { -travel } else { 0.0 };
@@ -231,7 +231,7 @@ mod tests {
         ui.define_document(UiDocument::parse("snap.svelte", DOC).unwrap());
         let open = SourceId::new("test", "open");
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Signal {
                 source: open.clone(),
                 initial: json!(false),
@@ -274,7 +274,7 @@ mod tests {
         assert!((s.offset_y - 100.0).abs() < 0.5, "{s:?}");
 
         ui.docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Set {
                 source: open.clone(),
                 value: json!(true),
@@ -316,7 +316,7 @@ mod tests {
         }
         let v = ui
             .docs
-            .reactive
+            .reactive_mut()
             .execute(Command::Read { source: open })
             .unwrap();
         assert_eq!(v["value"], json!(false), "a swipe down closes the sheet");
@@ -341,7 +341,7 @@ mod tests {
             ui.define_document(UiDocument::parse("side.svelte", doc).unwrap());
             let open = SourceId::new("test", "open");
             ui.docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Signal {
                     source: open.clone(),
                     initial: json!(true),
@@ -391,7 +391,7 @@ mod tests {
             }
             let v = ui
                 .docs
-                .reactive
+                .reactive_mut()
                 .execute(Command::Read { source: open })
                 .unwrap();
             assert_eq!(

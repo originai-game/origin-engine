@@ -18,7 +18,7 @@ impl NodesListsUi for Ui {
         inside: bool,
         ink: Option<Srgba>,
     ) {
-        let t = self.env.theme;
+        let t = *self.env.theme();
         let body = t.type_ramp.body;
         // CSS's gap between marker and content: half an em.
         let gap = (body.size * 0.5).round();
@@ -91,7 +91,7 @@ impl NodesListsUi for Ui {
         if inside {
             return;
         }
-        let at = self.tree.last_closed;
+        let at = self.tree.last_closed();
         let props = self.tree.props_mut(at);
         props.position = crate::element::Position::Anchored;
         props.anchor_to = item.to_string();
@@ -146,7 +146,7 @@ impl NodesListsUi2 for Ui {
         };
         let row_key = b.eval(key);
         let Some(row_key) = row_key.as_str().filter(|key| !key.is_empty()) else {
-            self.out.warnings.push(format!(
+            self.out.warnings_mut().push(format!(
                 "{}:{}: each key must be a nonempty string",
                 b.doc.source, n.line
             ));

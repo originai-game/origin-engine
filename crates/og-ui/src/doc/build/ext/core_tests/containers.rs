@@ -37,12 +37,12 @@ fn frame(ui: &mut Ui, width: f32) {
 }
 
 fn size(ui: &Ui, path: &str) -> (f32, f32) {
-    let i = (0..ui.tree.nodes.len())
+    let i = (0..ui.tree.nodes().len())
         .find(|&i| ui.tree.path_of(i) == path)
         .unwrap_or_else(|| panic!("no {path}"));
     (
-        ui.tree.nodes[i].placed.rect.width,
-        ui.tree.nodes[i].placed.rect.height,
+        ui.tree.nodes()[i].placed.rect.width,
+        ui.tree.nodes()[i].placed.rect.height,
     )
 }
 
@@ -83,5 +83,5 @@ fn container_conditions_settle_on_the_first_frame_and_on_resize() {
     assert_eq!(size(&ui, main), (10.0, 21.0));
     frame(&mut ui, 640.0);
     assert_eq!(size(&ui, main), (40.0, 21.0));
-    assert!(ui.out.warnings.is_empty(), "{:?}", ui.out.warnings);
+    assert!(ui.out.warnings().is_empty(), "{:?}", ui.out.warnings());
 }

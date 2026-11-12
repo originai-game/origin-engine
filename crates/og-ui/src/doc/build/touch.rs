@@ -22,25 +22,26 @@ pub trait TouchUi {
 
 impl TouchUi for Ui {
     fn take_control_zones(&mut self) -> Option<Vec<ControlZone>> {
-        if self.docs.host.zones.is_empty() && !self.docs.host.zones_changed {
+        if self.docs.host().zones.is_empty() && !self.docs.host().zones_changed {
             return None;
         }
-        let live = |key: &u64| self.docs.host.retained.owns(*key);
+        let live = |key: &u64| self.docs.host().retained.owns(*key);
         let gone: Vec<u64> = self
             .docs
-            .host
+            .host()
             .zones
             .keys()
             .copied()
             .filter(|k| !live(k))
             .collect();
-        let mut changed = std::mem::take(&mut self.docs.host.zones_changed) || !gone.is_empty();
+        let mut changed =
+            std::mem::take(&mut self.docs.host_mut().zones_changed) || !gone.is_empty();
         for key in gone {
-            self.docs.host.zones.remove(&key);
+            self.docs.host_mut().zones.remove(&key);
         }
         let rects: Vec<(u64, Option<crate::layout::Rect>)> = self
             .docs
-            .host
+            .host()
             .zones
             .keys()
             .map(|&k| (k, self.interaction.hit(k).map(|h| h.rect)))
@@ -51,7 +52,7 @@ impl TouchUi for Ui {
         for (key, rect) in rects {
             let z = self
                 .docs
-                .host
+                .host_mut()
                 .zones
                 .get_mut(&key)
                 .expect("a zone just listed");
@@ -64,7 +65,7 @@ impl TouchUi for Ui {
         }
         changed.then(|| {
             self.docs
-                .host
+                .host()
                 .zones
                 .values()
                 .filter(|z| z.width > 0.0 && z.height > 0.0)
@@ -122,7 +123,7 @@ impl TouchUi2 for Ui {
             );
             (out.up || out.down || out.left || out.right, ZoneKind::Pad)
         };
-        let key = self.tree.nodes[self.tree.last_closed].key;
+        let key = self.tree.nodes()[self.tree.last_closed()].key;
         self.docs
             .note_zone(key, r.str("action"), zone, dead_zone, disabled);
         crate::ui::Response {
@@ -139,8 +140,8 @@ pub(crate) trait TouchTree {
 
 impl TouchTree for crate::ui::Tree {
     fn note_touch_button(&mut self, r: &Resolved, docs: &mut crate::ui::Docs) {
-        if self.last_closed != NONE && self.last_closed < self.nodes.len() {
-            let key = self.nodes[self.last_closed].key;
+        if self.last_closed() != NONE && self.last_closed() < self.nodes().len() {
+            let key = self.nodes()[self.last_closed()].key;
             let action = r.str("dataOgTouch");
             docs.note_zone(key, action, ZoneKind::Button, 0.0, r.flag("disabled"));
         }
@@ -167,7 +168,7 @@ impl TouchDocs for crate::ui::Docs {
         dead_zone: f32,
         disabled: bool,
     ) {
-        let zones = &mut self.host.zones;
+        let zones = &mut self.host_mut().zones;
         match action.filter(|a| !a.is_empty() && !disabled) {
             Some(action) => {
                 let next = ControlZone {
@@ -178,12 +179,12 @@ impl TouchDocs for crate::ui::Docs {
                 };
                 if zones.get(&key) != Some(&next) {
                     zones.insert(key, next);
-                    self.host.zones_changed = true;
+                    self.host_mut().zones_changed = true;
                 }
             }
             None => {
                 if zones.remove(&key).is_some() {
-                    self.host.zones_changed = true;
+                    self.host_mut().zones_changed = true;
                 }
             }
         }

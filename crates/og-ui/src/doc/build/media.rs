@@ -49,7 +49,7 @@ impl MediaUi for Ui {
             .flatten()
             .unwrap_or_default();
         // The element's wish: paused until autoplay or a write says play.
-        let first = !self.docs.host.media_sent.contains_key(&key);
+        let first = !self.docs.host().media_sent.contains_key(&key);
         let paused = if r.has("paused") {
             r.flag("paused")
         } else {
@@ -76,7 +76,7 @@ impl MediaUi for Ui {
         }
         // A currentTime someone else wrote (not the one last read back)
         // that is not the player's is a seek.
-        let sent = self.docs.host.media_sent.get(&key).copied();
+        let sent = self.docs.host().media_sent.get(&key).copied();
         let store = r.num("currentTime").map(f64::from);
         let seek = store.filter(|t| {
             sent.is_some_and(|(_, _, read, _)| (t - read).abs() > 1e-3)
@@ -101,7 +101,7 @@ impl MediaUi for Ui {
             state.time
         });
         self.docs
-            .host
+            .host_mut()
             .media_sent
             .insert(key, (gain, repeat, read, pending));
         if player != 0.0
@@ -110,11 +110,11 @@ impl MediaUi for Ui {
                 || op.gain.is_some()
                 || op.repeat.is_some())
         {
-            self.docs.host.media_ops.push(op);
+            self.docs.host_mut().media_ops.push(op);
         }
         self.docs
             .media_write_backs(b, n, r, &state, paused, pending > 0);
-        let t = self.env.theme;
+        let t = *self.env.theme();
         self.open(
             id,
             Element {
@@ -126,9 +126,9 @@ impl MediaUi for Ui {
             },
         );
         let at = self.tree.parent();
-        self.tree.nodes[at].a11y.role = Some(if video { "img" } else { "group" });
+        self.tree.nodes_mut()[at].a11y.role = Some(if video { "img" } else { "group" });
         if let Some(name) = r.str("name") {
-            self.tree.nodes[at].a11y.name = Some(name.to_string());
+            self.tree.nodes_mut()[at].a11y.name = Some(name.to_string());
         }
         if video {
             // The frame once the player has shown one, else the poster.
@@ -169,7 +169,7 @@ impl MediaUi for Ui {
             );
             if resp.clicked {
                 self.docs.write_back(b, n, "paused", json!(!paused));
-                self.docs.host.media_ops.push(MediaOp {
+                self.docs.host_mut().media_ops.push(MediaOp {
                     player,
                     playing: Some(paused),
                     ..MediaOp::default()

@@ -109,21 +109,21 @@ pub trait StylePackUi {
 
 impl StylePackUi for crate::Ui {
     fn set_css_sounds(&mut self, sounds: std::collections::BTreeMap<String, u64>) {
-        self.style.css_sounds = sounds;
+        *self.style.css_sounds_mut() = sounds;
     }
 
     fn seed_feedback(&mut self, seed: u64) {
-        self.interaction.state.feedback_rng = seed ^ 0x9e37_79b9_7f4a_7c15;
+        self.interaction.state_mut().feedback_rng = seed ^ 0x9e37_79b9_7f4a_7c15;
     }
 
     fn set_style_pack(&mut self, pack: &StylePack) -> Result<(), String> {
         self.style_documents(Some(pack))?;
-        self.style.part_rules.clone_from(&pack.rules);
-        self.style.part_sheet.clone_from(&pack.sheet);
+        self.style.part_rules_mut().clone_from(&pack.rules);
+        self.style.part_sheet_mut().clone_from(&pack.sheet);
         self.style.root_inputs_changed();
         self.set_style_name(&pack.name);
         self.read_theme_tokens();
-        self.tree.invalidation.epoch += 1;
+        self.tree.invalidation_mut().epoch += 1;
         Ok(())
     }
 
