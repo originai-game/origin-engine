@@ -1,0 +1,66 @@
+type model
+version 1
+---
+plant "bush" {
+  seed 11
+  levels 3
+  force 0 1 0 0
+  trunk {
+    length 0.05
+    radius 0.11
+    sections 2
+    segments 4
+    gnarliness 0.11
+    twist 0.3
+    children 7
+  }
+  branch1 {
+    length 1.5
+    radius 0.5
+    sections 6
+    segments 4
+    gnarliness 0.09
+    children 3
+    angle 21.5
+    start 0.53
+  }
+  branch2 {
+    length 0.56
+    radius 0.76
+    sections 4
+    segments 3
+    gnarliness 0.05
+    children 2
+    angle 62.6
+    start 0.33
+  }
+  branch3 {
+    length 0.46
+    radius 0.7
+    sections 3
+    segments 3
+    gnarliness 0.09
+    angle 60
+    start 0
+  }
+  leaves {
+    count 30
+    start 0
+    angle 55
+    size 0.15
+    width 0.6
+    sizeVariance 0.5
+    color 0.1 0.2 0.03
+    color2 0.2 0.3 0.05
+  }
+  flowers {
+    share 0.8
+    count 1
+    petals 5
+    size 0.085
+    width 0.75
+    cup 25
+    color 0.9 0.25 0.4
+    color2 1 0.6 0.7
+  }
+}

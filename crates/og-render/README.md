@@ -1400,7 +1400,9 @@ Scenes: `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km island of
 `og_tests::terrain_scenes`, clipmap, four layers, shadows, fog, from 2 m,
 150 m and 700 m) and `terrain-grass-wind` (the meadow in a gusting wind at
 tick 90; the boulders, plain instances, stand still); tests in
-`og-tests/tests/terrain.rs`.
+`og-tests/tests/terrain.rs`. `plant-grown` (og-tests-cooked's
+`plant_scenes`): an oak, a pine, a flowering shrub and daisies the cook
+grew from `plant` blocks, each drawn as its wood and its leaves.
 
 ## Water
 
