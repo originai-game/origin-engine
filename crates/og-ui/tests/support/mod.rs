@@ -6,11 +6,14 @@
 #![allow(dead_code)]
 
 mod doc;
+mod engine_documents;
 mod screens;
 
 // Not every binary that includes this support mounts documents.
 #[allow(unused_imports)]
 pub(crate) use doc::{Doc, both, id_text};
+#[allow(unused_imports)]
+pub use engine_documents::*;
 use og_ui::*;
 pub use screens::*;
 use std::path::PathBuf;

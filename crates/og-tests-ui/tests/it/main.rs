@@ -16,6 +16,8 @@ mod css_effects;
 mod css_filters;
 #[path = "../css_paint.rs"]
 mod css_paint;
+#[path = "../document_frames.rs"]
+mod document_frames;
 #[path = "../dressing.rs"]
 mod dressing;
 #[path = "../gfx.rs"]
