@@ -220,8 +220,14 @@ pub(crate) struct CloudNoise {
 pub(crate) struct CloudsLow {
     /// The cloud target's group in the sky's draw (group 2).
     pub layout: wgpu::BindGroupLayout,
+    /// The frame's view depth in `march_depth` (group 2).
+    pub depth: wgpu::BindGroupLayout,
     /// The march into the cloud target.
     pub march: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// The march in a frame with a prepass: it skips the texels only covered pixels read. A second pipeline, since
+    /// the depth's read costs a frame without one about a tenth of the march (0.3 ms of 2.8 at 720p on an Apple M4
+    /// Pro).
+    pub march_depth: crate::deferred::Deferred<wgpu::RenderPipeline>,
     /// The procedural sky drawn at the frame's size under the cloud target's clouds, in place of
     /// `SkyState::sky_look_pipeline`.
     pub sky: crate::deferred::Sampled<wgpu::RenderPipeline>,

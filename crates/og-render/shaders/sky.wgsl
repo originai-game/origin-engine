@@ -714,6 +714,29 @@ fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
 // pass is depth-tested). The live sky's faces, the probes, the mirrors and the views march at their own pixels
 // (fs_sky_look).
 @group(2) @binding(0) var clouds_low: texture_2d<f32>;
+// The frame's view depth for the march in a frame with a prepass (its lindepth: post.rs FAR_DEPTH where it drew
+// nothing).
+@group(2) @binding(1) var clouds_depth: texture_2d<f32>;
+
+// Whether the prepass drew a surface at every pixel of the frame that reads the cloud target's texel at `pos`
+// (the sky's draw reads between texels: the pixels within a texel of its centre). The sky fails its depth test at
+// all of them, so the texel is never read. `texel` is a texel in NDC.
+fn clouds_covered(pos: vec2<f32>, texel: vec2<f32>) -> bool {
+  let size = vec2<f32>(textureDimensions(clouds_depth));
+  // The frame's pixels a texel of the target.
+  let scale = size * abs(texel) * 0.5;
+  let lo = vec2<i32>(floor((pos - 1.0) * scale - 0.5));
+  let hi = vec2<i32>(ceil((pos + 1.0) * scale - 0.5));
+  let last = vec2<i32>(size) - 1;
+  // The pixel under the texel's centre first: over the sky that is the only read.
+  if (textureLoad(clouds_depth, clamp(vec2<i32>(pos * scale), vec2<i32>(0), last), 0).r >= 1.0e8) { return false; }
+  for (var y = lo.y; y < hi.y; y++) {
+    for (var x = lo.x; x < hi.x; x++) {
+      if (textureLoad(clouds_depth, clamp(vec2<i32>(x, y), vec2<i32>(0), last), 0).r >= 1.0e8) { return false; }
+    }
+  }
+  return true;
+}
 
 // Whether a ray along unit `d` meets the ground from under the cloud base: it sees no clouds (clouds_march).
 fn cloud_grounded(d: vec3<f32>) -> bool {
@@ -722,10 +745,8 @@ fn cloud_grounded(d: vec3<f32>) -> bool {
   return viewer <= c[0].z && cloud_sphere(vec3<f32>(0.0, c[4].x + viewer, 0.0), d, c[4].x).x > 0.0;
 }
 
-@fragment
-fn fs_clouds_low(in: SkyOut) -> @location(0) vec4<f32> {
-  // A texel in NDC (a derivative: before any branch).
-  let texel = vec2<f32>(dpdx(in.ndc.x), dpdy(in.ndc.y));
+// The cloud target's texel: `texel` is a texel in NDC.
+fn clouds_low_texel(in: SkyOut, texel: vec2<f32>) -> vec4<f32> {
   var d = view_dir(in.ndc);
   // The horizon is an edge in the clouds (a ray that meets the ground sees none, one just over it the farthest)
   // and the sky's draw reads this target between its texels: a texel under the horizon beside one over it marches
@@ -739,6 +760,20 @@ fn fs_clouds_low(in: SkyOut) -> @location(0) vec4<f32> {
   }
   let layer = clouds_over(d, in.pos.xy, in.grey);
   return vec4<f32>(clamp(layer.rgb, vec3<f32>(0.0), vec3<f32>(65504.0)), layer.a);
+}
+
+@fragment
+fn fs_clouds_low(in: SkyOut) -> @location(0) vec4<f32> {
+  // A derivative: before any branch.
+  return clouds_low_texel(in, vec2<f32>(dpdx(in.ndc.x), dpdy(in.ndc.y)));
+}
+
+// In a frame with a prepass: nothing where its surfaces cover every pixel that reads the texel.
+@fragment
+fn fs_clouds_low_depth(in: SkyOut) -> @location(0) vec4<f32> {
+  let texel = vec2<f32>(dpdx(in.ndc.x), dpdy(in.ndc.y));
+  if (clouds_covered(in.pos.xy, texel)) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+  return clouds_low_texel(in, texel);
 }
 
 @fragment

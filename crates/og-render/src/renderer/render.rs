@@ -416,7 +416,11 @@ impl Renderer {
             match scene.lighting.environment.background {
                 Background::Sky => self.sky.sky_pipeline.start(),
                 Background::Procedural { .. } if scene.atmosphere.clouds.is_some() => {
-                    self.sky.clouds_low.march.start();
+                    if effects.prepass {
+                        self.sky.clouds_low.march_depth.start();
+                    } else {
+                        self.sky.clouds_low.march.start();
+                    }
                     self.sky.clouds_low.sky.start();
                 }
                 Background::Procedural { .. } => self.sky.sky_look_pipeline.start(),

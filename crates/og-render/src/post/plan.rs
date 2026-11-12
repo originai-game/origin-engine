@@ -937,6 +937,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::Probes => g.pass(name, &["cascades", "local-shadows"], &[]),
             // Into its own cubes and the bound IBL ones.
             FramePass::LiveSky => g.pass(name, &[], &[]),
+            // With a prepass the march skips what its surfaces cover.
+            FramePass::Clouds if prepass => g.pass(name, &["lindepth"], &["clouds"]),
             FramePass::Clouds => g.pass(name, &[], &["clouds"]),
             // Into the light volumes' buffer, not a graph target.
             FramePass::GiProbes => g.pass(name, &[], &[]),

@@ -51,6 +51,7 @@ impl Renderer {
                 &self.sky.sky_look_pipeline,
                 &self.sky.clouds_low.sky,
                 &self.sky.clouds_low.march,
+                &self.sky.clouds_low.march_depth,
             ])
             || self.lights.ibl.warm()
             || self.warm_plain_lit()

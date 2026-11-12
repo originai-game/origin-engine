@@ -64,8 +64,8 @@ impl Renderer {
         };
         let sky_pipeline = sky_state(sky_pl, "vs_sky", "fs_sky");
         let sky_look_pipeline = sky_state(sky_pl, "vs_sky_look", "fs_sky_look");
-        // The main camera's clouds at half the frame's size: their march into the cloud target, with the sky's own
-        // groups, and the sky drawn under them, with the target as its group 2.
+        // The main camera's clouds at half the frame's size: their march into the cloud target (with the frame's view
+        // depth as its group 2 in a frame with a prepass), and the sky drawn under them, with the target as its group 2.
         let clouds_low = {
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("clouds low"),
@@ -76,12 +76,21 @@ impl Renderer {
                 bind_group_layouts: &[Some(frame_layout), Some(sky_layout), Some(&layout)],
                 immediate_size: 0,
             });
-            let march = {
-                let (device, sky_pl, module) = (device.clone(), sky_pl.clone(), sky_shader.clone());
+            let depth = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("clouds low depth"),
+                entries: &[texture_entry(1, false, wgpu::TextureViewDimension::D2)],
+            });
+            let march_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("clouds low depth"),
+                bind_group_layouts: &[Some(frame_layout), Some(sky_layout), Some(&depth)],
+                immediate_size: 0,
+            });
+            let march = |layout: &wgpu::PipelineLayout, fs: &'static str| {
+                let (device, layout, module) = (device.clone(), layout.clone(), sky_shader.clone());
                 deferred::Deferred::anywhere(move || {
                     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                         label: Some("clouds low"),
-                        layout: Some(&sky_pl),
+                        layout: Some(&layout),
                         vertex: wgpu::VertexState {
                             module: module.get(),
                             entry_point: Some("vs_sky_look"),
@@ -93,7 +102,7 @@ impl Renderer {
                         multisample: Default::default(),
                         fragment: Some(wgpu::FragmentState {
                             module: module.get(),
-                            entry_point: Some("fs_clouds_low"),
+                            entry_point: Some(fs),
                             compilation_options: Default::default(),
                             targets: &[Some(wgpu::ColorTargetState {
                                 format: HDR_FORMAT,
@@ -109,7 +118,9 @@ impl Renderer {
             clouds::CloudsLow {
                 sky: sky_state(&sky_low_pl, "vs_sky_look", "fs_sky_look_low"),
                 layout,
-                march,
+                march: march(sky_pl, "fs_clouds_low"),
+                march_depth: march(&march_pl, "fs_clouds_low_depth"),
+                depth,
             }
         };
         let ibl = ibl::IblGenerator::new(device);
