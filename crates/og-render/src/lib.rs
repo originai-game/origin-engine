@@ -427,9 +427,9 @@ pub use sprite_mesh::{SpriteInfluence, SpriteMesh, SpriteMeshVertex, SpriteSkin}
 pub use stylise::{
     DEFAULT_CANVAS_WORLD_SCALE, DEFAULT_CHARACTER_DETAIL, DEFAULT_PAINT_DETAIL,
     DEFAULT_TOON_SOFTNESS, DEFAULT_WIREFRAME_ANGLE, DepthBands, DitherPattern, Halftone,
-    HalftoneMode, HalftoneRegion, Hatching, Ink, MAX_PALETTE_COLORS, MaterialStyle,
-    MaterialSurface, OutlinePlace, Paint, Palette, PaletteHandle, PixelFit, PixelScale,
-    PosterizeMode, Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace, Watercolor,
+    HalftoneMode, HalftoneRegion, Hatching, Ink, MAX_PALETTE_COLORS, MAX_WASH_DILUTION,
+    MaterialStyle, MaterialSurface, OutlinePlace, Paint, Palette, PaletteHandle, PixelFit,
+    PixelScale, PosterizeMode, Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace, Watercolor,
 };
 pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
 pub use terrain::{

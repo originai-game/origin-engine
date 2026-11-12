@@ -115,6 +115,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `watercolorTurbulence` | `number` | `0` | 0 … 1 | `ratio` | tunable | Pigment drifting as the wash dries: the same density from a slow noise about a hundred canvas texels across, laid where the canvas lies (paintCanvasSpace) and seeded by the object under the pixel so no blotch spans two washes, weighed by the pigment load; 0 is none. See `looks §10`. |
 | `watercolorDryBrush` | `number` | `0` | 0 … 1 | `ratio` | tunable | A dry brush skipping over the paper's tooth: its peaks (the relief past half its spread, in the paper's own clusters) left bare as the paper (watercolorPaper) in the rim at a wash's outer boundary (watercolorEdgeDarkening's) and on the light-catching tones, the brightest washes first; 0 is none. |
 | `watercolorWobble` | `number` | `0` | 0 … 4 | — | tunable | The painted frame displaced by the paper's relief, up to this many logical pixels, so every edge wavers with the tooth as a wash's does (MNPR's substrate distortion); 0 is none. |
+| `watercolorDilution` | `number` | `0` | 0 … 0.9 | `ratio` | tunable | The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit. See `looks §10`. |
 | `watercolorPaper` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The paper's colour (linear): what the wash thins towards and the dry brush leaves bare. |
 
 #### Dither placement
@@ -394,6 +395,13 @@ resource Stylise {
     min 0
     max 4
     tunable true
+  }
+  field watercolorDilution f32 "The wash thinned with water: the pigment over watercolorPaper is this much less dense, so darks lift towards the paper, hues keep and the paper stays the paper. About 0.3 to 0.45 turns a lit scene's heavy darks into pale washes; 0 leaves the frame's tones as lit." {
+    min 0
+    max 0.9
+    unit ratio
+    tunable true
+    guide "looks §10"
   }
   field watercolorPaper Color "The paper's colour (linear): what the wash thins towards and the dry brush leaves bare." {
     default 1 1 1

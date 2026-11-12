@@ -587,7 +587,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2031</sub>
+<sub>Module `render` line 2038</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -598,7 +598,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 2859</sub>
+<sub>Module `render` line 2866</sub>
 
 ```ogt
 column Shader {
@@ -609,7 +609,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2917</sub>
+<sub>Module `render` line 2924</sub>
 
 ```ogt
 column LineMode {
@@ -620,7 +620,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3724</sub>
+<sub>Module `render` line 3731</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -631,7 +631,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3935</sub>
+<sub>Module `render` line 3942</sub>
 
 ```ogt
 column RenderTarget {
@@ -642,7 +642,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3944</sub>
+<sub>Module `render` line 3951</sub>
 
 ```ogt
 column Post {
@@ -653,7 +653,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4084</sub>
+<sub>Module `render` line 4091</sub>
 
 ## Constants
 
@@ -669,28 +669,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 2156</sub>
+<sub>Module `render` line 2163</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2777</sub>
+<sub>Module `render` line 2784</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2778</sub>
+<sub>Module `render` line 2785</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2779</sub>
+<sub>Module `render` line 2786</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 2851</sub>
+<sub>Module `render` line 2858</sub>

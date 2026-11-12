@@ -774,6 +774,7 @@ fn stylise(
                 turbulence: s.watercolor_turbulence,
                 dry_brush: s.watercolor_dry_brush,
                 wobble: s.watercolor_wobble,
+                dilution: s.watercolor_dilution,
                 paper: rgb(&s.watercolor_paper),
             },
         };

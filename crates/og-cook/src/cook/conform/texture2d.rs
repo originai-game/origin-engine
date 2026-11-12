@@ -50,7 +50,7 @@ use paint::{Paint, Wash};
 use palette::{Dither, Palette};
 
 /// Moves every conformed output's stamp when the pass's algorithms change.
-const VERSION: &str = "conform-2d 2";
+const VERSION: &str = "conform-2d 3";
 
 /// A cell of a texture: x, y, width, height in texels.
 type Rect = [u32; 4];

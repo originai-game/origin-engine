@@ -213,6 +213,14 @@ impl Renderer {
                     let w = p.watercolor;
                     [w.paper[0], w.paper[1], w.paper[2], w.wobble.clamp(0.0, 4.0)]
                 }),
+                wash2: [
+                    pt.map_or(0.0, |p| {
+                        p.watercolor.dilution.clamp(0.0, stylise::MAX_WASH_DILUTION)
+                    }),
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
                 print: [
                     ht.map_or(0.0, |h| f32::from(h.mode == stylise::HalftoneMode::Cmyk)),
                     ht.map_or(0.0, |h| h.misregistration.clamp(0.0, 8.0)),

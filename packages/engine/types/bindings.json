@@ -10465,6 +10465,12 @@
           "tunable": true
         },
         {
+          "name": "watercolorDilution",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "watercolorPaper",
           "column": "Color",
           "default": {

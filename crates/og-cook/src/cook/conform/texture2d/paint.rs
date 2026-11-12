@@ -242,6 +242,11 @@ pub const WASH_STEP_REACH: f64 = 4.5;
 /// Texels within which the shape's edge counts as near
 /// (`WASH_BOUNDARY_REACH`).
 pub const WASH_BOUNDARY_REACH: i64 = 2;
+/// The pigment load a rim starts to pool at, and pools fully at
+/// (`WASH_POOL_LOAD`).
+pub const WASH_POOL_LOAD: (f64, f64) = (0.1, 0.35);
+/// The most a wash is thinned (`og_render::MAX_WASH_DILUTION`).
+pub const MAX_WASH_DILUTION: f64 = 0.9;
 
 /// The watercolour wash's fields (`Stylise.watercolor*`), at their frame
 /// meaning.
@@ -252,6 +257,7 @@ pub struct Wash {
     pub turbulence: f64,
     pub dry_brush: f64,
     pub wobble: f64,
+    pub dilution: f64,
     /// The paper's colour, linear.
     pub paper: [f64; 3],
 }
@@ -264,6 +270,7 @@ impl Default for Wash {
             turbulence: 0.0,
             dry_brush: 0.0,
             wobble: 0.0,
+            dilution: 0.0,
             paper: [1.0; 3],
         }
     }
@@ -276,6 +283,7 @@ impl Wash {
             || self.turbulence > 0.0
             || self.dry_brush > 0.0
             || self.wobble > 0.0
+            || self.dilution > 0.0
     }
 
     /// Whether the wash reads the paper's grain.
@@ -366,6 +374,7 @@ impl Paint {
             ("turbulence", w.turbulence),
             ("dry brush", w.dry_brush),
             ("wobble", w.wobble),
+            ("dilution", w.dilution),
         ] {
             if value > 0.0 {
                 v.push(format!("{name} {value}"));
@@ -530,8 +539,11 @@ impl Paint {
                 let (sx, sy) = (px + off[0], py + off[1]);
                 let o = (sx.floor() as i64, sy.floor() as i64);
                 let c = read(sx, sy, at);
-                // The pigment's transmittance over the paper and its load.
-                let t = [0, 1, 2].map(|k| (c[k] / paper[k]).clamp(0.0, 1.0));
+                // The pigment's transmittance over the paper, thinned by
+                // the dilution (a layer 1 - dilution as dense), and its
+                // load.
+                let thin = 1.0 - ws.dilution.clamp(0.0, MAX_WASH_DILUTION);
+                let t = [0, 1, 2].map(|k| (c[k] / paper[k]).clamp(0.0, 1.0).powf(thin));
                 let pig = 1.0 - t[0].min(t[1]).min(t[2]);
                 // The wash's edge, where pigment pools and the dry brush
                 // skips: the fine edge where the colour steps, and the
@@ -570,7 +582,10 @@ impl Paint {
                 }
                 let mut c = [0, 1, 2].map(|k| t2[k] * paper[k]);
                 if ws.edge > 0.0 && edge > 0.0 {
-                    c = c.map(|v| v.max(0.0).powf(1.0 + ws.edge * edge));
+                    // Pigment pools where there is pigment: the rim's
+                    // side on the paper or a pale wash stays clean.
+                    let pool = edge * smoothstep(WASH_POOL_LOAD.0, WASH_POOL_LOAD.1, pig);
+                    c = c.map(|v| v.max(0.0).powf(1.0 + ws.edge * pool));
                 }
                 out[(y as u32 * w + x as u32) as usize] = c;
             }
@@ -884,5 +899,64 @@ mod tests {
         assert_eq!(row(19), 200);
         assert_eq!(row(28), 90);
         assert_eq!((row(7), row(9)), (200, 200), "seam {} {}", row(7), row(9));
+    }
+
+    /// Pigment pools where there is pigment: at a wash's boundary with the
+    /// paper the wash's side darkens and the paper's side stays the paper
+    /// (a grey line on bare paper is no pooled pigment).
+    #[test]
+    fn the_wash_rim_pools_on_the_pigment_and_leaves_the_paper_clean() {
+        let (w, h) = (40u32, 9u32);
+        let mut px = vec![[250u8, 250, 250, 255]; (w * h) as usize];
+        for y in 0..h {
+            for x in 20..w {
+                px[(y * w + x) as usize] = [60, 110, 70, 255];
+            }
+        }
+        Paint {
+            wash: Wash {
+                edge: 1.0,
+                ..Wash::default()
+            },
+            ..Paint::default()
+        }
+        .apply(&mut px, w, h);
+        let row = |x: u32| px[(4 * w + x) as usize];
+        assert_eq!(row(19), [250, 250, 250, 255], "the paper's side");
+        assert!(row(20)[1] < 110, "the wash's side {:?}", row(20));
+    }
+
+    /// Dilution thins the pigment: a dark wash lifts towards the paper by
+    /// the Beer-Lambert power (linear 0.04 at half the density is 0.2),
+    /// its channels keep their order, and the paper stays the paper.
+    #[test]
+    fn dilution_lifts_a_dark_wash_towards_the_paper_and_keeps_the_paper() {
+        let (w, h) = (16u32, 16u32);
+        let dark = [
+            colour::to_srgb8(0.04),
+            colour::to_srgb8(0.16),
+            colour::to_srgb8(0.09),
+            255,
+        ];
+        let mut px = vec![dark; (w * h) as usize];
+        for y in 0..h {
+            for x in 0..4 {
+                px[(y * w + x) as usize] = [255, 255, 255, 255];
+            }
+        }
+        Paint {
+            wash: Wash {
+                dilution: 0.5,
+                ..Wash::default()
+            },
+            ..Paint::default()
+        }
+        .apply(&mut px, w, h);
+        let at = |x: u32| px[(8 * w + x) as usize];
+        let want = [0.2, 0.4, 0.3].map(colour::to_srgb8);
+        for (k, want) in want.iter().enumerate() {
+            assert!(at(12)[k].abs_diff(*want) <= 2, "{:?} {want}", at(12));
+        }
+        assert_eq!(at(1), [255, 255, 255, 255]);
     }
 }
