@@ -4,8 +4,9 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 mod generate;
+mod literals;
 
-const USAGE: &str = "usage: og style new <name> [--look <preset>] [--scheme dark|light] [--finish flat|gradient|glass|hologram|neon|paper|bevel|brush] [--out <directory>]\n       og style check <directory> [--json]\n       og style check-project [project] [art-contract options]\n       og style add <directory> [project]\n       og style list [project] [--json]";
+const USAGE: &str = "usage: og style new <name> [--look <preset>] [--scheme dark|light] [--finish flat|gradient|glass|hologram|neon|paper|bevel|brush] [--out <directory>]\n       og style check <directory> [--json]\n          (outside :root a declaration names its colours, lengths, durations and url()s with var(); set the value as a :root token; @font-face src and -og-sound may name url()s)\n       og style check-project [project] [art-contract options]\n       og style add <directory> [project]\n       og style list [project] [--json]";
 
 fn files(
     directory: &Path,
@@ -86,6 +87,10 @@ fn check(args: &[&str]) -> Result<(), String> {
     sources.sort();
     let mut authored = Vec::new();
     document_parts(asset_root.unwrap_or(directory), &mut authored)?;
+    // The engine's built-in components name parts a pack dresses too.
+    if let Some(ui) = og_cook::cook::ui_components::ui_dir() {
+        document_parts(ui, &mut authored)?;
+    }
     let mut findings = Vec::new();
     for (id, text) in &sources {
         if let Err(error) = og_ui::style_pack::StylePack::validate_source(id, text, sources.clone())
@@ -97,6 +102,14 @@ fn check(args: &[&str]) -> Result<(), String> {
                 .into_iter()
                 .map(|error| error.replace(&prefix, &format!("{}/", directory.display()))),
         );
+        findings.extend(literals::findings(
+            &format!(
+                "{}/{}",
+                directory.display(),
+                id.strip_prefix(&prefix).unwrap_or(id)
+            ),
+            text,
+        ));
         for url in og_ui::doc::at_rules::urls(text) {
             if url.starts_with('#') || url.starts_with("data:") {
                 continue;

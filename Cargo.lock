@@ -2843,6 +2843,7 @@ dependencies = [
 name = "og-cli"
 version = "0.7.7"
 dependencies = [
+ "cssparser",
  "glam 0.34.1",
  "gltf",
  "image",

@@ -201,6 +201,41 @@ fn pack_imports_keep_their_own_asset_bases_and_cascade_order() {
             .any(|e| e.contains("styles/example/images/frame.png")),
         "{errors:?}"
     );
+    // A url() held in a root token resolves against the file that declares
+    // it, not the one that reads it: a variant reusing another pack's
+    // tokens (templates/styles/fantasy's --button-image) keeps its art.
+    let variant = StylePack::parse(
+        "styles/variant",
+        vec![
+            (
+                "styles/variant/main.css".into(),
+                r#"
+            @import "../base/tokens.css";
+            button::part(body) { border-image-source: var(--button-image); }
+        "#
+                .into(),
+            ),
+            (
+                "styles/base/tokens.css".into(),
+                ":root { --button-image: url(art/button-iron.svg); }".into(),
+            ),
+        ],
+    )
+    .unwrap();
+    assert_eq!(variant.assets, ["styles/base/art/button-iron.svg"]);
+    ui.set_style_pack(&variant).unwrap();
+    let errors = ui
+        .resolve_part(
+            &PartRef::new("button", "body", og_ui::tokens::ElementClass::Button),
+            [100.0, 40.0],
+        )
+        .unwrap_err();
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.contains("styles/base/art/button-iron.svg")),
+        "{errors:?}"
+    );
 }
 
 #[test]
@@ -278,6 +313,12 @@ fn pack_audio_preserves_sample_sets_ranges_silence_and_replay() {
     assert!(first.windows(2).all(|p| p[0].0 != p[1].0));
     ui.restore_state(&state).unwrap();
     assert_eq!(first, play(&mut ui));
+    // A pack names its sound files as root tokens and sets them by var().
+    let tokens = StylePack::parse("styles/audio", vec![("styles/audio/main.css".into(),
+        ":root { --tap: url(a.wav); --tap2: url(b.wav); -og-sound: press var(--tap) var(--tap2) volume(0.28 0.34) pitch(0.98 1.02), hover none; }".into())]).unwrap();
+    ui.set_style_pack(&tokens).unwrap();
+    ui.restore_state(&state).unwrap();
+    assert_eq!(first, play(&mut ui), "the sound set read through var()");
     for bad in [
         "press",
         "press url(a) volume(0.8 0.2)",
