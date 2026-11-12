@@ -374,15 +374,15 @@ fn bounds(
         .borrow()
         .layouts
         .get(BOUNDS)
-        .map(|l| l.decode(&bytes))
+        .and_then(|l| l.read::<crate::wire::record::WorldBounds>(&bytes).ok())
     else {
         return;
     };
-    if b["off"].as_bool() == Some(true) {
+    if b.off {
         return;
     }
-    let corner = |v: &Value| ["x", "y", "z"].map(|k| v[k].as_f64().unwrap_or(0.0));
-    let (lo, hi) = (corner(&b["min"]), corner(&b["max"]));
+    let corner = |v: glam::Vec3| v.to_array().map(f64::from);
+    let (lo, hi) = (corner(b.min), corner(b.max));
     let (Ok(transform), parent) = (
         world.id_by_name("og.Transform"),
         world.id_by_name("og.Parent").ok(),
@@ -412,7 +412,10 @@ fn bounds(
                         component: Some("og.Transform".into()),
                         field: Some("position".into()),
                         value: json!({ "x": p[0], "y": p[1], "z": p[2] }),
-                        expected: json!({ "min": b["min"], "max": b["max"] }),
+                        expected: json!({
+                            "min": { "x": lo[0], "y": lo[1], "z": lo[2] },
+                            "max": { "x": hi[0], "y": hi[1], "z": hi[2] },
+                        }),
                         message: "the entity left og.WorldBounds".into(),
                     },
                 ));

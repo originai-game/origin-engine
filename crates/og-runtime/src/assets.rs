@@ -1388,9 +1388,9 @@ pub(crate) fn load_texture_array(eng: &Engine, path: &str) -> Result<Value, Stri
 /// array (a flipbook's, an emitter's).
 pub(crate) fn load_texture_array_index(eng: &Engine, path: &str) -> Result<usize, String> {
     let v = load_texture_array(eng, path)?;
-    v["array"]
-        .as_f64()
-        .and_then(index_of)
+    <super::wire::TextureArrayInfo as super::wire::FromJson>::from_json(&v)
+        .ok()
+        .and_then(|info| index_of(info.array as f64))
         .ok_or_else(|| format!("{path}: no texture array handle"))
 }
 
