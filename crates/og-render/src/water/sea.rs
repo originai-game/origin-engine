@@ -158,10 +158,12 @@ pub(super) fn sea_keep(k: f32, cell: f32) -> f32 {
     1.0 - x * x * (3.0 - 2.0 * x)
 }
 
-/// How fast foam grows to full as the Jacobian falls under its threshold
-/// ([`foam_thresholds`]): in the frame (web-ocean's `foamP`) and into the
-/// foam that persists ([`crate::ocean_fft::foam`]; its `FOAM_UPDATE`'s).
-const FRESH_GAIN: f32 = 2.5;
+/// The least a sea's foam grows to full by as the Jacobian falls under its
+/// threshold ([`foam_thresholds`], which steepens it for a sea whose
+/// surface lies close under its level): in the frame (web-ocean's `foamP`)
+/// and into the foam that persists ([`crate::ocean_fft::foam`]; its
+/// `FOAM_UPDATE`'s).
+pub(super) const FRESH_GAIN: f32 = 2.5;
 pub(super) const FOAM_GAIN: f32 = 2.0;
 
 /// The Jacobian of `water`'s drawn surface at seeded points, sorted, its

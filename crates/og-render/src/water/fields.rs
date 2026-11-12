@@ -56,7 +56,8 @@ impl WaterRenderer {
             bands: info.bands,
             wind: water.wind,
             thresholds: info.foam.laid,
-            gain: FOAM_GAIN,
+            gains: [info.foam.gains[0], info.foam.gains[1]],
+            least_gain: FOAM_GAIN,
             streaks: water.foam_streaks,
         };
         let world = |v: Vec3| glam::DVec2::new(f64::from(v.x), f64::from(v.z));

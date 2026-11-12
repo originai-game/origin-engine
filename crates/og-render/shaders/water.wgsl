@@ -390,7 +390,7 @@ fn fs(in: WaterOut) -> @location(0) vec4<f32> {
   // The sea's own normal under the detail (a level surface: its waves are the world's), and its foam.
   var base = in.normal;
   var sea_cov = vec3<f32>(0.0);
-  var sea_f = SeaFoam(0.0, 0.0, 0.0, 0.0, 0.0);
+  var sea_f = SeaFoam(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   if (OG_SEA) {
 if (is_sea()) {
     var footprint = sea_footprint(in.world);
@@ -775,12 +775,17 @@ if (sea) {
     // W4: the thin lace an old whitecap leaves is wet, darker than the dry, fresh foam of a crest breaking now.
     let wet = sea_f.lace / max(sea_f.mask, 1e-3);
     // (The lace's bubbles are too fine to see apart: their mean, so a thin thread is not drawn as a chain of beads.)
-    let alb = water.foam.rgb * (0.78 + 0.3 * mix(sea_f.bubbles, 0.5, wet)) * mix(1.0, 0.65, wet);
+    // A patch's thin rim is a single layer of bubbles over the dark water, its body a pile that scatters all the
+    // light back: the rim three quarters as bright (a flat albedo drew each patch as a cut-out).
+    let alb = water.foam.rgb * (0.78 + 0.3 * mix(sea_f.bubbles, 0.5, wet)) * mix(1.0, 0.65, wet)
+      * mix(0.75, 1.0, sea_f.thick);
     let amb = amb_up + amb_n * 0.3;
     let amb_grey = mix(amb, vec3<f32>(dot(amb, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85);
     // The deck's irradiance over its radiance: its cosine-weighted mean, brighter overhead (overcast()'s 1 + 0.6 r.y)
     // as 1 + 0.6 * 2/3.
-    let sky_light = mix(amb_grey * 1.55, deck_up.rgb * 1.4, deck_up.a);
+    // As bright as the sky lights it, without the twilight's adaptation (water.ao.w, as the mirrored sky above): the
+    // lift is for the land's shade, and foam four times the dusk sky's own brightness glowed white on a dark sea.
+    let sky_light = mix(amb_grey * 1.55 * water.ao.w, deck_up.rgb * 1.4, deck_up.a);
     let foam_lit = alb * (sun_e * max(dot(n, l), 0.0) * 0.5 * 0.31831 + sky_light);
     color = mix(color, foam_lit, sea_f.mask * 0.95);
     // The lace is a film between bubbles, not a matte sheet: the water's glitter shows through some of it (more drew

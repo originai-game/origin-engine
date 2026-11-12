@@ -226,7 +226,9 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
     a = in.alpha * exp(-3.0 * across) * (1.0 - across) * smoothstep(0.0, 0.12, u) * pow(1.0 - u, 1.5) * strands;
   } else {
     if (r2 >= 1.0) { discard; }
-    a = in.alpha * exp(-2.0 * r2) * (1.0 - r2);
+    // A puff of fine droplets, thinner in places, not one drop: an even disc drew each as a white oval.
+    let puff = 0.3 + 0.7 * foam_noise(in.corner * 2.2 + in.world.xz * 0.61);
+    a = in.alpha * exp(-2.0 * r2) * (1.0 - r2) * puff;
   }
   // Droplets scatter forward (a Henyey–Greenstein lobe of g 0.75, mixed with an even share for the many bounces in a
   // dense cloud of them), lit by the sun through the shadows and by the sky above.
@@ -246,7 +248,8 @@ fn fs_spray(in: SprayOut) -> @location(0) vec4<f32> {
   // Lit by the sky as the sea's foam is (nearly grey, its irradiance over the whole sky above): spume is foam torn off
   // the crest and a dense cloud of droplets scatters as much; lit at 0.9 of the sky's radiance, it sat at a third of
   // the foam it leaves and vanished under an overcast.
-  let sky_grey = mix(sky, vec3<f32>(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85) * 1.55;
+  // (Without the twilight's adaptation, water.ao.w, as the foam.)
+  let sky_grey = mix(sky, vec3<f32>(dot(sky, vec3<f32>(0.2126, 0.7152, 0.0722))), 0.85) * 1.55 * water.ao.w;
   let ambient = mix(sky_grey, deck_up.rgb * 1.4, deck_up.a);
   let lit = water.foam.rgb * (sun_e * (0.6 * hg + 0.4 * 0.0795775) + ambient);
   let fogged = apply_fog(lit, in.world);

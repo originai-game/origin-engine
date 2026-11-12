@@ -170,6 +170,7 @@ impl WaterRenderer {
             let drawn_sea = sea.filter(|_| ocean[0] > 0.0);
             if let Some(f) = drawn_sea {
                 ocean[2] = f.foam.fresh;
+                ocean[3] = f.foam.gains[2];
             }
             let gpu = WaterGpu {
                 model: water.transform.to_cols_array_2d(),

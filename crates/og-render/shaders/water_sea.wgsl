@@ -173,13 +173,14 @@ struct SeaFoam {
   bubbles: f32,
   // W4: how much of the mask is the thin, wet lace an old whitecap leaves (it keeps some of the water's glitter).
   lace: f32,
+  // How thick the foam lies here: 0 at a patch's thin edge, 1 in its body.
+  thick: f32,
 };
 
 // The surf (W1) at rest point p: where the shore trains break, a fresh sheet at each crest's face and its trail
 // behind it, fading by the time the next crest comes, and the wash where the water runs thin up the beach.
-fn sea_surf(p: vec2<f32>) -> f32 {
+fn sea_surf(sh: Shoal) -> f32 {
   if (water.shore[0].w < 0.5 || water.shore[2].z <= 0.0) { return 0.0; }
-  let sh = shoaling(p);
   if (sh.inside <= 0.0) { return 0.0; }
   let half = 3.14159265 / max(water.shore[1].z, 1e-6);
   // Breaking where the trains lean over: inshore of a third of their half length, at the breaking depth.
@@ -199,9 +200,8 @@ fn sea_surf(p: vec2<f32>) -> f32 {
 
 // How far point p lies in the surf zone (1 inshore of the trains' breaking depth, as sea_surf; 0 offshore or with no
 // seabed), whatever the surf's foam setting.
-fn surf_zone(p: vec2<f32>) -> f32 {
+fn surf_zone(sh: Shoal) -> f32 {
   if (water.shore[0].w < 0.5) { return 0.0; }
-  let sh = shoaling(p);
   if (sh.inside <= 0.0) { return 0.0; }
   let half = 3.14159265 / max(water.shore[1].z, 1e-6);
   return sh.inside * (1.0 - smoothstep(0.08 * half, 0.4 * half, sh.depth)) * step(0.0, sh.depth - 1e-3);
@@ -218,10 +218,27 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let fw0 = textureSample(heights, ripple_sampler, p * l0.x + l0.yz, first);
   let fw1 = textureSample(heights, ripple_sampler, p * l1.x + l1.yz, first + 1u);
   let fwl = mix(fw1, fw0, w0) * w1;
-  let surf = sea_surf(p);
+  // (The seabed's shoaling once for all the foam reads of it: two loops over the sea's waves.)
+  var sh = OPEN_SEA;
+  if (water.shore[0].w > 0.5) { sh = shoaling(p); }
+  let surf = sea_surf(sh);
+  // The crest's gain is the open sea's (how close its surface lies under the level, water.rs foam_thresholds), kept
+  // where the water is deep for the waves that reach the shore (over half their length). Inshore of that the seabed
+  // bunches every crest far under the level, and the steep gain whitened the sea from there to the beach: the least
+  // gain there (sea.rs FRESH_GAIN), the surf's foam being sea_surf's.
+  let shoal_half = 3.14159265 / max(water.shore[1].z, 1e-6);
+  let shoals = sh.inside * (1.0 - smoothstep(0.4 * shoal_half, shoal_half, sh.depth));
+  let fresh_gain = mix(water.ocean.w, 2.5, shoals);
   // W3: the wakes' foam (their breaking crests and the hulls' sides) is fresh foam too.
-  let fresh = max(max(clamp((water.ocean.z - jac) * water.ocean.w, 0.0, 1.0), surf), sea_wake(p).w);
-  var cover = clamp(max(max(fwl.r, fresh * (1.0 - w1 * 0.7)), surf) + fwl.g * 0.6, 0.0, 1.5);
+  let fresh = max(max(clamp((water.ocean.z - jac) * fresh_gain, 0.0, 1.0), surf), sea_wake(p).w);
+  let fresh_k = clamp(fwl.g * 2.0 + fresh, 0.0, 1.0);
+  // Only the crest breaking now is a solid white (Monahan's stage A, a few tenths of a percent of a gale's sea). The
+  // foam it leaves is no longer fed: a sheet of bubbles thinning as they burst, always open between its patches
+  // (stage B, most of the whitecap cover), so what the levels hold counts for 0.6 of its cover once it is old.
+  // The surf's foam is closed too: the bores churn it over and over, and it lies thick to the beach.
+  let zone = surf_zone(sh);
+  let solid = clamp(max(max(fresh, smoothstep(0.6, 1.0, fwl.g)), zone), 0.0, 1.0);
+  var cover = clamp(max(max(fwl.r * mix(0.8, 1.0, solid), fresh * (1.0 - w1 * 0.7)), surf) + fwl.g * 0.6, 0.0, 1.5);
   let wd = water.sea_wind.xy;
   // W4: the foam's age (the levels' b, mixed as their cover) stretches its structure along the wind as it is carried,
   // from the round lumps of a crest breaking now to streaks some ten times longer than wide (sea_wind.w: foamStreaks).
@@ -229,27 +246,35 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let stretch = 1.0 + 2.0 * water.sea_wind.w * smoothstep(1.0, 8.0, age);
   let ws = vec2<f32>(dot(p, wd) / stretch, dot(p, vec2<f32>(-wd.y, wd.x))) * vec2<f32>(0.035, 0.11) + water.foam_uv[1].zw;
   let streak = textureSample(heights, ripple_sampler, ws, first + 2u).a;
-  let fresh_k = clamp(fwl.g * 2.0 + fresh, 0.0, 1.0);
   // The old foam's structure. On the open sea, the age's streaks along the wind, faded to their mean where a pixel
   // spans their period across it (some 0.6 m; past that they alias into a regular comb along the wind). In the surf
   // zone, broad churning masses with the backwash's dark gaps between them: the surf's foam is churned by the bores,
   // not drawn out by the wind (its age's streaks made the whole band a comb).
   let streak_mod = mix(smoothstep(0.25, 0.75, streak) * 1.5, 0.75, smoothstep(0.3, 0.8, fwidthFine(ws.y) * 16.0));
-  let zone = surf_zone(p);
   let masses = smoothstep(0.3, 0.7, foam_noise(p * 0.15) * 0.65 + foam_noise(p * 0.47 + vec2<f32>(3.1, 7.9)) * 0.35) * 1.4;
   cover *= mix(mix(streak_mod, masses, zone), 1.0, fresh_k * (1.0 - 0.6 * zone));
   let pat = textureSample(heights, ripple_sampler, p * 0.23 + water.foam_uv[0].xy, first + 2u).r * 0.78
     + textureSample(heights, ripple_sampler, p * 0.71 + water.foam_uv[0].zw, first + 2u).g * 0.22;
   let fw = fwidthFine(pat) + 0.03;
   let soft = 0.04 + 0.14 * (1.0 - clamp(cover, 0.0, 1.0));
-  var fm = smoothstep(1.0 - cover - fw - soft, 1.0 - cover + fw + soft, pat);
+  // The pattern's cut. Old foam never closes: even where the levels hold all they can (the gain is steep, so the
+  // cover's own edge is a step and a full cover drew each patch as a flat cut-out) a seventh of the pattern stays
+  // open, the patch's rim and the holes in its body the pattern's. The crest breaking now is closed all over.
+  let cut = 1.0 - cover * mix(0.85, 1.0, solid);
+  var fm = smoothstep(cut - fw - soft, cut + fw + soft, pat);
   // Where a pixel spans the pattern (its change across the pixel near its range), the mask is what the pattern's cut
   // covers of the pixel on average, the share of the lace over 1 - cover: about the cover itself. The cut softened by
   // fwidth alone drew distant foam as a grey sheet wherever there was any.
   fm = mix(fm, clamp(cover, 0.0, 1.0), smoothstep(0.15, 0.4, fw));
   var o: SeaFoam;
   o.cover = cover;
+  // How far the pattern stands over its cut: a patch's rim is a single layer of bubbles, its body a pile of them
+  // (the cover itself where a pixel spans the pattern).
+  o.thick = max(mix(smoothstep(0.0, 0.4, pat - cut), clamp(cover, 0.0, 1.0), smoothstep(0.15, 0.4, fw)), zone);
   o.mask = clamp(fm * smoothstep(0.0, 0.5, cover), 0.0, 1.0) * (0.68 + 0.32 * smoothstep(0.3, 0.9, cover));
+  // A thin rim lets the water show through it.
+  o.mask *= mix(0.75 + 0.25 * o.thick, 1.0, solid);
+  o.bubbles = textureSample(heights, ripple_sampler, p * 1.9 + water.foam_uv[1].xy, first + 2u).g;
   o.mask = max(o.mask, smoothstep(0.35, 0.9, fwl.g) * smoothstep(0.25, 0.6, pat + 0.25) * 0.95);
   // The lace (the levels' a) where the dense cover has gone: a thin web of the finer lace along the streaks, its share
   // of a pixel the lace's own where the pixel spans the web.
@@ -296,7 +321,6 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   o.lace = lace * 0.2 * (1.0 - o.mask);
   o.mask = max(o.mask, lace * 0.2);
   o.young = fwl.g;
-  o.bubbles = textureSample(heights, ripple_sampler, p * 1.9 + water.foam_uv[1].xy, first + 2u).g;
   return o;
 }
 

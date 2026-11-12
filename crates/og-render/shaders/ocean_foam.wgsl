@@ -112,14 +112,14 @@ fn detail(@builtin(global_invocation_id) id: vec3<u32>) {
 struct FoamParams {
   // Per level: the camera's texel now (xy) and at the last step (zw), absolute (the world's xz over the texel).
   snap: array<vec4<i32>, 2>,
-  // Per level: the frame xz of the corner of texel snap.xy, the texel (m), unused.
+  // Per level: the frame xz of the corner of texel snap.xy, the texel (m), the least injection gain.
   base: array<vec4<f32>, 2>,
-  // x the step (s), y the foam's decay (1/s), z the windrows' convergence (m/s), w the injection's gain.
+  // x the step (s), y the foam's decay (1/s), z the windrows' convergence (m/s), w level 0's injection gain.
   p0: vec4<f32>,
   // x the growth of foam held by a fold, yz its drift downwind (m/s), w the cascades.
   p1: vec4<f32>,
   // Per level the Jacobian, as that level resolves it, under which foam is injected (water.rs foam_thresholds); z the
-  // lace's decay (1/s), w unused.
+  // lace's decay (1/s), w level 1's injection gain.
   thresholds: vec4<f32>,
   // As water.wgsl's WaterUniform: per cascade 1 / tile, uv at the frame's origin, tile; each band's middle; the
   // sea's waves.
@@ -241,7 +241,17 @@ fn update(@builtin(global_invocation_id) id: vec3<u32>) {
     let back = (vec2<f32>(id.xy) + 0.5 - (drift + rows.xy) * dt / ts) / f32(RES);
     last = textureSampleLevel(prev, lin, back, level, 0.0);
   }
-  let inject = clamp((foam.thresholds[level] - j) * foam.p0.w, 0.0, 1.0);
+  // The level's gain is the open sea's (how close its surface lies under the level, water.rs foam_thresholds), kept
+  // where the water is deep for the waves that reach the shore (over half their length). Inshore of that the seabed
+  // bunches every crest far under the level: the least gain there, as water_sea.wgsl sea_foam's.
+  let sh = shoaling(p);
+  let half = 3.14159265 / max(foam.shore[1].z, 1e-6);
+  let shoals = sh.inside * (1.0 - smoothstep(0.4 * half, half, sh.depth));
+  let gain = mix(select(foam.p0.w, foam.thresholds.w, level == 1u), foam.base[level].w, shoals);
+  // No more cover than the surface is bunched here: a texel squeezed to j of its area has about twice the rest of it
+  // folded over. A breeze's coarse level lies under its threshold at 0.86 (its breakers are smaller than its 2 m
+  // texel), and the gain alone drew that as one solid sheet trailing a crest for a hundred metres.
+  let inject = min(clamp((foam.thresholds[level] - j) * gain, 0.0, 1.0), clamp((1.0 - j) * 2.0, 0.0, 1.0));
   var f = last.r * exp(-dt * foam.p0.y);
   f = max(f, inject);
   f = min(f + inject * dt * foam.p1.x, 1.6);

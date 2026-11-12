@@ -451,6 +451,9 @@ pub(crate) struct FoamLevels {
     pub laid: [f32; 2],
     /// The drawn crest's own, under which it is white as it folds.
     pub fresh: f32,
+    /// How fast each grows to full as the Jacobian falls under its level
+    /// (`laid`'s, then `fresh`'s).
+    pub gains: [f32; 3],
 }
 
 /// [`FoamLevels`] of `water`: the levels a share of the surface falls
@@ -477,20 +480,40 @@ pub(crate) struct FoamLevels {
 /// displacement) never foams.
 fn foam_thresholds(water: &Water, built: &crate::ocean_fft::spectrum::Spectrum) -> FoamLevels {
     let coverage = 3.84e-6 * f64::from(water.wind.length()).powf(3.41);
-    let level = |resolve: f32, share: f64| {
+    let level = |resolve: f32, share: f64, floor: f32| {
         let jac = jacobians(water, built, resolve);
-        let i = ((share.min(1.0) * jac.len() as f64) as usize).min(jac.len() - 1);
+        let at =
+            |share: f64| jac[((share.min(1.0) * jac.len() as f64) as usize).min(jac.len() - 1)];
         // Never above 0.9: a sea whose surface hardly bunches lays none.
-        jac[i].min(0.9) as f32
+        let under = at(share).min(0.9);
+        // Full foam by the median of what lies under the level. The share
+        // is the surface that is white, not the surface that starts to
+        // whiten: a gale's sea reaches only some 0.1 under its level (its
+        // quantile is far out in the tail), which the fixed gain drew as a
+        // tenth to a fifth of full foam over the right share of the sea.
+        let spread = under - at(share * 0.5);
+        let gain = if spread > 0.0 {
+            (1.0 / spread as f32).clamp(floor, FOAM_GAIN_MAX)
+        } else {
+            floor
+        };
+        (under as f32, gain)
     };
     let ts = |l: usize| {
         (crate::ocean_fft::foam::LEVEL_SIZE[l] / f64::from(crate::ocean_fft::foam::RES)) as f32
     };
+    let laid = [0, 1].map(|l| level(ts(l), coverage * 0.5, sea::FOAM_GAIN));
+    let fresh = level(0.0, coverage * 0.25, sea::FRESH_GAIN);
     FoamLevels {
-        laid: [level(ts(0), coverage * 0.5), level(ts(1), coverage * 0.5)],
-        fresh: level(0.0, coverage * 0.25),
+        laid: [laid[0].0, laid[1].0],
+        fresh: fresh.0,
+        gains: [laid[0].1, laid[1].1, fresh.1],
     }
 }
+
+/// The steepest foam's gain: past it a crest's edge is a hard cut, one
+/// foam texel wide.
+const FOAM_GAIN_MAX: f32 = 16.0;
 
 struct Slot {
     uniform: wgpu::Buffer,

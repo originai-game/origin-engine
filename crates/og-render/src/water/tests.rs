@@ -185,9 +185,13 @@ fn foam_follows_the_winds_whitecap_coverage() {
         "{gale:?}"
     );
     assert!(gale.fresh > 0.0, "{gale:?}");
+    // The gale's foam is full by the median of what lies under each
+    // level, some 0.1 under it: the least gain would leave it a fifth.
+    assert!(gale.gains.iter().all(|&g| g > 6.0), "{gale:?}");
     let round = FoamLevels {
         laid: [0.9; 2],
         fresh: 0.9,
+        gains: [sea::FOAM_GAIN, sea::FOAM_GAIN, sea::FRESH_GAIN],
     };
     assert_eq!(thresholds(Vec2::new(7.0, -18.7), 0.0), round);
 }

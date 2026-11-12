@@ -93,9 +93,11 @@ pub struct FoamSea {
     /// The wind (m/s) in the frame's xz.
     pub wind: glam::Vec2,
     /// Per level the Jacobian (as that level resolves it) under which foam
-    /// is injected, and the injection's gain.
+    /// is injected, each level's injection gain, and the least gain (over
+    /// the shoals).
     pub thresholds: [f32; 2],
-    pub gain: f32,
+    pub gains: [f32; 2],
+    pub least_gain: f32,
     /// How strongly the windrows gather the lace into streaks along the
     /// wind (og.Water.foamStreaks; 0: none).
     pub streaks: f32,
@@ -148,7 +150,7 @@ pub(super) fn step_gpu(
             (f64::from(now[l][0]) * ts - origin.x) as f32,
             (f64::from(now[l][1]) * ts - origin.y) as f32,
             ts as f32,
-            0.0,
+            sea.least_gain,
         ]
     });
     // web-ocean: foam drifts at 3 % of the wind.
@@ -160,10 +162,15 @@ pub(super) fn step_gpu(
             dt,
             DECAY,
             WINDROWS * sea.wind.length() * sea.streaks,
-            sea.gain,
+            sea.gains[0],
         ],
         p1: [1.0, drift.x, drift.y, cascades as f32],
-        thresholds: [sea.thresholds[0], sea.thresholds[1], LACE_DECAY, 0.0],
+        thresholds: [
+            sea.thresholds[0],
+            sea.thresholds[1],
+            LACE_DECAY,
+            sea.gains[1],
+        ],
         cascades: sea.cascades,
         bands: sea.bands,
         swell,
