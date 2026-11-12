@@ -292,7 +292,7 @@ mod scatter_place;
 mod scene;
 mod scene_colliders;
 mod shaders;
-pub use shaders::{ShaderSource, shader_sources};
+pub use shaders::{ShaderSource, UNBOUNDED_MODULES, shader_sources};
 mod garment;
 mod garment_gpu;
 pub mod ocean_fft;

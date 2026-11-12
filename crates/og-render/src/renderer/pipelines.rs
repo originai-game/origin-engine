@@ -129,6 +129,34 @@ pub(crate) fn shader(device: &wgpu::Device, label: &str, source: String) -> wgpu
     })
 }
 
+/// [`shader`] for a module in [`crate::UNBOUNDED_MODULES`]: every other
+/// run-time check stays on. wgpu's bounding is a counter in every loop,
+/// which on Metal doubles the terrain's frame time and triples the paint
+/// pass's.
+pub(crate) fn unbounded_shader(
+    device: &wgpu::Device,
+    label: &str,
+    source: String,
+) -> wgpu::ShaderModule {
+    debug_assert!(crate::UNBOUNDED_MODULES.contains(&label), "{label}");
+    let desc = wgpu::ShaderModuleDescriptor {
+        label: Some(label),
+        source: wgpu::ShaderSource::Wgsl(source.into()),
+    };
+    // SAFETY: without the bounding an endless loop is undefined behaviour on
+    // Metal. These modules hold no game WGSL, and `tests/shader_loops.rs`
+    // fails on any loop in them that is not shown to end.
+    unsafe {
+        device.create_shader_module_trusted(
+            desc,
+            wgpu::ShaderRuntimeChecks {
+                force_loop_bounding: false,
+                ..wgpu::ShaderRuntimeChecks::checked()
+            },
+        )
+    }
+}
+
 /// The pipeline state shared by the passes that draw into the HDR target.
 pub(crate) struct HdrPipeline<'a> {
     pub label: &'a str,

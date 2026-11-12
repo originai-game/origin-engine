@@ -300,7 +300,12 @@ impl Volumetric {
             return;
         }
         let froxel = self.method == VolumetricMethod::Froxel;
-        let module = crate::shader(device, "volumetric", self.off.leave_out(source(froxel)));
+        let label = if froxel {
+            "volumetric"
+        } else {
+            "volumetric raymarch"
+        };
+        let module = crate::unbounded_shader(device, label, self.off.leave_out(source(froxel)));
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("volumetric apply"),
             bind_group_layouts: &[Some(frame_layout), Some(&self.apply_layout)],

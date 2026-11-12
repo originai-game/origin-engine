@@ -13,14 +13,14 @@ use naga::valid::{Capabilities, ValidationFlags, Validator};
 
 /// What wgpu asks naga to allow for these modules: the
 /// capabilities the renderer's features and downlevel flags give it.
-fn full_capabilities() -> Capabilities {
+pub(crate) fn full_capabilities() -> Capabilities {
     Capabilities::MULTISAMPLED_SHADING
         | Capabilities::CUBE_ARRAY_TEXTURES
         | Capabilities::SHADER_FLOAT32_ATOMIC
 }
 
 /// Parses, validates and resolves the overrides of one module.
-fn checked(
+pub(crate) fn checked(
     label: &str,
     wgsl: &str,
     set: &[(String, f64)],
