@@ -13,21 +13,6 @@ struct GlowChain {
 @group(0) @binding(1) var linear_sampler: sampler;
 @group(0) @binding(2) var<uniform> g: GlowChain;
 
-struct VsOut {
-  @builtin(position) pos: vec4<f32>,
-  @location(0) uv: vec2<f32>,
-};
-
-@vertex
-fn vs(@builtin(vertex_index) i: u32) -> VsOut {
-  var o: VsOut;
-  let x = f32(i32(i & 1u) * 4 - 1);
-  let y = f32(i32(i & 2u) * 2 - 1);
-  o.pos = vec4<f32>(x, y, 0.0, 1.0);
-  o.uv = vec2<f32>(x * 0.5 + 0.5, 0.5 - y * 0.5);
-  return o;
-}
-
 // A view keeps no untonemapped sprites (every run is tone mapped there),
 // so a tap is the level's colour, as the frame's without them.
 fn bloom_tap(uv: vec2<f32>) -> vec3<f32> {

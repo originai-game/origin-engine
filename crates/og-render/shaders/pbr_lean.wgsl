@@ -31,15 +31,6 @@ struct CompactVertexIn {
   @location(3) color: vec4<f32>,
 };
 
-// An octahedral unit vector (compact.rs `oct_encode`).
-fn oct_decode(e: vec2<f32>) -> vec3<f32> {
-  var v = vec3<f32>(e.x, e.y, 1.0 - abs(e.x) - abs(e.y));
-  let t = max(-v.z, 0.0);
-  v.x += select(t, -t, v.x >= 0.0);
-  v.y += select(t, -t, v.y >= 0.0);
-  return normalize(v);
-}
-
 struct LeanOut {
   @builtin(position) clip: vec4<f32>,
   @location(0) world_pos: vec3<f32>,

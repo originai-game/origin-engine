@@ -33,7 +33,7 @@ use glam::{DVec2, IVec2, Vec3};
 pub(crate) fn source() -> String {
     format!(
         "{}{}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         wgsl3d!("wind_field.wgsl")
     )

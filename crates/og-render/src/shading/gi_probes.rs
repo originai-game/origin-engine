@@ -398,7 +398,7 @@ pub(crate) fn trace_source() -> String {
 
 /// The blend module.
 pub(crate) fn blend_source() -> String {
-    format!("{}{}", wgsl!("gi_common.wgsl"), wgsl!("gi_blend.wgsl"))
+    wgsl_library!("gi_common.wgsl", "gi_blend.wgsl").to_string()
 }
 
 /// The probe GI's GPU side.

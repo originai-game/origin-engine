@@ -4,10 +4,8 @@ struct VsOut { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
 @vertex
 fn vs(@builtin(vertex_index) i: u32) -> VsOut {
   var o: VsOut;
-  let x = f32(i32(i & 1u) * 4 - 1);
-  let y = f32(i32(i & 2u) * 2 - 1);
-  o.pos = vec4<f32>(x, y, 0.0, 1.0);
-  o.uv = vec2<f32>(x * 0.5 + 0.5, 0.5 - y * 0.5);
+  o.pos = fullscreen_clip(i);
+  o.uv = vec2<f32>(o.pos.x * 0.5 + 0.5, 0.5 - o.pos.y * 0.5);
   return o;
 }
 

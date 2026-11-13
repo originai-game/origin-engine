@@ -14,10 +14,9 @@ struct LineOut {
 
 @vertex
 fn vs_waterline(@builtin(vertex_index) vi: u32) -> LineOut {
-  let uv = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
   var o: LineOut;
-  o.ndc = uv * 2.0 - 1.0;
-  o.clip = vec4<f32>(o.ndc, 0.0, 1.0);
+  o.clip = fullscreen_clip(vi);
+  o.ndc = o.clip.xy;
   return o;
 }
 

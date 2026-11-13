@@ -5,8 +5,8 @@
 // sin, which GPUs round differently, into unrelated values, so a cell lit
 // on one GPU was dark on another.
 //
-// The frame group's text starts with this file (FRAME_WGSL); a module
-// without the frame group puts HASH_WGSL first.
+// With common.wgsl it is LIBRARY_WGSL: the frame group's text starts with
+// it (FRAME_WGSL), and a module without the frame group puts it first.
 
 // PCG's output permutation (Jarzynski and Olano, "Hash functions for GPU
 // rendering", 2020).

@@ -2,7 +2,7 @@
 
 use super::*;
 
-const VIEWS_WGSL: &str = wgsl!("views.wgsl");
+const VIEWS_WGSL: &str = wgsl_library!("views.wgsl");
 
 const VIEWS_COLOR_WGSL: &str = wgsl!("views_color.wgsl");
 

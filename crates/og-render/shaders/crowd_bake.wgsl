@@ -93,13 +93,6 @@ fn vs_bake(@builtin(instance_index) tile: u32, v: BakeVertex, s: BakeSkin) -> Ba
   return o;
 }
 
-// The octahedral map of a unit vector to [-1, 1]² (post.wgsl's oct_encode).
-fn bake_oct(n: vec3<f32>) -> vec2<f32> {
-  let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
-  if (n.z >= 0.0) { return p; }
-  return (vec2<f32>(1.0) - abs(p.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), p >= vec2<f32>(0.0));
-}
-
 struct BakeTargets {
   @location(0) albedo: vec4<f32>,
   @location(1) data: vec4<f32>,
@@ -114,6 +107,6 @@ fn fs_bake(in: BakeOut) -> BakeTargets {
   if (material.emissive.w >= 0.0 && alpha < material.emissive.w) { discard; }
   var o: BakeTargets;
   o.albedo = vec4<f32>(tex.rgb * in.color.rgb, 1.0);
-  o.data = vec4<f32>(bake_oct(normalize(in.normal)), in.tile.z, f32(bake.clip.w));
+  o.data = vec4<f32>(oct_encode(normalize(in.normal)), in.tile.z, f32(bake.clip.w));
   return o;
 }

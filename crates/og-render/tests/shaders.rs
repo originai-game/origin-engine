@@ -89,7 +89,7 @@ fn every_module_validates_and_translates_to_msl_spirv_and_hlsl() {
         label: "foliage deformation".into(),
         wgsl: format!(
             "{}\n{}\n{}\n{}",
-            og_render_data::HASH_WGSL,
+            og_render_data::LIBRARY_WGSL,
             og_render::foliage::WIND_WGSL,
             og_render::foliage::WGSL,
             r#"

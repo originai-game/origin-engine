@@ -113,15 +113,6 @@ fn card_atlas(col: f32, row: f32, uv: vec2<f32>) -> vec2<f32> {
   return (vec2<f32>(col, row) + inside) / tiles;
 }
 
-// The octahedral map's inverse (lighting.wgsl oct_encode's).
-fn card_oct(e: vec2<f32>) -> vec3<f32> {
-  var n = vec3<f32>(e.x, e.y, 1.0 - abs(e.x) - abs(e.y));
-  let t = max(-n.z, 0.0);
-  n.x += select(t, -t, n.x >= 0.0);
-  n.y += select(t, -t, n.y >= 0.0);
-  return normalize(n);
-}
-
 // The card's surface where the pixel's point is: the atlas's four tiles
 // around it (two columns by two frames) blended by weight and coverage.
 struct CardSample {
@@ -153,7 +144,7 @@ fn card_sample(local: vec3<f32>, cols: vec2<f32>, col_w: f32, rows: vec2<f32>, r
       d += dk * w;
       // Each tile's normal out of its own basis (premultiplied: divided
       // by its coverage first).
-      n += b * card_oct(dk.xy / max(ak.a, 1e-4)) * (ak.a * w);
+      n += b * oct_decode(dk.xy / max(ak.a, 1e-4)) * (ak.a * w);
     }
   }
   var o: CardSample;

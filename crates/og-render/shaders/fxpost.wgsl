@@ -41,14 +41,6 @@ fn is_sky(d: f32) -> bool {
   return d >= fxp.cam.x * 0.999;
 }
 
-fn oct_decode(e: vec2<f32>) -> vec3<f32> {
-  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
-  if (n.z < 0.0) {
-    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
-  }
-  return normalize(n);
-}
-
 fn world_normal(px: vec2<i32>) -> vec3<f32> {
   let size = vec2<i32>(textureDimensions(tex_gbuffer));
   return oct_decode(textureLoad(tex_gbuffer, prepass_px(px, size), 0).xy);
@@ -56,18 +48,7 @@ fn world_normal(px: vec2<i32>) -> vec3<f32> {
 
 // The view-space point at `uv` whose view depth is `d`.
 fn view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
-  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a = fxp.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b = fxp.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
-  let p0 = a.xyz / a.w;
-  let p1 = b.xyz / b.w;
-  let t = (d + p0.z) / (p0.z - p1.z);
-  return mix(p0, p1, t);
-}
-
-// Interleaved gradient noise (Jimenez): a fixed per-pixel pattern.
-fn ign(px: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(px, vec2<f32>(0.06711056, 0.00583715))));
+  return view_point(fxp.inv_proj, uv, d);
 }
 
 // A 4x4 Bayer ordering of the AO texel (0..15, +0.5, over 16): interleaved

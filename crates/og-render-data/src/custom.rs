@@ -106,7 +106,7 @@ pub fn shadow_source(shader: &MaterialShader) -> String {
     // no occlusion.
     crate::assemble(
         &[
-            crate::HASH_WGSL,
+            crate::LIBRARY_WGSL,
             crate::oit::OIT_WGSL,
             crate::particles_gpu::NOISE_WGSL,
             crate::MATERIAL_WGSL,

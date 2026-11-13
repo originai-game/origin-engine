@@ -52,7 +52,8 @@ const _: () = assert!(std::mem::size_of::<Params>() as u64 <= SLOT);
 /// BRDF table integrates, and the physical sky's functions.
 pub(crate) fn ibl_source() -> String {
     format!(
-        "{}{IBL_WGSL}{SHEEN_WGSL}{}",
+        "{}{}{IBL_WGSL}{SHEEN_WGSL}{}",
+        crate::LIBRARY_WGSL,
         crate::GGX_WGSL,
         crate::renderer::sky_scatter_wgsl("params.scatter")
     )

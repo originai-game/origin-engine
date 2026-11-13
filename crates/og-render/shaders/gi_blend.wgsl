@@ -123,9 +123,9 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
 
   // This thread's distance texel, and its radiance texel for the first 36.
   let dt = vec2<f32>(f32(t % GI_DEPTH), f32(t / GI_DEPTH));
-  let depth_dir = gi_oct_decode((dt + 0.5) / f32(GI_DEPTH) * 2.0 - 1.0);
+  let depth_dir = oct_decode((dt + 0.5) / f32(GI_DEPTH) * 2.0 - 1.0);
   let rt = vec2<f32>(f32(t % GI_RADIANCE), f32(t / GI_RADIANCE));
-  let radiance_dir = gi_oct_decode((rt + 0.5) / f32(GI_RADIANCE) * 2.0 - 1.0);
+  let radiance_dir = oct_decode((rt + 0.5) / f32(GI_RADIANCE) * 2.0 - 1.0);
   var moments = vec2<f32>(0.0);
   var moment_weight = 0.0;
   var light = vec3<f32>(0.0);
@@ -193,7 +193,7 @@ fn cs_blend(@builtin(local_invocation_index) t: u32, @builtin(workgroup_id) grou
     var sh = array<vec4<f32>, 3>(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0));
     for (var i = 0u; i < TEXELS; i++) {
       let p = vec2<f32>(f32(i % GI_RADIANCE), f32(i / GI_RADIANCE));
-      let d = gi_oct_decode((p + 0.5) / f32(GI_RADIANCE) * 2.0 - 1.0);
+      let d = oct_decode((p + 0.5) / f32(GI_RADIANCE) * 2.0 - 1.0);
       let basis = vec4<f32>(d * (2.0 / f32(TEXELS)), 1.0 / f32(TEXELS));
       sh[0] += basis * radiance[i].r;
       sh[1] += basis * radiance[i].g;

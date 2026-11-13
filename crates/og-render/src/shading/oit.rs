@@ -664,7 +664,7 @@ impl OitState {
 /// (multisampled with `msaa`, per sample) and, with `list`, the arena and
 /// the depth, then `oit_resolve.wgsl` (and `oit_list.wgsl`).
 pub(crate) fn resolve_source(msaa: bool, list: bool) -> String {
-    let fullscreen = wgsl!("fullscreen.wgsl");
+    let fullscreen = crate::post::FULLSCREEN_WGSL;
     let (texture, sample) = if msaa {
         ("texture_multisampled_2d<f32>", "i32(s)")
     } else {

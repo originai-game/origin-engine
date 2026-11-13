@@ -30,7 +30,7 @@ pub(crate) fn lit_source() -> String {
 pub(crate) fn shadow_source() -> String {
     format!(
         "{}{}{}{}{}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::SHADOW_PASS_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,
@@ -44,7 +44,7 @@ pub(crate) fn shadow_source() -> String {
 pub(crate) fn generate_source(arrayed: bool) -> String {
     let s = format!(
         "{}{}{}{}{}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,

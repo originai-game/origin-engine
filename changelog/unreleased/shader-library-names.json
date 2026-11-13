@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og.load.shader, og.load.post, og.load.uiMaterial",
+      "change": "Every module a game shader is compiled into now starts with the engine's shader library, so a game shader that defines a function named pcg, hash_lowbias, hash_to_unit, hash_unit, lattice3, oct_encode, oct_decode, fullscreen_clip, view_point or ign no longer cooks: the cook refuses it with the redefinition error.",
+      "fix": "Rename the function in the game's shader, or delete it and call the engine's: pcg(u32) and hash_lowbias(u32) hash an integer, hash_unit(u32) gives a number in [0, 1), oct_encode(vec3) and oct_decode(vec2) map a unit vector to and from the octahedral square, ign(pixel) is interleaved gradient noise."
+    }
+  ]
+}

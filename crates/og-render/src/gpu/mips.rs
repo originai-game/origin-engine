@@ -208,4 +208,4 @@ impl MipChain {
 }
 
 /// The mip generator's module (`crate::shaders` validates it).
-pub(crate) const MIPMAP_WGSL: &str = wgsl!("mipmap.wgsl");
+pub(crate) const MIPMAP_WGSL: &str = wgsl_library!("fullscreen.wgsl", "mipmap.wgsl");

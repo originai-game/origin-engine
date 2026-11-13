@@ -164,11 +164,6 @@ fn mat_apply(m: vec4<f32>, v: vec2<f32>) -> vec2<f32> {
   return vec2<f32>(m.x * v.x + m.z * v.y, m.y * v.x + m.w * v.y);
 }
 
-// Interleaved gradient noise, 0..1.
-fn ign(pixel: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(pixel, vec2<f32>(0.06711056, 0.00583715))));
-}
-
 // ── signed distances ─────────────────────────────────────────────────────
 
 fn sd_box(p: vec2<f32>, b: vec2<f32>) -> f32 {

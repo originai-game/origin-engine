@@ -45,6 +45,14 @@ macro_rules! wgsl {
     };
 }
 
+/// The files of a module that has no frame group, after the library every
+/// shader may call ([`LIBRARY_WGSL`]), as one `const` text.
+macro_rules! wgsl_library {
+    ($($file:literal),+) => {
+        concat!(wgsl!("hash.wgsl"), wgsl!("common.wgsl"), $(wgsl!($file)),+)
+    };
+}
+
 /// [`wgsl!`] for a 3D world subsystem's own file (terrain, water, the 3D
 /// fluids, the scattered copies, volumetric fog): empty in a `profile2d`
 /// build, which never draws them ([`WORLD_3D`]), so their text is not in

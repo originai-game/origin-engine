@@ -60,7 +60,7 @@ fn sway_source() -> String {
 pub(crate) fn raster_source() -> String {
     format!(
         "{}{}{}{MESHLET_RASTER_WGSL}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::INSTANCE_WGSL,
         sway_source()
     )
@@ -83,7 +83,7 @@ pub(crate) fn lit_source(planar: bool) -> String {
 pub(crate) fn depth_source() -> String {
     format!(
         "{}{}{}{MESHLET_DEPTH_WGSL}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::INSTANCE_WGSL,
         sway_source()
     )

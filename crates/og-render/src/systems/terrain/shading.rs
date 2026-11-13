@@ -184,7 +184,7 @@ pub(crate) fn terrain_shadow_array_source() -> String {
 pub(crate) fn terrain_corners_source() -> String {
     format!(
         "{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         wgsl3d!("terrain_corners.wgsl")
     )
@@ -194,7 +194,7 @@ pub(crate) fn terrain_corners_source() -> String {
 pub(crate) fn terrain_shadow_source() -> String {
     format!(
         "{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::SHADOW_PASS_WGSL,
         wgsl3d!("terrain_shadow.wgsl")

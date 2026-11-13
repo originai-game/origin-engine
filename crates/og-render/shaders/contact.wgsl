@@ -71,23 +71,9 @@ fn contact_depth(px: vec2<i32>, size: vec2<i32>) -> f32 {
   return 1.0 / max(d, 1e-6);
 }
 
-fn oct_decode(e: vec2<f32>) -> vec3<f32> {
-  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
-  if (n.z < 0.0) {
-    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
-  }
-  return normalize(n);
-}
-
 // The view-space point at `uv` whose view depth is `d`.
 fn view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
-  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a = fxp.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b = fxp.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
-  let p0 = a.xyz / a.w;
-  let p1 = b.xyz / b.w;
-  let t = (d + p0.z) / (p0.z - p1.z);
-  return mix(p0, p1, t);
+  return view_point(fxp.inv_proj, uv, d);
 }
 
 // Whether the pixel at `px` takes no light from the contact light: off

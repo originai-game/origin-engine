@@ -55,7 +55,7 @@ use crate::AoResolution;
 use crate::renderer::history::GpuCopy;
 use crate::renderer::{sampler_entry, uniform_entry};
 
-const SSR_WGSL: &str = wgsl!("ssr.wgsl");
+const SSR_WGSL: &str = wgsl_library!("ssr.wgsl");
 
 /// The passes' module source (`shaders.rs` validates it).
 pub(crate) fn source() -> String {

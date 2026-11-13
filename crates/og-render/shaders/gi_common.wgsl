@@ -35,23 +35,6 @@ const GI_DEPTH_AT: u32 = 4u;
 const GI_RADIANCE: u32 = 6u;
 const GI_PI: f32 = 3.14159265359;
 
-// Octahedral encoding of a unit vector into -1..1, and back (the probes'
-// distance and radiance maps).
-fn gi_oct_encode(n: vec3<f32>) -> vec2<f32> {
-  let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
-  if (n.z >= 0.0) { return p; }
-  return (1.0 - abs(p.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), p >= vec2<f32>(0.0));
-}
-
-fn gi_oct_decode(e: vec2<f32>) -> vec3<f32> {
-  var v = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
-  if (v.z < 0.0) {
-    let s = select(vec2<f32>(-1.0), vec2<f32>(1.0), v.xy >= vec2<f32>(0.0));
-    v = vec3<f32>((1.0 - abs(v.yx)) * s, v.z);
-  }
-  return normalize(v);
-}
-
 // The texel of an n × n octahedral map that texel (x, y), up to one past
 // an edge, stands for: across an edge the map folds over itself, so a
 // bilinear tap there reads the mirrored texel (Wicked's border copies,

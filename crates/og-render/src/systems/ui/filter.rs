@@ -482,7 +482,7 @@ pub(crate) struct FilterRunner {
     lattices: Vec<(u32, wgpu::TextureView)>,
 }
 
-const FILTER_WGSL: &str = wgsl!("ui_filter.wgsl");
+const FILTER_WGSL: &str = wgsl_library!("ui_filter.wgsl");
 
 impl FilterRunner {
     pub(crate) fn new(device: &wgpu::Device) -> FilterRunner {

@@ -2,15 +2,18 @@ use crate::oit::{ARENA_WGSL, OIT_WGSL};
 use crate::shader_capability::{Capability, assemble};
 use crate::{clusters, lightmap, particles_gpu, skin};
 
-/// The integer hashes (hash.wgsl), one copy for every shader:
-/// [`FRAME_WGSL`] starts with them, and a module without the frame group
-/// that hashes puts this first.
-pub const HASH_WGSL: &str = wgsl!("hash.wgsl");
-/// The frame group (frame.wgsl) after the hashes ([`HASH_WGSL`]), with the
+/// What any shader may call, one copy for every module: the integer
+/// hashes (hash.wgsl), then the octahedral map, the fullscreen triangle,
+/// the view-space point under a pixel and interleaved gradient noise
+/// (common.wgsl). [`FRAME_WGSL`] starts with it, and a module without the
+/// frame group puts this first.
+pub const LIBRARY_WGSL: &str = concat!(wgsl!("hash.wgsl"), wgsl!("common.wgsl"));
+/// The frame group (frame.wgsl) after the library ([`LIBRARY_WGSL`]), with the
 /// light volumes' buffer and the probe GI's sampling that `ambient_light`
 /// reads (gi_probes.rs).
 pub const FRAME_WGSL: &str = concat!(
     wgsl!("hash.wgsl"),
+    wgsl!("common.wgsl"),
     wgsl!("frame.wgsl"),
     wgsl!("gi_common.wgsl"),
     wgsl!("gi_sample.wgsl"),
@@ -176,7 +179,7 @@ pub const SHADOW_PASS_WGSL: &str = wgsl!("shadow_pass.wgsl");
 pub fn shadow_source(hooks: &str) -> String {
     assemble(
         &[
-            HASH_WGSL,
+            LIBRARY_WGSL,
             particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_MAPS_WGSL,

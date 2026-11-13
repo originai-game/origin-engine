@@ -29,7 +29,8 @@ pub(super) struct GlowAdd {
 }
 
 /// The glow chain's module: its passes and the frame's bloom filters.
-const VIEWS_GLOW_WGSL: &str = concat!(wgsl!("views_glow.wgsl"), wgsl!("bloom_chain.wgsl"));
+const VIEWS_GLOW_WGSL: &str =
+    wgsl_library!("fullscreen.wgsl", "views_glow.wgsl", "bloom_chain.wgsl");
 
 /// The glow chain's module (`fs_down`, `fs_up`, `fs`).
 pub(crate) fn glow_source() -> String {

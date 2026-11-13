@@ -417,7 +417,7 @@ pub(crate) fn sprites_source() -> String {
 pub(crate) fn sim_source() -> String {
     format!(
         "{}{NOISE_WGSL}{COMMON_WGSL}{COLLIDERS_WGSL}{SIM_WGSL}",
-        crate::HASH_WGSL
+        crate::LIBRARY_WGSL
     )
 }
 

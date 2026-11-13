@@ -155,19 +155,9 @@ struct MeshletResolveOut {
 @vertex
 fn vs_meshlet_resolve(@builtin(vertex_index) vi: u32, @builtin(instance_index) row: u32) -> MeshletResolveOut {
   var o: MeshletResolveOut;
-  let p = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
-  o.clip = vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
+  o.clip = fullscreen_clip(vi);
   o.row = row;
   return o;
-}
-
-// stylise.wgsl's `oct_decode`.
-fn meshlet_oct(e: vec2<f32>) -> vec3<f32> {
-  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
-  if (n.z < 0.0) {
-    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
-  }
-  return normalize(n);
 }
 
 struct MeshletRecord {
@@ -200,7 +190,7 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   r.depth = bitcast<f32>(a.w);
   r.v.clip = pos;
   r.v.world_pos = bitcast<vec3<f32>>(a.xyz);
-  r.v.normal = meshlet_oct(unpack2x16snorm(b.x));
+  r.v.normal = oct_decode(unpack2x16snorm(b.x));
   r.v.uv = bitcast<vec2<f32>>(b.yz);
   r.v.color = unpack4x8unorm(b.w);
   // The material style's surface pattern lies in the mesh's own space.
@@ -209,7 +199,7 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
     bitcast<f32>(meshlet_attrs[at + 6u].w),
     bitcast<f32>(meshlet_attrs[at + 7u].w),
   );
-  r.v.tangent = vec4<f32>(meshlet_oct(unpack2x16snorm(c.x)), bitcast<f32>(c.y));
+  r.v.tangent = vec4<f32>(oct_decode(unpack2x16snorm(c.x)), bitcast<f32>(c.y));
   if (r.v.tangent.w == 0.0) { r.v.tangent = vec4<f32>(0.0); }
   r.v.affine = vec3<f32>(r.v.uv, 1.0);
   r.v.look = bitcast<vec4<f32>>(meshlet_attrs[at + 3u]);
@@ -232,7 +222,7 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
     // as `vs_meshlet` blends it per vertex.
     let d = meshlet_attrs[at + 11u];
     if (d.y != 0u && material.coat.w > 0.0) {
-      r.v.normal = normalize(mix(normalize(r.v.normal), meshlet_oct(unpack2x16snorm(d.x)), clamp(material.coat.w, 0.0, 1.0)));
+      r.v.normal = normalize(mix(normalize(r.v.normal), oct_decode(unpack2x16snorm(d.x)), clamp(material.coat.w, 0.0, 1.0)));
     }
   }
   r.object = c.w;

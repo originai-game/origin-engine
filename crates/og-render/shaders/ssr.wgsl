@@ -145,22 +145,8 @@ fn ssr_decode_roughness(packed: f32) -> f32 {
   return 1.0 - (g - metal * 256.0) / 255.0;
 }
 
-fn ssr_oct_decode(e: vec2<f32>) -> vec3<f32> {
-  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
-  if (n.z < 0.0) {
-    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
-  }
-  return normalize(n);
-}
-
-fn ssr_oct_encode(n: vec3<f32>) -> vec2<f32> {
-  let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
-  if (n.z >= 0.0) { return p; }
-  return (1.0 - abs(p.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), p >= vec2<f32>(0.0));
-}
-
 fn ssr_world_normal(px: vec2<i32>) -> vec3<f32> {
-  return ssr_oct_decode(textureLoad(ssr_gbuffer, ssr_clamp_px(px), 0).xy);
+  return oct_decode(textureLoad(ssr_gbuffer, ssr_clamp_px(px), 0).xy);
 }
 
 fn ssr_guide(c: vec2<i32>) -> vec4<f32> {
@@ -175,15 +161,9 @@ fn ssr_velocity(px: vec2<i32>) -> vec2<f32> {
   return textureLoad(ssr_gbuffer, ssr_clamp_px(px), 0).zw;
 }
 
-// The view-space point at `uv` whose view depth is `d` (fxpost.wgsl view_pos).
+// The view-space point at `uv` whose view depth is `d`.
 fn ssr_view_pos(uv: vec2<f32>, d: f32) -> vec3<f32> {
-  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a = ssr.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b = ssr.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
-  let p0 = a.xyz / a.w;
-  let p1 = b.xyz / b.w;
-  let t = (d + p0.z) / (p0.z - p1.z);
-  return mix(p0, p1, t);
+  return view_point(ssr.inv_proj, uv, d);
 }
 
 // A view-space point as (uv, q) with q = 1 / z = -1 / depth, which is affine
@@ -681,7 +661,7 @@ fn ssr_prefilter(px: vec2<i32>, step: f32, stream: u32) {
     textureStore(filtered_out, px, center);
     return;
   }
-  let n = ssr_oct_decode(own.xy);
+  let n = oct_decode(own.xy);
   // The local mean the radiance weight compares against, so a lone bright
   // sample is pulled down as FidelityFX's average radiance does: a 3x3
   // tent in four bilinear reads at the pixel's corners.
@@ -707,7 +687,7 @@ fn ssr_prefilter(px: vec2<i32>, step: f32, stream: u32) {
     // normal's power, the depth's and the radiance's falloffs (the last
     // floored at 1e-2 as FidelityFX's), and a neighbour of another
     // roughness, which lies on another lobe.
-    let facing = max(dot(n, ssr_oct_decode(g.xy)), 1e-6);
+    let facing = max(dot(n, oct_decode(g.xy)), 1e-6);
     let w = exp(SSR_NORMAL_SIGMA * log(facing)
       - abs(d - g.z) / max(d, 1e-3) * SSR_DEPTH_SIGMA * 8.0
       - min(SSR_RADIANCE_BIAS * length(s.rgb - mean.rgb), 4.6052)
@@ -759,7 +739,7 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   let center = textureLoad(resolved, px, 0);
   if (ssr_is_sky(d) || roughness > ssr.trace.w) {
     textureStore(history_out, px, vec4<f32>(0.0));
-    textureStore(meta_out, px, vec4<f32>(0.0, d, ssr_oct_encode(world_n)));
+    textureStore(meta_out, px, vec4<f32>(0.0, d, oct_encode(world_n)));
     textureStore(fast_out, px, vec4<f32>(0.0));
     textureStore(spread_out, px, vec4<f32>(0.0));
     return;
@@ -807,15 +787,15 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
       let hit_uv = vec2<f32>(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5) + uv_c - uv;
       let hit_meta = ssr_meta(hit_uv);
       let surface_meta = ssr_meta(surface_uv);
-      let hit_similar = dot(ssr_oct_decode(hit_meta.zw), world_n);
+      let hit_similar = dot(oct_decode(hit_meta.zw), world_n);
       if (ssr_on_screen(hit_uv) && hit_similar > 0.999
-          && hit_similar + 1e-3 > dot(ssr_oct_decode(surface_meta.zw), world_n)) {
+          && hit_similar + 1e-3 > dot(oct_decode(surface_meta.zw), world_n)) {
         history_uv = hit_uv;
       }
     }
     if (ssr_on_screen(history_uv)) {
       let m = ssr_meta(history_uv);
-      let kept = ssr_disocclusion(world_n, ssr_oct_decode(m.zw), d, m.y);
+      let kept = ssr_disocclusion(world_n, oct_decode(m.zw), d, m.y);
       if (kept > SSR_DISOCCLUSION_THRESHOLD && m.x > 0.0) {
         // How still the history is on screen: 1 for a still camera over a
         // still surface.
@@ -870,7 +850,7 @@ fn temporal(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   out = max(out, vec4<f32>(0.0));
   textureStore(history_out, px, out);
-  textureStore(meta_out, px, vec4<f32>(samples, d, ssr_oct_encode(world_n)));
+  textureStore(meta_out, px, vec4<f32>(samples, d, oct_encode(world_n)));
   textureStore(fast_out, px, fast);
   textureStore(spread_out, px, spread);
 }
@@ -904,7 +884,7 @@ fn upsample(@builtin(global_invocation_id) gid: vec3<u32>) {
     let o = vec2<i32>(k & 1, k >> 1);
     let q = ssr_clamp_chain(base + o);
     let g = textureLoad(guide, q, 0);
-    let facing = max(dot(n, ssr_oct_decode(g.xy)), 1e-6);
+    let facing = max(dot(n, oct_decode(g.xy)), 1e-6);
     let like = exp(16.0 * log(facing) - abs(g.z - d) / max(d, 1e-3) * 32.0
       - abs(g.w - roughness) * 16.0);
     let share = select(1.0 - f.x, f.x, o.x == 1) * select(1.0 - f.y, f.y, o.y == 1);

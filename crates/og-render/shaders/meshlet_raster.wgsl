@@ -230,13 +230,6 @@ fn raster_id(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_ind
   if (t.ok) { cover(t, ((k << 6u) | li) + 1u); }
 }
 
-// lighting.wgsl `oct_encode`.
-fn raster_oct(n: vec3<f32>) -> vec2<f32> {
-  let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
-  if (n.z >= 0.0) { return p; }
-  return (1.0 - abs(p.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), p >= vec2<f32>(0.0));
-}
-
 // pbr.wgsl `world_normal`.
 fn raster_normal(model: mat4x4<f32>, n: vec3<f32>) -> vec3<f32> {
   let a = model[0].xyz;
@@ -400,9 +393,9 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   // A tangent of w 0 is none (pbr.wgsl `lit_vertex`).
   let rows = array<vec4<u32>, 8>(
     vec4<u32>(bitcast<vec3<u32>>(world), bitcast<u32>(depth)),
-    vec4<u32>(pack2x16snorm(raster_oct(n)), bitcast<vec2<u32>>(uv), pack4x8unorm(color)),
+    vec4<u32>(pack2x16snorm(oct_encode(n)), bitcast<vec2<u32>>(uv), pack4x8unorm(color)),
     vec4<u32>(
-      pack2x16snorm(raster_oct(t)),
+      pack2x16snorm(oct_encode(t)),
       bitcast<u32>(select(0.0, tangent.w, dot(tw, tw) > 1e-20)),
       f.x & 0x0fffffffu,
       select(raster_object(model), group, group > 0u),
@@ -423,7 +416,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     let k = raster.stylise.z;
     // The dome in the world (0: none).
     var dome_world = 0u;
-    if (c.w != 0u) { dome_world = pack2x16snorm(raster_oct(raster_normal(model, dome))); }
+    if (c.w != 0u) { dome_world = pack2x16snorm(oct_encode(raster_normal(model, dome))); }
     let more = array<vec4<u32>, 4>(
       bitcast<vec4<u32>>(vec4<f32>(dpos_x, affine.x)),
       bitcast<vec4<u32>>(vec4<f32>(dpos_y, affine.y)),

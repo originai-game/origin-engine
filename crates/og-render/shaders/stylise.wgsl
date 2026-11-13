@@ -114,30 +114,16 @@ fn view_depth(px: vec2<i32>) -> f32 {
   return textureLoad(pre_depth, prepass_px(px, size), 0).r;
 }
 
-fn oct_decode(e: vec2<f32>) -> vec3<f32> {
-  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
-  if (n.z < 0.0) {
-    n = vec3<f32>((1.0 - abs(n.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0)), n.z);
-  }
-  return normalize(n);
-}
-
 fn normal_at(px: vec2<i32>) -> vec3<f32> {
   let size = vec2<i32>(textureDimensions(pre_normal));
   return oct_decode(textureLoad(pre_normal, prepass_px(px, size), 0).xy);
 }
 
 // The point at view depth `d` under the logical pixel position `p`, from
-// the surface origin (fxpost.wgsl view_pos, turned into the world).
+// the surface origin (its view-space point, turned into the world).
 fn surface_pos(p: vec2<f32>, d: f32) -> vec3<f32> {
   let uv = p * st.screen.zw;
-  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a = st.inv_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b = st.inv_proj * vec4<f32>(ndc, 1.0, 1.0);
-  let p0 = a.xyz / a.w;
-  let p1 = b.xyz / b.w;
-  let t = (d + p0.z) / (p0.z - p1.z);
-  return st.eye.xyz + (st.view_rotation * vec4<f32>(mix(p0, p1, t), 0.0)).xyz;
+  return st.eye.xyz + (st.view_rotation * vec4<f32>(view_point(st.inv_proj, uv, d), 0.0)).xyz;
 }
 
 // How the surface moves under one logical pixel step along screen axis `e`
@@ -1308,11 +1294,6 @@ fn bayer(px: vec2<u32>, n: u32) -> f32 {
     size = size << 1u;
   }
   return (f32(v) + 0.5) / f32(1u << bits);
-}
-
-// Interleaved gradient noise (Jimenez): blue-noise-like without a texture.
-fn ign(p: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(0.06711056 * p.x + 0.00583715 * p.y));
 }
 
 // The void-and-cluster tile, repeated: byte v is the threshold (v + 0.5) / 256.

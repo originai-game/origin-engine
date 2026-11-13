@@ -27,9 +27,7 @@ const SQUARE: i32 = 2;
 
 @vertex
 fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
-  let x = f32(i32(i & 1u) * 4 - 1);
-  let y = f32(i32(i & 2u) * 2 - 1);
-  return vec4<f32>(x, y, 0.0, 1.0);
+  return fullscreen_clip(i);
 }
 
 fn load(px: vec2<i32>) -> f32 {

@@ -5,7 +5,8 @@ use super::*;
 /// The shape family's module.
 pub(crate) fn ui_source() -> String {
     format!(
-        "{}{}{}{}",
+        "{}{}{}{}{}",
+        crate::LIBRARY_WGSL,
         super::super::UI_COMMON_WGSL,
         super::super::UI_BLEND_MODES_WGSL,
         super::super::UI_BLEND_WGSL,
@@ -17,7 +18,7 @@ pub(crate) fn ui_source() -> String {
 pub(crate) fn mass_source() -> String {
     format!(
         "{}{}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         super::super::UI_COMMON_WGSL,
         UI_MASS_WGSL
     )
@@ -27,7 +28,7 @@ pub(crate) fn mass_source() -> String {
 pub(crate) fn builtin_source() -> String {
     format!(
         "{}{}{}{}{}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         super::super::UI_COMMON_WGSL,
         super::super::UI_BLEND_MODES_WGSL,
         super::super::UI_BLEND_WGSL,

@@ -34,10 +34,8 @@ struct SkyOut {
 
 fn sky_triangle(i: u32) -> SkyOut {
   var o: SkyOut;
-  let x = f32(i32(i & 1u) * 4 - 1);
-  let y = f32(i32(i & 2u) * 2 - 1);
-  o.pos = vec4<f32>(x, y, 1.0, 1.0);
-  o.ndc = vec2<f32>(x, y);
+  o.ndc = fullscreen_clip(i).xy;
+  o.pos = vec4<f32>(o.ndc, 1.0, 1.0);
   o.grey = vec4<f32>(0.0);
   return o;
 }
@@ -503,10 +501,10 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // gradient noise (Jimenez 2014), whose neighbours differ evenly, so a
   // single frame shows an even fine grain rather than speckle (TAA
   // smooths it), offset each frame.
-  var ign = fract(52.9829189 * fract(dot(pixel + f32(i32(frame.time.y) & 15) * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+  var jitter = ign(pixel + f32(i32(frame.time.y) & 15) * 5.588238);
   // (A pixel of -1: undithered, the march's middle.)
-  if (pixel.x < 0.0) { ign = 0.5; }
-  var t = start + dt * ign;
+  if (pixel.x < 0.0) { jitter = 0.5; }
+  var t = start + dt * jitter;
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
   var depth = 0.0;
@@ -614,9 +612,9 @@ fn aurora_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   let most = a[3].w;
   // Interleaved gradient noise offsets the first step per pixel (as the
   // clouds' march does), so TAA resolves the steps into a smooth integral.
-  var ign = fract(52.9829189 * fract(dot(pixel + f32(i32(frame.time.y) & 15) * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
-  if (pixel.x < 0.0) { ign = 0.5; }
-  var t = start + ign * max(least, start * 0.004);
+  var jitter = ign(pixel + f32(i32(frame.time.y) & 15) * 5.588238);
+  if (pixel.x < 0.0) { jitter = 0.5; }
+  var t = start + jitter * max(least, start * 0.004);
   var light = vec3<f32>(0.0);
   for (var i = 0; i < 128; i++) {
     if (t >= end) { break; }

@@ -1023,7 +1023,12 @@ pub(crate) fn run_textures(
 /// The overlay's module: the UI pass's common code, then overlay.wgsl
 /// (`crate::shaders` validates it).
 pub(crate) fn overlay_source() -> String {
-    format!("{}{}", crate::ui::UI_COMMON_WGSL, OVERLAY_WGSL)
+    format!(
+        "{}{}{}",
+        crate::LIBRARY_WGSL,
+        crate::ui::UI_COMMON_WGSL,
+        OVERLAY_WGSL
+    )
 }
 
 const OVERLAY_WGSL: &str = wgsl!("overlay.wgsl");

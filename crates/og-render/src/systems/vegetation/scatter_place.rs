@@ -210,7 +210,7 @@ pub(crate) fn plan(input: &PlaceInput) -> Option<Plan> {
 pub(crate) fn source(arrayed: bool) -> String {
     let s = format!(
         "{}{}{}{}{}",
-        crate::HASH_WGSL,
+        crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::terrain::GRASS_COMMON_WGSL,
         crate::terrain::TERRAIN_WGSL,

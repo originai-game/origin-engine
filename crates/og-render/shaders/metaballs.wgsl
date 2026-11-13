@@ -55,9 +55,8 @@ struct FullOut {
 
 @vertex
 fn vs_composite(@builtin(vertex_index) vi: u32) -> FullOut {
-  let uv = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u));
   var o: FullOut;
-  o.clip = vec4<f32>(uv * 2.0 - 1.0, 0.0, 1.0);
+  o.clip = fullscreen_clip(vi);
   return o;
 }
 

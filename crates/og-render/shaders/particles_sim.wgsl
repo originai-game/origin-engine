@@ -220,11 +220,7 @@ fn integrate(p: Particle) -> Particle {
         let thickness = max(0.25, length(vel) * dt * 2.0);
         if (depth > surface && depth < surface + thickness) {
           let g = textureLoad(scene_gbuffer, px, 0).xy;
-          var nrm = vec3<f32>(g, 1.0 - abs(g.x) - abs(g.y));
-          if (nrm.z < 0.0) {
-            nrm = vec3<f32>((1.0 - abs(nrm.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), nrm.xy >= vec2<f32>(0.0)), nrm.z);
-          }
-          nrm = normalize(nrm);
+          let nrm = oct_decode(g);
           let vn = dot(vel, nrm);
           if (vn < 0.0) {
             let normal_part = nrm * vn;

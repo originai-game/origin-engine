@@ -28,7 +28,7 @@ use crate::scene::{Exposure, PostEffects, Tonemap};
 use crate::{Antialias, DEPTH_FORMAT, HDR_FORMAT, TaaHistory, target_texture};
 use std::collections::HashMap;
 
-pub(crate) const FULLSCREEN_WGSL: &str = wgsl!("fullscreen.wgsl");
+pub(crate) const FULLSCREEN_WGSL: &str = wgsl_library!("fullscreen.wgsl");
 /// Exposure, bloom and the tonemap, with the bloom chain's filters (shared
 /// with a view's glow, `views_glow.wgsl`).
 const POST_WGSL: &str = concat!(

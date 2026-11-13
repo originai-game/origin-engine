@@ -52,7 +52,8 @@ const POST_CUSTOM_WGSL: &str = wgsl!("post_custom.wgsl");
 
 /// A post pass's module source.
 pub fn post_module_source(post: &PostShader) -> String {
-    let mut s = String::from(POST_CUSTOM_WGSL);
+    let mut s = String::from(crate::LIBRARY_WGSL);
+    s.push_str(POST_CUSTOM_WGSL);
     s.push_str("struct Params {\n");
     if post.params.is_empty() {
         s.push_str("  unused: f32,\n");

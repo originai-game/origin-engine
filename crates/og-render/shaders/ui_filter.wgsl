@@ -45,8 +45,7 @@ const FLAG_CLAMP: u32 = 64u;
 
 @vertex
 fn vs_filter(@builtin(vertex_index) i: u32) -> @builtin(position) vec4<f32> {
-  let p = vec2<f32>(f32((i << 1u) & 2u), f32(i & 2u));
-  return vec4<f32>(p * 2.0 - 1.0, 0.0, 1.0);
+  return fullscreen_clip(i);
 }
 
 fn to_srgb(c: vec3<f32>) -> vec3<f32> {

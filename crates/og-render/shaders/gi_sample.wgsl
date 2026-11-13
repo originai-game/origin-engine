@@ -32,7 +32,7 @@ fn gi_moments(at: u32, t: vec2<i32>) -> vec2<f32> {
 // the octahedral fold at the edges.
 fn gi_moments_along(at: u32, dir: vec3<f32>) -> vec2<f32> {
   let n = i32(GI_DEPTH);
-  let p = (gi_oct_encode(dir) * 0.5 + 0.5) * f32(GI_DEPTH) - 0.5;
+  let p = (oct_encode(dir) * 0.5 + 0.5) * f32(GI_DEPTH) - 0.5;
   let base = vec2<i32>(floor(p));
   let f = p - floor(p);
   let a = gi_moments(at, gi_oct_wrap(base, n));

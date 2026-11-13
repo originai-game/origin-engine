@@ -49,7 +49,7 @@ pub(crate) const SHORE_WGSL: &str = wgsl3d!("shore.wgsl");
 /// The foam's module: the hashes, the seabed's shoaling, then
 /// ocean_foam.wgsl.
 fn foam_source() -> String {
-    format!("{}{SHORE_WGSL}{FOAM_WGSL}", crate::HASH_WGSL)
+    format!("{}{SHORE_WGSL}{FOAM_WGSL}", crate::LIBRARY_WGSL)
 }
 
 /// The WGSL modules of this pass, for the shader check.

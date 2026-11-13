@@ -163,7 +163,7 @@ var<private> shadow_closed: bool = false;
 // smooth disc they sample.
 fn shadow_turn(texel: vec2<f32>) -> f32 {
   let k = max(frame.shadow.w - 1.0, 0.0);
-  return 6.2831853 * fract(52.9829189 * fract(dot(texel + k * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+  return 6.2831853 * ign(texel + k * 5.588238);
 }
 
 // The sun's soft shadows (PCSS, `DirectionalLight::shadow_softness`, and
@@ -732,9 +732,3 @@ fn style_local(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32
   return brdf(s, n, v, l) * shadow;
 }
 
-// Octahedral encoding of a unit vector into -1..1 (two channels).
-fn oct_encode(n: vec3<f32>) -> vec2<f32> {
-  let p = n.xy / (abs(n.x) + abs(n.y) + abs(n.z));
-  if (n.z >= 0.0) { return p; }
-  return (1.0 - abs(p.yx)) * select(vec2<f32>(-1.0), vec2<f32>(1.0), p >= vec2<f32>(0.0));
-}

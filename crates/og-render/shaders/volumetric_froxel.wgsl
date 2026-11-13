@@ -16,7 +16,7 @@ const INJECT_TAPS: u32 = 8u;
 // frame's seed (vol.grid.w) so successive frames take other strata.
 fn froxel_noise(id: vec3<u32>) -> f32 {
   let p = vec2<f32>(id.xy) + vec2<f32>(5.588238, 3.1415) * f32(id.z) + vec2<f32>(47.0, 17.0) * vol.grid.w;
-  return fract(52.9829189 * fract(dot(p, vec2<f32>(0.06711056, 0.00583715))));
+  return ign(p);
 }
 
 @compute @workgroup_size(8, 8, 1)

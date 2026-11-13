@@ -5,10 +5,8 @@ struct VsOut { @builtin(position) pos: vec4<f32>, @location(0) uv: vec2<f32> };
 @vertex
 fn vs(@builtin(vertex_index) i: u32) -> VsOut {
   var o: VsOut;
-  let x = f32(i32(i & 1u) * 4 - 1);
-  let y = f32(i32(i & 2u) * 2 - 1);
-  o.pos = vec4<f32>(x, y, 0.0, 1.0);
-  o.uv = vec2<f32>(x * 0.5 + 0.5, 0.5 - y * 0.5);
+  o.pos = fullscreen_clip(i);
+  o.uv = vec2<f32>(o.pos.x * 0.5 + 0.5, 0.5 - o.pos.y * 0.5);
   return o;
 }
 
@@ -53,12 +51,7 @@ fn depth(uv: vec2<f32>) -> f32 {
 // The world normal (zero: the sky).
 fn normal(uv: vec2<f32>) -> vec3<f32> {
   let e = textureLoad(gbuffer_tex, texel_of(uv), 0).xy;
-  var n = vec3<f32>(e, 1.0 - abs(e.x) - abs(e.y));
-  if (n.z < 0.0) {
-    let s = select(vec2<f32>(-1.0), vec2<f32>(1.0), n.xy >= vec2<f32>(0.0));
-    n = vec3<f32>((1.0 - abs(n.yx)) * s, n.z);
-  }
-  return normalize(n);
+  return oct_decode(e);
 }
 
 @fragment

@@ -18,7 +18,7 @@ use crate::deferred::Deferred;
 use crate::frame::{CONTACT_LIGHTS, CameraFrame};
 use glam::{Mat4, Vec3, Vec4};
 
-const WGSL: &str = concat!(wgsl!("fxpost_uniform.wgsl"), wgsl!("contact.wgsl"));
+const WGSL: &str = wgsl_library!("fxpost_uniform.wgsl", "contact.wgsl");
 
 /// The lights' masks for a screen of `size` pixels: one u32 key per pixel
 /// and light row (contact.wgsl `masks`), zeroed. Four bytes a pixel, as

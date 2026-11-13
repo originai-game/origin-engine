@@ -13,7 +13,7 @@ fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
   let dt = length / f32(steps);
   // Interleaved gradient noise, turned each frame: the steps' banding
   // becomes grain TAA resolves.
-  let jitter = fract(52.9829189 * fract(dot(in.pos.xy + vol.grid.w * 5.588238, vec2<f32>(0.06711056, 0.00583715))));
+  let jitter = ign(in.pos.xy + vol.grid.w * 5.588238);
   var acc = vec3<f32>(0.0);
   var transmittance = 1.0;
   for (var i = 0u; i < steps; i++) {

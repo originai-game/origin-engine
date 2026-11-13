@@ -144,9 +144,7 @@ struct VolOut {
 @vertex
 fn vs_volumetric(@builtin(vertex_index) i: u32) -> VolOut {
   var o: VolOut;
-  let x = f32(i32(i & 1u) * 4 - 1);
-  let y = f32(i32(i & 2u) * 2 - 1);
-  o.pos = vec4<f32>(x, y, 0.0, 1.0);
+  o.pos = fullscreen_clip(i);
   return o;
 }
 
