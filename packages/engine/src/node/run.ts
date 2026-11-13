@@ -568,6 +568,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       }
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       let last = performance.now();
+      // The world's tick and the time its clock holds toward the next one, after the last frame.
+      let at = { tick: worldTick(), behind: 0 };
       for (;;) {
         if (handoffAsked) {
           const save = engine.world.snapshot();
@@ -607,7 +609,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
           );
           drain();
         }
-        const elapsed = realtime ? performance.now() - last : tickMs;
+        // Short of --ticks, a paced frame catching up after a slow one takes at most the ticks left (the clock holds
+        // less than a tick after a frame, so this is never negative): the run ends on --ticks, not past it.
+        const wall = realtime ? performance.now() - last : tickMs;
+        const elapsed = ticks !== undefined && at.tick < ticks ? Math.min(wall, (ticks - at.tick) * tickMs - at.behind + 1e-6) : wall;
         cancelled();
         last = performance.now();
         if (room !== undefined) extras.og_node_room_pump(engine.id);
@@ -626,6 +631,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         takeTrace(engine.id);
         drain();
         const tick = answer.tick ?? 0;
+        at = { tick, behind: answer.behind ?? 0 };
         if (forks > 0) atTick(tick, answer.pending ?? 0);
         if (control.signal && tick % 16 === 0) await sleep(0);
         if (answer.quit) {

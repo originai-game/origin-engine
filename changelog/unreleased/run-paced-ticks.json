@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og run --ticks N",
+      "summary": "A paced run (without --headless, such as one in a room) ends on tick N. A frame that caught up after a slow one could step past it, so the run and its summary ended on N+1 or later on a loaded machine."
+    }
+  ]
+}
