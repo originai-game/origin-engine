@@ -10,48 +10,37 @@
 //! are written only when their bytes change; outputs of removed or failed
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
+mod formats;
+pub use formats::{
+    anim, audio, bc6h, cube_source, icons, ktx2_source, model_text, prefab, sfx, texture_array,
+    video, vox,
+};
+use formats::{fbx, font, font_pack, model, motion, normal2d, psd, scene, texture, timeline};
 mod action_cache;
-pub mod anim;
 pub mod animated;
 pub mod asset_move;
 pub mod assets;
-pub mod audio;
 mod autorig;
-pub mod bc6h;
 pub mod cache;
 pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
-pub mod cube_source;
 mod e6;
 mod effect;
 pub mod efk;
 mod environment;
-mod fbx;
 mod flipbook;
-mod font;
-mod font_pack;
 mod fracture;
 mod fracture_cache;
 mod fx_field;
-pub mod icons;
 mod import_defaults;
 mod index;
-pub mod ktx2_source;
 mod lightmap;
 pub mod look;
 mod look_assets;
 mod look_styles;
-mod model;
-pub mod model_text;
-mod motion;
-mod normal2d;
-pub mod prefab;
 pub mod probes;
-mod psd;
 mod rig2d;
 pub mod riv;
-mod scene;
-pub mod sfx;
 mod shader_check;
 pub mod stats;
 mod story_functions;
@@ -62,18 +51,13 @@ mod terrain_generate;
 #[cfg(test)]
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
-mod texture;
-pub mod texture_array;
 pub mod tilemap;
-mod timeline;
 pub mod ts_refs;
 pub mod ui_components;
 pub mod ui_screens;
 pub mod vector;
 mod vfx;
 pub mod vfx2d;
-pub mod video;
-pub mod vox;
 
 mod execute;
 mod options;
@@ -209,7 +193,7 @@ impl Kind {
     }
 }
 
-struct Source {
+pub(crate) struct Source {
     rel: String,
     path: PathBuf,
     kind: Kind,

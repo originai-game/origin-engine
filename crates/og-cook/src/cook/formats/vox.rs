@@ -71,7 +71,7 @@ mod parser;
 mod settings;
 
 pub use export::*;
-pub(super) use meshing::*;
+pub(crate) use meshing::*;
 pub use parser::*;
 pub use settings::*;
 

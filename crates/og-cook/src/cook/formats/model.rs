@@ -13,13 +13,13 @@ mod ext;
 mod impostor;
 pub mod plain;
 mod primitive;
-pub(super) mod skin_report;
+pub(crate) mod skin_report;
 
 use super::conform;
 pub use blob::*;
-pub(super) use ext::uv_plan;
+pub(crate) use ext::uv_plan;
 pub use impostor::{Baked, ImpostorBake};
-pub(super) use primitive::*;
+pub(crate) use primitive::*;
 
 /// A texture the model needs: which image, cooked as which kind.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,7 +46,7 @@ pub struct TextureUse {
 /// too) keeps none, and `vertex_alpha` (a vertex alpha under 1 on a
 /// primitive drawn with the material, [`vertex_alphas`]) moves the test per
 /// vertex.
-pub(super) fn cuts_out(m: &gltf::Material, vertex_alpha: bool) -> Option<u8> {
+pub(crate) fn cuts_out(m: &gltf::Material, vertex_alpha: bool) -> Option<u8> {
     if m.alpha_mode() != gltf::material::AlphaMode::Mask || vertex_alpha {
         return None;
     }
@@ -110,7 +110,7 @@ pub struct GltfSource {
     pub warnings: Vec<String>,
     /// How the art contract's face budget is shared over its primitives
     /// (`conform::mesh`), made by the first output that needs it.
-    pub(super) conform_plan: std::sync::OnceLock<super::conform::mesh::Plan>,
+    pub(crate) conform_plan: std::sync::OnceLock<super::conform::mesh::Plan>,
     /// What the model says it is (`conform character`, `conform effect`,
     /// [`super::conform::model_role`]): the face budget the art contract
     /// holds it to.
@@ -118,15 +118,15 @@ pub struct GltfSource {
     /// A `type model` built again at fewer segments for its face budget
     /// (`model_text::to_glb_within`): the factor and the triangles it
     /// drew as written, for the cook report.
-    pub(super) segments: Option<(f64, usize)>,
+    pub(crate) segments: Option<(f64, usize)>,
     /// The model's impostor, baked by the first of its two atlases' outputs.
-    pub(super) impostor: std::sync::OnceLock<Result<Baked, String>>,
+    pub(crate) impostor: std::sync::OnceLock<Result<Baked, String>>,
 }
 
 impl GltfSource {
     /// A neutral, full-strength emissive map may contain accidental albedo.
     /// glTF emissive RGB is sRGB; luminance is measured in linear light.
-    pub(super) fn emissive_warnings(&self) -> Result<Vec<String>, String> {
+    pub(crate) fn emissive_warnings(&self) -> Result<Vec<String>, String> {
         let mut means = std::collections::BTreeMap::new();
         let mut notes = Vec::new();
         for material in self.doc.materials() {
@@ -300,7 +300,7 @@ fn read_uri(
 /// The JSON of a glTF (a `.glb`'s JSON chunk, or the file) as the cook
 /// reads it: with [`pointer_visibility`] applied. `None` when it does not
 /// parse.
-pub(super) fn source_json(bytes: &[u8]) -> Option<serde_json::Value> {
+pub(crate) fn source_json(bytes: &[u8]) -> Option<serde_json::Value> {
     let mut json: serde_json::Value = if bytes.len() >= 20 && &bytes[0..4] == b"glTF" {
         let len = u32::from_le_bytes(bytes[12..16].try_into().ok()?) as usize;
         serde_json::from_slice(bytes.get(20..20 + len)?).ok()?
@@ -332,7 +332,7 @@ fn visibility_node(pointer: &str) -> Option<u64> {
 /// `extensionsRequired`, as does `KHR_node_visibility`, which the cook
 /// reads. Untouched (`Ok` and no warnings, nothing changed) without a
 /// pointer channel.
-pub(super) fn pointer_visibility(json: &mut serde_json::Value) -> Result<Vec<String>, String> {
+pub(crate) fn pointer_visibility(json: &mut serde_json::Value) -> Result<Vec<String>, String> {
     use serde_json::{Value, json};
     const POINTER: &str = "KHR_animation_pointer";
     let required = |json: &Value, ext: &str| {
@@ -532,7 +532,7 @@ pub fn load(bytes: &[u8], dir: &Path) -> Result<GltfSource, String> {
 /// every node whose extension names other nodes (`ids`) with meshes. The
 /// nodes it names are levels, not parts of the scene: a scene that also
 /// draws them draws them twice, so the cook says so.
-pub(super) fn msft_lod(
+pub(crate) fn msft_lod(
     doc: &gltf::Document,
     notes: &mut Vec<String>,
 ) -> std::collections::BTreeMap<usize, Vec<usize>> {
@@ -573,14 +573,14 @@ pub(super) fn msft_lod(
 
 /// The glTF's nodes in topological order (roots by index, then depth
 /// first): the order both the model and the animation blob use.
-pub(super) struct NodeOrder {
+pub(crate) struct NodeOrder {
     /// The cooked index of every glTF node.
     pub new_index: Vec<u32>,
     /// In cooked order; names through the caller's string pool.
     pub rows: Vec<NodeRow>,
 }
 
-pub(super) fn node_order(
+pub(crate) fn node_order(
     doc: &gltf::Document,
     add: &mut dyn FnMut(&str) -> (u32, u32),
 ) -> Result<NodeOrder, CookError> {
@@ -643,7 +643,7 @@ pub(super) fn node_order(
     Ok(NodeOrder { new_index, rows })
 }
 
-pub(super) struct Strings(pub Vec<u8>);
+pub(crate) struct Strings(pub Vec<u8>);
 impl Strings {
     pub fn add(&mut self, s: &str) -> (u32, u32) {
         let at = self.0.len() as u32;

@@ -24,7 +24,7 @@ struct Manifest {
 }
 
 /// Whether a file is a font pack's manifest: an `extension.json` of kind `font`.
-pub(super) fn is_pack(rel: &str, bytes: &[u8]) -> bool {
+pub(crate) fn is_pack(rel: &str, bytes: &[u8]) -> bool {
     rel.rsplit('/').next() == Some("extension.json")
         && serde_json::from_slice::<Manifest>(bytes).is_ok_and(|m| m.kind == "font")
 }
@@ -39,7 +39,7 @@ fn prefix(rel: &str) -> &str {
 }
 
 /// The asset ids of a pack's faces (`fonts/arabic/NotoSansArabic-Regular.ttf`).
-pub(super) fn faces(s: &Source) -> Vec<String> {
+pub(crate) fn faces(s: &Source) -> Vec<String> {
     manifest(s)
         .map(|m| {
             m.faces
@@ -51,7 +51,7 @@ pub(super) fn faces(s: &Source) -> Vec<String> {
 }
 
 /// What the stamp covers besides the manifest: each face's bytes.
-pub(super) fn dependencies(s: &Source) -> String {
+pub(crate) fn dependencies(s: &Source) -> String {
     let Ok(m) = manifest(s) else {
         return String::new();
     };
@@ -68,7 +68,7 @@ pub(super) fn dependencies(s: &Source) -> String {
         .join("\n")
 }
 
-pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let m = manifest(s)?;
     if m.faces.is_empty() || (m.languages.is_empty() && m.scripts.is_empty()) {
         return Err(CookError(format!(

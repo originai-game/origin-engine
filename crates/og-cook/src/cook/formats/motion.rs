@@ -20,14 +20,14 @@ use og_bundle::runtime::ManifestFile;
 use og_core::hash::hash_bytes;
 
 /// The pack, under `cooked/`.
-pub(super) const FILE: &str = "motion/model.ogb";
+pub(crate) const FILE: &str = "motion/model.ogb";
 /// The weights' path inside the pack.
 const ENTRY: &str = "motion/model.safetensors";
 /// The weights in an engine package.
 const IN_PACKAGE: &str = "motion/model.safetensors";
 
 /// Whether the project's code under `src/` names og.motion.
-pub(super) fn uses_motion(root: &Path) -> bool {
+pub(crate) fn uses_motion(root: &Path) -> bool {
     fn walk(dir: &Path) -> bool {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return false;
@@ -87,7 +87,7 @@ fn model_path() -> Result<PathBuf, String> {
 /// ([`uses_motion`]) or does not: kept in `keep` and answered as the
 /// manifest's `motion` entry when written; a warning when the project uses
 /// og.motion and no weights are found (the pack is then removed).
-pub(super) fn cook(
+pub(crate) fn cook(
     uses_motion: bool,
     cooked_dir: &Path,
     keep: &mut BTreeSet<String>,

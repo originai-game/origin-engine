@@ -12,7 +12,7 @@
 
 use super::texture::Image;
 
-pub(super) mod layers;
+pub(crate) mod layers;
 pub use layers::{LayerKind, layers};
 
 struct Reader<'a> {

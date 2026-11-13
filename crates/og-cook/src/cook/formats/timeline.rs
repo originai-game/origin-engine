@@ -15,10 +15,10 @@ use og_core::ogt::Document;
 use og_timeline::{FieldValue, FieldsKind, FieldsTrack, NEST_DEPTH, Timeline, Track};
 use std::path::Path;
 
-pub(super) const TIMELINE_TYPE: &str = og_timeline::TIMELINE_TYPE;
+pub(crate) const TIMELINE_TYPE: &str = og_timeline::TIMELINE_TYPE;
 
 /// The caption files a timeline names, asset-relative.
-pub(super) fn caption_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
+pub(crate) fn caption_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     let Ok(doc) = Document::parse(text) else {
         return Vec::new();
     };
@@ -64,7 +64,7 @@ fn nested_files(text: &str) -> Vec<String> {
 /// The stamp's dependencies: each caption file with its hash, and every
 /// timeline it nests, to any depth (a cycle made by editing a child is
 /// found by cooking the parent again).
-pub(super) fn dependencies(s: &Source) -> String {
+pub(crate) fn dependencies(s: &Source) -> String {
     let root = assets_root(s);
     let mut nested = Vec::new();
     let mut todo = nested_files(&String::from_utf8_lossy(&s.bytes));
@@ -90,7 +90,7 @@ pub(super) fn dependencies(s: &Source) -> String {
         .join("\n")
 }
 
-pub(super) fn cook_timeline(
+pub(crate) fn cook_timeline(
     s: &Source,
     known: &dyn Fn(&str) -> bool,
     stamp: u64,

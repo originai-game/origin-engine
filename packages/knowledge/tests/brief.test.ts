@@ -367,7 +367,7 @@ test("every effect names the file and bus it goes to, and its stand-in is a type
 });
 
 test("the stand-in presets are og cook's: SFX_PRESETS is og-cook's sfx::PRESETS", () => {
-  const rs = readFileSync(join(import.meta.dir, "..", "..", "..", "crates", "og-cook", "src", "cook", "sfx.rs"), "utf8");
+  const rs = readFileSync(join(import.meta.dir, "..", "..", "..", "crates", "og-cook", "src", "cook", "formats", "sfx.rs"), "utf8");
   const block = /pub const PRESETS[^=]*= &\[([\s\S]*?)\];/.exec(rs)![1]!;
   expect([...block.matchAll(/\("([a-z]+)", "/g)].map((m) => m[1])).toEqual([...SFX_PRESETS]);
   for (const genre of ["action-platformer", "shooter", "rpg", "puzzle-match", "strategy-tower-defense", "racing", "runner", "roguelike-card", "idle", "rhythm", "arena", "open-world"]) {

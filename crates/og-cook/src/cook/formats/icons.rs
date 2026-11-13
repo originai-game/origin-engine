@@ -170,7 +170,7 @@ fn source_dir(s: &Source, set: &IconSet) -> std::path::PathBuf {
 }
 
 /// What the cook stamp covers besides the file: each SVG's bytes.
-pub(super) fn dependencies(s: &Source) -> String {
+pub(crate) fn dependencies(s: &Source) -> String {
     let Ok(set) = parse(&String::from_utf8_lossy(&s.bytes)) else {
         return String::new();
     };
@@ -694,7 +694,7 @@ fn render(shapes: &[Shape], view: [f32; 4], size: u32, range: u32, pad: u32) -> 
 }
 
 /// Cooks an icon set into an `og.Font` blob with a `names` section.
-pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("an icon set is text (UTF-8)".into()))?;
     let set = parse(text).map_err(CookError)?;

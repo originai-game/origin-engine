@@ -1282,7 +1282,7 @@ fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), String> {
 /// A material as glTF writes it. Its maps (`map`, `normalMap`) name image
 /// files beside the model; each new one joins `images`, its glTF texture
 /// index `first_texture` plus its place there.
-pub(super) fn material(
+pub(crate) fn material(
     name: &str,
     b: &Block,
     images: &mut Vec<String>,
@@ -1430,7 +1430,7 @@ pub(super) fn material(
 
 /// The glTF `images`, `textures` and `samplers` of a model's material maps
 /// (`material`'s `images`), each a repeating texture of its image.
-pub(super) fn textures(images: &[String]) -> (serde_json::Value, serde_json::Value) {
+pub(crate) fn textures(images: &[String]) -> (serde_json::Value, serde_json::Value) {
     let imgs: Vec<serde_json::Value> = images
         .iter()
         .map(|u| serde_json::json!({ "uri": u }))
@@ -1442,7 +1442,7 @@ pub(super) fn textures(images: &[String]) -> (serde_json::Value, serde_json::Val
 }
 
 /// The extensions a model's JSON uses, by name, sorted.
-pub(super) fn extensions_used(json: &serde_json::Value) -> Vec<String> {
+pub(crate) fn extensions_used(json: &serde_json::Value) -> Vec<String> {
     let mut out = std::collections::BTreeSet::new();
     for m in json["materials"].as_array().into_iter().flatten() {
         for k in m["extensions"]
@@ -1486,7 +1486,7 @@ fn node(name: &str, p: &Placement) -> serde_json::Value {
 }
 
 /// What a `type model` text builds, before it is written as a glb.
-pub(super) struct Built {
+pub(crate) struct Built {
     pub json: serde_json::Value,
     pub bin: Bin,
     /// Its triangles as drawn: each part's times its placements.
@@ -1531,7 +1531,7 @@ pub fn to_glb_within(text: &str, budget: u32) -> Result<(Vec<u8>, f64), String> 
     Ok((b.bin.finish(b.json)?, detail))
 }
 
-pub(super) fn build(text: &str) -> Result<Built, String> {
+pub(crate) fn build(text: &str) -> Result<Built, String> {
     build_at(text, 1.0)
 }
 

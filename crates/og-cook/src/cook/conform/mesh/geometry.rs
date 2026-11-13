@@ -211,7 +211,7 @@ fn prim_key(p: &gltf::Primitive) -> PrimKey {
 /// (`GltfSource::conform_plan`): each primitive's target and the most its
 /// surface may move.
 #[derive(Debug, Default)]
-pub(in crate::cook) struct Plan {
+pub(crate) struct Plan {
     /// Triangles per primitive; none: the model is within its budget.
     targets: BTreeMap<PrimKey, usize>,
     /// The error bound in metres and what set it.
