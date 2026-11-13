@@ -10,12 +10,14 @@
 //! |---|---|
 //! | [`bundle`] | [`Bundle`]: the weights (one safetensors file) and their [`Config`] |
 //! | [`contract`] | world poses to the graph inputs ([`encode`]) and motion frames back ([`decode_frame`]) |
+//! | [`footing`] | a drawn character's feet: each foot's contact as the pose shows it, and how well the drawn feet stand |
 //! | [`glue`] | everything around the two networks, shared by every path |
 //! | [`cpu`] | the student and decoder on the CPU, the same bits on every host: the engine's path and the reference |
 //! | [`flight`] | a generated jump drawn on the simulation's flight: its local height and its retiming |
 //! | [`gpu`] | the same on wgpu compute, the shipping path ([`gpu::Gpu`]) |
 //! | [`intent`] | the intent API: [`intent::Goal`]s queued per character, [`intent::Motion`] chaining generations in batches |
 //! | [`library`] | the poses goals name ([`library::POSES`]), carried by the bundle |
+//! | [`runner`] | the model resident: where it runs, its batches in flight and landed, the frames queued per character |
 //! | [`soma`] | the generated skeleton for og-anim: its asset, poses as local transforms, feet planted from contacts, frames as a clip |
 //!
 //! The specification is og-motion-train's `ogm/reference.py`; the tests
@@ -29,10 +31,12 @@ pub mod bundle;
 pub mod contract;
 pub mod cpu;
 pub mod flight;
+pub mod footing;
 pub mod glue;
 pub mod gpu;
 pub mod intent;
 pub mod library;
+pub mod runner;
 pub mod soma;
 
 pub use bundle::{Bundle, BundleError, Config, DecoderConfig, StudentConfig, read_safetensors};
