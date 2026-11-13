@@ -828,20 +828,54 @@ impl Ui {
                 self.fire(b, n, key, &path, resp);
                 return Some(path);
             }
-            // Any other container is a plain box, a row's content in a row.
-            _ => {
+            // A plain box, a row's content in a row; CSS lays out the rest.
+            Kind::Column | Kind::Row | Kind::Stack | Kind::Grid | Kind::Box => {
                 self.open(
                     id.as_str(),
                     Element {
-                        direction: match kind {
-                            Kind::Row => Direction::Row,
-                            _ => Direction::Column,
+                        direction: if kind == Kind::Row {
+                            Direction::Row
+                        } else {
+                            Direction::Column
                         },
                         ..Element::default()
                     },
                 );
                 Shell::Box
             }
+            Kind::Anchor
+            | Kind::Ground
+            | Kind::Svg
+            | Kind::SvgGroup
+            | Kind::SvgForeign
+            | Kind::SvgUse
+            | Kind::SvgDef => unreachable!("'{kind}' is built before the containers"),
+            Kind::Label
+            | Kind::Kbd
+            | Kind::Image
+            | Kind::Art
+            | Kind::Icon
+            | Kind::Progress
+            | Kind::Slider
+            | Kind::Toggle
+            | Kind::Color
+            | Kind::Datetime
+            | Kind::Video
+            | Kind::Audio
+            | Kind::File
+            | Kind::Radio
+            | Kind::Tabs
+            | Kind::Field
+            | Kind::Badge
+            | Kind::Spacer
+            | Kind::Divider
+            | Kind::Select
+            | Kind::Meter
+            | Kind::Joystick
+            | Kind::Dpad
+            | Kind::Viewport
+            | Kind::SvgShape
+            | Kind::SvgText => unreachable!("'{kind}' holds no content"),
         };
         let fields = fields::RenderFields::capture(
             self,
