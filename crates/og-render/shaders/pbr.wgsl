@@ -14,42 +14,7 @@
 // `fs_prepass` write the depth-normal prepass: world normal and
 // screen-space velocity, view depth, and the material's outline.
 
-// `FxUniform` in fx.rs: per-frame effect inputs of the lit passes.
-struct Fx {
-  view_proj_unjittered: mat4x4<f32>,
-  prev_view_proj: mat4x4<f32>,
-  screen: vec4<f32>,      // w, h, 1/w, 1/h
-  ao: vec4<f32>,          // x: 1 when the AO texture is valid, y: intensity
-  decal_info: vec4<f32>,  // x: decals (negative: no decal clusters, walk them all), y: atlas (1 linear, 2 sRGB), z: cos fade width, w: the previous joints' section (0: none; vs_prepass_skinned)
-  planar: vec4<f32>,      // the planar reflection's plane (n, n·at); n 0: none, then w -1 while drawing it
-  motion: vec4<f32>,      // x: 1 when the frame's motion vectors are read (TAA, motion blur, SSR, SSGI, a custom post), 0 when nothing reads them
-};
-@group(2) @binding(0) var<uniform> fx: Fx;
-@group(2) @binding(1) var ssao_tex: texture_2d<f32>;
-
-// The direction a lit fragment at `clip` reads its diffuse ambient light
-// along: GTAO's bent normal where the AO texture holds it beside the
-// probe GI (fx.ao.w 2: fxpost.wgsl `fs_gtao_bent`, blurred, so it is
-// normalised again), the least occluded direction around `n`, which the
-// probes then light; `n` itself otherwise (and in a pipeline without the
-// probe GI's code, OG_GI: the bent normals are made only for it).
-fn ambient_normal(clip: vec2<f32>, n: vec3<f32>) -> vec3<f32> {
-  if (!OG_GI || fx.ao.x < 0.5 || fx.ao.w < 1.5) { return n; }
-  let b = textureSampleLevel(ssao_tex, fx_sampler, clip * fx.screen.zw, 0.0).gba;
-  let l = length(b);
-  if (l < 0.25) { return n; }
-  // Never past the surface's horizon: a bent normal blurred across a
-  // crease may point below it.
-  let bn = b / l;
-  return normalize(bn + n * max(0.05 - dot(bn, n), 0.0));
-}
-@group(2) @binding(2) var decal_atlas: texture_2d<f32>;
-@group(2) @binding(3) var fx_sampler: sampler;
-// The decal records and their clusters (fx.rs, clusters.rs `DecalBins`):
-// one word per cluster (first reference, 24 bits; count, 8 bits), then the
-// references, one record index a word.
-@group(2) @binding(5) var<storage, read> decal_list: array<DecalGpu>;
-@group(2) @binding(6) var<storage, read> decal_cells: array<u32>;
+// The effect group (`fx`, the screen AO, the decals): fx.wgsl, before this.
 // planar_reflection (the planar reflection for material shaders): planar.wgsl,
 // or its stub where the lit pipelines have no texture slot left (lib.rs).
 

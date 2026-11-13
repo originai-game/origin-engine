@@ -7,7 +7,7 @@
 // discard itself there, as three.js's readers keep out of the mirror they
 // read). Prepended to the lit shader (pbr.wgsl's `fx`) where the effect
 // group has the slot (lib.rs `planar_slot`); elsewhere `PLANAR_STUB`.
-@group(2) @binding(4) var planar_tex: texture_2d<f32>;
+@group(FX_GROUP) @binding(4) var planar_tex: texture_2d<f32>;
 
 fn planar_reflection(p: vec3<f32>, shift: vec2<f32>) -> vec4<f32> {
   let n = fx.planar.xyz;

@@ -42,6 +42,9 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             crate::wind::WIND_COMMON_WGSL,
             crate::wind::WIND_LEAN_WGSL,
             crate::foliage::WGSL,
+            &fx_wgsl(3),
+            wgsl3d!("decals.wgsl"),
+            SCREEN_AO_WGSL,
             wgsl3d!("scatter_common.wgsl"),
             wgsl3d!("scatter.wgsl"),
             wgsl3d!("impostor_common.wgsl"),
@@ -49,7 +52,7 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             wgsl3d!("crowd_card_common.wgsl"),
             wgsl3d!("crowd_card.wgsl"),
         ],
-        &Capability::HOOKS_CALL,
+        &Capability::OPAQUE_SURFACE,
     )
 }
 

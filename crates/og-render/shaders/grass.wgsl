@@ -104,17 +104,6 @@ fn vs_prepass(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) 
   return o;
 }
 
-// The lit pass's effect group (scatter.wgsl ScatterFx): the screen-space AO.
-struct GrassFx {
-  view_proj_unjittered: mat4x4<f32>,
-  prev_view_proj: mat4x4<f32>,
-  screen: vec4<f32>,
-  ao: vec4<f32>,
-};
-@group(2) @binding(0) var<uniform> grass_fx: GrassFx;
-@group(2) @binding(1) var grass_ssao: texture_2d<f32>;
-@group(2) @binding(3) var grass_fx_sampler: sampler;
-
 // The sunlight that reaches `p` through what the first cascades hold
 // between it and the sun (Jimenez et al., "Real-Time Realistic Skin
 // Translucency", 2010: the thickness from the shadow map's depth to the
@@ -162,8 +151,8 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   if (view > 6u) { return debug_unsupported(in.clip.xy); }
   if (view == 1u) { return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0); }
   if (view == 2u) {
-    let ao = textureSampleLevel(grass_ssao, grass_fx_sampler, in.clip.xy * grass_fx.screen.zw, 0.0).r;
-    return vec4<f32>(vec3<f32>(select(1.0, ao, grass_fx.ao.x > 0.5)), 1.0);
+    let ao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
+    return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), 1.0);
   }
   if (view == 3u) { return vec4<f32>(in.color, 1.0); }
   // Two-sided: the back face is lit with the flipped normal.
@@ -233,10 +222,10 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   // Far blades light as the ground (`far`), under the sky alike.
   // The style's shadow darkness takes its share of the ambient light too.
   var occlusion = mix(in.shading.x, in.mean.y, in.far) * sun.keep;
-  if (grass_fx.ao.x > 0.5) {
-    let ssao = textureSampleLevel(grass_ssao, grass_fx_sampler, in.clip.xy * grass_fx.screen.zw, 0.0).r;
-    occlusion *= mix(1.0, ssao, grass_fx.ao.y);
-    color *= mix(1.0, mix(0.35, 1.0, ssao), grass_fx.ao.z);
+  if (fx.ao.x > 0.5) {
+    let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
+    occlusion *= mix(1.0, ssao, fx.ao.y);
+    color *= mix(1.0, mix(0.35, 1.0, ssao), fx.ao.z);
   }
   let n_dot_v = max(dot(n0, v), 1e-4);
   let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);

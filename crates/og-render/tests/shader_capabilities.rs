@@ -57,8 +57,8 @@ sprite array                             | -            | -       | -      | -  
 sprite mesh                              | -            | -       | -      | full | -                 | -         | -
 sprite skin                              | -            | -       | -      | full | -                 | -         | -
 tiles                                    | -            | -       | -      | full | -                 | -         | -
-scatter                                  | full         | -       | -      | -    | stub              | stub      | -
-grass                                    | full         | full    | -      | -    | -                 | -         | -
+scatter                                  | full         | -       | full   | -    | stub              | full      | -
+grass                                    | full         | full    | full   | -    | stub              | full      | -
 terrain                                  | full         | full    | full   | -    | -                 | -         | -
 terrain (layer arrays)                   | full         | full    | full   | -    | -                 | -         | -
 water                                    | -            | -       | -      | -    | -                 | -         | -

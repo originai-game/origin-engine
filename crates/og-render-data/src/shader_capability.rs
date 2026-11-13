@@ -46,8 +46,22 @@ pub enum Holds {
 /// one planar reflection or on a device whose skinned lit pipeline has no
 /// texture slot left (`planar_slot`).
 const PLANAR_STUB: &str = "fn planar_reflection(p: vec3<f32>, shift: vec2<f32>) -> vec4<f32> { return vec4<f32>(0.0); }\n";
-/// `screen_ao` where there is no AO texture (shadow passes, scattered copies).
-const SCREEN_AO_STUB: &str = "fn screen_ao(p: vec3<f32>) -> f32 { return 1.0; }\n";
+/// What the lit surfaces and material shaders call of
+/// [`crate::shader_source::SCREEN_AO_WGSL`] where there is no AO texture
+/// (the shadow passes, a surface whose pipeline has no texture slot left
+/// for the effect group): no occlusion, the surface's own normal.
+const SCREEN_AO_STUB: &str = "fn screen_ao(p: vec3<f32>) -> f32 { return 1.0; }
+fn ambient_normal(clip: vec2<f32>, n: vec3<f32>) -> vec3<f32> { return n; }
+struct ScreenOcclusion {
+  ambient: f32,
+  all: f32,
+  bounce: vec3<f32>,
+};
+fn screen_occlusion(frag: vec2<f32>) -> ScreenOcclusion { return ScreenOcclusion(1.0, 1.0, vec3<f32>(0.0)); }
+";
+/// `oit_pass` in a module no order-independent pass draws: the screen AO
+/// reads it ([`crate::shader_source::SCREEN_AO_WGSL`]).
+const OIT_STUB: &str = "const oit_pass: bool = false;\n";
 /// What the lit modules call of [`crate::WEATHER_SURFACE_WGSL`], each
 /// returning what the full code returns with `OG_WEATHER` false: its text
 /// in a module made without the weather on surfaces (og-render's
@@ -94,6 +108,14 @@ impl Capability {
     /// in (the lit, physical, shadow and scattered copies' modules).
     pub const HOOKS_CALL: [Capability; 2] = [Capability::PlanarReflection, Capability::ScreenAo];
 
+    /// What a lit surface that no order-independent pass draws may name:
+    /// the hooks' calls, and `oit_pass`, which the screen AO reads.
+    pub const OPAQUE_SURFACE: [Capability; 3] = [
+        Capability::PlanarReflection,
+        Capability::ScreenAo,
+        Capability::Oit,
+    ];
+
     pub fn name(self) -> &'static str {
         match self {
             Capability::LocalLights => "local lights",
@@ -127,6 +149,7 @@ impl Capability {
             Capability::Weather => Some(WEATHER_SURFACE_STUB),
             Capability::PlanarReflection => Some(PLANAR_STUB),
             Capability::ScreenAo => Some(SCREEN_AO_STUB),
+            Capability::Oit => Some(OIT_STUB),
             _ => None,
         }
     }

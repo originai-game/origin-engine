@@ -49,39 +49,24 @@ const LIGHTMAP_WGSL: &str = wgsl!("lightmap.wgsl");
 /// The physical lightmapped entry points, after the physical lit shader.
 const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
 
-/// `planar_reflection` for material shaders: the frame's planar reflection
-/// (planar.wgsl, the effect group's binding 4) where the lit pipelines have
-/// a texture slot for it, else its stub ([`Capability::stub`]).
-const PLANAR_WGSL: &str = wgsl!("planar.wgsl");
-/// `screen_ao(p)` for material shaders in the lit and physical shaders: this
-/// frame's screen-space AO (the effect group's `ssao_tex`) where world point
-/// `p` lands on the screen, 1 without AO. An unlit material is not darkened
-/// by the AO on its own; three.js's post AO (FogShader) darkened every pixel,
-/// unlit water included, and a shader can now do the same.
-const SCREEN_AO_WGSL: &str = "fn screen_ao(p: vec3<f32>) -> f32 {
-  if (fx.ao.x < 0.5 || oit_pass) { return 1.0; }
-  let c = fx.view_proj_unjittered * vec4<f32>(p, 1.0);
-  let ndc = c.xy / max(c.w, 1e-4);
-  return textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0).r;
+/// The screen-space AO on lit surfaces and the local lights' contact
+/// shadows (screen_ao.wgsl), after the effect group ([`fx_wgsl`]):
+/// `screen_ao(p)` for material shaders, `screen_occlusion` and
+/// `ambient_normal` for the lit surfaces.
+pub const SCREEN_AO_WGSL: &str = wgsl!("screen_ao.wgsl");
+
+/// The lit passes' effect group (fx.wgsl) declared at bind group `group`:
+/// 2 in the lit and physical modules, wherever a surface with its own
+/// groups has room for it. The module also carries decals.wgsl, which
+/// declares the decal records.
+pub fn fx_wgsl(group: u32) -> String {
+    wgsl!("fx.wgsl").replace("FX_GROUP", &group.to_string())
 }
-// A local light's screen-space contact shadow at world point `p`
-// (contact.wgsl `cs_contact`, its mask in the effect group's AO texture's
-// g, b or a): a contact light's shadow slot carries a quarter, a half or
-// three quarters past its layer (render.rs). 1 for every other light, in a
-// reflection probe's face (no clusters: the mask is the camera's) and
-// where the AO texture is the white placeholder (views, reflections), and
-// for a blended surface in the order-independent passes (oit.wgsl
-// `oit_pass`), which the opaque surface's mask behind it would darken.
-fn contact_shadow(light: LocalLight, p: vec3<f32>) -> f32 {
-  let w = light.direction_slot.w;
-  let c = i32(round(fract(max(w, 0.0)) * 4.0)) - 1;
-  if (c < 0 || frame.cluster.x <= 0.0 || oit_pass) { return 1.0; }
-  let clip = fx.view_proj_unjittered * vec4<f32>(p, 1.0);
-  let ndc = clip.xy / max(clip.w, 1e-4);
-  let m = textureSampleLevel(ssao_tex, fx_sampler, vec2<f32>(0.5 + 0.5 * ndc.x, 0.5 - 0.5 * ndc.y), 0.0);
-  return select(select(m.a, m.b, c == 1), m.g, c == 0);
+
+/// `planar_reflection` over the effect group at `group` (planar.wgsl).
+pub fn planar_wgsl(group: u32) -> String {
+    wgsl!("planar.wgsl").replace("FX_GROUP", &group.to_string())
 }
-";
 /// Whether the effect group carries the planar reflection material shaders
 /// read (binding 4): with two planar reflections
 /// ([`RenderDesc::planar_reflections`]). With one, the effect group is the
@@ -111,8 +96,9 @@ pub fn lit_source_with(hooks: &str, planar: bool) -> String {
             &lightmap::probe_wgsl(),
             AREA_WGSL,
             INSTANCE_WGSL,
+            &fx_wgsl(2),
             PBR_WGSL,
-            if planar { PLANAR_WGSL } else { "" },
+            &if planar { planar_wgsl(2) } else { String::new() },
             SCREEN_AO_WGSL,
             PBR_FS_WGSL,
             PBR_PREPASS_WGSL,
@@ -144,6 +130,7 @@ pub fn physical_source(hooks: &str) -> String {
             &lightmap::probe_wgsl(),
             AREA_WGSL,
             INSTANCE_WGSL,
+            &fx_wgsl(2),
             PBR_WGSL,
             SCREEN_AO_WGSL,
             SHEEN_WGSL,

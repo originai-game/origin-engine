@@ -3,19 +3,24 @@
 use super::*;
 
 /// The grass lit module: the frame, the light tables, the lighting, the
-/// weather on surfaces, the area lights, then the blades.
+/// weather on surfaces, the area lights, the effect group, then the blades.
 pub(crate) fn lit_source() -> String {
-    format!(
-        "{}{}{}{}{}{}{}{}{}",
-        crate::FRAME_WGSL,
-        crate::clusters::wgsl(),
-        crate::LIGHTING_WGSL,
-        crate::WEATHER_SURFACE_WGSL,
-        crate::AREA_WGSL,
-        crate::wind::WIND_COMMON_WGSL,
-        crate::terrain::GRASS_COMMON_WGSL,
-        wgsl3d!("grass_blade.wgsl"),
-        wgsl3d!("grass.wgsl"),
+    crate::assemble(
+        &[
+            crate::FRAME_WGSL,
+            &crate::clusters::wgsl(),
+            crate::LIGHTING_WGSL,
+            crate::WEATHER_SURFACE_WGSL,
+            crate::AREA_WGSL,
+            &crate::fx_wgsl(2),
+            wgsl3d!("decals.wgsl"),
+            crate::SCREEN_AO_WGSL,
+            crate::wind::WIND_COMMON_WGSL,
+            crate::terrain::GRASS_COMMON_WGSL,
+            wgsl3d!("grass_blade.wgsl"),
+            wgsl3d!("grass.wgsl"),
+        ],
+        &crate::Capability::OPAQUE_SURFACE,
     )
 }
 

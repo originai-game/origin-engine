@@ -91,19 +91,6 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   return o;
 }
 
-// The lit pass's effect group (`Fx` in pbr.wgsl, its head): the screen-space AO, which pbr_fs applies to the
-// image-based light and, by `ao.z`, the direct light. Without it grass and flowers missed the contact darkening
-// three.js' post AO puts on everything (grass tufts came out grey where the original's are dark green).
-struct ScatterFx {
-  view_proj_unjittered: mat4x4<f32>,
-  prev_view_proj: mat4x4<f32>,
-  screen: vec4<f32>,
-  ao: vec4<f32>,
-};
-@group(3) @binding(0) var<uniform> scatter_fx: ScatterFx;
-@group(3) @binding(1) var scatter_ssao: texture_2d<f32>;
-@group(3) @binding(3) var scatter_fx_sampler: sampler;
-
 @fragment
 fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
@@ -122,8 +109,8 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let out_a = select(1.0, coverage, a2c);
   if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(base.rgb, out_a); }
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
-    let ao = textureSampleLevel(scatter_ssao, scatter_fx_sampler, in.clip.xy * scatter_fx.screen.zw, 0.0).r;
-    return vec4<f32>(vec3<f32>(select(1.0, ao, scatter_fx.ao.x > 0.5)), out_a);
+    let ao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
+    return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), out_a);
   }
   if (frame.light_color.w > 0.5 && (frame.light_color.w < 3.5 || frame.light_color.w > 6.5)) { return debug_unsupported(in.clip.xy); }
   let emissive = surface_emissive(h, shader_params(), material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
@@ -172,10 +159,10 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   var ao_all = 1.0;  // also scales the emitted light (pbr_fs.wgsl)
   // Only with PostEffects.aoDirect above 0: without it the copies keep their
   // look of before the AO reached them.
-  if (scatter_fx.ao.x > 0.5 && scatter_fx.ao.z > 0.0) {
-    let ssao = textureSampleLevel(scatter_ssao, scatter_fx_sampler, in.clip.xy * scatter_fx.screen.zw, 0.0).r;
-    ssao_scale = mix(mix(1.0, ssao, scatter_fx.ao.y), mix(0.35, 1.0, ssao), scatter_fx.ao.z);
-    ao_all = mix(1.0, mix(0.35, 1.0, ssao), scatter_fx.ao.z);
+  if (fx.ao.x > 0.5 && fx.ao.z > 0.0) {
+    let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
+    ssao_scale = mix(mix(1.0, ssao, fx.ao.y), mix(0.35, 1.0, ssao), fx.ao.z);
+    ao_all = mix(1.0, mix(0.35, 1.0, ssao), fx.ao.z);
     color *= ao_all;
     // Debug (DebugView::AmbientOcclusion): the ambient occlusion term, as pbr_fs.wgsl.
     if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) { return vec4<f32>(vec3<f32>(ssao), 1.0); }
