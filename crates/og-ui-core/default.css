@@ -230,6 +230,13 @@
     --size-xl: 64px;
     --size-xs: 16px;
     --size-xxl: 96px;
+    --measure-3xl: 960px;
+    --measure-lg: 420px;
+    --measure-md: 360px;
+    --measure-sm: 280px;
+    --measure-xl: 560px;
+    --measure-xs: 200px;
+    --measure-xxl: 720px;
     --stroke-edge: 0.5px;
     --stroke-focus: 2px;
     --stroke-hairline: 1px;

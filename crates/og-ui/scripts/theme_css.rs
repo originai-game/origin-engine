@@ -366,7 +366,7 @@ pub fn generate(t: &Value) -> Result<String, String> {
     for group in ["space", "radius", "font", "density", "motion", "vars"] {
         variables(&mut out, group, &t[group]);
     }
-    for group in ["size", "stroke", "state", "opacity", "filter"] {
+    for group in ["size", "measure", "stroke", "state", "opacity", "filter"] {
         variables(&mut out, group, &t[group]);
     }
     // The controls' own tokens are `--<control>-<property>`, no group prefix.

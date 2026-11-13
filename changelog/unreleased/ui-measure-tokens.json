@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI measure tokens",
+      "summary": "--measure-xs to --measure-3xl (200px to 960px) are the widths of panels, columns and tracks: how wide a block of content runs before it wraps or scrolls. Built-in components size their blocks from them, so a style pack widens or narrows all of them by setting tokens."
+    }
+  ]
+}

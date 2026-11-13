@@ -31,6 +31,15 @@
   --size-6xl: 240px;
   --size-7xl: 288px;
   --size-touch: 44px;
+  /* Panel, column and track widths (`--measure-*`): how wide a block of
+     content runs before it wraps or scrolls. */
+  --measure-xs: 200px;
+  --measure-sm: 280px;
+  --measure-md: 360px;
+  --measure-lg: 420px;
+  --measure-xl: 560px;
+  --measure-xxl: 720px;
+  --measure-3xl: 960px;
   /* Line widths (`--stroke-*`): material edges, hairline frames, field rims,
      open triggers, thick marks and the focus ring. */
   --stroke-edge: 0.5px;

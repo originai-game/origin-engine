@@ -73,6 +73,7 @@ const GROUPS: &[&str] = &[
     "materialScope",
     "materialScope.color",
     "materialScope.shadow",
+    "measure",
     "metal",
     "metal.bronze",
     "metal.gold",
