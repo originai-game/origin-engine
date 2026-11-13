@@ -82,10 +82,10 @@ fn curve_integral(ts: array<vec4<f32>, 2>, vs: array<vec4<f32>, 2>, n: u32, t: f
 
 // A particle's rotation at age `age` of `life` (t = age / life):
 // particle_rotation in particles.rs.
-fn particle_rotation(e: Emitter, misc: vec4<f32>, age: f32, life: f32, t: f32) -> f32 {
-  let n = u32(e.counts2.y);
+fn particle_rotation(misc: vec4<f32>, age: f32, life: f32, t: f32) -> f32 {
+  let n = u32(emitter.counts2.y);
   if (n == 0u) { return misc.y + misc.z * age; }
-  return misc.y + misc.z * life * curve_integral(e.spin_t, e.spin_v, n, t);
+  return misc.y + misc.z * life * curve_integral(emitter.spin_t, emitter.spin_v, n, t);
 }
 
 struct ParticleView {
@@ -112,16 +112,16 @@ fn key4(a: array<vec4<f32>, 2>, i: u32) -> f32 {
   return v.w;
 }
 
-fn size_curve(e: Emitter, t: f32) -> f32 {
-  let n = u32(e.counts.x);
-  var v = key4(e.size_v, 0u);
+fn size_curve(t: f32) -> f32 {
+  let n = u32(emitter.counts.x);
+  var v = key4(emitter.size_v, 0u);
   for (var i = 1u; i < n; i++) {
-    let t0 = key4(e.size_t, i - 1u);
-    let t1 = key4(e.size_t, i);
+    let t0 = key4(emitter.size_t, i - 1u);
+    let t1 = key4(emitter.size_t, i);
     if (t >= t1) {
-      v = key4(e.size_v, i);
+      v = key4(emitter.size_v, i);
     } else if (t > t0) {
-      v = mix(key4(e.size_v, i - 1u), key4(e.size_v, i), (t - t0) / max(t1 - t0, 1e-6));
+      v = mix(key4(emitter.size_v, i - 1u), key4(emitter.size_v, i), (t - t0) / max(t1 - t0, 1e-6));
       break;
     } else {
       break;
@@ -130,16 +130,16 @@ fn size_curve(e: Emitter, t: f32) -> f32 {
   return v;
 }
 
-fn color_curve(e: Emitter, t: f32) -> vec4<f32> {
-  let n = u32(e.counts.y);
-  var v = e.color_v[0];
+fn color_curve(t: f32) -> vec4<f32> {
+  let n = u32(emitter.counts.y);
+  var v = emitter.color_v[0];
   for (var i = 1u; i < n; i++) {
-    let t0 = key4(e.color_t, i - 1u);
-    let t1 = key4(e.color_t, i);
+    let t0 = key4(emitter.color_t, i - 1u);
+    let t1 = key4(emitter.color_t, i);
     if (t >= t1) {
-      v = e.color_v[i];
+      v = emitter.color_v[i];
     } else if (t > t0) {
-      v = mix(e.color_v[i - 1u], e.color_v[i], (t - t0) / max(t1 - t0, 1e-6));
+      v = mix(emitter.color_v[i - 1u], emitter.color_v[i], (t - t0) / max(t1 - t0, 1e-6));
       break;
     } else {
       break;

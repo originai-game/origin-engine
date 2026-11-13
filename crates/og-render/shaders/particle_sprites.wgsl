@@ -44,13 +44,13 @@ fn expand(@builtin(global_invocation_id) id: vec3<u32>) {
   let age = p.pos_age.w;
   let alive = age < p.vel_life.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
-  var size = p.misc.x * size_curve(emitter, t);
-  var color = color_curve(emitter, t) * emitter.color;
+  var size = p.misc.x * size_curve(t);
+  var color = color_curve(t) * emitter.color;
   if (!alive) {
     size = 0.0;
     color = vec4<f32>(0.0);
   }
-  let rotation = particle_rotation(emitter, p.misc, age, p.vel_life.w, t);
+  let rotation = particle_rotation(p.misc, age, p.vel_life.w, t);
   let frames = max(params.frames, 1u);
   let mode = u32(emitter.sheet.w);
   var frame = 0u;
