@@ -91,7 +91,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   o.oit_key = oit_key4(p.pos_age, vec3<f32>(f32(vi / 3u), p.misc.x, 0.0));
   let age = p.pos_age.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
-  let size = p.misc.x * size_curve(emitter, t);
+  let size = p.misc.x * size_curve(t);
   var center = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
   if (emitter.ranges2.z > 0.5) {
@@ -110,7 +110,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
     let across = right * -axis.y + up * axis.x;
     offset = along * (c.y * len) + across * (c.x * size);
   } else {
-    let rot = particle_rotation(emitter, p.misc, age, p.vel_life.w, t);
+    let rot = particle_rotation(p.misc, age, p.vel_life.w, t);
     let cs = cos(rot);
     let sn = sin(rot);
     offset = (right * (c.x * cs - c.y * sn) + up * (c.x * sn + c.y * cs)) * size;
@@ -133,7 +133,7 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   o.local = c;
   o.shape_uv = vec2<f32>(c.x + 0.5, 0.5 - c.y);
   particle_effect(&o, t, p.misc.w);
-  o.color = color_curve(emitter, t) * emitter.color;
+  o.color = color_curve(t) * emitter.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
   o.normal = -view.cam_forward.xyz;
@@ -230,7 +230,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   }
   let age = p.pos_age.w;
   let t = clamp(age / max(p.vel_life.w, 1e-6), 0.0, 1.0);
-  let size = p.misc.x * size_curve(emitter, t);
+  let size = p.misc.x * size_curve(t);
   var center = p.pos_age.xyz;
   var vel = p.vel_life.xyz;
   if (emitter.ranges2.z > 0.5) {
@@ -259,7 +259,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
     // Tumbling about an axis of its own (its random value).
     let a = p.misc.w * 43.758;
     let axis = normalize(vec3<f32>(sin(a), cos(a * 1.7), sin(a * 2.3 + 1.0)) + vec3<f32>(1e-3, 0.0, 0.0));
-    let rot = particle_rotation(emitter, p.misc, age, p.vel_life.w, t);
+    let rot = particle_rotation(p.misc, age, p.vel_life.w, t);
     pos = rotate(pos, axis, rot);
     nrm = rotate(nrm, axis, rot);
   }
@@ -269,7 +269,7 @@ fn vs_mesh(p: ParticleIn, m: MeshIn) -> ParticleOut {
   o.local = vec2<f32>(0.0);
   o.shape_uv = m.uv;
   particle_effect(&o, t, p.misc.w);
-  o.color = color_curve(emitter, t) * emitter.color * m.color;
+  o.color = color_curve(t) * emitter.color * m.color;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
   o.normal = normalize(nrm);

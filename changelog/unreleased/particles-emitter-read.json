@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ParticleEmitter, og.Weather","summary":"A system of many particles draws faster on native Apple GPUs with the same pixels: the size, colour and spin curves read the emitter in place, where each vertex copied the whole emitter three times. At 1280x720 on an Apple M4 Pro rain takes 4.3 to 5.0 ms a frame (6.2 to 6.6 before) and snow 5.0 to 6.1 (7.1 to 7.3). A system of few, large particles is unchanged."}
+  ]
+}
