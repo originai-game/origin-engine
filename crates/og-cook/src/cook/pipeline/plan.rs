@@ -82,7 +82,7 @@ pub(crate) fn plan<'a>(
         // relative references or write source-derived names/sub-asset ids;
         // their location remains part of the action, not the content hash.
         let hash = match s.kind {
-            Kind::Texture | Kind::Sound | Kind::Font | Kind::Document => {
+            Kind::Texture | Kind::Sound | Kind::Font => {
                 stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
             }
             Kind::System(k) if k.by_content => {
@@ -150,8 +150,6 @@ fn plan_kind<'a>(
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
         Kind::Rive => plan_rive(cx, state, s, hash, outs),
-        Kind::Style => plan_style(cx, state, s, hash, outs),
-        Kind::Document => plan_document(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
         Kind::Video => plan_video(cx, state, s, hash, outs),
         Kind::Font => plan_font(cx, state, s, hash, outs),

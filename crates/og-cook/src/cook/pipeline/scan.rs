@@ -53,7 +53,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
         e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
         "ttf" | "otf" => Kind::Font,
         "riv" => Kind::Rive,
-        "svelte" => Kind::Document,
         _ => return kinds::by_extension(ext),
     })
 }
@@ -371,7 +370,7 @@ pub(crate) fn scan_with(
         sources.push(Source {
             path: assets_dir.join(&dir),
             rel: dir,
-            kind: Kind::Style,
+            kind: Kind::System(&ui_documents::STYLE),
             bytes,
             settings: None,
             settings_files: Vec::new(),

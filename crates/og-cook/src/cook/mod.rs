@@ -39,6 +39,7 @@ pub mod riv;
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
 pub mod ui_components;
+mod ui_documents;
 pub mod ui_screens;
 pub mod vector;
 
@@ -89,8 +90,6 @@ enum Kind {
     Scene,
     /// An `.ogt` of `type prefab`: cooked as a scene, flattened.
     Prefab,
-    Style,
-    Document,
     Rive,
     TextureArray,
     Video,
@@ -107,8 +106,6 @@ impl Kind {
             Kind::Font => "font",
             Kind::Scene => "scene",
             Kind::Prefab => "prefab",
-            Kind::Style => "style",
-            Kind::Document => "document",
             Kind::Rive => "rive",
             Kind::TextureArray => "texture-array",
             Kind::Video => "video",
@@ -228,10 +225,6 @@ enum Work<'a> {
     Sound(&'a Source, Option<(u32, u32)>),
     /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
     SoundChunk(&'a Source, u32, u32),
-    Style(&'a Source),
-    /// A UI document and the ids of the documents defining the components
-    /// it uses, which the runtime loads with it.
-    Document(&'a Source, Vec<String>),
     /// A `.riv`'s artboard, by name.
     Rive(&'a Source, String),
     /// A `.riv`'s embedded image, by asset index.
@@ -447,7 +440,10 @@ pub fn cook_project_with_texture_cache(
     );
     let document_themes = vec![og_ui::Theme::default()];
     let mut style_tokens_hash = StableHasher::new();
-    for source in sources.iter().filter(|s| s.kind == Kind::Style) {
+    for source in sources
+        .iter()
+        .filter(|s| s.kind == Kind::System(&ui_documents::STYLE))
+    {
         style_tokens_hash.write_str(&source.rel);
         style_tokens_hash.write(&source.hash.to_le_bytes());
     }

@@ -1,5 +1,4 @@
 use super::*;
-use og_ui::prelude::*;
 
 pub(crate) fn run(
     p: &Planned,
@@ -187,93 +186,6 @@ pub(crate) fn run(
         Work::SoundChunk(s, per, n) => {
             let e = s.encoded(Some(*per))?;
             audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
-        }
-        Work::Document(s, uses) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a document is text (UTF-8)".into()))?;
-            let imports = document_imports(s, text).map_err(CookError)?;
-            let doc = og_ui::UiDocument::parse_with_imports(&s.rel, text, imports.clone())
-                .map_err(|e| CookError(e.join("\n")))?;
-            let mut w = og_blob::BlobWriter::new(
-                format::Document::type_hash(),
-                format::Document::schema_version(),
-                p.stamp,
-            );
-            w.table(
-                "meta",
-                &[format::DocumentMeta {
-                    text_bytes: text.len() as u32,
-                }],
-                format::row_hash::<format::DocumentMeta>(),
-            )
-            .raw("text", text.as_bytes().to_vec(), 16);
-            if !imports.is_empty() {
-                let bytes = serde_json::to_vec(&imports).expect("strings serialize");
-                w.raw("imports", bytes, 16);
-            }
-            if !uses.is_empty() {
-                let bytes = serde_json::to_vec(uses).expect("strings serialize");
-                w.raw("uses", bytes, 16);
-            }
-            let slots = doc
-                .nodes
-                .iter()
-                .filter(|n| matches!(n.kind, og_ui::doc::NodeKind::Render { .. }))
-                .count();
-            let mut notes = doc.warnings.clone();
-            notes.push(format!(
-                "{} '{}', {} node(s), {} timeline(s), {slots} content render(s)",
-                match doc.kind {
-                    og_ui::doc::DocKind::Screen => "screen",
-                    og_ui::doc::DocKind::Component => "component",
-                },
-                doc.name,
-                doc.nodes.len(),
-                doc.timelines.len()
-            ));
-            Ok((w.finish(), notes))
-        }
-        Work::Style(s) => {
-            let files = serde_json::from_slice(&s.bytes)
-                .map_err(|e| CookError(format!("{}: {e}", s.rel)))?;
-            let pack = og_ui::style_pack::StylePack::parse(&s.rel, files).map_err(CookError)?;
-            let missing: Vec<_> = pack
-                .assets
-                .iter()
-                .filter(|r| !known.contains(r.as_str()))
-                .collect();
-            if !missing.is_empty() {
-                return Err(CookError(format!(
-                    "{}: CSS url() assets are missing: {} (URLs resolve beside the CSS file)",
-                    s.rel,
-                    missing
-                        .iter()
-                        .map(|s| s.as_str())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )));
-            }
-            let mut w = og_blob::BlobWriter::new(
-                format::Style::type_hash(),
-                format::Style::schema_version(),
-                p.stamp,
-            );
-            w.table(
-                "meta",
-                &[format::StyleMeta {
-                    text_bytes: s.bytes.len() as u32,
-                }],
-                format::row_hash::<format::StyleMeta>(),
-            )
-            .raw("text", s.bytes.clone(), 16);
-            Ok((
-                w.finish(),
-                vec![format!(
-                    "CSS pack '{}', {} asset(s)",
-                    pack.name,
-                    pack.assets.len()
-                )],
-            ))
         }
         Work::Rive(s, name) => riv::cook(s, name, p.stamp),
         Work::RiveImage(s, n) => riv::cook_image(s, *n, &options.texture, p.stamp),

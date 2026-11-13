@@ -36,7 +36,7 @@ pub(in crate::cook) use art_layout::paint_of;
 use art_layout::{Art, Grid, Layout, grid_of, relayout};
 use process::run;
 
-use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap};
+use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap, ui_documents};
 use super::{AssetConform, ConformAction, ConformEntry, ProjectConform, TextureRole};
 use crate::look::LookFile;
 use og_core::hash::StableHasher;
@@ -280,7 +280,7 @@ pub(super) fn uses(
                     add(flipbook::resolve(s, p), UseKind::Fixed("a 2D rig's parts"));
                 }
             }
-            Kind::Style => {
+            Kind::System(k) if k == &ui_documents::STYLE => {
                 for id in style_images(s, known) {
                     add(id, UseKind::Fixed("a UI style's atlas"));
                 }
