@@ -25,3 +25,7 @@ thiserror = "2"
 [dev-dependencies]
 # idmap tests: an IdMap writes the same save bytes as the BTreeMap it replaces.
 bincode = "1.3.3"
+
+[[test]]
+name = "layers"
+path = "tests/layers.rs"

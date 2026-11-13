@@ -78,6 +78,19 @@ beyond the platform SDK's rooms.
 **Structure rules.** They bind every crate; open work against them is in
 `docs/roadmap.md` §Structure.
 
+- **Crate layers.** A crate is a wall: a layer boundary, a different link
+  set (the cook links formats and no simulation) or a proc macro. A feature
+  is a directory and a Cargo feature inside its domain's crate. The layers,
+  lowest first: foundation (`og-core`, `og-ecs`, `og-lanes`), data and
+  formats (no ECS and no systems; `og-env` holds the fields the renderer
+  and the simulation both read, so the drawn sea and the simulated one are
+  one function), domains (simulation `og-physics`, animation `og-anim`,
+  agents `og-ai`, the renderer, audio, the UI crates and the rest),
+  assembly (`og-runtime`), tools, hosts. A crate depends downwards; a
+  domain depends on no other domain, and what two domains need of each
+  other is wired in `og-runtime`, one binding file per domain and no
+  domain algorithm. `crates/og-core/tests/layers.rs` holds the table and
+  the edges that still break it.
 - **A runtime module is optional.** `og-runtime` is the core (declarations,
   engines, the tick, assets, saves, the probe) plus modules, one per IDL
   module that binds a feature crate (navigation, AI, story, destruction,
