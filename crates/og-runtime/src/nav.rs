@@ -1,4 +1,4 @@
-//! The IDL's `nav` module over og-nav: grids, flow fields, navmeshes
+//! The IDL's `nav` module over og-ai's nav: grids, flow fields, navmeshes
 //! (cooked, or built over a flat floor), path queries, obstacles and the
 //! agents' paths. The registry is the engine's (`e6::Modules::navs`);
 //! og.nav's system and state block are the world's.
@@ -9,12 +9,12 @@ use super::wire::{
     NavLinkKind, NavMeshDesc, NavMeshInfo, NavPath, NavRebuild, NavShape, NavShapeKind, PathDesc,
     TilemapGridDesc,
 };
-use og_core::glam::{Vec2, Vec3};
-use og_ecs::{Entity, World};
-use og_nav::{
+use og_ai::nav::{
     Algorithm, Filter, FlowField, Grid, Heightfield, Nav, NavMesh, NavParams, Obstacle, Plane,
     Scratch, Shape,
 };
+use og_core::glam::{Vec2, Vec3};
+use og_ecs::{Entity, World};
 use serde_json::{Value, json};
 
 fn j3(v: Vec3) -> Value {
@@ -29,7 +29,7 @@ fn rebuild(tiles: Vec<usize>, m: &NavMesh) -> NavRebuild {
     }
 }
 
-/// og-nav's shape for a NavShape.
+/// og-ai's nav shape for a NavShape.
 fn shape(s: NavShape) -> Result<Shape, String> {
     Ok(match s.kind {
         NavShapeKind::Box => Shape::Box {
@@ -132,7 +132,7 @@ fn plane_of(engine: u32) -> Plane {
     super::e6::with(engine, |m| super::e6::plane_of(m.profile)).unwrap_or(Plane::Xz)
 }
 
-fn navs(engine: u32) -> Result<og_nav::SharedNavs, String> {
+fn navs(engine: u32) -> Result<og_ai::nav::SharedNavs, String> {
     super::e6::with(engine, |m| m.navs.clone()).ok_or_else(|| format!("no engine {engine}"))
 }
 
@@ -253,7 +253,7 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
             if rects.iter().any(|r| {
                 local.x > r.min.x && local.x < r.max.x && local.y > r.min.y && local.y < r.max.y
             }) {
-                grid.set(x, y, og_nav::BLOCKED);
+                grid.set(x, y, og_ai::nav::BLOCKED);
             }
         }
     }
@@ -269,7 +269,7 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
                     for dx in -inflate..=inflate {
                         let (nx, ny) = (x + dx, y + dy);
                         if nx >= 0 && ny >= 0 && nx < w as i32 && ny < h as i32 {
-                            grid.set(nx as u32, ny as u32, og_nav::BLOCKED);
+                            grid.set(nx as u32, ny as u32, og_ai::nav::BLOCKED);
                         }
                     }
                 }
@@ -330,7 +330,7 @@ fn path_value(
     complete: bool,
     expanded: u32,
     algorithm: &str,
-    links: &[og_nav::PathLink],
+    links: &[og_ai::nav::PathLink],
 ) -> NavPath {
     NavPath {
         points: points.to_vec(),
@@ -342,16 +342,16 @@ fn path_value(
     }
 }
 
-/// og-nav's off-mesh link for a NavLinkDesc.
-fn link_desc(d: NavLinkDesc) -> og_nav::Link {
-    og_nav::Link {
+/// og-ai's off-mesh link for a NavLinkDesc.
+fn link_desc(d: NavLinkDesc) -> og_ai::nav::Link {
+    og_ai::nav::Link {
         start: d.start,
         end: d.end,
         kind: match d.kind {
-            NavLinkKind::Jump => og_nav::LinkKind::Jump,
-            NavLinkKind::Ladder => og_nav::LinkKind::Ladder,
-            NavLinkKind::Door => og_nav::LinkKind::Door,
-            NavLinkKind::Teleport => og_nav::LinkKind::Teleport,
+            NavLinkKind::Jump => og_ai::nav::LinkKind::Jump,
+            NavLinkKind::Ladder => og_ai::nav::LinkKind::Ladder,
+            NavLinkKind::Door => og_ai::nav::LinkKind::Door,
+            NavLinkKind::Teleport => og_ai::nav::LinkKind::Teleport,
         },
         bidirectional: d.bidirectional,
         cost: d.cost.max(0.0),
@@ -367,7 +367,7 @@ fn links_used(world: u32) -> Result<(), String> {
     super::lazy::ensure(
         &eng,
         eng.world()?,
-        <og_nav::NavLinkReached as og_core::Reflect>::NAME,
+        <og_ai::nav::NavLinkReached as og_core::Reflect>::NAME,
     )
 }
 
@@ -638,7 +638,7 @@ pub fn og_nav_load(
             super::lazy::ensure(
                 &eng,
                 eng.world()?,
-                <og_nav::NavLinkReached as og_core::Reflect>::NAME,
+                <og_ai::nav::NavLinkReached as og_core::Reflect>::NAME,
             )?;
         }
         let n = navs(world)?;
@@ -745,7 +745,7 @@ pub fn og_nav_nearest(
         })
 }
 
-fn path_of(engine: u32, e: Entity) -> Option<og_nav::system::PathState> {
+fn path_of(engine: u32, e: Entity) -> Option<og_ai::nav::system::PathState> {
     super::e6::with(engine, |m| m.nav.as_ref().and_then(|n| n.path_of(e))).flatten()
 }
 
@@ -754,7 +754,7 @@ pub fn og_nav_path_of(world: u32, entity: f64) -> Option<NavPath> {
     (!p.corners.is_empty()).then(|| {
         path_value(
             &p.corners,
-            p.status != og_nav::STATUS_PARTIAL,
+            p.status != og_ai::nav::STATUS_PARTIAL,
             0,
             "agent",
             &p.links,
@@ -796,13 +796,13 @@ pub(crate) fn path_json(engine: u32, world: &World, e: Entity) -> Option<Value> 
 
 /// The lazy records og.nav reads (super::lazy): granted to its system.
 pub(crate) fn enable_filters(w: &mut World) -> og_core::Result<()> {
-    og_nav::enable_filters(w)
+    og_ai::nav::enable_filters(w)
 }
 
 pub(crate) fn enable_crowds(w: &mut World) -> og_core::Result<()> {
-    og_nav::enable_crowds(w)
+    og_ai::nav::enable_crowds(w)
 }
 
 pub(crate) fn enable_links(w: &mut World) -> og_core::Result<()> {
-    og_nav::enable_links(w)
+    og_ai::nav::enable_links(w)
 }

@@ -30,12 +30,12 @@ fn cook(root: &Path) -> Result<og_cook::Report, String> {
     }
 }
 
-fn mesh(root: &Path, id: &str) -> og_nav::NavMesh {
+fn mesh(root: &Path, id: &str) -> og_ai::nav::NavMesh {
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let bytes = bundle.read(id).unwrap();
     let (field, tiles) = bundle.navmesh(id, &bytes).unwrap();
     let areas = bundle.navmesh_areas(id, &bytes).unwrap();
-    og_nav::NavMesh::from_tiles_with_areas(field, tiles, areas).expect("tiles link")
+    og_ai::nav::NavMesh::from_tiles_with_areas(field, tiles, areas).expect("tiles link")
 }
 
 #[test]
@@ -62,10 +62,10 @@ fn baked_links_load_with_their_ids_and_a_link_off_the_mesh_is_noted() {
     let ids: Vec<u32> = links.iter().map(|(id, _)| *id).collect();
     assert_eq!(ids, [4, 9, 2, 7], "in the file's order, with their ids");
     let ladder = &links[1].1;
-    assert!(ladder.kind == og_nav::LinkKind::Ladder && !ladder.bidirectional && ladder.game);
+    assert!(ladder.kind == og_ai::nav::LinkKind::Ladder && !ladder.bidirectional && ladder.game);
     assert_eq!(ladder.duration, 1.5);
     let door = &links[2].1;
-    assert!(door.kind == og_nav::LinkKind::Door && !door.open && door.cost == 20.0);
+    assert!(door.kind == og_ai::nav::LinkKind::Door && !door.open && door.cost == 20.0);
     let m = mesh(&root, "nav/gap.ogt").with_links(links);
     let p = m
         .find_path(
@@ -108,13 +108,13 @@ fn agent_profiles_bake_one_mesh_each_and_the_first_fills_the_blob_s_own_tables()
         "{notes:?}"
     );
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
-    let load = |id: &str, profile: &str| -> Option<og_nav::NavMesh> {
+    let load = |id: &str, profile: &str| -> Option<og_ai::nav::NavMesh> {
         let bytes = bundle.read(id).unwrap();
         let b = bundle.navmesh_profile(id, &bytes, profile).unwrap()?;
         let (field, tiles) = bundle.navmesh(id, b).unwrap();
-        Some(og_nav::NavMesh::from_tiles(field, tiles).expect("tiles link"))
+        Some(og_ai::nav::NavMesh::from_tiles(field, tiles).expect("tiles link"))
     };
-    let through = |m: &og_nav::NavMesh| {
+    let through = |m: &og_ai::nav::NavMesh| {
         m.find_path(
             Vec3::new(3.0, 0.0, 5.0),
             Vec3::new(17.0, 0.0, 5.0),

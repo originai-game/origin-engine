@@ -1,4 +1,4 @@
-//! og-nav through its public API: grids (A*, jump point search, smoothing),
+//! og-ai's navigation through its public API: grids (A*, jump point search, smoothing),
 //! flow fields, baked navmeshes (paths, funnel, obstacles that rebuild their
 //! tiles, walking the surface) and the og.nav agent system in a world
 //! (crowds, separation, determinism and snapshots).
@@ -13,13 +13,13 @@
 //! was teleported) walked from a polygon it does not stand on; bounds that
 //! leave polygons out.
 
-use og_core::glam::{Vec2, Vec3};
-use og_ecs::{World, WorldDesc};
-use og_nav::bake::{bake, box_triangles};
-use og_nav::{
+use og_ai::nav::bake::{bake, box_triangles};
+use og_ai::nav::{
     BLOCKED, Grid, Nav, NavAgent, NavDesc, NavMesh, NavParams, Navs, Obstacle, Plane,
     STATUS_ARRIVED, Steering, install,
 };
+use og_core::glam::{Vec2, Vec3};
+use og_ecs::{World, WorldDesc};
 use std::sync::{Arc, Mutex};
 
 fn xorshift(s: &mut u32) -> u32 {
@@ -125,7 +125,7 @@ fn an_obstacle_rebuilds_only_its_tiles_and_removing_it_restores_them() {
         "the partial path stops on the near side"
     );
     // Tiles not rebuilt keep their polygons (their links into rebuilt tiles may move).
-    let shape = |t: &og_nav::Tile| {
+    let shape = |t: &og_ai::nav::Tile| {
         (
             t.lattice.clone(),
             t.polys.iter().map(|p| p.verts.clone()).collect::<Vec<_>>(),
@@ -164,7 +164,7 @@ fn world_with(navs: Arc<Mutex<Navs>>, plane: Plane) -> World {
         NavDesc {
             plane,
             raycast: None,
-            plans_per_tick: og_nav::PLANS_PER_TICK,
+            plans_per_tick: og_ai::nav::PLANS_PER_TICK,
         },
     )
     .unwrap();
@@ -191,7 +191,7 @@ fn crowd(seed_agents: u32) -> (World, Vec<og_ecs::Entity>) {
         }
         let e = w
             .spawn((
-                og_nav::system::Transform {
+                og_ai::nav::system::Transform {
                     position: Vec3::new(x as f32 + 0.5, y as f32 + 0.5, 0.0),
                     ..Default::default()
                 },
@@ -239,7 +239,7 @@ fn two_hundred_agents_cross_a_256_grid_and_replay_identically_after_a_snapshot()
         "only {arrived} of 200 agents arrived in 40 s"
     );
     for &e in &agents {
-        let p = a.get::<og_nav::system::Transform>(e).unwrap().position;
+        let p = a.get::<og_ai::nav::system::Transform>(e).unwrap().position;
         assert!(
             p.x >= 0.0 && p.y >= 0.0 && p.x < 256.0 && p.y < 256.0,
             "an agent left the grid: {p}"
@@ -267,7 +267,7 @@ fn separation_spreads_a_pile_of_agents_and_wander_is_deterministic() {
         for i in 0..20 {
             let e = w
                 .spawn((
-                    og_nav::system::Transform {
+                    og_ai::nav::system::Transform {
                         position: Vec3::new(0.001 * i as f32, 0.0, 0.0),
                         ..Default::default()
                     },
@@ -292,7 +292,7 @@ fn separation_spreads_a_pile_of_agents_and_wander_is_deterministic() {
         }
         let ps: Vec<Vec3> = es
             .iter()
-            .map(|&e| w.get::<og_nav::system::Transform>(e).unwrap().position)
+            .map(|&e| w.get::<og_ai::nav::system::Transform>(e).unwrap().position)
             .collect();
         (w.world_hash(), ps)
     };
@@ -315,18 +315,18 @@ fn separation_spreads_a_pile_of_agents_and_wander_is_deterministic() {
 // ── G2-4: areas, filters and shapes ─────────────────────────────────────────
 
 /// A flat 20 × 10 m floor from the origin, 0.25 m cells.
-fn floor() -> og_nav::Heightfield {
+fn floor() -> og_ai::nav::Heightfield {
     let p = NavParams {
         cell_size: 0.25,
         tile_size: 16,
         ..Default::default()
     };
-    og_nav::Heightfield::flat(p, Vec3::ZERO, 80, 40)
+    og_ai::nav::Heightfield::flat(p, Vec3::ZERO, 80, 40)
 }
 
 /// A swamp across the floor at x 9–11, from the near edge to z 8 (a gap from z 8 to 10).
-fn swamp() -> og_nav::Shape {
-    og_nav::Shape::Box {
+fn swamp() -> og_ai::nav::Shape {
+    og_ai::nav::Shape::Box {
         min: Vec3::new(9.0, -1.0, -1.0),
         max: Vec3::new(11.0, 1.0, 8.0),
     }
@@ -334,7 +334,7 @@ fn swamp() -> og_nav::Shape {
 
 #[test]
 fn filtered_agents_keep_out_of_an_area_and_shapes_and_areas_come_back_with_a_save() {
-    use og_nav::{NavFilter, Shape};
+    use og_ai::nav::{NavFilter, Shape};
     let make = || {
         let mut navs = Navs::default();
         let h = navs.insert(Nav::Mesh(Box::new(NavMesh::build_with_areas(
@@ -343,11 +343,11 @@ fn filtered_agents_keep_out_of_an_area_and_shapes_and_areas_come_back_with_a_sav
         ))));
         let navs = Arc::new(Mutex::new(navs));
         let mut w = world_with(navs.clone(), Plane::Xz);
-        og_nav::enable_filters(&mut w).unwrap();
+        og_ai::nav::enable_filters(&mut w).unwrap();
         let agent = |w: &mut World, z: f32, filter: Option<NavFilter>| {
             let e = w
                 .spawn((
-                    og_nav::system::Transform {
+                    og_ai::nav::system::Transform {
                         position: Vec3::new(2.0, 0.0, z),
                         ..Default::default()
                     },
@@ -371,7 +371,7 @@ fn filtered_agents_keep_out_of_an_area_and_shapes_and_areas_come_back_with_a_sav
         let bold = agent(&mut w, 2.0, None);
         (w, navs, h, careful, bold)
     };
-    let pos = |w: &World, e| w.get::<og_nav::system::Transform>(e).unwrap().position;
+    let pos = |w: &World, e| w.get::<og_ai::nav::system::Transform>(e).unwrap().position;
     let (mut w, navs, h, careful, bold) = make();
     let (mut careful_z, mut bold_z) = (f32::MIN, f32::MIN);
     let mut snap = None;
@@ -441,7 +441,7 @@ fn filtered_agents_keep_out_of_an_area_and_shapes_and_areas_come_back_with_a_sav
 /// for tick (before, the restore's own count made every agent plan again).
 #[test]
 fn a_restored_mesh_keeps_the_edit_count_its_agents_planned_on() {
-    use og_nav::Shape;
+    use og_ai::nav::Shape;
     let crate_at = |x: f32| Shape::Box {
         min: Vec3::new(x, -1.0, 3.0),
         max: Vec3::new(x + 1.0, 1.0, 5.0),
@@ -455,7 +455,7 @@ fn a_restored_mesh_keeps_the_edit_count_its_agents_planned_on() {
         let navs = Arc::new(Mutex::new(navs));
         let mut w = world_with(navs.clone(), Plane::Xz);
         w.spawn((
-            og_nav::system::Transform {
+            og_ai::nav::system::Transform {
                 position: Vec3::new(2.0, 0.0, 4.0),
                 ..Default::default()
             },
@@ -513,18 +513,18 @@ fn gap() -> NavMesh {
         ..Default::default()
     };
     NavMesh::build(
-        og_nav::Heightfield::flat(p, Vec3::ZERO, 72, 40).without(|x, z| {
+        og_ai::nav::Heightfield::flat(p, Vec3::ZERO, 72, 40).without(|x, z| {
             let (wx, wz) = (x as f32 * 0.25, z as f32 * 0.25);
             (8.0..10.0).contains(&wx) && wz < 8.0
         }),
     )
 }
 
-fn jump(cost: f32) -> og_nav::Link {
-    og_nav::Link {
+fn jump(cost: f32) -> og_ai::nav::Link {
+    og_ai::nav::Link {
         start: Vec3::new(7.3, 0.0, 2.0),
         end: Vec3::new(10.7, 0.0, 2.0),
-        kind: og_nav::LinkKind::Jump,
+        kind: og_ai::nav::LinkKind::Jump,
         bidirectional: true,
         cost,
         open: true,
@@ -533,17 +533,17 @@ fn jump(cost: f32) -> og_nav::Link {
     }
 }
 
-fn link_world(link: og_nav::Link) -> (World, Arc<Mutex<Navs>>, u64, og_ecs::Entity) {
+fn link_world(link: og_ai::nav::Link) -> (World, Arc<Mutex<Navs>>, u64, og_ecs::Entity) {
     let mut navs = Navs::default();
     let mut m = gap();
     m.set_link(1, Some(link));
     let h = navs.insert(Nav::Mesh(Box::new(m)));
     let navs = Arc::new(Mutex::new(navs));
     let mut w = world_with(navs.clone(), Plane::Xz);
-    og_nav::enable_links(&mut w).unwrap();
+    og_ai::nav::enable_links(&mut w).unwrap();
     let e = w
         .spawn((
-            og_nav::system::Transform {
+            og_ai::nav::system::Transform {
                 position: Vec3::new(4.0, 0.0, 2.0),
                 ..Default::default()
             },
@@ -559,21 +559,21 @@ fn link_world(link: og_nav::Link) -> (World, Arc<Mutex<Navs>>, u64, og_ecs::Enti
     (w, navs, h, e)
 }
 
-fn reached(w: &World) -> Vec<og_nav::NavLinkReached> {
-    w.pending_events::<og_nav::NavLinkReached>().unwrap()
+fn reached(w: &World) -> Vec<og_ai::nav::NavLinkReached> {
+    w.pending_events::<og_ai::nav::NavLinkReached>().unwrap()
 }
 
 #[test]
 fn an_agent_jumps_a_link_on_an_arc_and_a_restore_mid_jump_lands_alike() {
     let (mut w, _, h, e) = link_world(jump(0.0));
-    let pos = |w: &World| w.get::<og_nav::system::Transform>(e).unwrap().position;
+    let pos = |w: &World| w.get::<og_ai::nav::system::Transform>(e).unwrap().position;
     let (mut top, mut on_link, mut events, mut snap) = (0.0f32, 0, Vec::new(), None);
     for _ in 0..240 {
         w.step().unwrap();
         events.extend(reached(&w));
         let p = pos(&w);
         top = top.max(p.y);
-        if w.get::<NavAgent>(e).unwrap().status == og_nav::STATUS_ON_LINK {
+        if w.get::<NavAgent>(e).unwrap().status == og_ai::nav::STATUS_ON_LINK {
             on_link += 1;
             if on_link == 5 {
                 snap = Some(w.snapshot());
@@ -601,7 +601,10 @@ fn an_agent_jumps_a_link_on_an_arc_and_a_restore_mid_jump_lands_alike() {
     // A fresh world restored mid-jump lands and arrives the same.
     let (mut z, ..) = link_world(jump(0.0));
     z.restore(&snap.unwrap()).unwrap();
-    assert_eq!(z.get::<NavAgent>(e).unwrap().status, og_nav::STATUS_ON_LINK);
+    assert_eq!(
+        z.get::<NavAgent>(e).unwrap().status,
+        og_ai::nav::STATUS_ON_LINK
+    );
     while z.time().tick < w.time().tick {
         z.step().unwrap();
     }
@@ -612,7 +615,7 @@ fn an_agent_jumps_a_link_on_an_arc_and_a_restore_mid_jump_lands_alike() {
 fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_reroutes() {
     // The game moves the agent across: it waits on the link until told.
     let mut game = jump(0.0);
-    game.kind = og_nav::LinkKind::Ladder;
+    game.kind = og_ai::nav::LinkKind::Ladder;
     game.game = true;
     let mut navs = Navs::default();
     let mut m = gap();
@@ -630,14 +633,14 @@ fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_rerout
         NavDesc {
             plane: Plane::Xz,
             raycast: None,
-            plans_per_tick: og_nav::PLANS_PER_TICK,
+            plans_per_tick: og_ai::nav::PLANS_PER_TICK,
         },
     )
     .unwrap();
-    og_nav::enable_links(&mut w).unwrap();
+    og_ai::nav::enable_links(&mut w).unwrap();
     let e = w
         .spawn((
-            og_nav::system::Transform {
+            og_ai::nav::system::Transform {
                 position: Vec3::new(4.0, 0.0, 2.0),
                 ..Default::default()
             },
@@ -657,13 +660,16 @@ fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_rerout
     }
     assert_eq!(events.len(), 1);
     assert!(events[0].game && events[0].kind == 1);
-    assert_eq!(w.get::<NavAgent>(e).unwrap().status, og_nav::STATUS_ON_LINK);
-    let held = w.get::<og_nav::system::Transform>(e).unwrap().position;
+    assert_eq!(
+        w.get::<NavAgent>(e).unwrap().status,
+        og_ai::nav::STATUS_ON_LINK
+    );
+    let held = w.get::<og_ai::nav::system::Transform>(e).unwrap().position;
     assert!(held.x < 8.0, "it waits at the ladder's foot: {held}");
     assert!(sys.finish_link(e));
     assert!(!sys.finish_link(og_ecs::Entity::from_bits(0xdead)));
     w.step().unwrap();
-    let landed = w.get::<og_nav::system::Transform>(e).unwrap().position;
+    let landed = w.get::<og_ai::nav::system::Transform>(e).unwrap().position;
     assert!(
         landed.distance(Vec3::new(10.7, 0.0, 2.0)) < 1e-3,
         "landed at {landed}"
@@ -675,12 +681,16 @@ fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_rerout
 
     // A teleport: on the far side the tick after it is reached.
     let mut tp = jump(0.0);
-    tp.kind = og_nav::LinkKind::Teleport;
+    tp.kind = og_ai::nav::LinkKind::Teleport;
     let (mut w, _, _, e) = link_world(tp);
     let mut last_x = 4.0f32;
     for _ in 0..200 {
         w.step().unwrap();
-        let x = w.get::<og_nav::system::Transform>(e).unwrap().position.x;
+        let x = w
+            .get::<og_ai::nav::system::Transform>(e)
+            .unwrap()
+            .position
+            .x;
         assert!(
             !(x > 7.6 && x < 10.4),
             "a teleport passes no point over the gap: {x}"
@@ -694,7 +704,7 @@ fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_rerout
 
     // A door shut as the agent walks to it: it goes round by the corridor.
     let mut door = jump(0.0);
-    door.kind = og_nav::LinkKind::Door;
+    door.kind = og_ai::nav::LinkKind::Door;
     let (mut w, navs, h, e) = link_world(door);
     let mut top = 0.0f32;
     for t in 0..600 {
@@ -705,7 +715,12 @@ fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_rerout
         }
         w.step().unwrap();
         assert!(reached(&w).is_empty(), "never crosses a shut door");
-        top = top.max(w.get::<og_nav::system::Transform>(e).unwrap().position.z);
+        top = top.max(
+            w.get::<og_ai::nav::system::Transform>(e)
+                .unwrap()
+                .position
+                .z,
+        );
     }
     assert!(top > 7.9, "round by the corridor: {top}");
     assert_eq!(w.get::<NavAgent>(e).unwrap().status, STATUS_ARRIVED);

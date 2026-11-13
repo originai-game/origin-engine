@@ -1,5 +1,5 @@
 //! og-ai through its public API: behaviours parsed from text, then ticked
-//! in a world with og-nav, the way the runtime mounts them (og.ai before the
+//! in a world with og.nav, the way the runtime mounts them (og.ai before the
 //! game's systems, og.nav after).
 //!
 //! Ways it could fail, each asserted below: a malformed behaviour accepted
@@ -14,12 +14,12 @@
 //! against a tuning field that reads it once, or not at all; two runs or a
 //! restored snapshot that decide differently.
 
+use og_ai::nav::system::Transform;
+use og_ai::nav::{Grid, Nav, NavAgent, NavDesc, Navs, Plane};
 use og_ai::{AiAgent, AiDesc, Behaviour, Kind, Perceivable, Perception, SightRay, Value, install};
 use og_core::Reflect;
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World, WorldDesc};
-use og_nav::system::Transform;
-use og_nav::{Grid, Nav, NavAgent, NavDesc, Navs, Plane};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
@@ -129,7 +129,7 @@ fn scene(behaviour: &str, wall: bool) -> Scene {
     .unwrap();
     let mut navs = Navs::default();
     let grid = navs.insert(Nav::Grid(Grid::new(20, 12, 1.0, Vec2::ZERO)));
-    og_nav::install(
+    og_ai::nav::install(
         &mut world,
         Arc::new(Mutex::new(navs)),
         NavDesc {
@@ -377,12 +377,12 @@ fn two_runs_and_a_restored_snapshot_decide_the_same() {
 /// before, and a restore at tick 150 replays it.
 #[test]
 fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
-    use og_nav::{Heightfield, NavMesh, NavParams, Obstacle, Steering};
+    use og_ai::nav::{Heightfield, NavMesh, NavParams, Obstacle, Steering};
     const GUARD_MACHINE: &str = include_str!("../../../tests/fixtures/ai-nav/assets/ai/guard.ogt");
     struct Yard {
         world: World,
         ai: og_ai::AiSystem,
-        navs: og_nav::SharedNavs,
+        navs: og_ai::nav::SharedNavs,
         mesh: u64,
         agents: Vec<Entity>,
         trickster: Entity,
@@ -423,13 +423,13 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
         }
         let grid = navs.insert(Nav::Grid(grid));
         let navs = Arc::new(Mutex::new(navs));
-        og_nav::install(
+        og_ai::nav::install(
             &mut world,
             navs.clone(),
             NavDesc {
                 plane: Plane::Xz,
                 raycast: None,
-                plans_per_tick: og_nav::PLANS_PER_TICK,
+                plans_per_tick: og_ai::nav::PLANS_PER_TICK,
             },
         )
         .unwrap();

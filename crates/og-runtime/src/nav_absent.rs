@@ -1,5 +1,5 @@
 //! The IDL's `nav` module in a build without og-runtime's `nav` feature:
-//! og-nav (and og-bundle's navmesh loaders) are not linked, and this module
+//! og-ai (and og-bundle's navmesh loaders) is not linked, and this module
 //! stands in for `nav.rs`. Every `og.nav` call that answers a Result
 //! answers [`ABSENT`], so a cooked navmesh loaded here is refused by name,
 //! never dropped; the others answer what the full module answers with no

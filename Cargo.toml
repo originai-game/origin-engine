@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/og-core", "crates/og-env", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-draw", "crates/og-render-data", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics-data", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-story", "crates/og-i18n", "crates/og-net", "crates/og-css", "crates/og-text", "crates/og-ui-model", "crates/og-rive", "crates/og-reactive", "crates/og-ui-core", "crates/og-ui", "crates/og-video", "crates/og-video-wasm", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-sccache-wrap", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-ui", "crates/og-tests-web"]
+members = ["crates/og-core", "crates/og-env", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-draw", "crates/og-render-data", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics-data", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-ai", "crates/og-story", "crates/og-i18n", "crates/og-net", "crates/og-css", "crates/og-text", "crates/og-ui-model", "crates/og-rive", "crates/og-reactive", "crates/og-ui-core", "crates/og-ui", "crates/og-video", "crates/og-video-wasm", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-sccache-wrap", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-ui", "crates/og-tests-web"]
 
 # A vendored dependency, patched in below; not a member (no fmt, clippy or tests of ours).
 exclude = ["third_party"]
@@ -78,7 +78,7 @@ opt-level = 3
 # with Chrome's frame times unchanged; z for every crate cost 25 % of a
 # frame). The s default (tests/evidence/r4/size-2/NOTES.md): physics
 # (rapier, parry, og-physics, the math), og-ecs, og-render, og-anim,
-# og-lanes, og-ui, wgpu's WebGPU front end, og-nav and og-ai stay at 3;
+# og-lanes, og-ui, wgpu's WebGPU front end and og-ai stay at 3;
 # og-runtime (the frame's extract and the bindings' glue) and the rest go
 # to s. Native builds never use it.
 [profile.wasm]
@@ -136,8 +136,6 @@ opt-level = 3
 [profile.wasm.package.og-ui-core]
 opt-level = 3
 [profile.wasm.package.wgpu]
-opt-level = 3
-[profile.wasm.package.og-nav]
 opt-level = 3
 [profile.wasm.package.og-ai]
 opt-level = 3
@@ -291,7 +289,7 @@ opt-level = 3
 # load; tests/evidence/build-speed-2026-10.md). Incremental stays on; off
 # was slower (og-render 7.5 s to 9.5 s). og-physics keeps the default with
 # its opt-level 3 above.
-# og-ui, og-runtime and og-cook at opt-level 1, as og-nav: every frame of a
+# og-ui, og-runtime and og-cook at opt-level 1, as og-ai: every frame of a
 # game the tests run lays out its UI and answers its API calls, and every
 # test cook runs the cook's glyph outlines, all at -O0 before
 # (tests/evidence/gate-speed/opt-levels.md has the numbers: the UI kit's
@@ -353,10 +351,8 @@ codegen-units = 16
 codegen-units = 16
 [profile.dev.package.og-input]
 codegen-units = 16
-[profile.dev.package.og-nav]
-opt-level = 1
-codegen-units = 16
 [profile.dev.package.og-ai]
+opt-level = 1
 codegen-units = 16
 [profile.dev.package.og-tween]
 codegen-units = 16

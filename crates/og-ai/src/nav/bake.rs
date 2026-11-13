@@ -13,7 +13,7 @@
 //! 4. The floors are eroded by the agent radius (a chamfer distance to the
 //!    nearest unwalkable neighbour), so paths keep that far from walls.
 
-use crate::mesh::{Heightfield, NavParams, Span};
+use crate::nav::mesh::{Heightfield, NavParams, Span};
 use og_core::glam::Vec3;
 
 #[derive(Clone, Copy, Debug)]

@@ -95,7 +95,7 @@ mod motion;
 mod motion;
 #[cfg(feature = "nav")]
 mod nav;
-// Without the `nav` feature og-nav is not linked: og.nav answers the
+// Without the `nav` feature og-ai is not linked: og.nav answers the
 // refusal (src/nav_absent.rs).
 #[cfg(not(feature = "nav"))]
 #[path = "nav_absent.rs"]

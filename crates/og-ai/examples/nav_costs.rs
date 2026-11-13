@@ -1,12 +1,12 @@
 //! The cost numbers of the former test sample 200 agents on a
 //! 256 × 256 grid and on a baked navmesh, path queries, flow fields, the bake.
 //!
-//!     cargo run --release -p og-nav --example nav_costs > the former test sample
+//!     cargo run --release -p og-ai --example nav_costs > the former test sample
 
+use og_ai::nav::bake::{bake, box_triangles};
+use og_ai::nav::*;
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{World, WorldDesc};
-use og_nav::bake::{bake, box_triangles};
-use og_nav::*;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -104,7 +104,7 @@ fn main() {
             NavDesc {
                 plane,
                 raycast: None,
-                plans_per_tick: og_nav::system::PLANS_PER_TICK,
+                plans_per_tick: og_ai::nav::system::PLANS_PER_TICK,
             },
         )
         .unwrap();
@@ -112,7 +112,7 @@ fn main() {
         for _ in 0..200 {
             let (p, t) = spawn(&mut s);
             w.spawn((
-                og_nav::system::Transform {
+                og_ai::nav::system::Transform {
                     position: p,
                     ..Default::default()
                 },
@@ -264,7 +264,7 @@ fn main() {
     println!("{}", out.finish());
 }
 
-/// A tiny ordered JSON object writer (the example keeps og-nav free of serde).
+/// A tiny ordered JSON object writer (the example keeps og-ai free of serde).
 mod serde_like {
     #[derive(Default)]
     pub struct Obj(Vec<(String, f64)>);

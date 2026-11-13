@@ -6,12 +6,12 @@
 //!
 //!     cargo run --release -p og-ai --example ai_costs > the former test sample
 
+use og_ai::nav::system::Transform;
+use og_ai::nav::{Grid, Nav, NavAgent, NavDesc, Navs, Plane};
 use og_ai::{AiAgent, AiDesc, Behaviour, Perceivable, Perception, SightRay, install};
 use og_core::Reflect;
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::{Entity, World, WorldDesc};
-use og_nav::system::Transform;
-use og_nav::{Grid, Nav, NavAgent, NavDesc, Navs, Plane};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -91,18 +91,18 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
     let mut grid = Grid::new(64, 64, 1.0, Vec2::ZERO);
     for y in 0..64 {
         if !(28..36).contains(&y) {
-            grid.set(32, y, og_nav::BLOCKED);
+            grid.set(32, y, og_ai::nav::BLOCKED);
         }
     }
     let mut navs = Navs::default();
     let g = navs.insert(Nav::Grid(grid));
-    og_nav::install(
+    og_ai::nav::install(
         &mut world,
         Arc::new(Mutex::new(navs)),
         NavDesc {
             plane: Plane::Xy,
             raycast: None,
-            plans_per_tick: og_nav::PLANS_PER_TICK,
+            plans_per_tick: og_ai::nav::PLANS_PER_TICK,
         },
     )
     .unwrap();

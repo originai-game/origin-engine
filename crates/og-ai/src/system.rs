@@ -20,14 +20,14 @@
 //! block, so snapshots replay an agent's decisions exactly.
 
 use crate::asset::{Action, Behaviour, Kind, Root, Value};
+use crate::nav::Plane;
+use crate::nav::system::Transform;
 use crate::tree::{self, AgentMem, Effects, NodeMem, Senses};
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use og_core::reflect::{FieldType, Str256};
 use og_core::{Error, ErrorKind, Reflect, Result};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
-use og_nav::Plane;
-use og_nav::system::Transform;
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -458,8 +458,8 @@ impl Description {
 /// resource name the world has, which checks may read.
 pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<AiSystem> {
     world.register::<Transform>()?;
-    world.register::<og_nav::NavAgent>()?;
-    world.register::<og_nav::system::Velocity>()?;
+    world.register::<crate::nav::NavAgent>()?;
+    world.register::<crate::nav::system::Velocity>()?;
     world.register::<AiAgent>()?;
     world.register::<Perception>()?;
     world.register::<Perceivable>()?;
@@ -504,8 +504,8 @@ pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<Ai
         .read::<Perceivable>()
         .read::<Parent>()
         .read::<Transform>()
-        .write::<og_nav::NavAgent>()
-        .read::<og_nav::system::Velocity>()
+        .write::<crate::nav::NavAgent>()
+        .read::<crate::nav::system::Velocity>()
         .write::<AiChanged>()
         .read::<og_audio::schema::SoundStarted>()
         .read::<og_audio::AudioSource>()
@@ -693,7 +693,7 @@ fn run(
         let key = e.to_bits();
         let xf = ctx.get::<Transform>(e)?;
         let pos = xf.position;
-        let nav = ctx.get::<og_nav::NavAgent>(e).ok();
+        let nav = ctx.get::<crate::nav::NavAgent>(e).ok();
         // 1. Perception.
         if let Ok(mut p) = ctx.get::<Perception>(e) {
             let eye = pos + Vec3::Y * p.eye_height;

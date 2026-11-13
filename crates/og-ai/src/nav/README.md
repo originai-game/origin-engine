@@ -1,4 +1,4 @@
-# og-nav
+# og-ai: navigation
 
 Navigation for the engine (`docs/design.md` §2.7): pathfinding on grids
 and on a navmesh, flow fields for crowds, steering behaviours, and the
@@ -145,7 +145,7 @@ loaded grids and meshes are assets, not state.
 
 ## Tests
 
-`cargo test -p og-nav` (`tests/nav.rs`, through the public API):
+`cargo nextest run -p og-ai nav` (`tests/nav.rs`, through the public API):
 
 | Test | Asserts |
 |---|---|

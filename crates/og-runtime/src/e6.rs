@@ -1,4 +1,4 @@
-//! The E6 modules on the runtime: navigation (`og.nav`, over og-nav) and AI
+//! The E6 modules on the runtime: navigation (`og.nav`, over og-ai's nav) and AI
 //! (`og.ai`, over og-ai), mounted on every world. Their registries (grids,
 //! navmeshes, flow fields, behaviours) are assets of the engine and outlive
 //! a hot reload; their systems belong to a world, so `assemble` mounts new
@@ -12,11 +12,11 @@
 //! at the start of the next tick, as a scripted command would.
 
 use super::engine::Mount;
+#[cfg(feature = "nav")]
+use og_ai::nav::{NavSystem, Plane, SharedNavs};
 #[cfg(feature = "ai")]
 use og_ai::{AiSystem, Behaviours};
 use og_ecs::{Entity, World};
-#[cfg(feature = "nav")]
-use og_nav::{NavSystem, Plane, SharedNavs};
 use og_physics::{PhysicsSystem, QueryFilter, RaycastDesc};
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -197,16 +197,16 @@ pub(crate) fn mount_back(
 ) -> Result<(), String> {
     let navs = mount.modules.e6.borrow().navs.clone();
     let p = physics.clone();
-    let avoid: og_nav::Raycaster = Arc::new(move |o, d, max, mask, ex| {
+    let avoid: og_ai::nav::Raycaster = Arc::new(move |o, d, max, mask, ex| {
         ray(&p, o, d, max, mask, ex).map(|h| (h.distance, h.normal))
     });
-    let nav = og_nav::install(
+    let nav = og_ai::nav::install(
         world,
         navs,
-        og_nav::NavDesc {
+        og_ai::nav::NavDesc {
             plane: plane_of(profile),
             raycast: Some(avoid),
-            plans_per_tick: og_nav::PLANS_PER_TICK,
+            plans_per_tick: og_ai::nav::PLANS_PER_TICK,
         },
     )
     .map_err(|e| e.reason().to_string())?;

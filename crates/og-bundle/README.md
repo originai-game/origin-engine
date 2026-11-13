@@ -23,7 +23,7 @@ let env = bundle.load_environment("env/studio.ogt")?;                         //
 
 | Feature | Default | What it adds | Targets |
 |---|---|---|---|
-| (none) | | `runtime` (Bundle, loaders), `format`, `ktx2`, `meshopt_codec`, `qoa`, `anim_codec`, `fx`, `look`, `lightmap`, `scene_text`, `shader`. Pure Rust: og-blob, og-core, og-render-data, og-draw, og-anim, og-tilemap, og-timeline, og-nav, glam, bytemuck, miniz_oxide | every target; `cargo check -p og-bundle --target wasm32-unknown-unknown` |
+| (none) | | `runtime` (Bundle, loaders), `format`, `ktx2`, `meshopt_codec`, `qoa`, `anim_codec`, `fx`, `look`, `lightmap`, `scene_text`, `shader`. Pure Rust: og-blob, og-core, og-render-data, og-draw, og-anim, og-tilemap, og-timeline, og-ai (`nav`), glam, bytemuck, miniz_oxide | every target; `cargo check -p og-bundle --target wasm32-unknown-unknown` |
 | `transcode` | no | `CookedTexture::to_texture_data` (RGBA8 level 0) and `to_texture_source` (every level in the device's block format) for Basis textures (basisu's C++ transcoder, ruzstd) | native |
 | `basis` | no | `ktx2::from_basis`, the KTX2 container rebuilt from basis-universal's `.basis` output (og-cook's encoder; ruzstd) | native |
 

@@ -4,7 +4,7 @@
 //! for crowds that share a goal (a horde running at the player, units to a
 //! rally point).
 
-use crate::grid::{DIRS, Grid};
+use crate::nav::grid::{DIRS, Grid};
 use og_core::glam::Vec2;
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -61,9 +61,9 @@ impl FlowField {
                     continue;
                 }
                 let base = if dx != 0 && dy != 0 {
-                    crate::grid::DIAG
+                    crate::nav::grid::DIAG
                 } else {
-                    crate::grid::ORTHO
+                    crate::nav::grid::ORTHO
                 } as u64;
                 let nc = c + base * here;
                 let ni = (ny * w + nx) as usize;

@@ -17,9 +17,11 @@
 //! are the `og.nav` state block: snapshots restore them, the world hash
 //! covers them.
 
-use crate::flow::FlowField;
-use crate::grid::{Algorithm, Grid, Scratch};
-use crate::mesh::{Filter, Link, LinkKind, NONE as NO_POLY, NavMesh, PathLink, PolyRef, Shape};
+use crate::nav::flow::FlowField;
+use crate::nav::grid::{Algorithm, Grid, Scratch};
+use crate::nav::mesh::{
+    Filter, Link, LinkKind, NONE as NO_POLY, NavMesh, PathLink, PolyRef, Shape,
+};
 use crate::steer;
 use og_core::IdMap;
 use og_core::glam::{Quat, Vec2, Vec3};
@@ -611,7 +613,7 @@ pub struct PathState {
     pub version: u64,
     /// Ticks since the plan.
     pub age: u32,
-    /// The navmesh polygon the agent stands on; [`crate::mesh::NONE`] until it is
+    /// The navmesh polygon the agent stands on; [`crate::nav::mesh::NONE`] until it is
     /// located (an agent that has never planned stands on none).
     pub poly: u32,
     pub status: u32,
@@ -641,7 +643,7 @@ impl Default for PathState {
 /// The polygon of `mesh` an agent at `pos` stands on: `poly` while it still
 /// holds the agent (under it on x and z, its surface within the agent's
 /// height), else the nearest within the agent's height and radius, else
-/// [`crate::mesh::NONE`] (off the mesh). An agent that has never planned, or that the
+/// [`crate::nav::mesh::NONE`] (off the mesh). An agent that has never planned, or that the
 /// game teleported, is located here before the surface moves it.
 fn locate(mesh: &NavMesh, poly: u32, pos: Vec3, radius: f32) -> u32 {
     let height = mesh.field.params.agent_height;

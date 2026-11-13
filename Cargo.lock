@@ -2761,10 +2761,10 @@ dependencies = [
 name = "og-ai"
 version = "0.7.7"
 dependencies = [
+ "og-ai",
  "og-audio",
  "og-core",
  "og-ecs",
- "og-nav",
 ]
 
 [[package]]
@@ -2833,11 +2833,11 @@ dependencies = [
  "bytemuck",
  "glam 0.34.1",
  "miniz_oxide 0.8.9",
+ "og-ai",
  "og-anim",
  "og-blob",
  "og-core",
  "og-draw",
- "og-nav",
  "og-render-data",
  "og-tilemap",
  "og-timeline",
@@ -2907,7 +2907,6 @@ dependencies = [
  "og-ecs",
  "og-geom",
  "og-i18n",
- "og-nav",
  "og-physics-data",
  "og-records",
  "og-render",
@@ -3083,15 +3082,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "og-nav"
-version = "0.7.7"
-dependencies = [
- "og-core",
- "og-ecs",
- "og-nav",
-]
-
-[[package]]
 name = "og-net"
 version = "0.7.7"
 dependencies = [
@@ -3238,7 +3228,6 @@ dependencies = [
  "og-i18n",
  "og-input",
  "og-lanes",
- "og-nav",
  "og-net",
  "og-physics",
  "og-probe",

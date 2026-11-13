@@ -1085,8 +1085,8 @@ fn nav_view(rs: &mut RenderState) {
     };
     let plane = super::e6::plane_of(profile);
     let lift = |p: Vec3| match plane {
-        og_nav::Plane::Xz => p + Vec3::Y * 0.05,
-        og_nav::Plane::Xy => p,
+        og_ai::nav::Plane::Xz => p + Vec3::Y * 0.05,
+        og_ai::nav::Plane::Xy => p,
     };
     let mut edges = Vec::new();
     let mut blocked = Vec::new();
@@ -1094,7 +1094,7 @@ fn nav_view(rs: &mut RenderState) {
         let navs = navs.lock().unwrap_or_else(|e| e.into_inner());
         for n in navs.entries.values() {
             match n {
-                og_nav::Nav::Grid(g) => {
+                og_ai::nav::Nav::Grid(g) => {
                     let s = g.cell_size;
                     let corner = |x: f32, y: f32| {
                         lift(plane.to_world(g.origin + glam::Vec2::new(x, y) * s, 0.0))
@@ -1112,7 +1112,7 @@ fn nav_view(rs: &mut RenderState) {
                     ]);
                     for y in 0..g.height {
                         for x in 0..g.width {
-                            if g.cost(x as i32, y as i32) != og_nav::BLOCKED {
+                            if g.cost(x as i32, y as i32) != og_ai::nav::BLOCKED {
                                 continue;
                             }
                             let (fx, fy) = (x as f32, y as f32);
@@ -1125,7 +1125,7 @@ fn nav_view(rs: &mut RenderState) {
                         }
                     }
                 }
-                og_nav::Nav::Mesh(m) => {
+                og_ai::nav::Nav::Mesh(m) => {
                     for tile in &m.tiles {
                         for poly in &tile.polys {
                             let n = poly.verts.len();
@@ -1137,7 +1137,7 @@ fn nav_view(rs: &mut RenderState) {
                         }
                     }
                 }
-                og_nav::Nav::Flow { .. } => {}
+                og_ai::nav::Nav::Flow { .. } => {}
             }
         }
     }

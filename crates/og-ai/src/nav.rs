@@ -10,7 +10,7 @@
 //! | [`mesh`] | [`Heightfield`] (walkable floors per column), [`NavMesh`] (tiles of convex polygons from monotone regions and their contours), path queries with the funnel and [`Filter`]s, `move_along`, obstacles of any [`Shape`] and areas that rebuild only their tiles, off-mesh [`Link`]s |
 //! | [`shape`] | [`Shape`]: boxes, turned boxes, cylinders and convex prisms, their cell test and byte form |
 //! | `bake` (feature `bake`) | the voxeliser og-cook runs: triangles to a heightfield, with ledge, headroom and radius filters |
-//! | [`steer`] | seek, flee, arrive, pursue, evade, wander, separation, avoidance, accelerate |
+//! | [`crate::steer`] | seek, flee, arrive, pursue, evade, wander, separation, avoidance, accelerate |
 //! | [`system`] | the `og.NavAgent` and `og.Steering` records, [`Navs`] (an engine's grids, meshes and fields), [`install`] and the `og.nav` system and state block |
 
 #[cfg(feature = "bake")]
@@ -18,9 +18,7 @@ pub mod bake;
 pub mod flow;
 pub mod grid;
 pub mod mesh;
-pub mod orca;
 pub mod shape;
-pub mod steer;
 pub mod system;
 
 pub use flow::FlowField;

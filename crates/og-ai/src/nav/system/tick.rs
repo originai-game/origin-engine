@@ -53,7 +53,7 @@ fn crowd_velocity(
             if n.distance > f64::from(reach) || neighbours.len() == k {
                 continue;
             }
-            neighbours.push(crate::orca::Neighbour {
+            neighbours.push(crate::steer::orca::Neighbour {
                 position: view.positions[j],
                 velocity: view.velocities[j],
                 radius: r,
@@ -74,8 +74,8 @@ fn crowd_velocity(
             .collect(),
         _ => Vec::new(),
     };
-    crate::orca::velocity(
-        &crate::orca::Agent {
+    crate::steer::orca::velocity(
+        &crate::steer::orca::Agent {
             position: p,
             velocity: view.velocities[i],
             radius,

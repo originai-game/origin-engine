@@ -3,6 +3,8 @@
 //! them by weight. Positions and velocities are plane vectors: x and y in
 //! the 2D profile, x and z in 3D.
 
+pub mod orca;
+
 use og_core::glam::Vec2;
 
 /// Full speed towards `target`.

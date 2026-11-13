@@ -98,7 +98,7 @@ pub struct Motion {
 
 /// What a think can see of the world.
 pub struct Senses<'a> {
-    pub plane: og_nav::Plane,
+    pub plane: crate::nav::Plane,
     pub tick: u64,
     pub rate: f32,
     pub entity: u64,
@@ -213,7 +213,7 @@ impl Walker<'_, '_> {
     }
 
     fn arrived_at(&self, t: Vec3) -> bool {
-        self.s.nav_status == og_nav::STATUS_ARRIVED && self.s.nav_target.distance(t) < 0.05
+        self.s.nav_status == crate::nav::STATUS_ARRIVED && self.s.nav_target.distance(t) < 0.05
     }
 
     fn go(&mut self, t: Vec3, speed: &Option<Speed>, mem: &AgentMem) {
@@ -451,7 +451,7 @@ impl Walker<'_, '_> {
                     return Status::Success;
                 }
                 if !starting
-                    && s.nav_status == og_nav::STATUS_UNREACHABLE
+                    && s.nav_status == crate::nav::STATUS_UNREACHABLE
                     && s.nav_target.distance(t) < 0.05
                 {
                     return Status::Failure;
@@ -537,8 +537,8 @@ impl Walker<'_, '_> {
                     return Status::Running;
                 }
                 let t = mem.nodes[i].point;
-                let stuck =
-                    s.nav_status == og_nav::STATUS_UNREACHABLE && s.nav_target.distance(t) < 0.05;
+                let stuck = s.nav_status == crate::nav::STATUS_UNREACHABLE
+                    && s.nav_target.distance(t) < 0.05;
                 if self.arrived_at(t) || pos.distance(t) <= s.stop_distance.max(0.15) || stuck {
                     mem.nodes[i].point =
                         self.wander_point(mem.home, *radius, mem.nodes[i].count as u64 + 1);

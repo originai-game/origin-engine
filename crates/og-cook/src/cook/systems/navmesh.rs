@@ -1,5 +1,5 @@
 //! Navmeshes (`type navmesh`), baked here: the level's triangles
-//! voxelised by og-nav's `bake`, then the tiles built, so the runtime
+//! voxelised by og-ai's `nav::bake`, then the tiles built, so the runtime
 //! loads polygons ready to link.
 //!
 //! A navmesh file names its level:
@@ -255,7 +255,7 @@ fn scene_triangles(
                 }
             };
             let offset = vec3_of(Some(c), "offset", Vec3::ZERO);
-            let local = og_nav::bake::box_triangles(offset, half);
+            let local = og_ai::nav::bake::box_triangles(offset, half);
             out.extend(local.into_iter().map(|t| t.map(|v| m.transform_point3(v))));
         }
         scene_triangles(root, block, m, out, notes)?;
@@ -371,7 +371,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     /// `size`, turned by `yaw` radians about +y), a cylinder with `radius`
     /// (standing on `center`, `height` tall), or a convex prism of three or
     /// more `point` lines from `bottom` to `top`.
-    fn navmesh_areas(body: &Block) -> Result<Vec<(og_nav::Shape, u8)>, CookError> {
+    fn navmesh_areas(body: &Block) -> Result<Vec<(og_ai::nav::Shape, u8)>, CookError> {
         let mut out = Vec::new();
         for e in body.get_all("area") {
             let b = e.block.as_ref();
@@ -398,7 +398,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
                 })
                 .collect();
             let shape = if b.and_then(|b| b.get("radius")).is_some() {
-                og_nav::Shape::Cylinder {
+                og_ai::nav::Shape::Cylinder {
                     base: center,
                     radius: f32_of(b, "radius", 0.0).max(0.0),
                     height: f32_of(b, "height", 2.0).max(0.0),
@@ -411,7 +411,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
                         points.len()
                     )));
                 }
-                og_nav::Shape::Convex {
+                og_ai::nav::Shape::Convex {
                     points,
                     bottom: f32_of(b, "bottom", -1.0),
                     top: f32_of(b, "top", 2.0),
@@ -420,12 +420,12 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
                 let half = vec3_of(b, "size", Vec3::ONE) * 0.5;
                 let yaw = f32_of(b, "yaw", 0.0);
                 if yaw == 0.0 {
-                    og_nav::Shape::Box {
+                    og_ai::nav::Shape::Box {
                         min: center - half,
                         max: center + half,
                     }
                 } else {
-                    og_nav::Shape::Oriented { center, half, yaw }
+                    og_ai::nav::Shape::Oriented { center, half, yaw }
                 }
             };
             out.push((shape, id as u8));
@@ -435,8 +435,8 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     /// A navmesh's `link` entries: `id` (1 or more, unique), `start`, `end`,
     /// `kind` (jump, ladder, door or teleport), `bidirectional`, `cost`,
     /// `duration`, `open` and `traverse game` (the game moves the agent).
-    fn navmesh_links(body: &Block) -> Result<Vec<(u32, og_nav::Link)>, CookError> {
-        let mut out: Vec<(u32, og_nav::Link)> = Vec::new();
+    fn navmesh_links(body: &Block) -> Result<Vec<(u32, og_ai::nav::Link)>, CookError> {
+        let mut out: Vec<(u32, og_ai::nav::Link)> = Vec::new();
         for e in body.get_all("link") {
             let b = e.block.as_ref();
             let id = f32_of(b, "id", 0.0);
@@ -466,10 +466,10 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
                     .unwrap_or(default)
             };
             let kind = match word("kind").as_deref().unwrap_or("jump") {
-                "jump" => og_nav::LinkKind::Jump,
-                "ladder" => og_nav::LinkKind::Ladder,
-                "door" => og_nav::LinkKind::Door,
-                "teleport" => og_nav::LinkKind::Teleport,
+                "jump" => og_ai::nav::LinkKind::Jump,
+                "ladder" => og_ai::nav::LinkKind::Ladder,
+                "door" => og_ai::nav::LinkKind::Door,
+                "teleport" => og_ai::nav::LinkKind::Teleport,
                 k => {
                     return Err(CookError(format!(
                         "line {}: '{k}' is not a link kind: jump, ladder, door or teleport",
@@ -495,7 +495,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             }
             out.push((
                 id,
-                og_nav::Link {
+                og_ai::nav::Link {
                     start: vec3_of(b, "start", Vec3::ZERO),
                     end: vec3_of(b, "end", Vec3::ZERO),
                     kind,
@@ -558,7 +558,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     if profiles.is_empty() {
         profiles.push((String::new(), None, 0));
     }
-    let params_of = |agent: Option<&Block>| og_nav::NavParams {
+    let params_of = |agent: Option<&Block>| og_ai::nav::NavParams {
         cell_size: f32_of(Some(body), "cellSize", 0.2),
         cell_height: f32_of(Some(body), "cellHeight", 0.1),
         agent_radius: f32_of(agent, "radius", 0.4),
@@ -586,7 +586,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
             vec3_of(bb, "center", Vec3::ZERO),
         );
         tris.extend(
-            og_nav::bake::box_triangles(Vec3::ZERO, size * 0.5)
+            og_ai::nav::bake::box_triangles(Vec3::ZERO, size * 0.5)
                 .into_iter()
                 .map(|t| t.map(|v| m.transform_point3(v))),
         );
@@ -633,7 +633,7 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
     let mut baked = Vec::with_capacity(profiles.len());
     for (name, agent, _) in &profiles {
         let params = params_of(*agent);
-        let field = og_nav::bake::bake(&tris, &params, bounds).map_err(CookError)?;
+        let field = og_ai::nav::bake::bake(&tris, &params, bounds).map_err(CookError)?;
         let mut own = Vec::new();
         let (w, polys, tiles) = navmesh_blob(&field, &params, &areas, &links, stamp, &mut own)?;
         baked.push((name.clone(), field, w, polys, tiles, own));
@@ -671,14 +671,14 @@ pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
 /// One agent profile's navmesh blob (its tables, areas and links), and its
 /// polygon and tile counts; its notes go into `notes`.
 fn navmesh_blob(
-    field: &og_nav::Heightfield,
-    params: &og_nav::NavParams,
-    areas: &[(og_nav::Shape, u8)],
-    links: &[(u32, og_nav::Link)],
+    field: &og_ai::nav::Heightfield,
+    params: &og_ai::nav::NavParams,
+    areas: &[(og_ai::nav::Shape, u8)],
+    links: &[(u32, og_ai::nav::Link)],
     stamp: u64,
     notes: &mut Vec<String>,
 ) -> Result<(BlobWriter, usize, usize), CookError> {
-    let mesh = og_nav::NavMesh::build_with_areas(field.clone(), areas.to_vec());
+    let mesh = og_ai::nav::NavMesh::build_with_areas(field.clone(), areas.to_vec());
     let meta = format::NavMeshMeta {
         cell_size: params.cell_size,
         cell_height: params.cell_height,
@@ -795,7 +795,7 @@ fn navmesh_blob(
     }
     // G2-4's links, only in a navmesh that has some.
     if !links.is_empty() {
-        let linked = og_nav::NavMesh::from_tiles(field.clone(), mesh.tiles.clone())
+        let linked = og_ai::nav::NavMesh::from_tiles(field.clone(), mesh.tiles.clone())
             .map(|m| m.with_links(links.to_vec()));
         let mut bytes = Vec::new();
         for (id, l) in links {

@@ -5,15 +5,23 @@ version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Origin Engine AI as data: behaviour trees and state machines from .ogt (conditions on blackboard keys, component and resource fields; actions that move through og-nav and run the game's commands), perception (sight cones against physics occlusion, hearing from sounds and noises), per-agent blackboards and the og.ai system, deterministic and snapshot-covered."
+description = "Origin Engine navigation and AI: grid A* and jump point search, flow fields, a tiled navmesh with funnel paths and runtime region rebuilds, steering behaviours and the og.nav agent system; AI as data: behaviour trees and state machines from .ogt (conditions on blackboard keys, component and resource fields; actions that move through og.nav and run the game's commands), perception (sight cones against physics occlusion, hearing from sounds and noises), per-agent blackboards and the og.ai system, deterministic and snapshot-covered."
 
-# Pure Rust over og-core, og-ecs and og-nav's records; builds for
-# wasm32-unknown-unknown.
+# Pure Rust over og-core and og-ecs; builds for wasm32-unknown-unknown.
+# `bake` adds the voxeliser (triangles to the walkable heightfield) that
+# og-cook runs at cook time; the runtime and the wasm never build it.
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
-og-nav = { path = "../og-nav" }
 og-audio = { path = "../og-audio" }
+
+[features]
+default = []
+bake = []
+
+[dev-dependencies]
+# The tests bake levels, so they build the voxeliser.
+og-ai = { path = ".", features = ["bake"] }
 
 [[test]]
 name = "tests"

@@ -31,7 +31,6 @@ og-timeline = { path = "../og-timeline" }
 og-lanes = { path = "../og-lanes" }
 og-tween = { path = "../og-tween" }
 og-tilemap = { path = "../og-tilemap" }
-og-nav = { path = "../og-nav", optional = true }
 og-ai = { path = "../og-ai", optional = true }
 og-story = { path = "../og-story", optional = true }
 og-i18n = { path = "../og-i18n" }
@@ -85,12 +84,13 @@ destruction = ["og-physics/destruction"]
 # og.motion: goals for humanoids and the motion model that draws them
 # (og-anim's `motion`; src/motion.rs, src/motion/).
 motion = ["og-anim/motion"]
-# og.nav: grids, flow fields, navmeshes and their agents (og-nav, and
+# og.nav: grids, flow fields, navmeshes and their agents (og-ai's nav, and
 # og-bundle's navmesh loaders; src/nav.rs).
-nav = ["dep:og-nav", "og-bundle/nav"]
-# og.ai: behaviour trees and state machines (og-ai; src/ai.rs). Its agents
+nav = ["dep:og-ai", "og-bundle/nav"]
+# og.ai: behaviour trees and state machines (og-ai's behaviours and
+# perception; src/ai.rs). Its agents
 # move through og.nav, so it needs `nav`.
-ai = ["nav", "dep:og-ai"]
+ai = ["nav"]
 
 [dev-dependencies]
 # tests/stream_release.rs cooks a small project with streaming groups.

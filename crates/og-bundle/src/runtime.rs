@@ -1563,13 +1563,13 @@ impl Bundle {
     }
 
     /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles
-    /// the cook built (link them with `og_nav::NavMesh::from_tiles`).
+    /// the cook built (link them with `og_ai::nav::NavMesh::from_tiles`).
     #[cfg(feature = "nav")]
     pub fn navmesh(
         &self,
         id: &str,
         bytes: &[u8],
-    ) -> Result<(og_nav::Heightfield, Vec<og_nav::Tile>), LoadError> {
+    ) -> Result<(og_ai::nav::Heightfield, Vec<og_ai::nav::Tile>), LoadError> {
         let blob = self.blob::<format::NavMesh>(id, bytes)?;
         let m = one::<format::NavMeshMeta>(&blob)?;
         // The heightfield's two tables are meshopt vertex streams: `rows`
@@ -1615,7 +1615,7 @@ impl Bundle {
             .iter()
             .map(|c| u32::from_le_bytes(*c))
             .collect();
-        let params = og_nav::NavParams {
+        let params = og_ai::nav::NavParams {
             cell_size: m.cell_size,
             cell_height: m.cell_height,
             agent_height: m.agent_height,
@@ -1625,7 +1625,7 @@ impl Bundle {
             tile_size: m.tile_size,
             max_error: m.max_error,
         };
-        let field = og_nav::Heightfield {
+        let field = og_ai::nav::Heightfield {
             params,
             origin: glam::Vec3::new(m.origin_x, m.origin_y, m.origin_z),
             width: m.width,
@@ -1635,7 +1635,7 @@ impl Bundle {
                 .as_chunks::<2>()
                 .0
                 .iter()
-                .map(|&[floor, clear]| og_nav::Span { floor, clear })
+                .map(|&[floor, clear]| og_ai::nav::Span { floor, clear })
                 .collect(),
         };
         // G2-4's polygon areas, one byte per row of `polys` (absent before:
@@ -1655,7 +1655,7 @@ impl Bundle {
             let ps = polys
                 .get(t.poly_first as usize..(t.poly_first + t.poly_count) as usize)
                 .ok_or_else(|| invalid(&blob, "a tile's polygons are out of range"))?;
-            let mut tile = og_nav::Tile {
+            let mut tile = og_ai::nav::Tile {
                 verts: vs.iter().map(|v| glam::Vec3::new(v.x, v.y, v.z)).collect(),
                 lattice: vs.iter().map(|v| (v.lx, v.lz)).collect(),
                 polys: Vec::with_capacity(ps.len()),
@@ -1671,9 +1671,9 @@ impl Bundle {
                 if idx.len() < 3 || idx.iter().any(|&i| i as usize >= tile.verts.len()) {
                     return Err(invalid(&blob, "a polygon names a vertex its tile lacks"));
                 }
-                tile.polys.push(og_nav::Poly {
+                tile.polys.push(og_ai::nav::Poly {
                     verts: idx.iter().map(|&i| i as u16).collect(),
-                    links: vec![og_nav::mesh::NONE; idx.len()],
+                    links: vec![og_ai::nav::mesh::NONE; idx.len()],
                     region: p.region,
                     area,
                 });
@@ -1686,19 +1686,19 @@ impl Bundle {
     /// A navmesh blob's baked areas (G2-4: the `areas` section, each a
     /// byte area id then its shape; empty in a blob without areas), which
     /// the mesh re-marks when an obstacle rebuilds a tile
-    /// (`og_nav::NavMesh::from_tiles_with_areas`).
+    /// (`og_ai::nav::NavMesh::from_tiles_with_areas`).
     #[cfg(feature = "nav")]
     pub fn navmesh_areas(
         &self,
         id: &str,
         bytes: &[u8],
-    ) -> Result<Vec<(og_nav::Shape, u8)>, LoadError> {
+    ) -> Result<Vec<(og_ai::nav::Shape, u8)>, LoadError> {
         let blob = self.blob::<format::NavMesh>(id, bytes)?;
         let mut b = blob.raw_opt("areas").unwrap_or_default();
         let mut out = Vec::new();
         while let Some((&area, rest)) = b.split_first() {
             b = rest;
-            let shape = og_nav::Shape::read(&mut b)
+            let shape = og_ai::nav::Shape::read(&mut b)
                 .ok_or_else(|| invalid(&blob, "an area's shape is cut short"))?;
             out.push((shape, area));
         }
@@ -1746,15 +1746,15 @@ impl Bundle {
         &self,
         id: &str,
         bytes: &[u8],
-    ) -> Result<Vec<(u32, og_nav::Link)>, LoadError> {
+    ) -> Result<Vec<(u32, og_ai::nav::Link)>, LoadError> {
         let blob = self.blob::<format::NavMesh>(id, bytes)?;
         let mut b = blob.raw_opt("links").unwrap_or_default();
         let mut out = Vec::new();
         while b.len() >= 4 {
             let link = u32::from_le_bytes(b[..4].try_into().unwrap());
             b = &b[4..];
-            let l =
-                og_nav::Link::read(&mut b).ok_or_else(|| invalid(&blob, "a link is cut short"))?;
+            let l = og_ai::nav::Link::read(&mut b)
+                .ok_or_else(|| invalid(&blob, "a link is cut short"))?;
             out.push((link, l));
         }
         if !b.is_empty() {

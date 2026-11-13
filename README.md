@@ -115,7 +115,7 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   vehicles with a drivetrain, ragdolls, ropes, cloth, soft bodies, 2D and 3D
   particle fluids, buoyancy.
 
-**Navigation and AI** (`og.nav`, `og.ai`; og-nav, og-ai)
+**Navigation and AI** (`og.nav`, `og.ai`; og-ai)
 - Grid A* and jump point search, flow fields, a tiled navmesh with funnel
   paths, runtime rebuilds, off-mesh links, area costs, RVO crowds, steering.
 - Behaviour trees and state machines as `.ogt` data, perception (sight and
@@ -237,8 +237,7 @@ crates/            Rust workspace
   og-physics       simulation, one directory per mechanism: rigid bodies (rapier2d/rapier3d), characters, vehicles,
                    soft bodies, fluids, water forces, destruction
   og-physics-data  collider meshes, the baked triangle mesh format and its bake, the fracture asset, the save codec
-  og-nav           grids, flow fields, navmesh, steering
-  og-ai            behaviour trees, state machines, perception
+  og-ai            navigation (grids, flow fields, navmesh), steering, behaviour trees, state machines, perception
   og-audio         command stream and mixer
   og-ui            UI documents: CSS cascade, layout, interaction, retained mounting
   og-input         the Input resource, events, the shell's input ring

@@ -1,6 +1,6 @@
 //! The navmesh: convex polygons over the walkable surface of a level, in
 //! tiles, built from a walkable heightfield (the cook voxelises a level's
-//! static geometry into one, `crate::bake`), queried for paths (A* over
+//! static geometry into one, `crate::nav::bake`), queried for paths (A* over
 //! polygons, then the funnel through their shared edges) and walked by
 //! agents (`move_along`).
 //!
@@ -33,7 +33,7 @@
 //! Everything is integer or f32 arithmetic in a fixed order: the same
 //! heightfield builds the same polygons on every host.
 
-pub use crate::shape::Shape;
+pub use crate::nav::shape::Shape;
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use std::cmp::Reverse;

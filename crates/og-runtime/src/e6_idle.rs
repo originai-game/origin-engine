@@ -1,7 +1,7 @@
 //! What og.nav and og.ai leave in a world that never uses them: their
 //! systems (names, declarations, queries) and their state blocks as an idle
 //! full build saves them. A build without og-runtime's `nav` or `ai`
-//! feature mounts these instead of og-nav's and og-ai's (src/nav_absent.rs,
+//! feature mounts these instead of og-ai's (src/nav_absent.rs,
 //! src/ai_absent.rs), so its world, saves and world hash are the full
 //! build's for a game that never names the module; the full build's tests
 //! hold the two to the same bytes (tests at the end).
@@ -17,7 +17,7 @@ use og_core::{Error, ErrorKind, Result};
 use og_ecs::{QueryDesc, Shift, StateBlock, SystemDesc, World, trailer};
 use std::any::Any;
 
-/// og.nav's system and state block name (og-nav's `SYSTEM_NAME`).
+/// og.nav's system and state block name (og-ai's `nav::SYSTEM_NAME`).
 pub(crate) const NAV: &str = "og.nav";
 /// og.ai's (og-ai's `SYSTEM_NAME`).
 pub(crate) const AI: &str = "og.ai";
@@ -89,7 +89,7 @@ fn query(read: &[&str], write: &[&str]) -> QueryDesc {
     }
 }
 
-/// og.nav as og-nav's `install` schedules it, running nothing.
+/// og.nav as og-ai's `nav::install` schedules it, running nothing.
 #[cfg_attr(feature = "nav", allow(dead_code))]
 pub(crate) fn mount_nav(world: &mut World, absent: &'static str) -> Result<()> {
     let desc = SystemDesc {
@@ -160,12 +160,12 @@ pub(crate) fn mount_ai(world: &mut World, records: &[String], absent: &'static s
 mod tests {
     use og_ecs::{World, WorldDesc};
 
-    /// The records og-nav's and og-ai's `install` register, by their types.
+    /// The records og-ai's two `install`s register, by their types.
     fn records(w: &mut World) {
-        w.register::<og_nav::system::Transform>().unwrap();
-        w.register::<og_nav::system::Velocity>().unwrap();
-        w.register::<og_nav::NavAgent>().unwrap();
-        w.register::<og_nav::Steering>().unwrap();
+        w.register::<og_ai::nav::system::Transform>().unwrap();
+        w.register::<og_ai::nav::system::Velocity>().unwrap();
+        w.register::<og_ai::nav::NavAgent>().unwrap();
+        w.register::<og_ai::nav::Steering>().unwrap();
         w.register::<og_ai::AiAgent>().unwrap();
         w.register::<og_ai::Perception>().unwrap();
         w.register::<og_ai::Perceivable>().unwrap();
@@ -178,7 +178,7 @@ mod tests {
     fn full() -> World {
         let mut w = World::new(&WorldDesc::default()).unwrap();
         records(&mut w);
-        let plane = og_nav::Plane::Xz;
+        let plane = og_ai::nav::Plane::Xz;
         og_ai::install(
             &mut w,
             &["og.NavAgent".to_string()],
@@ -190,13 +190,13 @@ mod tests {
             },
         )
         .unwrap();
-        og_nav::install(
+        og_ai::nav::install(
             &mut w,
-            og_nav::SharedNavs::default(),
-            og_nav::NavDesc {
+            og_ai::nav::SharedNavs::default(),
+            og_ai::nav::NavDesc {
                 plane,
                 raycast: None,
-                plans_per_tick: og_nav::PLANS_PER_TICK,
+                plans_per_tick: og_ai::nav::PLANS_PER_TICK,
             },
         )
         .unwrap();
