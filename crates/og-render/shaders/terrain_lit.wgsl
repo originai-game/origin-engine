@@ -609,9 +609,8 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
       var far = 1.0;
       let count = u32(frame.light_dir.w);
       if (count > 0u) {
-        let depth = dot(p - frame.view_pos.xyz, frame.view_forward.xyz);
         let last = frame.cascade_bias[count - 1u].z;
-        far = smoothstep(0.9 * last, last, depth);
+        far = smoothstep(0.9 * last, last, cascade_distance(p));
       }
       shadow *= mix(1.0, sun, far);
       sky *= mix(1.0, horizon_occlusion(h), ground);

@@ -198,6 +198,7 @@ pub fn shader_sources() -> Vec<ShaderSource> {
     // RenderDesc::volumetric's raymarch.
     add("volumetric raymarch", crate::volumetric::source(false));
     add("cookie", crate::area::cookie_source());
+    add("shadow keep", crate::shadow_keep::source());
     add(
         "particles",
         crate::particles_gpu::draw_source(&crate::fluid_shared_source(), None),

@@ -79,6 +79,7 @@ impl Renderer {
                     first: b.first,
                     count: b.count,
                     cast: b.cast,
+                    triangles: meshes[b.mesh].index_count / 3,
                     always_dynamic: b.simulated
                         || shadow_cache::deforms(b.foliage, swaying, b.shader.is_some())
                         || moves(b),

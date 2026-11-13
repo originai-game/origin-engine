@@ -6,10 +6,10 @@ use super::*;
 
 impl DrawCtx<'_> {
     /// One shadow layer: a cascade or a local light's face, as its plan
-    /// (shadow_cache.rs) says: its static casters, the copy into or out
-    /// of its cache texture, its dynamic casters over them. `target`: the
-    /// live array, the layer's index in it and the depth buffer, which
-    /// the cache copies. `all_casters`: false for the weather occlusion
+    /// (shadow_cache.rs) says: its static casters, their copy into the
+    /// layer's kept texture (shadow_keep.rs), then that put back with
+    /// its dynamic casters over it. `target`: the live array, the
+    /// layer's index in it and the depth buffer, which are saved. `all_casters`: false for the weather occlusion
     /// map, which takes only what stands still for its key
     /// (weather::shelter_key): no skinned casters, no scattered copies
     /// (grass must not keep the ground under it dry). `targets`: the
@@ -127,13 +127,29 @@ impl DrawCtx<'_> {
                         .draw(pass, grass::GrassPass::Shadow, grass_frame, None, reach);
             }
         };
+        let kept = || {
+            let layer = r.shadows.shadow_cache_maps[slot].as_ref();
+            r.shadows
+                .shadow_keep
+                .as_ref()
+                .zip(layer)
+                .expect("made for its plan")
+        };
+        // One pass into the cleared layer: the kept static casters put
+        // back first (`over_kept`), then `list` and with `rest` the other
+        // casters.
         let draw = |encoder: &mut crate::Encoder,
-                    list: &DrawList,
+                    list: Option<&DrawList>,
                     rest: bool,
-                    load: bool,
+                    over_kept: bool,
                     keep_depth: bool,
                     stats: &mut FrameStats| {
-            let mut pass = shadow_target(encoder, color, depth, load, keep_depth);
+            let mut pass = shadow_target(encoder, color, depth, keep_depth);
+            if over_kept {
+                let (keep, layer) = kept();
+                keep.put_back(&mut pass, layer, targets);
+            }
+            let Some(list) = list else { return };
             // No pipeline first: the draw list sets each batch's own, as
             // do the meshlet, skinned, terrain and scatter casters.
             pass.set_bind_group(
@@ -163,48 +179,28 @@ impl DrawCtx<'_> {
             }
             stats.shadow_casters += list.instances;
         };
-        // The layer and its cache texture (and both depths), one way.
-        let copy = |encoder: &mut crate::Encoder, into_cache: bool| {
-            let cache = r.shadows.shadow_cache_maps[slot]
-                .as_ref()
-                .expect("made for its plan");
-            let (array, layer, depth_texture) = target;
-            let at = |texture, z| wgpu::TexelCopyTextureInfo {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d { x: 0, y: 0, z },
-                aspect: wgpu::TextureAspect::All,
-            };
-            let size = wgpu::Extent3d {
-                width: cache.size,
-                height: cache.size,
-                depth_or_array_layers: 1,
-            };
-            let pairs = [
-                (at(array, layer), at(&cache.color, 0)),
-                (at(depth_texture, 0), at(&cache.depth, 0)),
-            ];
-            for (live, kept) in pairs {
-                if into_cache {
-                    encoder.copy_texture_to_texture(live, kept, size);
-                } else {
-                    encoder.copy_texture_to_texture(kept, live, size);
-                }
-            }
-        };
         if plan.draw_static {
-            // Every caster when it is one pass; the depth kept for the
-            // dynamic casters when they follow.
-            draw(encoder, &lists[0], plan.single(), false, plan.save, stats);
+            // Every caster when it is one pass; a local layer's depth kept
+            // for the copy when it is saved.
+            let keep_depth = plan.save && kept().1.keeps_depth();
+            draw(
+                encoder,
+                Some(&lists[0]),
+                plan.single(),
+                false,
+                keep_depth,
+                stats,
+            );
         }
         if plan.save {
-            copy(encoder, true);
+            kept().1.save(encoder, target);
         }
-        if plan.restore {
-            copy(encoder, false);
-        }
-        if plan.overlay && !plan.single() {
-            draw(encoder, &lists[1], true, true, false, stats);
+        // The kept casters come back in the pass that draws over them,
+        // or alone into a layer that last held dynamic casters too.
+        if plan.over_kept() {
+            draw(encoder, Some(&lists[1]), true, true, false, stats);
+        } else if plan.restore {
+            draw(encoder, None, false, true, false, stats);
         }
     }
 }

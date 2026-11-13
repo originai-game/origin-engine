@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"DirectionalLight.shadowDistance","summary":"The sun's cascades are nested round the camera's position and snapped to a grid, instead of fitted to the slice of the view each one shades. A camera that turns no longer redraws its shadows, and one that walks redraws a cascade once per grid cell it crosses, so still casters are drawn once however the camera moves. A point's cascade is picked by its distance from the camera, not its view depth: shadows end at shadowDistance in every direction (they reached farther towards the screen's corners), and a cascade's edge is a circle round the camera. A shadow layer under moving casters keeps its still ones only where drawing them again costs more than putting the kept layer back: a terrain or a crowd over a few props is one pass."}
+  ]
+}

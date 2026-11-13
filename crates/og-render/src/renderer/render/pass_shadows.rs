@@ -86,8 +86,9 @@ impl<'a> Casters<'a> {
         self.dynamic.contains(b.first, b.count)
     }
 
-    /// Whether the layer at shadow slot `slot`, seeing `f`, draws dynamic
-    /// casters over its cached static ones.
+    /// Whether the layer at shadow slot `slot` draws dynamic casters over
+    /// its cached static ones: those in `f`, what the frame culls its own
+    /// casters to.
     fn overlay_in(&self, slot: usize, f: &Frustum) -> bool {
         self.unculled_overlay
             || (slot < grass::SHADOW_CASCADES && self.grass_casts)
@@ -193,11 +194,12 @@ impl<'a> Casters<'a> {
     }
 }
 
-/// Makes the static cache's textures the plans of `copied` copy through,
-/// at their layer's side (`(slot, plan, side, format)`), on first need.
+/// Makes the textures the plans of `kept` keep their layers in
+/// (`shadow_keep.rs`), at their layer's side (`(slot, plan, side,
+/// format)`), on first need.
 fn cache_maps<'p>(
     r: &mut Renderer,
-    copied: impl Iterator<
+    kept: impl Iterator<
         Item = (
             usize,
             &'p crate::shadow_cache::Plan,
@@ -206,7 +208,7 @@ fn cache_maps<'p>(
         ),
     >,
 ) {
-    for (slot, _, side, format) in copied.filter(|(_, p, _, _)| p.save || p.restore) {
+    for (slot, _, side, format) in kept.filter(|(_, p, _, _)| p.keeps()) {
         if r.shadows.shadow_cache_maps.len() <= slot {
             r.shadows.shadow_cache_maps.resize_with(slot + 1, || None);
         }
@@ -214,15 +216,20 @@ fn cache_maps<'p>(
             .as_ref()
             .is_none_or(|c| c.size != side)
         {
-            r.shadows.shadow_cache_maps[slot] = Some(CachedShadow::new(&r.device, side, format));
+            let keep = r
+                .shadows
+                .shadow_keep
+                .get_or_insert_with(|| crate::shadow_keep::ShadowKeep::new(&r.device));
+            r.shadows.shadow_cache_maps[slot] = Some(keep.layer(&r.device, side, format));
         }
     }
 }
 
-/// A frame's cascades: each one's view, casters, cache plan and meshlet
-/// view (0: none), by cascade.
+/// A frame's cascades: the point they are nested round, then each one's
+/// view, casters, cache plan and meshlet view (0: none), by cascade.
 #[derive(Default)]
 pub(super) struct CascadeFrame {
+    pub anchor: Vec3,
     pub cascades: Vec<Cascade>,
     pub lists: Vec<[DrawList; 2]>,
     pub plans: Vec<crate::shadow_cache::Plan>,
@@ -285,7 +292,7 @@ impl Pass for CascadePass {
             aspect,
         }: CascadeIn<'_>,
     ) -> CascadeFrame {
-        let cascades: Vec<Cascade> = if light.cast_shadows && has_casters {
+        let (anchor, cascades) = if light.cast_shadows && has_casters {
             let bounds = match light.shadow_bounds {
                 ShadowBounds::Sphere { center, radius } => (center, radius.max(1e-3)),
                 ShadowBounds::Auto => {
@@ -312,7 +319,7 @@ impl Pass for CascadePass {
                 let level = Vec3::new(cam.forward.x, 0.0, cam.forward.z).normalize_or(Vec3::NEG_Z);
                 let focus = camera.position + level * light.shadow_focus
                     - Vec3::Y * light.shadow_focus_drop;
-                shadow_fit::fit_box(
+                let fixed = shadow_fit::fit_box(
                     to_light,
                     bounds,
                     focus,
@@ -321,7 +328,8 @@ impl Pass for CascadePass {
                     light.shadow_bias,
                     light.shadow_normal_bias,
                     scene.frame.origin,
-                )
+                );
+                (camera.position, fixed)
             } else {
                 shadow_fit::fit_cascades(
                     camera,
@@ -337,7 +345,7 @@ impl Pass for CascadePass {
                 )
             }
         } else {
-            Vec::new()
+            (camera.position, Vec::new())
         };
         let plans: Vec<crate::shadow_cache::Plan> = cascades
             .iter()
@@ -354,8 +362,8 @@ impl Pass for CascadePass {
                     i,
                     key,
                     &c.frustum,
-                    casters.overlay_in(i, &c.frustum),
-                    casters.shadow_split.any_static,
+                    casters.overlay_in(i, &c.seen),
+                    u64::from(shadow_size).pow(2),
                 )
             })
             .collect();
@@ -364,12 +372,17 @@ impl Pass for CascadePass {
             .iter()
             .zip(&plans)
             .map(|(c, plan)| {
-                let (lists, view) = casters.layer_lists(r, cull, &c.frustum, plan);
+                // A layer drawn to be kept holds everything in its box; a
+                // frame's own casters are culled to what the camera sees.
+                let kept = plan.draw_static && !plan.single() && casters.shadow_split.any_static;
+                let f = if kept { &c.frustum } else { &c.seen };
+                let (lists, view) = casters.layer_lists(r, cull, f, plan);
                 views.push(view);
                 lists
             })
             .collect();
         CascadeFrame {
+            anchor,
             cascades,
             lists,
             plans,
@@ -384,7 +397,7 @@ impl Pass for CascadePass {
                 .plans
                 .iter()
                 .enumerate()
-                .map(|(i, p)| (i, p, shadow_size, wgpu::TextureFormat::R32Float)),
+                .map(|(i, p)| (i, p, shadow_size, crate::shadow_keep::CASCADE_FORMAT)),
         );
     }
 
@@ -409,7 +422,7 @@ impl Pass for CascadePass {
             i as usize,
             &plan.lists[i as usize],
             plan.plans[i as usize],
-            &plan.cascades[i as usize].frustum,
+            &plan.cascades[i as usize].seen,
             plan.views.get(i as usize).copied().unwrap_or(0),
             cx.stats,
             true,
@@ -597,13 +610,17 @@ impl Pass for LocalFacePass {
                     scene.frame.origin,
                     r.shadows.local_shadow_size,
                 );
-                let plan = r.shadows.shadow_cache.plan(
-                    CASCADES + layer,
-                    key,
-                    f,
-                    casters.overlay_in(CASCADES + layer, f),
-                    casters.shadow_split.any_static,
-                );
+                let plan = r
+                    .shadows
+                    .shadow_cache
+                    .plan(
+                        CASCADES + layer,
+                        key,
+                        f,
+                        casters.overlay_in(CASCADES + layer, f),
+                        u64::from(r.shadows.local_shadow_size).pow(2),
+                    )
+                    .with_own_depth();
                 frame.plans[layer] = plan;
                 let (lists, view) = casters.layer_lists(r, cull, f, &plan);
                 frame.views[layer] = view;
