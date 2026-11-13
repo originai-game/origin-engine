@@ -485,8 +485,6 @@ pub(crate) fn run(
                 )],
             ))
         }
-        Work::Dialogue(s, functions) => story::cook_story(s, p.stamp, false, Some(functions)),
-        Work::Quest(s) => story::cook_story(s, p.stamp, true, None),
         Work::Strings(s) => strings::cook_strings(s, p.stamp),
         Work::FontPack(s) => font_pack::cook(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),

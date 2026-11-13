@@ -591,7 +591,7 @@ pub(crate) fn diagnose(
     // Dialogues and quests: every key they show is in the base table.
     let stories: Vec<(&str, &[u8])> = sources
         .iter()
-        .filter(|s| matches!(s.kind, Kind::Dialogue | Kind::Quest))
+        .filter(|s| [Kind::System(&story::DIALOGUE), Kind::System(&story::QUEST)].contains(&s.kind))
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
     for (rel, what) in story::check_story_keys(&tables, &stories, story_functions) {

@@ -90,8 +90,6 @@ pub(crate) fn plan<'a>(
             | Kind::Lut
             | Kind::Emitter
             | Kind::Document
-            | Kind::Dialogue
-            | Kind::Quest
             | Kind::Strings
             | Kind::Shader
             | Kind::Post
@@ -178,8 +176,6 @@ fn plan_kind<'a>(
         Kind::Tilemap => plan_tilemap(cx, state, s, hash, outs),
         Kind::Rig2d => plan_rig2d(cx, state, s, hash, outs),
         Kind::Flipbook => plan_flipbook(cx, state, s, hash, outs),
-        Kind::Dialogue => plan_dialogue(cx, state, s, hash, outs),
-        Kind::Quest => plan_quest(cx, state, s, hash, outs),
         Kind::Strings => plan_strings(cx, state, s, hash, outs),
         Kind::FontPack => plan_font_pack(cx, state, s, hash, outs),
         Kind::Rig => plan_rig(cx, state, s, hash, outs),

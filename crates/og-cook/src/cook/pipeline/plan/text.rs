@@ -123,38 +123,6 @@ pub(super) fn plan_document<'a>(
     ));
 }
 
-pub(super) fn plan_dialogue<'a>(
-    cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx {
-        story_functions,
-        story_functions_stamp,
-        ..
-    } = *cx;
-    let st = stamp(&[b"dialogue", &hash, story_functions_stamp]);
-    outs.push((
-        s.rel.clone(),
-        format::Dialogue::NAME,
-        st,
-        Work::Dialogue(s, story_functions),
-    ));
-}
-
-pub(super) fn plan_quest<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let st = stamp(&[b"quest", &hash]);
-    outs.push((s.rel.clone(), format::Quest::NAME, st, Work::Quest(s)));
-}
-
 pub(super) fn plan_strings<'a>(
     _cx: &Cx<'a>,
     _state: &mut PlanState,

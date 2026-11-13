@@ -104,8 +104,6 @@ enum Kind {
     UiMaterial,
     Vector,
     Rive,
-    Dialogue,
-    Quest,
     NavMesh,
     Strings,
     /// A font pack's `extension.json` (`kind font`, docs/ui.md §3.4).
@@ -149,8 +147,6 @@ impl Kind {
             Kind::UiMaterial => "ui-material",
             Kind::Vector => "vector",
             Kind::Rive => "rive",
-            Kind::Dialogue => "dialogue",
-            Kind::Quest => "quest",
             Kind::NavMesh => "navmesh",
             Kind::Strings => "strings",
             Kind::FontPack => "font-pack",
@@ -307,11 +303,6 @@ enum Work<'a> {
     RiveImage(&'a Source, usize),
     /// A font a `.riv`'s text uses.
     RiveFont(Box<riv::RivFont>),
-    Dialogue(
-        &'a Source,
-        &'a BTreeMap<String, og_story::yarn::types::Function>,
-    ),
-    Quest(&'a Source),
     NavMesh(&'a Source),
     Strings(&'a Source),
     FontPack(&'a Source),

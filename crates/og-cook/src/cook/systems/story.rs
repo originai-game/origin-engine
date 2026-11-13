@@ -1,7 +1,7 @@
 //! Dialogues and quests: Yarn compiled to the engine's IR, quests kept as
 //! data, and their keys checked against the base string table.
 
-use super::{CookError, Source};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -146,4 +146,83 @@ pub(crate) fn check_story_keys(
         }
     }
     out
+}
+
+pub(crate) static DIALOGUE: KindDef = KindDef {
+    name: "dialogue",
+    extensions: &["yarn"],
+    types: &[og_story::DIALOGUE_TYPE],
+    by_content: true,
+    streams: false,
+    plan: plan_dialogue,
+};
+
+pub(crate) static QUEST: KindDef = KindDef {
+    name: "quest",
+    extensions: &[],
+    types: &[og_story::QUEST_TYPE],
+    by_content: true,
+    streams: false,
+    plan: plan_quest,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&DIALOGUE, &QUEST];
+
+fn plan_dialogue<'a>(
+    cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        story_functions,
+        story_functions_stamp,
+        ..
+    } = *cx;
+    let st = stamp(&[b"dialogue", &hash, story_functions_stamp]);
+    outs.push((
+        s.rel.clone(),
+        format::Dialogue::NAME,
+        st,
+        Work::Job(Box::new(DialogueJob(s, story_functions))),
+    ));
+}
+
+fn plan_quest<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"quest", &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::Quest::NAME,
+        st,
+        Work::Job(Box::new(QuestJob(s))),
+    ));
+}
+
+/// A dialogue's one output, compiled with the project's story functions.
+struct DialogueJob<'a>(
+    &'a Source,
+    &'a std::collections::BTreeMap<String, og_story::yarn::types::Function>,
+);
+
+impl Job for DialogueJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_story(self.0, p.stamp, false, Some(self.1))
+    }
+}
+
+/// A quest's one output.
+struct QuestJob<'a>(&'a Source);
+
+impl Job for QuestJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_story(self.0, p.stamp, true, None)
+    }
 }
