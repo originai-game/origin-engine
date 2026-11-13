@@ -6,7 +6,7 @@
 # serves. Nothing goes to npm any more (the owner, 2026-11-05).
 #
 #   scripts/release.sh check                    every occurrence of the version equals packages/engine's
-#   scripts/release.sh bump <version>           the golden replays (scripts/replay-gate.ts), then write the version everywhere (scripts/release-bump.ts,
+#   scripts/release.sh bump <version>           write the version everywhere (scripts/release-bump.ts,
 #                                               which folds changelog/unreleased/ into changelog.json first), Cargo.lock through cargo update
 #   scripts/release.sh fold                     fold changelog/unreleased/'s fragments into changelog.json's unreleased (scripts/changelog.ts);
 #                                               run it at any time between releases, and commit the result
