@@ -3,7 +3,8 @@
 
 use super::wire::{self};
 use og_core::glam::Vec2;
-use og_core::procgen::{self, BspDesc, Fbm, NoiseKind, Wfc, WfcTile};
+use og_core::noise::{Fbm, NoiseKind};
+use og_core::procgen::{self, BspDesc, Wfc, WfcTile};
 use serde_json::json;
 
 /// An FbmDesc read off the wire as og-core's generator.

@@ -8,6 +8,8 @@
 //! | [`ogt`] | the `.ogt` text format: [`ogt::Document`] reader and canonical writer |
 //! | [`rng`] | [`Rng`], the deterministic generator shared with the platform scaffolds |
 //! | [`math`] | glam re-exported, plus deterministic `sin`/`cos`/`atan2`/`exp`/`ln`/`pow`, and [`math::world_pose`] down a parent chain |
+//! | [`noise`] | gradient noise on a seed: Perlin, simplex and [`noise::Fbm`], the one CPU copy |
+//! | [`procgen`] | weighted picks, permutations, Poisson-disk points, BSP rooms, wave function collapse |
 //! | [`ocean`] | [`ocean::Ocean`], a wind's sea of Gerstner waves, its displacement and its height at a point |
 //! | [`air`] | [`air::Air`], the world's wind and the local pushes on it, as one function of a point |
 //! | [`volume`] | [`volume::Volume`], the one shape of a region: a box or a sphere on its entity, with a fade |
@@ -37,6 +39,7 @@ pub mod handle;
 pub mod hash;
 pub mod idmap;
 pub mod math;
+pub mod noise;
 pub mod ocean;
 pub mod ogt;
 pub mod procgen;
