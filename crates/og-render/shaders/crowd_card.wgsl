@@ -109,17 +109,10 @@ fn fs_crowd_card(in: CardOut) -> CardLit {
   // The sun under the frame's material style (lighting.wgsl style_sun), as
   // the members drawn as meshes.
   let sun = style_sun(surface, n, v, l, shadow, style_edge(n_dot_l * shadow));
-  var color = sun.direct;
-  color += surface.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(world);
-  color += styled_local_lights(in.clip.xy, surface, world, n, v);
-  let n_dot_v = max(dot(n, v), 1e-4);
-  let f_ibl = f_schlick_roughness(n_dot_v, surface.f0, surface.roughness);
-  let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - surface.metallic);
-  let irradiance = style_irradiance(ambient_light(n, world) * frame.params.x + hemi_irradiance(n), world);
-  let r = reflect(-v, n);
-  let prefiltered = reflected_light(r, world, surface.roughness * frame.params.y) * frame.params.x;
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, surface.roughness)).rg;
-  color += (kd_ibl * irradiance * surface.albedo + prefiltered * (surface.f0 * lut.x + lut.y)) * material.flags.z * sun.keep;  // Karis split sum (pbr_fs.wgsl)
+  // The caustics, the local lights and the light around the member, as
+  // the members drawn as meshes (surface_shade.wgsl).
+  let at = ShadeAt(world, n, v, in.clip.xy, true, true, true);
+  var color = shaded_color(surface_shade(surface, at, sun, n_dot_l * shadow, vec3<f32>(0.0), material.flags.z, 1.0));
   if (in.look.y > 0.0) { color = mix(color, card_rgb(in.look.z), in.look.y); }
   o.color = vec4<f32>(apply_fog(color, world), select(1.0, coverage, a2c));
   return o;

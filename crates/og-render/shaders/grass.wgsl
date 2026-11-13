@@ -197,13 +197,12 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   // The sun under the frame's material style (lighting.wgsl style_sun), as
   // the terrain's: the BRDF, or the toon bands, matte.
   let sun = style_sun(s, n, v, l, shadow, style_edge(n_dot_l * shadow));
-  var direct = sun.direct;
-  direct += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p);
   // The light through a backlit blade: dimmed by its translucency, tinted by its colour.
   let through = grass.base_color.w * min(s.albedo * 2.0, vec3<f32>(1.0));
-  var color = direct * select(vec3<f32>(1.0), through, backlit);
+  var own = sun;
+  own.direct = sun.direct * select(vec3<f32>(1.0), through, backlit);
   // A far blade takes the field's mean glow for its own lobe below.
-  color += in.far * in.mean.z * pow(max(s.albedo, vec3<f32>(1e-4)), vec3<f32>(0.85)) * frame.light_color.rgb * sunlit;
+  own.direct += in.far * in.mean.z * pow(max(s.albedo, vec3<f32>(1e-4)), vec3<f32>(0.85)) * frame.light_color.rgb * sunlit;
   // Looking into the sun through a blade, the light it scatters forward
   // (lighting.wgsl leaf_forward, the shared leaf lobe): the glow along
   // backlit blades. Tinted by Beer-Lambert through the blade, its colour
@@ -216,29 +215,17 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
     let tint = pow(max(s.albedo, vec3<f32>(1e-4)), vec3<f32>(thickness));
     let back = max(-dot(n0, l), 0.0);
     let lobe = 1.5 * grass.base_color.w * back * leaf_forward(n0, v, l) * (1.0 - in.far);
-    color += lobe * tint * frame.light_color.rgb * shadow;
+    own.direct += lobe * tint * frame.light_color.rgb * shadow;
   }
-  color += styled_local_lights(in.clip.xy, s, p, n0, v);
-  // Far blades light as the ground (`far`), under the sky alike.
-  // The style's shadow darkness takes its share of the ambient light too.
-  var occlusion = mix(in.shading.x, in.mean.y, in.far) * sun.keep;
-  if (fx.ao.x > 0.5) {
-    let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
-    occlusion *= mix(1.0, ssao, fx.ao.y);
-    color *= mix(1.0, mix(0.35, 1.0, ssao), fx.ao.z);
-  }
-  let n_dot_v = max(dot(n0, v), 1e-4);
-  let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
-  let irradiance = style_irradiance(ambient_light(n0, p) * frame.params.x + hemi_irradiance(n0), p);
-  let r = reflect(-v, n0);
-  // With the screen-space reflections over it (frame.wgsl ssr_reflected).
-  let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, in.clip.xy);
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  if (view == 4u) { return vec4<f32>((vec3<f32>(1.0) - f_ibl) * irradiance * s.albedo * occlusion, 1.0); }
-  if (view == 5u) { return vec4<f32>(prefiltered * (s.f0 * lut.x + lut.y) * occlusion, 1.0); }
-  if (view == 6u) { return vec4<f32>(color, 1.0); }
-  color += ((vec3<f32>(1.0) - f_ibl) * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * occlusion;  // Karis split sum (pbr_fs.wgsl)
-  return vec4<f32>(apply_fog(color, p), 1.0);
+  // The caustics (through a backlit blade, dimmed by its translucency),
+  // the local lights and the light around the blade, as every lit
+  // surface's (surface_shade.wgsl), along the blade's own side. Far
+  // blades light as the ground (`far`), under the sky alike.
+  let at = ShadeAt(p, n0, v, in.clip.xy, true, true, true);
+  let under = n_dot_l * shadow * select(1.0, grass.base_color.w, backlit);
+  let lit = surface_shade(s, at, own, under, vec3<f32>(0.0), 1.0, mix(in.shading.x, in.mean.y, in.far));
+  if (view > 3u) { return vec4<f32>(shaded_debug(lit, s.albedo, view), 1.0); }
+  return vec4<f32>(apply_fog(shaded_color(lit), p), 1.0);
 }
 
 struct GrassPrepass {

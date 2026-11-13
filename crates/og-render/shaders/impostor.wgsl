@@ -302,33 +302,16 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   sun.direct = sunlit * frame.light_color.rgb;
   sun.keep = 1.0;
   if (styled) { sun = style_sun_of(sunlit, s, n, l, shadow, band_aa); }
-  var color = sun.direct;
-  color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(surface.world);
-  color += local_lights_on(in.clip.xy, s, surface.world, n, v, styled);
-  let n_dot_v = max(dot(n, v), 1e-4);
-  let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
-  let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  var irradiance = ambient_light(n, surface.world) * frame.params.x + hemi_irradiance(n);
-  if (styled) { irradiance = style_irradiance(irradiance, surface.world); }
-  let r = reflect(-v, n);
-  // With the screen-space reflections over it (frame.wgsl ssr_reflected),
-  // unless blended: then it lies over the surface they were traced for.
-  var prefiltered = reflected_light(r, surface.world, s.roughness * frame.params.y) * frame.params.x;
-  if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, surface.world, in.clip.xy); }
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let direct = color;
-  let ibl = material.flags.z * sun.keep;
-  let diffuse = kd_ibl * irradiance * s.albedo * ibl;
-  color += diffuse + prefiltered * (s.f0 * lut.x + lut.y) * ibl;  // Karis split sum (pbr_fs.wgsl)
-  color += emissive;
+  // The caustics, the local lights and the light around the card, as the
+  // model's it stands for (surface_shade.wgsl); the screen-space
+  // reflections unless blended.
+  let at = ShadeAt(surface.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive, material.flags.z, 1.0);
   if (dbg > 0u) {
-    if (dbg == 4u) { color = diffuse; }
-    if (dbg == 5u) { color -= direct + diffuse + emissive; }
-    if (dbg == 6u) { color = direct; }
-    o.color = vec4<f32>(color, select(1.0, coverage, a2c));
+    o.color = vec4<f32>(shaded_debug(lit, s.albedo, dbg), select(1.0, coverage, a2c));
     return o;
   }
-  o.color = vec4<f32>(apply_fog(color, surface.world), select(1.0, coverage, a2c));
+  o.color = vec4<f32>(apply_fog(shaded_color(lit), surface.world), select(1.0, coverage, a2c));
   return o;
 }
 

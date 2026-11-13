@@ -28,6 +28,9 @@ pub enum Capability {
     ScreenAo,
     /// Baked lightmap pages (`lightmap_pages.wgsl`).
     Lightmap,
+    /// The one gather and sum of the light around a surface
+    /// (`surface_shade.wgsl`): a surface without it keeps its own copy.
+    SharedShade,
 }
 
 /// How a module carries a [`Capability`].
@@ -94,7 +97,7 @@ fn weather_grass(s_in: Surface, n_in: vec3<f32>, p_frame: vec3<f32>, t: f32) -> 
 ";
 
 impl Capability {
-    pub const ALL: [Capability; 7] = [
+    pub const ALL: [Capability; 8] = [
         Capability::LocalLights,
         Capability::Weather,
         Capability::Decals,
@@ -102,6 +105,7 @@ impl Capability {
         Capability::PlanarReflection,
         Capability::ScreenAo,
         Capability::Lightmap,
+        Capability::SharedShade,
     ];
 
     /// What a material shader's hooks may call in every module they run
@@ -125,6 +129,7 @@ impl Capability {
             Capability::PlanarReflection => "planar reflection",
             Capability::ScreenAo => "screen ao",
             Capability::Lightmap => "lightmap",
+            Capability::SharedShade => "shared shade",
         }
     }
 
@@ -139,6 +144,7 @@ impl Capability {
             Capability::PlanarReflection => "fn planar_reflection(",
             Capability::ScreenAo => "fn screen_ao(",
             Capability::Lightmap => "fn lightmap_texel(",
+            Capability::SharedShade => "fn surface_shade(",
         }
     }
 

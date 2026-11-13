@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "TerrainScatter",
+      "summary": "Scattered models, their impostors, crowd cards and grass take the light around them through the renderer's one shading entry: the screen-space occlusion and bent normal, the probe GI, the light volumes and the reflection bent by roughness, as a mesh does. Crowd cards also take the screen-space reflections."
+    }
+  ]
+}

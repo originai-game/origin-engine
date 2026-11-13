@@ -55,6 +55,13 @@ const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
 /// `ambient_normal` for the lit surfaces.
 pub const SCREEN_AO_WGSL: &str = wgsl!("screen_ao.wgsl");
 
+/// What every lit surface does after its own sun term (surface_shade.wgsl):
+/// `surface_ambient`, the one gather of the light around it, and
+/// `surface_shade`, its sum with the caustics and the local lights. After
+/// [`LIGHTING_WGSL`], [`AREA_WGSL`], the light volumes' hook
+/// ([`lightmap::probe_wgsl`]) and [`SCREEN_AO_WGSL`] or its stub.
+pub const SURFACE_SHADE_WGSL: &str = wgsl!("surface_shade.wgsl");
+
 /// The lit passes' effect group (fx.wgsl) declared at bind group `group`:
 /// 2 in the lit and physical modules, wherever a surface with its own
 /// groups has room for it. The module also carries decals.wgsl, which
@@ -98,7 +105,11 @@ pub fn lit_source_with(hooks: &str, planar: bool) -> String {
             INSTANCE_WGSL,
             &fx_wgsl(2),
             PBR_WGSL,
-            &if planar { planar_wgsl(2) } else { String::new() },
+            &if planar {
+                planar_wgsl(2)
+            } else {
+                String::new()
+            },
             SCREEN_AO_WGSL,
             PBR_FS_WGSL,
             PBR_PREPASS_WGSL,

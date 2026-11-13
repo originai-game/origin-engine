@@ -150,55 +150,20 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   sun.direct = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   sun.keep = 1.0;
   if (styled) { sun = style_sun(s, n, v, l, shadow, band_aa); }
-  var color = sun.direct;
-  color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world);
-  // Point, spot and rect lights: this fragment's cluster's, or every light
-  // in a reflection probe's face (area.wgsl local_lights_on).
-  color += local_lights_on(in.clip.xy, s, in.world, n, v, styled);
-  var ssao_scale = 1.0;
-  var ao_all = 1.0;  // also scales the emitted light (pbr_fs.wgsl)
-  // Only with PostEffects.aoDirect above 0: without it the copies keep their
-  // look of before the AO reached them.
-  if (fx.ao.x > 0.5 && fx.ao.z > 0.0) {
-    let ssao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
-    ssao_scale = mix(mix(1.0, ssao, fx.ao.y), mix(0.35, 1.0, ssao), fx.ao.z);
-    ao_all = mix(1.0, mix(0.35, 1.0, ssao), fx.ao.z);
-    color *= ao_all;
-    // Debug (DebugView::AmbientOcclusion): the ambient occlusion term, as pbr_fs.wgsl.
-    if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) { return vec4<f32>(vec3<f32>(ssao), 1.0); }
-  }
-  let n_dot_v = max(dot(n, v), 1e-4);
-  let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
-  let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  // The environment, or the probe holding the chunk blended with it (probes.rs),
-  // at its intensity, plus the hemisphere light at its own.
-  var irradiance = ambient_light(n, in.world) * frame.params.x + hemi_irradiance(n);
-  if (styled) { irradiance = style_irradiance(irradiance, in.world); }
-  let r = reflect(-v, n);
-  // With the screen-space reflections over it (frame.wgsl ssr_reflected),
-  // unless blended: then it lies over the surface they were traced for.
-  var prefiltered = reflected_light(r, in.world, s.roughness * frame.params.y) * frame.params.x;
-  if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let dbg_direct = color;  // the direct light, for the debug views below (fork s68)
-  var ibl_scale = material.flags.z * ssao_scale * sun.keep;
+  // What the material's AO map keeps of the light around the copy.
+  var keep = 1.0;
   if (material.flags.y >= 0.0) {
-    ibl_scale *= mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
+    keep = mix(1.0, textureSample(ao_tex, material_sampler, material_uv(UV_AO, in.uv)).r, material.flags.y);
   }
-  color += (kd_ibl * irradiance * s.albedo + prefiltered * (s.f0 * lut.x + lut.y)) * ibl_scale;  // Karis split sum (pbr_fs.wgsl)
-  color += emissive * ao_all;
+  // The caustics, the local lights and the light around the copy, as every
+  // lit surface's (surface_shade.wgsl); the screen-space reflections unless
+  // blended: then it lies over the surface they were traced for.
+  let at = ShadeAt(in.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive, material.flags.z, keep);
   if (frame.light_color.w > 2.5) {
-    // Debug (DebugView::lit_code, as pbr_fs.wgsl): 3 albedo, 4 diffuse image-based light, 5 specular image-based
-    // light (what the split sum above added), 6 direct light; the copies showed their whole lit colour in these views
-    // (fork s68).
-    let m = u32(frame.light_color.w + 0.5);
-    let dbg_diffuse = kd_ibl * irradiance * s.albedo * ibl_scale;
-    if (m == 3u) { return vec4<f32>(s.albedo, out_a); }
-    if (m == 4u) { return vec4<f32>(dbg_diffuse, out_a); }
-    if (m == 5u) { return vec4<f32>(color - dbg_direct - dbg_diffuse - emissive * ao_all, out_a); }
-    return vec4<f32>(dbg_direct, out_a);
+    return vec4<f32>(shaded_debug(lit, s.albedo, u32(frame.light_color.w + 0.5)), out_a);
   }
-  return vec4<f32>(apply_fog(color, in.world), out_a);
+  return vec4<f32>(apply_fog(shaded_color(lit), in.world), out_a);
 }
 
 struct ScatterPrepass {
