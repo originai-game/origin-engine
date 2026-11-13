@@ -123,19 +123,6 @@ pub(super) fn plan_document<'a>(
     ));
 }
 
-pub(super) fn plan_font_pack<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    // The stamp covers its faces' bytes: their cmaps are the coverage.
-    let deps = font_pack::dependencies(s);
-    let st = stamp(&[b"font-pack 1", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::FontPack::NAME, st, Work::FontPack(s)));
-}
-
 pub(super) fn plan_font<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

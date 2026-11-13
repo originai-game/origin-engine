@@ -546,7 +546,7 @@ pub(crate) fn group(
     // settings, to `<id>.face.ogb`, which the web reads on demand.
     let pack_faces: BTreeSet<String> = sources
         .iter()
-        .filter(|s| s.kind == Kind::FontPack)
+        .filter(|s| s.kind == Kind::System(&font_pack::FONT_PACK))
         .flat_map(font_pack::faces)
         .collect();
     Grouped {

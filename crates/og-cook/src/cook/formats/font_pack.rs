@@ -6,6 +6,7 @@
 //! cooked output.
 
 use super::*;
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
 use crate::format::BlobKind;
 use og_blob::BlobWriter;
 
@@ -126,4 +127,43 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
             pack.languages.join(" ")
         )],
     ))
+}
+
+pub(crate) static FONT_PACK: KindDef = KindDef {
+    name: "font-pack",
+    extensions: &[],
+    types: &[],
+    by_content: false,
+    streams: false,
+    plan: plan_font_pack,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&FONT_PACK];
+
+fn plan_font_pack<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers its faces' bytes: their cmaps are the coverage.
+    let deps = dependencies(s);
+    let st = stamp(&[b"font-pack 1", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::FontPack::NAME,
+        st,
+        Work::Job(Box::new(FontPackJob(s))),
+    ));
+}
+
+/// A font pack's one output.
+struct FontPackJob<'a>(&'a Source);
+
+impl Job for FontPackJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook(self.0, p.stamp)
+    }
 }

@@ -175,7 +175,6 @@ fn plan_kind<'a>(
         Kind::Tilemap => plan_tilemap(cx, state, s, hash, outs),
         Kind::Rig2d => plan_rig2d(cx, state, s, hash, outs),
         Kind::Flipbook => plan_flipbook(cx, state, s, hash, outs),
-        Kind::FontPack => plan_font_pack(cx, state, s, hash, outs),
         Kind::Rig => plan_rig(cx, state, s, hash, outs),
         Kind::MotionAction => plan_motion_action(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),

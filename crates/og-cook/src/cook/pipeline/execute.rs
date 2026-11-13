@@ -484,7 +484,6 @@ pub(crate) fn run(
                 )],
             ))
         }
-        Work::FontPack(s) => font_pack::cook(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::MotionAction(s) => {
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
