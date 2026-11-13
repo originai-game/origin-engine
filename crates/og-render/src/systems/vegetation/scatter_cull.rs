@@ -47,7 +47,12 @@ pub(crate) const COPY_BYTES: u64 = std::mem::size_of::<crate::instances::GpuTran
 const ITEM_SLOT: u64 = 256;
 
 pub(crate) fn source() -> String {
-    format!("{}{}", crate::LIBRARY_WGSL, wgsl3d!("scatter_cull.wgsl"))
+    format!(
+        "{}{}{}",
+        crate::LIBRARY_WGSL,
+        wgsl3d!("scatter_cull.wgsl"),
+        wgsl3d!("cull_hiz.wgsl")
+    )
 }
 
 /// `CullView` in scatter_cull.wgsl.

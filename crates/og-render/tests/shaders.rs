@@ -151,9 +151,11 @@ fn the_compiled_wgsl_is_the_source_without_its_comments() {
 }
 
 /// A mechanism's shader code has one copy, in the file that owns it: no
-/// other file writes these tokens (a definition of a library function, or
-/// the choice between a cascade's depth and a local light's value, which
-/// every caster takes from `shadow_depth` or `shadow_card`).
+/// other file writes these tokens (a definition of a library function; the
+/// choice between a cascade's depth and a local light's value, which
+/// every caster takes from `shadow_depth` or `shadow_card`; a read of the
+/// occluders' depth pyramid, a cull's scan, or a level's error against the
+/// pixel threshold).
 #[test]
 fn a_mechanisms_shader_code_is_written_once() {
     const OWNED: &[(&[&str], &[&str])] = &[
@@ -177,6 +179,9 @@ fn a_mechanisms_shader_code_is_written_once() {
             ],
         ),
         (&["shadow_pass.wgsl"], &["local_value(", "local_distance("]),
+        (&["cull_hiz.wgsl"], &["textureLoad(pyramid"]),
+        (&["cull_scan.wgsl"], &["fn scan_shared("]),
+        (&["lod.wgsl"], &["< LOD_PIXEL_ERROR"]),
     ];
     let built = std::path::Path::new(env!("OG_RENDER_SHADERS"));
     let mut copies = Vec::new();
@@ -194,4 +199,20 @@ fn a_mechanisms_shader_code_is_written_once() {
         }
     }
     assert!(copies.is_empty(), "{}", copies.join("\n"));
+}
+
+/// The shaders' pixel error is the CPU's (`lod::LOD_PIXEL_ERROR`): the
+/// levels a GPU cull picks are the ones `lod::select` does.
+#[test]
+fn the_shaders_level_rule_reads_the_cpus_pixel_error() {
+    let built = std::path::Path::new(env!("OG_RENDER_SHADERS"));
+    let text = std::fs::read_to_string(built.join("lod.wgsl")).expect("lod.wgsl");
+    let expected = format!(
+        "const LOD_PIXEL_ERROR: f32 = {:?};",
+        og_render::lod::LOD_PIXEL_ERROR
+    );
+    assert!(
+        text.contains(&expected),
+        "lod.wgsl does not state `{expected}`"
+    );
 }

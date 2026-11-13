@@ -90,8 +90,6 @@ const WG: u32 = 64u;
 const VIEW_PLANES: u32 = 12u;
 const VIEW_ROWS: u32 = VIEW_PLANES + 2u;
 const MESH_ROWS: u32 = 10u;
-// lod.rs LOD_PIXEL_ERROR.
-const PIXEL_ERROR: f32 = 1.0;
 // meshlet.rs SOFT_PIXELS.
 const SOFT_PIXELS: f32 = 24.0;
 
@@ -104,46 +102,11 @@ fn outside(view: u32, c: vec3<f32>, r: f32) -> bool {
   return false;
 }
 
-// meshlet.rs `ScreenRect::of_sphere` and `occluded`: the box about the
-// sphere behind the pyramid everywhere it covers.
+// meshlet.rs `occluded`: the box about the sphere behind the pyramid
+// everywhere it covers (cull_hiz.wgsl).
 fn occluded(c: vec3<f32>, r: f32) -> bool {
-  let size = vec2<f32>(params.sizes.xy);
-  var lo = vec2<f32>(1e30);
-  var hi = vec2<f32>(-1e30);
-  var near = 1e30;
-  for (var i = 0u; i < 8u; i++) {
-    let corner = c + r * vec3<f32>(
-      select(-1.0, 1.0, (i & 1u) != 0u),
-      select(-1.0, 1.0, (i & 2u) != 0u),
-      select(-1.0, 1.0, (i & 4u) != 0u));
-    let clip = params.view_proj * vec4<f32>(corner, 1.0);
-    if (clip.w <= 1e-6) { return false; }
-    let ndc = clip.xyz / clip.w;
-    let px = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * size;
-    lo = min(lo, px);
-    hi = max(hi, px);
-    near = min(near, ndc.z);
-  }
-  if (near <= 0.0) { return false; }
-  let x0 = u32(clamp(floor(lo.x) - 1.0, 0.0, size.x - 1.0));
-  let y0 = u32(clamp(floor(lo.y) - 1.0, 0.0, size.y - 1.0));
-  let x1 = u32(clamp(floor(hi.x) + 1.0, 0.0, size.x - 1.0));
-  let y1 = u32(clamp(floor(hi.y) + 1.0, 0.0, size.y - 1.0));
-  let texels = max(x1 - x0, y1 - y0) + 1u;
-  var level = 0u;
-  while ((1u << level) < texels) { level++; }
-  if (level >= params.sizes.z) { return false; }
-  // The level's size from the screen's (cull.wgsl's note on llvmpipe).
-  let dims = max(vec2<u32>(1u), params.sizes.xy >> vec2<u32>(level));
-  let t0 = min(vec2<u32>(x0, y0) >> vec2<u32>(level), dims - 1u);
-  let t1 = min(vec2<u32>(x1, y1) >> vec2<u32>(level), dims - 1u);
-  var farthest = 0.0;
-  for (var y = t0.y; y <= t1.y; y++) {
-    for (var x = t0.x; x <= t1.x; x++) {
-      farthest = max(farthest, textureLoad(pyramid, vec2<u32>(x, y), level).r);
-    }
-  }
-  return near > farthest + 1e-6;
+  let box = hiz_sphere(params.view_proj, c, r, vec2<f32>(params.sizes.xy));
+  return hiz_hidden(box, params.sizes.xy, params.sizes.z);
 }
 
 @compute @workgroup_size(64)
@@ -212,8 +175,7 @@ fn cull_clusters(@builtin(workgroup_id) wid: vec3<u32>,
   } else if (!inside && bias > 0.0) {
     var error = 0.0;
     for (var k = 1u; k < levels; k++) {
-      error = max(error, bitcast<f32>(meshes[mesh + 2u + k].z));
-      if (error * per_unit * scale * bias < PIXEL_ERROR) { level = k; } else { break; }
+      if (lod_holds(&error, bitcast<f32>(meshes[mesh + 2u + k].z), per_unit, scale, bias)) { level = k; } else { break; }
     }
   }
   let phase = params.phase.x;

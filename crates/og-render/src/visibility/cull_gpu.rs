@@ -57,6 +57,8 @@ pub(crate) use pyramid::*;
 pub(crate) const CULL_WGSL: &str = concat!(
     wgsl!("instance.wgsl"),
     wgsl!("cull.wgsl"),
+    wgsl!("cull_scan.wgsl"),
+    wgsl!("cull_box.wgsl"),
     wgsl!("cull_hiz.wgsl")
 );
 const HIZ_WGSL: &str = wgsl!("hiz.wgsl");

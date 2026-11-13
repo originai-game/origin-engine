@@ -1,6 +1,6 @@
 // Crowd culling (crowd.rs, crowd_gpu.rs): per view row, every crowd
 // member's clip box is tested against the row's planes (the camera's also
-// against the occluders' depth pyramid, cull_hiz.wgsl), its level is
+// against the occluders' depth pyramid, cull_box.wgsl), its level is
 // picked from the camera, and the visible members are compacted, level by
 // level and in member order, into the row's region of skinned instance
 // records (skin.rs `SkinnedInstanceGpu`). Each (crowd, part, level) gets an
@@ -135,8 +135,9 @@ fn member_level(c: CrowdGpu, m: mat4x4<f32>) -> u32 {
     per_unit = params.camera.w / max(params.lod.y, 1e-6);
   }
   var level = 0u;
+  var worst = 0.0;
   for (var l = 1u; l < levels; l++) {
-    if (c.errors[l] * per_unit * scale * bias < 1.0) { level = l; } else { break; }
+    if (lod_holds(&worst, c.errors[l], per_unit, scale, bias)) { level = l; } else { break; }
   }
   return level;
 }
@@ -226,17 +227,6 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
     workgroupBarrier();
   }
   if (li == 0u) { scan[hidden_at(r) + wid.x] = shared_sum[0]; }
-}
-
-// An inclusive scan of `shared_sum` (Hillis-Steele).
-fn scan_shared(li: u32) {
-  for (var s = 1u; s < WG; s <<= 1u) {
-    var v = shared_sum[li];
-    if (li >= s) { v += shared_sum[li - s]; }
-    workgroupBarrier();
-    shared_sum[li] = v;
-    workgroupBarrier();
-  }
 }
 
 @compute @workgroup_size(256)

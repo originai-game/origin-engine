@@ -1,4 +1,5 @@
-// Stable stream compaction, using cull.wgsl's blocked Hillis-Steele scan.
+// Stable stream compaction, using the culls' blocked Hillis-Steele scan
+// (cull_scan.wgsl).
 // Scan (visible, soft-eligible) counts; the first soft-cap eligible slots
 // go to software and the rest to hardware. Both lists therefore have a
 // stable order even at overflow and after the late cull adds survivors.
@@ -23,15 +24,6 @@ fn value(k: u32) -> vec2<u32> {
   if (k >= params.x) { return vec2<u32>(0u); }
   let s = selected[k];
   return vec2<u32>(u32(s.x != 0u), s.y);
-}
-fn scan_shared(li: u32) {
-  for (var s = 1u; s < WG; s <<= 1u) {
-    var v = shared_sum[li];
-    if (li >= s) { v += shared_sum[li - s]; }
-    workgroupBarrier();
-    shared_sum[li] = v;
-    workgroupBarrier();
-  }
 }
 
 @compute @workgroup_size(256)

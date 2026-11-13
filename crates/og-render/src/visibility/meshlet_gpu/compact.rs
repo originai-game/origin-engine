@@ -3,7 +3,7 @@
 
 use super::{WORKGROUPS_PER_ROW, buffer, entry, grow, storage, storage_usage};
 
-pub(crate) const WGSL: &str = wgsl!("meshlet_compact.wgsl");
+pub(crate) const WGSL: &str = concat!(wgsl!("meshlet_compact.wgsl"), wgsl!("cull_scan.wgsl"));
 const WG: u32 = 256;
 
 pub(super) struct Compact {

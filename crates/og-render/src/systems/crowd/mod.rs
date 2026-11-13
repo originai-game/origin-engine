@@ -79,7 +79,10 @@ use glam::{Mat4, Vec3};
 pub(crate) const CROWD_CULL_WGSL: &str = concat!(
     wgsl!("instance.wgsl"),
     wgsl!("crowd_cull.wgsl"),
-    wgsl!("cull_hiz.wgsl")
+    wgsl!("cull_scan.wgsl"),
+    wgsl!("cull_box.wgsl"),
+    wgsl!("cull_hiz.wgsl"),
+    wgsl!("lod.wgsl")
 );
 
 /// The most levels a crowd draws: its mesh levels (`Crowd::errors`) and,

@@ -39,7 +39,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub(crate) const MESHLET_WGSL: &str = wgsl!("meshlet.wgsl");
-pub(crate) const MESHLET_CULL_WGSL: &str = wgsl!("meshlet_cull.wgsl");
+pub(crate) const MESHLET_CULL_WGSL: &str = concat!(
+    wgsl!("meshlet_cull.wgsl"),
+    wgsl!("cull_hiz.wgsl"),
+    wgsl!("lod.wgsl")
+);
 pub(crate) const MESHLET_SHADOW_WGSL: &str = wgsl!("meshlet_shadow.wgsl");
 pub(crate) const MESHLET_DEPTH_WGSL: &str = wgsl!("meshlet_depth.wgsl");
 pub(crate) const MESHLET_RASTER_WGSL: &str = wgsl!("meshlet_raster.wgsl");

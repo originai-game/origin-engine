@@ -70,46 +70,12 @@ fn cull_outside(c: vec3<f32>, r: f32) -> bool {
   return false;
 }
 
-// meshlet_cull.wgsl `occluded`: the box about the sphere behind the
-// pyramid everywhere it covers.
+// The box about the sphere behind the pyramid everywhere it covers
+// (cull_hiz.wgsl).
 fn cull_occluded(c: vec3<f32>, r: f32) -> bool {
   if (view.sizes.z == 0u) { return false; }
-  let size = vec2<f32>(view.sizes.xy);
-  var lo = vec2<f32>(1e30);
-  var hi = vec2<f32>(-1e30);
-  var near = 1e30;
-  for (var i = 0u; i < 8u; i++) {
-    let corner = c + r * vec3<f32>(
-      select(-1.0, 1.0, (i & 1u) != 0u),
-      select(-1.0, 1.0, (i & 2u) != 0u),
-      select(-1.0, 1.0, (i & 4u) != 0u));
-    let clip = view.view_proj * vec4<f32>(corner, 1.0);
-    if (clip.w <= 1e-6) { return false; }
-    let ndc = clip.xyz / clip.w;
-    let px = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * size;
-    lo = min(lo, px);
-    hi = max(hi, px);
-    near = min(near, ndc.z);
-  }
-  if (near <= 0.0) { return false; }
-  let x0 = u32(clamp(floor(lo.x) - 1.0, 0.0, size.x - 1.0));
-  let y0 = u32(clamp(floor(lo.y) - 1.0, 0.0, size.y - 1.0));
-  let x1 = u32(clamp(floor(hi.x) + 1.0, 0.0, size.x - 1.0));
-  let y1 = u32(clamp(floor(hi.y) + 1.0, 0.0, size.y - 1.0));
-  let texels = max(x1 - x0, y1 - y0) + 1u;
-  var level = 0u;
-  while ((1u << level) < texels) { level++; }
-  if (level >= view.sizes.z) { return false; }
-  let dims = max(vec2<u32>(1u), view.sizes.xy >> vec2<u32>(level));
-  let t0 = min(vec2<u32>(x0, y0) >> vec2<u32>(level), dims - 1u);
-  let t1 = min(vec2<u32>(x1, y1) >> vec2<u32>(level), dims - 1u);
-  var farthest = 0.0;
-  for (var y = t0.y; y <= t1.y; y++) {
-    for (var x = t0.x; x <= t1.x; x++) {
-      farthest = max(farthest, textureLoad(pyramid, vec2<u32>(x, y), level).r);
-    }
-  }
-  return near > farthest + 1e-6;
+  let box = hiz_sphere(view.view_proj, c, r, vec2<f32>(view.sizes.xy));
+  return hiz_hidden(box, view.sizes.xy, view.sizes.z);
 }
 
 // The regions copy `k` of the chunk is listed in, a bit each: x in the
