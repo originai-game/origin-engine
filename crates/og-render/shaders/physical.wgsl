@@ -242,22 +242,11 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     o.specular = a.specular * shadow;
     return o;
   }
-  let to_light = light.position_range.xyz - p;
-  let d2 = max(dot(to_light, to_light), 1e-4);
-  let range = light.position_range.w;
-  let ratio = d2 / (range * range);
-  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-  var atten = window * window / d2;
-  let l = to_light * inverseSqrt(d2);
-  if (light.color_kind.w > 0.5) {
-    let cos_angle = dot(-l, light.direction_slot.xyz);
-    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
-    atten *= t * t;
-  }
-  if (atten <= 0.0 || (dot(n, l) <= 0.0 && s.translucency <= 0.0)) { return o; }
-  var radiance = light.color_kind.rgb * light_cookie(light, -l) * atten;
-  if (receives) { radiance *= local_shadow(light, p, leaf_shadow_normal(s, n, l)) * contact_shadow(light, p); }
-  let b = physical_brdf(s, k, n, v, l);
+  let r = local_reach(light, s.translucency, p, n);
+  if (!r.lit) { return o; }
+  var radiance = r.radiance;
+  if (receives) { radiance *= local_shadow(light, p, leaf_shadow_normal(s, n, r.l)) * contact_shadow(light, p); }
+  let b = physical_brdf(s, k, n, v, r.l);
   o.diffuse = b.diffuse * radiance;
   o.specular = b.specular * radiance;
   return o;

@@ -284,6 +284,42 @@ fn light_cookie(light: LocalLight, d: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(1.0);
 }
 
+// What a point or spot light sends to `p`, before its shadow: `l` the
+// way to it, `radiance` its colour through its cookie, by its inverse
+// square falloff windowed to zero at its range (UE4's) and by its cone.
+// `lit` false where nothing arrives: past the range, outside the cone,
+// or behind a surface (normal `n`) that lets no light through
+// (`translucency` 0). The one falloff every lit shader's local lights
+// take (surface_local_light below, pbr.wgsl local_light, physical.wgsl
+// physical_local).
+struct LocalReach {
+  l: vec3<f32>,
+  radiance: vec3<f32>,
+  lit: bool,
+};
+
+fn local_reach(light: LocalLight, translucency: f32, p: vec3<f32>, n: vec3<f32>) -> LocalReach {
+  var o: LocalReach;
+  o.radiance = vec3<f32>(0.0);
+  o.lit = false;
+  let to_light = light.position_range.xyz - p;
+  let d2 = max(dot(to_light, to_light), 1e-4);
+  let range = light.position_range.w;
+  let ratio = d2 / (range * range);
+  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
+  var atten = window * window / d2;
+  o.l = to_light * inverseSqrt(d2);
+  if (light.color_kind.w > 0.5) {
+    let cos_angle = dot(-o.l, light.direction_slot.xyz);
+    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
+    atten *= t * t;
+  }
+  if (atten <= 0.0 || (dot(n, o.l) <= 0.0 && translucency <= 0.0)) { return o; }
+  o.radiance = light.color_kind.rgb * light_cookie(light, -o.l) * atten;
+  o.lit = true;
+  return o;
+}
+
 // A point, spot or rect light's light on a surface for the lit shaders
 // that draw no material effects (terrain, scattered copies, the 3D fluid):
 // a rect light through linearly transformed cosines (area_light), a point
@@ -293,23 +329,11 @@ fn light_cookie(light: LocalLight, d: vec3<f32>) -> vec3<f32> {
 fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>, styled: bool) -> vec3<f32> {
   if (!OG_LOCAL_LIGHTS) { return vec3<f32>(0.0); }
   if (light.color_kind.w < -0.5) { return area_light(light, s, p, n, v); }
-  let to_light = light.position_range.xyz - p;
-  let d2 = max(dot(to_light, to_light), 1e-4);
-  let range = light.position_range.w;
-  let ratio = d2 / (range * range);
-  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-  var atten = window * window / d2;
-  let l = to_light * inverseSqrt(d2);
-  if (light.color_kind.w > 0.5) {
-    let cos_angle = dot(-l, light.direction_slot.xyz);
-    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
-    atten *= t * t;
-  }
-  if (atten <= 0.0 || (dot(n, l) <= 0.0 && s.translucency <= 0.0)) { return vec3<f32>(0.0); }
-  let radiance = light.color_kind.rgb * light_cookie(light, -l);
-  let shadow = local_shadow(light, p, leaf_shadow_normal(s, n, l));
-  if (styled) { return style_local(s, n, v, l, shadow) * radiance * atten; }
-  return brdf(s, n, v, l) * radiance * atten * shadow;
+  let r = local_reach(light, s.translucency, p, n);
+  if (!r.lit) { return vec3<f32>(0.0); }
+  let shadow = local_shadow(light, p, leaf_shadow_normal(s, n, r.l));
+  if (styled) { return style_local(s, n, v, r.l, shadow) * r.radiance; }
+  return brdf(s, n, v, r.l) * r.radiance * shadow;
 }
 
 // Every point, spot and rect light on a surface for those shaders: the

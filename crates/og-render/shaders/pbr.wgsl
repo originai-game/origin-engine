@@ -485,27 +485,13 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
     let a = area_shade(light, s, p, n, v);
     return (a.diffuse + a.specular) * select(1.0, rect_shadow(light, p, leaf_shadow_normal(s, n, light.position_range.xyz - p)), receives);
   }
-  let to_light = light.position_range.xyz - p;
-  let d2 = max(dot(to_light, to_light), 1e-4);
-  let range = light.position_range.w;
-  let ratio = d2 / (range * range);
-  // Inverse square, windowed to zero at the range (UE4's falloff).
-  let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
-  var atten = window * window / d2;
-  let l = to_light * inverseSqrt(d2);
-  if (light.color_kind.w > 0.5) {
-    let cos_angle = dot(-l, light.direction_slot.xyz);
-    let t = clamp((cos_angle - light.cone.x) * light.cone.y, 0.0, 1.0);
-    atten *= t * t;
-  }
-  if (atten <= 0.0) { return vec3<f32>(0.0); }
-  if (dot(n, l) <= 0.0 && s.translucency <= 0.0) { return vec3<f32>(0.0); }
+  // Its falloff, cone and cookie (area.wgsl local_reach).
+  let r = local_reach(light, s.translucency, p, n);
+  if (!r.lit) { return vec3<f32>(0.0); }
   var shadow = 1.0;
-  if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, l)) * contact_shadow(light, p); }
-  // Its cookie (area.wgsl; white without).
-  let radiance = light.color_kind.rgb * light_cookie(light, -l);
+  if (receives) { shadow = local_shadow(light, p, leaf_shadow_normal(s, n, r.l)) * contact_shadow(light, p); }
   if (EFFECTS && material.toon.x > 0.5) {
-    return toon_light(s, n, v, l, shadow) * radiance * atten;
+    return toon_light(s, n, v, r.l, shadow) * r.radiance;
   }
-  return brdf(s, n, v, l) * radiance * atten * shadow;
+  return brdf(s, n, v, r.l) * r.radiance * shadow;
 }
