@@ -37,7 +37,7 @@ og-tilemap = { path = "../og-tilemap" }
 # as the physics that loads it builds it (og-physics-data, below og-physics).
 og-physics-data = { path = "../og-physics-data", features = ["physics3d"] }
 # `type model`: the cook builds its parts with og-geom's generators.
-# A model's `fracture` block: its chunks and support graph (`cook/fracture.rs`).
+# A model's `fracture` block: its chunks and support graph (`cook/systems/fracture.rs`).
 og-destruct = { path = "../og-destruct", optional = true }
 og-geom = { path = "../og-geom", optional = true }
 # A streamed `type video`: the IVF ffmpeg writes is read into units, and its
@@ -101,7 +101,7 @@ nalgebra = { version = "0.34.1", optional = true }
 # and MSL out), as wgpu would at load.
 naga = { version = "30.0.1", optional = true, features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
 # FBX (binary and ASCII, 3000 to 7700) and OBJ with its .mtl, read into a
-# glTF binary the model cook takes (`cook/fbx.rs`): ufbx, one C99 file
+# glTF binary the model cook takes (`cook/formats/fbx.rs`): ufbx, one C99 file
 # compiled by `cc`, MIT or Unlicense. The cook only, never the wasm.
 ufbx = { version = "0.11.5", optional = true }
 # `type vfx2d`: the Forge renderer's f64 Math, the same on every host

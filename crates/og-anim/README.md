@@ -730,7 +730,7 @@ clip turn {               # clips of the sheet's own, over the frames the source
 }
 ```
 
-The cook (`og-cook`'s `cook/animated.rs`) decodes and composites every
+The cook (`og-cook`'s `cook/systems/animated.rs`) decodes and composites every
 frame, keeps the file's delays as the clip's durations (a GIF delay of
 10 ms or less is shown as 100 ms, as browsers do), keys the background
 (`auto`: the first frame's border colour, when one colour, give or take

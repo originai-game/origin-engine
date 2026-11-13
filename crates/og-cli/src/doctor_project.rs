@@ -119,7 +119,7 @@ pub fn findings(root: &Path) -> Vec<Value> {
         }
         for fl in stats::asset_flags(a, &budgets) {
             // Budgets are reported numbers, not gates; only the texture size is a
-            // device limit (the budget's size, cook/stats.rs `Budgets`).
+            // device limit (the budget's size, cook/pipeline/stats.rs `Budgets`).
             let severity = if fl["budget"].as_str() == Some("textureSize") {
                 "error"
             } else {

@@ -1,6 +1,6 @@
 # FBX and OBJ fixtures
 
-Files for `tests/fbx.rs` and `src/cook/fbx/tests.rs`. Every file here is
+Files for `tests/fbx.rs` and `src/cook/formats/fbx/tests.rs`. Every file here is
 made for this repository from nothing but `make.py` and Blender, or
 written by hand: no third-party art. They are released under CC0 1.0
 (public domain dedication).

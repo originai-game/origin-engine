@@ -4,7 +4,7 @@ Source: https://github.com/effekseer/Effekseer, revision
 `b5700082b49bc5f919610880dafddc90211a9a4e`. Licence: MIT, Copyright (c)
 2011 Effekseer Project (`LICENSE` here).
 
-`crates/og-cook/src/cook/efk/` reads Effekseer's files as that source
+`crates/og-cook/src/cook/systems/efk/` reads Effekseer's files as that source
 writes them; it ports format knowledge, not code, and embeds no Effekseer
 runtime:
 

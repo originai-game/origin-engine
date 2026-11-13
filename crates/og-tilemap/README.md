@@ -22,7 +22,7 @@ let back = MapState::decode(&asset, &[tileset], &bytes)?;         // == state
 
 Dependencies: og-core, glam. No serde, no C, builds for
 `wasm32-unknown-unknown`. The Tiled and LDtk importers live in og-cook
-(`src/cook/tilemap.rs`, feature `cook`): they never reach the wasm.
+(`src/cook/systems/tilemap.rs`, feature `cook`): they never reach the wasm.
 
 ## Coordinates
 

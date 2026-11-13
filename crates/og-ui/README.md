@@ -730,7 +730,7 @@ or lightens away from it instead.
 An icon atlas is a grid of equal cells of a texture (`IconAtlas::texture`,
 `columns`, `rows`, `names`), or an **icon set**: SVG icons cooked like a
 font. og-cook's `type icons` file names the SVGs (`source`, `size`,
-`range`, one `icon "<name>" ["<file>"]` a line; `crates/og-cook/src/cook/icons.rs`)
+`range`, one `icon "<name>" ["<file>"]` a line; `crates/og-cook/src/cook/formats/icons.rs`)
 and cooks them into an `og.Font` blob: icon `i` is the glyph at U+E000 + i,
 its em square the SVG's view box (ascender 1, descender 0), the field a
 true signed distance in all four channels of the stroke's own outline

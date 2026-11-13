@@ -197,7 +197,7 @@ styles) turns the pack's `art-requests.json` into prompts through
 A character drawn in layers is rigged by the cook with no editor step: a
 `type rig2d` file names the art and a template, and the cook makes the
 bones, slots, leg IK, atlas and the template's clips
-(`crates/og-cook/src/cook/autorig.rs`). This section is the contract the
+(`crates/og-cook/src/cook/systems/autorig.rs`). This section is the contract the
 art meets. `rigParts(template)` of `@origingame/create-game` lists every
 template's parts with their parent, joint end and motion, back to front,
 and og-cook's `rig_parts_match_the_templates` holds it equal to the cook.

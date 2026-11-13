@@ -1298,7 +1298,7 @@ export interface RigPart {
 // rig-parts: begin
 // Each template's parts in the order to draw them, back to front (the order
 // the example art draws in; the art's own layer order is what the cook
-// draws). The fields are og-cook's (crates/og-cook/src/cook/autorig/
+// draws). The fields are og-cook's (crates/og-cook/src/cook/systems/autorig/
 // template.rs): its unit test `rig_parts_match_the_templates` reads this
 // block as JSON and fails on any part, field or `sides` that differs.
 const RIG_PARTS = {

@@ -6,7 +6,7 @@
 //! chunks), radial damage, the stress solver of NVIDIA Blast ([`stress`])
 //! and the support graph's islands. og-runtime's `destruction` system
 //! drives it from the world; the cook writes the asset (og-cook
-//! `cook/fracture.rs`, the pieces from [`og_geom::fracture`]).
+//! `cook/systems/fracture.rs`, the pieces from [`og_geom::fracture`]).
 //!
 //! Everything is f32 with `+ - * /` and `sqrt`, in fixed orders: the same
 //! bits on every host, so a fracture replays.

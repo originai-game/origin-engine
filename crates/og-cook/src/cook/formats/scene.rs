@@ -534,7 +534,7 @@ pub fn cook(
                 }
                 resources.insert(r.clone(), block_fields(fields, 0, e.line, &r)?);
             }
-            // Streaming groups: read by the cook's planner (cook/stream.rs).
+            // Streaming groups: read by the cook's planner (cook/pipeline/stream.rs).
             "stream" => {}
             // Named paths (og.path.find, a timeline's `rail`), made when
             // the scene is instantiated.
