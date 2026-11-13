@@ -22,11 +22,11 @@ pub(crate) struct KindDef {
     /// A streaming group may hold it.
     pub(crate) streams: bool,
     /// Plans a source's outputs, each with its stamp and job.
-    pub(crate) plan: PlanFn,
+    pub(in crate::cook) plan: PlanFn,
 }
 
 /// A kind's planner: the outputs of a source, each with its stamp and work.
-pub(crate) type PlanFn =
+pub(in crate::cook) type PlanFn =
     for<'a> fn(&Cx<'a>, &mut PlanState, &'a Source, [u8; 8], &mut Vec<Out<'a>>);
 
 /// A kind is its declaration: two are the same kind when they are the same
@@ -72,6 +72,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     lightmap::KINDS,
     environment::KINDS,
     timeline::KINDS,
+    icons::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

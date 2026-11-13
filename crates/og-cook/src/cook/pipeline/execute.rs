@@ -448,7 +448,6 @@ pub(crate) fn run(
         Work::FlipbookLayer(s, sheet, n) => {
             flipbook::cook_layer(s, sheet, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
         }
-        Work::Icons(s) => icons::cook(s, p.stamp),
         Work::Vector(s) => vector::cook(s, p.stamp),
         Work::Rive(s, name) => riv::cook(s, name, p.stamp),
         Work::RiveImage(s, n) => riv::cook_image(s, *n, &options.texture, p.stamp),

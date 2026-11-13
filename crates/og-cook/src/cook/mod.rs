@@ -108,7 +108,6 @@ enum Kind {
     FontPack,
     Rig,
     MotionAction,
-    Icons,
     Look,
     Palette,
     TextureArray,
@@ -144,7 +143,6 @@ impl Kind {
             Kind::FontPack => "font-pack",
             Kind::Rig => "rig",
             Kind::MotionAction => "motion-action",
-            Kind::Icons => "icons",
             Kind::Look => "look",
             Kind::Palette => "palette",
             Kind::TextureArray => "texture-array",
@@ -294,7 +292,6 @@ enum Work<'a> {
     FontPack(&'a Source),
     Rig(&'a Source),
     MotionAction(&'a Source),
-    Icons(&'a Source),
     Look(&'a Source),
     Palette(&'a Source),
     /// A texture array's blob, and layer `n`'s texture.

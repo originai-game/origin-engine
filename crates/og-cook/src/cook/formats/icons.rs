@@ -43,7 +43,7 @@
 //! `<svg>` element. Anything else is refused with the icon and element
 //! named.
 
-use super::{CookError, Source};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
 use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
@@ -781,6 +781,45 @@ pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), Coo
             set.source, set.size, set.range
         )],
     ))
+}
+
+pub(crate) static ICONS: KindDef = KindDef {
+    name: "icons",
+    extensions: &[],
+    types: &[ICONS_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_icons,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&ICONS];
+
+fn plan_icons<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers every SVG the set names.
+    let deps = dependencies(s);
+    let st = stamp(&[b"icons", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Font::NAME,
+        st,
+        Work::Job(Box::new(IconsJob(s))),
+    ));
+}
+
+/// An icon set's one output.
+struct IconsJob<'a>(&'a Source);
+
+impl Job for IconsJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook(self.0, p.stamp)
+    }
 }
 
 #[cfg(test)]

@@ -236,19 +236,6 @@ pub(super) fn plan_flipbook<'a>(
     }
 }
 
-pub(super) fn plan_icons<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    // The stamp covers every SVG the set names.
-    let deps = icons::dependencies(s);
-    let st = stamp(&[b"icons", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::Font::NAME, st, Work::Icons(s)));
-}
-
 pub(super) fn plan_texture_array<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,
