@@ -3,7 +3,7 @@
 //! the action that runs this tick says where to go ([`Motion`]); when none
 //! does, the agent stops. Game actions are queued commands.
 
-use crate::asset::{Action, Behaviour, Check, Kind, Op, Root, Speed, Value};
+use crate::decide::asset::{Action, Behaviour, Check, Kind, Op, Root, Speed, Value};
 use og_core::glam::Vec3;
 use std::collections::BTreeMap;
 
