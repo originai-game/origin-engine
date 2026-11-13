@@ -8,13 +8,16 @@ use crate::{clusters, lightmap, particles_gpu, skin};
 /// (common.wgsl). [`FRAME_WGSL`] starts with it, and a module without the
 /// frame group puts this first.
 pub const LIBRARY_WGSL: &str = concat!(wgsl!("hash.wgsl"), wgsl!("common.wgsl"));
-/// The frame group (frame.wgsl) after the library ([`LIBRARY_WGSL`]), with the
-/// light volumes' buffer and the probe GI's sampling that `ambient_light`
-/// reads (gi_probes.rs).
+/// The frame group (frame.wgsl) after the library ([`LIBRARY_WGSL`]), with
+/// what the air and the water do to a point's light (media.wgsl), the sky
+/// of a chosen look (sky_look.wgsl), the light volumes' buffer and the
+/// probe GI's sampling that `ambient_light` reads (gi_probes.rs).
 pub const FRAME_WGSL: &str = concat!(
     wgsl!("hash.wgsl"),
     wgsl!("common.wgsl"),
     wgsl!("frame.wgsl"),
+    wgsl!("media.wgsl"),
+    wgsl!("sky_look.wgsl"),
     wgsl!("gi_common.wgsl"),
     wgsl!("gi_sample.wgsl"),
     wgsl!("gi_probes.wgsl")

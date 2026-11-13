@@ -134,14 +134,14 @@ impl Clouds {
 
 /// The sun's direct beam through a closed deck of full thickness (an
 /// optical depth of 7): [`Clouds::light`]'s least, never 0, so the clouds'
-/// own lighting can undo the dimming (frame.wgsl, sky.wgsl).
+/// own lighting can undo the dimming (sky_look.wgsl, sky.wgsl).
 pub const DECK_BEAM: f32 = 9.1e-4;
 
 impl Clouds {
     /// How much of the sun's light (and, its second value, of the sky's)
     /// reaches the ground under this cover: a scattered sky keeps the sun
     /// (the clouds passing over it hide a share, `0.8 k`), and a deck that
-    /// closes the sky, as the sky draws it closing (frame.wgsl `cloud_deck`,
+    /// closes the sky, as the sky draws it closing (sky_look.wgsl `cloud_deck`,
     /// over 0.6 to 0.95 cover), hides it: its direct beam through a deck
     /// of full thickness is the e⁻⁷ of an optical depth of some 7, and the
     /// light under it is the dimmer, flatter sky light. A thin deck (low

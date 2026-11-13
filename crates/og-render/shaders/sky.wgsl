@@ -431,7 +431,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   let light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
   let cos_t = dot(d, to_light);
   let phase = mix(cloud_hg(cos_t, 0.6), cloud_hg(cos_t, -0.25), 0.35);
-  // The clear sky's light from above and from the horizon (frame.wgsl clear_sky_light: never the image-based light,
+  // The clear sky's light from above and from the horizon (sky_look.wgsl clear_sky_light: never the image-based light,
   // which the live sky fills with these clouds).
   let sky_scale = frame.params.x / max(c[4].z, 0.05);
   let sky_top = clear_sky_light(vec3<f32>(0.0, 1.0, 0.0)) * sky_scale;

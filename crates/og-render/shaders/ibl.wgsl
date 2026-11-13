@@ -60,7 +60,7 @@ fn face_dir(face: u32, uv: vec2<f32>) -> vec3<f32> {
 
 const PI: f32 = 3.14159265359;
 
-// The sky of a chosen look (frame.wgsl's sky_look without the stars, which
+// The sky of a chosen look (sky_look.wgsl's sky_look without the stars, which
 // would only add noise to the lighting).
 fn looked_sky(d: vec3<f32>) -> vec3<f32> {
   let sun = normalize(params.sun_dir.xyz);

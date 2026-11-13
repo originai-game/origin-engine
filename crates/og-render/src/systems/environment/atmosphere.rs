@@ -140,7 +140,7 @@ impl SkyLook {
         ((r * 1.2).cos(), (r * 0.8).cos())
     }
 
-    /// The look as five vec4s (frame.wgsl's sky_* and ibl.wgsl's look),
+    /// The look as five vec4s (sky_look.wgsl's sky_* and ibl.wgsl's look),
     /// with the sun's colour in the last.
     pub(crate) fn gpu(&self, on: bool, sun_color: Vec3) -> [[f32; 4]; 5] {
         let (outer, inner) = self.disc();
@@ -280,7 +280,7 @@ impl AtmosphereGpu {
         a
     }
 
-    /// Makes the fog the underwater view's (frame.wgsl `underwater_light`):
+    /// Makes the fog the underwater view's (media.wgsl `underwater_light`):
     /// `light` the surface's height, the daylight's attenuation per metre
     /// of depth and the light shafts' strength
     /// ([`crate::water::underwater_light`]).
@@ -291,7 +291,7 @@ impl AtmosphereGpu {
     }
 
     /// The share of `p`'s light the fog lets through to a perspective eye at
-    /// `eye`: 1 less frame.wgsl `fog_amount(p)`'s amount (1 without fog).
+    /// `eye`: 1 less media.wgsl `fog_amount(p)`'s amount (1 without fog).
     pub(crate) fn fog_clear(&self, eye: Vec3, p: Vec3) -> f32 {
         if self.fog_color[3] < 0.5 {
             return 1.0;
@@ -421,7 +421,7 @@ impl DayNightLook {
 }
 
 /// The clear sky's radiance along unit `d` as the sky pass draws it under
-/// `look` (frame.wgsl `sky_look`, sky.wgsl `sky_physical_look`) without the
+/// `look` (sky_look.wgsl `sky_look`, sky.wgsl `sky_physical_look`) without the
 /// sun's disc, the stars or the moon: the gradient or the scattered air,
 /// times the look's brightness.
 fn clear_sky(look: &SkyLook, sun: Vec3, color: Vec3, d: Vec3) -> Vec3 {
@@ -440,7 +440,7 @@ fn clear_sky(look: &SkyLook, sun: Vec3, color: Vec3, d: Vec3) -> Vec3 {
 /// towards the sun's bearing, away from it and across it: the cosine
 /// weighted mean of [`clear_sky`] over each hemisphere (the irradiance over
 /// π, as the image-based light holds it), by a fixed quadrature of three
-/// rings of eight. What the clouds are lit by besides the sun (frame.wgsl
+/// rings of eight. What the clouds are lit by besides the sun (sky_look.wgsl
 /// `clear_sky_light`): the sky above and around them, which holds no
 /// clouds.
 pub(crate) fn clear_sky_light(look: &SkyLook, sun: Vec3, color: Vec3) -> [Vec3; 4] {

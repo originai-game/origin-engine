@@ -151,7 +151,7 @@ pub(crate) fn underwater(waters: &[Water], eye: Vec3, seconds: f64, origin: Vec3
 /// The fog of the underwater view: the water's colour, thickening by its
 /// density from the eye, the sky left clear (Snell's window shows it).
 /// Its light falls off with depth and comes down in shafts
-/// (frame.wgsl `underwater_light`), which [`underwater_light`] sets.
+/// (media.wgsl `underwater_light`), which [`underwater_light`] sets.
 pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
     crate::Fog {
         color: w.underwater_color,

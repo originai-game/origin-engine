@@ -74,6 +74,6 @@ skip of a sun below the horizon.
   own source's glare is left out. Each ghost takes one coating tint (amber,
   teal, violet), the chromatic aberration defaults to 0.001 (Filament:
   0.005) and the halo radius to 0.28 (0.4): art direction.
-- A spot only flares from inside its cone. Fog dims a source as frame.wgsl
+- A spot only flares from inside its cone. Fog dims a source as media.wgsl
   `fog_amount` does. The sun fades out over the horizon instead of being
   skipped at it.
