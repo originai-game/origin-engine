@@ -187,6 +187,7 @@ mod tests {
                 ray: None,
                 sink: None,
                 behaviours: None,
+                hearing: Some(crate::e6::hearing()),
             },
         )
         .unwrap();
@@ -222,5 +223,43 @@ mod tests {
         b.restore(&sa).unwrap();
         a.restore(&sb).unwrap();
         assert_eq!(a.world_hash(), b.world_hash());
+    }
+
+    /// og.ai links no audio: what it hears of og.audio is wired in e6.rs.
+    #[test]
+    fn an_agent_hears_a_spatial_source_as_it_starts_and_not_a_flat_one() {
+        use glam::Vec3;
+        use og_ai::nav::system::Transform;
+        use og_audio::{AudioSource, schema::SoundStarted};
+        let at = |x: f32, z: f32| Transform {
+            position: Vec3::new(x, 0.0, z),
+            ..Transform::default()
+        };
+        let mut w = full();
+        let ears = og_ai::Perception {
+            hearing: 10.0,
+            ..og_ai::Perception::default()
+        };
+        let agent = w
+            .spawn((at(0.0, 0.0), og_ai::AiAgent::default(), ears))
+            .unwrap();
+        let start = |w: &mut World, x: f32, z: f32, spatial: bool| {
+            let source = AudioSource {
+                spatial,
+                ..AudioSource::default()
+            };
+            let e = w.spawn((at(x, z), source)).unwrap();
+            w.send(SoundStarted {
+                entity: e.to_bits(),
+                ..SoundStarted::default()
+            })
+            .unwrap();
+            w.step().unwrap();
+            w.get::<og_ai::Perception>(agent).unwrap()
+        };
+        assert!(!start(&mut w, 3.0, 0.0, false).heard, "a flat sound");
+        assert!(!start(&mut w, 30.0, 0.0, true).heard, "out of earshot");
+        let p = start(&mut w, 0.0, 4.0, true);
+        assert!(p.heard && p.heard_at == Vec3::new(0.0, 0.0, 4.0), "{p:?}");
     }
 }

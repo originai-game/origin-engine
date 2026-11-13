@@ -4,7 +4,8 @@ Enemy and NPC AI as data (`docs/design.md` §2.7): behaviour trees and
 state machines declared in `.ogt` (`type behaviour`), perception (sight
 cones against physics occlusion, hearing from sounds and noises),
 per-agent blackboards, and the `og.ai` system. Pure Rust over og-core,
-og-ecs and og-audio's events; builds for wasm32.
+og-ecs; builds for wasm32. It links no audio: the host hands it the
+tick's sounds (`AiDesc::hearing`).
 
 ## The asset
 

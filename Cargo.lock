@@ -2762,7 +2762,6 @@ name = "og-ai"
 version = "0.7.7"
 dependencies = [
  "og-ai",
- "og-audio",
  "og-core",
  "og-ecs",
 ]

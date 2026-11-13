@@ -128,6 +128,32 @@ pub(crate) fn mount_front(
     mount_ai(world, mount, profile, physics, records)
 }
 
+/// What og.ai hears of og.audio: the spatial sources that started this
+/// tick, each as loud as its volume. The one place AI and audio meet.
+#[cfg(feature = "ai")]
+pub(crate) fn hearing() -> og_ai::Hearing {
+    use og_audio::{AudioSource, schema::SoundStarted};
+    use og_core::Reflect;
+    og_ai::Hearing {
+        reads: vec![
+            SoundStarted::NAME.to_string(),
+            AudioSource::NAME.to_string(),
+        ],
+        sounds: Arc::new(|ctx| {
+            let mut out = Vec::new();
+            for s in ctx.events::<SoundStarted>()? {
+                let e = og_ecs::Entity::from_bits(s.entity);
+                if let Ok(src) = ctx.get::<AudioSource>(e)
+                    && src.spatial
+                {
+                    out.push((e, src.volume));
+                }
+            }
+            Ok(out)
+        }),
+    }
+}
+
 /// og.ai over og-ai.
 #[cfg(feature = "ai")]
 fn mount_ai(
@@ -156,6 +182,7 @@ fn mount_ai(
             ray: Some(sight),
             sink: Some(sink),
             behaviours: Some(behaviours),
+            hearing: Some(hearing()),
         },
     )
     .map_err(|e| e.reason().to_string())?;

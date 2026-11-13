@@ -85,6 +85,7 @@ fn world(think_every: u32, active: bool) -> (World, Vec<Entity>) {
             ray: Some(ray),
             sink: Some(Arc::new(|_: &str, _: Vec<String>| {})),
             behaviours: None,
+            hearing: None,
         },
     )
     .unwrap();

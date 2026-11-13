@@ -124,6 +124,7 @@ fn scene(behaviour: &str, wall: bool) -> Scene {
             ray: Some(ray),
             sink: None,
             behaviours: None,
+            hearing: None,
         },
     )
     .unwrap();
@@ -401,6 +402,7 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
                 ray: None,
                 sink: None,
                 behaviours: None,
+                hearing: None,
             },
         )
         .unwrap();
@@ -626,9 +628,11 @@ fn a_yard_without_g2_4_features_hashes_and_moves_as_before_it() {
 }
 
 /// [`a_yard_without_g2_4_features_hashes_and_moves_as_before_it`]'s world
-/// hash after AudioSource's playbackRate schema rename. Its trajectory
-/// digest remains the one on main 67a07d57 (before G2-4).
-const YARD_HASH: &str = "d52f845b64859580";
+/// hash, of a world without og.SoundStarted and og.AudioSource in its
+/// type table: og.ai no longer registers the audio records it used to
+/// read, the host that hands it sounds does. Its trajectory digest
+/// remains the one on main 67a07d57 (before G2-4).
+const YARD_HASH: &str = "4797f67ff21b1a58";
 const YARD_TRAIL: &str = "944e29cc07af861e";
 
 fn files(map: &[(&str, &str)]) -> impl FnMut(&str) -> Result<String, String> + use<> {

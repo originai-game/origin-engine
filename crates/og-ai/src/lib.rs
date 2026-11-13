@@ -23,8 +23,9 @@ pub use asset::{
 };
 pub use system::{
     AiActionStarted, AiActionStopped, AiAgent, AiChanged, AiDesc, AiSystem, Behaviours,
-    CommandSink, Description, NEVER, Noise, Parent, Perceivable, Perception, SYSTEM_NAME, SightRay,
-    enable_action_started, enable_action_stopped, enable_actions, has_actions, install,
+    CommandSink, Description, HeardSounds, Hearing, NEVER, Noise, Parent, Perceivable, Perception,
+    SYSTEM_NAME, SightRay, enable_action_started, enable_action_stopped, enable_actions,
+    has_actions, install,
 };
 pub use tree::{AI_INTERRUPTED, AgentMem, Status};
 

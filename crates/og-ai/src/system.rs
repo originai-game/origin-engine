@@ -256,6 +256,22 @@ pub type SightRay =
 /// Where a think's game commands go as they are made: (command, args).
 pub type CommandSink = Arc<dyn Fn(&str, Vec<String>) + Send + Sync>;
 
+/// Where `og.ai` hears the world's sounds from. og-ai links no audio:
+/// the host reads its own sound records and answers with what carries.
+#[derive(Clone)]
+pub struct Hearing {
+    /// The records `sounds` reads, declared as `og.ai`'s reads (registered
+    /// by the host before [`install`]).
+    pub reads: Vec<String>,
+    /// The sounds that started this tick and carry in space: the entity
+    /// that made each and its loudness (1 a normal sound, clamped to
+    /// 0..4). One whose entity is gone or has no og.Transform is not heard.
+    pub sounds: HeardSounds,
+}
+
+/// [`Hearing::sounds`].
+pub type HeardSounds = Arc<dyn Fn(&SystemContext<'_>) -> Result<Vec<(Entity, f32)>> + Send + Sync>;
+
 /// How og.ai joins a world.
 #[derive(Clone)]
 pub struct AiDesc {
@@ -267,6 +283,9 @@ pub struct AiDesc {
     /// The behaviours to run (a hot reload keeps the engine's); a fresh
     /// registry when `None`.
     pub behaviours: Option<Arc<Mutex<Behaviours>>>,
+    /// The world's sounds, heard the tick they start; without it agents
+    /// hear only the game's noises ([`AiSystem::noise`]).
+    pub hearing: Option<Hearing>,
 }
 
 /// A record's fields as packed bytes: name → (type, offset).
@@ -465,8 +484,6 @@ pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<Ai
     world.register::<Perceivable>()?;
     world.register::<Parent>()?;
     world.register::<AiChanged>()?;
-    world.register::<og_audio::schema::SoundStarted>()?;
-    world.register::<og_audio::AudioSource>()?;
     let mut table: BTreeMap<String, RecordFields> = BTreeMap::new();
     let mut reads: Vec<String> = Vec::new();
     for name in records {
@@ -507,11 +524,10 @@ pub fn install(world: &mut World, records: &[String], desc: AiDesc) -> Result<Ai
         .write::<crate::nav::NavAgent>()
         .read::<crate::nav::system::Velocity>()
         .write::<AiChanged>()
-        .read::<og_audio::schema::SoundStarted>()
-        .read::<og_audio::AudioSource>()
         .query(QueryDesc::new().write::<AiAgent>().read::<Transform>())
         .query(QueryDesc::new().read::<Perceivable>().read::<Transform>());
-    for r in reads {
+    let heard = desc.hearing.iter().flat_map(|h| h.reads.iter().cloned());
+    for r in heard.chain(reads) {
         if !sd.reads.contains(&r) && !sd.writes.contains(&r) {
             sd.reads.push(r);
         }
@@ -664,20 +680,15 @@ fn run(
     // noises; each with the entities that do not hear it (its source and
     // the source's parents).
     let mut noises = std::mem::take(&mut st.noises);
-    for s in ctx.events::<og_audio::schema::SoundStarted>()? {
-        let e = Entity::from_bits(s.entity);
-        if !ctx.is_alive(e) {
-            continue;
-        }
-        let (Ok(_), Ok(src)) = (ctx.get::<Transform>(e), ctx.get::<og_audio::AudioSource>(e))
-        else {
-            continue;
-        };
-        if src.spatial {
+    if let Some(hearing) = &desc.hearing {
+        for (e, loudness) in (hearing.sounds)(ctx)? {
+            if !ctx.is_alive(e) || ctx.get::<Transform>(e).is_err() {
+                continue;
+            }
             noises.push(Noise {
                 position: world_position(ctx, e),
-                loudness: src.volume.clamp(0.0, 4.0),
-                source: s.entity,
+                loudness: loudness.clamp(0.0, 4.0),
+                source: e.to_bits(),
             });
         }
     }
