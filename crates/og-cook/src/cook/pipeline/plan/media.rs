@@ -67,7 +67,7 @@ pub(super) fn plan_video<'a>(
     let Cx { tex_desc, .. } = *cx;
     let PlanState { early_errors, .. } = state;
     let text = String::from_utf8_lossy(&s.bytes);
-    let root = texture_array::assets_dir(&s.path, &s.rel);
+    let root = crate::cook::assets_root(s);
     let planned = video::parse(&s.rel, &text, &|p| root.join(p).is_file()).and_then(|d| {
         let src = root.join(&d.source);
         let bytes = std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;

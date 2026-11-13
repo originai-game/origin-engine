@@ -505,11 +505,11 @@ pub(crate) fn run(
         Work::Look(s) => look::cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp),
         Work::Palette(s) => look::cook_palette(s, p.stamp),
         Work::TextureArray(s, decl) => {
-            let root = texture_array::assets_dir(&s.path, &s.rel);
+            let root = crate::cook::assets_root(s);
             texture_array::cook(&s.rel, &root, decl, &options.texture, p.stamp)
         }
         Work::ArrayLayer(s, decl, n) => {
-            let root = texture_array::assets_dir(&s.path, &s.rel);
+            let root = crate::cook::assets_root(s);
             texture_array::cook_layer(&root, decl, *n, &options.texture, p.stamp)
                 .map(|b| (b, Vec::new()))
         }
@@ -641,10 +641,7 @@ pub(crate) fn read_sibling_bytes(s: &Source, rel: &str) -> Result<Vec<u8>, Strin
     if rel.starts_with(ui_components::PREFIX) {
         return ui_components::read(rel);
     }
-    let mut root = s.path.clone();
-    for _ in s.rel.split('/') {
-        root.pop();
-    }
+    let root = crate::cook::assets_root(s);
     if rel.split('/').any(|c| c == ".." || c.is_empty()) {
         return Err(format!("'{rel}' is not a path under assets/"));
     }

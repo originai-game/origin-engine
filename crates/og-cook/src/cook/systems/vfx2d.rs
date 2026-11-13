@@ -364,7 +364,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         if !is_vfx2d(&text) {
             continue;
         }
-        let root = super::flipbook::assets_root(s);
+        let root = crate::cook::assets_root(s);
         let resolve = |p: &str| super::flipbook::resolve(s, p);
         let read = |id: &str| {
             std::fs::read(root.join(id)).map_err(|_| format!("recipe `{id}` is not in assets/"))

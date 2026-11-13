@@ -68,7 +68,7 @@ pub(crate) fn dependency_hashes(s: &Source) -> String {
     let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
         return String::new();
     };
-    let root = super::flipbook::assets_root(s);
+    let root = crate::cook::assets_root(s);
     let parts = super::autorig::part_files(&s.rel, &root, &String::from_utf8_lossy(&s.bytes));
     ["texture", "dragonbones", "atlas"]
         .iter()
@@ -89,7 +89,7 @@ pub(crate) fn dependency_hashes(s: &Source) -> String {
 pub(crate) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
     let text = std::str::from_utf8(&s.bytes).map_err(|_| "a 2D rig is text (UTF-8)".to_string())?;
     let mut doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
-    let root = super::flipbook::assets_root(s);
+    let root = crate::cook::assets_root(s);
     if super::autorig::is_autorig(&doc) {
         let (rig, _, notes) = super::autorig::build(s, &doc)?;
         return Ok((rig, notes));

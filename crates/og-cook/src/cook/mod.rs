@@ -389,7 +389,8 @@ fn normalise_rel(path: &str) -> String {
     out.join("/")
 }
 
-fn assets_root(s: &Source) -> PathBuf {
+/// `assets/` of a source: its path less its id's components.
+pub(crate) fn assets_root(s: &Source) -> PathBuf {
     let mut root = s.path.clone();
     for _ in s.rel.split('/') {
         root.pop();

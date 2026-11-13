@@ -29,7 +29,7 @@ fn fields(text: &str) -> Vec<(usize, String, Vec<f32>)> {
 }
 
 fn read(s: &Source, id: &str) -> Result<Vec<u8>, String> {
-    let path = super::flipbook::assets_root(s).join(crate::runtime::asset_id(id));
+    let path = crate::cook::assets_root(s).join(crate::runtime::asset_id(id));
     std::fs::read(&path).map_err(|e| format!("field {id}: {e}"))
 }
 

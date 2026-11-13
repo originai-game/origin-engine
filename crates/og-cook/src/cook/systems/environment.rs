@@ -46,11 +46,11 @@
 //! with rows from the top; the +x face's right edge is towards −z. Either
 //! is baked the same way (`bake::bake` or `bake::bake_cube`).
 
-use super::{CookError, Source};
+use super::{CookError, Source, assets_root};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub(crate) const ENVIRONMENT_TYPE: &str = "environment";
 
@@ -87,14 +87,6 @@ impl EnvironmentSource {
 fn hdr_image(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     lower.ends_with(".hdr") || lower.ends_with(".exr")
-}
-
-fn assets_root(s: &Source) -> PathBuf {
-    let mut p = s.path.clone();
-    for _ in s.rel.split('/') {
-        p.pop();
-    }
-    p
 }
 
 /// An environment file's settings, read and checked.

@@ -17,7 +17,7 @@ use super::texture;
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// The `.ogt` type of a texture array.
 pub const ARRAY_TYPE: &str = "texture-array";
@@ -221,13 +221,4 @@ pub fn dependencies(root: &Path, decl: &ArrayDecl) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-/// `assets/` of a source path and its id.
-pub fn assets_dir(path: &Path, rel: &str) -> PathBuf {
-    let mut root = path.to_path_buf();
-    for _ in rel.split('/') {
-        root.pop();
-    }
-    root
 }

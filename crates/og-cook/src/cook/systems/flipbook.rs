@@ -11,20 +11,10 @@
 //! draws frame `n` as layer `n`. Every frame must then have one size, and
 //! a sheet has at most [`super::texture_array::MAX_LAYERS`] of them.
 
-use super::{CookError, Source};
+use super::{CookError, Source, assets_root};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::ogt::{Block, Document, Entry, Value};
-use std::path::PathBuf;
-
-/// The project's `assets/` directory, from a source's path and asset id.
-pub(crate) fn assets_root(s: &Source) -> PathBuf {
-    let mut p = s.path.clone();
-    for _ in s.rel.split('/') {
-        p.pop();
-    }
-    p
-}
 
 /// A path the sheet names: relative to the sheet's directory when that file
 /// exists (`hero.png`, `../art/hero.png`), else an asset id

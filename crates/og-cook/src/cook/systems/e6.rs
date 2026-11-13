@@ -39,23 +39,15 @@
 //! A scene entity counts when it has a `model`, or an `og.Collider` box,
 //! sphere, capsule or cylinder (as its bounding box) on no dynamic body.
 
-use super::{CookError, Source};
+use super::{CookError, Source, assets_root};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::ogt::{Block, Document, Entry};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub(crate) const BEHAVIOUR_TYPE: &str = "behaviour";
 pub(crate) const NAVMESH_TYPE: &str = "navmesh";
-
-fn assets_root(s: &Source) -> PathBuf {
-    let mut p = s.path.clone();
-    for _ in s.rel.split('/') {
-        p.pop();
-    }
-    p
-}
 
 /// Parses a behaviour source, reading its `use` subtrees from the assets
 /// root; `read` sees every subtree file (its path and bytes) as it is read.

@@ -263,7 +263,7 @@ pub(super) fn plan_texture_array<'a>(
         ..
     } = state;
     let text = String::from_utf8_lossy(&s.bytes);
-    let root = texture_array::assets_dir(&s.path, &s.rel);
+    let root = crate::cook::assets_root(s);
     match texture_array::parse(&s.rel, &text, &|p| root.join(p).is_file()) {
         Ok(decl) => {
             let deps = texture_array::dependencies(&root, &decl);

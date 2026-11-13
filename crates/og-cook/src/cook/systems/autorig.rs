@@ -124,7 +124,7 @@ pub(crate) fn build(
             e.line, e.key
         ));
     }
-    let root = super::flipbook::assets_root(s);
+    let root = crate::cook::assets_root(s);
     let path =
         string_of(doc, "parts").ok_or("`parts` names a PSD or a folder: parts \"hero.psd\"")?;
     let id = resolve(&s.rel, &root, &path);

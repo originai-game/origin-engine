@@ -145,24 +145,16 @@
 //! its own; `albedoLayer` and `normalLayer` pick its layers. Rows of the heightmap run from -z (the image's
 //! top) to +z, columns from -x to +x.
 
-use super::{CookError, Source};
+use super::{CookError, Source, assets_root};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 use og_core::ogt::{Block, Document};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub(crate) const TERRAIN_TYPE: &str = "terrain";
 
 /// The most layers a terrain has (og-render's `MAX_TERRAIN_LAYERS`).
 const MAX_LAYERS: usize = og_render_data::MAX_TERRAIN_LAYERS;
-
-fn assets_root(s: &Source) -> PathBuf {
-    let mut p = s.path.clone();
-    for _ in s.rel.split('/') {
-        p.pop();
-    }
-    p
-}
 
 /// The asset path (under `assets/`) a terrain file's `name` refers to:
 /// beside the terrain file when it is there, else under `assets/`.
