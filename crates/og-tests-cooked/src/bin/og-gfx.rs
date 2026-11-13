@@ -154,31 +154,11 @@ fn time_frames(
     let mut gpu = 0.0;
     let mut stats = FrameStats::default();
     let still = built.scene.frame.camera;
-    let motion = std::env::var("OG_GFX_MOVE").ok();
     for f in 0..frames {
         if let Some(update) = built.update {
             update(&mut built.scene, first_frame + f);
         }
-        if let Some(motion) = motion.as_deref() {
-            let phase = (f as f32 * std::f32::consts::TAU / 120.0).sin();
-            let view = still.target - still.position;
-            let camera = &mut built.scene.frame.camera;
-            match motion {
-                "turn" => {
-                    let turn = glam::Quat::from_axis_angle(
-                        still.up.normalize_or(glam::Vec3::Y),
-                        phase * 15f32.to_radians(),
-                    );
-                    camera.target = still.position + turn * view;
-                }
-                "walk" => {
-                    let step = view.normalize_or_zero() * 3.0 * phase;
-                    camera.position = still.position + step;
-                    camera.target = still.target + step;
-                }
-                other => return Err(format!("OG_GFX_MOVE={other}: turn or walk")),
-            }
-        }
+        move_camera(&mut built.scene.frame.camera, &still, f)?;
         let c = Instant::now();
         stats = renderer
             .render(&built.scene, &RenderTarget::Offscreen)
@@ -198,6 +178,35 @@ fn time_frames(
     Ok((ms, per_frame(cpu), serial.then(|| per_frame(gpu)), stats))
 }
 
+/// Timed frame `f`'s camera under `OG_GFX_MOVE`: `still` turned or walked.
+fn move_camera(
+    camera: &mut og_render::Camera,
+    still: &og_render::Camera,
+    f: u32,
+) -> Result<(), String> {
+    let Ok(motion) = std::env::var("OG_GFX_MOVE") else {
+        return Ok(());
+    };
+    let phase = (f as f32 * std::f32::consts::TAU / 120.0).sin();
+    let view = still.target - still.position;
+    match motion.as_str() {
+        "turn" => {
+            let turn = glam::Quat::from_axis_angle(
+                still.up.normalize_or(glam::Vec3::Y),
+                phase * 15f32.to_radians(),
+            );
+            camera.target = still.position + turn * view;
+        }
+        "walk" => {
+            let step = view.normalize_or_zero() * 3.0 * phase;
+            camera.position = still.position + step;
+            camera.target = still.target + step;
+        }
+        other => return Err(format!("OG_GFX_MOVE={other}: turn or walk")),
+    }
+    Ok(())
+}
+
 /// The GPU milliseconds a frame of each render-graph pass, largest first,
 /// over `frames` more frames (`OG_GFX_PASSES`); empty where the device has
 /// no timestamp queries.
@@ -211,14 +220,17 @@ fn gpu_passes(
         START.get_or_init(Instant::now).elapsed().as_secs_f64() * 1000.0
     }));
     let first = built.frames.max(1) + frames;
+    let still = built.scene.frame.camera;
     for f in 0..frames {
         if let Some(update) = built.update {
             update(&mut built.scene, first + f);
         }
+        move_camera(&mut built.scene.frame.camera, &still, f)?;
         renderer
             .render(&built.scene, &RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
     }
+    built.scene.frame.camera = still;
     let timed = renderer.gpu_timings(true);
     renderer.set_clock(None);
     let mut total = std::collections::BTreeMap::<String, f64>::new();
