@@ -863,4 +863,74 @@ mod tests {
         );
         assert_eq!(root.size("width"), px(40.0), "the import's rule applies");
     }
+
+    #[test]
+    fn each_over_a_list_held_in_a_row_follows_that_list() {
+        fn texts(ui: &Ui, root: &MountedNode) -> Vec<String> {
+            let topology = &ui.docs.state().memory.retained.topology;
+            topology
+                .children(Some(root), 0..usize::MAX)
+                .flat_map(|row| {
+                    topology
+                        .children(Some(row), 0..usize::MAX)
+                        .map(|cell| topology.node(cell).unwrap().direct_text.to_owned())
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .chain(["|".to_owned()])
+                })
+                .collect()
+        }
+        let mut ui = Ui::new(UiDesc::default());
+        let (source, _) = mount(
+            &mut ui,
+            r#"<column id="Root">{#each $rows as r (r.id)}<row id="Line">{#each r.cells as c, i (c.id)}<text id="Cell">{i}:{c.text}:{r.label}</text>{:else}<text id="None">none</text>{/each}</row>{/each}</column>"#,
+            &["a", "b"],
+        );
+        let root = root(&ui);
+        assert_eq!(texts(&ui, &root), ["none", "|", "none", "|"]);
+        let patch = |ui: &mut Ui, key: &str, fields: Value| {
+            ui.docs
+                .state_mut()
+                .memory
+                .reactive
+                .execute(Command::Patch {
+                    source: source.clone(),
+                    key: key.into(),
+                    fields: fields.as_object().unwrap().clone(),
+                })
+                .unwrap();
+            tick(ui, 0.0);
+        };
+        patch(
+            &mut ui,
+            "a",
+            json!({"cells": [{"id": "x", "text": "one"}, {"id": "y", "text": "two"}]}),
+        );
+        assert_eq!(texts(&ui, &root), ["0:one:a", "1:two:a", "|", "none", "|"]);
+        // A reorder with one item gone, one new and one changed.
+        patch(
+            &mut ui,
+            "a",
+            json!({"cells": [{"id": "z", "text": "new"}, {"id": "y", "text": "TWO"}]}),
+        );
+        assert_eq!(texts(&ui, &root), ["0:new:a", "1:TWO:a", "|", "none", "|"]);
+        patch(&mut ui, "a", json!({"label": "A"}));
+        assert_eq!(texts(&ui, &root), ["0:new:A", "1:TWO:A", "|", "none", "|"]);
+        patch(&mut ui, "b", json!({"cells": [{"id": "x", "text": "b"}]}));
+        patch(&mut ui, "a", json!({"cells": []}));
+        assert_eq!(texts(&ui, &root), ["none", "|", "0:b:b", "|"]);
+        ui.docs
+            .state_mut()
+            .memory
+            .reactive
+            .execute(Command::Remove {
+                source: source.clone(),
+                key: "b".into(),
+            })
+            .unwrap();
+        tick(&mut ui, 0.0);
+        assert_eq!(texts(&ui, &root), ["none", "|"]);
+        let host = &ui.docs.state().memory.retained;
+        assert_eq!(host.each.len(), 2);
+    }
 }

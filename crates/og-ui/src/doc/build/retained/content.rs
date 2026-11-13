@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::doc::Lit;
-use crate::reactive::bindings::{BindingExpression, ContentRef, Lexical, PropRef};
+use crate::reactive::bindings::{BindingExpression, ContentRef, Lexical, ListRef, PropRef};
 
 pub(crate) trait RetainedContentRetainedHost {
     /// `<Card title={item.name}>{#snippet body()}…{/snippet}<p>…</p></Card>`:
@@ -316,24 +316,48 @@ pub(super) fn mount_content(
     Ok(lexical)
 }
 
-/// The keyed collection an `{#each}` reads: a `$name` input, or a
-/// component prop its user bound to one (`<List items={$inventory}>`).
-pub(super) fn collection(context: &BindingContext, path: &str) -> Result<SourceId, String> {
+/// The keyed list an `{#each}` reads: a `$name` collection, a list held in
+/// a row of an enclosing each (`r.cells`), or a component prop its user
+/// bound to one (`<List items={$inventory}>`). `key` is the path in each
+/// item of a held list's key, which a collection does not need.
+pub(super) fn collection(
+    context: &BindingContext,
+    path: &str,
+    key: Option<&str>,
+) -> Result<ListRef, String> {
     if let Some(name) = path.strip_prefix('$') {
         return context
             .inputs
             .get(name)
             .cloned()
+            .map(ListRef::Collection)
             .ok_or_else(|| format!("mount has no collection '{name}'"));
     }
-    match context.lexical.props.get(path) {
-        Some(PropRef {
-            expression: BindingExpression::Expression(Expr::Path(inner)),
-            context: user,
-            ..
-        }) => collection(user, inner),
+    let (root, rest) = path.split_once('.').unwrap_or((path, ""));
+    if let Some(PropRef {
+        expression: BindingExpression::Expression(Expr::Path(inner)),
+        context: user,
+        ..
+    }) = context.lexical.props.get(root)
+    {
+        return if rest.is_empty() {
+            collection(user, inner, key)
+        } else {
+            collection(user, &format!("{inner}.{rest}"), key)
+        };
+    }
+    match context.rows.get(root) {
+        Some(row) if !row.position && !rest.is_empty() => Ok(ListRef::Nested {
+            row: Arc::new(row.clone()),
+            path: rest.into(),
+            key: key
+                .ok_or_else(|| {
+                    format!("each over '{path}' is keyed by a field of its items, as (item.id)")
+                })?
+                .into(),
+        }),
         _ => Err(format!(
-            "each reads a named collection as $name, or a prop bound to one; '{path}' is neither"
+            "each reads a named collection as $name, a list held in a row, or a prop bound to one; '{path}' is none of these"
         )),
     }
 }

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: {#each} over a list held in a row",
+      "summary": "Inside an {#each}, {#each row.cells as cell, i (cell.id)} reads a list held in a row field: an array of objects keyed by a nonempty string field of each item. Its rows follow the list when the holding field is patched (new keys are made, missing ones go, kept ones move), the index alias reads the item's place, and bind: on a nested row's field writes the holding row. Before, an each read only a $name collection or a prop bound to one."
+    }
+  ]
+}

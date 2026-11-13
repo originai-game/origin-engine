@@ -60,6 +60,12 @@ syntax. A document must meet these requirements:
   0, in the list's order, following a move, insert or remove. It is for
   display (a rank, a slot number); a key that uses it is refused, since a
   row keeps its identity when the list reorders.
+- `{#each row.cells as cell, i (cell.id)}` inside an each reads a list held
+  in a row: an array of objects, each with a nonempty string key field,
+  none twice. Its rows follow the list as the holding field is patched
+  (new keys are made, missing ones go, kept ones move), and `bind:` on a
+  nested row's field writes the holding row. The key is a field of the
+  item, written `(cell.id)`.
 - A declared input action dispatches a named markup event of its own:
   `<meta name="action:confirm" content="Start">` enables
   `onconfirm={start}`. A handler outside any `{#each}` row is the page's

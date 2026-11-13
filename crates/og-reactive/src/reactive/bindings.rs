@@ -11,13 +11,99 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+/// The keyed list an `{#each}` walks.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ListRef {
+    /// A keyed collection store.
+    Collection(SourceId),
+    /// A list held in a row (`{#each r.cells as c (c.id)}`): the field
+    /// path of `row` holding it, and the path in each item of its key.
+    Nested {
+        row: Arc<RowRef>,
+        path: String,
+        key: String,
+    },
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RowRef {
-    pub source: SourceId,
+    pub list: ListRef,
     pub key: String,
-    /// The name reads the row's position in its collection (an `{#each}`
-    /// index alias), not the row.
+    /// The name reads the row's position in its list (an `{#each}` index
+    /// alias), not the row.
     pub position: bool,
+}
+
+/// A nested list's item keys, in order: each a nonempty string, none twice.
+pub fn nested_keys(list: &Value, key: &str) -> Result<Vec<String>, String> {
+    let items = match list {
+        Value::Null => return Ok(Vec::new()),
+        Value::Array(items) => items,
+        _ => return Err("each reads a list".into()),
+    };
+    let mut keys = Vec::with_capacity(items.len());
+    for item in items {
+        match get_path(item, key).as_deref().and_then(Value::as_str) {
+            Some(k) if !k.is_empty() && !keys.iter().any(|old| old == k) => keys.push(k.into()),
+            Some(k) if !k.is_empty() => return Err(format!("each key '{k}' is in its list twice")),
+            _ => return Err(format!("each item's '{key}' must be a nonempty string")),
+        }
+    }
+    Ok(keys)
+}
+
+impl RowRef {
+    /// The collection row field a nested row's list is held in.
+    fn held_in(&self) -> Option<Dependency> {
+        let ListRef::Nested { row, path, .. } = &self.list else {
+            return None;
+        };
+        row.held_in().or_else(|| {
+            let ListRef::Collection(source) = &row.list else {
+                unreachable!("a nested row held in no collection")
+            };
+            let field = path.split('.').next().unwrap_or_default();
+            Some(Dependency::Field(
+                source.clone(),
+                row.key.clone(),
+                field.into(),
+            ))
+        })
+    }
+
+    /// The collection row this row is, or is held in, and the field path
+    /// from that row to `rest` of this one.
+    fn locate(&self, session: &Session, rest: &str) -> Result<(&SourceId, &str, String), String> {
+        match &self.list {
+            ListRef::Collection(source) => Ok((source, &self.key, rest.to_owned())),
+            ListRef::Nested { row, path, key } => {
+                let (source, root, path) = row.locate(session, path)?;
+                let (field, tail) = path.split_once('.').unwrap_or((&path, ""));
+                let list = session
+                    .sources
+                    .keyed(source)?
+                    .row(root)
+                    .ok_or_else(|| source.error(&format!("row '{root}' was removed")))?
+                    .get(field)
+                    .and_then(|value| get_path(value, tail));
+                let at = nested_keys(list.as_deref().unwrap_or(&Value::Null), key)?
+                    .iter()
+                    .position(|key| *key == self.key)
+                    .ok_or_else(|| {
+                        source.error(&format!("item '{}' of '{path}' was removed", self.key))
+                    })?;
+                Ok((
+                    source,
+                    root,
+                    if rest.is_empty() {
+                        format!("{path}.{at}")
+                    } else {
+                        format!("{path}.{at}.{rest}")
+                    },
+                ))
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -102,22 +188,24 @@ impl BindingContext {
                     "model '{path}' names a row's position, which is read only"
                 ));
             }
-            let (field, tail) = rest.split_once('.').unwrap_or((rest, ""));
-            if field.is_empty() {
+            if rest.is_empty() {
                 return Err(format!("model '{path}' must name a row field"));
             }
+            let (source, key, field_path) = row.locate(session, rest)?;
+            let (source, key) = (source.clone(), key.to_owned());
+            let (field, tail) = field_path.split_once('.').unwrap_or((&field_path, ""));
             let record = session
                 .sources
-                .keyed(&row.source)?
-                .row(&row.key)
-                .ok_or_else(|| row.source.error(&format!("row '{}' was removed", row.key)))?;
+                .keyed(&source)?
+                .row(&key)
+                .ok_or_else(|| source.error(&format!("row '{key}' was removed")))?;
             let mut next = record.get(field).cloned().unwrap_or(Value::Null);
             if !crate::bind::set_path(&mut next, tail, value) {
                 return Err(format!("model cannot write path '{path}'"));
             }
             session.execute(super::session::Command::Patch {
-                source: row.source.clone(),
-                key: row.key.clone(),
+                source,
+                key,
                 fields: [(field.to_owned(), next)].into_iter().collect(),
             })?;
             return Ok(());
@@ -344,39 +432,53 @@ impl Tracked<'_, '_> {
             return Ok(get_path(&value, rest).map_or(Value::Null, |value| value.into_owned()));
         }
         if let Some(row) = self.source.rows.get(root) {
-            if row.position {
-                // A position changes when the order does, not when a row does.
-                self.reads
-                    .borrow_mut()
-                    .insert(Dependency::Keys(row.source.clone()));
-                let at = self
-                    .source
-                    .session
-                    .sources
-                    .keyed(&row.source)?
-                    .keys()
-                    .iter()
-                    .position(|key| *key == row.key)
-                    .ok_or_else(|| row.source.error(&format!("row '{}' was removed", row.key)))?;
-                return Ok(Value::from(at));
+            let session = self.source.session;
+            // A nested row's reads are those of the collection row holding
+            // it: its list changing is what moves, changes or retires it.
+            if let Some(held) = row.held_in() {
+                self.reads.borrow_mut().insert(held);
             }
-            let field = rest.split('.').next().unwrap_or_default();
+            if row.position {
+                return match &row.list {
+                    // A position changes when the order does, not when a row does.
+                    ListRef::Collection(source) => {
+                        self.reads
+                            .borrow_mut()
+                            .insert(Dependency::Keys(source.clone()));
+                        session
+                            .sources
+                            .keyed(source)?
+                            .keys()
+                            .iter()
+                            .position(|key| *key == row.key)
+                            .map(Value::from)
+                            .ok_or_else(|| source.error(&format!("row '{}' was removed", row.key)))
+                    }
+                    ListRef::Nested { .. } => {
+                        let (_, _, path) = row.locate(session, "")?;
+                        let at = path
+                            .rsplit('.')
+                            .next()
+                            .and_then(|at| at.parse::<usize>().ok());
+                        Ok(Value::from(at.expect("an item's path ends in its index")))
+                    }
+                };
+            }
+            let (source, key, path) = row.locate(session, rest)?;
+            let (field, tail) = path.split_once('.').unwrap_or((&path, ""));
             self.reads.borrow_mut().insert(if field.is_empty() {
-                Dependency::Row(row.source.clone(), row.key.clone())
+                Dependency::Row(source.clone(), key.into())
             } else {
-                Dependency::Field(row.source.clone(), row.key.clone(), field.into())
+                Dependency::Field(source.clone(), key.into(), field.into())
             });
-            let record = self
-                .source
-                .session
+            let record = session
                 .sources
-                .keyed(&row.source)?
-                .row(&row.key)
-                .ok_or_else(|| row.source.error(&format!("row '{}' was removed", row.key)))?;
-            if rest.is_empty() {
+                .keyed(source)?
+                .row(key)
+                .ok_or_else(|| source.error(&format!("row '{key}' was removed")))?;
+            if field.is_empty() {
                 return Ok(Value::Object(record.clone()));
             }
-            let (field, tail) = rest.split_once('.').unwrap_or((rest, ""));
             return Ok(record
                 .get(field)
                 .and_then(|value| get_path(value, tail))
@@ -520,7 +622,7 @@ mod tests {
             rows: Arc::new(BTreeMap::from([(
                 "item".into(),
                 RowRef {
-                    source: id("items"),
+                    list: ListRef::Collection(id("items")),
                     key: "a".into(),
                     position: false,
                 },
@@ -623,7 +725,7 @@ mod tests {
                     rows: Arc::new(BTreeMap::from([(
                         "item".into(),
                         RowRef {
-                            source: source.clone(),
+                            list: ListRef::Collection(source.clone()),
                             key: key.to_string(),
                             position: false,
                         },
@@ -954,7 +1056,7 @@ mod tests {
         let rows = BTreeMap::from([(
             "item".into(),
             RowRef {
-                source: items.clone(),
+                list: ListRef::Collection(items.clone()),
                 key: "shield".into(),
                 position: false,
             },
@@ -1001,6 +1103,108 @@ mod tests {
                 Dependency::Value(selected),
                 Dependency::Field(items, "shield".into(), "price".into()),
             ])
+        );
+    }
+
+    #[test]
+    fn a_row_held_in_a_row_reads_writes_and_depends_on_the_field_holding_it() {
+        let mut session = Session::default();
+        let grid = SourceId::new("grid", "rows");
+        session
+            .execute(Command::Collection {
+                source: grid.clone(),
+                key: "id".into(),
+                items: vec![
+                    json!({"id":"r1", "cells":[{"id":"x","text":"one"},{"id":"y","text":"two"}]})
+                        .as_object()
+                        .unwrap()
+                        .clone(),
+                ],
+            })
+            .unwrap();
+        let outer = Arc::new(RowRef {
+            list: ListRef::Collection(grid.clone()),
+            key: "r1".into(),
+            position: false,
+        });
+        let cell = |position| RowRef {
+            list: ListRef::Nested {
+                row: outer.clone(),
+                path: "cells".into(),
+                key: "id".into(),
+            },
+            key: "y".into(),
+            position,
+        };
+        let rows = BTreeMap::from([("c".into(), cell(false)), ("i".into(), cell(true))]);
+        let node = MountedNode {
+            mount: SourceId::new("grid", "screen"),
+            key: 7,
+        };
+        let run = |session: &Session, expression: &str| {
+            SourceEnv {
+                session,
+                inputs: &BTreeMap::new(),
+                rows: &rows,
+                selector_nodes: &BTreeMap::new(),
+                lexical: &Lexical::default(),
+                host: &crate::bind::NoEnv,
+                node: &node,
+                interaction: &|_, _| false,
+            }
+            .evaluate(&Expr::parse(expression).unwrap())
+        };
+        let held = BTreeSet::from([Dependency::Field(grid.clone(), "r1".into(), "cells".into())]);
+        let text = run(&session, "c.text");
+        assert_eq!(text.value.unwrap(), json!("two"));
+        assert_eq!(text.reads, held);
+        let at = run(&session, "i");
+        assert_eq!(at.value.unwrap(), json!(1));
+        assert_eq!(at.reads, held);
+
+        let context = BindingContext {
+            node: node.clone(),
+            row_key: "y".into(),
+            selector_nodes: Arc::default(),
+            lexical: Arc::default(),
+            inputs: Arc::default(),
+            rows: Arc::new(rows.clone()),
+        };
+        context
+            .write_model(&mut session, "c.text", json!("TWO"))
+            .unwrap();
+        assert_eq!(
+            session.sources.keyed(&grid).unwrap().row("r1").unwrap()["cells"],
+            json!([{"id":"x","text":"one"},{"id":"y","text":"TWO"}])
+        );
+
+        // The item follows its key, not its index.
+        session
+            .execute(Command::Patch {
+                source: grid.clone(),
+                key: "r1".into(),
+                fields: json!({"cells":[{"id":"y","text":"first"},{"id":"x","text":"one"}]})
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+            })
+            .unwrap();
+        assert_eq!(run(&session, "c.text").value.unwrap(), json!("first"));
+        assert_eq!(run(&session, "i").value.unwrap(), json!(0));
+        session
+            .execute(Command::Patch {
+                source: grid.clone(),
+                key: "r1".into(),
+                fields: json!({"cells":[{"id":"x","text":"one"}]})
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+            })
+            .unwrap();
+        assert!(run(&session, "c.text").value.is_err());
+        assert_eq!(
+            nested_keys(&json!([{"id":"x"},{"id":"x"}]), "id").unwrap_err(),
+            "each key 'x' is in its list twice"
         );
     }
 }

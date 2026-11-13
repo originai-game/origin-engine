@@ -1,7 +1,7 @@
 use super::*;
 use crate::reactive::{
     CollectionEdit, SourceChange,
-    bindings::{RowRef, SourceEnv},
+    bindings::{ListRef, RowRef, SourceEnv, nested_keys},
 };
 
 /// A `{#key}` value's hash, carried in its children's ids.
@@ -96,6 +96,16 @@ pub(crate) trait RetainedStructuralRetainedHost {
         each: &mut EachInstance,
         edit: &CollectionEdit,
         start: usize,
+        env: &dyn Env,
+    ) -> Result<(), String>;
+
+    /// An each over a list held in a row, whose list changed to `value`:
+    /// rows whose keys left go, new keys' rows are made, kept rows move.
+    fn refresh_held(
+        &mut self,
+        ui: &mut Ui,
+        id: &MountedNode,
+        value: &Value,
         env: &dyn Env,
     ) -> Result<(), String>;
 }
@@ -322,6 +332,8 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         let parent = parent.ok_or("each requires an element parent")?.clone();
         let NodeKind::For {
             list: Expr::Path(path),
+            var,
+            key,
             ..
         } = &doc.nodes[index].kind
         else {
@@ -330,18 +342,47 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                 doc.source, doc.nodes[index].line
             ));
         };
-        let source = super::content::collection(&context, path)?;
-        let collection = ui.docs.state().memory.reactive.sources.keyed(&source)?;
-        let order = collection.keys().to_vec();
-        let revision = collection.revision();
+        let item_key = match key {
+            Expr::Path(key) => key
+                .strip_prefix(var.as_str())
+                .and_then(|key| key.strip_prefix('.')),
+            _ => None,
+        };
+        let list = super::content::collection(&context, path, item_key)?;
+        let read = Expr::Path(path.clone());
         context.node.key = crate::id::child_key(parent.key, &format!("$each:{id}"));
         let identity = context.node.clone();
+        let (order, revision, binding) = match &list {
+            ListRef::Collection(source) => {
+                let collection = ui.docs.state().memory.reactive.sources.keyed(source)?;
+                (collection.keys().to_vec(), collection.revision(), None)
+            }
+            ListRef::Nested { key, .. } => {
+                let topology = &self.topology;
+                let binding = self.bindings.insert(
+                    &mut ui.docs.state_mut().memory.reactive,
+                    context.clone(),
+                    read,
+                    env,
+                    |node, state| {
+                        topology
+                            .node(node)
+                            .is_some_and(|node| node.states.contains(&state))
+                    },
+                );
+                self.inputs
+                    .insert(binding, (identity.clone(), Input::Structure));
+                let value = self.bindings.value(binding).map_err(Clone::clone)?;
+                (nested_keys(value, key)?, 0, Some(binding))
+            }
+        };
         let mut each = EachInstance {
             document: doc,
             index,
             context,
             parent,
-            source: source.clone(),
+            list: list.clone(),
+            binding,
             revision,
             order,
             rows: BTreeMap::new(),
@@ -355,10 +396,12 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         if each.order.is_empty() {
             each.empty = self.compile_row(ui, &each, None, env)?;
         }
-        self.collections
-            .entry(source)
-            .or_default()
-            .insert(identity.clone());
+        if let ListRef::Collection(source) = list {
+            self.collections
+                .entry(source)
+                .or_default()
+                .insert(identity.clone());
+        }
         self.each.insert(identity.clone(), each);
         Ok(Child::Each(identity))
     }
@@ -387,7 +430,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
             Arc::make_mut(&mut context.rows).insert(
                 var.clone(),
                 RowRef {
-                    source: each.source.clone(),
+                    list: each.list.clone(),
                     key: key.into(),
                     position: false,
                 },
@@ -396,7 +439,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                 Arc::make_mut(&mut context.rows).insert(
                     index.clone(),
                     RowRef {
-                        source: each.source.clone(),
+                        list: each.list.clone(),
                         key: key.into(),
                         position: true,
                     },
@@ -580,8 +623,16 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                 for child in each.rows.into_values().flatten().chain(each.empty) {
                     self.remove_child(ui, child);
                 }
-                if let Some(readers) = self.collections.get_mut(&each.source) {
+                if let ListRef::Collection(source) = &each.list
+                    && let Some(readers) = self.collections.get_mut(source)
+                {
                     readers.remove(&id);
+                }
+                if let Some(binding) = each.binding {
+                    self.bindings
+                        .remove(&mut ui.docs.state_mut().memory.reactive, binding);
+                    self.inputs.remove(&binding);
+                    self.pending_bindings.remove(&binding);
                 }
             }
         }
@@ -644,6 +695,9 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         start: usize,
         env: &dyn Env,
     ) -> Result<(), String> {
+        let ListRef::Collection(source) = &each.list else {
+            unreachable!("a collection's edit reached an each over a held list")
+        };
         match edit {
             CollectionEdit::Insert { key, before, .. } => {
                 if each.rows.contains_key(key)
@@ -653,7 +707,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                         .memory
                         .reactive
                         .sources
-                        .keyed(&each.source)?
+                        .keyed(source)?
                         .row(key)
                         .is_none()
                 {
@@ -710,5 +764,67 @@ impl RetainedStructuralRetainedHost for RetainedHost {
             CollectionEdit::Patch { .. } => {}
         }
         Ok(())
+    }
+
+    fn refresh_held(
+        &mut self,
+        ui: &mut Ui,
+        id: &MountedNode,
+        value: &Value,
+        env: &dyn Env,
+    ) -> Result<(), String> {
+        let ListRef::Nested { key, .. } = &self.each[id].list else {
+            unreachable!("a collection's each has no list binding")
+        };
+        let order = nested_keys(value, key)?;
+        if order == self.each[id].order {
+            return Ok(());
+        }
+        let start = self.each_start(id);
+        self.emit.insert(self.each[id].parent.clone());
+        let mut each = self.each.remove(id).unwrap();
+        for child in std::mem::take(&mut each.empty) {
+            self.remove_child(ui, child);
+        }
+        for old in std::mem::take(&mut each.order) {
+            if !order.contains(&old) {
+                for child in each.rows.remove(&old).unwrap() {
+                    self.remove_child(ui, child);
+                }
+            }
+        }
+        // Each row in turn goes after the ones before it: kept rows move,
+        // new ones are made.
+        let mut result = Ok(());
+        let mut at = start;
+        for key in &order {
+            if !each.rows.contains_key(key) {
+                match self.compile_row(ui, &each, Some(key), env) {
+                    Ok(children) => each.rows.insert(key.clone(), children),
+                    Err(error) => {
+                        result = Err(error);
+                        break;
+                    }
+                };
+            }
+            result = self.place_row(&each.rows[key], at);
+            if result.is_err() {
+                break;
+            }
+            at += each.rows[key]
+                .iter()
+                .map(|child| self.plan_len(child))
+                .sum::<usize>();
+            each.order.push(key.clone());
+        }
+        if result.is_ok() && order.is_empty() {
+            result = self.compile_row(ui, &each, None, env).and_then(|empty| {
+                each.empty = empty;
+                self.place_row(&each.empty, start)
+            });
+        }
+        each.revision += 1;
+        self.each.insert(id.clone(), each);
+        result
     }
 }

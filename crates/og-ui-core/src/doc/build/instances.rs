@@ -6,7 +6,7 @@ use crate::bind::Expr;
 use crate::doc::topology::{Materialization, Topology};
 use crate::reactive::{
     SourceId,
-    bindings::{BindingContext, BindingId, Bindings},
+    bindings::{BindingContext, BindingId, Bindings, ListRef},
     graph::MountedNode,
 };
 
@@ -260,7 +260,10 @@ pub struct EachInstance {
     pub index: usize,
     pub context: BindingContext,
     pub parent: MountedNode,
-    pub source: SourceId,
+    pub list: ListRef,
+    /// A list held in a row, read as a value: its items' keys are read
+    /// from it again when it changes. A collection reports its own edits.
+    pub binding: Option<BindingId>,
     pub revision: u64,
     pub order: Vec<String>,
     pub rows: BTreeMap<String, Vec<Child>>,

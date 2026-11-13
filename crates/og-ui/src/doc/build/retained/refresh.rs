@@ -278,7 +278,12 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                 if let Some((node, Input::Structure)) = self.inputs.get(&id) {
                     let node = node.clone();
                     let value = self.bindings.value(id).map_err(Clone::clone)?.clone();
-                    if let Err(error) = self.refresh_branch(ui, &node, &value, env) {
+                    let result = if self.each.contains_key(&node) {
+                        self.refresh_held(ui, &node, &value, env)
+                    } else {
+                        self.refresh_branch(ui, &node, &value, env)
+                    };
+                    if let Err(error) = result {
                         self.rebuild_mount(ui, &node.mount);
                         return Err(error);
                     }
