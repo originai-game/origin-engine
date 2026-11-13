@@ -350,6 +350,12 @@ draws or simulates it: an og.Water (a lake at its level, a sea with a
   by its `speed` (negative going in).
 - `og.physics.waterHeight` is the surface as it is drawn, waves and
   ripples included; outside the water it is the rest level.
+- `og.physics.water` asks by place instead of by entity: the highest
+  water over a point, the point's `depth` under it (negative over it), and
+  the water's `velocity`, `acceleration` and `normal` there. It is null
+  over no water. Use it for anything the engine does not float for you: a
+  swimmer (`depth` at the chest), a float that tilts with `normal`, debris
+  carried by `velocity`, a camera that goes under (`depth` at the eye).
 - og.Buoyancy floats a hull on any of them.
 
 What differs is the lift. An og.Water alone lifts only bodies with

@@ -67,7 +67,7 @@ mod softbody;
 mod stats;
 mod verlet;
 mod water;
-pub use water::{Wakes, WaterBody, WaterCut};
+pub use water::{Wakes, WaterAt, WaterBody, WaterCut};
 
 #[cfg(feature = "physics2d")]
 mod dim2;
@@ -1277,6 +1277,45 @@ impl PhysicsSystem {
             x,
             z
         ))
+    }
+
+    /// The entities whose og.WaterSurface or og.WaterLine has stepped, in
+    /// entity order: the waters [`Self::water_at`] is given the places of.
+    pub fn water_fields(&self) -> Vec<u64> {
+        let fields = (|| -> Option<Vec<u64>> {
+            with_sim!(self.shared, |s| Some(
+                s.surfaces.keys().chain(s.lines.keys()).copied().collect()
+            ))
+        })();
+        og_core::sort::set(fields.unwrap_or_default())
+            .into_iter()
+            .collect()
+    }
+
+    /// The water at world `point` at `seconds` of the world's clock
+    /// ([`WaterAt`]): of the og.Water bodies `waters` and the height fields
+    /// and lines at `places` (each of [`Self::water_fields`] with its
+    /// entity's world position), the one standing highest over the point.
+    /// Before the first step only `waters` answer.
+    pub fn water_at(
+        &self,
+        waters: &[WaterBody],
+        places: &[(u64, Vec3)],
+        point: Vec3,
+        seconds: f64,
+    ) -> Option<WaterAt> {
+        let stepped = (|| {
+            with_sim!(self.shared, |s| Some(water::at(
+                waters,
+                &s.surfaces,
+                &s.lines,
+                places,
+                point,
+                seconds
+            )))
+        })();
+        stepped
+            .unwrap_or_else(|| water::at(waters, &IdMap::new(), &IdMap::new(), &[], point, seconds))
     }
 
     /// The spring heights of the og.WaterLine on `entity`, left to right

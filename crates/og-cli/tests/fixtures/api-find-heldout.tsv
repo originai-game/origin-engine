@@ -29,7 +29,7 @@ show a date like Nov 2 in the player's local format	og.i18n.formatDate
 show a race time like 1:02:03	og.i18n.formatDuration
 spin a wheel by applying rotational force each frame	og.physics.applyTorque
 sweep a sphere forward to see what it would hit first	og.physics.castShape
-how deep the water is under the boat right now	og.physics.waterHeight
+how deep the water is under the boat right now	og.physics.waterHeight | og.physics.water
 mark a quest as done and give the reward	og.story.completeQuest
 the previous lines of the conversation the player can scroll back through	og.story.history
 pause the cutscene halfway	og.timeline.pause

@@ -550,6 +550,8 @@ export interface HostAbi<A, V> {
   og_load_completions(world: number): string;
   /** `og.load.replayCompletions` */
   og_load_replay_completions(world: number, completions: string): string;
+  /** `og.physics.water` */
+  og_physics_water(world: number, point: string): string;
   /** `og.physics.waterHeight` */
   og_physics_water_height(world: number, entity: number, x: number, z: number): string;
   /** `og.physics.castRay` */
@@ -1518,6 +1520,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_image_info",
   "og_load_completions",
   "og_load_replay_completions",
+  "og_physics_water",
   "og_physics_water_height",
   "og_physics_cast_ray",
   "og_physics_cast_ray_all",

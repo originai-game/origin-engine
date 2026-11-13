@@ -1357,6 +1357,9 @@ macro_rules! __og_host_bindings_base {
             fn og_physics_fluid3d_particles(&self, world: u32, entity: f64) -> String {
                 $crate::host_impl::answer($crate::og_physics_fluid3d_particles(world, entity))
             }
+            fn og_physics_water(&self, world: u32, point: String) -> String {
+                $crate::host_impl::answer($crate::og_physics_water(world, point))
+            }
             fn og_physics_water_height(&self, world: u32, entity: f64, x: f64, z: f64) -> String {
                 $crate::host_impl::answer($crate::og_physics_water_height(world, entity, x, z))
             }

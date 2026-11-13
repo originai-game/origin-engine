@@ -621,6 +621,8 @@ pub trait LoadApi: Wire {
 
 /// `physics`: packages/knowledge/wiki/physics.md.
 pub trait PhysicsApi: Wire {
+    /// `og.physics.water`
+    fn og_physics_water(&self, world: u32, point: String) -> String;
     /// `og.physics.waterHeight`
     fn og_physics_water_height(&self, world: u32, entity: f64, x: f64, z: f64) -> String;
     /// `og.physics.castRay`
@@ -1690,6 +1692,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_image_info",
     "og_load_completions",
     "og_load_replay_completions",
+    "og_physics_water",
     "og_physics_water_height",
     "og_physics_cast_ray",
     "og_physics_cast_ray_all",

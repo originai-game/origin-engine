@@ -84,6 +84,72 @@ test("a system reads the sea's height inside the tick, as between ticks", () => 
   expect(Math.max(...seen) - Math.min(...seen)).toBeGreaterThan(0.01);
 });
 
+test("og.physics.water answers the highest water over a point, with its depth, motion and slope", () => {
+  const seen: unknown[] = [];
+  const Ask = defineSystem("Ask", { reads: [og.Transform, og.Water] }, (_q: unknown, _t: unknown, world: World) => {
+    seen.push(must(og.physics.water(world, { x: 7, y: -1, z: -16.5 })));
+  });
+  const r = createEngine(og.game({ start: seas, systems: [Ask] }) as GameToken, {});
+  if (!r.ok) throw new Error(r.reason);
+  expect(r.value.advance(120).ok).toBeTrue();
+  const w = run(120).engine.world;
+  const sea = w.find("sea")!;
+  const at = must(og.physics.water(w, { x: 7, y: -1, z: -16.5 }))!;
+  // The sea's own surface, the one og.physics.waterHeight answers and draws.
+  expect(Number(at.water)).toBe(Number(sea));
+  expect(at.height).toBeCloseTo(must(og.physics.waterHeight(w, sea, 7, -16.5)), 5);
+  expect(at.depth).toBeCloseTo(at.height + 1, 5);
+  // A 10 m/s sea moves and leans: the water is carried round by its waves.
+  expect(Math.hypot(at.velocity.x, at.velocity.y, at.velocity.z)).toBeGreaterThan(0.05);
+  expect(Math.hypot(at.acceleration.x, at.acceleration.y, at.acceleration.z)).toBeGreaterThan(0.05);
+  expect(Math.hypot(at.normal.x, at.normal.y, at.normal.z)).toBeCloseTo(1, 5);
+  expect(at.normal.y).toBeGreaterThan(0.5);
+  expect(at.normal.y).toBeLessThan(1);
+  // The slope the normal names is the surface's own, a step along x.
+  const rise = (must(og.physics.waterHeight(w, sea, 7.5, -16.5)) - must(og.physics.waterHeight(w, sea, 6.5, -16.5))) / 1;
+  expect(Math.sign(-at.normal.x)).toBe(Math.sign(rise));
+  // Tick 120's system saw the sea the world between ticks shows after 119.
+  const before = run(119).engine.world;
+  expect(seen.length).toBe(120);
+  expect(seen[119]).toEqual(must(og.physics.water(before, { x: 7, y: -1, z: -16.5 })));
+
+  // Still water: its level, up, at rest; a point over it has a negative depth.
+  const pond = must(og.physics.water(w, { x: 505, y: 4, z: 3 }))!;
+  expect(Number(pond.water)).toBe(Number(w.find("pond")!));
+  expect(pond.height).toBeCloseTo(1, 6);
+  expect(pond.depth).toBeCloseTo(-3, 6);
+  expect(pond.normal).toEqual({ x: 0, y: 1, z: 0 });
+  expect(pond.velocity).toEqual({ x: 0, y: 0, z: 0 });
+  // Over no water: null, not a refusal.
+  expect(must(og.physics.water(w, { x: 300, y: 0, z: 0 }))).toBeNull();
+  expect(og.physics.water(w, { x: Number.NaN, y: 0, z: 0 }).ok).toBeFalse();
+});
+
+test("og.physics.water reads the waves a stone raised on an og.WaterSurface", () => {
+  const pool = (world: World) => {
+    const water = must(world.spawn({ name: "pool", position: { x: 0, y: 1, z: 0 } }));
+    world.insert(water, og.WaterSurface, { size: 16, resolution: 64 });
+    const stone = must(world.spawn({ name: "stone", position: { x: 2, y: 3, z: 1 } }));
+    world.insert(stone, og.RigidBody);
+    world.insert(stone, og.Collider, { shape: SHAPE_BOX, size: { x: 0.6, y: 0.6, z: 0.6 }, density: 4 });
+  };
+  const r = createEngine(og.game({ start: pool }) as GameToken, {});
+  if (!r.ok) throw new Error(r.reason);
+  expect(r.value.advance(60).ok).toBeTrue();
+  const w = r.value.world;
+  const water = w.find("pool")!;
+  let moved = 0;
+  for (const [x, z] of [[2, 1], [3, 1], [2.5, 2], [0, 0]] as const) {
+    const at = must(og.physics.water(w, { x, y: 0, z }))!;
+    expect(Number(at.water)).toBe(Number(water));
+    expect(at.height).toBeCloseTo(must(og.physics.waterHeight(w, water, x, z)), 5);
+    moved = Math.max(moved, Math.abs(at.height - 1), Math.abs(at.velocity.y));
+  }
+  // The splash is in the answer: the surface near the stone is not at rest.
+  expect(moved).toBeGreaterThan(1e-3);
+  expect(must(og.physics.water(w, { x: 9, y: 0, z: 0 }))).toBeNull();
+});
+
 function body(world: World, name: string, position: { x: number; y: number; z: number }, size: { x: number; y: number; z: number }, density: number): void {
   const e = must(world.spawn({ name, position }));
   world.insert(e, og.RigidBody);

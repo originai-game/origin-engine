@@ -497,6 +497,44 @@ pub fn og_physics_water_height(
     })()
 }
 
+/// `og.physics.water`: the water whose surface stands highest over the
+/// point, as [`og_physics::PhysicsSystem::water_at`] answers: every
+/// og.Water as [`waters`] reads it and every og.WaterSurface and
+/// og.WaterLine that has stepped, each at its entity's world position, at
+/// the tick over its rate. A world without physics has no water to ask.
+pub fn og_physics_water(
+    world: u32,
+    point: String,
+) -> Result<Option<crate::wire::WaterPoint>, String> {
+    (|| {
+        let eng = engine(world)?;
+        let p = physics(&eng)?;
+        let point: Vec3 = wire::arg(Some(&point), "point")?;
+        if !point.is_finite() {
+            return Err("point is not finite".to_string());
+        }
+        let r = Reader::of(&eng, world)?;
+        let bodies = waters(&eng, &r)?;
+        let places: Vec<(u64, Vec3)> = p
+            .water_fields()
+            .into_iter()
+            .filter_map(|e| Some((e, r.position(Entity::from_bits(e))?)))
+            .collect();
+        let time = r.time();
+        let rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
+        let seconds = time.tick as f64 / f64::from(rate);
+        Ok(p.water_at(&bodies, &places, point, seconds)
+            .map(|w| crate::wire::WaterPoint {
+                water: w.water,
+                height: w.height,
+                depth: w.depth,
+                velocity: w.velocity,
+                acceleration: w.acceleration,
+                normal: w.normal,
+            }))
+    })()
+}
+
 // ── ragdoll rigs ────────────────────────────────────────────────────────
 
 /// A rig as the engine keeps it: what physics simulates, and the skeleton

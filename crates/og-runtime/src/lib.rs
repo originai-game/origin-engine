@@ -269,7 +269,7 @@ pub use physics_ext::{
     og_physics_apply_torque_impulse, og_physics_cloth_points, og_physics_fluid_particles,
     og_physics_fluid3d_particles, og_physics_garment_points, og_physics_ragdoll_pose,
     og_physics_ragdoll_rig_from_skeleton, og_physics_rope_points, og_physics_set_ragdoll_rig,
-    og_physics_soft_body_points, og_physics_stats, og_physics_vehicle_wheels,
+    og_physics_soft_body_points, og_physics_stats, og_physics_vehicle_wheels, og_physics_water,
     og_physics_water_height,
 };
 pub use platform::{
