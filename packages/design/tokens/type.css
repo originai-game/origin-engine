@@ -1,0 +1,80 @@
+/* Type: the font stacks, the scale's steps and the CJK leading. */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Inter Variable", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito Variable", "Nunito", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-scale-xs-size: 12px;
+  --font-scale-xs-line-height: 16px;
+  --font-scale-meta-size: 13px;
+  --font-scale-meta-line-height: 18px;
+  --font-scale-caption-size: 13px;
+  --font-scale-caption-line-height: 18px;
+  --font-scale-sm-size: 14px;
+  --font-scale-sm-line-height: 20px;
+  --font-scale-body-size: 14px;
+  --font-scale-body-line-height: 20px;
+  --font-scale-reading-size: 15px;
+  --font-scale-reading-line-height: 24px;
+  --font-scale-base-size: 16px;
+  --font-scale-base-line-height: 24px;
+  --font-scale-lg-size: 18px;
+  --font-scale-lg-line-height: 26px;
+  --font-scale-xl-size: 20px;
+  --font-scale-xl-line-height: 28px;
+  --font-scale-xl-letter-spacing: -0.01em;
+  --font-scale-2xl-size: 22px;
+  --font-scale-2xl-line-height: 28px;
+  --font-scale-2xl-letter-spacing: -0.015em;
+  --font-scale-3xl-size: 26px;
+  --font-scale-3xl-line-height: 32px;
+  --font-scale-3xl-letter-spacing: -0.02em;
+  --font-scale-4xl-size: 30px;
+  --font-scale-4xl-line-height: 36px;
+  --font-scale-4xl-letter-spacing: -0.022em;
+  --font-scale-5xl-size: 36px;
+  --font-scale-5xl-line-height: 40px;
+  --font-scale-5xl-letter-spacing: -0.025em;
+  --font-scale-6xl-size: 44px;
+  --font-scale-6xl-line-height: 48px;
+  --font-scale-6xl-letter-spacing: -0.03em;
+  --font-scale-7xl-size: 52px;
+  --font-scale-7xl-line-height: 56px;
+  --font-scale-7xl-letter-spacing: -0.032em;
+  --font-scale-8xl-size: 64px;
+  --font-scale-8xl-line-height: 64px;
+  --font-scale-8xl-letter-spacing: -0.035em;
+  --font-scale-display-sm-size: 28px;
+  --font-scale-display-sm-line-height: 32px;
+  --font-scale-display-sm-letter-spacing: -0.012em;
+  --font-scale-display-md-size: 34px;
+  --font-scale-display-md-line-height: 38px;
+  --font-scale-display-md-letter-spacing: -0.016em;
+  --font-scale-display-lg-size: 40px;
+  --font-scale-display-lg-line-height: 44px;
+  --font-scale-display-lg-letter-spacing: -0.02em;
+  --font-scale-display-xl-size: 48px;
+  --font-scale-display-xl-line-height: 52px;
+  --font-scale-display-xl-letter-spacing: -0.022em;
+  --font-scale-display-2xl-size: 56px;
+  --font-scale-display-2xl-line-height: 60px;
+  --font-scale-display-2xl-letter-spacing: -0.025em;
+  /* Chinese text (any element under lang="zh…"): PingFang and its peers are set
+     at zero tracking, and display steps get looser leading because CJK glyphs
+     fill the em box. build.mjs emits these as overrides of the --text-*
+     variables under [lang|="zh"], restored under any other [lang]. */
+  --font-cjk-letter-spacing: 0em;
+  --font-cjk-line-height-xl: 30px;
+  --font-cjk-line-height-2xl: 32px;
+  --font-cjk-line-height-3xl: 36px;
+  --font-cjk-line-height-4xl: 40px;
+  --font-cjk-line-height-5xl: 46px;
+  --font-cjk-line-height-6xl: 54px;
+  --font-cjk-line-height-7xl: 62px;
+  --font-cjk-line-height-8xl: 74px;
+  --font-cjk-line-height-display-sm: 38px;
+  --font-cjk-line-height-display-md: 44px;
+  --font-cjk-line-height-display-lg: 50px;
+  --font-cjk-line-height-display-xl: 60px;
+  --font-cjk-line-height-display-2xl: 68px;
+}

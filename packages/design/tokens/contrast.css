@@ -1,0 +1,59 @@
+/* Contrast: the pairs packages/design/tests/tokens.test.ts holds in both
+   schemes. A list is `a b, c d`: its pairs (or triples) in order. */
+:root {
+  --contrast:
+    fg bg,
+    fg surface-raised,
+    fg-muted bg,
+    fg-muted bg-subtle,
+    fg-muted surface,
+    fg-muted surface-raised,
+    fg-subtle bg,
+    fg-subtle bg-subtle,
+    fg-inverse fg,
+    accent-fg accent,
+    accent-fg accent-hover,
+    accent-ink bg,
+    accent-ink surface-raised,
+    danger bg,
+    danger surface-raised,
+    success bg,
+    warn bg,
+    warn surface-raised,
+    info bg,
+    stage-fg stage,
+    stage-muted stage,
+    stage-muted stage-raised,
+    fg-muted surface-hover,
+    fg-subtle surface,
+    fg-subtle surface-raised,
+    fg surface-hover,
+    fg thumb,
+    fg-muted fill-strong surface-raised,
+    fg-muted fill-strong surface,
+    fg fill-strong surface-raised,
+    fg-subtle fill surface,
+    accent-ink fill-strong surface,
+    gold surface,
+    gold surface-raised,
+    fg hud #808080;
+  --non-text:
+    focus bg,
+    focus surface-raised;
+  /* Text over glass ([ink, material, what passes under it]): the material's tint
+     mixed over the underlay as CSS mixes it (srgb, the blur leaving a flat
+     underlay as it is), and optionally a fill over that in linear light. #e4e4e4
+     and #151515 stand for the brightest and darkest scenes (what og-tests'
+     bright-sky and dark glass scenes measure under a text box); glass-thin
+     carries no text. */
+  --glass-contrast-pairs:
+    fg material-thick #e4e4e4,
+    fg material-thick #151515,
+    fg-muted material-thick #e4e4e4,
+    fg-muted material-thick #151515,
+    fg material-regular #e4e4e4,
+    fg material-regular #151515,
+    fg-muted material-thick #e4e4e4 fill-strong,
+    fg-muted material-thick #151515 fill-strong,
+    accent-ink material-thick #ffa040;
+}

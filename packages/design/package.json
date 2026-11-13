@@ -20,9 +20,11 @@
   "exports": {
     ".": "./tokens.json",
     "./tokens.json": "./tokens.json",
+    "./tokens/*.css": "./tokens/*.css",
     "./design-language.md": "./design-language.md"
   },
   "files": [
+    "tokens",
     "tokens.json",
     "design-language.md",
     "README.md"

@@ -666,7 +666,7 @@ the probe agree), to opacity and to text size.
 A game's UI wears a **style**: one complete asset the theme carries by value
 (`Theme::art`, `Copy`, with the palette, radii, ramp and durations it set
 in the `Theme` itself). Before a game picks one it has the **default
-style** (`src/theme.rs`, generated from `packages/design/tokens.json` by
+style** (`src/theme.rs`, generated from `packages/design/tokens/*.css` by
 `scripts/gen-theme.sh`, `tests/theme.rs` failing on drift): the design
 language's neutral ladder, amber primary and focus, radii 4/6/capsule/12,
 flat glass on floating chrome (`default_dressings`: dialogs, sheets,

@@ -1,5 +1,5 @@
 //! The default style is the design language's: `src/theme.rs` is exactly
-//! what the generator writes from `packages/design/tokens.json` (a hand
+//! what the generator writes from `packages/design/tokens/*.css` (a hand
 //! edit, a stale file or a token changed without regenerating fail here),
 //! its glass tints are og-render's presets, and its CSS parses and puts
 //! glass on floating chrome only.
@@ -13,18 +13,13 @@ use std::path::PathBuf;
 
 fn tokens() -> serde_json::Value {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    serde_json::from_str(
-        &std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
-            .expect("tokens.json"),
-    )
-    .expect("tokens.json parses")
+    theme_codegen::load(&root.join("../../packages/design/tokens")).expect("the tokens load")
 }
 
 #[test]
 fn theme_rs_is_generated_from_the_design_tokens() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let tokens = std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
-        .expect("tokens.json");
+    let tokens = tokens();
     let committed =
         std::fs::read_to_string(root.join("../og-ui-core/src/theme.rs")).expect("theme.rs");
     let generated = theme_codegen::generate(&tokens).expect("the tokens generate");
@@ -48,10 +43,21 @@ fn theme_rs_is_generated_from_the_design_tokens() {
 }
 
 #[test]
+fn tokens_json_is_generated_from_the_design_tokens() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let committed = std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
+        .expect("tokens.json");
+    assert_eq!(
+        committed,
+        theme_codegen::json(&tokens()).expect("the tokens write as JSON"),
+        "run crates/og-ui/scripts/gen-theme.sh (never edit tokens.json by hand)"
+    );
+}
+
+#[test]
 fn default_css_is_generated_from_the_design_tokens() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let tokens = std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
-        .expect("tokens.json");
+    let tokens = tokens();
     let committed =
         std::fs::read_to_string(root.join("../og-ui-core/default.css")).expect("default.css");
     let generated = theme_codegen::generate_css(&tokens).expect("the tokens generate CSS");
