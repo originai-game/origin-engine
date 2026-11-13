@@ -75,7 +75,7 @@ use og_anim::motion::contract::{
     BOUNDARY_FRAMES, FRAMES, MAX_TOKENS, MIN_TOKENS, MOTION_FEATURES, POSES_PER_TOKEN,
 };
 use og_anim::motion::contract::{LEFT_LEG, Pose, RIGHT_LEG, heading};
-use og_anim::motion::cpu::{Cpu, Job};
+use og_anim::motion::cpu::{Cpu, Job, gather};
 use og_anim::motion::flight;
 use og_anim::motion::glue::{
     Statics, StudentOutput, decoder_inputs, finish_character, student_inputs,
@@ -419,6 +419,8 @@ struct Ready {
     generations: u64,
     failure: Option<String>,
     startup: Startup,
+    /// The host's wall clock, ms: the diagnostics' only, never the world's.
+    clock: fn() -> f64,
 }
 
 /// The CPU model's wall time per tick, on the engine thread (the lanes'
@@ -990,6 +992,12 @@ fn build(bytes: &[u8], gpu: Option<(wgpu::Device, wgpu::Queue)>) -> Result<Parts
         .iter()
         .find(|(n, _)| n == MODEL_ENTRY)
         .ok_or_else(|| format!("it holds no {MODEL_ENTRY}"))?;
+    parts(weights, gpu)
+}
+
+/// The model from its weights (one safetensors file): on the CPU, or with
+/// `gpu` on that device.
+fn parts(weights: &[u8], gpu: Option<(wgpu::Device, wgpu::Queue)>) -> Result<Parts, String> {
     let bundle = Bundle::from_safetensors(weights).map_err(|e| e.to_string())?;
     let library = Library::from_bundle(&bundle).map_err(|e| e.to_string())?;
     let soma_skeleton = Skeleton::from_bundle(&bundle).map_err(|e| e.to_string())?;
@@ -1019,6 +1027,12 @@ fn build(bytes: &[u8], gpu: Option<(wgpu::Device, wgpu::Queue)>) -> Result<Parts
 }
 
 fn ready(parts: Parts) -> Model {
+    Model::Ready(Box::new(resident(parts, now_ms)))
+}
+
+/// The model resident, no batch started: `now_ms` is the host's wall clock
+/// (the diagnostics' only).
+fn resident(parts: Parts, now_ms: fn() -> f64) -> Ready {
     let gpu = match &parts.compute {
         Compute::Gpu { gpu: Some(g), .. } => Some(g),
         _ => None,
@@ -1031,7 +1045,8 @@ fn ready(parts: Parts) -> Model {
         resident_at: now_ms(),
         ..Default::default()
     };
-    Model::Ready(Box::new(Ready {
+    Ready {
+        clock: now_ms,
         rate: gpu.map_or(0.0, |g| g.rate()),
         cpu_ticks: CpuTicks::default(),
         generations: 0,
@@ -1050,7 +1065,7 @@ fn ready(parts: Parts) -> Model {
         soma: parts.soma,
         soma_skeleton: parts.soma_skeleton,
         soma_map: parts.soma_map,
-    }))
+    }
 }
 
 /// A load on a native host's background thread: the pack's size, then the
@@ -1335,6 +1350,7 @@ fn run_flights(
     if r.flights.is_empty() {
         return true;
     }
+    let now_ms = r.clock;
     let mut done: Vec<(usize, Result<Generated, String>)> = Vec::new();
     match &mut r.compute {
         Compute::Cpu(cpu) => {
@@ -1370,7 +1386,7 @@ fn run_flights(
                     unreachable!("a CPU model's flights are CPU jobs")
                 };
                 if jobs.iter().all(|j| j.left(cpu) == 0) {
-                    done.push((k, Ok(og_anim::motion::cpu::gather(jobs))));
+                    done.push((k, Ok(gather(jobs))));
                 }
             }
         }
@@ -1517,6 +1533,7 @@ fn settle_batches(
 /// their characters: how many are decoded never depends on the time it
 /// takes. In the order they landed.
 fn decode(r: &mut Ready, stats: &mut Stats, tick: u64, starved: Option<usize>) {
+    let now_ms = r.clock;
     let gpu = matches!(r.compute, Compute::Gpu { .. });
     let mut k = 0;
     while k < r.landings.len() {
@@ -1561,6 +1578,7 @@ fn decode(r: &mut Ready, stats: &mut Stats, tick: u64, starved: Option<usize>) {
 /// request changed since ([`Motion::is_current`]) is dropped first, so it
 /// asks again at once.
 fn start_flights(r: &mut Ready, due: u64) {
+    let now_ms = r.clock;
     if let Compute::Cpu(_) = r.compute {
         let motion = &r.motion;
         r.flights
