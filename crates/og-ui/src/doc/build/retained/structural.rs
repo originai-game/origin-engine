@@ -373,6 +373,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         let node = &each.document.nodes[each.index];
         let NodeKind::For {
             var,
+            index,
             key: expression,
             empty,
             ..
@@ -388,8 +389,19 @@ impl RetainedStructuralRetainedHost for RetainedHost {
                 RowRef {
                     source: each.source.clone(),
                     key: key.into(),
+                    position: false,
                 },
             );
+            if let Some(index) = index {
+                Arc::make_mut(&mut context.rows).insert(
+                    index.clone(),
+                    RowRef {
+                        source: each.source.clone(),
+                        key: key.into(),
+                        position: true,
+                    },
+                );
+            }
             let result = SourceEnv {
                 session: &ui.docs.state().memory.reactive,
                 inputs: &context.inputs,

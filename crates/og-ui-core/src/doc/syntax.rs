@@ -32,6 +32,9 @@ pub enum Node {
     Each {
         list: String,
         item: String,
+        /// `{#each $items as item, i (item.id)}`: the name of the row's
+        /// position.
+        index: Option<String>,
         key: String,
         body: Vec<Node>,
         empty: Vec<Node>,
@@ -204,12 +207,22 @@ impl Parser<'_> {
                     let Some(key) = key.strip_suffix(')') else {
                         return self.fail("close the each key with ')'");
                     };
-                    let item = item.trim();
-                    if !identifier(item) {
-                        return self
-                            .fail("each takes one item alias, not an index; key by item.id");
+                    let (item, index) = match item.split_once(',') {
+                        Some((item, index)) => (item.trim(), Some(index.trim())),
+                        None => (item.trim(), None),
+                    };
+                    if !identifier(item) || index.is_some_and(|i| !identifier(i) || i == item) {
+                        return self.fail(
+                            "each takes an item alias and, after a comma, an index alias: {#each $items as item, i (item.id)}",
+                        );
                     }
-                    if key.trim() == item || key.contains("$index") {
+                    // A position is not an identity: a row keeps its key when
+                    // the list reorders.
+                    let positional = index.is_some_and(|i| {
+                        key.split(|c: char| !c.is_alphanumeric() && c != '_' && c != '$')
+                            .any(|word| word == i)
+                    });
+                    if key.trim() == item || key.contains("$index") || positional {
                         return self
                             .fail("key each rows by a stable string field, such as item.id");
                     }
@@ -225,6 +238,7 @@ impl Parser<'_> {
                     nodes.push(Node::Each {
                         list: list.trim().into(),
                         item: item.into(),
+                        index: index.map(Into::into),
                         key: key.trim().into(),
                         body,
                         empty,

@@ -208,7 +208,9 @@ measurements are `og style check-project`.
     at once.
 - Use `{#if expression}…{:else}…{/if}` and
   `{#each $items as item (item.id)}…{:else}…{/each}`. Every collection row
-  needs a stable string key. Index keys and executable JavaScript fail cooking.
+  needs a stable string key. `{#each $items as item, i (item.id)}` names the
+  row's position `i` (from 0, following a reorder) for display; it cannot be
+  the key. Index keys and executable JavaScript fail cooking.
 - Compose content with `{#snippet name()}…{/snippet}` and
   `{@render name()}`. Use `{@render name?.()}` for optional content.
 - `{#key $round}` remakes its content when the value changes, `{@const n =

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "{#each} index alias",
+      "summary": "{#each $items as item, i (item.id)} names the row's position i (from 0), which follows a move, insert or remove in both immediate and mounted documents. A key that uses the position is refused."
+    }
+  ]
+}

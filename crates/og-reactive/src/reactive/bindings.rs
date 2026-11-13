@@ -15,6 +15,9 @@ use std::sync::Arc;
 pub struct RowRef {
     pub source: SourceId,
     pub key: String,
+    /// The name reads the row's position in its collection (an `{#each}`
+    /// index alias), not the row.
+    pub position: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -94,6 +97,11 @@ impl BindingContext {
             return prop.context.write_model(session, &path, value);
         }
         if let Some(row) = self.rows.get(root) {
+            if row.position {
+                return Err(format!(
+                    "model '{path}' names a row's position, which is read only"
+                ));
+            }
             let (field, tail) = rest.split_once('.').unwrap_or((rest, ""));
             if field.is_empty() {
                 return Err(format!("model '{path}' must name a row field"));
@@ -336,6 +344,22 @@ impl Tracked<'_, '_> {
             return Ok(get_path(&value, rest).map_or(Value::Null, |value| value.into_owned()));
         }
         if let Some(row) = self.source.rows.get(root) {
+            if row.position {
+                // A position changes when the order does, not when a row does.
+                self.reads
+                    .borrow_mut()
+                    .insert(Dependency::Keys(row.source.clone()));
+                let at = self
+                    .source
+                    .session
+                    .sources
+                    .keyed(&row.source)?
+                    .keys()
+                    .iter()
+                    .position(|key| *key == row.key)
+                    .ok_or_else(|| row.source.error(&format!("row '{}' was removed", row.key)))?;
+                return Ok(Value::from(at));
+            }
             let field = rest.split('.').next().unwrap_or_default();
             self.reads.borrow_mut().insert(if field.is_empty() {
                 Dependency::Row(row.source.clone(), row.key.clone())
@@ -498,6 +522,7 @@ mod tests {
                 RowRef {
                     source: id("items"),
                     key: "a".into(),
+                    position: false,
                 },
             )])),
         };
@@ -600,6 +625,7 @@ mod tests {
                         RowRef {
                             source: source.clone(),
                             key: key.to_string(),
+                            position: false,
                         },
                     )])),
                 },
@@ -930,6 +956,7 @@ mod tests {
             RowRef {
                 source: items.clone(),
                 key: "shield".into(),
+                position: false,
             },
         )]);
         let expression = Expr::parse("$selected ? item.label : item.price").unwrap();

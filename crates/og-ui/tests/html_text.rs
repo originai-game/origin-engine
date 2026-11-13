@@ -520,6 +520,51 @@ fn list_markers_follow_css_and_renumber_on_reorder() {
 }
 
 #[test]
+fn an_each_index_alias_is_the_rows_position_and_follows_a_reorder() {
+    let text = r#"<meta name="component" content="t">
+<div><ol id="Steps">
+  {#each $steps as s, i (s.id)}<li>{s.id}{i}</li>{/each}
+</ol></div>"#;
+    both(text, &[("steps", steps(&["x", "y", "z"]))], |d| {
+        let texts = |d: &Doc| -> Vec<String> {
+            let mut items: Vec<_> =
+                d.ui.probe_elements()
+                    .into_iter()
+                    .filter(|e| e.kind == "label" && e.id != "Marker" && e.path.contains("/Steps/"))
+                    .collect();
+            items.sort_by(|a, b| a.y.total_cmp(&b.y));
+            items.into_iter().map(|e| e.text).collect()
+        };
+        assert_eq!(texts(d), ["x0", "y1", "z2"], "mounted: {}", d.mounted);
+        d.edit(
+            "steps",
+            json!({"op": "move", "key": "z", "before": "x"}),
+            steps(&["z", "x", "y"]),
+        );
+        assert_eq!(texts(d), ["z0", "x1", "y2"], "mounted: {}", d.mounted);
+        d.edit(
+            "steps",
+            json!({"op": "remove", "key": "x"}),
+            steps(&["z", "y"]),
+        );
+        assert_eq!(texts(d), ["z0", "y1"], "mounted: {}", d.mounted);
+    });
+    for (each, why) in [
+        ("$steps as s, i (i)", "a position is not a key"),
+        ("$steps as s, s (s.id)", "one name for both"),
+        ("$steps as s, 1 (s.id)", "not a name"),
+    ] {
+        let refused = UiDocument::parse(
+            "ui/t.svelte",
+            &format!(
+                "<meta name=\"component\" content=\"t\"><div>{{#each {each}}}<span>{{s.id}}</span>{{/each}}</div>"
+            ),
+        );
+        assert!(refused.is_err(), "{why}");
+    }
+}
+
+#[test]
 fn links_send_their_href() {
     let text = r#"<meta name="component" content="t">
 <div><div id="Page">
