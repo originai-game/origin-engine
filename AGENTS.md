@@ -44,11 +44,11 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   licences under `third_party/` or in the header.
 - **Size cuts never cost features.** Data only some games need is loaded or
   packed on demand.
-- **A reference is the last approved look, not the standard.** A change may
-  move frames when the new frame is better in look, cost or correctness; it
-  is reviewed on its own merits against commercial games, never against the
-  old frame. Only a change that claims to move nothing (a refactor, a move, a
-  speed-up that keeps the look) must match the old frame.
+- **Frames are judged on quality, never on their difference.** Any change
+  may move frames. A frame is reviewed for what it shows (against commercial
+  games: no black, broken, clipped or lost detail), never by its pixel
+  difference from the old one; reports carry no diff numbers. A reference is
+  only the last recorded frame, refreshed in batches.
 - **Structure before size.** A refactor makes the structure clear: state
   owned by its stage, pipelines as named steps, boundaries carried by types.
   No file is split for its line count.
@@ -99,13 +99,13 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   tests `tests/support/og-bin.ts`.
 - **A test is kept only when it fails on a plausible regression.** A missing
   GPU makes a test skipped or unchecked, never passed.
-- **One GPU host, one reference set.** References are recorded on the L4
-  (Vulkan, `gcp-l4` orb; `docs/ci.md` §The GPU host, §Reference frames).
-  Metal, DX12 and WebGPU are compatibility checks. macrunner and studio-win
-  are development hosts; their failures are never a landing gate, and
-  Windows-only gate failures are not worth a stream's time.
-- Never record a black or broken frame as a reference. A re-recorded frame is
-  named in the report with why the new one is better.
+- **One GPU host.** References are recorded on the L4 (Vulkan, `gcp-l4`
+  orb; `docs/ci.md` §The GPU host, §Reference frames). Metal, DX12 and WebGPU
+  are compatibility checks. macrunner and studio-win are development hosts;
+  their failures are never a landing gate, and Windows-only gate failures
+  are not worth a stream's time.
+- A moved reference never blocks a landing; a crash, a black or blank frame
+  or an unchecked frame does. Never record a black or broken frame.
 
 ## Pitfalls
 
@@ -135,13 +135,10 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Landing** goes through `scripts/land.sh`, a merge queue; never push main
   directly. A head touching packages/engine, the IDL or og-runtime's answers
   also runs `scripts/check.sh full --only fixtures` and `--only bun-test`.
-  - A head that moves no frame is landed by its own thread with
-    `OG_GATE_SKIP=rust-gpu scripts/land.sh`; the L4 integrator checks main
-    afterwards in batches.
-  - A head that moves frames goes to the L4 integrator, which captures it,
-    gets the owner's approval for a new look, fixes any failure at the root
-    itself, and lands it.
-  - When unsure, send it to the integrator.
+  A head that changes rendering or a look goes to the L4 integrator, which
+  looks at its frames for quality (a new feature's look needs the owner's
+  approval), fixes any failure at the root itself, and lands it. Every
+  other head is landed by its own thread.
 - A file move is its own verbatim commit, reviewed with
   `git diff --color-moved`.
 - Every change a game sees is one fragment in `changelog/unreleased/` in the

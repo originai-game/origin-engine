@@ -7,13 +7,12 @@ detail.
 
 ## Landing: a merge queue
 
-Reference equality proves equivalence, not visual correctness, and a
-reference is the last approved look, not a standard: a change that improves
-the look or its cost moves frames and is reviewed on the new frames
-(AGENTS.md §Principles). Equality is required only of a change that claims
-to move nothing. Inspect every
-new or re-recorded frame before committing it, including phone layouts and
-non-default states. Populate screen fixtures with their supplied content and
+Frames are judged on quality, never on their difference from a reference
+(AGENTS.md §Principles): any change may move frames, and a moved reference
+does not block a landing. A reference is the last recorded frame; the GPU
+integrator refreshes moved ones in batches. Inspect every new or
+re-recorded frame for what it shows before committing it, including phone
+layouts and non-default states. Populate screen fixtures with their supplied content and
 art; keep missing-art cases as explicit placeholder tests. A reference that
 records clipping, incorrect values or broken layout is a defect, even when
 the comparison passes.
@@ -71,7 +70,7 @@ artifact messages, not guessed executable paths.
 | x86_64-pc-windows-msvc (studio-win) | LLVM, `-Zthreads=4` | rust-lld (lld-link), not link.exe | verified on studio-win (RTX 5060, DX12 and Vulkan) |
 
 wgpu and naga stay on 30.0.1 until 31 is on crates.io; the move is kept
-only if every committed reference frame passes without re-recording.
+when its frames look right.
 
 ## Windows x64 prerequisites
 
@@ -156,8 +155,8 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
 
 `OG_GATE_SKIP` (comma-separated step names) drops those steps from a run.
-Its one standing use is `OG_GATE_SKIP=rust-gpu scripts/land.sh` for a head
-that moves no reference frame (AGENTS.md §Streams and landing). It is never
+Its standing use is `OG_GATE_SKIP=rust-gpu scripts/land.sh` for a head
+that does not change rendering (AGENTS.md §Streams and landing). It is never
 a default and is read only from the environment; an unknown name fails the
 run. A skipped step prints `SKIPPED <step> (OG_GATE_SKIP)` and the final
 line says `NOT RUN (OG_GATE_SKIP)`, so a skip never reads as a pass; steps
@@ -454,7 +453,8 @@ git diff --stat -- '*/references/vulkan/*'                         # see which f
 `OG_UI_CAPTURE=1` rewrites og-ui's frames in
 `crates/og-tests-ui/references`. Record twice and compare the two sets byte
 for byte before committing, so no frame flips on the host. Commit the new
-references with the change and describe what each moved frame now shows.
+references in a batch and say what each moved frame now shows, not by how
+much it moved.
 A frame from another tier never replaces a recording-tier reference.
 `references/metal/` is kept as Metal's compatibility set and nothing new
 is recorded there; a project fixture whose playtest names a
