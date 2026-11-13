@@ -20,6 +20,14 @@ enum Shell {
     Spotlight,
 }
 
+/// CSS's text-transform and white-space processing over a text's source.
+fn css_text<'a>(r: &Resolved, language: &str, raw: &'a str) -> std::borrow::Cow<'a, str> {
+    match r.text.as_deref() {
+        Some(t) => t.shown(raw, language).into(),
+        None => raw.into(),
+    }
+}
+
 impl Ui {
     /// Builds node `i` (and its subtree); `root_id` names a mount's root.
     /// Answers its path (none when it is not shown).
@@ -390,7 +398,7 @@ impl Ui {
         *self.front.accent_mut() = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             Kind::Label => {
-                resp = self.doc_label(b, n, &doc, &id, &path, key, &r, &styled, t, &text_of)?;
+                resp = self.doc_label(b, n, &doc, &id, &path, key, &r, &styled, t, &raw_of)?;
             }
             Kind::Button => {
                 let text = text_of(&r, b);
@@ -495,8 +503,9 @@ impl Ui {
             let mut fields =
                 fields::RenderFields::capture(self, key, last, Some(kind), resp, props, texture);
             // A text keeps its source: settlement shows it in its new style.
+            // A typewriter's is the part it shows.
             if kind == Kind::Label && styled.text.is_some() && styled.generated.is_none() {
-                fields.text = raw_of(&styled, b);
+                fields.text = self.revealed(key, raw_of(&styled, b));
             }
             self.apply_document_fields(&doc, n, &styled, &fields);
             self.docs.note_render_fields(key, fields);
@@ -1119,7 +1128,8 @@ impl Ui {
         (opened, shows_content)
     }
 
-    /// The document's `label` element.
+    /// The document's `label` element. `raw_of` is its source: the text
+    /// before CSS's processing.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     pub(crate) fn doc_label(
         &mut self,
@@ -1132,10 +1142,11 @@ impl Ui {
         r: &Resolved,
         styled: &Resolved,
         t: crate::style::Theme,
-        text_of: &impl Fn(&Resolved, &Build<'_>) -> String,
+        raw_of: &impl Fn(&Resolved, &Build<'_>) -> String,
     ) -> Option<crate::ui::Response> {
         let mut resp = crate::ui::Response::default();
-        let text = text_of(r, b);
+        let source = raw_of(r, b);
+        let text = css_text(r, b.env.language(), &source);
         let desc = r.label_desc(&t, self.fonts(), r.own_flow().rtl);
         if !n.inline.is_empty() {
             self.inline_links(b, n, r, path, key);
@@ -1221,13 +1232,15 @@ impl Ui {
             if let Some(count) = styled.num("count") {
                 self.count_text(id.as_str(), count, &desc, styled);
             } else {
-                let shown = self.reveal(key, &text, styled.num("reveal"));
+                let part = self.reveal(key, &source, styled.num("reveal"));
                 let i = self.leaf("label", id.as_str().into(), Default::default());
-                self.apply_label(i, shown, desc);
-                // A screen reader hears the line once and whole, not each
-                // tick's part of it.
-                if shown.len() < text.len() {
-                    self.tree.semantics_mut(i).name = Some(text.clone());
+                if part.len() < source.len() {
+                    self.apply_label(i, &css_text(r, b.env.language(), part), desc);
+                    // A screen reader hears the line once and whole, not
+                    // each tick's part of it.
+                    self.tree.semantics_mut(i).name = Some(text.into_owned());
+                } else {
+                    self.apply_label(i, &text, desc);
                 }
                 self.tree.css_text_content(i, styled);
             }

@@ -35,7 +35,9 @@ impl Ui {
     /// this tick: it starts again when its text changes and is whole under
     /// reduced motion. It fires `onrevealed` once as the last character
     /// shows. Its progress is widget memory (kept in snapshots); it builds
-    /// every tick until it is whole.
+    /// every tick until it is whole. `text` is its source: CSS transforms
+    /// the part shown, so a transform that changes a text's length (`ß` in
+    /// capitals) never splits what it makes.
     pub(crate) fn reveal<'a>(&mut self, key: u64, text: &'a str, cps: Option<f32>) -> &'a str {
         let Some(cps) = cps.filter(|c| *c > 0.0) else {
             return text;
@@ -65,18 +67,33 @@ impl Ui {
         if shown == total && a.a < 1.0 {
             self.docs.state_mut().happened.push(When::Revealed);
         }
+        let end = graphemes
+            .get(shown)
+            .and_then(|(start, _)| text.char_indices().nth(*start))
+            .map_or(text.len(), |(i, _)| i);
         a.a = if shown == total { 1.0 } else { 0.0 };
+        a.b = end as f32;
         self.set_anim(memory, a);
         if shown < total
             && let Some(owned) = self.tree.owning_mut().last_mut()
         {
             owned.moved = true;
         }
-        let end = graphemes
-            .get(shown)
-            .and_then(|(start, _)| text.char_indices().nth(*start))
-            .map_or(text.len(), |(i, _)| i);
         &text[..end]
+    }
+
+    /// The part of its `source` the text at `key` showed in this build: a
+    /// typewriter's part while it reveals, all of it for any other text.
+    pub(crate) fn revealed(&self, key: u64, mut source: String) -> String {
+        let memory = crate::id::child_key(key, "~reveal");
+        if self.front.touched.contains(&memory)
+            && let Some(a) = self.interaction.state().anims.get(&memory)
+            && a.a < 1.0
+            && source.is_char_boundary(a.b as usize)
+        {
+            source.truncate(a.b as usize);
+        }
+        source
     }
 
     /// A `<select>` drawn as a cycler: previous, its option, next; each

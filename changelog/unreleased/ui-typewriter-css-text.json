@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<og-typewriter>",
+      "summary": "A typewriter styled with a CSS text property (text-transform, white-space and the like, its own or inherited) reveals its text at its rate; it showed the whole text from the first tick. It cuts its source before CSS transforms it, so a character a transform lengthens (\u00df in capitals) appears whole."
+    }
+  ]
+}

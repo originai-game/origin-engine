@@ -2308,6 +2308,33 @@ fn typewriter_reveals_whole_graphemes_and_replays_completion() {
     }
 }
 
+/// A typewriter cuts its source and CSS transforms the part: the reveal
+/// neither shows the whole line at once nor splits what a transform makes
+/// of one character.
+#[test]
+fn typewriter_reveals_under_a_text_transform() {
+    let text = r#"<meta name="component" content="t">
+<div><og-typewriter id="Line" rate="60" onrevealed={done}>{$words}</og-typewriter></div>
+<style>#Line { text-transform: uppercase; }</style>"#;
+    for mounted in [false, true] {
+        let mut d = Doc::new(text, &[("words", json!("aßc"))], mounted);
+        assert_eq!(d.get("Line").text, "");
+        d.step(InputFrame::default());
+        assert_eq!(d.get("Line").text, "A");
+        assert_eq!(d.a11y("Line").name, "ASSC", "named by the whole line");
+        d.step(InputFrame::default());
+        assert_eq!(d.get("Line").text, "ASS", "ß is whole in capitals");
+        assert!(!d.events.iter().any(|event| event.name == "done"));
+        d.step(InputFrame::default());
+        assert_eq!(d.get("Line").text, "ASSC");
+        d.step(InputFrame::default());
+        assert_eq!(
+            d.events.iter().filter(|event| event.name == "done").count(),
+            1
+        );
+    }
+}
+
 /// The settings screen's tree from data: pages as tabs, each entry's
 /// control writing its row's value back, Apply and Revert only while
 /// changes are pending.
