@@ -86,7 +86,7 @@ impl RetainedContentRetainedHost for RetainedHost {
                 },
             );
         }
-        // A prop its user leaves out reads its default (`$props()`).
+        // A prop its user leaves out reads its default (`data-default`).
         for prop in &instance.props {
             if let Some(default) = &prop.default
                 && !lexical.props.contains_key(&prop.name)
@@ -221,7 +221,7 @@ impl RetainedContentRetainedHost for RetainedHost {
 }
 
 /// An instance at `doc.nodes[index]` that leaves out a prop `instance`
-/// declares with no default (`let { orientation = "vertical" } = $props()`)
+/// declares with no default (`data-default` on its `<meta name="prop:…">`)
 /// is refused: the prop would be unbound, and the document built nothing.
 /// Content props are passed as snippets and children, not arguments.
 fn unpassed(doc: &UiDocument, index: usize, instance: &UiDocument) -> Result<(), String> {
@@ -233,7 +233,7 @@ fn unpassed(doc: &UiDocument, index: usize, instance: &UiDocument) -> Result<(),
     });
     match missing {
         Some(p) => Err(format!(
-            "{}:{}: <{}> leaves out its prop '{}'; pass it, or give it a default in the component (`let {{ {} = … }} = $props()`)",
+            "{}:{}: <{}> leaves out its prop '{}'; pass it, or give it a default in the component (data-default=\"…\" on <meta name=\"prop:{}\">)",
             doc.source, node.line, instance.name, p.name, p.name
         )),
         None => Ok(()),

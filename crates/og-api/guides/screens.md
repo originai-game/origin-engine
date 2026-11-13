@@ -161,8 +161,8 @@ measurements are `og style check-project`.
 - Write one `.svelte` file per screen or component. Declare contracts
   with `<meta>`, structure with core HTML tags, and look in a scoped
   `<style>` block. TypeScript builds no UI trees. A `<script lang="ts">`
-  holds only `let { gold = 0 } = $props()` and `const x = $derived(expr)`;
-  state and logic live in a TS system that writes stores.
+  holds only `const x = $derived(expr)`; state and logic live in a TS
+  system that writes stores.
 - Read a named store with `{$gold}` or `disabled={$gold < 10}`. Use
   `bind:value={$volume}` for two-way controls. Ordinary attribute bindings
   never write. `onclick={buy}` names an action supplied by the game.
@@ -296,7 +296,8 @@ measurements are `og style check-project`.
 - Use `<meta name="screen" content="pause" data-layer="menu"
   data-focus="Menu/Resume" data-pause="true">` for a screen.
   Components use `name="component"`. Props use `name="prop:volume"`,
-  `content="number"`, and `data-doc="…"`; actions use `name="action:back"`;
+  `content="number"`, `data-doc="…"` and, for a prop its user may leave
+  out, `data-default="0.8"`; actions use `name="action:back"`;
   fixtures use `name="fixture:default"` with JSON content.
 - Mount a screen with stores, not a viewmodel: `og.ui.scope(world,
   "menus").mount("pause", "pause", { volume })` puts it on the layer stack

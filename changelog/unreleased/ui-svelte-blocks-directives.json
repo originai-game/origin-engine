@@ -5,8 +5,8 @@
       "summary": "{#key expr} makes its content again (new elements, their entrances playing) when expr changes; {@const name = expr} names an expression inside a block; {#await $load}…{:then value}…{:catch error}…{/await} shows its branches by the settled record a store holds ({ status: \"pending\" | \"fulfilled\" | \"rejected\", value, reason }). Nothing is awaited in the tick (docs/ui.md §2)."
     },
     {
-      "member": "UI documents: <script> with $props() and $derived",
-      "summary": "A document's <script lang=\"ts\"> may declare its props with literal defaults (let { gold = 0 } = $props()) and name pure expressions with $derived(expr) or $derived.by(() => expr); a component user who leaves a prop out reads its default, and the generated .d.ts marks it optional. $state, $effect, imports, functions and other statements are refused with a diagnostic pointing to a TS system."
+      "member": "UI documents: prop defaults and <script> with $derived",
+      "summary": "A prop's metadata may give its default (<meta name=\"prop:gold\" content=\"number\" data-default=\"0\">): a component user who leaves the prop out reads it, and the generated .d.ts marks it optional. A document's <script lang=\"ts\"> may name pure expressions with $derived(expr) or $derived.by(() => expr). $props() is refused with a diagnostic naming the metadata form; $state, $effect, imports, functions and other statements are refused with a diagnostic pointing to a TS system."
     },
     {
       "member": "UI documents: transition:, in:, out: and animate:flip",

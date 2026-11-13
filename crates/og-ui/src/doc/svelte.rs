@@ -62,7 +62,6 @@ pub(crate) fn parse_with_pack(
             list_fors: Vec::new(),
             aria_refs: Vec::new(),
             consts: Vec::new(),
-            script_props: Vec::new(),
             inline_styles: Vec::new(),
             scoped: Vec::new(),
             forms: Vec::new(),
@@ -102,24 +101,7 @@ pub(crate) fn parse_with_pack(
                     if std::mem::replace(&mut script, true) {
                         return Err((*at, "a document has one <script>".into()));
                     }
-                    let (props, derived) = super::script::read(text, *at)?;
-                    if let Some((n, _)) = derived
-                        .iter()
-                        .find(|(n, _)| p.doc.derived.iter().any(|(m, _)| m == n))
-                    {
-                        return Err((*at, format!("{n} is declared twice")));
-                    }
-                    for prop in props {
-                        // A `<meta name="prop:…">` before it states the type
-                        // and its doc; the script adds the default.
-                        if let Some(q) = p.doc.props.iter_mut().find(|q| q.name == prop.name) {
-                            q.default = prop.default;
-                        } else {
-                            p.script_props.push(prop.name.clone());
-                            p.doc.props.push(prop);
-                        }
-                    }
-                    p.doc.derived.extend(derived);
+                    p.doc.derived = super::script::read(text, *at)?;
                 }
                 _ => {
                     if p.doc.root != NONE {
@@ -137,6 +119,17 @@ pub(crate) fn parse_with_pack(
         }
         if p.doc.root == NONE {
             return Err((0, "add one root UI element".into()));
+        }
+        if let Some((n, _)) = p
+            .doc
+            .derived
+            .iter()
+            .find(|(n, _)| p.doc.props.iter().any(|q| q.name == *n))
+        {
+            return Err((
+                0,
+                format!("{n} is declared twice: as a prop and as a derived value"),
+            ));
         }
         if let Some(attrs) = window {
             p.window(&attrs)?;
@@ -425,6 +418,30 @@ fn text_value(children: &[Node], at: usize) -> Result<Option<(PropValue, String)
     Ok((!literal.is_empty()).then_some((PropValue::Lit(Lit::Str(literal)), source)))
 }
 
+/// A prop's `data-default`, read by the type its metadata declares: a
+/// string's is the attribute's text, the others' are JSON of that type.
+/// Content is passed as children and snippets and has none.
+fn prop_default(name: &str, ty: &str, text: &str) -> Result<serde_json::Value, String> {
+    use serde_json::Value;
+    if ty == "string" {
+        return Ok(text.into());
+    }
+    let value: Option<Value> = serde_json::from_str(text).ok();
+    match (ty, value) {
+        ("number", Some(v @ Value::Number(_)))
+        | ("bool", Some(v @ Value::Bool(_)))
+        | ("list", Some(v @ Value::Array(_)))
+        | ("object", Some(v @ Value::Object(_)))
+        | ("any", Some(v)) => Ok(v),
+        ("content", _) => Err(format!(
+            "{name} is content, which has no default; its user passes children or a snippet"
+        )),
+        _ => Err(format!(
+            "{name}'s data-default `{text}` is not a {ty}; write it as JSON (5, true, [1, 2], {{\"a\": 1}})"
+        )),
+    }
+}
+
 pub(super) fn literal(ty: Ty, text: &str) -> Result<PropValue, String> {
     let values = match ty {
         Ty::Text | Ty::Name | Ty::Word(_) => vec![Value::String(text.into())],
@@ -460,9 +477,6 @@ struct Parser {
     /// `{@const}`s: (their block, name, expression), substituted once the
     /// tree is read ([`super::script::apply`]).
     consts: Vec<(usize, String, Expr)>,
-    /// Props the script declared, whose type a `<meta name="prop:…">` may
-    /// state.
-    script_props: Vec<String>,
     /// Elements' `style` attributes and `style:` directives: declarations
     /// that follow every rule of the stylesheet.
     inline_styles: Vec<(usize, Vec<StyleDeclaration>)>,
@@ -581,8 +595,7 @@ impl Parser {
                 }
             }
         } else if let Some(name) = name.strip_prefix("prop:") {
-            let from_script = self.script_props.iter().any(|p| p == name);
-            if self.doc.props.iter().any(|p| p.name == name) && !from_script {
+            if self.doc.props.iter().any(|p| p.name == name) {
                 return Err((at, format!("duplicate prop {name}; declare it once")));
             }
             if !identifier(name)
@@ -593,20 +606,16 @@ impl Parser {
             {
                 return Err((at, "prop metadata needs a name and type number/string/bool/list/object/any/content".into()));
             }
-            if from_script {
-                // The script declared it; the metadata states its type.
-                self.script_props.retain(|p| p != name);
-                let p = self.doc.props.iter_mut().find(|p| p.name == name).unwrap();
-                p.ty = content.into();
-                p.doc = get("data-doc").into();
-            } else {
-                self.doc.props.push(ContractProp {
-                    name: name.into(),
-                    ty: content.into(),
-                    doc: get("data-doc").into(),
-                    default: None,
-                });
-            }
+            let default = match attrs.iter().find(|a| a.name == "data-default") {
+                Some(a) => Some(prop_default(name, content, &a.value).map_err(|why| (a.at, why))?),
+                None => None,
+            };
+            self.doc.props.push(ContractProp {
+                name: name.into(),
+                ty: content.into(),
+                doc: get("data-doc").into(),
+                default,
+            });
         } else if let Some(name) = name.strip_prefix("action:") {
             self.doc.actions.push((name.into(), content.into()));
         } else if let Some(name) = name.strip_prefix("fixture:") {

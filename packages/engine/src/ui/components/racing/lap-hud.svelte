@@ -14,8 +14,7 @@
 <meta name="prop:finalLap" content="bool" data-doc="The player is on the final lap: the Final lap badge shows on the lap cell.">
 <meta name="prop:timeLeft" content="number" data-doc="Seconds left to the next checkpoint or the session's end (HudTimer); negative hides it.">
 <meta name="prop:timeTotal" content="number" data-doc="The checkpoint's whole time, for the timer's ring; 0 draws none.">
-<meta name="prop:warnAt" content="number" data-doc="Seconds left when the timer turns warn (HudTimer's warnAt); 10 when left out.">
-<script lang="ts">let { warnAt = 10 }: { warnAt?: number } = $props();</script>
+<meta name="prop:warnAt" content="number" data-default="10" data-doc="Seconds left when the timer turns warn (HudTimer's warnAt); 10 when left out.">
 <meta name="fixture:default" content='{"lap":2,"laps":3,"position":3,"racers":8,"current":"0:48.207","best":"1:21.904","last":"1:23.116","split":"-0.412","splitState":"ahead","freshBest":false,"finalLap":false,"timeLeft":-1,"timeTotal":0}'>
 <meta name="fixture:grid" content='{"lap":0,"laps":3,"position":0,"racers":8,"current":"","best":"","last":"","split":"","splitState":"even","freshBest":false,"finalLap":false,"timeLeft":-1,"timeTotal":0}'>
 <meta name="fixture:finalLap" content='{"lap":3,"laps":3,"position":1,"racers":8,"current":"0:12.660","best":"1:20.871","last":"1:20.871","split":"+1.204","splitState":"behind","freshBest":true,"finalLap":true,"timeLeft":-1,"timeTotal":0}'>

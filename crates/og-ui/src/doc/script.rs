@@ -1,5 +1,4 @@
 //! A document's `<script>` (docs/ui.md §2): only what is data, never code.
-//! `let { … } = $props()` declares its props with literal defaults, and
 //! `$derived(expr)` / `$derived.by(() => expr)` name pure expressions. A
 //! derived value and a `{@const}` are names for expressions: every read of
 //! one is replaced by its expression when the document is parsed, so they
@@ -13,21 +12,16 @@ use std::collections::BTreeMap;
 const ELSEWHERE: &str =
     "put state and logic in a TS system and pass the result to the document through a store";
 
-/// What a script declares: its props and its derived values, in order.
-type Declared = (Vec<ContractProp>, Vec<(String, Expr)>);
+/// Props have one declaration, the metadata: it carries the type, the doc
+/// and the default the contract and `og ui types` read.
+const PROPS: &str = "$props() is not read; declare each prop as <meta name=\"prop:name\" content=\"type\">, with data-default=\"…\" for its default";
 
-/// The props and derived values `text` (at `base`) declares.
-pub(super) fn read(text: &str, base: usize) -> Result<Declared, Error> {
-    let mut props = Vec::new();
+/// The derived values `text` (at `base`) declares, in order.
+pub(super) fn read(text: &str, base: usize) -> Result<Vec<(String, Expr)>, Error> {
     let mut derived: Vec<(String, Expr)> = Vec::new();
     for (stmt, at) in statements(text) {
         let at = base + at;
-        let words: Vec<&str> = stmt.split_whitespace().collect();
-        let first = words.first().copied().unwrap_or("");
-        if matches!(first, "interface" | "type") {
-            // Erased TypeScript: types of the props, nothing that runs.
-            continue;
-        }
+        let first = stmt.split_whitespace().next().unwrap_or("");
         let refuse =
             |what: &str| -> Error { (at, format!("{what} in a document's <script>; {ELSEWHERE}")) };
         let Some(rest) = ["let ", "const "].iter().find_map(|k| stmt.strip_prefix(k)) else {
@@ -35,15 +29,11 @@ pub(super) fn read(text: &str, base: usize) -> Result<Declared, Error> {
                 "import" | "export" => "imports and exports are not allowed",
                 "function" | "async" | "class" => "functions are not allowed",
                 _ if stmt.contains("$effect") => "$effect is not allowed",
-                _ => "statements are not allowed (only let { … } = $props() and $derived)",
+                _ => "statements are not allowed (only const name = $derived(expr))",
             }));
         };
         let Some((target, value)) = split_assign(rest) else {
-            return Err((
-                at,
-                "declare `let { name = default } = $props()` or `const name = $derived(expr)`"
-                    .into(),
-            ));
+            return Err((at, "declare `const name = $derived(expr)`".into()));
         };
         let value = value.trim();
         if value.starts_with("$state") {
@@ -53,73 +43,7 @@ pub(super) fn read(text: &str, base: usize) -> Result<Declared, Error> {
             return Err(refuse("$effect is not allowed"));
         }
         if value == "$props()" {
-            let pattern = strip_type(target.trim());
-            let Some(inner) = pattern.strip_prefix('{').and_then(|p| p.strip_suffix('}')) else {
-                return Err((
-                    at,
-                    "destructure the props: let { a, b = 1 } = $props()".into(),
-                ));
-            };
-            for entry in split_top(inner, ',') {
-                let entry = entry.trim();
-                if entry.is_empty() {
-                    continue;
-                }
-                if entry.starts_with("...") {
-                    return Err((
-                        at,
-                        "rest props (...rest) are not supported; name each prop".into(),
-                    ));
-                }
-                let (name, default) = match split_assign(entry) {
-                    Some((n, d)) => (n.trim(), Some(d.trim())),
-                    None => (entry, None),
-                };
-                if !identifier(name) {
-                    return Err((
-                        at,
-                        format!("{name}: a prop is a plain name; renaming is not supported"),
-                    ));
-                }
-                let default = match default {
-                    None => None,
-                    Some(d) => {
-                        let d = match d
-                            .strip_prefix("$bindable(")
-                            .and_then(|d| d.strip_suffix(')'))
-                        {
-                            Some(inner) => inner.trim(),
-                            None => d,
-                        };
-                        if d.is_empty() {
-                            None
-                        } else {
-                            Some(literal(d).ok_or((
-                                at,
-                                format!("{name}'s default `{d}` is not a literal; a default is a number, string, boolean, null, array or object of them"),
-                            ))?)
-                        }
-                    }
-                };
-                if props.iter().any(|p: &ContractProp| p.name == name) {
-                    return Err((at, format!("duplicate prop {name}; declare it once")));
-                }
-                let ty = match &default {
-                    Some(serde_json::Value::Number(_)) => "number",
-                    Some(serde_json::Value::String(_)) => "string",
-                    Some(serde_json::Value::Bool(_)) => "bool",
-                    Some(serde_json::Value::Array(_)) => "list",
-                    Some(serde_json::Value::Object(_)) => "object",
-                    _ => "any",
-                };
-                props.push(ContractProp {
-                    name: name.into(),
-                    ty: ty.into(),
-                    doc: String::new(),
-                    default,
-                });
-            }
-            continue;
+            return Err((at, PROPS.into()));
         }
         let name = strip_type(target.trim());
         if !identifier(name) {
@@ -160,7 +84,7 @@ pub(super) fn read(text: &str, base: usize) -> Result<Declared, Error> {
                 "`{name} = {value}` is a variable, which is not allowed"
             )));
         };
-        if derived.iter().any(|(n, _)| n == name) || props.iter().any(|p| p.name == name) {
+        if derived.iter().any(|(n, _)| n == name) {
             return Err((at, format!("{name} is declared twice")));
         }
         let mut expr = super::syntax::expression(&source, at)?;
@@ -168,7 +92,7 @@ pub(super) fn read(text: &str, base: usize) -> Result<Declared, Error> {
         substitute(&mut expr, &scope).map_err(|e| (at, e))?;
         derived.push((name.into(), expr));
     }
-    Ok((props, derived))
+    Ok(derived)
 }
 
 /// Replaces each read of a name in `scope` by its expression.

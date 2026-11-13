@@ -105,13 +105,14 @@ tick.
   row field holding `{ status: "pending" | "fulfilled" | "rejected", value,
   reason }` (`Promise.allSettled`'s words), written by a TS system; no
   promise runs in the tick.
-- `<script lang="ts">` holds only `let { a, b = 1, c = $bindable('x') }:
-  Props = $props()` (literal defaults), `$derived(expr)` and
-  `$derived.by(() => expr)` over pure expressions, and erased `interface`
-  and `type` declarations. A prop's type is its default's unless a
-  `<meta name="prop:…">` states it; a prop with a default is optional in
-  the generated `.d.ts`; a prop with none is required, and a mount leaving
-  it out returns an error naming the instance and prop. Derived values are
+- A prop is declared once, as `<meta name="prop:name" content="type"
+  data-doc="…">`. `data-default="…"` gives its default: a string's is the
+  attribute's text, the other types' are JSON of that type (`5`, `true`,
+  `[1, 2]`). A prop with a default is optional in the generated `.d.ts`; a
+  prop with none is required, and a mount leaving it out returns an error
+  naming the instance and prop. `$props()` is refused.
+- `<script lang="ts">` holds only `const name = $derived(expr)` and
+  `$derived.by(() => expr)` over pure expressions. Derived values are
   replaced where read. State and logic live in a TS system.
 - `transition:`, `in:` and `out:` (`|local`, `|global` accepted) set the
   element's `enter`/`exit` from `fade`, `fly`, `slide` (scales along its

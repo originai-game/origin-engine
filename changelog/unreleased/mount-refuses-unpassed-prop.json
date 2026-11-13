@@ -2,7 +2,7 @@
   "fixed": [
     {
       "member": "UiScope.mount",
-      "summary": "A mount whose document uses a component without a prop that component declares with no default now returns an error naming the instance and the prop (`row.svelte:2: <Card> leaves out its prop 'orientation'`). It used to return ok and build nothing, with a misleading 'not a row variable' message only in the warnings. A prop with a `$props()` default may still be left out."
+      "summary": "A mount whose document uses a component without a prop that component declares with no default now returns an error naming the instance and the prop (`row.svelte:2: <Card> leaves out its prop 'orientation'`). It used to return ok and build nothing, with a misleading 'not a row variable' message only in the warnings. A prop with a `data-default` may still be left out."
     }
   ]
 }

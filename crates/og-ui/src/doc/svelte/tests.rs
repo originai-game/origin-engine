@@ -301,8 +301,16 @@ fn rejects_wrong_syntax_and_reports_authored_locations() {
             "variable, which is not allowed",
         ),
         (
-            "<script>let { a = b() } = $props()</script><text/>",
-            "not a literal",
+            "<script>let { a = 1 } = $props()</script><text/>",
+            "declare each prop as <meta",
+        ),
+        (
+            "<meta name='prop:a' content='number' data-default='b()'><text/>",
+            "not a number",
+        ),
+        (
+            "<meta name='prop:a' content='content' data-default='x'><text/>",
+            "has no default",
         ),
         ("<text>{@html $raw}</text>", "TS system"),
         ("<column>{@const a = 1}</column>", "directly inside a block"),

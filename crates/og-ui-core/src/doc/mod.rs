@@ -557,7 +557,7 @@ pub struct ContractProp {
     pub name: String,
     pub ty: String,
     pub doc: String,
-    /// Its default (`let { gold = 0 } = $props()`): what it reads when the
+    /// Its default (`data-default` on its metadata): what it reads when the
     /// user passes none.
     pub default: Option<serde_json::Value>,
 }

@@ -382,7 +382,7 @@ mod tests {
     /// component declares with no default returns the error, naming the
     /// instance and the prop, instead of returning ok and building nothing
     /// (the bound name was unbound, and the deferred compile's error went
-    /// only to the warnings). A prop with a `$props()` default may be left
+    /// only to the warnings). A prop with a `data-default` may be left
     /// out and reads its default.
     ///
     /// Ways it could fail: only the page's own instances checked (a
@@ -402,9 +402,8 @@ mod tests {
             ),
             (
                 "tag.svelte",
-                r#"<script lang="ts">let { label = 'plain' }: { label?: string } = $props();</script>
-            <meta name="component" content="Tag">
-            <meta name="prop:label" content="string">
+                r#"<meta name="component" content="Tag">
+            <meta name="prop:label" content="string" data-default="plain">
             <text id="Tag">{label}</text>"#,
             ),
             (
@@ -1447,12 +1446,13 @@ mod tests {
                 "badge.svelte",
                 r#"
             <script lang="ts">
-                // Data only: props with defaults and pure derived values.
-                let { label = 'none', count = 2 }: { label?: string; count?: number } = $props();
+                // Data only: pure derived values.
                 const doubled = $derived(count * 2);
                 const shown = $derived.by(() => label + ':' + doubled);
             </script>
             <meta name="component" content="Badge">
+            <meta name="prop:label" content="string" data-default="none">
+            <meta name="prop:count" content="number" data-default="2">
             <text id="Badge">{shown}</text>
         "#,
             )
