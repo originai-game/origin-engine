@@ -19,11 +19,11 @@ edit("crates/og-audio/src/schema.rs", [
     ('/// The pitch last sent.\n    pub pitch:', '/// The playback rate last sent.\n    #[reflect(name = "playbackRate")]\n    pub pitch:'),
 ])
 for name in [
-    "crates/og-runtime/src/timeline/evaluate.rs",
-    "crates/og-runtime/src/video.rs",
-    "crates/og-runtime/src/vfx.rs",
-    "crates/og-runtime/src/modules/motion.rs",
-    "crates/og-runtime/src/modules/ui_desc.rs",
+    "crates/og-runtime/src/bind/timeline/evaluate.rs",
+    "crates/og-runtime/src/bind/video.rs",
+    "crates/og-runtime/src/present/vfx.rs",
+    "crates/og-runtime/src/bind/modules/motion.rs",
+    "crates/og-runtime/src/bind/modules/ui_desc.rs",
     "crates/og-timeline/src/model/text.rs",
     "crates/og-timeline/src/model/tracks.rs",
 ]:

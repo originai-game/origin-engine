@@ -73,7 +73,7 @@ pub(crate) struct Assembled {
     pub layouts: BTreeMap<String, Layout>,
     pub names_by_id: Vec<String>,
     /// Game records only other games name, left unregistered until this
-    /// game names one (super::super::lazy::ensure).
+    /// game names one (crate::engine::lazy::ensure).
     pub deferred: BTreeSet<String>,
     pub resources: Vec<String>,
     pub systems: Vec<SystemEntry>,
@@ -134,7 +134,7 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.SoftBody" => og_physics::SoftBody::schema().version,
         "og.Garment" => og_physics::Garment::schema().version,
         "og.Fluid3D" => og_physics::Fluid3D::schema().version,
-        crate::video::PLAYER => crate::video::PLAYER_VERSION,
+        crate::bind::video::PLAYER => crate::bind::video::PLAYER_VERSION,
         // R11: Light2D's kind, cone, height and layers; Occluder2D's
         // polygon and layers; Lighting2D's shadowAngles.
         "og.Light2D" | "og.Occluder2D" | "og.Lighting2D" => 2,
@@ -214,14 +214,14 @@ pub(crate) fn assemble(
             || super::feel::REGISTERED_BY_FEEL.contains(&decl.schema)
             || super::timeline::REGISTERED_BY_TIMELINE.contains(&decl.schema)
             || decl.schema == super::stream::EVENT
-            || decl.schema == crate::vfx::EVENT
+            || decl.schema == crate::present::vfx::EVENT
         {
             continue;
         }
         // A lazy record (super::lazy): its layout now, registered with the
         // world when a game first uses it, so a world without it keeps its
         // type table and hash.
-        if crate::lazy::is_lazy(decl.schema) {
+        if crate::engine::lazy::is_lazy(decl.schema) {
             match Layout::from_decl(decl) {
                 Ok(l) => {
                     layouts.insert(l.schema.clone(), l);
@@ -263,10 +263,10 @@ pub(crate) fn assemble(
     // og.timeline's events (the marker's name is a str64).
     super::timeline::register_records(&mut world, &mut layouts)?;
     // og.VfxEvent (its name is a str64): its layout from its Rust type,
-    // registered lazily (super::super::lazy) like og.Vfx.
+    // registered lazily (crate::engine::lazy) like og.Vfx.
     {
         use og_core::Reflect;
-        let l = Layout::from_schema(&crate::vfx::VfxEvent::schema(), RecordKind::Event);
+        let l = Layout::from_schema(&crate::present::vfx::VfxEvent::schema(), RecordKind::Event);
         layouts.insert(l.schema.clone(), l);
     }
     // og.stream's event (its group is a str64), registered as it is sent.
@@ -282,7 +282,7 @@ pub(crate) fn assemble(
     // their defaults. A record only other games of the process name (a
     // second game's resource, declared beside this one in a test run) is
     // not this world's: it is registered when this game first names it
-    // (super::super::lazy::ensure), so one game's declarations never reach
+    // (crate::engine::lazy::ensure), so one game's declarations never reach
     // another's type table, snapshot or hash.
     let ours = named_by(&game, &all_systems, &all_hooks);
     let theirs: BTreeSet<String> = others
@@ -376,7 +376,7 @@ pub(crate) fn assemble(
     }
     // Lazy records a game system or hook names: registered before the
     // systems that declare them, their modules granted them once mounted.
-    let lazy_named: Vec<&'static str> = crate::lazy::LAZY
+    let lazy_named: Vec<&'static str> = crate::engine::lazy::LAZY
         .iter()
         .map(|l| l.name)
         .filter(|&name| {
@@ -394,10 +394,10 @@ pub(crate) fn assemble(
                 })
             })
         })
-        .flat_map(crate::lazy::with_partners)
+        .flat_map(crate::engine::lazy::with_partners)
         .collect();
     // In LAZY's order, once each (a partner joins at its own place).
-    let lazy_named: Vec<&'static str> = crate::lazy::LAZY
+    let lazy_named: Vec<&'static str> = crate::engine::lazy::LAZY
         .iter()
         .map(|l| l.name)
         .filter(|n| lazy_named.contains(n))
@@ -549,7 +549,7 @@ pub(crate) fn assemble(
     // Tweens and flipbooks, then og-anim, then tilemaps and camera feel;
     // og.sprite after physics (the poses at the tick's end).
     // Registered ones only: og.PrefabLink's layout is known before the
-    // world registers it (crate::prefab).
+    // world registers it (crate::world::prefab).
     let components: Vec<String> = layouts
         .values()
         .filter(|l| l.kind == RecordKind::Component && world.id_by_name(&l.schema).is_ok())
@@ -557,7 +557,7 @@ pub(crate) fn assemble(
         .collect();
     let feel = super::feel::install_front(&mut world, &components)?;
     super::video::install(&mut world, mount, &layouts)?;
-    crate::weather::install(&mut world, &layouts)?;
+    crate::bind::weather::install(&mut world, &layouts)?;
     // og.path and og.timeline after tweens, before og-anim (an animation
     // track sets players) and physics.
     super::timeline::install(&mut world, mount, &layouts, &ui)?;
@@ -573,7 +573,7 @@ pub(crate) fn assemble(
         profile,
     )?;
     super::e6::mount_back(&mut world, mount, profile, &physics)?;
-    crate::destruction::set_physics(&mount.modules.destruction, &physics);
+    crate::bind::destruction::set_physics(&mount.modules.destruction, &physics);
     let mounted = super::modules::mount_back(
         &mut world,
         engine_id,
@@ -584,7 +584,7 @@ pub(crate) fn assemble(
     )?;
     super::feel::install_back(&mut world, &feel, &feel_records)?;
     for name in lazy_named {
-        crate::lazy::enable(&mut world, mount, name)?;
+        crate::engine::lazy::enable(&mut world, mount, name)?;
     }
     let names_by_id = world.schemas().into_iter().map(|s| s.name).collect();
     Ok(Assembled {
@@ -661,9 +661,9 @@ pub(crate) fn extract_layouts(eng: &Engine) -> (Option<Layout>, Option<Layout>, 
             points: get("og.Points"),
             probe: get("og.ReflectionProbe"),
             light_volume: get("og.LightVolume"),
-            realtime_volume: get(crate::probes::REALTIME_LIGHT_VOLUME),
+            realtime_volume: get(crate::present::probes::REALTIME_LIGHT_VOLUME),
             interpolation: get("og.Interpolation"),
-            origin: get(crate::origin::RESOURCE),
+            origin: get(crate::world::origin::RESOURCE),
             views: super::views::ViewLayouts::from(get),
             physics: st.physics.clone(),
             engine: eng.id,
@@ -970,10 +970,10 @@ pub fn render_options(id: u32) -> Value {
 /// out (or tier) is 4x MSAA in a 2D project (options.profile). Both hosts
 /// create their renderer from it, so the options mean the same on each.
 pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDesc {
-    use crate::wire::{Antialias, PointShadows, RenderOptions, TaaHistory, Transparency};
+    use crate::host::wire::{Antialias, PointShadows, RenderOptions, TaaHistory, Transparency};
     let given = render_options(id);
     // Options og.game refused (it refuses the engine) read as none given.
-    let options: RenderOptions = crate::wire::value(&given, "render").unwrap_or_default();
+    let options: RenderOptions = crate::host::wire::value(&given, "render").unwrap_or_default();
     // A NaN reads as left out.
     let number = |v: f32, or: f32| if v.is_nan() { or } else { v };
     let mut desc = base;
@@ -1026,7 +1026,7 @@ pub fn render_desc(id: u32, base: og_render::RenderDesc) -> og_render::RenderDes
     // og.motion times its compute slices where the adapter can (its
     // `Gpu::set_frame_budget`): a publish build asks only for a game whose
     // bundle declares the model.
-    desc.timestamps = engine(id).is_ok_and(|e| crate::motion::present::declares(&e));
+    desc.timestamps = engine(id).is_ok_and(|e| crate::bind::motion::present::declares(&e));
     desc
 }
 

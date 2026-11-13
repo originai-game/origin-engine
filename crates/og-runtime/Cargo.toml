@@ -56,7 +56,7 @@ default = ["shaping", "physics2d", "physics3d", "story", "video", "destruction",
 # `publish`: nothing in a publish build reads them).
 publish = ["og-probe/publish", "og-render/publish", "og-core/publish", "og-api/publish"]
 # The 2D profile: the renderer without the 3D world subsystems (og-render's
-# `profile2d`) and the runtime without terrain (src/terrain_absent.rs: its
+# `profile2d`) and the runtime without terrain (src/bind/absent/terrain.rs: its
 # calls and height-field colliders answer the refusal); the 2D web modules,
 # docs/web-export.md §Variants.
 profile2d = ["og-render/profile2d"]
@@ -70,7 +70,7 @@ physics2d = ["og-physics/physics2d"]
 physics3d = ["og-physics/physics3d"]
 # The optional modules (docs/design.md §2.1): each is built in by default;
 # a build without one links none of its crate, and its calls answer a
-# refusal naming the feature (src/<module>_absent.rs), while the world it
+# refusal naming the feature (src/bind/absent/<module>.rs), while the world it
 # leaves (records in IDL order, systems, state blocks) is the full build's
 # for a game that never uses the module.
 # og.story: dialogues, barks and quests (og-story; src/story.rs).

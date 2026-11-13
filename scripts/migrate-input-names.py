@@ -16,7 +16,7 @@ renames = {
 }
 paths = [
     "crates/og-api/api/input.ogt",
-    "crates/og-runtime/src/api/actions.rs",
+    "crates/og-runtime/src/host/api/actions.rs",
     "crates/og-host-node/src/host.rs",
     "crates/og-host-web/src/host.rs",
     "packages/engine/src/input.ts",

@@ -1,4 +1,4 @@
-//! The runtime's typed wire readers (`crates/og-runtime/src/generated/wire.rs`):
+//! The runtime's typed wire readers (`crates/og-runtime/src/host/generated/wire.rs`):
 //! one Rust type per struct, enum and union a binding takes as JSON (or, for
 //! enums, as a string), with its IDL defaults and a reader over
 //! `serde_json::Value`, so a field name, a type or a default the runtime
@@ -627,7 +627,7 @@ impl<'a> Gen<'a, '_> {
     }
 }
 
-/// `crates/og-runtime/src/generated/wire.rs`.
+/// `crates/og-runtime/src/host/generated/wire.rs`.
 pub fn wire_rs(ix: &Index<'_>) -> String {
     let mut g = Gen {
         ix,

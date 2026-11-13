@@ -1,0 +1,260 @@
+//! The IDL's `ai` module over og-ai: behaviours (cooked or from text),
+//! blackboard access, noises and descriptions. The behaviour registry is
+//! the engine's (`e6::Modules::behaviours`); og.ai's system and memories are
+//! the world's.
+
+use crate::engine::engine;
+use crate::host::wire::{AiDescription, BehaviourInfo, ToJson};
+use crate::parse;
+use og_ai::{AiSystem, Behaviour, Root, Value as AiValue};
+use og_core::glam::Vec3;
+use og_ecs::{Entity, World};
+use serde_json::{Value, json};
+use std::sync::Arc;
+
+fn handle(h: f64) -> u64 {
+    if h.is_finite() && h >= 0.0 {
+        h as u64
+    } else {
+        0
+    }
+}
+
+fn system(engine: u32) -> Option<AiSystem> {
+    crate::bind::e6::with(engine, |m| m.ai.clone()).flatten()
+}
+
+fn info(h: u64, b: &Behaviour) -> BehaviourInfo {
+    let (kind, states) = match &b.root {
+        Root::Tree(_) => ("tree", Vec::new()),
+        Root::Machine { states, .. } => {
+            ("machine", states.iter().map(|s| s.name.clone()).collect())
+        }
+    };
+    BehaviourInfo {
+        behaviour: h,
+        name: b.name.clone(),
+        kind: kind.into(),
+        states,
+        nodes: b.nodes.iter().map(|n| n.name.clone()).collect(),
+        keys: b.keys.iter().map(|k| k.0.clone()).collect(),
+        subtrees: b.subtrees.clone(),
+    }
+}
+
+fn insert(world: u32, b: Behaviour) -> Result<BehaviourInfo, String> {
+    // A behaviour with a game action: og.AiActionStarted and
+    // og.AiActionStopped join the world (lazy records).
+    if og_ai::has_actions(&b) {
+        let eng = engine(world)?;
+        for name in ["og.AiActionStarted", "og.AiActionStopped"] {
+            crate::engine::lazy::ensure(&eng, eng.world()?, name)?;
+        }
+    }
+    let reg = crate::bind::e6::with(world, |m| m.behaviours.clone())
+        .ok_or_else(|| format!("no engine {world}"))?;
+    let mut r = reg.lock().unwrap_or_else(|e| e.into_inner());
+    let h = r.insert(b);
+    let b = r.get(h).expect("just inserted");
+    Ok(info(h, &b))
+}
+
+/// A cooked behaviour's text (what `use` subtrees read).
+fn cooked_text(world: u32, path: &str) -> Result<String, String> {
+    let eng = engine(world)?;
+    let id = og_bundle::runtime::asset_id(path).to_string();
+    let assets = eng.assets.borrow();
+    let (bytes, bundle) = assets.blob(&id)?;
+    bundle
+        .behaviour_text(&id, bytes.bytes())
+        .map_err(|e| e.to_string())
+}
+
+pub fn og_ai_load(world: u32, path: String) -> Result<crate::host::wire::BehaviourInfo, String> {
+    (|| {
+        let id = og_bundle::runtime::asset_id(&path).to_string();
+        let text = cooked_text(world, &id)?;
+        let mut read = |p: &str| cooked_text(world, p);
+        let b = Behaviour::parse_with(&text, &id, &mut read).map_err(|e| format!("{id}: {e}"))?;
+        insert(world, b)
+    })()
+}
+
+pub fn og_ai_parse(world: u32, text: String) -> Result<crate::host::wire::BehaviourInfo, String> {
+    engine(world).and_then(|_| {
+        let mut read = |p: &str| cooked_text(world, p);
+        insert(world, Behaviour::parse_with(&text, "", &mut read)?)
+    })
+}
+
+pub fn og_ai_finish(world: u32, entity: f64, success: bool, action: Option<String>) -> bool {
+    system(world).is_some_and(|s| {
+        s.finish(
+            Entity::from_bits(handle(entity)),
+            success,
+            action.as_deref(),
+        )
+    })
+}
+
+fn to_json(v: AiValue) -> Value {
+    match v {
+        AiValue::Num(n) => json!(n),
+        AiValue::Bool(b) => json!(b),
+        AiValue::Vec(v) => json!({ "x": v.x, "y": v.y, "z": v.z }),
+        AiValue::Entity(e) => json!({ "entity": e }),
+    }
+}
+
+fn from_json(v: &Value) -> Option<AiValue> {
+    match v {
+        Value::Number(n) => Some(AiValue::Num(n.as_f64()?)),
+        Value::Bool(b) => Some(AiValue::Bool(*b)),
+        Value::Object(o) if o.contains_key("entity") => {
+            Some(AiValue::Entity(o["entity"].as_f64()? as u64))
+        }
+        Value::Object(o) => Some(AiValue::Vec(Vec3::new(
+            o.get("x")?.as_f64()? as f32,
+            o.get("y").and_then(Value::as_f64).unwrap_or(0.0) as f32,
+            o.get("z").and_then(Value::as_f64).unwrap_or(0.0) as f32,
+        ))),
+        _ => None,
+    }
+}
+
+pub fn og_ai_get(world: u32, entity: f64, key: String) -> Option<Value> {
+    system(world)
+        .and_then(|s| s.get(Entity::from_bits(handle(entity)), &key))
+        .map(to_json)
+}
+
+pub fn og_ai_set(world: u32, entity: f64, key: String, value: String) -> Result<(), String> {
+    let r = (|| -> Result<(), String> {
+        if og_ai::BUILTIN_KEYS.contains(&key.as_str()) {
+            return Err(format!(
+                "'{key}' is written by og.ai every think; set a key of your own"
+            ));
+        }
+        let v = from_json(&parse(Some(&value))?)
+            .ok_or("the value is a number, a boolean, a point {x, y, z} or an entity {entity}")?;
+        let s = system(world).ok_or("this world has no og.ai")?;
+        if s.set(Entity::from_bits(handle(entity)), &key, v) {
+            Ok(())
+        } else {
+            Err("the agent has not thought yet: set its keys from the tick after its first".into())
+        }
+    })();
+    match r {
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+/// `og.ai.restart`: the agent's behaviour starts afresh at its next think.
+pub fn og_ai_restart(world: u32, entity: f64) -> Result<(), String> {
+    match system(world) {
+        Some(s) => {
+            s.restart(Entity::from_bits(handle(entity)));
+            Ok(())
+        }
+        None => Err("this world has no og.ai".to_string()),
+    }
+}
+
+pub fn og_ai_noise(world: u32, desc: Option<String>) -> Result<(), String> {
+    let r = (|| -> Result<(), String> {
+        let d: crate::host::wire::NoiseDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
+        let s = system(world).ok_or("this world has no og.ai")?;
+        s.noise(og_ai::Noise {
+            position: d.position,
+            loudness: d.loudness.clamp(0.0, 100.0),
+            source: d.source,
+        });
+        Ok(())
+    })();
+    match r {
+        Ok(()) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+fn describe_value(
+    world_id: u32,
+    e: Entity,
+    perception: Option<(bool, u64)>,
+) -> Option<AiDescription> {
+    let s = system(world_id)?;
+    let mem = s.memory(e)?;
+    let reg = crate::bind::e6::with(world_id, |m| m.behaviours.clone())?;
+    let b: Arc<Behaviour> = reg
+        .lock()
+        .unwrap_or_else(|x| x.into_inner())
+        .get(mem.behaviour)?;
+    let d = s.describe(e)?;
+    let (kind, state) = match &b.root {
+        Root::Tree(_) => ("tree", String::new()),
+        Root::Machine { .. } => ("machine", d.state_name(&b)),
+    };
+    let status = ["idle", "running", "success", "failure"]
+        .get(mem.status as usize)
+        .copied()
+        .unwrap_or("idle");
+    // Extended rather than collected: `collect` sorts first (og_core::sort::map).
+    let mut blackboard = serde_json::Map::new();
+    blackboard.extend(mem.keys.iter().map(|(k, v)| (k.clone(), to_json(*v))));
+    let (sees, target) = perception.unwrap_or((false, 0));
+    Some(AiDescription {
+        behaviour: b.name.clone(),
+        kind: kind.into(),
+        state,
+        node: b.node_name(mem.leaf as usize).into(),
+        path: d.path(&b),
+        status: status.into(),
+        blackboard: Value::Object(blackboard),
+        sees,
+        target,
+    })
+}
+
+fn perception_of(world: &World, e: Entity) -> Option<(bool, u64)> {
+    world
+        .get::<og_ai::Perception>(e)
+        .ok()
+        .map(|p| (p.sees, p.target))
+}
+
+pub fn og_ai_describe(world: u32, entity: f64) -> Option<crate::host::wire::AiDescription> {
+    let e = Entity::from_bits(handle(entity));
+    let p = engine(world).ok().and_then(|eng| {
+        if crate::engine::running(world).is_some() {
+            return None;
+        }
+        eng.world().ok().and_then(|w| perception_of(w, e))
+    });
+    describe_value(world, e, p)
+}
+
+/// `dump_ai`'s JSON.
+pub(crate) fn describe_json(engine: u32, world: &World, e: Entity) -> Option<Value> {
+    let mut v = describe_value(engine, e, perception_of(world, e))?.to_json();
+    v["entity"] = json!(og_probe::Names.id_of(world, e));
+    if let Ok(p) = world.get::<og_ai::Perception>(e) {
+        v["perception"] = json!({
+            "sees": p.sees, "target": p.target, "lastSeen": [p.last_seen.x, p.last_seen.y, p.last_seen.z],
+            "sinceSeen": p.since_seen, "heard": p.heard, "sinceHeard": p.since_heard,
+        });
+    }
+    if let Ok(a) = world.get::<og_ai::AiAgent>(e) {
+        v["changes"] = json!(a.changes);
+    }
+    Some(v)
+}
+
+/// The lazy events og.ai sends (crate::engine::lazy): granted to its system.
+pub(crate) fn enable_action_started(w: &mut World) -> og_core::Result<()> {
+    og_ai::enable_action_started(w)
+}
+
+pub(crate) fn enable_action_stopped(w: &mut World) -> og_core::Result<()> {
+    og_ai::enable_action_stopped(w)
+}

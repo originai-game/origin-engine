@@ -1,5 +1,5 @@
 // og.motion on the web never holds a tick, and its captures reproduce
-// (docs/design.md §2.4, crates/og-runtime/src/motion/present.rs).
+// (docs/design.md §2.4, crates/og-runtime/src/bind/motion/present.rs).
 //
 // motion-feet's course (tests/fixtures/motion-feet: two agents walking,
 // running, jumping, turning, posing) runs in headless Chrome on WebGPU from

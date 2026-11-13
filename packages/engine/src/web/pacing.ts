@@ -1,5 +1,5 @@
 // Frame pacing in the engine Worker (og.render.setDisplay's frame cap,
-// crates/og-runtime/src/display.rs): requestAnimationFrame fires at the
+// crates/og-runtime/src/present/display.rs): requestAnimationFrame fires at the
 // display's rate (120 Hz on ProMotion, 144 and more on gaming monitors),
 // and a frame cap of 60 or 30 draws only some of those frames. A skipped
 // display frame still reads input (the Worker pumps the ring on every

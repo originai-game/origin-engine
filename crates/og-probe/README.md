@@ -95,11 +95,11 @@ A target miss (`touch_move_to`, `move_to_text`) also cancels the bare
 `touch_start`/`touch_end` after it, so a missed button is not clicked
 somewhere else.
 
-The runtime registers more (`crates/og-runtime/src/e6.rs`): `dump_ai`,
+The runtime registers more (`crates/og-runtime/src/bind/e6.rs`): `dump_ai`,
 `dump_nav`, `dump_platform`, `locale:<tag>` and `dump_pulse` (one tick's
-feel sample for playtests: `crates/og-runtime/src/pulse.rs`), and
+feel sample for playtests: `crates/og-runtime/src/author/pulse.rs`), and
 `lanes:<on|off>` with `dump_lanes` (whether the parallel systems run on the
-lanes pool, its threads and why they are serial: `crates/og-runtime/src/lanes.rs`).
+lanes pool, its threads and why they are serial: `crates/og-runtime/src/author/lanes.rs`).
 
 **Registry.** `register_command(name, CommandDesc { usage, doc }, handler)`
 adds an action for a module (the UI, the renderer) or a game

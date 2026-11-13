@@ -44,7 +44,7 @@ pub const OUTPUT_DIRS: &[&str] = &[
     "crates/og-records/src/generated",
     "crates/og-host-web/src/generated",
     "crates/og-host-node/src/generated",
-    "crates/og-runtime/src/generated",
+    "crates/og-runtime/src/host/generated",
     "packages/knowledge/wiki",
 ];
 
@@ -250,7 +250,7 @@ pub fn generate(api: &Api) -> Vec<Generated> {
             contents: r#gen::host::records_rs(&ix),
         },
         Generated {
-            path: "crates/og-runtime/src/generated/wire.rs".to_string(),
+            path: "crates/og-runtime/src/host/generated/wire.rs".to_string(),
             contents: r#gen::wire::wire_rs(&ix),
         },
         Generated {

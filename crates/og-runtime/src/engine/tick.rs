@@ -8,7 +8,7 @@ use super::*;
 fn tick_boundary(eng: &Engine) -> Result<(), String> {
     eng.assets.borrow_mut().poll();
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    crate::uncooked::poll(eng, tick);
+    crate::world::uncooked::poll(eng, tick);
     super::stream::update(eng);
     super::stream::sound_chunks(eng);
     super::stream::resolve(eng);
@@ -128,7 +128,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // The inspector's panel, built between the ticks and the frame: its
     // edits land between ticks (development builds).
     #[cfg(not(feature = "publish"))]
-    crate::inspector::frame(&eng);
+    crate::author::inspector::frame(&eng);
     // Drawn between the last two ticks by the accumulator's fraction
     // (RenderSettings.interpolate), or at the tick on a tick boundary.
     let after = eng.state.borrow().accumulator_ms;
@@ -151,9 +151,17 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         };
         let mut rs = eng.render.borrow_mut();
         if rendered {
-            crate::display::after_frame(&mut rs, elapsed_ms, rprobe::now_ms() - frame_t0, gpu_ms);
+            crate::present::display::after_frame(
+                &mut rs,
+                elapsed_ms,
+                rprobe::now_ms() - frame_t0,
+                gpu_ms,
+            );
         }
-        (crate::display::max_fps(&rs), crate::display::page_asks(&rs))
+        (
+            crate::present::display::max_fps(&rs),
+            crate::present::display::page_asks(&rs),
+        )
     };
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     let (behind, step_ms, render_ms) = {
@@ -165,7 +173,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     // CSS cursor name): the web shell sets the canvas's. `cursorImage`, on
     // the frames where it changed: the first of its `url()` images that
     // loads (`{width, height, rgba: <base64>, hotspot: [x, y]}`), or null.
-    let shape = crate::ui_cursor::shape(&eng);
+    let shape = crate::host::ui_cursor::shape(&eng);
     if let Some(b) = eng.render.borrow_mut().backend.as_mut() {
         b.cursor(&shape);
     }
@@ -250,7 +258,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         .render
         .try_borrow_mut()
         .ok()
-        .and_then(|mut rs| crate::inspector::take_saved(&mut rs))
+        .and_then(|mut rs| crate::author::inspector::take_saved(&mut rs))
     {
         answer["saved"] = saved;
     }
@@ -284,8 +292,10 @@ fn a11y_changed(eng: &Engine) -> Option<Value> {
         _ => Vec::new(),
     };
     st.a11y_sent = Some((frame, tree.clone()));
-    let mut json =
-        crate::wire::ToJson::to_json(&super::modules::a11y_tree(tree, ui.frame().unit.max(1.0)));
+    let mut json = crate::host::wire::ToJson::to_json(&super::modules::a11y_tree(
+        tree,
+        ui.frame().unit.max(1.0),
+    ));
     json["announce"] = Value::from(announce);
     Some(json)
 }
@@ -349,7 +359,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     super::assets::retranscode(eng);
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    crate::motion::present::step(eng);
+    crate::bind::motion::present::step(eng);
     let mut passes = Vec::new();
     let mut gpu = Vec::new();
     let mut frame = og_render::FrameStats::default();
@@ -366,7 +376,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
         rs.interp.alpha = None;
         rs.interp.display = false;
         super::probes::load_bakes(eng, &mut rs);
-        crate::display::before_render(&mut rs);
+        crate::present::display::before_render(&mut rs);
         let rs = &mut *rs;
         if let Some(b) = rs.backend.as_mut() {
             b.set_clock(Some(rprobe::now_ms));

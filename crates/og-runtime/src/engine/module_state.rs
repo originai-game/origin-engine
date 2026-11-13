@@ -7,8 +7,10 @@
 //! never the process's.
 
 use crate::{
-    atmosphere, destruction, destruction2d, e6, i18n, invariants, modules, motion, net, origin,
-    particle_events, platform, story, stream, terrain, timeline, vfx, video, wind,
+    bind::destruction, bind::destruction2d, bind::e6, bind::i18n, bind::modules, bind::motion,
+    bind::net, bind::story, bind::terrain, bind::timeline, bind::video, bind::wind,
+    engine::invariants, host::platform, present::atmosphere, present::particle_events,
+    present::vfx, world::origin, world::stream,
 };
 
 /// Each module's state on one engine (an optional module left out of the

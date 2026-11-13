@@ -85,7 +85,7 @@ beyond the platform SDK's rooms.
   Cargo feature of `og-runtime` passed through by both hosts, on by default.
   A build without one keeps its binding symbols, its records and its state
   blocks, so a world is the same bytes and the API is the same surface; its
-  calls answer a refusal naming the module (`terrain_absent.rs` is the
+  calls answer a refusal naming the module (`bind/absent/terrain.rs` is the
   pattern). The core never names a module's crate outside that module's
   files and its mount point. This is what a separately loaded artifact, a
   mini-game subpackage and a native package cut along.

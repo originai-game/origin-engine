@@ -42,7 +42,7 @@
 //   not change unless --require-checked is set. An unavailable adapter also takes this path, with a warning
 //   naming wgpu's error. Other renderer errors still fail the run.
 // - With --trace: the run in the Chrome trace format (src/trace.ts and
-//   crates/og-runtime/src/trace.rs have the threads): each tick with its
+//   crates/og-runtime/src/author/trace.rs have the threads): each tick with its
 //   systems, each frame with its render passes' CPU encoding and their GPU
 //   time, each load, og-lanes' jobs on their pool threads, every span where
 //   it ran; --trace-append adds them to the file og wrote first (its

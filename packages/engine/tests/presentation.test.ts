@@ -114,7 +114,7 @@ gpuTest("motion-feet's display frames after a fork mid-course are the uninterrup
 }, 120_000);
 
 // og.motion's results are applied as of the tick they were due, however
-// late they come back (crates/og-runtime/src/motion/present.rs): no tick
+// late they come back (crates/og-runtime/src/bind/motion/present.rs): no tick
 // waits for one, the Presenter falls behind and catches up, and a capture
 // settles first. Three runs of motion-feet's course, one with every GPU
 // result asked for 600 ms after its batch started

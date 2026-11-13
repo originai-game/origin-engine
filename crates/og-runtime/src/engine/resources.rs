@@ -75,7 +75,7 @@ pub(crate) fn write_resource_value(
             return Err(format!("{resource}.{} is read only", f.name));
         }
         let w = eng.world()?;
-        crate::lazy::ensure(&eng, w, resource)?;
+        crate::engine::lazy::ensure(&eng, w, resource)?;
         let id = w.id_by_name(resource).map_err(err)?;
         let current = w.resource_bytes(id).map_err(err)?;
         let bytes = layout.encode(Some(&current), Some(value))?;
@@ -199,21 +199,21 @@ pub fn component_layout(world: u32, component: &str) -> Result<Value, String> {
 
 /// The id of resource `name` in the world `eng` runs (through the running
 /// system's context while one runs). Outside systems a lazy resource
-/// (super::super::lazy) is registered by its first write.
+/// (crate::engine::lazy) is registered by its first write.
 fn resource_id(eng: &Engine, name: &str) -> Result<SchemaId, String> {
     if let Some(f) = running(eng.id) {
         // SAFETY: the frame is published while its system runs.
         return unsafe { f.ctx() }.id_by_name(name).map_err(err);
     }
     let world = eng.world()?;
-    crate::lazy::ensure(eng, world, name)?;
+    crate::engine::lazy::ensure(eng, world, name)?;
     world.id_by_name(name).map_err(err)
 }
 
 /// A lazy resource no game has named yet, read outside systems: its
 /// default, without registering it (reading leaves the hash alone).
 fn unregistered_default(eng: &Engine, name: &str) -> Option<Vec<u8>> {
-    if running(eng.id).is_some() || !crate::lazy::is_deferred(eng, name) {
+    if running(eng.id).is_some() || !crate::engine::lazy::is_deferred(eng, name) {
         return None;
     }
     if eng.world().ok()?.id_by_name(name).is_ok() {

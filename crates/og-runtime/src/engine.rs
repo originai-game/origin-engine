@@ -1,5 +1,8 @@
 //! Declarations, engines, the tick, the dispatcher and the view tables.
 
+pub(crate) mod invariants;
+pub(crate) mod lazy;
+
 mod creation;
 #[cfg_attr(feature = "publish", allow(unused_imports))]
 pub(crate) use creation::assemble;
@@ -26,8 +29,10 @@ mod module_state;
 pub(crate) use module_state::{Modules, Mount};
 mod resources;
 use crate::{
-    anim, api, art, assets, atmosphere, codec, e6, extract, feel, fx, i18n, interpolate, look,
-    modules, ok_void, probes, save, stream, terrain, timeline, trace, video, views,
+    author::trace, bind::anim, bind::e6, bind::i18n, bind::modules, bind::terrain, bind::timeline,
+    bind::video, host::api, host::codec, ok_void, present::art, present::atmosphere,
+    present::extract, present::feel, present::fx, present::interpolate, present::look,
+    present::probes, present::views, world::assets, world::save, world::stream,
 };
 pub(crate) use resources::{
     bump_layout_epoch, layout_epoch, world_query_views, write_resource_value,
@@ -37,11 +42,11 @@ pub use resources::{
     write_resource_bytes,
 };
 
-use super::assets::{Assets, Fetch, Status};
-use super::codec::{Layout, RecordKind};
-use super::extract::{DrawLayouts, RenderState};
-use super::probe::{self as rprobe, NameOp};
-use super::{ok, parse, refuse};
+use crate::author::probe::{self as rprobe, NameOp};
+use crate::host::codec::{Layout, RecordKind};
+use crate::present::extract::{DrawLayouts, RenderState};
+use crate::world::assets::{Assets, Fetch, Status};
+use crate::{ok, parse, refuse};
 use og_core::IdMap;
 use og_core::reflect::Reflect;
 use og_core::{Error, ErrorKind, Rng, Time};
@@ -159,7 +164,7 @@ pub trait Hooks {
         false
     }
     /// The RGBA8 image a started decode answered, once (`Pending` until then).
-    fn image_decode_take(&self, key: u64) -> Fetch<super::uncooked::Decoded> {
+    fn image_decode_take(&self, key: u64) -> Fetch<crate::world::uncooked::Decoded> {
         Fetch::Failed(format!("image decode {key} was never started"))
     }
     /// The AV1 decoder streamed videos play with here (`og.video.capabilities`):
@@ -224,7 +229,7 @@ impl Default for VideoDecoder {
     }
 }
 
-pub use super::extract::RenderBackend;
+pub use crate::present::extract::RenderBackend;
 
 /// Handles every engine on the thread hands out, tagged with their engine:
 /// interface members (`ArchetypeView.column`, `RngStream.next`) carry only
@@ -239,12 +244,12 @@ pub(crate) struct Handles {
     pub world_queries: Table<(u32, QueryRec)>,
     pub streams: Table<(u32, Rng)>,
     /// og.tween.timeline's objects (the timelines are og.tween's state).
-    pub timelines: Table<crate::feel::TimelineRef>,
+    pub timelines: Table<crate::present::feel::TimelineRef>,
     /// Spatial indexes (world.spatial), retired with the views.
     pub spatial: Table<(u32, og_ecs::SpatialHash)>,
     /// Saves open for the game's migrations (World.openSave, SaveEdit),
     /// by handle less one; a closed one's slot is reused.
-    pub saves: Vec<Option<crate::save::Open>>,
+    pub saves: Vec<Option<crate::world::save::Open>>,
 }
 
 // The runtime's process roots: what the host ABI holds before, across and
@@ -557,8 +562,8 @@ fn token(v: &Value) -> Option<Token> {
     })
 }
 
-fn tokens(list: &[crate::wire::OneOf<Value, Value>]) -> Vec<Token> {
-    use crate::wire::OneOf;
+fn tokens(list: &[crate::host::wire::OneOf<Value, Value>]) -> Vec<Token> {
+    use crate::host::wire::OneOf;
     list.iter()
         .filter_map(|(OneOf::A(v) | OneOf::B(v))| token(v))
         .collect()
@@ -571,16 +576,16 @@ fn names(list: &[Value]) -> Vec<String> {
 /// `desc` read as `T`; a refused one refuses the engine
 /// (Declarations.errors) and declares at the defaults, so the handle stays
 /// valid.
-fn declared<T: crate::wire::FromJson + Default>(what: &str, name: &str, desc: &Value) -> T {
-    crate::wire::value(desc, "desc").unwrap_or_else(|e| {
+fn declared<T: crate::host::wire::FromJson + Default>(what: &str, name: &str, desc: &Value) -> T {
+    crate::host::wire::value(desc, "desc").unwrap_or_else(|e| {
         DECL.with(|d| d.borrow_mut().errors.push(format!("{what} '{name}': {e}")));
         T::default()
     })
 }
 
 pub(crate) fn declare_system(name: String, desc: &Value, run: u32) -> u32 {
-    use crate::wire::StateWhen;
-    let d: crate::wire::SystemDesc = declared("og.system", &name, desc);
+    use crate::host::wire::StateWhen;
+    let d: crate::host::wire::SystemDesc = declared("og.system", &name, desc);
     let decl = SystemDecl {
         name,
         reads: tokens(&d.reads),
@@ -609,8 +614,8 @@ pub(crate) fn declare_system(name: String, desc: &Value, run: u32) -> u32 {
 }
 
 pub(crate) fn declare_hook(name: String, component: String, desc: &Value, run: u32) -> u32 {
-    use crate::wire::HookEvent;
-    let d: crate::wire::HookDesc = declared("og.hook", &name, desc);
+    use crate::host::wire::HookEvent;
+    let d: crate::host::wire::HookDesc = declared("og.hook", &name, desc);
     let decl = HookDecl {
         name,
         component,
@@ -672,10 +677,11 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
     }
     // A refused desc refuses the engine (Declarations.errors); the game is
     // declared at the defaults so its handle stays valid.
-    let g: crate::wire::GameDesc = crate::wire::value(&rest, "desc").unwrap_or_else(|e| {
-        errors.push(format!("og.game: {e}"));
-        Default::default()
-    });
+    let g: crate::host::wire::GameDesc =
+        crate::host::wire::value(&rest, "desc").unwrap_or_else(|e| {
+            errors.push(format!("og.game: {e}"));
+            Default::default()
+        });
     DECL.with(|d| d.borrow_mut().errors.extend(errors));
     let game = GameDecl {
         tick: g.tick,
@@ -734,16 +740,16 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
 /// build or the order: rprobe::MODULE_ACTIONS lists them, and a game's
 /// command of one of them is refused (a test holds the list to this).
 pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u32) {
-    super::e6::register_commands(probe, engine_id);
-    super::timeline::register_commands(probe, engine_id);
-    super::motion::register_commands(probe, engine_id);
-    super::modules::docs::register_commands(probe, engine_id);
-    super::probe::register_render_dump(probe, engine_id);
-    super::probes::register_bake_dump(probe, engine_id);
+    crate::bind::e6::register_commands(probe, engine_id);
+    crate::bind::timeline::register_commands(probe, engine_id);
+    crate::bind::motion::register_commands(probe, engine_id);
+    crate::bind::modules::docs::register_commands(probe, engine_id);
+    crate::author::probe::register_render_dump(probe, engine_id);
+    crate::present::probes::register_bake_dump(probe, engine_id);
     #[cfg(not(feature = "publish"))]
-    super::determinism::register(probe);
+    crate::author::determinism::register(probe);
     #[cfg(not(feature = "publish"))]
-    super::inspector::register(probe, engine_id);
+    crate::author::inspector::register(probe, engine_id);
 }
 
 #[cfg(test)]
@@ -765,7 +771,7 @@ mod tests {
             .map(|c| c.name)
             .collect();
         have.sort();
-        let mut want: Vec<String> = super::super::probe::MODULE_ACTIONS
+        let mut want: Vec<String> = crate::author::probe::MODULE_ACTIONS
             .iter()
             .map(|s| s.to_string())
             .collect();
@@ -777,7 +783,7 @@ mod tests {
     /// action's name is, whether the modules registered first or not.
     #[test]
     fn a_game_command_named_as_a_module_action_is_refused() {
-        use super::super::probe::register_one;
+        use crate::author::probe::register_one;
         for modules_first in [false, true] {
             let mut world = World::new(&WorldDesc::default()).unwrap();
             let mut probe = og_probe::Probe::new(&mut world).unwrap();

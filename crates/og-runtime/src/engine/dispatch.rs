@@ -107,7 +107,7 @@ pub(crate) struct State {
     /// Schema name by id index, for archetype type lists.
     pub names_by_id: Vec<String>,
     /// Game records only other games of the process name, registered when
-    /// this world's game first names one (crate::lazy::ensure).
+    /// this world's game first names one (crate::engine::lazy::ensure).
     pub deferred: std::collections::BTreeSet<String>,
     pub resources: Vec<String>,
     pub systems: Vec<SystemEntry>,
@@ -206,8 +206,8 @@ pub(crate) struct State {
     /// then, which live regions announce against (`A11yTree::announcements`).
     pub a11y_sent: Option<(u64, og_ui::A11yTree)>,
     /// Cursor images decoded from their textures, by source
-    /// ([`crate::ui_cursor`]).
-    pub cursor_images: crate::ui_cursor::Kept,
+    /// ([`crate::host::ui_cursor`]).
+    pub cursor_images: crate::host::ui_cursor::Kept,
     /// The cursor the last frame answer carried (its keyword and image id),
     /// so its image is sent only when it changes.
     pub cursor_sent: Option<(&'static str, u64)>,
@@ -417,7 +417,7 @@ pub(super) fn run_system(
     });
     // What the dispatcher reads first: the time scale, then the archetypes.
     let scale = ctx.time_scale();
-    crate::shared::with(|b| {
+    crate::host::shared::with(|b| {
         super::feel::put_time(
             b,
             scale.scale,

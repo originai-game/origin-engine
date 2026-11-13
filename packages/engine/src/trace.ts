@@ -4,7 +4,7 @@
 // Worker (src/web/worker.ts, read through the shell's `trace()`).
 //
 // The engine records every span where it ran and hands them over as Chrome
-// trace events on its own clock (crates/og-runtime/src/trace.rs: `{ now,
+// trace events on its own clock (crates/og-runtime/src/author/trace.rs: `{ now,
 // events }`, `ts` in µs); a take is placed on the document's origin (Unix
 // milliseconds) by the difference between the host's time and the engine's
 // clock read together. Threads of process 1: 1 engine, 2 render, 3 load,

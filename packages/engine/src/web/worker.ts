@@ -319,7 +319,7 @@ export interface WebExtras {
   og_web_panic?(): string;
   /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
   og_web_lanes_fault?(site: string): boolean;
-  /** The trace (crates/og-runtime/src/trace.rs): on or off for an engine (0xffffffff: the loads before one exists). */
+  /** The trace (crates/og-runtime/src/author/trace.rs): on or off for an engine (0xffffffff: the loads before one exists). */
   og_web_trace?(engine: number, on: boolean): void;
   /** The trace's spans since the last take: `{ now, events }`, Chrome trace events on the engine's clock. */
   og_web_trace_take?(engine: number, last: boolean): string;
@@ -328,7 +328,7 @@ export interface WebExtras {
 /** The trace's key for loads made before the engine exists (og-runtime's `BEFORE_ENGINE`). */
 const TRACE_BEFORE_ENGINE = 0xffffffff;
 
-/** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-runtime/src/assets.rs). */
+/** Where the runtime asks for a bundle's files: `<root>/cooked/<file>` (crates/og-runtime/src/world/assets.rs). */
 export function cookedDir(root: string): string {
   return `${root.replace(/\/+$/, "")}/cooked`;
 }
@@ -1416,7 +1416,7 @@ export function startWorker(game: GameToken): void {
     display: (e) => JSON.parse(boundHost()!.abi.og_render_display(e.id)),
     /** Test hook: destroy the GPU device (og_web_lose_device); the next frames make the renderer again and the game goes on. */
     loseDevice: (e) => glueRef?.og_web_lose_device?.(e.id) ?? false,
-    /** What the lanes did so far (crates/og-runtime/src/lanes.rs `report`). */
+    /** What the lanes did so far (crates/og-runtime/src/author/lanes.rs `report`). */
     lanes: () => JSON.parse(glueRef?.og_web_lanes?.() ?? "null"),
     /** Test hook: the next item at lanes site `site` panics (og_web_lanes_fault); false when the module has no such hook or site. */
     fault: (_, [site]) => glueRef?.og_web_lanes_fault?.(String(site)) ?? false,
