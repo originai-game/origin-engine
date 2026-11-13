@@ -419,3 +419,18 @@ test("world.get and world.set answer and write what the engine's own reading of 
   expect(mixedInSystem).toBeNull();
   engine.destroy();
 });
+
+test("destroying an engine closes what the host opened for it", () => {
+  const created = createEngine(og.game({ systems: [] }) as unknown as GameToken);
+  if (!created.ok) throw new Error(created.reason);
+  const engine = created.value;
+  const id = engine.id;
+  const n = native();
+  expect(JSON.parse(n.og_node_probe_listen(id, 0)).ok).toBe(true);
+  const audio = n as unknown as { og_node_audio_open(engine: number, mode: string): string; og_node_audio_close(engine: number): boolean };
+  expect(JSON.parse(audio.og_node_audio_open(id, "null")).ok).toBe(true);
+  expect(engine.destroy()).toBe(true);
+  // Both are gone with the engine: closing them again finds nothing open.
+  expect(n.og_node_probe_close(id)).toBe(false);
+  expect(audio.og_node_audio_close(id)).toBe(false);
+});

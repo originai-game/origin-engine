@@ -13,7 +13,11 @@ macro_rules! __og_host_bindings_engine {
                 $crate::og_engine_create(game, options)
             }
             fn og_engine_destroy(&self, engine: u32) -> bool {
-                $crate::og_engine_destroy(engine)
+                let destroyed = $crate::og_engine_destroy(engine);
+                if destroyed {
+                    <Self as $crate::host_impl::HostWire>::destroyed(engine);
+                }
+                destroyed
             }
             fn og_engine_advance(&self, engine: u32, steps: u32) -> String {
                 $crate::og_engine_advance(engine, steps)

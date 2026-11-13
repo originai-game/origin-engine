@@ -41,6 +41,11 @@ impl HostWire for NodeHost {
     fn bytes_in(bytes: Self::Bytes) -> Vec<u8> {
         bytes.0
     }
+    fn destroyed(engine: u32) {
+        crate::audio::og_node_audio_close(engine);
+        crate::room::forget_engine(engine);
+        crate::forget_engine(engine);
+    }
 }
 
 og_runtime::host_bindings!(NodeHost);

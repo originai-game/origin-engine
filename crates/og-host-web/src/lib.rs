@@ -817,6 +817,14 @@ fn take_resize(engine: u32) -> Option<(u32, u32)> {
     RESIZES.with(|r| r.borrow_mut().remove(&engine))
 }
 
+/// The engine is destroyed: what its attached renderer recorded and a
+/// resize it never drew are dropped.
+pub(crate) fn forget_engine(engine: u32) {
+    FORMATS.with(|f| f.borrow_mut().remove(&engine));
+    GPUS.with(|g| g.borrow_mut().remove(&engine));
+    RESIZES.with(|r| r.borrow_mut().remove(&engine));
+}
+
 /// The trace (og-runtime's `trace.rs`, the shell's `trace()`): turns the
 /// engine's trace on or off.
 #[wasm_bindgen]

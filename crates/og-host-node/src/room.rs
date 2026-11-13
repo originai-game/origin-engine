@@ -69,6 +69,11 @@ pub fn og_node_room_close(engine: u32) -> bool {
     LINKS.with(|l| l.borrow_mut().remove(&engine).is_some())
 }
 
+/// The engine is destroyed: its link closes with what it already sent.
+pub(crate) fn forget_engine(engine: u32) {
+    LINKS.with(|l| l.borrow_mut().remove(&engine));
+}
+
 thread_local! {
     static RELAYS: RefCell<Vec<og_net::relay::Relay>> = const { RefCell::new(Vec::new()) };
 }

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Engine.destroy",
+      "summary": "Destroying an engine now closes what its host opened for it: the audio output, the probe socket, the room link and the renderer's records. They were held until the process or the page ended."
+    }
+  ]
+}

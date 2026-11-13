@@ -48,6 +48,10 @@ impl HostWire for WebHost {
     fn bytes_in(bytes: Self::Bytes) -> Vec<u8> {
         bytes
     }
+    fn destroyed(engine: u32) {
+        crate::audio::og_web_audio_close(engine);
+        crate::forget_engine(engine);
+    }
 }
 
 og_runtime::host_bindings!(WebHost);

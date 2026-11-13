@@ -977,6 +977,13 @@ pub fn og_node_probe_close(engine: u32) -> bool {
     SERVERS.with(|s| s.borrow_mut().remove(&engine).is_some())
 }
 
+/// The engine is destroyed: its probe socket stops and its renderer's
+/// device is let go of.
+pub(crate) fn forget_engine(engine: u32) {
+    SERVERS.with(|s| s.borrow_mut().remove(&engine));
+    DEVICES.with(|d| d.borrow_mut().remove(&engine));
+}
+
 fn napi_json_string(s: &str) -> String {
     let mut out = String::from("\"");
     for c in s.chars() {

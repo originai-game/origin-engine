@@ -62,6 +62,11 @@ pub trait HostWire: Wire {
     fn bytes_out(bytes: Vec<u8>) -> Self::Bytes;
     /// Bytes handed to the engine by value (`og.load.*Data`).
     fn bytes_in(bytes: Self::Bytes) -> Vec<u8>;
+    /// `og_engine_destroy` destroyed `engine`: drop what the host keeps for
+    /// it (its audio output, its probe socket, its room link, its
+    /// renderer's records). Engine ids are never reused, so what stays is
+    /// held for the life of the thread.
+    fn destroyed(engine: u32);
 }
 
 /// Implement every `og_api::host` trait but `Wire` for `$host`, a type that
