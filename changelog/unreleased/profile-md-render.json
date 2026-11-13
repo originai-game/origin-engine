@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og run --profile out.md",
+      "summary": "The markdown profile is rendered by og from bun's JSON profile, so every function and caller is named at its file and line in the game's source; bun's own markdown named the game bundle (`game.native.js`, no line) for a sample without a position, about one run in five. The tables are the same sections (hot functions by self time, the call tree, each function's callers, callees and hot lines, the time by file); the call tree is now indented by depth."
+    }
+  ]
+}

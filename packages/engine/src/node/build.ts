@@ -214,7 +214,13 @@ export async function bundleGame(entry: string, out: string, target: "native" | 
   const mapFile = maps.file ?? `${out}.map`;
   let text = await code.text();
   if (sourcemap) {
-    const raw = JSON.parse(await sourcemap.text()) as { sources: (string | null)[]; sourcesContent?: (string | null)[]; file?: string };
+    const raw = JSON.parse(await sourcemap.text()) as { sources: (string | null)[]; sourcesContent?: (string | null)[]; file?: string; mappings: string };
+    // The bundle's module function starts at line 1, column 0 (bun's `// @bun`
+    // banner), which bun maps to nothing, so a CPU profile's frame for the
+    // module's top-level code named the bundle. Line 1 points at the first
+    // source's first line; the segment is all zeros, so every later segment's
+    // deltas stay as they were.
+    if (raw.mappings.startsWith(";") && raw.sources.length > 0) raw.mappings = `AAAA${raw.mappings}`;
     // A virtual module's text (og:worker's, which imports the entry by its absolute path) is not the game's: left out.
     if (raw.sourcesContent) raw.sourcesContent = raw.sourcesContent.map((c, i) => (/^og:/.test(raw.sources[i] ?? "") ? null : c));
     raw.sources = cacheInputs

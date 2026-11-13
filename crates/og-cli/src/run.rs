@@ -320,30 +320,70 @@ pub fn run(args: &[&str]) -> ExitCode {
             }
         }
     }
-    supervise(cmd, a.port.is_some())
+    let code = supervise(cmd, a.port.is_some());
+    if let Some(profile) = &a.profile
+        && let Err(e) = profile_markdown(&package, profile)
+    {
+        eprintln!("og run: {e}");
+        return ExitCode::FAILURE;
+    }
+    code
 }
 
 /// Lines of the game process's stderr kept for the report when it dies.
 const TAIL_LINES: usize = 40;
 
-/// The run's bun command under bun's CPU profiler, the profile written to
-/// `out` as the process exits: tables to read when `out` ends `.md`, the
-/// `.cpuprofile` JSON otherwise.
+/// The run's bun command under bun's CPU profiler, the `.cpuprofile` JSON
+/// written as the process exits: to `out`, or for an `out` ending `.md` to
+/// [`profile_json`], which [`profile_markdown`] then renders.
 fn profiled(package: &Path, out: &Path) -> std::process::Command {
+    let json = profile_json(out).unwrap_or_else(|| out.to_path_buf());
     let mut c = std::process::Command::new("bun");
-    c.arg(if out.extension().is_some_and(|e| e == "md") {
-        "--cpu-prof-md"
-    } else {
-        "--cpu-prof"
-    });
-    let dir = out.parent().unwrap_or(Path::new("."));
+    c.arg("--cpu-prof");
+    let dir = json.parent().unwrap_or(Path::new("."));
     c.arg(format!("--cpu-prof-dir={}", dir.display()));
     c.arg(format!(
         "--cpu-prof-name={}",
-        out.file_name().unwrap_or_default().to_string_lossy()
+        json.file_name().unwrap_or_default().to_string_lossy()
     ));
     c.arg(package.join("src/node/run.ts"));
     c
+}
+
+/// Where bun writes the JSON profile an `out.md` is rendered from (beside
+/// it, hidden), or `None` when `out` is the JSON itself.
+fn profile_json(out: &Path) -> Option<std::path::PathBuf> {
+    out.extension().is_some_and(|e| e == "md").then(|| {
+        let name = out.file_name().unwrap_or_default().to_string_lossy();
+        out.with_file_name(format!(".{name}.cpuprofile"))
+    })
+}
+
+/// Renders the profile of an `out.md` from bun's JSON (src/node/profile-md.ts):
+/// its frames are mapped through the bundle's source map, so every sample
+/// names the game's source, where bun's own markdown named the bundle for a
+/// sample without a position.
+fn profile_markdown(package: &Path, out: &Path) -> Result<(), String> {
+    let Some(json) = profile_json(out) else {
+        return Ok(());
+    };
+    if !json.exists() {
+        return Err(format!("no CPU profile at {}", json.display()));
+    }
+    let status = project::bun(package, "src/node/profile-md.ts")
+        .arg(&json)
+        .arg(out)
+        .status()
+        .map_err(|e| format!("{} ({e})", project::NO_BUN))?;
+    let _ = std::fs::remove_file(&json);
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "the CPU profile did not render to {}",
+            out.display()
+        ))
+    }
 }
 
 /// Runs the game process, passing its output through, and when it dies with
