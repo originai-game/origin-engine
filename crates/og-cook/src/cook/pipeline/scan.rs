@@ -83,7 +83,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (anim::RIG_TYPE, Kind::Rig),
     ("motion-action", Kind::MotionAction),
     (timeline::TIMELINE_TYPE, Kind::Timeline),
-    (lightmap::LIGHTMAP_TYPE, Kind::Lightmap),
     (environment::ENVIRONMENT_TYPE, Kind::Environment),
     (icons::ICONS_TYPE, Kind::Icons),
     (crate::look::LOOK_TYPE, Kind::Look),

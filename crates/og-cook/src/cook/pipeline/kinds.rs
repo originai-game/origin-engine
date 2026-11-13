@@ -69,6 +69,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     strings::KINDS,
     navmesh::KINDS,
     terrain::KINDS,
+    lightmap::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

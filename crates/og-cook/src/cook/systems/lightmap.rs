@@ -4,7 +4,10 @@
 //! is consumed: it is part of the lightmap and in its stamp, never a
 //! texture of its own.
 
-use super::{CookError, Source, hash_bytes};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, hash_bytes,
+    stamp,
+};
 use crate::format::{self, BlobKind};
 use crate::lightmap::{LightmapFile, pages_from_ktx2};
 use og_blob::BlobWriter;
@@ -80,4 +83,45 @@ pub(crate) fn cook_lightmap(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Stri
             file.volumes.len()
         )],
     ))
+}
+
+pub(crate) static LIGHTMAP: KindDef = KindDef {
+    name: "lightmap",
+    extensions: &[],
+    types: &[LIGHTMAP_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_lightmap,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&LIGHTMAP];
+
+fn plan_lightmap<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    // The stamp covers its pages file.
+    let deps = dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"lightmap 1", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Lightmap::NAME,
+        st,
+        Work::Job(Box::new(LightmapJob(s))),
+    ));
+}
+
+/// A baked lightmap's one output.
+struct LightmapJob<'a>(&'a Source);
+
+impl Job for LightmapJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_lightmap(self.0, p.stamp)
+    }
 }

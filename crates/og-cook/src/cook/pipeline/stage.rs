@@ -296,7 +296,7 @@ pub(crate) fn resolve(
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
-        if s.kind == Kind::Lightmap
+        if s.kind == Kind::System(&lightmap::LIGHTMAP)
             && let Some(p) = lightmap::pages_file(&s.rel, &String::from_utf8_lossy(&s.bytes))
         {
             consumed.insert(p);

@@ -76,21 +76,6 @@ pub(super) fn plan_motion_action<'a>(
     ));
 }
 
-pub(super) fn plan_lightmap<'a>(
-    _cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let PlanState { parsed_refs, .. } = state;
-    // The stamp covers its pages file.
-    let deps = lightmap::dependencies(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"lightmap 1", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::Lightmap::NAME, st, Work::Lightmap(s)));
-}
-
 pub(super) fn plan_timeline<'a>(
     _cx: &Cx<'a>,
     state: &mut PlanState,
