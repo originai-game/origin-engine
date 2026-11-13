@@ -35,6 +35,14 @@ feedback rows) are the TS builders' replacements: a game mounts one as
 collections; a nested list is flattened, as a retained `{#each}` reads a
 named collection (a table's `cells` row by row, a tree's visible `rows`).
 
+The tutorial points at an element with `target`, the element's id in
+any document under it (a HUD button): the screen dims around the element,
+which stays lit and takes its presses while the dimmed rest takes none,
+and the card stands against it. Without a target nothing is dimmed and
+the card stands at `x` and `y`. Its input mode is `all`, so the player
+can do what a waiting step asks for; a game that wants a step read
+before play goes on holds its own input until `next`.
+
 `og ui eject --list` prints these generic screens. Core document tests
 cook them independently of style packs.
 

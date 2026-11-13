@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "tutorial screen: input mode",
+      "change": "The built-in tutorial screen takes input as all, not menu: the documents under it stay live and gameplay sees input while it shows. Under menu the HUD was inert, so a waiting step could not be done and a lit element could not be pressed.",
+      "fix": "Where a step must be read before play goes on, hold gameplay input in the game until the screen reports next or skip."
+    }
+  ],
+  "added": [
+    {
+      "member": "tutorial screen: target",
+      "summary": "The built-in tutorial points at an element: target is its id in any document under the screen. The screen dims around it, the element stays lit and takes its presses while the dimmed rest takes none, and the card stands against it in place of x and y. Empty (and left out) dims nothing, as before."
+    }
+  ]
+}

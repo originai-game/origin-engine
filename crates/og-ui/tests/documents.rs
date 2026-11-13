@@ -320,6 +320,149 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// The tutorial screen points at an element of the document under it:
+/// with a target the screen dims around that element, which stays
+/// pressable while the rest is not, and without one nothing is dimmed.
+#[test]
+fn tutorial_lights_a_target_in_the_document_under_it() {
+    struct Env(std::collections::BTreeMap<String, String>, Value);
+    impl bind::Env for Env {
+        fn translate(&self, key: &str) -> Option<String> {
+            self.0.get(key).cloned()
+        }
+        fn lookup(&self, root: &str) -> Option<Value> {
+            self.1.get(root.trim_start_matches('$')).cloned()
+        }
+    }
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../packages/engine/src/ui/screens");
+    let source = std::fs::read_to_string(root.join("tutorial.svelte")).unwrap();
+    let doc = UiDocument::parse("tutorial", &source).unwrap();
+    let table = og_i18n::StringTable::parse(
+        &std::fs::read_to_string(root.join("tutorial.en.ogt")).unwrap(),
+    )
+    .unwrap();
+    let messages: std::collections::BTreeMap<_, _> = table
+        .entries
+        .into_iter()
+        .map(|(k, (v, _))| (k, v))
+        .collect();
+    let hud = r#"<meta name="screen" content="hud" data-layer="hud">
+<div id="Hud"><button id="Dodge" onclick={dodge}>Dodge</button><button id="Block" onclick={block}>Block</button></div>
+<style>
+#Hud { width: stretch; height: stretch; }
+#Dodge { position: absolute; left: 400px; top: 300px; width: 96px; height: 48px; }
+#Block { position: absolute; left: 40px; top: 40px; width: 96px; height: 48px; }
+</style>"#;
+    let mut ui = ui_with_font(test_font());
+    ui.define_document(UiDocument::parse("hud.svelte", hud).unwrap());
+    ui.define_document(doc.clone());
+    let mut vm = doc.fixtures[0].1.clone();
+    vm["target"] = json!("Dodge");
+    ui.push_screen("hud", Value::Null).unwrap();
+    ui.push_screen("tutorial", vm.clone()).unwrap();
+    let mut env = Env(messages, vm);
+    let step = |ui: &mut Ui, env: &Env, input: InputFrame| -> Vec<String> {
+        ui.begin(input, Viewport::new(1280.0, 720.0));
+        ui.build_layers(env);
+        ui.end();
+        ui.take_doc_events()
+            .into_iter()
+            .filter(|e| e.kind == "emit")
+            .map(|e| e.name)
+            .collect()
+    };
+    let settle = |ui: &mut Ui, env: &Env| {
+        for _ in 0..30 {
+            step(ui, env, InputFrame::default());
+        }
+    };
+    // A press and its release at the centre of path: the events it raised.
+    let click = |ui: &mut Ui, env: &Env, path: &str| -> Vec<String> {
+        let e = ui.element(path).unwrap();
+        let at = og_core::glam::Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0);
+        let mut names = Vec::new();
+        for (pressed, released) in [(true, false), (false, true)] {
+            names.extend(step(
+                ui,
+                env,
+                InputFrame {
+                    pointer: at,
+                    pointer_inside: true,
+                    down: pressed,
+                    pressed,
+                    released,
+                    ..InputFrame::default()
+                },
+            ));
+        }
+        names
+    };
+    let rect = |ui: &Ui, path: &str| {
+        let e = ui
+            .element(path)
+            .unwrap_or_else(|| panic!("no {path} among {:?}", paths(ui)));
+        Rect::new(e.x, e.y, e.width, e.height)
+    };
+    fn paths(ui: &Ui) -> Vec<&str> {
+        ui.elements().iter().map(|e| e.path.as_str()).collect()
+    }
+
+    settle(&mut ui, &env);
+    let target = rect(&ui, "hud/Hud/Dodge");
+    let hole = rect(&ui, "Spot~spotlight/Middle/Hole");
+    assert!(
+        hole.x <= target.x
+            && hole.y <= target.y
+            && hole.right() >= target.right()
+            && hole.bottom() >= target.bottom(),
+        "the hole {hole:?} holds the target {target:?}"
+    );
+    let card = ui
+        .elements()
+        .iter()
+        .find(|e| e.kind == "popover" && e.path.ends_with("tutorial/Tutorial/Spot"))
+        .map(|e| Rect::new(e.x, e.y, e.width, e.height))
+        .expect("the card is the spotlight's callout");
+    assert!(
+        card.y >= target.bottom() || card.bottom() <= target.y,
+        "the card {card:?} stands clear of the target {target:?}"
+    );
+    assert!(ui.element("tutorial/Tutorial/Spot/Title").is_some());
+    assert!(ui.element("tutorial/Tutorial/Card").is_none());
+    assert_eq!(
+        click(&mut ui, &env, "hud/Hud/Block"),
+        Vec::<String>::new(),
+        "a press on the dimmed screen stops at the shade"
+    );
+    assert_eq!(
+        click(&mut ui, &env, "hud/Hud/Dodge"),
+        ["dodge"],
+        "the lit element takes its press"
+    );
+    assert_eq!(
+        click(&mut ui, &env, "tutorial/Tutorial/Spot/Foot/Skip"),
+        ["skip"]
+    );
+
+    // Without a target nothing is dimmed and the card stands at x and y.
+    // (Left out, as a game that points at nothing leaves it.)
+    env.1.as_object_mut().unwrap().remove("target");
+    settle(&mut ui, &env);
+    assert!(
+        !paths(&ui).iter().any(|p| p.starts_with("Spot~spotlight")),
+        "{:?}",
+        paths(&ui)
+    );
+    let card = rect(&ui, "tutorial/Tutorial/Card");
+    assert_eq!((card.x, card.y), (64.0, 120.0));
+    assert_eq!(click(&mut ui, &env, "hud/Hud/Block"), ["block"]);
+    assert_eq!(
+        click(&mut ui, &env, "tutorial/Tutorial/Card/Foot/Skip"),
+        ["skip"]
+    );
+}
+
 #[test]
 fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
     let source = r#"<meta name="screen" content="cascade" data-layer="hud">
