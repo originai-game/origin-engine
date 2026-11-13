@@ -181,7 +181,14 @@ base="$(git rev-parse FETCH_HEAD)"
 python3 scripts/rebase-generated.py "$base"
 head="$(git rev-parse HEAD)"
 if [ "$head" = "$base" ]; then echo "land: already on origin/main ($head)"; exit 0; fi
-scripts/check.sh quick
+# A tree that passed the whole full lane with --all (scripts/gate/run.py's
+# lane.full record) lands without the opening quick; a later recheck still
+# runs what a rebase onto a moved main changed.
+if [ "$(cat "$OG_TARGET_DIR/og-gate/green/lane.full" 2>/dev/null)" = "$(git rev-parse "HEAD^{tree}")" ]; then
+  echo "land: $head passed full --all on this tree; skipping the opening quick"
+else
+  scripts/check.sh quick
+fi
 clean
 [ "$(git rev-parse HEAD)" = "$head" ] || { echo 'land: HEAD changed during gate' >&2; exit 1; }
 

@@ -46,6 +46,7 @@ def main():
         print('Steps: ' + ' '.join(NEEDS))
         return 0
     force = '--all' in args or bool(os.environ.get('CI'))
+    only = '--only' in args
     args = [a for a in args if a not in ('--all', '--only')]
     lane = args.pop(0) if args and args[0] in ('quick', 'full') else 'full'
     wanted = set(args or (QUICK if lane == 'quick' else FULL))
@@ -84,6 +85,10 @@ def main():
     # Capture Cargo's authoritative graph once per run, before parallel readers.
     with (logs / 'cargo.json').open('w') as out:
         subprocess.run(['cargo', 'metadata', '--locked', '--format-version=1'], stdout=out, check=True)
+    lane_record = Path(os.environ.get('OG_TARGET_DIR', 'target')) / 'og-gate' / 'green' / 'lane.full'
+    whole = lane == 'full' and force and not only and not skipped
+    if whole:
+        lane_record.unlink(missing_ok=True)
     active = {}
     completed = {s: f'SKIPPED {s} (OG_GATE_SKIP)' for s in skipped}
     started = time.monotonic()
@@ -129,6 +134,12 @@ def main():
                 raise RuntimeError('No runnable step in gate DAG')
             time.sleep(0.1)
         ran = len(completed) - len(skipped)
+        # The whole full lane forced through (--all), every step run and
+        # passed, none unchecked: scripts/land.sh lands this tree without its
+        # opening quick (docs/ci.md §Lanes).
+        if whole and env.get('OG_GATE_TREE') and all(completed[s].startswith('PASS ') for s in wanted):
+            lane_record.parent.mkdir(parents=True, exist_ok=True)
+            lane_record.write_text(env['OG_GATE_TREE'] + '\n')
         note = f'; NOT RUN (OG_GATE_SKIP): {", ".join(skipped)}' if skipped else ''
         print(f'gate PASSED ({ran}/{len(wanted)} steps, {time.monotonic() - started:.1f}s{note})', flush=True)
         return 0

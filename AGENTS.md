@@ -137,7 +137,9 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   tests, and any identity check the change relies on.
 - **Landing** goes through `scripts/land.sh`, a merge queue; never push main
   directly. A head touching packages/engine, the IDL or og-runtime's answers
-  also runs `scripts/check.sh full --only fixtures` and `--only bun-test`.
+  also runs `scripts/check.sh full --only fixtures` and `--only bun-test`
+  (which builds only the development wasm). A head whose tree passed
+  `full --all` lands without land.sh's opening quick.
   A head that changes rendering or a look goes to the L4 integrator, which
   looks at its frames for quality (a new feature's look needs the owner's
   approval), fixes any failure at the root itself, and lands it. Every
