@@ -247,12 +247,20 @@ fn cells(eng: &Engine, world: &World) -> Vec<(Entity, record::StreamCell)> {
         .collect()
 }
 
-/// The squared distance from `p` (world) to a cell's box: `size` about
-/// the cell's world position, turned with it (its scale does not apply).
-fn distance_sq(cell: Pose, size: glam::Vec3, p: glam::Vec3) -> f32 {
-    let local = cell.1.inverse() * (p - cell.0);
-    let out = (local.abs() - size.abs() * 0.5).max(glam::Vec3::ZERO);
-    out.length_squared()
+/// The distance from `p` (world) to a cell's box: `size` about the cell's
+/// world position, turned with it (its scale does not apply).
+fn distance(cell: Pose, size: glam::Vec3, p: glam::Vec3) -> f32 {
+    let region = og_core::volume::Volume {
+        size,
+        radius: 0.0,
+        fade: 0.0,
+    };
+    let at = og_core::volume::Placement {
+        position: cell.0,
+        quaternion: cell.1,
+        scale: glam::Vec3::ONE,
+    };
+    region.outside(&at, p)
 }
 
 /// One cell as the tick sees it: its entity, og.StreamCell value and
@@ -297,10 +305,9 @@ fn seen(
         let reach = reach_of(&v, v.loaded || loading);
         let size = v.size;
         let within = |lead: f32| {
-            anchors.iter().any(|&(p, extra, speed)| {
-                let r = reach + extra + speed * lead;
-                distance_sq(pose, size, p) <= r * r
-            })
+            anchors
+                .iter()
+                .any(|&(p, extra, speed)| distance(pose, size, p) <= reach + extra + speed * lead)
         };
         let want = scene != 0 && (v.pin || within(0.0));
         let ahead = scene != 0 && (v.pin || within(ahead));

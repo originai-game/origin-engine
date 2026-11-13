@@ -683,21 +683,17 @@ impl ReverbZone {
     /// `t`: 1 inside the volume, falling linearly to 0 at `fade` metres
     /// from its surface (0 outside a hard edge).
     pub fn weight_at(&self, t: &Transform, p: Vec3) -> f32 {
-        let scale = t.scale.abs();
-        let outside = if self.radius > 0.0 {
-            ((p - t.position).length() - self.radius * scale.max_element()).max(0.0)
-        } else {
-            let local = t.quaternion.normalize().inverse() * (p - t.position);
-            let half = self.size.abs() * scale * 0.5;
-            (local.abs() - half).max(Vec3::ZERO).length()
+        let volume = og_core::volume::Volume {
+            size: self.size,
+            radius: self.radius,
+            fade: self.fade,
         };
-        if outside <= 0.0 {
-            1.0
-        } else if self.fade > 0.0 {
-            (1.0 - outside / self.fade).max(0.0)
-        } else {
-            0.0
-        }
+        let at = og_core::volume::Placement {
+            position: t.position,
+            quaternion: t.quaternion,
+            scale: t.scale,
+        };
+        volume.weight(&at, p)
     }
 }
 
