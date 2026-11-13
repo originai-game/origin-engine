@@ -588,25 +588,20 @@ struct Settings {
     debris: u64,
 }
 
-impl Settings {
-    fn of(v: &record::Destructible) -> Settings {
-        Settings {
-            mat: Material {
-                toughness: v.toughness.max(1e-3),
-                limits: StressLimits::from_strength(
-                    v.strength,
-                    v.friction,
-                    v.tension.clamp(0.0, 1.0),
-                ),
-                density: v.density.max(1.0),
-            },
-            threshold: v.impact_threshold.max(0.0),
-            radius: v.impact_radius.max(0.01),
-            anchored: v.anchored,
-            break_fx: v.break_fx,
-            hit_fx: v.hit_fx,
-            debris: v.debris,
-        }
+/// An og.Destructible's row as the tick's settings.
+fn settings_of(v: &record::Destructible) -> Settings {
+    Settings {
+        mat: Material {
+            toughness: v.toughness.max(1e-3),
+            limits: StressLimits::from_strength(v.strength, v.friction, v.tension.clamp(0.0, 1.0)),
+            density: v.density.max(1.0),
+        },
+        threshold: v.impact_threshold.max(0.0),
+        radius: v.impact_radius.max(0.01),
+        anchored: v.anchored,
+        break_fx: v.break_fx,
+        hit_fx: v.hit_fx,
+        debris: v.debris,
     }
 }
 
@@ -715,7 +710,7 @@ fn run(ctx: &mut SystemContext<'_>, m: &ModuleState, l: &Ls) -> og_core::Result<
         &explosions,
         &mut out,
     )?;
-    push_blasted_pieces(&settings, &explosions, &mut out);
+    push_blasted_pieces(&settings, &explosions, &mut out.debris, &mut out.crumbs);
     push_struck(ctx, l, st, &assets, &settings, &poses, &strikes, &mut out);
     commit_fresh(ctx, l, st, &mut out)?;
     enforce_budgets(ctx, st, &assets, &t)?;
@@ -798,7 +793,7 @@ fn survey(
         // always took as 0 (dynamic): any body counts as moving, a fixed
         // one too (kept as it was).
         let moving = ctx.get_bytes(e, l.rigid.0).is_ok();
-        settings.insert(e.to_bits(), Settings::of(&d));
+        settings.insert(e.to_bits(), settings_of(&d));
         current.insert(e.to_bits(), (asset, world_pose(ctx, l, e), moving));
     }
     let gone: Vec<u64> = st
@@ -1159,12 +1154,12 @@ fn break_prop(
         &mut cause,
         &mut shatter,
     );
-    break_masonry(t, at, &frame, p, &before, &mut cause);
+    break_masonry(t.tick, t.gravity, at, &frame, p, &before, &mut cause);
     let broken_now: Vec<bool> = (0..before.len())
         .map(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0)
         .collect();
     if s.debris != 0 {
-        shed_crumbs(t, at, &frame, &broken_now, scale, &mut out.crumbs);
+        shed_crumbs(t.tick, at, &frame, &broken_now, scale, &mut out.crumbs);
     }
     let changed = broken_now.iter().any(|&b| b)
         || (0..anchors_before.len()).any(|i| anchors_before[i] > 0.0 && p.inst.anchors[i] <= 0.0)
@@ -1355,7 +1350,8 @@ fn solve_stress(
 /// of mortared blocks longer than RUN comes apart at its joints the tick
 /// it breaks loose.
 fn break_masonry(
-    t: &Clock,
+    tick: u64,
+    gravity: Vec3,
     at: Breaking<'_>,
     frame: &Pose,
     p: &mut Prop,
@@ -1366,8 +1362,8 @@ fn break_masonry(
     let masonry = s.mat.limits.shear_elastic.is_finite()
         && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic;
     let anchors = p.anchors;
-    if anchors && t.tick.is_multiple_of(REST_EVERY) && masonry {
-        let up = -(frame.1.inverse() * t.gravity).normalize_or_zero();
+    if anchors && tick.is_multiple_of(REST_EVERY) && masonry {
+        let up = -(frame.1.inverse() * gravity).normalize_or_zero();
         for c in p.inst.unsupported(a, &islands_of(&p.inst, a, anchors), up) {
             p.inst.free(a, c);
             cause.get_or_insert(CAUSE_STRESS);
@@ -1399,7 +1395,7 @@ fn break_masonry(
 /// The grit the joints broken this tick shed (spread over at most
 /// CRUMBS_A_TICK of them), with the mass of the piece beside each.
 fn shed_crumbs(
-    t: &Clock,
+    tick: u64,
     at: Breaking<'_>,
     frame: &Pose,
     broken_now: &[bool],
@@ -1417,7 +1413,7 @@ fn shed_crumbs(
             Crumb {
                 prop: at.key,
                 bond: i as u32,
-                tick: t.tick,
+                tick,
                 point: place_chunk(at, frame, b.a, b.centroid).to_array(),
                 normal: (rot * b.normal).to_array(),
                 velocity: [0.0; 3],
@@ -1741,7 +1737,8 @@ fn push_blasted_bodies(
 fn push_blasted_pieces(
     settings: &BTreeMap<u64, Settings>,
     explosions: &[Explosion],
-    out: &mut Broken,
+    debris: &mut [(Debris, f32)],
+    crumbs: &mut [(Crumb, f32)],
 ) {
     for &(point, inner, radius, impulse) in explosions {
         if impulse <= 0.0 {
@@ -1753,7 +1750,7 @@ fn push_blasted_pieces(
             max_radius: radius,
             amount: impulse,
         };
-        for (d, m) in &mut out.debris {
+        for (d, m) in debris.iter_mut() {
             let density = settings.get(&d.prop).map_or(1000.0, |s| s.mat.density);
             let at = Vec3::new(d.pose[0], d.pose[1], d.pose[2]);
             if let Some((dv, dw)) =
@@ -1764,7 +1761,7 @@ fn push_blasted_pieces(
             }
         }
         // Grit goes with the piece beside its joint.
-        for (c, m) in &mut out.crumbs {
+        for (c, m) in crumbs.iter_mut() {
             let density = settings.get(&c.prop).map_or(1000.0, |s| s.mat.density);
             let at = Vec3::from(c.point);
             if let Some((dv, _)) = blast_push(&falloff, impulse, at, *m, density, u64::from(c.bond))
@@ -1865,27 +1862,18 @@ fn commit_fresh(
     Ok(())
 }
 
-/// Budgets: loose islands (a body and its children) by when they broke
-/// loose; debris past its lifetime, then the oldest past maxChunks; fine
-/// pieces and grit after debrisLifetime, with their prop, and the oldest
-/// past what the renderer holds.
-fn enforce_budgets(
-    ctx: &mut SystemContext<'_>,
-    st: &mut State,
-    assets: &Assets,
-    t: &Clock,
-) -> og_core::Result<()> {
-    let tick = t.tick;
-    let max = t.res.max_chunks as usize;
+/// A loose island (a body and the chunks it carries) as the budgets weigh
+/// it: when it broke loose, its volume, and its chunks of its prop.
+struct Loose {
+    tick: u64,
+    volume: f32,
+    body: u64,
+    prop: u64,
+    chunks: Vec<usize>,
+}
 
-    let lifetime = t.res.debris_lifetime;
-    struct Loose {
-        tick: u64,
-        volume: f32,
-        body: u64,
-        prop: u64,
-        chunks: Vec<usize>,
-    }
+/// The loose islands, the oldest first (then the smallest, then by body).
+fn loose_islands(st: &State, assets: &Assets) -> Vec<Loose> {
     let mut loose: BTreeMap<u64, Loose> = BTreeMap::new();
     for (&k, p) in &st.props {
         let a = &assets[&p.asset];
@@ -1912,6 +1900,81 @@ fn enforce_budgets(
     order.sort_by(|x, y| {
         (x.tick, x.volume.to_bits(), x.body).cmp(&(y.tick, y.volume.to_bits(), y.body))
     });
+    order
+}
+
+impl State {
+    /// Fine pieces and grit: gone `life` ticks after they broke off (when
+    /// they have a lifetime), or with their prop, and the oldest past
+    /// `max_debris` (what the renderer's debris layer holds) and
+    /// MAX_CRUMBS.
+    fn trim_pieces(&mut self, tick: u64, life: Option<u64>, max_debris: usize) {
+        let old = |born: u64| life.is_some_and(|life| tick >= born.saturating_add(life));
+        let props = &self.props;
+        self.debris
+            .retain(|d| props.contains_key(&d.prop) && !old(d.tick));
+        let over = self.debris.len().saturating_sub(max_debris);
+        self.debris.drain(..over);
+        self.crumbs
+            .retain(|c| props.contains_key(&c.prop) && !old(c.tick));
+        let over = self.crumbs.len().saturating_sub(MAX_CRUMBS);
+        self.crumbs.drain(..over);
+    }
+
+    /// The og.destruction state block's bytes.
+    fn save(&self, out: &mut Vec<u8>) {
+        out.extend_from_slice(MAGIC);
+        out.extend(bincode::serialize(self).expect("the og.destruction state serialises"));
+    }
+
+    /// The state [`State::save`] wrote.
+    fn decode(bytes: &[u8]) -> og_core::Result<State> {
+        let rest = bytes
+            .strip_prefix(MAGIC)
+            .ok_or_else(|| invalid("not an og.destruction state"))?;
+        bincode::deserialize(rest).map_err(|e| invalid(e.to_string()))
+    }
+
+    /// The origin moved by `d`: the frames and queued points are in the
+    /// world.
+    fn shift(&mut self, d: glam::DVec3) {
+        let m = |p: &mut [f32]| {
+            let v = (Vec3::new(p[0], p[1], p[2]).as_dvec3() + d).as_vec3();
+            p[..3].copy_from_slice(&v.to_array());
+        };
+        for p in self.props.values_mut() {
+            m(&mut p.frame);
+        }
+        for d in &mut self.debris {
+            m(&mut d.pose);
+        }
+        for c in &mut self.crumbs {
+            m(&mut c.point);
+        }
+        for op in &mut self.ops {
+            match op {
+                Op::Damage { point, .. } | Op::Explode { point, .. } => m(point),
+                Op::Fracture { .. } => {}
+            }
+        }
+    }
+}
+
+/// Budgets: loose islands (a body and its children) by when they broke
+/// loose; debris past its lifetime, then the oldest past maxChunks; fine
+/// pieces and grit after debrisLifetime, with their prop, and the oldest
+/// past what the renderer holds.
+fn enforce_budgets(
+    ctx: &mut SystemContext<'_>,
+    st: &mut State,
+    assets: &Assets,
+    t: &Clock,
+) -> og_core::Result<()> {
+    let tick = t.tick;
+    let max = t.res.max_chunks as usize;
+
+    let lifetime = t.res.debris_lifetime;
+    let order = loose_islands(st, assets);
     let mut total: usize = order.iter().map(|x| x.chunks.len()).sum();
     let life = t.ticks_of(lifetime);
     for isl in &order {
@@ -1936,19 +1999,11 @@ fn enforce_budgets(
             }
         }
     }
-    // Fine pieces: gone after debrisLifetime, or with their prop, and the
-    // oldest past what the renderer's debris layer holds.
-    let props = &st.props;
-    st.debris.retain(|d| {
-        props.contains_key(&d.prop) && !(lifetime > 0.0 && tick >= d.tick.saturating_add(life))
-    });
-    let over = st.debris.len().saturating_sub(og_render::MAX_DEBRIS);
-    st.debris.drain(..over);
-    st.crumbs.retain(|c| {
-        props.contains_key(&c.prop) && !(lifetime > 0.0 && tick >= c.tick.saturating_add(life))
-    });
-    let over = st.crumbs.len().saturating_sub(MAX_CRUMBS);
-    st.crumbs.drain(..over);
+    st.trim_pieces(
+        tick,
+        (lifetime > 0.0).then_some(life),
+        og_render::MAX_DEBRIS,
+    );
     Ok(())
 }
 
@@ -2231,17 +2286,10 @@ const MAGIC: &[u8; 8] = b"DESTRUC2";
 
 impl StateBlock for Block {
     fn save(&self, out: &mut Vec<u8>) {
-        out.extend_from_slice(MAGIC);
-        out.extend(
-            bincode::serialize(&*lock(&self.0)).expect("the og.destruction state serialises"),
-        );
+        lock(&self.0).save(out);
     }
     fn decode(&self, bytes: &[u8]) -> og_core::Result<Box<dyn Any + Send>> {
-        let rest = bytes
-            .strip_prefix(MAGIC)
-            .ok_or_else(|| invalid("not an og.destruction state"))?;
-        let s: State = bincode::deserialize(rest).map_err(|e| invalid(e.to_string()))?;
-        Ok(Box::new(s))
+        Ok(Box::new(State::decode(bytes)?))
     }
     fn apply(&mut self, decoded: Option<Box<dyn Any + Send>>) {
         *lock(&self.0) = decoded
@@ -2249,28 +2297,8 @@ impl StateBlock for Block {
             .map(|b| *b)
             .unwrap_or_default();
     }
-    /// The frames and queued points are in the world.
     fn shift(&mut self, s: &og_ecs::Shift) {
-        let mut st = lock(&self.0);
-        let m = |p: &mut [f32]| {
-            let v = (Vec3::new(p[0], p[1], p[2]).as_dvec3() + s.d).as_vec3();
-            p[..3].copy_from_slice(&v.to_array());
-        };
-        for p in st.props.values_mut() {
-            m(&mut p.frame);
-        }
-        for d in &mut st.debris {
-            m(&mut d.pose);
-        }
-        for c in &mut st.crumbs {
-            m(&mut c.point);
-        }
-        for op in &mut st.ops {
-            match op {
-                Op::Damage { point, .. } | Op::Explode { point, .. } => m(point),
-                Op::Fracture { .. } => {}
-            }
-        }
+        lock(&self.0).shift(s.d);
     }
 }
 
