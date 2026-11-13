@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Terrain",
+      "summary": "The terrain and its stamps take the light around them through the renderer's one shading entry: the light volumes and the probe GI's occlusion of reflections reach the ground, and its reflection is bent towards the normal by roughness as a mesh's is."
+    }
+  ]
+}

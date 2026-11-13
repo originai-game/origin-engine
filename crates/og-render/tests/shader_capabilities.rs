@@ -59,8 +59,8 @@ sprite skin                              | -            | -       | -      | ful
 tiles                                    | -            | -       | -      | full | -                 | -         | -        | -
 scatter                                  | full         | -       | full   | -    | stub              | full      | -        | full
 grass                                    | full         | full    | full   | -    | stub              | full      | -        | full
-terrain                                  | full         | full    | full   | -    | -                 | -         | -        | -
-terrain (layer arrays)                   | full         | full    | full   | -    | -                 | -         | -        | -
+terrain                                  | full         | full    | full   | -    | stub              | stub      | -        | full
+terrain (layer arrays)                   | full         | full    | full   | -    | stub              | stub      | -        | full
 water                                    | -            | -       | -      | -    | -                 | -         | -        | -
 fluid 3d                                 | full         | -       | -      | -    | -                 | -         | -        | -
 volumetric                               | full         | -       | -      | -    | -                 | -         | -        | -

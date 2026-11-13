@@ -624,35 +624,19 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   // The sun under the frame's material style (lighting.wgsl style_sun):
   // the BRDF, or the toon bands, matte; its shadow darkness and tint. The
   // band edges smoothed over the ramp's own change, cast shadows' too.
-  let sun = style_sun(s, n, v, l, shadow, style_edge(n_dot_l * shadow));
-  var color = sun.direct;
-  color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(p) + through;
-  // Point, spot and rect lights: this fragment's cluster's, or every light
-  // in a reflection probe's face (area.wgsl surface_local_lights).
-  color += styled_local_lights(clip, s, p, n, v);
-  let n_dot_v = max(dot(n, v), 1e-4);
-  let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
-  let kd_ibl = vec3<f32>(1.0) - f_ibl;
-  // The environment, or the probe holding the tile blended with it (probes.rs),
-  // at its intensity, plus the hemisphere light at its own.
-  let irradiance = style_irradiance(ambient_light(n, p) * frame.params.x + hemi_irradiance(n), p);
-  let r = reflect(-v, n);
-  // With the screen-space reflections over it (frame.wgsl ssr_reflected).
-  let prefiltered = ssr_reflected(reflected_light(r, p, s.roughness * frame.params.y) * frame.params.x, p, clip);
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  // The style's shadow darkness takes its share of the ambient light too.
-  let diffuse_ibl = kd_ibl * irradiance * s.albedo * sky * sun.keep;
-  let specular_ibl = prefiltered * (s.f0 * lut.x + lut.y) * sky * sun.keep;  // Karis split sum (pbr_fs.wgsl)
+  var sun = style_sun(s, n, v, l, shadow, style_edge(n_dot_l * shadow));
+  sun.direct += through;
+  // The caustics, the local lights and the light around the ground, as
+  // every lit surface's (surface_shade.wgsl): under the sky its horizon
+  // and the far grass leave, with what the decals on it emit. The
+  // terrain's pipelines have no texture slot left for the screen's
+  // occlusion (`screen` false).
+  let at = ShadeAt(p, n, v, clip, false, true, true);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, decal_emissive, 1.0, sky);
   let view = u32(frame.light_color.w);
-  if (view == 4u) { return vec4<f32>(diffuse_ibl, 1.0); }
-  if (view == 5u) { return vec4<f32>(specular_ibl, 1.0); }
-  if (view == 6u) { return vec4<f32>(color, 1.0); }
-  color += diffuse_ibl + specular_ibl + decal_emissive;
-
-  if (frame.light_color.w > 0.5 && frame.light_color.w < 1.5) {
-    return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0);
-  }
-  return vec4<f32>(apply_fog(color, p), 1.0);
+  if (view > 3u) { return vec4<f32>(shaded_debug(lit, s.albedo, view), 1.0); }
+  if (view == 1u) { return vec4<f32>(cascade_tint(cascade_index(p)) * 4.0, 1.0); }
+  return vec4<f32>(apply_fog(shaded_color(lit), p), 1.0);
 }
 
 struct TerrainPrepass {

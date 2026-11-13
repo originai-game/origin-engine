@@ -91,13 +91,24 @@ pub(crate) const GRASS_COMMON_WGSL: &str = wgsl3d!("grass_common.wgsl");
 
 /// The terrain's lit module after the frame group, the light tables and the lighting.
 pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
-    format!(
-        "{frame}{tables}{lighting}{}{}{}{GRASS_COMMON_WGSL}{TERRAIN_WGSL}{TERRAIN_LAYERS_WGSL}{TERRAIN_VERTEX_WGSL}{}{}",
-        crate::WEATHER_SURFACE_WGSL,
-        crate::AREA_WGSL,
-        crate::wind::WIND_COMMON_WGSL,
-        wgsl3d!("terrain_lit.wgsl"),
-        wgsl3d!("decals.wgsl")
+    crate::assemble(
+        &[
+            frame,
+            tables,
+            lighting,
+            crate::WEATHER_SURFACE_WGSL,
+            &og_render_data::lightmap::probe_wgsl(),
+            crate::AREA_WGSL,
+            crate::SURFACE_SHADE_WGSL,
+            crate::wind::WIND_COMMON_WGSL,
+            GRASS_COMMON_WGSL,
+            TERRAIN_WGSL,
+            TERRAIN_LAYERS_WGSL,
+            TERRAIN_VERTEX_WGSL,
+            wgsl3d!("terrain_lit.wgsl"),
+            wgsl3d!("decals.wgsl"),
+        ],
+        &crate::Capability::OPAQUE_SURFACE,
     )
 }
 
