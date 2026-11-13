@@ -14,6 +14,7 @@ use crate::motion::{PresenceSpec, Reduced, StateGroup, Transition};
 use crate::style::Breakpoint;
 
 mod frame;
+#[doc(hidden)]
 pub mod id;
 mod interact;
 mod placement;

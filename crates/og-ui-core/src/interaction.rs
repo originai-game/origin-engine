@@ -6,6 +6,7 @@
 
 pub mod actions;
 pub mod hud_layout;
+#[doc(hidden)]
 pub mod input;
 pub(crate) mod nav;
 pub(crate) mod recognize;

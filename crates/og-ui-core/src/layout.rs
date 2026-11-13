@@ -24,6 +24,7 @@ pub mod flow;
 mod grid;
 pub(crate) mod multicol;
 mod node;
+#[doc(hidden)]
 pub mod virtualize;
 mod writing;
 
