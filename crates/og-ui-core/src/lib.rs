@@ -37,7 +37,7 @@ pub use text::input_type;
 pub mod id;
 #[doc(hidden)]
 pub mod input;
-mod juice;
+pub(crate) use motion::juice;
 #[doc(hidden)]
 pub mod layer_stack;
 #[doc(hidden)]
@@ -71,7 +71,7 @@ pub mod theme;
 pub use paint::particles;
 #[doc(hidden)]
 pub mod ui;
-mod view_transition;
+pub(crate) use motion::view_transition;
 pub mod viewport;
 #[doc(hidden)]
 pub mod virtualize;

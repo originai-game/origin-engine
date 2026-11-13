@@ -11,11 +11,13 @@ pub(crate) mod codec;
 pub mod css;
 pub(crate) mod gesture;
 pub(crate) mod interpolate;
+pub(crate) mod juice;
 pub(crate) mod run;
 pub mod scroll;
 pub mod spring;
 pub(crate) mod state;
 pub mod timeline;
+pub(crate) mod view_transition;
 
 pub use gesture::GestureInfo;
 pub use run::{MotionDump, PlayInfo};
