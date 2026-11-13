@@ -17,6 +17,8 @@ pub struct Facts<'a> {
     pub tag: &'a str,
     /// The exposed part being styled, not the host's `part` attribute.
     pub part: Option<&'a str>,
+    /// The control's own part beside a named one ([`crate::dress::PartRef::own`]).
+    pub own_part: Option<&'a str>,
     pub root: bool,
     pub attributes: &'a BTreeMap<String, Value>,
     pub states: &'a BTreeSet<InteractionState>,
@@ -276,7 +278,9 @@ fn position<T: Tree>(
 pub fn own(facts: &Facts<'_>, simple: &Simple) -> bool {
     match simple {
         Simple::Type(name) => facts.tag == name,
-        Simple::Part(name) => facts.part == Some(name.as_str()),
+        Simple::Part(name) => {
+            facts.part == Some(name.as_str()) || facts.own_part == Some(name.as_str())
+        }
         Simple::Root => facts.root,
         Simple::Id(name) => facts.attributes.get("id").and_then(Value::as_str) == Some(name),
         Simple::Class(name) => facts

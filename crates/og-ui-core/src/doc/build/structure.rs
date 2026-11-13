@@ -75,6 +75,7 @@ impl Tree for Levels<'_> {
         Facts {
             scope: &e.document.name,
             part: None,
+            own_part: None,
             tag: e.document.nodes[e.node]
                 .selector_tag
                 .as_deref()

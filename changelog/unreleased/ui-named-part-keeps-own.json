@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui documents",
+      "summary": "A part named on a built-in control (part=\"slot\" on a button) adds to the control's own part instead of replacing it: `button::part(base)` rules still dress the button."
+    }
+  ]
+}

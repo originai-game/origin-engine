@@ -217,6 +217,7 @@ impl Ui {
             scope: "",
             tag: "",
             part: None,
+            own_part: None,
             root: true,
             attributes: &attributes,
             states: &Default::default(),
@@ -399,6 +400,7 @@ impl Ui {
                         rule,
                         &Facts {
                             part: None,
+                            own_part: None,
                             ..facts
                         },
                     )

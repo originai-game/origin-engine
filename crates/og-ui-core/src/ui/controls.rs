@@ -233,9 +233,13 @@ impl Ui {
             ButtonVariant::Danger => "danger",
             ButtonVariant::Ghost => "ghost",
         };
-        let named = desc.part.unwrap_or_else(|| {
-            crate::doc::schema::parts::BUTTON_BASE
-                .reference(Some(crate::tokens::ElementClass::Button))
+        let base = crate::doc::schema::parts::BUTTON_BASE
+            .reference(Some(crate::tokens::ElementClass::Button));
+        // A part the document names keeps the button's own: its plate
+        // is still `button::part(base)`'s ([`crate::dress::PartRef::own`]).
+        let named = desc.part.map_or(base, |p| crate::dress::PartRef {
+            own: if p.part == base.part { "" } else { base.part },
+            ..p
         });
         let mut part = crate::dress::PartRef {
             class: Some(crate::tokens::ElementClass::Button),

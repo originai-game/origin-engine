@@ -1131,9 +1131,17 @@ impl Ui {
             let el = self.tree.el_mut(i);
             el.part = Some(match el.part {
                 Some(own) => {
+                    // A rebuild applies the named part again over itself:
+                    // the control's own part is the one it kept.
+                    let base = if own.own.is_empty() {
+                        own.part
+                    } else {
+                        own.own
+                    };
                     let mut p = crate::dress::PartRef {
                         component: named.component,
                         part: named.part,
+                        own: if base == named.part { "" } else { base },
                         ..own
                     };
                     for f in named.flags() {

@@ -93,6 +93,12 @@ pub fn intern(s: &str) -> &'static str {
 pub struct PartRef {
     pub component: &'static str,
     pub part: &'static str,
+    /// The control's own part when a document names another on its host
+    /// (`<button part="Bag.cell">`), empty otherwise. Rules for either name
+    /// match, as a `part` attribute exposes an element without taking its
+    /// own styling away: `button::part(base)` still draws the plate and the
+    /// named part's rules dress it further.
+    pub own: &'static str,
     /// Widget layout classification. It supplies no styling fallback.
     pub class: Option<ElementClass>,
     pub level: Option<Level>,
@@ -123,6 +129,7 @@ impl PartRef {
         PartRef {
             component,
             part,
+            own: "",
             class,
             level: None,
             flags: [""; MAX_FLAGS],
@@ -353,6 +360,7 @@ impl PartRef {
             scope: "",
             tag: &tag,
             part: Some(self.part),
+            own_part: Some(self.own).filter(|p| !p.is_empty()),
             root: false,
             attributes: &attributes,
             states: &states,
