@@ -85,10 +85,15 @@ pub(crate) fn crowd_bake_source() -> String {
     )
 }
 
-/// What the 3D fluid's module starts with: the frame group, the light
-/// tables, the lighting and the area lights (area.wgsl).
+/// What the 3D fluid's and the particles' modules start with: the frame
+/// group, the light tables, the lighting, the light volumes' hook, the
+/// area lights (area.wgsl) and the shared shading.
 pub(crate) fn fluid_shared_source() -> String {
-    format!("{FRAME_WGSL}{}{LIGHTING_WGSL}{AREA_WGSL}", clusters::wgsl())
+    format!(
+        "{FRAME_WGSL}{}{LIGHTING_WGSL}{}{AREA_WGSL}{SURFACE_SHADE_WGSL}",
+        clusters::wgsl(),
+        og_render_data::lightmap::probe_wgsl()
+    )
 }
 pub(crate) const SKY_WGSL: &str = wgsl!("sky.wgsl");
 /// The physical sky's scattering (`sky_physical.rs`), its block named

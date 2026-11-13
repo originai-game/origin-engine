@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.Fluid (3D) and lit particles",
+      "summary": "The 3D fluid's body and lit particles shade through the renderer's one shading entry: both now take the probe GI, the light volumes, the hemisphere light and the caustics under water as a mesh does. The fluid's reflection is the shared image-based specular, added over the body by Fresnel, where it was a mix with the environment at a fixed blur; a glossy fluid reads slightly differently."
+    }
+  ]
+}

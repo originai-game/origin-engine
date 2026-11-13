@@ -214,18 +214,19 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
-  var body = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  body += ambient_light_level(n, p) * color * frame.params.x;
-  // The local lights: the cluster's, or every light in a probe face (area.wgsl).
-  body += surface_local_lights(in.pos.xy, s, p, n, v);
-  var out = through + body * (1.0 - transmit);
+  let sun = StyleSun(brdf(s, n, v, l) * frame.light_color.rgb * shadow, 1.0);
+  // The caustics, the local lights and the light around the body, as every
+  // lit surface's (surface_shade.wgsl). It reads none of the screen's
+  // occlusion or reflections: it lies over the surfaces those were made for.
+  let at = ShadeAt(p, n, v, in.pos.xy, false, false, false);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, vec3<f32>(0.0), 1.0, 1.0);
+  var out = through + (lit.direct + lit.diffuse) * (1.0 - transmit);
 
-  // The environment reflected (Schlick, water's reflectance).
+  // What the surface reflects of the light around it (the split sum at
+  // water's reflectance) in place of what it lets through (Schlick).
   let n_dot_v = saturate(dot(n, v));
   let fresnel = clamp((0.02 + 0.98 * pow(1.0 - n_dot_v, 5.0)) * fluid.up.w, 0.0, 1.0);
-  // The environment, or the reflection probe holding the fluid (probes.rs).
-  let reflected = reflected_light(reflect(-v, n), p, 0.5) * frame.params.x;
-  out = mix(out, reflected, fresnel);
+  out = out * (1.0 - fresnel) + lit.specular * fluid.up.w;
   let h = normalize(l + v);
   out += frame.light_color.rgb * pow(max(dot(n, h), 0.0), 200.0) * 2.0 * fresnel * fluid.up.w * shadow;
 

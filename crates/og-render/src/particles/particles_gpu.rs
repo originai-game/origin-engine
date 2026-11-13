@@ -469,11 +469,17 @@ fn reach(e: &ParticleEmitter, transform: Mat4, tick_rate: f32) -> (Vec3, Vec3) {
 /// The particle draw module after the frame group, the light tables and
 /// the lighting (`fluid_shared_source`: lit particles).
 pub(crate) fn draw_source(frame_wgsl: &str, hook: Option<&crate::MaterialShader>) -> String {
-    format!(
-        "{frame_wgsl}{}{}{NOISE_WGSL}{COMMON_WGSL}{}{}{DRAW_WGSL}",
-        crate::oit::OIT_WGSL,
-        crate::oit::ARENA_WGSL,
-        crate::effect::EFFECT_WGSL,
-        crate::effect::hooks_source(hook),
+    crate::assemble(
+        &[
+            frame_wgsl,
+            crate::oit::OIT_WGSL,
+            crate::oit::ARENA_WGSL,
+            NOISE_WGSL,
+            COMMON_WGSL,
+            crate::effect::EFFECT_WGSL,
+            &crate::effect::hooks_source(hook),
+            DRAW_WGSL,
+        ],
+        &[crate::Capability::ScreenAo],
     )
 }

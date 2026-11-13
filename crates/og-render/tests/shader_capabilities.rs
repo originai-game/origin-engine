@@ -62,10 +62,10 @@ grass                                    | full         | full    | full   | -  
 terrain                                  | full         | full    | full   | -    | stub              | stub      | -        | full
 terrain (layer arrays)                   | full         | full    | full   | -    | stub              | stub      | -        | full
 water                                    | -            | -       | -      | -    | -                 | -         | -        | -
-fluid 3d                                 | full         | -       | -      | -    | -                 | -         | -        | -
+fluid 3d                                 | full         | -       | -      | -    | -                 | stub      | -        | full
 volumetric                               | full         | -       | -      | -    | -                 | -         | -        | -
 volumetric raymarch                      | full         | -       | -      | -    | -                 | -         | -        | -
-particles                                | full         | -       | -      | full | -                 | -         | -        | -
+particles                                | full         | -       | -      | full | -                 | stub      | -        | full
 pbr lean                                 | full         | full    | full   | full | stub              | full      | full     | full
 pbr lean, two planar reflections         | full         | full    | full   | full | full              | full      | full     | full
 ";

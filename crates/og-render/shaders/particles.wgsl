@@ -157,10 +157,10 @@ fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
-  var c = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  c += ambient_light_level(n, p) * frame.params.x;
-  c += surface_local_lights(frag, s, p, n, v);
-  return c;
+  // The caustics, the local lights and the diffuse light around it, as
+  // every lit surface's (surface_shade.wgsl).
+  let at = ShadeAt(p, n, v, frag, false, false, false);
+  return surface_matte(s, at, brdf(s, n, v, l) * frame.light_color.rgb * shadow, n_dot_l * shadow);
 }
 
 // A smooth lit mesh particle (emitter.look.w, its roughness, below 1):
@@ -183,10 +183,10 @@ fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rou
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow(p, n, n_dot_l); }
-  var spec = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  spec += surface_local_lights(frag, s, p, n, v);
-  let fres = f_schlick_roughness(max(dot(n, v), 0.0), s.f0, s.roughness);
-  spec += fres * reflected_light(reflect(-v, n), p, s.roughness * frame.params.y) * frame.params.x;
+  // A black surface's light is what it reflects (surface_shade.wgsl).
+  let at = ShadeAt(p, n, v, frag, false, false, false);
+  let lit = surface_shade(s, at, StyleSun(brdf(s, n, v, l) * frame.light_color.rgb * shadow, 1.0), n_dot_l * shadow, vec3<f32>(0.0), 1.0, 1.0);
+  let spec = lit.direct + lit.specular;
   let body = c.rgb * particle_light(frag, p, n) * c.a;
   let a = clamp(c.a + max(spec.r, max(spec.g, spec.b)), 0.0, 1.0);
   if (a <= 0.0) { return vec4<f32>(0.0); }

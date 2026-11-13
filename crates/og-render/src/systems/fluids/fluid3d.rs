@@ -797,10 +797,13 @@ fn camera_uniforms(
     (gpu, blur)
 }
 
-/// The 3D fluid's module after `shared` (the frame group, the light
-/// tables and the lighting), as the renderer compiles it.
+/// The 3D fluid's module after `shared` (`fluid_shared_source`), as the
+/// renderer compiles it: the shared shading reads no screen occlusion here.
 pub(crate) fn fluid_source(shared: &str) -> String {
-    format!("{shared}{}", wgsl3d!("fluid3d.wgsl"))
+    crate::assemble(
+        &[shared, wgsl3d!("fluid3d.wgsl")],
+        &[crate::Capability::ScreenAo],
+    )
 }
 
 /// The 3D fluid's blur module.

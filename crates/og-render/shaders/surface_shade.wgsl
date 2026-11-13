@@ -8,7 +8,7 @@
 // surface_gather (a material with lobes of its own: the physical shader),
 // surface_ambient and surface_sum (a material that changes the light
 // around it before the sum: a mesh's toon ambient and coat), surface_shade
-// (everything else). After lighting.wgsl, area.wgsl, the light
+// (everything else); surface_matte for a body that reflects nothing. After lighting.wgsl, area.wgsl, the light
 // volumes' hook (lightmap.rs `probe_wgsl`) and screen_ao.wgsl or its stub.
 
 // Where and how a surface is shaded.
@@ -41,6 +41,16 @@ struct Gathered {
   occlusion: ScreenOcclusion,
 };
 
+// The diffuse light arriving at a surface along `ambient_n`, with the
+// probe GI's gather `gi` there.
+fn surface_irradiance(at: ShadeAt, ambient_n: vec3<f32>, gi: GiSample) -> vec3<f32> {
+  // The baked lightmap or the light volumes where there are, at the
+  // environment's intensity; the hemisphere light adds at its own.
+  let irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) * frame.params.x + hemi_irradiance(at.n);
+  if (at.styled) { return style_irradiance(irradiance, at.p); }
+  return irradiance;
+}
+
 // The gather for a surface of `roughness` that reflects around `around`
 // (its normal; an anisotropic surface's bent normal).
 fn surface_gather(at: ShadeAt, around: vec3<f32>, roughness: f32) -> Gathered {
@@ -54,10 +64,7 @@ fn surface_gather(at: ShadeAt, around: vec3<f32>, roughness: f32) -> Gathered {
   // The probe GI's one gather, for the diffuse light along the ambient
   // normal and the reflections' occlusion.
   let gi = gi_sample_at(at.p, ambient_n);
-  // The baked lightmap or the light volumes where there are, at the
-  // environment's intensity; the hemisphere light adds at its own.
-  o.irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) * frame.params.x + hemi_irradiance(at.n);
-  if (at.styled) { o.irradiance = style_irradiance(o.irradiance, at.p); }
+  o.irradiance = surface_irradiance(at, ambient_n, gi);
   // three.js's getIBLRadiance (r170): the reflection bent towards the
   // normal by roughness squared before the prefiltered map is read (a
   // rough surface reflects around its normal, not the mirror direction;
@@ -124,19 +131,35 @@ fn surface_sum(s: Surface, direct: vec3<f32>, a: Ambient, emissive: vec3<f32>, i
   return o;
 }
 
-// `s` at `at` under `sun` (its sun term: lighting.wgsl style_sun, or the
-// surface's own with `keep` 1), with `sunlit` its n.l times its shadow
-// (the caustics' share of the sun) and `emissive`, `intensity` and `keep`
-// as surface_sum's; the style's shadow darkness takes its share of the
-// light around the surface as of the sun's.
-fn surface_shade(s: Surface, at: ShadeAt, sun: StyleSun, sunlit: f32, emissive: vec3<f32>, intensity: f32, keep: f32) -> Shaded {
-  var direct = sun.direct;
+// The direct light on `s` at `at`: `sun` (its sun term), the caustics at
+// `sunlit` (its n.l times its shadow, their share of the sun) and the
+// local lights.
+fn surface_direct(s: Surface, at: ShadeAt, sun: vec3<f32>, sunlit: f32) -> vec3<f32> {
+  var direct = sun;
   // Caustics where the surface lies under the frame's water (0 without).
   direct += s.albedo * frame.light_color.rgb * sunlit * caustics(at.p);
   // Point, spot and rect lights: this fragment's cluster's, or every light
   // in a reflection probe's face.
   direct += local_lights_on(at.frag, s, at.p, at.n, at.v, at.styled);
+  return direct;
+}
+
+// `s` at `at` under `sun` (its sun term: lighting.wgsl style_sun, or the
+// surface's own with `keep` 1), with `sunlit` as surface_direct's and
+// `emissive`, `intensity` and `keep` as surface_sum's; the style's shadow
+// darkness takes its share of the light around the surface as of the sun's.
+fn surface_shade(s: Surface, at: ShadeAt, sun: StyleSun, sunlit: f32, emissive: vec3<f32>, intensity: f32, keep: f32) -> Shaded {
+  let direct = surface_direct(s, at, sun.direct, sunlit);
   return surface_sum(s, direct, surface_ambient(s, at), emissive, intensity, keep * sun.keep);
+}
+
+// A matte body at `at` under `sun` (a lit particle, a puff of smoke): the
+// direct light and the diffuse light around it off its albedo, with no
+// reflection to gather and no screen term (it lies over the opaque
+// surfaces those were made for).
+fn surface_matte(s: Surface, at: ShadeAt, sun: vec3<f32>, sunlit: f32) -> vec3<f32> {
+  let irradiance = surface_irradiance(at, at.n, gi_sample_at(at.p, at.n));
+  return surface_direct(s, at, sun, sunlit) + irradiance * s.albedo;
 }
 
 fn shaded_color(o: Shaded) -> vec3<f32> {

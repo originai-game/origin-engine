@@ -170,7 +170,9 @@ fn probe_direction(r: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
 // the probe, blended by `probe_weight`; where the probe GI reaches
 // (gi_probes.rs), its light over that, from its gather `s` there.
 fn ambient_light_from(n: vec3<f32>, p: vec3<f32>, s: GiSample) -> vec3<f32> {
-  if (frame.probe_min.w < 0.5) { return gi_ambient_from(textureSample(irradiance_map, ibl_sampler, n).rgb, s, n); }
+  // The irradiance cube has one level: read without screen derivatives, so
+  // a shader may gather after a fragment has returned.
+  if (frame.probe_min.w < 0.5) { return gi_ambient_from(textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb, s, n); }
   let top = frame.params.y;
   let env = textureSampleLevel(irradiance_map, ibl_sampler, n, top).rgb;
   let probe = textureSampleLevel(prefiltered_map, ibl_sampler, n, top).rgb * frame.probe_max.w;
@@ -182,8 +184,8 @@ fn ambient_light(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
   return ambient_light_from(n, p, gi_sample_at(p, n));
 }
 
-// `ambient_light` without screen derivatives (level 0 of the irradiance
-// cube): for shaders that sample it after a fragment may have returned.
+// The environment's diffuse light alone, without the probe GI: what the
+// GI weighs its sky against, the style's flat ambient, the water's sky.
 fn ambient_light_level(n: vec3<f32>, p: vec3<f32>) -> vec3<f32> {
   if (frame.probe_min.w < 0.5) { return textureSampleLevel(irradiance_map, ibl_sampler, n, 0.0).rgb; }
   let top = frame.params.y;
