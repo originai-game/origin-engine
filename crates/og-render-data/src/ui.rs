@@ -77,7 +77,8 @@ pub const UI_BLEND_MODES_WGSL: &str = wgsl!("ui_blend_modes.wgsl");
 /// The module a custom UI material compiles to: the UI pass's common code,
 /// the composite's prelude, its `Params` and its code.
 pub fn ui_material_module_source(material: &UiMaterialShader) -> String {
-    let mut s = String::from(UI_COMMON_WGSL);
+    let mut s = String::from(crate::HASH_WGSL);
+    s.push_str(UI_COMMON_WGSL);
     s.push_str(UI_BLEND_MODES_WGSL);
     s.push_str(UI_BLEND_WGSL);
     s.push_str(UI_MATERIAL_WGSL);

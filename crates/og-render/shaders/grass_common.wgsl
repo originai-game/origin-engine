@@ -71,7 +71,7 @@ fn grass_clump(p: vec2<f32>, size: f32, seed: u32) -> vec4<f32> {
       let c = base + vec2<f32>(f32(dx), f32(dz));
       let ci = vec2<i32>(c);
       let h = wind_hash2(wind_hash2(bitcast<u32>(ci.x), bitcast<u32>(ci.y)), seed);
-      let site = c + vec2<f32>(wind_unit(h), wind_unit(wind_hash(h)));
+      let site = c + vec2<f32>(hash_to_unit(h), hash_to_unit(pcg(h)));
       let d = dot(site - q, site - q);
       if (d < best) {
         best = d;
@@ -80,7 +80,7 @@ fn grass_clump(p: vec2<f32>, size: f32, seed: u32) -> vec4<f32> {
       }
     }
   }
-  return vec4<f32>(wind_unit(wind_hash(id ^ 0x5bd1e995u)), wind_unit(wind_hash(id ^ 0x1b873593u)), (q - centre) * size);
+  return vec4<f32>(hash_to_unit(pcg(id ^ 0x5bd1e995u)), hash_to_unit(pcg(id ^ 0x1b873593u)), (q - centre) * size);
 }
 
 // How much brighter grass at world point `at` shows where a gust presses
@@ -197,7 +197,7 @@ fn grass_clump_far(p: vec2<f32>, size: f32, seed: u32, dry_share: f32, footprint
       let c = base + vec2<f32>(f32(dx), f32(dz));
       let ci = vec2<i32>(c);
       let h = wind_hash2(wind_hash2(bitcast<u32>(ci.x), bitcast<u32>(ci.y)), seed);
-      let site = c + vec2<f32>(wind_unit(h), wind_unit(wind_hash(h)));
+      let site = c + vec2<f32>(hash_to_unit(h), hash_to_unit(pcg(h)));
       let d = dot(site - q, site - q);
       if (d < best.x) {
         best = vec2<f32>(d, best.x);
@@ -209,7 +209,7 @@ fn grass_clump_far(p: vec2<f32>, size: f32, seed: u32, dry_share: f32, footprint
     }
   }
   // The tint as a blade stores it (8 bits), so the same clumps are dry.
-  let tint = round(vec2<f32>(wind_unit(wind_hash(ids.x ^ 0x5bd1e995u)), wind_unit(wind_hash(ids.y ^ 0x5bd1e995u))) * 255.0) / 255.0;
+  let tint = round(vec2<f32>(hash_to_unit(pcg(ids.x ^ 0x5bd1e995u)), hash_to_unit(pcg(ids.y ^ 0x5bd1e995u))) * 255.0) / 255.0;
   let dry = step(fract(tint * 7.31 + 0.17), vec2<f32>(dry_share));
   let pixel = footprint / size;
   let edge = clamp(0.12 + pixel, 0.12, 1.0);

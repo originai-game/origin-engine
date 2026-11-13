@@ -64,13 +64,7 @@ fn layer_texel() -> vec2<f32> {
 // glitch's slice and tick), so `p` is read as its integer cell.
 fn hash12(p: vec2<f32>) -> f32 {
   let c = bitcast<vec2<u32>>(vec2<i32>(floor(p)));
-  return f32(ui_pcg(c.x + ui_pcg(c.y)) >> 8u) / 16777216.0;
-}
-
-fn ui_pcg(v: u32) -> u32 {
-  let state = v * 747796405u + 2891336453u;
-  let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-  return (word >> 22u) ^ word;
+  return hash_unit(c.x + pcg(c.y));
 }
 
 // Smooth value noise, 0..1.

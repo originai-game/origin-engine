@@ -2,16 +2,9 @@
 
 use super::*;
 
-/// PCG hash (Jarzynski and Olano, 2020): wind_common.wgsl `wind_hash`.
-pub fn hash(x: u32) -> u32 {
-    let state = x.wrapping_mul(747_796_405).wrapping_add(2_891_336_453);
-    let word = ((state >> ((state >> 28) + 4)) ^ state).wrapping_mul(277_803_737);
-    (word >> 22) ^ word
-}
-
-pub(super) fn unit(h: u32) -> f32 {
-    (h >> 8) as f32 / 16_777_216.0
-}
+/// The grass's hash: hash.wgsl's `pcg`, which the blades' shaders draw from.
+pub use og_core::hash::pcg as hash;
+pub(super) use og_core::hash::unit24 as unit;
 
 /// The blue-noise tile: [`TILE_POINTS`] points in the unit square,
 /// wrapping, in progressive order (every prefix is itself evenly spread,

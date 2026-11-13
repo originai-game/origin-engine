@@ -40,18 +40,8 @@ fn band(x: f32, lo: f32, hi: f32, fade: f32) -> f32 {
     smoothstep(lo - f, lo, x) * (1.0 - smoothstep(hi, hi + f, x))
 }
 
-/// A 32-bit integer hash (lowbias32).
-fn hash(mut x: u32) -> u32 {
-    x ^= x >> 16;
-    x = x.wrapping_mul(0x7feb_352d);
-    x ^= x >> 15;
-    x = x.wrapping_mul(0x846c_a68b);
-    x ^ (x >> 16)
-}
-
-fn unit(x: u32) -> f32 {
-    (x >> 8) as f32 / 16_777_216.0
-}
+/// The placement's hash (scatter_place.wgsl draws from the same one).
+use og_core::hash::{lowbias32 as hash, unit24 as unit};
 
 /// The hash a scatter's `seed` places its cells and clusters by.
 pub(crate) fn seed_hash(seed: u32) -> u32 {

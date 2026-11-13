@@ -59,7 +59,8 @@ fn sway_source() -> String {
 /// The visibility buffer's rasteriser and setup (after instance.wgsl).
 pub(crate) fn raster_source() -> String {
     format!(
-        "{}{}{MESHLET_RASTER_WGSL}",
+        "{}{}{}{MESHLET_RASTER_WGSL}",
+        crate::HASH_WGSL,
         crate::INSTANCE_WGSL,
         sway_source()
     )
@@ -81,7 +82,8 @@ pub(crate) fn lit_source(planar: bool) -> String {
 /// The early phase's depth module.
 pub(crate) fn depth_source() -> String {
     format!(
-        "{}{}{MESHLET_DEPTH_WGSL}",
+        "{}{}{}{MESHLET_DEPTH_WGSL}",
+        crate::HASH_WGSL,
         crate::INSTANCE_WGSL,
         sway_source()
     )

@@ -13,11 +13,7 @@
 const N: u32 = 64u;
 
 fn hash(c: vec3<i32>, salt: u32) -> f32 {
-  var h = (bitcast<u32>(c.x) * 73856093u) ^ (bitcast<u32>(c.y) * 19349663u) ^ (bitcast<u32>(c.z) * 83492791u) ^ (salt * 2654435761u);
-  h = h * 747796405u + 2891336453u;
-  h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
-  h = (h >> 22u) ^ h;
-  return f32(h >> 8u) / 16777216.0;
+  return lattice3(c, salt * 2654435761u);
 }
 
 fn wrap(c: vec3<i32>, f: i32) -> vec3<i32> {

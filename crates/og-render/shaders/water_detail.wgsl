@@ -44,11 +44,11 @@ fn lake_glints(p: vec2<f32>, footprint: f32, share: f32, t: f32) -> f32 {
     let size = exp2(level);
     let cell = vec2<i32>(floor(p / size));
     let mu = LAKE_FACETS * size * size * share;
-    let id = spray_hash((bitcast<u32>(cell.x) * 73856093u) ^ (bitcast<u32>(cell.y) * 19349663u) ^ (bitcast<u32>(i32(level)) * 83492791u));
-    let step = floor(t * 6.0 * max(water.waves.y, 0.0) + spray_rand(id));
-    let h = spray_hash(id ^ (bitcast<u32>(i32(step)) * 2654435761u));
-    let u = spray_rand(h);
-    let z = sqrt(-2.0 * log(max(spray_rand(h + 1u), 1e-7))) * cos(6.2831853 * spray_rand(h + 2u));
+    let id = pcg((bitcast<u32>(cell.x) * 73856093u) ^ (bitcast<u32>(cell.y) * 19349663u) ^ (bitcast<u32>(i32(level)) * 83492791u));
+    let step = floor(t * 6.0 * max(water.waves.y, 0.0) + hash_unit(id));
+    let h = pcg(id ^ (bitcast<u32>(i32(step)) * 2654435761u));
+    let u = hash_unit(h);
+    let z = sqrt(-2.0 * log(max(hash_unit(h + 1u), 1e-7))) * cos(6.2831853 * hash_unit(h + 2u));
     let k = poisson_count(mu, u, z);
     let w = select(1.0 - (at - lo), at - lo, j == 1);
     sum += w * select(1.0, k / mu, mu > 1e-6);
@@ -278,7 +278,7 @@ fn flowed_slope(p: vec2<f32>, uv: vec2<f32>, t: f32, w: f32) -> Detail {
 }
 
 fn value_hash(p: vec2<f32>) -> f32 {
-  return lattice_hash(vec3<i32>(vec2<i32>(p), 3));
+  return lattice3(vec3<i32>(vec2<i32>(p), 3), 0u);
 }
 
 // A stream's bank foam at point q (its drift taken out): patches cut at their middle, so half of a bank has none (a

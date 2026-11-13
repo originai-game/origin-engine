@@ -76,7 +76,7 @@ struct GrassVertex {
 
 fn grass_random(b: GrassBlade, salt: u32) -> f32 {
   let bits = u32(round(b.seed * 255.0)) | (u32(b.facing * 256.0) << 8u) | (u32(round(b.clump * 255.0)) << 16u);
-  return wind_unit(wind_hash(bits ^ salt));
+  return hash_to_unit(pcg(bits ^ salt));
 }
 
 fn grass_vertex(r: GrassRef, eye: GrassEye) -> GrassVertex {

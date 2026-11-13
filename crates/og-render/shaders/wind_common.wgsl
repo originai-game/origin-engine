@@ -31,20 +31,8 @@ struct WindField {
   grid_outer: vec4<f32>,
 };
 
-// PCG hash (Jarzynski and Olano, 2020). grass.rs `hash`.
-fn wind_hash(x: u32) -> u32 {
-  let state = x * 747796405u + 2891336453u;
-  let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-  return (word >> 22u) ^ word;
-}
-
 fn wind_hash2(a: u32, b: u32) -> u32 {
-  return wind_hash(a ^ wind_hash(b));
-}
-
-// A hash in [0, 1) with 24 bits.
-fn wind_unit(h: u32) -> f32 {
-  return f32(h >> 8u) / 16777216.0;
+  return pcg(a ^ pcg(b));
 }
 
 // `frequency` (radians per second) rounded to whole cycles per
@@ -57,7 +45,7 @@ fn wind_periodic(frequency: f32) -> f32 {
 // Value noise in [0, 1], smooth, repeating every WIND_GUST_PERIOD cells.
 fn wind_lattice(c: vec2<i32>) -> f32 {
   let m = WIND_GUST_PERIOD - 1;
-  return wind_unit(wind_hash2(u32(c.x & m), u32(c.y & m) ^ 0x9e3779b9u));
+  return hash_to_unit(wind_hash2(u32(c.x & m), u32(c.y & m) ^ 0x9e3779b9u));
 }
 
 fn wind_noise(p: vec2<f32>) -> f32 {

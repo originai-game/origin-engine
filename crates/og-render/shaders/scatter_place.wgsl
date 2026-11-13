@@ -53,20 +53,6 @@ const PLACE_PER_LANE: u32 = 4u;
 const PLACE_TAIL: u32 = 4096u;
 const PLACE_TAU: f32 = 6.283185307179586;
 
-// scatter.rs `hash` (lowbias32) and `unit`.
-fn place_hash(x: u32) -> u32 {
-  var h = x;
-  h ^= h >> 16u;
-  h *= 0x7feb352du;
-  h ^= h >> 15u;
-  h *= 0x846ca68bu;
-  return h ^ (h >> 16u);
-}
-
-fn place_unit(x: u32) -> f32 {
-  return f32(x >> 8u) / 16777216.0;
-}
-
 // The ground's raw level-0 height sample (column `c`, row `r`, clamped to
 // the field), its lowest bit the hole flag of the cell at it with holes.
 fn place_raw(c: u32, r: u32) -> f32 {
@@ -220,7 +206,7 @@ fn place_lattice(q: vec2<f32>, salt: u32, seed: u32) -> f32 {
   for (var k = 0u; k < 4u; k++) {
     let x = bitcast<u32>(ix + i32(k & 1u));
     let z = bitcast<u32>(iz + i32(k >> 1u));
-    v[k] = place_unit(place_hash((place_hash(x ^ salt) + z * 0x9e3779b9u) ^ seed));
+    v[k] = hash_to_unit(hash_lowbias((hash_lowbias(x ^ salt) + z * 0x9e3779b9u) ^ seed));
   }
   let a = v[0] + (v[1] - v[0]) * u.x;
   let b = v[2] + (v[3] - v[2]) * u.x;
@@ -253,10 +239,10 @@ struct PlaceCell {
 fn place_cell(li: u32, x: u32, z: u32) -> PlaceCell {
   let l = job.layers[li];
   let key = z * l.grid.y + x;
-  let h0 = place_hash(key ^ l.grid.x);
+  let h0 = hash_lowbias(key ^ l.grid.x);
   var c: PlaceCell;
   c.h0 = h0;
-  c.p = vec2<f32>(f32(x) + place_unit(place_hash(h0)), f32(z) + place_unit(place_hash(h0 ^ 1u))) * l.shape.x
+  c.p = vec2<f32>(f32(x) + hash_to_unit(hash_lowbias(h0)), f32(z) + hash_to_unit(hash_lowbias(h0 ^ 1u))) * l.shape.x
     - terrain.extent.xy * 0.5;
   return c;
 }
@@ -318,13 +304,13 @@ fn place_copy(li: u32, x: u32, z: u32, transform: bool) -> PlaceCopy {
   if (c.p.x > half.x || c.p.y > half.y) { return o; }
   let n = place_normal(c.p);
   let height = place_height(c.p);
-  if (place_unit(place_hash(c.h0 ^ 2u)) >= place_weight(c.p, n, height, l.grid.w) || place_hole(c.p)) {
+  if (hash_to_unit(hash_lowbias(c.h0 ^ 2u)) >= place_weight(c.p, n, height, l.grid.w) || place_hole(c.p)) {
     return o;
   }
   if (l.rules.y > 0.0) {
     let v = place_cluster_noise(c.p * job.ground.x / max(l.rules.x, 1e-3), l.grid.x);
     let edge = smoothstep(l.rules.y - 0.04, l.rules.y + 0.04, v);
-    if (place_unit(place_hash(c.h0 ^ 5u)) >= edge) { return o; }
+    if (hash_to_unit(hash_lowbias(c.h0 ^ 5u)) >= edge) { return o; }
   }
   let at = (job.model * vec4<f32>(c.p.x, height, c.p.y, 1.0)).xyz;
   if (!place_clear(li, c, at)) { return o; }
@@ -333,7 +319,7 @@ fn place_copy(li: u32, x: u32, z: u32, transform: bool) -> PlaceCopy {
   // Upright, leaning `align` of the way to the ground's normal, turned
   // about it by the cell's hash (glam's Quat::from_rotation_arc from +y,
   // then the turn about y).
-  let size = l.shape.y + (l.shape.z - l.shape.y) * place_unit(place_hash(c.h0 ^ 3u));
+  let size = l.shape.y + (l.shape.z - l.shape.y) * hash_to_unit(hash_lowbias(c.h0 ^ 3u));
   var wn = (job.normal * vec4<f32>(n, 0.0)).xyz;
   wn = select(vec3<f32>(0.0, 1.0, 0.0), normalize(wn), dot(wn, wn) > 1e-12);
   var up = mix(vec3<f32>(0.0, 1.0, 0.0), wn, clamp(l.shape.w, 0.0, 1.0));
@@ -344,7 +330,7 @@ fn place_copy(li: u32, x: u32, z: u32, transform: bool) -> PlaceCopy {
   } else if (up.y <= 1.0 - 1e-6) {
     arc = normalize(vec4<f32>(up.z, 0.0, -up.x, 1.0 + up.y));
   }
-  let turn = place_unit(place_hash(c.h0 ^ 4u)) * PLACE_TAU * 0.5;
+  let turn = hash_to_unit(hash_lowbias(c.h0 ^ 4u)) * PLACE_TAU * 0.5;
   let ty = vec4<f32>(0.0, sin(turn), 0.0, cos(turn));
   // The product arc · ty.
   let q = vec4<f32>(

@@ -1,19 +1,14 @@
 use super::*;
 
 // ---------------------------------------------------------------------------
-// Hashing and noise (mirrored in shaders/noise.wgsl).
+// Hashing and noise (mirrored in shaders/hash.wgsl and noise.wgsl).
 // ---------------------------------------------------------------------------
 
-#[inline]
-pub(crate) fn pcg(v: u32) -> u32 {
-    let state = v.wrapping_mul(747_796_405).wrapping_add(2_891_336_453);
-    let word = ((state >> ((state >> 28) + 4)) ^ state).wrapping_mul(277_803_737);
-    (word >> 22) ^ word
-}
+pub(crate) use og_core::hash::pcg;
 
 #[inline]
 pub(crate) fn hash_unit(v: u32) -> f32 {
-    (pcg(v) >> 8) as f32 / 16_777_216.0
+    og_core::hash::unit24(pcg(v))
 }
 
 /// A 32-bit seed from a 64-bit one.

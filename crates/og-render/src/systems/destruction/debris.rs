@@ -109,12 +109,9 @@ pub fn chip(variant: u32) -> crate::scene::MeshData {
     use crate::scene::{MeshData, Vertex};
     // A fixed jitter in -1..1 per (variant, k): the shapes are data.
     let j = |k: u32| {
-        let mut x = variant.wrapping_mul(0x9e37_79b9) ^ k.wrapping_mul(0x85eb_ca6b);
-        x ^= x >> 16;
-        x = x.wrapping_mul(0x7feb_352d);
-        x ^= x >> 15;
-        x = x.wrapping_mul(0x846c_a68b);
-        x ^= x >> 16;
+        let x = og_core::hash::lowbias32(
+            variant.wrapping_mul(0x9e37_79b9) ^ k.wrapping_mul(0x85eb_ca6b),
+        );
         (x as f32 / u32::MAX as f32) * 2.0 - 1.0
     };
     let v = |x: f32, y: f32, z: f32| Vec3::new(x, y, z);

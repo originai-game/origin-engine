@@ -63,22 +63,12 @@ fn fx_key(a: array<vec4<f32>, 2>, i: u32) -> f32 {
   return v[i % 4u];
 }
 
-fn fx_hash(v: u32) -> u32 {
-  let state = v * 747796405u + 2891336453u;
-  let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-  return (word >> 22u) ^ word;
-}
-
-fn fx_unit(v: u32) -> f32 {
-  return f32(fx_hash(v) >> 8u) / 16777216.0;
-}
-
 // Driver `k` at life `t`; a random driver draws its own value from `seed`.
 fn effect_drive(k: u32, t: f32, seed: u32) -> f32 {
   let d = effect.drivers[k];
   let kind = u32(d.head.x);
   if (kind == 0u) { return d.head.y; }
-  if (kind == 1u) { return mix(d.head.y, d.head.z, fx_unit(seed ^ (k * 2654435769u))); }
+  if (kind == 1u) { return mix(d.head.y, d.head.z, hash_unit(seed ^ (k * 2654435769u))); }
   let n = u32(d.head.w);
   var v = fx_key(d.v, 0u);
   for (var i = 1u; i < n; i++) {
@@ -102,7 +92,7 @@ fn effect_driven(life: f32, seed: u32) -> EffectDriven {
   var o: EffectDriven;
   let t = clamp(life, 0.0, 1.0);
   o.a = vec4<f32>(effect_drive(0u, t, seed), effect_drive(1u, t, seed), effect_drive(2u, t, seed), effect_drive(3u, t, seed));
-  o.b = vec4<f32>(effect_drive(4u, t, seed), t, fx_unit(seed), 0.0);
+  o.b = vec4<f32>(effect_drive(4u, t, seed), t, hash_unit(seed), 0.0);
   o.c1 = vec4<f32>(effect_drive(5u, t, seed), effect_drive(6u, t, seed), effect_drive(7u, t, seed), effect_drive(8u, t, seed));
   o.c2 = vec4<f32>(effect_drive(9u, t, seed), effect_drive(10u, t, seed), effect_drive(11u, t, seed), effect_drive(12u, t, seed));
   return o;
@@ -178,7 +168,7 @@ fn effect_ramp(x: f32) -> vec4<f32> {
 }
 
 fn fx_lattice(c: vec2<i32>) -> f32 {
-  return fx_unit((bitcast<u32>(c.x) * 73856093u) ^ (bitcast<u32>(c.y) * 19349663u));
+  return hash_unit((bitcast<u32>(c.x) * 73856093u) ^ (bitcast<u32>(c.y) * 19349663u));
 }
 
 // Two octaves of 2D value noise in [0, 1): the erosion's noise without a

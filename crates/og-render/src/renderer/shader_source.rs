@@ -62,7 +62,7 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
 /// The scattered copies' shadow module.
 pub(crate) fn scatter_shadow_source() -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}",
+        "{HASH_WGSL}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}",
         particles_gpu::NOISE_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
@@ -79,7 +79,7 @@ pub(crate) fn scatter_shadow_source() -> String {
 /// (group 1) and the palette (group 2) under `crowd_bake.wgsl`.
 pub(crate) fn crowd_bake_source() -> String {
     format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{}{}",
+        "{HASH_WGSL}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{}{}",
         particles_gpu::NOISE_WGSL,
         skin::palette_wgsl(2),
         wgsl3d!("crowd_bake.wgsl")

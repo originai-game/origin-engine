@@ -189,10 +189,7 @@ fn sample_keys(tp: MassTemplate, t: f32) -> vec4<f32> {
 }
 
 fn hash01(x: u32) -> f32 {
-  var h = x * 747796405u + 2891336453u;
-  h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
-  h = (h >> 22u) ^ h;
-  return f32(h & 0xffffu) / 65535.0;
+  return f32(pcg(x) & 0xffffu) / 65535.0;
 }
 
 // The symbols of a number (mass.rs's `format_number`), at most 16.

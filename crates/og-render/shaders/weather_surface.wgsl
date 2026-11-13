@@ -38,10 +38,10 @@ fn weather_noise(p: vec2<f32>) -> f32 {
   let f = p - c;
   let u = f * f * (3.0 - 2.0 * f);
   let ci = vec2<i32>(c);
-  let a = lattice_hash(vec3<i32>(ci, 11));
-  let b = lattice_hash(vec3<i32>(ci + vec2<i32>(1, 0), 11));
-  let d = lattice_hash(vec3<i32>(ci + vec2<i32>(0, 1), 11));
-  let e = lattice_hash(vec3<i32>(ci + vec2<i32>(1, 1), 11));
+  let a = lattice3(vec3<i32>(ci, 11), 0u);
+  let b = lattice3(vec3<i32>(ci + vec2<i32>(1, 0), 11), 0u);
+  let d = lattice3(vec3<i32>(ci + vec2<i32>(0, 1), 11), 0u);
+  let e = lattice3(vec3<i32>(ci + vec2<i32>(1, 1), 11), 0u);
   return mix(mix(a, b, u.x), mix(d, e, u.x), u.y);
 }
 
@@ -62,8 +62,8 @@ fn weather_ripples(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
     let q = p * 3.0 + vec2<f32>(f32(k) * 0.37, f32(k) * 0.71);
     let c = floor(q);
     let ci = vec2<i32>(c);
-    let centre = c + vec2<f32>(lattice_hash(vec3<i32>(ci, 21 + k)), lattice_hash(vec3<i32>(ci, 31 + k))) * 0.6 + 0.2;
-    let phase = fract(t + lattice_hash(vec3<i32>(ci, 41 + k)));
+    let centre = c + vec2<f32>(lattice3(vec3<i32>(ci, 21 + k), 0u), lattice3(vec3<i32>(ci, 31 + k), 0u)) * 0.6 + 0.2;
+    let phase = fract(t + lattice3(vec3<i32>(ci, 41 + k), 0u));
     let to = q - centre;
     let r = length(to);
     let ring = r - phase * 0.45;
@@ -155,18 +155,18 @@ fn weather_streaks(p: vec3<f32>, geo: vec3<f32>, t: f32, footprint: f32) -> f32 
   let cell = 0.08;
   let c = i32(floor(u / cell));
   let f = u / cell - f32(c);
-  let centre = 0.25 + 0.5 * lattice_hash(vec3<i32>(c, 0, 83));
-  let half = 0.08 + 0.12 * lattice_hash(vec3<i32>(c, 0, 89));
+  let centre = 0.25 + 0.5 * lattice3(vec3<i32>(c, 0, 83), 0u);
+  let half = 0.08 + 0.12 * lattice3(vec3<i32>(c, 0, 89), 0u);
   let blur = max(half, 0.75 * footprint / cell);
   // A dark core and, round it, the stone the water soaks a little wider.
   let core = (1.0 - smoothstep(0.0, blur, abs(f - centre))) * min(half / blur, 1.0);
   let profile = max(core, 0.5 * (1.0 - smoothstep(0.0, 0.5, abs(f - centre))));
-  let present = step(0.7, lattice_hash(vec3<i32>(c, 0, 101)));
+  let present = step(0.7, lattice3(vec3<i32>(c, 0, 101), 0u));
   // Its runs: one start every 3 to 8 m down the wall, each fading over
   // 1.5 to 4.5 m below its start (`d`, metres under it).
-  let period = 3.0 + 5.0 * lattice_hash(vec3<i32>(c, 0, 97));
-  let d = fract(-p.y / period + lattice_hash(vec3<i32>(c, 0, 103))) * period;
-  let reach = 1.5 + 3.0 * lattice_hash(vec3<i32>(c, 0, 107));
+  let period = 3.0 + 5.0 * lattice3(vec3<i32>(c, 0, 97), 0u);
+  let d = fract(-p.y / period + lattice3(vec3<i32>(c, 0, 103), 0u)) * period;
+  let reach = 1.5 + 3.0 * lattice3(vec3<i32>(c, 0, 107), 0u);
   let run = smoothstep(0.0, 0.05, d) * exp(-d / reach);
   // Rivulets bunch where the wall sheds most (a broad band noise), and
   // the water is uneven along each one, sliding down in the rain.
@@ -188,8 +188,8 @@ fn weather_splashes(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
   let q = p * 9.0;
   let c = floor(q);
   let ci = vec2<i32>(c);
-  let centre = c + vec2<f32>(lattice_hash(vec3<i32>(ci, 51)), lattice_hash(vec3<i32>(ci, 61))) * 0.7 + 0.15;
-  let phase = fract(t * 3.0 + lattice_hash(vec3<i32>(ci, 71)));
+  let centre = c + vec2<f32>(lattice3(vec3<i32>(ci, 51), 0u), lattice3(vec3<i32>(ci, 61), 0u)) * 0.7 + 0.15;
+  let phase = fract(t * 3.0 + lattice3(vec3<i32>(ci, 71), 0u));
   let to = q - centre;
   let r = length(to);
   let ring = r - (0.03 + 0.2 * phase);

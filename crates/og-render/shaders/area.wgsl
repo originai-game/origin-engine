@@ -160,11 +160,8 @@ fn rect_shadow_tap(i: u32, n: u32, turn: f32) -> vec2<f32> {
 // pixel's spiral turned its own way, so the few taps over a wide penumbra
 // read as fine grain instead of copies of the caster.
 fn rect_shadow_turn(p: vec3<f32>) -> f32 {
-  var h = bitcast<u32>(p.x) ^ (bitcast<u32>(p.y) * 0x9e3779b9u) ^ (bitcast<u32>(p.z) * 0x85ebca6bu);
-  h = h * 747796405u + 2891336453u;
-  h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
-  h = (h >> 22u) ^ h;
-  return f32(h >> 8u) * (6.2831853 / 16777216.0);
+  let h = bitcast<u32>(p.x) ^ (bitcast<u32>(p.y) * 0x9e3779b9u) ^ (bitcast<u32>(p.z) * 0x85ebca6bu);
+  return hash_unit(h) * 6.2831853;
 }
 
 // How much of a shadowed rect light reaches p (normal n): 1 without a

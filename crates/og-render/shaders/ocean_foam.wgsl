@@ -15,14 +15,8 @@
 // surface at about 1 % of the wind's speed. The drift backtracked here is the wind's plus that convergence, and the
 // lace is compressed by its divergence, so streaks form where the foam is carried, not drawn on top of it.
 
-fn pcg_hash(v: u32) -> u32 {
-  let s = v * 747796405u + 2891336453u;
-  let w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
-  return (w >> 22u) ^ w;
-}
-
 fn hash_grad(i: vec2<i32>) -> vec2<f32> {
-  let h = pcg_hash(u32(i.x) * 1664525u + pcg_hash(u32(i.y) + 1013904223u));
+  let h = pcg(u32(i.x) * 1664525u + pcg(u32(i.y) + 1013904223u));
   let a = f32(h) * (6.28318530718 / 4294967296.0);
   return vec2<f32>(cos(a), sin(a));
 }
@@ -63,8 +57,8 @@ fn pfbm(p: vec2<f32>, period: i32, oct: i32) -> f32 {
 const DETAIL: f32 = 256.0;
 
 fn h2(i: vec2<i32>, salt: u32) -> vec2<f32> {
-  let h = pcg_hash((u32(i.x) * 73856093u) ^ pcg_hash(u32(i.y) * 19349663u + salt));
-  let hv = pcg_hash(h + 0x9e3779b9u);
+  let h = pcg((u32(i.x) * 73856093u) ^ pcg(u32(i.y) * 19349663u + salt));
+  let hv = pcg(h + 0x9e3779b9u);
   return vec2<f32>(f32(h >> 8u), f32(hv >> 8u)) / 16777216.0;
 }
 

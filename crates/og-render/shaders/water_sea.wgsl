@@ -290,7 +290,7 @@ fn sea_foam(p: vec2<f32>, jac: f32) -> SeaFoam {
   let threads = abs(fract(x) - 0.5) * 2.0 + (web - 0.75) * 0.08;
   // Each thread its own: some strong, some faint, and broken along the wind into lengths of some tens of metres (the
   // threads' centres at whole x).
-  let r = spray_rand(spray_hash(bitcast<u32>(i32(floor(x + 0.5))) + 0x2545f491u));
+  let r = hash_unit(pcg(bitcast<u32>(i32(floor(x + 0.5))) + 0x2545f491u));
   let seg = textureSample(heights, ripple_sampler, vec2<f32>(along_m * 0.004 + r * 7.0, r * 3.1), first + 2u).a;
   let lw = fwidthFine(x) * 2.0 + 0.05;
   // (Old foam, the whitecaps' residue, lies over two to three times the whitecaps' share: some 20 to 30 % of a gale's

@@ -21,16 +21,6 @@
 
 const SPRAY_SLOTS: u32 = 4096u;
 
-fn spray_hash(x: u32) -> u32 {
-  let s = x * 747796405u + 2891336453u;
-  let w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
-  return (w >> 22u) ^ w;
-}
-
-fn spray_rand(h: u32) -> f32 {
-  return f32(spray_hash(h) >> 8u) / 16777216.0;
-}
-
 // The wind's speed `z` metres over the sea under a 10 m wind of `u10` m/s: the neutral log profile
 // u(z) = u* / κ ln(z / z0), with the friction velocity from Garratt's (1977) drag coefficient
 // (Cd = (0.75 + 0.067 u10) 10⁻³) and Charnock's roughness (z0 = 0.011 u*² / g): some 0.8 of the 10 m wind at 1.5 m
@@ -70,18 +60,18 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // A spume slot already spans the whole trail: stacking members at its head makes an opaque strip.
   let plume = select(4u, 1u, pop == 1u);
   let member = slot % plume;
-  let seed = spray_hash((slot / plume) * 2u + pop + 0x51ed270bu);
+  let seed = pcg((slot / plume) * 2u + pop + 0x51ed270bu);
   // Droplet plumes pause between bursts; a sheet streams while its crest keeps breaking.
-  let life = mix(0.9, 2.4, spray_rand(seed));
-  let period = life * select(1.6 + spray_rand(seed + 1u), 1.0, pop == 1u);
-  let clock = water.spray.y + spray_rand(seed + 2u) * period;
+  let life = mix(0.9, 2.4, hash_unit(seed));
+  let period = life * select(1.6 + hash_unit(seed + 1u), 1.0, pop == 1u);
+  let clock = water.spray.y + hash_unit(seed + 2u) * period;
   let n = floor(clock / period);
   // (The last member leaves at 0.6 of a life and lives one: within the period, at least 1.6 lives.)
   let tau = clock - n * period - life * 0.6 * f32(member) / f32(plume);
   if (tau < 0.0 || tau >= life) { return o; }
-  let h = spray_hash(seed ^ (u32(i32(n)) * 2654435761u));
+  let h = pcg(seed ^ (u32(i32(n)) * 2654435761u));
   // The member's own throw and size.
-  let hm = spray_hash(h + member * 977u);
+  let hm = pcg(h + member * 977u);
   // Its point on the foam level, the one nearest the camera with that uv (the level is toroidal about it).
   let lv = water.foam_levels[pop];
   // The window its slots fall in: the level's square (toroidal, so a point stays where it is in the world while the
@@ -107,7 +97,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let tries = select(6u, 10u, pop == 1u);
   for (var t = 0u; t < tries && !found; t++) {
     let ht = h + 16u * t;
-    let off = fract(vec2<f32>(spray_rand(ht), spray_rand(ht + 1u)) - cam_uv + 0.5) - 0.5;
+    let off = fract(vec2<f32>(hash_unit(ht), hash_unit(ht + 1u)) - cam_uv + 0.5) - 0.5;
     rest = cam + off * win;
     edge = 1.0 - smoothstep(0.4, 0.5, max(abs(off.x), abs(off.y)));
     let fw = textureSampleLevel(heights, ripple_sampler, rest * lv.x + lv.yz, first + pop, 0.0);
@@ -120,7 +110,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
     let torn = select(0.0, 0.35 * smoothstep(17.0, 25.0, wind), pop == 1u);
     let breaking = clamp((water.ocean.z + torn - jac) * water.ocean.w, 0.0, 1.0);
     keep = smoothstep(0.03, 0.35, max(breaking, fw.g)) * gust;
-    found = spray_rand(ht + 2u) < keep;
+    found = hash_unit(ht + 2u) < keep;
   }
   if (!found) { return o; }
   // Resolve the same fine crest used by the breaking test, not the coarse foam texel.
@@ -132,10 +122,10 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   // gale's spume stood over its crest in a plume as tall as the crest.)
   let wd = water.sea_wind.xy;
   let side = vec2<f32>(-wd.y, wd.x);
-  let along = wind * mix(0.4, 0.7, spray_rand(hm + 3u));
-  let across = wind * 0.06 * (spray_rand(hm + 4u) * 2.0 - 1.0);
+  let along = wind * mix(0.4, 0.7, hash_unit(hm + 3u));
+  let across = wind * 0.06 * (hash_unit(hm + 4u) * 2.0 - 1.0);
   let flat = mix(1.0, 0.55, smoothstep(12.0, 24.0, wind));
-  let up = mix(1.2, 3.4, spray_rand(hm + 5u)) * flat * select(1.0, 0.75, pop == 1u);
+  let up = mix(1.2, 3.4, hash_unit(hm + 5u)) * flat * select(1.0, 0.75, pop == 1u);
   let v0 = vec3<f32>(wd.x * along + side.x * across, up, wd.y * along + side.y * across);
   // The air it flies in: the wind at a metre and a half over the crest (droplets) or half a metre (the spume's sheets,
   // skimming), gusting along the wind: the gust noise of 40 m patches carried downwind at the wind's speed, the same
@@ -154,7 +144,7 @@ fn vs_spray(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   let ev = exp(-kv * tau);
   p.y = start.y + (v0.y + vs) * (1.0 - ev) / kv - vs * tau;
   // The sprite: growing as the spray spreads, fading in as it leaves the crest and out as it settles or falls back.
-  let rnd = spray_rand(hm + 6u);
+  let rnd = hash_unit(hm + 6u);
   var size = select(mix(0.2, 0.7, rnd) * (1.0 + 1.5 * tau / life), mix(1.0, 2.6, rnd) * (1.0 + 0.8 * tau / life), pop == 1u);
   var alpha = smoothstep(0.0, 0.12 * life, tau) * (1.0 - smoothstep(0.55 * life, life, tau));
   // The sea under it (its rest point taken as where it flies: the sea's sideways sway is a metre or two).

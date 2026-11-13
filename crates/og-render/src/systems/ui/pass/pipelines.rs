@@ -15,13 +15,19 @@ pub(crate) fn ui_source() -> String {
 
 /// The mass elements' module.
 pub(crate) fn mass_source() -> String {
-    format!("{}{}", super::super::UI_COMMON_WGSL, UI_MASS_WGSL)
+    format!(
+        "{}{}{}",
+        crate::HASH_WGSL,
+        super::super::UI_COMMON_WGSL,
+        UI_MASS_WGSL
+    )
 }
 
 /// The built-in materials' composite module.
 pub(crate) fn builtin_source() -> String {
     format!(
-        "{}{}{}{}{}",
+        "{}{}{}{}{}{}",
+        crate::HASH_WGSL,
         super::super::UI_COMMON_WGSL,
         super::super::UI_BLEND_MODES_WGSL,
         super::super::UI_BLEND_WGSL,

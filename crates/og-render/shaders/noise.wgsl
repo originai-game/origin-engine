@@ -1,22 +1,6 @@
-// Hashes and noise shared by the effect shaders. `pcg` and `value_noise3`
-// match `og_render::particles::{pcg, value_noise3}` operation for operation,
-// so the CPU and GPU particle paths draw the same random numbers.
-
-fn pcg(v: u32) -> u32 {
-  let state = v * 747796405u + 2891336453u;
-  let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-  return (word >> 22u) ^ word;
-}
-
-// A uniform float in [0, 1) from 24 bits of a hash.
-fn hash_unit(v: u32) -> f32 {
-  return f32(pcg(v) >> 8u) / 16777216.0;
-}
-
-fn lattice3(c: vec3<i32>, seed: u32) -> f32 {
-  let h = (bitcast<u32>(c.x) * 73856093u) ^ (bitcast<u32>(c.y) * 19349663u) ^ (bitcast<u32>(c.z) * 83492791u) ^ seed;
-  return hash_unit(h);
-}
+// Value noise over hash.wgsl's lattice. `value_noise3` matches
+// `og_render::particles::value_noise3` operation for operation, so the CPU
+// and GPU particle paths draw the same random numbers.
 
 // Trilinear value noise with a smoothstep fade, in [0, 1).
 fn value_noise3(p: vec3<f32>, seed: u32) -> f32 {

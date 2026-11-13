@@ -160,13 +160,6 @@ fn gi_trace(o: vec3<f32>, d: vec3<f32>, t_max: f32, any_hit: bool) -> GiHit {
   return best;
 }
 
-fn gi_hash(x: u32) -> u32 {
-  // PCG (Jarzynski and Olano, "Hash functions for GPU rendering", 2020).
-  let state = x * 747796405u + 2891336453u;
-  let word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-  return (word >> 22u) ^ word;
-}
-
 // The sky along `d`: the environment's radiance, a little blurred, at its
 // intensity.
 fn gi_sky(d: vec3<f32>) -> vec3<f32> {
@@ -192,7 +185,7 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
   // windowed inverse square, the cone of a spot, as pbr.wgsl).
   let lights = gp.misc.w;
   if (lights > 0u) {
-    let light = light_at(gi_hash(seed) % lights);
+    let light = light_at(pcg(seed) % lights);
     let to_light = light.position_range.xyz - q;
     let d2 = max(dot(to_light, to_light), 1e-4);
     let range = light.position_range.w;
@@ -252,7 +245,7 @@ fn cs_trace(@builtin(global_invocation_id) id: vec3<u32>) {
       // relocation and the classification (gi_blend.wgsl).
       out = vec4<f32>(0.0, 0.0, 0.0, -hit.t);
     } else {
-      let seed = gi_hash(id.x ^ gi_hash(gp.misc.x * 9781u + gp.misc.y));
+      let seed = pcg(id.x ^ pcg(gp.misc.x * 9781u + gp.misc.y));
       out = vec4<f32>(gi_shade(o + d * hit.t, n, d, rec, seed), hit.t);
     }
   }

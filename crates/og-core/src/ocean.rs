@@ -78,12 +78,9 @@ pub struct Ocean {
 /// A fixed value in [-1, 1] for wave `i` and channel `c` (an integer
 /// hash: the same on every host).
 fn fixed(i: u32, c: u32) -> f32 {
-    let mut h = i.wrapping_mul(0x9e37_79b9) ^ c.wrapping_mul(0x85eb_ca6b) ^ 0x0cea_0001;
-    h ^= h >> 16;
-    h = h.wrapping_mul(0x7feb_352d);
-    h ^= h >> 15;
-    h = h.wrapping_mul(0x846c_a68b);
-    h ^= h >> 16;
+    let h = crate::hash::lowbias32(
+        i.wrapping_mul(0x9e37_79b9) ^ c.wrapping_mul(0x85eb_ca6b) ^ 0x0cea_0001,
+    );
     (h >> 8) as f32 / (1u32 << 23) as f32 - 1.0
 }
 

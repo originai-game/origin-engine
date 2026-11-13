@@ -82,22 +82,12 @@ fn scatter_dropped(pixel: vec2<f32>, near: f32) -> bool {
 // A clip position outside the view: the copy's triangles are culled.
 const SCATTER_GONE = vec4<f32>(2.0, 2.0, 2.0, 1.0);
 
-// lowbias32 (scatter.rs `hash`).
-fn scatter_hash(x: u32) -> u32 {
-  var h = x;
-  h ^= h >> 16u;
-  h *= 0x7feb352du;
-  h ^= h >> 15u;
-  h *= 0x846ca68bu;
-  return h ^ (h >> 16u);
-}
-
 // A hash in [0, 1) of the copy standing at `base` (its place in the world,
 // the same wherever the frame's origin is: scatter.rs places the copies in
 // the world first).
 fn scatter_copy_unit(base: vec3<f32>) -> f32 {
   let at = base.xz + scatter.wind_shape.zw;
-  return f32(scatter_hash(bitcast<u32>(at.x) ^ scatter_hash(bitcast<u32>(at.y))) >> 8u) / 16777216.0;
+  return hash_to_unit(hash_lowbias(bitcast<u32>(at.x) ^ hash_lowbias(bitcast<u32>(at.y))));
 }
 
 // How large the copy standing at `at` draws over the distance fade, 0..1:

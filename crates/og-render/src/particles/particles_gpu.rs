@@ -415,7 +415,10 @@ pub(crate) fn sprites_source() -> String {
 
 /// The particle simulation's module (compute).
 pub(crate) fn sim_source() -> String {
-    format!("{NOISE_WGSL}{COMMON_WGSL}{COLLIDERS_WGSL}{SIM_WGSL}")
+    format!(
+        "{}{NOISE_WGSL}{COMMON_WGSL}{COLLIDERS_WGSL}{SIM_WGSL}",
+        crate::HASH_WGSL
+    )
 }
 
 fn collider_buffer(device: &wgpu::Device, size: u64) -> wgpu::Buffer {

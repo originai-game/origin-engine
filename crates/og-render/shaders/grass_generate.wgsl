@@ -181,7 +181,7 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let cell = index % cells;
   let seed_bits = u32(gen.chunk.z);
   let cell_hash = wind_hash2(wind_hash2(s.x, s.y), wind_hash2(cell, seed_bits));
-  let offset = vec2<f32>(wind_unit(cell_hash), wind_unit(wind_hash(cell_hash)));
+  let offset = vec2<f32>(hash_to_unit(cell_hash), hash_to_unit(pcg(cell_hash)));
   let pair = tile[point / 2u];
   let tp = select(pair.xy, pair.zw, (point & 1u) == 1u);
   let p = fract(tp + offset);
@@ -220,7 +220,7 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   var scaled = k.x * grass_emerge(rank, keep);
   if (gen.maps.z > 0.5) { scaled *= textureSampleLevel(grass_height_map, grass_map_sampler, uv, 0.0).r; }
   // Blades of a clump share most of their height.
-  var tall = scaled * (1.0 - gen.shape.y * mix(wind_unit(wind_hash(seed ^ 0x68u)), clump.y, 0.6));
+  var tall = scaled * (1.0 - gen.shape.y * mix(hash_to_unit(pcg(seed ^ 0x68u)), clump.y, 0.6));
   // Over the last fade the survivors also shorten, so the field's edge
   // sinks into the ground's colour rather than ending on a line.
   let edge = gen.lod.w * gen.lod_density.w;
@@ -237,12 +237,12 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   b.root = root;
   b.lod = 0u;
   b.kind = kind;
-  if (gen.eye.w < 0.5) { b.lod = grass_lod(d, wind_unit(wind_hash(seed ^ 0x10du))); }
-  b.facing = wind_unit(wind_hash(seed ^ 0x66u));
+  if (gen.eye.w < 0.5) { b.lod = grass_lod(d, hash_to_unit(pcg(seed ^ 0x10du))); }
+  b.facing = hash_to_unit(pcg(seed ^ 0x66u));
   b.height = tall / max(gen.shape.x, 1e-3);
-  let width = k.y * (0.75 + 0.5 * wind_unit(wind_hash(seed ^ 0x77u))) * grass_coverage(falloff, gen.chunk.w);
+  let width = k.y * (0.75 + 0.5 * hash_to_unit(pcg(seed ^ 0x77u))) * grass_coverage(falloff, gen.chunk.w);
   b.width = width / (GRASS_WIDTH_RANGE * max(gen.clump.w, 1e-5));
-  b.seed = wind_unit(wind_hash(seed ^ 0x5eu));
+  b.seed = hash_to_unit(pcg(seed ^ 0x5eu));
   b.clump = clump.x;
   // The lean at rest: along the blade's face by a share of `lean`, and
   // out from its clump's centre by `clump lean` (more at its rim).
@@ -251,7 +251,7 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let out = (terrain.model * vec4<f32>(out_local.x, 0.0, out_local.y, 0.0)).xz;
   let out_len = length(out);
   let away = select(vec2<f32>(0.0), out / max(out_len, 1e-6) * min(out_len, 1.0), out_len > 1e-4);
-  let rest = face * gen.shape.z * (0.3 + 0.7 * wind_unit(wind_hash(seed ^ 0x6cu))) + away * gen.shape.w;
+  let rest = face * gen.shape.z * (0.3 + 0.7 * hash_to_unit(pcg(seed ^ 0x6cu))) + away * gen.shape.w;
   // The wind field's lean at the root, now and as last drawn (wind_field.rs).
   let lean = wind_lean(wind_tex, gen.wind, root.xz);
   // Trampled (G3): pressed away from the pusher and down, swaying less,

@@ -90,7 +90,9 @@ mod tests {
 
     #[test]
     fn wind_vec4_packing_matches_the_shader() {
-        let module = naga::front::wgsl::parse_str(&format!("{WIND_WGSL}{WGSL}")).unwrap();
+        let module =
+            naga::front::wgsl::parse_str(&format!("{}{WIND_WGSL}{WGSL}", crate::HASH_WGSL))
+                .unwrap();
         let mut layouter = naga::proc::Layouter::default();
         layouter.update(module.to_ctx()).unwrap();
         let (handle, ty) = module

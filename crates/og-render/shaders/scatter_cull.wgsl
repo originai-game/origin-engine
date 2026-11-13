@@ -63,15 +63,6 @@ const CULL_LANES: u32 = 256u;
 const CULL_PER_LANE: u32 = 4u;
 const CULL_SET_WORDS: u32 = 20u;
 
-fn cull_hash(x: u32) -> u32 {
-  var h = x;
-  h ^= h >> 16u;
-  h *= 0x7feb352du;
-  h ^= h >> 15u;
-  h *= 0x846ca68bu;
-  return h ^ (h >> 16u);
-}
-
 fn cull_outside(c: vec3<f32>, r: f32) -> bool {
   for (var i = 0; i < 6; i++) {
     if (dot(view.planes[i].xyz, c) + view.planes[i].w < -r) { return true; }
@@ -135,7 +126,7 @@ fn cull_regions(k: u32) -> vec2<u32> {
     let local = (item.to_terrain * vec4<f32>(at, 1.0)).xyz;
     let uv = local.xz / item.extent.xy + 0.5;
     let q = vec2<i32>(round(local.xz * 64.0));
-    let own = f32(cull_hash(bitcast<u32>(q.x) ^ cull_hash(bitcast<u32>(q.y) + 0x9e3779b9u)) >> 8u) / 16777216.0;
+    let own = hash_to_unit(hash_lowbias(bitcast<u32>(q.x) ^ hash_lowbias(bitcast<u32>(q.y) + 0x9e3779b9u)));
     if (own >= textureSampleLevel(density_map, density_sampler, uv, 0.0).r) { return vec2<u32>(0u); }
   }
   // Its mesh nearer than the impostor distance, its card from where the
