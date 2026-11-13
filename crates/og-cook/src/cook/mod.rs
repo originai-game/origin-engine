@@ -91,7 +91,6 @@ enum Kind {
     Prefab,
     Style,
     Document,
-    Flipbook,
     Rive,
     TextureArray,
     Video,
@@ -110,7 +109,6 @@ impl Kind {
             Kind::Prefab => "prefab",
             Kind::Style => "style",
             Kind::Document => "document",
-            Kind::Flipbook => "flipbook",
             Kind::Rive => "rive",
             Kind::TextureArray => "texture-array",
             Kind::Video => "video",
@@ -234,10 +232,6 @@ enum Work<'a> {
     /// A UI document and the ids of the documents defining the components
     /// it uses, which the runtime loads with it.
     Document(&'a Source, Vec<String>),
-    Flipbook(&'a Source),
-    /// An `array true` sheet's texture array blob, and its layer `n`.
-    FlipbookArray(&'a Source, Box<og_anim::FlipbookSheet>),
-    FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
     /// A `.riv`'s artboard, by name.
     Rive(&'a Source, String),
     /// A `.riv`'s embedded image, by asset index.

@@ -275,20 +275,6 @@ pub(crate) fn run(
                 )],
             ))
         }
-        Work::Flipbook(s) => flipbook::cook(
-            s,
-            options
-                .mesh
-                .conform
-                .as_ref()
-                .and_then(|c| c.motion.as_ref())
-                .filter(|_| !conform_off(s, options)),
-            p.stamp,
-        ),
-        Work::FlipbookArray(s, sheet) => flipbook::cook_array(s, sheet, &options.texture, p.stamp),
-        Work::FlipbookLayer(s, sheet, n) => {
-            flipbook::cook_layer(s, sheet, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
-        }
         Work::Rive(s, name) => riv::cook(s, name, p.stamp),
         Work::RiveImage(s, n) => riv::cook_image(s, *n, &options.texture, p.stamp),
         Work::RiveFont(f) => riv::cook_font(f, threads, p.stamp),

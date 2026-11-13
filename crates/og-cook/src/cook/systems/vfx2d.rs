@@ -357,7 +357,7 @@ pub fn is_vfx2d(text: &str) -> bool {
 pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
     let mut extra = Vec::new();
     for s in sources.iter_mut() {
-        if s.kind != super::Kind::Flipbook || s.error.is_some() {
+        if s.kind != super::Kind::System(&crate::cook::flipbook::FLIPBOOK) || s.error.is_some() {
             continue;
         }
         let text = String::from_utf8_lossy(&s.bytes).into_owned();

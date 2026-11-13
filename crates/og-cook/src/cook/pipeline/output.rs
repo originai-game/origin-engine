@@ -724,7 +724,7 @@ pub(crate) fn diagnose(
                 &s.rel == rel
                     && match s.kind {
                         Kind::Model => true,
-                        Kind::Flipbook => c.motion.is_some(),
+                        Kind::System(k) if k == &flipbook::FLIPBOOK => c.motion.is_some(),
                         _ => !c.texture_desc().is_empty(),
                     }
             });

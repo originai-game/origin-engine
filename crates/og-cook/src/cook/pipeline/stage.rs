@@ -425,7 +425,7 @@ pub(crate) fn contract(
     let mut mesh_off: BTreeMap<String, String> = BTreeMap::new();
     for s in sources
         .iter()
-        .filter(|s| matches!(s.kind, Kind::Model | Kind::Flipbook))
+        .filter(|s| [Kind::Model, Kind::System(&flipbook::FLIPBOOK)].contains(&s.kind))
     {
         let why = own_conform_off(s).or_else(|| {
             project_conform

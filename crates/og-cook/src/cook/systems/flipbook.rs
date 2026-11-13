@@ -11,7 +11,10 @@
 //! draws frame `n` as layer `n`. Every frame must then have one size, and
 //! a sheet has at most [`super::texture_array::MAX_LAYERS`] of them.
 
-use super::{CookError, Source, assets_root};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    conform_off, stamp, texture_array,
+};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::ogt::{Block, Document, Entry, Value};
@@ -442,4 +445,118 @@ pub(crate) fn cook_layer(
         rgba,
     };
     super::texture::cook(&frame, array_kind(sheet), opts, stamp)
+}
+
+pub(crate) static FLIPBOOK: KindDef = KindDef {
+    name: "flipbook",
+    extensions: &[],
+    // A pixel effect becomes a sheet (`vfx2d::expand`).
+    types: &["flipbook", super::vfx2d::VFX2D_TYPE],
+    by_content: false,
+    streams: true,
+    plan: plan_flipbook,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&FLIPBOOK];
+
+fn plan_flipbook<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options, tex_desc, ..
+    } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = dependency_hashes(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let motion = options
+        .mesh
+        .conform
+        .as_ref()
+        .and_then(|c| c.motion.as_ref())
+        .filter(|_| !conform_off(s, options))
+        .map(|m| m.describe());
+    let st = match &motion {
+        Some(m) => stamp(&[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()]),
+        None => stamp(&[b"flipbook", &hash, deps.as_bytes()]),
+    };
+    outs.push((
+        s.rel.clone(),
+        format::Flipbook::NAME,
+        st,
+        Work::Job(Box::new(FlipbookJob(s))),
+    ));
+    // `array true`: the frames as the layers of a texture array.
+    if let Ok(sheet) = sheet(s)
+        && sheet.array
+    {
+        let base = [
+            b"flipbook array 1".as_slice(),
+            tex_desc.as_bytes(),
+            &hash,
+            deps.as_bytes(),
+        ];
+        let sheet = Box::new(sheet);
+        for n in 0..sheet.frames.len() {
+            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+            outs.push((
+                texture_array::layer_id(&array_id(&s.rel), n),
+                format::Texture::NAME,
+                st,
+                Work::Job(Box::new(FlipbookLayerJob(s, sheet.clone(), n))),
+            ));
+        }
+        outs.push((
+            array_id(&s.rel),
+            format::TextureArray::NAME,
+            stamp(&base),
+            Work::Job(Box::new(FlipbookArrayJob(s, sheet))),
+        ));
+    }
+}
+
+/// A flipbook's sheet.
+struct FlipbookJob<'a>(&'a Source);
+
+impl Job for FlipbookJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let FlipbookJob(s) = self;
+        let Exec { options, .. } = ex;
+        cook(
+            s,
+            options
+                .mesh
+                .conform
+                .as_ref()
+                .and_then(|c| c.motion.as_ref())
+                .filter(|_| !conform_off(s, options)),
+            p.stamp,
+        )
+    }
+}
+
+/// A flipbook's frames as a texture array.
+struct FlipbookArrayJob<'a>(&'a Source, Box<og_anim::FlipbookSheet>);
+
+impl Job for FlipbookArrayJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let FlipbookArrayJob(s, sheet) = self;
+        let Exec { options, .. } = ex;
+        cook_array(s, sheet, &options.texture, p.stamp)
+    }
+}
+
+/// One layer of a flipbook's texture array.
+struct FlipbookLayerJob<'a>(&'a Source, Box<og_anim::FlipbookSheet>, usize);
+
+impl Job for FlipbookLayerJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let FlipbookLayerJob(s, sheet, n) = self;
+        let Exec { options, .. } = ex;
+        cook_layer(s, sheet, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+    }
 }

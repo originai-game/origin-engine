@@ -82,6 +82,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     vector::KINDS,
     tilemap::KINDS,
     rig2d::KINDS,
+    flipbook::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

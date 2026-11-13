@@ -144,60 +144,6 @@ pub(super) fn plan_rive<'a>(
     }
 }
 
-pub(super) fn plan_flipbook<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx {
-        options, tex_desc, ..
-    } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let deps = flipbook::dependency_hashes(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let motion = options
-        .mesh
-        .conform
-        .as_ref()
-        .and_then(|c| c.motion.as_ref())
-        .filter(|_| !conform_off(s, options))
-        .map(|m| m.describe());
-    let st = match &motion {
-        Some(m) => stamp(&[b"flipbook", &hash, deps.as_bytes(), m.as_bytes()]),
-        None => stamp(&[b"flipbook", &hash, deps.as_bytes()]),
-    };
-    outs.push((s.rel.clone(), format::Flipbook::NAME, st, Work::Flipbook(s)));
-    // `array true`: the frames as the layers of a texture array.
-    if let Ok(sheet) = flipbook::sheet(s)
-        && sheet.array
-    {
-        let base = [
-            b"flipbook array 1".as_slice(),
-            tex_desc.as_bytes(),
-            &hash,
-            deps.as_bytes(),
-        ];
-        let sheet = Box::new(sheet);
-        for n in 0..sheet.frames.len() {
-            let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
-            outs.push((
-                texture_array::layer_id(&flipbook::array_id(&s.rel), n),
-                format::Texture::NAME,
-                st,
-                Work::FlipbookLayer(s, sheet.clone(), n),
-            ));
-        }
-        outs.push((
-            flipbook::array_id(&s.rel),
-            format::TextureArray::NAME,
-            stamp(&base),
-            Work::FlipbookArray(s, sheet),
-        ));
-    }
-}
-
 pub(super) fn plan_texture_array<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

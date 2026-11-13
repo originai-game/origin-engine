@@ -214,9 +214,8 @@ pub(super) fn profile_2d(project: Option<&Document>) -> bool {
 pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConform> {
     let mut sheet_conform = BTreeMap::new();
     for (i, s) in sources.iter_mut().enumerate() {
-        if !(s.kind == Kind::Flipbook
-            || [Kind::System(&tilemap::TILESET), Kind::System(&rig2d::RIG2D)].contains(&s.kind))
-        {
+        let sheets = [&flipbook::FLIPBOOK, &tilemap::TILESET, &rig2d::RIG2D];
+        if !matches!(s.kind, Kind::System(k) if sheets.contains(&k)) {
             continue;
         }
         if let Some((text, c)) = super::strip(&String::from_utf8_lossy(&s.bytes), &[]) {
@@ -256,7 +255,7 @@ pub(super) fn uses(
             });
         };
         match s.kind {
-            Kind::Flipbook => {
+            Kind::System(k) if k == &flipbook::FLIPBOOK => {
                 if let Ok(sheet) = flipbook::sheet(s) {
                     add(sheet.texture.clone(), UseKind::Flipbook(Box::new(sheet)));
                 }

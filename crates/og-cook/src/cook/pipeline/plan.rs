@@ -152,7 +152,6 @@ fn plan_kind<'a>(
         Kind::Rive => plan_rive(cx, state, s, hash, outs),
         Kind::Style => plan_style(cx, state, s, hash, outs),
         Kind::Document => plan_document(cx, state, s, hash, outs),
-        Kind::Flipbook => plan_flipbook(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
         Kind::Video => plan_video(cx, state, s, hash, outs),
         Kind::Font => plan_font(cx, state, s, hash, outs),

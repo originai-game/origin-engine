@@ -62,9 +62,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
 const OGT_KINDS: &[(&str, Kind)] = &[
     ("scene", Kind::Scene),
     (prefab::PREFAB_TYPE, Kind::Prefab),
-    ("flipbook", Kind::Flipbook),
-    // A pixel effect becomes a sheet (`vfx2d::expand`).
-    (vfx2d::VFX2D_TYPE, Kind::Flipbook),
     (sfx::SFX_TYPE, Kind::Sound),
     (texture_array::ARRAY_TYPE, Kind::TextureArray),
     (video::VIDEO_TYPE, Kind::Video),
@@ -543,7 +540,7 @@ pub(crate) fn plan_groups(
                 });
                 let fits = matches!(
                     src.kind,
-                    Kind::Model | Kind::Texture | Kind::Sound | Kind::TextureArray | Kind::Flipbook
+                    Kind::Model | Kind::Texture | Kind::Sound | Kind::TextureArray
                 ) || matches!(src.kind, Kind::System(k) if k.streams);
                 if !fits || skinned {
                     refused = Some(format!(
