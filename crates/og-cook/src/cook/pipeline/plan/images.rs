@@ -93,57 +93,6 @@ pub(super) fn plan_texture<'a>(
     }
 }
 
-pub(super) fn plan_rive<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx { options, .. } = *cx;
-    let PlanState { early_errors, .. } = state;
-    match riv::plan(s, &options.font) {
-        Ok((names, images, fonts)) => {
-            for f in fonts {
-                // The font cook's version and settings, and the
-                // file's bytes (a referenced font's own).
-                let st = stamp(&[
-                    b"rive font 1 font 9",
-                    &hash,
-                    &f.index.to_le_bytes(),
-                    f.settings.describe().as_bytes(),
-                    &hash_bytes(&f.bytes).to_le_bytes(),
-                ]);
-                outs.push((
-                    format!("{}#font{}", s.rel, f.index),
-                    format::Font::NAME,
-                    st,
-                    Work::RiveFont(Box::new(f)),
-                ));
-            }
-            for n in images {
-                let st = stamp(&[b"rive image", &hash, &n.to_le_bytes()]);
-                outs.push((
-                    format!("{}#image{n}", s.rel),
-                    format::Texture::NAME,
-                    st,
-                    Work::RiveImage(s, n),
-                ));
-            }
-            for name in names {
-                let st = stamp(&[b"rive 3", &hash, name.as_bytes()]);
-                outs.push((
-                    format!("{}#{name}", s.rel),
-                    format::RiveArtboard::NAME,
-                    st,
-                    Work::Rive(s, name),
-                ));
-            }
-        }
-        Err(e) => early_errors.push((s.rel.clone(), "rive", e)),
-    }
-}
-
 pub(super) fn plan_texture_array<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

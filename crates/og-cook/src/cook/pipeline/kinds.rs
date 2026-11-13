@@ -84,6 +84,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     rig2d::KINDS,
     flipbook::KINDS,
     ui_documents::KINDS,
+    riv::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

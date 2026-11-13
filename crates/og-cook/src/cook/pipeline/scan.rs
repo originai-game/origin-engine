@@ -52,7 +52,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
         "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" | "svg" => Kind::Texture,
         e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
         "ttf" | "otf" => Kind::Font,
-        "riv" => Kind::Rive,
         _ => return kinds::by_extension(ext),
     })
 }

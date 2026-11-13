@@ -25,7 +25,10 @@ pub(crate) enum Field {
 #[cfg(test)]
 mod tests;
 
-use super::{CookError, Source, execute};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, execute, hash_bytes,
+    stamp,
+};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
@@ -492,4 +495,99 @@ pub fn artboard(bytes: &[u8], name: &str) -> Result<og_ui::rive::Artboard, Strin
         .position(|n| n == name)
         .ok_or_else(|| format!("no artboard '{name}' ({})", names.join(", ")))?;
     convert::artboard(&file, index, &std::collections::HashMap::new())
+}
+
+pub(crate) static RIVE: KindDef = KindDef {
+    name: "rive",
+    extensions: &["riv"],
+    types: &[],
+    by_content: false,
+    streams: false,
+    plan: plan_rive,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&RIVE];
+
+fn plan_rive<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { options, .. } = *cx;
+    let PlanState { early_errors, .. } = state;
+    match plan(s, &options.font) {
+        Ok((names, images, fonts)) => {
+            for f in fonts {
+                // The font cook's version and settings, and the
+                // file's bytes (a referenced font's own).
+                let st = stamp(&[
+                    b"rive font 1 font 9",
+                    &hash,
+                    &f.index.to_le_bytes(),
+                    f.settings.describe().as_bytes(),
+                    &hash_bytes(&f.bytes).to_le_bytes(),
+                ]);
+                outs.push((
+                    format!("{}#font{}", s.rel, f.index),
+                    format::Font::NAME,
+                    st,
+                    Work::Job(Box::new(RiveFontJob(Box::new(f)))),
+                ));
+            }
+            for n in images {
+                let st = stamp(&[b"rive image", &hash, &n.to_le_bytes()]);
+                outs.push((
+                    format!("{}#image{n}", s.rel),
+                    format::Texture::NAME,
+                    st,
+                    Work::Job(Box::new(RiveImageJob(s, n))),
+                ));
+            }
+            for name in names {
+                let st = stamp(&[b"rive 3", &hash, name.as_bytes()]);
+                outs.push((
+                    format!("{}#{name}", s.rel),
+                    format::RiveArtboard::NAME,
+                    st,
+                    Work::Job(Box::new(RiveJob(s, name))),
+                ));
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "rive", e)),
+    }
+}
+
+/// A Rive file's state machine blob.
+struct RiveJob<'a>(&'a Source, String);
+
+impl Job for RiveJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let RiveJob(s, name) = self;
+        cook(s, name, p.stamp)
+    }
+}
+
+/// One image a Rive file embeds.
+struct RiveImageJob<'a>(&'a Source, usize);
+
+impl Job for RiveImageJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let RiveImageJob(s, n) = self;
+        let Exec { options, .. } = ex;
+        cook_image(s, *n, &options.texture, p.stamp)
+    }
+}
+
+/// One font a Rive file embeds.
+struct RiveFontJob(Box<RivFont>);
+
+impl Job for RiveFontJob {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let RiveFontJob(f) = self;
+        let Exec { threads, .. } = ex;
+        cook_font(f, *threads, p.stamp)
+    }
 }

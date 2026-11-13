@@ -90,7 +90,6 @@ enum Kind {
     Scene,
     /// An `.ogt` of `type prefab`: cooked as a scene, flattened.
     Prefab,
-    Rive,
     TextureArray,
     Video,
     /// A kind its system's module declares (`pipeline/kinds.rs`).
@@ -106,7 +105,6 @@ impl Kind {
             Kind::Font => "font",
             Kind::Scene => "scene",
             Kind::Prefab => "prefab",
-            Kind::Rive => "rive",
             Kind::TextureArray => "texture-array",
             Kind::Video => "video",
             Kind::System(k) => k.name,
@@ -225,12 +223,6 @@ enum Work<'a> {
     Sound(&'a Source, Option<(u32, u32)>),
     /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
     SoundChunk(&'a Source, u32, u32),
-    /// A `.riv`'s artboard, by name.
-    Rive(&'a Source, String),
-    /// A `.riv`'s embedded image, by asset index.
-    RiveImage(&'a Source, usize),
-    /// A font a `.riv`'s text uses.
-    RiveFont(Box<riv::RivFont>),
     /// A texture array's blob, and layer `n`'s texture.
     TextureArray(&'a Source, texture_array::ArrayDecl),
     ArrayLayer(&'a Source, texture_array::ArrayDecl, usize),

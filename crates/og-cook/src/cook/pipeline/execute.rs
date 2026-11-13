@@ -187,9 +187,6 @@ pub(crate) fn run(
             let e = s.encoded(Some(*per))?;
             audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
         }
-        Work::Rive(s, name) => riv::cook(s, name, p.stamp),
-        Work::RiveImage(s, n) => riv::cook_image(s, *n, &options.texture, p.stamp),
-        Work::RiveFont(f) => riv::cook_font(f, threads, p.stamp),
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::TextureArray(s, decl) => {
             let root = crate::cook::assets_root(s);
