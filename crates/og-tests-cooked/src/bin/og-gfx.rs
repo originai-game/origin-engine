@@ -30,6 +30,11 @@
 //! the frame's submit), which a frame time overlapped with the next
 //! frame's CPU work hides when the CPU is the slower side (the dev build).
 //! An upper bound: the GPU idles between frames and may clock down.
+//! `OG_GFX_MOVE=turn|walk` moves the camera over the timed frames: `turn`
+//! sweeps its target 15 degrees either side about its up axis, `walk`
+//! carries it 3 m back and forth along its view, each once in 120 frames
+//! (what a frame keeps from the last one only while the camera stands
+//! still shows here; the capture is the still camera's).
 
 use og_render::{Antialias, Bloom, Exposure, FrameStats, Light, LightKind, RenderTarget, Renderer};
 use og_tests::scenes::GfxScene;
@@ -148,9 +153,31 @@ fn time_frames(
     let mut cpu = 0.0;
     let mut gpu = 0.0;
     let mut stats = FrameStats::default();
+    let still = built.scene.frame.camera;
+    let motion = std::env::var("OG_GFX_MOVE").ok();
     for f in 0..frames {
         if let Some(update) = built.update {
             update(&mut built.scene, first_frame + f);
+        }
+        if let Some(motion) = motion.as_deref() {
+            let phase = (f as f32 * std::f32::consts::TAU / 120.0).sin();
+            let view = still.target - still.position;
+            let camera = &mut built.scene.frame.camera;
+            match motion {
+                "turn" => {
+                    let turn = glam::Quat::from_axis_angle(
+                        still.up.normalize_or(glam::Vec3::Y),
+                        phase * 15f32.to_radians(),
+                    );
+                    camera.target = still.position + turn * view;
+                }
+                "walk" => {
+                    let step = view.normalize_or_zero() * 3.0 * phase;
+                    camera.position = still.position + step;
+                    camera.target = still.target + step;
+                }
+                other => return Err(format!("OG_GFX_MOVE={other}: turn or walk")),
+            }
         }
         let c = Instant::now();
         stats = renderer
@@ -164,6 +191,7 @@ fn time_frames(
         }
     }
     renderer.wait_idle().map_err(|e| e.to_string())?;
+    built.scene.frame.camera = still;
     let ms = t.elapsed().as_secs_f64() * 1000.0 / frames as f64;
     renderer.finish_stats(&mut stats);
     let per_frame = |s: f64| s * 1000.0 / frames as f64;
