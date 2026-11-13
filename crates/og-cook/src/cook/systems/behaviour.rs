@@ -1,6 +1,8 @@
 //! Behaviours (`type behaviour`): validated by og-ai and stored as text.
 
-use super::{CookError, Source, assets_root};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets_root, stamp,
+};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -69,4 +71,43 @@ pub(crate) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Str
             )
         }],
     ))
+}
+
+pub(crate) static BEHAVIOUR: KindDef = KindDef {
+    name: "behaviour",
+    extensions: &[],
+    types: &[BEHAVIOUR_TYPE],
+    by_content: false,
+    streams: false,
+    plan,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&BEHAVIOUR];
+
+fn plan<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers every subtree its `use` nodes reach.
+    let deps = behaviour_dependencies(s);
+    let st = stamp(&[b"behaviour", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Behaviour::NAME,
+        st,
+        Work::Job(Box::new(Cook(s))),
+    ));
+}
+
+/// A behaviour's one output.
+struct Cook<'a>(&'a Source);
+
+impl Job for Cook<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_behaviour(self.0, p.stamp)
+    }
 }

@@ -59,7 +59,7 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
         "hex" | "gpl" => Kind::Palette,
         "efkproj" | "efkefc" => Kind::Vfx,
         "svelte" => Kind::Document,
-        _ => return None,
+        _ => return kinds::by_extension(ext),
     })
 }
 
@@ -81,7 +81,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (crate::shader::UI_MATERIAL_TYPE, Kind::UiMaterial),
     (vector::VECTOR_TYPE, Kind::Vector),
     (sfx::SFX_TYPE, Kind::Sound),
-    (behaviour::BEHAVIOUR_TYPE, Kind::Behaviour),
     (og_story::DIALOGUE_TYPE, Kind::Dialogue),
     (og_story::QUEST_TYPE, Kind::Quest),
     (og_i18n::STRINGS_TYPE, Kind::Strings),
@@ -101,7 +100,11 @@ const OGT_KINDS: &[(&str, Kind)] = &[
 
 /// The kind an `.ogt` of this `type` cooks as; `None`: not an asset.
 fn ogt_kind(ty: &str) -> Option<Kind> {
-    OGT_KINDS.iter().find(|(t, _)| *t == ty).map(|&(_, k)| k)
+    OGT_KINDS
+        .iter()
+        .find(|(t, _)| *t == ty)
+        .map(|&(_, k)| k)
+        .or_else(|| kinds::by_type(ty))
 }
 
 /// The type an `.ogt`'s name says and does not hold: `<name>.<type>.ogt`
@@ -574,7 +577,7 @@ pub(crate) fn plan_groups(
                         | Kind::Palette
                         | Kind::Look
                         | Kind::Lut
-                );
+                ) || matches!(src.kind, Kind::System(k) if k.streams);
                 if !fits || skinned {
                     refused = Some(format!(
                         "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, flipbooks, sounds, environment maps, palettes, looks and colour LUTs",

@@ -485,7 +485,6 @@ pub(crate) fn run(
                 )],
             ))
         }
-        Work::Behaviour(s) => behaviour::cook_behaviour(s, p.stamp),
         Work::Dialogue(s, functions) => story::cook_story(s, p.stamp, false, Some(functions)),
         Work::Quest(s) => story::cook_story(s, p.stamp, true, None),
         Work::Strings(s) => strings::cook_strings(s, p.stamp),
@@ -542,6 +541,17 @@ pub(crate) fn run(
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }
+        Work::Job(job) => job.cook(
+            p,
+            &Exec {
+                options,
+                threads,
+                schemas,
+                known,
+                prefab_texts,
+                budgets,
+            },
+        ),
         Work::Scene(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("scene is not UTF-8".into()))?;

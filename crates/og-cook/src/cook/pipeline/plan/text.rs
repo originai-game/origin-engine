@@ -123,24 +123,6 @@ pub(super) fn plan_document<'a>(
     ));
 }
 
-pub(super) fn plan_behaviour<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    // The stamp covers every subtree its `use` nodes reach.
-    let deps = behaviour::behaviour_dependencies(s);
-    let st = stamp(&[b"behaviour", &hash, deps.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::Behaviour::NAME,
-        st,
-        Work::Behaviour(s),
-    ));
-}
-
 pub(super) fn plan_dialogue<'a>(
     cx: &Cx<'a>,
     _state: &mut PlanState,

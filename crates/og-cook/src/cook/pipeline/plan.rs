@@ -55,7 +55,7 @@ pub(crate) struct PlanState {
 }
 
 /// One planned output: its id, type, stamp and work.
-type Out<'a> = (String, &'static str, u64, Work<'a>);
+pub(crate) type Out<'a> = (String, &'static str, u64, Work<'a>);
 
 // Plan every output with its stamp.
 pub(crate) fn plan<'a>(
@@ -99,6 +99,9 @@ pub(crate) fn plan<'a>(
             | Kind::Rig
             | Kind::MotionAction
             | Kind::Palette => stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()]),
+            Kind::System(k) if k.by_content => {
+                stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
+            }
             _ => stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()]),
         }
         .to_le_bytes();
@@ -175,7 +178,6 @@ fn plan_kind<'a>(
         Kind::Tilemap => plan_tilemap(cx, state, s, hash, outs),
         Kind::Rig2d => plan_rig2d(cx, state, s, hash, outs),
         Kind::Flipbook => plan_flipbook(cx, state, s, hash, outs),
-        Kind::Behaviour => plan_behaviour(cx, state, s, hash, outs),
         Kind::Dialogue => plan_dialogue(cx, state, s, hash, outs),
         Kind::Quest => plan_quest(cx, state, s, hash, outs),
         Kind::Strings => plan_strings(cx, state, s, hash, outs),
@@ -194,5 +196,6 @@ fn plan_kind<'a>(
         Kind::NavMesh => plan_nav_mesh(cx, state, s, hash, outs),
         Kind::Font => plan_font(cx, state, s, hash, outs),
         Kind::Scene | Kind::Prefab => plan_scene(cx, state, s, hash, outs),
+        Kind::System(k) => (k.plan)(cx, state, s, hash, outs),
     }
 }

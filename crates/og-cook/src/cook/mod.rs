@@ -18,7 +18,7 @@
 mod pipeline;
 pub use pipeline::{asset_move, assets, cache, stats, ts_refs};
 use pipeline::{
-    execute, import_defaults, index, options, output, plan, report, scan, stage, stream,
+    execute, import_defaults, index, kinds, options, output, plan, report, scan, stage, stream,
 };
 mod systems;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
@@ -55,6 +55,7 @@ use scan::{Scan, ext, output_group, plan_groups, scan};
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
 use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
+use kinds::{Exec, Job, KindDef};
 use og_core::Schema;
 use og_core::hash::{StableHasher, hash_bytes};
 use og_core::ogt::Document;
@@ -103,7 +104,6 @@ enum Kind {
     UiMaterial,
     Vector,
     Rive,
-    Behaviour,
     Dialogue,
     Quest,
     NavMesh,
@@ -121,6 +121,8 @@ enum Kind {
     Palette,
     TextureArray,
     Video,
+    /// A kind its system's module declares (`pipeline/kinds.rs`).
+    System(&'static KindDef),
 }
 
 impl Kind {
@@ -147,7 +149,6 @@ impl Kind {
             Kind::UiMaterial => "ui-material",
             Kind::Vector => "vector",
             Kind::Rive => "rive",
-            Kind::Behaviour => "behaviour",
             Kind::Dialogue => "dialogue",
             Kind::Quest => "quest",
             Kind::NavMesh => "navmesh",
@@ -164,6 +165,7 @@ impl Kind {
             Kind::Palette => "palette",
             Kind::TextureArray => "texture-array",
             Kind::Video => "video",
+            Kind::System(k) => k.name,
         }
     }
 }
@@ -305,7 +307,6 @@ enum Work<'a> {
     RiveImage(&'a Source, usize),
     /// A font a `.riv`'s text uses.
     RiveFont(Box<riv::RivFont>),
-    Behaviour(&'a Source),
     Dialogue(
         &'a Source,
         &'a BTreeMap<String, og_story::yarn::types::Function>,
@@ -339,6 +340,8 @@ enum Work<'a> {
     Scene(&'a Source),
     /// A fractured model's `#fracture`.
     Fracture(&'a Source),
+    /// Work its system's module plans and cooks (`pipeline/kinds.rs`).
+    Job(Box<dyn Job + 'a>),
 }
 
 struct Planned<'a> {
