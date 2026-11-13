@@ -1,7 +1,7 @@
 //! The reflected types of physics beyond rigid bodies (the E5 round):
 //! joints, the character and platformer controllers, vehicles, Verlet
 //! ropes and cloth, the 2D particle fluid, height-field and 2D water, and
-//! ragdolls. As in `schema.rs`, field order, names and storage types are the
+//! ragdolls. As in `rigid/schema.rs`, field order, names and storage types are the
 //! layout the IDL declares, enumerations are `u32` codes with `pub const`s,
 //! and the doc comments are the user-facing documentation. Fields a step
 //! writes are marked "written".

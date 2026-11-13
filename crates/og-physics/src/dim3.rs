@@ -1,11 +1,11 @@
 //! The 3D profile (rapier3d): conversions and shapes. The step and the
-//! queries are `sim.rs`, shared with the 2D profile.
+//! queries are `rigid/sim.rs`, shared with the 2D profile.
 
 use crate::schema::*;
 use crate::{ShapeKey, Shared};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
-#[path = "raycast_vehicle.rs"]
+#[path = "vehicle/raycast_vehicle.rs"]
 pub(crate) mod ctl;
 use rapier3d::parry::query::ShapeCastOptions;
 use rapier3d::prelude as rp;
@@ -331,11 +331,11 @@ pub(crate) fn ragdolls(
 }
 
 #[allow(clippy::duplicate_mod)]
-#[path = "sim.rs"]
+#[path = "rigid/sim.rs"]
 mod sim;
 
 #[allow(clippy::duplicate_mod)]
-#[path = "debug_lines.rs"]
+#[path = "rigid/debug_lines.rs"]
 pub(crate) mod debug_lines;
 pub(crate) use sim::{QueryWorld, Sim, load, save, step};
 
@@ -344,15 +344,15 @@ pub(crate) use sim::{QueryWorld, Sim, load, save, step};
 mod ext;
 
 #[allow(clippy::duplicate_mod)]
-#[path = "mover.rs"]
+#[path = "character/mover.rs"]
 mod mover;
 
-#[path = "vehicle3.rs"]
+#[path = "vehicle/vehicle3.rs"]
 mod vehicle;
 pub(crate) use vehicle::{VehicleState, vehicles, wheels};
 
 #[allow(clippy::duplicate_mod)]
-#[path = "ragdoll.rs"]
+#[path = "character/ragdoll.rs"]
 mod ragdoll;
 pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};
 

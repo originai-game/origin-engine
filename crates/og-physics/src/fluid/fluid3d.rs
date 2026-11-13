@@ -1,6 +1,6 @@
 //! The 3D particle fluid: double density relaxation (Clavet, Beaudoin and
 //! Poulin, "Particle-based viscoelastic fluid simulation", SCA 2005) in
-//! three dimensions, the 2D fluid's method (`fluid.rs`) over a spatial
+//! three dimensions, the 2D fluid's method (`fluid/fluid.rs`) over a spatial
 //! hash. Each substep applies gravity and the viscosity impulses, moves the
 //! particles, relaxes them towards the rest density (pressure, and near
 //! pressure, which keeps them apart and gives the surface its tension),

@@ -58,7 +58,7 @@ functions.
 
 Field order, names and storage types are the layout; the IDL declares them
 exactly so (an IDL record of the same name and layout is adopted). Codes
-are `u32` constants in `src/schema.rs`.
+are `u32` constants in `src/rigid/schema.rs`.
 
 | Record | Kind | Fields |
 |---|---|---|
@@ -280,11 +280,11 @@ reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module
 | `og.Joint` | fixed, revolute (limits, velocity or position motor), prismatic, spring, rope and ball joints between a body and another (`other`) or a world point; the second frame keeps the pose it was made in; `value` is written back |
 | `og.CharacterController` | a kinematic capsule moved by `move` after the step, its own move (below): slopes to `max_slope`, steps to `step_height`, ground snapping, carried by the moving platform it stands on, jumps on the rising edge with coyote time, pushes dynamic bodies, blocked by what its collider's layers and mask meet; writes `grounded`, `velocity`, `ground` |
 | `og.PlatformerController` | 2D: run acceleration, jump height and time to apex, fall and jump-cut gravity, apex hang, coyote time, jump buffer, air jumps, wall slide and jump, one-way layers with drop-through, corner correction, moving platforms, an `impulse` the game sets (a knock-back) taken once; its own move (below), blocked by what its collider's layers and mask meet; sends `og.CharacterEvent` |
-| `og.Vehicle` | 3D: rapier's raycast vehicle (carried in `raycast_vehicle.rs` with its roll influence and skid info public, one pass per wheel, the tyre impulses sized with each body's effective inverse mass so locked axes count, and the opposite of every wheel impulse applied to a dynamic ground body: a car on a raft weighs on it and drives it backwards, momentum conserved; fixed and kinematic ground take nothing) with a top-speed fade and reverse braking, its wheel rays filtered by the chassis collider's layers and mask, `roll_influence` (0: corners flat), brakes in newtons a wheel, defaults for a 1,000 kg car, `slip` written; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing, with each wheel's `slip` and `side_speed` |
-| `og.Vehicle` drivetrain | `model` VEHICLE_DRIVETRAIN: `drivetrain.rs`, rapier-free, turns throttle and forward speed into a torque at the driven wheels through the torque curve, a gear and the final drive, with an automatic or manual gearbox whose gear, rpm and clutch are the trailer's tag 4 (`SimExt::vehicles`); 3D splits it across the driven wheels as forces at their radius, 2D drives the wheel motors towards the gear's top speed with it. `handbrake` brakes and loosens the handbrake wheels (`handbrakeGrip` on their friction slip and side stiffness), `driftGrip` their side stiffness while they slide. `og.VehicleWheel` children (lazy, found among parented entities, up to 16 in entity order) replace the implicit wheels; what building bakes in of them is kept in the tag 4 entry so a changed child rebuilds the controller. An arcade car on its implicit wheels writes no entry, so its block does not move. |
+| `og.Vehicle` | 3D: rapier's raycast vehicle (carried in `vehicle/raycast_vehicle.rs` with its roll influence and skid info public, one pass per wheel, the tyre impulses sized with each body's effective inverse mass so locked axes count, and the opposite of every wheel impulse applied to a dynamic ground body: a car on a raft weighs on it and drives it backwards, momentum conserved; fixed and kinematic ground take nothing) with a top-speed fade and reverse braking, its wheel rays filtered by the chassis collider's layers and mask, `roll_influence` (0: corners flat), brakes in newtons a wheel, defaults for a 1,000 kg car, `slip` written; 2D: wheel bodies on sprung, motorised wheel joints; `vehicle_wheels` for drawing, with each wheel's `slip` and `side_speed` |
+| `og.Vehicle` drivetrain | `model` VEHICLE_DRIVETRAIN: `vehicle/drivetrain.rs`, rapier-free, turns throttle and forward speed into a torque at the driven wheels through the torque curve, a gear and the final drive, with an automatic or manual gearbox whose gear, rpm and clutch are the trailer's tag 4 (`SimExt::vehicles`); 3D splits it across the driven wheels as forces at their radius, 2D drives the wheel motors towards the gear's top speed with it. `handbrake` brakes and loosens the handbrake wheels (`handbrakeGrip` on their friction slip and side stiffness), `driftGrip` their side stiffness while they slide. `og.VehicleWheel` children (lazy, found among parented entities, up to 16 in entity order) replace the implicit wheels; what building bakes in of them is kept in the tag 4 entry so a changed child rebuilds the controller. An arcade car on its implicit wheels writes no entry, so its block does not move. |
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
-| `og.SoftBody` | PBD soft volumes (`softbody.rs`): an icosphere, a box's faces or a closed registered mesh (welded), 2D a ring; per substep, `iterations` passes of pins (`pinTop`), edge distances by `stiffness`, the volume constraint (Müller et al. 2007: every point along the volume's gradient, 2D the area's) towards `pressure` × the rest volume, and push-out of solids at `thickness`, then friction. One-way like cloth; lazy, so found by `SystemContext::query_with` over the granted type; its points and surface are the trailer's tag 5 (`SimExt::softs`), written only while one exists; `soft_body_points` |
-| `og.Garment` | Cloth on a skinned character (`garment.rs`), 3D only: the host hands each tick the skin's targets for the rig's points in the world (`set_garment_rig` once, a welded mesh with each point's freedom; `set_garment_pose` each tick, after the animation; og-runtime's `garment.rs` skins them on the CPU), and per substep the points integrate gravity and a gusting wind, then `iterations` passes of edges, bends, the backstop behind the skin's normal, the reach (`freedom` × `maxDistance`, 0 within `pinTop` of the top) and push-out of solids at `radius`; the skin carries each point (`previous` moves with its correction). One-way like cloth; lazy; the trailer's tag 6 (`SimExt::garments`), shifted with the origin; `garment_points` |
+| `og.SoftBody` | PBD soft volumes (`soft/softbody.rs`): an icosphere, a box's faces or a closed registered mesh (welded), 2D a ring; per substep, `iterations` passes of pins (`pinTop`), edge distances by `stiffness`, the volume constraint (Müller et al. 2007: every point along the volume's gradient, 2D the area's) towards `pressure` × the rest volume, and push-out of solids at `thickness`, then friction. One-way like cloth; lazy, so found by `SystemContext::query_with` over the granted type; its points and surface are the trailer's tag 5 (`SimExt::softs`), written only while one exists; `soft_body_points` |
+| `og.Garment` | Cloth on a skinned character (`soft/garment.rs`), 3D only: the host hands each tick the skin's targets for the rig's points in the world (`set_garment_rig` once, a welded mesh with each point's freedom; `set_garment_pose` each tick, after the animation; og-runtime's `garment.rs` skins them on the CPU), and per substep the points integrate gravity and a gusting wind, then `iterations` passes of edges, bends, the backstop behind the skin's normal, the reach (`freedom` × `maxDistance`, 0 within `pinTop` of the top) and push-out of solids at `radius`; the skin carries each point (`previous` moves with its correction). One-way like cloth; lazy; the trailer's tag 6 (`SimExt::garments`), shifted with the origin; `garment_points` |
 | `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
 | `og.Fluid3D` | 3D profile: the same model over a spatial hash, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |
@@ -299,7 +299,7 @@ meshes. CPU costs per feature: `cargo run --release -p og-physics --example
 soft_costs`, `--example anim_physics_costs` and, for the 3D fluid,
 `--example fluid3d_costs`.
 
-### The controllers' move (`src/mover.rs`)
+### The controllers' move (`src/character/mover.rs`)
 
 `og.CharacterController` (both profiles) and `og.PlatformerController`
 move their shape themselves, not through rapier's
@@ -365,14 +365,14 @@ layers do not meet.
   a light one sinks under it (397 of 400 heavy particles below the light
   fluid's median), with `mixing` 1 the two blend (each particle's share
   within ±0.005 of a half, the amounts kept to 1e-3).
-- **2D ragdolls**: the 3D ragdoll's code (`src/ragdoll.rs`) built for both
+- **2D ragdolls**: the 3D ragdoll's code (`src/character/ragdoll.rs`) built for both
   profiles, each with its joint: a hinge about z with ±`jointLimit` in 2D.
   `tests/ragdoll.rs`: a 2D figure follows its targets at their z, goes limp
   and is knocked along +x, its bones turn only about z, the knee stays
   within the limit (1.12 rad at most landing under the body's weight; 3.03
   without a limit), and it recovers.
 
-### 3D particle fluids (`og.Fluid3D`, `src/fluid3d.rs`)
+### 3D particle fluids (`og.Fluid3D`, `src/fluid/fluid3d.rs`)
 
 Double density relaxation (Clavet, Beaudoin and Poulin 2005) rather than
 position-based fluids: one neighbour search and two passes a substep, where
@@ -436,7 +436,7 @@ phases, `--bodies`, `--pairs` and `--rows` set those grains) and
 
 ## Sleep
 
-`src/sleep.rs`. With `og.Physics.sleep_ticks` above 0, a dynamic body
+`src/rigid/sleep.rs`. With `og.Physics.sleep_ticks` above 0, a dynamic body
 slower than `sleep_speed` before and after each of that many steps in a
 row sleeps, but only with every dynamic body joined to it by a contact
 pair or a joint: a group sleeps whole. Rapier's own sleep stays off

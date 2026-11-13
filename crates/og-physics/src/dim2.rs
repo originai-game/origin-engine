@@ -1,6 +1,6 @@
 //! The 2D profile (rapier2d): bodies move in the xy plane and rotate about
 //! z; a transform keeps its z and its quaternion becomes a rotation about z.
-//! The step and the queries are `sim.rs`, shared with the 3D profile.
+//! The step and the queries are `rigid/sim.rs`, shared with the 3D profile.
 
 use crate::schema::*;
 use crate::{ShapeKey, Shared};
@@ -259,11 +259,11 @@ pub(crate) fn ragdolls(
 }
 
 #[allow(clippy::duplicate_mod)]
-#[path = "sim.rs"]
+#[path = "rigid/sim.rs"]
 mod sim;
 
 #[allow(clippy::duplicate_mod)]
-#[path = "debug_lines.rs"]
+#[path = "rigid/debug_lines.rs"]
 pub(crate) mod debug_lines;
 pub(crate) use sim::{QueryWorld, Sim, load, save, step};
 
@@ -272,18 +272,18 @@ pub(crate) use sim::{QueryWorld, Sim, load, save, step};
 mod ext;
 
 #[allow(clippy::duplicate_mod)]
-#[path = "mover.rs"]
+#[path = "character/mover.rs"]
 mod mover;
 
-#[path = "platformer.rs"]
+#[path = "character/platformer.rs"]
 mod platformer;
 pub(crate) use platformer::platformers;
 
-#[path = "vehicle2.rs"]
+#[path = "vehicle/vehicle2.rs"]
 mod vehicle;
 pub(crate) use vehicle::{VehicleState, vehicles, wheels};
 
 #[allow(clippy::duplicate_mod)]
-#[path = "ragdoll.rs"]
+#[path = "character/ragdoll.rs"]
 mod ragdoll;
 pub(crate) use ragdoll::{RagdollState, pose_of as ragdoll_pose};

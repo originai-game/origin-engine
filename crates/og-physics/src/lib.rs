@@ -28,6 +28,22 @@
 //! controllers move against the world as it now is, and ropes, cloth and
 //! fluids follow (`sim::step`).
 //!
+//! **Layout.** One directory per mechanism. The profiles (`dim2.rs`,
+//! `dim3.rs`) compile the shared sources once each, so modules are named
+//! by `#[path]` and a file's directory says which mechanism it belongs to:
+//!
+//! | directory | mechanism |
+//! |---|---|
+//! | `rigid/` | the rapier world: bodies, colliders, the step, sleep, joints, scene queries, the air's drag, the debug lines |
+//! | `character/` | the controllers' move, the 2D platformer, ragdolls |
+//! | `vehicle/` | the raycast car, the 2D wheel-joint car, the drivetrain |
+//! | `soft/` | Verlet ropes and cloth, PBD soft volumes, garments |
+//! | `fluid/` | the 2D and 3D particle fluids |
+//! | `water/` | og.Water's bodies, height-field surfaces and lines, wakes, buoyancy |
+//!
+//! At the top: the system (`tick.rs`), reading the world (`gather.rs`),
+//! the state block (`persist.rs`), the lanes and the stats.
+//!
 //! **Determinism.** rapier is built with `enhanced-determinism`. The rapier
 //! world persists between ticks (contacts and solver warm starts carry over)
 //! and is world state: the `og.physics` state block ([`og_ecs::StateBlock`])
@@ -54,17 +70,25 @@
 #[cfg(not(any(feature = "physics2d", feature = "physics3d")))]
 compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (both are default)");
 
+#[path = "vehicle/drivetrain.rs"]
 mod drivetrain;
+#[path = "fluid/fluid.rs"]
 mod fluid;
+#[path = "fluid/fluid3d.rs"]
 mod fluid3d;
+#[path = "soft/garment.rs"]
 mod garment;
 mod gather;
 mod lanes;
+#[path = "rigid/outline.rs"]
 mod outline;
+#[path = "rigid/schema.rs"]
 mod schema;
 mod schema_ext;
+#[path = "soft/softbody.rs"]
 mod softbody;
 mod stats;
+#[path = "soft/verlet.rs"]
 mod verlet;
 mod water;
 pub use water::{Wakes, WaterAt, WaterBody, WaterCut};
@@ -92,6 +116,7 @@ use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, MutexGuard};
 mod persist;
+#[path = "rigid/query.rs"]
 mod query;
 mod tick;
 use persist::*;
