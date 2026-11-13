@@ -478,7 +478,8 @@ impl GlassPasses {
 pub(crate) const PYRAMID_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 /// The glass passes' module (`crate::shaders` validates it).
-pub(crate) const GLASS_WGSL: &str = wgsl_library!("fullscreen.wgsl", "glass.wgsl");
+pub(crate) const GLASS_WGSL: &str =
+    wgsl_library!("fullscreen.wgsl", "glass.wgsl", "bloom_chain.wgsl");
 
 #[cfg(test)]
 mod tests {
