@@ -541,8 +541,9 @@ mod tests {
         }
         cases.push((1.0, 0, 0.0, f64::MIN_POSITIVE));
         cases.push((1.0, 0, 0.0, f64::MAX));
+        let read = super::TimeRead::default();
         for (scale, hit_stop, dt, elapsed) in cases {
-            let ours = time_numbers(scale, hit_stop, dt, elapsed).map(bits);
+            let ours = time_numbers(&read, scale, hit_stop, dt, elapsed).map(bits);
             let display = format!("{scale},{hit_stop},{dt},{elapsed}");
             assert_eq!(
                 ours.to_vec(),

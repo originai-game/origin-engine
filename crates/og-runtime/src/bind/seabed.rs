@@ -20,10 +20,11 @@ use serde_json::Value;
 use std::cell::RefCell;
 use std::sync::Arc;
 
-thread_local! {
-    /// The last fields made, by their key and rest level, newest last.
-    static CACHE: RefCell<Vec<(u64, f32, Arc<Shore>)>> = const { RefCell::new(Vec::new()) };
-}
+/// The last fields an engine made, by their key and rest level, newest
+/// last: kept with its terrains (`TerrainState::shores`), which they are
+/// made from.
+#[derive(Default)]
+pub(crate) struct Shores(RefCell<Vec<(u64, f32, Arc<Shore>)>>);
 
 /// How many fields are kept (a world rarely has more than one sea).
 const KEEP: usize = 4;
@@ -70,12 +71,13 @@ pub(crate) fn coast(
 /// The seabed's field under a rest level of `level`: cached, or made from
 /// the terrain's heights.
 fn shore(terrains: &TerrainState, grid: &SeabedGrid, level: f32) -> Option<Arc<Shore>> {
-    let found = CACHE.with(|c| {
-        c.borrow()
-            .iter()
-            .find(|(k, l, _)| *k == grid.key && l.to_bits() == level.to_bits())
-            .map(|(_, _, s)| s.clone())
-    });
+    let found = terrains
+        .shores
+        .0
+        .borrow()
+        .iter()
+        .find(|(k, l, _)| *k == grid.key && l.to_bits() == level.to_bits())
+        .map(|(_, _, s)| s.clone());
     if let Some(s) = found {
         return Some(s);
     }
@@ -87,12 +89,11 @@ fn shore(terrains: &TerrainState, grid: &SeabedGrid, level: f32) -> Option<Arc<S
         grid.rows,
         &depth,
     )?);
-    CACHE.with(|c| {
-        let mut c = c.borrow_mut();
-        c.push((grid.key, level, made.clone()));
-        if c.len() > KEEP {
-            c.remove(0);
-        }
-    });
+    let mut kept = terrains.shores.0.borrow_mut();
+    kept.push((grid.key, level, made.clone()));
+    if kept.len() > KEEP {
+        kept.remove(0);
+    }
+    drop(kept);
     Some(made)
 }

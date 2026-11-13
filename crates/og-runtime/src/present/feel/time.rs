@@ -15,8 +15,15 @@ pub(crate) fn time_scale_json(scale: og_core::TimeScale, time: og_core::Time) ->
 /// A system call's time scale, written to the shared buffer as four
 /// doubles: scale, hitStop, scaledDt, scaledElapsed
 /// ([`crate::host::shared`]; `dispatch` in runtime.ts reads them).
-pub(crate) fn put_time(shared: &mut [u8], scale: f32, hit_stop: u32, dt: f32, elapsed: f64) {
-    for (i, v) in time_numbers(scale, hit_stop, dt, elapsed)
+pub(crate) fn put_time(
+    shared: &mut [u8],
+    read: &TimeRead,
+    scale: f32,
+    hit_stop: u32,
+    dt: f32,
+    elapsed: f64,
+) {
+    for (i, v) in time_numbers(read, scale, hit_stop, dt, elapsed)
         .into_iter()
         .enumerate()
     {
@@ -29,11 +36,17 @@ pub(crate) fn put_time(shared: &mut [u8], scale: f32, hit_stop: u32, dt: f32, el
 /// call once carried that text). An f32 is therefore the double nearest
 /// its own shortest digits (0.016666668, not the 0.01666666753590107 it
 /// widens to), and what `Number` does not read (`inf`) is NaN.
-pub(super) fn time_numbers(scale: f32, hit_stop: u32, dt: f32, elapsed: f64) -> [f64; 4] {
+pub(super) fn time_numbers(
+    read: &TimeRead,
+    scale: f32,
+    hit_stop: u32,
+    dt: f32,
+    elapsed: f64,
+) -> [f64; 4] {
     [
-        f32_as_read(scale, 0),
+        read.f32_as_read(scale, 0),
         f64::from(hit_stop),
-        f32_as_read(dt, 1),
+        read.f32_as_read(dt, 1),
         if elapsed.is_finite() {
             elapsed
         } else {
@@ -42,26 +55,29 @@ pub(super) fn time_numbers(scale: f32, hit_stop: u32, dt: f32, elapsed: f64) -> 
     ]
 }
 
-/// The double `Number` reads from an f32's `{}` text. The scale and the
-/// scaled step rarely change, so the last answer of each (`slot`) is kept.
-pub(super) fn f32_as_read(x: f32, slot: usize) -> f64 {
-    thread_local! {
-        static LAST: std::cell::Cell<[(u32, f64); 2]> =
-            const { std::cell::Cell::new([(0, 0.0); 2]) };
+/// An engine's last time scale and scaled step as `Number` reads them
+/// ([`TimeRead::f32_as_read`]): they rarely change, so each is kept.
+#[derive(Default)]
+pub(crate) struct TimeRead(std::cell::Cell<[(u32, f64); 2]>);
+
+impl TimeRead {
+    /// The double `Number` reads from an f32's `{}` text, the last answer
+    /// of each `slot` kept.
+    pub(super) fn f32_as_read(&self, x: f32, slot: usize) -> f64 {
+        let mut last = self.0.get();
+        if last[slot].0 != x.to_bits() {
+            // Core's `{}` rather than zmij: on an exact tie between two
+            // shortest candidates zmij rounds to even and core up.
+            let read = if x.is_finite() {
+                x.to_string().parse().unwrap_or(f64::NAN)
+            } else {
+                f64::NAN
+            };
+            last[slot] = (x.to_bits(), read);
+            self.0.set(last);
+        }
+        last[slot].1
     }
-    let mut last = LAST.with(std::cell::Cell::get);
-    if last[slot].0 != x.to_bits() {
-        // Core's `{}` rather than zmij: on an exact tie between two
-        // shortest candidates zmij rounds to even and core up.
-        let read = if x.is_finite() {
-            x.to_string().parse().unwrap_or(f64::NAN)
-        } else {
-            f64::NAN
-        };
-        last[slot] = (x.to_bits(), read);
-        LAST.with(|l| l.set(last));
-    }
-    last[slot].1
 }
 
 pub fn og_time_set_scale(world: u32, scale: f64) -> Result<(), String> {

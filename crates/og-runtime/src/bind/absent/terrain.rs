@@ -31,6 +31,8 @@ pub(crate) struct TerrainState {
     /// Read by the probe's dump_entity as the full module's: no scatter,
     /// no issue.
     pub scatter_issues: std::collections::BTreeMap<u64, String>,
+    /// Read by og.Water.seabed as the full module's: no terrain, no seabed.
+    pub shores: crate::bind::seabed::Shores,
 }
 
 /// og.terrain on one engine: nothing here.

@@ -195,6 +195,8 @@ pub(crate) struct State {
     pub physics_heightfields: IdMap<u64, og_physics::HeightfieldDesc>,
     /// UI warnings already logged, so a repeated one is logged once.
     pub ui_warned: BTreeSet<String>,
+    /// The UI's last frame answers (og.ui.frameViewport, frameTheme).
+    pub ui_answers: crate::bind::modules::UiAnswers,
     /// The host mirrors the UI's accessibility tree (create option `a11y`,
     /// the web Worker): frame answers carry the tree when it changed.
     pub a11y_mirror: bool,
@@ -234,6 +236,8 @@ pub(crate) struct Engine {
     pub id: u32,
     pub(super) world: UnsafeCell<World>,
     pub stepping: Cell<bool>,
+    /// The time scale a system call last carried, as its `time` reads it.
+    pub time_read: super::feel::TimeRead,
     pub state: RefCell<State>,
     /// og-probe over this engine's world: the command channel and protocol 5.
     pub probe: RefCell<og_probe::Probe>,
@@ -420,6 +424,7 @@ pub(super) fn run_system(
     crate::host::shared::with(|b| {
         super::feel::put_time(
             b,
+            &eng.time_read,
             scale.scale,
             scale.hit_stop,
             scale.dt(&time),

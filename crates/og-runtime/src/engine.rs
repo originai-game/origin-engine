@@ -257,11 +257,15 @@ pub(crate) struct Handles {
 // world and its modules' `Modules`). The game's declarations (made before
 // any engine), the host's hooks, the live engines, the handles interface
 // objects carry (views, queries, streams, open saves: a member names only
-// its object's handle), and the running system's frame. Besides these,
-// `modules` (the engine whose UI frame is open), `resources` (the layout
-// epoch every engine's resource handles carry), `trace` (process
-// profiling, before an engine exists) and two memo caches keyed by their
-// inputs (`seabed`, `modules::ui_desc`) are the only thread-locals.
+// its object's handle), and the call on the stack: the running system's
+// frame, and whether it queued a structural change (the handles' views
+// then retire as moving; a native system queues one without a frame).
+// Besides these the only thread-locals are four more process roots, each
+// beside its code: `host::shared` (the buffer the host and the runtime
+// share), `modules` (the engine whose UI frame is open: an og.ui call
+// names no world), `resources` (the layout epoch, one for the process as
+// the JavaScript side keeps one) and `trace` (profiling, which starts
+// before an engine exists). Nothing an engine owns is kept on the thread.
 thread_local! {
     pub(crate) static HANDLES: RefCell<Handles> = RefCell::new(Handles::default());
     pub(crate) static HOOKS: RefCell<Option<Rc<dyn Hooks>>> = RefCell::new(None);

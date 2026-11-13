@@ -98,6 +98,9 @@ pub(crate) struct TerrainState {
     /// The streamed terrains (load indices) a frame drew already: the first
     /// frame that draws one settles, as a capture does.
     pub drawn: BTreeSet<usize>,
+    /// The seabeds made from these terrains (og.Water.seabed), for the
+    /// tick and the frame.
+    pub shores: crate::bind::seabed::Shores,
 }
 
 impl LoadedTerrain {

@@ -180,20 +180,39 @@ pub fn og_ui_frame_viewport() -> String {
     // surface) and the viewport rarely changes: the last answer is kept with
     // what it was made from, as og_ui_frame_theme's is. Built each call, it
     // was a fifth of a kit frame in the dev build.
-    type Made = (Viewport, f32, String);
-    thread_local!(static MADE: std::cell::RefCell<Option<Made>> = const { std::cell::RefCell::new(None) });
-    MADE.with(|last| {
-        let mut last = last.borrow_mut();
-        if let Some((lv, lh, text)) = last.as_ref()
+    answered(|a| {
+        let last = a.map(|a| &mut a.viewport);
+        if let Some(Some((lv, lh, text))) = last.as_deref()
             && *lv == v
             && lh.to_bits() == hud.to_bits()
         {
             return text.clone();
         }
         let text = wire::text_of(&viewport_wire(&v, hud));
-        *last = Some((v, hud, text.clone()));
+        if let Some(last) = last {
+            *last = Some((v, hud, text.clone()));
+        }
         text
     })
+}
+
+/// The frame answers an engine's UI gave last, each with what it was made
+/// from (`State::ui_answers`).
+#[derive(Default)]
+pub(crate) struct UiAnswers {
+    viewport: Option<(Viewport, f32, String)>,
+    theme: Option<(Theme, og_ui::Density, String, String)>,
+}
+
+/// Runs `f` on the kept answers of the engine whose UI frame is open (else
+/// the one opened last); `None` when there is no such engine or its state
+/// is in use, and the answer is then made without being kept.
+fn answered<T>(f: impl FnOnce(Option<&mut UiAnswers>) -> T) -> T {
+    let eng = ui_engine().and_then(|id| engine(id).ok());
+    match eng.as_ref().map(|e| e.state.try_borrow_mut()) {
+        Some(Ok(mut st)) => f(Some(&mut st.ui_answers)),
+        _ => f(None),
+    }
 }
 
 pub fn og_ui_frame_cursor() -> String {
@@ -262,11 +281,9 @@ pub fn og_ui_frame_theme() -> String {
     });
     // The UI kit asks once a tick and the theme rarely changes: the last
     // answer is kept with what it was made from.
-    type Made = (Theme, og_ui::Density, String, String);
-    thread_local!(static MADE: std::cell::RefCell<Option<Made>> = const { std::cell::RefCell::new(None) });
-    MADE.with(|last| {
-        let mut last = last.borrow_mut();
-        if let Some((t, d, k, text)) = last.as_ref()
+    answered(|a| {
+        let last = a.map(|a| &mut a.theme);
+        if let Some(Some((t, d, k, text))) = last.as_deref()
             && *t == theme
             && *d == sizes
             && *k == style
@@ -274,7 +291,9 @@ pub fn og_ui_frame_theme() -> String {
             return text.clone();
         }
         let text = wire::text_of(&theme_wire(theme, sizes, &style));
-        *last = Some((theme, sizes, style, text.clone()));
+        if let Some(last) = last {
+            *last = Some((theme, sizes, style, text.clone()));
+        }
         text
     })
 }
