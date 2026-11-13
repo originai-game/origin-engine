@@ -51,8 +51,8 @@ of mass without changing the inertia: lower a car's below its wheel mounts to
 keep it on its wheels at full lock, or put a weight at a toy's base so it
 rights itself.
 
-Air: `airDrag` makes a body move with the air, og.Wind and the
-og.WindMotors reaching it (`render §8`). Its velocity closes on the air's
+Air: `airDrag` makes a body move with the air, og.Wind and every
+og.WindMotor reaching it (`render §8`). Its velocity closes on the air's
 at `airDrag` per second: 0.2 to 1 drifts a crate or a boat's sail, 3 to 10
 blows a leaf, a balloon or a paper lantern along. Leave it 0 for anything
 the wind should not move; `linearDamping` slows a body against the world,
