@@ -722,6 +722,7 @@ impl Shadows {
             shadow_pipelines: HashMap::new(),
             compact_shadow_pipelines: HashMap::new(),
             shadow_cache: Default::default(),
+            shadow_keep: None,
             shadow_cache_maps: Vec::new(),
             shadow_hashes: Default::default(),
             shelter_key: None,

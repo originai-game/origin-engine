@@ -298,6 +298,7 @@ mod garment_gpu;
 pub mod ocean_fft;
 mod shadow_cache;
 mod shadow_fit;
+mod shadow_keep;
 mod shadow_target;
 mod shadows;
 pub use og_render_data::shapes;

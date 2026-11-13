@@ -499,38 +499,9 @@ pub(crate) struct ShadowMap {
     pub(crate) array_view: wgpu::TextureView,
     pub(crate) layers: Vec<wgpu::TextureView>,
     pub(crate) depth: wgpu::TextureView,
-    /// The depth buffer itself (the static shadow cache copies it).
+    /// The depth buffer itself (the static shadow cache copies a local
+    /// layer's).
     pub(crate) depth_texture: wgpu::Texture,
-}
-
-/// One shadow layer's static casters, kept while dynamic casters are drawn
-/// over the live layer (`shadow_cache.rs`): its shadow value and depth.
-pub(crate) struct CachedShadow {
-    pub(crate) size: u32,
-    pub(crate) color: wgpu::Texture,
-    pub(crate) depth: wgpu::Texture,
-}
-
-impl CachedShadow {
-    pub(crate) fn new(
-        device: &wgpu::Device,
-        size: u32,
-        format: wgpu::TextureFormat,
-    ) -> CachedShadow {
-        let usage = wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST;
-        CachedShadow {
-            size,
-            color: target_texture(device, "cached shadow", size, size, format, usage),
-            depth: target_texture(
-                device,
-                "cached shadow depth",
-                size,
-                size,
-                DEPTH_FORMAT,
-                usage,
-            ),
-        }
-    }
 }
 
 impl ShadowMap {
@@ -650,9 +621,11 @@ pub(crate) struct Shadows {
     pub(crate) compact_shadow_pipelines: HashMap<Side, Deferred<ShadowSet>>,
     /// What the shadow layers keep from frame to frame (`shadow_cache.rs`),
     /// and per shadow slot the texture a layer's static casters are kept
-    /// in while dynamic ones are drawn over it.
+    /// in while dynamic ones are drawn over it (`shadow_keep.rs`), with
+    /// what puts them back (made with the first).
     pub(crate) shadow_cache: shadow_cache::ShadowCache,
-    pub(crate) shadow_cache_maps: Vec<Option<CachedShadow>>,
+    pub(crate) shadow_keep: Option<crate::shadow_keep::ShadowKeep>,
+    pub(crate) shadow_cache_maps: Vec<Option<crate::shadow_keep::KeptLayer>>,
     /// What the cache keys each sorted instance on, kept across frames.
     pub(crate) shadow_hashes: shadow_cache::InstanceHashes,
     /// What the weather occlusion map in the cascade array's last layer

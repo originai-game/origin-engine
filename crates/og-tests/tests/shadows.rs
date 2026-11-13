@@ -331,15 +331,24 @@ fn contact_shadows_never_darken_what_lies_behind_a_silhouette() {
 /// The static shadow cache (og-render's shadow_cache.rs): a sphere rolls
 /// for four frames among the pillars, under the sun's cascades, a spot and
 /// a point light's cube faces, then stands still. While it rolls, the
-/// layers it does not reach keep their static casters and the ones it
-/// reaches draw it over theirs; once it has stood still long enough every
-/// layer is kept and nothing is drawn. The last frame is the one a
-/// renderer that saw only the final scene draws, on the CPU and the GPU
-/// culling paths.
+/// layers it does not reach are held; one it reaches draws every caster
+/// in one pass where they are few, and puts its kept static casters back
+/// under the sphere where they cost more than that (a dense ball). Once
+/// the sphere has stood still long enough every layer is held and
+/// nothing is drawn. The last frame is the one a renderer that saw only
+/// the final scene draws, on the CPU and the GPU culling paths.
 #[test]
 #[ignore = "requires GPU"]
 fn cached_shadow_layers_draw_what_fresh_ones_do() {
-    for culling in [Culling::Cpu, Culling::Gpu] {
+    // Sparse: a few props, cheaper to draw again than to put back. Dense:
+    // a finely tessellated ball among them, worth keeping in every layer
+    // it is in.
+    for (culling, dense) in [
+        (Culling::Cpu, false),
+        (Culling::Cpu, true),
+        (Culling::Gpu, false),
+        (Culling::Gpu, true),
+    ] {
         let desc = RenderDesc {
             culling,
             ..scenes::base_desc()
@@ -349,6 +358,20 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
         // The sphere at (0.2, 0.5, -2.0), the last instance.
         let mover = scene.objects.instances.len() - 1;
         let start = scene.objects.instances[mover].transform;
+        if dense {
+            let ball = scene.add_mesh(og_render::shapes::sphere(640, 480));
+            let material = scene.objects.instances[mover].material;
+            let at = glam::Vec3::new(0.6, 0.4, -1.0);
+            scene.add_instance(
+                ball,
+                material,
+                glam::Mat4::from_scale_rotation_translation(
+                    glam::Vec3::splat(0.4),
+                    glam::Quat::IDENTITY,
+                    at,
+                ),
+            );
+        }
         let mut renderer = Renderer::new_blocking(&desc).expect("renderer");
         let mut stats = Vec::new();
         for f in 0..16 {
@@ -366,7 +389,7 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
         let fresh = frame(&desc, &scene, 1).0;
         for (i, s) in stats.iter().enumerate() {
             println!(
-                "{culling:?} frame {i}: {} shadow passes, {} cached, {} casters drawn",
+                "{culling:?} dense {dense} frame {i}: {} shadow passes, {} cached, {} casters drawn",
                 s.shadow_passes, s.shadow_cached, s.shadow_casters
             );
         }
@@ -376,27 +399,33 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
             stats[0].shadow_cached, 0,
             "the first frame draws every layer"
         );
-        // The first frame it moves, the layers its old sphere reaches draw
-        // their static casters again (and save them); the others are kept.
-        let first = &stats[0];
-        let moved = &stats[1];
-        assert!(
-            moved.shadow_cached > 0 && moved.shadow_cached < passes,
-            "{culling:?}: {moved:?}"
-        );
-        // Rolling on (frames 2 to 11, dynamic until 8 still frames): every
-        // layer comes from the cache, and only the mover and the casters
-        // drawn every frame are drawn over them: far fewer than all.
+        // While it rolls (frames 1 to 11, dynamic until 8 still frames),
+        // the layers it does not reach are held. One it reaches is one
+        // pass of every caster where they are few, and where the ball is
+        // in it, the kept layer put back with only the mover drawn over.
         // GPU culling counts its casters on the GPU and reads none back
         // here (`counts_lag` unset): the CPU path checks the counts, both
         // check which layers are kept and the frames.
         let counts = culling == Culling::Cpu;
-        for s in &stats[2..=11] {
-            assert_eq!(s.shadow_cached, passes, "{culling:?}: {s:?}");
+        let first = &stats[0];
+        for s in &stats[1..=11] {
             assert!(
-                !counts || (s.shadow_casters > 0 && 2 * s.shadow_casters < first.shadow_casters),
-                "{culling:?}: {s:?} against {first:?}"
+                s.shadow_cached > 0 && s.shadow_cached < passes,
+                "{culling:?} dense {dense}: {s:?}"
             );
+            assert!(
+                !counts || (s.shadow_casters > 0 && s.shadow_casters < first.shadow_casters),
+                "{culling:?} dense {dense}: {s:?} against {first:?}"
+            );
+        }
+        if dense {
+            // Once the layers that hold the ball are saved, they come
+            // back from the kept texture: more layers cached than the
+            // ones the mover does not reach, the same every frame.
+            let held = stats[1].shadow_cached;
+            for s in &stats[3..=11] {
+                assert!(s.shadow_cached > held, "{culling:?}: {s:?}");
+            }
         }
         // Static again at frame 12: the layers its sphere reaches redraw.
         assert!(
@@ -426,9 +455,10 @@ fn cached_shadow_layers_draw_what_fresh_ones_do() {
                 &exact,
             )
             .expect("same size");
-            println!("{culling:?} cached against {name}: {diff:?}");
-            diff.check(&exact)
-                .unwrap_or_else(|e| panic!("{culling:?}: cached against {name}: {e}"));
+            println!("{culling:?} dense {dense} cached against {name}: {diff:?}");
+            diff.check(&exact).unwrap_or_else(|e| {
+                panic!("{culling:?} dense {dense}: cached against {name}: {e}")
+            });
         }
     }
 }

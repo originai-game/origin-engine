@@ -32,6 +32,9 @@ pub(crate) struct FrameUniform {
     pub view_forward: [f32; 4],
     pub cascade_view_proj: [[[f32; 4]; 4]; CASCADES],
     pub cascade_bias: [[f32; 4]; CASCADES],
+    /// xyz: the point the cascades are nested round (`shadow_fit.rs`), w
+    /// unused.
+    pub cascade_anchor: [f32; 4],
     /// The light clusters' screen and depth mapping (`clusters.rs`).
     pub cluster: [f32; 4],
     pub local_view_proj: [[[f32; 4]; 4]; LOCAL_SHADOW_LAYERS],

@@ -16,9 +16,13 @@
 //! the split: an instance that moves makes its whole batch (mesh and
 //! material) dynamic while it moves. A layer's content lives in the live
 //! shadow array, which the lit shaders read; the static content a layer
-//! needs back after an overlay is kept in a texture of its own (made on
-//! first need, in the renderer). Rendering never feeds back into the
-//! simulation: the cache only decides what a frame redraws.
+//! needs back under an overlay is kept in a texture of its own and put
+//! back by the overlay's pass (`shadow_keep.rs`). That costs a fullscreen
+//! draw a frame, so a layer under an overlay is kept only when its static
+//! casters cost more than that to draw ([`KEEP_TEXELS_PER_TRIANGLE`]):
+//! a terrain, a crowd or a meadow over a few props draws in one pass.
+//! Rendering never feeds back into the simulation: the cache only decides
+//! what a frame redraws.
 //!
 //! The rule: whatever a vertex shader moves without its instance's
 //! transform changing is dynamic. The skinned casters (joints and morph
@@ -38,6 +42,13 @@ use crate::frame::Frustum;
 /// invalidating its layers twice a cycle.
 pub(crate) const QUIET_FRAMES: u8 = 8;
 
+/// How many texels of a layer one static triangle is worth: a layer under
+/// an overlay is kept only when drawing its static casters again costs
+/// more than putting the kept layer back, one fullscreen draw
+/// (`shadow_keep.rs`). A terrain or a crowd over a few static props is
+/// then one pass, as if nothing were cached.
+pub(crate) const KEEP_TEXELS_PER_TRIANGLE: u64 = 64;
+
 /// The most dynamic casters whose spheres decide per layer whether it
 /// needs an overlay; past it every layer takes one.
 pub(crate) const MAX_TESTED_DYNAMIC: usize = 256;
@@ -52,6 +63,8 @@ struct Tracked {
     quiet: u8,
     /// Its sphere while it is among the cached (static) casters.
     cached: Option<(Vec3, f32)>,
+    /// Its mesh's triangles: what drawing its shadow again costs.
+    triangles: u32,
     /// Drawn at least once (`hash` holds something).
     seen: bool,
 }
@@ -63,17 +76,24 @@ struct Layer {
     /// The view it was last drawn with ([`view_key`]), and the frame.
     key: Option<u64>,
     frame: u64,
+    /// It was drawn with that view the frame before too.
+    still: bool,
     /// The live layer holds the static casters alone.
     live_pure: bool,
     /// The layer's cache texture holds them.
     cached: bool,
+    /// Whether its static casters are worth keeping under an overlay
+    /// ([`KEEP_TEXELS_PER_TRIANGLE`]), while its view and they hold;
+    /// `None`: not counted since.
+    worth: Option<bool>,
 }
 
 /// What a frame does for one shadow layer, in order: draw its static
-/// casters (clearing the layer), copy the layer into its cache texture,
-/// copy the cache texture back into the layer, draw its dynamic casters
-/// over it. `draw_static` with `overlay` and without `save` is one pass of
-/// every caster (the layer is not cached); nothing set is a layer kept as
+/// casters (clearing the layer), copy the layer into its kept texture,
+/// then one pass that puts the kept texture back and draws the dynamic
+/// casters over it (`restore` alone: the kept texture back, nothing over
+/// it). `draw_static` with `overlay` and without `save` is one pass of
+/// every caster (the layer is not kept); nothing set is a layer held as
 /// it is.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Plan {
@@ -101,6 +121,29 @@ impl Plan {
     pub(crate) fn single(&self) -> bool {
         self.draw_static && self.overlay && !self.save
     }
+
+    /// Whether the layer's dynamic casters are drawn over its kept static
+    /// ones.
+    pub(crate) fn over_kept(&self) -> bool {
+        self.overlay && !self.single()
+    }
+
+    /// The plan for a layer whose depth is not its value (a local
+    /// light's: `shadow_keep.rs`). Its static casters are saved in the
+    /// frame that draws them, while the depth buffer the layers share
+    /// still holds theirs: a layer that held them alone and now takes an
+    /// overlay draws them again.
+    pub(crate) fn with_own_depth(self) -> Plan {
+        Plan {
+            draw_static: self.draw_static || self.save,
+            ..self
+        }
+    }
+
+    /// Whether the frame reads or writes the layer's kept texture.
+    pub(crate) fn keeps(&self) -> bool {
+        self.save || self.restore || self.over_kept()
+    }
 }
 
 /// The frame's split: per batch whether it is drawn over the cached
@@ -125,6 +168,8 @@ pub(crate) struct BatchInfo {
     pub first: u32,
     pub count: u32,
     pub cast: bool,
+    /// One instance's triangles.
+    pub triangles: u32,
     /// Dynamic whatever its instances do (swaying foliage, a material
     /// shader's clock).
     pub always_dynamic: bool,
@@ -186,6 +231,8 @@ pub(crate) struct ShadowCache {
     /// frame's invalidations and is drawn afresh.
     frame: u64,
     dirty: Vec<(Vec3, f32)>,
+    /// Whether the frame's split draws any static caster.
+    any_static: bool,
     /// A frame was planned and not submitted ([`ShadowCache::submitted`]):
     /// its layers were never drawn, so the next frame forgets them.
     pending: bool,
@@ -393,6 +440,7 @@ impl ShadowCache {
             split.any_static |= b.cast && !dynamic && b.count > 0;
             for k in slots {
                 let t = &mut self.instances[submission[k] as usize];
+                t.triangles = b.triangles;
                 let now = (b.cast && !dynamic).then_some(spheres[k]);
                 if !same_sphere(now, t.cached) {
                     self.dirty.extend(t.cached);
@@ -415,6 +463,7 @@ impl ShadowCache {
             }
         }
         split.dirty = self.dirty.clone();
+        self.any_static = split.any_static;
         split
     }
 
@@ -435,84 +484,87 @@ impl ShadowCache {
     }
 
     /// What shadow `slot` does this frame: drawn from view `key` over
-    /// `frustum`, with dynamic casters to draw over it (`overlay`) or not.
-    /// Call [`ShadowCache::split`] first; `any_static` is its split's.
+    /// `frustum` into `texels` texels, with dynamic casters to draw over
+    /// it (`overlay`) or not. Call [`ShadowCache::split`] first.
     pub(crate) fn plan(
         &mut self,
         slot: usize,
         key: u64,
         frustum: &Frustum,
         overlay: bool,
-        any_static: bool,
+        texels: u64,
     ) -> Plan {
         if self.layers.len() <= slot {
             self.layers.resize(slot + 1, Layer::default());
         }
         let frame = self.frame;
-        let dirty = &self.dirty;
         let s = &mut self.layers[slot];
         let same_key = s.frame + 1 == frame && s.key == Some(key);
-        let kept = same_key
-            && (s.live_pure || s.cached)
-            && !dirty.iter().any(|&(c, r)| frustum.intersects_sphere(c, r));
+        // A view that held until now is likely to hold again: a cascade's
+        // moves in steps (`shadow_fit.rs`).
+        let holds = same_key || s.still;
+        s.still = same_key;
+        let reached = |&(c, r): &(Vec3, f32)| frustum.intersects_sphere(c, r);
+        let clean = same_key && !self.dirty.iter().any(reached);
+        let kept = clean && (s.live_pure || s.cached);
         s.key = Some(key);
         s.frame = frame;
-        if !any_static {
-            // Nothing to keep: the layer draws as it always did.
-            s.live_pure = !overlay;
-            s.cached = false;
-            return Plan {
-                draw_static: true,
-                save: false,
-                restore: false,
-                overlay,
-            };
+        if !clean {
+            s.worth = None;
         }
         if !kept {
             s.cached = false;
-            if !overlay {
-                s.live_pure = true;
-                Plan {
-                    draw_static: true,
-                    ..Plan::default()
-                }
-            } else if same_key {
-                // A still view whose static casters changed: kept from now.
-                s.cached = true;
-                s.live_pure = false;
-                Plan {
-                    draw_static: true,
-                    save: true,
-                    restore: false,
-                    overlay: true,
-                }
-            } else {
-                // A view that moved: nothing to keep yet.
-                s.live_pure = false;
-                Plan::ALL
-            }
-        } else if !overlay {
-            if s.live_pure {
-                Plan::default()
-            } else {
-                s.live_pure = true;
-                Plan {
-                    restore: true,
-                    ..Plan::default()
-                }
-            }
-        } else {
-            let plan = Plan {
-                draw_static: false,
-                save: !s.cached,
-                restore: s.cached,
-                overlay: true,
-            };
-            s.cached = true;
-            s.live_pure = false;
-            plan
         }
+        if !overlay {
+            // Static casters alone: the live layer holds them.
+            let plan = Plan {
+                draw_static: !kept,
+                restore: kept && !s.live_pure,
+                ..Plan::default()
+            };
+            s.live_pure = true;
+            return plan;
+        }
+        // A view that moves on every frame has nothing to keep yet; one
+        // that holds keeps what costs more to draw than to put back.
+        let instances = &self.instances;
+        let worth = self.any_static
+            && holds
+            && *s
+                .worth
+                .get_or_insert_with(|| worth_keeping(instances, frustum, texels));
+        if !worth {
+            s.cached = false;
+            s.live_pure = false;
+            return Plan::ALL;
+        }
+        // Kept from now (a still view whose static casters changed, one
+        // that took a step, a layer that held them alone), or put back.
+        let plan = Plan {
+            draw_static: !kept,
+            save: !s.cached,
+            restore: s.cached,
+            overlay: true,
+        };
+        s.cached = true;
+        s.live_pure = false;
+        plan
     }
+}
+
+/// Whether the static casters that reach `frustum` cost more to draw than
+/// a layer of `texels` costs to put back.
+fn worth_keeping(instances: &[Tracked], frustum: &Frustum, texels: u64) -> bool {
+    let need = (texels / KEEP_TEXELS_PER_TRIANGLE).max(1);
+    let mut triangles = 0;
+    instances.iter().any(|t| {
+        if let Some((c, r)) = t.cached
+            && frustum.intersects_sphere(c, r)
+        {
+            triangles += u64::from(t.triangles);
+        }
+        triangles >= need
+    })
 }
 
 #[cfg(test)]
@@ -555,6 +607,7 @@ mod tests {
                 first,
                 count: 1,
                 cast: true,
+                triangles: 12,
                 always_dynamic: false,
             });
             self.cache
@@ -581,34 +634,69 @@ mod tests {
         for frame in 0..4 {
             let split = w.frame();
             assert!(split.any_static && split.dirty.len() == if frame == 0 { 2 } else { 0 });
-            let plan = w.cache.plan(0, 7, &near, false, true);
+            let plan = w.cache.plan(0, 7, &near, false, 1);
             assert_eq!(plan, if frame == 0 { draw } else { Plan::default() });
         }
         w.frame();
-        assert_eq!(w.cache.plan(0, 8, &near, false, true), draw, "a new view");
+        assert_eq!(w.cache.plan(0, 8, &near, false, 1), draw, "a new view");
         // A layer skipped for a frame missed its invalidations.
         w.frame();
         w.frame();
-        assert_eq!(w.cache.plan(0, 8, &near, false, true), draw);
+        assert_eq!(w.cache.plan(0, 8, &near, false, 1), draw);
         // A frame planned and never submitted drew nothing.
         w.frame();
-        assert_eq!(w.cache.plan(0, 8, &near, false, true), Plan::default());
+        assert_eq!(w.cache.plan(0, 8, &near, false, 1), Plan::default());
         w.unsubmitted();
-        assert_eq!(w.cache.plan(0, 8, &near, false, true), draw);
+        assert_eq!(w.cache.plan(0, 8, &near, false, 1), draw);
+    }
+
+    /// Under an overlay a layer is kept only when its static casters cost
+    /// more to draw than the kept layer costs to put back.
+    #[test]
+    fn a_layer_is_kept_only_when_its_static_casters_cost_more() {
+        let near = box_frustum(0.0);
+        // Twelve triangles in a layer worth thirteen: one pass a frame.
+        let mut w = World::new();
+        for _ in 0..3 {
+            w.frame();
+            let plan = w
+                .cache
+                .plan(0, 1, &near, true, 13 * KEEP_TEXELS_PER_TRIANGLE);
+            assert_eq!(plan, Plan::ALL);
+        }
+        // In a layer worth twelve: drawn and saved once the view holds,
+        // then put back under the overlay.
+        let mut w = World::new();
+        let texels = 12 * KEEP_TEXELS_PER_TRIANGLE;
+        let save = Plan {
+            draw_static: true,
+            save: true,
+            overlay: true,
+            ..Plan::default()
+        };
+        let back = Plan {
+            restore: true,
+            overlay: true,
+            ..Plan::default()
+        };
+        for expected in [Plan::ALL, save, back, back] {
+            w.frame();
+            assert_eq!(w.cache.plan(0, 1, &near, true, texels), expected);
+        }
     }
 
     /// A caster that moves turns dynamic at once and back to static after
     /// [`QUIET_FRAMES`] still frames; only the layers its spheres reach
-    /// draw again, and while it moves the layer it is in restores its cache
-    /// and draws it over.
+    /// draw again, and while it moves the layer it is in, which holds no
+    /// other caster, draws in one pass.
     #[test]
     fn a_moving_caster_invalidates_only_the_layers_it_reaches() {
         let mut w = World::new();
         let near = box_frustum(0.0);
         let far = box_frustum(10.0);
         w.frame();
-        w.cache.plan(0, 1, &near, false, true);
-        w.cache.plan(1, 2, &far, false, true);
+        w.cache.plan(0, 1, &near, false, 1);
+        w.cache.plan(1, 2, &far, false, 1);
         // It moves: dynamic, its old sphere dirty.
         w.nudge(0.1);
         let split = w.frame();
@@ -616,29 +704,16 @@ mod tests {
         assert_eq!(split.dirty.len(), 1);
         assert!(!ShadowCache::moving_in(&split, &near));
         assert!(ShadowCache::moving_in(&split, &far));
-        assert_eq!(w.cache.plan(0, 1, &near, false, true), Plan::default());
-        // The far layer redraws its (now no) static casters, saves them and
-        // draws the mover over them.
-        let save = Plan {
-            draw_static: true,
-            save: true,
-            restore: false,
-            overlay: true,
-        };
-        assert_eq!(w.cache.plan(1, 2, &far, true, true), save);
-        // Still moving: the far layer restores and overlays.
-        let restore = Plan {
-            draw_static: false,
-            save: false,
-            restore: true,
-            overlay: true,
-        };
+        assert_eq!(w.cache.plan(0, 1, &near, false, 1), Plan::default());
+        // The far layer has no static caster left to keep: one pass.
+        assert_eq!(w.cache.plan(1, 2, &far, true, 1), Plan::ALL);
+        // Still moving: the same.
         for _ in 0..3 {
             w.nudge(0.1);
             let split = w.frame();
             assert!(split.dirty.is_empty());
-            assert_eq!(w.cache.plan(0, 1, &near, false, true), Plan::default());
-            assert_eq!(w.cache.plan(1, 2, &far, true, true), restore);
+            assert_eq!(w.cache.plan(0, 1, &near, false, 1), Plan::default());
+            assert_eq!(w.cache.plan(1, 2, &far, true, 1), Plan::ALL);
         }
         // It stops: dynamic for QUIET_FRAMES - 1 more frames, then static
         // and dirty where it stands.
@@ -647,8 +722,8 @@ mod tests {
             let still = f == QUIET_FRAMES;
             assert_eq!(split.dynamic[1], !still, "frame {f}");
             assert_eq!(split.dirty.len(), still as usize);
-            assert_eq!(w.cache.plan(0, 1, &near, false, true), Plan::default());
-            let plan = w.cache.plan(1, 2, &far, !still, true);
+            assert_eq!(w.cache.plan(0, 1, &near, false, 1), Plan::default());
+            let plan = w.cache.plan(1, 2, &far, !still, 1);
             if still {
                 assert_eq!(
                     plan,
@@ -658,30 +733,45 @@ mod tests {
                     }
                 );
             } else {
-                assert_eq!(plan, restore);
+                assert_eq!(plan, Plan::ALL);
             }
         }
         // Without the mover the far layer's cache comes back once.
         let split = w.frame();
         assert!(split.dirty.is_empty());
-        assert_eq!(w.cache.plan(1, 2, &far, false, true), Plan::default());
+        assert_eq!(w.cache.plan(1, 2, &far, false, 1), Plan::default());
     }
 
     /// A view that moves every frame never pays for the cache: one pass of
-    /// every caster, nothing saved; a layer without static casters is not
-    /// cached either.
+    /// every caster, nothing saved; one that takes a step after holding
+    /// still is kept from the step on; a layer without static casters is
+    /// not cached.
     #[test]
     fn a_moving_view_draws_in_one_pass() {
         let mut w = World::new();
         let near = box_frustum(0.0);
         for key in 0..4 {
             w.frame();
-            assert_eq!(w.cache.plan(0, key, &near, true, true), Plan::ALL);
+            assert_eq!(w.cache.plan(0, key, &near, true, 1), Plan::ALL);
         }
         w.frame();
-        assert!(w.cache.plan(0, 3, &near, true, true).save, "still: kept");
+        assert!(w.cache.plan(0, 3, &near, true, 1).save, "still: kept");
         w.frame();
-        let plan = w.cache.plan(0, 3, &near, true, false);
+        let held = w.cache.plan(0, 3, &near, true, 1);
+        assert!(held.cached() && held.restore && !held.save);
+        w.frame();
+        let step = w.cache.plan(0, 4, &near, true, 1);
+        assert!(step.draw_static && step.save && !step.single(), "{step:?}");
+        w.frame();
+        assert!(w.cache.plan(0, 4, &near, true, 1).cached());
+        w.frame();
+        w.cache.plan(0, 5, &near, true, 1);
+        w.frame();
+        assert_eq!(w.cache.plan(0, 6, &near, true, 1), Plan::ALL, "moving");
+        w.frame();
+        assert!(w.cache.plan(0, 6, &near, true, 1).save, "still: kept");
+        w.frame();
+        let plan = w.cache.plan(0, 3, &near, true, u64::MAX);
         assert_eq!(plan, Plan::ALL, "nothing static");
         assert!(plan.single() && !plan.cached());
     }
@@ -765,6 +855,7 @@ mod tests {
             first: 0,
             count: 1,
             cast: true,
+            triangles: 12,
             always_dynamic: false,
         }];
         let split = w.cache.split(1, &one, &[0], &[1], &w.spheres[..1]);

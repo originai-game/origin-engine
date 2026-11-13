@@ -404,7 +404,12 @@ the probe's CPU description of a frame.
 - Order-independent transparency for the main camera (weighted blended with
   each pixel's nearest layer exact; per-pixel lists as the high tier).
 - Cascaded shadows for one directional light and cube or dual-paraboloid
-  shadows for up to 8 local lights.
+  shadows for up to 8 local lights. The cascades are nested round the
+  camera and snapped to a grid, so a camera that turns keeps every
+  cascade's view and one that walks moves it in steps; a shadow layer
+  holds what stood still, and its static casters are kept apart and put
+  back under the moving ones only where that costs less than drawing
+  them again (`shadow_fit.rs`, `shadow_cache.rs`, `shadow_keep.rs`).
 - IBL from cooked or run-time environment maps, the sky, height and
   volumetric fog, baked lightmaps and light volumes, screen-space and probe
   GI, reflection probes and SSR (§10.6, §10.7).

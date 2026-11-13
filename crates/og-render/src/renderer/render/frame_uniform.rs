@@ -19,6 +19,8 @@ pub(super) struct WriteFrameUniformsInputs<'a> {
     pub scene_water: &'a [Water],
     pub lights_gpu: &'a [frame::LightGpu],
     pub cascades: &'a [Cascade],
+    /// The point the cascades are nested round (`shadow_fit.rs`).
+    pub cascade_anchor: Vec3,
     pub local_shadows: &'a [frame::LocalShadow],
     pub shelter: &'a Option<(Mat4, Frustum, u64, bool)>,
     pub probe_frame: &'a probes::ProbeFrame,
@@ -52,6 +54,7 @@ impl Renderer {
             scene_water,
             lights_gpu,
             cascades,
+            cascade_anchor,
             local_shadows,
             shelter,
             probe_frame,
@@ -85,6 +88,7 @@ impl Renderer {
                 .to_array(),
             cascade_view_proj: [[[0.0; 4]; 4]; CASCADES],
             cascade_bias: [[0.0; 4]; CASCADES],
+            cascade_anchor: [0.0; 4],
             cluster: self.lights.clusters.params,
             local_view_proj: [[[0.0; 4]; 4]; LOCAL_SHADOW_LAYERS],
             atmosphere: atmosphere::AtmosphereGpu::new(
@@ -204,6 +208,7 @@ impl Renderer {
             scene.frame.origin.z,
         ];
         let mut shadow_slots = vec![bytemuck::Zeroable::zeroed(); SHADOW_SLOTS];
+        uniform.cascade_anchor = cascade_anchor.extend(0.0).to_array();
         for (i, c) in cascades.iter().enumerate() {
             uniform.cascade_view_proj[i] = c.view_proj.to_cols_array_2d();
             // w < 0: a fixed shadow box (one cascade: w, the blend start, is unread).

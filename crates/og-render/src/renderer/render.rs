@@ -850,6 +850,7 @@ impl Renderer {
             scene_water,
             lights_gpu: &lights_frame.lights_gpu,
             cascades: &frames.cascade.cascades,
+            cascade_anchor: frames.cascade.anchor,
             local_shadows: &lights_frame.local_shadows,
             shelter: &shadow_inputs.shelter,
             probe_frame: &probe_frame,
@@ -1511,23 +1512,14 @@ impl Renderer {
     }
 }
 
-/// A shadow pass into one layer: cleared (depth 1, and distance / range 1:
-/// nothing nearer) or loaded over what the layer holds, its depth kept
-/// for a later pass or not.
+/// A shadow pass into one layer, cleared (depth 1, and distance / range 1:
+/// nothing nearer), its depth kept for a copy after it or not.
 fn shadow_target<'e>(
     encoder: &'e mut crate::Encoder,
     color: &wgpu::TextureView,
     depth: &wgpu::TextureView,
-    load: bool,
     keep_depth: bool,
 ) -> wgpu::RenderPass<'e> {
-    let store = |keep| {
-        if keep {
-            wgpu::StoreOp::Store
-        } else {
-            wgpu::StoreOp::Discard
-        }
-    };
     encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("shadow"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -1535,23 +1527,19 @@ fn shadow_target<'e>(
             depth_slice: None,
             resolve_target: None,
             ops: wgpu::Operations {
-                load: if load {
-                    wgpu::LoadOp::Load
-                } else {
-                    wgpu::LoadOp::Clear(wgpu::Color::WHITE)
-                },
+                load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
                 store: wgpu::StoreOp::Store,
             },
         })],
         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
             view: depth,
             depth_ops: Some(wgpu::Operations {
-                load: if load {
-                    wgpu::LoadOp::Load
+                load: wgpu::LoadOp::Clear(1.0),
+                store: if keep_depth {
+                    wgpu::StoreOp::Store
                 } else {
-                    wgpu::LoadOp::Clear(1.0)
+                    wgpu::StoreOp::Discard
                 },
-                store: store(keep_depth),
             }),
             stencil_ops: None,
         }),

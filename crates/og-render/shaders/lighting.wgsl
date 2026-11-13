@@ -102,13 +102,20 @@ fn plane_tangents(n: vec3<f32>) -> array<vec3<f32>, 2> {
   return array<vec3<f32>, 2>(t, cross(n, t));
 }
 
-// The cascade whose camera slice holds the point (by view depth, the same
-// slices its casters were culled to); CASCADES beyond the last one.
+// How far p is from the point the cascades are nested round (the camera;
+// shadow_fit.rs): what picks its cascade, the same in every view of the
+// frame.
+fn cascade_distance(p: vec3<f32>) -> f32 {
+  return distance(p, frame.cascade_anchor.xyz);
+}
+
+// The first cascade that shades the point (the finest one); CASCADES
+// beyond the last one.
 fn cascade_index(p: vec3<f32>) -> u32 {
   let count = u32(frame.light_dir.w);
-  let depth = dot(p - frame.view_pos.xyz, frame.view_forward.xyz);
+  let far = cascade_distance(p);
   for (var c = 0u; c < count; c++) {
-    if (depth <= frame.cascade_bias[c].z) { return c; }
+    if (far <= frame.cascade_bias[c].z) { return c; }
   }
   return CASCADES;
 }
@@ -294,8 +301,8 @@ fn cascade_sample(c: u32, p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) 
 }
 
 // The cascades' shadow at p: across a cascade's blend band (cascade_bias.w
-// to its far split, `DirectionalLight::cascade_blend`) it fades into the
-// next one, which covers that band too. Shadows fade out over the last
+// to its edge, `DirectionalLight::cascade_blend`) it fades into the next
+// one, which holds all of it. Shadows fade out over the last
 // tenth of the shadow distance. The light a cloud cover or the weather has
 // scattered (`DirectionalLight::diffusion`, frame.shadow.z) fills them in
 // where the sky round the sun is open ([`pcss`]).
@@ -307,7 +314,7 @@ fn cascade_shadow_lookup(p: vec3<f32>, n: vec3<f32>, n_dot_l: f32, wide: bool) -
   let c = cascade_index(p);
   if (c >= CASCADES) { return 1.0; }
   let count = u32(frame.light_dir.w);
-  let depth = dot(p - frame.view_pos.xyz, frame.view_forward.xyz);
+  let depth = cascade_distance(p);
   let band = frame.cascade_bias[c].w;
   // This cascade and, across its blend band, the next, in one loop: one
   // copy of the filter's code (DXC inlines every call).
