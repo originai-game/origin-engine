@@ -562,7 +562,7 @@ Its own props, beside every element's:
 
 ## 14. `<art>` (`art`): An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one
 
-An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one. A leaf; text-bearing controls accept text content: `<art id="Name">…</art>`.
+An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one. A leaf; text-bearing controls accept text content: `<art id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -595,7 +595,7 @@ Its own props, beside every element's:
 
 ## 16. `<progress>` (`progress`): A progress bar
 
-A progress bar. A leaf; text-bearing controls accept text content: `<progress id="Name">…</progress>`.
+A progress bar. A leaf; text-bearing controls accept text content: `<progress id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -675,7 +675,7 @@ Its own props, beside every element's:
 
 ## 21. `<video>` (`video`): HTML's `<video>`: the frame of the og.VideoPlayer entity `src` binds, with Svelte's media bindings and optional controls
 
-HTML's `<video>`: the frame of the og.VideoPlayer entity `src` binds, with Svelte's media bindings and optional controls. A leaf; text-bearing controls accept text content: `<video id="Name">…</video>`.
+HTML's `<video>`: the frame of the og.VideoPlayer entity `src` binds, with Svelte's media bindings and optional controls. A leaf; text-bearing controls accept text content: `<video id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -695,7 +695,7 @@ Its own props, beside every element's:
 
 ## 22. `<audio>` (`audio`): HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`
 
-HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`. A leaf; text-bearing controls accept text content: `<audio id="Name">…</audio>`.
+HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`. A leaf; text-bearing controls accept text content: `<audio id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -810,7 +810,7 @@ Its own props, beside every element's:
 
 ## 28. `<spacer>` (`spacer`): Empty room (grows by default)
 
-Empty room (grows by default). A leaf; text-bearing controls accept text content: `<spacer id="Name">…</spacer>`.
+Empty room (grows by default). A leaf; text-bearing controls accept text content: `<spacer id="Name" />`.
 
 It takes every element's props and none of its own.
 
@@ -1192,7 +1192,7 @@ Its own props, beside every element's:
 
 ## 45. `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
 
-SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
+SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<symbol id="Coin" viewBox="0 0 24 24">…</symbol><use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
 
 Its own props, beside every element's:
 

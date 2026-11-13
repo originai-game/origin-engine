@@ -121,7 +121,10 @@ pub fn of(kind: Kind) -> Vec<(String, String)> {
             "<svg viewBox=\"0 0 40 40\"><text x=\"20\" y=\"24\" text-anchor=\"middle\">…</text></svg>",
         ),
         Kind::SvgGroup => one("g", "<g transform=\"rotate(-90 20 20)\" stroke=\"var(--accent)\">…</g>"),
-        Kind::SvgUse => one("use", "<use href=\"#Coin\" x={i * 12} y=\"0\" width=\"10\" height=\"10\" />"),
+        Kind::SvgUse => one(
+            "use",
+            "<symbol id=\"Coin\" viewBox=\"0 0 24 24\">…</symbol><use href=\"#Coin\" x={i * 12} y=\"0\" width=\"10\" height=\"10\" />",
+        ),
         Kind::SvgForeign => one(
             "foreignObject",
             "<foreignObject x=\"10\" y=\"10\" width=\"80\" height=\"30\"><button onclick={buy}>Buy</button></foreignObject>",
@@ -156,20 +159,65 @@ pub fn of(kind: Kind) -> Vec<(String, String)> {
         | Kind::Audio
         | Kind::Tabs
         | Kind::Badge
-        | Kind::Spacer => vec![(kind.to_string(), format!("<{kind} id=\"Name\">…</{kind}>"))],
+        | Kind::Spacer => vec![plain(kind.name(), kind)],
     };
     // The `og-` tags of its kind, after HTML's.
     tags.extend(
         ELEMENT_TAGS
             .iter()
             .filter(|(_, k)| *k == kind)
-            .map(|(tag, _)| {
-                if kind == Kind::Label || kind.container() {
-                    (tag.to_string(), format!("<{tag} id=\"Name\">…</{tag}>"))
-                } else {
-                    void(tag)
-                }
-            }),
+            .map(|(tag, _)| plain(tag, kind)),
     );
     tags
+}
+
+/// A tag written with no attributes of its own: with content where its kind
+/// takes children or text, void where it takes neither.
+fn plain(tag: &str, kind: Kind) -> (String, String) {
+    let content = kind.container() || super::prop("text").is_some_and(|(_, p)| p.applies(kind));
+    let example = if content {
+        format!("<{tag} id=\"Name\">…</{tag}>")
+    } else {
+        format!("<{tag} id=\"Name\" />")
+    };
+    (tag.to_string(), example)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::doc::{NodeKind, UiDocument};
+
+    /// The catalogue's examples are documents: each parses, and to the kind
+    /// it is listed under, so the parser and this declaration cannot drift.
+    #[test]
+    fn every_example_parses_to_the_kind_it_is_listed_under() {
+        let mut wrong = Vec::new();
+        for &kind in Kind::ALL {
+            for (tag, example) in of(kind) {
+                // A trailing note names the tags written the same way.
+                let markup = match example.rfind("> (") {
+                    Some(at) => &example[..=at],
+                    None => example.as_str(),
+                };
+                // `…` stands for content, and SVG's elements go in an <svg>.
+                let markup = markup.replace('…', "");
+                let markup = if kind.name().starts_with("svg") && !markup.starts_with("<svg") {
+                    format!("<svg viewBox=\"0 0 40 40\">{markup}</svg>")
+                } else {
+                    markup
+                };
+                let source = format!("<meta name=\"component\" content=\"example\">\n{markup}\n");
+                match UiDocument::parse("example.svelte", &source) {
+                    Ok(doc) => {
+                        if !doc.nodes.iter().any(|n| n.kind == NodeKind::Element(kind)) {
+                            wrong.push(format!("{kind} <{tag}>: no {kind} in `{markup}`"));
+                        }
+                    }
+                    Err(errors) => wrong.push(format!("{kind} <{tag}>: {}", errors.join("; "))),
+                }
+            }
+        }
+        assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+    }
 }
