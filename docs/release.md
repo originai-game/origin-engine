@@ -136,7 +136,7 @@ each target's archive (§1) from them.
 | `@origingame/engine-darwin-arm64`, `@origingame/engine-linux-x64` | `origin-engine.node` (napi addon, `crates/og-host-node`) and `og` (`crates/og-cli`), release profile | both in the Mac's `scripts/release.sh pack`: linux-x64 by cargo zigbuild (glibc 2.31), darwin-arm64 natively |
 | `@origingame/engine-win32-x64` | `origin-engine.node` (MSVC napi addon) and `og.exe`, release profile; the same API, DX12 renderer, tsgo checker fallback | `build.sh --native` then `pack.sh --native` in Git Bash on studio-win (§3) |
 | `@origingame/create-game` | `bin/create.ts`, `template/` (one empty skeleton), `looks/` (the catalogue), presets, previews, styles and locales | `packages/create` `prepack` |
-| `@origingame/design` | `tokens.json` and `design-language.md`, the design language the engine's default UI style is generated from and origin-agent pins | `bun pm pack` of `packages/design` in `scripts/release.sh pack` |
+| `@origingame/design` | `tokens/*.css`, the `tokens.json` generated from them and `design-language.md`, the design language the engine's default UI style is generated from and origin-agent pins | `bun pm pack` of `packages/design` in `scripts/release.sh pack` |
 
 `packages/knowledge` is a private source package of this repository.
 linux-arm64 is not shipped (design §12 item 5). `@tsrs/*` are pinned at

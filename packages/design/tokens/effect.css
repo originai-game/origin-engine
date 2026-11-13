@@ -1,0 +1,47 @@
+/* Effects: shadows, the two elevations, glass and the material blurs. */
+:root {
+  --shadow-edge: inset 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  --shadow-raised: 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  --shadow-float: 0 0 0 0.5px rgb(0 0 0 / 0.06), 0 6px 20px -8px rgb(0 0 0 / 0.16);
+  --shadow-overlay: 0 16px 40px -12px rgb(0 0 0 / 0.35), 0 2px 6px -2px rgb(0 0 0 / 0.2);
+  --shadow-lift: 0 10px 24px -8px rgb(0 0 0 / 0.25), 0 32px 64px -16px rgb(0 0 0 / 0.4);
+  --shadow-focus-tile: 0 12px 32px -10px rgb(0 0 0 / 0.55);
+  --shadow-rim: inset 0 0 0 0.5px rgb(0 0 0 / 0.06);
+  --shadow-lens: 0 0 0 rgb(0 0 0 / 0);
+  --shadow-minimap: 0 6px 16px 0 #00000073;
+  --shadow-slot-selected: 0 0 8px 0 #ffffff1f, 0 6px 14px 0 #00000066;
+  --shadow-tab-selected: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26;
+  /* The engine's two drop shadows under content that lifts
+     (`--elevation-raised`: radio cards; `--elevation-floating`: open lists and
+     slider bubbles): offset, blur and the `shadow` colour's alpha, emitted as `0
+     <y> <blur> 0 <shadow at alpha>`. */
+  --elevation-raised-y: 1px;
+  --elevation-raised-blur: 3px;
+  --elevation-raised-alpha: 0.3;
+  --elevation-floating-y: 4px;
+  --elevation-floating-blur: 12px;
+  --elevation-floating-alpha: 0.35;
+  /* The engine's glass parts (`-og-material`): the saturation their backdrop
+     takes (`dark.glass` remaps it) and the blur each weight uses, by the `vars`
+     material blurs. */
+  --glass-saturation: 200%;
+  --glass-blur-thick: var(--vars-material-blur-thick);
+  --glass-blur-regular: var(--vars-material-blur);
+  --vars-material-blur-thin: 10px;
+  --vars-material-blur: 22px;
+  --vars-material-blur-thick: 32px;
+  --vars-material-blur-lens: 8px;
+  --vars-material-saturate: 200%;
+  --vars-scrim-blur: 8px;
+  --vars-press-scale: 0.96;
+}
+
+:root[data-scheme=dark] {
+  --shadow-edge: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+  --shadow-raised: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+  --shadow-float: inset 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 8px 24px -8px rgb(0 0 0 / 0.6);
+  --shadow-lift: 0 10px 24px -8px rgb(0 0 0 / 0.6), 0 32px 64px -16px rgb(0 0 0 / 0.8);
+  --shadow-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+  --shadow-lens: 0 0 0 rgb(0 0 0 / 0);
+  --glass-saturation: 120%;
+}

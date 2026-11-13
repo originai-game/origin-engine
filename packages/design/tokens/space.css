@@ -1,0 +1,45 @@
+/* Space and shape: the spacing scale, radii, sizes, stroke widths and the
+   device's safe-area insets. */
+:root {
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-3xl: 48px;
+  --radius-control: 4px;
+  --radius-field: 6px;
+  --radius-block: 8px;
+  --radius-card: 10px;
+  --radius-panel: 12px;
+  --radius-sheet: 16px;
+  --radius-button: 6px;
+  --radius-capsule: 9999px;
+  /* Icon, avatar and art sizes (`--size-*`); `touch` is the smallest target a
+     finger gets. */
+  --size-xs: 16px;
+  --size-sm: 24px;
+  --size-md: 32px;
+  --size-lg: 48px;
+  --size-xl: 64px;
+  --size-xxl: 96px;
+  --size-touch: 44px;
+  /* Line widths (`--stroke-*`): material edges, hairline frames, field rims,
+     open triggers, thick marks and the focus ring. */
+  --stroke-edge: 0.5px;
+  --stroke-hairline: 1px;
+  --stroke-thin: 1.5px;
+  --stroke-regular: 2px;
+  --stroke-thick: 3px;
+  --stroke-focus: 2px;
+  /* Device safe-area insets (notch, home indicator, rounded corners) as
+     --safe-area-*; index.html sets viewport-fit=cover. @origingame/ui turns them
+     into pt-safe / pb-safe / px-safe / top-safe / bottom-safe utilities (with
+     -<n>: at least n spacing steps, more where the device has an inset). */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+}

@@ -1,0 +1,34 @@
+/* Density: control, row and header heights per density, and the paddings. */
+:root {
+  /* Compact is the default; data-density="comfortable" on any element switches
+     its subtree; coarse pointers or widths under 768px raise controls to the
+     touch size. */
+  --density-compact-control-sm: 28px;
+  --density-compact-control-md: 32px;
+  --density-compact-control-lg: 36px;
+  --density-compact-row: 36px;
+  --density-compact-header: 48px;
+  --density-compact-gutter: 16px;
+  --density-compact-section: 24px;
+  --density-comfortable-control-sm: 32px;
+  --density-comfortable-control-md: 36px;
+  --density-comfortable-control-lg: 40px;
+  --density-comfortable-row: 44px;
+  --density-comfortable-header: 56px;
+  --density-comfortable-gutter: 24px;
+  --density-comfortable-section: 40px;
+  --density-touch-control-sm: 44px;
+  --density-touch-control-md: 44px;
+  --density-touch-control-lg: 48px;
+  --density-touch-row: 48px;
+  --density-touch-header: 52px;
+  /* A gamepad across a room (the engine's): larger controls and rows, wider
+     gutters, so a focused control reads from a couch. */
+  --density-pad-control-sm: 40px;
+  --density-pad-control-md: 48px;
+  --density-pad-control-lg: 52px;
+  --density-pad-row: 52px;
+  --density-pad-header: 64px;
+  --density-pad-gutter: 32px;
+  --density-pad-section: 40px;
+}

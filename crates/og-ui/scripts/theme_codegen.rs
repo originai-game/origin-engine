@@ -1,5 +1,5 @@
 //! Writes `src/theme.rs`, the engine's default style, from the design
-//! language's tokens (`packages/design/tokens.json`): the 33 colour roles
+//! language's tokens (`packages/design/tokens/*.css`): the 33 colour roles
 //! of both schemes, the space, radius, type, density and motion values and
 //! the default style's part dressings. `scripts/gen-theme.sh` runs it;
 //! `tests/theme.rs` fails when `src/theme.rs` is not exactly its output.
@@ -10,6 +10,9 @@ use std::fmt::Write;
 #[path = "theme_css.rs"]
 mod theme_css;
 pub use theme_css::generate as generate_css;
+#[path = "theme_tokens.rs"]
+mod theme_tokens;
+pub use theme_tokens::{json, load};
 
 /// Each og-ui role and the token it is drawn from: `color` (the scheme's
 /// colour, `dark.color` over `color`) or `linear` (the fill restated for
@@ -87,7 +90,7 @@ fn get<'a>(v: &'a Value, path: &[&str]) -> Result<&'a Value, String> {
     for k in path {
         at = at
             .get(k)
-            .ok_or_else(|| format!("tokens.json has no {}", path.join(".")))?;
+            .ok_or_else(|| format!("the tokens have no {}", path.join(".")))?;
     }
     Ok(at)
 }
@@ -95,7 +98,7 @@ fn get<'a>(v: &'a Value, path: &[&str]) -> Result<&'a Value, String> {
 fn text<'a>(v: &'a Value, path: &[&str]) -> Result<&'a str, String> {
     get(v, path)?
         .as_str()
-        .ok_or_else(|| format!("tokens.json: {} is not a string", path.join(".")))
+        .ok_or_else(|| format!("tokens: {} is not a string", path.join(".")))
 }
 
 /// A number with a unit suffix (`12px`, `120ms`, `-0.01em`).
@@ -105,7 +108,7 @@ fn unit(v: &Value, path: &[&str], suffix: &str) -> Result<f32, String> {
         .and_then(|n| n.trim().parse::<f32>().ok())
         .ok_or_else(|| {
             format!(
-                "tokens.json: {} is `{s}`, not a number of {suffix}",
+                "tokens: {} is `{s}`, not a number of {suffix}",
                 path.join(".")
             )
         })
@@ -182,7 +185,7 @@ fn role_colour(t: &Value, dark: bool, source: &str, key: &str) -> Result<([u8; 3
     };
     let s = (if dark { pick(over) } else { None })
         .or_else(|| pick(base))
-        .ok_or_else(|| format!("tokens.json has no {source} colour `{key}`"))?;
+        .ok_or_else(|| format!("the tokens have no {source} colour `{key}`"))?;
     colour(s)
 }
 
@@ -226,16 +229,15 @@ fn density(t: &Value, name: &str, fallback: Option<&str>, out: &mut String) -> R
     Ok(())
 }
 
-/// `src/theme.rs` from `tokens.json`'s text.
-pub fn generate(tokens: &str) -> Result<String, String> {
-    let t: Value = serde_json::from_str(tokens).map_err(|e| format!("tokens.json: {e}"))?;
+/// `src/theme.rs` from the tokens [`load`] read.
+pub fn generate(t: &Value) -> Result<String, String> {
     let mut o = String::new();
     o.push_str(HEAD);
 
     o.push_str("/// The default style's light scheme.\npub const LIGHT: Palette = Palette {\n");
-    palette(&t, false, &mut o)?;
+    palette(t, false, &mut o)?;
     o.push_str("};\n\n/// The default style's dark scheme (the default: games run on a dark\n/// screen more often than not).\npub const DARK: Palette = Palette {\n");
-    palette(&t, true, &mut o)?;
+    palette(t, true, &mut o)?;
     o.push_str("};\n\n");
 
     o.push_str(SPACE_HEAD);
@@ -249,7 +251,7 @@ pub fn generate(tokens: &str) -> Result<String, String> {
         ("xxl", "xxl"),
         ("xxs", "xxs"),
     ] {
-        writeln!(o, "    {field}: {},", num(unit(&t, &["space", key], "px")?)).unwrap();
+        writeln!(o, "    {field}: {},", num(unit(t, &["space", key], "px")?)).unwrap();
     }
     o.push_str("};\n\n");
 
@@ -260,32 +262,27 @@ pub fn generate(tokens: &str) -> Result<String, String> {
         ("bar", "capsule"),
         ("panel", "panel"),
     ] {
-        writeln!(
-            o,
-            "    {field}: {},",
-            num(unit(&t, &["radius", key], "px")?)
-        )
-        .unwrap();
+        writeln!(o, "    {field}: {},", num(unit(t, &["radius", key], "px")?)).unwrap();
     }
     o.push_str("};\n\n");
 
     o.push_str(TYPE_HEAD);
     o.push_str("pub const TYPE_RAMP: TypeRamp = TypeRamp {\n");
-    let cjk_tracking = unit(&t, &["font", "cjk", "letterSpacing"], "em")?;
+    let cjk_tracking = unit(t, &["font", "cjk", "letterSpacing"], "em")?;
     for (field, key) in STEPS {
-        let size = unit(&t, &["font", "scale", key, "size"], "px")?;
-        let lh = unit(&t, &["font", "scale", key, "lineHeight"], "px")?;
-        let track = match get(&t, &["font", "scale", key, "letterSpacing"]) {
-            Ok(_) => unit(&t, &["font", "scale", key, "letterSpacing"], "em")?,
+        let size = unit(t, &["font", "scale", key, "size"], "px")?;
+        let lh = unit(t, &["font", "scale", key, "lineHeight"], "px")?;
+        let track = match get(t, &["font", "scale", key, "letterSpacing"]) {
+            Ok(_) => unit(t, &["font", "scale", key, "letterSpacing"], "em")?,
             Err(_) => 0.0,
         };
-        let cjk = match get(&t, &["font", "cjk", "lineHeight", key]) {
-            Ok(_) => unit(&t, &["font", "cjk", "lineHeight", key], "px")?,
+        let cjk = match get(t, &["font", "cjk", "lineHeight", key]) {
+            Ok(_) => unit(t, &["font", "cjk", "lineHeight", key], "px")?,
             Err(_) => lh,
         };
         // `fontFeatures` (CSS `font-feature-settings` tags, on only),
         // none when absent.
-        let features = match get(&t, &["font", "scale", key, "fontFeatures"]) {
+        let features = match get(t, &["font", "scale", key, "fontFeatures"]) {
             Ok(v) => {
                 let tags = v
                     .as_array()
@@ -318,11 +315,11 @@ pub fn generate(tokens: &str) -> Result<String, String> {
 
     o.push_str(DENSITY_HEAD);
     o.push_str("/// A mouse and keyboard: the tightest sizes (the tokens' `compact`).\npub const MOUSE: Density = Density {\n");
-    density(&t, "compact", None, &mut o)?;
+    density(t, "compact", None, &mut o)?;
     o.push_str("};\n\n/// A gamepad across a room: larger controls and rows, wider gutters, so\n/// a focused control reads from a couch (the tokens' `pad`).\npub const PAD: Density = Density {\n");
-    density(&t, "pad", None, &mut o)?;
+    density(t, "pad", None, &mut o)?;
     o.push_str("};\n\n/// Touch: every control at least 44 CSS px, a finger's target (the\n/// tokens' `touch`, its gutter and section `compact`'s).\npub const TOUCH: Density = Density {\n");
-    density(&t, "touch", Some("compact"), &mut o)?;
+    density(t, "touch", Some("compact"), &mut o)?;
     o.push_str("};\n\n");
 
     o.push_str(DURATIONS_HEAD);
@@ -330,7 +327,7 @@ pub fn generate(tokens: &str) -> Result<String, String> {
         writeln!(
             o,
             "    {k}: {},",
-            num(unit(&t, &["motion", "duration", k], "ms")?)
+            num(unit(t, &["motion", "duration", k], "ms")?)
         )
         .unwrap();
     }
@@ -338,20 +335,20 @@ pub fn generate(tokens: &str) -> Result<String, String> {
 
     o.push_str(TIMING_HEAD);
     let number = |path: &[&str]| -> Result<f32, String> {
-        get(&t, path)?
+        get(t, path)?
             .as_f64()
             .map(|n| n as f32)
-            .ok_or_else(|| format!("tokens.json: {} is not a number", path.join(".")))
+            .ok_or_else(|| format!("tokens: {} is not a number", path.join(".")))
     };
     for (field, value) in [
         ("magnet", number(&timing("hover.magnet"))?),
         ("press_damping", number(&timing("press.damping"))?),
-        ("cascade_step_ms", unit(&t, &timing("cascade.step"), "ms")?),
-        ("cascade_cap_ms", unit(&t, &timing("cascade.cap"), "ms")?),
-        ("toast_hold_ms", unit(&t, &timing("toast.hold"), "ms")?),
+        ("cascade_step_ms", unit(t, &timing("cascade.step"), "ms")?),
+        ("cascade_cap_ms", unit(t, &timing("cascade.cap"), "ms")?),
+        ("toast_hold_ms", unit(t, &timing("toast.hold"), "ms")?),
         (
             "toast_danger_ms",
-            unit(&t, &timing("toast.holdDanger"), "ms")?,
+            unit(t, &timing("toast.holdDanger"), "ms")?,
         ),
         ("screen_slows", number(&timing("screen.slow"))?),
     ] {
@@ -373,11 +370,11 @@ pub fn generate(tokens: &str) -> Result<String, String> {
             "A release that carried velocity (a fling, a throw).",
         ),
     ] {
-        let damping = get(&t, &["motion", "spring", key, "damping"])?
+        let damping = get(t, &["motion", "spring", key, "damping"])?
             .as_f64()
-            .ok_or_else(|| format!("tokens.json: motion.spring.{key}.damping"))?
+            .ok_or_else(|| format!("tokens: motion.spring.{key}.damping"))?
             as f32;
-        let response = unit(&t, &["motion", "spring", key, "response"], "ms")?;
+        let response = unit(t, &["motion", "spring", key, "response"], "ms")?;
         writeln!(
             o,
             "/// {doc}\npub const {name}: Spring = Spring {{\n    damping: {},\n    response_ms: {},\n}};",
@@ -399,13 +396,13 @@ pub fn generate(tokens: &str) -> Result<String, String> {
     writeln!(
         o,
         "/// Leaving: cubic Bézier control points (x1, y1, x2, y2).\npub const EASE_EXIT: [f32; 4] = {};\n/// Entering: cubic Bézier control points (x1, y1, x2, y2).\npub const EASE_OUT: [f32; 4] = {};\n",
-        fmt4(bezier(text(&t, &["motion", "easing", "exit"])?)?),
-        fmt4(bezier(text(&t, &["motion", "easing", "out"])?)?)
+        fmt4(bezier(text(t, &["motion", "easing", "exit"])?)?),
+        fmt4(bezier(text(t, &["motion", "easing", "out"])?)?)
     )
     .unwrap();
-    let press: f32 = text(&t, &["vars", "press-scale"])?
+    let press: f32 = text(t, &["vars", "press-scale"])?
         .parse()
-        .map_err(|_| "tokens.json: vars.press-scale".to_string())?;
+        .map_err(|_| "tokens: vars.press-scale".to_string())?;
     writeln!(
         o,
         "/// How far a pressed control shrinks.\npub const PRESS_SCALE: f32 = {};\n",
@@ -415,17 +412,17 @@ pub fn generate(tokens: &str) -> Result<String, String> {
 
     o.push_str(STATE_HEAD);
     let state = |k: &str| -> Result<f32, String> {
-        get(&t, &["state", k])?
+        get(t, &["state", k])?
             .as_f64()
             .map(|n| n as f32)
-            .ok_or_else(|| format!("tokens.json: state.{k} is not a number"))
+            .ok_or_else(|| format!("tokens: state.{k} is not a number"))
     };
     for (field, value) in [
         ("hover_wash", state("hover-wash")?),
         ("control_press_scale", state("control-press-scale")?),
-        ("lift", unit(&t, &["state", "lift"], "px")?),
+        ("lift", unit(t, &["state", "lift"], "px")?),
         ("disabled_opacity", state("disabled-opacity")?),
-        ("touch_target", unit(&t, &["size", "touch"], "px")?),
+        ("touch_target", unit(t, &["size", "touch"], "px")?),
     ] {
         writeln!(o, "    {field}: {},", num(value)).unwrap();
     }
@@ -434,9 +431,9 @@ pub fn generate(tokens: &str) -> Result<String, String> {
     // The controls' numbers (a value that names a semantic token is the
     // stylesheet's alone): each field, its CSS unit and its value.
     let mut controls = Vec::new();
-    for (key, value) in get(&t, &["controls"])?
+    for (key, value) in get(t, &["controls"])?
         .as_object()
-        .ok_or("tokens.json: controls is not an object")?
+        .ok_or("tokens: controls is not an object")?
         .iter()
         .filter(|(key, _)| !key.starts_with('_'))
     {
@@ -447,14 +444,12 @@ pub fn generate(tokens: &str) -> Result<String, String> {
                 .into_iter()
                 .find(|u| value.as_str().is_some_and(|s| s.ends_with(u)))
             {
-                Some(u) => (u, unit(&t, &["controls", key], u)?),
+                Some(u) => (u, unit(t, &["controls", key], u)?),
                 None => {
-                    return Err(format!(
-                        "tokens.json: controls.{key} is not px, ms or a number"
-                    ));
+                    return Err(format!("tokens: controls.{key} is not px, ms or a number"));
                 }
             },
-            _ => return Err(format!("tokens.json: controls.{key} is not a value")),
+            _ => return Err(format!("tokens: controls.{key} is not a value")),
         };
         controls.push((key.as_str(), key.replace('-', "_"), unit, n));
     }
@@ -483,15 +478,15 @@ pub fn generate(tokens: &str) -> Result<String, String> {
     o.push_str("};\n\n");
 
     for name in ["ui", "panel", "emphasis", "playful"] {
-        let bounce = get(&t, &["motion", "named", name, "bounce"])?
+        let bounce = get(t, &["motion", "named", name, "bounce"])?
             .as_f64()
-            .ok_or_else(|| format!("tokens.json: motion.named.{name}.bounce"))?
+            .ok_or_else(|| format!("tokens: motion.named.{name}.bounce"))?
             as f32;
         writeln!(
             o,
             "/// The `{name}` transition's spring: perceptual duration (ms) and bounce.\npub const MOTION_{}: [f32; 2] = [{}, {}];",
             name.to_uppercase(),
-            num(unit(&t, &["motion", "named", name, "duration"], "ms")?),
+            num(unit(t, &["motion", "named", name, "duration"], "ms")?),
             num(bounce)
         )
         .unwrap();
@@ -507,7 +502,7 @@ const HEAD: &str = r##"//! The engine's default style: the colour roles of a gam
 //! it means something, flat glass on floating chrome only, and borderless
 //! controls told apart by tone.
 //!
-//! **Generated** from `packages/design/tokens.json` by
+//! **Generated** from `packages/design/tokens/*.css` by
 //! `crates/og-ui/scripts/gen-theme.sh`; never edit it by hand (`tests/theme.rs`
 //! fails on drift). The default style is origin-agent's look and the one a
 //! game draws in until it picks another (`crate::style_file`, `type style`,

@@ -124,7 +124,7 @@ const GLASS_LIFT: &str = "background: none; border: none; box-shadow: none; back
 const GLASS_FLOAT: &str = "background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick float;";
 const GLASS_REGULAR: &str = "background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-regular)) saturate(var(--glass-saturation)); -og-material: glass regular float;";
 
-const HEAD: &str = "/* Generated from packages/design/tokens.json by crates/og-ui/scripts/gen-theme.sh.\n\
+const HEAD: &str = "/* Generated from packages/design/tokens/*.css by crates/og-ui/scripts/gen-theme.sh.\n\
  * Do not edit: tests/theme.rs checks drift.\n\
  * @layer og-default is the engine's lowest-priority author layer; packs\n\
  * override it in later layers or with unlayered rules. All defaults,\n\
@@ -179,13 +179,13 @@ fn variables(out: &mut String, prefix: &str, value: &Value) {
 fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
     let mut colors = tokens["color"]
         .as_object()
-        .ok_or("tokens.json: color is not an object")?
+        .ok_or("tokens: color is not an object")?
         .clone();
     if dark {
         colors.extend(
             tokens["dark"]["color"]
                 .as_object()
-                .ok_or("tokens.json: dark.color is not an object")?
+                .ok_or("tokens: dark.color is not an object")?
                 .clone(),
         );
     }
@@ -210,7 +210,7 @@ fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
     let scheme = |group: &str| -> Result<serde_json::Map<String, Value>, String> {
         let mut map = super::get(tokens, &[group])?
             .as_object()
-            .ok_or_else(|| format!("tokens.json: {group} is not an object"))?
+            .ok_or_else(|| format!("tokens: {group} is not an object"))?
             .clone();
         if dark && let Some(over) = tokens["dark"][group].as_object() {
             map.extend(over.clone());
@@ -223,12 +223,12 @@ fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
     // Preserve alpha multiplication (not replacement) used by token effects.
     for (name, tint) in super::get(tokens, &["derived", "tint"])?
         .as_object()
-        .ok_or("tokens.json: derived.tint is not an object")?
+        .ok_or("tokens: derived.tint is not an object")?
     {
         let key = super::text(tint, &["color"])?;
         let alpha = super::get(tint, &["alpha"])?
             .as_f64()
-            .ok_or_else(|| format!("tokens.json: derived.tint.{name}.alpha"))?
+            .ok_or_else(|| format!("tokens: derived.tint.{name}.alpha"))?
             as f32;
         let (rgb, a) = role_colour(tokens, dark, "color", key)?;
         writeln!(out, "    --{name}: {};", css_color(rgb, a * alpha)).unwrap();
@@ -239,8 +239,7 @@ fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
         let blur = super::text(tokens, &["elevation", name, "blur"])?;
         let opacity = super::get(tokens, &["elevation", name, "alpha"])?
             .as_f64()
-            .ok_or_else(|| format!("tokens.json: elevation.{name}.alpha"))?
-            as f32;
+            .ok_or_else(|| format!("tokens: elevation.{name}.alpha"))? as f32;
         let a = (alpha * opacity * 255.0).round() as u8;
         writeln!(
             out,
@@ -251,8 +250,7 @@ fn palette(out: &mut String, tokens: &Value, dark: bool) -> Result<(), String> {
     Ok(())
 }
 
-pub fn generate(text: &str) -> Result<String, String> {
-    let t: Value = serde_json::from_str(text).map_err(|e| format!("tokens.json: {e}"))?;
+pub fn generate(t: &Value) -> Result<String, String> {
     let mut out = String::from(HEAD);
     out.push_str("  :root {\n");
     for group in ["space", "radius", "font", "density", "motion", "vars"] {
@@ -262,9 +260,9 @@ pub fn generate(text: &str) -> Result<String, String> {
         variables(&mut out, group, &t[group]);
     }
     // The controls' own tokens are `--<control>-<property>`, no group prefix.
-    for (name, value) in super::get(&t, &["controls"])?
+    for (name, value) in super::get(t, &["controls"])?
         .as_object()
-        .ok_or("tokens.json: controls is not an object")?
+        .ok_or("tokens: controls is not an object")?
         .iter()
         .filter(|(name, _)| !name.starts_with('_'))
     {
@@ -273,22 +271,22 @@ pub fn generate(text: &str) -> Result<String, String> {
             v => writeln!(out, "    --{name}: {v};").unwrap(),
         }
     }
-    for (name, value) in super::get(&t, &["derived", "alias"])?
+    for (name, value) in super::get(t, &["derived", "alias"])?
         .as_object()
-        .ok_or("tokens.json: derived.alias is not an object")?
+        .ok_or("tokens: derived.alias is not an object")?
     {
         writeln!(out, "    --{name}: {};", value.as_str().unwrap_or_default()).unwrap();
     }
     for (field, _) in super::STEPS {
         let (key, weight, _) = type_role(field);
-        let size = super::text(&t, &["font", "scale", key, "size"])?;
-        let height = super::text(&t, &["font", "scale", key, "lineHeight"])?;
+        let size = super::text(t, &["font", "scale", key, "size"])?;
+        let height = super::text(t, &["font", "scale", key, "lineHeight"])?;
         let name = kebab(field);
         writeln!(out, "    --type-{name}-size: {size};\n    --type-{name}-line-height: {height};\n    --type-{name}-weight: {weight};").unwrap();
         let tracking = t["font"]["scale"][key]["letterSpacing"]
             .as_str()
             .unwrap_or("0em");
-        let cjk_tracking = super::text(&t, &["font", "cjk", "letterSpacing"])?;
+        let cjk_tracking = super::text(t, &["font", "cjk", "letterSpacing"])?;
         let features = t["font"]["scale"][key]["fontFeatures"]
             .as_array()
             .map(|tags| {
@@ -301,8 +299,8 @@ pub fn generate(text: &str) -> Result<String, String> {
             .filter(|s| !s.is_empty())
             .unwrap_or("normal".into());
         writeln!(out, "    --type-{name}-tracking: {tracking};\n    --type-{name}-cjk-tracking: {cjk_tracking};\n    --type-{name}-features: {features};\n    --type-{name}-transform: none;").unwrap();
-        let cjk_height = super::unit(&t, &["font", "scale", key, "lineHeight"], "px")?
-            .max((super::unit(&t, &["font", "scale", key, "size"], "px")? * 1.45).round());
+        let cjk_height = super::unit(t, &["font", "scale", key, "lineHeight"], "px")?
+            .max((super::unit(t, &["font", "scale", key, "size"], "px")? * 1.45).round());
         writeln!(out, "    --type-{name}-cjk-line-height: {cjk_height}px;").unwrap();
         writeln!(
             out,
@@ -351,11 +349,11 @@ pub fn generate(text: &str) -> Result<String, String> {
     }
     // Preserve the default UI spring's uninterrupted samples using CSS
     // linear(), rather than replacing its response with an arbitrary ease.
-    let bounce = super::get(&t, &["motion", "named", "ui", "bounce"])?
+    let bounce = super::get(t, &["motion", "named", "ui", "bounce"])?
         .as_f64()
-        .ok_or("tokens.json: motion.named.ui.bounce is not a number")? as f32;
+        .ok_or("tokens: motion.named.ui.bounce is not a number")? as f32;
     let spring = og_ui::motion::SpringSpec::new(
-        super::unit(&t, &["motion", "named", "ui", "duration"], "ms")?,
+        super::unit(t, &["motion", "named", "ui", "duration"], "ms")?,
         bounce,
     )
     .to_tween();
@@ -383,9 +381,9 @@ pub fn generate(text: &str) -> Result<String, String> {
         samples.join(", ")
     )
     .unwrap();
-    palette(&mut out, &t, true)?;
+    palette(&mut out, t, true)?;
     out.push_str("  }\n  :root[data-scheme=light] {\n");
-    palette(&mut out, &t, false)?;
+    palette(&mut out, t, false)?;
     out.push_str("  }\n");
     for (query, landscape) in [
         (
@@ -405,10 +403,10 @@ pub fn generate(text: &str) -> Result<String, String> {
             } else {
                 phone
             };
-            let size = (super::unit(&t, &["font", "scale", key, "size"], "px")? * factor)
+            let size = (super::unit(t, &["font", "scale", key, "size"], "px")? * factor)
                 .round()
                 .max(12.0);
-            let height = (super::unit(&t, &["font", "scale", key, "lineHeight"], "px")? * factor)
+            let height = (super::unit(t, &["font", "scale", key, "lineHeight"], "px")? * factor)
                 .round()
                 .max(16.0);
             let name = kebab(field);
@@ -425,10 +423,10 @@ pub fn generate(text: &str) -> Result<String, String> {
     // a partially valid stylesheet.
     for v in t["color"]
         .as_object()
-        .ok_or("tokens.json: color is not an object")?
+        .ok_or("tokens: color is not an object")?
         .values()
     {
-        colour(v.as_str().ok_or("tokens.json: color is not a string")?)?;
+        colour(v.as_str().ok_or("tokens: color is not a string")?)?;
     }
     out.push_str(FALLBACKS);
     // node_draw draws one focus part per local player. The host exposes

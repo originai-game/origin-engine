@@ -1,0 +1,169 @@
+/* Colour: the neutral ladder and its roles, the hues, the metals, the fills
+   restated for linear-light blending, and what a control takes on glass. */
+:root {
+  --color-bg: #f2f2f7;
+  --color-bg-subtle: #e9e9ee;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-hover: #e5e5ea;
+  --color-fill: rgb(120 120 128 / 0.12);
+  --color-fill-strong: rgb(120 120 128 / 0.2);
+  --color-thumb: #ffffff;
+  --color-border: #dcdce1;
+  --color-border-strong: #c4c4c9;
+  --color-fg: #18181a;
+  --color-fg-muted: #46464c;
+  --color-fg-subtle: #636369;
+  --color-fg-inverse: #fafafa;
+  --color-accent: #1c1c1e;
+  --color-accent-hover: #3a3a3c;
+  --color-accent-active: #000000;
+  --color-accent-soft: rgb(0 0 0 / 0.06);
+  --color-accent-fg: #fafafa;
+  --color-accent-ink: #18181a;
+  --color-focus: #3a3a3c;
+  --color-shadow: #000000;
+  --color-danger: #b20011;
+  --color-success: #1a7a37;
+  --color-warn: #c2410c;
+  --color-info: #0062c4;
+  --color-stage: #000000;
+  --color-stage-surface: #141416;
+  --color-stage-raised: #1c1c1e;
+  --color-stage-border: #2c2c2e;
+  --color-stage-fg: #f5f5f7;
+  --color-stage-muted: #a1a1a6;
+  --color-stage-danger: #ff6b5e;
+  --color-material-thin: rgb(255 255 255 / 0.36);
+  --color-material-regular: rgb(250 250 252 / 0.58);
+  --color-material-thick: rgb(246 246 248 / 0.8);
+  --color-material-edge: rgb(0 0 0 / 0.07);
+  --color-material-control: rgb(120 120 128 / 0.16);
+  --color-material-control-hover: rgb(120 120 128 / 0.09);
+  --color-scrim: rgb(0 0 0 / 0.22);
+  --color-health: #1b7a38;
+  --color-mana: #0062c4;
+  --color-xp: #7d3fc4;
+  --color-gold: #8a5a00;
+  --color-hud: rgb(250 250 252 / 0.86);
+  --color-knob: #ffffff;
+  --color-sheen: rgb(255 255 255 / 0.5);
+  --color-track: #707075;
+  --color-minimap: #16161899;
+  --color-minimap-edge: #ffffff14;
+  --color-slot-selected-edge: #ffffff8c;
+  --hue-red: #ff3b30;
+  --hue-orange: #ff9500;
+  --hue-yellow: #ffcc00;
+  --hue-green: #34c759;
+  --hue-mint: #00c7be;
+  --hue-teal: #30b0c7;
+  --hue-cyan: #32ade6;
+  --hue-blue: #007aff;
+  --hue-indigo: #5856d6;
+  --hue-purple: #af52de;
+  --hue-pink: #ff2d55;
+  --hue-brown: #a2845e;
+  /* Award metals (rank 1–3 medals and numerals): highlight, mid, shade stops of
+     one gradient. Material, not text. */
+  --metal-gold-highlight: #ffe680;
+  --metal-gold-mid: #ffcc00;
+  --metal-gold-shade: #b8860b;
+  --metal-silver-highlight: #f4f6f8;
+  --metal-silver-mid: #b8c0cc;
+  --metal-silver-shade: #7a828e;
+  --metal-bronze-highlight: #f3c6a0;
+  --metal-bronze-mid: #c9834d;
+  --metal-bronze-shade: #8a4b22;
+  /* The translucent fills restated for the engine's UI pass, which blends flat
+     fills in linear light: each the alpha whose linear blend over `over` draws
+     what CSS's blend of the `color` value draws there (a white 13 % over dark
+     glass reads about three times as strong in linear light). The engine draws
+     these; a browser draws `color`. */
+  --linear-over-fill: surface;
+  --linear-over-fill-strong: surface;
+  --linear-over-material-control: surface-raised;
+  --linear-over-material-control-hover: surface-raised;
+  --linear-over-accent-soft: surface;
+  --linear-over-scrim: #808080;
+  --linear-color-fill: rgb(120 120 128 / 0.169);
+  --linear-color-fill-strong: rgb(120 120 128 / 0.271);
+  --linear-color-material-control: rgb(120 120 128 / 0.223);
+  --linear-color-material-control-hover: rgb(120 120 128 / 0.127);
+  --linear-color-accent-soft: rgb(0 0 0 / 0.131);
+  --linear-color-scrim: rgb(0 0 0 / 0.416);
+  /* Lenses on Liquid Glass: inside bars and capsules the hover, current and
+     selected fills become the clear control tints of the material they sit on,
+     and the control rim becomes the ringless lens so a selection never draws a
+     second border inside the bar's rim (each key is a semantic colour or shadow,
+     each value the one it takes there). Overlays that carry text (`reset`,
+     glass-thick menus, popovers, dialogs) take the palette back even inside a
+     bar, and solid glass (reduced transparency, increased contrast) keeps the
+     surrounding values. */
+  --material-scope-selector: .glass, .glass-thin;
+  --material-scope-reset: .glass-thick;
+  --material-scope-color-fill: material-control-hover;
+  --material-scope-color-fill-strong: material-control;
+  --material-scope-color-thumb: material-control;
+  --material-scope-shadow-rim: lens;
+}
+
+:root[data-scheme=dark] {
+  --color-bg: #000000;
+  --color-bg-subtle: #111113;
+  --color-surface: #1c1c1e;
+  --color-surface-raised: #2c2c2e;
+  --color-surface-hover: #3a3a3c;
+  --color-fill: rgb(120 120 128 / 0.24);
+  --color-fill-strong: rgb(120 120 128 / 0.36);
+  --color-thumb: #636366;
+  --color-border: #38383a;
+  --color-border-strong: #545458;
+  --color-fg: #f5f5f7;
+  --color-fg-muted: #c8c8cd;
+  --color-fg-subtle: #9e9ea3;
+  --color-fg-inverse: #18181a;
+  --color-accent: #e8e8ed;
+  --color-accent-hover: #ffffff;
+  --color-accent-active: #c7c7cc;
+  --color-accent-soft: rgb(255 255 255 / 0.12);
+  --color-accent-fg: #111113;
+  --color-accent-ink: #f5f5f7;
+  --color-focus: #f5f5f7;
+  --color-danger: #ff8a82;
+  --color-success: #3dd68c;
+  --color-warn: #ff8a3d;
+  --color-info: #5cc8ff;
+  --color-material-thin: rgb(44 44 48 / 0.28);
+  --color-material-regular: rgb(30 30 34 / 0.64);
+  --color-material-thick: rgb(28 28 30 / 0.78);
+  --color-material-edge: rgb(255 255 255 / 0.08);
+  --color-material-control: rgb(255 255 255 / 0.13);
+  --color-material-control-hover: rgb(255 255 255 / 0.07);
+  --color-scrim: rgb(0 0 0 / 0.42);
+  --color-health: #30d158;
+  --color-mana: #409cff;
+  --color-xp: #bf5af2;
+  --color-gold: #ffd60a;
+  --color-hud: rgb(22 22 24 / 0.8);
+  --color-knob: #f5f5f7;
+  --color-sheen: rgb(255 255 255 / 0.12);
+  --hue-red: #ff453a;
+  --hue-orange: #ff9f0a;
+  --hue-yellow: #ffd60a;
+  --hue-green: #30d158;
+  --hue-mint: #63e6e2;
+  --hue-teal: #40c8e0;
+  --hue-cyan: #64d2ff;
+  --hue-blue: #0a84ff;
+  --hue-indigo: #5e5ce6;
+  --hue-purple: #bf5af2;
+  --hue-pink: #ff375f;
+  --hue-brown: #ac8e68;
+  --linear-color-fill: rgb(120 120 128 / 0.115);
+  --linear-color-fill-strong: rgb(120 120 128 / 0.195);
+  --linear-color-material-control: rgb(255 255 255 / 0.039);
+  --linear-color-material-control-hover: rgb(255 255 255 / 0.019);
+  --linear-color-accent-soft: rgb(255 255 255 / 0.028);
+  --linear-color-scrim: rgb(0 0 0 / 0.687);
+}

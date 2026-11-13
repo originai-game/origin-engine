@@ -1,0 +1,70 @@
+/* Motion: durations, easings, the timing table, springs and named transitions. */
+:root {
+  --motion-duration-instant: 120ms;
+  --motion-duration-fast: 180ms;
+  --motion-duration-base: 240ms;
+  --motion-duration-slow: 400ms;
+  --motion-duration-spring: 520ms;
+  --motion-duration-bounce: 640ms;
+  --motion-easing-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
+  --motion-easing-spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001);
+  --motion-easing-snappy: linear(0, 0.016, 0.063 4.1%, 0.25 8.7%, 0.684 17.5%, 0.86 22.6%, 0.967 28%, 1.03 34%, 1.05 39.6%, 1.045 46.2%, 1.017 58.5%, 0.997 75.2%, 1);
+  --motion-easing-bounce: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+  /* The timing table: what each moment of a UI moves on, by the duration, easing
+     and spring names above (or a number of its own). A style overrides a row in
+     its motion block (docs/ui.md §3.1); the default style takes these. hover:
+     the lift on the spring named and, for a pad's virtual cursor, how much it
+     slows and settles over a control (magnet 0–1). press: the squash in at once,
+     back on a spring of this damping over the duration named. enter and exit: a
+     widget's arrival and departure. cascade: a list's or a panel's children
+     entering one after another, step between them, never spread past cap. toast:
+     in, held (hold; holdDanger for an error), out. screen: a game-screen
+     transition covers then reveals over this many slow durations. */
+  --motion-timing-hover-spring: default;
+  --motion-timing-hover-magnet: 0.5;
+  --motion-timing-press-duration: instant;
+  --motion-timing-press-damping: 0.55;
+  --motion-timing-enter-duration: base;
+  --motion-timing-enter-easing: out;
+  --motion-timing-exit-duration: fast;
+  --motion-timing-exit-easing: exit;
+  --motion-timing-cascade-step: 40ms;
+  --motion-timing-cascade-cap: 400ms;
+  --motion-timing-cascade-easing: out;
+  --motion-timing-toast-enter: base;
+  --motion-timing-toast-hold: 3200ms;
+  --motion-timing-toast-hold-danger: 6000ms;
+  --motion-timing-toast-exit: fast;
+  --motion-timing-screen-slow: 2;
+  /* Springs as damping ratio (1 = critically damped, below 1 overshoots) and
+     response (seconds to reach the target; not a duration), the parameters Apple
+     ships. build.mjs emits --ease-spring-<name> (a linear() easing),
+     --dur-spring-<name> (its settle time) and --spring-<name>-damping/-response
+     for the runtime spring (ui-svelte motion/spring.ts); Swift gets the pair for
+     .spring(response:dampingFraction:). default: overlays, menus, highlights;
+     sheet: sheets and drawers; momentum: releases that carried velocity (a
+     flick, a throw). */
+  --motion-spring-default-damping: 1;
+  --motion-spring-default-response: 350ms;
+  --motion-spring-sheet-damping: 0.85;
+  --motion-spring-sheet-response: 300ms;
+  --motion-spring-momentum-damping: 0.8;
+  --motion-spring-momentum-response: 400ms;
+  /* The engine's named transitions (`transition: var(--motion-<name>)` in a
+     document, a widget's motion token): each a spring of a perceptual duration
+     and a bounce (0 none, towards 1 more), capped by a style's overshoot; `ui`
+     also sets --motion-ui-easing, its 60 Hz samples. */
+  --motion-named-ui-duration: 300ms;
+  --motion-named-ui-bounce: 0;
+  --motion-named-panel-duration: 420ms;
+  --motion-named-panel-bounce: 0.1;
+  --motion-named-emphasis-duration: 520ms;
+  --motion-named-emphasis-bounce: 0.3;
+  --motion-named-playful-duration: 600ms;
+  --motion-named-playful-bounce: 0.45;
+  --motion-named-enter-duration: var(--motion-duration-base);
+  --motion-named-enter-easing: var(--motion-easing-out);
+  --motion-named-exit-duration: var(--motion-duration-fast);
+  --motion-named-exit-easing: var(--motion-easing-exit);
+}

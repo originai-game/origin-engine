@@ -4,12 +4,12 @@ One design language for the engine's own UI (og-ui's default style, the
 engine's tools) and origin-agent's surfaces (its web, Stage and iOS
 clients), decoupled from the platform's (`origingame/docs/design-language.md`
 styles the portal, ops and mail). Values live in
-[`tokens.json`](tokens.json); this document says how they are used.
+[`tokens/*.css`](tokens); this document says how they are used.
 §Changes from the seed lists where it differs from the platform's
 language at origingame d25f1f15.
 
 **Where it binds.** The language binds the engine's **default style** alone
-(`crates/og-ui-core/src/theme.rs`, generated from `tokens.json`; docs/ui.md
+(`crates/og-ui-core/src/theme.rs`, generated from `tokens/*.css`; docs/ui.md
 §3) and origin-agent. A game may draw in the default style, a built-in
 pack or a style of its own (generated or hand-made, a look's `ui` line);
 the engine requires none of them. A game's style may restyle, re-dress, re-shape
@@ -334,7 +334,7 @@ gestures the runtime spring in `ui-svelte` `motion/spring.ts`, Swift
   | Screen transition | cover then reveal over twice `slow` | `screen <ms>` |
 
   The engine's widgets read these rows (og-ui's `theme::TIMING`, generated
-  from `tokens.json`).
+  from `tokens/*.css`).
 - `prefers-reduced-motion` keeps state changes and drops spatial movement:
   colour and opacity still transition (overlays and views cross-fade), every
   rise, scale, slide, glide and drag spring jumps. Motion never delays a
@@ -464,7 +464,7 @@ So the page states things, it does not explain them:
   and `glassContrast` pair in both themes and the `linear` fills against
   their CSS values.
 - `crates/og-ui/tests/theme.rs` fails when `src/theme.rs` is not exactly
-  what the generator writes from `tokens.json` (`crates/og-ui/scripts/gen-theme.sh`
+  what the generator writes from `tokens/*.css` (`crates/og-ui/scripts/gen-theme.sh`
   regenerates it), and when the tokens' material tints differ from
   og-render's glass presets.
 - og-tests `ui_glass_text_holds_contrast` measures text over the three

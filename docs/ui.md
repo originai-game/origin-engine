@@ -1032,7 +1032,7 @@ section is the one statement of that rule; others link here.
 
 Literal values belong only in:
 
-- Core default definitions (`packages/design/tokens.json`) and a style
+- Core default definitions (`packages/design/tokens/*.css`) and a style
   pack's `:root` token rules (`:root[data-scheme=light]` among them), art
   URLs included.
 - Art metadata: atlas coordinates, slice insets, resource dimensions,
@@ -1053,7 +1053,7 @@ outside a `:root` rule that uses a literal colour, a length other than 0, a
 duration or a `url()`.
 
 The default stylesheet (`crates/og-ui-core/default.css`, generated from
-`packages/design/tokens.json`) sets every value the core controls and
+`packages/design/tokens/*.css`) sets every value the core controls and
 built-in components draw with as a `:root` variable, and the theme reads
 them back each frame, so a pack restyles every control by setting tokens,
 dressing `::part`s and supplying assets. A control token is

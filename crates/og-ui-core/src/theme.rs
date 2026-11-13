@@ -5,7 +5,7 @@
 //! it means something, flat glass on floating chrome only, and borderless
 //! controls told apart by tone.
 //!
-//! **Generated** from `packages/design/tokens.json` by
+//! **Generated** from `packages/design/tokens/*.css` by
 //! `crates/og-ui/scripts/gen-theme.sh`; never edit it by hand (`tests/theme.rs`
 //! fails on drift). The default style is origin-agent's look and the one a
 //! game draws in until it picks another (`crate::style_file`, `type style`,

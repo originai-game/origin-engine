@@ -1,0 +1,87 @@
+/* State: how a control answers, and the built-in controls' own values
+   (emitted as --<control>-<property>, without the group prefix). */
+:root {
+  /* How a control answers (`--state-*`): `hover-wash` is how far hover (half)
+     and press (whole) move a control's fill towards the ink; `press-scale` what
+     a pressed button or part shrinks to, `control-press-scale` a pressed control
+     row's; `lift` the hover and focus rise; `disabled-opacity` a disabled
+     control's, `touch-disabled-opacity` a disabled on-screen stick, pad or
+     action button's; the focus ring's width and gap outside the part (`-field`
+     for text boxes), the high-contrast outline's width, and each local player's
+     ring and gaps. */
+  --state-hover-wash: 0.1;
+  --state-press-scale: var(--vars-press-scale);
+  --state-control-press-scale: 0.97;
+  --state-lift: -1px;
+  --state-disabled-opacity: 0.5;
+  --state-touch-disabled-opacity: 0.45;
+  --state-focus-ring-width: var(--stroke-focus);
+  --state-focus-ring-offset: var(--space-xxs);
+  --state-focus-ring-offset-field: 0;
+  --state-outline-width: var(--stroke-hairline);
+  --state-player-ring-width: var(--space-xxs);
+  --state-player-ring-offset-1: calc(var(--space-xxs) * 3);
+  --state-player-ring-offset-2: calc(var(--space-xxs) * 5);
+  --state-player-ring-offset-3: calc(var(--space-xxs) * 7);
+  /* The engine's built-in controls' own values (`--<control>-<property>`,
+     docs/ui.md §3.1): what their part rules dress with (each by default a
+     semantic token) and the sizes, ratios and motion their geometry takes (each
+     the number it drew with; og-ui's theme reads them back). A ratio is of the
+     control's own size. */
+  --controls-button-radius: var(--radius-button);
+  --controls-button-border-width: var(--stroke-hairline);
+  --controls-button-shadow: var(--shadow-sheen);
+  --controls-button-pressed-shadow: var(--shadow-pressed);
+  --controls-field-radius: var(--radius-button);
+  --controls-field-border-width: var(--stroke-thin);
+  --controls-field-shadow: var(--shadow-well);
+  --controls-panel-radius: var(--radius-panel);
+  --controls-panel-border-width: var(--stroke-hairline);
+  --controls-hud-radius: var(--radius-button);
+  --controls-chip-radius: var(--radius-button);
+  --controls-tabs-radius: var(--radius-button);
+  --controls-slot-radius: var(--radius-control);
+  --controls-slot-shadow: var(--shadow-well);
+  --controls-meter-radius: var(--radius-capsule);
+  --controls-meter-shadow: var(--shadow-groove);
+  --controls-meter-fill-shadow: var(--shadow-fill-sheen);
+  --controls-radio-card-radius: var(--radius-panel);
+  --controls-radio-card-shadow: var(--elevation-raised);
+  --controls-dropdown-list-shadow: var(--elevation-floating);
+  --controls-state-press-duration: 60ms;
+  --controls-checkbox-size: 22px;
+  --controls-checkbox-radius-ratio: 0.24;
+  --controls-checkbox-mark-ratio: 0.78;
+  --controls-checkbox-pop-duration: 260ms;
+  --controls-checkbox-pop-bounce: 0.45;
+  --controls-checkbox-unmark-duration: 90ms;
+  --controls-radio-size: 20px;
+  --controls-radio-dot-ratio: 0.46;
+  --controls-radio-pop-duration: 240ms;
+  --controls-radio-pop-bounce: 0.4;
+  --controls-switch-height-sm: 22px;
+  --controls-switch-height-md: 28px;
+  --controls-switch-height-lg: 32px;
+  --controls-switch-width-ratio: 1.72;
+  --controls-switch-inset-ratio: 0.11;
+  --controls-slider-knob: 20px;
+  --controls-slider-knob-touch: 26px;
+  --controls-slider-rail: 4px;
+  --controls-slider-rail-touch: 6px;
+  --controls-slider-tick-width: 2px;
+  --controls-slider-bubble-height: 26px;
+  --controls-slider-bubble-exit-duration: 90ms;
+  --controls-segmented-pad-ratio: 0.08;
+  --controls-dropdown-row: 36px;
+  --controls-dropdown-option-row: 40px;
+  --controls-dropdown-width: 240px;
+  --controls-menu-open-duration: 140ms;
+  --controls-details-icon: 16px;
+  --controls-modal-width: 420px;
+  --controls-keyboard-key-height: 40px;
+  --controls-keyboard-key-min-height: 32px;
+  --controls-keyboard-candidate-height: 36px;
+  --controls-joystick-size: 128px;
+  --controls-dpad-size: 132px;
+  --controls-action-size: 64px;
+}

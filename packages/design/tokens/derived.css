@@ -1,0 +1,50 @@
+/* Derived: tints of a role at an alpha, shadows built from them, and aliases
+   (emitted under their own names, without the group prefix). */
+:root {
+  /* Values the engine's default CSS derives from the roles above, per scheme:
+     `tint` is a role at a fraction of its alpha (`--<name>`), `shadow` the inset
+     shadows of controls built on those tints (`--shadow-<name>`), `alias` names
+     kept for documents and the active density's sizes (`--<name>`:
+     `--control-sm/md/lg`, `--row`, `--header`, `--gutter`, `--section` are the
+     input's density, which the engine selects as `--density-active-*`;
+     `--touch-target` the smallest target a finger gets). */
+  --derived-tint-shadow-30-color: shadow;
+  --derived-tint-shadow-30-alpha: 0.3;
+  --derived-tint-shadow-35-color: shadow;
+  --derived-tint-shadow-35-alpha: 0.35;
+  --derived-tint-shadow-45-color: shadow;
+  --derived-tint-shadow-45-alpha: 0.45;
+  --derived-tint-sheen-50-color: sheen;
+  --derived-tint-sheen-50-alpha: 0.5;
+  --derived-tint-sheen-60-color: sheen;
+  --derived-tint-sheen-60-alpha: 0.6;
+  --derived-tint-line-70-color: border;
+  --derived-tint-line-70-alpha: 0.7;
+  --derived-tint-danger-45-color: danger;
+  --derived-tint-danger-45-alpha: 0.45;
+  --derived-shadow-sheen: inset 0 1px 0 0 var(--sheen-60);
+  --derived-shadow-well: inset 0 1px 3px 0 var(--shadow-30);
+  --derived-shadow-pressed: inset 0 1px 3px 0 var(--shadow-45);
+  --derived-shadow-groove: inset 0 1px 2px 0 var(--shadow-35);
+  --derived-shadow-fill-sheen: inset 0 1px 0 0 var(--sheen-50);
+  --derived-alias-font-body: var(--font-sans);
+  --derived-alias-space-xl3: var(--space-3xl);
+  --derived-alias-radius-xs: var(--radius-control);
+  --derived-alias-radius-sm: var(--radius-button);
+  --derived-alias-radius-md: var(--radius-panel);
+  --derived-alias-radius-lg: calc(var(--radius-panel) * 1.5);
+  --derived-alias-radius-xl: calc(var(--radius-panel) * 2);
+  --derived-alias-radius-pill: var(--radius-capsule);
+  --derived-alias-motion-enter: var(--motion-duration-base) ease-out;
+  --derived-alias-motion-exit: var(--motion-duration-fast) ease-in;
+  --derived-alias-density-touch-gutter: var(--density-compact-gutter);
+  --derived-alias-density-touch-section: var(--density-compact-section);
+  --derived-alias-control-sm: var(--density-active-control-sm, var(--density-compact-control-sm));
+  --derived-alias-control-md: var(--density-active-control-md, var(--density-compact-control-md));
+  --derived-alias-control-lg: var(--density-active-control-lg, var(--density-compact-control-lg));
+  --derived-alias-row: var(--density-active-row, var(--density-compact-row));
+  --derived-alias-header: var(--density-active-header, var(--density-compact-header));
+  --derived-alias-gutter: var(--density-active-gutter, var(--density-compact-gutter));
+  --derived-alias-section: var(--density-active-section, var(--density-compact-section));
+  --derived-alias-touch-target: var(--size-touch);
+}
