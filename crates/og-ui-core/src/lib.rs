@@ -71,10 +71,10 @@ pub mod theme;
 pub use paint::particles;
 #[doc(hidden)]
 pub mod ui;
+#[doc(hidden)]
+pub use layout::virtualize;
 pub(crate) use motion::view_transition;
 pub use world::viewport;
-#[doc(hidden)]
-pub mod virtualize;
 #[doc(hidden)]
 pub mod widgets;
 pub mod world;
