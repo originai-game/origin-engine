@@ -3,12 +3,13 @@
 //! bond, its anchors and its chunks) over a prefractured asset
 //! ([`FractureAsset`], og-physics-data), radial damage, the stress solver
 //! of NVIDIA Blast ([`stress`]), the support graph's islands, and the 2D
-//! pixel terrain ([`terrain2d`]). og-runtime's `destruction` system drives
-//! it from the world.
+//! pixel terrain ([`terrain2d`]), and a prop's tick over them ([`prop`]).
+//! og-runtime's `destruction` system drives it from the world.
 //!
 //! Everything is f32 with `+ - * /` and `sqrt`, in fixed orders: the same
 //! bits on every host, so a fracture replays.
 
+pub mod prop;
 pub mod stress;
 pub mod terrain2d;
 

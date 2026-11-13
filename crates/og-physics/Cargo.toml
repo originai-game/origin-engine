@@ -10,8 +10,9 @@ autotests = false
 [features]
 default = ["physics2d", "physics3d", "destruction"]
 # og.destruction's simulation: bond health, Blast's stress solver, islands
-# and the 2D pixel terrain (src/destruction.rs). No rapier in it.
-destruction = []
+# the 2D pixel terrain and a prop's tick over them (src/destruction.rs).
+# No rapier in it.
+destruction = ["dep:og-geom"]
 physics2d = ["dep:rapier2d"]
 physics3d = ["dep:rapier3d", "og-physics-data/physics3d"]
 
@@ -20,6 +21,8 @@ og-core = { path = "../og-core" }
 og-env = { path = "../og-env" }
 og-ecs = { path = "../og-ecs" }
 og-lanes = { path = "../og-lanes" }
+# The pixel terrain's collision meshes: its outline's loops, triangulated.
+og-geom = { path = "../og-geom", optional = true }
 # The meshes colliders are built from, the triangle mesh bake and the save codec.
 og-physics-data = { path = "../og-physics-data" }
 glam = { workspace = true, features = ["serde"] }

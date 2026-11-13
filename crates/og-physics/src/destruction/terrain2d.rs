@@ -19,6 +19,10 @@
 //! Integers and f32 `+ - * /` and `abs` only, in fixed orders: the same bits
 //! on every host, so a carve replays.
 
+pub mod collider;
+pub mod cut;
+pub mod state;
+
 /// A cell's material: 0 is empty; [`BEDROCK`] is never carved.
 pub type Cell = u8;
 

@@ -33,10 +33,24 @@ use super::wire::{
 use glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
-use og_physics::destruction::{
-    Damage, FractureAsset, Instance, Material, Support, stress::StressLimits,
+use og_physics::destruction::prop::blast::{Explosion, blast_push, push_blasted_pieces, scramble};
+use og_physics::destruction::prop::breaking::{
+    Breaking, Hits, REST_EVERY, REST_SPEED, Settings, WEDGED_AFTER, break_masonry, crumble,
+    islands_of, place_chunk, shed_crumbs, wear,
 };
-use serde::{Deserialize, Serialize};
+use og_physics::destruction::prop::budget::loose_islands;
+use og_physics::destruction::prop::debris::{Crumb, Debris, spread};
+use og_physics::destruction::prop::materials::MATERIALS;
+use og_physics::destruction::prop::pose::{
+    Pose, frame_of_pose, place_on, pose_of_frame, relative, uniform,
+};
+pub(crate) use og_physics::destruction::prop::state::hull_handle;
+use og_physics::destruction::prop::state::{
+    ANCHORED, Assets, CAUSE_DAMAGE, CAUSE_EXPLOSION, CAUSE_IMPACT, CAUSE_SHATTER, CAUSE_STRESS, Op,
+    Prop, State,
+};
+use og_physics::destruction::prop::support::supports_of;
+use og_physics::destruction::{Damage, FractureAsset, Instance, Material, stress::StressLimits};
 use serde_json::{Value, json};
 use std::any::Any;
 use std::collections::BTreeMap;
@@ -50,136 +64,10 @@ pub(crate) const RESOURCE: &str = "og.Destruction";
 /// Registered together (super::lazy's TOGETHER): naming one names all.
 pub(crate) const RECORDS: [&str; 4] = [DESTRUCTIBLE, CHUNK, FRACTURED, RESOURCE];
 
-const CAUSE_IMPACT: u32 = 0;
-const CAUSE_DAMAGE: u32 = 1;
-const CAUSE_EXPLOSION: u32 = 2;
-const CAUSE_STRESS: u32 = 3;
-const CAUSE_SHATTER: u32 = 4;
-const CAUSE_FRACTURE: u32 = 5;
-/// og.Chunk.looseTick of an anchored chunk.
-const ANCHORED: u32 = u32::MAX;
-/// Physics mesh handles of the chunks' hulls: the tag, the model's asset
-/// index (24 bits) and the chunk (16 bits), below 2^53.
-const HULL_TAG: u64 = 0xd5 << 40;
 /// The most breakFx and hitFx bursts spawned in one tick.
 const MAX_BURSTS: usize = 8;
 
-/// og.Transform's position, rotation and scale.
-type Pose = (Vec3, Quat, Vec3);
-
-/// The physics mesh of chunk `chunk` of the model whose asset handle is
-/// `asset`.
-pub(crate) fn hull_handle(asset: u64, chunk: u32) -> u64 {
-    HULL_TAG | ((asset & 0xff_ffff) << 16) | u64::from(chunk & 0xffff)
-}
-
 // ── the state ────────────────────────────────────────────────────────────────
-
-/// What `og.destruction` keeps: world state.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub(crate) struct State {
-    /// By the og.Destructible's entity bits.
-    props: BTreeMap<u64, Prop>,
-    /// Calls queued for the next run, in the order made.
-    ops: Vec<Op>,
-    /// breakFx and hitFx bursts: (entity bits, the tick it is despawned at).
-    fx: Vec<(u64, u64)>,
-    /// Fine pieces broken off as visuals only (og.Destructible.debris):
-    /// the renderer's debris layer moves and draws them from here; they
-    /// are never bodies.
-    debris: Vec<Debris>,
-    /// Joints broken with a debris emitter set: the grit each sheds
-    /// (clay and mortar chips, the renderer's debris layer's) flies from
-    /// here.
-    crumbs: Vec<Crumb>,
-}
-
-/// A broken joint's grit as it fell out: the renderer throws its chips
-/// from here.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct Crumb {
-    /// Its og.Destructible's entity bits and its bond.
-    prop: u64,
-    bond: u32,
-    /// The tick it broke.
-    tick: u64,
-    /// The joint's centre and its normal in the world then.
-    point: [f32; 3],
-    normal: [f32; 3],
-    /// What the blow or the blast gave the pieces beside it.
-    velocity: [f32; 3],
-}
-
-/// The most joints a prop sheds grit from in one tick (spread over all
-/// that broke), and the most at once.
-const CRUMBS_A_TICK: usize = 48;
-const MAX_CRUMBS: usize = 384;
-
-/// A fine piece as it broke off: the renderer simulates it from here.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct Debris {
-    /// Its og.Destructible's entity bits and its chunk.
-    prop: u64,
-    chunk: u32,
-    /// The tick it broke off.
-    tick: u64,
-    /// Its centre of mass, rotation (x y z w) and scale then.
-    pose: [f32; 10],
-    velocity: [f32; 3],
-    angular: [f32; 3],
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct Prop {
-    /// Its og.Model's asset handle.
-    asset: u64,
-    inst: Instance,
-    /// The model's world pose when its chunks were placed: position,
-    /// rotation (x y z w) and scale.
-    frame: [f32; 10],
-    /// Per chunk: its entity's bits (0: not spawned, or gone).
-    entities: Vec<u64>,
-    /// Per chunk: the entity whose og.RigidBody moves it (0: static).
-    body: Vec<u64>,
-    /// Per chunk: the tick it broke loose (u64::MAX while anchored).
-    loose: Vec<u64>,
-    /// Its og.Collider when its chunks were placed: theirs copy its
-    /// friction, restitution, layers and mask.
-    collider: Option<Vec<u8>>,
-    /// Its chunks are entities.
-    placed: bool,
-    /// Its anchors hold it (it stood when placed, and `anchored`).
-    anchors: bool,
-    /// Its first bond broke: the model is hidden, the chunks drawn.
-    fractured: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-enum Op {
-    Damage {
-        entity: u64,
-        point: [f32; 3],
-        radius: f32,
-        inner: f32,
-        amount: f32,
-        /// The blow's momentum (N·s); absent in worlds saved before it.
-        #[serde(default)]
-        impulse: [f32; 3],
-    },
-    Explode {
-        point: [f32; 3],
-        radius: f32,
-        inner: f32,
-        damage: f32,
-        impulse: f32,
-    },
-    Fracture {
-        entity: u64,
-    },
-}
-
-/// The fracture assets of an engine's loaded models, by asset handle.
-type Assets = BTreeMap<u64, Arc<FractureAsset>>;
 
 /// og.destruction on one engine: the state its world's block saves (shared
 /// with its system and its calls), its models' fracture assets, and the
@@ -200,87 +88,6 @@ pub(crate) fn set_physics(m: &ModuleState, physics: &og_physics::PhysicsSystem) 
 /// The physics of an engine (og.destruction2d registers its meshes there).
 pub(crate) fn physics(m: &ModuleState) -> Option<og_physics::PhysicsSystem> {
     lock(&m.physics).clone()
-}
-
-/// How often (in ticks) a loose island at rest is solved on what holds it.
-const REST_EVERY: u64 = 6;
-/// The most blocks of no-tension masonry that fly loose as one piece: one
-/// (mortar holds nothing pulled apart, so what breaks loose is its blocks,
-/// each a cluster of bricks, never a run of them bonded into a beam).
-const RUN: usize = 1;
-/// How unevenly a blast pushes the pieces near it: each takes its push
-/// times 1 ± SHARE / 2.
-const SHARE: f32 = 0.6;
-/// A blast's turn on a piece: this much of its push's speed over its size
-/// (rad/s per m/s per m), enough to open its joints as it goes, not to
-/// spin it into what stands.
-const SPIN: f32 = 0.1;
-/// The fastest turn (rad/s) a blast gives a piece.
-const TURN_MAX: f32 = 12.0;
-
-/// A fixed scramble of `x` (splitmix64's finaliser, public domain): a
-/// piece's own share of a blast, the same on every run and host.
-fn scramble(mut x: u64) -> u64 {
-    x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    x ^ (x >> 31)
-}
-
-/// A blast's push on a piece of mass `m` at `at` (its velocity and turn),
-/// `None` where it does not reach. A blast's front is not a smooth field
-/// near the charge: each piece there takes its own share of the push (up
-/// to SHARE either way) and a small turn from the uneven pressure on its
-/// face, both fading with the push to none at the pier feet it barely
-/// reaches, so the blocks of a wall go their own ways rather than in step
-/// and the piers keep their footing. Fixed per piece by `first`, its first
-/// chunk, so the same chunk of a model takes the same share in any scene.
-fn blast_push(
-    falloff: &Damage,
-    impulse: f32,
-    at: Vec3,
-    m: f32,
-    density: f32,
-    first: u64,
-) -> Option<(Vec3, Vec3)> {
-    let j = falloff.at(at) * face(m / density);
-    if m <= 0.0 || j <= 0.0 {
-        return None;
-    }
-    let r = scramble(first);
-    let u = |s: u32| ((r >> s) & 0x3ff) as f32 / 1023.0;
-    let axis = Vec3::new(u(0) - 0.5, u(10) - 0.5, u(20) - 0.5).normalize_or(Vec3::X);
-    let dir = (at - falloff.point).normalize_or(Vec3::Y);
-    let near = falloff.at(at) / impulse;
-    let dv = dir * (j / m) * (1.0 + near * SHARE * (u(40) - 0.5));
-    let size = og_core::math::pow(m / density, 1.0 / 3.0).max(0.02);
-    let dw = axis * (near * SPIN * dv.length() / size).min(TURN_MAX);
-    Some((dv, dw))
-}
-
-/// Below this speed (m/s) a loose island is at rest.
-const REST_SPEED: f32 = 0.5;
-
-/// Ticks a loose island stays where it broke free before, at rest with
-/// nothing under it, it counts as wedged (one just let go is at rest
-/// too, for the tick before it falls).
-const WEDGED_AFTER: u64 = 30;
-
-/// Wedged loose island `chunks` gives way: its bonds break, and each chunk
-/// with pieces shatters into them (`shatter` gathers those).
-fn crumble(a: &FractureAsset, inst: &mut Instance, chunks: &[u32], shatter: &mut Vec<u32>) {
-    for (k, b) in a.bonds.iter().enumerate() {
-        if chunks.contains(&b.a) && chunks.contains(&b.b) {
-            inst.bonds[k] = 0.0;
-        }
-    }
-    for &c in chunks {
-        let i = c as usize;
-        if a.chunks[i].children.1 > 0 && !inst.shattered[i] {
-            inst.shattered[i] = true;
-            shatter.push(c);
-        }
-    }
-    inst.dirty = true;
 }
 
 /// Each loose body of prop `p` (a support chunk's body with the chunks it
@@ -334,57 +141,6 @@ fn loose_bodies(
     bodies
 }
 
-/// The supports of loose island `chunks` (its body `body`, at rest): for
-/// each chunk, what a ray down from its centre meets within its depth
-/// below it and 5 cm more, other than the island itself.
-fn supports_of(
-    q: &og_physics::PhysicsQuery,
-    a: &FractureAsset,
-    pose: &[Option<Pose>],
-    chunks: &[u32],
-    body: u64,
-    gravity: Vec3,
-) -> Vec<Support> {
-    let down = gravity.normalize_or_zero();
-    if down == Vec3::ZERO {
-        return Vec::new();
-    }
-    let mut out = Vec::new();
-    for &c in chunks {
-        let Some(cp) = pose[c as usize] else {
-            continue;
-        };
-        let ch = &a.chunks[c as usize];
-        let depth = ch
-            .hull
-            .iter()
-            .map(|h| (cp.1 * (cp.2 * *h)).dot(down))
-            .fold(0.0, f32::max);
-        let hits = q
-            .raycast_all(&og_physics::RaycastAllDesc {
-                ray: og_physics::RaycastDesc {
-                    origin: cp.0,
-                    direction: down,
-                    max_distance: depth + 0.05,
-                    filter: og_physics::QueryFilter::default(),
-                },
-                max_hits: 16,
-            })
-            .unwrap_or_default();
-        let Some(hit) = hits.iter().find(|h| h.body.to_bits() != body) else {
-            continue;
-        };
-        let s = cp.2.max_element().max(1e-6);
-        let r = og_physics::destruction::cube_root(ch.volume);
-        out.push(Support {
-            chunk: c,
-            point: ch.centroid + cp.1.inverse() * (hit.point - cp.0) / s,
-            area: r * r,
-        });
-    }
-    out
-}
-
 /// Engine `id`'s og.destruction.
 fn module(id: u32) -> Result<ModuleState, String> {
     Ok(crate::engine::engine(id)?.modules.destruction.clone())
@@ -396,23 +152,6 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 
 fn invalid(m: impl Into<String>) -> Error {
     Error::new(ErrorKind::Invalid, m.into())
-}
-
-fn pose_of_frame(f: &[f32; 10]) -> Pose {
-    (
-        Vec3::new(f[0], f[1], f[2]),
-        Quat::from_xyzw(f[3], f[4], f[5], f[6]),
-        Vec3::new(f[7], f[8], f[9]),
-    )
-}
-
-fn frame_of_pose((p, q, s): Pose) -> [f32; 10] {
-    [p.x, p.y, p.z, q.x, q.y, q.z, q.w, s.x, s.y, s.z]
-}
-
-/// A uniform scale's factor (the mean of the axes' magnitudes).
-fn uniform(s: Vec3) -> f32 {
-    (s.x.abs() + s.y.abs() + s.z.abs()) / 3.0
 }
 
 // ── the asset ────────────────────────────────────────────────────────────────
@@ -577,17 +316,6 @@ fn row<T: FromJson>(l: &Layout, bytes: &[u8]) -> og_core::Result<T> {
     l.read(bytes).map_err(invalid)
 }
 
-/// An og.Destructible's settings, as the tick reads them.
-struct Settings {
-    mat: Material,
-    threshold: f32,
-    radius: f32,
-    anchored: bool,
-    break_fx: u64,
-    hit_fx: u64,
-    debris: u64,
-}
-
 /// An og.Destructible's row as the tick's settings.
 fn settings_of(v: &record::Destructible) -> Settings {
     Settings {
@@ -603,13 +331,6 @@ fn settings_of(v: &record::Destructible) -> Settings {
         hit_fx: v.hit_fx,
         debris: v.debris,
     }
-}
-
-/// What one run does to a prop besides its bonds.
-#[derive(Default)]
-struct Hits {
-    damage: Vec<(Damage, u32)>,
-    fracture: bool,
 }
 
 /// A chunk's place in its island's body.
@@ -636,22 +357,6 @@ fn world_pose(ctx: &SystemContext<'_>, l: &Ls, e: Entity) -> Option<Pose> {
     };
     let local = pose(e)?;
     Some(og_core::math::world_pose(e, local, parent, pose))
-}
-
-/// `p` of model space, on a chunk whose model-space centre is `c`, placed
-/// by the chunk's world pose.
-fn place_on(pose: &Pose, c: Vec3, p: Vec3) -> Vec3 {
-    pose.0 + pose.1 * (pose.2 * (p - c))
-}
-
-/// `child`'s pose relative to `root`'s, both in the world.
-fn relative(root: &Pose, child: &Pose) -> Pose {
-    let inv = root.1.inverse();
-    (
-        inv * (child.0 - root.0) / root.2,
-        (inv * child.1).normalize(),
-        child.2 / root.2,
-    )
 }
 
 /// The og.destruction system, one tick, as its stages in order: bursts
@@ -906,9 +611,6 @@ fn chunk_poses(ctx: &SystemContext<'_>, l: &Ls, st: &State, assets: &Assets) -> 
 /// its closing speed.
 type Strike = (u64, Vec3, Vec3, f32, f32, f32);
 
-/// An explosion: its point, inner radius, radius and impulse.
-type Explosion = (Vec3, f32, f32, f32);
-
 /// The tick's hits: what each prop takes, the bursts they make, the
 /// strikes and the explosions.
 struct Gathered {
@@ -1087,38 +789,6 @@ struct Broken {
     bursts: Vec<(u64, Vec3)>,
 }
 
-/// One prop as it breaks: its key, asset, settings and chunk poses.
-#[derive(Clone, Copy)]
-struct Breaking<'a> {
-    key: u64,
-    a: &'a FractureAsset,
-    s: &'a Settings,
-    pose: &'a [Option<Pose>],
-}
-
-/// Model-space point `at` of chunk `c` in the world: on the chunk's pose,
-/// else on the prop's frame.
-fn place_chunk(at: Breaking<'_>, frame: &Pose, c: u32, x: Vec3) -> Vec3 {
-    let ch = &at.a.chunks[c as usize];
-    match at.pose[c as usize] {
-        Some(ps) => place_on(&ps, ch.centroid, x),
-        None => place_on(frame, Vec3::ZERO, x),
-    }
-}
-
-/// The prop's islands; none anchored unless its anchors hold.
-fn islands_of(
-    inst: &Instance,
-    a: &FractureAsset,
-    anchors: bool,
-) -> Vec<og_physics::destruction::Island> {
-    let mut isl = inst.islands(a);
-    if !anchors {
-        isl.iter_mut().for_each(|i| i.anchored = false);
-    }
-    isl
-}
-
 /// One prop's tick: its hits wear its bonds, stress breaks what can no
 /// longer hold, broken joints shed grit, and what broke loose becomes
 /// bodies (islands) or flies apart (shattered chunks).
@@ -1198,44 +868,6 @@ fn break_prop(
         out,
     )?;
     shatter_chunks(ctx, l, t, at, p, scale, &shatter, out)
-}
-
-/// The prop's hits on its bonds, and a forced fracture: the cause of the
-/// first that broke something, and the chunks with children past their
-/// health, which shatter into them.
-fn wear(
-    at: Breaking<'_>,
-    frame: &Pose,
-    p: &mut Prop,
-    h: &Hits,
-    scale: f32,
-) -> (Option<u32>, Vec<u32>) {
-    let (a, s) = (at.a, at.s);
-    let mut cause = None;
-    let place_fn = |c: u32, x: Vec3| place_chunk(at, frame, c, x);
-    for (d, c) in &h.damage {
-        if p.inst.damage(a, d, scale, &s.mat, &place_fn) && cause.is_none() {
-            cause = Some(*c);
-        }
-    }
-    if h.fracture {
-        p.inst.bonds.iter_mut().for_each(|b| *b = 0.0);
-        cause = Some(CAUSE_FRACTURE);
-    }
-    // A chunk with children past its health shatters into them.
-    let mut shatter = Vec::new();
-    for c in 0..a.support as usize {
-        let ch = &a.chunks[c];
-        if !p.inst.shattered[c]
-            && ch.children.1 > 0
-            && p.inst.chunk_damage[c] >= Instance::chunk_health(a, c as u32, scale, s.mat.toughness)
-        {
-            p.inst.shattered[c] = true;
-            p.inst.dirty = true;
-            shatter.push(c as u32);
-        }
-    }
-    (cause, shatter)
 }
 
 /// The stress solver on what stands (when something changed) and, every
@@ -1340,86 +972,6 @@ fn solve_stress(
             }
         }
         p.inst.dirty |= held;
-    }
-}
-
-/// No-tension masonry (tension at most a tenth of a strength above 0;
-/// strength 0 turns stress off, and with it this): every REST_EVERY ticks
-/// a block of what stands that nothing bears from below comes loose,
-/// whole, and what it bore is judged again the next time; and a loose run
-/// of mortared blocks longer than RUN comes apart at its joints the tick
-/// it breaks loose.
-fn break_masonry(
-    tick: u64,
-    gravity: Vec3,
-    at: Breaking<'_>,
-    frame: &Pose,
-    p: &mut Prop,
-    before: &[f32],
-    cause: &mut Option<u32>,
-) {
-    let (a, s) = (at.a, at.s);
-    let masonry = s.mat.limits.shear_elastic.is_finite()
-        && s.mat.limits.tension_elastic <= 0.1 * s.mat.limits.shear_elastic;
-    let anchors = p.anchors;
-    if anchors && tick.is_multiple_of(REST_EVERY) && masonry {
-        let up = -(frame.1.inverse() * gravity).normalize_or_zero();
-        for c in p.inst.unsupported(a, &islands_of(&p.inst, a, anchors), up) {
-            p.inst.free(a, c);
-            cause.get_or_insert(CAUSE_STRESS);
-        }
-    }
-    // No-tension masonry in the air holds no bending: a loose run of
-    // mortared blocks longer than RUN comes apart at its joints the
-    // tick it breaks loose, into its blocks (each its own cluster of
-    // bricks), so the top of a blown wall goes up as a spray of
-    // blocks, not a sheet that bends away whole or a beam of courses
-    // lying across the hole.
-    if masonry && (0..before.len()).any(|i| before[i] > 0.0 && p.inst.bonds[i] <= 0.0) {
-        let mut run = vec![false; a.chunks.len()];
-        for isl in islands_of(&p.inst, a, anchors)
-            .into_iter()
-            .filter(|i| !i.anchored && i.chunks.len() > RUN)
-        {
-            isl.chunks.iter().for_each(|&c| run[c as usize] = true);
-        }
-        for (k, b) in a.bonds.iter().enumerate() {
-            if run[b.a as usize] && p.inst.bonds[k] > 0.0 {
-                p.inst.bonds[k] = 0.0;
-                p.inst.dirty = true;
-            }
-        }
-    }
-}
-
-/// The grit the joints broken this tick shed (spread over at most
-/// CRUMBS_A_TICK of them), with the mass of the piece beside each.
-fn shed_crumbs(
-    tick: u64,
-    at: Breaking<'_>,
-    frame: &Pose,
-    broken_now: &[bool],
-    scale: f32,
-    crumbs: &mut Vec<(Crumb, f32)>,
-) {
-    let (a, s) = (at.a, at.s);
-    let fresh: Vec<usize> = (0..broken_now.len()).filter(|&i| broken_now[i]).collect();
-    let step = fresh.len().div_ceil(CRUMBS_A_TICK).max(1);
-    for &i in fresh.iter().step_by(step) {
-        let b = &a.bonds[i];
-        let rot = at.pose[b.a as usize].map_or(frame.1, |ps| ps.1);
-        let v = a.chunks[b.a as usize].volume * scale * scale * scale;
-        crumbs.push((
-            Crumb {
-                prop: at.key,
-                bond: i as u32,
-                tick,
-                point: place_chunk(at, frame, b.a, b.centroid).to_array(),
-                normal: (rot * b.normal).to_array(),
-                velocity: [0.0; 3],
-            },
-            v * s.mat.density,
-        ));
     }
 }
 
@@ -1731,47 +1283,6 @@ fn push_blasted_bodies(
     Ok(())
 }
 
-/// The blasts' push on the fine pieces broken off this tick, as on a body
-/// (the pieces already on the GPU are the renderer's), and on the grit,
-/// which goes with the piece beside its joint.
-fn push_blasted_pieces(
-    settings: &BTreeMap<u64, Settings>,
-    explosions: &[Explosion],
-    debris: &mut [(Debris, f32)],
-    crumbs: &mut [(Crumb, f32)],
-) {
-    for &(point, inner, radius, impulse) in explosions {
-        if impulse <= 0.0 {
-            continue;
-        }
-        let falloff = Damage {
-            point,
-            min_radius: inner,
-            max_radius: radius,
-            amount: impulse,
-        };
-        for (d, m) in debris.iter_mut() {
-            let density = settings.get(&d.prop).map_or(1000.0, |s| s.mat.density);
-            let at = Vec3::new(d.pose[0], d.pose[1], d.pose[2]);
-            if let Some((dv, dw)) =
-                blast_push(&falloff, impulse, at, *m, density, u64::from(d.chunk))
-            {
-                d.velocity = (Vec3::from(d.velocity) + dv).to_array();
-                d.angular = (Vec3::from(d.angular) + dw).to_array();
-            }
-        }
-        // Grit goes with the piece beside its joint.
-        for (c, m) in crumbs.iter_mut() {
-            let density = settings.get(&c.prop).map_or(1000.0, |s| s.mat.density);
-            let at = Vec3::from(c.point);
-            if let Some((dv, _)) = blast_push(&falloff, impulse, at, *m, density, u64::from(c.bond))
-            {
-                c.velocity = (Vec3::from(c.velocity) + dv).to_array();
-            }
-        }
-    }
-}
-
 /// A hit's or a blow's push on the pieces it broke loose: the impulse
 /// past the threshold (momentum the striker gave up breaking through), or
 /// the blow's, shared by falloff over them, none driven faster than the
@@ -1860,104 +1371,6 @@ fn commit_fresh(
         ctx.insert_bytes(Entity::from_bits(b), l.velocity.0, &vb)?;
     }
     Ok(())
-}
-
-/// A loose island (a body and the chunks it carries) as the budgets weigh
-/// it: when it broke loose, its volume, and its chunks of its prop.
-struct Loose {
-    tick: u64,
-    volume: f32,
-    body: u64,
-    prop: u64,
-    chunks: Vec<usize>,
-}
-
-/// The loose islands, the oldest first (then the smallest, then by body).
-fn loose_islands(st: &State, assets: &Assets) -> Vec<Loose> {
-    let mut loose: BTreeMap<u64, Loose> = BTreeMap::new();
-    for (&k, p) in &st.props {
-        let a = &assets[&p.asset];
-        let scale = uniform(pose_of_frame(&p.frame).2);
-        for c in 0..a.chunks.len() {
-            let e = p.entities[c];
-            let b = if c < a.support as usize { p.body[c] } else { e };
-            if e == 0 || b == 0 {
-                continue;
-            }
-            let l = loose.entry(b).or_insert(Loose {
-                tick: p.loose[c],
-                volume: 0.0,
-                body: b,
-                prop: k,
-                chunks: Vec::new(),
-            });
-            l.tick = l.tick.min(p.loose[c]);
-            l.volume += a.chunks[c].volume * scale * scale * scale;
-            l.chunks.push(c);
-        }
-    }
-    let mut order: Vec<Loose> = loose.into_values().collect();
-    order.sort_by(|x, y| {
-        (x.tick, x.volume.to_bits(), x.body).cmp(&(y.tick, y.volume.to_bits(), y.body))
-    });
-    order
-}
-
-impl State {
-    /// Fine pieces and grit: gone `life` ticks after they broke off (when
-    /// they have a lifetime), or with their prop, and the oldest past
-    /// `max_debris` (what the renderer's debris layer holds) and
-    /// MAX_CRUMBS.
-    fn trim_pieces(&mut self, tick: u64, life: Option<u64>, max_debris: usize) {
-        let old = |born: u64| life.is_some_and(|life| tick >= born.saturating_add(life));
-        let props = &self.props;
-        self.debris
-            .retain(|d| props.contains_key(&d.prop) && !old(d.tick));
-        let over = self.debris.len().saturating_sub(max_debris);
-        self.debris.drain(..over);
-        self.crumbs
-            .retain(|c| props.contains_key(&c.prop) && !old(c.tick));
-        let over = self.crumbs.len().saturating_sub(MAX_CRUMBS);
-        self.crumbs.drain(..over);
-    }
-
-    /// The og.destruction state block's bytes.
-    fn save(&self, out: &mut Vec<u8>) {
-        out.extend_from_slice(MAGIC);
-        out.extend(bincode::serialize(self).expect("the og.destruction state serialises"));
-    }
-
-    /// The state [`State::save`] wrote.
-    fn decode(bytes: &[u8]) -> og_core::Result<State> {
-        let rest = bytes
-            .strip_prefix(MAGIC)
-            .ok_or_else(|| invalid("not an og.destruction state"))?;
-        bincode::deserialize(rest).map_err(|e| invalid(e.to_string()))
-    }
-
-    /// The origin moved by `d`: the frames and queued points are in the
-    /// world.
-    fn shift(&mut self, d: glam::DVec3) {
-        let m = |p: &mut [f32]| {
-            let v = (Vec3::new(p[0], p[1], p[2]).as_dvec3() + d).as_vec3();
-            p[..3].copy_from_slice(&v.to_array());
-        };
-        for p in self.props.values_mut() {
-            m(&mut p.frame);
-        }
-        for d in &mut self.debris {
-            m(&mut d.pose);
-        }
-        for c in &mut self.crumbs {
-            m(&mut c.point);
-        }
-        for op in &mut self.ops {
-            match op {
-                Op::Damage { point, .. } | Op::Explode { point, .. } => m(point),
-                Op::Fracture { .. } => {}
-            }
-        }
-    }
 }
 
 /// Budgets: loose islands (a body and its children) by when they broke
@@ -2282,8 +1695,6 @@ fn place(
 
 struct Block(Arc<Mutex<State>>);
 
-const MAGIC: &[u8; 8] = b"DESTRUC2";
-
 impl StateBlock for Block {
     fn save(&self, out: &mut Vec<u8>) {
         lock(&self.0).save(out);
@@ -2350,27 +1761,6 @@ pub(crate) struct DrawnDebris {
     pub velocity: Vec3,
     pub angular: Vec3,
     pub points: Vec<Vec3>,
-}
-
-/// Up to `n` of `hull`'s points spread over it (farthest-point sampling
-/// from the first): what a fine piece collides at.
-fn spread(hull: &[Vec3], n: usize) -> Vec<Vec3> {
-    if hull.len() <= n {
-        return hull.to_vec();
-    }
-    let mut out = vec![hull[0]];
-    let mut near: Vec<f32> = hull.iter().map(|p| p.distance_squared(hull[0])).collect();
-    while out.len() < n {
-        let (far, _) = near
-            .iter()
-            .enumerate()
-            .fold((0, -1.0f32), |b, (i, &d)| if d > b.1 { (i, d) } else { b });
-        out.push(hull[far]);
-        for (d, p) in near.iter_mut().zip(hull) {
-            *d = d.min(p.distance_squared(hull[far]));
-        }
-    }
-    out
 }
 
 /// Engine `engine`'s fractured props.
@@ -2605,35 +1995,6 @@ pub fn og_destruction_info(
         })
     })()
 }
-
-/// The face a piece of `volume` m³ shows a blast (m²): a blast's push is
-/// its impulse per square metre times that, so a brick is thrown faster
-/// than a run of twenty bricks, by the cube root of twenty, not twenty
-/// times (a blast pushes on surfaces: its momentum to a piece grows with
-/// the piece's face, not as one shove per body however small).
-fn face(volume: f32) -> f32 {
-    og_core::math::pow(volume.max(0.0), 2.0 / 3.0)
-}
-
-/// og.destruction.material: (toughness, strength, friction, tension,
-/// density, impactThreshold, impactRadius) per MATERIAL_*, the values the
-/// demolition-yard props were tuned to.
-const MATERIALS: [[f32; 7]; 5] = [
-    // Brick: tough bricks, weak mortar held by friction where it is
-    // pressed and next to nothing pulled apart; heavy blocks land at
-    // hundreds of N·s, so a lower threshold lets falling blocks knock
-    // the piers apart.
-    [800.0, 3000.0, 0.7, 0.1, 1900.0, 400.0, 0.4],
-    // Concrete: a column's top, dropping onto its stump when its middle is
-    // shot out, lands at over 1000 N·s; below 1500 that crushes the stump.
-    [2000.0, 20000.0, 0.7, 1.0, 2400.0, 1500.0, 0.4],
-    // Wood: weak across the grain, a hit spread over most of a crate.
-    [120.0, 30000.0, 0.7, 1.0, 600.0, 40.0, 0.9],
-    // Glass: shatters at a touch, no stress solver.
-    [25.0, 0.0, 0.7, 1.0, 2500.0, 2.0, 0.8],
-    // Dry stone: no mortar, no tension.
-    [1500.0, 4000.0, 0.8, 0.0, 2600.0, 500.0, 0.4],
-];
 
 pub fn og_destruction_material(
     world: u32,

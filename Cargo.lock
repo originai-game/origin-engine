@@ -3120,6 +3120,7 @@ dependencies = [
  "og-core",
  "og-ecs",
  "og-env",
+ "og-geom",
  "og-lanes",
  "og-net",
  "og-physics-data",
