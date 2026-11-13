@@ -68,6 +68,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     story::KINDS,
     strings::KINDS,
     navmesh::KINDS,
+    terrain::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

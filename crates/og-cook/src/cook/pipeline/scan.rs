@@ -82,7 +82,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (sfx::SFX_TYPE, Kind::Sound),
     (anim::RIG_TYPE, Kind::Rig),
     ("motion-action", Kind::MotionAction),
-    (terrain::TERRAIN_TYPE, Kind::Terrain),
     (timeline::TIMELINE_TYPE, Kind::Timeline),
     (lightmap::LIGHTMAP_TYPE, Kind::Lightmap),
     (environment::ENVIRONMENT_TYPE, Kind::Environment),

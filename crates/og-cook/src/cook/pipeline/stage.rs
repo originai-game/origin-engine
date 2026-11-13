@@ -282,7 +282,7 @@ pub(crate) fn resolve(
     // A terrain's heightmap and control map are part of the terrain, an
     // environment's image part of the environment.
     for s in sources.iter() {
-        if s.kind == Kind::Terrain {
+        if s.kind == Kind::System(&terrain::TERRAIN) {
             consumed.extend(terrain::terrain_files(
                 &s.rel,
                 assets_dir,
@@ -323,7 +323,7 @@ pub(crate) fn resolve(
         if s.kind == Kind::Texture && s.own_settings() {
             consumed.remove(&s.rel);
         }
-        if s.kind == Kind::Terrain {
+        if s.kind == Kind::System(&terrain::TERRAIN) {
             for layer in
                 terrain::layer_files(&s.rel, assets_dir, &String::from_utf8_lossy(&s.bytes))
             {

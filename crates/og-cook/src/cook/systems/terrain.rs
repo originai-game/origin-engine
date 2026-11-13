@@ -145,7 +145,10 @@
 //! its own; `albedoLayer` and `normalLayer` pick its layers. Rows of the heightmap run from -z (the image's
 //! top) to +z, columns from -x to +x.
 
-use super::{CookError, Source, assets_root};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    stamp,
+};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 use og_core::ogt::{Block, Document};
@@ -975,4 +978,45 @@ pub(crate) fn cook_terrain(
         ));
     }
     Ok((w.finish(), notes))
+}
+
+pub(crate) static TERRAIN: KindDef = KindDef {
+    name: "terrain",
+    extensions: &[],
+    types: &[TERRAIN_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_terrain,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&TERRAIN];
+
+fn plan_terrain<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = terrain_dependencies(s, &|id| known.contains(id));
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Terrain::NAME,
+        st,
+        Work::Job(Box::new(TerrainJob(s))),
+    ));
+}
+
+/// A terrain's one output.
+struct TerrainJob<'a>(&'a Source);
+
+impl Job for TerrainJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_terrain(self.0, &|id| ex.known.contains(id), p.stamp)
+    }
 }

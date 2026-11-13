@@ -76,21 +76,6 @@ pub(super) fn plan_motion_action<'a>(
     ));
 }
 
-pub(super) fn plan_terrain<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx { known, .. } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let deps = terrain::terrain_dependencies(s, &|id| known.contains(id));
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::Terrain::NAME, st, Work::Terrain(s)));
-}
-
 pub(super) fn plan_lightmap<'a>(
     _cx: &Cx<'a>,
     state: &mut PlanState,

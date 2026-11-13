@@ -490,7 +490,6 @@ pub(crate) fn run(
         Work::MotionAction(s) => {
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
         }
-        Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),
         Work::Effect(s) => effect::cook_effect(s, &|id| known.contains(id), p.stamp),
