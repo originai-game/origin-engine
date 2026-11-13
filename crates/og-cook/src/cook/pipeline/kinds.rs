@@ -108,6 +108,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     riv::KINDS,
     video::KINDS,
     texture_array::KINDS,
+    font::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

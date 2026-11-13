@@ -188,9 +188,6 @@ pub(crate) fn run(
             audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
         }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
-        Work::Font(s, f) => {
-            font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
-        }
         Work::Job(job) => job.cook(
             p,
             &Exec {
