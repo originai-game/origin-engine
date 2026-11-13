@@ -154,7 +154,7 @@ impl Ui {
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
-        kind: &str,
+        kind: Kind,
         id: &str,
         r: &Resolved,
         props: Props,
@@ -172,7 +172,7 @@ impl Ui {
         };
         let count = items.len() as u32;
         let padding = r.nums("padding").map(insets_of).unwrap_or_default();
-        let range = if kind == "list" {
+        let range = if kind == Kind::List {
             self.open_list(
                 id,
                 crate::widgets::ListDesc {
@@ -205,14 +205,14 @@ impl Ui {
         }
         for k in range.first..range.last.min(count) {
             self.docs.structure_row(k as usize);
-            let resp = if kind == "list" {
+            let resp = if kind == Kind::List {
                 self.list_item(k, false)
             } else {
                 self.grid_item(k, false)
             };
             let row = format!(
                 "{path}/{}",
-                if kind == "list" {
+                if kind == Kind::List {
                     crate::ui_idi("Row", k)
                 } else {
                     crate::ui_idi("Cell", k)

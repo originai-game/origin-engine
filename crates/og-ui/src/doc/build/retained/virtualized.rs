@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl RetainedHost {
     #[allow(clippy::too_many_arguments)]
@@ -15,7 +16,7 @@ impl RetainedHost {
         let Some(Child::Each(id)) = element.children.first() else {
             return Err("a virtual container requires a keyed each child".into());
         };
-        let grid = element.document.nodes[element.index].kind == NodeKind::Element("cells");
+        let grid = element.document.nodes[element.index].kind == NodeKind::Element(Kind::Cells);
         let r = &element.resolved.as_ref().unwrap().values;
         let each = &self.each[id];
         let count = each.order.len() as u32;
@@ -202,7 +203,7 @@ impl RetainedHost {
                 let parent = &self.elements[&each.parent];
                 let keys: Box<dyn Iterator<Item = &String>> = if matches!(
                     parent.document.nodes[parent.index].kind,
-                    NodeKind::Element("list" | "cells")
+                    NodeKind::Element(Kind::List | Kind::Cells)
                 ) {
                     Box::new(each.materialized.iter())
                 } else {

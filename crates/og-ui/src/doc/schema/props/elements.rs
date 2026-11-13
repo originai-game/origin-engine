@@ -1,6 +1,6 @@
 //! The props of the box, of the element model (docs/ui.md §6.1) and of each
 //! HTML-shaped kind.
-use super::super::{On, PropSpec, Ty};
+use super::super::{Kind, On, PropSpec, Ty};
 
 const STEPS: &[&str] = &crate::style_file::STEP_NAMES;
 
@@ -8,11 +8,11 @@ macro_rules! p {
     ($name:literal, $ty:expr, $doc:literal) => {
         PropSpec { name: $name, ty: $ty, on: On::All, two_way: false, doc: $doc }
     };
-    ($name:literal, $ty:expr, [$($k:literal),*], $doc:literal) => {
-        PropSpec { name: $name, ty: $ty, on: On::Kinds(&[$($k),*]), two_way: false, doc: $doc }
+    ($name:literal, $ty:expr, [$($k:ident),*], $doc:literal) => {
+        PropSpec { name: $name, ty: $ty, on: On::Kinds(&[$(Kind::$k),*]), two_way: false, doc: $doc }
     };
-    ($name:literal, $ty:expr, [$($k:literal),*], two_way, $doc:literal) => {
-        PropSpec { name: $name, ty: $ty, on: On::Kinds(&[$($k),*]), two_way: true, doc: $doc }
+    ($name:literal, $ty:expr, [$($k:ident),*], two_way, $doc:literal) => {
+        PropSpec { name: $name, ty: $ty, on: On::Kinds(&[$(Kind::$k),*]), two_way: true, doc: $doc }
     };
 }
 
@@ -227,7 +227,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "direction",
         Ty::Word(&["row", "column", "rowReverse", "columnReverse"]),
-        ["row", "column", "box"],
+        [Row, Column, Box],
         "Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content)."
     ),
     p!("background", Ty::Paint, "Its fill."),
@@ -375,20 +375,20 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "rive",
         Ty::Name,
-        ["column"],
+        [Column],
         "The Rive artboard played by `<og-rive src=\"ui/chest.riv#Chest\">`: `<file>.riv#<Artboard>` relative to assets/. Loaded with its document, advanced on the tick, drawn over its background and saved with the UI's state; its drawn objects are elements for dump_ui, describe and pick."
     ),
     p!("aspect", Ty::Num, "Width over height (0: none)."),
     p!(
         "fade",
         Ty::Num,
-        ["scroll"],
+        [Scroll],
         "How far, CSS px, its edges fade where its content runs on past them (a cut row reads as more, not as a clip); 0: none."
     ),
     p!(
         "fadeInto",
         Ty::Paint,
-        ["scroll"],
+        [Scroll],
         "The colour its fade runs into: the ground it sits on (default panel)."
     ),
     p!("interactive", Ty::Bool, "It reports clicks (`on click`)."),
@@ -543,13 +543,13 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "colspan",
         Ty::Num,
-        ["box"],
+        [Box],
         "A table cell's columns (`<td colspan>`), 1 by default; CSS table layout reads it."
     ),
     p!(
         "rowspan",
         Ty::Num,
-        ["box"],
+        [Box],
         "A table cell's rows (`<td rowspan>`), 1 by default, 0 to the end of its row group; CSS table layout reads it."
     ),
     p!("inert", Ty::Bool, "It and its subtree take no input."),
@@ -759,25 +759,25 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "dataAction",
         Ty::Name,
-        ["kbd", "button"],
+        [Kbd, Button],
         "On `<kbd>`, the action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live. On a `<button data-hold>`, the action whose hold holds it as a press does."
     ),
     p!(
         "glyphDevice",
         Ty::Text,
-        ["kbd"],
+        [Kbd],
         "The device it draws for (bound to `$ui.device` by the parser: a device change rebuilds it)."
     ),
     p!(
         "dataOgRebind",
         Ty::Bool,
-        ["kbd"],
+        [Kbd],
         "A press captures the next key as its binding (`bind:value`), Escape cancels."
     ),
     p!(
         "binding",
         Ty::Text,
-        ["kbd"],
+        [Kbd],
         two_way,
         "With dataOgRebind: the key code it captured (`bind:value`), written back."
     ),
@@ -790,368 +790,363 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "text",
         Ty::Text,
-        ["label", "button", "badge", "toggle", "radio", "tabs", "kbd"],
+        [Label, Button, Badge, Toggle, Radio, Tabs, Kbd],
         "What it says."
     ),
     p!(
         "key",
         Ty::Name,
-        ["label", "button", "badge", "toggle", "radio", "tabs", "kbd"],
+        [Label, Button, Badge, Toggle, Radio, Tabs, Kbd],
         "A string table key (og.i18n) its text comes from; `text` is the fallback."
     ),
-    p!("step", Ty::Word(STEPS), ["label"], "The type step."),
-    p!("color", Ty::Paint, ["label", "icon"], "Its ink."),
+    p!("step", Ty::Word(STEPS), [Label], "The type step."),
+    p!("color", Ty::Paint, [Label, Icon], "Its ink."),
     p!(
         "spans",
         Ty::Spans,
-        ["label"],
+        [Label],
         "Read-only TextSpan[] ranges over plain text; offsets count Unicode scalars. Styles come from ::part(name)."
     ),
     p!(
         "uppercase",
         Ty::Bool,
-        ["label"],
+        [Label],
         "Uppercase in the UI's locale, as a type role with `case upper` is."
     ),
     p!(
         "secondary",
         Ty::Name,
-        ["icon"],
+        [Icon],
         "The second icon layer, in the same atlas."
     ),
     p!(
         "textAlign",
         Ty::Word(&["start", "center", "end"]),
-        ["label"],
+        [Label],
         "How its lines align."
     ),
-    p!("nowrap", Ty::Bool, ["label"], "One line."),
-    p!("maxLines", Ty::Num, ["label"], "The most lines it shows."),
+    p!("nowrap", Ty::Bool, [Label], "One line."),
+    p!("maxLines", Ty::Num, [Label], "The most lines it shows."),
     p!(
         "fitMin",
         Ty::Word(STEPS),
-        ["label"],
+        [Label],
         "Shrinks by measured text fit through type steps down to this literal step (for example -og-fit-min: caption). Extension reason: clamp() and container units cannot choose a type step by measuring shaped text. Author variables may substitute a step name; no custom-property name has engine meaning."
     ),
     p!(
         "ellipsis",
         Ty::Bool,
-        ["label"],
+        [Label],
         "Cut with … where it does not fit."
     ),
     p!(
         "ellipsisText",
         Ty::Text,
-        ["label"],
+        [Label],
         "What its cut ends in instead of … (`text-overflow: \"<string>\"`)."
     ),
     p!(
         "font",
         Ty::Word(&["body", "display", "mono", "rounded"]),
-        ["label"],
+        [Label],
         "The font role."
     ),
     p!(
         "heading",
         Ty::Bool,
-        ["label"],
+        [Label],
         "A heading (a style's flourish frames it)."
     ),
     // Controls.
     p!(
         "variant",
         Ty::Word(&["secondary", "primary", "quiet", "danger", "ghost"]),
-        ["button"],
+        [Button],
         "The button's role."
     ),
     p!(
         "disabled",
         Ty::Bool,
         [
-            "button", "slider", "toggle", "radio", "color", "datetime", "file", "tabs", "field",
-            "select", "details", "joystick", "dpad"
+            Button, Slider, Toggle, Radio, Color, Datetime, File, Tabs, Field, Select, Details,
+            Joystick, Dpad
         ],
         "Takes no input."
     ),
     p!(
         "autofocus",
         Ty::Bool,
-        ["button"],
+        [Button],
         "Takes the focus when it appears."
     ),
     p!(
         "square",
         Ty::Bool,
-        ["button"],
+        [Button],
         "A square of the control height: an icon button."
     ),
     p!(
         "value",
         Ty::Num,
-        ["progress", "slider", "meter"],
+        [Progress, Slider, Meter],
         two_way,
         "Its value (a slider writes it back)."
     ),
     p!(
         "min",
         Ty::Num,
-        ["slider", "field", "meter"],
+        [Slider, Field, Meter],
         "The range's low end; a number input under it is invalid (`rangeUnderflow`)."
     ),
     p!(
         "max",
         Ty::Num,
-        ["slider", "field", "meter"],
+        [Slider, Field, Meter],
         "The range's high end; a number input over it is invalid (`rangeOverflow`)."
     ),
     p!(
         "showValue",
         Ty::Bool,
-        ["slider"],
+        [Slider],
         "Show the slider's value readout (default true); false when an adjacent label supplies units."
     ),
     p!(
         "dataFillOrigin",
         Ty::Num,
-        ["slider"],
+        [Slider],
         "The value its fill grows from (`data-fill-origin`; default min): 0 on a -1 to 1 balance fills either way from the centre."
     ),
     p!(
         "markValues",
         Ty::Names,
-        ["slider"],
+        [Slider],
         "The values of the `<datalist>` its `list` names: a tick at each."
     ),
     p!(
         "markLabels",
         Ty::Names,
-        ["slider"],
+        [Slider],
         "The marks' labels, under the track (an `<option label>`'s, or its text); empty for a tick only."
     ),
     p!(
         "stepBy",
         Ty::Num,
-        ["slider", "field", "datetime"],
+        [Slider, Field, Datetime],
         "A slider snaps to multiples of this (0: continuous). A number input's value off the step grid from `min` is invalid (default 1; `any` or 0: no step)."
     ),
     p!(
         "switch",
         Ty::Bool,
-        ["toggle"],
+        [Toggle],
         "Draws the checkbox as a switch (HTML `switch`); without it, a box with a check."
     ),
     p!(
         "indeterminate",
         Ty::Bool,
-        ["toggle"],
+        [Toggle],
         "Neither on nor off: a dash in its box (HTML `indeterminate`); a press turns it on."
     ),
     p!(
         "dataOn",
         Ty::Text,
-        ["toggle"],
+        [Toggle],
         "What a switch's value says while on (`data-on=\"On\"`), for a screen reader and the probe; empty for none."
     ),
     p!(
         "dataOff",
         Ty::Text,
-        ["toggle"],
+        [Toggle],
         "And while off (`data-off=\"Off\"`)."
     ),
     p!(
         "group",
         Ty::Text,
-        ["radio"],
+        [Radio],
         two_way,
         "The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value."
     ),
     p!(
         "mediaSrc",
         Ty::Num,
-        ["video", "audio"],
+        [Video, Audio],
         "The player (HTML `src`): an entity with og.VideoPlayer (a video's) or og.AudioSource, from a store."
     ),
     p!(
         "paused",
         Ty::Bool,
-        ["video", "audio"],
+        [Video, Audio],
         two_way,
         "Whether it is paused (Svelte's `bind:paused`): written to play or pause it, written back as it ends."
     ),
     p!(
         "currentTime",
         Ty::Num,
-        ["video"],
+        [Video],
         two_way,
         "Seconds in (`bind:currentTime`): written back as it plays; a value off the player's seeks it."
     ),
     p!(
         "duration",
         Ty::Num,
-        ["video"],
+        [Video],
         two_way,
         "Its length in seconds (`bind:duration`; written back)."
     ),
     p!(
         "volume",
         Ty::Num,
-        ["video", "audio"],
+        [Video, Audio],
         two_way,
         "Its sound's gain, 0 to 1 (`bind:volume`; default 1)."
     ),
     p!(
         "muted",
         Ty::Bool,
-        ["video", "audio"],
+        [Video, Audio],
         two_way,
         "Silenced whatever its volume (`bind:muted`)."
     ),
     p!(
         "ended",
         Ty::Bool,
-        ["video"],
+        [Video],
         two_way,
         "It reached its end without loop (`bind:ended`; written back)."
     ),
     p!(
         "autoplay",
         Ty::Bool,
-        ["video", "audio"],
+        [Video, Audio],
         "Plays as it first appears."
     ),
-    p!(
-        "loop",
-        Ty::Bool,
-        ["video", "audio"],
-        "Starts again at its end."
-    ),
+    p!("loop", Ty::Bool, [Video, Audio], "Starts again at its end."),
     p!(
         "poster",
         Ty::Num,
-        ["video"],
+        [Video],
         "A texture handle shown until the first frame plays (HTML `poster`), usually bound."
     ),
     p!(
         "controls",
         Ty::Bool,
-        ["video", "audio"],
+        [Video, Audio],
         "Draws a play and pause button and its time."
     ),
     p!(
         "fileValue",
         Ty::Text,
-        ["file"],
+        [File],
         two_way,
         "The names of the files chosen, comma-separated (HTML `value`; the host writes it)."
     ),
     p!(
         "accept",
         Ty::Text,
-        ["file"],
+        [File],
         "The types it takes (HTML `accept`: `.png,image/*`)."
     ),
     p!(
         "multiple",
         Ty::Bool,
-        ["file"],
+        [File],
         "More than one file may be chosen."
     ),
     p!(
         "dateValue",
         Ty::Text,
-        ["datetime"],
+        [Datetime],
         two_way,
         "Its value in HTML's format (`2026-11-08`, `14:30`, `2026-11-08T14:30`, `2026-11`, `2026-W45`; written back); empty until a part is stepped."
     ),
     p!(
         "dateType",
         Ty::Word(&["date", "time", "datetime-local", "month", "week"]),
-        ["datetime"],
+        [Datetime],
         "Which parts it has (HTML `type`)."
     ),
     p!(
         "dateMin",
         Ty::Text,
-        ["datetime"],
+        [Datetime],
         "The earliest value (HTML `min`, in its format); the picker keeps to it and is the step base."
     ),
     p!(
         "dateMax",
         Ty::Text,
-        ["datetime"],
+        [Datetime],
         "The latest value (HTML `max`, in its format)."
     ),
     p!(
         "colorValue",
         Ty::Text,
-        ["color"],
+        [Color],
         two_way,
         "Its colour as `#rrggbb` (HTML `value`; written back)."
     ),
     p!(
         "choice",
         Ty::Text,
-        ["radio"],
+        [Radio],
         "Its value (HTML `value`), what its group holds when it is checked."
     ),
     p!(
         "dataWrap",
         Ty::Bool,
-        ["field"],
+        [Field],
         "A number input past its last valid step at or below max goes to min and back (`data-wrap`; needs both bounds)."
     ),
     p!(
         "dataLargeStep",
         Ty::Num,
-        ["field"],
+        [Field],
         "The larger number-input step for Shift adjustment or a button held past a second (`data-large-step=\"10\"`); 0 is ten steps."
     ),
     p!(
         "dataFormat",
         Ty::Text,
-        ["field"],
+        [Field],
         "How an unfocused number input presents its value: an ICU message over `value` in the UI's locale (`data-format=\"{value, number} m\"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`). Editing retains the raw string."
     ),
     p!(
         "count",
         Ty::Num,
-        ["label"],
+        [Label],
         "The target value of <og-counter value={$score}>. Changes interpolate over its duration in engine ticks."
     ),
     p!(
         "countDuration",
         Ty::Num,
-        ["label"],
+        [Label],
         "The counter's duration in milliseconds (900 by default; zero also selects the default)."
     ),
     p!(
         "countDecimals",
         Ty::Num,
-        ["label"],
+        [Label],
         "The counter's digits after the decimal point."
     ),
     p!(
         "reveal",
         Ty::Num,
-        ["label"],
+        [Label],
         "The typewriter's extended grapheme clusters per second; onrevealed fires once when the text is whole. Text changes restart it. Reduced motion shows the whole text. Progress follows engine ticks and checkpoints."
     ),
     p!(
         "dataCycle",
         Ty::Bool,
-        ["select"],
+        [Select],
         "`<select data-cycle>` draws previous, its option and next; selection, events and bindings remain those of the select."
     ),
     p!(
         "dataFilterPlaceholder",
         Ty::Text,
-        ["select"],
+        [Select],
         "What the open list's filter field shows while empty (`data-filter-placeholder`); empty is Filter."
     ),
     p!(
         "spotlight",
         Ty::Name,
-        ["dialog"],
+        [Dialog],
         "The id tracked by <og-spotlight target=\"Target\">. While open it dims the page outside that element and places its content as a callout."
     ),
     p!(
@@ -1162,101 +1157,101 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "checked",
         Ty::Bool,
-        ["toggle", "radio"],
+        [Toggle, Radio],
         two_way,
         "Whether it is on (written back)."
     ),
     p!(
         "description",
         Ty::Text,
-        ["toggle", "radio"],
+        [Toggle, Radio],
         "A line under its caption: a `<small>` in its `<label>`."
     ),
     p!(
         "side",
         Ty::Word(&["start", "end"]),
-        ["toggle", "radio"],
+        [Toggle, Radio],
         "Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it."
     ),
     p!(
         "labelDirection",
         Ty::Word(&["row", "rowReverse", "column", "columnReverse"]),
-        ["toggle"],
+        [Toggle],
         "`flex-direction` on a checkbox's label: rowReverse swaps its caption's side."
     ),
     p!(
         "items",
         Ty::Names,
-        ["tabs", "select"],
+        [Tabs, Select],
         "The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them)."
     ),
     p!(
         "keys",
         Ty::Names,
-        ["tabs", "select"],
+        [Tabs, Select],
         "A string table key (og.i18n) per tab its label comes from; its item is the fallback."
     ),
     p!(
         "icons",
         Ty::Names,
-        ["tabs"],
+        [Tabs],
         "An icon of the style's set per tab, before its label (`icons=\"sword shield\"`, or a bound list); an empty name is none."
     ),
     p!(
         "badges",
         Ty::Names,
-        ["tabs"],
+        [Tabs],
         "A count badge per tab, after its label (`badges={$unread}`, a list of strings); an empty one is none."
     ),
     p!(
         "values",
         Ty::Names,
-        ["tabs", "select"],
+        [Tabs, Select],
         "A name per tab (a screen's mode) that `current` holds instead of `selected`'s index."
     ),
     p!(
         "current",
         Ty::Name,
-        ["tabs", "select"],
+        [Tabs, Select],
         two_way,
         "The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set."
     ),
     p!(
         "selected",
         Ty::Num,
-        ["tabs"],
+        [Tabs],
         two_way,
         "The selected tab's zero-based index."
     ),
     p!(
         "groups",
         Ty::Names,
-        ["select"],
+        [Select],
         "An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other."
     ),
     p!(
         "disabledItems",
         Ty::Names,
-        ["select"],
+        [Select],
         "The `<option disabled>`s (and those of an `<optgroup disabled>`), by their zero-based index."
     ),
     p!(
         "open",
         Ty::Bool,
-        ["dialog", "details"],
+        [Dialog, Details],
         two_way,
         "Whether it is open (HTML `open`; closing writes false back)."
     ),
     p!(
         "closedby",
         Ty::Word(&["any", "closerequest", "none"]),
-        ["dialog"],
+        [Dialog],
         "What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place."
     ),
     p!(
         "appearance",
         Ty::Word(&["auto", "none"]),
-        ["dialog", "field"],
+        [Dialog, Field],
         "none drops the control's own frame: its box, borders and background are the document's."
     ),
     p!(
@@ -1317,13 +1312,13 @@ pub const CORE_PROPS: &[PropSpec] = &[
             "lowerRoman",
             "upperRoman"
         ]),
-        ["box"],
+        [Box],
         "An `<li>`'s marker, from the inherited `list-style-type` (`<ul>`: disc, nested circle then square; `<ol>`: decimal)."
     ),
     p!(
         "markerPosition",
         Ty::Word(&["outside", "inside"]),
-        ["box"],
+        [Box],
         "Where an `<li>`'s marker sits, from the inherited `list-style-position`: `outside` hangs it before the item's start edge (the default), `inside` lays the item out as a row after it."
     ),
     p!(
@@ -1334,230 +1329,230 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "href",
         Ty::Text,
-        ["label"],
+        [Label],
         "An `<a>`'s destination: a click sends a `link` event named by it (as `onclick` fires)."
     ),
     p!(
         "modal",
         Ty::Bool,
-        ["dialog"],
+        [Dialog],
         "Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`)."
     ),
     p!(
         "summary",
         Ty::Text,
-        ["details"],
+        [Details],
         "Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`."
     ),
     p!(
         "exclusive",
         Ty::Name,
-        ["details"],
+        [Details],
         "HTML `name` on a `<details>`, an exclusive accordion: of the disclosures in a document sharing it, one is open at once, and opening one closes the others (its open state written back)."
     ),
     p!(
         "low",
         Ty::Num,
-        ["meter", "slider"],
+        [Meter, Slider],
         two_way,
         "A meter's top of the low region (HTML `low`; default `min`). On a range input with `high`, its low knob (a slider writes it back)."
     ),
     p!(
         "high",
         Ty::Num,
-        ["meter", "slider"],
+        [Meter, Slider],
         two_way,
         "A meter's bottom of the high region (HTML `high`; default `max`). On a range input, its high knob: two knobs on one track, `low` to `high` (a slider writes both back)."
     ),
     p!(
         "suggestions",
         Ty::Names,
-        ["field"],
+        [Field],
         "A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field."
     ),
     p!(
         "suggestionLabels",
         Ty::Names,
-        ["field"],
+        [Field],
         "The labels of the input's datalist options, separate from the values written on selection."
     ),
     p!(
         "suggestionKeys",
         Ty::Names,
-        ["field"],
+        [Field],
         "Translation keys for datalist option labels; missing translations use the option's literal label."
     ),
     p!(
         "dataMinGap",
         Ty::Num,
-        ["slider"],
+        [Slider],
         "The least distance between a range input's two knobs (`data-min-gap`, in its values; default 0)."
     ),
     p!(
         "optimum",
         Ty::Num,
-        ["meter"],
+        [Meter],
         "The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`."
     ),
     p!(
         "fill",
         Ty::Bool,
-        ["tabs"],
+        [Tabs],
         "Equal tabs filling the available width."
     ),
     p!(
         "input",
         Ty::Text,
-        ["field"],
+        [Field],
         two_way,
         "The field's text (written back)."
     ),
     p!(
         "placeholder",
         Ty::Text,
-        ["field", "select"],
+        [Field, Select],
         "Shown while it is empty."
     ),
     p!(
         "readonly",
         Ty::Bool,
-        ["field", "datetime"],
+        [Field, Datetime],
         "Its text is selected and copied but never edited; it keeps its focus stop."
     ),
     p!(
         "required",
         Ty::Bool,
-        ["field", "datetime"],
+        [Field, Datetime],
         "Empty is invalid (`valueMissing`)."
     ),
     p!(
         "minChars",
         Ty::Num,
-        ["field"],
+        [Field],
         "Fewer characters are invalid (HTML `minlength`)."
     ),
     p!(
         "pattern",
         Ty::Text,
-        ["field"],
+        [Field],
         "A regular expression the whole text must match (HTML `pattern`); refused when it is not one."
     ),
     p!(
         "lines",
         Ty::Num,
-        ["field"],
+        [Field],
         "A `<textarea>`'s lines shown at once (HTML `rows`; 0 is 4); more scroll."
     ),
     p!(
         "multiline",
         Ty::Bool,
-        ["field"],
+        [Field],
         "Set by `<textarea>`: Enter starts a line and the text wraps. Not written as an attribute."
     ),
     p!(
         "maxChars",
         Ty::Num,
-        ["field"],
+        [Field],
         "The most characters it takes."
     ),
     p!(
         "tight",
         Ty::Bool,
-        ["field"],
+        [Field],
         "No inset and its text's line height: the text sits where the field is laid (in a box the screen draws)."
     ),
     p!(
         "component",
         Ty::Name,
-        ["field"],
+        [Field],
         "The component its style dresses it as (`Poem`, `Search[large]`): `<component>.frame`, `.text` and `.placeholder`; else Field."
     ),
     p!(
         "invalid",
         Ty::Bool,
-        ["field", "select", "toggle"],
+        [Field, Select, Toggle],
         "Its value is wrong (`aria-invalid`): the danger frame."
     ),
     p!(
         "type",
         Ty::Word(&crate::InputType::NAMES),
-        ["field"],
+        [Field],
         "What it takes, by HTML's names: `password` is drawn masked with a reveal toggle (`<component>.reveal[revealed]`) and never copied or cut; `number` takes only a number's characters; a `number`, `email` or `url` whose text is not one matches `:invalid`. Each picks its virtual keyboard."
     ),
     p!(
         "inputmode",
         Ty::Word(&crate::InputMode::NAMES),
-        ["field"],
+        [Field],
         "The virtual keyboard a touch device shows (HTML `inputmode`; `none`: the game shows its own); unset, its `type`'s."
     ),
     p!(
         "enterkeyhint",
         Ty::Word(&["enter", "done", "go", "next", "previous", "search", "send"]),
-        ["field"],
+        [Field],
         "The on-screen keyboard's enter key (HTML `enterkeyhint`): `Search`, `Send`, `Go` and so on; unset, `Done`."
     ),
     p!(
         "lang",
         Ty::Name,
-        ["field"],
+        [Field],
         "The language typed (HTML `lang`): `ja` offers the on-screen keyboard's kana table."
     ),
     p!(
         "autocomplete",
         Ty::Name,
-        ["field"],
+        [Field],
         "The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `email`, `off`…)."
     ),
     p!(
         "tone",
         Ty::Word(&["neutral", "info", "success", "warn", "danger", "accent"]),
-        ["badge"],
+        [Badge],
         "Its tone."
     ),
-    p!("vertical", Ty::Bool, ["divider"], "Upright."),
+    p!("vertical", Ty::Bool, [Divider], "Upright."),
     // Images and art.
     p!(
         "texture",
         Ty::Num,
-        ["image", "art"],
+        [Image, Art],
         "A texture handle (og.load.texture), usually bound."
     ),
     p!(
         "uv",
         Ty::Num4,
-        ["image"],
+        [Image],
         "The part of the texture it shows (`object-view-box: inset(…)` in percentages of the texture, ordered top, right, bottom, left)."
     ),
     p!(
         "icon",
         Ty::Name,
-        ["icon"],
+        [Icon],
         "The icon's name in the style's set."
     ),
-    p!("iconSize", Ty::Num, ["icon"], "CSS px (24 by default)."),
+    p!("iconSize", Ty::Num, [Icon], "CSS px (24 by default)."),
     p!(
         "cue",
         Ty::Name,
-        ["icon"],
+        [Icon],
         "On <og-icon cue=\"danger\">, the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins. Style the primary and secondary layers with ::part(image) and ::part(secondary)."
     ),
     p!(
         "kind",
         Ty::Name,
-        ["art"],
+        [Art],
         "The slot's kind (Appendix F: itemIcon, bust, keyArt…)."
     ),
     p!(
         "ratio",
         Ty::Num2,
-        ["art"],
+        [Art],
         "The slot's aspect, width and height in whole numbers."
     ),
-    p!("focal", Ty::Num2, ["art"], "The point cropping keeps, 0–1."),
+    p!("focal", Ty::Num2, [Art], "The point cropping keeps, 0–1."),
     p!(
         "safe",
         Ty::Num4,
-        ["art"],
+        [Art],
         "Where text or controls lie over it: x0 y0 x1 y1, 0–1."
     ),
     p!(
@@ -1571,46 +1566,41 @@ pub const CORE_PROPS: &[PropSpec] = &[
             "nineSlice",
             "tile"
         ]),
-        ["image", "art"],
+        [Image, Art],
         "CSS `object-fit`: how the image fills its box (fill, contain, cover, none, scale-down) or the art its slot (also nineSlice and tile)."
     ),
     p!(
         "objectPosition",
         Ty::Text,
-        ["image", "art"],
+        [Image, Art],
         "CSS `object-position`: where contain, cover, none or scale-down place the image in its box, as background-position is written (50% 50% by default)."
     ),
     p!(
         "itemCells",
         Ty::Num2,
-        ["art"],
+        [Art],
         "An item icon's grid cells, columns and rows (1 1, 1 2, 2 3 or 2 4)."
     ),
     p!(
         "slice",
         Ty::Insets,
-        ["art"],
+        [Art],
         "A nine-slice's insets as fractions of the art: all, x y, or left top right bottom."
     ),
     p!(
         "artSet",
         Ty::Name,
-        ["art"],
+        [Art],
         "The set it is generated with for a consistent look (the kind's name by default)."
     ),
     // Virtualised containers.
-    p!(
-        "rowHeight",
-        Ty::Num,
-        ["list"],
-        "Every row's height, CSS px."
-    ),
-    p!("cellWidth", Ty::Num, ["cells"], "A cell's width, CSS px."),
-    p!("cellHeight", Ty::Num, ["cells"], "A cell's height, CSS px."),
+    p!("rowHeight", Ty::Num, [List], "Every row's height, CSS px."),
+    p!("cellWidth", Ty::Num, [Cells], "A cell's width, CSS px."),
+    p!("cellHeight", Ty::Num, [Cells], "A cell's height, CSS px."),
     p!(
         "cellColumns",
         Ty::Num,
-        ["cells"],
+        [Cells],
         "Cells across (0: as many as fit)."
     ),
 ];

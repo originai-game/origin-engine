@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 use crate::element::{DragSpec, DropSpec};
 
 impl Ui {
@@ -400,13 +401,13 @@ impl Ui {
         // A `<div>` with `display: grid` lays out as a `<grid>` does; a
         // table lays its cells out in a grid of its own.
         let grid_box =
-            *kind == NodeKind::Element("box") && inner_display(r.str("display")) == "grid";
-        if *kind == NodeKind::Element("box") && inner_display(r.str("display")) == "table" {
+            *kind == NodeKind::Element(Kind::Box) && inner_display(r.str("display")) == "grid";
+        if *kind == NodeKind::Element(Kind::Box) && inner_display(r.str("display")) == "table" {
             p.layout = LayoutMode::Grid;
         }
         match kind {
-            NodeKind::Element("stack") => p.layout = LayoutMode::Stack,
-            NodeKind::Element("grid") => {
+            NodeKind::Element(Kind::Stack) => p.layout = LayoutMode::Stack,
+            NodeKind::Element(Kind::Grid) => {
                 p.layout = LayoutMode::Grid;
                 p.grid = grid_of(r);
             }

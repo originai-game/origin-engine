@@ -206,7 +206,7 @@ fn core_documents_preserve_screen_pixels() {
             .nodes
             .iter()
             .enumerate()
-            .filter(|(_, node)| node.kind == doc::NodeKind::Element("art"))
+            .filter(|(_, node)| node.kind == doc::NodeKind::Element(doc::schema::Kind::Art))
             .map(|(i, node)| (i, node.id == "Logo" || name == "splash"))
             .collect();
         for (i, logo) in art_nodes {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl Parser {
     /// Joins each `aria-labelledby` and `aria-describedby` to the text of
@@ -70,7 +71,7 @@ impl Parser {
                 ));
             };
             let strs = |v: Vec<String>| PropValue::Lit(Lit::Strs(v));
-            if matches!(self.doc.nodes[range].kind, NodeKind::Element("field")) {
+            if matches!(self.doc.nodes[range].kind, NodeKind::Element(Kind::Field)) {
                 // A text input's suggestions: the options' values, or the
                 // datalist's bound items. Labels and translations never
                 // replace the value written back on selection.
@@ -82,7 +83,7 @@ impl Parser {
                     Some(e) => PropValue::Bind(e, None),
                     None => strs(options.iter().map(|o| o.value.clone()).collect()),
                 };
-                self.prop(range, "field", "suggestions", value, at, "")?;
+                self.prop(range, Some(Kind::Field), "suggestions", value, at, "")?;
                 for (name, values) in [
                     (
                         "suggestionLabels",
@@ -96,7 +97,7 @@ impl Parser {
                             .collect(),
                     ),
                 ] {
-                    self.prop(range, "field", name, strs(values), at, "")?;
+                    self.prop(range, Some(Kind::Field), name, strs(values), at, "")?;
                 }
                 continue;
             }
@@ -129,8 +130,8 @@ impl Parser {
                     })
                     .collect(),
             );
-            self.prop(range, "slider", "markValues", values, at, "")?;
-            self.prop(range, "slider", "markLabels", labels, at, "")?;
+            self.prop(range, Some(Kind::Slider), "markValues", values, at, "")?;
+            self.prop(range, Some(Kind::Slider), "markLabels", labels, at, "")?;
         }
         Ok(())
     }
@@ -161,7 +162,7 @@ impl Parser {
                 unreachable!("found an element");
             };
             match kind {
-                "toggle" => {
+                Kind::Toggle => {
                     if self.doc.nodes[target]
                         .props
                         .iter()
@@ -191,7 +192,12 @@ impl Parser {
                     self.doc.nodes[label].props.clear();
                     self.doc.nodes[label].children.clear();
                 }
-                "field" | "select" | "slider" | "meter" | "progress" | "tabs" => {
+                Kind::Field
+                | Kind::Select
+                | Kind::Slider
+                | Kind::Meter
+                | Kind::Progress
+                | Kind::Tabs => {
                     if let Some(mut text) = text
                         && !self.doc.nodes[target]
                             .props

@@ -447,8 +447,8 @@ pub struct Trigger {
 /// What a node of the tree is.
 #[derive(Clone, Debug, PartialEq)]
 pub enum NodeKind {
-    /// An element of a [`schema::KINDS`] kind.
-    Element(&'static str),
+    /// An element of a [`schema::Kind`].
+    Element(schema::Kind),
     /// `for <var> in <list> { template }`.
     For {
         var: String,

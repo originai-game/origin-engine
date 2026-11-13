@@ -12,6 +12,7 @@
 //! A component the lookup cannot find leaves those names as any string,
 //! since its events would be missed.
 
+use crate::doc::schema::Kind;
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
@@ -283,7 +284,7 @@ pub fn document_dts<'a>(
     let slots: BTreeSet<String> = doc
         .nodes
         .iter()
-        .filter(|n| n.kind == NodeKind::Element("slot") && !n.id.is_empty())
+        .filter(|n| n.kind == NodeKind::Element(Kind::Slot) && !n.id.is_empty())
         .map(|n| format!("{}/{}", doc.name, n.id))
         .collect();
     out.push_str(&format!(

@@ -1,5 +1,6 @@
 use super::fields::FILE_LABEL;
 use super::*;
+use crate::doc::schema::Kind;
 
 pub(crate) mod events;
 pub(crate) mod lists;
@@ -299,16 +300,16 @@ impl Ui {
             self.build_container(container);
         }
         let props = self.props_of(b, n, key, &r, &mut built);
-        if kind == "viewport" {
+        if kind == Kind::Viewport {
             return self.build_viewport(b, n, id.as_str(), &r, props, path, key, built);
         }
-        if kind == "anchor" {
+        if kind == Kind::Anchor {
             return self.build_anchor(b, n, &r, props, path, key, built, build_children);
         }
-        if kind == "ground" || (kind == "panel" && r.flag("world")) {
+        if kind == Kind::Ground || (kind == Kind::Panel && r.flag("world")) {
             return self.build_world_panel(b, n, &r, props, path, key, built, build_children);
         }
-        if svg::KINDS.contains(&kind) {
+        if kind.svg() {
             return self.build_svg(
                 b,
                 n,
@@ -350,8 +351,7 @@ impl Ui {
         };
         let mut resp = crate::ui::Response::default();
         // A button with only text is the leaf control; with content it holds it.
-        let container = schema::kind(kind).is_some_and(|k| k.container)
-            && (kind != "button" || !n.children.is_empty());
+        let container = kind.container() && (kind != Kind::Button || !n.children.is_empty());
         if container {
             return self.doc_container(
                 b,
@@ -374,80 +374,80 @@ impl Ui {
         let mut texture = None;
         *self.front.accent_mut() = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
-            "label" => {
+            Kind::Label => {
                 resp = self.doc_label(b, n, &doc, &id, &path, key, &r, &styled, t, &text_of)?;
             }
-            "button" => {
+            Kind::Button => {
                 let text = text_of(&r, b);
                 resp = self.button(id.as_str(), &text, r.button_desc());
             }
-            "art" => {
+            Kind::Art => {
                 texture = self.doc_art(b, &id, &path, &r);
             }
-            "image" => {
+            Kind::Image => {
                 texture = self.doc_image(b, &id, &r);
             }
-            "icon" => {
+            Kind::Icon => {
                 self.doc_icon(&id, &r);
             }
-            "meter" => {
+            Kind::Meter => {
                 self.doc_meter(&id, &r);
             }
-            "select" if r.flag("dataCycle") => {
+            Kind::Select if r.flag("dataCycle") => {
                 let changed = self.cycler(b, n, id.as_str(), &r);
                 resp = crate::Response {
                     changed,
                     ..crate::Response::default()
                 };
             }
-            "select" => {
+            Kind::Select => {
                 resp = self.doc_select(b, n, &id, &path, &r, &styled);
             }
-            "progress" => {
+            Kind::Progress => {
                 self.doc_progress(&id, &r);
             }
-            "slider" if r.has("high") => {
+            Kind::Slider if r.has("high") => {
                 resp = self.doc_slider_range(b, n, &id, &r, &text_of);
             }
-            "slider" => {
+            Kind::Slider => {
                 resp = self.doc_slider(b, n, &id, &r, &text_of);
             }
-            "toggle" => {
+            Kind::Toggle => {
                 resp = self.doc_toggle(b, n, &id, &r, &styled, &text_of);
             }
-            "color" => {
+            Kind::Color => {
                 resp = self.color_input(b, n, id.as_str(), &r);
             }
-            "video" | "audio" => {
-                resp = self.media_element(b, n, id.as_str(), key, &r, kind == "video");
+            Kind::Video | Kind::Audio => {
+                resp = self.media_element(b, n, id.as_str(), key, &r, kind == Kind::Video);
             }
-            "file" => {
+            Kind::File => {
                 resp = self.doc_file(b, n, &doc, &id, &path, &r, &text_of)?;
             }
-            "datetime" => {
+            Kind::Datetime => {
                 resp = self.doc_datetime(b, n, i, &doc, &id, key, &r);
             }
-            "radio" => {
+            Kind::Radio => {
                 resp = self.doc_radio(b, n, &id, &r, &text_of);
             }
-            "tabs" => {
+            Kind::Tabs => {
                 resp = self.doc_tabs(b, n, &id, &r, &text_of);
             }
-            "field" => {
+            Kind::Field => {
                 resp = self.doc_field(b, n, i, &doc, &id, &path, key, &r, &styled);
             }
-            "badge" => {
+            Kind::Badge => {
                 self.doc_badge(b, &id, &r, &text_of);
             }
-            "kbd" => {
+            Kind::Kbd => {
                 resp = self.kbd(b, n, id.as_str(), &r, text_of(&r, b));
             }
-            "spacer" => {
+            Kind::Spacer => {
                 let s = r.size("width").or(r.size("height"));
                 self.spacer(id.as_str(), s);
             }
-            "divider" => self.divider(id.as_str(), r.flag("vertical")),
-            "joystick" | "dpad" => {
+            Kind::Divider => self.divider(id.as_str(), r.flag("vertical")),
+            Kind::Joystick | Kind::Dpad => {
                 resp = self.build_touch_control(kind, id.as_str(), &r, &styled);
             }
             other => {
@@ -462,9 +462,9 @@ impl Ui {
         let last = self.tree.last_closed();
         if last != NONE && last < self.tree.nodes().len() {
             let mut fields =
-                fields::RenderFields::capture(self, key, last, kind, resp, props, texture);
+                fields::RenderFields::capture(self, key, last, Some(kind), resp, props, texture);
             // A text keeps its source: settlement shows it in its new style.
-            if kind == "label" && styled.text.is_some() && styled.generated.is_none() {
+            if kind == Kind::Label && styled.text.is_some() && styled.generated.is_none() {
                 fields.text = raw_of(&styled, b);
             }
             self.apply_document_fields(&doc, n, &styled, &fields);
@@ -692,7 +692,7 @@ impl Ui {
         b: &mut Build<'_>,
         n: &DocNode,
         doc: &UiDocument,
-        kind: &'static str,
+        kind: Kind,
         id: &String,
         path: String,
         key: u64,
@@ -735,7 +735,7 @@ impl Ui {
         // none): opened, its controls are built fresh and take input.
         let mut shows_content = true;
         match kind {
-            "dialog" if open_now(self) && r.str("spotlight").is_some() => {
+            Kind::Dialog if open_now(self) && r.str("spotlight").is_some() => {
                 let target = r.str("spotlight").unwrap_or_default();
                 let (shade, anchored) = self.open_spotlight(id.as_str(), (key, &path), target, r);
                 spot = anchored;
@@ -743,17 +743,17 @@ impl Ui {
                     opened = Some(false);
                 }
             }
-            "dialog" => {
+            Kind::Dialog => {
                 (opened, shows_content) =
                     self.doc_dialog(b, id, &path, r, &dialog, &open_now, opened);
             }
-            "details" => {
+            Kind::Details => {
                 (opened, shows_content) = self.doc_details(b, id, key, r, &open_now, opened);
             }
-            "button" => {
+            Kind::Button => {
                 resp = self.open_button(id.as_str(), r.button_desc());
             }
-            "panel" => {
+            Kind::Panel => {
                 self.open_panel(
                     id.as_str(),
                     crate::ui::PanelDesc {
@@ -762,7 +762,7 @@ impl Ui {
                     },
                 );
             }
-            "scroll" => {
+            Kind::Scroll => {
                 self.open_scroll(
                     id.as_str(),
                     crate::ui::ScrollDesc {
@@ -772,7 +772,7 @@ impl Ui {
                     },
                 );
             }
-            "list" | "cells" => {
+            Kind::List | Kind::Cells => {
                 let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
                 if b.cached.is_some() {
                     build_children(self, b, Some(props.clone()));
@@ -785,7 +785,7 @@ impl Ui {
                     // Settlement replaces the box the list was opened with;
                     // its window and stride follow on the next build.
                     let mut fields =
-                        fields::RenderFields::capture(self, key, at, kind, resp, props, None);
+                        fields::RenderFields::capture(self, key, at, Some(kind), resp, props, None);
                     fields.unstyle_virtual();
                     self.docs.note_render_fields(key, fields);
                 }
@@ -798,7 +798,7 @@ impl Ui {
                     id.as_str(),
                     Element {
                         direction: match kind {
-                            "row" => Direction::Row,
+                            Kind::Row => Direction::Row,
                             _ => Direction::Column,
                         },
                         ..Element::default()
@@ -806,15 +806,22 @@ impl Ui {
                 );
             }
         }
-        let fields =
-            fields::RenderFields::capture(self, key, self.tree.parent(), kind, resp, props, None);
+        let fields = fields::RenderFields::capture(
+            self,
+            key,
+            self.tree.parent(),
+            Some(kind),
+            resp,
+            props,
+            None,
+        );
         self.apply_document_fields(doc, n, r, &fields);
         self.docs.note_render_fields(key, fields);
         // A content button feeds og-input's action as a text one does.
-        if kind == "button" && r.has("dataOgTouch") {
+        if kind == Kind::Button && r.has("dataOgTouch") {
             self.tree.note_touch_button(r, &mut self.docs);
         }
-        if kind == "box"
+        if kind == Kind::Box
             && n.selector_tag.as_deref() == Some("li")
             && let Some(marker) = r.str("markerType")
         {
@@ -875,7 +882,7 @@ impl Ui {
             let at = self.tree.parent();
             self.world_effects(b, n, r, at, &path);
         }
-        if kind == "slot" {
+        if kind == Kind::Slot {
             let at = self.tree.parent();
             self.docs.state_mut().slots.insert(path.clone(), at);
             let short = format!("{}/{}", b.mount, n.id);
@@ -913,17 +920,17 @@ impl Ui {
             b.inherited = inherited;
         }
         match kind {
-            "dialog" if spot => {
+            Kind::Dialog if spot => {
                 self.close();
             }
-            "dialog" => self.close_dialog(&dialog),
-            "details" => self.close_details(),
-            "button" => self.close_button(),
+            Kind::Dialog => self.close_dialog(&dialog),
+            Kind::Details => self.close_details(),
+            Kind::Button => self.close_button(),
             _ => resp = self.close(),
         }
         if let Some(open) = opened {
             self.docs.state_mut().happened.push(When::Toggle);
-            if kind == "dialog" && !open {
+            if kind == Kind::Dialog && !open {
                 self.docs.state_mut().happened.push(When::Close);
             }
             if !bound(n, "open") {
@@ -960,7 +967,7 @@ impl Ui {
             && let Some(backdrop) = self.style.pseudo_node(b, r, path, "backdrop")
         {
             let scrim = self.tree.nodes()[self.tree.parent()].parent;
-            self.style_pseudo_box(b, scrim, "backdrop", &backdrop);
+            self.style_pseudo_box(b, scrim, &backdrop);
         }
         let shows_content = out.visible;
         if out.dismissed {
@@ -1241,7 +1248,7 @@ impl Ui {
             r.flag("invalid"),
             &mut |ui, list| {
                 if let Some((_, p)) = &picker {
-                    ui.style_pseudo_box(build, list, "picker", p);
+                    ui.style_pseudo_box(build, list, p);
                 }
             },
         );

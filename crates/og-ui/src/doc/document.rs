@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl UiDocument {
     /// Check literal colour references against the styles available to the game.
@@ -442,8 +443,8 @@ impl UiDocument {
         let mut arts = Vec::new();
         for n in &self.nodes {
             match n.kind {
-                NodeKind::Element("slot") => slots.push(n.id.clone()),
-                NodeKind::Element("art") => arts.push(n.id.clone()),
+                NodeKind::Element(Kind::Slot) => slots.push(n.id.clone()),
+                NodeKind::Element(Kind::Art) => arts.push(n.id.clone()),
                 _ => {}
             }
         }

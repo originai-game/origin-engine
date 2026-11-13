@@ -13,6 +13,7 @@ use super::{BUILDING, ui_of, with_ui};
 use crate::engine::{Engine, engine};
 use crate::host::wire::{self, ToJson};
 use crate::parse;
+use og_ui::doc::schema::Kind;
 use og_ui::{ActionDesc, ActionTrigger, Device, SharedUi, Ui, UiDocument};
 use serde_json::{Map, Value, json};
 use std::cell::{Cell, RefCell};
@@ -370,11 +371,12 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
         }
     });
     // A <video> or <audio> asks its player through og.MediaIntent.
-    if doc
-        .nodes
-        .iter()
-        .any(|n| matches!(n.kind, og_ui::doc::NodeKind::Element("video" | "audio")))
-    {
+    if doc.nodes.iter().any(|n| {
+        matches!(
+            n.kind,
+            og_ui::doc::NodeKind::Element(Kind::Video | Kind::Audio)
+        )
+    }) {
         crate::engine::lazy::ensure(eng, eng.world()?, crate::bind::video::MEDIA_INTENT)?;
     }
     let faces = family_faces(eng, &doc)?;

@@ -4,11 +4,10 @@
 //! validates against it, the probe exports it (`dump_ui`'s `schema`), `ui:set`
 //! types its values by it, and the README's table is checked against it.
 
-use std::sync::LazyLock;
-
 pub mod kinds;
 pub mod parts;
 pub mod props;
+pub use kinds::Kind;
 pub use parts::{PARTS, PartSpec, part};
 pub use props::PROPS;
 
@@ -73,7 +72,7 @@ impl Ty {
 pub enum On {
     /// Every element.
     All,
-    Kinds(&'static [&'static str]),
+    Kinds(&'static [Kind]),
 }
 
 /// One prop of the schema.
@@ -88,7 +87,7 @@ pub struct PropSpec {
 }
 
 impl PropSpec {
-    pub fn applies(&self, kind: &str) -> bool {
+    pub fn applies(&self, kind: Kind) -> bool {
         match self.on {
             On::All => true,
             On::Kinds(k) => k.contains(&kind),
@@ -96,29 +95,16 @@ impl PropSpec {
     }
 }
 
-/// One element kind.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct KindSpec {
-    pub name: &'static str,
-    /// It has children.
-    pub container: bool,
-    pub doc: &'static str,
-}
-
-/// Every element kind ([`kinds`]).
-pub static KINDS: LazyLock<Vec<KindSpec>> =
-    LazyLock::new(|| [kinds::CORE_KINDS, kinds::KINDS].concat());
-
 /// Author tags for engine semantics without an HTML equivalent, mapped
 /// to the runtime kinds used by checkpoints.
-pub const ELEMENT_TAGS: &[(&str, &str)] = &[
-    ("og-icon", "icon"),
-    ("og-counter", "label"),
-    ("og-typewriter", "label"),
-    ("og-spotlight", "dialog"),
-    ("og-rive", "column"),
-    ("og-emitter", "box"),
-    ("og-overlay", "box"),
+pub const ELEMENT_TAGS: &[(&str, Kind)] = &[
+    ("og-icon", Kind::Icon),
+    ("og-counter", Kind::Label),
+    ("og-typewriter", Kind::Label),
+    ("og-spotlight", Kind::Dialog),
+    ("og-rive", Kind::Column),
+    ("og-emitter", Kind::Box),
+    ("og-overlay", Kind::Box),
 ];
 
 /// Tag-exclusive attributes and the runtime properties they populate.
@@ -152,10 +138,6 @@ pub fn prop(name: &str) -> Option<(usize, &'static PropSpec)> {
     PROPS.iter().enumerate().find(|(_, p)| p.name == name)
 }
 
-pub fn kind(name: &str) -> Option<&'static KindSpec> {
-    KINDS.iter().find(|k| k.name == name)
-}
-
 /// The schema as JSON (`dump_ui`'s `schema`, og.ui.documentSchema).
 pub fn to_json() -> serde_json::Value {
     use serde_json::json;
@@ -163,10 +145,10 @@ pub fn to_json() -> serde_json::Value {
         "parts": parts::to_json(),
         "cssFunctions": CSS_FUNCTIONS.iter().map(|(name, grammar, reason)| json!({ "name": name, "grammar": grammar, "reason": reason })).collect::<Vec<_>>(),
         "mediaFeatures": MEDIA_FEATURES.iter().map(|(name, grammar, reason)| json!({ "name": name, "grammar": grammar, "reason": reason })).collect::<Vec<_>>(),
-        "elementTags": ELEMENT_TAGS.iter().map(|(name, kind)| json!({ "name": name, "kind": kind,
+        "elementTags": ELEMENT_TAGS.iter().map(|(name, kind)| json!({ "name": name, "kind": kind.name(),
             "attributes": ELEMENT_ATTRIBUTES.iter().filter(|(tag, _, _)| tag == name).map(|(_, attribute, property)| json!({"name": attribute, "property": property})).collect::<Vec<_>>()
         })).collect::<Vec<_>>(),
-        "kinds": KINDS.iter().map(|k| json!({ "name": k.name, "container": k.container, "doc": k.doc })).collect::<Vec<_>>(),
+        "kinds": Kind::ALL.iter().map(|k| json!({ "name": k.name(), "container": k.container(), "doc": k.doc() })).collect::<Vec<_>>(),
         "props": PROPS.iter().map(|p| {
             let mut v = json!({ "name": p.name, "type": p.ty.name(), "doc": p.doc, "twoWay": p.two_way });
             if let Ty::Word(w) = p.ty {
@@ -174,7 +156,7 @@ pub fn to_json() -> serde_json::Value {
             }
             v["kinds"] = match p.on {
                 On::All => json!("all"),
-                On::Kinds(k) => json!(k),
+                On::Kinds(k) => json!(k.iter().map(|k| k.name()).collect::<Vec<_>>()),
             };
             v
         }).collect::<Vec<_>>(),
@@ -192,7 +174,7 @@ pub fn markdown() -> String {
         };
         let on = match p.on {
             On::All => "all".to_string(),
-            On::Kinds(k) => k.join(", "),
+            On::Kinds(k) => k.iter().map(|k| k.name()).collect::<Vec<_>>().join(", "),
         };
         out.push_str(&format!(
             "| `{}` | {ty} | {on} | {}{} |\n",

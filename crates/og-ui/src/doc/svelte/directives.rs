@@ -8,6 +8,7 @@
 //! simulation.
 
 use super::*;
+use crate::doc::schema::Kind;
 use crate::element::Prop;
 use crate::motion::{Ease, PresenceSpec, SpringSpec, Transition};
 
@@ -123,7 +124,12 @@ pub(super) fn number(a: &Attr, key: &str, text: &str) -> Result<f32, Error> {
 impl Parser {
     /// Handles `a` on element `i` (of kind `internal`) when it is a Svelte
     /// directive or the `style` attribute; `Ok(false)` otherwise.
-    pub(super) fn directive(&mut self, i: usize, internal: &str, a: &Attr) -> Result<bool, Error> {
+    pub(super) fn directive(
+        &mut self,
+        i: usize,
+        internal: Option<Kind>,
+        a: &Attr,
+    ) -> Result<bool, Error> {
         let (head, mods) = match a.name.split_once('|') {
             Some((h, m)) => (h, m),
             None => (a.name.as_str(), ""),
@@ -258,7 +264,7 @@ impl Parser {
     fn transition(
         &mut self,
         i: usize,
-        internal: &str,
+        internal: Option<Kind>,
         a: &Attr,
         name: &str,
         mods: &str,
@@ -300,7 +306,7 @@ impl Parser {
             let value = PropValue::Bind(expression(key, a.at)?, None);
             return self.prop(i, internal, "match", value, a.at, key);
         }
-        if name == "draw" && internal != "svgShape" {
+        if name == "draw" && internal != Some(Kind::SvgShape) {
             return Err((
                 a.at,
                 "draw strokes an SVG shape on: put it on a <path>, <line>, <polyline>, <polygon>, <rect>, <circle> or <ellipse>".into(),
@@ -410,7 +416,13 @@ impl Parser {
         Ok(())
     }
 
-    fn animate(&mut self, i: usize, internal: &str, a: &Attr, name: &str) -> Result<(), Error> {
+    fn animate(
+        &mut self,
+        i: usize,
+        internal: Option<Kind>,
+        a: &Attr,
+        name: &str,
+    ) -> Result<(), Error> {
         if name != "flip" {
             return Err((
                 a.at,

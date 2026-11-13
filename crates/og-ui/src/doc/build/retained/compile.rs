@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl RetainedHost {
     pub(crate) fn compile(
@@ -72,7 +73,7 @@ impl RetainedHost {
             let element = &self.elements[parent];
             if matches!(
                 element.document.nodes[element.index].kind,
-                NodeKind::Element("list" | "cells")
+                NodeKind::Element(Kind::List | Kind::Cells)
             ) {
                 Materialization::Deferred
             } else {
@@ -112,7 +113,10 @@ impl RetainedHost {
             record: Default::default(),
             memories: Vec::new(),
             // A slot, and a player's picture and time, change without a binding.
-            volatile: matches!(node.kind, NodeKind::Element("slot" | "video" | "audio")),
+            volatile: matches!(
+                node.kind,
+                NodeKind::Element(Kind::Slot | Kind::Video | Kind::Audio)
+            ),
             materialization,
             run_in: None,
             run_events: Default::default(),
@@ -253,7 +257,7 @@ impl RetainedHost {
                 .insert(identity.clone());
         }
         // `<tabs>` steps on the bumpers (`tabPrev`, `tabNext`).
-        if matches!(doc.nodes[index].kind, NodeKind::Element("tabs")) {
+        if matches!(doc.nodes[index].kind, NodeKind::Element(Kind::Tabs)) {
             for action in ["tabPrev", "tabNext"] {
                 self.on_action
                     .entry(action.into())

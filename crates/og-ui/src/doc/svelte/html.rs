@@ -6,6 +6,7 @@
 //! `rowspan` from the cells.
 
 use super::*;
+use crate::doc::schema::Kind;
 
 /// Where each table part may sit: its tag and the tags of the elements
 /// it belongs in.
@@ -27,7 +28,7 @@ impl Parser {
         tag: &str,
         parent: usize,
         at: usize,
-    ) -> Result<Option<(&'static str, Option<&'static str>)>, Error> {
+    ) -> Result<Option<(Kind, Option<&'static str>)>, Error> {
         if let Some((_, parents)) = TABLE_PARENTS.iter().find(|(t, _)| *t == tag) {
             // A component's root is placed where its user puts it.
             let inside = self.parent_tag(parent);
@@ -39,17 +40,17 @@ impl Parser {
             }
         }
         Ok(Some(match tag {
-            "table" => ("box", Some("table")),
-            "tr" => ("box", Some("row")),
-            "td" => ("box", Some("cell")),
+            "table" => (Kind::Box, Some("table")),
+            "tr" => (Kind::Box, Some("row")),
+            "td" => (Kind::Box, Some("cell")),
             // A header cell's role is joined once its row is read.
-            "th" => ("box", Some("columnheader")),
-            "caption" | "thead" | "tbody" | "tfoot" => ("box", None),
-            "form" => ("box", None),
-            "fieldset" => ("box", Some("group")),
-            "legend" | "figcaption" => ("box", None),
-            "figure" => ("box", Some("figure")),
-            "output" => ("label", Some("status")),
+            "th" => (Kind::Box, Some("columnheader")),
+            "caption" | "thead" | "tbody" | "tfoot" => (Kind::Box, None),
+            "form" => (Kind::Box, None),
+            "fieldset" => (Kind::Box, Some("group")),
+            "legend" | "figcaption" => (Kind::Box, None),
+            "figure" => (Kind::Box, Some("figure")),
+            "output" => (Kind::Label, Some("status")),
             "template" => {
                 return Err((
                     at,
@@ -82,7 +83,7 @@ impl Parser {
                     ));
                 }
                 let value = PropValue::Lit(Lit::Num(n.unwrap() as f32));
-                self.prop(i, "box", &a.name, value, a.at, &a.value)?;
+                self.prop(i, Some(Kind::Box), &a.name, value, a.at, &a.value)?;
             }
             ("th", "scope") => {
                 if a.bound || !matches!(a.value.as_str(), "row" | "col" | "rowgroup" | "colgroup") {
@@ -253,7 +254,7 @@ impl Parser {
                 let NodeKind::Element(kind) = self.doc.nodes[k].kind else {
                     continue;
                 };
-                if !disabled.1.applies(kind) || kind == "details" {
+                if !disabled.1.applies(kind) || kind == Kind::Details {
                     continue;
                 }
                 let line = self.doc.nodes[k].line;
@@ -287,7 +288,7 @@ impl Parser {
         // Per form, its first submit button's act and `disabled`.
         let mut defaults: Vec<(usize, Act, Option<PropValue>)> = Vec::new();
         for i in 0..self.doc.nodes.len() {
-            if self.doc.nodes[i].kind != NodeKind::Element("button")
+            if self.doc.nodes[i].kind != NodeKind::Element(Kind::Button)
                 || tag(&self.doc, i) != "button"
             {
                 continue;
@@ -326,7 +327,7 @@ impl Parser {
                 while let Some(k) = stack.pop() {
                     if matches!(
                         self.doc.nodes[k].kind,
-                        NodeKind::Element("field" | "datetime")
+                        NodeKind::Element(Kind::Field | Kind::Datetime)
                     ) {
                         controls.push(k);
                     }
@@ -375,7 +376,7 @@ impl Parser {
             let mut stack = element_children(&self.doc, form);
             while let Some(k) = stack.pop() {
                 stack.extend(element_children(&self.doc, k));
-                if self.doc.nodes[k].kind != NodeKind::Element("field") {
+                if self.doc.nodes[k].kind != NodeKind::Element(Kind::Field) {
                     continue;
                 }
                 let line = self.doc.nodes[k].line;

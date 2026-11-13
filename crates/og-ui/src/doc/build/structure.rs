@@ -6,6 +6,7 @@
 use super::*;
 use crate::bind::InteractionState;
 use crate::doc::matching::{self, Facts, MatchWork, Tree};
+use crate::doc::schema::Kind;
 use crate::doc::selectors::Selector;
 
 static NO_STATES: BTreeSet<InteractionState> = BTreeSet::new();
@@ -206,7 +207,7 @@ impl Ui {
             return None;
         }
         let mut level = Level::default();
-        let virtual_rows = matches!(n.kind, NodeKind::Element("list" | "cells"));
+        let virtual_rows = matches!(n.kind, NodeKind::Element(Kind::List | Kind::Cells));
         let doc = b.doc.clone();
         self.instantiate(b, &doc, &n.children, &mut level, virtual_rows);
         Some(level)

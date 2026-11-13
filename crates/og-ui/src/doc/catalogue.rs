@@ -9,7 +9,7 @@
 use std::fmt::Write;
 
 use super::css::{css_name, value_form};
-use super::schema::{KINDS, On, PROPS, PropSpec, Ty};
+use super::schema::{Kind, On, PROPS, PropSpec, Ty};
 
 /// Where the catalogue lives, from the repository root.
 pub const PATH: &str = "crates/og-api/guides/components.md";
@@ -31,13 +31,13 @@ fn value(p: &PropSpec) -> String {
 
 /// The tags a document writes a kind as, each with an example: HTML's name
 /// wherever HTML has the role (docs/ui.md §2).
-pub fn tags(kind: &str) -> Vec<(String, String)> {
+pub fn tags(kind: Kind) -> Vec<(String, String)> {
     let void = |tag: &str| (tag.to_string(), format!("<{tag} id=\"Name\" />"));
     let registered: Vec<_> = super::schema::ELEMENT_TAGS
         .iter()
         .filter(|(_, k)| *k == kind)
         .map(|(tag, _)| {
-            if kind == "label" || super::schema::kind(kind).is_some_and(|k| k.container) {
+            if kind == Kind::Label || kind.container() {
                 (tag.to_string(), format!("<{tag} id=\"Name\">…</{tag}>"))
             } else {
                 void(tag)
@@ -45,37 +45,37 @@ pub fn tags(kind: &str) -> Vec<(String, String)> {
         })
         .collect();
     let mut tags = match kind {
-        "label" => vec![
+        Kind::Label => vec![
             ("text".into(), "<text id=\"Name\">…</text>".into()),
             ("p".into(), "<p id=\"Name\">Read the <a href=\"rules\">rules</a>.</p>".into()),
             ("span".into(), "<span id=\"Name\">…</span>".into()),
             ("h1".into(), "<h1 id=\"Name\">…</h1> (to <h6>)".into()),
             ("a".into(), "<a id=\"Name\" href=\"shop\">…</a>".into()),
         ],
-        "box" => vec![
+        Kind::Box => vec![
             ("div".into(), "<div id=\"Name\">…</div>".into()),
             ("nav".into(), "<nav aria-label=\"Site\">…</nav> (section, header, footer, main, aside, article)".into()),
             ("ul".into(), "<ul><li>…</li></ul>".into()),
             ("ol".into(), "<ol start=\"1\"><li>…</li></ol>".into()),
         ],
-        "image" => vec![void("img")],
-        "field" => vec![
+        Kind::Image => vec![void("img")],
+        Kind::Field => vec![
             void("input type=\"text\""),
             (
                 "textarea".into(),
                 "<textarea id=\"Name\" rows=\"4\" />".into(),
             ),
         ],
-        "slider" => vec![void("input type=\"range\"")],
-        "color" => vec![(
+        Kind::Slider => vec![void("input type=\"range\"")],
+        Kind::Color => vec![(
             "input".into(),
             "<input type=\"color\" id=\"Name\" bind:value={$tint} />".into(),
         )],
-        "radio" => vec![(
+        Kind::Radio => vec![(
             "input".into(),
             "<label><input type=\"radio\" value=\"easy\" bind:group={$level} /> Easy</label>".into(),
         )],
-        "toggle" => vec![
+        Kind::Toggle => vec![
             void("input type=\"checkbox\""),
             void("input type=\"checkbox\" switch"),
             (
@@ -83,26 +83,26 @@ pub fn tags(kind: &str) -> Vec<(String, String)> {
                 "<label id=\"Name\"><input type=\"checkbox\" /> Caption</label>".into(),
             ),
         ],
-        "divider" => vec![void("hr")],
-        "select" => vec![(
+        Kind::Divider => vec![void("hr")],
+        Kind::Select => vec![(
             "select".into(),
             "<select id=\"Name\" bind:value={$x}><optgroup label=\"G\"><option value=\"a\">A</option></optgroup></select>".into(),
         )],
-        "details" => vec![(
+        Kind::Details => vec![(
             "details".into(),
             "<details id=\"Name\" bind:open={$x}><summary>More</summary>…</details>".into(),
         )],
-        "dialog" => vec![(
+        Kind::Dialog => vec![(
             "dialog".into(),
             "<dialog id=\"Name\" modal bind:open={$x} aria-label=\"Quit?\">…</dialog>".into(),
         )],
-        "meter" => vec![(
+        Kind::Meter => vec![(
             "meter".into(),
             "<meter id=\"Name\" value={$hp} min=\"0\" max=\"100\" low=\"25\" high=\"75\" optimum=\"90\" />".into(),
         )],
-        "icon" => Vec::new(),
+        Kind::Icon => Vec::new(),
         other => super::schema::kinds::tags(other).unwrap_or_else(|| {
-            vec![(other.into(), format!("<{other} id=\"Name\">…</{other}>"))]
+            vec![(other.to_string(), format!("<{other} id=\"Name\">…</{other}>"))]
         }),
     };
     tags.extend(registered);
@@ -203,12 +203,17 @@ pub fn markdown() -> String {
     for (name, grammar, reason) in super::schema::MEDIA_FEATURES {
         let _ = writeln!(out, "| `{name}` | `{grammar}` | {reason} |");
     }
-    for (n, k) in KINDS.iter().filter(|k| k.name != "slot").enumerate() {
+    for (n, k) in Kind::ALL
+        .iter()
+        .copied()
+        .filter(|k| *k != Kind::Slot)
+        .enumerate()
+    {
         let own: Vec<&PropSpec> = PROPS
             .iter()
-            .filter(|p| matches!(p.on, On::Kinds(ks) if ks.contains(&k.name)))
+            .filter(|p| matches!(p.on, On::Kinds(ks) if ks.contains(&k)))
             .collect();
-        let written = tags(k.name);
+        let written = tags(k);
         let _ = writeln!(
             out,
             "\n## {}. {} (`{}`): {}\n\n{} {} {}.",
@@ -218,10 +223,10 @@ pub fn markdown() -> String {
                 .map(|(tag, _)| format!("`<{tag}>`"))
                 .collect::<Vec<_>>()
                 .join(", "),
-            k.name,
-            k.doc.trim_end_matches('.'),
-            k.doc,
-            if k.container {
+            k.name(),
+            k.doc().trim_end_matches('.'),
+            k.doc(),
+            if k.container() {
                 "A container with nested children:"
             } else {
                 "A leaf; text-bearing controls accept text content:"
@@ -256,7 +261,7 @@ mod tests {
         let sections: Vec<&str> = md.split("\n## ").skip(1).collect();
         assert_eq!(
             sections.len(),
-            KINDS.iter().filter(|k| k.name != "slot").count() + 1,
+            Kind::ALL.iter().filter(|k| **k != Kind::Slot).count() + 1,
             "every element, then each kind"
         );
         let written = |p: &PropSpec| format!("\n| {} |", written(p));
@@ -267,21 +272,22 @@ mod tests {
                 p.name
             );
         }
-        for (k, s) in KINDS
+        for (k, s) in Kind::ALL
             .iter()
-            .filter(|k| k.name != "slot")
+            .copied()
+            .filter(|k| *k != Kind::Slot)
             .zip(&sections[1..])
         {
-            assert!(s.contains(&format!("`{}`", k.name)), "{s}");
+            assert!(s.contains(&format!("`{}`", k.name())), "{s}");
             for p in PROPS.iter().filter(|p| p.on != On::All) {
                 assert_eq!(
                     s.contains(&written(p)),
                     PROPS.iter().any(|other| other.on != On::All
-                        && other.applies(k.name)
+                        && other.applies(k)
                         && written(other) == written(p)),
                     "{} under {}",
                     p.name,
-                    k.name
+                    k.name()
                 );
             }
         }

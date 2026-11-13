@@ -6,6 +6,7 @@
 //! when a binding it reads changes ([`Ui::keep_world_anchors`] places the
 //! ones not built this tick).
 use super::*;
+use crate::doc::schema::Kind;
 use crate::world::{
     AnchorScale, Declutter, EdgeClamp, WorldAnchorDesc, WorldOcclusion, WorldPanelDesc, WorldTarget,
 };
@@ -554,7 +555,7 @@ impl Ui {
             self.style.em_of(r, &self.env),
         );
         let texture = r.handle("viewportSrc").and_then(|h| b.env.texture(h));
-        let ground = matches!(n.kind, NodeKind::Element("ground"));
+        let ground = matches!(n.kind, NodeKind::Element(Kind::Ground));
         let desc = match panel_desc(r, el, if ground { None } else { texture }, ground) {
             Ok(d) => d,
             Err(e) => {

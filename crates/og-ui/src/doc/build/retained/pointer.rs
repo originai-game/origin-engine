@@ -4,6 +4,7 @@
 //! them. Only the held element, the one under the pointer and a drop's
 //! target are visited, never the tree.
 use super::*;
+use crate::doc::schema::Kind;
 
 impl RetainedHost {
     /// The handler of `when` on the element of `key` or its nearest
@@ -93,7 +94,7 @@ impl RetainedHost {
         extra.insert("x".into(), json!(x));
         extra.insert("y".into(), json!(y));
         // A viewport's events carry the ray into its scene.
-        if e.document.nodes[e.index].kind == NodeKind::Element("viewport")
+        if e.document.nodes[e.index].kind == NodeKind::Element(Kind::Viewport)
             && let Some(r) = &e.resolved
             && let Some(view) =
                 super::super::viewport::camera(&r.values, rect.width / rect.height.max(1.0))

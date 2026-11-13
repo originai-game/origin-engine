@@ -14,6 +14,7 @@ use super::{Act, DocNode, Lit, NodeKind, Paint, PropValue, StateValue, UiDocumen
 use super::{css, motion};
 use crate::Rect;
 use crate::bind::{Env, Scope, number, set_path, text, truthy};
+use crate::doc::schema::Kind;
 use crate::element::{Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position, Prop, Props};
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, NONE, Size, TextAlign};
 use crate::motion::{StateGroup, VisualState};
@@ -1224,7 +1225,7 @@ impl Ui {
         r.cascade.container_reads.extend(container_read.sizes);
         r.cascade.scroll_reads = container_read.scroll;
         if let NodeKind::Element(kind) = n.kind
-            && svg::KINDS.contains(&kind)
+            && kind.svg()
         {
             r.smil = svg::animate(self, &b.doc, n, path, &mut r);
             svg::inherit(kind, &mut r);
@@ -1235,16 +1236,16 @@ impl Ui {
         let shows_text = matches!(
             n.kind,
             NodeKind::Element(
-                "label"
-                    | "button"
-                    | "field"
-                    | "toggle"
-                    | "slider"
-                    | "radio"
-                    | "progress"
-                    | "meter"
-                    | "select"
-                    | "color"
+                Kind::Label
+                    | Kind::Button
+                    | Kind::Field
+                    | Kind::Toggle
+                    | Kind::Slider
+                    | Kind::Radio
+                    | Kind::Progress
+                    | Kind::Meter
+                    | Kind::Select
+                    | Kind::Color
             )
         );
         if shows_text || !r.cascade.text.is_empty() {
@@ -1285,7 +1286,7 @@ impl Ui {
             // box; the button keeps its corners for what it draws itself
             // (the `overflow` clip, the outline).
             let mut plate = Vec::new();
-            if n.kind == NodeKind::Element("button") {
+            if n.kind == NodeKind::Element(Kind::Button) {
                 let (own, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut r.vals)
                     .into_iter()
                     .partition(|(spec, _)| plate_prop(PROPS[*spec].name));

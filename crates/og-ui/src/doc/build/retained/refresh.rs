@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl RetainedHost {
     pub(crate) fn sync_facts(
@@ -83,14 +84,22 @@ impl RetainedHost {
                 .to_owned(),
         )?;
         let kind = match node.kind {
-            NodeKind::Element(kind) => kind,
-            _ => "",
+            NodeKind::Element(kind) => Some(kind),
+            _ => None,
         };
         // HTML's form-associated elements: they are enabled or disabled,
         // valid or invalid; text fields are read-write unless readonly.
         let form = matches!(
             kind,
-            "button" | "field" | "slider" | "toggle" | "radio" | "select" | "color"
+            Some(
+                Kind::Button
+                    | Kind::Field
+                    | Kind::Slider
+                    | Kind::Toggle
+                    | Kind::Radio
+                    | Kind::Select
+                    | Kind::Color
+            )
         );
         let disabled = flag("disabled");
         let invalid = flag("invalid") || field_invalid;
@@ -105,13 +114,14 @@ impl RetainedHost {
             num("max"),
         ) {
             (Some(v), min, max)
-                if kind == "slider" || (kind == "field" && (min.is_some() || max.is_some())) =>
+                if kind == Some(Kind::Slider)
+                    || (kind == Some(Kind::Field) && (min.is_some() || max.is_some())) =>
             {
                 Some(min.is_none_or(|m| v >= m) && max.is_none_or(|m| v <= m))
             }
             _ => None,
         };
-        let editable = kind == "field" && !flag("readonly") && !disabled;
+        let editable = kind == Some(Kind::Field) && !flag("readonly") && !disabled;
         let open = flag("open");
         if facts.contains_key("popover") {
             let key = super::popover::popover_key(&build.mount, &node.id);
@@ -350,7 +360,7 @@ impl RetainedHost {
                 let element = self.elements.get(parent)?;
                 matches!(
                     element.document.nodes[element.index].kind,
-                    NodeKind::Element("list" | "cells")
+                    NodeKind::Element(Kind::List | Kind::Cells)
                 )
                 .then_some(element.children.first())
                 .flatten()
@@ -620,7 +630,7 @@ impl RetainedHost {
         let text = values.str("text").unwrap_or_default().to_owned();
         let previous = e.resolved.as_ref().map(|r| &r.values.cascade);
         let mut reads = values.cascade.viewport_reads;
-        if e.document.nodes[e.index].kind == NodeKind::Element("field")
+        if e.document.nodes[e.index].kind == NodeKind::Element(Kind::Field)
             && values.str("type") == Some("number")
         {
             reads.width = true;

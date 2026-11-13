@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 use crate::reactive::{
     CollectionEdit, SourceChange,
     bindings::{ListRef, RowRef, SourceEnv, nested_keys},
@@ -382,10 +383,13 @@ impl RetainedHost {
                 id.push('#');
                 id.push_str(&escaped);
                 let parent = &self.elements[&each.parent];
-                if let NodeKind::Element(kind @ ("list" | "cells")) =
+                if let NodeKind::Element(kind @ (Kind::List | Kind::Cells)) =
                     parent.document.nodes[parent.index].kind
                 {
-                    id = format!("{}/{id}", crate::virtualize::item_id(key, kind == "cells"));
+                    id = format!(
+                        "{}/{id}",
+                        crate::virtualize::item_id(key, kind == Kind::Cells)
+                    );
                 }
             }
             children.push(self.compile(

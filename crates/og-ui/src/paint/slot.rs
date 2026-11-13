@@ -21,6 +21,7 @@
 //! ([`crate::Ui::art`]). [`document_slots`] reads every `art` element of a
 //! document with its spec, what `og ui slots` lists.
 
+use crate::doc::schema::Kind;
 use crate::tokens::{ElementClass, names};
 
 /// A width-to-height ratio in whole numbers.
@@ -750,7 +751,7 @@ pub fn document_slots(doc: &crate::doc::UiDocument) -> Vec<DocumentSlot> {
     use crate::doc::{NodeKind, PropValue};
     let mut out = Vec::new();
     for (i, n) in doc.nodes.iter().enumerate() {
-        if n.kind != NodeKind::Element("art") {
+        if n.kind != NodeKind::Element(Kind::Art) {
             continue;
         }
         let mut ids = Vec::new();

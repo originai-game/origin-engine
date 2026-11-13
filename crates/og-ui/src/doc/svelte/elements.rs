@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl Parser {
     pub(super) fn element(
@@ -120,26 +121,26 @@ impl Parser {
                 let values = options.iter().map(|o| o.value.clone()).collect();
                 // Without `<option>`s its options are its bound `items`.
                 if !options.is_empty() {
-                    self.prop(i, tag, "items", strs(items), at, "")?;
-                    self.prop(i, tag, "values", strs(values), at, "")?;
+                    self.prop(i, Some(Kind::Select), "items", strs(items), at, "")?;
+                    self.prop(i, Some(Kind::Select), "values", strs(values), at, "")?;
                 }
                 if options.iter().any(|o| !o.group.is_empty()) {
                     let groups = options.iter().map(|o| o.group.clone()).collect();
-                    self.prop(i, tag, "groups", strs(groups), at, "")?;
+                    self.prop(i, Some(Kind::Select), "groups", strs(groups), at, "")?;
                 }
                 if options.iter().any(|o| o.key.is_some()) {
                     let keys = options
                         .iter()
                         .map(|o| o.key.clone().unwrap_or_default())
                         .collect();
-                    self.prop(i, tag, "keys", strs(keys), at, "")?;
+                    self.prop(i, Some(Kind::Select), "keys", strs(keys), at, "")?;
                 }
                 let off: Vec<String> = (0..options.len())
                     .filter(|&k| options[k].disabled)
                     .map(|k| k.to_string())
                     .collect();
                 if !off.is_empty() {
-                    self.prop(i, tag, "disabledItems", strs(off), at, "")?;
+                    self.prop(i, Some(Kind::Select), "disabledItems", strs(off), at, "")?;
                 }
                 // `<option selected>` is the value when nothing is bound.
                 let valued = attrs
@@ -148,7 +149,7 @@ impl Parser {
                 if !valued && let Some(o) = options.iter().find(|o| o.selected) {
                     self.prop(
                         i,
-                        tag,
+                        Some(Kind::Select),
                         "current",
                         PropValue::Lit(Lit::Str(o.value.clone())),
                         at,
@@ -183,7 +184,7 @@ impl Parser {
                 }
                 let i = self.element_node(tag, attrs, &rest, at, parent)?;
                 if let Some((Some((value, source)), at)) = summary {
-                    self.prop(i, tag, "summary", value, at, &source)?;
+                    self.prop(i, Some(Kind::Details), "summary", value, at, &source)?;
                 }
                 return Ok(i);
             }
@@ -227,9 +228,9 @@ impl Parser {
                     .iter()
                     .any(|a| a.name == "type" && a.value == "radio")
                 {
-                    "radio"
+                    Kind::Radio
                 } else {
-                    "toggle"
+                    Kind::Toggle
                 };
                 let caption: Vec<Node> = children
                     .iter()
@@ -285,7 +286,7 @@ impl Parser {
                 if after {
                     self.prop(
                         i,
-                        control,
+                        Some(control),
                         "side",
                         PropValue::Lit(Lit::Str("end".into())),
                         *inner_at,
@@ -293,7 +294,7 @@ impl Parser {
                     )?;
                 }
                 if let Some(((value, source), at)) = description {
-                    self.prop(i, control, "description", value, at, &source)?;
+                    self.prop(i, Some(control), "description", value, at, &source)?;
                 }
                 return Ok(i);
             }
@@ -311,55 +312,66 @@ impl Parser {
             return Err((at, "<li> belongs inside a <ul> or an <ol>".into()));
         }
         let html = self.html_kind(tag, parent, at)?;
+        // The element's kind: none for a component.
         let internal = match tag {
             _ if let Some((_, kind)) =
                 schema::ELEMENT_TAGS.iter().find(|(name, _)| *name == tag) =>
             {
-                kind
+                Some(*kind)
             }
-            _ if let Some((kind, _)) = html => kind,
+            _ if let Some((kind, _)) = html => Some(kind),
             // SVG's text: placed in its view box (extern_element).
-            "text" if super::extern_element::in_svg(self.parent_tag(parent)) => "svgText",
+            "text" if super::extern_element::in_svg(self.parent_tag(parent)) => Some(Kind::SvgText),
             "text" | "p" | "span" | "small" | "a" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
-                "label"
+                Some(Kind::Label)
             }
-            "label" if label_for.is_some() => "label",
+            "label" if label_for.is_some() => Some(Kind::Label),
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
-            | "ul" | "ol" | "li" | "menu" => "box",
-            "img" => "image",
-            "video" => "video",
-            "audio" => "audio",
-            "hr" => "divider",
-            "textarea" => "field",
+            | "ul" | "ol" | "li" | "menu" => Some(Kind::Box),
+            "img" => Some(Kind::Image),
+            "video" => Some(Kind::Video),
+            "audio" => Some(Kind::Audio),
+            "hr" => Some(Kind::Divider),
+            "textarea" => Some(Kind::Field),
             // An input's kind is its literal type's: a range is a slider, a
             // checkbox a toggle, every text type a field.
-            "input" => match attrs
-                .iter()
-                .find(|a| a.name == "type" && !a.bound)
-                .map(|a| a.value.as_str())
-            {
-                Some("range") => "slider",
-                Some("checkbox") => "toggle",
-                Some("radio") => "radio",
-                Some("color") => "color",
-                Some("date" | "time" | "datetime-local" | "month" | "week") => "datetime",
-                Some("file") => "file",
-                _ => "field",
-            },
+            "input" => Some(
+                match attrs
+                    .iter()
+                    .find(|a| a.name == "type" && !a.bound)
+                    .map(|a| a.value.as_str())
+                {
+                    Some("range") => Kind::Slider,
+                    Some("checkbox") => Kind::Toggle,
+                    Some("radio") => Kind::Radio,
+                    Some("color") => Kind::Color,
+                    Some("date" | "time" | "datetime-local" | "month" | "week") => Kind::Datetime,
+                    Some("file") => Kind::File,
+                    _ => Kind::Field,
+                },
+            ),
             other => match super::extern_element::kind(other, self.parent_tag(parent)) {
-                Some(Ok(kind)) => kind,
+                Some(Ok(kind)) => Some(kind),
                 Some(Err(hint)) => return Err((at, hint)),
                 None => match renamed(other) {
                     Some(hint) => return Err((at, hint)),
-                    None => other,
+                    // A kind written by its own name.
+                    None => Kind::named(other),
                 },
             },
         };
         let component = tag.starts_with(char::is_uppercase);
-        let kind = if component {
-            NodeKind::Use(tag.into())
-        } else {
-            NodeKind::Element(schema::kind(internal).ok_or((at, format!("unknown element <{tag}>; use a reflected core tag or capitalised component")))?.name)
+        let kind = match internal {
+            _ if component => NodeKind::Use(tag.into()),
+            Some(kind) => NodeKind::Element(kind),
+            None => {
+                return Err((
+                    at,
+                    format!(
+                        "unknown element <{tag}>; use a reflected core tag or capitalised component"
+                    ),
+                ));
+            }
         };
         let i = self.push(kind, parent, at);
         self.doc.nodes[i].selector_tag = Some(tag.into());
@@ -515,7 +527,7 @@ impl Parser {
                 continue;
             }
             // A block's key translates its anonymous text.
-            if internal == "box" && a.name == "i18n" {
+            if internal == Some(Kind::Box) && a.name == "i18n" {
                 continue;
             }
             // Read as selector facts: a label's control, a list's numbering.
@@ -561,7 +573,7 @@ impl Parser {
             // A range's ticks, or a text input's suggestions: the
             // `<datalist>` it names, joined once the tree is read.
             if tag == "input" && a.name == "list" {
-                if internal != "slider" && internal != "field" {
+                if internal != Some(Kind::Slider) && internal != Some(Kind::Field) {
                     return Err((
                         a.at,
                         "list names a range's ticks or a text input's suggestions".into(),
@@ -587,7 +599,7 @@ impl Parser {
             }
             // An input's type chose its kind; a checkbox's `switch` is how
             // it draws, and a toggle is a switch.
-            if tag == "input" && internal == "toggle" && a.name == "switch" && !a.bound {
+            if tag == "input" && internal == Some(Kind::Toggle) && a.name == "switch" && !a.bound {
                 self.prop(
                     i,
                     internal,
@@ -598,11 +610,14 @@ impl Parser {
                 )?;
                 continue;
             }
-            if tag == "input" && !matches!(internal, "field" | "datetime") && a.name == "type" {
+            if tag == "input"
+                && !matches!(internal, Some(Kind::Field | Kind::Datetime))
+                && a.name == "type"
+            {
                 continue;
             }
             // A radio's group is the store it binds; its `name` adds nothing.
-            if internal == "radio" && a.name == "name" {
+            if internal == Some(Kind::Radio) && a.name == "name" {
                 continue;
             }
             if a.name == "multiline" || (tag == "textarea" && a.name == "type") {
@@ -611,7 +626,7 @@ impl Parser {
                     "write several lines as <textarea>, one line as <input type=…>".into(),
                 ));
             }
-            if internal == "field"
+            if internal == Some(Kind::Field)
                 && a.name == "pattern"
                 && !a.bound
                 && crate::input_type::pattern(&a.value).is_none()
@@ -621,7 +636,7 @@ impl Parser {
                     format!("pattern \"{}\" is not a regular expression", a.value),
                 ));
             }
-            if internal == "field"
+            if internal == Some(Kind::Field)
                 && a.name == "data-format"
                 && !a.bound
                 && let Err(e) = og_i18n::Message::parse(&a.value)
@@ -631,7 +646,7 @@ impl Parser {
                     format!("data-format \"{}\" is not a message: {e}", a.value),
                 ));
             }
-            if internal == "field"
+            if internal == Some(Kind::Field)
                 && let Some(html) = match a.name.as_str() {
                     "max-chars" | "maxChars" => Some("maxlength"),
                     "min-chars" | "minChars" => Some("minlength"),
@@ -657,11 +672,12 @@ impl Parser {
                 });
             let mut name = match (internal, model.unwrap_or(&a.name)) {
                 _ if let Some((_, _, property)) = mapped => (*property).into(),
-                ("field", "maxlength") => "maxChars".into(),
-                ("field", "minlength") => "minChars".into(),
-                ("field", "rows") if tag == "textarea" => "lines".into(),
-                ("details", "name") => "exclusive".into(),
-                (_, other) => super::extern_element::property(internal, other)
+                (Some(Kind::Field), "maxlength") => "maxChars".into(),
+                (Some(Kind::Field), "minlength") => "minChars".into(),
+                (Some(Kind::Field), "rows") if tag == "textarea" => "lines".into(),
+                (Some(Kind::Details), "name") => "exclusive".into(),
+                (_, other) => internal
+                    .and_then(|kind| super::extern_element::property(kind, other))
                     .unwrap_or_else(|| property(other)),
             };
             if matches!(name.as_str(), "suggestionLabels" | "suggestionKeys") {
@@ -686,16 +702,16 @@ impl Parser {
                     ),
                 ));
             }
-            if name == "value" && internal == "field" {
+            if name == "value" && internal == Some(Kind::Field) {
                 name = "input".into();
             }
-            if name == "value" && internal == "select" {
+            if name == "value" && internal == Some(Kind::Select) {
                 name = "current".into();
             }
-            if name == "value" && internal == "color" {
+            if name == "value" && internal == Some(Kind::Color) {
                 name = "colorValue".into();
             }
-            if matches!(internal, "video" | "audio") && a.name == "src" {
+            if matches!(internal, Some(Kind::Video | Kind::Audio)) && a.name == "src" {
                 if !a.bound {
                     return Err((
                         a.at,
@@ -711,7 +727,7 @@ impl Parser {
                 }
                 name = "mediaSrc".into();
             }
-            if internal == "audio"
+            if internal == Some(Kind::Audio)
                 && matches!(
                     name.as_str(),
                     "currentTime" | "duration" | "ended" | "poster"
@@ -724,10 +740,10 @@ impl Parser {
                     ),
                 ));
             }
-            if internal == "file" && name == "value" {
+            if internal == Some(Kind::File) && name == "value" {
                 name = "fileValue".into();
             }
-            if internal == "datetime" {
+            if internal == Some(Kind::Datetime) {
                 match name.as_str() {
                     "value" => name = "dateValue".into(),
                     "type" => name = "dateType".into(),
@@ -736,10 +752,10 @@ impl Parser {
                     _ => {}
                 }
             }
-            if name == "value" && internal == "radio" {
+            if name == "value" && internal == Some(Kind::Radio) {
                 name = "choice".into();
             }
-            if name == "value" && internal == "kbd" {
+            if name == "value" && internal == Some(Kind::Kbd) {
                 name = "binding".into();
             }
             if a.name == "hidden" && !component {
@@ -806,7 +822,7 @@ impl Parser {
             }
         }
         // An action's glyph follows the device: it reads `$ui.device`.
-        if internal == "kbd" && attrs.iter().any(|a| a.name == "data-action") {
+        if internal == Some(Kind::Kbd) && attrs.iter().any(|a| a.name == "data-action") {
             let device = expression("$ui.device", at)?;
             self.prop(
                 i,
@@ -845,12 +861,12 @@ impl Parser {
         let translated = attrs.iter().any(|a| a.name == "i18n");
         // A button holding elements lays them out in a row inside it, its
         // text between them an anonymous text as a block's is.
-        let content_button = internal == "button"
+        let content_button = internal == Some(Kind::Button)
             && !component
             && children
                 .iter()
                 .any(|c| matches!(c, Node::Element { .. }) && !inline(c));
-        if internal == "box" || content_button {
+        if internal == Some(Kind::Box) || content_button {
             // Text between a block's elements is an anonymous text
             // element, its inline markup kept (HTML's anonymous block box).
             let key = attrs.iter().find(|a| a.name == "i18n");
@@ -880,12 +896,12 @@ impl Parser {
                 } else {
                     PropValue::Lit(Lit::Str(a.value.clone()))
                 };
-                self.prop(text, "label", "key", value, a.at, &a.value)?;
+                self.prop(text, Some(Kind::Label), "key", value, a.at, &a.value)?;
             }
             return Ok(i);
         }
-        if internal == "svgText"
-            || internal == "label"
+        if internal == Some(Kind::SvgText)
+            || internal == Some(Kind::Label)
                 && !component
                 && (tag == "a" || children.iter().any(|c| matches!(c, Node::Element { .. })))
         {
@@ -896,7 +912,7 @@ impl Parser {
                 ));
             }
             let own = (tag == "a").then_some(usize::MAX);
-            if internal == "svgText" {
+            if internal == Some(Kind::SvgText) {
                 let children = self.text_path(i, children)?;
                 let read = self.text_runs(i, &children, own, at, translated);
                 self.white_space = None;
@@ -909,7 +925,8 @@ impl Parser {
         let mut text = Expr::Lit(serde_json::Value::String(String::new()));
         let mut has_text = false;
         let mut bound_text = false;
-        let text_bearing = schema::prop("text").is_some_and(|(_, p)| p.applies(internal));
+        let text_bearing =
+            schema::prop("text").is_some_and(|(_, p)| internal.is_some_and(|kind| p.applies(kind)));
         for (index, child) in children.iter().enumerate() {
             let value = match child {
                 Node::Text(value, at) => {
@@ -981,7 +998,7 @@ impl Parser {
     pub(super) fn prop(
         &mut self,
         node: usize,
-        kind: &str,
+        kind: Option<Kind>,
         name: &str,
         value: PropValue,
         at: usize,
@@ -991,10 +1008,22 @@ impl Parser {
             at,
             format!("unknown property {name}; use a reflected property"),
         ))?;
-        if !p.applies(kind) {
+        // A component takes what every element does.
+        let applies = match kind {
+            Some(kind) => p.applies(kind),
+            None => p.on == schema::On::All,
+        };
+        if !applies {
+            let element = match kind {
+                Some(kind) => kind.name(),
+                None => self.doc.nodes[node]
+                    .selector_tag
+                    .as_deref()
+                    .unwrap_or_default(),
+            };
             return Err((
                 at,
-                format!("{name} does not apply to {kind}; use its documented properties"),
+                format!("{name} does not apply to {element}; use its documented properties"),
             ));
         }
         if matches!(value, PropValue::Model(_)) && !p.two_way {

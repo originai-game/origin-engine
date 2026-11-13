@@ -1,5 +1,5 @@
 //! SVG's attributes and the props they set.
-use super::super::{On, PropSpec, Ty};
+use super::super::{Kind, On, PropSpec, Ty};
 
 /// SVG attributes and their props: `(attribute, prop)`.
 const SVG_ATTRS: &[(&str, &str)] = &[
@@ -139,18 +139,18 @@ pub fn svg_attr(prop: &str) -> Option<&'static str> {
 }
 
 const ALL: On = On::Kinds(&[
-    "svg",
-    "svgGroup",
-    "svgShape",
-    "svgUse",
-    "svgDef",
-    "svgText",
-    "svgForeign",
+    Kind::Svg,
+    Kind::SvgGroup,
+    Kind::SvgShape,
+    Kind::SvgUse,
+    Kind::SvgDef,
+    Kind::SvgText,
+    Kind::SvgForeign,
 ]);
-const TEXT: On = On::Kinds(&["svg", "svgGroup", "svgText"]);
-const SHAPES: On = On::Kinds(&["svgShape", "svgUse"]);
-const PAINTED: On = On::Kinds(&["svgGroup", "svgShape", "svgUse"]);
-const DEFS: On = On::Kinds(&["svgDef"]);
+const TEXT: On = On::Kinds(&[Kind::Svg, Kind::SvgGroup, Kind::SvgText]);
+const SHAPES: On = On::Kinds(&[Kind::SvgShape, Kind::SvgUse]);
+const PAINTED: On = On::Kinds(&[Kind::SvgGroup, Kind::SvgShape, Kind::SvgUse]);
+const DEFS: On = On::Kinds(&[Kind::SvgDef]);
 
 macro_rules! svg {
     ($name:literal, $on:expr, $doc:literal) => {
@@ -167,12 +167,12 @@ macro_rules! svg {
 pub const PROPS: &[PropSpec] = &[
     svg!(
         "svgViewBox",
-        On::Kinds(&["svg", "svgDef"]),
+        On::Kinds(&[Kind::Svg, Kind::SvgDef]),
         "SVG `viewBox`: the user space `min-x min-y width height` its box shows."
     ),
     svg!(
         "svgTransform",
-        On::Kinds(&["svgGroup", "svgShape", "svgDef"]),
+        On::Kinds(&[Kind::SvgGroup, Kind::SvgShape, Kind::SvgDef]),
         "SVG `transform` (matrix, translate, scale, rotate, skewX, skewY); on a gradient, `gradientTransform`."
     ),
     svg!(
@@ -212,12 +212,12 @@ pub const PROPS: &[PropSpec] = &[
     svg!("svgY", ALL, "SVG `y`."),
     svg!(
         "svgDx",
-        On::Kinds(&["svgText", "svgDef"]),
+        On::Kinds(&[Kind::SvgText, Kind::SvgDef]),
         "A `<text>`'s `dx` (added to `x`, user units or `em`), or `feOffset`'s and `feDropShadow`'s."
     ),
     svg!(
         "svgDy",
-        On::Kinds(&["svgText", "svgDef"]),
+        On::Kinds(&[Kind::SvgText, Kind::SvgDef]),
         "A `<text>`'s `dy` (added to `y`, user units or `em`; `1.2em`: a line down), or `feOffset`'s and `feDropShadow`'s."
     ),
     svg!(
@@ -304,32 +304,32 @@ pub const PROPS: &[PropSpec] = &[
     ),
     svg!(
         "svgStartOffset",
-        On::Kinds(&["svgText"]),
+        On::Kinds(&[Kind::SvgText]),
         "A `<textPath>`'s `startOffset`: where the text's anchor sits along the path, user units or a percentage of its length."
     ),
     svg!(
         "svgSide",
-        On::Kinds(&["svgText"]),
+        On::Kinds(&[Kind::SvgText]),
         "A `<textPath>`'s `side`: left (the default) or right (the path run backwards)."
     ),
     svg!(
         "svgMethod",
-        On::Kinds(&["svgText"]),
+        On::Kinds(&[Kind::SvgText]),
         "A `<textPath>`'s `method`: align (each glyph turned rigidly onto the path; stretch draws as align, as browsers do)."
     ),
     svg!(
         "svgSpacing",
-        On::Kinds(&["svgText"]),
+        On::Kinds(&[Kind::SvgText]),
         "A `<textPath>`'s `spacing`: exact or auto (both keep the font's advances)."
     ),
     svg!(
         "svgPath",
-        On::Kinds(&["svgText"]),
+        On::Kinds(&[Kind::SvgText]),
         "A `<textPath>`'s `path`: its own path data instead of `href`."
     ),
     svg!(
         "svgTextPathHref",
-        On::Kinds(&["svgText"]),
+        On::Kinds(&[Kind::SvgText]),
         "A `<textPath>`'s `href=\"#id\"`: the path or shape the text runs along."
     ),
     svg!("svgFx", DEFS, "A radial gradient's `fx`."),
@@ -346,7 +346,7 @@ pub const PROPS: &[PropSpec] = &[
     svg!("svgSpreadMethod", DEFS, "A gradient's `spreadMethod`."),
     svg!(
         "svgHref",
-        On::Kinds(&["svgDef", "svgUse", "svgShape"]),
+        On::Kinds(&[Kind::SvgDef, Kind::SvgUse, Kind::SvgShape]),
         "SVG `href`: an `<image>`'s atlas icon by name or render texture handle (`href={$target}`), what a `<use>` draws (`#id` of a symbol, group or shape), the gradient a gradient takes its stops from, or an `feImage`'s atlas image, texture handle or element (`#id` of a shape or group, drawn as `<use>` draws it)."
     ),
     svg!(
@@ -555,7 +555,7 @@ pub const PROPS: &[PropSpec] = &[
     ),
     svg!(
         "svgPreserveAspectRatio",
-        On::Kinds(&["svg", "svgDef", "svgShape"]),
+        On::Kinds(&[Kind::Svg, Kind::SvgDef, Kind::SvgShape]),
         "SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`."
     ),
 ];

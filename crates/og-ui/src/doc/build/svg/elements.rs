@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl Ui {
     /// The elements the `feImage`s of the open element's filters name
@@ -34,7 +35,7 @@ impl Ui {
                 n += 1;
                 let Some(target) = doc.nodes.iter().position(|d| {
                     d.id == *id
-                        && matches!(d.kind, NodeKind::Element(k) if KINDS.contains(&k) && k != "svgDef")
+                        && matches!(d.kind, NodeKind::Element(k) if k.svg() && k != Kind::SvgDef)
                 }) else {
                     // A missing element: the filter reads nothing there.
                     continue;
@@ -494,7 +495,7 @@ impl Ui {
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
-        kind: &'static str,
+        kind: Kind,
         id: &str,
         r: &Resolved,
         props: Props,
@@ -503,7 +504,7 @@ impl Ui {
         built: Built,
         build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
     ) -> Option<String> {
-        if kind == "svgDef" {
+        if kind == Kind::SvgDef {
             return None;
         }
         if animated(&b.doc, n) {
@@ -534,12 +535,12 @@ impl Ui {
             .flatten()
             .and_then(|v| view_box(&v))
             .unwrap_or([0.0, 0.0, DEFAULT_SIZE[0], DEFAULT_SIZE[1]]);
-        if kind == "svgText" {
+        if kind == Kind::SvgText {
             self.build_svg_text(b, n, id, r, props, &path, key, vb);
             self.docs.note_built(built);
             return Some(path);
         }
-        if kind == "svgForeign" {
+        if kind == Kind::SvgForeign {
             return self.build_svg_foreign(
                 b,
                 n,
@@ -557,12 +558,12 @@ impl Ui {
             direction: Direction::Column,
             ..Element::default()
         };
-        if kind == "svg" {
+        if kind == Kind::Svg {
             el.width = Size::px(vb[2]);
             el.height = Size::px(vb[3]);
         }
         let mut el = Self::box_of(r, el, self.style.em_of(r, &self.env));
-        if kind != "svg" {
+        if kind != Kind::Svg {
             el.width = Size::grow();
             el.height = Size::grow();
         }
@@ -571,7 +572,7 @@ impl Ui {
         let mut p = Self::resolved_props(n, r);
         p.states = props.states;
         p.state = props.state;
-        if kind != "svg" {
+        if kind != Kind::Svg {
             // Over the whole `<svg>`: its user space is the root's box.
             p.position = crate::element::Position::Absolute;
             p.insets = crate::element::Edges {
@@ -589,7 +590,7 @@ impl Ui {
         if let Some(name) = r.str("name").filter(|n| !n.is_empty()) {
             self.tree.semantics_mut(i).name = Some(name.to_string());
             // A named `<svg>` is an image, as browsers expose one.
-            if kind == "svg" && n.role.is_none() {
+            if kind == Kind::Svg && n.role.is_none() {
                 self.tree.semantics_mut(i).role = Some("image");
             }
         }
@@ -618,7 +619,7 @@ impl Ui {
         // `filter="url(#id)"`: the element and its subtree drawn through
         // an SVG `<filter>`, the innermost of its layers.
         let filter = match r.str("svgFilter").map(str::trim) {
-            Some(v) if kind != "svg" && v != "none" && !v.is_empty() => {
+            Some(v) if kind != Kind::Svg && v != "none" && !v.is_empty() => {
                 match self.docs.svg_filter(b, n, kind, r, v, &t, vb, &self.env) {
                     Ok(f) => Some(f),
                     Err(e) => {
@@ -641,7 +642,7 @@ impl Ui {
             }
             d
         };
-        if cut.is_none() && filter.is_some() && kind != "svgShape" {
+        if cut.is_none() && filter.is_some() && kind != Kind::SvgShape {
             self.set_draw(filtered(ElementDraw {
                 view_box: Some(vb),
                 ..ElementDraw::default()
@@ -686,14 +687,14 @@ impl Ui {
                 ..Default::default()
             };
         };
-        if kind == "svgShape" && n.selector_tag.as_deref() == Some("image") {
+        if kind == Kind::SvgShape && n.selector_tag.as_deref() == Some("image") {
             match self.docs.image_draw(b, r, &t, vb, &self.env) {
                 Ok(Some(draw)) if cut.is_none() => self.set_draw(filtered(draw)),
                 Ok(Some(draw)) => self.set_draw(draw),
                 Ok(None) => {}
                 Err(e) => warn(self, e),
             }
-        } else if kind == "svgShape" {
+        } else if kind == Kind::SvgShape {
             let tag = n.selector_tag.as_deref().unwrap_or("path");
             match shape_draw(&b.doc, tag, r, vb) {
                 Ok(ShapeOut {
@@ -751,7 +752,7 @@ impl Ui {
             self.build_element_images(b, n, &computed, &[&**f], ImageSpace::Svg(t, bbox));
         }
         self.docs.note_built(built);
-        if kind != "svgShape" {
+        if kind != Kind::SvgShape {
             let inherited = std::mem::replace(&mut b.inherited, computed);
             build_children(self, b, None);
             b.inherited = inherited;
@@ -773,7 +774,7 @@ impl crate::ui::Docs {
         &self,
         b: &Build<'_>,
         n: &DocNode,
-        kind: &str,
+        kind: Kind,
         r: &Resolved,
         reference: &str,
         t: &Affine,
@@ -809,7 +810,7 @@ impl crate::ui::Docs {
         };
         let mut bbox = [0.0; 4];
         let tag = n.selector_tag.as_deref().unwrap_or("path");
-        if kind == "svgShape" {
+        if kind == Kind::SvgShape {
             let get = |attr: &str| svg_prop(attr).and_then(|p| r.str(p));
             if tag == "image" {
                 let len =

@@ -4,7 +4,8 @@ use super::*;
 
 pub(super) struct BoxSource<'a> {
     pub document: Option<&'a UiDocument>,
-    pub kind: &'static str,
+    /// The element's kind; none for a box a control draws itself.
+    pub kind: Option<Kind>,
     pub tag: Option<&'a str>,
     pub root: bool,
     pub line: usize,
@@ -14,7 +15,8 @@ pub(super) struct BoxSource<'a> {
 pub struct RenderFields {
     pub index: usize,
     host_key: u64,
-    kind: &'static str,
+    /// The element's kind; none for a box a control draws itself.
+    kind: Option<Kind>,
     element: Element,
     widget_props: Props,
     document_props: Props,
@@ -33,7 +35,7 @@ impl RenderFields {
         ui: &Ui,
         host_key: u64,
         index: usize,
-        kind: &'static str,
+        kind: Option<Kind>,
         response: crate::Response,
         document_props: Props,
         texture: Option<og_draw::TextureHandle>,
@@ -54,7 +56,7 @@ impl RenderFields {
                 _ => 0.0,
             },
             texture,
-            art: (kind == "art").then(|| ui.docs.last_art_path()),
+            art: (kind == Some(Kind::Art)).then(|| ui.docs.last_art_path()),
             hidden: node.hidden,
         }
     }
@@ -111,7 +113,7 @@ impl Ui {
         doc: Option<&crate::doc::UiDocument>,
         r: &Resolved,
         el: &mut Element,
-        kind: &str,
+        kind: Option<Kind>,
         warn: &mut Vec<String>,
     ) -> Option<crate::decor::BoxDecor> {
         use crate::decor::{BoxDecor, Line, LineStyle, Shadow};
@@ -222,7 +224,7 @@ impl Ui {
                 y = "auto";
             }
             let scrolls = |a: &str| matches!(a, "auto" | "scroll");
-            if kind == "scroll" || schema::kind(kind).is_some_and(|k| k.container) {
+            if kind.is_some_and(Kind::container) {
                 el.scroll = scrolls(y);
                 el.scroll_x = scrolls(x);
             }
@@ -481,7 +483,7 @@ impl Ui {
         // built, so settlement can show it again.
         self.tree.nodes[i].hidden = base.hidden || (r.has("visible") && !r.flag("visible"));
         match base.kind {
-            "label" => {
+            Some(Kind::Label) => {
                 let desc = r.label_desc(self.theme(), self.fonts(), r.own_flow().rtl);
                 let shown;
                 let base = match r.text.as_deref() {
@@ -544,7 +546,7 @@ impl Ui {
                     }
                 }
             }
-            "button" => {
+            Some(Kind::Button) => {
                 self.apply_button(
                     i,
                     &base.text,
@@ -565,7 +567,7 @@ impl Ui {
                     };
                 }
             }
-            "image" => {
+            Some(Kind::Image) => {
                 self.apply_image(
                     i,
                     crate::ImageDesc {
@@ -583,7 +585,7 @@ impl Ui {
                 );
                 self.tree.object_fit(i, r);
             }
-            "icon" => {
+            Some(Kind::Icon) => {
                 let name = match (r.str("icon"), r.str("cue")) {
                     (Some(icon), _) => icon.to_string(),
                     (None, Some(token)) => self.cue_icon(token).unwrap_or_default(),
@@ -601,7 +603,7 @@ impl Ui {
                     },
                 )
             }
-            "art" => {
+            Some(Kind::Art) => {
                 let path = base.art.clone().expect("art render fields");
                 let mut spec = crate::slot::SlotSpec::from_props(
                     &path,
@@ -629,7 +631,7 @@ impl Ui {
                     },
                 );
             }
-            "details" => {
+            Some(Kind::Details) => {
                 // Its fields are its content column's; the build gives its
                 // root (the parent) the CSS width too (`DetailsDesc.width`).
                 let root = self.tree.nodes[i].parent;
@@ -637,12 +639,12 @@ impl Ui {
                     self.tree.el_mut(root).width = r.size("width").unwrap_or(Size::grow());
                 }
             }
-            "spacer" => {
+            Some(Kind::Spacer) => {
                 let size = r.size("width").or(r.size("height")).unwrap_or(Size::grow());
                 self.tree.el_mut(i).width = size;
                 self.tree.el_mut(i).height = size;
             }
-            "divider" => {
+            Some(Kind::Divider) => {
                 if let Some(color) = r.color("color") {
                     self.tree.el_mut(i).background = Some(color);
                 }
@@ -675,26 +677,29 @@ impl Ui {
         }
         // A content-sized select fits the option it shows (or its
         // placeholder) instead of filling the line.
-        if content && source.kind == "select" {
+        if content && source.kind == Some(Kind::Select) {
             el.width = Size::fit();
         }
         let em = self.style.em_of(r, &self.env);
-        if schema::kind(source.kind).is_some_and(|kind| kind.container) {
+        if source.kind.is_some_and(Kind::container) {
             el = Self::box_of(r, el, em);
-            if !matches!(source.kind, "panel" | "scroll" | "list" | "cells") {
+            if !matches!(
+                source.kind,
+                Some(Kind::Panel | Kind::Scroll | Kind::List | Kind::Cells)
+            ) {
                 // A box is a column (CSS block), or a row as `display: flex`.
                 let display = super::inner_display(r.str("display"));
                 let initial = match (source.kind, display) {
-                    ("box", "flex") => "row",
-                    ("box", _)
+                    (Some(Kind::Box), "flex") => "row",
+                    (Some(Kind::Box), _)
                         if source.tag == Some("li")
                             && r.str("markerPosition") == Some("inside") =>
                     {
                         "row"
                     }
                     // A button's content is a row in it.
-                    ("button", _) => "row",
-                    (kind, _) => kind,
+                    (Some(Kind::Button), _) => "row",
+                    (kind, _) => kind.map_or("", Kind::name),
                 };
                 let direction = r.str("direction").unwrap_or(initial);
                 el.direction = match direction {
@@ -704,16 +709,18 @@ impl Ui {
                 el.reverse = direction.ends_with("Reverse");
                 // A flex box's lines share its free room across it unless
                 // told otherwise (`align-content: normal`, CSS Flexbox §8.4).
-                if source.kind == "box" && display == "flex" && el.align_content.is_none() {
+                if source.kind == Some(Kind::Box) && display == "flex" && el.align_content.is_none()
+                {
                     el.align_content = Some(crate::Align::Stretch);
                 }
                 // A `display: block` box flows its children as CSS blocks.
                 el.block = initial == "box"
                     && el.direction == Direction::Column
                     && !matches!(display, "grid" | "table");
-                el.bfc = source.kind == "box" && r.str("display") == Some("flowRoot");
-                el.contents = source.kind == "box" && r.str("display") == Some("contents");
-                el.table = if source.kind == "box" {
+                el.bfc = source.kind == Some(Kind::Box) && r.str("display") == Some("flowRoot");
+                el.contents =
+                    source.kind == Some(Kind::Box) && r.str("display") == Some("contents");
+                el.table = if source.kind == Some(Kind::Box) {
                     super::table_part(r.str("display"), r.str("captionSide"))
                 } else {
                     crate::TablePart::None
@@ -766,7 +773,7 @@ impl Ui {
                 let across = parent != crate::layout::NONE
                     && self.tree.nodes[parent].props.flow.mode.vertical() != vertical;
                 let axis = if vertical { "height" } else { "width" };
-                if source.kind == "box"
+                if source.kind == Some(Kind::Box)
                     && fills
                     && !across
                     && !r.has(axis)
@@ -826,7 +833,12 @@ impl Ui {
                     );
                 }
             }
-            if r.has("width") && !matches!(source.kind, "label" | "button" | "image" | "art") {
+            if r.has("width")
+                && !matches!(
+                    source.kind,
+                    Some(Kind::Label | Kind::Button | Kind::Image | Kind::Art)
+                )
+            {
                 el.width = r.size("width").unwrap_or(el.width);
             }
         }
@@ -905,7 +917,7 @@ impl Ui {
         // A block-level text (`<p>`, a heading, a text displayed `block`)
         // in a block's flow fills its line, as a CSS block box does (CSS 2
         // §10.3.3); an inline-level one keeps fitting its text.
-        if source.kind == "label" {
+        if source.kind == Some(Kind::Label) {
             el.block = match r.str("display") {
                 d @ Some(_) if super::outer_inline(d) => false,
                 Some("block" | "flowRoot" | "listItem") => true,
@@ -1018,7 +1030,7 @@ impl Ui {
                 *min = min.max(el.padding.vertical() + down);
             }
         }
-        if source.kind == "file" && !content {
+        if source.kind == Some(Kind::File) && !content {
             self.fixed_file_width(i, &mut el, r);
         }
         *self.tree.el_mut(i) = el;

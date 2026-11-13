@@ -58,7 +58,6 @@ impl Ui {
         &mut self,
         b: &Build<'_>,
         i: usize,
-        kind: &'static str,
         (at, node): &(usize, ResolvedNode),
     ) {
         let n = &b.doc.nodes[*at];
@@ -68,7 +67,7 @@ impl Ui {
             self,
             self.tree.nodes()[i].key,
             i,
-            kind,
+            None,
             Default::default(),
             props,
             None,

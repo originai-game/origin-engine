@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl Parser {
     /// Whether the element nearest above `parent` (through blocks) is a list.
@@ -48,7 +49,7 @@ impl Parser {
             Node::Text(_, at) | Node::Expression(_, at) | Node::Element { at, .. } => *at,
             _ => 0,
         };
-        let i = self.push(NodeKind::Element("label"), parent, at);
+        let i = self.push(NodeKind::Element(Kind::Label), parent, at);
         self.text_runs(i, &nodes, None, at, translated)?;
         self.doc.nodes[parent].children.push(i);
         Ok(Some(i))
@@ -252,7 +253,7 @@ impl Parser {
             } else {
                 PropValue::Lit(Lit::Str(a.value.clone()))
             };
-            self.prop(i, "svgText", prop, value, a.at, &a.value)?;
+            self.prop(i, Some(Kind::SvgText), prop, value, a.at, &a.value)?;
         }
         if !attrs
             .iter()
@@ -331,7 +332,7 @@ impl Parser {
                 .collect();
             PropValue::Lit(Lit::Str(text))
         };
-        self.prop(i, "label", "text", value, at, "")?;
+        self.prop(i, Some(Kind::Label), "text", value, at, "")?;
         if runs.iter().any(|r| {
             r.bold
                 || r.italic

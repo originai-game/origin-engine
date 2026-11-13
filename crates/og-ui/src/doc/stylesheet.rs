@@ -3,6 +3,7 @@ use super::StyleDeclaration;
 use super::selectors::Selector;
 use super::syntax::{Attr, Error};
 use super::*;
+use crate::doc::schema::Kind;
 
 #[derive(Clone, Default)]
 struct Rule {
@@ -438,7 +439,7 @@ pub fn apply(
                     continue;
                 };
                 // A text element's spans: `text::part(name)`, `p::part(…)`.
-                if doc.nodes[*i].kind != NodeKind::Element("label")
+                if doc.nodes[*i].kind != NodeKind::Element(Kind::Label)
                     || doc.nodes[*i].selector_tag.as_deref().is_some_and(|tag| {
                         part_name.is_some_and(|name| schema::parts::part(tag, name).is_some())
                     })
@@ -518,7 +519,7 @@ pub fn apply(
             };
             let kind = match doc.nodes[*i].kind {
                 NodeKind::Element(k) => k,
-                _ => "column",
+                _ => Kind::Column,
             };
             // The pseudo-element's box, when its element draws one: its
             // node takes the box declarations under the element's condition.
@@ -530,7 +531,7 @@ pub fn apply(
             };
             let mut parts = vec![(*i, kind, &own)];
             if let (Some(node), Some(boxed)) = (target, &boxed) {
-                parts.push((node, "box", boxed));
+                parts.push((node, Kind::Box, boxed));
             }
             for (node, kind, (declarations, entries)) in parts {
                 if rule.pseudo.is_some() && declarations.is_empty() {
@@ -1440,13 +1441,14 @@ fn matches(
 }
 
 /// A rule's reflected values for an element of `kind`.
-fn rule_props(entries: &[og_core::ogt::Entry], kind: &str) -> Result<Vec<PropSet>, String> {
+fn rule_props(entries: &[og_core::ogt::Entry], kind: Kind) -> Result<Vec<PropSet>, String> {
     let mut props = Vec::new();
     for e in entries {
         // `flex-direction` is a box's layout and a checkbox's
         // label's caption side: each element takes its own.
         let key = e.key.as_str();
-        if (key == "direction" && kind == "toggle") || (key == "labelDirection" && kind != "toggle")
+        if (key == "direction" && kind == Kind::Toggle)
+            || (key == "labelDirection" && kind != Kind::Toggle)
         {
             continue;
         }
@@ -1460,7 +1462,7 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: &str) -> Result<Vec<PropSet
         let inherited = css::STYLE.iter().any(|(property, name)| {
             *property == key && super::build::cascade::inherited_property(name)
         });
-        if (!p.applies(kind) && !inherited) || (e.key == "display" && kind != "box" && !inner) {
+        if (!p.applies(kind) && !inherited) || (e.key == "display" && kind != Kind::Box && !inner) {
             return Err(if e.key == "display" {
                 format!(
                     "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only none, block, inline, inline-block or flow-root",
@@ -1498,14 +1500,13 @@ const BOXES: [(&str, &str); 6] = [
 /// element's `::before` and `::after` (a text element's join its text as
 /// runs), a dialog's `::backdrop`, a select's `::picker(select)`, a
 /// `data-hold` element's `::-og-hold`, a popover's `::-og-arrow`.
-fn holds(pseudo: &str, kind: &str, node: &DocNode) -> bool {
+fn holds(pseudo: &str, kind: Kind, node: &DocNode) -> bool {
     match pseudo {
         "before" | "after" => {
-            schema::kind(kind).is_some_and(|k| k.container)
-                && (kind != "button" || !node.children.is_empty())
+            kind.container() && (kind != Kind::Button || !node.children.is_empty())
         }
-        "backdrop" => kind == "dialog",
-        "picker" => kind == "select",
+        "backdrop" => kind == Kind::Dialog,
+        "picker" => kind == Kind::Select,
         "hold" => node.props.iter().any(|p| p.name() == "dataHold"),
         "arrow" => node.props.iter().any(|p| p.name() == "popover"),
         _ => false,
@@ -1520,7 +1521,7 @@ fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
     }
     let at = doc.nodes.len();
     let mut node = DocNode {
-        kind: NodeKind::Element("box"),
+        kind: NodeKind::Element(Kind::Box),
         id: String::new(),
         selector_tag: None,
         selector_attrs: Vec::new(),
@@ -1546,7 +1547,7 @@ fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
     };
     if matches!(pseudo, "before" | "after") {
         let entries = css::declarations("display: inline;", node.line).expect("a display");
-        node.props = rule_props(&entries, "box").expect("a box display");
+        node.props = rule_props(&entries, Kind::Box).expect("a box display");
     }
     doc.nodes.push(node);
     doc.nodes[i].pseudo.push((pseudo, at));
@@ -1668,7 +1669,7 @@ pub fn inline(
     }
     let kind = match node.kind {
         NodeKind::Element(k) => k,
-        _ => "column",
+        _ => Kind::Column,
     };
     for d in &out {
         let name = d.name.as_str();
@@ -1700,8 +1701,8 @@ pub fn inline(
         let value = super::calc::reduce(&value).map_err(|e| (at, e))?;
         for e in css::declarations(&format!("{name}: {value};"), 0).map_err(|e| (at, e))? {
             let applies = schema::prop(&e.key).is_some_and(|(_, p)| p.applies(kind));
-            let side = (e.key == "direction" && kind == "toggle")
-                || (e.key == "labelDirection" && kind != "toggle");
+            let side = (e.key == "direction" && kind == Kind::Toggle)
+                || (e.key == "labelDirection" && kind != Kind::Toggle);
             if !applies && !side && !super::build::cascade::inherited_property(name) {
                 return Err((at, format!("CSS property {name} does not apply to {kind}")));
             }

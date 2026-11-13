@@ -76,7 +76,7 @@ impl Ui {
     /// width (or height: it is round) from `styled`, and its zone.
     pub(crate) fn build_touch_control(
         &mut self,
-        kind: &str,
+        kind: Kind,
         id: &str,
         r: &Resolved,
         styled: &Resolved,
@@ -87,7 +87,7 @@ impl Ui {
         };
         let disabled = r.flag("disabled");
         let dead_zone = r.num("dataDeadZone").unwrap_or(0.0).clamp(0.0, 0.95);
-        let (pressed, zone) = if kind == "joystick" {
+        let (pressed, zone) = if kind == Kind::Joystick {
             let out = self.joystick(
                 id,
                 crate::widgets::JoystickDesc {

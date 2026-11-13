@@ -1,4 +1,5 @@
 use super::*;
+use crate::doc::schema::Kind;
 
 impl RetainedHost {
     pub(crate) fn emit(
@@ -200,8 +201,8 @@ impl RetainedHost {
         // A slot, and a viewport whose camera-controls turn it by the tick.
         let node = &e.document.nodes[e.index];
         let volatile = owned.moved
-            || matches!(node.kind, NodeKind::Element("slot"))
-            || (node.kind == NodeKind::Element("viewport")
+            || matches!(node.kind, NodeKind::Element(Kind::Slot))
+            || (node.kind == NodeKind::Element(Kind::Viewport)
                 && node.props.iter().any(|p| p.name() == "cameraControls"));
         if volatile {
             self.volatile.insert(identity.clone());
@@ -354,7 +355,7 @@ impl RetainedHost {
         };
         let local = e.path.rsplit('/').next().unwrap_or(&e.path);
         match n.kind {
-            NodeKind::Element("dialog") if set("modal") => format!("{local}/Panel"),
+            NodeKind::Element(Kind::Dialog) if set("modal") => format!("{local}/Panel"),
             NodeKind::Element(_) if set("popover") => {
                 format!("{}~popover", e.path.replace('/', "_"))
             }

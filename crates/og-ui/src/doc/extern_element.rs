@@ -2,6 +2,8 @@
 //! viewport, a joystick…), attached by the document runtime: a tag the
 //! core table does not know comes here first.
 
+use crate::doc::schema::Kind;
+
 /// SVG's shapes, each one element of kind `svgShape` (its tag says which).
 pub(crate) const SVG_SHAPES: &[&str] = &[
     "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "image",
@@ -179,8 +181,8 @@ fn under_svg(parent_tag: Option<&str>) -> bool {
 /// registers), inside an element whose selector tag is `parent_tag`.
 /// `Some(Err(hint))`: the tag is known but not valid there. `None`: not
 /// an extern element.
-pub fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'static str, String>> {
-    let svg_child = |kind: &'static str| {
+pub fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<Kind, String>> {
+    let svg_child = |kind: Kind| {
         Some(if in_svg(parent_tag) {
             Ok(kind)
         } else {
@@ -188,25 +190,25 @@ pub fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'static str, 
         })
     };
     match tag {
-        "svg" => Some(Ok("svg")),
-        "viewport" => Some(Ok("viewport")),
-        "joystick" => Some(Ok("joystick")),
-        "anchor" => Some(Ok("anchor")),
-        "ground" => Some(Ok("ground")),
-        "dpad" => Some(Ok("dpad")),
-        "g" => svg_child("svgGroup"),
+        "svg" => Some(Ok(Kind::Svg)),
+        "viewport" => Some(Ok(Kind::Viewport)),
+        "joystick" => Some(Ok(Kind::Joystick)),
+        "anchor" => Some(Ok(Kind::Anchor)),
+        "ground" => Some(Ok(Kind::Ground)),
+        "dpad" => Some(Ok(Kind::Dpad)),
+        "g" => svg_child(Kind::SvgGroup),
         "tspan" => Some(Err(
             "<tspan> is a run inside an SVG <text>; write it there".into()
         )),
-        "use" => svg_child("svgUse"),
-        "foreignObject" => svg_child("svgForeign"),
+        "use" => svg_child(Kind::SvgUse),
+        "foreignObject" => svg_child(Kind::SvgForeign),
         "textPath" => Some(Err(
             "<textPath> is the content of an SVG <text>; write it there".into(),
         )),
         // Parsed as text (so its content binds), then lifted into its
         // parent's name by [`finish`].
         "title" | "desc" => Some(if under_svg(parent_tag) {
-            Ok("label")
+            Ok(Kind::Label)
         } else {
             Err(format!(
                 "<{tag}> names an SVG element; outside SVG, write aria-label (or the HTML title attribute)"
@@ -214,25 +216,25 @@ pub fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'static str, 
         }),
         // Outside SVG, `<image>` is the core's old name for `<img>`.
         "image" if !in_svg(parent_tag) => None,
-        t if SVG_SHAPES.contains(&t) => svg_child("svgShape"),
+        t if SVG_SHAPES.contains(&t) => svg_child(Kind::SvgShape),
         "stop" => Some(
             if matches!(parent_tag, Some("linearGradient" | "radialGradient")) {
-                Ok("svgDef")
+                Ok(Kind::SvgDef)
             } else {
                 Err("<stop> belongs in a <linearGradient> or <radialGradient>".into())
             },
         ),
-        t if SVG_DEFS.contains(&t) => svg_child("svgDef"),
+        t if SVG_DEFS.contains(&t) => svg_child(Kind::SvgDef),
         // SMIL: read by the element it sits in, never built.
         t if crate::svg::smil::TAGS.contains(&t) => Some(if under_svg(parent_tag) {
-            Ok("svgDef")
+            Ok(Kind::SvgDef)
         } else {
             Err(format!(
                 "<{t}> animates the SVG element it sits in; write it there"
             ))
         }),
         "mpath" => Some(if parent_tag == Some("animateMotion") {
-            Ok("svgDef")
+            Ok(Kind::SvgDef)
         } else {
             Err("<mpath> names an <animateMotion>'s path; write it there".into())
         }),
@@ -246,11 +248,11 @@ pub fn kind(tag: &str, parent_tag: Option<&str>) -> Option<Result<&'static str, 
 /// The prop an attribute `attr` of an element of `kind` sets, when it is
 /// an SVG attribute (SVG's names would collide with the core's `x`,
 /// `width`, `fill`…). `None`: the core's mapping.
-pub fn property(kind: &str, attr: &str) -> Option<String> {
-    if kind == "viewport" && attr == "src" {
+pub fn property(kind: Kind, attr: &str) -> Option<String> {
+    if kind == Kind::Viewport && attr == "src" {
         return Some("viewportSrc".into());
     }
-    if kind == "ground" {
+    if kind == Kind::Ground {
         let p = match attr {
             "at" => "worldAt",
             "size" => "worldSize",
@@ -259,7 +261,7 @@ pub fn property(kind: &str, attr: &str) -> Option<String> {
         };
         return Some(p.into());
     }
-    if kind == "panel" {
+    if kind == Kind::Panel {
         let p = match attr {
             "at" => "worldAt",
             "size" => "worldSize",
@@ -269,7 +271,7 @@ pub fn property(kind: &str, attr: &str) -> Option<String> {
         };
         return Some(p.into());
     }
-    if kind == "anchor" {
+    if kind == Kind::Anchor {
         let p = match attr {
             "at" => "worldAt",
             "offset" => "worldOffset",
@@ -282,26 +284,26 @@ pub fn property(kind: &str, attr: &str) -> Option<String> {
         return Some(p.into());
     }
     let svg = match kind {
-        "svg" => {
+        Kind::Svg => {
             matches!(attr, "viewBox")
                 || PRESENTATION.contains(&attr)
                 || TEXT_PRESENTATION.contains(&attr)
         }
-        "svgGroup" => {
+        Kind::SvgGroup => {
             matches!(attr, "transform" | "clip-path" | "mask" | "filter")
                 || PRESENTATION.contains(&attr)
                 || TEXT_PRESENTATION.contains(&attr)
         }
-        "svgShape" | "svgUse" => attr != "opacity",
-        "svgText" => {
+        Kind::SvgShape | Kind::SvgUse => attr != "opacity",
+        Kind::SvgText => {
             matches!(
                 attr,
                 "x" | "y" | "dx" | "dy" | "transform" | "clip-path" | "mask"
             ) || PRESENTATION.contains(&attr)
                 || TEXT_PRESENTATION.contains(&attr)
         }
-        "svgForeign" => matches!(attr, "x" | "y" | "width" | "height" | "transform"),
-        "svgDef" => true,
+        Kind::SvgForeign => matches!(attr, "x" | "y" | "width" | "height" | "transform"),
+        Kind::SvgDef => true,
         _ => false,
     };
     svg.then(|| super::schema::props::svg::svg_prop(attr))
@@ -359,7 +361,7 @@ pub fn finish<A: Clone>(
     let start = doc.nodes.len();
     let mut i = 0;
     while i < doc.nodes.len() {
-        if doc.nodes[i].kind == NodeKind::Element("svgUse") {
+        if doc.nodes[i].kind == NodeKind::Element(Kind::SvgUse) {
             if doc.nodes.len() > start + 20_000 {
                 return Err("<use> copies past 20000 elements: a <use> that draws itself?".into());
             }
@@ -372,7 +374,7 @@ pub fn finish<A: Clone>(
                 .iter()
                 .position(|n| {
                     n.id == id
-                        && matches!(n.kind, NodeKind::Element(k) if k.starts_with("svg") && k != "svg")
+                        && matches!(n.kind, NodeKind::Element(k) if k.svg() && k != Kind::Svg)
                 })
                 .ok_or_else(|| format!("<use href=\"#{id}\">: no SVG element has id \"{id}\""))?;
             if ancestor_of(doc, target, i) {
@@ -405,7 +407,8 @@ pub fn finish<A: Clone>(
     let name = super::schema::prop("name").expect("name is a prop").0;
     for i in 0..doc.nodes.len() {
         let tag = doc.nodes[i].selector_tag.as_deref();
-        if !matches!(tag, Some("title" | "desc")) || doc.nodes[i].kind != NodeKind::Element("label")
+        if !matches!(tag, Some("title" | "desc"))
+            || doc.nodes[i].kind != NodeKind::Element(Kind::Label)
         {
             continue;
         }

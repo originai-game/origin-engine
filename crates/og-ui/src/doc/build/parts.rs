@@ -1,6 +1,7 @@
 //! Exposed component parts use the document CSS cascade and box painter.
 use super::*;
 use crate::doc::matching::{Facts, own};
+use crate::doc::schema::Kind;
 
 impl Resolved {
     pub(crate) fn part_type(&self, theme: &crate::Theme, step: crate::TypeStep) -> crate::TypeStep {
@@ -152,18 +153,18 @@ impl Ui {
             fields::BoxSource {
                 document: document.as_deref(),
                 kind: if r.has("display") {
-                    "box"
+                    Some(Kind::Box)
                 } else if part.element.direction == Direction::Row {
-                    "row"
+                    Some(Kind::Row)
                 } else {
-                    "column"
+                    Some(Kind::Column)
                 },
                 tag: None,
                 root: false,
                 line: 0,
             },
         );
-        let mut props = Self::box_props(&NodeKind::Element("box"), &r);
+        let mut props = Self::box_props(&NodeKind::Element(Kind::Box), &r);
         // CSS's physical sides map onto the mirrored surface; the widget's
         // own placement below is already in its layout's terms.
         if self.env.direction == og_i18n::Direction::Rtl {
@@ -709,7 +710,7 @@ impl Ui {
         };
         let mut warnings = r.cascade.diagnostics.clone();
         let mut decor = self
-            .box_decor(None, r, &mut element, "box", &mut warnings)
+            .box_decor(None, r, &mut element, Some(Kind::Box), &mut warnings)
             .unwrap_or_default();
         if !warnings.is_empty() {
             return Err(warnings);

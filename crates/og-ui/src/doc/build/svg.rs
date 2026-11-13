@@ -38,17 +38,6 @@ pub use shapes::*;
 pub(super) use smil::animate;
 pub use smil::*;
 
-/// The kinds this module builds.
-pub const KINDS: &[&str] = &[
-    "svg",
-    "svgGroup",
-    "svgShape",
-    "svgUse",
-    "svgDef",
-    "svgText",
-    "svgForeign",
-];
-
 pub const VIEW_BOX: &str = " svg viewBox";
 pub const TRANSFORM: &str = " svg transform";
 
@@ -90,8 +79,8 @@ fn own(r: &Resolved, attr: &str) -> Option<String> {
 
 /// An SVG element's inherited state, written into its computed map for
 /// the SVG elements under it (see the module documentation).
-pub(super) fn inherit(kind: &str, r: &mut Resolved) {
-    if kind == "svgDef" {
+pub(super) fn inherit(kind: Kind, r: &mut Resolved) {
+    if kind == Kind::SvgDef {
         return;
     }
     let reads = &mut r.cascade.inherited_reads;
@@ -106,7 +95,7 @@ pub(super) fn inherit(kind: &str, r: &mut Resolved) {
     }
     let computed = &r.cascade.computed;
     let inherited = |name: &str| computed.get(name).cloned().flatten();
-    if kind == "svg" {
+    if kind == Kind::Svg {
         let vb = match r.str("svgViewBox") {
             Some(v) => v.to_string(),
             None => {
@@ -126,7 +115,7 @@ pub(super) fn inherit(kind: &str, r: &mut Resolved) {
         let parent = inherited(TRANSFORM)
             .and_then(|t| Affine::parse(&t).ok())
             .unwrap_or(Affine::IDENTITY);
-        let parent = if kind == "svgUse" {
+        let parent = if kind == Kind::SvgUse {
             match use_transform(r) {
                 Ok(t) => parent.then(&t),
                 Err(e) => {
