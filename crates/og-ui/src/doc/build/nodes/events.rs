@@ -194,6 +194,25 @@ impl NodesEventsUi for Ui {
         for e in b.events.iter_mut().filter(|e| e.path.is_empty()) {
             e.path = path.to_string();
         }
+        // A disabled element answers no press: `aria-disabled` keeps it in
+        // reach of the focus and marks it disabled after its control has
+        // taken the press, so its response is dropped here.
+        let resp = if self
+            .tree
+            .index()
+            .find(key)
+            .is_some_and(|i| self.tree.nodes()[i].disabled)
+        {
+            crate::ui::Response {
+                clicked: false,
+                tapped: false,
+                double_tapped: false,
+                long_pressed: false,
+                ..resp
+            }
+        } else {
+            resp
+        };
         if resp.clicked {
             b.event(path, "click", &n.id, Value::Null);
         }
@@ -259,6 +278,12 @@ impl NodesEventsUi for Ui {
                 When::Hold => held,
                 When::ContextMenu => context,
                 When::Toggle | When::Close | When::Revealed => happened.contains(&t.when),
+                When::Submit(off) => {
+                    resp.submitted
+                        && !off
+                            .as_ref()
+                            .is_some_and(|e| crate::bind::truthy(&b.eval(e)))
+                }
                 When::Action(a) => {
                     self.docs.state().accepts
                         && self.interaction.action_fired(a)

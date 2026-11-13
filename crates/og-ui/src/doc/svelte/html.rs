@@ -284,6 +284,8 @@ impl Parser {
         // A button in a form submits it (its default type) or resets it,
         // sending the form's onsubmit or onreset action.
         let typed = std::mem::take(&mut self.buttons);
+        // Per form, its first submit button's act and `disabled`.
+        let mut defaults: Vec<(usize, Act, Option<PropValue>)> = Vec::new();
         for i in 0..self.doc.nodes.len() {
             if self.doc.nodes[i].kind != NodeKind::Element("button")
                 || tag(&self.doc, i) != "button"
@@ -345,12 +347,44 @@ impl Parser {
             } else {
                 Act::Emit(action)
             };
+            if ty == "submit" && !defaults.iter().any(|d| d.0 == form) {
+                let off = self.doc.nodes[i]
+                    .props
+                    .iter()
+                    .find(|p| p.spec == disabled.0)
+                    .map(|p| p.value.clone());
+                defaults.push((form, act.clone(), off));
+            }
             let line = self.doc.nodes[i].line;
             self.doc.nodes[i].triggers.push(Trigger {
                 when: When::Click,
                 act,
                 line,
             });
+        }
+        // Enter in a form's single-line text field submits it as a press
+        // of its first submit button would (HTML's implicit submission):
+        // the same validation and action, and nothing while that button
+        // is disabled.
+        for (form, act, off) in defaults {
+            let off = match off {
+                Some(PropValue::Lit(Lit::Bool(true))) => continue,
+                Some(PropValue::Bind(e, _)) => Some(e),
+                _ => None,
+            };
+            let mut stack = element_children(&self.doc, form);
+            while let Some(k) = stack.pop() {
+                stack.extend(element_children(&self.doc, k));
+                if self.doc.nodes[k].kind != NodeKind::Element("field") {
+                    continue;
+                }
+                let line = self.doc.nodes[k].line;
+                self.doc.nodes[k].triggers.push(Trigger {
+                    when: When::Submit(off.clone()),
+                    act: act.clone(),
+                    line,
+                });
+            }
         }
         Ok(())
     }

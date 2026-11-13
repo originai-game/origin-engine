@@ -324,7 +324,7 @@ pub(super) fn apply(doc: &mut UiDocument, consts: &[(usize, String, Expr)]) -> R
             }
         }
         for t in &mut n.triggers {
-            if let When::Change(e) = &mut t.when {
+            if let When::Change(e) | When::Submit(Some(e)) = &mut t.when {
                 substitute(e, &scope).map_err(at_line)?;
             }
             if let Act::Set(_, e) = &mut t.act {

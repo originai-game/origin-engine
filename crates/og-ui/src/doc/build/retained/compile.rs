@@ -186,7 +186,7 @@ impl RetainedCompileRetainedHost for RetainedHost {
             )
             .chain(node.triggers.iter().flat_map(|trigger| {
                 let when = match &trigger.when {
-                    When::Change(expression) => Some(expression),
+                    When::Change(expression) | When::Submit(Some(expression)) => Some(expression),
                     _ => None,
                 };
                 let action = match &trigger.act {
