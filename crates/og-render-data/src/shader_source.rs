@@ -111,6 +111,7 @@ pub fn lit_source_with(hooks: &str, planar: bool) -> String {
                 String::new()
             },
             SCREEN_AO_WGSL,
+            SURFACE_SHADE_WGSL,
             PBR_FS_WGSL,
             PBR_PREPASS_WGSL,
             PBR_LEAN_WGSL,
@@ -144,6 +145,7 @@ pub fn physical_source(hooks: &str) -> String {
             &fx_wgsl(2),
             PBR_WGSL,
             SCREEN_AO_WGSL,
+            SURFACE_SHADE_WGSL,
             SHEEN_WGSL,
             PHYSICAL_WGSL,
             LIGHTMAP_PAGES_WGSL,

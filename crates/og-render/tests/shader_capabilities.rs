@@ -39,15 +39,15 @@ fn table() -> String {
 fn every_lit_module_carries_what_this_table_says() {
     let expected = "\
 module                                   | local lights | weather | decals | oit  | planar reflection | screen ao | lightmap | shared shade
-pbr                                      | full         | full    | full   | full | stub              | full      | full     | -
-pbr array maps                           | full         | full    | full   | full | stub              | full      | full     | -
-pbr, two planar reflections              | full         | full    | full   | full | full              | full      | full     | -
-pbr array maps, two planar reflections   | full         | full    | full   | full | full              | full      | full     | -
-physical                                 | full         | full    | full   | full | stub              | full      | full     | -
-wind                                     | full         | full    | full   | full | stub              | full      | full     | -
-meshlet lit                              | full         | full    | full   | full | stub              | full      | full     | -
-meshlet lit (planar)                     | full         | full    | full   | full | full              | full      | full     | -
-stylise object                           | full         | full    | full   | full | stub              | full      | full     | -
+pbr                                      | full         | full    | full   | full | stub              | full      | full     | full
+pbr array maps                           | full         | full    | full   | full | stub              | full      | full     | full
+pbr, two planar reflections              | full         | full    | full   | full | full              | full      | full     | full
+pbr array maps, two planar reflections   | full         | full    | full   | full | full              | full      | full     | full
+physical                                 | full         | full    | full   | full | stub              | full      | full     | full
+wind                                     | full         | full    | full   | full | stub              | full      | full     | full
+meshlet lit                              | full         | full    | full   | full | stub              | full      | full     | full
+meshlet lit (planar)                     | full         | full    | full   | full | full              | full      | full     | full
+stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
 custom full lit=true                     | full         | -       | -      | full | -                 | -         | -        | -
 custom full lit=false                    | full         | -       | -      | full | -                 | -         | -        | -
 sprite                                   | -            | -       | -      | full | -                 | -         | -        | -
@@ -66,8 +66,8 @@ fluid 3d                                 | full         | -       | -      | -  
 volumetric                               | full         | -       | -      | -    | -                 | -         | -        | -
 volumetric raymarch                      | full         | -       | -      | -    | -                 | -         | -        | -
 particles                                | full         | -       | -      | full | -                 | -         | -        | -
-pbr lean                                 | full         | full    | full   | full | stub              | full      | full     | -
-pbr lean, two planar reflections         | full         | full    | full   | full | full              | full      | full     | -
+pbr lean                                 | full         | full    | full   | full | stub              | full      | full     | full
+pbr lean, two planar reflections         | full         | full    | full   | full | full              | full      | full     | full
 ";
     let table = table();
     assert!(

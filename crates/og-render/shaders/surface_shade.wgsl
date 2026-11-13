@@ -4,7 +4,11 @@
 // sum of it with the caustics and the local lights. A surface fills a
 // `Surface` (lighting.wgsl) and a `ShadeAt`, lights itself by the sun as it
 // must (its own shadow lookup, its own lobes), and hands both here; none
-// keeps a copy of this tail. After lighting.wgsl, area.wgsl, the light
+// keeps a copy of this tail. Three entries, each built on the one before:
+// surface_gather (a material with lobes of its own: the physical shader),
+// surface_ambient and surface_sum (a material that changes the light
+// around it before the sum: a mesh's toon ambient and coat), surface_shade
+// (everything else). After lighting.wgsl, area.wgsl, the light
 // volumes' hook (lightmap.rs `probe_wgsl`) and screen_ao.wgsl or its stub.
 
 // Where and how a surface is shaded.
@@ -25,7 +29,50 @@ struct ShadeAt {
   styled: bool,
 };
 
-// The light around a surface, before what the surface keeps of it.
+// What a surface gathers of the light around it, before its own response.
+struct Gathered {
+  // The diffuse light arriving along its ambient normal.
+  irradiance: vec3<f32>,
+  // The light arriving along its reflection, prefiltered to its roughness.
+  prefiltered: vec3<f32>,
+  // The split sum's scale and bias (the BRDF table at n.v and roughness).
+  lut: vec2<f32>,
+  // The screen's occlusion at the pixel.
+  occlusion: ScreenOcclusion,
+};
+
+// The gather for a surface of `roughness` that reflects around `around`
+// (its normal; an anisotropic surface's bent normal).
+fn surface_gather(at: ShadeAt, around: vec3<f32>, roughness: f32) -> Gathered {
+  var o: Gathered;
+  o.occlusion = ScreenOcclusion(1.0, 1.0, vec3<f32>(0.0));
+  var ambient_n = at.n;
+  if (at.screen) {
+    o.occlusion = screen_occlusion(at.frag);
+    ambient_n = ambient_normal(at.frag, at.n);
+  }
+  // The probe GI's one gather, for the diffuse light along the ambient
+  // normal and the reflections' occlusion.
+  let gi = gi_sample_at(at.p, ambient_n);
+  // The baked lightmap or the light volumes where there are, at the
+  // environment's intensity; the hemisphere light adds at its own.
+  o.irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) * frame.params.x + hemi_irradiance(at.n);
+  if (at.styled) { o.irradiance = style_irradiance(o.irradiance, at.p); }
+  // three.js's getIBLRadiance (r170): the reflection bent towards the
+  // normal by roughness squared before the prefiltered map is read (a
+  // rough surface reflects around its normal, not the mirror direction;
+  // a back-facing leaf card otherwise mirrors the bright sky behind it).
+  let r = normalize(mix(reflect(-at.v, around), around, roughness * roughness));
+  // Relit by the light volumes and occluded by the probe GI where there are.
+  o.prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, at.p, roughness * frame.params.y), at.p, r, roughness), r, at.p, gi) * frame.params.x;
+  // The screen-space reflections over it, for the surface they were traced for.
+  if (at.opaque) { o.prefiltered = ssr_reflected(o.prefiltered, at.p, at.frag); }
+  o.lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(clamp(dot(at.n, at.v), 1e-4, 1.0), roughness), 0.0).rg;
+  return o;
+}
+
+// The light around a surface as it reflects it, before what the surface
+// keeps of it.
 struct Ambient {
   // The share of the diffuse light the surface takes: what its Fresnel
   // reflection and its metal leave.
@@ -39,33 +86,14 @@ struct Ambient {
 };
 
 fn surface_ambient(s: Surface, at: ShadeAt) -> Ambient {
+  let g = surface_gather(at, at.n, s.roughness);
   var o: Ambient;
-  let n_dot_v = clamp(dot(at.n, at.v), 1e-4, 1.0);
-  o.kd = (vec3<f32>(1.0) - f_schlick_roughness(n_dot_v, s.f0, s.roughness)) * (1.0 - s.metallic);
-  o.occlusion = ScreenOcclusion(1.0, 1.0, vec3<f32>(0.0));
-  var ambient_n = at.n;
-  if (at.screen) {
-    o.occlusion = screen_occlusion(at.frag);
-    ambient_n = ambient_normal(at.frag, at.n);
-  }
-  // The probe GI's one gather, for the diffuse light along the ambient
-  // normal and the reflections' occlusion.
-  let gi = gi_sample_at(at.p, ambient_n);
-  // The baked lightmap or the light volumes where there are, at the
-  // environment's intensity; the hemisphere light adds at its own.
-  var irradiance = ambient_irradiance(ambient_light_from(ambient_n, at.p, gi), at.p, at.n) * frame.params.x + hemi_irradiance(at.n);
-  if (at.styled) { irradiance = style_irradiance(irradiance, at.p); }
-  o.diffuse = irradiance * s.albedo;
-  // three.js's getIBLRadiance (r170): the reflection bent towards the
-  // normal by roughness squared before the prefiltered map is read (a
-  // rough surface reflects around its normal, not the mirror direction).
-  let r = normalize(mix(reflect(-at.v, at.n), at.n, s.roughness * s.roughness));
-  var prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, at.p, s.roughness * frame.params.y), at.p, r, s.roughness), r, at.p, gi) * frame.params.x;
-  if (at.opaque) { prefiltered = ssr_reflected(prefiltered, at.p, at.frag); }
+  o.kd = (vec3<f32>(1.0) - f_schlick_roughness(clamp(dot(at.n, at.v), 1e-4, 1.0), s.f0, s.roughness)) * (1.0 - s.metallic);
+  o.diffuse = g.irradiance * s.albedo;
   // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term
   // already holds the Fresnel rise at grazing angles.
-  let lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
-  o.specular = prefiltered * (s.f0 * lut.x + lut.y);
+  o.specular = g.prefiltered * (s.f0 * g.lut.x + g.lut.y);
+  o.occlusion = g.occlusion;
   return o;
 }
 
@@ -81,30 +109,34 @@ struct Shaded {
   emissive: vec3<f32>,
 };
 
-// `s` at `at` under `sun` (its sun term: lighting.wgsl style_sun, or the
-// surface's own with `keep` 1), with `sunlit` its n.l times its shadow
-// (the caustics' share of the sun), `emissive` what it emits, `intensity`
-// the material's share of the light around it (envMapIntensity) and
-// `keep` what its own occlusion leaves of that light (an AO map, a baked
-// sky occlusion).
-fn surface_shade(s: Surface, at: ShadeAt, sun: StyleSun, sunlit: f32, emissive: vec3<f32>, intensity: f32, keep: f32) -> Shaded {
+// `direct` (the sun, the caustics and the local lights on the surface) and
+// `a` (the light around it) summed: `emissive` what it emits, `intensity`
+// the material's share of the light around it (envMapIntensity) and `kept`
+// what its own occlusion and the style's shadow darkness leave of that
+// light (an AO map, a baked sky occlusion).
+fn surface_sum(s: Surface, direct: vec3<f32>, a: Ambient, emissive: vec3<f32>, intensity: f32, kept: f32) -> Shaded {
   var o: Shaded;
-  o.direct = sun.direct;
-  // Caustics where the surface lies under the frame's water (0 without).
-  o.direct += s.albedo * frame.light_color.rgb * sunlit * caustics(at.p);
-  // Point, spot and rect lights: this fragment's cluster's, or every light
-  // in a reflection probe's face.
-  o.direct += local_lights_on(at.frag, s, at.p, at.n, at.v, at.styled);
-  let a = surface_ambient(s, at);
-  // The style's shadow darkness takes its share of the light around the
-  // surface as of the sun's.
-  let kept = keep * sun.keep;
   let scale = intensity * kept * a.occlusion.ambient;
-  o.direct *= a.occlusion.all;
+  o.direct = direct * a.occlusion.all;
   o.diffuse = a.kd * (a.diffuse * scale + s.albedo * a.occlusion.bounce * kept);
   o.specular = a.specular * scale;
   o.emissive = emissive * a.occlusion.all;
   return o;
+}
+
+// `s` at `at` under `sun` (its sun term: lighting.wgsl style_sun, or the
+// surface's own with `keep` 1), with `sunlit` its n.l times its shadow
+// (the caustics' share of the sun) and `emissive`, `intensity` and `keep`
+// as surface_sum's; the style's shadow darkness takes its share of the
+// light around the surface as of the sun's.
+fn surface_shade(s: Surface, at: ShadeAt, sun: StyleSun, sunlit: f32, emissive: vec3<f32>, intensity: f32, keep: f32) -> Shaded {
+  var direct = sun.direct;
+  // Caustics where the surface lies under the frame's water (0 without).
+  direct += s.albedo * frame.light_color.rgb * sunlit * caustics(at.p);
+  // Point, spot and rect lights: this fragment's cluster's, or every light
+  // in a reflection probe's face.
+  direct += local_lights_on(at.frag, s, at.p, at.n, at.v, at.styled);
+  return surface_sum(s, direct, surface_ambient(s, at), emissive, intensity, keep * sun.keep);
 }
 
 fn shaded_color(o: Shaded) -> vec3<f32> {

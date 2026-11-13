@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "MeshPhysicalMaterial",
+      "summary": "Meshes take the light around them through the renderer's one shading entry. A physical material's reflection is now bent towards its normal by roughness squared before the environment is read, as a standard material's is: a rough physical surface reflects a little less of the horizon."
+    }
+  ]
+}

@@ -501,42 +501,33 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   // its bent normal (as three.js).
   let f_ibl = f_schlick_roughness(n_dot_v, f0_ibl, s.roughness);
   let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  // The environment's irradiance at its intensity, plus the hemisphere light at its own (pbr_fs.wgsl).
-  // The probe GI's one gather here (gi_sample.wgsl), for the diffuse
-  // light along the ambient normal and the reflections' occlusion.
-  let ambient_n = select(n, ambient_normal(in.clip.xy, n), EFFECTS);
-  let gi = gi_sample_at(in.world_pos, ambient_n);
-  let irradiance = ambient_irradiance(ambient_light_from(ambient_n, in.world_pos, gi), in.world_pos, n) * frame.params.x + hemi_irradiance(n);
+  // The light around it (surface_shade.wgsl): every lit surface's one
+  // gather, around the bent normal. Screen-space reflections only in the
+  // opaque main pass (a blended surface lies over the one they were
+  // traced for).
   var bent = n;
   if (physical.anisotropy.x > 0.0) {
     let across = normalize(cross(cross(k.aniso_b, v), k.aniso_b));
     let w = 1.0 - k.anisotropy * (1.0 - s.roughness);
     bent = normalize(mix(across, n, w * w * w * w));
   }
-  let r = reflect(-v, bent);
-  // Relit by the realtime light volumes where there are (lightmap.rs).
-  var prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, in.world_pos, s.roughness * frame.params.y), in.world_pos, r, s.roughness), r, in.world_pos, gi) * frame.params.x;
-  // Screen-space reflections over it (ssr.rs; frame.wgsl ssr_reflected),
-  // not a blended surface's: it lies over the one they were traced for.
-  if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  let env_brdf = f0_ibl * lut.x + lut.y;  // Karis split sum (pbr_fs.wgsl)
-  let ao_sample = maps.b;
-  var ibl_scale = material.flags.z * keep;
+  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, false);
+  let around = surface_gather(at, bent, s.roughness);
+  let irradiance = around.irradiance;
+  let prefiltered = around.prefiltered;
+  let env_brdf = f0_ibl * around.lut.x + around.lut.y;  // Karis split sum
+  // What the material's AO map and the style's shadow darkness keep of
+  // the light around it, then the screen's occlusion; `ao_direct` also
+  // scales the emitted light.
+  var kept = keep;
   if (material.flags.y >= 0.0) {
-    ibl_scale *= mix(1.0, ao_sample, material.flags.y);
+    kept *= mix(1.0, maps.b, material.flags.y);
   }
-  var ao_direct = 1.0;  // also scales the emitted light (pbr_fs.wgsl ao_all)
-  var bounce = vec3<f32>(0.0);  // screen-space GI's (pbr_fs.wgsl)
-  if (EFFECTS && fx.ao.x > 0.5 && !oit_pass) {
-    let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);
-    let ssao_sample = ao_texel.r;
-    if (fx.ao.w > 0.5 && fx.ao.w < 1.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
-    ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
-    ao_direct = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
-    diffuse *= ao_direct;
-    specular *= ao_direct;
-  }
+  let ibl_scale = material.flags.z * kept * around.occlusion.ambient;
+  let bounce = around.occlusion.bounce * kept;
+  let ao_direct = around.occlusion.all;
+  diffuse *= ao_direct;
+  specular *= ao_direct;
   // The coat's reflection of the environment, and what it takes from
   // everything under it (the lights' share is taken per light).
   var coat_keep = 1.0;

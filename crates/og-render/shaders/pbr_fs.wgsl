@@ -400,32 +400,12 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     color += local_light(frame_light(lights, k), s, in.world_pos, n, v, receives);
   }
 
-  // Image-based light (split sum).
+  // The light around it (surface_shade.wgsl): every lit surface's one
+  // gather. Screen-space reflections only in the opaque main pass (a
+  // blended surface lies over the one they were traced for).
   let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
-  let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
-  let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  // The baked lightmap or light volumes where there are (lightmap.rs), at
-  // the environment's intensity; the hemisphere light adds at its own.
-  // The probe GI's one gather here (gi_sample.wgsl), for the diffuse
-  // light along the ambient normal and the reflections' occlusion.
-  let ambient_n = select(n, ambient_normal(in.clip.xy, n), EFFECTS);
-  let gi = gi_sample_at(in.world_pos, ambient_n);
-  let irradiance = ambient_irradiance(ambient_light_from(ambient_n, in.world_pos, gi), in.world_pos, n);
-  var diffuse_ibl = (irradiance * frame.params.x + hemi_irradiance(n)) * s.albedo;
-  // three.js's getIBLRadiance (r170): the reflection bent towards the normal by roughness squared before the prefiltered map is
-  // read (rough surfaces reflect around their normal, not the mirror direction). A back-facing leaf card's normal turned
-  // away from the eye (three's back-face rule) otherwise mirrors the bright sky behind it: grey-blue crowns.
-  let r = normalize(mix(reflect(-v, n), n, s.roughness * s.roughness));
-  let mip = s.roughness * frame.params.y;
-  // Relit by the realtime light volumes where there are (lightmap.rs).
-  var prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, in.world_pos, mip), in.world_pos, r, s.roughness), r, in.world_pos, gi) * frame.params.x;
-  // Screen-space reflections over it (ssr.rs), in the opaque main pass.
-  // (Not a blended surface's: it lies over the one they were traced for.)
-  if (!oit_pass && (u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world_pos, in.clip.xy); }
-  let lut = textureSample(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness)).rg;
-  // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term already holds the Fresnel rise at grazing
-  // angles; f_ibl * lut.x counted it twice (rough leaves seen edge-on reflected 3-4x the sky).
-  var specular_ibl = prefiltered * (s.f0 * lut.x + lut.y);
+  let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, false);
+  var around = surface_ambient(s, at);
   if (EFFECTS && material.toon.x > 0.5 && frame.toon.y < 1.0) {
     // Toon ambient (frame.toon.y 0): one flat colour, the light from above
     // and below averaged (MToon's equalised ambient), and the environment's
@@ -449,33 +429,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
       reflected_light(up, in.world_pos, frame.params.y) * s.f0 * frame.params.x,
       (flat_irradiance * frame.params.x + flat_hemi) * s.f0 * toon_metal_lit,
       s.metallic);
-    diffuse_ibl = mix(flat_diffuse, diffuse_ibl, frame.toon.y);
-    specular_ibl = mix(flat_specular, specular_ibl, frame.toon.y);
+    around.diffuse = mix(flat_diffuse, around.diffuse, frame.toon.y);
+    around.specular = mix(flat_specular, around.specular, frame.toon.y);
   }
-  let ao_sample = material_sample(ao_tex, UV_AO, uv).r;
-  // What the material's AO and envMapIntensity keep of the image-based light (the environment's intensity is in
-  // diffuse_ibl and specular_ibl already).
-  var ibl_scale = material.flags.z * keep;
-  if (material.flags.y >= 0.0) {
-    // Ambient occlusion darkens only the image-based light.
-    ibl_scale *= mix(1.0, ao_sample, material.flags.y);
-  }
-  // What `ao.z` keeps of the whole colour (three.js-era post AO multiplies everything, the emitted light too).
-  var ao_all = 1.0;
-  // Screen-space GI's bounce (ssgi.rs: the AO texture's gba with `ao.w`), the light a diffuse surface receives
-  // from what the screen shows around it; the material's AO and the shadow darkness keep their share of it.
-  var bounce = vec3<f32>(0.0);
-  if (EFFECTS && fx.ao.x > 0.5 && !oit_pass) {
-    // Screen-space ambient occlusion, likewise; `ao.z` lets it reach the direct and local light too, and moves the
-    // image-based light to the same floor (0.35, as three.js-era post AO: the whole colour × mix(0.35, 1, ao)).
-    let ao_texel = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0);
-    let ssao_sample = ao_texel.r;
-    if (fx.ao.w > 0.5 && fx.ao.w < 1.5) { bounce = ao_texel.gba * (ibl_scale / max(material.flags.z, 1e-4)); }
-    ibl_scale *= mix(mix(1.0, ssao_sample, fx.ao.y), mix(0.35, 1.0, ssao_sample), fx.ao.z);
-    ao_all = mix(1.0, mix(0.35, 1.0, ssao_sample), fx.ao.z);
-    color *= ao_all;
-  }
-  var ibl = kd_ibl * diffuse_ibl + specular_ibl;
   // Branch on the material itself, not on `s`: Tint's uniformity analysis
   // takes all of `s` as varying once a member comes from a texture, and the
   // LUT is read without derivatives (it has one level).
@@ -486,12 +442,19 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
     let rc = reflect(-v, s.coat_normal);
     let coat_env = reflected_light(rc, in.world_pos, s.coat_roughness * frame.params.y);
     let coat_lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(c_dot_v, s.coat_roughness), 0.0).rg;
-    ibl = ibl * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
+    around.diffuse *= 1.0 - fc;
+    around.specular = around.specular * (1.0 - fc) + coat_env * (0.04 * coat_lut.x + coat_lut.y) * s.coat * frame.params.x;
   }
-  let dbg_direct = color;
-  color += ibl * ibl_scale + kd_ibl * s.albedo * bounce;
+  // What the material's AO map keeps of the light around it (it darkens
+  // only that), with the style's shadow darkness.
+  var kept = keep;
+  if (material.flags.y >= 0.0) {
+    kept *= mix(1.0, material_sample(ao_tex, UV_AO, uv).r, material.flags.y);
+  }
+  let emitted = surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb);
+  let shaded = surface_sum(s, color, around, emitted, material.flags.z, kept);
+  color = shaded_color(shaded);
 
-  color += surface_emissive(hook, params, material.emissive.rgb * material_sample(emissive_tex, UV_EMISSIVE, uv).rgb) * ao_all;
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve_edge; }
   if (EFFECTS && material.toon.y > 0.0) {
@@ -504,12 +467,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   color = look_flash(color, in.look);
 
   if (frame.light_color.w > 2.5) {
-    // Debug (DebugView::lit_code): 3 albedo, 4 diffuse image-based light, 5 specular image-based light, 6 direct light.
-    let m = u32(frame.light_color.w + 0.5);
-    if (m == 3u) { return vec4<f32>(s.albedo, 1.0); }
-    if (m == 4u) { return vec4<f32>(kd_ibl * (diffuse_ibl * ibl_scale + s.albedo * bounce), 1.0); }
-    if (m == 5u) { return vec4<f32>(specular_ibl * ibl_scale, 1.0); }
-    return vec4<f32>(dbg_direct, 1.0);
+    return vec4<f32>(shaded_debug(shaded, s.albedo, u32(frame.light_color.w + 0.5)), 1.0);
   }
   if (frame.light_color.w > 1.5) {
     // Debug: the ambient occlusion term.
