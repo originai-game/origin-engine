@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "RpgWorldMap: zoom, panX and panY",
+      "summary": "The built-in world map draws its map zoom times the box (1 when left out) and moved by panX and panY in CSS px; markers keep their size. It reports zoom (the wheel, with deltaY), pinch (two touches, with scale), and grab, pan and release (a press, its moves and its end, with x and y in the map's box). The game keeps the zoom and the pan and sets them back; a page that passes none of the three draws as before."
+    }
+  ]
+}

@@ -63,6 +63,10 @@ beforeAll(() => {
     const props = Object.keys(MEMBERS[name]!.fixture).map((k) => `${k}={$${k}}`).join(" ");
     writeFileSync(join(root, `assets/ui/host-${name}.svelte`), `<meta name="screen" content="Host_${component}" data-layer="menu" data-input="menu">\n<div style="width: stretch; height: stretch; padding: 16px"><${component} ${props} /></div>\n`);
   }
+  // A page written before the map could zoom passes none of zoom, panX and panY.
+  const { zoom: _zoom, panX: _panX, panY: _panY, ...before } = MEMBERS["world-map"]!.fixture;
+  MEMBERS["world-map-before"] = { component: "RpgWorldMapBefore", fixture: before };
+  writeFileSync(join(root, "assets/ui/host-world-map-before.svelte"), `<meta name="screen" content="Host_RpgWorldMapBefore" data-layer="menu" data-input="menu">\n<div style="width: stretch; height: stretch; padding: 16px"><RpgWorldMap ${Object.keys(before).map((k) => `${k}={$${k}}`).join(" ")} /></div>\n`);
   // og cook bundles the pack from OG_STYLES_DIR: the copy holding the probe sheet.
   const cook = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, env: { ...process.env, OG_STYLES_DIR: styles }, stdout: "ignore", stderr: "pipe" });
   if (cook.exitCode !== 0) throw new Error(`cooking ${root}: ${new TextDecoder().decode(cook.stderr)}`);
@@ -259,6 +263,51 @@ test("RpgWorldMap: the player's own marker is not a target", () => {
     expect(row(e, "me").disabled).toBeTrue();
     tap(e, row(e, "me"));
     expect(intents(events, ["choose"])).toEqual([]);
+  });
+});
+
+test("RpgWorldMap: zoom spreads the markers without resizing them, pan moves them, and the map reports the wheel and a drag", () => {
+  // Marker centres and one marker's width, at the zoom and pan the game set.
+  const placed = (over: Record<string, unknown>, name = "world-map") => {
+    let out = { crown: [0, 0], me: [0, 0], width: 0 };
+    run(member(name, over), (e) => {
+      const mid = (k: string) => [row(e, k).x + row(e, k).width / 2, row(e, k).y + row(e, k).height / 2];
+      out = { crown: mid("crown"), me: mid("me"), width: row(e, "crown").width };
+    });
+    return out;
+  };
+  const fit = placed({});
+  expect(placed({}, "world-map-before")).toEqual(fit);
+  // 1.5 keeps both markers inside the map's box; one zoomed out of it is clipped, and not in the dump.
+  const near = placed({ zoom: 1.5 });
+  const moved = placed({ zoom: 1.5, panX: -100, panY: -50 });
+  // Boxes land on whole device pixels, so a spread is within one CSS px.
+  const spread = (m: typeof fit, axis: number) => m.crown[axis]! - m.me[axis]!;
+  expect(spread(fit, 0)).toBeGreaterThan(40);
+  for (const axis of [0, 1]) expect(Math.abs(spread(near, axis) - 1.5 * spread(fit, axis))).toBeLessThanOrEqual(1);
+  expect(near.width).toBe(fit.width);
+  expect([moved.crown[0]! - near.crown[0]!, moved.crown[1]! - near.crown[1]!].map(Math.round)).toEqual([-100, -50]);
+
+  const events: Event[] = [];
+  run(member("world-map", {}, { events }), (e) => {
+    const map = find(e, /^t:page\/[^/]+$/)!;
+    // Clear of both markers and the legend.
+    const [x, y] = [map.x + map.width * 0.8, map.y + map.height * 0.2];
+    const send = (input: Record<string, unknown>) => {
+      expect(e.probe.input(input as never)).toBeTrue();
+      e.advance(2);
+    };
+    send({ kind: "pointer", action: "move", x, y, button: "none" });
+    events.length = 0;
+    send({ kind: "wheel", x, y, deltaX: 0, deltaY: -120 });
+    send({ kind: "pointer", action: "down", x, y, button: "left" });
+    send({ kind: "pointer", action: "move", x: x - 40, y: y + 20, button: "left" });
+    send({ kind: "pointer", action: "up", x: x - 40, y: y + 20, button: "left" });
+    const sent = events.filter((v) => ["zoom", "pinch", "grab", "pan", "release", "choose"].includes(v.name)) as (Event & { value: Record<string, number> })[];
+    expect(sent.map((v) => v.name)).toEqual(["zoom", "grab", "pan", "release"]);
+    expect(sent[0]!.value.deltaY).toBe(-120);
+    // A drag is the difference of two points in the map's own box.
+    expect([sent[2]!.value.x! - sent[1]!.value.x!, sent[2]!.value.y! - sent[1]!.value.y!].map(Math.round)).toEqual([-40, 20]);
   });
 });
 
