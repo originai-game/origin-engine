@@ -667,7 +667,8 @@ fn run_time_emoji_cost_what_cooked_emoji_cost() {
 
 /// Compares `image` with `crates/og-tests-ui/references/vulkan/<name>`
 /// (`OG_UI_CAPTURE=1` records it) under og-tests' rule for this tier,
-/// writing it to the test's temporary directory; prints its RMSE.
+/// writing it to the test's temporary directory; prints its RMSE and
+/// reports a frame outside it (`og_tests::gfx::report_mismatch`).
 fn check_reference(name: &str, image: &og_render::RgbaImage, info: &og_render::RenderInfo) {
     let out = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
     std::fs::write(&out, og_render::png_best(image)).unwrap();
@@ -689,15 +690,39 @@ fn check_reference(name: &str, image: &og_render::RgbaImage, info: &og_render::R
         info.software(),
         &own,
     );
+    assert_eq!(
+        expected.dimensions(),
+        (image.width, image.height),
+        "{name}: the reference is another size"
+    );
+    if let Some(why) = og_tests::compare::broken(&image.pixels, expected.as_raw()) {
+        panic!("{name}: {why} ({})", out.display());
+    }
     let c = og_tests::compare::compare(
         &image.pixels,
         expected.as_raw(),
-        image.width * image.height,
-        1,
+        image.width,
+        image.height,
         &tolerance,
     )
     .unwrap();
-    c.check(&tolerance)
-        .unwrap_or_else(|e| panic!("{name}: {e}"));
     println!("{name}: RMSE {:.6} ({})", c.rmse, out.display());
+    // A moved frame is reported for review, with its diff, never failed.
+    if let Err(e) = c.check(&tolerance) {
+        let diff = out.with_extension("diff.png");
+        image::save_buffer(
+            &diff,
+            &c.diff_image,
+            image.width,
+            image.height,
+            image::ColorType::Rgba8,
+        )
+        .unwrap();
+        og_tests::gfx::report_mismatch(&format!(
+            "{name}: {e}\n  reference {}\n  actual    {}\n  diff      {}",
+            own.display(),
+            out.display(),
+            diff.display()
+        ));
+    }
 }

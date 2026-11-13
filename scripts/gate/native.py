@@ -30,6 +30,7 @@ def build():
     discovered = {}
     env = dict(os.environ, OG_RENDERER='none')
     env.pop('OG_GPU_REPORT_DIR', None)
+    env.pop('OG_REFERENCE_REPORT_DIR', None)
     # Windows finds DLLs on PATH only, and keeps the toolchain's std DLL (proc-macro
     # test binaries link it) in the sysroot's bin/, not the reported libdir.
     loader = {'darwin': 'DYLD_FALLBACK_LIBRARY_PATH', 'win32': 'PATH'}.get(sys.platform, 'LD_LIBRARY_PATH')
@@ -106,7 +107,11 @@ def run(kind):
         return 3
     reports = LOGS / f'{kind}-gpu-reports'
     reports.mkdir()
-    env = dict(os.environ, OG_GPU_REPORT_DIR=str(reports))
+    # Reference frames that moved: reported by the harnesses, never failed
+    # (docs/ci.md §Reference frames).
+    moved = LOGS / f'{kind}-reference-mismatches'
+    moved.mkdir()
+    env = dict(os.environ, OG_GPU_REPORT_DIR=str(reports), OG_REFERENCE_REPORT_DIR=str(moved))
     # CPU discovery and execution must not open an adapter in an unrelated binary.
     if kind == 'cpu':
         env['OG_RENDERER'] = 'none'
@@ -118,6 +123,13 @@ def run(kind):
     rc = subprocess.call(command, env=env)
     if junit.exists():
         shutil.copyfile(junit, LOGS / f'rust-{kind}.junit.xml')
+    count = 0
+    for report in sorted(moved.glob('*.txt')):
+        text = report.read_text()
+        count += text.count('REFERENCE MISMATCH ')
+        print(text, end='')
+    if count:
+        print(f'{count} reference frames moved: reported, not failed; review each actual and diff PNG named above')
     if kind == 'gpu' and list(reports.glob('*.txt')):
         for report in reports.glob('*.txt'):
             print(report.read_text(), end='')

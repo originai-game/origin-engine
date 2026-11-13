@@ -56,9 +56,9 @@ impl Tolerance {
     /// bias 0.0057 (2026-11-08). The L4's worst default-tolerance scene,
     /// dof-high, measured RMSE 0.0095 and bias -0.0057 (2026-11-10).
     /// Four wider scenes name their own limits in scenes.rs: visual-garment,
-    /// stylise-print, sprites-array and tilemap-lit. The regression guard
-    /// in tests/gfx.rs still rejects a 15 % dimmer sun, a lost shadow,
-    /// text moved by 3 px and a white subtitle in place of amber.
+    /// stylise-print, sprites-array and tilemap-lit. Measured 2026-11-10,
+    /// it still rejected a 15 % dimmer sun, a lost shadow, text moved by
+    /// 3 px and a white subtitle in place of amber.
     pub const CROSS_PLATFORM: Tolerance = Tolerance {
         channel: 32,
         max_outlier_fraction: 0.01,
@@ -158,6 +158,25 @@ impl Comparison {
     }
 }
 
+/// Why `actual` is broken whatever its reference shows: one colour over the
+/// whole frame (black or a lost pass) where `reference` has more than one.
+/// A moved frame is reported; a broken one fails (docs/ci.md §Reference
+/// frames).
+pub fn broken(actual: &[u8], reference: &[u8]) -> Option<String> {
+    let uniform = |p: &[u8]| {
+        let px = p.as_chunks::<4>().0;
+        px.iter().all(|c| c[..3] == px[0][..3])
+    };
+    if actual.len() < 4 || !uniform(actual) || uniform(reference) {
+        return None;
+    }
+    let c = &actual[..3];
+    Some(format!(
+        "the frame is one colour, rgb({}, {}, {}), where its reference is not",
+        c[0], c[1], c[2]
+    ))
+}
+
 /// Compares two RGBA8 frames of the same size (alpha is ignored).
 pub fn compare(
     actual: &[u8],
@@ -214,4 +233,22 @@ pub fn compare(
         pixels,
         diff_image,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::broken;
+
+    /// A black frame against a scene fails; a frame that moved does not, and
+    /// a reference that is itself one colour (a cleared target) holds a
+    /// one-colour frame.
+    #[test]
+    fn only_a_uniform_frame_against_a_varied_reference_is_broken() {
+        let scene = [10, 20, 30, 255, 200, 180, 90, 255, 10, 20, 30, 255];
+        let moved = [12, 20, 30, 255, 190, 180, 95, 255, 10, 22, 30, 255];
+        let black = [0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 0];
+        assert!(broken(&black, &scene).is_some_and(|w| w.contains("rgb(0, 0, 0)")));
+        assert_eq!(broken(&moved, &scene), None);
+        assert_eq!(broken(&black, &[7, 7, 7, 255].repeat(3)), None);
+    }
 }

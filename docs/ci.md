@@ -9,7 +9,14 @@ detail.
 
 Frames are judged on quality, never on their difference from a reference
 (AGENTS.md §Principles): any change may move frames, and a moved reference
-does not block a landing. A reference is the last recorded frame; the GPU
+does not block a landing. The engine's own reference suites (og-tests,
+og-tests-ui, the font packs, og-cook's compressed frames) report a frame
+outside its tolerance as `REFERENCE MISMATCH` with its actual and diff
+PNGs, and the gate prints every report after rust-gpu; they still fail a
+crash, a missing reference, a frame of another size, a one-colour frame
+where the reference is not (`og_tests::compare::broken`) and an unchecked
+run. Fixture playtests are game projects: their `expect:frame:...:rmse`
+stays a failure, as in any game. A reference is the last recorded frame; the GPU
 integrator refreshes moved ones in batches. Inspect every new or
 re-recorded frame for what it shows before committing it, including phone
 layouts and non-default states. Populate screen fixtures with their supplied content and
@@ -129,10 +136,9 @@ reference-gfx.ts `limitFor` in the browser):
   dimmer light or a colour shift from hiding inside the wider RMSE.
 
 `CROSS_PLATFORM` allows about twice the measured spread between backends
-(mostly rasterisation ties along edges). `og-tests`
-`the_cross_platform_tolerance_still_catches_small_regressions` proves that
-it still fails a 15 % dimmer sun, a lost shadow, text moved by 3 px and a
-wrong text colour. A scene whose spread is wider by nature names its own
+(mostly rasterisation ties along edges); measured 2026-11-10, it still
+rejected a 15 % dimmer sun, a lost shadow, text moved by 3 px and a wrong
+text colour. A scene whose spread is wider by nature names its own
 `cross_tolerance` in `scenes.rs` with the measurement beside it; never
 widen one to absorb a defect.
 

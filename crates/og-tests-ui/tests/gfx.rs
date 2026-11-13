@@ -292,7 +292,7 @@ fn core_documents_preserve_screen_pixels() {
                 scene.look.post.tonemap = Tonemap::None;
                 let Rendered { image, info, .. } = render_frame(&scene, &sized(width, height));
                 let filename = format!("{name}-{case}-{width}.png");
-                save_actual(&filename, &image);
+                let actual = save_actual(&filename, &image);
                 let reference_path = reference_dir(og_tests::compare::RECORDING_TIER)
                     .join("documents")
                     .join(&filename);
@@ -318,15 +318,22 @@ fn core_documents_preserve_screen_pixels() {
                     || (info.backend_tier() != og_tests::compare::RECORDING_TIER
                         && compare(&image.pixels, reference.as_raw(), &info, &reference_path)
                             .is_ok());
-                if !preserved && capturing() {
+                if let Some(why) = og_tests::compare::broken(&image.pixels, reference.as_raw()) {
+                    failures.push(format!("{name}/{case}/{width}: {why}"));
+                } else if !preserved && capturing() {
                     record_reference(&reference_path, width, height, &image.pixels);
                 } else if !preserved {
-                    failures.push(format!("{name}/{case}/{width}: {rmse:.8}"));
+                    let why = format!("not byte for byte, RMSE {rmse:.8}");
+                    report_moved(&actual, &image, reference.as_raw(), &reference_path, &why);
                 }
             }
         }
     }
-    assert!(failures.is_empty(), "moved frames: {}", failures.join(", "));
+    assert!(
+        failures.is_empty(),
+        "broken frames: {}",
+        failures.join(", ")
+    );
 }
 
 #[test]

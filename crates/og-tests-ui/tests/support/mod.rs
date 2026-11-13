@@ -118,8 +118,9 @@ pub enum Against {
 /// `image` (rendered by `info`'s adapter) checked against the reference
 /// frame `name`: saved in [`out_dir`], recorded under `OG_UI_CAPTURE=1`,
 /// then compared with the reference `against` chooses, under [`compare`]'s
-/// rule. Prints the difference it measured; answers what was exceeded, or
-/// a reference of another size.
+/// rule. Prints the difference it measured and reports a frame outside it
+/// ([`report_moved`]); answers a reference of another size or a broken
+/// frame (`og_tests::compare::broken`).
 pub fn check_reference(
     name: &str,
     image: &RgbaImage,
@@ -165,25 +166,58 @@ pub fn check_reference(
             expected.height()
         ));
     }
-    match compare(&image.pixels, expected.as_raw(), info, &reference) {
-        Ok((rmse, outliers)) => {
-            println!(
-                "{name} {tier}: RMSE {rmse:.6}, outliers {:.3}% against {}",
-                outliers * 100.0,
-                reference.display()
-            );
-            Ok(())
-        }
-        Err(e) => Err(format!(
-            "{} differs from {}: {e}",
-            actual.display(),
-            reference.display()
-        )),
+    if let Some(why) = og_tests::compare::broken(&image.pixels, expected.as_raw()) {
+        return Err(format!("{}: {why}", actual.display()));
     }
+    match compare(&image.pixels, expected.as_raw(), info, &reference) {
+        Ok((rmse, outliers)) => println!(
+            "{name} {tier}: RMSE {rmse:.6}, outliers {:.3}% against {}",
+            outliers * 100.0,
+            reference.display()
+        ),
+        Err(e) => report_moved(&actual, image, expected.as_raw(), &reference, &e),
+    }
+    Ok(())
 }
 
-/// [`check_reference`], failing the test on a difference (at the test's
-/// own line).
+/// Reports `image`, saved at `actual`, as moved from `reference`
+/// (`og_tests::gfx::report_mismatch`), with its diff beside it as
+/// `<actual>.diff.png`: a moved frame is reviewed, never failed.
+pub fn report_moved(
+    actual: &Path,
+    image: &RgbaImage,
+    expected: &[u8],
+    reference: &Path,
+    why: &str,
+) {
+    let tolerance = og_tests::compare::Tolerance::default();
+    let diff = og_tests::compare::compare(
+        &image.pixels,
+        expected,
+        image.width,
+        image.height,
+        &tolerance,
+    )
+    .expect("same size");
+    let diff_path = actual.with_extension("diff.png");
+    image::save_buffer(
+        &diff_path,
+        &diff.diff_image,
+        image.width,
+        image.height,
+        image::ColorType::Rgba8,
+    )
+    .expect("write diff");
+    og_tests::gfx::report_mismatch(&format!(
+        "{} differs from {}: {why}\n  diff {}",
+        actual.display(),
+        reference.display(),
+        diff_path.display()
+    ));
+}
+
+/// [`check_reference`], failing the test on a broken frame or a reference
+/// of another size (at the test's own line).
 #[track_caller]
 pub fn matches_reference(name: &str, image: &RgbaImage, info: &RenderInfo, against: Against) {
     if let Err(e) = check_reference(name, image, info, against) {

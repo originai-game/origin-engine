@@ -1,11 +1,12 @@
 //! The gfx reference harness: render a named scene headless, compare it with
-//! `crates/og-tests/references/<backend-tier>/<scene>.png`, and on failure
-//! write the actual frame and a diff image under the output directory.
+//! `crates/og-tests/references/<backend-tier>/<scene>.png`, and on a
+//! mismatch report it and write the actual frame and a diff image under the
+//! output directory.
 //!
 //! `OG_GFX_CAPTURE=1` (re)records every reference instead of comparing;
 //! `OG_GFX_CAPTURE=scene-a,scene-b` records only those scenes.
 
-use crate::compare::{Comparison, RECORDING_TIER, compare, tolerance_for};
+use crate::compare::{Comparison, RECORDING_TIER, broken, compare, tolerance_for};
 use crate::scenes::{self, GfxScene};
 use og_render::{FrameStats, RenderInfo, RenderTarget, Renderer, RgbaImage};
 use std::path::{Path, PathBuf};
@@ -210,8 +211,11 @@ pub fn render(scene: &str) -> Result<Rendered, String> {
 }
 
 /// Renders `scene` and compares it with its reference, this tier's or else
-/// the recording tier's (or records this tier's when capture is requested). On a mismatch, writes
-/// `<out_dir>/<tier>/<scene>.actual.png` and `.diff.png` and returns `Err`.
+/// the recording tier's (or records this tier's when capture is requested).
+/// A frame outside the tolerance is reported, not failed
+/// ([`report_mismatch`]), with `<out_dir>/<tier>/<scene>.actual.png` and
+/// `.diff.png` beside it; `Err` is a frame that cannot be checked or is
+/// broken: no reference, another size, one colour (`compare::broken`).
 pub fn check(scene: &str, out_dir: &Path) -> Result<GfxReport, String> {
     check_built(scene, &mut scenes::build(scene)?, out_dir)
 }
@@ -262,6 +266,14 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
             expected.width, expected.height, rendered.image.width, rendered.image.height
         ));
     }
+    if let Some(why) = broken(&rendered.image.pixels, &expected.pixels) {
+        let actual_path = out_dir.join(&tier).join(format!("{scene}.actual.png"));
+        save_png(&actual_path, &rendered.image)?;
+        return Err(format!(
+            "{report}: {why}\n  actual    {}",
+            actual_path.display()
+        ));
+    }
     let tolerance = tolerance_for(
         built.tolerance,
         built.cross_tolerance,
@@ -290,7 +302,7 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
         save_png(&actual_path, &rendered.image)?;
         save_png(&diff_path, &diff)?;
         let flip = flip_report(&expected, &rendered.image, &base, scene)?;
-        return Err(format!(
+        report_mismatch(&format!(
             "{report}: {why}\n  reference {}\n  actual    {}\n  diff      {}\n{flip}",
             reference.display(),
             actual_path.display(),
@@ -298,4 +310,25 @@ pub fn check_built(scene: &str, built: &mut GfxScene, out_dir: &Path) -> Result<
         ));
     }
     Ok(report)
+}
+
+/// Reports a frame that moved from its reference without failing the test:
+/// frames are judged on what they show, never on their difference
+/// (AGENTS.md §Principles). Prints `REFERENCE MISMATCH <what>`, and under
+/// the gate (`OG_REFERENCE_REPORT_DIR`, scripts/gate/native.py) appends it
+/// to a file there, which the gate prints after the run (nextest keeps a
+/// passing test's output to itself).
+pub fn report_mismatch(what: &str) {
+    use std::io::Write;
+    let line = format!("REFERENCE MISMATCH {what}\n");
+    eprint!("{line}");
+    if let Some(dir) = std::env::var_os("OG_REFERENCE_REPORT_DIR") {
+        let path = PathBuf::from(dir).join(format!("mismatch-{}.txt", std::process::id()));
+        std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+            .and_then(|mut f| f.write_all(line.as_bytes()))
+            .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    }
 }

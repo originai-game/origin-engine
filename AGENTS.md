@@ -105,8 +105,10 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   (a `references/metal/` frame exists only until the L4 records it). macrunner and studio-win are development hosts;
   their failures are never a landing gate, and Windows-only gate failures
   are not worth a stream's time.
-- A moved reference never blocks a landing; a crash, a black or blank frame
-  or an unchecked frame does. Never record a black or broken frame.
+- A moved reference never blocks a landing: the engine's reference suites
+  report it with its actual and diff PNGs (`docs/ci.md` §Landing); a crash,
+  a black or blank frame or an unchecked frame fails. Never record a black
+  or broken frame.
 
 ## Pitfalls
 

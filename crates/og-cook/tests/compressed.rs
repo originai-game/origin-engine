@@ -418,7 +418,21 @@ fn cooked_models_with_compressed_textures_render_the_gltf_reference_scene() {
             &rendered.image,
         )
         .unwrap();
-        assert!(c.check(&tolerance).is_ok(), "{line}");
+        // A frame moved from the committed reference is reported, never
+        // failed (docs/ci.md §Reference frames); a broken one fails.
+        if let Some(why) = og_tests::compare::broken(&rendered.image.pixels, &reference.pixels) {
+            panic!("{family}: {why}");
+        }
+        if let Err(e) = c.check(&tolerance) {
+            let diff = evidence_dir().join(format!("compressed-gltf-reference-{family}.diff.png"));
+            let image = RgbaImage {
+                width: reference.width,
+                height: reference.height,
+                pixels: c.diff_image.clone(),
+            };
+            og_tests::gfx::save_png(&diff, &image).unwrap();
+            og_tests::gfx::report_mismatch(&format!("{line}: {e}\n  diff {}", diff.display()));
+        }
         if pref == TextureCompression::Off {
             rgba8_bytes = rendered.stats.texture_bytes;
         } else {
