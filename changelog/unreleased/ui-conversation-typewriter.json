@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "RpgConversation: rate and revealed",
+      "summary": "The built-in conversation shows its line rate characters a second, starting again with each new line, and reports revealed once the line is whole; rate 0 (and left out) shows the line at once as before, and setting 0 finishes a line early. Reduced motion shows the whole line."
+    }
+  ]
+}

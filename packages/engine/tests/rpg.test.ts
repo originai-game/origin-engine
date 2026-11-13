@@ -311,6 +311,29 @@ test("RpgWorldMap: zoom spreads the markers without resizing them, pan moves the
   });
 });
 
+test("RpgConversation: a line shown at a rate grows to the whole line and reports revealed once; without one it is whole at once", () => {
+  const whole = MEMBERS["conversation"]!.fixture.line as string;
+  const said = (e: Engine) => find(e, /\/Line$/)!.text;
+  const events: Event[] = [];
+  run(member("conversation", {}, { events }), (e) => {
+    expect(said(e)).toBe(whole);
+    e.advance(30);
+    expect(intents(events, ["revealed"])).toEqual([]);
+  });
+  // 28 characters at 20 a second: part of the line after a quarter of a second, all of it within two.
+  run(member("conversation", { rate: 20 }, { events }), (e) => {
+    e.advance(15);
+    const part = said(e);
+    expect(part.length).toBeGreaterThan(0);
+    expect(part.length).toBeLessThan(whole.length);
+    expect(whole.startsWith(part)).toBeTrue();
+    expect(intents(events, ["revealed"])).toEqual([]);
+    e.advance(120);
+    expect(said(e)).toBe(whole);
+    expect(intents(events, ["revealed"]).length).toBe(1);
+  });
+});
+
 test("RpgItemCard: its buttons report once, and a refused action is disabled", () => {
   const events: Event[] = [];
   run(member("item-card", { canSecondary: false }, { events }), (e) => {

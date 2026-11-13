@@ -48,7 +48,7 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgQuestTracker` | `name`, `steps` keyed `{ id, text, done }`, `distance` (empty hides it) | none |
 | `RpgWorldMap` | `map` (texture), `markers` keyed `{ id, kind, x, y, label }`, `selected`, `zoom` (1 fits the box), `panX`, `panY` (CSS px), `legend` keyed `{ id, kind, label }`, `here` | `choose` (marker; the player's own is not a target), `zoom` (wheel, `deltaY`), `pinch` (`scale`), `grab`, `pan`, `release` (a press, its moves and its end, `x` and `y` in the map's box); the game keeps the zoom and the pan |
 | `RpgPlaceCard` | `name`, `about`, `picture`, `marked`, `canTravel` | `mark`, `travel` |
-| `RpgConversation` | `speaker`, `portrait`, `line`, `replies` keyed `{ id, number, text, used }`, `selected` | `reply` (row key), `next` (Continue when there are no replies) |
+| `RpgConversation` | `speaker`, `portrait`, `line`, `rate` (characters a second; 0 shows the line at once), `replies` keyed `{ id, number, text, used }`, `selected` | `reply` (row key), `next` (Continue when there are no replies), `revealed` (a line shown at a rate is whole) |
 | `RpgCompass` | `heading`, `marks` keyed `{ id, kind, label, at }` | none |
 | `RpgVitals` | `name`, `portrait`, `level`, `health`, `healthMax`, `mana`, `manaMax`, `plate` (large, compact), `down` | none |
 | `RpgParty` | `members` keyed `{ id, name, portrait, level, health, healthMax, mana, manaMax, down }`, `selected` | `choose` |
