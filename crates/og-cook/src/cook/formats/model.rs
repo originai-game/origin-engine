@@ -2,7 +2,11 @@
 //! chain, materials, the node graph and scenes. Textures become their own
 //! blobs (see `texture.rs`); the model refers to them by asset id.
 
-use super::{CookError, MeshOptions};
+use super::{
+    Action, CookError, Cx, Exec, Job, KindDef, MeshOptions, NODE_ROWS, Out, PlanState, Planned,
+    Source, Split, Work, anim, anim_settings, assets_root, conform_off, ext, fracture, hash_bytes,
+    mesh_for, model_stream_textures, not_split, stamp, texture,
+};
 use crate::format::{self, *};
 use glam::{Mat4, Quat, Vec3};
 use og_blob::BlobWriter;
@@ -649,5 +653,464 @@ impl Strings {
         let at = self.0.len() as u32;
         self.0.extend_from_slice(s.as_bytes());
         (at, s.len() as u32)
+    }
+}
+
+pub(crate) static MODEL: KindDef = KindDef {
+    name: "model",
+    extensions: &["glb", "gltf", "vox", "fbx", "obj"],
+    types: &[super::model_text::MODEL_TYPE],
+    by_content: false,
+    streams: true,
+    plan: plan_model,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&MODEL];
+
+fn plan_model<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options,
+        group_of,
+        tex_desc,
+        mesh_desc,
+        budget_desc,
+        ..
+    } = *cx;
+    let PlanState {
+        early_errors,
+        parsed_refs,
+        planned_textures,
+        ..
+    } = state;
+    let g = s.gltf.as_ref().expect("loaded");
+    // The art contract's part of each output's stamp: empty
+    // (and left out) when it changes nothing here.
+    let contract = options
+        .mesh
+        .conform
+        .as_ref()
+        .filter(|_| !conform_off(s, options));
+    let model_desc = contract
+        .map(|c| {
+            let mut d = if c.applies(g) {
+                c.model_desc()
+            } else {
+                String::new()
+            };
+            // An effect's mesh is held to no face budget.
+            if !d.is_empty() && g.role == conform::ModelRole::Effect {
+                d.push_str(" role effect");
+            }
+            // Its colour textures' kind is in the blob.
+            if c.filter == conform::mesh::Filter::Nearest {
+                d.push_str(" textures nearest");
+            }
+            d
+        })
+        .unwrap_or_default();
+    let texture_desc = contract.map(|c| c.texture_desc()).unwrap_or_default();
+    let with = |parts: &[&[u8]], desc: &str, extra: &[u8]| {
+        let mut v: Vec<&[u8]> = parts.to_vec();
+        if !desc.is_empty() {
+            v.push(desc.as_bytes());
+            v.push(extra);
+        }
+        stamp(&v)
+    };
+    let stream_textures = match model_stream_textures(s) {
+        Ok(b) => b,
+        Err(e) => {
+            early_errors.push((s.rel.clone(), "model", e));
+            return;
+        }
+    };
+    let mut ids = Vec::new();
+    let grouped = group_of.contains_key(&s.rel);
+    for (i, u) in g.textures.iter().enumerate() {
+        let image_hash = hash_bytes(&g.images[u.image]).to_le_bytes();
+        // One cooked texture per image and use: its kind, and
+        // whether it streams its levels (a model's
+        // `stream_textures` splits it into a tail and a chain).
+        // A model's own unless an art contract makes it depend
+        // on the model (a density is per metre of the model) or
+        // it is in a streaming group's pack.
+        let shared = !grouped && texture_desc.is_empty();
+        let id = if shared {
+            crate::runtime::gltf_texture_id(
+                u64::from_le_bytes(image_hash),
+                u.kind,
+                stream_textures,
+                u.cutout,
+            )
+        } else {
+            format!("{}#tex{i}", s.rel)
+        };
+        parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .insert(id.clone());
+        if shared && !planned_textures.insert(id.clone()) {
+            ids.push(id);
+            continue;
+        }
+        // A density is per metre of the model: its hash too.
+        let kind = u.kind.to_le_bytes();
+        let st = |word: &[u8]| {
+            let mut parts: Vec<&[u8]> = vec![b"texture", tex_desc.as_bytes(), &image_hash, &kind];
+            // A cut-out's mips are its own, kept at its cut-off
+            // (texture.rs `cutout_mips`, `keep_coverage`).
+            if let Some(c) = &u.cutout {
+                parts.push(b"cutout");
+                parts.push(std::slice::from_ref(c));
+            }
+            if !word.is_empty() {
+                parts.push(word);
+            }
+            with(&parts, &texture_desc, &hash)
+        };
+        let not_split =
+            stream_textures.then(|| not_split(&g.images[u.image], u.kind, group_of.get(&s.rel)));
+        let gltf_texture = |split| {
+            Work::Job(Box::new(GltfTextureJob(
+                s, u.image, u.kind, u.cutout, split,
+            )))
+        };
+        match not_split {
+            Some(None) => {
+                let mips = st(b"mips");
+                outs.push((
+                    id.clone(),
+                    format::Texture::NAME,
+                    st(b"tail"),
+                    gltf_texture(Split::Tail(mips)),
+                ));
+                outs.push((
+                    crate::runtime::mips_id(&id),
+                    format::Texture::NAME,
+                    mips,
+                    gltf_texture(Split::Mips),
+                ));
+            }
+            why => outs.push((
+                id.clone(),
+                format::Texture::NAME,
+                st(b""),
+                gltf_texture(Split::Whole(why.flatten())),
+            )),
+        }
+        ids.push(id);
+    }
+    let joined = ids.join("\n");
+    // A model written as text is refused past the budgets, so
+    // they are among its inputs.
+    let st = if ext(&s.rel) == "ogt" {
+        with(
+            &[
+                b"model",
+                NODE_ROWS,
+                mesh_desc.as_bytes(),
+                &hash,
+                joined.as_bytes(),
+                budget_desc.as_bytes(),
+            ],
+            &model_desc,
+            &[],
+        )
+    } else {
+        with(
+            &[
+                b"model",
+                NODE_ROWS,
+                mesh_desc.as_bytes(),
+                &hash,
+                joined.as_bytes(),
+            ],
+            &model_desc,
+            &[],
+        )
+    };
+    outs.insert(
+        0,
+        (
+            s.rel.clone(),
+            format::Model::NAME,
+            st,
+            Work::Job(Box::new(ModelJob(s, ids))),
+        ),
+    );
+    if s.fracture.is_some() {
+        outs.push((
+            format!("{}#fracture", s.rel),
+            format::Fracture::NAME,
+            // The asset's layout too: a new og_destruct version
+            // recooks what the runtime would refuse.
+            stamp(&[
+                b"fracture",
+                &og_destruct::ASSET_VERSION.to_le_bytes(),
+                &hash,
+            ]),
+            Work::Job(Box::new(FractureJob(s))),
+        ));
+    }
+    if group_of.contains_key(&s.rel) {
+        let st = with(
+            &[b"proxy", NODE_ROWS, mesh_desc.as_bytes(), &hash],
+            &model_desc,
+            &[],
+        );
+        outs.push((
+            format!("{}#proxy", s.rel),
+            format::Model::NAME,
+            st,
+            Work::Job(Box::new(ProxyJob(s))),
+        ));
+    }
+    // The impostor's three atlases (`model { impostor true }`),
+    // baked from the model's source.
+    if let Some(b) = mesh_for(s, options)
+        .ok()
+        .and_then(|m| m.impostor)
+        .map(|b| b.resolved(g))
+    {
+        let size = [b.grid.to_le_bytes(), b.frame.to_le_bytes()].concat();
+        for (kind, id) in impostor_ids(&s.rel).into_iter().enumerate() {
+            // `6`: the atlas's layout version (2, the
+            // hemi-octahedron; 3, 16 samples a texel, filtered
+            // textures and the material atlas; 4, the leaves' dome
+            // normals and the mean normal's length; 6, the sun's
+            // share in the material's alpha, 5 an unlanded bake of
+            // it), so an atlas baked by an older layout is baked
+            // again.
+            let st = with(
+                &[
+                    b"impostor",
+                    &[6, kind as u8],
+                    &size,
+                    tex_desc.as_bytes(),
+                    &hash,
+                ],
+                &model_desc,
+                &[],
+            );
+            outs.push((
+                id,
+                format::Texture::NAME,
+                st,
+                Work::Job(Box::new(ImpostorJob(s, b, kind as u8))),
+            ));
+        }
+    }
+    if anim::wanted(g) {
+        match anim_settings(s) {
+            Ok(a) => {
+                let deps = anim::dependencies(&assets_root(s), &a);
+                let motion = contract
+                    .and_then(|c| c.motion.as_ref())
+                    .map(|m| m.describe())
+                    .unwrap_or_default();
+                let st = with(
+                    &[
+                        b"animation",
+                        NODE_ROWS,
+                        mesh_desc.as_bytes(),
+                        a.describe().as_bytes(),
+                        &hash,
+                        deps.as_bytes(),
+                    ],
+                    &format!("{model_desc}{motion}"),
+                    &[],
+                );
+                outs.insert(
+                    1,
+                    (
+                        format!("{}#anim", s.rel),
+                        format::Animation::NAME,
+                        st,
+                        Work::Job(Box::new(AnimationJob(s, a))),
+                    ),
+                );
+            }
+            Err(e) => early_errors.push((s.rel.clone(), "model", e)),
+        }
+    }
+}
+
+/// A model's one blob: its meshes, materials and skeleton.
+struct ModelJob<'a>(&'a Source, Vec<String>);
+
+impl Job for ModelJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let ModelJob(s, ids) = self;
+        let Exec {
+            options, budgets, ..
+        } = ex;
+        let g = s.gltf.as_ref().expect("loaded");
+        let mesh = mesh_for(s, options)?;
+        let (blob, mut n) = cook(g, ids, &mesh, p.stamp, false, &s.rel)?;
+        // A model written as text past the project's budgets is cooked
+        // and flagged: the budgets are reported numbers, never a reason
+        // a model is not made (indices are u32; nothing breaks past them).
+        if ext(&s.rel) == "ogt" {
+            for (what, value, limit, key) in [
+                (
+                    "LOD 0 triangles",
+                    n.triangles,
+                    budgets.triangles,
+                    "triangles",
+                ),
+                ("vertices", n.vertices, budgets.vertices, "vertices"),
+            ] {
+                if value as u64 > limit {
+                    n.notes.push(format!(
+                            "warning: over budget: {what}: {value} is over the {key} budget of {limit} (project.ogt's budgets.{key}); cooked as written"
+                        ));
+                }
+            }
+        }
+        Ok((blob, n.notes))
+    }
+}
+
+/// A model's physics proxy: its simplified collision mesh.
+struct ProxyJob<'a>(&'a Source);
+
+impl Job for ProxyJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let ProxyJob(s) = self;
+        let Exec { options, .. } = ex;
+        let g = s.gltf.as_ref().expect("loaded");
+        let mesh = mesh_for(s, options)?;
+        cook(g, &[], &mesh, p.stamp, true, &s.rel).map(|(b, mut n)| {
+            n.notes.retain(|x| x.contains("triangles"));
+            (
+                b,
+                n.notes.into_iter().map(|x| format!("proxy: {x}")).collect(),
+            )
+        })
+    }
+}
+
+/// One of a model's impostor textures: albedo, normal and depth, or material.
+struct ImpostorJob<'a>(&'a Source, ImpostorBake, u8);
+
+impl Job for ImpostorJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let ImpostorJob(s, b, kind) = self;
+        let Exec { options, .. } = ex;
+        let g = s.gltf.as_ref().expect("loaded");
+        let baked = g
+            .impostor(*b)
+            .map_err(|e| CookError(format!("{}: impostor: {e}", s.rel)))?;
+        let (img, k, what) = match kind {
+            0 => (&baked.albedo, format::kind::COLOR, "albedo"),
+            1 => (&baked.normal, format::kind::LINEAR, "normal and depth"),
+            _ => (
+                &baked.material,
+                format::kind::LINEAR,
+                "roughness, translucency and metallic",
+            ),
+        };
+        let note = format!(
+            "{}: {}x{} impostor {what} ({}×{} frames)",
+            p.id, img.width, img.height, b.grid, b.grid
+        );
+        texture::cook(img, k, &options.texture, p.stamp).map(|t| (t, vec![note]))
+    }
+}
+
+/// A model's animation clips.
+struct AnimationJob<'a>(&'a Source, anim::AnimSettings);
+
+impl Job for AnimationJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let AnimationJob(s, a) = self;
+        let Exec { options, .. } = ex;
+        let g = s.gltf.as_ref().expect("loaded");
+        let mesh = mesh_for(s, options)?;
+        anim::cook(g, &s.bytes, &mesh, a, p.stamp, &assets_root(s))
+    }
+}
+
+/// One image a model embeds, cooked as a texture.
+struct GltfTextureJob<'a>(&'a Source, usize, u32, Option<u8>, Split);
+
+impl Job for GltfTextureJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let GltfTextureJob(s, image, k, cutout, split) = self;
+        let Exec { options, .. } = ex;
+        let id = p.id.strip_suffix("#mips").unwrap_or(&p.id);
+        let cook = |stamp| {
+            let g = s.gltf.as_ref().expect("loaded");
+            let img = texture::decode(&g.images[*image])
+                .map_err(|e| CookError(format!("{id}: image {image}: {e}")))?;
+            let mut notes = vec![format!(
+                "{id}: {}x{} image {image}{}",
+                img.width,
+                img.height,
+                cutout
+                    .map(|c| format!(
+                        " (cut-out at alpha {c}: an alpha-tested material's base colour)"
+                    ))
+                    .unwrap_or_default()
+            )];
+            let mut t = options.texture.clone();
+            t.cutout = *cutout;
+            let (img, k) = match options
+                .mesh
+                .conform
+                .as_ref()
+                .filter(|_| !conform_off(s, options))
+            {
+                Some(c) => {
+                    // The span of the image's longest side, from the span of
+                    // a side of its square equivalent (the check's measure).
+                    let (w, h) = (img.width as f32, img.height as f32);
+                    let extent = conform::mesh::texel_span(g, *image).map_or_else(
+                        || conform::mesh::extent(g),
+                        |s| s * w.max(h) / (w * h).sqrt(),
+                    );
+                    let (img, k, mips, note) =
+                        conform::mesh::texture(c, Some(extent), img, *k, t.mipmaps);
+                    t.mipmaps = mips;
+                    notes.extend(note.map(|n| format!("{id}: {n}")));
+                    (img, k)
+                }
+                None => (img, *k),
+            };
+            if t.cutout.is_some() && t.mipmaps && (t.force_toktx || !cfg!(feature = "basis")) {
+                notes.push(format!(
+                        "{id}: a cut-out with toktx's own mips (the basis-universal encoder, og-cook's `basis` \
+                         feature, makes the ones that keep its coverage)"
+                    ));
+            }
+            texture::cook(&img, k, &t, stamp).map(|b| (b, notes))
+        };
+        texture::split_texture(s, *image, split, p, cook)
+    }
+
+    fn action(&self) -> Action<'_> {
+        let GltfTextureJob(s, image, kind, cutout, split) = self;
+        Action::Input(
+            s.gltf.as_ref().expect("parsed model").images[*image].as_slice(),
+            format!("{kind} cutout {cutout:?} {split:?} {:?}", s.settings),
+            true,
+        )
+    }
+}
+
+/// A model's pre-fractured pieces.
+struct FractureJob<'a>(&'a Source);
+
+impl Job for FractureJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let FractureJob(s) = self;
+        Ok(fracture::cook(s, p.stamp))
     }
 }

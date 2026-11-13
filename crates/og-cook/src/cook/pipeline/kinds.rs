@@ -46,7 +46,6 @@ impl fmt::Debug for KindDef {
 }
 
 /// What cooking an output reads beside its own work.
-#[expect(dead_code, reason = "read by the jobs of the systems still to move")]
 pub(crate) struct Exec<'a> {
     pub(crate) options: &'a CookOptions,
     pub(crate) threads: usize,
@@ -109,6 +108,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     audio::KINDS,
     sfx::KINDS,
     texture::KINDS,
+    model::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {
@@ -125,4 +125,24 @@ pub(crate) fn by_extension(ext: &str) -> Option<Kind> {
 /// The registered kind that claims an `.ogt` type.
 pub(crate) fn by_type(ty: &str) -> Option<Kind> {
     kinds().find(|k| k.types.contains(&ty)).map(Kind::System)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The scan takes the first kind that claims a file: two kinds claiming
+    /// one extension or `.ogt` type would leave the later one unreachable.
+    #[test]
+    fn no_two_kinds_claim_one_extension_or_type() {
+        let mut seen: BTreeMap<&str, &str> = BTreeMap::new();
+        for k in kinds() {
+            for claim in k.extensions.iter().chain(k.types) {
+                if let Some(other) = seen.insert(claim, k.name) {
+                    panic!("{claim:?} is claimed by {other} and {}", k.name);
+                }
+            }
+        }
+        assert!(seen.contains_key("glb") && seen.contains_key("scene"));
+    }
 }

@@ -10,13 +10,9 @@ pub(crate) fn run(
     project_key: Option<&str>,
     cook: impl FnOnce() -> Result<(Vec<u8>, Vec<String>), CookError>,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let texture = matches!(p.work, Some(Work::GltfTexture(..)))
-        || matches!(&p.work, Some(Work::Job(j)) if matches!(j.action(), Action::Input(.., true)));
+    let texture =
+        matches!(&p.work, Some(Work::Job(j)) if matches!(j.action(), Action::Input(.., true)));
     let input = match &p.work {
-        Some(Work::GltfTexture(s, image, kind, cutout, split)) => Some((
-            s.gltf.as_ref().expect("parsed model").images[*image].as_slice(),
-            format!("{kind} cutout {cutout:?} {split:?} {:?}", s.settings),
-        )),
         Some(Work::Job(j)) => match j.action() {
             Action::Project => project_key.map(|key| (key.as_bytes(), p.id.clone())),
             Action::Never => None,

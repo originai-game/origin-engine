@@ -1,6 +1,4 @@
 use super::*;
-mod models;
-use models::*;
 
 /// What every stage after the art contract reads.
 #[derive(Clone, Copy)]
@@ -41,7 +39,7 @@ pub(crate) struct PlanState {
     // glTFs (cells, tiles) repeats its images in every file, and a copy per
     // model multiplied the cooked bytes, the load's transcoding and the
     // GPU's memory (og-runtime's add_gltf shares them by these ids).
-    planned_textures: std::collections::HashSet<String>,
+    pub(crate) planned_textures: std::collections::HashSet<String>,
 }
 
 /// One planned output: its id, type, stamp and work.
@@ -134,7 +132,6 @@ fn plan_kind<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     match s.kind {
-        Kind::Model => plan_model(cx, state, s, hash, outs),
         Kind::System(k) => (k.plan)(cx, state, s, hash, outs),
     }
 }

@@ -126,7 +126,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 kind: match f.kind {
                     OutKind::Emitter => Kind::System(&crate::cook::effect::EMITTER),
                     OutKind::Effect => Kind::System(&crate::cook::effect::EFFECT),
-                    OutKind::Model => Kind::Model,
+                    OutKind::Model => Kind::System(&crate::cook::model::MODEL),
                 },
                 settings_files: Vec::new(),
                 settings: (f.kind == OutKind::Model).then(|| {

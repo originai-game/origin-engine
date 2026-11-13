@@ -83,7 +83,6 @@ impl std::error::Error for CookError {}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Kind {
-    Model,
     /// A kind its system's module declares (`pipeline/kinds.rs`).
     System(&'static KindDef),
 }
@@ -91,7 +90,6 @@ enum Kind {
 impl Kind {
     fn name(self) -> &'static str {
         match self {
-            Kind::Model => "model",
             Kind::System(k) => k.name,
         }
     }
@@ -190,18 +188,6 @@ enum Split {
 }
 
 enum Work<'a> {
-    Model(&'a Source, Vec<String>),
-    /// A streaming group's glTF stand-in: its coarsest LOD, no textures.
-    Proxy(&'a Source),
-    /// A model's impostor atlas: 0 the albedo, 1 the normal and depth, 2
-    /// the material (roughness, translucency, metallic).
-    Impostor(&'a Source, model::ImpostorBake, u8),
-    Animation(&'a Source, anim::AnimSettings),
-    /// A glTF image cooked as a texture: its index, kind, cut-off as a
-    /// cut-out ([`model::TextureUse::cutout`]) and how it splits.
-    GltfTexture(&'a Source, usize, u32, Option<u8>, Split),
-    /// A fractured model's `#fracture`.
-    Fracture(&'a Source),
     /// Work its system's module plans and cooks (`pipeline/kinds.rs`).
     Job(Box<dyn Job + 'a>),
 }

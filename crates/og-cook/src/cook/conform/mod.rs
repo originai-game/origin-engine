@@ -132,7 +132,10 @@ pub enum ModelRole {
 pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
     let sources = super::scan(&root.join("assets")).map_err(|e| e.0)?.sources;
     let mut out = BTreeMap::new();
-    for s in sources.iter().filter(|s| s.kind == super::Kind::Model) {
+    for s in sources
+        .iter()
+        .filter(|s| s.kind == super::Kind::System(&crate::cook::model::MODEL))
+    {
         let role = model_role(s).map_err(|e| format!("assets/{}: {e}", s.rel))?;
         if role != ModelRole::Prop {
             out.insert(s.rel.clone(), role);

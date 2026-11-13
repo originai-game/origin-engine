@@ -723,7 +723,7 @@ pub(crate) fn diagnose(
             let applies = sources.iter().any(|s| {
                 &s.rel == rel
                     && match s.kind {
-                        Kind::Model => true,
+                        Kind::System(k) if k == &crate::cook::model::MODEL => true,
                         Kind::System(k) if k == &flipbook::FLIPBOOK => c.motion.is_some(),
                         _ => !c.texture_desc().is_empty(),
                     }

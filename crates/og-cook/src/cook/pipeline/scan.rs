@@ -47,22 +47,12 @@ pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
 
 /// The kind of a file whose extension alone says it.
 fn kind_by_extension(ext: &str) -> Option<Kind> {
-    Some(match ext {
-        "glb" | "gltf" | "vox" | "fbx" | "obj" => Kind::Model,
-        _ => return kinds::by_extension(ext),
-    })
+    kinds::by_extension(ext)
 }
-
-/// The `type` of each `.ogt` the cook takes as an asset, with its kind.
-const OGT_KINDS: &[(&str, Kind)] = &[(model_text::MODEL_TYPE, Kind::Model)];
 
 /// The kind an `.ogt` of this `type` cooks as; `None`: not an asset.
 fn ogt_kind(ty: &str) -> Option<Kind> {
-    OGT_KINDS
-        .iter()
-        .find(|(t, _)| *t == ty)
-        .map(|&(_, k)| k)
-        .or_else(|| kinds::by_type(ty))
+    kinds::by_type(ty)
 }
 
 /// The type an `.ogt`'s name says and does not hold: `<name>.<type>.ogt`
@@ -529,7 +519,7 @@ pub(crate) fn plan_groups(
                             .meshes()
                             .any(|x| x.primitives().any(|p| p.morph_targets().next().is_some()))
                 });
-                let fits = matches!(src.kind, Kind::Model)
+                let fits = src.kind == Kind::System(&crate::cook::model::MODEL)
                     || matches!(src.kind, Kind::System(k) if k.streams);
                 if !fits || skinned {
                     refused = Some(format!(
