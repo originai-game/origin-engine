@@ -121,7 +121,7 @@ struct Saved {
     before_code: Option<BeforeCode>,
 }
 
-pub(super) struct Index {
+pub(crate) struct Index {
     path: PathBuf,
     root: PathBuf,
     store: Option<cache::Store>,

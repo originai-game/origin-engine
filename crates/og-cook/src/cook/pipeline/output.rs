@@ -1,7 +1,7 @@
 use super::*;
 
 /// The texture cache's key for the project's outputs.
-pub(super) fn project_key(
+pub(crate) fn project_key(
     cook_index: &index::Index,
     sources: &[Source],
     texture_cache: Option<&Path>,
@@ -34,7 +34,7 @@ pub(super) fn project_key(
 type Done = (Result<(Vec<u8>, Vec<String>), CookError>, f64, f64, u32);
 
 /// Cooks what is stale, in parallel; results land by plan index.
-pub(super) fn execute(
+pub(crate) fn execute(
     cx: &Cx,
     plan: &[Planned],
     threads: usize,
@@ -79,16 +79,16 @@ pub(super) fn execute(
 }
 
 /// The reports and each source's outputs, with the aliases resolved.
-pub(super) struct Assembled {
-    pub(super) reports: Vec<AssetReport>,
-    pub(super) new_outputs: BTreeMap<usize, Vec<NewOutput>>,
+pub(crate) struct Assembled {
+    pub(crate) reports: Vec<AssetReport>,
+    pub(crate) new_outputs: BTreeMap<usize, Vec<NewOutput>>,
     // The 3D pass's lines per output: this cook's, or for an output that
     // was up to date the ones its last cook recorded.
-    pub(super) log: ConformLog,
+    pub(crate) log: ConformLog,
 }
 
 /// Assembles the report and each output's manifest entry and bytes.
-pub(super) fn assemble(
+pub(crate) fn assemble(
     cx: &Cx,
     plan: &[Planned],
     results: Vec<Mutex<Option<Done>>>,
@@ -238,13 +238,13 @@ pub(super) fn assemble(
 }
 
 /// The manifest and the files it keeps.
-pub(super) struct Written {
+pub(crate) struct Written {
     manifest: Manifest,
     keep: BTreeSet<String>,
 }
 
 /// Writes what changed and builds the manifest.
-pub(super) fn write(
+pub(crate) fn write(
     cx: &Cx,
     new_outputs: BTreeMap<usize, Vec<NewOutput>>,
     reports: &mut [AssetReport],
@@ -317,7 +317,7 @@ pub(super) fn write(
 }
 
 // Each group's outputs, packed into one file the runtime fetches.
-pub(super) fn pack(
+pub(crate) fn pack(
     cx: &Cx,
     groups: &BTreeMap<String, stream::GroupDecl>,
     written: &mut Written,
@@ -388,7 +388,7 @@ pub(super) fn pack(
 /// the cook times and the conform log, and deletes what is no longer an
 /// output. Returns what it deleted, the motion model's warnings and what it
 /// held before it read the project's code.
-pub(super) fn finish(
+pub(crate) fn finish(
     cx: &Cx,
     old: &Manifest,
     written: Written,
@@ -490,7 +490,7 @@ pub(super) fn finish(
 /// the motion pack alone, so a cook after a change to code alone starts
 /// from this ([`cook_code`]).
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub(super) struct BeforeCode {
+pub(crate) struct BeforeCode {
     uses_motion: bool,
     roots: BTreeSet<String>,
     users: BTreeMap<String, BTreeSet<String>>,
@@ -503,7 +503,7 @@ pub(super) struct BeforeCode {
 /// the code uses og.motion, or did (its model is read from outside the
 /// project, and the manifest names it), or the last cook's files do not
 /// read back.
-pub(super) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookError> {
+pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookError> {
     let cooked_dir = root.join("cooked");
     let (Some(manifest), Ok(last)) = (
         std::fs::read_to_string(cooked_dir.join(MANIFEST))
@@ -530,7 +530,7 @@ pub(super) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookEr
 
 /// The cook's warnings and the art contract's entries: diagnostics describe
 /// source assets and never change their cooked blobs.
-pub(super) fn diagnose(
+pub(crate) fn diagnose(
     cx: &Cx,
     plan: &[Planned],
     reports: &mut [AssetReport],
@@ -754,7 +754,7 @@ pub(super) fn diagnose(
 }
 
 /// Saves the cook index and collects the texture cache's garbage.
-pub(super) fn save(
+pub(crate) fn save(
     cook_index: &index::Index,
     report: &Report,
     before_code: BeforeCode,

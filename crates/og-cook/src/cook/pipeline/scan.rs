@@ -23,7 +23,7 @@ fn walk(dir: &Path, rel: &str, out: &mut Vec<(String, PathBuf)>) -> std::io::Res
     Ok(())
 }
 
-pub(super) fn ext(rel: &str) -> String {
+pub(crate) fn ext(rel: &str) -> String {
     rel.rsplit_once('.')
         .map(|(_, e)| e.to_ascii_lowercase())
         .unwrap_or_default()
@@ -32,16 +32,16 @@ pub(super) fn ext(rel: &str) -> String {
 /// The project's assets as the cook first reads them: every file under
 /// `assets/` and the built-in ones its looks name, classified, with its
 /// import settings attached; the files it ignores; the errors found.
-pub(super) struct Scan {
-    pub(super) sources: Vec<Source>,
-    pub(super) ignored: Vec<String>,
-    pub(super) early_errors: Vec<(String, &'static str, String)>,
+pub(crate) struct Scan {
+    pub(crate) sources: Vec<Source>,
+    pub(crate) ignored: Vec<String>,
+    pub(crate) early_errors: Vec<(String, &'static str, String)>,
     /// Each component name the documents use or declare, by the id of the
     /// document that defines it: the game's own, else a built-in one.
-    pub(super) components: BTreeMap<String, String>,
+    pub(crate) components: BTreeMap<String, String>,
 }
 
-pub(super) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
+pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
     scan_with(assets_dir, &|path| std::fs::read(path), 1)
 }
 
@@ -107,7 +107,7 @@ fn ogt_kind(ty: &str) -> Option<Kind> {
 /// The type an `.ogt`'s name says and does not hold: `<name>.<type>.ogt`
 /// names its type, so `hero.flipbook.ogt` cooking as anything but a
 /// flipbook is reported. A name whose last part is no type says nothing.
-pub(super) fn misnamed(rel: &str, kind: Kind) -> Option<&str> {
+pub(crate) fn misnamed(rel: &str, kind: Kind) -> Option<&str> {
     let stem = rel.rsplit('/').next()?.strip_suffix(".ogt")?;
     let (_, named) = stem.rsplit_once('.')?;
     (ogt_kind(named)? != kind).then_some(named)
@@ -129,7 +129,7 @@ pub fn own_lines(ty: &str) -> bool {
 /// The extensions of the texts the scan reads more than once.
 const TEXTS: [&str; 4] = ["ogt", "css", "json", "svelte"];
 
-pub(super) fn scan_with(
+pub(crate) fn scan_with(
     assets_dir: &Path,
     read_file: &(impl Fn(&Path) -> std::io::Result<Vec<u8>> + Sync),
     threads: usize,
@@ -457,7 +457,7 @@ fn disk_imports(assets_dir: &Path, rel: &str, text: &str) -> Vec<(String, String
 /// its group's pack and each other chunk stays a file of its own, read
 /// ahead of the sound's playheads once the group is resident, as a chunked
 /// sound of the first group's are.
-pub(super) fn output_group(
+pub(crate) fn output_group(
     id: &str,
     rel: &str,
     group_of: &BTreeMap<String, String>,
@@ -479,7 +479,7 @@ pub(super) fn output_group(
 /// looks and LUTs (loaded once the group is resident, let go when it
 /// unloads). A refusal is
 /// the scene's error, and its scene adds none of its groups.
-pub(super) fn plan_groups(
+pub(crate) fn plan_groups(
     sources: &[Source],
     known: &BTreeSet<String>,
     errors: &mut Vec<(String, &'static str, String)>,

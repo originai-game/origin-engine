@@ -3,7 +3,7 @@ use super::{CookError, CookOptions, Planned, Work, cache, format};
 use og_blob::Blob;
 use std::path::Path;
 
-pub(super) fn run(
+pub(crate) fn run(
     directory: Option<&Path>,
     p: &Planned,
     options: &CookOptions,

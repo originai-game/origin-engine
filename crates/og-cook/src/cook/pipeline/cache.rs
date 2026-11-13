@@ -29,7 +29,7 @@ pub fn max_bytes() -> u64 {
         .unwrap_or(DEFAULT_MAX_BYTES)
 }
 
-pub(super) fn key(kind: &str, parts: &[&[u8]]) -> String {
+pub(crate) fn key(kind: &str, parts: &[&[u8]]) -> String {
     let mut hash = blake3::Hasher::new();
     for part in [super::COOKER_VERSION.as_bytes(), kind.as_bytes()]
         .into_iter()
@@ -235,7 +235,7 @@ pub struct GcReport {
     pub removed: usize,
 }
 
-pub(super) fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(crate) fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     static NEXT: AtomicU64 = AtomicU64::new(0);
     std::fs::create_dir_all(path.parent().expect("cache directory"))?;
     let temp = path.with_extension(format!(

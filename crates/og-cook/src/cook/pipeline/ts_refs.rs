@@ -109,7 +109,7 @@ fn load_path_argument(expr: &Expression<'_>) -> Option<usize> {
         .get_or_init(|| {
             let text = concat!(
                 "type api\nversion 1\n---\n",
-                include_str!("../../../og-api/api/load.ogt")
+                include_str!("../../../../og-api/api/load.ogt")
             );
             let doc = og_core::ogt::Document::parse(text).expect("load IDL");
             let module = doc

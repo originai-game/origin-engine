@@ -53,7 +53,7 @@ use std::collections::BTreeMap;
 
 /// One group a scene declares.
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct GroupDecl {
+pub(crate) struct GroupDecl {
     pub name: String,
     pub scene: String,
     pub assets: Vec<String>,
@@ -72,7 +72,7 @@ fn valid_name(n: &str) -> bool {
 
 /// The groups a scene declares, checked: their assets cooked (`known`),
 /// a trigger of distance or volume (or none: manual).
-pub(super) fn groups_of(
+pub(crate) fn groups_of(
     scene: &str,
     text: &str,
     known: &dyn Fn(&str) -> bool,
@@ -224,7 +224,7 @@ pub(super) fn groups_of(
 }
 
 /// A group's pack: its files (paths under `cooked/`, sorted) and their bytes.
-pub(super) fn pack(files: &[(String, Vec<u8>)], stamp: u64) -> Vec<u8> {
+pub(crate) fn pack(files: &[(String, Vec<u8>)], stamp: u64) -> Vec<u8> {
     let mut names = String::new();
     let mut data: Vec<u8> = Vec::new();
     let mut rows = Vec::with_capacity(files.len());
@@ -262,7 +262,7 @@ pub(super) fn pack(files: &[(String, Vec<u8>)], stamp: u64) -> Vec<u8> {
 /// The memory a cooked output takes once loaded: a texture's RGBA8 with
 /// mips, a model's vertices (48 bytes each) and indices, a sound's
 /// decoded samples (or its QOA when it streams), else its bytes.
-pub(super) fn memory_of(ty: &str, bytes: &[u8]) -> u64 {
+pub(crate) fn memory_of(ty: &str, bytes: &[u8]) -> u64 {
     let words = og_blob::AlignedBytes::from_slice(bytes);
     let fallback = bytes.len() as u64;
     let Ok(blob) = og_blob::Blob::parse(words.as_slice(), ty) else {
@@ -305,7 +305,7 @@ pub(super) fn memory_of(ty: &str, bytes: &[u8]) -> u64 {
 }
 
 /// A cooked sound's rate, channels and frames (`None`: not a sound blob).
-pub(super) fn sound_of(id: &str, bytes: &[u8]) -> Option<StreamSound> {
+pub(crate) fn sound_of(id: &str, bytes: &[u8]) -> Option<StreamSound> {
     let words = og_blob::AlignedBytes::from_slice(bytes);
     let blob = og_blob::Blob::parse(words.as_slice(), "og.Sound").ok()?;
     let m = blob
@@ -322,7 +322,7 @@ pub(super) fn sound_of(id: &str, bytes: &[u8]) -> Option<StreamSound> {
 }
 
 /// The manifest's entry for a group.
-pub(super) fn manifest_entry(
+pub(crate) fn manifest_entry(
     g: &GroupDecl,
     file: String,
     bytes: u64,
@@ -346,4 +346,4 @@ pub(super) fn manifest_entry(
 
 /// Every scene's groups, by name, and each asset's group. `Err` names the
 /// scene and why (an asset in two groups, a name taken twice).
-pub(super) type Groups = (BTreeMap<String, GroupDecl>, BTreeMap<String, String>);
+pub(crate) type Groups = (BTreeMap<String, GroupDecl>, BTreeMap<String, String>);

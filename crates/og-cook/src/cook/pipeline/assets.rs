@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 pub const SIDECAR: &str = ".assets.ogt";
 
 /// Preserve the resolved ids in the cook's `id=hash` / `id=present` stamp inputs.
-pub(super) fn record_dependencies(
+pub(crate) fn record_dependencies(
     graph: &mut BTreeMap<String, BTreeSet<String>>,
     source: &str,
     dependencies: &str,
@@ -519,7 +519,7 @@ fn known(manifest: &Manifest) -> BTreeMap<String, BTreeSet<String>> {
 
 /// The index of the project's assets and `project.ogt`, before its code is
 /// read ([`add_code`]).
-pub(super) fn build(
+pub(crate) fn build(
     root: &Path,
     manifest: &Manifest,
     sources: &[Source],
@@ -649,7 +649,7 @@ pub(super) fn build(
 /// file's references, the roots they make and its computed loads. Code is
 /// the one input read here and nowhere else in the cook, so a change to
 /// code alone redoes only this.
-pub(super) fn add_code(
+pub(crate) fn add_code(
     root: &Path,
     manifest: &Manifest,
     index: &mut Index,

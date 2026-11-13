@@ -13,10 +13,10 @@ use og_core::ogt::{Block, Document};
 use std::path::Path;
 
 /// The file's name in a directory.
-pub(super) const FILE: &str = "import.ogt";
+pub(crate) const FILE: &str = "import.ogt";
 
 /// One `import.ogt`.
-pub(super) struct Defaults {
+pub(crate) struct Defaults {
     /// Its id (`textures/import.ogt`).
     rel: String,
     /// Its directory with a trailing `/`, empty for `assets/` itself.
@@ -25,17 +25,17 @@ pub(super) struct Defaults {
 }
 
 /// Whether `rel` is a directory's settings by its name.
-pub(super) fn is_defaults(rel: &str) -> bool {
+pub(crate) fn is_defaults(rel: &str) -> bool {
     rel == FILE || rel.ends_with("/import.ogt")
 }
 
 impl Defaults {
     /// How far under `assets/` its directory is.
-    pub(super) fn depth(&self) -> usize {
+    pub(crate) fn depth(&self) -> usize {
         self.dir.matches('/').count()
     }
 
-    pub(super) fn parse(rel: &str, doc: &Document) -> Result<Defaults, String> {
+    pub(crate) fn parse(rel: &str, doc: &Document) -> Result<Defaults, String> {
         let mut rules = Vec::new();
         for e in &doc.body.entries {
             if e.key != "match" {
@@ -100,7 +100,7 @@ fn merge(into: &mut Block, from: &Block) {
 /// (sorted from `assets/` down) give it, and the files they came from. With
 /// no directory settings for it, `own` as it is. The engine's built-in
 /// assets (`@…`) keep their own.
-pub(super) fn effective(
+pub(crate) fn effective(
     rel: &str,
     defaults: &[Defaults],
     own: Option<(String, Document)>,
@@ -138,7 +138,7 @@ pub(super) fn effective(
 }
 
 /// The `import.ogt` ids that could apply to `rel`, from `assets/` down.
-pub(super) fn candidates(rel: &str) -> Vec<String> {
+pub(crate) fn candidates(rel: &str) -> Vec<String> {
     let mut out = vec![FILE.to_string()];
     for (i, _) in rel.match_indices('/') {
         out.push(format!("{}/{FILE}", &rel[..i]));
@@ -148,7 +148,7 @@ pub(super) fn candidates(rel: &str) -> Vec<String> {
 
 /// The directory settings above `rel` read from `root` (`assets/`), for a
 /// file the cook reads outside its scan (an animation library).
-pub(super) fn read(root: &Path, rel: &str) -> Result<Vec<Defaults>, String> {
+pub(crate) fn read(root: &Path, rel: &str) -> Result<Vec<Defaults>, String> {
     let mut out = Vec::new();
     for id in candidates(rel) {
         // Beside a file named `import`, it is that file's own settings.

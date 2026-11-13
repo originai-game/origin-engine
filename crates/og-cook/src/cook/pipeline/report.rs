@@ -371,11 +371,11 @@ impl Report {
 /// `cooked/.conform.ogt`: per conformed output (id and stamp), what the 3D
 /// pass said of it when it last cooked, so an up-to-date output is still
 /// reported. Written only when it holds something.
-pub(super) const CONFORM_LOG: &str = ".conform.ogt";
+pub(crate) const CONFORM_LOG: &str = ".conform.ogt";
 
-pub(super) type ConformLog = BTreeMap<(String, u64), Vec<String>>;
+pub(crate) type ConformLog = BTreeMap<(String, u64), Vec<String>>;
 
-pub(super) fn read_conform_log(cooked: &Path) -> ConformLog {
+pub(crate) fn read_conform_log(cooked: &Path) -> ConformLog {
     let mut out = ConformLog::new();
     let Some(doc) = std::fs::read_to_string(cooked.join(CONFORM_LOG))
         .ok()
@@ -398,7 +398,7 @@ pub(super) fn read_conform_log(cooked: &Path) -> ConformLog {
     out
 }
 
-pub(super) fn conform_log_text(log: &ConformLog) -> String {
+pub(crate) fn conform_log_text(log: &ConformLog) -> String {
     use og_core::ogt::{Entry, Value};
     let mut doc = Document::new("conform-log", 1);
     for ((id, stamp), what) in log {
@@ -415,7 +415,7 @@ pub(super) fn conform_log_text(log: &ConformLog) -> String {
 
 /// The 3D pass's line in one of an output's notes (`conform: ...`, a
 /// texture's `<id>: conform: ...`), without its prefix.
-pub(super) fn conform_note<'a>(id: &str, note: &'a str) -> Option<&'a str> {
+pub(crate) fn conform_note<'a>(id: &str, note: &'a str) -> Option<&'a str> {
     let n = note
         .strip_prefix(id)
         .and_then(|r| r.strip_prefix(": "))

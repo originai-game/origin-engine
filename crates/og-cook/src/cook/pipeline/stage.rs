@@ -2,20 +2,20 @@ use super::*;
 
 /// The project's own settings (`project.ogt`) and where its assets are:
 /// read once, before the scan.
-pub(super) struct Project {
+pub(crate) struct Project {
     root: PathBuf,
-    pub(super) assets_dir: PathBuf,
-    pub(super) cooked_dir: PathBuf,
+    pub(crate) assets_dir: PathBuf,
+    pub(crate) cooked_dir: PathBuf,
     /// `project.ogt`, parsed; `None` when it is missing or malformed.
     doc: Option<Document>,
-    pub(super) budgets: stats::Budgets,
-    pub(super) budget_desc: String,
-    pub(super) story_functions: BTreeMap<String, og_story::yarn::types::Function>,
-    pub(super) story_functions_stamp: Vec<u8>,
+    pub(crate) budgets: stats::Budgets,
+    pub(crate) budget_desc: String,
+    pub(crate) story_functions: BTreeMap<String, og_story::yarn::types::Function>,
+    pub(crate) story_functions_stamp: Vec<u8>,
 }
 
 impl Project {
-    pub(super) fn read(root: &Path) -> Result<Project, CookError> {
+    pub(crate) fn read(root: &Path) -> Result<Project, CookError> {
         let story_functions = story_functions::read(root).map_err(CookError)?;
         let story_functions_stamp =
             serde_json::to_vec(&story_functions).map_err(|e| CookError(e.to_string()))?;
@@ -46,19 +46,19 @@ impl Project {
 }
 
 /// A problem found before the cook ran: the asset, its kind and the error.
-pub(super) type EarlyError = (String, &'static str, String);
+pub(crate) type EarlyError = (String, &'static str, String);
 
 /// The scan stage's sources, with the sources expanded from others and
 /// the files those consumed.
-pub(super) struct Scanned {
-    pub(super) sources: Vec<Source>,
-    pub(super) ignored: Vec<String>,
-    pub(super) early_errors: Vec<EarlyError>,
-    pub(super) consumed: BTreeSet<String>,
-    pub(super) components: BTreeMap<String, String>,
+pub(crate) struct Scanned {
+    pub(crate) sources: Vec<Source>,
+    pub(crate) ignored: Vec<String>,
+    pub(crate) early_errors: Vec<EarlyError>,
+    pub(crate) consumed: BTreeSet<String>,
+    pub(crate) components: BTreeMap<String, String>,
 }
 
-pub(super) fn scan_sources(
+pub(crate) fn scan_sources(
     assets_dir: &Path,
     cook_index: &index::Index,
     threads: usize,
@@ -86,17 +86,17 @@ pub(super) fn scan_sources(
 }
 
 /// What the model import stage keeps beside the sources it rewrote.
-pub(super) struct Imported {
+pub(crate) struct Imported {
     // The `type model` texts, built again under the art contract's face
     // budget once the look is read (below).
-    pub(super) model_texts: BTreeMap<String, String>,
+    pub(crate) model_texts: BTreeMap<String, String>,
     /// The fractured models whose prefracture came from the cache.
-    pub(super) reused_fractures: BTreeSet<String>,
+    pub(crate) reused_fractures: BTreeSet<String>,
 }
 
 /// Every model is made a glb and loaded (vox, FBX and OBJ, text models,
 /// fracture), and every source hashed.
-pub(super) fn import(
+pub(crate) fn import(
     sources: &mut [Source],
     consumed: &mut BTreeSet<String>,
     texture_cache: Option<&Path>,
@@ -265,15 +265,15 @@ pub(super) fn import(
 }
 
 /// The bundle's assets once the files other assets consume are taken out.
-pub(super) struct Resolved {
-    pub(super) known: BTreeSet<String>,
+pub(crate) struct Resolved {
+    pub(crate) known: BTreeSet<String>,
     // Prefab and scene texts by asset id: scenes and prefabs flatten
     // through the prefabs, and a sub-scene (`scene "<id>"`) is checked
     // against the scenes (a scene, and no cycle).
-    pub(super) prefab_texts: BTreeMap<String, String>,
+    pub(crate) prefab_texts: BTreeMap<String, String>,
 }
 
-pub(super) fn resolve(
+pub(crate) fn resolve(
     assets_dir: &Path,
     sources: &mut Vec<Source>,
     ignored: &mut Vec<String>,
@@ -353,13 +353,13 @@ pub(super) fn resolve(
 
 /// The art contract's stage: the project's look, the 2D conformance and the
 /// options the 3D conformance cooks with.
-pub(super) struct Contracted {
-    pub(super) contract: Option<(String, crate::look::LookFile)>,
-    pub(super) conformed: Vec<ConformEntry>,
-    pub(super) options: CookOptions,
+pub(crate) struct Contracted {
+    pub(crate) contract: Option<(String, crate::look::LookFile)>,
+    pub(crate) conformed: Vec<ConformEntry>,
+    pub(crate) options: CookOptions,
 }
 
-pub(super) fn contract(
+pub(crate) fn contract(
     project: &Project,
     sources: &mut Vec<Source>,
     known: &BTreeSet<String>,
@@ -528,13 +528,13 @@ pub(super) fn contract(
 }
 
 /// Streaming groups and the font packs' faces: where outputs go.
-pub(super) struct Grouped {
-    pub(super) groups: BTreeMap<String, stream::GroupDecl>,
-    pub(super) group_of: BTreeMap<String, String>,
-    pub(super) pack_faces: BTreeSet<String>,
+pub(crate) struct Grouped {
+    pub(crate) groups: BTreeMap<String, stream::GroupDecl>,
+    pub(crate) group_of: BTreeMap<String, String>,
+    pub(crate) pack_faces: BTreeSet<String>,
 }
 
-pub(super) fn group(
+pub(crate) fn group(
     sources: &[Source],
     known: &BTreeSet<String>,
     early_errors: &mut Vec<EarlyError>,

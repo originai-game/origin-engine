@@ -14,38 +14,38 @@ use world::*;
 
 /// What every stage after the art contract reads.
 #[derive(Clone, Copy)]
-pub(super) struct Cx<'a> {
-    pub(super) root: &'a Path,
-    pub(super) assets_dir: &'a Path,
-    pub(super) cooked_dir: &'a Path,
-    pub(super) options: &'a CookOptions,
-    pub(super) sources: &'a [Source],
-    pub(super) known: &'a BTreeSet<String>,
-    pub(super) prefab_texts: &'a BTreeMap<String, String>,
-    pub(super) group_of: &'a BTreeMap<String, String>,
-    pub(super) pack_faces: &'a BTreeSet<String>,
-    pub(super) old_outputs: &'a BTreeMap<&'a str, &'a ManifestOutput>,
-    pub(super) schemas: &'a BTreeMap<String, Schema>,
-    pub(super) budgets: &'a stats::Budgets,
-    pub(super) tex_desc: &'a str,
-    pub(super) mesh_desc: &'a str,
-    pub(super) font_desc: &'a str,
-    pub(super) budget_desc: &'a str,
-    pub(super) schema_hash: [u8; 8],
-    pub(super) style_tokens_hash: [u8; 8],
-    pub(super) story_functions: &'a BTreeMap<String, og_story::yarn::types::Function>,
-    pub(super) story_functions_stamp: &'a [u8],
-    pub(super) document_themes: &'a [og_ui::Theme],
+pub(crate) struct Cx<'a> {
+    pub(crate) root: &'a Path,
+    pub(crate) assets_dir: &'a Path,
+    pub(crate) cooked_dir: &'a Path,
+    pub(crate) options: &'a CookOptions,
+    pub(crate) sources: &'a [Source],
+    pub(crate) known: &'a BTreeSet<String>,
+    pub(crate) prefab_texts: &'a BTreeMap<String, String>,
+    pub(crate) group_of: &'a BTreeMap<String, String>,
+    pub(crate) pack_faces: &'a BTreeSet<String>,
+    pub(crate) old_outputs: &'a BTreeMap<&'a str, &'a ManifestOutput>,
+    pub(crate) schemas: &'a BTreeMap<String, Schema>,
+    pub(crate) budgets: &'a stats::Budgets,
+    pub(crate) tex_desc: &'a str,
+    pub(crate) mesh_desc: &'a str,
+    pub(crate) font_desc: &'a str,
+    pub(crate) budget_desc: &'a str,
+    pub(crate) schema_hash: [u8; 8],
+    pub(crate) style_tokens_hash: [u8; 8],
+    pub(crate) story_functions: &'a BTreeMap<String, og_story::yarn::types::Function>,
+    pub(crate) story_functions_stamp: &'a [u8],
+    pub(crate) document_themes: &'a [og_ui::Theme],
     /// Each component name by the id of the document defining it: the
     /// game's own, else a built-in `@ui/` one (the scan's).
-    pub(super) components: &'a BTreeMap<String, String>,
+    pub(crate) components: &'a BTreeMap<String, String>,
 }
 
 /// What planning writes as it goes: the errors it finds, the references it
 /// parses and the glTF textures already planned.
-pub(super) struct PlanState {
-    pub(super) early_errors: Vec<EarlyError>,
-    pub(super) parsed_refs: BTreeMap<String, BTreeSet<String>>,
+pub(crate) struct PlanState {
+    pub(crate) early_errors: Vec<EarlyError>,
+    pub(crate) parsed_refs: BTreeMap<String, BTreeSet<String>>,
     // glTF textures of models outside streaming groups are cooked once per
     // image and use, whichever models use them: a scene exported in many
     // glTFs (cells, tiles) repeats its images in every file, and a copy per
@@ -58,7 +58,7 @@ pub(super) struct PlanState {
 type Out<'a> = (String, &'static str, u64, Work<'a>);
 
 // Plan every output with its stamp.
-pub(super) fn plan<'a>(
+pub(crate) fn plan<'a>(
     cx: &Cx<'a>,
     early_errors: Vec<EarlyError>,
     threads: usize,

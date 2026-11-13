@@ -187,7 +187,7 @@ impl MeshOptions {
         Ok(o)
     }
 
-    pub(super) fn describe(&self) -> String {
+    pub(crate) fn describe(&self) -> String {
         format!(
             "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 flat levels by position (S6){}",
             self.lod_levels,
@@ -243,7 +243,7 @@ impl Default for TextureOptions {
 }
 
 impl TextureOptions {
-    pub(super) fn describe(&self) -> String {
+    pub(crate) fn describe(&self) -> String {
         format!(
             "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}",
             self.etc1s_quality,
@@ -332,7 +332,7 @@ impl Default for FontSettings {
 }
 
 impl FontSettings {
-    pub(super) fn describe(&self) -> String {
+    pub(crate) fn describe(&self) -> String {
         format!(
             "charset {} chars {:?} em {} range {} page {} mtsdf ec kern{}{}",
             self.charset.join(" "),
@@ -373,7 +373,7 @@ pub struct CookOptions {
     pub publish: bool,
 }
 
-pub(super) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Block> {
+pub(crate) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core::ogt::Block> {
     s.settings.as_ref()?.1.body.get(key)?.block.as_ref()
 }
 
@@ -381,7 +381,7 @@ pub(super) fn settings_block<'a>(s: &'a Source, key: &str) -> Option<&'a og_core
 /// `.ogt` (a `type model`, a flipbook) or of its import settings: why it
 /// keeps its source as made. Read before the 2D pass takes the line out
 /// of a sheet's text.
-pub(super) fn own_conform_off(s: &Source) -> Option<String> {
+pub(crate) fn own_conform_off(s: &Source) -> Option<String> {
     let off = |b: &og_core::ogt::Block| {
         b.get("conform")
             .and_then(|e| e.values.first())
@@ -404,7 +404,7 @@ pub(super) fn own_conform_off(s: &Source) -> Option<String> {
 
 /// Whether the 3D pass keeps `s` as made: its own `conform off` or
 /// project.ogt's `conform { off ... }` (`conform::mesh::Conform::off`).
-pub(super) fn conform_off(s: &Source, options: &CookOptions) -> bool {
+pub(crate) fn conform_off(s: &Source, options: &CookOptions) -> bool {
     options
         .mesh
         .conform
@@ -419,7 +419,7 @@ pub(super) fn conform_off(s: &Source, options: &CookOptions) -> bool {
 /// Without the look's paint: paint is for a model's own colour textures,
 /// and one no model claims (a sprite in a 3D game, the look's own canvas)
 /// keeps its strokes as drawn.
-pub(super) fn mesh_texture(s: &Source, options: &CookOptions) -> Option<conform::mesh::Conform> {
+pub(crate) fn mesh_texture(s: &Source, options: &CookOptions) -> Option<conform::mesh::Conform> {
     options
         .mesh
         .conform
@@ -435,7 +435,7 @@ pub(super) fn mesh_texture(s: &Source, options: &CookOptions) -> Option<conform:
 
 /// The mesh options of a model `s` under the art contract: its import
 /// settings', with the contract unless the model opts out.
-pub(super) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError> {
+pub(crate) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions, CookError> {
     let mut m = options
         .mesh
         .for_model(settings_block(s, "model"))
@@ -446,7 +446,7 @@ pub(super) fn mesh_for(s: &Source, options: &CookOptions) -> Result<MeshOptions,
     Ok(m)
 }
 
-pub(super) fn texture_kind(s: &Source) -> Result<u32, String> {
+pub(crate) fn texture_kind(s: &Source) -> Result<u32, String> {
     match settings_block(s, "texture").and_then(|b| b.get("kind")) {
         None => Ok(format::kind::COLOR),
         Some(e) => match e.word(0).map_err(|x| x.to_string())? {
@@ -466,7 +466,7 @@ pub(super) fn texture_kind(s: &Source) -> Result<u32, String> {
 /// the mip tail stream (`<id>` holds the tail, `<id>#mips` the whole
 /// chain). False or absent: one output, as ever. A `kind pixel` texture
 /// has no mips to stream and is refused.
-pub(super) fn texture_stream(s: &Source, k: u32) -> Result<bool, String> {
+pub(crate) fn texture_stream(s: &Source, k: u32) -> Result<bool, String> {
     let Some(e) = settings_block(s, "texture").and_then(|b| b.get("stream")) else {
         return Ok(false);
     };
@@ -489,7 +489,7 @@ pub(super) fn texture_stream(s: &Source, k: u32) -> Result<bool, String> {
 /// A model's `model { stream_textures true }`: its glTF textures stream
 /// their levels above the mip tail, as a texture file's `texture { stream
 /// true }` does.
-pub(super) fn model_stream_textures(s: &Source) -> Result<bool, String> {
+pub(crate) fn model_stream_textures(s: &Source) -> Result<bool, String> {
     let Some(e) = settings_block(s, "model").and_then(|b| b.get("stream_textures")) else {
         return Ok(false);
     };
@@ -502,14 +502,14 @@ pub(super) fn model_stream_textures(s: &Source) -> Result<bool, String> {
     })
 }
 
-pub(super) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
+pub(crate) fn anim_settings(s: &Source) -> Result<anim::AnimSettings, String> {
     anim::AnimSettings::parse(settings_block(s, "animation"))
 }
 
 /// The OpenType features a font import may name (og-ui's `Features::TAGS`).
 pub const FONT_FEATURES: [&str; 5] = ["smcp", "c2sc", "tnum", "lnum", "case"];
 
-pub(super) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
+pub(crate) fn font_settings(s: &Source, base: &FontSettings) -> Result<FontSettings, String> {
     let mut f = base.clone();
     if let Some(b) = settings_block(s, "font") {
         for e in &b.entries {

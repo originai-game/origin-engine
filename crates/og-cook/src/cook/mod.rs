@@ -9,7 +9,17 @@
 //! (`cooked/.cook.ogt`) does not already hold with an intact file. Outputs
 //! are written only when their bytes change; outputs of removed or failed
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
+//!
+//! `pipeline/` holds the cook's own stages, `formats/` the importers of
+//! asset file formats and `systems/` the cooks of the world systems;
+//! `conform/` is the art contract both share. Each directory's modules are
+//! used back here, so a module is named `cook::<module>` wherever it lives.
 
+mod pipeline;
+pub use pipeline::{asset_move, assets, cache, stats, ts_refs};
+use pipeline::{
+    execute, import_defaults, index, options, output, plan, report, scan, stage, stream,
+};
 mod systems;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
 use systems::{
@@ -22,29 +32,15 @@ pub use formats::{
     video, vox,
 };
 use formats::{fbx, font, font_pack, model, motion, normal2d, psd, scene, texture, timeline};
-mod action_cache;
-pub mod asset_move;
-pub mod assets;
-pub mod cache;
 pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
-mod import_defaults;
-mod index;
 pub mod riv;
-pub mod stats;
-mod stream;
 #[cfg(test)]
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
-pub mod ts_refs;
 pub mod ui_components;
 pub mod ui_screens;
 pub mod vector;
-
-mod execute;
-mod options;
-mod report;
-mod scan;
 
 use execute::{read_sibling, run};
 pub use options::{CookOptions, FontSettings, MeshOptions, Palette, TextureOptions};
@@ -62,17 +58,14 @@ use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
 use og_core::Schema;
 use og_core::hash::{StableHasher, hash_bytes};
 use og_core::ogt::Document;
+use output::*;
+use plan::*;
+use stage::*;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Instant;
-mod output;
-mod plan;
-mod stage;
-use output::*;
-use plan::*;
-use stage::*;
 
 /// A cook failure, written for the person reading it.
 #[derive(Clone, Debug, PartialEq, Eq)]
