@@ -486,6 +486,11 @@ pub struct ParticleEmitter {
     pub gravity: Vec3,
     /// Linear drag per second (velocity scales by 1 / (1 + drag dt)).
     pub drag: f32,
+    /// How much of the air's motion `drag` closes on, 0 to 1: at 0 a
+    /// particle slows to rest; at 1 to the air's velocity where its system
+    /// is ([`ParticleSystem::air`] in og-render: og.Wind and the
+    /// og.WindMotors), so smoke leans and leaves are carried.
+    pub wind: f32,
     pub noise: ParticleNoise,
     /// `None`: a soft round dot.
     pub texture: Option<TextureHandle>,
@@ -597,6 +602,7 @@ impl Default for ParticleEmitter {
             angular_velocity_degrees: [0.0, 0.0],
             gravity: Vec3::new(0.0, -2.0, 0.0),
             drag: 0.0,
+            wind: 0.0,
             noise: ParticleNoise::default(),
             texture: None,
             array: None,

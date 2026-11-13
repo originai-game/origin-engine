@@ -8,7 +8,7 @@
 
 use crate::{
     atmosphere, destruction, destruction2d, e6, i18n, invariants, modules, motion, net, origin,
-    particle_events, platform, story, stream, terrain, timeline, vfx, video,
+    particle_events, platform, story, stream, terrain, timeline, vfx, video, wind,
 };
 
 /// Each module's state on one engine (an optional module left out of the
@@ -45,6 +45,7 @@ pub(crate) struct Modules {
     pub ui: modules::ModuleState,
     pub invariants: invariants::ModuleState,
     pub origin: origin::ModuleState,
+    pub air: wind::ModuleState,
 }
 
 /// The engine a world is assembled for, as its modules mount on it: its

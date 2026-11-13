@@ -533,9 +533,27 @@ pub fn shape_points(shape: &EmitterShape, mesh: Option<&MeshData>) -> Vec<[f32; 
     }
 }
 
+/// What an emitter's drag closes on, in its simulation space: its `wind`
+/// share of the air where its system is (`air`, world), turned into the
+/// emitter's space for a local one (`local`: its transform this step).
+/// Nothing, as before, for an emitter that takes no wind or has no drag
+/// for the air to hold.
+pub(crate) fn carrying_air(e: &ParticleEmitter, air: Vec3, local: Option<Mat4>) -> Vec3 {
+    let share = e.wind.clamp(0.0, 1.0);
+    if share == 0.0 || e.drag <= 0.0 || air == Vec3::ZERO {
+        return Vec3::ZERO;
+    }
+    let air = air * share;
+    match local {
+        Some(m) if m.determinant() != 0.0 => m.inverse().transform_vector3(air),
+        _ => air,
+    }
+}
+
 /// One fixed step of a live particle at `time` seconds; `origin`: the
-/// render origin a world-space system is simulated relative to. Whether it
-/// bounced off a collider.
+/// render origin a world-space system is simulated relative to; `air`:
+/// what its drag closes on ([`carrying_air`]). Whether it bounced off a
+/// collider.
 #[allow(clippy::too_many_arguments)]
 fn integrate(
     e: &ParticleEmitter,
@@ -546,6 +564,7 @@ fn integrate(
     seed: u32,
     colliders: &[SceneCollider],
     origin: Vec3,
+    air: Vec3,
 ) -> bool {
     let mut pos = Vec3::from_slice(&p.pos_age[..3]);
     let mut vel = Vec3::from_slice(&p.vel_life[..3]);
@@ -562,7 +581,14 @@ fn integrate(
         vel += n * e.noise.strength * dt;
     }
     vel += forces(e, pulls, pos, time, seed, origin) * dt;
-    vel *= 1.0 / (1.0 + e.drag.max(0.0) * dt);
+    // Drag closes on the air's velocity: on rest in still air, bit for bit
+    // as before.
+    let keep = 1.0 / (1.0 + e.drag.max(0.0) * dt);
+    vel = if air == Vec3::ZERO {
+        vel * keep
+    } else {
+        air + (vel - air) * keep
+    };
     let before = pos;
     let t = (p.pos_age[3] / p.vel_life[3].max(1e-6)).clamp(0.0, 1.0);
     pos += vel * (dt * e.speed_over_life.as_ref().map_or(1.0, |c| c.eval(t)));
@@ -742,6 +768,7 @@ impl CpuParticles {
         for step in &steps {
             let dt = step.dt;
             let pulls = placed_attractors(e, step.transform);
+            let air = carrying_air(e, sys.air, local.then_some(step.transform));
             fired.clear();
             let mut report = |kind, n: u32, p: &ParticleState| {
                 let (mut at, mut vel) = (
@@ -777,8 +804,17 @@ impl CpuParticles {
                         }
                     }
                     None if p.alive() => {
-                        let hit =
-                            integrate(e, &pulls, p, dt, step.time, seed, colliders, self.origin);
+                        let hit = integrate(
+                            e,
+                            &pulls,
+                            p,
+                            dt,
+                            step.time,
+                            seed,
+                            colliders,
+                            self.origin,
+                            air,
+                        );
                         if hit && hits {
                             report(
                                 ParticleEventKind::Collision,
@@ -816,6 +852,7 @@ impl CpuParticles {
                         cseed,
                         colliders,
                         self.origin,
+                        carrying_air(ce, sys.air, None),
                     );
                 }
                 if sub.trigger == SubTrigger::Life {

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "assets: particles `wind`",
+      "summary": "An emitter's `wind <0..1>` line makes its `drag` close on that share of the air where its system is (og.Wind and the og.WindMotors in reach) instead of on rest: smoke, dust and sparks drift downwind and into a fan's stream, the same on the CPU and GPU paths and in the tick for an emitter that sends events. The default 0 is as before."
+    }
+  ]
+}

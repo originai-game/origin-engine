@@ -35,6 +35,7 @@ struct Emitter {
   field_origin: array<vec4<f32>, 2>,  // the field's lattice at the render origin: xyz whole cells, then the rest
   motion: vec4<f32>,       // xyz: the emitter's velocity this tick, w: the fraction a particle inherits
   counts2: vec4<f32>,      // x: speed keys (0 none), y: spin keys (0 none), z: attractors, w: where a grid's vectors start in mesh_points
+  air: vec4<f32>,          // xyz: what drag closes on, in the simulation space (the emitter's `wind` share of the air)
 };
 
 // A curve over life (keys `ts`, `vs`, `n` of them) at `t`.

@@ -2,16 +2,35 @@
 //! each thing that moves in the air takes from it, so vegetation, clouds,
 //! weather and the soft bodies cannot disagree about where the air goes.
 //!
-//! The tick reads it, and the og.WindMotors pushing on it, for physics
-//! ([`before_tick`]: the air ropes, cloths, garments and bodies with an
-//! airDrag move through); extraction reads them for what is drawn
-//! (`super::atmosphere`). Each of those adds its record's own `wind` to it.
+//! The tick reads it, and the og.WindMotors pushing on it, once as it
+//! starts ([`before_tick`]): the air ropes, cloths, garments and bodies
+//! with an airDrag move through in physics, and the particle systems the
+//! tick simulates are carried by. Extraction reads them for what is drawn
+//! ([`extract`] for vegetation, [`frame_air`] for the renderer's particles).
+//! Each of those adds its record's own `wind` to it.
 
 use super::codec::Layout;
 use super::fx::{kept_rows, resource};
 use super::wire::{FromJson, WindMotorKind, record};
 use glam::Vec3;
+use og_core::air::{Air, Motor};
 use og_ecs::World;
+use std::sync::{Arc, Mutex};
+
+/// The air of one engine's world this tick, as [`before_tick`] read it:
+/// shared with the systems the tick runs.
+#[derive(Clone, Default)]
+pub(crate) struct ModuleState(Arc<Mutex<Air>>);
+
+impl ModuleState {
+    /// Where the air moves at `p` this tick (m/s).
+    pub(crate) fn at(&self, p: Vec3) -> Vec3 {
+        self.0
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .at(p)
+    }
+}
 
 /// How much faster the air carries the clouds than it blows at the ground.
 const ALOFT: f32 = 2.0;
@@ -66,37 +85,85 @@ fn kind_of(kind: WindMotorKind) -> og_core::air::MotorKind {
     }
 }
 
+/// An og.WindMotor at its entity's world place, pushing along `forward`.
+fn motor(v: &record::WindMotor, position: Vec3, forward: Vec3) -> Motor {
+    Motor {
+        position,
+        direction: forward,
+        radius: v.radius,
+        strength: v.strength,
+        kind: kind_of(v.kind),
+    }
+}
+
 /// As each tick starts: the world's air (og.Wind and every og.WindMotor at
-/// its entity's world pose, in entity order) to the physics that moves
-/// ropes, cloths, garments and bodies through it.
-pub(crate) fn before_tick(
-    physics: &og_physics::PhysicsSystem,
-    r: &super::physics_ext::Reader<'_>,
-    world: &World,
-    wind: Option<&Layout>,
-    motors: Option<&Layout>,
-) {
+/// its entity's world pose, in entity order), kept for the tick's systems
+/// and given to the physics that moves ropes, cloths, garments and bodies
+/// through it.
+pub(crate) fn before_tick(eng: &super::engine::Engine, world: &World) {
+    let (wind, motors, physics) = {
+        let st = eng.state.borrow();
+        (
+            st.layouts.get("og.Wind").cloned(),
+            st.layouts.get("og.WindMotor").cloned(),
+            st.physics.clone(),
+        )
+    };
+    let r = super::physics_ext::Reader::World(world);
     let motors = r
-        .rows(motors)
+        .rows(motors.as_ref())
         .unwrap_or_default()
         .into_iter()
         .filter_map(|(e, v)| {
             let v = record::WindMotor::from_json(&v).ok()?;
             let (position, turn, _) = r.pose(og_ecs::Entity::from_bits(e))?;
-            Some(og_core::air::Motor {
-                position,
-                direction: turn * Vec3::NEG_Z,
-                radius: v.radius,
-                strength: v.strength,
-                kind: kind_of(v.kind),
-            })
+            Some(motor(&v, position, turn * Vec3::NEG_Z))
         })
         .collect();
-    physics.set_air(og_core::air::Air {
-        wind: WorldWind::read(world, wind).velocity,
+    let air = Air {
+        wind: WorldWind::read(world, wind.as_ref()).velocity,
         motors,
         ..Default::default()
-    });
+    };
+    let mut kept = eng
+        .modules
+        .air
+        .0
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(p) = physics {
+        p.set_air(air.clone());
+    }
+    *kept = air;
+}
+
+/// The air a frame draws: og.Wind and every og.WindMotor where the frame's
+/// hierarchy places its entity, in entity order.
+pub(crate) fn frame_air(
+    world: &World,
+    wind: Option<&Layout>,
+    motors: Option<&Layout>,
+    h: &mut super::extract::Hierarchy,
+) -> (WorldWind, Air) {
+    let world_wind = WorldWind::read(world, wind);
+    let motors = kept_rows(world, motors)
+        .into_iter()
+        .filter_map(|(e, v)| {
+            let v = record::WindMotor::from_json(&v).ok()?;
+            let m = h.world_of(e);
+            Some(motor(
+                &v,
+                m.transform_point3(Vec3::ZERO),
+                m.transform_vector3(Vec3::NEG_Z).normalize_or_zero(),
+            ))
+        })
+        .collect();
+    let air = Air {
+        wind: world_wind.velocity,
+        motors,
+        ..Default::default()
+    };
+    (world_wind, air)
 }
 
 /// og.Wind and the og.WindMotors into `scene`: what vegetation sways in.
@@ -109,25 +176,12 @@ pub(crate) fn extract(
     h: &mut super::extract::Hierarchy,
 ) -> WorldWind {
     // og.Wind: what vegetation sways in here; the clouds, the weather and
-    // the visual cloths below add their own to it.
-    let world_wind = WorldWind::read(world, wind);
+    // the visual cloths below add their own to it. og.WindMotor: local
+    // pushes on the simulated wind field, placed by their entities
+    // (wind_field.rs keeps the nearest).
+    let (world_wind, air) = frame_air(world, wind, motors, h);
     scene.atmosphere.wind = world_wind.vegetation();
-    // og.WindMotor: local pushes on the simulated wind field, placed by
-    // their entities (wind_field.rs keeps the nearest).
-    scene.atmosphere.wind_motors.clear();
-    for (e, v) in kept_rows(world, motors) {
-        let Ok(v) = record::WindMotor::from_json(&v) else {
-            continue;
-        };
-        let m = h.world_of(e);
-        scene.atmosphere.wind_motors.push(og_render::WindMotor {
-            position: m.transform_point3(Vec3::ZERO),
-            direction: m.transform_vector3(Vec3::NEG_Z).normalize_or_zero(),
-            radius: v.radius,
-            strength: v.strength,
-            kind: kind_of(v.kind),
-        });
-    }
+    scene.atmosphere.wind_motors = air.motors;
     world_wind
 }
 

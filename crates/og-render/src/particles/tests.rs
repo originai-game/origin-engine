@@ -309,6 +309,68 @@ fn a_time_scale_slows_spawning_ageing_and_motion() {
     assert_eq!(alive(&b).len(), alive(&a).len());
 }
 
+/// An emitter's `wind` is the share of the air its drag closes on: at 1
+/// its particles end up moving with the air, in the world whichever way a
+/// local-space emitter is turned; at 0.5 with half of it; at 0, or with no
+/// drag, the air leaves them alone, bit for bit.
+#[test]
+fn drag_carries_particles_to_their_share_of_the_air() {
+    let e = |wind: f32, drag: f32, space| ParticleEmitter {
+        rate: 60.0,
+        lifetime: [10.0, 10.0],
+        speed: [1.0, 2.0],
+        gravity: Vec3::ZERO,
+        max_particles: 256,
+        drag,
+        wind,
+        space,
+        ..Default::default()
+    };
+    let air = Vec3::new(3.0, 0.0, -1.5);
+    let turned = Mat4::from_rotation_y(1.1) * Mat4::from_rotation_x(0.4);
+    // The oldest particles' velocity in the world after 3 s at drag 4.
+    let settled = |wind: f32, space, transform: Mat4, air: Vec3| {
+        let mut sys = ParticleSystem::new(1, EmitterHandle(0), transform, 3, 0);
+        sys.air = air;
+        let slots = live(&e(wind, 4.0, space), &mut sys, 180);
+        let old: Vec<Vec3> = slots
+            .iter()
+            .filter(|p| p.pos_age[3] > 2.5)
+            .map(|p| {
+                let v = Vec3::from_slice(&p.vel_life[..3]);
+                match space {
+                    SimulationSpace::Local => transform.transform_vector3(v),
+                    SimulationSpace::World => v,
+                }
+            })
+            .collect();
+        assert!(old.len() > 20, "{} old particles", old.len());
+        old
+    };
+    for (space, transform) in [
+        (SimulationSpace::World, Mat4::IDENTITY),
+        (SimulationSpace::World, turned),
+        (SimulationSpace::Local, turned),
+    ] {
+        for (wind, want) in [(1.0, air), (0.5, air * 0.5), (0.0, Vec3::ZERO)] {
+            for v in settled(wind, space, transform, air) {
+                assert!(
+                    v.distance(want) < 0.01,
+                    "{space:?} wind {wind}: {v} against {want}"
+                );
+            }
+        }
+    }
+    // No wind share, or no drag: the same particles as in still air.
+    let run = |wind: f32, drag: f32, air: Vec3| {
+        let mut sys = ParticleSystem::new(1, EmitterHandle(0), turned, 3, 0);
+        sys.air = air;
+        live(&e(wind, drag, SimulationSpace::World), &mut sys, 120)
+    };
+    assert_eq!(run(0.0, 4.0, air), run(0.0, 4.0, Vec3::ZERO));
+    assert_eq!(run(1.0, 0.0, air), run(0.0, 0.0, Vec3::ZERO));
+}
+
 /// A death sub-emitter fires `count` particles at each death, where it
 /// happened, every run alike; the events report each death once.
 #[test]

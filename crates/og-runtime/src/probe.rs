@@ -493,6 +493,8 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             super::origin::before_tick(&eng, world);
             // The water og.Buoyancy floats on this tick, at the new zero.
             super::physics_ext::before_tick(&eng, world);
+            // The air this tick's bodies and particles move through.
+            super::wind::before_tick(&eng, world);
             // World cells load and unload as the tick starts (G3-3).
             super::stream::cells::before_tick(&eng, world);
             super::geometry::before_tick(&eng, world);

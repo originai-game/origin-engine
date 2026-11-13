@@ -285,12 +285,13 @@ fn expressive_scene(grid: bool) -> RenderScene {
         inherit_velocity: 0.8,
         gravity: Vec3::new(0.0, -0.5, 0.0),
         drag: 0.3,
+        wind: 0.6,
         ..Default::default()
     });
-    scene
-        .effects
-        .particles
-        .push(ParticleSystem::new(1, e, Mat4::IDENTITY, 7, 0));
+    scene.effects.particles.push(ParticleSystem {
+        air: Vec3::new(3.0, 0.0, -1.5),
+        ..ParticleSystem::new(1, e, Mat4::IDENTITY, 7, 0)
+    });
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.0, 7.0),
         target: Vec3::new(0.0, 0.8, 0.0),
@@ -305,7 +306,8 @@ fn expressive_scene(grid: bool) -> RenderScene {
 /// float noise (the CPU's og-core sines against the GPU's). An emitter
 /// that dropped a module on one path (the attractors read in the wrong
 /// space, the speed curve applied to the velocity, the grid read from the
-/// wrong offset, the inherited velocity lost) differs by metres.
+/// wrong offset, the inherited velocity or the air that carries them
+/// lost) differs by metres.
 #[test]
 #[ignore = "requires GPU"]
 fn compute_and_cpu_agree_on_curves_attractors_fields_and_splines() {

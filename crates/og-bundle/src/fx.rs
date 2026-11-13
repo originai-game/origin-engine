@@ -74,6 +74,8 @@
 //! shape spline 0 0 0  1 1 0  2 0 0 [closed]
 //!                                   # 2 to 8 control points of a Catmull-Rom curve, evenly by length
 //! inheritVelocity 0.5               # the share of the emitter's own velocity particles start with
+//! wind 1                            # 0..1: how much of the air's motion (og.Wind and the og.WindMotors
+//!                                   #   where the system is) `drag` closes on; 0 slows to rest
 //! ```
 //!
 //! `array` names a texture array's asset id and picks each particle's layer
@@ -441,6 +443,7 @@ pub fn parse_emitter_linked(
                 em.gravity = glam::Vec3::new(x, y, z);
             }
             "drag" => em.drag = one(e)?.max(0.0),
+            "wind" => em.wind = one(e)?.clamp(0.0, 1.0),
             "noise" => {
                 let v = nums(e)?;
                 em.noise.strength = *v.first().ok_or_else(|| {

@@ -76,6 +76,10 @@ pub struct ParticleSystem {
     /// quarter speed, 0 frozen (og.TimeGroup's group scale). Spawning,
     /// ageing and motion all run on it; the tick still says how far to step.
     pub time_scale: f32,
+    /// Where the air moves at the system's place and how fast (world,
+    /// m/s): og.Wind and the og.WindMotors reaching it. An emitter with
+    /// `wind` above 0 is carried by it ([`ParticleEmitter::wind`]).
+    pub air: Vec3,
 }
 
 impl ParticleSystem {
@@ -89,6 +93,7 @@ impl ParticleSystem {
             stop_tick: None,
             tick,
             time_scale: 1.0,
+            air: Vec3::ZERO,
         }
     }
 }

@@ -953,6 +953,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             normal_scale: v.normal_scale,
         });
     }
+    let mut air: Option<og_core::air::Air> = None;
     for (e, v) in rows(world, layouts.particles.as_ref()) {
         let Ok(v) = record::ParticleSystem::from_json(&v) else {
             continue;
@@ -1003,10 +1004,14 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
                 .hosted_particles
                 .push((e, Arc::new(h.cpu.clone())));
         }
+        let transform = h.world_of(e);
+        // The frame's air, read once for the first system it carries.
+        let air = air.get_or_insert_with(|| draw.atmo.air(world, h));
         scene.effects.particles.push(ParticleSystem {
             id: e,
             emitter,
-            transform: h.world_of(e),
+            transform,
+            air: air.at(transform.w_axis.truncate()),
             seed: u64::from(v.seed),
             start_tick: u64::from(start),
             stop_tick: (stop > 0).then_some(u64::from(stop)),

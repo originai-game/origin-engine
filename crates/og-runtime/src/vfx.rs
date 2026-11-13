@@ -668,6 +668,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
     }
     let loaded = lock(&registry).clone();
     let rate = rs.scene.frame.tick_rate.max(1.0);
+    let mut air: Option<og_core::air::Air> = None;
     for (e, v) in rows {
         let Ok(row) = record::Vfx::from_json(&v) else {
             continue;
@@ -703,9 +704,12 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                 (VfxKind::Emitter { seed: s, .. }, Link::Emitter(handle)) => {
                     let begin = cycle + ticks(el.at, rate);
                     let emitter = tinted_emitter(rs, *handle, tint);
+                    // The frame's air, read once for the first emitter it carries.
+                    let air = air.get_or_insert_with(|| rs.draw.atmo.air(world, h));
                     rs.scene.effects.particles.push(ParticleSystem {
                         stop_tick: (el.life > 0.0).then(|| begin + ticks(el.life, rate).max(1)),
                         start_tick: begin,
+                        air: air.at(local.w_axis.truncate()),
                         ..ParticleSystem::new(
                             id,
                             emitter,

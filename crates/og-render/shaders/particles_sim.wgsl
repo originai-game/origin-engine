@@ -176,7 +176,7 @@ fn integrate(p: Particle) -> Particle {
     vel += n * emitter.noise.x * dt;
   }
   vel += forces(pos) * dt;
-  vel *= 1.0 / (1.0 + max(emitter.forces.w, 0.0) * dt);
+  vel = emitter.air.xyz + (vel - emitter.air.xyz) * (1.0 / (1.0 + max(emitter.forces.w, 0.0) * dt));
   let before = pos;
   var speed_scale = 1.0;
   let speed_keys = u32(emitter.counts2.x);

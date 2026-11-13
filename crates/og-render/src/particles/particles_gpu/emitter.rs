@@ -182,5 +182,6 @@ pub(super) fn emitter_gpu(
         field_origin: [[0.0; 4]; 2],
         motion: velocity.extend(e.inherit_velocity).to_array(),
         counts2: [speed_n, spin_n, pulls.len() as f32, points as f32 * 2.0],
+        air: [0.0; 4],
     }
 }

@@ -127,6 +127,7 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
     let state = mount.modules.particles.0.clone();
     lock(&state).systems.clear();
     let sh = state.clone();
+    let air = mount.modules.air.clone();
     world.add_system(
         SystemDesc {
             name: SYSTEM.into(),
@@ -135,7 +136,7 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
             queries,
             ..Default::default()
         },
-        move |ctx| system(ctx, &sh, &r),
+        move |ctx| system(ctx, &sh, &air, &r),
     )?;
     world.add_state_block(SYSTEM, Box::new(Block(state)))
 }
@@ -212,7 +213,12 @@ fn kind_name(k: ParticleEventKind) -> &'static str {
     }
 }
 
-fn system(ctx: &mut SystemContext<'_>, state: &Mutex<Hosted>, r: &Records) -> og_core::Result<()> {
+fn system(
+    ctx: &mut SystemContext<'_>,
+    state: &Mutex<Hosted>,
+    air: &crate::wind::ModuleState,
+    r: &Records,
+) -> og_core::Result<()> {
     let time = ctx.time();
     let tick_rate = if time.dt > 0.0 { 1.0 / time.dt } else { 60.0 };
     // The tick this one completes: what a frame drawn after it shows.
@@ -262,15 +268,18 @@ fn system(ctx: &mut SystemContext<'_>, state: &Mutex<Hosted>, r: &Records) -> og
             t => t,
         };
         let stop = u64::from(v.stop_tick);
+        let transform = places.world(ctx, e);
         let sys = ParticleSystem {
             id: e.to_bits(),
             emitter: def.handle,
-            transform: places.world(ctx, e),
+            transform,
             seed: u64::from(v.seed),
             start_tick: start,
             stop_tick: (stop > 0).then_some(stop),
             tick,
             time_scale: ctx.group_dt(groups.as_ref(), e, 1.0),
+            // The tick's air where the system is (`wind::before_tick`).
+            air: air.at(transform.w_axis.truncate()),
         };
         let colliders: &[SceneCollider] =
             if em.collision.is_some() && em.space == SimulationSpace::World {

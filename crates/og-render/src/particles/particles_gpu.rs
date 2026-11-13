@@ -28,6 +28,7 @@ const SPRITES_WGSL: &str = wgsl!("particle_sprites.wgsl");
 /// Bytes between emitter uniform entries (a multiple of the 256-byte
 /// dynamic offset alignment).
 const EMITTER_STRIDE: u64 = 1024;
+const _: () = assert!(std::mem::size_of::<EmitterGpu>() as u64 <= EMITTER_STRIDE);
 const PARTICLE_STRIDE: u64 = std::mem::size_of::<ParticleState>() as u64;
 
 pub(crate) const PARTICLE_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::VertexBufferLayout {
@@ -80,6 +81,9 @@ struct EmitterGpu {
     /// x: speed keys, y: spin keys, z: attractors, w: where a grid's
     /// vectors start in the points buffer.
     counts2: [f32; 4],
+    /// xyz: what drag closes on, in the simulation space
+    /// (`carrying_air`: the emitter's `wind` share of the air).
+    air: [f32; 4],
 }
 
 /// How a system's particles are drawn.

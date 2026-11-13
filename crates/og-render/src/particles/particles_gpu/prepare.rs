@@ -361,8 +361,9 @@ impl ParticleRenderer {
                 g.last_tick = Some(sys.tick);
                 g.prev_transform = Some(sys.transform);
                 let n_points = (points.len() / 2) as u32;
+                let local = e.space == SimulationSpace::Local;
                 for s in &steps {
-                    entries.push(emitter_gpu(
+                    let mut step = emitter_gpu(
                         e,
                         s.transform,
                         Some(s),
@@ -372,7 +373,13 @@ impl ParticleRenderer {
                         textured,
                         collide,
                         soft,
-                    ));
+                    );
+                    // The air this step's drag closes on, as the CPU path's.
+                    step.air =
+                        crate::particles::carrying_air(e, sys.air, local.then_some(s.transform))
+                            .extend(0.0)
+                            .to_array();
+                    entries.push(step);
                 }
                 entries.push(emitter_gpu(
                     e,

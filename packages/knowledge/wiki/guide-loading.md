@@ -232,6 +232,7 @@ noise, a texture and sprite sheet, and blending.
 
 | Line | Does |
 |---|---|
+| `wind <0..1>` | the share of the air's motion (og.Wind and the og.WindMotors where the system is) `drag` closes on: smoke and dust drift downwind; 0, the default, slows to rest |
 | `collision <bounce> <friction> [depth \| colliders]` | bounce off the drawn depth, or off the scene's colliders on the GPU |
 | `render mesh box \| sphere \| tetrahedron \| "<model id>"` | each particle a small lit shape that tumbles with its rotation; otherwise billboards or 2D sprites |
 | `lit true` | billboards and meshes shaded by the sun, the sky and local lights |
