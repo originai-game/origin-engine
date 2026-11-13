@@ -13,8 +13,8 @@
 use crate::support;
 
 use og_core::glam::{DVec3, Vec2, Vec3};
-use og_core::ocean::Ocean;
 use og_ecs::{Entity, World};
+use og_env::ocean::Ocean;
 use og_physics::*;
 use support::*;
 

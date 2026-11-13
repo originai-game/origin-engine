@@ -6,7 +6,7 @@
 //! Subtractions, a square root and a quaternion product: the same on
 //! every host, so the tick may branch on it.
 
-use crate::glam::{Quat, Vec3};
+use og_core::glam::{Quat, Vec3};
 
 /// Where a region's entity puts it in the world.
 #[derive(Clone, Copy, Debug, PartialEq)]

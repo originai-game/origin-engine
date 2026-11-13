@@ -16,7 +16,7 @@
 //! state of the world (the terrain and the water it is made from are world
 //! state), and the tick floats bodies on the waves it shapes.
 
-use crate::glam::{Vec2, Vec4};
+use og_core::glam::{Vec2, Vec4};
 
 /// A sea's seabed over a grid. See the module documentation.
 #[derive(Clone, Debug, PartialEq)]

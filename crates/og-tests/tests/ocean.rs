@@ -25,8 +25,8 @@ fn difference(a: &RgbaImage, b: &RgbaImage) -> f32 {
 /// The GPU draws the sea the tick floats bodies on. At points round the
 /// camera, in a breeze and in a gale, the sea's own function evaluated on
 /// the GPU from the frame's uniforms (`Renderer::sea_heights`: every wave
-/// of og_core::ocean, the rest point found as the tick finds it) is
-/// og.physics.waterHeight (`og_core::ocean::Ocean::height`) to 2 cm, and
+/// of og_env::ocean, the rest point found as the tick finds it) is
+/// og.physics.waterHeight (`og_env::ocean::Ocean::height`) to 2 cm, and
 /// the surface the clipmap's vertices draw differs from it only by what
 /// the renderer adds or cannot hold (the FFT's shorter waves, the waves a
 /// level's spacing leaves out): under 6% of the sea's height at any point.
@@ -51,7 +51,7 @@ fn the_drawn_sea_is_the_sea_bodies_float_on() {
             wave_strength: 0.0,
             ..Default::default()
         };
-        let sea = og_core::ocean::Ocean::new(wind, water.swell, choppiness).expect("a sea");
+        let sea = og_env::ocean::Ocean::new(wind, water.swell, choppiness).expect("a sea");
         let hs = sea.significant_height();
         for tick in [300u64, 390] {
             let mut scene = RenderScene::new();
@@ -108,7 +108,7 @@ fn the_sea_moves_between_ticks_in_step_with_the_tick() {
         wave_strength: 0.0,
         ..Default::default()
     };
-    let sea = og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
+    let sea = og_env::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
     let points: Vec<Vec2> = [(0.0, -20.0), (6.0, -35.0), (-9.0, -50.0), (3.0, -80.0)]
         .iter()
         .map(|&(x, z)| Vec2::new(x, z))

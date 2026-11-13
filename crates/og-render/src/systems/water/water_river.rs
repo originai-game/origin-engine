@@ -1,7 +1,7 @@
 //! W5: a river's surface ([`crate::Water::river`]): a ribbon along its
 //! centreline, its width across, drawn as a surface over a mesh (uv: u
 //! across from the left bank, v down the river), and a flow map of its
-//! current (`og_core::river`: along the centreline, slowing to the banks)
+//! current (`og_env::river`: along the centreline, slowing to the banks)
 //! over that uv. The tick floats bodies on the same record, so a floater
 //! drifts with the water it is drawn on.
 //!
@@ -12,7 +12,7 @@
 
 use crate::Vertex;
 use glam::{Mat4, Vec2, Vec3, Vec3Swizzles};
-use og_core::river::{River, bank_profile};
+use og_env::river::{River, bank_profile};
 use std::sync::Arc;
 
 /// The flow map's texels across the river.

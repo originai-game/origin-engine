@@ -14,7 +14,7 @@
 //
 // R5: a sea (Water::wind) is a clipmap about the camera (water.rs
 // `clipmap`), out to a horizon ring, displaced over the absolute world's xz
-// by every wave the tick floats bodies on (og_core::ocean, as Gerstner
+// by every wave the tick floats bodies on (og_env::ocean, as Gerstner
 // waves) and the FFT's cascades, the waves shorter than the shortest of them
 // (ocean_fft), every one faded where the cells or the pixel cannot hold it;
 // its normal and its facets' slope covariance from the cascades' slopes and
@@ -52,7 +52,7 @@ struct WaterUniform {
   // The foam micro-structure's uv at the frame's origin (whole repeats dropped): its lace (xy), finer lace (zw); its
   // bubbles (xy), its streaks along and across the wind (zw).
   foam_uv: array<vec4<f32>, 2>,
-  // Per wave of og_core::ocean: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
+  // Per wave of og_env::ocean: (k d.x, k d.z, amplitude, phase at the frame's origin), (lean d.x, lean d.z, k lean, 0)
   // (water.rs ocean_gpu).
   swell: array<vec4<f32>, 64>,
   // W1: the seabed (water.rs shore_gpu): [0] its sample (0, 0) in the frame's xz, its cell (m), 1 with one; [1] its
@@ -119,7 +119,7 @@ const SUN_DISC: f32 = 5.5e-6;
 @group(1) @binding(8) var ao_tex: texture_2d<f32>;
 // The flow map (Water::flow_map): rg the flow's direction * 0.5 + 0.5.
 @group(1) @binding(9) var flow_tex: texture_2d<f32>;
-// The seabed (Water::shore, og_core::shore): per sample its depth under the rest level, the signed distance to the
+// The seabed (Water::shore, og_env::shore): per sample its depth under the rest level, the signed distance to the
 // waterline and that distance's gradient (xz).
 @group(1) @binding(10) var shore_tex: texture_2d<f32>;
 // W3: the wakes of the bodies in the water (sea_wakes.wgsl): (height, its slopes along world x and z, foam), a

@@ -209,7 +209,7 @@ pub const RIVER_SPEED: f32 = 1.8;
 /// metre over it a couple of metres past its edge, and the level of the
 /// course's nearest point beyond (the terrace and the plain, a cliff where
 /// the river falls).
-fn river_ground(course: &og_core::river::River, p: Vec2) -> f32 {
+fn river_ground(course: &og_env::river::River, p: Vec2) -> f32 {
     let Some(at) = course.at(p) else {
         return -1.0;
     };
@@ -230,7 +230,7 @@ fn river(scene: &mut RenderScene) {
     // Mid-morning: the sun in the east, on the fall's face (it falls east).
     physical_light(scene, 10.0, PhysicalAtmosphere::EARTH);
     let course =
-        og_core::river::River::new(&RIVER_COURSE, RIVER_WIDTH, RIVER_SPEED).expect("a river");
+        og_env::river::River::new(&RIVER_COURSE, RIVER_WIDTH, RIVER_SPEED).expect("a river");
     // The valley: a grid 120 m square at half a metre, its heights the ground's.
     // (The course run on 100 m past either end, so the ground there follows its nearest level too.)
     let mut long = RIVER_COURSE.to_vec();
@@ -244,7 +244,7 @@ fn river(scene: &mut RenderScene) {
         RIVER_COURSE[RIVER_COURSE.len() - 2],
     );
     long.push(y + (y - z).normalize() * 100.0 * Vec3::new(1.0, 0.0, 1.0));
-    let wide = og_core::river::River::new(&long, 200.0, 0.0).expect("a course");
+    let wide = og_env::river::River::new(&long, 200.0, 0.0).expect("a course");
     let (n, size) = (241usize, 120.0f32);
     let cell = size / (n - 1) as f32;
     let height = |i: usize, j: usize| {
@@ -604,7 +604,7 @@ pub fn beach_height(x: f32, z: f32) -> f32 {
 
 /// The beach's seabed for a sea at y = 0, as og.Water.seabed builds it
 /// (og-runtime seabed.rs: the terrain's heights on its own grid).
-pub fn beach_shore() -> og_core::ocean::Shore {
+pub fn beach_shore() -> og_env::ocean::Shore {
     let n = BEACH_SAMPLES;
     let cell = BEACH / (n - 1) as f32;
     let depth: Vec<f32> = (0..n * n)
@@ -616,7 +616,7 @@ pub fn beach_shore() -> og_core::ocean::Shore {
             -beach_height(x, z)
         })
         .collect();
-    og_core::ocean::Shore::new(Vec2::splat(-BEACH * 0.5), cell, n, n, &depth).expect("a shore")
+    og_env::ocean::Shore::new(Vec2::splat(-BEACH * 0.5), cell, n, n, &depth).expect("a shore")
 }
 
 /// The beach in `scene` (its terrain, sand and rock by slope) under the sea
@@ -654,10 +654,10 @@ fn beach(scene: &mut RenderScene, mut water: Water, strength: f32) {
         ..Terrain::new(handle)
     });
     let field = std::sync::Arc::new(beach_shore());
-    let sea = og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
+    let sea = og_env::ocean::Ocean::new(water.wind, water.swell, water.choppiness).expect("a sea");
     water.shore = Some(og_render::WaterShore {
         origin: field.origin,
-        trains: og_core::ocean::ShoreTrains::new(sea.significant_height(), strength, 0.0),
+        trains: og_env::ocean::ShoreTrains::new(sea.significant_height(), strength, 0.0),
         field,
         foam: 1.0,
     });

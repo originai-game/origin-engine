@@ -117,8 +117,8 @@ fn only_dynamic_bodies_move_and_the_2d_profile_takes_pushes_too() {
     assert!(vel.angular.z > 0.1 && vel.angular.x == 0.0, "{vel:?}");
 }
 
-fn wind(x: f32, y: f32, z: f32) -> og_core::air::Air {
-    og_core::air::Air {
+fn wind(x: f32, y: f32, z: f32) -> og_env::air::Air {
+    og_env::air::Air {
         wind: Vec3::new(x, y, z),
         ..Default::default()
     }
@@ -175,8 +175,8 @@ fn air_drag_takes_the_air_where_the_body_is() {
     };
     let [over, beyond] =
         [0.0, 30.0].map(|x| spawn_body(&mut w, at(x, 1.0, 0.0), light, Collider::sphere(0.25)));
-    p.set_air(og_core::air::Air {
-        motors: vec![og_core::air::Motor {
+    p.set_air(og_env::air::Air {
+        motors: vec![og_env::air::Motor {
             position: Vec3::ZERO,
             radius: 6.0,
             strength: 10.0,

@@ -46,7 +46,7 @@ impl Renderer {
     /// native only; `probe_sea` in water_sea.wgsl): per point the height the
     /// clipmap's vertices draw there, the height of the sea's own function
     /// there as the GPU evaluates it from the frame's uniforms (every wave
-    /// of og_core::ocean: what og.physics.waterHeight floats bodies on),
+    /// of og_env::ocean: what og.physics.waterHeight floats bodies on),
     /// and what the drawn surface differs from that by (the FFT cascades
     /// and the waves the vertices' spacing leaves out). Empty without a
     /// sea. A diagnostic of the drawn waterline.

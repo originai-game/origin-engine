@@ -29,13 +29,13 @@
 //! renderer adds its origin, the simulation og.WorldOrigin's zero), so a
 //! sea that follows the camera keeps its waves where they are.
 //!
-//! Everything is deterministic: the transcendentals are [`crate::math`]'s,
+//! Everything is deterministic: the transcendentals are [`og_core::math`]'s,
 //! and the time and the place enter as each wave's phase,
 //! `(φ - ω t + k d · o) mod 2π` at a point `o`, computed in `f64`, so long
 //! games and far places keep their precision.
 
-use crate::math::{self, DVec2, Vec2, Vec3};
 pub use crate::shore::{Shore, ShorePoint, ShoreTrains};
+use og_core::math::{self, DVec2, Vec2, Vec3};
 
 /// How many waves a sea sums.
 pub const OCEAN_WAVES: usize = 32;
@@ -78,7 +78,7 @@ pub struct Ocean {
 /// A fixed value in [-1, 1] for wave `i` and channel `c` (an integer
 /// hash: the same on every host).
 fn fixed(i: u32, c: u32) -> f32 {
-    let h = crate::hash::lowbias32(
+    let h = og_core::hash::lowbias32(
         i.wrapping_mul(0x9e37_79b9) ^ c.wrapping_mul(0x85eb_ca6b) ^ 0x0cea_0001,
     );
     (h >> 8) as f32 / (1u32 << 23) as f32 - 1.0

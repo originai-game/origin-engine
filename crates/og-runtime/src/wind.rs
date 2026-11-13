@@ -13,8 +13,8 @@ use super::codec::Layout;
 use super::fx::{kept_rows, resource};
 use super::wire::{FromJson, WindMotorKind, record};
 use glam::Vec3;
-use og_core::air::{Air, Motor};
 use og_ecs::World;
+use og_env::air::{Air, Motor};
 use std::sync::{Arc, Mutex};
 
 /// The air of one engine's world this tick, as [`before_tick`] read it:
@@ -77,11 +77,11 @@ impl WorldWind {
 }
 
 /// How a motor pushes, as the air takes it.
-fn kind_of(kind: WindMotorKind) -> og_core::air::MotorKind {
+fn kind_of(kind: WindMotorKind) -> og_env::air::MotorKind {
     match kind {
-        WindMotorKind::Directional => og_core::air::MotorKind::Directional,
-        WindMotorKind::Vortex => og_core::air::MotorKind::Vortex,
-        WindMotorKind::Omni => og_core::air::MotorKind::Omni,
+        WindMotorKind::Directional => og_env::air::MotorKind::Directional,
+        WindMotorKind::Vortex => og_env::air::MotorKind::Vortex,
+        WindMotorKind::Omni => og_env::air::MotorKind::Omni,
     }
 }
 

@@ -1515,7 +1515,7 @@ tests in `og-tests/tests/terrain.rs`.
 Each off by default on `Water`:
 
 - **Sea** (`wind`, `swell`, `choppiness`; og.Water.wind): one function of
-  the place and the time, `og_core::ocean`'s 32 Gerstner waves of a
+  the place and the time, `og_env::ocean`'s 32 Gerstner waves of a
   Pierson–Moskowitz sea for the wind with JONSWAP's peak enhancement
   (γ 3.3) (peak `0.877 g / U`, significant height `0.21 U² / g × swell`,
   one wave placed at random in each of 32 bands of length from 1.6 to 1/32
@@ -1533,11 +1533,11 @@ Each off by default on `Water`:
   under the pixel's footprint, and foam whitecaps where the crests bunch,
   after Monahan's whitecap cover for the wind (`3.84e-6 U^3.41`). Over the
   waves the FFT cascades (`ocean_fft`) add the shorter waves only, from
-  the sea's shortest down (`og_core::ocean::shortest_wavenumber`), raised
+  the sea's shortest down (`og_env::ocean::shortest_wavenumber`), raised
   until the two hold 0.7 of the clean sea's slopes (`0.003 + 0.00512 U`)
   and never over 2% of the sea's height in RMS; the rest is roughness.
 - **The drawn sea is the tick's sea.** `og.physics.waterHeight` and
-  og.Buoyancy evaluate `og_core::ocean::Ocean::surface` at the tick, never
+  og.Buoyancy evaluate `og_env::ocean::Ocean::surface` at the tick, never
   the GPU; the underwater view tests the eye against it too. The drawn
   height is that function to a centimetre plus two things the tick does
   not float bodies on: the waves the clipmap's spacing leaves out (none
@@ -1547,7 +1547,7 @@ Each off by default on `Water`:
   over a mesh has none. Tests
   `water::tests::the_vertices_draw_the_sea_the_tick_floats_bodies_on`,
   `og-tests` `the_drawn_sea_is_the_sea_bodies_float_on`,
-  `og_core::ocean::tests`.
+  `og_env::ocean::tests`.
 - **Flow map** (`flow_map`; three.js Water2's flowMap): rg × 2 - 1 is the
   flow's direction per point over the mesh's uv or the grid from its -x -z
   corner (the image's top at +z), `flow`'s length the speed (zero: 0.03),

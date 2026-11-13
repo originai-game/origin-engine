@@ -668,7 +668,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
     }
     let loaded = lock(&registry).clone();
     let rate = rs.scene.frame.tick_rate.max(1.0);
-    let mut air: Option<og_core::air::Air> = None;
+    let mut air: Option<og_env::air::Air> = None;
     for (e, v) in rows {
         let Ok(row) = record::Vfx::from_json(&v) else {
             continue;

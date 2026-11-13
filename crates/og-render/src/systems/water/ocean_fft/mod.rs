@@ -1,5 +1,5 @@
 //! The sea's short waves (R5): those shorter than the shortest of
-//! `og_core::ocean`'s (a 32nd of the peak's length), drawn from
+//! `og_env::ocean`'s (a 32nd of the peak's length), drawn from
 //! Tessendorf's FFT of a seeded JONSWAP spectrum in up to three 256²
 //! cascades on disjoint bands. The sea itself is og_core's function, drawn
 //! as it is; these stand under 2% of its height over it (2 cm RMS at
@@ -16,7 +16,7 @@
 //!   on the tick's time into the fields array's layers after the cascades.
 //!
 //! Render only: the tick never reads these fields (`og.physics.waterHeight`
-//! and og.Buoyancy are og_core::ocean's, evaluated in the tick). Every pass
+//! and og.Buoyancy are og_env::ocean's, evaluated in the tick). Every pass
 //! here is compute with its own bind groups, outside the lit layouts.
 
 pub mod foam;
@@ -439,7 +439,7 @@ impl FftOcean {
         eye: glam::DVec2,
         origin: glam::DVec2,
         sea: &foam::FoamSea,
-        swell: &dyn Fn(f64) -> [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+        swell: &dyn Fn(f64) -> [[f32; 4]; 2 * og_env::ocean::OCEAN_WAVES],
         shore: (&wgpu::TextureView, &dyn Fn(f64) -> [[f32; 4]; 3]),
     ) -> usize {
         let group = self.foam.group(device, shore.0);

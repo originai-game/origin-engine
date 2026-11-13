@@ -84,10 +84,10 @@ pub fn lean_cap(wind: Option<crate::Wind>, motors: bool) -> f32 {
 }
 
 /// A local push on the wind field (og.WindMotor), in the scene's space,
-/// and how it pushes: the air's own motor (`og_core::air`), the one the
+/// and how it pushes: the air's own motor (`og_env::air`), the one the
 /// tick moves ropes, cloths and bodies with. The field is a sheet over the
 /// ground, so it takes a motor's horizontal part.
-pub use og_core::air::{Motor as WindMotor, MotorKind as WindMotorKind};
+pub use og_env::air::{Motor as WindMotor, MotorKind as WindMotorKind};
 
 /// `Sim` in wind_field.wgsl.
 #[repr(C)]

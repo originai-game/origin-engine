@@ -18,7 +18,7 @@ type RiverKey = (u64, u32, u32);
 /// The water on one engine: its rivers by [`RiverKey`], the newest last.
 #[derive(Default)]
 pub(crate) struct ModuleState {
-    rivers: std::cell::RefCell<Vec<(RiverKey, Arc<og_core::river::River>)>>,
+    rivers: std::cell::RefCell<Vec<(RiverKey, Arc<og_env::river::River>)>>,
 }
 
 /// An og.Water's river (og.Water.river: its path sampled every metre or so,
@@ -26,7 +26,7 @@ pub(crate) struct ModuleState {
 /// and the renderer draws: made once per path, width and speed (the same
 /// `Arc` frame after frame, so the renderer keeps its ribbon). None without
 /// a live path.
-pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_core::river::River>> {
+pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_env::river::River>> {
     let eng = crate::engine::engine(engine).ok()?;
     let rivers = &eng.modules.atmosphere.rivers;
     let w = record::Water::from_json(v).ok()?;
@@ -49,7 +49,7 @@ pub(crate) fn river_of(engine: u32, v: &Value) -> Option<Arc<og_core::river::Riv
     let points: Vec<Vec3> = (0..n)
         .map(|i| path.sample(i as f32 / (n - 1) as f32).position)
         .collect();
-    let river = Arc::new(og_core::river::River::new(&points, width, speed)?);
+    let river = Arc::new(og_env::river::River::new(&points, width, speed)?);
     let mut c = rivers.borrow_mut();
     if c.len() >= 64 {
         c.remove(0);
@@ -238,7 +238,7 @@ fn seabed(
     }
     let r = crate::physics_ext::Reader::World(world);
     let (position, _, _) = r.pose(entity)?;
-    let sea = og_core::ocean::Ocean::new(row.wind, row.swell, row.choppiness);
+    let sea = og_env::ocean::Ocean::new(row.wind, row.swell, row.choppiness);
     let (field, trains) =
         crate::seabed::coast(terrains, terrain_layout, &r, v, position, sea.as_ref())?;
     Some(og_render::WaterShore {

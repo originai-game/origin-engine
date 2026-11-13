@@ -1,9 +1,9 @@
-// The seabed under a sea (W1, og_core::shore and og_core::ocean::Ocean::shoaling), shared by water.wgsl and
+// The seabed under a sea (W1, og_env::shore and og_env::ocean::Ocean::shoaling), shared by water.wgsl and
 // ocean_foam.wgsl: prepended to each, which declares `shore_tex` (the field's texels: depth, signed distance to the
 // waterline, its gradient) and the accessors `sea_shore(i)` (the three rows of water.rs `shore_gpu`) and `sea_wave(i)`
 // (the tick's waves, two rows each, as WaterUniform.swell).
 
-// The seabed at frame point p (og_core::shore::Shore::sample, the same texels filtered the same way): inside < 0
+// The seabed at frame point p (og_env::shore::Shore::sample, the same texels filtered the same way): inside < 0
 // outside its grid (or without one).
 struct ShoreAt {
   depth: f32,
@@ -39,7 +39,7 @@ fn shore_at(p: vec2<f32>) -> ShoreAt {
   return o;
 }
 
-// What the seabed under rest point p does to the sea there (og_core::ocean::Ocean::shoaling): each wave of wavenumber
+// What the seabed under rest point p does to the sea there (og_env::ocean::Ocean::shoaling): each wave of wavenumber
 // k keeps shoal_keep(k, ...) of itself (tanh(k d), capped with the rest at the breaking height, a significant height of
 // 0.78 d), and the shore trains roll in with `amp` and `lean` along `inshore` at `phase`.
 struct Shoal {

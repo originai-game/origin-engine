@@ -402,7 +402,7 @@ pub(crate) fn waters(eng: &Engine, r: &Reader<'_>) -> Result<Vec<og_physics::Wat
                 return None;
             }
             let position = r.position(Entity::from_bits(id))?;
-            let sea = og_core::ocean::Ocean::new(w.wind, w.swell, w.choppiness);
+            let sea = og_env::ocean::Ocean::new(w.wind, w.swell, w.choppiness);
             Some(og_physics::WaterBody {
                 entity: id,
                 position,

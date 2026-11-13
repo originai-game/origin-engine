@@ -412,7 +412,7 @@ pub(crate) struct Shared {
     /// the og.WindMotors as the host read them when the tick started
     /// ([`PhysicsSystem::set_air`]; derived from the world's components,
     /// not world state here).
-    pub air: og_core::air::Air,
+    pub air: og_env::air::Air,
 }
 
 /// One bone of a ragdoll rig, in the entity's space at the rest pose.
@@ -1456,7 +1456,7 @@ impl PhysicsSystem {
     /// og.Rope, og.Cloth and og.Garment is pushed by the air where it
     /// hangs, its velocity as an acceleration per second added to their
     /// own `wind`; a body with og.RigidBody.airDrag is carried towards it.
-    pub fn set_air(&self, air: og_core::air::Air) {
+    pub fn set_air(&self, air: og_env::air::Air) {
         lock(&self.shared).air = air;
     }
 }

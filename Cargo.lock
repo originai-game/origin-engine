@@ -2800,6 +2800,7 @@ dependencies = [
  "image",
  "og-core",
  "og-ecs",
+ "og-env",
  "opus-pure",
 ]
 
@@ -2989,6 +2990,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-env"
+version = "0.7.7"
+dependencies = [
+ "og-core",
+]
+
+[[package]]
 name = "og-geom"
 version = "0.7.7"
 dependencies = [
@@ -3121,6 +3129,7 @@ dependencies = [
  "glam 0.34.1",
  "og-core",
  "og-ecs",
+ "og-env",
  "og-lanes",
  "og-net",
  "og-physics-data",
@@ -3189,6 +3198,7 @@ dependencies = [
  "objc2-metal 0.3.2",
  "og-core",
  "og-draw",
+ "og-env",
  "og-lanes",
  "og-render-data",
  "pollster",
@@ -3240,6 +3250,7 @@ dependencies = [
  "og-core",
  "og-destruct",
  "og-ecs",
+ "og-env",
  "og-geom",
  "og-i18n",
  "og-input",
@@ -3289,6 +3300,7 @@ dependencies = [
  "og-anim",
  "og-bake",
  "og-core",
+ "og-env",
  "og-geom",
  "og-probe",
  "og-render",

@@ -14,6 +14,7 @@ autotests = false
 # dependency.
 [dependencies]
 og-core = { path = "../og-core" }
+og-env = { path = "../og-env" }
 og-ecs = { path = "../og-ecs" }
 # Opus sounds' blocks decode with og-bundle's `src/opus.rs`, compiled here
 # by path (`og_audio::opus`), over this codec (pure Rust, no dependencies).

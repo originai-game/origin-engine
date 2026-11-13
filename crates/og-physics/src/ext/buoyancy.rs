@@ -359,7 +359,7 @@ fn float(
         // rides through a crest. (Against the level's rise at a fixed point,
         // the wave's phase speed times its slope, steep crests flung hulls
         // clear of the water.)
-        let mut levels: BTreeMap<[u32; 2], Option<og_core::ocean::SurfacePoint>> = BTreeMap::new();
+        let mut levels: BTreeMap<[u32; 2], Option<og_env::ocean::SurfacePoint>> = BTreeMap::new();
         let mass = rb.mass();
         let share = 1.0 / hull.points.len() as f32;
         let mut under = 0.0;

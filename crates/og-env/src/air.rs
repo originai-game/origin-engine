@@ -7,7 +7,7 @@
 //!
 //! Additions, a square root and a division: the same on every host.
 
-use crate::glam::Vec3;
+use og_core::glam::Vec3;
 
 /// How a motor pushes the air.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

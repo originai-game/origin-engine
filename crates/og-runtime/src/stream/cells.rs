@@ -250,12 +250,12 @@ fn cells(eng: &Engine, world: &World) -> Vec<(Entity, record::StreamCell)> {
 /// The distance from `p` (world) to a cell's box: `size` about the cell's
 /// world position, turned with it (its scale does not apply).
 fn distance(cell: Pose, size: glam::Vec3, p: glam::Vec3) -> f32 {
-    let region = og_core::volume::Volume {
+    let region = og_env::volume::Volume {
         size,
         radius: 0.0,
         fade: 0.0,
     };
-    let at = og_core::volume::Placement {
+    let at = og_env::volume::Placement {
         position: cell.0,
         quaternion: cell.1,
         scale: glam::Vec3::ONE,

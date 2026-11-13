@@ -11,7 +11,7 @@
 //! GPU takes the time modulo it without float32 phase drift), at the level
 //! the significant height asked of the whole sea sets.
 //!
-//! What is og's: the sea is og_core::ocean's for the same og.Water (its
+//! What is og's: the sea is og_env::ocean's for the same og.Water (its
 //! peak `0.877 g / U`, its significant height `0.21 U² / g` times `swell`),
 //! and every wave of it is drawn as it is (Gerstner, in the vertex stage),
 //! because the tick floats things on exactly those. The spectrum here draws
@@ -96,7 +96,7 @@ pub struct Spectrum {
     pub tail_slope_variance: f64,
 }
 
-/// The sea a spectrum is built for: og.Water's, as og_core::ocean reads it.
+/// The sea a spectrum is built for: og.Water's, as og_env::ocean reads it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SeaParameters {
     /// Wind speed (m/s).
@@ -108,14 +108,14 @@ pub struct SeaParameters {
     /// og.Water.choppiness (0 to 1).
     pub choppiness: f64,
     /// Wavenumber the sea's own waves end at
-    /// ([`og_core::ocean::shortest_wavenumber`]): the cascades draw from here.
+    /// ([`og_env::ocean::shortest_wavenumber`]): the cascades draw from here.
     pub cut: f64,
     /// Slope variance the sea's own waves carry.
     pub wave_slope_variance: f64,
 }
 
 impl SeaParameters {
-    /// og_core::ocean's peak angular frequency for this wind.
+    /// og_env::ocean's peak angular frequency for this wind.
     pub fn peak(&self) -> f64 {
         0.877 * GRAVITY / self.wind_speed.max(0.1)
     }
@@ -125,7 +125,7 @@ impl SeaParameters {
         2.0 * PI * GRAVITY / self.peak().powi(2)
     }
 
-    /// The significant height og_core::ocean gives the whole sea (m).
+    /// The significant height og_env::ocean gives the whole sea (m).
     pub fn significant_height(&self) -> f64 {
         0.21 * self.wind_speed.powi(2) / GRAVITY * self.swell.max(0.0)
     }
@@ -136,14 +136,14 @@ impl SeaParameters {
         wind: glam::Vec2,
         swell: f32,
         choppiness: f32,
-        ocean: Option<&og_core::ocean::Ocean>,
+        ocean: Option<&og_env::ocean::Ocean>,
     ) -> SeaParameters {
         SeaParameters {
             wind_speed: f64::from(wind.length()),
             wind_direction: f64::from(wind.y).atan2(f64::from(wind.x)),
             swell: f64::from(swell),
             choppiness: f64::from(choppiness.clamp(0.0, 1.0)),
-            cut: f64::from(og_core::ocean::shortest_wavenumber(wind.length())),
+            cut: f64::from(og_env::ocean::shortest_wavenumber(wind.length())),
             wave_slope_variance: ocean.map_or(0.0, |o| {
                 o.waves
                     .iter()
@@ -406,7 +406,7 @@ pub fn build(cascades: &[Cascade], params: &SeaParameters) -> Spectrum {
         })
         .collect();
     // The slopes are what the eye sees of a sea. Its own waves hold few
-    // (og_core::ocean: under a third of Cox and Munk's), and the spectrum's
+    // (og_env::ocean: under a third of Cox and Munk's), and the spectrum's
     // short waves at this level some 0.01 to 0.02 more; where the two fall
     // short of SLOPE_DRAWN of the clean sea's (0.003 + 0.00512 U, times the
     // swell) the short waves are raised to it. The rest is the facets'
@@ -429,7 +429,7 @@ pub fn build(cascades: &[Cascade], params: &SeaParameters) -> Spectrum {
                 .sum::<f64>()
         })
         .sum();
-    let cox_munk = f64::from(og_core::ocean::clean_slopes(params.wind_speed as f32));
+    let cox_munk = f64::from(og_env::ocean::clean_slopes(params.wind_speed as f32));
     let want = SLOPE_DRAWN * cox_munk * params.swell.min(1.0) - params.wave_slope_variance;
     // Raised, they still float nothing: never over HEIGHT_DRAWN of the
     // sea's height in RMS, which one coarse cascade alone would pass (its
@@ -498,7 +498,7 @@ mod tests {
     fn the_cascades_draw_the_waves_shorter_than_the_seas_own() {
         for (wind, swell) in [(6.0, 1.0), (9.0, 0.7), (20.0, 1.0)] {
             let w = glam::Vec2::new(0.6, -0.8) * wind;
-            let ocean = og_core::ocean::Ocean::new(w, swell, 0.8).expect("a sea");
+            let ocean = og_env::ocean::Ocean::new(w, swell, 0.8).expect("a sea");
             let params = SeaParameters::from_ocean(w, swell, 0.8, Some(&ocean));
             let shortest = ocean.waves.iter().map(|w| w.k).fold(0.0, f32::max);
             assert!(params.cut >= f64::from(shortest), "{wind} m/s");

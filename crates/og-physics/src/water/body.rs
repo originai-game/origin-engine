@@ -7,10 +7,10 @@ use std::sync::Arc;
 /// for og.Buoyancy: a square of `size` centred on `position` (its y the
 /// rest level), flat or raised by its `sea` (og.Water.wind), whose waves
 /// are the absolute world's (`zero`, og.WorldOrigin's, added to a point):
-/// the sea's own function ([`og_core::ocean::Ocean::surface`]), the one
+/// the sea's own function ([`og_env::ocean::Ocean::surface`]), the one
 /// the renderer draws. With a `shore` (W1: the
 /// seabed og.Water.seabed names, in the frame's xz, and the trains rolling
-/// in on it) the sea feels the depth ([`og_core::ocean::Ocean::surface_near`]):
+/// in on it) the sea feels the depth ([`og_env::ocean::Ocean::surface_near`]):
 /// a body in the shallows rides the shoaled, broken sea the renderer draws.
 /// With a `river` (W5: og.Water.river, in the frame's xz) the water is the
 /// river's ribbon alone, at its level along the course, its current the
@@ -21,10 +21,10 @@ pub struct WaterBody {
     pub entity: u64,
     pub position: Vec3,
     pub size: og_core::glam::Vec2,
-    pub sea: Option<og_core::ocean::Ocean>,
+    pub sea: Option<og_env::ocean::Ocean>,
     pub zero: og_core::glam::DVec3,
-    pub shore: Option<(Arc<og_core::ocean::Shore>, og_core::ocean::ShoreTrains)>,
-    pub river: Option<Arc<og_core::river::River>>,
+    pub shore: Option<(Arc<og_env::ocean::Shore>, og_env::ocean::ShoreTrains)>,
+    pub river: Option<Arc<og_env::river::River>>,
 }
 
 impl WaterBody {
@@ -49,12 +49,12 @@ impl WaterBody {
 
     /// [`Self::height`] with the water's velocity and acceleration there
     /// (its particles' orbital motion,
-    /// [`og_core::ocean::Ocean::surface`]; still water without a
+    /// [`og_env::ocean::Ocean::surface`]; still water without a
     /// sea).
-    pub fn surface(&self, x: f64, z: f64, seconds: f64) -> Option<og_core::ocean::SurfacePoint> {
+    pub fn surface(&self, x: f64, z: f64, seconds: f64) -> Option<og_env::ocean::SurfacePoint> {
         if let Some(river) = &self.river {
             let at = river.at(og_core::glam::Vec2::new(x as f32, z as f32))?;
-            return Some(og_core::ocean::SurfacePoint {
+            return Some(og_env::ocean::SurfacePoint {
                 height: at.level - self.position.y,
                 velocity: Vec3::new(at.velocity.x, 0.0, at.velocity.y),
                 acceleration: Vec3::ZERO,
@@ -69,12 +69,12 @@ impl WaterBody {
             return None;
         }
         let Some(sea) = &self.sea else {
-            return Some(og_core::ocean::SurfacePoint::default());
+            return Some(og_env::ocean::SurfacePoint::default());
         };
         let coast = self
             .shore
             .as_ref()
-            .map(|(shore, trains)| og_core::ocean::Coast {
+            .map(|(shore, trains)| og_env::ocean::Coast {
                 shore,
                 trains: *trains,
                 zero: og_core::glam::DVec2::new(self.zero.x, self.zero.z),

@@ -683,12 +683,12 @@ impl ReverbZone {
     /// `t`: 1 inside the volume, falling linearly to 0 at `fade` metres
     /// from its surface (0 outside a hard edge).
     pub fn weight_at(&self, t: &Transform, p: Vec3) -> f32 {
-        let volume = og_core::volume::Volume {
+        let volume = og_env::volume::Volume {
             size: self.size,
             radius: self.radius,
             fade: self.fade,
         };
-        let at = og_core::volume::Placement {
+        let at = og_env::volume::Placement {
             position: t.position,
             quaternion: t.quaternion,
             scale: t.scale,

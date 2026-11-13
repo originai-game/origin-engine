@@ -44,7 +44,7 @@ impl WaterRenderer {
         }
         let (w, h) = (screen.0 as f32, screen.1 as f32);
         // The seabeds of this frame's surfaces, each uploaded once.
-        let fields: Vec<&Arc<og_core::ocean::Shore>> = waters
+        let fields: Vec<&Arc<og_env::ocean::Shore>> = waters
             .iter()
             .filter_map(|w| w.shore.as_ref().map(|s| &s.field))
             .collect();

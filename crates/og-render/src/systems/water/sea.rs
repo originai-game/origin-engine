@@ -16,7 +16,7 @@ pub(super) fn shore_gpu(water: &Water, seconds: f64) -> [[f32; 4]; 3] {
         ],
         [
             t.omega,
-            og_core::ocean::Ocean::train_phase(t, seconds),
+            og_env::ocean::Ocean::train_phase(t, seconds),
             s.foam.max(0.0),
             0.0,
         ],
@@ -26,10 +26,10 @@ pub(super) fn shore_gpu(water: &Water, seconds: f64) -> [[f32; 4]; 3] {
 /// The tick's coast of `water`'s sea in the scene whose frame's zero is at
 /// `origin` (absolute world): its seabed, the trains, and the absolute
 /// world xz of the zero of the frame the field was made in.
-pub(super) fn coast(water: &Water, origin: Vec3) -> Option<og_core::ocean::Coast<'_>> {
+pub(super) fn coast(water: &Water, origin: Vec3) -> Option<og_env::ocean::Coast<'_>> {
     let s = water.shore.as_ref()?;
     let shift = s.origin - s.field.origin;
-    Some(og_core::ocean::Coast {
+    Some(og_env::ocean::Coast {
         shore: &s.field,
         trains: s.trains,
         zero: glam::DVec2::new(f64::from(origin.x), f64::from(origin.z)) + shift.as_dvec2(),
@@ -39,7 +39,7 @@ pub(super) fn coast(water: &Water, origin: Vec3) -> Option<og_core::ocean::Coast
 /// The texture of `water`'s seabed among this frame's `shores` (made in
 /// `prepare`), or `none`.
 pub(super) fn shore_view<'a>(
-    shores: &'a [(Arc<og_core::ocean::Shore>, wgpu::TextureView)],
+    shores: &'a [(Arc<og_env::ocean::Shore>, wgpu::TextureView)],
     none: &'a wgpu::TextureView,
     water: &Water,
 ) -> &'a wgpu::TextureView {
@@ -57,7 +57,7 @@ pub(super) fn shore_view<'a>(
 pub(super) fn shore_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    field: &og_core::ocean::Shore,
+    field: &og_env::ocean::Shore,
 ) -> (wgpu::Texture, wgpu::TextureView) {
     let size = wgpu::Extent3d {
         width: field.columns,
@@ -112,26 +112,26 @@ pub(crate) fn seconds(scene: &crate::RenderScene) -> f64 {
 }
 
 /// The surface's sea, if any (a grid with a wind: [`Water::wind`]).
-pub(crate) fn ocean(water: &Water) -> Option<og_core::ocean::Ocean> {
+pub(crate) fn ocean(water: &Water) -> Option<og_env::ocean::Ocean> {
     if water.mesh.is_some() {
         return None;
     }
-    og_core::ocean::Ocean::new(water.wind, water.swell, water.choppiness)
+    og_env::ocean::Ocean::new(water.wind, water.swell, water.choppiness)
 }
 
 /// The sea's block of [`WaterGpu`] at `seconds` and the scene's `origin`:
 /// the header and og_core's waves, their phases at the origin in f64 so the
 /// pattern stays put in the world as the origin moves. The vertices draw
 /// every one of them as the tick floats bodies on them
-/// ([`og_core::ocean::Ocean::surface`]), each left out only where the
+/// ([`og_env::ocean::Ocean::surface`]), each left out only where the
 /// clipmap's own vertices cannot hold it ([`sea_keep`]); the FFT's cascades
 /// add the ripples shorter than the shortest of them.
 pub(super) fn ocean_gpu(
     water: &Water,
     seconds: f64,
     origin: Vec3,
-) -> ([f32; 4], [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES]) {
-    let mut swell = [[0.0; 4]; 2 * og_core::ocean::OCEAN_WAVES];
+) -> ([f32; 4], [[f32; 4]; 2 * og_env::ocean::OCEAN_WAVES]) {
+    let mut swell = [[0.0; 4]; 2 * og_env::ocean::OCEAN_WAVES];
     let Some(sea) = ocean(water) else {
         return ([0.0; 4], swell);
     };
@@ -341,7 +341,7 @@ pub(super) fn cascade_uv(sea: Option<FftSea>, origin: Vec3) -> [[f32; 4]; 3] {
 /// ripples shorter than the shortest of its waves.
 pub(super) fn sea_spectrum(
     water: &Water,
-    sea: &og_core::ocean::Ocean,
+    sea: &og_env::ocean::Ocean,
     cascades: u32,
 ) -> crate::ocean_fft::spectrum::Spectrum {
     use crate::ocean_fft::spectrum;

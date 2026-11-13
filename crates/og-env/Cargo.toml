@@ -1,0 +1,11 @@
+[package]
+name = "og-env"
+version = "0.7.7"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine environment fields: the sea, its shore and rivers, the air and the volumes, each one function of a point that the renderer draws and the simulation reads."
+autotests = false
+
+[dependencies]
+og-core = { path = "../og-core" }

@@ -1,5 +1,5 @@
 //! og.Water.seabed (W1): the sea's floor from an og.Terrain, as
-//! `og_core::shore::Shore` (its depth under the water's rest level and the
+//! `og_env::shore::Shore` (its depth under the water's rest level and the
 //! distance to the waterline), the trains rolling in on it, for both the
 //! tick (og-physics' `WaterBody::shore`, which og.Buoyancy and
 //! og.physics.waterHeight read) and the frame (og-render's `Water::shore`).
@@ -14,8 +14,8 @@ use super::physics_ext::Reader;
 use super::terrain::{SeabedGrid, TerrainState};
 use super::wire::{FromJson, record};
 use glam::{Mat4, Vec2, Vec3};
-use og_core::ocean::{Ocean, Shore, ShoreTrains};
 use og_ecs::Entity;
+use og_env::ocean::{Ocean, Shore, ShoreTrains};
 use serde_json::Value;
 use std::cell::RefCell;
 use std::sync::Arc;

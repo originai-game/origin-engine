@@ -14,6 +14,7 @@ physics3d = ["dep:rapier3d", "og-physics-data/physics3d"]
 
 [dependencies]
 og-core = { path = "../og-core" }
+og-env = { path = "../og-env" }
 og-ecs = { path = "../og-ecs" }
 og-lanes = { path = "../og-lanes" }
 # The meshes colliders are built from, the triangle mesh bake and the save codec.

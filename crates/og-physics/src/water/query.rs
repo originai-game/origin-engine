@@ -4,8 +4,8 @@ use super::{LineState, SurfaceState, WaterBody};
 use crate::schema_ext::WaterSurface;
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
-use og_core::ocean::SurfacePoint;
 use og_ecs::Entity;
+use og_env::ocean::SurfacePoint;
 
 /// The water surface over world point (`x`, `z`): its height (world y)
 /// and the water's velocity and acceleration there; the highest of the og.WaterSurface squares

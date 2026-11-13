@@ -30,7 +30,7 @@ fn sea_wave(i: u32) -> vec4<f32> {
 }
 
 // The sea's displacement (x, height, z) at rest point p (frame xz) as vertices `cell` metres apart draw it: every wave
-// of og_core::ocean, the function the tick floats bodies on (og.physics.waterHeight), each left out only where the
+// of og_env::ocean, the function the tick floats bodies on (og.physics.waterHeight), each left out only where the
 // vertices are too far apart to hold it and shoaled by the seabed under p; then the FFT's waves, shorter than the
 // shortest of those, read at the mip whose texels are the cells.
 fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
@@ -40,7 +40,7 @@ fn ocean_displace(p: vec2<f32>, cell: f32) -> vec3<f32> {
   return d + vec3<f32>(0.0, water_wake(p + d.xz).x, 0.0);
 }
 
-// ocean_displace's waves of og_core::ocean at rest point p (Ocean::displacement).
+// ocean_displace's waves of og_env::ocean at rest point p (Ocean::displacement).
 fn ocean_swell(p: vec2<f32>, cell: f32, sh: Shoal) -> vec3<f32> {
   var d = vec3<f32>(0.0);
   for (var i = 0u; i < 32u; i++) {
@@ -425,7 +425,7 @@ fn sea_vertex(vi: u32) -> SeaVertex {
 // The drawn sea's height probe (water.rs `WaterRenderer::probe_sea`, Renderer::sea_heights): per point (frame xz),
 // the height the clipmap's vertices draw there (the rest point found by undoing the whole surface's lean, at the
 // spacing sea_vertex reads its level's vertices at: its cell, growing to twice at its edge); the height of the sea's
-// own function there as the GPU evaluates it (every wave of og_core::ocean, its rest point found as the tick finds it:
+// own function there as the GPU evaluates it (every wave of og_env::ocean, its rest point found as the tick finds it:
 // Ocean::height on the GPU); what the drawn surface differs from that by (the cascades, the waves the vertices'
 // spacing leaves out, and the cascades' lean moving the rest point); and the hulls' wakes' share.
 @group(2) @binding(0) var<storage, read> probe_in: array<vec2<f32>>;

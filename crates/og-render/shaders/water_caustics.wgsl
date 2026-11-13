@@ -8,7 +8,7 @@
 // irradiance 1 / |det(I + d c H)|. The Hessian does not depend on the depth, so one grid serves every receiver; the
 // shading evaluates the determinant at the receiver's own depth.
 //
-// The Hessian is the drawn sea's slopes differenced: og_core::ocean's waves (those a texel of the grid holds) and the
+// The Hessian is the drawn sea's slopes differenced: og_env::ocean's waves (those a texel of the grid holds) and the
 // cascades' shorter waves (their mips chosen so a texel holds them).
 
 struct CausticParams {

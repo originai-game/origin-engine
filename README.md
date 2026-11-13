@@ -220,6 +220,7 @@ repository, a project runs against the checkout with
 ```
 crates/            Rust workspace
   og-core          handles, reflection, .ogt text, deterministic rng and math, time (og-core-derive: #[derive(Reflect)])
+  og-env           environment fields: the sea, its shore and rivers, the air, volumes; drawn and simulated from one function
   og-ecs           archetype ECS, schedule, resources, events, snapshot/restore
   og-idl           the IDL model, validator and generators (TypeScript, bindings, schema, wiki, host traits)
   og-api           api/<module>.ogt, the generated host traits, the host-neutral runtime surface

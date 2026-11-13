@@ -1,5 +1,5 @@
 //! The air on rigid bodies: og.RigidBody.airDrag carries a body towards
-//! the air's velocity where it is ([`og_core::air::Air`], the world's wind
+//! the air's velocity where it is ([`og_env::air::Air`], the world's wind
 //! and its motors).
 
 use super::*;
@@ -8,7 +8,7 @@ use super::*;
 /// centre of mass, before the step: in entity order, each alone.
 pub(crate) fn air_drag(
     scene: &Scene,
-    air: &og_core::air::Air,
+    air: &og_env::air::Air,
     dt: f32,
     sim: &mut Sim,
     handles: &super::super::sim::Handles<'_>,

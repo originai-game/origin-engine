@@ -193,7 +193,7 @@ fn the_worlds_wind_pushes_a_rope_and_a_cloth_as_their_own_does() {
     let blow = Vec3::new(1.0, 0.0, 6.0);
     let hang = |world_wind: Vec3, own: Vec3| {
         let (mut w, p) = world(Physics::default(), 1);
-        p.set_air(og_core::air::Air {
+        p.set_air(og_env::air::Air {
             wind: world_wind,
             ..Default::default()
         });
@@ -249,13 +249,13 @@ fn a_motor_blows_the_rope_in_its_reach_and_not_the_one_beyond() {
     let hang = |fan: bool| {
         let (mut w, p) = world(Physics::default(), 1);
         if fan {
-            p.set_air(og_core::air::Air {
-                motors: vec![og_core::air::Motor {
+            p.set_air(og_env::air::Air {
+                motors: vec![og_env::air::Motor {
                     position: Vec3::new(0.0, 4.0, 0.0),
                     direction: Vec3::Z,
                     radius: 5.0,
                     strength: 12.0,
-                    kind: og_core::air::MotorKind::Directional,
+                    kind: og_env::air::MotorKind::Directional,
                 }],
                 ..Default::default()
             });

@@ -63,7 +63,7 @@ pub(crate) struct AtmoLayouts {
 impl AtmoLayouts {
     /// The air a frame draws: og.Wind and the og.WindMotors where `h`
     /// places them (`wind::frame_air`).
-    pub(crate) fn air(&self, world: &World, h: &mut Hierarchy) -> og_core::air::Air {
+    pub(crate) fn air(&self, world: &World, h: &mut Hierarchy) -> og_env::air::Air {
         super::wind::frame_air(world, self.wind.as_ref(), self.wind_motor.as_ref(), h).1
     }
 

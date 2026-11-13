@@ -114,7 +114,7 @@ pub(super) struct FoamGpu {
     thresholds: [f32; 4],
     cascades: [[f32; 4]; 3],
     bands: [f32; 4],
-    swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+    swell: [[f32; 4]; 2 * og_env::ocean::OCEAN_WAVES],
     shore: [[f32; 4]; 3],
 }
 
@@ -135,7 +135,7 @@ pub(super) fn step_gpu(
     dt: f32,
     cascades: u32,
     sea: &FoamSea,
-    swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+    swell: [[f32; 4]; 2 * og_env::ocean::OCEAN_WAVES],
     shore: [[f32; 4]; 3],
 ) -> FoamGpu {
     let far = 1 << 24;

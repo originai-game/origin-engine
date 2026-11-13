@@ -12,7 +12,7 @@
 //! Hydraulics*, 1959, §8-1), here (1 − a²)^¼ of the speed for `a` the share
 //! of the half width from the centre.
 
-use glam::{DVec2, Vec2, Vec3, Vec3Swizzles};
+use og_core::glam::{DVec2, Vec2, Vec3, Vec3Swizzles};
 
 /// A river's centreline, width (m) and mid-stream speed (m/s).
 #[derive(Clone, Debug, PartialEq)]

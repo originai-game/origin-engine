@@ -197,7 +197,7 @@ pub struct Water {
     pub flow_map: Option<crate::TextureHandle>,
     /// R5: the wind over an open sea, its direction in the world's xz and
     /// its speed (m/s) as its length: a clipmap about the camera displaced
-    /// by `og_core::ocean`'s longest Gerstner waves (the tick's) and the FFT
+    /// by `og_env::ocean`'s longest Gerstner waves (the tick's) and the FFT
     /// sea's cascades ([`crate::ocean_fft`]) over the absolute world's xz
     /// (a level surface; a mesh surface has none). Zero: no sea.
     pub wind: Vec2,
@@ -228,27 +228,27 @@ pub struct Water {
     /// (`water_ripples.rs`); on a sea it calms the FFT's chop under each
     /// og.Buoyancy hull (the tick floats none on it). `None`: neither.
     pub wakes: Option<Arc<WaterWakes>>,
-    /// W5: the water is a river along this course (`og_core::river`: the
+    /// W5: the water is a river along this course (`og_env::river`: the
     /// centreline in the frame, its width and speed): drawn as a ribbon
     /// over it in place of the `size` grid, its flow map the current, which
     /// slows to the banks and turns with the course; where the course drops
     /// steeper than 45 degrees the water falls. The tick drifts floaters
     /// with the same current.
-    pub river: Option<Arc<og_core::river::River>>,
+    pub river: Option<Arc<og_env::river::River>>,
     /// W1: the seabed under the sea (og.Water.seabed): the waves shoal and
     /// break over it and the shore trains roll in, as the tick floats bodies
     /// on them (og-physics' `WaterBody::shore`). `None`: the open sea.
     pub shore: Option<WaterShore>,
 }
 
-/// A sea's seabed ([`Water::shore`]): the field (`og_core::shore`), the
+/// A sea's seabed ([`Water::shore`]): the field (`og_env::shore`), the
 /// trains rolling in on it, where the field's sample (0, 0) lies in the
 /// scene's frame (moved with it by `RenderScene::rebase`; the field's own
 /// origin is the tick's frame) and how much surf foams where they break.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WaterShore {
-    pub field: Arc<og_core::ocean::Shore>,
-    pub trains: og_core::ocean::ShoreTrains,
+    pub field: Arc<og_env::ocean::Shore>,
+    pub trains: og_env::ocean::ShoreTrains,
     pub origin: Vec2,
     pub foam: f32,
 }
@@ -403,7 +403,7 @@ struct WaterGpu {
     foam_levels: [[f32; 4]; 2],
     /// The foam micro-structure's uv at the frame's origin ([`foam_uv`]).
     foam_uv: [[f32; 4]; 2],
-    swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+    swell: [[f32; 4]; 2 * og_env::ocean::OCEAN_WAVES],
     /// The seabed ([`Water::shore`], [`shore_gpu`]): its sample (0, 0) in
     /// the frame's xz, its cell, 1 with one; its columns and rows, the
     /// trains' wavenumber and amplitude; their phase now, the surf's foam.
@@ -558,7 +558,7 @@ pub(crate) struct WaterRenderer {
     no_shore: wgpu::TextureView,
     /// The seabeds' textures ([`shore_texture`]) of this frame's surfaces,
     /// with the fields they hold (shared by surfaces and the foam's pass).
-    shores: Vec<(Arc<og_core::ocean::Shore>, wgpu::TextureView)>,
+    shores: Vec<(Arc<og_env::ocean::Shore>, wgpu::TextureView)>,
     slots: Vec<Slot>,
     /// The ripples' compute, made with the first surface that ripples;
     /// `compute` false (an adapter without compute shaders): none, the
@@ -601,7 +601,7 @@ struct CausticsGpu {
     grid: [f32; 4],
     sea: [f32; 4],
     cascades: [[f32; 4]; 3],
-    swell: [[f32; 4]; 2 * og_core::ocean::OCEAN_WAVES],
+    swell: [[f32; 4]; 2 * og_env::ocean::OCEAN_WAVES],
 }
 
 /// What the FFT sea's spectrum was built for and what the water's uniforms

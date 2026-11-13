@@ -450,7 +450,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             normal_scale: v.normal_scale,
         });
     }
-    let mut air: Option<og_core::air::Air> = None;
+    let mut air: Option<og_env::air::Air> = None;
     for (e, v) in rows(world, layouts.particles.as_ref()) {
         let Ok(v) = record::ParticleSystem::from_json(&v) else {
             continue;

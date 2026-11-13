@@ -50,7 +50,7 @@ fn the_sea_runs_at_the_display_rate_between_ticks() {
 /// The vertices draw the sea the tick floats bodies on: water_sea.wgsl's
 /// `ocean_displace` (every wave of og_core, each left out only where
 /// the clipmap's vertex spacing cannot hold it, the rest point found as
-/// the tick finds it) is [`og_core::ocean::Ocean::height`] to a
+/// the tick finds it) is [`og_env::ocean::Ocean::height`] to a
 /// centimetre plus the amplitudes of the waves that spacing leaves out:
 /// nothing in a gale to past 10 m, and at any distance, were they all
 /// to crest at one point, under a hundredth of it (half a degree from
@@ -137,7 +137,7 @@ fn the_vertices_draw_the_sea_the_tick_floats_bodies_on() {
         println!("{wind}: Hs {hs} m, every wave drawn at {whole} of 192 points");
         assert!(wind.length() < 15.0 || whole >= 100, "{wind}: {whole}");
         let built = sea_spectrum(&water, &sea, cascades);
-        let shortest = og_core::ocean::shortest_wavenumber(wind.length());
+        let shortest = og_env::ocean::shortest_wavenumber(wind.length());
         let mut variance = 0.0;
         for c in &built.cascades {
             assert!(
@@ -318,7 +318,7 @@ fn the_waters_clock_keeps_its_precision_in_a_long_session() {
 fn a_seabed_wets_the_shore_its_surf_runs_up() {
     let depth: Vec<f32> = (0..16 * 8).map(|i| 5.0 - (i % 16) as f32).collect();
     let field =
-        Arc::new(og_core::ocean::Shore::new(Vec2::new(-10.0, 4.0), 2.0, 16, 8, &depth).unwrap());
+        Arc::new(og_env::ocean::Shore::new(Vec2::new(-10.0, 4.0), 2.0, 16, 8, &depth).unwrap());
     let sea = Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 1.5, 0.0)),
         wind: Vec2::new(10.0, 0.0),
@@ -331,7 +331,7 @@ fn a_seabed_wets_the_shore_its_surf_runs_up() {
     let hs = ocean(&sea).unwrap().significant_height();
     let mut beach = sea;
     beach.shore = Some(WaterShore {
-        trains: og_core::ocean::ShoreTrains::new(hs, 1.0, 0.0),
+        trains: og_env::ocean::ShoreTrains::new(hs, 1.0, 0.0),
         origin: field.origin + Vec2::new(3.0, -1.0),
         field,
         foam: 1.0,
