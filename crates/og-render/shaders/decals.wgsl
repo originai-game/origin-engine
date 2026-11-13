@@ -50,6 +50,31 @@ fn decal_sample(rect: vec4<f32>, t: vec2<f32>, gx: vec2<f32>, gy: vec2<f32>) -> 
 // Whether a pipeline has the decals' code (pipeline_features.rs).
 override OG_DECALS: bool = true;
 
+// A lit surface under the frame's decals: its colour and gloss, its normal
+// bent by their normal maps, and what they emit.
+struct Decaled {
+  s: Surface,
+  n: vec3<f32>,
+  emissive: vec3<f32>,
+};
+
+// The decals over the surface `s` at `p` (pixel `frag`; `dpx` and `dpy`
+// the point's change across the pixel, for the atlas' mip): `facing` is
+// the direction a decal must project against to land (the geometric
+// normal; the ground's for what stands on it), `n` the shading normal
+// their normal maps bend. A metal's f0 follows its colour.
+fn surface_decals(s_in: Surface, n: vec3<f32>, facing: vec3<f32>, frag: vec2<f32>, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> Decaled {
+  var o = Decaled(s_in, n, vec3<f32>(0.0));
+  if (abs(fx.decal_info.x) < 0.5) { return o; }
+  let d = apply_decals(frag, p, facing, s_in.albedo, s_in.roughness, dpx, dpy);
+  o.s.albedo = d.albedo;
+  o.s.roughness = clamp(d.roughness, 0.04, 1.0);
+  o.s.f0 = s_in.f0 + s_in.metallic * (d.albedo - s_in.albedo);
+  o.emissive = d.emissive;
+  if (d.normal.w > 0.0) { o.n = normalize(mix(n, d.normal.xyz, d.normal.w)); }
+  return o;
+}
+
 fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> DecalResult {
   var r: DecalResult;
   r.albedo = albedo;

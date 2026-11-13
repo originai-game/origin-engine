@@ -94,6 +94,13 @@ fn fs_crowd_card(in: CardOut) -> CardLit {
   let v = select(normalize(frame.view_pos.xyz - world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   var n = normalize(m3 * s.normal);
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
+  // The decals over the card, then the rain, snow and dust on it, as on
+  // the members drawn as meshes (decals.wgsl, weather_surface.wgsl); no
+  // water stands on a card.
+  let decaled = surface_decals(surface, n, n, in.clip.xy, world, dpdxFine(in.world), dpdyFine(in.world));
+  let weathered = weather_surface_at(decaled.s, decaled.n, n, world, 0.5, material.uv[3].w, WEATHER_RUNS_OFF);
+  surface = weathered.s;
+  n = weathered.n;
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   // The cascades looked up past the member's sphere along the light, as
@@ -112,7 +119,7 @@ fn fs_crowd_card(in: CardOut) -> CardLit {
   // The caustics, the local lights and the light around the member, as
   // the members drawn as meshes (surface_shade.wgsl).
   let at = ShadeAt(world, n, v, in.clip.xy, true, true, true);
-  var color = shaded_color(surface_shade(surface, at, sun, n_dot_l * shadow, vec3<f32>(0.0), material.flags.z, 1.0));
+  var color = shaded_color(surface_shade(surface, at, sun, n_dot_l * shadow, decaled.emissive, material.flags.z, 1.0));
   if (in.look.y > 0.0) { color = mix(color, card_rgb(in.look.z), in.look.y); }
   o.color = vec4<f32>(apply_fog(color, world), select(1.0, coverage, a2c));
   return o;

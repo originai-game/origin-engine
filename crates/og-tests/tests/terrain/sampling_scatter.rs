@@ -308,3 +308,111 @@ fn a_terrain_honours_its_transform() {
         );
     }
 }
+
+/// Scattered copies take the frame's decals and the weather as a mesh
+/// does: a decal hung at the height of the cubes' tops (clear of the
+/// ground) marks them, and snow lies on those tops.
+///
+/// Ways this could fail: the copies' module carries the decals' or the
+/// weather's code and never calls it (as before), or marks the ground
+/// under the decal's box too.
+#[test]
+#[ignore = "requires GPU"]
+fn scattered_copies_take_the_decals_and_the_weather() {
+    use og_render::{ColorSpace, Decal, Mips, SurfaceWeather, TextureData};
+    let mut scene = RenderScene::new();
+    let h = scene.add_terrain(TerrainData::flat(Vec2::splat(256.0), 65, 65));
+    scene.world.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            color: Vec3::splat(0.05),
+            ..Default::default()
+        }],
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let dark = scene.add_material(Material {
+        base_color: [0.05, 0.05, 0.05, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.world.scatters.push(og_render::ScatterDraw {
+        terrain: 0,
+        mesh: cube,
+        material: dark,
+        scatter: TerrainScatter {
+            density: 0.03,
+            distance: 90.0,
+            scale: [3.0, 3.0],
+            seed: 5,
+            ..TerrainScatter::default()
+        },
+        cast_shadows: false,
+        impostor: None,
+        impostor_distance: 0.0,
+        with: None,
+        lods: [None; 2],
+    });
+    scene.atmosphere.fog = None;
+    scene.look.post.tonemap = Tonemap::None;
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.light.cast_shadows = false;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 100.0, 0.001),
+        target: Vec3::ZERO,
+        near: 1.0,
+        far: 500.0,
+        projection: Projection::Orthographic { height: 60.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut capture = |s: &RenderScene| {
+        r.render(s, &RenderTarget::Offscreen).expect("render");
+        r.read_offscreen().expect("capture")
+    };
+    let bare = capture(&scene);
+    // A red decal over the whole view, one metre thick about the tops.
+    let atlas = scene.add_texture(TextureData {
+        width: 2,
+        height: 2,
+        rgba: [255, 0, 0, 255].repeat(4),
+        color_space: ColorSpace::Srgb,
+        mips: Mips::Generate,
+    });
+    scene.effects.decal_atlas = Some(atlas);
+    scene.effects.decals.push(Decal {
+        emissive: Vec3::X,
+        ..Decal::on_surface(Vec3::Y * 1.5, Vec3::Y, Vec2::splat(200.0), 1.0, 0.0)
+    });
+    let marked = capture(&scene);
+    keep("scatter-decal", &marked);
+    let all = || (0..bare.height).flat_map(|y| (0..bare.width).map(move |x| (x, y)));
+    let tops: Vec<(u32, u32)> = all()
+        .filter(|&(x, y)| px(&marked, x, y)[0] > px(&bare, x, y)[0] + 30.0)
+        .collect();
+    let frame = (bare.width * bare.height) as usize;
+    assert!(
+        tops.len() > 2_000 && tops.len() < frame / 3,
+        "{} of {frame} pixels marked: the tops of the cubes, not the ground",
+        tops.len()
+    );
+    // Snow, without the decal: it lies on the same tops.
+    scene.effects.decals.clear();
+    scene.atmosphere.surface_weather = Some(SurfaceWeather {
+        snow: 1.0,
+        shelter: 0.0,
+        ..Default::default()
+    });
+    let snowed = capture(&scene);
+    keep("scatter-snow", &snowed);
+    let white = tops
+        .iter()
+        .filter(|&&(x, y)| luma(px(&snowed, x, y)) > luma(px(&bare, x, y)) + 40.0)
+        .count();
+    assert!(
+        white * 10 > tops.len() * 8,
+        "snow on {white} of the {} top pixels",
+        tops.len()
+    );
+}

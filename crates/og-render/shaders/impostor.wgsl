@@ -267,6 +267,12 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   let v = select(normalize(frame.view_pos.xyz - surface.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   var n = surface.normal;
   if (dot(n, v) < 0.0) { n = normalize(n - v * dot(n, v) * 1.01); }
+  // The decals over the card, then the rain, snow and dust on it, as on
+  // the model it stands for (scatter.wgsl); no water stands on a card.
+  let decaled = surface_decals(s, n, n, in.clip.xy, surface.world, dpdxFine(in.world), dpdyFine(in.world));
+  let weathered = weather_surface_at(decaled.s, decaled.n, n, surface.world, 0.5, material.uv[3].w, WEATHER_RUNS_OFF);
+  s = weathered.s;
+  n = weathered.n;
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
@@ -306,7 +312,7 @@ fn fs_impostor(in: ImpostorOut) -> ImpostorLit {
   // model's it stands for (surface_shade.wgsl); the screen-space
   // reflections unless blended.
   let at = ShadeAt(surface.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
-  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive, material.flags.z, 1.0);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive + decaled.emissive, material.flags.z, 1.0);
   if (dbg > 0u) {
     o.color = vec4<f32>(shaded_debug(lit, s.albedo, dbg), select(1.0, coverage, a2c));
     return o;

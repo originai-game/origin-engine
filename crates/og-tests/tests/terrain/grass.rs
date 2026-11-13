@@ -188,3 +188,71 @@ fn a_low_sun_darkens_the_meadow_towards_its_roots() {
         "tips {tips:.2} against roots {roots:.2}"
     );
 }
+
+/// A decal marks the grass that stands in it: hung at the blades' middle
+/// height, clear of the ground, a red decal two metres square reddens
+/// the meadow seen from above inside its square and nowhere else.
+///
+/// Ways this could fail: the grass never calls the decals (as before), or
+/// judges them by a blade's own near-level normal, which a decal
+/// projected down onto the ground never faces.
+#[test]
+#[ignore = "requires GPU"]
+fn a_decal_marks_the_grass_that_stands_in_it() {
+    use og_render::{ColorSpace, Decal, Mips, TextureData};
+    let mut scene = trample_scene();
+    let grass = &mut scene.world.grass[0].grass;
+    grass.distance = 30.0;
+    grass.base_color = Vec3::new(0.05, 0.5, 0.05);
+    grass.tip_color = Vec3::new(0.05, 0.5, 0.05);
+    scene.look.post.tonemap = Tonemap::None;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 10.0, 0.001),
+        target: Vec3::ZERO,
+        near: 1.0,
+        far: 50.0,
+        projection: Projection::Orthographic { height: 8.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut capture = |s: &RenderScene| {
+        r.render(s, &RenderTarget::Offscreen).expect("render");
+        r.read_offscreen().expect("capture")
+    };
+    let bare = capture(&scene);
+    let atlas = scene.add_texture(TextureData {
+        width: 2,
+        height: 2,
+        rgba: [255, 0, 0, 255].repeat(4),
+        color_space: ColorSpace::Srgb,
+        mips: Mips::Generate,
+    });
+    scene.effects.decal_atlas = Some(atlas);
+    scene.effects.decals.push(Decal {
+        emissive: Vec3::X,
+        ..Decal::on_surface(Vec3::Y * 0.35, Vec3::Y, Vec2::splat(2.0), 0.3, 0.0)
+    });
+    let marked = capture(&scene);
+    keep("grass-decal", &marked);
+    // The square is the frame's middle quarter (2 m of the 8 m height).
+    let (w, h) = (bare.width, bare.height);
+    let side = h / 4;
+    let inside = |x: u32, y: u32| x.abs_diff(w / 2) < side / 2 && y.abs_diff(h / 2) < side / 2;
+    let redder = |x: u32, y: u32| px(&marked, x, y)[0] > px(&bare, x, y)[0] + 30.0;
+    let all = || (0..h).flat_map(|y| (0..w).map(move |x| (x, y)));
+    let within = all().filter(|&(x, y)| inside(x, y) && redder(x, y)).count();
+    let beyond = all()
+        .filter(|&(x, y)| {
+            x.abs_diff(w / 2) > side / 2 + 4 && y.abs_diff(h / 2) > side / 2 + 4 && redder(x, y)
+        })
+        .count();
+    // Seen from straight above a blade is a few pixels wide, and the
+    // decal's box holds only its middle.
+    assert!(
+        within as u32 > side * side / 20,
+        "{within} of the square's {} pixels reddened",
+        side * side
+    );
+    assert_eq!(beyond, 0, "pixels reddened outside the decal");
+}

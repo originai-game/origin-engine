@@ -570,14 +570,10 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   s.f0 = vec3<f32>(0.04);
   let dpx = dpdx(p);
   let dpy = dpdy(p);
-  var decal_emissive = vec3<f32>(0.0);
-  if (abs(fx.decal_info.x) > 0.5) {
-    let d = apply_decals(clip, p, n_geo, s.albedo, s.roughness, dpx, dpy);
-    s.albedo = d.albedo;
-    s.roughness = clamp(d.roughness, 0.04, 1.0);
-    decal_emissive = d.emissive;
-    if (d.normal.w > 0.0) { n = normalize(mix(n, d.normal.xyz, d.normal.w)); }
-  }
+  let decaled = surface_decals(s, n, n_geo, clip, p, dpx, dpy);
+  s = decaled.s;
+  n = decaled.n;
+  let decal_emissive = decaled.emissive;
   // The weather on the ground, its hollows (the layers' relief) first.
   let weathered = weather_surface_at(s, n, n_geo, p, terrain_cavity(height), 1.0, WEATHER_GROUND);
   s = weathered.s;

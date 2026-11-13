@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.Decal",
+      "summary": "A decal now marks the scattered copies (og.TerrainScatter), their far cards, a crowd's far cards and the grass (og.Grass) that stand in its box, as it marks a mesh and the terrain: a scorch mark or a painted zone no longer stops at the plants. A blade of grass takes the decal of the ground it stands on."
+    },
+    {
+      "member": "og.Weather",
+      "summary": "Snow, wetness and puddle gloss now lie on scattered copies (og.TerrainScatter), their far cards and a crowd's far cards as they lie on a mesh, so rocks and trees placed by scatter whiten and darken with the ground around them."
+    }
+  ]
+}

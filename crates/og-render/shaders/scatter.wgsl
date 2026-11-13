@@ -91,6 +91,13 @@ fn vs(v: ScatterVertex, i: ScatterInstance) -> ScatterOut {
   return o;
 }
 
+// How high a point lies in the material's relief for the weather, as a
+// mesh's (pbr_fs.wgsl weather_cavity): from its AO map, 0.5 without one.
+fn scatter_cavity(uv: vec2<f32>) -> f32 {
+  if (material.flags.y < 0.0) { return 0.5; }
+  return 0.2 + 0.6 * textureSample(ao_tex, material_sampler, material_uv(UV_AO, uv)).r;
+}
+
 @fragment
 fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let h = scatter_hook(in, front);
@@ -130,7 +137,14 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   }
   let v = select(normalize(frame.view_pos.xyz - in.world), -frame.view_forward.xyz, frame.view_pos.w > 0.5);
   if (dot(n, v) < 0.0) { n = -n; }
+  let n_geo = n;
   n = normalize(surface_normal(h, shader_params(), n));
+  // The decals over the copy, then the rain, snow and dust on it, as on a
+  // mesh (decals.wgsl, weather_surface.wgsl; pbr_fs.wgsl).
+  let decaled = surface_decals(s, n, n_geo, in.clip.xy, in.world, dpx, dpy);
+  let weathered = weather_surface_at(decaled.s, decaled.n, n_geo, in.world, scatter_cavity(in.uv), material.uv[3].w, WEATHER_STANDS);
+  s = weathered.s;
+  n = weathered.n;
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
@@ -159,7 +173,7 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   // lit surface's (surface_shade.wgsl); the screen-space reflections unless
   // blended: then it lies over the surface they were traced for.
   let at = ShadeAt(in.world, n, v, in.clip.xy, true, (mode & 4u) == 0u, styled);
-  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive, material.flags.z, keep);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive + decaled.emissive, material.flags.z, keep);
   if (frame.light_color.w > 2.5) {
     return vec4<f32>(shaded_debug(lit, s.albedo, u32(frame.light_color.w + 0.5)), out_a);
   }
@@ -189,9 +203,18 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
   // The reflectivity screen-space reflections read, as the lit pass shades
   // the copy (none unlit).
-  let metalness = material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b;
-  let roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
-  let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, (u32(material.flags.w) & 2u) != 0u);
+  var metalness = material.mr.x * textureSample(metalness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).b;
+  var roughness = clamp(material.mr.y * textureSample(roughness_tex, material_sampler, material_uv(UV_METALNESS, in.uv)).g, 0.04, 1.0);
+  // Wet copies and the puddles on them as the lit pass shades them
+  // (weather_surface.wgsl weather_gloss), so reflections see them.
+  let unlit = (u32(material.flags.w) & 2u) != 0u;
+  if (!unlit) {
+    let g = weather_gloss(roughness, metalness, n, n, in.world, scatter_cavity(in.uv), material.uv[3].w, WEATHER_STANDS);
+    roughness = g.s.roughness;
+    metalness = g.s.metallic;
+    o.gbuffer = vec4<f32>(oct_encode(g.n), (cur - prev) * vec2<f32>(0.5, -0.5));
+  }
+  let reflectivity = select(reflectivity_bits(roughness, metalness), 0.0, unlit);
   o.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // The material's outline (the style's, material.rs), as a clump: round
   // the copy, never between its leaves; an unstyled material's (mode bit

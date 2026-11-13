@@ -173,9 +173,13 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   s.roughness = mix(0.95, clamp(grass.dry_color.w * (1.0 - 0.45 * sheen), 0.04, 1.0), resolved);
   let reflectance = (0.25 + 0.45 * sheen) * mix(0.5, 1.0, resolved);
   s.f0 = vec3<f32>(0.16 * reflectance * reflectance);
+  // The decals over the blades (decals.wgsl): a blade takes what is
+  // projected onto the ground it stands on, so a mark on a meadow covers
+  // its grass; its own normal stays.
+  let decaled = surface_decals(s, n0, vec3<f32>(0.0, 1.0, 0.0), in.clip.xy, p, dpdx(p), dpdy(p));
   // Rain, snow and dust on the blades (weather_surface.wgsl): wet blades
   // darken and gloss, snow lies on their upper sides, dust dulls them.
-  s = weather_grass(s, n0, p, in.shading.z).s;
+  s = weather_grass(decaled.s, n0, p, in.shading.z).s;
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) {
@@ -223,7 +227,7 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   // blades light as the ground (`far`), under the sky alike.
   let at = ShadeAt(p, n0, v, in.clip.xy, true, true, true);
   let under = n_dot_l * shadow * select(1.0, grass.base_color.w, backlit);
-  let lit = surface_shade(s, at, own, under, vec3<f32>(0.0), 1.0, mix(in.shading.x, in.mean.y, in.far));
+  let lit = surface_shade(s, at, own, under, decaled.emissive, 1.0, mix(in.shading.x, in.mean.y, in.far));
   if (view > 3u) { return vec4<f32>(shaded_debug(lit, s.albedo, view), 1.0); }
   return vec4<f32>(apply_fog(shaded_color(lit), p), 1.0);
 }
