@@ -491,7 +491,6 @@ pub(crate) fn run(
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
         }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
-        Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),
         Work::Effect(s) => effect::cook_effect(s, &|id| known.contains(id), p.stamp),
         Work::Vfx(s) => vfx::cook_vfx(s, &|id| known.contains(id), p.stamp),
         Work::Look(s) => look::cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp),

@@ -8,7 +8,10 @@
 //! part of the timeline (not an asset of its own) and in its stamp.
 
 use super::terrain::resolve;
-use super::{CookError, Source, assets_root, hash_bytes};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    hash_bytes, stamp,
+};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
@@ -349,4 +352,45 @@ fn check_nesting(root: &Path, t: &Timeline, chain: &mut Vec<String>) -> Result<(
 /// An asset path without the `assets/` a source's rel may carry.
 fn asset_id(p: &str) -> &str {
     p.strip_prefix("assets/").unwrap_or(p)
+}
+
+pub(crate) static TIMELINE: KindDef = KindDef {
+    name: "timeline",
+    extensions: &[],
+    types: &[TIMELINE_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_timeline,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&TIMELINE];
+
+fn plan_timeline<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    // The stamp covers every caption file it imports.
+    let deps = dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"timeline 1", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Timeline::NAME,
+        st,
+        Work::Job(Box::new(TimelineJob(s))),
+    ));
+}
+
+/// A timeline's one output.
+struct TimelineJob<'a>(&'a Source);
+
+impl Job for TimelineJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_timeline(self.0, &|id| ex.known.contains(id), p.stamp)
+    }
 }

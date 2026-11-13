@@ -71,6 +71,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     terrain::KINDS,
     lightmap::KINDS,
     environment::KINDS,
+    timeline::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

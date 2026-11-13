@@ -301,7 +301,7 @@ pub(crate) fn resolve(
         {
             consumed.insert(p);
         }
-        if s.kind == Kind::Timeline {
+        if s.kind == Kind::System(&timeline::TIMELINE) {
             consumed.extend(timeline::caption_files(
                 &s.rel,
                 assets_dir,

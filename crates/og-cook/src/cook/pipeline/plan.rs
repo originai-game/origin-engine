@@ -179,7 +179,6 @@ fn plan_kind<'a>(
         Kind::Rig => plan_rig(cx, state, s, hash, outs),
         Kind::MotionAction => plan_motion_action(cx, state, s, hash, outs),
         Kind::Icons => plan_icons(cx, state, s, hash, outs),
-        Kind::Timeline => plan_timeline(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
         Kind::Video => plan_video(cx, state, s, hash, outs),
         Kind::Look => plan_look(cx, state, s, hash, outs),
