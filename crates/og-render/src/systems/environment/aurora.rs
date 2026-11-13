@@ -808,6 +808,9 @@ pub(crate) struct AuroraMap {
     pub view: wgpu::TextureView,
     texture: wgpu::Texture,
     pass: Option<FootprintPass>,
+    /// The frame's footprint, planned ([`AuroraMap::update`]) and not yet
+    /// recorded ([`AuroraMap::encode`]).
+    pending: bool,
 }
 
 struct FootprintPass {
@@ -885,6 +888,7 @@ impl AuroraMap {
             view: texture.create_view(&Default::default()),
             texture,
             pass: None,
+            pending: false,
         }
     }
 
@@ -1046,9 +1050,10 @@ impl AuroraMap {
         self.texture = texture;
     }
 
-    /// Draws the footprint for `aurora` at `seconds` about the viewer at
-    /// `viewer` (world x and z, metres): its own submission, before the
-    /// frame's, so every pass of the frame reads it.
+    /// Plans the footprint for `aurora` at `seconds` about the viewer at
+    /// `viewer` (world x and z, metres) and writes its uniforms, for
+    /// [`AuroraMap::encode`] to record before every pass of the frame that
+    /// reads it.
     pub(crate) fn update(
         &mut self,
         device: &wgpu::Device,
@@ -1061,19 +1066,22 @@ impl AuroraMap {
         let pass = self.pass.as_ref().expect("made above");
         let params = aurora.footprint(seconds, viewer * 0.001);
         queue.write_buffer(&pass.uniform, 0, bytemuck::bytes_of(&params));
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        self.pending = true;
+    }
+
+    /// Records the footprint [`AuroraMap::update`] planned: nothing without
+    /// one. A frame planned and never recorded draws it at the next.
+    pub(crate) fn encode(&mut self, encoder: &mut crate::Encoder) {
+        let (true, Some(pass)) = (std::mem::take(&mut self.pending), &self.pass) else {
+            return;
+        };
+        let mut compute = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("aurora footprint"),
+            timestamp_writes: None,
         });
-        {
-            let mut compute = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("aurora footprint"),
-                timestamp_writes: None,
-            });
-            compute.set_pipeline(&pass.pipeline);
-            compute.set_bind_group(0, &pass.group, &[]);
-            compute.dispatch_workgroups(FOOTPRINT / 8, FOOTPRINT / 8, 1);
-        }
-        queue.submit(Some(encoder.finish()));
+        compute.set_pipeline(&pass.pipeline);
+        compute.set_bind_group(0, &pass.group, &[]);
+        compute.dispatch_workgroups(FOOTPRINT / 8, FOOTPRINT / 8, 1);
     }
 }
 

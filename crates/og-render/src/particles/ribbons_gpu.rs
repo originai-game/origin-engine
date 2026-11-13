@@ -167,6 +167,18 @@ pub(crate) struct GpuTrails {
     frame: u64,
     /// Origin moves since the last frame, added to every remembered point.
     shift: Vec3,
+    /// The frame's step, planned ([`GpuTrails::build`]) and not yet
+    /// recorded ([`GpuTrails::encode`]).
+    pending: Option<Pending>,
+}
+
+/// What [`GpuTrails::encode`] records of a frame [`GpuTrails::build`]
+/// planned.
+struct Pending {
+    /// The rings before they grew, copied into the grown buffer first.
+    grown_from: Option<wgpu::Buffer>,
+    group: wgpu::BindGroup,
+    jobs: u32,
 }
 
 fn storage_entry(
@@ -293,6 +305,7 @@ impl GpuTrails {
             scene_id: 0,
             frame: 0,
             shift: Vec3::ZERO,
+            pending: None,
         }
     }
 
@@ -318,8 +331,10 @@ impl GpuTrails {
         self.shift += d;
     }
 
-    /// Steps the trails' histories to `tick` and lays out every strip of
-    /// the frame as runs of the strip point buffer (`vs_strip`).
+    /// Plans the step of the trails' histories to `tick`, for
+    /// [`GpuTrails::encode`] to record in the frame's encoder, and lays out
+    /// every strip of the frame as runs of the strip point buffer
+    /// (`vs_strip`).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn build(
         &mut self,
@@ -334,6 +349,18 @@ impl GpuTrails {
         tick: u64,
         tick_rate: f32,
     ) -> Result<RibbonFrame, String> {
+        // A frame planned and never recorded (it failed after this) steps
+        // on its own now: the histories and the buffers this plan reuses
+        // are as it left them.
+        if self.pending.is_some() {
+            let mut encoder = crate::Encoder::untimed(device.create_command_encoder(
+                &wgpu::CommandEncoderDescriptor {
+                    label: Some("trails"),
+                },
+            ));
+            self.encode(&mut encoder);
+            queue.submit(Some(encoder.finish()));
+        }
         self.frame += 1;
         if self.scene_id != scene_id {
             self.scene_id = scene_id;
@@ -474,20 +501,16 @@ impl GpuTrails {
         if jobs.is_empty() {
             return Ok(out);
         }
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("trails"),
-        });
         let ring_bytes = u64::from(self.ranges.end) * RING_BYTES;
-        if ring_bytes > self.ring.size() {
+        let grown_from = (ring_bytes > self.ring.size()).then(|| {
             let grown = buffer(
                 device,
                 "trail rings",
                 ring_bytes.next_power_of_two(),
                 STORAGE.union(wgpu::BufferUsages::COPY_SRC),
             );
-            encoder.copy_buffer_to_buffer(&self.ring, 0, &grown, 0, self.ring.size());
-            self.ring = grown;
-        }
+            std::mem::replace(&mut self.ring, grown)
+        });
         let style_data: Vec<StyleGpu> = styles.iter().map(|s| StyleGpu::of(s, tick_rate)).collect();
         let style_bytes: &[u8] = bytemuck::cast_slice(&style_data);
         if style_bytes.len() as u64 > self.styles.size() {
@@ -540,17 +563,30 @@ impl GpuTrails {
                 },
             ],
         });
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("trails"),
-                timestamp_writes: None,
-            });
-            pass.set_pipeline(&self.pipeline);
-            pass.set_bind_group(0, &group, &[]);
-            pass.dispatch_workgroups((jobs.len() as u32).div_ceil(64), 1, 1);
-        }
-        queue.submit(Some(encoder.finish()));
+        self.pending = Some(Pending {
+            grown_from,
+            group,
+            jobs: jobs.len() as u32,
+        });
         Ok(out)
+    }
+
+    /// Records the step [`GpuTrails::build`] planned, before any pass
+    /// that draws the strips: nothing without one.
+    pub(crate) fn encode(&mut self, encoder: &mut crate::Encoder) {
+        let Some(planned) = self.pending.take() else {
+            return;
+        };
+        if let Some(old) = &planned.grown_from {
+            encoder.copy_buffer_to_buffer(old, 0, &self.ring, 0, old.size());
+        }
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("trails"),
+            timestamp_writes: None,
+        });
+        pass.set_pipeline(&self.pipeline);
+        pass.set_bind_group(0, &planned.group, &[]);
+        pass.dispatch_workgroups(planned.jobs.div_ceil(64), 1, 1);
     }
 }
 

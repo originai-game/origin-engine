@@ -1,6 +1,7 @@
 //! The frame's encoder, and the compute nodes the graph begins with
 //! (pre_graph.rs): the crowds' cull, GPU culling's counts' copy, the wind
-//! and trample steps, the water's fields, the visual meshes, the surfaces, the terrain levels'
+//! and trample steps, the water's fields, the trails, the aurora's
+//! footprint, the visual meshes, the surfaces, the terrain levels'
 //! corners, the grass blades and the scattered copies, each encoded when
 //! execute.rs reaches it.
 
@@ -107,6 +108,18 @@ impl Renderer {
                 .map(|q| ("water fields".to_string(), q))
                 .into_iter()
                 .collect(),
+            // The trails' histories, before the strips are drawn.
+            FramePass::Trails => {
+                if let Some(trails) = &mut self.strips.gpu_trails {
+                    trails.encode(encoder);
+                }
+                Vec::new()
+            }
+            // The aurora's footprint, before any pass reads the sky.
+            FramePass::Aurora => {
+                self.sky.aurora_map.encode(encoder);
+                Vec::new()
+            }
             FramePass::Visual => {
                 if let Some(pipelines) = &self.world.visual {
                     for mesh in &self.cache.meshes {

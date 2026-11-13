@@ -9,7 +9,8 @@ pub(crate) enum FramePass {
     /// read (renderer/render/pre_graph.rs): the crowds' cull on the GPU,
     /// the GPU culling's counts copied for their readback, the wind
     /// field's and the trample map's steps, the water's fields (the sea's
-    /// spectrum, foam and caustics, the wakes, the ripples), the visual bodies' and fluids'
+    /// spectrum, foam and caustics, the wakes, the ripples), the trails'
+    /// histories, the aurora's footprint, the visual bodies' and fluids'
     /// steps, the deforming surfaces' and garments' vertices, the terrain
     /// levels' corners, the grass blades, and the scattered copies placed
     /// and culled. Into their own buffers, not graph targets.
@@ -17,6 +18,8 @@ pub(crate) enum FramePass {
     CullCounts,
     Wind,
     WaterFields,
+    Trails,
+    Aurora,
     Visual,
     Surfaces,
     TerrainCorners,
@@ -225,6 +228,8 @@ impl FramePass {
                 | FramePass::CullCounts
                 | FramePass::Wind
                 | FramePass::WaterFields
+                | FramePass::Trails
+                | FramePass::Aurora
                 | FramePass::Visual
                 | FramePass::Surfaces
                 | FramePass::TerrainCorners
@@ -285,6 +290,8 @@ impl FramePass {
             FramePass::CullCounts => "cull-counts".into(),
             FramePass::Wind => "wind".into(),
             FramePass::WaterFields => "water fields".into(),
+            FramePass::Trails => "trails".into(),
+            FramePass::Aurora => "aurora".into(),
             FramePass::Visual => "visual simulation".into(),
             FramePass::Surfaces => "surfaces".into(),
             FramePass::TerrainCorners => "terrain corners".into(),
@@ -875,6 +882,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             | FramePass::CullCounts
             | FramePass::Wind
             | FramePass::WaterFields
+            | FramePass::Trails
+            | FramePass::Aurora
             | FramePass::Visual
             | FramePass::Surfaces
             | FramePass::TerrainCorners

@@ -29,6 +29,8 @@ pub(crate) const PASSES: &[PassDesc] = &[
     pre_graph::CROWD_CULL,
     pre_graph::WIND,
     pre_graph::WATER_FIELDS,
+    pre_graph::TRAILS,
+    pre_graph::AURORA,
     pre_graph::VISUAL,
     pre_graph::SURFACES,
     pre_graph::TERRAIN_CORNERS,
@@ -80,6 +82,8 @@ impl FramePass {
                 | FramePass::CullCounts
                 | FramePass::Wind
                 | FramePass::WaterFields
+                | FramePass::Trails
+                | FramePass::Aurora
                 | FramePass::Visual
                 | FramePass::Surfaces
                 | FramePass::TerrainCorners
@@ -225,6 +229,8 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     for p in [
         FramePass::Wind,
         FramePass::WaterFields,
+        FramePass::Trails,
+        FramePass::Aurora,
         FramePass::Visual,
         FramePass::Surfaces,
         FramePass::TerrainCorners,
@@ -591,7 +597,7 @@ mod tests {
             .copied()
             .filter(|p| p.timed() == Timed::WhenDrawn)
             .collect();
-        assert_eq!(pre.len(), 9);
+        assert_eq!(pre.len(), 11);
         assert_eq!(after.len(), 4);
         assert_eq!(order[..pre.len()], pre[..]);
         assert_eq!(order[order.len() - after.len()..], after[..]);

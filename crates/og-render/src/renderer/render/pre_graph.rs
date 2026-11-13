@@ -1,7 +1,8 @@
 //! The compute the frame encodes before its draws, which the graph's
 //! passes read (the crowds' cull, the culling's counts, the wind, the
-//! water's fields, the simulated meshes, the terrain's corners, the grass, the scatter): the
-//! first nodes of the render graph, in the frame encoder's order. Each
+//! water's fields, the trails, the aurora's footprint, the simulated
+//! meshes, the terrain's corners, the grass, the scatter): the first
+//! nodes of the render graph, in the frame encoder's order. Each
 //! kind's needs are its entry in the capability table (schedule.rs
 //! `PASSES`); execute.rs encodes them first (`execute_pre_graph`), each
 //! where the device has its needs, checked against them as it encodes.
@@ -33,6 +34,22 @@ pub(crate) const WIND: PassDesc = PassDesc {
 pub(crate) const WATER_FIELDS: PassDesc = PassDesc {
     pass: FramePass::WaterFields,
     name: "water fields",
+    needs: Caps::COMPUTE,
+};
+
+/// The trails' histories stepped to the tick (ribbons_gpu.rs), before the
+/// passes that draw the strips.
+pub(crate) const TRAILS: PassDesc = PassDesc {
+    pass: FramePass::Trails,
+    name: "trails",
+    needs: Caps::COMPUTE.union(Caps::VERTEX_STORAGE),
+};
+
+/// The aurora's footprint at the frame's time (aurora.rs), before every
+/// pass that reads the sky.
+pub(crate) const AURORA: PassDesc = PassDesc {
+    pass: FramePass::Aurora,
+    name: "aurora",
     needs: Caps::COMPUTE,
 };
 

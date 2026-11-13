@@ -1012,8 +1012,11 @@ impl Renderer {
             self.lights.environment = None;
         }
         // The aurora's footprint follows the clock every frame; the first
-        // frame with one makes its texture, and the sky group again.
-        if let Some(a) = &scene.atmosphere.aurora {
+        // frame with one makes its texture, and the sky group again. It is
+        // drawn by compute: without it the sky keeps the empty footprint.
+        if let Some(a) = &scene.atmosphere.aurora
+            && self.info.caps.contains(crate::Caps::COMPUTE)
+        {
             let made = self.sky.aurora_map.made();
             let viewer = scene.frame.camera.position + scene.frame.origin;
             let rate = if scene.frame.tick_rate > 0.0 {
