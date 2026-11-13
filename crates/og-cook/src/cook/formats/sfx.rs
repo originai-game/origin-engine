@@ -18,7 +18,9 @@
 //! volume 0.8
 //! ```
 
-use super::CookError;
+use super::{
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, ext, stamp,
+};
 use crate::format::{self, *};
 use crate::qoa;
 use og_blob::BlobWriter;
@@ -614,4 +616,57 @@ pub fn cook(bytes: &[u8], stamp: u64) -> Result<(Vec<u8>, String), CookError> {
     w.table("meta", &[meta], row_hash::<SoundMeta>())
         .raw("qoa", qoa, 16);
     Ok((w.finish(), note))
+}
+
+/// A sound preset (`type sfx`): synthesised, then cooked as a sound.
+pub(crate) static SFX: KindDef = KindDef {
+    name: "sound",
+    extensions: &[],
+    types: &[SFX_TYPE],
+    by_content: true,
+    streams: true,
+    plan: plan_sfx,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&SFX];
+
+fn plan_sfx<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // A preset's stamp moves with the synthesiser.
+    let st = stamp(&[b"sfx", SYNTH_VERSION.as_bytes(), &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::Sound::NAME,
+        st,
+        Work::Job(Box::new(SfxJob(s))),
+    ));
+}
+
+/// A sound preset's one output: its synthesised sound.
+struct SfxJob<'a>(&'a Source);
+
+impl Job for SfxJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook(&self.0.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
+    }
+
+    fn action(&self) -> Action<'_> {
+        let s = self.0;
+        Action::Input(
+            s.bytes.as_slice(),
+            format!(
+                "sound {:?} {} {:?}",
+                None::<(u32, u32)>,
+                ext(&s.rel),
+                s.settings
+            ),
+            false,
+        )
+    }
 }

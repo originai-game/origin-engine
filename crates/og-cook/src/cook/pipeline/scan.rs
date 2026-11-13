@@ -50,16 +50,12 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
     Some(match ext {
         "glb" | "gltf" | "vox" | "fbx" | "obj" => Kind::Model,
         "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" | "svg" => Kind::Texture,
-        e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
         _ => return kinds::by_extension(ext),
     })
 }
 
 /// The `type` of each `.ogt` the cook takes as an asset, with its kind.
-const OGT_KINDS: &[(&str, Kind)] = &[
-    (sfx::SFX_TYPE, Kind::Sound),
-    (model_text::MODEL_TYPE, Kind::Model),
-];
+const OGT_KINDS: &[(&str, Kind)] = &[(model_text::MODEL_TYPE, Kind::Model)];
 
 /// The kind an `.ogt` of this `type` cooks as; `None`: not an asset.
 fn ogt_kind(ty: &str) -> Option<Kind> {
@@ -534,7 +530,7 @@ pub(crate) fn plan_groups(
                             .meshes()
                             .any(|x| x.primitives().any(|p| p.morph_targets().next().is_some()))
                 });
-                let fits = matches!(src.kind, Kind::Model | Kind::Texture | Kind::Sound)
+                let fits = matches!(src.kind, Kind::Model | Kind::Texture)
                     || matches!(src.kind, Kind::System(k) if k.streams);
                 if !fits || skinned {
                     refused = Some(format!(

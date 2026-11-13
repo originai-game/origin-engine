@@ -19,7 +19,10 @@
 //! frames: a QOA frame carries its predictor's state, so the chunks decode
 //! to exactly the samples of the whole file.
 
-use super::CookError;
+use super::{
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, ext,
+    settings_block, stamp,
+};
 use crate::format::{self, *};
 use crate::qoa;
 use og_blob::BlobWriter;
@@ -659,4 +662,107 @@ pub fn cook_chunk(e: &Encoded, n: u32, stamp: u64) -> Result<Vec<u8>, CookError>
     w.table("meta", &[meta], row_hash::<SoundChunkMeta>())
         .raw("qoa", part.clone(), 16);
     Ok(w.finish())
+}
+
+/// A sound file: cooked whole, or its first chunk with the rest after it.
+pub(crate) static SOUND: KindDef = KindDef {
+    name: "sound",
+    extensions: EXTENSIONS,
+    types: &[],
+    by_content: true,
+    streams: true,
+    plan: plan_sound,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&SOUND];
+
+fn plan_sound<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { early_errors, .. } = state;
+    let settings = match SoundSettings::parse(settings_block(s, "sound")) {
+        Ok(x) => x,
+        Err(e) => {
+            early_errors.push((s.rel.clone(), "sound", e));
+            return;
+        }
+    };
+    // An unreadable file fails in the cook, with its reason.
+    let chunking = shape(&s.rel, &s.bytes)
+        .ok()
+        .and_then(|(rate, ch, frames)| settings.chunking(rate, ch, frames));
+    let shape = chunking.map_or("whole".to_string(), |(p, n)| format!("{n} chunks of {p}"));
+    let st = stamp(&[
+        b"sound",
+        &hash,
+        settings.describe().as_bytes(),
+        shape.as_bytes(),
+    ]);
+    outs.push((
+        s.rel.clone(),
+        format::Sound::NAME,
+        st,
+        Work::Job(Box::new(SoundJob(s, chunking))),
+    ));
+    if let Some((per, count)) = chunking {
+        for n in 1..count {
+            let st = stamp(&[b"sound chunk", &hash, shape.as_bytes(), &n.to_le_bytes()]);
+            outs.push((
+                format!("{}#chunk{n}", s.rel),
+                format::SoundChunk::NAME,
+                st,
+                Work::Job(Box::new(SoundChunkJob(s, per, n))),
+            ));
+        }
+    }
+}
+
+/// A sound's output: the whole sound, or its first chunk of so many QOA
+/// frames.
+struct SoundJob<'a>(&'a Source, Option<(u32, u32)>);
+
+impl Job for SoundJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let SoundJob(s, chunking) = self;
+        let e = s.encoded(chunking.map(|c| c.0))?;
+        cook(&e, *chunking, p.stamp).map(|(b, n)| (b, vec![n]))
+    }
+
+    fn action(&self) -> Action<'_> {
+        let SoundJob(s, chunks) = self;
+        Action::Input(
+            s.bytes.as_slice(),
+            format!("sound {chunks:?} {} {:?}", ext(&s.rel), s.settings),
+            false,
+        )
+    }
+}
+
+/// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
+struct SoundChunkJob<'a>(&'a Source, u32, u32);
+
+impl Job for SoundChunkJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let SoundChunkJob(s, per, n) = self;
+        let e = s.encoded(Some(*per))?;
+        cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
+    }
+
+    fn action(&self) -> Action<'_> {
+        let SoundChunkJob(s, chunk, count) = self;
+        Action::Input(
+            s.bytes.as_slice(),
+            format!(
+                "sound-chunk {chunk} {count} {} {:?}",
+                ext(&s.rel),
+                s.settings
+            ),
+            false,
+        )
+    }
 }

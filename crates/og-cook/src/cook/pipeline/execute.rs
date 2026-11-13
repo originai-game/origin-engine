@@ -176,17 +176,6 @@ pub(crate) fn run(
             texture::cook(&img, format::kind::NORMAL, &options.texture, p.stamp)
                 .map(|b| (b, vec![note]))
         }
-        Work::Sound(s, _) if s.rel.ends_with(".ogt") => {
-            sfx::cook(&s.bytes, p.stamp).map(|(b, n)| (b, vec![n]))
-        }
-        Work::Sound(s, chunking) => {
-            let e = s.encoded(chunking.map(|c| c.0))?;
-            audio::cook(&e, *chunking, p.stamp).map(|(b, n)| (b, vec![n]))
-        }
-        Work::SoundChunk(s, per, n) => {
-            let e = s.encoded(Some(*per))?;
-            audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
-        }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::Job(job) => job.cook(
             p,

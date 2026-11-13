@@ -85,7 +85,6 @@ impl std::error::Error for CookError {}
 enum Kind {
     Model,
     Texture,
-    Sound,
     /// A kind its system's module declares (`pipeline/kinds.rs`).
     System(&'static KindDef),
 }
@@ -95,7 +94,6 @@ impl Kind {
         match self {
             Kind::Model => "model",
             Kind::Texture => "texture",
-            Kind::Sound => "sound",
             Kind::System(k) => k.name,
         }
     }
@@ -208,10 +206,6 @@ enum Work<'a> {
     /// A 2D texture's `#normal` (normal2d.rs): made from it, or from the
     /// file its `normal` line names (its bytes).
     TextureNormal(&'a Source, Option<Vec<u8>>),
-    /// A sound, whole or (QOA frames per chunk, chunks) the first of its chunks.
-    Sound(&'a Source, Option<(u32, u32)>),
-    /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
-    SoundChunk(&'a Source, u32, u32),
     /// A fractured model's `#fracture`.
     Fracture(&'a Source),
     /// Work its system's module plans and cooks (`pipeline/kinds.rs`).

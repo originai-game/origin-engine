@@ -76,10 +76,6 @@ pub(crate) enum Action<'s> {
     Never,
     /// Its own input: the bytes, its settings, and whether it is a texture
     /// (a hit is reported as the shared texture cache's).
-    #[expect(
-        dead_code,
-        reason = "sounds and textures key by their input once they move"
-    )]
     Input(&'s [u8], String, bool),
 }
 
@@ -110,6 +106,8 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     texture_array::KINDS,
     font::KINDS,
     scene::KINDS,
+    audio::KINDS,
+    sfx::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

@@ -21,18 +21,6 @@ pub(crate) fn run(
             s.gltf.as_ref().expect("parsed model").images[*image].as_slice(),
             format!("{kind} cutout {cutout:?} {split:?} {:?}", s.settings),
         )),
-        Some(Work::Sound(s, chunks)) => Some((
-            s.bytes.as_slice(),
-            format!("sound {chunks:?} {} {:?}", super::ext(&s.rel), s.settings),
-        )),
-        Some(Work::SoundChunk(s, chunk, count)) => Some((
-            s.bytes.as_slice(),
-            format!(
-                "sound-chunk {chunk} {count} {} {:?}",
-                super::ext(&s.rel),
-                s.settings
-            ),
-        )),
         Some(Work::Job(j)) => match j.action() {
             Action::Project => project_key.map(|key| (key.as_bytes(), p.id.clone())),
             Action::Never => None,
