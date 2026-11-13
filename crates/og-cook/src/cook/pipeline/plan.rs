@@ -1,11 +1,9 @@
 use super::*;
-mod fx;
 mod images;
 mod media;
 mod models;
 mod text;
 mod world;
-use fx::*;
 use images::*;
 use media::*;
 use models::*;
@@ -88,8 +86,6 @@ pub(crate) fn plan<'a>(
             | Kind::Sound
             | Kind::Font
             | Kind::Document
-            | Kind::Shader
-            | Kind::Post
             | Kind::Tileset
             | Kind::Rig
             | Kind::MotionAction => stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()]),
@@ -157,9 +153,6 @@ fn plan_kind<'a>(
         Kind::Texture => plan_texture(cx, state, s, hash, outs),
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
-        Kind::Shader => plan_shader(cx, state, s, hash, outs),
-        Kind::Post => plan_post(cx, state, s, hash, outs),
-        Kind::UiMaterial => plan_ui_material(cx, state, s, hash, outs),
         Kind::Vector => plan_vector(cx, state, s, hash, outs),
         Kind::Rive => plan_rive(cx, state, s, hash, outs),
         Kind::Style => plan_style(cx, state, s, hash, outs),

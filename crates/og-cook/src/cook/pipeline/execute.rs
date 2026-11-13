@@ -188,68 +188,6 @@ pub(crate) fn run(
             let e = s.encoded(Some(*per))?;
             audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
         }
-        Work::Shader(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a shader is text (UTF-8)".into()))?;
-            let name = s.rel.trim_end_matches(".ogt");
-            let shader = crate::shader::parse_shader(name, text, &mut |src| read_sibling(s, src))
-                .map_err(CookError)?;
-            let compiled = shader_check::validate_shader(&shader)
-                .map_err(|e| CookError(format!("the shader does not compile: {e}")))?;
-            let canonical = crate::shader::shader_text(&shader);
-            let mut w = og_blob::BlobWriter::new(
-                format::Shader::type_hash(),
-                format::Shader::schema_version(),
-                p.stamp,
-            );
-            w.table(
-                "meta",
-                &[format::ShaderMeta {
-                    text_bytes: canonical.len() as u32,
-                }],
-                format::row_hash::<format::ShaderMeta>(),
-            )
-            .raw("text", canonical.into_bytes(), 16);
-            Ok((
-                w.finish(),
-                vec![format!(
-                    "{} parameter(s); compiled for {}",
-                    shader.params.len(),
-                    compiled.join(", ")
-                )],
-            ))
-        }
-        Work::Post(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a post pass is text (UTF-8)".into()))?;
-            let name = s.rel.trim_end_matches(".ogt");
-            let post = crate::shader::parse_post(name, text, &mut |src| read_sibling(s, src))
-                .map_err(CookError)?;
-            let compiled = shader_check::validate_post(&post)
-                .map_err(|e| CookError(format!("the post pass does not compile: {e}")))?;
-            let canonical = crate::shader::post_text(&post);
-            let mut w = og_blob::BlobWriter::new(
-                format::Post::type_hash(),
-                format::Post::schema_version(),
-                p.stamp,
-            );
-            w.table(
-                "meta",
-                &[format::PostMeta {
-                    text_bytes: canonical.len() as u32,
-                }],
-                format::row_hash::<format::PostMeta>(),
-            )
-            .raw("text", canonical.into_bytes(), 16);
-            Ok((
-                w.finish(),
-                vec![format!(
-                    "{} parameter(s); compiled for {}",
-                    post.params.len(),
-                    compiled.join(", ")
-                )],
-            ))
-        }
         Work::Document(s, uses) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a document is text (UTF-8)".into()))?;
@@ -367,38 +305,6 @@ pub(crate) fn run(
         Work::Rive(s, name) => riv::cook(s, name, p.stamp),
         Work::RiveImage(s, n) => riv::cook_image(s, *n, &options.texture, p.stamp),
         Work::RiveFont(f) => riv::cook_font(f, threads, p.stamp),
-        Work::UiMaterial(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a UI material is text (UTF-8)".into()))?;
-            let name = s.rel.trim_end_matches(".ogt");
-            let material =
-                crate::shader::parse_ui_material(name, text, &mut |src| read_beside(s, src))
-                    .map_err(CookError)?;
-            let compiled = shader_check::validate_ui_material(&material)
-                .map_err(|e| CookError(format!("the UI material does not compile: {e}")))?;
-            let canonical = crate::shader::ui_material_text(&material);
-            let mut w = og_blob::BlobWriter::new(
-                format::UiMaterial::type_hash(),
-                format::UiMaterial::schema_version(),
-                p.stamp,
-            );
-            w.table(
-                "meta",
-                &[format::UiMaterialMeta {
-                    text_bytes: canonical.len() as u32,
-                }],
-                format::row_hash::<format::UiMaterialMeta>(),
-            )
-            .raw("text", canonical.into_bytes(), 16);
-            Ok((
-                w.finish(),
-                vec![format!(
-                    "{} parameter(s); compiled for {}",
-                    material.params.len(),
-                    compiled.join(", ")
-                )],
-            ))
-        }
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::MotionAction(s) => {
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
