@@ -2275,6 +2275,12 @@ fn typewriter_reveals_whole_graphemes_and_replays_completion() {
         assert_eq!(d.get("Line").text, "");
         d.step(InputFrame::default());
         assert_eq!(d.get("Line").text, "Á", "the accent stays with its base");
+        let whole = d.read("words");
+        assert_eq!(
+            d.a11y("Line").name,
+            whole.as_str().unwrap(),
+            "named by the whole line while it shows a part"
+        );
         let saved = d.ui.save_state();
         for replay in 0..2 {
             if replay == 1 {

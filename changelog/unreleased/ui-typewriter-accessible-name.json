@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<og-typewriter>",
+      "summary": "A typewriter's accessible name is its whole text from the first tick; a screen reader was given the part shown so far, changing every tick."
+    }
+  ]
+}

@@ -1224,6 +1224,11 @@ impl Ui {
                 let shown = self.reveal(key, &text, styled.num("reveal"));
                 let i = self.leaf("label", id.as_str().into(), Default::default());
                 self.apply_label(i, shown, desc);
+                // A screen reader hears the line once and whole, not each
+                // tick's part of it.
+                if shown.len() < text.len() {
+                    self.tree.semantics_mut(i).name = Some(text.clone());
+                }
                 self.tree.css_text_content(i, styled);
             }
         }
