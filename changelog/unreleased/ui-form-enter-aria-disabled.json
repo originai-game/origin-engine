@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "<form onsubmit>",
+      "summary": "Enter in a form's single-line text field submits the form as a press of its first submit button would: the same validation and action, and nothing while that button is disabled or when the form has no submit button."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "aria-disabled",
+      "summary": "A button with aria-disabled no longer sends its click, tap, double tap or long press; it stays focusable, as documented."
+    }
+  ]
+}

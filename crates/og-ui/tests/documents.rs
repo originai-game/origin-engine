@@ -1431,6 +1431,62 @@ fn a_disabled_controls_action_sends_nothing() {
     assert_eq!(emitted(&mut ui), vec!["sell".to_string()]);
 }
 
+/// `aria-disabled` is inert: its button stays in the tree and sends nothing
+/// when pressed, and one beside it still answers.
+#[test]
+fn an_aria_disabled_button_sends_nothing_when_pressed() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let doc = r#"<meta name="screen" content="map">
+<column id="Map">
+  <button id="Locked" aria-disabled={true} onclick={pick}>Locked</button>
+  <button id="Open" onclick={enter}>Open</button>
+</column>
+"#;
+    ui.define_document(UiDocument::parse("map.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "map"),
+        "map",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let step = |ui: &mut Ui, input: InputFrame| {
+        ui.begin(input, viewport());
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        ui.take_doc_events()
+            .into_iter()
+            .filter(|e| e.kind == "emit")
+            .map(|e| e.name)
+            .collect::<Vec<_>>()
+    };
+    step(&mut ui, InputFrame::default());
+    let click = |ui: &mut Ui, id: &str| {
+        let e = ui.element(id).cloned().unwrap();
+        let at = og_core::glam::Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0);
+        let mut sent = Vec::new();
+        for (pressed, released) in [(true, false), (false, true)] {
+            sent.extend(step(
+                ui,
+                InputFrame {
+                    pointer: at,
+                    pointer_inside: true,
+                    down: pressed,
+                    pressed,
+                    released,
+                    ..InputFrame::default()
+                },
+            ));
+        }
+        sent.extend(step(ui, InputFrame::default()));
+        sent
+    };
+    assert!(ui.element("Locked").unwrap().disabled);
+    assert_eq!(click(&mut ui, "Locked"), Vec::<String>::new());
+    assert_eq!(click(&mut ui, "Open"), vec!["enter".to_string()]);
+}
+
 /// A container query that resizes a slider and a disclosure: settlement
 /// replaces their fields, and what their widgets build inside (the knob at
 /// its value, the summary row) follows the new box in that frame, as a

@@ -375,7 +375,7 @@ impl UiDocument {
             }
         }
         for t in &n.triggers {
-            if let When::Change(e) = &t.when {
+            if let When::Change(e) | When::Submit(Some(e)) = &t.when {
                 e.paths(out);
             }
             if let Act::Set(_, e) = &t.act {

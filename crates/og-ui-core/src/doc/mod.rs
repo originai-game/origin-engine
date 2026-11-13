@@ -432,6 +432,11 @@ pub enum When {
     Toggle,
     /// A `<dialog>` closed (`onclose`).
     Close,
+    /// Enter in a form's single-line text field: HTML's implicit
+    /// submission through the form's first submit button, whose act this
+    /// trigger carries. The expression is that button's `disabled`; while
+    /// it holds, Enter submits nothing.
+    Submit(Option<Expr>),
 }
 
 impl When {

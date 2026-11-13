@@ -673,6 +673,47 @@ fn a_form_submits_only_when_its_fields_are_valid() {
     });
 }
 
+/// Enter in a form's text field submits it as its first submit button
+/// would: validated, and not at all while that button is disabled.
+#[test]
+fn enter_in_a_forms_field_submits_it_as_its_button_does() {
+    let text = r#"<meta name="component" content="t">
+<div><form id="Form" onsubmit={send}>
+  <input type="text" id="Draft" required bind:value={$draft}>
+  <button id="Send" disabled={$muted}>Send</button>
+</form>
+<input type="text" id="Loose" bind:value={$loose}></div>"#;
+    let stores = [
+        ("draft", json!("")),
+        ("muted", json!(false)),
+        ("loose", json!("x")),
+    ];
+    both(text, &stores, |d| {
+        let enter = |d: &mut Doc, id: &str| -> usize {
+            d.click(id);
+            d.events.clear();
+            d.step(InputFrame {
+                keys: vec![UiKey::Enter],
+                ..InputFrame::default()
+            });
+            d.step(InputFrame::default());
+            let sent = d
+                .events
+                .iter()
+                .filter(|e| e.kind == "emit" && e.name == "send")
+                .count();
+            d.events.clear();
+            sent
+        };
+        assert_eq!(enter(d, "Draft"), 0, "an empty required field holds it");
+        d.set("draft", json!("hello"));
+        assert_eq!(enter(d, "Draft"), 1);
+        assert_eq!(enter(d, "Loose"), 0, "a field outside the form");
+        d.set("muted", json!(true));
+        assert_eq!(enter(d, "Draft"), 0, "its submit button is disabled");
+    });
+}
+
 #[test]
 fn date_and_time_inputs_step_their_parts_within_min_max_and_step() {
     let text = r#"<meta name="component" content="t">
