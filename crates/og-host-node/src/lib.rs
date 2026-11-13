@@ -394,17 +394,7 @@ unsafe fn js_string(env: sys::napi_env, value: sys::napi_value) -> String {
 
 impl Hooks for NodeHooks {
     fn pump_platform(&self, engine: u32) -> Result<(), String> {
-        self.dispatch(&Dispatch {
-            kind: 5,
-            engine,
-            id: 0,
-            query: 0,
-            tick: 0.0,
-            dt: 0.0,
-            elapsed: 0.0,
-            payload: String::new(),
-        })
-        .map(|_| ())
+        self.dispatch(&Dispatch::platform_pump(engine)).map(|_| ())
     }
 
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
@@ -450,12 +440,7 @@ impl Hooks for NodeHooks {
                         js_string(env, e)
                     });
                 }
-                let text = js_string(env, answer);
-                match text.strip_prefix('=') {
-                    Some(payload) => Ok(payload.to_string()),
-                    None if text.is_empty() => Ok(String::new()),
-                    None => Err(text),
-                }
+                Dispatch::answer(js_string(env, answer))
             })();
             sys::napi_close_handle_scope(env, scope);
             result
@@ -882,7 +867,7 @@ pub fn og_node_attach_offscreen(env: Env, engine: u32, width: u32, height: u32) 
                 Ok(()) => e,
                 Err(v) => format!("{e}; and the play surface: {v}"),
             };
-            format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e))
+            og_runtime::host_impl::refuse(&e)
         }
     }
 }
@@ -910,7 +895,7 @@ pub fn og_node_wait_gpu(engine: u32) -> String {
     };
     match answer {
         Ok(()) => r#"{"ok":true,"value":null}"#.to_string(),
-        Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, napi_json_string(&e)),
+        Err(e) => og_runtime::host_impl::refuse(&e),
     }
 }
 
@@ -946,12 +931,9 @@ pub fn og_node_probe_listen(engine: u32, port: u32) -> String {
             SERVERS.with(|s| s.borrow_mut().insert(engine, server));
             format!(r#"{{"ok":true,"value":{port}}}"#)
         }
-        Err(e) => format!(
-            r#"{{"ok":false,"reason":{}}}"#,
-            napi_json_string(&format!(
-                "cannot listen on 127.0.0.1:{port}: {e}; pick another --port or stop the other og run"
-            ))
-        ),
+        Err(e) => og_runtime::host_impl::refuse(&format!(
+            "cannot listen on 127.0.0.1:{port}: {e}; pick another --port or stop the other og run"
+        )),
     }
 }
 
@@ -982,18 +964,4 @@ pub fn og_node_probe_close(engine: u32) -> bool {
 pub(crate) fn forget_engine(engine: u32) {
     SERVERS.with(|s| s.borrow_mut().remove(&engine));
     DEVICES.with(|d| d.borrow_mut().remove(&engine));
-}
-
-fn napi_json_string(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
 }

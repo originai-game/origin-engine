@@ -98,6 +98,24 @@ pub fn answer<T: crate::host::wire::ToJson>(r: Result<T, String>) -> String {
     }
 }
 
+/// `{ ok: false, reason }` from a host's own member (its audio output, its
+/// probe socket, its renderer), written as [`answer`] writes a refusal.
+pub fn refuse(reason: &str) -> String {
+    crate::refuse(reason)
+}
+
+/// A string as JSON text, for what a host's own member answers.
+pub fn json_string(s: &str) -> String {
+    serde_json::Value::String(s.to_string()).to_string()
+}
+
+/// The refusal of a host's audio member for an engine without og-audio.
+pub fn no_audio(engine: u32) -> String {
+    refuse(&format!(
+        "engine {engine} has no audio: the runtime did not install og-audio for it (og_audio::install + publish_link at engine creation)"
+    ))
+}
+
 /// The answer of a binding that returns a structured value outright: its
 /// JSON text.
 pub fn json<T: crate::host::wire::ToJson>(value: T) -> String {

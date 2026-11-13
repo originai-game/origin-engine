@@ -77,6 +77,34 @@ pub struct Dispatch {
     pub payload: String,
 }
 
+impl Dispatch {
+    /// The platform pump (kind 5) of `engine`: what a host's
+    /// [`Hooks::pump_platform`] dispatches.
+    pub fn platform_pump(engine: u32) -> Self {
+        Self {
+            kind: 5,
+            engine,
+            id: 0,
+            query: 0,
+            tick: 0.0,
+            dt: 0.0,
+            elapsed: 0.0,
+            payload: String::new(),
+        }
+    }
+
+    /// What the dispatcher answered, as [`Hooks::dispatch`] returns it:
+    /// the text after a leading `=` is the answer, no text is no answer,
+    /// and anything else is the error the game code reported.
+    pub fn answer(text: String) -> Result<String, String> {
+        match text.strip_prefix('=') {
+            Some(payload) => Ok(payload.to_string()),
+            None if text.is_empty() => Ok(String::new()),
+            None => Err(text),
+        }
+    }
+}
+
 /// One column handed to JavaScript: `len` bytes at `ptr` in engine memory.
 #[derive(Clone, Copy, Debug)]
 pub struct ColumnPtr {

@@ -27,6 +27,7 @@
 
 use og_audio::{Clock, Mixer};
 use og_core::IdMap;
+use og_runtime::host_impl::{no_audio, refuse};
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
@@ -49,30 +50,6 @@ const OPUS_PACKETS_PER_PUMP: usize = 4;
 /// The most audio the mixer may lag the world before it skips ahead (250 ms).
 const MAX_BACKLOG_MS: u64 = 250;
 
-fn json_str(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
-fn refuse(reason: &str) -> String {
-    format!(r#"{{"ok":false,"reason":{}}}"#, json_str(reason))
-}
-
-fn no_link(engine: u32) -> String {
-    refuse(&format!(
-        "engine {engine} has no audio: the runtime did not install og-audio for it (og_audio::install + publish_link at engine creation)"
-    ))
-}
-
 /// The output latency the page reports (the AudioContext's `baseLatency`
 /// and `outputLatency` and the worklet ring's buffer, in seconds), written to
 /// og.Audio.outputLatency before the next tick: host input. A Result.
@@ -90,7 +67,7 @@ pub fn og_web_audio_latency(engine: u32, seconds: f64) -> String {
 #[wasm_bindgen]
 pub fn og_web_audio_open(engine: u32, sample_rate: u32) -> String {
     let Some(link) = og_audio::link(engine) else {
-        return no_link(engine);
+        return no_audio(engine);
     };
     let rate = sample_rate.clamp(8_000, 192_000);
     let mixer = Mixer::for_link(&link, rate, Clock::Driven);
@@ -181,7 +158,7 @@ pub fn og_web_audio_close(engine: u32) -> bool {
 #[wasm_bindgen]
 pub fn og_web_audio_insert_qoa(engine: u32, id: String, qoa: &[u8]) -> String {
     let Some(link) = og_audio::link(engine) else {
-        return no_link(engine);
+        return no_audio(engine);
     };
     match link.bank().insert_qoa(&id, qoa) {
         Ok(handle) => format!(r#"{{"ok":true,"value":{handle}}}"#),

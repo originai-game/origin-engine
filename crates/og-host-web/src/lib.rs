@@ -116,17 +116,7 @@ pub(crate) struct WebHooks {
 
 impl Hooks for WebHooks {
     fn pump_platform(&self, engine: u32) -> Result<(), String> {
-        self.dispatch(&Dispatch {
-            kind: 5,
-            engine,
-            id: 0,
-            query: 0,
-            tick: 0.0,
-            dt: 0.0,
-            elapsed: 0.0,
-            payload: String::new(),
-        })
-        .map(|_| ())
+        self.dispatch(&Dispatch::platform_pump(engine)).map(|_| ())
     }
 
     fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
@@ -147,12 +137,7 @@ impl Hooks for WebHooks {
             .dispatcher
             .apply(&JsValue::NULL, &args)
             .map_err(|e| format!("{e:?}"))?;
-        let text = answer.as_string().unwrap_or_default();
-        match text.strip_prefix('=') {
-            Some(payload) => Ok(payload.to_string()),
-            None if text.is_empty() => Ok(String::new()),
-            None => Err(text),
-        }
+        Dispatch::answer(answer.as_string().unwrap_or_default())
     }
 
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
@@ -647,20 +632,7 @@ pub fn og_web_set_fetcher(fetch: js_sys::Function) {
     FETCHER.with(|f| *f.borrow_mut() = Some(fetch));
 }
 
-fn json_str(s: &str) -> String {
-    let mut out = String::with_capacity(s.len() + 2);
-    out.push('"');
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
+use og_runtime::host_impl::json_string;
 
 /// The cooked outputs a bundle's manifest lists, for the Worker's preload:
 /// JSON `[{ "id", "file", "type" }]` in manifest order, with `"group"` on an
@@ -680,19 +652,19 @@ pub fn og_web_bundle_files(manifest: String) -> String {
                     let group = o
                         .group
                         .as_deref()
-                        .map(|g| format!(",\"group\":{}", json_str(g)))
+                        .map(|g| format!(",\"group\":{}", json_string(g)))
                         .unwrap_or_default();
                     format!(
                         "{{\"id\":{},\"file\":{},\"type\":{}{group}}}",
-                        json_str(&o.id),
-                        json_str(&o.file),
-                        json_str(&o.ty)
+                        json_string(&o.id),
+                        json_string(&o.file),
+                        json_string(&o.ty)
                     )
                 })
                 .collect();
             format!("[{}]", items.join(","))
         }
-        Err(e) => format!("{{\"error\":{}}}", json_str(&e.to_string())),
+        Err(e) => format!("{{\"error\":{}}}", json_string(&e.to_string())),
     }
 }
 

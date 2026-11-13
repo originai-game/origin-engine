@@ -8,15 +8,12 @@
 
 use napi_derive::napi;
 use og_net::client::RelayClient;
+use og_runtime::host_impl::refuse;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 thread_local! {
     static LINKS: RefCell<BTreeMap<u32, RelayClient>> = const { RefCell::new(BTreeMap::new()) };
-}
-
-fn json_str(s: &str) -> String {
-    serde_json::Value::String(s.to_string()).to_string()
 }
 
 /// Connect an engine's rooms to a relay (`ws://host:port/<room>` joins that
@@ -29,7 +26,7 @@ pub fn og_node_room_connect(engine: u32, url: String) -> String {
             LINKS.with(|l| l.borrow_mut().insert(engine, client));
             r#"{"ok":true,"value":null}"#.to_string()
         }
-        Err(e) => format!(r#"{{"ok":false,"reason":{}}}"#, json_str(&e)),
+        Err(e) => refuse(&e),
     }
 }
 
@@ -93,9 +90,6 @@ pub fn og_node_relay_start(port: u32) -> String {
             RELAYS.with(|r| r.borrow_mut().push(relay));
             format!(r#"{{"ok":true,"value":{port}}}"#)
         }
-        Err(e) => format!(
-            r#"{{"ok":false,"reason":{}}}"#,
-            json_str(&format!("cannot listen on {addr}: {e}"))
-        ),
+        Err(e) => refuse(&format!("cannot listen on {addr}: {e}")),
     }
 }

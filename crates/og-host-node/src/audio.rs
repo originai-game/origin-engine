@@ -23,6 +23,7 @@
 use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
 use og_audio::{HeadlessMode, HeadlessSink, SinkStats};
+use og_runtime::host_impl::{json_string, no_audio, refuse};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -36,32 +37,8 @@ thread_local! {
     static SINKS: RefCell<BTreeMap<u32, Sink>> = const { RefCell::new(BTreeMap::new()) };
 }
 
-fn json_str(s: &str) -> String {
-    let mut out = String::from("\"");
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if (c as u32) < 0x20 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
 fn ok(value: String) -> String {
     format!(r#"{{"ok":true,"value":{value}}}"#)
-}
-
-fn refuse(reason: &str) -> String {
-    format!(r#"{{"ok":false,"reason":{}}}"#, json_str(reason))
-}
-
-fn no_link(engine: u32) -> String {
-    refuse(&format!(
-        "engine {engine} has no audio: the runtime did not install og-audio for it (og_audio::install + publish_link at engine creation)"
-    ))
 }
 
 /// The bank's decoding counters as JSON members (og-audio `decode.rs`):
@@ -77,7 +54,7 @@ fn decode_members(d: og_audio::DecodeStats) -> String {
 fn stats_json(engine: u32, mode: &str, s: &SinkStats, sample_rate: u32, dropped: u64) -> String {
     format!(
         r#"{{"mode":{},"sampleRate":{},"packets":{},"commands":{},"plays":{},"resyncs":{},"receivedHash":"{:016x}","frames":{},"voices":{},"voicesPeak":{},"late":{},"limited":{},"dropped":{},{}}}"#,
-        json_str(mode),
+        json_string(mode),
         sample_rate,
         s.packets,
         s.commands,
@@ -104,7 +81,7 @@ fn stats_json(engine: u32, mode: &str, s: &SinkStats, sample_rate: u32, dropped:
 #[napi(js_name = "og_node_audio_open")]
 pub fn og_node_audio_open(engine: u32, mode: String, sample_rate: Option<u32>) -> String {
     let Some(link) = og_audio::link(engine) else {
-        return no_link(engine);
+        return no_audio(engine);
     };
     og_node_audio_close(engine);
     let sink = match mode.as_str() {
@@ -133,7 +110,7 @@ pub fn og_node_audio_open(engine: u32, mode: String, sample_rate: Option<u32>) -
         }
     };
     SINKS.with(|s| s.borrow_mut().insert(engine, sink));
-    ok(json_str(&mode))
+    ok(json_string(&mode))
 }
 
 /// Drain the engine's command stream into its sink and (capture) render up
@@ -201,7 +178,7 @@ pub fn og_node_audio_close(engine: u32) -> bool {
 #[napi(js_name = "og_node_audio_insert_qoa")]
 pub fn og_node_audio_insert_qoa(engine: u32, id: String, qoa: Buffer) -> String {
     let Some(link) = og_audio::link(engine) else {
-        return no_link(engine);
+        return no_audio(engine);
     };
     match link.bank().insert_qoa(&id, &qoa) {
         Ok(handle) => ok(handle.to_string()),
@@ -345,7 +322,7 @@ mod device {
             let s = self.mixer.lock().map(|m| m.stats()).unwrap_or_default();
             format!(
                 r#"{{"mode":"device","device":{},"sampleRate":{},"frames":{},"commands":{},"voices":{},"voicesPeak":{},"late":{},"reanchors":{},"limited":{},"dropped":{},{}}}"#,
-                super::json_str(&self.name),
+                super::json_string(&self.name),
                 self.sample_rate,
                 s.frames,
                 s.commands,
