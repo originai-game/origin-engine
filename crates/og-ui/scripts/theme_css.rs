@@ -118,6 +118,116 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     ),
 ];
 
+/// The built-in components' shared dress. A component names a part by its
+/// role (`Shop.frame`, `Friends.row`); every part of a role is dressed once
+/// here from the role tokens (packages/design/tokens/role.css), so a style
+/// pack restyles all of them by setting values. Each selector sits in
+/// `:where()`: no specificity, so a component's or a pack's rule for its
+/// own part wins whatever the order.
+const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, badge, well, figure, label. */
+  :where([part$=".frame"]) {
+    box-sizing: border-box;
+    padding: var(--frame-pad);
+    border: var(--frame-rim-width) solid var(--frame-rim);
+    border-radius: var(--frame-radius);
+    background: var(--frame-fill);
+    box-shadow: var(--frame-shadow);
+    color: var(--ink);
+    font-family: var(--font-body);
+  }
+  :where([part$=".frame"]:where(.hud)) {
+    padding: var(--plate-pad);
+    border: var(--plate-rim-width) solid var(--plate-rim);
+    border-radius: var(--plate-radius);
+    background: var(--plate-fill);
+    box-shadow: var(--plate-shadow);
+  }
+  /* A frame that only lays its children out wears nothing. */
+  :where([part$=".frame"]:where(.bare)) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  :where([part$=".band"]) {
+    min-height: var(--band-height);
+    padding: var(--band-pad);
+    border-bottom: var(--band-rule-width) solid var(--band-rule);
+    background: var(--band-fill);
+    box-shadow: var(--band-shadow);
+  }
+  :where([part$=".band"]:where(.lead)) { justify-content: flex-start; background: var(--band-lead-fill); }
+  :where([part$=".band"]:where(.small)) { min-height: var(--band-small-height); padding: var(--band-small-pad); background: var(--band-small-fill); }
+  :where(.band-end.start) { background: var(--band-end-start-image) center / contain no-repeat; }
+  :where(.band-end.finish) { background: var(--band-end-finish-image) center / contain no-repeat; }
+  :where([part$=".title"]) {
+    margin: 0;
+    font-family: var(--title-font);
+    font-size: var(--title-size);
+    font-weight: var(--title-weight);
+    line-height: var(--font-leading-tight);
+    letter-spacing: var(--title-tracking);
+    text-transform: var(--title-transform);
+    color: var(--title-ink);
+    text-shadow: var(--title-shadow);
+  }
+  /* A band sizes its title through the inherited token, not a descendant
+     selector: a rule with a combinator makes every class change restyle the
+     element's whole subtree. */
+  :where([part$=".band"]:where(.lead)) { --title-size: var(--title-lead-size); }
+  :where([part$=".band"]:where(.small)) { --title-size: var(--title-small-size); }
+  :where([part$=".row"]) { border-radius: var(--row-radius); background: var(--row-fill); color: var(--ink); }
+  :where([part$=".row"]:hover) { background: var(--row-hover-fill); }
+  :where([part$=".row"]:active) { background: var(--row-pressed-fill); }
+  :where([part$=".row"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+    background: var(--row-selected-fill);
+    box-shadow: var(--row-selected-edge);
+    color: var(--ink-selected);
+  }
+  :where([part$=".row"]:where(:disabled, [aria-disabled=true])) { background: var(--row-fill); color: var(--ink-disabled); }
+  :where([part$=".row"]:where([data-done=true])) { color: var(--ink-done); }
+  :where([part$=".cell"]) {
+    box-sizing: border-box;
+    border: var(--cell-rim-width) solid var(--cell-rim);
+    border-radius: var(--cell-radius);
+    background: var(--cell-fill);
+    box-shadow: var(--cell-shadow);
+    color: var(--ink);
+  }
+  :where([part$=".cell"]:hover) { box-shadow: var(--cell-hover-shadow); }
+  :where([part$=".cell"]:active) { background: var(--cell-pressed-fill); }
+  :where([part$=".cell"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) { border-color: var(--cell-selected-rim); }
+  :where([part$=".cell"]:where([data-rarity=common])) { background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); }
+  :where([part$=".cell"]:where([data-rarity=uncommon])) { background: var(--cell-uncommon-fill); box-shadow: var(--cell-uncommon-shadow); }
+  :where([part$=".cell"]:where([data-rarity=rare])) { background: var(--cell-rare-fill); box-shadow: var(--cell-rare-shadow); }
+  :where([part$=".cell"]:where([data-rarity=epic])) { background: var(--cell-epic-fill); box-shadow: var(--cell-epic-shadow); }
+  :where([part$=".cell"]:where([data-rarity=legendary])) { background: var(--cell-legendary-fill); box-shadow: var(--cell-legendary-shadow); }
+  :where([part$=".cell"]:where([data-rarity=mythic])) { background: var(--cell-mythic-fill); box-shadow: var(--cell-mythic-shadow); }
+  :where([part$=".cell"]:where([data-empty=true])) { box-shadow: var(--cell-empty-shadow); }
+  :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); color: var(--ink-disabled); }
+  :where([part$=".badge"]) {
+    border-radius: var(--badge-radius);
+    background: var(--badge-fill);
+    box-shadow: var(--badge-shadow);
+    color: var(--badge-ink);
+    font-family: var(--figure-font);
+  }
+  :where([part$=".well"]) { border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
+  :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
+  :where([part$=".label"], [part$=".heading"]) {
+    font-family: var(--label-font);
+    letter-spacing: var(--label-tracking);
+    text-transform: var(--label-transform);
+    color: var(--ink-label);
+  }
+  :where([data-trend=up]) { color: var(--trend-up); }
+  :where([data-trend=down]) { color: var(--trend-down); }
+  :where([data-tone=damage]) { color: var(--tone-damage); }
+  :where([data-tone=heal]) { color: var(--tone-heal); }
+  :where([data-tone=crit]) { color: var(--tone-crit); }
+  /* A phone on its side: bands and titles one step down. */
+  @media (height < 500px) {
+    :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }
+    :where([part$=".band"]) { --title-size: var(--title-lead-size); }
+    :where([part$=".band"]:where(.small)) { --title-size: var(--title-small-size); }
+  }
+"#;
+
 // The material owns tint/edge/shadows as one shader operation. Repeating
 // these as a background or border would composite them twice.
 const GLASS_LIFT: &str = "background: none; border: none; box-shadow: none; backdrop-filter: blur(var(--glass-blur-thick)) saturate(var(--glass-saturation)); -og-material: glass thick lift;";
@@ -270,6 +380,13 @@ pub fn generate(t: &Value) -> Result<String, String> {
             Value::String(s) => writeln!(out, "    --{name}: {s};").unwrap(),
             v => writeln!(out, "    --{name}: {v};").unwrap(),
         }
+    }
+    // The roles' tokens are `--<role>-<property>`, no group prefix.
+    for (name, value) in super::get(t, &["role"])?
+        .as_object()
+        .ok_or("tokens: role is not an object")?
+    {
+        writeln!(out, "    --{name}: {};", value.as_str().unwrap_or_default()).unwrap();
     }
     for (name, value) in super::get(t, &["derived", "alias"])?
         .as_object()
@@ -442,6 +559,7 @@ pub fn generate(t: &Value) -> Result<String, String> {
     for (old, selector, declarations) in PART_RULES {
         writeln!(out, "  /* {old} */\n  {selector} {{ {declarations} }}").unwrap();
     }
+    out.push_str(ROLE_RULES);
     out.push_str("}\n");
     Ok(out)
 }

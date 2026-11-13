@@ -32,7 +32,7 @@
 
 <style>
 [part="RpgPlaceCard.frame"][hidden], [part="RpgPlaceCard.frame"] [hidden] { display: none; }
-[part="RpgPlaceCard.frame"] { display: flex; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; padding: var(--space-sm); }
+[part="RpgPlaceCard.frame"] { display: flex; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; }
 .picture { width: 34%; height: stretch; object-fit: cover; flex: none; }
 .side { display: flex; width: stretch; gap: var(--space-md); align-items: center; }
 .text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }

@@ -18,7 +18,7 @@
   mana bars beside it. large is the player's plate, with the figures on the
   bars; compact is a party row. Read only.
 -->
-<div id="RpgVitals" part="RpgVitals.frame" data-plate={plate} data-down={down} role="group" aria-label={name}>
+<div id="RpgVitals" part="RpgVitals.frame" class="bare" data-plate={plate} data-down={down} role="group" aria-label={name}>
   <div class="ring"><img class="portrait" src={portrait} alt="" hidden={!portrait}></div>
   <div class="badge" hidden={!level}><span class="badge-level">{formatNumber(level)}</span></div>
   <div class="bars">

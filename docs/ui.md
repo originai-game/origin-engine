@@ -1068,13 +1068,14 @@ number.
 |---|---|
 | `--color-*`, the role names (`--ink`, `--primary`…) | Colours, per scheme; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
 | `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes (`--size-xs` to `--size-7xl`; a layout takes a step, never a multiple of one), line widths (`--stroke-edge` the material hairline) |
-| `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles; `--font-leading-*` (`flat`, `tight`, `snug`, `normal`), `--font-tracking-*` and `--font-weight-*` for text a part sizes itself |
+| `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles; `--font-leading-*` (`flat`, `tight`, `snug`, `normal`), `--font-tracking-*` and `--font-weight-*` for text a part sizes itself; `--font-step-2xs` to `--font-step-6xl` are sizes in `em` of the surrounding text, so a part sized with one follows the player's text scale |
 | `--density-compact-*`, `--density-pad-*`, `--density-touch-*` | Each input's control, row and header heights, gutter and section |
 | `--control-sm/md/lg`, `--row`, `--header`, `--gutter`, `--section`, `--touch-target` | The input's density, and the smallest finger target |
 | `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*`, `--motion-scale-*` | Durations, the controls' enter and exit curves (`in-out` for what loops), the named transitions' springs (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`), how far a moment scales (`press`, `swell`, `pop`, `shrink`) and how low a waiting thing breathes (`breathe`) |
 | `--state-*` | Hover wash, press scales (`press-scale` a button's part, `control-press-scale` a control row's), lift, disabled opacities (`touch-disabled-opacity` the stick, pad and action button), press duration, focus ring and player rings |
 | `--opacity-*`, `--filter-*` | How strongly a thing shows (`faint`, `dim` what cannot be used, `muted` what is done, `soft`), and what art takes out of reach (`--filter-locked`, `--filter-spent`) |
 | `--shadow-*`, `--elevation-*`, `--glass-*` | Shadows per scheme and the controls' inset shadows, the two drop elevations, glass blur and saturation |
+| `--frame-*`, `--plate-*`, `--band-*`, `--title-*`, `--row-*`, `--cell-*`, `--badge-*`, `--well-*`, `--figure-*`, `--label-*`, `--ink-label/bright/done/disabled/selected/down/mark`, `--trend-*`, `--tone-*`, `--mark-*`, `--sfx-*` | What the built-in components' role parts wear (below) |
 | `--button-*` | Radius, border width, rest and pressed shadows (stepper, details, keyboard keys and option rows take them) |
 | `--field-*` | Radius, border width and well shadow of text boxes, triggers, steppers, checkbox boxes and radio rings |
 | `--checkbox-*` | Box size, radius and mark ratios, the mark's pop spring and its exit |
@@ -1090,6 +1091,26 @@ number.
 
 Icon path coordinates and behaviour constants (key repeat, dead zones,
 caret blink, typewriter speed) are not tokens.
+
+**Role parts.** A built-in component names a part by its role
+(`Shop.frame`, `Friends.row`, `Chat.title`), and the default style
+dresses every part of a role once, from that role's tokens
+(`packages/design/tokens/role.css`). A pack restyles all of them by
+setting the tokens; it writes a rule only for what one component alone
+wears. The role rules sit in `:where()`, so any pack or document rule wins.
+
+| Role (`part$=".<role>"`) | Tokens | States the default dresses |
+|---|---|---|
+| `frame` | `--frame-fill/rim/rim-width/radius/shadow/pad/corner-image/corner-size` | `class="hud"` wears the plate (`--plate-fill/rim/rim-width/radius/shadow/pad`); `class="bare"` wears nothing (a frame that only lays its children out) |
+| `band`, `title` | `--band-fill/height/pad/rule/rule-width/rule-image/shadow/end-start-image/end-finish-image`, `--title-ink/font/size/weight/tracking/transform/shadow` | `class="lead"` and `class="small"` bands (`--band-lead-fill`, `--band-small-*`, `--title-lead-size`, `--title-small-size`), which set `--title-size` for the title inside them; one step down on a phone on its side |
+| `row` | `--row-fill/hover-fill/pressed-fill/selected-fill/selected-edge/radius` | hover, pressed, selected (`aria-selected`, `aria-current`, `data-selected`), disabled, `data-done` |
+| `cell` | `--cell-fill/rim/rim-width/selected-rim/radius/shadow/hover-shadow/pressed-fill/empty-shadow`, `--cell-<rarity>-fill/shadow` | hover, pressed, selected, `data-rarity`, `data-empty`, disabled or `data-locked` |
+| `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
+| `label`, `heading` | `--label-font/tracking/transform`, `--ink-label` | |
+| any part | `--trend-up/down`, `--tone-damage/heal/crit` | `data-trend`, `data-tone` |
+
+`--mark-*` are the small signs a pack supplies as images and `--sfx-*`
+its press sounds; both are `none` in the default style.
 
 ### 3.2 Parts and states
 

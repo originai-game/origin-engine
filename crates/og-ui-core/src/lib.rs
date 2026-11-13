@@ -5,6 +5,17 @@
 /// The engine's default CSS, generated from the shared design tokens.
 pub const DEFAULT_CSS: &str = include_str!("../default.css");
 
+/// The role rules of the default CSS (`:where([part$=".frame"])` and the
+/// rest, its last section): what dresses a document's own elements. A style
+/// pack's sheet holds the whole default; a document without a pack takes
+/// these, and reads their tokens from the root cascade.
+pub static DEFAULT_ROLE_CSS: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+    let at = DEFAULT_CSS
+        .find("/* Roles:")
+        .expect("the generated default CSS ends with its role rules");
+    format!("@layer og-default {{\n{}", &DEFAULT_CSS[at..])
+});
+
 #[doc(hidden)]
 pub mod a11y;
 pub mod actions;

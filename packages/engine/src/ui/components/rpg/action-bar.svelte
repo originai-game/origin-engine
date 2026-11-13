@@ -10,7 +10,7 @@
   cooldown shade, and a group of quick items with counts. Reports use (a
   slot's key, tap or click); the game binds the hotkeys.
 -->
-<nav id="RpgActionBar" part="RpgActionBar.frame" aria-label={t("rpg.actions.name")}>
+<nav id="RpgActionBar" part="RpgActionBar.frame" class="bare" aria-label={t("rpg.actions.name")}>
   <div class="skills" role="toolbar">
     {#each skills as s (s.id)}
       <button part="RpgActionBar.skill" data-ready={s.ready} aria-label={s.name} disabled={!s.ready} onclick={use}><div class="face">

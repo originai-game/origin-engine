@@ -84,6 +84,20 @@
   --font-leading-tight: 1.12;
   --font-leading-snug: 1.3;
   --font-leading-normal: 1.45;
+  /* Steps in em of the text a part stands in, so a part sized with one
+     follows the player's text scale (the scale's own sizes are px). `md` is
+     the surrounding size. */
+  --font-step-2xs: 0.72em;
+  --font-step-xs: 0.86em;
+  --font-step-sm: 0.93em;
+  --font-step-md: 1em;
+  --font-step-lg: 1.14em;
+  --font-step-xl: 1.29em;
+  --font-step-2xl: 1.43em;
+  --font-step-3xl: 1.71em;
+  --font-step-4xl: 2em;
+  --font-step-5xl: 3em;
+  --font-step-6xl: 4.29em;
   /* Tracking a style opens its capitals and small labels with. */
   --font-tracking-xs: 0.02em;
   --font-tracking-sm: 0.04em;

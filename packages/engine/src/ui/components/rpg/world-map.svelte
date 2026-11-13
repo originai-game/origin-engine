@@ -14,7 +14,7 @@
   it and report choose (a marker's key). The player's marker is not a
   button.
 -->
-<figure id="RpgWorldMap" part="RpgWorldMap.frame" aria-label={t("rpg.map.name")}>
+<figure id="RpgWorldMap" part="RpgWorldMap.frame" class="bare" aria-label={t("rpg.map.name")}>
   <div class="sheet">
     <img class="terrain" src={map} alt="">
     <div class="markers" role="group" aria-label={t("rpg.map.places")}>

@@ -1,7 +1,7 @@
 # fantasy-frost: a token-only variant
 
 `frost.css` sets `:root` tokens and nothing else: steel rims instead of
-brass (`--line-strong`, `--fantasy-brass-*`, `--fantasy-rim`), frost-blue
+brass (`--line-strong`, `--fantasy-brass-*`, `--frame-rim`), frost-blue
 washes and focus (`--accent`, `--focus`, `--gold`), a blue primary and band,
 blue-black grounds. It selects no part.
 

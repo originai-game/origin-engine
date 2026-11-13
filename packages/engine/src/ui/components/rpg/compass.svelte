@@ -9,7 +9,7 @@
   A compass strip: the cardinal letters, ticks and pins the game places,
   under a fixed centre mark. It reports nothing.
 -->
-<div id="RpgCompass" part="RpgCompass.frame" role="image" aria-label={t("rpg.compass.name", { heading: heading })}>
+<div id="RpgCompass" part="RpgCompass.frame" class="bare" role="image" aria-label={t("rpg.compass.name", { heading: heading })}>
   <div class="end start"></div>
   <div class="strip">
     {#each marks as m (m.id)}

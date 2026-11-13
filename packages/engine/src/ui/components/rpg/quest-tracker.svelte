@@ -12,7 +12,7 @@
   their ticks, and the distance to its marker. Read only; the journal owns
   choosing what to track.
 -->
-<section id="RpgQuestTracker" part="RpgQuestTracker.frame" role="status" aria-label={t("rpg.quests.tracked")} hidden={!name}>
+<section id="RpgQuestTracker" part="RpgQuestTracker.frame" class="hud" role="status" aria-label={t("rpg.quests.tracked")} hidden={!name}>
   <h3 part="RpgQuestTracker.title">{name}</h3>
   <ul class="tracker-steps">
     {#each steps as s (s.id)}

@@ -113,6 +113,17 @@
     --font-scale-xl-size: 20px;
     --font-scale-xs-line-height: 16px;
     --font-scale-xs-size: 12px;
+    --font-step-2xl: 1.43em;
+    --font-step-2xs: 0.72em;
+    --font-step-3xl: 1.71em;
+    --font-step-4xl: 2em;
+    --font-step-5xl: 3em;
+    --font-step-6xl: 4.29em;
+    --font-step-lg: 1.14em;
+    --font-step-md: 1em;
+    --font-step-sm: 0.93em;
+    --font-step-xl: 1.29em;
+    --font-step-xs: 0.86em;
     --font-tracking-lg: 0.08em;
     --font-tracking-md: 0.06em;
     --font-tracking-sm: 0.04em;
@@ -301,6 +312,113 @@
     --switch-inset-ratio: 0.11;
     --switch-width-ratio: 1.72;
     --tabs-radius: var(--radius-button);
+    --badge-fill: var(--control-strong);
+    --badge-ink: var(--ink);
+    --badge-radius: var(--radius-capsule);
+    --badge-shadow: none;
+    --band-end-finish-image: none;
+    --band-end-start-image: none;
+    --band-fill: none;
+    --band-height: var(--size-lg);
+    --band-lead-fill: none;
+    --band-pad: var(--space-xs) var(--space-lg);
+    --band-rule: var(--line);
+    --band-rule-image: none;
+    --band-rule-width: var(--stroke-hairline);
+    --band-shadow: none;
+    --band-small-fill: none;
+    --band-small-height: var(--size-md);
+    --band-small-pad: var(--space-xxs) var(--space-md);
+    --cell-common-fill: var(--control);
+    --cell-common-shadow: inset 0 0 0 var(--stroke-regular) var(--common, var(--line-strong));
+    --cell-empty-shadow: var(--shadow-well);
+    --cell-epic-fill: var(--control);
+    --cell-epic-shadow: inset 0 0 0 var(--stroke-regular) var(--epic, var(--xp));
+    --cell-fill: var(--control);
+    --cell-hover-shadow: var(--shadow-float);
+    --cell-legendary-fill: var(--control);
+    --cell-legendary-shadow: inset 0 0 0 var(--stroke-regular) var(--legendary, var(--warn));
+    --cell-mythic-fill: var(--control);
+    --cell-mythic-shadow: inset 0 0 0 var(--stroke-regular) var(--mythic, var(--danger));
+    --cell-pressed-fill: var(--control-strong);
+    --cell-radius: var(--slot-radius);
+    --cell-rare-fill: var(--control);
+    --cell-rare-shadow: inset 0 0 0 var(--stroke-regular) var(--rare, var(--info));
+    --cell-rim: var(--line);
+    --cell-rim-width: var(--stroke-hairline);
+    --cell-selected-rim: var(--focus);
+    --cell-shadow: var(--slot-shadow);
+    --cell-uncommon-fill: var(--control);
+    --cell-uncommon-shadow: inset 0 0 0 var(--stroke-regular) var(--uncommon, var(--success));
+    --figure-font: var(--type-numeric-font);
+    --figure-ink: var(--ink);
+    --figure-shadow: none;
+    --frame-corner-image: none;
+    --frame-corner-size: var(--size-lg);
+    --frame-fill: var(--panel);
+    --frame-pad: var(--space-lg);
+    --frame-radius: var(--radius-panel);
+    --frame-rim: var(--line);
+    --frame-rim-width: var(--stroke-hairline);
+    --frame-shadow: var(--shadow-float);
+    --ink-bright: var(--ink);
+    --ink-disabled: var(--ink-faint);
+    --ink-done: var(--ink-faint);
+    --ink-down: var(--ink-faint);
+    --ink-label: var(--ink-muted);
+    --ink-mark: var(--ink-muted);
+    --ink-selected: var(--on-selection);
+    --label-font: var(--type-label-font);
+    --label-tracking: 0em;
+    --label-transform: none;
+    --mark-arrow: none;
+    --mark-box: none;
+    --mark-check: none;
+    --mark-chevron: none;
+    --mark-close: none;
+    --mark-diamond: none;
+    --mark-diamond-open: none;
+    --mark-pin: none;
+    --mark-skull: none;
+    --mark-tower: none;
+    --mark-travel: none;
+    --mark-triangle: none;
+    --plate-fill: var(--hud);
+    --plate-pad: var(--space-sm);
+    --plate-radius: var(--hud-radius);
+    --plate-rim: var(--line-70);
+    --plate-rim-width: var(--stroke-hairline);
+    --plate-shadow: none;
+    --row-fill: none;
+    --row-hover-fill: var(--panel-hover);
+    --row-pressed-fill: var(--control-strong);
+    --row-radius: var(--radius-control);
+    --row-selected-edge: inset var(--stroke-thick) 0 0 var(--primary);
+    --row-selected-fill: var(--selection);
+    --sfx-back: none;
+    --sfx-confirm: none;
+    --sfx-error: none;
+    --sfx-open: none;
+    --sfx-reward: none;
+    --sfx-tap: none;
+    --sfx-tap2: none;
+    --title-font: var(--type-title-font);
+    --title-ink: var(--ink);
+    --title-lead-size: var(--font-step-xl);
+    --title-shadow: none;
+    --title-size: var(--font-step-2xl);
+    --title-small-size: var(--font-step-md);
+    --title-tracking: 0em;
+    --title-transform: none;
+    --title-weight: var(--font-weight-semibold);
+    --tone-crit: var(--warn);
+    --tone-damage: var(--danger);
+    --tone-heal: var(--success);
+    --trend-down: var(--danger);
+    --trend-up: var(--success);
+    --well-fill: var(--well);
+    --well-radius: var(--radius-control);
+    --well-shadow: var(--shadow-well);
     --control-lg: var(--density-active-control-lg, var(--density-compact-control-lg));
     --control-md: var(--density-active-control-md, var(--density-compact-control-md));
     --control-sm: var(--density-active-control-sm, var(--density-compact-control-sm));
@@ -1092,4 +1210,106 @@
   input[type=radio]::part(chosen) { border: var(--stroke-regular) solid var(--primary); }
   /* Tabs::tab:selected */
   tabs::part(tab):checked { background: var(--selection); box-shadow: var(--shadow-tab-selected); }
+  /* Roles: frame, plate, band, title, row, cell, badge, well, figure, label. */
+  :where([part$=".frame"]) {
+    box-sizing: border-box;
+    padding: var(--frame-pad);
+    border: var(--frame-rim-width) solid var(--frame-rim);
+    border-radius: var(--frame-radius);
+    background: var(--frame-fill);
+    box-shadow: var(--frame-shadow);
+    color: var(--ink);
+    font-family: var(--font-body);
+  }
+  :where([part$=".frame"]:where(.hud)) {
+    padding: var(--plate-pad);
+    border: var(--plate-rim-width) solid var(--plate-rim);
+    border-radius: var(--plate-radius);
+    background: var(--plate-fill);
+    box-shadow: var(--plate-shadow);
+  }
+  /* A frame that only lays its children out wears nothing. */
+  :where([part$=".frame"]:where(.bare)) { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  :where([part$=".band"]) {
+    min-height: var(--band-height);
+    padding: var(--band-pad);
+    border-bottom: var(--band-rule-width) solid var(--band-rule);
+    background: var(--band-fill);
+    box-shadow: var(--band-shadow);
+  }
+  :where([part$=".band"]:where(.lead)) { justify-content: flex-start; background: var(--band-lead-fill); }
+  :where([part$=".band"]:where(.small)) { min-height: var(--band-small-height); padding: var(--band-small-pad); background: var(--band-small-fill); }
+  :where(.band-end.start) { background: var(--band-end-start-image) center / contain no-repeat; }
+  :where(.band-end.finish) { background: var(--band-end-finish-image) center / contain no-repeat; }
+  :where([part$=".title"]) {
+    margin: 0;
+    font-family: var(--title-font);
+    font-size: var(--title-size);
+    font-weight: var(--title-weight);
+    line-height: var(--font-leading-tight);
+    letter-spacing: var(--title-tracking);
+    text-transform: var(--title-transform);
+    color: var(--title-ink);
+    text-shadow: var(--title-shadow);
+  }
+  /* A band sizes its title through the inherited token, not a descendant
+     selector: a rule with a combinator makes every class change restyle the
+     element's whole subtree. */
+  :where([part$=".band"]:where(.lead)) { --title-size: var(--title-lead-size); }
+  :where([part$=".band"]:where(.small)) { --title-size: var(--title-small-size); }
+  :where([part$=".row"]) { border-radius: var(--row-radius); background: var(--row-fill); color: var(--ink); }
+  :where([part$=".row"]:hover) { background: var(--row-hover-fill); }
+  :where([part$=".row"]:active) { background: var(--row-pressed-fill); }
+  :where([part$=".row"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+    background: var(--row-selected-fill);
+    box-shadow: var(--row-selected-edge);
+    color: var(--ink-selected);
+  }
+  :where([part$=".row"]:where(:disabled, [aria-disabled=true])) { background: var(--row-fill); color: var(--ink-disabled); }
+  :where([part$=".row"]:where([data-done=true])) { color: var(--ink-done); }
+  :where([part$=".cell"]) {
+    box-sizing: border-box;
+    border: var(--cell-rim-width) solid var(--cell-rim);
+    border-radius: var(--cell-radius);
+    background: var(--cell-fill);
+    box-shadow: var(--cell-shadow);
+    color: var(--ink);
+  }
+  :where([part$=".cell"]:hover) { box-shadow: var(--cell-hover-shadow); }
+  :where([part$=".cell"]:active) { background: var(--cell-pressed-fill); }
+  :where([part$=".cell"]:where([aria-selected=true], [aria-current=true], [data-selected=true])) { border-color: var(--cell-selected-rim); }
+  :where([part$=".cell"]:where([data-rarity=common])) { background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); }
+  :where([part$=".cell"]:where([data-rarity=uncommon])) { background: var(--cell-uncommon-fill); box-shadow: var(--cell-uncommon-shadow); }
+  :where([part$=".cell"]:where([data-rarity=rare])) { background: var(--cell-rare-fill); box-shadow: var(--cell-rare-shadow); }
+  :where([part$=".cell"]:where([data-rarity=epic])) { background: var(--cell-epic-fill); box-shadow: var(--cell-epic-shadow); }
+  :where([part$=".cell"]:where([data-rarity=legendary])) { background: var(--cell-legendary-fill); box-shadow: var(--cell-legendary-shadow); }
+  :where([part$=".cell"]:where([data-rarity=mythic])) { background: var(--cell-mythic-fill); box-shadow: var(--cell-mythic-shadow); }
+  :where([part$=".cell"]:where([data-empty=true])) { box-shadow: var(--cell-empty-shadow); }
+  :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); color: var(--ink-disabled); }
+  :where([part$=".badge"]) {
+    border-radius: var(--badge-radius);
+    background: var(--badge-fill);
+    box-shadow: var(--badge-shadow);
+    color: var(--badge-ink);
+    font-family: var(--figure-font);
+  }
+  :where([part$=".well"]) { border-radius: var(--well-radius); background: var(--well-fill); box-shadow: var(--well-shadow); }
+  :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
+  :where([part$=".label"], [part$=".heading"]) {
+    font-family: var(--label-font);
+    letter-spacing: var(--label-tracking);
+    text-transform: var(--label-transform);
+    color: var(--ink-label);
+  }
+  :where([data-trend=up]) { color: var(--trend-up); }
+  :where([data-trend=down]) { color: var(--trend-down); }
+  :where([data-tone=damage]) { color: var(--tone-damage); }
+  :where([data-tone=heal]) { color: var(--tone-heal); }
+  :where([data-tone=crit]) { color: var(--tone-crit); }
+  /* A phone on its side: bands and titles one step down. */
+  @media (height < 500px) {
+    :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }
+    :where([part$=".band"]) { --title-size: var(--title-lead-size); }
+    :where([part$=".band"]:where(.small)) { --title-size: var(--title-small-size); }
+  }
 }

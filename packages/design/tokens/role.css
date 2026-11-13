@@ -1,0 +1,141 @@
+/* Role: what the built-in components' shared parts wear. A component names
+   a part by its role (`Shop.frame`, `Friends.row`, `Chat.title`) and the
+   default style dresses every part of that role once, from these tokens
+   (emitted under their own names, without the group prefix: `--frame-fill`).
+   A style pack sets their values and never repeats the rules. */
+:root {
+  /* Frame: a panel a component stands in. `.hud` on a frame makes it a
+     plate, the lighter surface a HUD sits on over the scene. */
+  --role-frame-fill: var(--panel);
+  --role-frame-rim: var(--line);
+  --role-frame-rim-width: var(--stroke-hairline);
+  --role-frame-radius: var(--radius-panel);
+  --role-frame-shadow: var(--shadow-float);
+  --role-frame-pad: var(--space-lg);
+  --role-frame-corner-image: none;
+  --role-frame-corner-size: var(--size-lg);
+  --role-plate-fill: var(--hud);
+  --role-plate-rim: var(--line-70);
+  --role-plate-rim-width: var(--stroke-hairline);
+  --role-plate-radius: var(--hud-radius);
+  --role-plate-shadow: none;
+  --role-plate-pad: var(--space-sm);
+
+  /* Band: the heading strip across a frame's top, and the title in it.
+     `.small` is a HUD panel's band, `.lead` one whose title starts at the
+     leading edge. */
+  --role-band-fill: none;
+  --role-band-lead-fill: none;
+  --role-band-small-fill: none;
+  --role-band-height: var(--size-lg);
+  --role-band-small-height: var(--size-md);
+  --role-band-pad: var(--space-xs) var(--space-lg);
+  --role-band-small-pad: var(--space-xxs) var(--space-md);
+  --role-band-rule: var(--line);
+  --role-band-rule-width: var(--stroke-hairline);
+  --role-band-rule-image: none;
+  --role-band-shadow: none;
+  --role-band-end-start-image: none;
+  --role-band-end-finish-image: none;
+  --role-title-ink: var(--ink);
+  --role-title-font: var(--type-title-font);
+  --role-title-size: var(--font-step-2xl);
+  --role-title-lead-size: var(--font-step-xl);
+  --role-title-small-size: var(--font-step-md);
+  --role-title-weight: var(--font-weight-semibold);
+  --role-title-tracking: 0em;
+  --role-title-transform: none;
+  --role-title-shadow: none;
+
+  /* Row: one line of a list a player picks from. */
+  --role-row-fill: none;
+  --role-row-hover-fill: var(--panel-hover);
+  --role-row-pressed-fill: var(--control-strong);
+  --role-row-selected-fill: var(--selection);
+  --role-row-selected-edge: inset var(--stroke-thick) 0 0 var(--primary);
+  --role-row-radius: var(--radius-control);
+
+  /* Cell: a tile of a grid (an item, a card, a day). */
+  --role-cell-fill: var(--control);
+  --role-cell-rim: var(--line);
+  --role-cell-rim-width: var(--stroke-hairline);
+  --role-cell-selected-rim: var(--focus);
+  --role-cell-radius: var(--slot-radius);
+  --role-cell-shadow: var(--slot-shadow);
+  --role-cell-hover-shadow: var(--shadow-float);
+  --role-cell-pressed-fill: var(--control-strong);
+  --role-cell-empty-shadow: var(--shadow-well);
+  /* A cell holding something of a rarity (`data-rarity`). A style names
+     the six rarity colours (`--common` … `--mythic`); without them a rarity
+     borrows a status colour. */
+  --role-cell-common-fill: var(--control);
+  --role-cell-common-shadow: inset 0 0 0 var(--stroke-regular) var(--common, var(--line-strong));
+  --role-cell-uncommon-fill: var(--control);
+  --role-cell-uncommon-shadow: inset 0 0 0 var(--stroke-regular) var(--uncommon, var(--success));
+  --role-cell-rare-fill: var(--control);
+  --role-cell-rare-shadow: inset 0 0 0 var(--stroke-regular) var(--rare, var(--info));
+  --role-cell-epic-fill: var(--control);
+  --role-cell-epic-shadow: inset 0 0 0 var(--stroke-regular) var(--epic, var(--xp));
+  --role-cell-legendary-fill: var(--control);
+  --role-cell-legendary-shadow: inset 0 0 0 var(--stroke-regular) var(--legendary, var(--warn));
+  --role-cell-mythic-fill: var(--control);
+  --role-cell-mythic-shadow: inset 0 0 0 var(--stroke-regular) var(--mythic, var(--danger));
+
+  /* Badge, well, figure: a count or state pinned to a thing; a sunken
+     ground for a bar or picture; a number read at a glance. */
+  --role-badge-fill: var(--control-strong);
+  --role-badge-ink: var(--ink);
+  --role-badge-radius: var(--radius-capsule);
+  --role-badge-shadow: none;
+  --role-well-fill: var(--well);
+  --role-well-radius: var(--radius-control);
+  --role-well-shadow: var(--shadow-well);
+  --role-figure-ink: var(--ink);
+  --role-figure-font: var(--type-numeric-font);
+  --role-figure-shadow: none;
+
+  /* Label: a caption or column heading. */
+  --role-label-font: var(--type-label-font);
+  --role-label-tracking: 0em;
+  --role-label-transform: none;
+
+  /* Inks by state, on any of the roles above. */
+  --role-ink-label: var(--ink-muted);
+  --role-ink-bright: var(--ink);
+  --role-ink-done: var(--ink-faint);
+  --role-ink-disabled: var(--ink-faint);
+  --role-ink-selected: var(--on-selection);
+  --role-ink-down: var(--ink-faint);
+  --role-ink-mark: var(--ink-muted);
+
+  /* A value moving up or down, and what a hit did. */
+  --role-trend-up: var(--success);
+  --role-trend-down: var(--danger);
+  --role-tone-damage: var(--danger);
+  --role-tone-heal: var(--success);
+  --role-tone-crit: var(--warn);
+
+  /* Marks: small drawn signs a pack supplies as images (none by default,
+     where a component's own icon shows). */
+  --role-mark-diamond: none;
+  --role-mark-diamond-open: none;
+  --role-mark-triangle: none;
+  --role-mark-check: none;
+  --role-mark-chevron: none;
+  --role-mark-box: none;
+  --role-mark-tower: none;
+  --role-mark-skull: none;
+  --role-mark-arrow: none;
+  --role-mark-pin: none;
+  --role-mark-travel: none;
+  --role-mark-close: none;
+
+  /* Sounds a pack supplies for a press (none by default). */
+  --role-sfx-tap: none;
+  --role-sfx-tap2: none;
+  --role-sfx-confirm: none;
+  --role-sfx-back: none;
+  --role-sfx-open: none;
+  --role-sfx-error: none;
+  --role-sfx-reward: none;
+}

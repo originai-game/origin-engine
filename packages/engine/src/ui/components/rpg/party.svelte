@@ -11,7 +11,7 @@
   name, and health and mana bars with their figures. Reports choose (a
   member's key). The cards share the width evenly.
 -->
-<section id="RpgParty" part="RpgParty.frame" aria-label={t("rpg.party.name")}>
+<section id="RpgParty" part="RpgParty.frame" class="bare" aria-label={t("rpg.party.name")}>
   {#if members.length}
     <div class="cards" role="listbox" aria-label={t("rpg.party.name")}>
       {#each members as m (m.id)}
