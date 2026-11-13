@@ -103,6 +103,20 @@ pub struct FftOcean {
     dk: [f32; 4],
     lambda: f32,
     foam: Foam,
+    /// The frame's fields, planned ([`FftOcean::advance`]) and not yet
+    /// recorded ([`FftOcean::encode`]).
+    pending: Option<Pending>,
+}
+
+/// What [`FftOcean::encode`] records of a frame [`FftOcean::advance`]
+/// planned.
+struct Pending {
+    /// The foam steps, each after the fields at its own time.
+    steps: usize,
+    /// The foam's update with this frame's seabed ([`Foam::group`]).
+    foam: wgpu::BindGroup,
+    /// The foam's micro-structure is made first.
+    detail: bool,
 }
 
 /// The foam's passes and its history between steps ([`foam`]).
@@ -369,6 +383,7 @@ impl FftOcean {
             dk: [0.0; 4],
             lambda: 0.0,
             foam,
+            pending: None,
         }
     }
 
@@ -404,21 +419,21 @@ impl FftOcean {
         self.foam.last = None;
     }
 
-    /// Steps the foam up to `seconds` of the scene's clock (its tick over
-    /// its rate), then records the fields at `seconds`, all into `encoder`:
-    /// each foam step after the fields at its own time ([`foam`]: the steps
-    /// since the last frame, or the warm-up after a restart), each reading
-    /// its own slot of the uniform rings, so a warm-up costs the frame no
-    /// submit of its own. `eye` is the camera's absolute world xz (the
-    /// frame's plus `origin`), `swell` og_core's waves at a time
-    /// (`WaterGpu::swell`), `shore` the seabed's texture and its rows at a
-    /// time (`WaterGpu::shore`). Returns the foam steps recorded.
+    /// Plans the frame's fields and writes their uniforms: the foam's steps
+    /// up to `seconds` of the scene's clock (its tick over its rate), each
+    /// after the fields at its own time ([`foam`]: the steps since the last
+    /// frame, or the warm-up after a restart), then the fields at
+    /// `seconds`. Each reads its own slot of the uniform rings, so
+    /// [`FftOcean::encode`] records them all in the frame's one encoder.
+    /// `eye` is the camera's absolute world xz (the frame's plus `origin`),
+    /// `swell` og_core's waves at a time (`WaterGpu::swell`), `shore` the
+    /// seabed's texture and its rows at a time (`WaterGpu::shore`). Returns
+    /// the foam steps planned.
     #[allow(clippy::too_many_arguments)]
     pub fn advance(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
         seconds: f64,
         eye: glam::DVec2,
         origin: glam::DVec2,
@@ -435,21 +450,13 @@ impl FftOcean {
             self.foam.last = None;
         }
         let snaps = foam::snaps(eye);
-        if !self.foam.detail_made {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.foam.detail);
-            pass.set_bind_group(0, &self.foam.detail_group, &[]);
-            pass.dispatch_workgroups(N / 8, N / 8, 1);
-            self.foam.detail_made = true;
-        }
-        let fft_stride = ring_stride::<FftGpu>();
+        let detail = !std::mem::replace(&mut self.foam.detail_made, true);
         let foam_stride = ring_stride::<foam::FoamGpu>();
-        let mut fft_ring = vec![0u8; (fft_stride as usize) * (steps.len() + 1)];
+        let mut fft_ring = vec![0u8; (ring_stride::<FftGpu>() as usize) * (steps.len() + 1)];
         let mut foam_ring = vec![0u8; (foam_stride as usize) * steps.len().max(1)];
-        let first = foam_layer(self.cascades);
         for (i, &(k, span)) in steps.iter().enumerate() {
             let at = k as f64 * foam::STEP;
-            self.encode(encoder, &mut fft_ring, i, at);
+            self.fields_at(&mut fft_ring, i, at);
             let u = foam::step_gpu(
                 snaps,
                 self.foam.last.map(|(_, s)| s),
@@ -463,13 +470,49 @@ impl FftOcean {
             let o = i * foam_stride as usize;
             foam_ring[o..o + std::mem::size_of::<foam::FoamGpu>()]
                 .copy_from_slice(bytemuck::bytes_of(&u));
+            self.foam.last = Some((k, snaps));
+        }
+        self.fields_at(&mut fft_ring, steps.len(), seconds);
+        queue.write_buffer(&self.uniform, 0, &fft_ring);
+        if !steps.is_empty() {
+            queue.write_buffer(&self.foam.uniform, 0, &foam_ring);
+        }
+        // A frame planned and never recorded keeps its first-time work.
+        let detail = detail || self.pending.as_ref().is_some_and(|p| p.detail);
+        self.pending = Some(Pending {
+            steps: steps.len(),
+            foam: group,
+            detail,
+        });
+        steps.len()
+    }
+
+    /// Records the frame [`FftOcean::advance`] planned, before any pass
+    /// that reads the fields: nothing without one.
+    pub(crate) fn encode(&mut self, encoder: &mut crate::Encoder) {
+        let Some(planned) = self.pending.take() else {
+            return;
+        };
+        if planned.detail {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("ocean foam detail"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&self.foam.detail);
+            pass.set_bind_group(0, &self.foam.detail_group, &[]);
+            pass.dispatch_workgroups(N / 8, N / 8, 1);
+        }
+        let foam_stride = ring_stride::<foam::FoamGpu>();
+        let first = foam_layer(self.cascades);
+        for i in 0..planned.steps {
+            self.encode_fields(encoder, i);
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("ocean foam"),
                     timestamp_writes: None,
                 });
                 pass.set_pipeline(&self.foam.update);
-                pass.set_bind_group(0, &group, &[o as u32]);
+                pass.set_bind_group(0, &planned.foam, &[(i as u64 * foam_stride) as u32]);
                 pass.dispatch_workgroups(foam::RES / 8, foam::RES / 8, 2);
             }
             encoder.copy_texture_to_texture(
@@ -490,26 +533,13 @@ impl FftOcean {
                     depth_or_array_layers: 2,
                 },
             );
-            self.foam.last = Some((k, snaps));
         }
-        self.encode(encoder, &mut fft_ring, steps.len(), seconds);
-        queue.write_buffer(&self.uniform, 0, &fft_ring);
-        if !steps.is_empty() {
-            queue.write_buffer(&self.foam.uniform, 0, &foam_ring);
-        }
-        steps.len()
+        self.encode_fields(encoder, planned.steps);
     }
 
-    /// Records the fields at `seconds` of the scene's clock (its tick over
-    /// its rate) into `encoder`, its uniforms into slot `slot` of `ring`:
-    /// rows, columns, then the mips (of every layer, the foam's too).
-    fn encode(
-        &self,
-        encoder: &mut wgpu::CommandEncoder,
-        ring: &mut [u8],
-        slot: usize,
-        seconds: f64,
-    ) {
+    /// The fields' uniforms at `seconds` of the scene's clock, into slot
+    /// `slot` of `ring`.
+    fn fields_at(&self, ring: &mut [u8], slot: usize, seconds: f64) {
         let u = FftGpu {
             tiles: [N, N.trailing_zeros(), self.cascades, 0],
             time: [phase(seconds) as f32, self.lambda, 0.0, 0.0],
@@ -517,15 +547,21 @@ impl FftOcean {
         };
         let o = slot * ring_stride::<FftGpu>() as usize;
         ring[o..o + std::mem::size_of::<FftGpu>()].copy_from_slice(bytemuck::bytes_of(&u));
+    }
+
+    /// Records the fields of the uniform ring's slot `slot`: rows, columns,
+    /// then the mips (of every layer, the foam's too).
+    fn encode_fields(&self, encoder: &mut crate::Encoder, slot: usize) {
+        let o = (slot as u64 * ring_stride::<FftGpu>()) as u32;
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("ocean fft"),
             timestamp_writes: None,
         });
         pass.set_pipeline(&self.rows);
-        pass.set_bind_group(0, &self.rows_group, &[o as u32]);
+        pass.set_bind_group(0, &self.rows_group, &[o]);
         pass.dispatch_workgroups(N, 1, self.cascades);
         pass.set_pipeline(&self.columns);
-        pass.set_bind_group(0, &self.columns_group, &[o as u32]);
+        pass.set_bind_group(0, &self.columns_group, &[o]);
         pass.dispatch_workgroups(N, 1, self.cascades);
         pass.set_pipeline(&self.mips);
         for (m, group) in self.mip_groups.iter().enumerate() {

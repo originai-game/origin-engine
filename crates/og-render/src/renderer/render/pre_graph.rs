@@ -1,6 +1,6 @@
 //! The compute the frame encodes before its draws, which the graph's
 //! passes read (the crowds' cull, the culling's counts, the wind, the
-//! simulated meshes, the terrain's corners, the grass, the scatter): the
+//! water's fields, the simulated meshes, the terrain's corners, the grass, the scatter): the
 //! first nodes of the render graph, in the frame encoder's order. Each
 //! kind's needs are its entry in the capability table (schedule.rs
 //! `PASSES`); execute.rs encodes them first (`execute_pre_graph`), each
@@ -24,6 +24,15 @@ pub(crate) const CROWD_CULL: PassDesc = PassDesc {
 pub(crate) const WIND: PassDesc = PassDesc {
     pass: FramePass::Wind,
     name: "wind",
+    needs: Caps::COMPUTE,
+};
+
+/// The water's fields (water/fields.rs `encode_fields`): the sea's
+/// spectrum and foam, its caustics, the wakes and the ripples, before
+/// every pass that draws water or reads the caustics.
+pub(crate) const WATER_FIELDS: PassDesc = PassDesc {
+    pass: FramePass::WaterFields,
+    name: "water fields",
     needs: Caps::COMPUTE,
 };
 

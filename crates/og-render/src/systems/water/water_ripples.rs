@@ -170,6 +170,19 @@ pub(crate) struct Ripples {
     at: Option<(u64, u64)>,
     /// Whether both states were set calm since the last reset.
     cleared: bool,
+    /// The frame's steps, planned ([`Ripples::update`]) and not yet
+    /// recorded ([`Ripples::encode`]).
+    pending: Option<Pending>,
+}
+
+/// What [`Ripples::encode`] records of a frame [`Ripples::update`] planned.
+struct Pending {
+    /// Both states are set calm first.
+    calm: bool,
+    /// The ticks stepped, each from its own slot of the uniform.
+    steps: usize,
+    /// The substeps of a tick.
+    substeps: u32,
 }
 
 impl Ripples {
@@ -279,19 +292,15 @@ impl Ripples {
             cuts,
             at: None,
             cleared: false,
+            pending: None,
         }
     }
 
-    /// Steps the ticks of `wakes` since the last frame and draws the
-    /// heights (after the CPU's this frame were written to the coarse
-    /// texture): its own submission, before the frame's.
-    pub(crate) fn update(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        pipes: &RipplePipelines,
-        wakes: &WaterWakes,
-    ) {
+    /// Plans the steps of the ticks of `wakes` since the last frame and
+    /// the heights' drawing (after the CPU's this frame were written to
+    /// the coarse texture) and writes their uniforms, for
+    /// [`Ripples::encode`] to record.
+    pub(crate) fn update(&mut self, queue: &wgpu::Queue, wakes: &WaterWakes) {
         let ticks = plan(self.at, wakes);
         if ticks.reset {
             self.cleared = false;
@@ -353,38 +362,47 @@ impl Ripples {
         if !cuts.is_empty() {
             queue.write_buffer(&self.cuts, 0, bytemuck::cast_slice(&cuts));
         }
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("water ripples"),
+        // A frame planned and never recorded keeps its calm.
+        let calm = !std::mem::replace(&mut self.cleared, true)
+            || self.pending.as_ref().is_some_and(|p| p.calm);
+        self.pending = Some(Pending {
+            calm,
+            steps: ticks.steps.len(),
+            substeps,
         });
+    }
+
+    /// Records the steps [`Ripples::update`] planned, before any pass that
+    /// draws the surface: nothing without them.
+    pub(crate) fn encode(&mut self, encoder: &mut crate::Encoder, pipes: &RipplePipelines) {
+        let Some(planned) = self.pending.take() else {
+            return;
+        };
         let groups = self.side.div_ceil(8);
-        let compose = (ticks.steps.len() as u64 * SLOT) as u32;
-        {
-            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                label: Some("water ripples"),
-                timestamp_writes: None,
-            });
-            if !self.cleared {
-                // Calm water: both states zero.
-                pass.set_pipeline(&pipes.calm);
-                for group in &self.groups {
-                    pass.set_bind_group(0, group, &[compose]);
-                    pass.dispatch_workgroups(groups, groups, 1);
-                }
-                self.cleared = true;
+        let compose = (planned.steps as u64 * SLOT) as u32;
+        let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+            label: Some("water ripples"),
+            timestamp_writes: None,
+        });
+        if planned.calm {
+            // Calm water: both states zero.
+            pass.set_pipeline(&pipes.calm);
+            for group in &self.groups {
+                pass.set_bind_group(0, group, &[compose]);
+                pass.dispatch_workgroups(groups, groups, 1);
             }
-            pass.set_pipeline(&pipes.advance);
-            for k in 0..ticks.steps.len() {
-                for _ in 0..substeps {
-                    pass.set_bind_group(0, &self.groups[self.current], &[(k as u64 * SLOT) as u32]);
-                    pass.dispatch_workgroups(groups, groups, 1);
-                    self.current = 1 - self.current;
-                }
-            }
-            pass.set_pipeline(&pipes.compose);
-            pass.set_bind_group(0, &self.groups[self.current], &[compose]);
-            pass.dispatch_workgroups(groups, groups, 1);
         }
-        queue.submit(Some(encoder.finish()));
+        pass.set_pipeline(&pipes.advance);
+        for k in 0..planned.steps {
+            for _ in 0..planned.substeps {
+                pass.set_bind_group(0, &self.groups[self.current], &[(k as u64 * SLOT) as u32]);
+                pass.dispatch_workgroups(groups, groups, 1);
+                self.current = 1 - self.current;
+            }
+        }
+        pass.set_pipeline(&pipes.compose);
+        pass.set_bind_group(0, &self.groups[self.current], &[compose]);
+        pass.dispatch_workgroups(groups, groups, 1);
     }
 }
 

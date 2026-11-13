@@ -28,6 +28,7 @@ pub(crate) struct PassDesc {
 pub(crate) const PASSES: &[PassDesc] = &[
     pre_graph::CROWD_CULL,
     pre_graph::WIND,
+    pre_graph::WATER_FIELDS,
     pre_graph::VISUAL,
     pre_graph::SURFACES,
     pre_graph::TERRAIN_CORNERS,
@@ -78,6 +79,7 @@ impl FramePass {
             FramePass::CrowdCull
                 | FramePass::CullCounts
                 | FramePass::Wind
+                | FramePass::WaterFields
                 | FramePass::Visual
                 | FramePass::Surfaces
                 | FramePass::TerrainCorners
@@ -107,8 +109,8 @@ pub(crate) enum Timed {
     /// In a frame where it drew: its CPU time and its queries, so the UI's
     /// budget (`docs/ui.md` §6.3) reads them from `gpuPasses`.
     WhenDrawn,
-    /// Only the queries its encode names (the crowds' cull, the scatter's
-    /// steps); no CPU time.
+    /// Only the queries its encode names (the crowds' cull, the water's
+    /// fields, the scatter's steps); no CPU time.
     OwnQueries,
 }
 
@@ -222,6 +224,7 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     }
     for p in [
         FramePass::Wind,
+        FramePass::WaterFields,
         FramePass::Visual,
         FramePass::Surfaces,
         FramePass::TerrainCorners,
@@ -588,7 +591,7 @@ mod tests {
             .copied()
             .filter(|p| p.timed() == Timed::WhenDrawn)
             .collect();
-        assert_eq!(pre.len(), 8);
+        assert_eq!(pre.len(), 9);
         assert_eq!(after.len(), 4);
         assert_eq!(order[..pre.len()], pre[..]);
         assert_eq!(order[order.len() - after.len()..], after[..]);

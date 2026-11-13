@@ -86,6 +86,18 @@ pub(crate) struct SeaWakes {
     cleared: bool,
     /// The seconds stepped since a body last cut the water.
     quiet: f32,
+    /// The frame's steps, planned ([`SeaWakes::update`]) and not yet
+    /// recorded ([`SeaWakes::encode`]).
+    pending: Option<Pending>,
+}
+
+/// What [`SeaWakes::encode`] records of a frame [`SeaWakes::update`]
+/// planned.
+struct Pending {
+    /// Both states are set calm first.
+    calm: bool,
+    /// The ticks stepped, each from its own slot of the uniform.
+    steps: usize,
 }
 
 /// The square's cell nearest `eye` (absolute world xz).
@@ -310,6 +322,7 @@ impl SeaWakes {
             cell: None,
             cleared: false,
             quiet: 0.0,
+            pending: None,
         }
     }
 
@@ -320,6 +333,7 @@ impl SeaWakes {
         self.cell = None;
         self.cleared = false;
         self.quiet = 0.0;
+        self.pending = None;
     }
 
     /// The square's centre in the frame (xz) at the scene's `origin`
@@ -329,17 +343,16 @@ impl SeaWakes {
         c.as_vec2()
     }
 
-    /// Steps the ticks of `wakes` since the last frame into `encoder`, the
+    /// Plans the steps of the ticks of `wakes` since the last frame and
+    /// writes their uniforms, for [`SeaWakes::encode`] to record, the
     /// square moved to `eye` (absolute world xz) at the first; `at` is the
     /// surface's centre (frame xz), `origin` the frame's (absolute world xz)
-    /// and `scale` the surface's dynamicWaves. False, with nothing encoded
+    /// and `scale` the surface's dynamicWaves. False, with nothing planned
     /// and the square at rest, once nothing has cut the water for
     /// [`QUIET`]: there is nothing left to draw.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn update(
         &mut self,
         queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
         wakes: &WaterWakes,
         eye: DVec2,
         at: Vec2,
@@ -411,21 +424,36 @@ impl SeaWakes {
         if !cuts.is_empty() {
             queue.write_buffer(&self.cuts, 0, bytemuck::cast_slice(&cuts));
         }
+        // A frame planned and never recorded keeps its calm.
+        let calm = !std::mem::replace(&mut self.cleared, true)
+            || self.pending.as_ref().is_some_and(|p| p.calm);
+        self.pending = Some(Pending {
+            calm,
+            steps: ticks.steps.len(),
+        });
+        true
+    }
+
+    /// Records the steps [`SeaWakes::update`] planned, before any pass
+    /// that draws the water: nothing without them.
+    pub(crate) fn encode(&mut self, encoder: &mut crate::Encoder) {
+        let Some(planned) = self.pending.take() else {
+            return;
+        };
         let groups = SIDE.div_ceil(8);
-        let compose = (ticks.steps.len() as u64 * SLOT) as u32;
+        let compose = (planned.steps as u64 * SLOT) as u32;
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("sea wakes"),
             timestamp_writes: None,
         });
-        if !self.cleared {
+        if planned.calm {
             pass.set_pipeline(&self.calm);
             for group in &self.groups {
                 pass.set_bind_group(0, group, &[compose]);
                 pass.dispatch_workgroups(groups, groups, 1);
             }
-            self.cleared = true;
         }
-        for k in 0..ticks.steps.len() {
+        for k in 0..planned.steps {
             let slot = (k as u64 * SLOT) as u32;
             pass.set_bind_group(0, &self.groups[0], &[slot]);
             pass.set_pipeline(&self.press);
@@ -441,7 +469,6 @@ impl SeaWakes {
         pass.set_bind_group(0, &self.groups[0], &[compose]);
         pass.set_pipeline(&self.compose);
         pass.dispatch_workgroups(groups, groups, 1);
-        true
     }
 }
 

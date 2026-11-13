@@ -1182,7 +1182,7 @@ impl Renderer {
             skinned_gpu: cull.skinned_gpu,
         });
         if !water_fluids.water_draws.is_empty() {
-            (stats.water_submits, stats.foam_steps) = self.world.water.submitted;
+            stats.foam_steps = self.world.water.foam_steps;
         }
         // The frame's bind groups (frame_binds.rs).
         let binds = self.bind_frame(BindFrameInputs {

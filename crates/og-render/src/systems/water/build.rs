@@ -303,7 +303,7 @@ impl WaterRenderer {
             fft: None,
             module: probe_module,
             last_sea: None,
-            submitted: (0, 0),
+            foam_steps: 0,
             wakes: None,
             wake: None,
             rivers: Vec::new(),

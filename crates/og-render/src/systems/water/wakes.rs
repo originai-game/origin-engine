@@ -27,8 +27,8 @@ pub(super) fn stirred(
 }
 
 impl WaterRenderer {
-    /// Steps the wakes of [`stirred`]'s surface to its tick, submitted ahead
-    /// of the frame, and sets `self.wake` (the surface's index and the
+    /// Plans the wakes of [`stirred`]'s surface to its tick, for the frame's
+    /// encoder ([`WaterRenderer::encode_fields`]), and sets `self.wake` (the surface's index and the
     /// square's centre, frame xz): none without such a surface, or once its
     /// waves are gone.
     pub(super) fn step_wakes(
@@ -51,12 +51,8 @@ impl WaterRenderer {
         if held.is_some_and(|h| h != index) {
             pass.rest();
         }
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("water wakes"),
-        });
         let drawn = pass.update(
             queue,
-            &mut encoder,
             wakes,
             world(camera.position) + world(origin),
             Vec2::new(centre.x, centre.z),
@@ -64,8 +60,6 @@ impl WaterRenderer {
             water.dynamic_waves,
         );
         if drawn {
-            queue.submit([encoder.finish()]);
-            self.submitted.0 += 1;
             self.wake = Some((index, pass.centre(world(origin))));
         }
     }

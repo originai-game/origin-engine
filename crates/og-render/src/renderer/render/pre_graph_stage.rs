@@ -1,6 +1,6 @@
 //! The frame's encoder, and the compute nodes the graph begins with
 //! (pre_graph.rs): the crowds' cull, GPU culling's counts' copy, the wind
-//! and trample steps, the visual meshes, the surfaces, the terrain levels'
+//! and trample steps, the water's fields, the visual meshes, the surfaces, the terrain levels'
 //! corners, the grass blades and the scattered copies, each encoded when
 //! execute.rs reaches it.
 
@@ -44,7 +44,8 @@ impl Renderer {
     }
 
     /// Records the compute node `pass`; answers the GPU queries it lists
-    /// under their own names (the crowds' cull's, the scatter's).
+    /// under their own names (the crowds' cull's, the water's fields', the
+    /// scatter's).
     pub(super) fn encode_pre_graph_pass(
         &mut self,
         pass: FramePass,
@@ -97,6 +98,15 @@ impl Renderer {
                 self.world.trample.encode(encoder);
                 Vec::new()
             }
+            // The water's fields this frame's prepare planned, before any
+            // pass draws water or reads the caustics.
+            FramePass::WaterFields => self
+                .world
+                .water
+                .encode_fields(encoder)
+                .map(|q| ("water fields".to_string(), q))
+                .into_iter()
+                .collect(),
             FramePass::Visual => {
                 if let Some(pipelines) = &self.world.visual {
                     for mesh in &self.cache.meshes {

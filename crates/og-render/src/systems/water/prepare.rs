@@ -75,7 +75,7 @@ impl WaterRenderer {
             }
         }
         let (sea_segments, sea_cascades) = sea_tier(quality);
-        self.submitted = (0, 0);
+        self.foam_steps = 0;
         let sea = self.fft_sea(
             device,
             queue,
@@ -145,8 +145,7 @@ impl WaterRenderer {
                         ));
                     }
                     let ripples = slot.ripples.as_mut().expect("made above");
-                    ripples.update(device, queue, pipes, wakes);
-                    self.submitted.0 += 1;
+                    ripples.update(queue, wakes);
                 }
                 _ => slot.ripples = None,
             }

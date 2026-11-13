@@ -1031,6 +1031,7 @@ impl FrameGraph {
             | FramePass::CrowdCull
             | FramePass::CullCounts
             | FramePass::Wind
+            | FramePass::WaterFields
             | FramePass::Visual
             | FramePass::Surfaces
             | FramePass::TerrainCorners

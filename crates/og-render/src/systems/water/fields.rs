@@ -2,9 +2,9 @@ use super::*;
 
 impl WaterRenderer {
     /// The FFT sea of the frame's first surface with a wind, its fields
-    /// computed at `seconds` (the scene's tick time, so a frame is the
-    /// tick's whatever the wall clock) and submitted ahead of the frame:
-    /// its spectrum rebuilt when that sea's wind, swell or choppiness or the
+    /// planned at `seconds` (the scene's tick time, so a frame is the
+    /// tick's whatever the wall clock) for the frame's encoder
+    /// ([`WaterRenderer::encode_fields`]): its spectrum rebuilt when that sea's wind, swell or choppiness or the
     /// cascades change. None without a sea.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn fft_sea(
@@ -47,9 +47,6 @@ impl WaterRenderer {
         }
         let (fft, info) = self.fft.as_mut().expect("made above");
         let info = *info;
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("ocean fft"),
-        });
         let foam_sea = crate::ocean_fft::foam::FoamSea {
             cascades: cascade_uv(Some(info), origin),
             bands: info.bands,
@@ -63,7 +60,6 @@ impl WaterRenderer {
         let steps = fft.advance(
             device,
             queue,
-            &mut encoder,
             seconds,
             world(camera.position) + world(origin),
             world(origin),
@@ -84,18 +80,36 @@ impl WaterRenderer {
                 cascades: cascade_uv(Some(info), origin),
                 swell: ocean_gpu(water, seconds, origin).1,
             };
-            pass.encode(
-                device,
-                queue,
-                &mut encoder,
-                &fft.view,
-                &params,
-                caustic_grid,
-            );
+            pass.plan(device, queue, &fft.view, &params, caustic_grid);
         }
-        queue.submit([encoder.finish()]);
-        self.submitted = (self.submitted.0 + 1, steps as u32);
+        self.foam_steps = steps as u32;
         Some(info)
+    }
+
+    /// Records the compute [`WaterRenderer::prepare`] planned, in the
+    /// frame's encoder before any pass that draws water or reads the
+    /// caustics: the sea's fields and foam, its caustics, the wakes, each
+    /// rippling surface's ripples. Answers the GPU queries they wrote.
+    pub(crate) fn encode_fields(
+        &mut self,
+        encoder: &mut crate::Encoder,
+    ) -> Option<std::ops::Range<u32>> {
+        let q0 = encoder.used();
+        if let Some((fft, _)) = &mut self.fft {
+            fft.encode(encoder);
+        }
+        if let Some(caustics) = &mut self.caustics {
+            caustics.encode(encoder);
+        }
+        if let Some(wakes) = &mut self.wakes {
+            wakes.encode(encoder);
+        }
+        if let Some(pipes) = &self.ripple_pipelines {
+            for ripples in self.slots.iter_mut().filter_map(|s| s.ripples.as_mut()) {
+                ripples.encode(encoder, pipes);
+            }
+        }
+        (encoder.timed() && encoder.used() > q0).then(|| q0..encoder.used())
     }
 
     /// The drawn sea's height at `points` (frame xz) as the last frame drew

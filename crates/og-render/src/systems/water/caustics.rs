@@ -56,6 +56,9 @@ pub(super) struct CausticsPass {
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
+    /// The frame's pass, planned ([`CausticsPass::plan`]) and not yet
+    /// recorded.
+    pending: Option<wgpu::BindGroup>,
 }
 
 const CAUSTICS_WGSL: &str = wgsl3d!("water_caustics.wgsl");
@@ -144,21 +147,23 @@ impl CausticsPass {
             layout,
             uniform,
             sampler,
+            pending: None,
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn encode(
-        &self,
+    /// Plans the frame's pass over the sea's `fields` into the grid `out`:
+    /// writes its uniforms, for [`CausticsPass::encode`] to record after
+    /// the fields.
+    pub(super) fn plan(
+        &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        encoder: &mut wgpu::CommandEncoder,
         fields: &wgpu::TextureView,
         params: &CausticsGpu,
         out: &wgpu::Buffer,
     ) {
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(params));
-        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        self.pending = Some(device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("water caustics"),
             layout: &self.layout,
             entries: &[
@@ -179,7 +184,14 @@ impl CausticsPass {
                     resource: out.as_entire_binding(),
                 },
             ],
-        });
+        }));
+    }
+
+    /// Records the pass [`CausticsPass::plan`] planned: nothing without one.
+    pub(super) fn encode(&mut self, encoder: &mut crate::Encoder) {
+        let Some(group) = self.pending.take() else {
+            return;
+        };
         let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
             label: Some("water caustics"),
             timestamp_writes: None,

@@ -587,9 +587,11 @@ pub(crate) struct WaterRenderer {
     no_wake: wgpu::TextureView,
     /// W5: the rivers' ribbons of this frame's surfaces.
     rivers: Vec<crate::water_river::RiverMesh>,
-    /// What the last [`WaterRenderer::prepare`] submitted ahead of the
-    /// frame, and the foam steps it recorded ([`FrameStats::water_submits`]).
-    pub(crate) submitted: (u32, u32),
+    /// The foam steps the last [`WaterRenderer::prepare`] planned
+    /// ([`FrameStats::foam_steps`]).
+    ///
+    /// [`FrameStats::foam_steps`]: crate::FrameStats::foam_steps
+    pub(crate) foam_steps: u32,
 }
 
 /// `CausticParams` in water_caustics.wgsl.

@@ -8,13 +8,15 @@ pub(crate) enum FramePass {
     /// The compute before the frame's draws, which the passes after it
     /// read (renderer/render/pre_graph.rs): the crowds' cull on the GPU,
     /// the GPU culling's counts copied for their readback, the wind
-    /// field's and the trample map's steps, the visual bodies' and fluids'
+    /// field's and the trample map's steps, the water's fields (the sea's
+    /// spectrum, foam and caustics, the wakes, the ripples), the visual bodies' and fluids'
     /// steps, the deforming surfaces' and garments' vertices, the terrain
     /// levels' corners, the grass blades, and the scattered copies placed
     /// and culled. Into their own buffers, not graph targets.
     CrowdCull,
     CullCounts,
     Wind,
+    WaterFields,
     Visual,
     Surfaces,
     TerrainCorners,
@@ -222,6 +224,7 @@ impl FramePass {
             FramePass::CrowdCull
                 | FramePass::CullCounts
                 | FramePass::Wind
+                | FramePass::WaterFields
                 | FramePass::Visual
                 | FramePass::Surfaces
                 | FramePass::TerrainCorners
@@ -281,6 +284,7 @@ impl FramePass {
             FramePass::CrowdCull => "cull: crowds".into(),
             FramePass::CullCounts => "cull-counts".into(),
             FramePass::Wind => "wind".into(),
+            FramePass::WaterFields => "water fields".into(),
             FramePass::Visual => "visual simulation".into(),
             FramePass::Surfaces => "surfaces".into(),
             FramePass::TerrainCorners => "terrain corners".into(),
@@ -870,6 +874,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::CrowdCull
             | FramePass::CullCounts
             | FramePass::Wind
+            | FramePass::WaterFields
             | FramePass::Visual
             | FramePass::Surfaces
             | FramePass::TerrainCorners
