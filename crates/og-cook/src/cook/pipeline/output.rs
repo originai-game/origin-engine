@@ -763,7 +763,7 @@ pub(crate) fn save(
 ) {
     let assets_path = assets_dir.canonicalize().ok();
     let bounded = sources.iter().all(|s| {
-        s.kind != Kind::Video
+        s.kind != Kind::System(&video::VIDEO)
             && s.gltf.as_ref().is_none_or(|g| {
                 g.external.iter().all(|(name, _)| {
                     s.path

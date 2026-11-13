@@ -1,5 +1,5 @@
 //! Shared results. FNV stamps stay in blobs; cache identity uses full inputs.
-use super::{CookError, CookOptions, Planned, Work, cache, format};
+use super::{Action, CookError, CookOptions, Planned, Work, cache, format};
 use og_blob::Blob;
 use std::path::Path;
 
@@ -10,7 +10,8 @@ pub(crate) fn run(
     project_key: Option<&str>,
     cook: impl FnOnce() -> Result<(Vec<u8>, Vec<String>), CookError>,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let texture = matches!(p.work, Some(Work::Texture(..) | Work::GltfTexture(..)));
+    let texture = matches!(p.work, Some(Work::Texture(..) | Work::GltfTexture(..)))
+        || matches!(&p.work, Some(Work::Job(j)) if matches!(j.action(), Action::Input(.., true)));
     let input = match &p.work {
         Some(Work::Texture(s, kind, split)) => Some((
             s.conformed.as_deref().unwrap_or(&s.bytes).as_slice(),
@@ -32,14 +33,11 @@ pub(crate) fn run(
                 s.settings
             ),
         )),
-        Some(
-            Work::VideoMeta(..)
-            | Work::VideoArray(..)
-            | Work::VideoFrame(..)
-            | Work::VideoAudio(..)
-            | Work::VideoStream(..)
-            | Work::VideoPoster(..),
-        ) => None,
+        Some(Work::Job(j)) => match j.action() {
+            Action::Project => project_key.map(|key| (key.as_bytes(), p.id.clone())),
+            Action::Never => None,
+            Action::Input(bytes, settings, _) => Some((bytes, settings)),
+        },
         _ => project_key.map(|key| (key.as_bytes(), p.id.clone())),
     };
     let action = directory.zip(input).map(|(dir, (bytes, settings))| {

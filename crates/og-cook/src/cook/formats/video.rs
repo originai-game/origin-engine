@@ -61,8 +61,11 @@
 //! another ffmpeg version may round a pixel differently, so a reference
 //! frame is recorded with the cook it was made with.
 
-use super::CookError;
 use super::texture;
+use super::{
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, audio,
+    hash_bytes, stamp, texture_array,
+};
 use crate::format::{self, BlobKind, VideoMeta, row_hash};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
@@ -897,6 +900,228 @@ pub fn cook_poster(
         rgba: pic.rgba.to_vec(),
     };
     texture::cook(&img, plan.decl.kind, &frame_options(opts), stamp)
+}
+
+pub(crate) static VIDEO: KindDef = KindDef {
+    name: "video",
+    extensions: &[],
+    types: &[VIDEO_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_video,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&VIDEO];
+
+fn plan_video<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { tex_desc, .. } = *cx;
+    let PlanState { early_errors, .. } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    let root = crate::cook::assets_root(s);
+    let planned = parse(&s.rel, &text, &|p| root.join(p).is_file()).and_then(|d| {
+        let src = root.join(&d.source);
+        let bytes = std::fs::read(&src).map_err(|e| format!("{}: {e}", src.display()))?;
+        let encoder = if d.stream { stream_encoder()? } else { "" };
+        let plan = plan(&d, probe(&src)?, encoder)?;
+        Ok((src, hash_bytes(&bytes), plan))
+    });
+    match planned {
+        Ok((src, src_hash, plan)) => {
+            let described = plan.describe();
+            let base = [
+                b"video 2".as_slice(),
+                tex_desc.as_bytes(),
+                &hash,
+                &src_hash.to_le_bytes(),
+                described.as_bytes(),
+            ];
+            let plan = Box::new(plan);
+            outs.push((
+                s.rel.clone(),
+                format::Video::NAME,
+                stamp(&base),
+                Work::Job(Box::new(VideoMetaJob(plan.clone()))),
+            ));
+            if plan.decl.stream {
+                outs.push((
+                    stream_id(&s.rel),
+                    format::VideoStream::NAME,
+                    stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
+                    Work::Job(Box::new(VideoStreamJob(
+                        src.clone(),
+                        src_hash,
+                        plan.clone(),
+                    ))),
+                ));
+                if let Some(size) = og_video::stream::fallback_size(plan.size) {
+                    outs.push((
+                        stream_fallback_id(&s.rel),
+                        format::VideoStream::NAME,
+                        stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
+                        Work::Job(Box::new(VideoStreamJob(
+                            src.clone(),
+                            src_hash,
+                            Box::new(fallback_plan(&plan, size)),
+                        ))),
+                    ));
+                }
+                outs.push((
+                    poster_id(&s.rel),
+                    format::Texture::NAME,
+                    stamp(&[&base[..], &[b"poster".as_slice()]].concat()),
+                    Work::Job(Box::new(VideoPosterJob(
+                        src.clone(),
+                        src_hash,
+                        plan.clone(),
+                    ))),
+                ));
+            } else {
+                let frames = frames_id(&s.rel);
+                outs.push((
+                    frames.clone(),
+                    format::TextureArray::NAME,
+                    stamp(&[&base[..], &[b"array".as_slice()]].concat()),
+                    Work::Job(Box::new(VideoArrayJob(s, plan.clone()))),
+                ));
+                for n in 0..plan.frames as usize {
+                    let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                    outs.push((
+                        texture_array::layer_id(&frames, n),
+                        format::Texture::NAME,
+                        st,
+                        Work::Job(Box::new(VideoFrameJob(
+                            src.clone(),
+                            src_hash,
+                            plan.clone(),
+                            n,
+                        ))),
+                    ));
+                }
+            }
+            if plan.audio {
+                outs.push((
+                    audio_id(&s.rel),
+                    format::Sound::NAME,
+                    stamp(&[&base[..], &[b"audio".as_slice()]].concat()),
+                    Work::Job(Box::new(VideoAudioJob(src.clone(), plan.clone()))),
+                ));
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "video", e)),
+    }
+}
+
+/// A video's description: its size, rate and outputs.
+struct VideoMetaJob(Box<VideoPlan>);
+
+impl Job for VideoMetaJob {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoMetaJob(plan) = self;
+        cook_meta(plan, p.stamp)
+    }
+
+    /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
+}
+
+/// A short video's frames as one texture array.
+struct VideoArrayJob<'a>(&'a Source, Box<VideoPlan>);
+
+impl Job for VideoArrayJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoArrayJob(s, plan) = self;
+        let Exec { options, .. } = ex;
+        Ok((
+            cook_array(&s.rel, plan, &options.texture, p.stamp),
+            Vec::new(),
+        ))
+    }
+
+    /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
+}
+
+/// One frame of a short video's array.
+struct VideoFrameJob(PathBuf, u64, Box<VideoPlan>, usize);
+
+impl Job for VideoFrameJob {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoFrameJob(src, h, plan, n) = self;
+        let Exec { options, .. } = ex;
+        cook_frame(src, *h, plan, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+    }
+
+    /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
+}
+
+/// A video's sound track.
+struct VideoAudioJob(PathBuf, Box<VideoPlan>);
+
+impl Job for VideoAudioJob {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoAudioJob(src, plan) = self;
+        let wav = audio_wav(src, plan)?;
+        let pcm =
+            audio::wav(&format!("{}'s sound track", src.display()), &wav).map_err(CookError)?;
+        // A stream's sound is long: Opus (96 kb/s stereo), a clip's QOA.
+        let e = if plan.decl.stream {
+            let bitrate = audio::SoundSettings::default().opus_bitrate(pcm.channels);
+            audio::encode_opus(&pcm, bitrate).map_err(CookError)?
+        } else {
+            audio::encode(&pcm, None).map_err(CookError)?
+        };
+        audio::cook(&e, None, p.stamp).map(|(b, n)| (b, vec![format!("the video's sound: {n}")]))
+    }
+
+    /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
+}
+
+/// A long video's stream.
+struct VideoStreamJob(PathBuf, u64, Box<VideoPlan>);
+
+impl Job for VideoStreamJob {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoStreamJob(src, h, plan) = self;
+        cook_stream(src, *h, plan, p.stamp)
+    }
+
+    /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
+}
+
+/// A long video's poster frame.
+struct VideoPosterJob(PathBuf, u64, Box<VideoPlan>);
+
+impl Job for VideoPosterJob {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoPosterJob(src, h, plan) = self;
+        let Exec { options, .. } = ex;
+        cook_poster(src, *h, plan, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+    }
+
+    /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
 }
 
 #[cfg(test)]

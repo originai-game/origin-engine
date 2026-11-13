@@ -56,7 +56,7 @@ use scan::{Scan, ext, output_group, plan_groups, scan};
 
 use crate::format::{self, BlobKind, COOKER_VERSION};
 use crate::runtime::{MANIFEST, Manifest, ManifestAsset, ManifestOutput};
-use kinds::{Exec, Job, KindDef};
+use kinds::{Action, Exec, Job, KindDef};
 use og_core::Schema;
 use og_core::hash::{StableHasher, hash_bytes};
 use og_core::ogt::Document;
@@ -91,7 +91,6 @@ enum Kind {
     /// An `.ogt` of `type prefab`: cooked as a scene, flattened.
     Prefab,
     TextureArray,
-    Video,
     /// A kind its system's module declares (`pipeline/kinds.rs`).
     System(&'static KindDef),
 }
@@ -106,7 +105,6 @@ impl Kind {
             Kind::Scene => "scene",
             Kind::Prefab => "prefab",
             Kind::TextureArray => "texture-array",
-            Kind::Video => "video",
             Kind::System(k) => k.name,
         }
     }
@@ -226,15 +224,6 @@ enum Work<'a> {
     /// A texture array's blob, and layer `n`'s texture.
     TextureArray(&'a Source, texture_array::ArrayDecl),
     ArrayLayer(&'a Source, texture_array::ArrayDecl, usize),
-    /// A video's blob, its frames' texture array, frame `n` (with the
-    /// source's path and hash) and its sound.
-    VideoMeta(Box<video::VideoPlan>),
-    VideoArray(&'a Source, Box<video::VideoPlan>),
-    VideoFrame(PathBuf, u64, Box<video::VideoPlan>, usize),
-    VideoAudio(PathBuf, Box<video::VideoPlan>),
-    /// A streamed video's AV1 units and its poster frame.
-    VideoStream(PathBuf, u64, Box<video::VideoPlan>),
-    VideoPoster(PathBuf, u64, Box<video::VideoPlan>),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
     /// A fractured model's `#fracture`.

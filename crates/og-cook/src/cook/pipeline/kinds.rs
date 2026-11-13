@@ -60,6 +60,27 @@ pub(crate) struct Exec<'a> {
 /// blob and the cook's notes.
 pub(crate) trait Job: Sync {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError>;
+
+    /// What the shared action cache keys its result by.
+    fn action(&self) -> Action<'_> {
+        Action::Project
+    }
+}
+
+/// What the shared action cache keys an output's result by, beside the
+/// options, its type and its stamp.
+pub(crate) enum Action<'s> {
+    /// The project and the output's id.
+    Project,
+    /// Nothing: the result is never shared.
+    Never,
+    /// Its own input: the bytes, its settings, and whether it is a texture
+    /// (a hit is reported as the shared texture cache's).
+    #[expect(
+        dead_code,
+        reason = "sounds and textures key by their input once they move"
+    )]
+    Input(&'s [u8], String, bool),
 }
 
 /// Every system's kinds, one line a system.
@@ -85,6 +106,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     flipbook::KINDS,
     ui_documents::KINDS,
     riv::KINDS,
+    video::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

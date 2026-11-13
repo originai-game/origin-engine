@@ -150,7 +150,6 @@ fn plan_kind<'a>(
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
-        Kind::Video => plan_video(cx, state, s, hash, outs),
         Kind::Font => plan_font(cx, state, s, hash, outs),
         Kind::Scene | Kind::Prefab => plan_scene(cx, state, s, hash, outs),
         Kind::System(k) => (k.plan)(cx, state, s, hash, outs),

@@ -62,7 +62,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (prefab::PREFAB_TYPE, Kind::Prefab),
     (sfx::SFX_TYPE, Kind::Sound),
     (texture_array::ARRAY_TYPE, Kind::TextureArray),
-    (video::VIDEO_TYPE, Kind::Video),
     (model_text::MODEL_TYPE, Kind::Model),
 ];
 
