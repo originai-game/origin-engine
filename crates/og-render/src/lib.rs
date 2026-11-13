@@ -310,6 +310,7 @@ use media::volumetric;
 use mesh::skin;
 pub use og_render_data::shapes;
 use og_render_data::terrain_error;
+pub use og_render_data::{Capability, Holds};
 use particles::scene_colliders;
 use shader::shaders;
 pub use shaders::{ShaderSource, UNBOUNDED_MODULES, shader_sources};

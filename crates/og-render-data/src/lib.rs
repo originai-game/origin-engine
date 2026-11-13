@@ -51,6 +51,7 @@ pub mod particles;
 pub mod particles_gpu;
 pub mod post_custom;
 pub mod scene;
+pub mod shader_capability;
 pub mod shader_source;
 pub mod shapes;
 pub mod skin;
@@ -88,6 +89,7 @@ pub use material::{PhysicalExtensions, Side, StandardMaterial, UvTransform};
 pub use particles::*;
 pub use post_custom::{MAX_CUSTOM_POSTS, PostShader, example_crt, post_module_source};
 pub use scene::*;
+pub use shader_capability::{Capability, Holds, WEATHER_SURFACE_STUB, assemble};
 pub use shader_source::*;
 pub use targets::{TargetFormat, TargetKind, TargetTexture};
 pub use terrain::{

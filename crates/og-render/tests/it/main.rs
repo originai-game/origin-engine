@@ -14,6 +14,8 @@ mod params_motion;
 mod png;
 #[path = "../profile2d.rs"]
 mod profile2d;
+#[path = "../shader_capabilities.rs"]
+mod shader_capabilities;
 #[path = "../shader_loops.rs"]
 mod shader_loops;
 #[path = "../shaders.rs"]

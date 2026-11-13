@@ -1,4 +1,5 @@
 use crate::oit::{ARENA_WGSL, OIT_WGSL};
+use crate::shader_capability::{Capability, assemble};
 use crate::{clusters, lightmap, particles_gpu, skin};
 
 /// The frame group (frame.wgsl), with the light volumes' buffer and the
@@ -50,13 +51,8 @@ const LIGHTMAP_PHYSICAL_WGSL: &str = wgsl!("lightmap_physical.wgsl");
 
 /// `planar_reflection` for material shaders: the frame's planar reflection
 /// (planar.wgsl, the effect group's binding 4) where the lit pipelines have
-/// a texture slot for it, else [`PLANAR_STUB`].
+/// a texture slot for it, else its stub ([`Capability::stub`]).
 const PLANAR_WGSL: &str = wgsl!("planar.wgsl");
-/// `planar_reflection` reading nothing: the shadow passes, the scattered
-/// copies, the physical shader, and every lit shader of a renderer made for
-/// one planar reflection or on a device whose skinned lit pipeline has no
-/// texture slot left (`planar_slot`).
-pub const PLANAR_STUB: &str = "fn planar_reflection(p: vec3<f32>, shift: vec2<f32>) -> vec4<f32> { return vec4<f32>(0.0); }\n";
 /// `screen_ao(p)` for material shaders in the lit and physical shaders: this
 /// frame's screen-space AO (the effect group's `ssao_tex`) where world point
 /// `p` lands on the screen, 1 without AO. An unlit material is not darkened
@@ -86,9 +82,6 @@ fn contact_shadow(light: LocalLight, p: vec3<f32>) -> f32 {
   return select(select(m.a, m.b, c == 1), m.g, c == 0);
 }
 ";
-/// `screen_ao` where there is no AO texture (shadow passes, scattered copies).
-pub const SCREEN_AO_STUB: &str = "fn screen_ao(p: vec3<f32>) -> f32 { return 1.0; }\n";
-
 /// Whether the effect group carries the planar reflection material shaders
 /// read (binding 4): with two planar reflections
 /// ([`RenderDesc::planar_reflections`]). With one, the effect group is the
@@ -99,27 +92,66 @@ pub fn planar_slot(planar_reflections: u32) -> bool {
 
 /// The lit shader's source with `hooks` (`hooks.rs`); with `planar`
 /// ([`planar_slot`]) `planar_reflection` reads the effect group's binding 4,
-/// else it is [`PLANAR_STUB`].
+/// else it is its stub.
 pub fn lit_source_with(hooks: &str, planar: bool) -> String {
-    format!(
-        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{}{SCREEN_AO_WGSL}{PBR_FS_WGSL}{PBR_PREPASS_WGSL}{PBR_LEAN_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_WGSL}",
-        clusters::wgsl(),
-        particles_gpu::NOISE_WGSL,
-        skin::palette_wgsl(3),
-        lightmap::probe_wgsl(),
-        if planar { PLANAR_WGSL } else { PLANAR_STUB },
+    assemble(
+        &[
+            FRAME_WGSL,
+            OIT_WGSL,
+            ARENA_WGSL,
+            &clusters::wgsl(),
+            particles_gpu::NOISE_WGSL,
+            MATERIAL_WGSL,
+            MATERIAL_MAPS_WGSL,
+            MATERIAL_DISSOLVE_WGSL,
+            &skin::palette_wgsl(3),
+            hooks,
+            LIGHTING_WGSL,
+            WEATHER_SURFACE_WGSL,
+            &lightmap::probe_wgsl(),
+            AREA_WGSL,
+            INSTANCE_WGSL,
+            PBR_WGSL,
+            if planar { PLANAR_WGSL } else { "" },
+            SCREEN_AO_WGSL,
+            PBR_FS_WGSL,
+            PBR_PREPASS_WGSL,
+            PBR_LEAN_WGSL,
+            LIGHTMAP_PAGES_WGSL,
+            LIGHTMAP_WGSL,
+        ],
+        &Capability::HOOKS_CALL,
     )
 }
 
 /// The physical lit shader's source (`physical.rs`): [`lit_source_with`]
 /// with the physical material group and fragment shader.
 pub fn physical_source(hooks: &str) -> String {
-    format!(
-        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_PHYSICAL_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{LIGHTING_WGSL}{WEATHER_SURFACE_WGSL}{}{AREA_WGSL}{INSTANCE_WGSL}{PBR_WGSL}{PLANAR_STUB}{SCREEN_AO_WGSL}{SHEEN_WGSL}{PHYSICAL_WGSL}{LIGHTMAP_PAGES_WGSL}{LIGHTMAP_PHYSICAL_WGSL}",
-        clusters::wgsl(),
-        particles_gpu::NOISE_WGSL,
-        skin::palette_wgsl(3),
-        lightmap::probe_wgsl(),
+    assemble(
+        &[
+            FRAME_WGSL,
+            OIT_WGSL,
+            ARENA_WGSL,
+            &clusters::wgsl(),
+            particles_gpu::NOISE_WGSL,
+            MATERIAL_WGSL,
+            MATERIAL_PHYSICAL_WGSL,
+            MATERIAL_DISSOLVE_WGSL,
+            &skin::palette_wgsl(3),
+            hooks,
+            LIGHTING_WGSL,
+            WEATHER_SURFACE_WGSL,
+            &lightmap::probe_wgsl(),
+            AREA_WGSL,
+            INSTANCE_WGSL,
+            PBR_WGSL,
+            SCREEN_AO_WGSL,
+            SHEEN_WGSL,
+            PHYSICAL_WGSL,
+            LIGHTMAP_PAGES_WGSL,
+            LIGHTMAP_PHYSICAL_WGSL,
+        ],
+        &Capability::HOOKS_CALL,
     )
 }
 
@@ -136,10 +168,19 @@ pub const SHADOW_PASS_WGSL: &str = wgsl!("shadow_pass.wgsl");
 /// The shadow shader's source with `hooks` (a material shader's, or the
 /// built-in identities).
 pub fn shadow_source(hooks: &str) -> String {
-    format!(
-        "{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{SHADOW_WGSL}",
-        particles_gpu::NOISE_WGSL,
-        skin::palette_wgsl(2)
+    assemble(
+        &[
+            particles_gpu::NOISE_WGSL,
+            MATERIAL_WGSL,
+            MATERIAL_MAPS_WGSL,
+            MATERIAL_DISSOLVE_WGSL,
+            &skin::palette_wgsl(2),
+            hooks,
+            SHADOW_PASS_WGSL,
+            INSTANCE_WGSL,
+            SHADOW_WGSL,
+        ],
+        &Capability::HOOKS_CALL,
     )
 }
 

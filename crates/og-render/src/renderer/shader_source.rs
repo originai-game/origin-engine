@@ -3,37 +3,7 @@
 use super::*;
 use crate::oit::{ARENA_WGSL, OIT_WGSL};
 pub use og_render_data::shader_source::*;
-
-/// What the lit modules call of [`WEATHER_SURFACE_WGSL`], each returning
-/// what the full code returns with `OG_WEATHER` false: its text in a module
-/// made without the weather on surfaces (`RenderDesc::without`,
-/// `Features::leave_out`).
-pub(crate) const WEATHER_SURFACE_STUB: &str = "const WEATHER_RUNS_OFF: f32 = 0.0;
-const WEATHER_STANDS: f32 = 1.0;
-const WEATHER_GROUND: f32 = 2.0;
-struct Weathered {
-  s: Surface,
-  n: vec3<f32>,
-};
-override OG_WEATHER: bool = false;
-fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
-  return Weathered(s_in, n_in);
-}
-fn weather_surface(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>) -> Weathered {
-  return Weathered(s_in, n_in);
-}
-fn weather_gloss(roughness: f32, metalness: f32, n: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
-  var s: Surface;
-  s.albedo = vec3<f32>(1.0);
-  s.metallic = metalness;
-  s.roughness = roughness;
-  s.f0 = mix(vec3<f32>(0.04), s.albedo, metalness);
-  return Weathered(s, n);
-}
-fn weather_grass(s_in: Surface, n_in: vec3<f32>, p_frame: vec3<f32>, t: f32) -> Weathered {
-  return Weathered(s_in, n_in);
-}
-";
+pub use og_render_data::{WEATHER_SURFACE_STUB, assemble};
 
 /// The lit pipelines' effect group (group 2): the effect uniform, the screen
 /// AO, the decal atlas and their sampler, with `planar` ([`planar_slot`])
@@ -57,19 +27,29 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
 /// (vertex_offset, surface_color, surface_normal and surface_emissive run
 /// on the copies as on meshes).
 pub(crate) fn scatter_lit_source(hooks: &str) -> String {
-    format!(
-        "{FRAME_WGSL}{}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{hooks}{PLANAR_STUB}{SCREEN_AO_STUB}{LIGHTING_WGSL}{AREA_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}{}{}",
-        clusters::wgsl(),
-        particles_gpu::NOISE_WGSL,
-        crate::wind::WIND_COMMON_WGSL,
-        crate::wind::WIND_LEAN_WGSL,
-        crate::foliage::WGSL,
-        wgsl3d!("scatter_common.wgsl"),
-        wgsl3d!("scatter.wgsl"),
-        wgsl3d!("impostor_common.wgsl"),
-        wgsl3d!("impostor.wgsl"),
-        wgsl3d!("crowd_card_common.wgsl"),
-        wgsl3d!("crowd_card.wgsl")
+    assemble(
+        &[
+            FRAME_WGSL,
+            &clusters::wgsl(),
+            particles_gpu::NOISE_WGSL,
+            MATERIAL_WGSL,
+            MATERIAL_MAPS_WGSL,
+            MATERIAL_DISSOLVE_WGSL,
+            hooks,
+            LIGHTING_WGSL,
+            AREA_WGSL,
+            INSTANCE_WGSL,
+            crate::wind::WIND_COMMON_WGSL,
+            crate::wind::WIND_LEAN_WGSL,
+            crate::foliage::WGSL,
+            wgsl3d!("scatter_common.wgsl"),
+            wgsl3d!("scatter.wgsl"),
+            wgsl3d!("impostor_common.wgsl"),
+            wgsl3d!("impostor.wgsl"),
+            wgsl3d!("crowd_card_common.wgsl"),
+            wgsl3d!("crowd_card.wgsl"),
+        ],
+        &Capability::HOOKS_CALL,
     )
 }
 
