@@ -5811,7 +5811,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("An og.VolumetricFog is drawn lit, with its light shafts; false draws the same medium as plain distance and height fog."),
+                doc: doc!("An og.VolumetricFog is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

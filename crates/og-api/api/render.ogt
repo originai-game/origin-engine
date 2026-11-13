@@ -742,7 +742,7 @@ module render {
       min 0.125
       max 4
     }
-    field volumetricFog bool "An og.VolumetricFog is drawn lit, with its light shafts; false draws the same medium as plain distance and height fog." {
+    field volumetricFog bool "An og.VolumetricFog is drawn lit, with its light shafts, and so is the sun's light under an og.Water (its shafts, where it has caustics); false draws the fog as plain distance and height fog and the water's light even." {
       default true
     }
     field softParticles bool "Particles with a softDistance fade against the scene behind them; false draws them hard-edged and asks no depth prepass for them." {

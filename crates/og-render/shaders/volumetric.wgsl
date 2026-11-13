@@ -14,17 +14,24 @@
 // RAYMARCH_LIGHTS lights of each step's cluster. Both
 // output (in-scattered light, transmittance), blended over the lit image
 // as colour × transmittance + light.
+//
+// Under water (`vol.water`, volumetric.rs `Medium::Water`) the medium is the water the eye is in and the pass draws
+// the sun's own light in it (`water_in`): the light shafts. The frame's fog has already drawn the water's even light
+// and dimmed what is seen through it, so the transmittance it writes is 1.
 
 struct Vol {
   scatter: vec4<f32>,  // rgb: colour × scattering, w: anisotropy
   medium: vec4<f32>,   // x: density, y: height, z: height density, w: falloff
   extent: vec4<f32>,   // x: distance, y: raymarch steps, zw: the target's size in pixels
   grid: vec4<f32>,     // xyz: froxels across, down and deep, w: the frame's noise seed
+  water: vec4<f32>,    // x: 1 when the medium is the water the eye is under
 };
 
 @group(1) @binding(0) var<uniform> vol: Vol;
 
 fn vol_density(p: vec3<f32>) -> f32 {
+  // The water's: its fog's, below its surface.
+  if (vol.water.x > 0.5) { return select(0.0, max(frame.fog_distance.x, 1e-5), p.y < frame.fog_height.x); }
   return vol.medium.x + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
 }
 
@@ -52,6 +59,36 @@ fn sun_in(p: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5) { shadow = cascade_shadow_lookup(p, l, 1.0, false); }
   return frame.light_color.rgb * shadow * hg_phase(dot(dir, l), vol.scatter.w);
+}
+
+// The sun's light in the water at p scattered towards the eye (dir: the view ray), as a sample `width` metres
+// across holds it, per unit of the water's extinction: the sun's share of the water's own light there
+// (frame.wgsl `underwater_sun` of `underwater_body`'s source, the fog colour falling off with depth), times what
+// the waves make of the sun at p (caustics.wgsl `water_focus`, the light field that draws the caustics on the bed),
+// the sun's shadow there, and a Henyey-Greenstein phase about the sun's refracted direction over an even one (water
+// scatters forwards: brighter looking up the light). Summed along a view ray that is the light shafts: parallel
+// beams along the refracted sun, each under the patch of surface that focuses it, cut where something shadows
+// them, converging on the sun's place in Snell's window only as perspective makes parallel lines converge.
+// (Light scattered once in a medium lit through a refracting surface: Nishita and Nakamae, "Method of displaying
+// optical effects within water using accumulation buffer", SIGGRAPH 1994; Iwasaki, Dobashi and Nishita, "An
+// efficient method for rendering underwater optical effects using graphics hardware", CGF 2002.)
+fn water_in(p: vec3<f32>, dir: vec3<f32>, width: f32) -> vec3<f32> {
+  let l = normalize(frame.light_dir.xyz);
+  let depth = frame.fog_height.x - p.y;
+  if (depth <= 0.0 || l.y <= 0.0) { return vec3<f32>(0.0); }
+  var shadow = 1.0;
+  if (frame.light_dir.w > 0.5) { shadow = cascade_shadow_lookup(p, l, 1.0, false); }
+  let up_light = -refract(-l, vec3<f32>(0.0, 1.0, 0.0), 1.0 / 1.33);
+  let phase = 4.0 * PI * hg_phase(dot(dir, up_light), vol.scatter.w);
+  let light = underwater_sun() * exp(-frame.fog_height.y * depth) * phase * shadow * max(1.0 + water_focus(p, width), 0.0);
+  return frame.fog_color.rgb * light;
+}
+
+// The light scattered towards the eye at p (frag: its pixel; `most`: as `locals_in`), a sample `width` metres
+// across: the medium's.
+fn medium_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32, width: f32) -> vec3<f32> {
+  if (vol.water.x > 0.5) { return water_in(p, dir, width); }
+  return sun_in(p, dir) + locals_in(p, dir, frag, most);
 }
 
 // The cluster's lights scattered towards the eye at p (frag: its pixel),

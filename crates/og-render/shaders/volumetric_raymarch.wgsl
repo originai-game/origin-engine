@@ -21,9 +21,11 @@ fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
     let sigma = vol_density(p);
     if (sigma <= 0.0) { continue; }
     let tr = exp(-sigma * dt);
-    let s = vol.scatter.rgb * sigma * (sun_in(p, dir) + locals_in(p, dir, in.pos.xy, RAYMARCH_LIGHTS));
+    // A step holds the water's light as far as its length.
+    let s = vol.scatter.rgb * sigma * medium_in(p, dir, in.pos.xy, RAYMARCH_LIGHTS, 0.5 * dt);
     acc += transmittance * s * (1.0 - tr) / sigma;
     transmittance *= tr;
   }
-  return vec4<f32>(acc, transmittance);
+  // The water's fog has dimmed the scene already.
+  return vec4<f32>(acc, select(transmittance, 1.0, vol.water.x > 0.5));
 }

@@ -14,7 +14,7 @@ pub(super) struct DecideEffectsInputs<'a> {
     pub skinned_motion: Option<bool>,
     pub temporal: bool,
     pub taa_on: bool,
-    pub volumetric_fog: &'a Option<crate::volumetric::VolumetricFog>,
+    pub volumetric_fog: &'a Option<crate::volumetric::Medium>,
     pub particle_frame: &'a particles_gpu::ParticleFrame,
     pub scene_water: &'a [Water],
 }

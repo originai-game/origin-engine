@@ -169,21 +169,29 @@ pub(crate) fn underwater_fog(w: &Water) -> crate::Fog {
 
 /// How the water's light falls off under surface `w` (`mesh` its data):
 /// the surface's height in the frame, the daylight's attenuation per metre
-/// of depth and the light shafts' strength.
+/// of depth and the sun's own share of the water's light.
 ///
 /// The attenuation is 0.45 of the fog's density: the diffuse attenuation
 /// of coastal water is its absorption and backscatter, between a third
 /// and a half of its beam attenuation (Mobley, Light and Water, 1994,
-/// ch. 3 and 5). The shafts are the same focusing of the sun by the
-/// waves that draws the caustics, so they take the caustics' strength.
+/// ch. 3 and 5). The sun's share is the light the water volume draws as
+/// shafts (volumetric.rs `Medium::Water`): the same light the waves focus
+/// into the caustics, so it takes the caustics' strength, up to
+/// [`SUN_SHARE`].
 pub(crate) fn underwater_light(w: &Water, mesh: Option<&crate::scene::MeshData>) -> [f32; 3] {
     let (_, at, _, _) = surface(w, mesh);
     [
         at.y,
         0.45 * w.underwater_density.max(0.0),
-        w.caustics.clamp(0.0, 1.0),
+        SUN_SHARE * w.caustics.clamp(0.0, 1.0),
     ]
 }
+
+/// The most of the water's own light that is the sun's, still in its
+/// beam: the rest is the sky's and what the water has scattered about,
+/// which is even. (Under a clear sky the sun is some four fifths of the
+/// light entering the water; scattering spreads it with depth.)
+const SUN_SHARE: f32 = 0.6;
 
 /// The camera mirrored in the plane through `at` with unit normal `n`.
 pub(crate) fn mirrored_camera(camera: &crate::Camera, n: Vec3, at: Vec3) -> crate::Camera {
