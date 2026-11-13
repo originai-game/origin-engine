@@ -47,10 +47,25 @@ fn tokens_json_is_generated_from_the_design_tokens() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let committed = std::fs::read_to_string(root.join("../../packages/design/tokens.json"))
         .expect("tokens.json");
+    let docs =
+        theme_codegen::docs(&root.join("../../packages/design/tokens")).expect("the notes load");
     assert_eq!(
         committed,
-        theme_codegen::json(&tokens()).expect("the tokens write as JSON"),
+        theme_codegen::json(&tokens(), &docs).expect("the tokens write as JSON"),
         "run crates/og-ui/scripts/gen-theme.sh (never edit tokens.json by hand)"
+    );
+    // origin-agent reads tokens.json: the groups keep the notes it had
+    // before the tokens became CSS.
+    let tree: serde_json::Value = serde_json::from_str(&committed).expect("tokens.json is JSON");
+    for group in ["state", "controls", "derived", "glassContrast"] {
+        assert!(
+            tree[group]["_doc"].is_string(),
+            "tokens.json: {group} has no _doc"
+        );
+    }
+    assert!(
+        tree["motion"]["timing"]["_doc"].is_string(),
+        "tokens.json: motion.timing has no _doc"
     );
 }
 

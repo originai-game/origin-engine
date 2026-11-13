@@ -16,7 +16,7 @@ fn main() {
         Ok((
             theme_codegen::generate(&t)?,
             theme_codegen::generate_css(&t)?,
-            theme_codegen::json(&t)?,
+            theme_codegen::json(&t, &theme_codegen::docs(std::path::Path::new(tokens))?)?,
         ))
     }) {
         Ok((rs, sheet, tree)) => {

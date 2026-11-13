@@ -12,7 +12,7 @@ mod theme_css;
 pub use theme_css::generate as generate_css;
 #[path = "theme_tokens.rs"]
 mod theme_tokens;
-pub use theme_tokens::{json, load};
+pub use theme_tokens::{docs, json, load};
 
 /// Each og-ui role and the token it is drawn from: `color` (the scheme's
 /// colour, `dark.color` over `color`) or `linear` (the fill restated for

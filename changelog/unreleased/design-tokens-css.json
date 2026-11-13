@@ -2,7 +2,7 @@
   "added": [
     {
       "member": "@origingame/design",
-      "summary": "The design tokens are authored as CSS: packages/design/tokens/*.css, custom properties on :root named by their path (--motion-duration-fast), one file per surface, with a :root[data-scheme=dark] block for what the dark scheme changes. tokens.json is now generated from them (same groups and values, keys sorted, no _doc notes) and the package ships both."
+      "summary": "The design tokens are authored as CSS: packages/design/tokens/*.css, custom properties on :root named by their path (--motion-duration-fast), one file per surface, with a :root[data-scheme=dark] block for what the dark scheme changes. tokens.json is now generated from them (same keys, values and group notes as `_doc`, the notes taken from the comments over each group's tokens; keys sorted; new tokens added) and the package ships both."
     }
   ]
 }

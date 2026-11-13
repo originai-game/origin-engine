@@ -269,9 +269,23 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<(), Stri
 }
 
 /// `tokens.json`, the same tokens as one tree for a client that reads
-/// JSON (origin-agent): groups nested, names as the tree spells them.
-pub fn json(tokens: &Value) -> Result<String, String> {
+/// JSON (origin-agent): groups nested, names as the tree spells them, each
+/// group's note (`docs`) as its `_doc`.
+pub fn json(tokens: &Value, docs: &[(Vec<String>, String)]) -> Result<String, String> {
     let mut tree = tokens.as_object().cloned().unwrap_or_default();
+    for (path, doc) in docs {
+        let mut at = Some(&mut tree);
+        for group in path {
+            at = at
+                .and_then(|t| t.get_mut(group))
+                .and_then(Value::as_object_mut);
+        }
+        if let Some(group) = at {
+            group
+                .entry("_doc".to_string())
+                .or_insert_with(|| Value::String(doc.clone()));
+        }
+    }
     tree.insert(
         "_doc".to_string(),
         Value::String(
@@ -284,14 +298,108 @@ pub fn json(tokens: &Value) -> Result<String, String> {
     Ok(text)
 }
 
-/// The tokens of every `.css` file in `dir`, in file-name order.
-pub fn load(dir: &Path) -> Result<Value, String> {
+/// The groups' notes in every `.css` file in `dir`: a comment in a block
+/// is the note of the deepest group shared by the declarations after it
+/// that are in the first one's top-level group (up to the next comment);
+/// the first such comment for a group wins. A comment on a token of a
+/// top-level group with no subgroups notes nothing.
+pub fn docs(dir: &Path) -> Result<Vec<(Vec<String>, String)>, String> {
+    let mut out: Vec<(Vec<String>, String)> = Vec::new();
+    for file in css_files(dir)? {
+        let css = std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+        let mut rest = css.as_str();
+        while let Some(open) = rest.find('{') {
+            let selector = strip_comments(&rest[..open]);
+            let Some(close) = rest[open..].find('}') else {
+                break;
+            };
+            let body = &rest[open + 1..open + close];
+            rest = &rest[open + close + 1..];
+            let dark = selector.trim() == ":root[data-scheme=dark]";
+            let mut note: Option<String> = None;
+            let mut paths: Vec<Vec<String>> = Vec::new();
+            let mut flush = |note: &mut Option<String>, paths: &mut Vec<Vec<String>>| {
+                if let Some(text) = note.take() {
+                    let first = paths.first().map(|p| p[0].clone());
+                    let shared = paths
+                        .iter()
+                        .take_while(|p| Some(&p[0]) == first.as_ref())
+                        .map(|p| &p[..p.len() - 1])
+                        .reduce(|a, b| &a[..a.iter().zip(b).take_while(|(x, y)| x == y).count()])
+                        .unwrap_or(&[]);
+                    if !shared.is_empty() && !out.iter().any(|(p, _)| p == shared) {
+                        out.push((shared.to_vec(), text));
+                    }
+                }
+                paths.clear();
+            };
+            let mut body = body;
+            loop {
+                body = body.trim_start();
+                if body.is_empty() {
+                    break;
+                }
+                if let Some(after) = body.strip_prefix("/*") {
+                    let end = after.find("*/").unwrap_or(after.len());
+                    flush(&mut note, &mut paths);
+                    note = Some(
+                        after[..end]
+                            .split_whitespace()
+                            .collect::<Vec<_>>()
+                            .join(" "),
+                    );
+                    body = after.get(end + 2..).unwrap_or("");
+                    continue;
+                }
+                let end = body.find(';').unwrap_or(body.len());
+                if let Some(name) = body[..end]
+                    .split_once(':')
+                    .and_then(|(n, _)| n.trim().strip_prefix("--"))
+                {
+                    let mut path = path(name);
+                    if dark {
+                        if path[0] == "linear" {
+                            path.insert(1, "dark".to_string());
+                        } else {
+                            path.insert(0, "dark".to_string());
+                        }
+                    }
+                    paths.push(path);
+                }
+                body = body.get(end + 1..).unwrap_or("");
+            }
+            flush(&mut note, &mut paths);
+        }
+    }
+    Ok(out)
+}
+
+fn strip_comments(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find("/*") {
+        out.push_str(&rest[..open]);
+        rest = rest[open..]
+            .find("*/")
+            .map_or("", |close| &rest[open + close + 2..]);
+    }
+    out.push_str(rest);
+    out
+}
+
+fn css_files(dir: &Path) -> Result<Vec<std::path::PathBuf>, String> {
     let mut files: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| format!("{}: {e}", dir.display()))?
         .filter_map(|entry| entry.ok().map(|entry| entry.path()))
         .filter(|path| path.extension().is_some_and(|ext| ext == "css"))
         .collect();
     files.sort();
+    Ok(files)
+}
+
+/// The tokens of every `.css` file in `dir`, in file-name order.
+pub fn load(dir: &Path) -> Result<Value, String> {
+    let files = css_files(dir)?;
     if files.is_empty() {
         return Err(format!("{}: no token files", dir.display()));
     }
