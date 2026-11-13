@@ -181,18 +181,19 @@ pub(crate) fn form(ui: &mut Ui, f: &mut Form) {
         );
     });
     if f.dialog {
-        ui.modal(
+        let dialog = ui.open_modal(
             "Confirm",
             true,
             &ModalDesc {
                 title: "Delete this save?".into(),
                 ..ModalDesc::default()
             },
-            |ui| {
-                ui.button("Cancel", "Cancel", ButtonDesc::default());
-                ui.button("Delete", "Delete", ButtonDesc::default());
-            },
         );
+        if dialog.visible {
+            ui.button("Cancel", "Cancel", ButtonDesc::default());
+            ui.button("Delete", "Delete", ButtonDesc::default());
+        }
+        ui.close_modal();
     }
 }
 

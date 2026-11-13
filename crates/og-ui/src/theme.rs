@@ -262,7 +262,7 @@ pub const SPACE: Space = Space {
 /// element's short side draws it round.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Radius {
-    /// Small parts: checkboxes, slots, tiles, the minimap.
+    /// Small parts: checkboxes, slots, tiles.
     pub small: f32,
     /// Controls: buttons, fields, chips, badges, tabs, switches.
     pub control: f32,

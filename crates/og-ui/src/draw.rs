@@ -87,15 +87,6 @@ pub enum DrawCmd {
         color: [f32; 4],
         clip: Rect,
     },
-    /// Half a disc of `radius` around `center`, on the side `angle` points to
-    /// (0: right, clockwise on screen). Pies and rings are two of them.
-    Half {
-        center: (f32, f32),
-        radius: f32,
-        angle: f32,
-        color: [f32; 4],
-        clip: Rect,
-    },
     /// One line of text: `x` the pen start, `baseline` its baseline.
     Text {
         x: f32,
@@ -419,7 +410,6 @@ impl DrawCmd {
             | DrawCmd::Quad { clip, .. }
             | DrawCmd::Image { clip, .. }
             | DrawCmd::Bar { clip, .. }
-            | DrawCmd::Half { clip, .. }
             | DrawCmd::Text { clip, .. }
             | DrawCmd::Shape { clip, .. }
             | DrawCmd::Vector { clip, .. }
@@ -440,7 +430,6 @@ impl DrawCmd {
             | DrawCmd::Quad { clip, .. }
             | DrawCmd::Image { clip, .. }
             | DrawCmd::Bar { clip, .. }
-            | DrawCmd::Half { clip, .. }
             | DrawCmd::Text { clip, .. }
             | DrawCmd::Shape { clip, .. }
             | DrawCmd::Vector { clip, .. }
@@ -466,10 +455,9 @@ impl DrawCmd {
     fn batch(&self) -> Batch {
         match self {
             DrawCmd::Glass { .. } => Batch::Backdrop,
-            DrawCmd::Quad { .. }
-            | DrawCmd::Bar { .. }
-            | DrawCmd::Half { .. }
-            | DrawCmd::Image { texture: None, .. } => Batch::Ui(0, None),
+            DrawCmd::Quad { .. } | DrawCmd::Bar { .. } | DrawCmd::Image { texture: None, .. } => {
+                Batch::Ui(0, None)
+            }
             DrawCmd::Image {
                 texture: Some(t), ..
             } => Batch::Ui(0, Some(*t)),
@@ -527,18 +515,6 @@ impl DrawCmd {
                 let d = (w * w + h * h).sqrt();
                 Rect::new(center.0 - d / 2.0, center.1 - d / 2.0, d, d).intersect(clip)
             }
-            DrawCmd::Half {
-                center,
-                radius,
-                clip,
-                ..
-            } => Rect::new(
-                center.0 - radius,
-                center.1 - radius,
-                2.0 * radius,
-                2.0 * radius,
-            )
-            .intersect(clip),
             DrawCmd::PushClip { .. }
             | DrawCmd::PopClip
             | DrawCmd::BeginLayer { .. }

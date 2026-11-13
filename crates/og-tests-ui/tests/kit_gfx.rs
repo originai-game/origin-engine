@@ -1,10 +1,8 @@
 //! The game widget set rendered headless and compared with
 //! `references/<tier>/widget-set.png` (og-tests' tolerance, as `tests/gfx.rs`;
-//! `OG_UI_CAPTURE=1` records). Covers what only drawing shows: cooldown pies
-//! made of rotated half discs at 0, a quarter, past half and full; checkbox
-//! ticks and chevrons as rotated bars; meter trails, notches and labels;
-//! focus rings with their gap; the d-pad, stick and action buttons; a dialog
-//! over a scrim with an open select menu over it; a toast.
+//! `OG_UI_CAPTURE=1` records). Covers what only drawing shows: checkbox
+//! ticks and chevrons as rotated bars; badges; focus rings with their gap;
+//! the d-pad and stick; an open select menu over the panel; a toast.
 
 use crate::support;
 
@@ -26,29 +24,6 @@ fn the_widget_set_matches_its_reference_frame() {
     assert!(
         shot.ui.element("Toasts/Toast#1").is_some(),
         "the toast is up"
-    );
-
-    // The pies: done 0.25 is the right half and a track half turned a
-    // quarter; done 0.6 is the right half and a fill half turned 0.6 turn
-    // less a half (the rings of 1 and 0 remaining draw no halves).
-    let mut angles: Vec<f32> = frame
-        .items
-        .iter()
-        .filter_map(|i| match i.cmd {
-            DrawCmd::Half { angle, .. } => Some(angle),
-            _ => None,
-        })
-        .collect();
-    angles.sort_by(f32::total_cmp);
-    let pi = std::f32::consts::PI;
-    let expected = [0.0, 0.0, 0.2 * pi, 0.5 * pi];
-    assert!(
-        angles.len() == 4
-            && angles
-                .iter()
-                .zip(expected)
-                .all(|(a, e)| (a - e).abs() < 1e-4),
-        "half-disc angles {angles:?}, expected {expected:?}"
     );
 
     let rendered = render_frame(&shot.scene, &shot.desc);

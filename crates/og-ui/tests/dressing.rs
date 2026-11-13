@@ -436,17 +436,6 @@ fn bars(ui: &mut Ui) {
             width: Some(Size::px(141.0)),
         },
     );
-    ui.meter(
-        "Hp",
-        23.0,
-        100.0,
-        &MeterDesc {
-            kind: MeterKind::Health,
-            label: "HP".into(),
-            segments: 4,
-            ..Default::default()
-        },
-    );
     ui.gauge(
         "Gauge",
         &GaugeDesc {
@@ -476,11 +465,7 @@ fn bar_tracks_are_part_boxes_and_fills_keep_their_device_pixels() {
     for _ in 0..3 {
         bars(&mut ui);
     }
-    for (host, role) in [
-        ("Root/Load", "progressbar"),
-        ("Root/Hp", "meter"),
-        ("Root/Gauge", "meter"),
-    ] {
+    for (host, role) in [("Root/Load", "progressbar"), ("Root/Gauge", "meter")] {
         let h = ui.element(host).unwrap();
         assert_eq!(h.role, role, "{host}");
         let track = ui.element(&format!("{host}/::part(track)#0")).unwrap();
@@ -497,14 +482,6 @@ fn bar_tracks_are_part_boxes_and_fills_keep_their_device_pixels() {
     let load = ui.element("Root/Load").unwrap();
     let expected = [load.x, load.y, 98.0 - load.x, 8.0];
     assert!(fills.contains(&expected), "{expected:?} in {fills:?}");
-    let hp = ui.element("Root/Hp").unwrap();
-    assert!(
-        fills
-            .iter()
-            .any(|r| r[1] == hp.y && r[2] == 1.0 * 2.0 && r[3] == hp.height),
-        "a separator over the meter's track: {fills:?}"
-    );
-    assert_eq!(ui.element("Root/Hp").unwrap().text, "HP");
 }
 
 #[test]
@@ -532,12 +509,12 @@ fn bar_track_css_sizes_the_box_its_fill_is_drawn_in() {
             .filled()
             .is_some_and(|(r, c)| c == blue && r.height == 4.0)
     }));
-    let hp = ui.element("Root/Hp/::part(track)#0").unwrap();
-    assert_eq!(hp.height, 6.0);
+    let gauge = ui.element("Root/Gauge/::part(track)#0").unwrap();
+    assert_eq!(gauge.height, 6.0);
     assert!(
         fills
             .iter()
-            .any(|r| r[1] == hp.y && r[3] == 6.0 && r[2] < hp.width),
+            .any(|r| r[1] == gauge.y && r[3] == 6.0 && r[2] < gauge.width),
         "the meter's fill is the track's height: {fills:?}"
     );
 }
@@ -1259,36 +1236,6 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
                     .any(|(r, c)| r.width == 9.0 && *c == Srgba::rgb(0, 255, 255).linear())
             );
         }
-    }
-}
-
-#[test]
-fn a_disabled_touch_controls_opacity_is_authored_by_its_state_dressing() {
-    let mut ui = dressed(concat!(
-        "actionbutton::part(face) { opacity: 0.8; }\n",
-        "actionbutton::part(face):disabled { opacity: 0.2; }\n",
-    ));
-    for disabled in [false, true, false] {
-        ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        ui.action_button(
-            "Fire",
-            "Fire",
-            &ActionButtonDesc {
-                disabled,
-                primary: true,
-                ..ActionButtonDesc::default()
-            },
-        );
-        ui.end();
-        let element = ui.element("Fire").unwrap();
-        let rect = Rect::new(element.x, element.y, element.width, element.height);
-        let fills = fills_in(&ui, rect);
-        assert!(!fills.is_empty(), "the action face is drawn");
-        let expected = if disabled { 0.2 } else { 0.8 };
-        assert!(
-            fills.iter().all(|c| (c[3] - expected).abs() < 0.001),
-            "{fills:?}"
-        );
     }
 }
 

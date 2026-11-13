@@ -11,11 +11,6 @@ const PART_RULES: &[(&str, &str, &str)] = &[
     ("Tooltip::frame", "tooltip::part(frame)", GLASS_FLOAT),
     ("Hud::frame", "hud::part(frame)", GLASS_REGULAR),
     (
-        "Minimap::frame",
-        "minimap::part(frame)",
-        "background: var(--color-minimap); border: var(--stroke-edge) solid var(--color-minimap-edge); box-shadow: var(--shadow-minimap);",
-    ),
-    (
         "Card::frame",
         "panel::part(frame)",
         "box-shadow: none; border-radius: var(--radius-card);",
@@ -40,7 +35,6 @@ const PART_RULES: &[(&str, &str, &str)] = &[
         "input::part(frame):invalid, textarea::part(frame):invalid",
         "border: var(--stroke-hairline) solid var(--danger);",
     ),
-    ("Chip::base", "chip::part(base)", "border: none;"),
     (
         "Slot::frame",
         "slot::part(frame)",
@@ -612,7 +606,7 @@ const FALLBACKS: &str = r#"
   keyboard::part(key), keyboard::part(candidate), input::part(frame),
   textarea::part(frame), select::part(trigger), input[type=checkbox]::part(box),
   input[type=radio]::part(ring), input[type=radio]::part(card), slot::part(frame),
-  chip::part(base), tabs::part(tab), input[type=range]::part(knob),
+  tabs::part(tab), input[type=range]::part(knob),
   input[type=checkbox][switch]::part(track), input[type=checkbox][switch]::part(knob) {
     transition: background var(--motion-ui-duration) var(--motion-ui-easing),
       border-color var(--motion-ui-duration) var(--motion-ui-easing),
@@ -631,12 +625,11 @@ const FALLBACKS: &str = r#"
     box-shadow: var(--dropdown-list-shadow);
   }
   /* Hud */
-  hud::part(frame), minimap::part(frame) {
+  hud::part(frame) {
     border: var(--stroke-hairline) solid var(--line-70);
     border-radius: var(--hud-radius);
   }
-  joystick::part(base):disabled, dpad::part(base):disabled,
-  actionbutton::part(face):disabled {
+  joystick::part(base):disabled, dpad::part(base):disabled {
     opacity: var(--state-touch-disabled-opacity);
   }
   /* Button: untouched token defaults also serve secondary controls. */
@@ -680,17 +673,16 @@ const FALLBACKS: &str = r#"
   stepper[aria-invalid=true]::part(frame), stepper[aria-invalid=true]::part(value) {
     border: var(--field-border-width) solid var(--danger);
   }
-  /* Slot / Avatar / Chip / Badge / Tab / Bar */
+  /* Slot / Avatar / Badge / Tab / Bar */
   slot::part(frame) {
     border: var(--stroke-hairline) solid var(--line);
     border-radius: var(--slot-radius);
     box-shadow: var(--slot-shadow);
   }
-  chip::part(base), input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
+  input[type=range]::part(knob), input[type=checkbox][switch]::part(track),
   input[type=checkbox][switch]::part(knob) {
     border: var(--stroke-hairline) solid var(--line); border-radius: var(--chip-radius);
   }
-  chip[aria-selected=true]::part(base) { border: none; }
   badge::part(base), tabs::part(tab), tabs::part(track), tabs::part(indicator) {
     border: none; border-radius: var(--tabs-radius);
   }

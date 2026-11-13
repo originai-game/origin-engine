@@ -825,9 +825,8 @@ fn keyed_virtual_content_is_measured_and_clipped_on_gpu() {
         for _ in 0..4 {
             ui.begin(InputFrame::default(), Viewport::new(240.0, 160.0));
             let range = if grid {
-                ui.open_keyed_grid(
-                    "Items",
-                    &keys,
+                ui.open_grid_inner(
+                    "Items".into(),
                     GridDesc {
                         columns: 2,
                         cell_width: 100.0,
@@ -835,17 +834,18 @@ fn keyed_virtual_content_is_measured_and_clipped_on_gpu() {
                         height: Some(Size::Fixed(128.0)),
                         ..Default::default()
                     },
+                    Some(og_ui::virtualize::Order::Untracked(&keys)),
                 )
             } else {
-                ui.open_keyed_list(
-                    "Items",
-                    &keys,
+                ui.open_list_inner(
+                    "Items".into(),
                     ListDesc {
                         row_height: 40.0,
                         width: Size::Fixed(220.0),
                         height: Some(Size::Fixed(128.0)),
                         ..Default::default()
                     },
+                    Some(og_ui::virtualize::Order::Untracked(&keys)),
                 )
             };
             for i in range.first..range.last {

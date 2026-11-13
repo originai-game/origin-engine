@@ -386,8 +386,8 @@ pub struct Interaction {
     pub(crate) vcursor: Option<crate::vcursor::VirtualCursorDesc>,
     /// The control a widget asked to focus this frame.
     pub(crate) request_focus: u64,
-    /// Two touches move a scroller or zoom view this tick: the primary
-    /// pointer presses nothing.
+    /// Two touches move a scroller this tick: the primary pointer
+    /// presses nothing.
     pub(crate) gesture: bool,
     /// The element a resize drag moved this tick (written again).
     pub(crate) resize_moved: Option<u64>,

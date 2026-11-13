@@ -125,39 +125,24 @@ panel::part(frame), dialog::part(panel) {
 }
 dialog::part(backdrop) { background: var(--scrim); }
 tooltip::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-tooltip); box-shadow: var(--fantasy-tooltip-shadow); backdrop-filter: none; }
-hud::part(frame), minimap::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--hud); backdrop-filter: none; }
-minimap::part(north) { color: var(--gold); }
-minimap::part(marker) { background: var(--gold); }
+hud::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--hud); backdrop-filter: none; }
 toast::part(indicator) { background: var(--gold); }
 popover::part(arrow) { background: var(--panel); }
 og-spotlight::part(edge) { border: var(--stroke-regular) solid var(--gold); }
 
-/* ── Slot (core), chip, badge. */
+/* ── Slot (core), badge. */
 slot::part(frame) { border: var(--stroke-regular) solid var(--cell-rim); background: var(--slot-fill); box-shadow: var(--slot-shadow); }
 slot::part(frame):hover { border-color: var(--accent); }
 slot::part(frame):active { background: var(--well); }
 slot::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); }
-chip::part(base) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--panel-raised); color: var(--ink); }
-chip::part(base):hover { border-color: var(--accent); }
-chip::part(base):active { background: var(--well); }
-chip::part(base):disabled { color: var(--ink-disabled); border-color: var(--line); }
 badge::part(base) { background: var(--primary-active); color: var(--on-primary); border: var(--stroke-hairline) solid var(--accent); }
 
-/* ── Bars, progress, meters, cooldowns. */
+/* ── Bars, progress, meters. */
 progress::part(track), meter::part(track) { background: var(--well); border: var(--stroke-hairline) solid var(--line); box-shadow: var(--well-shadow); }
 progress::part(fill) { background: var(--fantasy-gold-fill); }
 meter::part(fill) { background: var(--fantasy-gold-fill); }
 meter.health::part(fill) { background: var(--fantasy-health-fill); }
 meter.mana::part(fill) { background: var(--fantasy-mana-fill); }
-meter::part(trail) { background: var(--accent-53); }
-meter::part(separator) { background: var(--well); }
-meter::part(label) { color: var(--ink); }
-cooldown::part(track) { background: var(--well); }
-cooldown::part(sweep) { background: var(--shadow-63); }
-cooldown::part(core):active { background: var(--accent-20); }
-skeleton::part(frame), skeleton::part(line) { background: var(--panel-raised); }
-skeleton::part(sheen) { background: var(--fantasy-skeleton-sheen); }
-spinner::part(dot) { background: var(--gold); }
 
 /* ── Keyboard (on-screen). */
 keyboard::part(panel) { border-top: var(--stroke-hairline) solid var(--line-strong); background: var(--backdrop); }
@@ -172,12 +157,8 @@ joystick::part(base), dpad::part(base) { background: var(--fantasy-touch-plate);
 joystick::part(rim):active { border-color: var(--gold); }
 joystick::part(knob) { background: var(--slider-knob-fill); }
 dpad::part(indicator):active, dpad::part(chevron):active { background: var(--gold); }
-actionbutton::part(face) { border: var(--stroke-regular) solid var(--line-strong); background: var(--action-face-fill); }
-actionbutton::part(face):active { border-color: var(--gold); background: var(--action-face-pressed-fill); }
-actionbutton::part(sweep) { background: var(--shadow-63); }
 
-/* ── Dialogue (core), headings, scroll bars. */
-dialogue::part(continue) { color: var(--gold); }
+/* ── Headings, scroll bars. */
 /* pending: heading flourish — the registry exposes h1..h6::part(flourish),
    but a text element.s ::part is read as a text span and refuses background
    ("unsupported text span property background"):
@@ -195,9 +176,5 @@ keyboard::part(candidates) { border-bottom: var(--stroke-hairline) solid var(--l
 input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--gold); }
 input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
 og-icon::part(secondary) { color: var(--gold); }
-og-icon::part(image), art::part(icon), artslot::part(icon), actionbutton::part(icon), cooldown::part(icon), dialogue::part(portraitIcon) { color: var(--ink); }
-cooldown::part(mask), actionbutton::part(mask) { background: var(--shadow-63); }
-minimap::part(image) { filter: saturate(0.85) brightness(0.9); }
-minimap::part(markerOutline) { background: var(--well); }
-dialogue::part(initial) { color: var(--gold); font-family: var(--font-display); }
+og-icon::part(image), art::part(icon), artslot::part(icon) { color: var(--ink); }
 joystick::part(direction) { background: var(--gold); }

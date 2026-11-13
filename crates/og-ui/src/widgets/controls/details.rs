@@ -130,17 +130,4 @@ impl Ui {
             ..Semantics::default()
         });
     }
-
-    /// A disclosure whose content `f` builds (hidden while closed).
-    pub fn details(
-        &mut self,
-        id: impl Into<Id>,
-        desc: &DetailsDesc,
-        f: impl FnOnce(&mut Ui),
-    ) -> DetailsResult {
-        let r = self.open_details(id, desc);
-        f(self);
-        self.close_details();
-        r
-    }
 }

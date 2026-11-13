@@ -777,24 +777,6 @@ impl Ui {
                         clip,
                     });
                 }
-                Shape::Half {
-                    part,
-                    frame,
-                    angle,
-                    color,
-                } => {
-                    let values = self.part_values(part, Some(n.key));
-                    let r = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
-                    let color = values.color("color").unwrap_or(*color);
-                    let alpha = alpha * values.num("opacity").unwrap_or(1.0);
-                    cmds.push(DrawCmd::Half {
-                        center: r.center(),
-                        radius: r.width.min(r.height) / 2.0,
-                        angle: *angle,
-                        color: color.fade(alpha).linear(),
-                        clip,
-                    });
-                }
                 Shape::Arc {
                     part,
                     frame,

@@ -59,21 +59,13 @@ pub enum UiKey {
     KeyU,
     KeyW,
     KeyT,
-    /// A focused zoom view zooms in with `=`/`+` and the keypad's `+`, out
-    /// with `-` and the keypad's `-`, and back to its fit with `0`.
-    Equal,
-    Minus,
-    Digit0,
-    NumpadAdd,
-    NumpadSubtract,
-    Numpad0,
     /// In a focus group: as far on as one view reaches.
     PageUp,
     PageDown,
 }
 
 impl UiKey {
-    pub const ALL: [UiKey; 37] = [
+    pub const ALL: [UiKey; 31] = [
         UiKey::Backspace,
         UiKey::Delete,
         UiKey::Left,
@@ -103,12 +95,6 @@ impl UiKey {
         UiKey::KeyU,
         UiKey::KeyW,
         UiKey::KeyT,
-        UiKey::Equal,
-        UiKey::Minus,
-        UiKey::Digit0,
-        UiKey::NumpadAdd,
-        UiKey::NumpadSubtract,
-        UiKey::Numpad0,
         UiKey::PageUp,
         UiKey::PageDown,
     ];
@@ -145,12 +131,6 @@ impl UiKey {
             UiKey::KeyU => "KeyU",
             UiKey::KeyW => "KeyW",
             UiKey::KeyT => "KeyT",
-            UiKey::Equal => "Equal",
-            UiKey::Minus => "Minus",
-            UiKey::Digit0 => "Digit0",
-            UiKey::NumpadAdd => "NumpadAdd",
-            UiKey::NumpadSubtract => "NumpadSubtract",
-            UiKey::Numpad0 => "Numpad0",
             UiKey::PageUp => "PageUp",
             UiKey::PageDown => "PageDown",
         }

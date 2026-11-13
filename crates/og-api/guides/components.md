@@ -316,16 +316,7 @@ These declarations also construct widget part identities and are exported by doc
 | `progress` | `fill` | `:enabled` |
 | `meter` | `track` | `:enabled` |
 | `meter` | `fill` | `:enabled` |
-| `meter` | `trail` | `:enabled` |
-| `meter` | `separator` | `:enabled` |
-| `meter` | `label` | `:enabled` |
-| `chip` | `base` | `:enabled`, `:disabled`, `:hover`, `:active`, `:focus-visible` |
 | `badge` | `base` | `:enabled` |
-| `skeleton` | `frame` | `:enabled` |
-| `skeleton` | `sheen` | `:enabled` |
-| `skeleton` | `line` | `:enabled` |
-| `spinner` | `base` | `:enabled` |
-| `spinner` | `dot` | `:enabled` |
 | `og-icon` | `image` | `:enabled` |
 | `og-icon` | `secondary` | `:enabled` |
 | `artslot` | `icon` | `:enabled` |
@@ -336,20 +327,6 @@ These declarations also construct widget part identities and are exported by doc
 | `popover` | `arrow` | `:enabled` |
 | `toast` | `indicator` | `:enabled` |
 | `og-spotlight` | `edge` | `:enabled` |
-| `cooldown` | `track` | `:enabled` |
-| `cooldown` | `sweep` | `:enabled` |
-| `cooldown` | `mask` | `:enabled` |
-| `cooldown` | `core` | `:enabled`, `:active` |
-| `cooldown` | `icon` | `:enabled` |
-| `cooldown` | `label` | `:enabled` |
-| `minimap` | `frame` | `:enabled` |
-| `minimap` | `image` | `:enabled` |
-| `minimap` | `markerOutline` | `:enabled` |
-| `minimap` | `marker` | `:enabled` |
-| `minimap` | `north` | `:enabled` |
-| `dialogue` | `portraitIcon` | `:enabled` |
-| `dialogue` | `initial` | `:enabled` |
-| `dialogue` | `continue` | `:enabled` |
 | `joystick` | `base` | `:enabled`, `:disabled` |
 | `joystick` | `rim` | `:enabled`, `:disabled`, `:active` |
 | `joystick` | `knob` | `:enabled`, `:disabled`, `:active` |
@@ -357,13 +334,6 @@ These declarations also construct widget part identities and are exported by doc
 | `dpad` | `base` | `:enabled`, `:disabled` |
 | `dpad` | `indicator` | `:enabled`, `:active` |
 | `dpad` | `chevron` | `:enabled`, `:active` |
-| `actionbutton` | `face` | `:enabled`, `:disabled`, `:active` |
-| `actionbutton` | `icon` | `:enabled`, `:disabled`, `:active` |
-| `actionbutton` | `track` | `:enabled` |
-| `actionbutton` | `sweep` | `:enabled` |
-| `actionbutton` | `mask` | `:enabled` |
-| `actionbutton` | `core` | `:enabled`, `:disabled`, `:active` |
-| `actionbutton` | `label` | `:enabled`, `:disabled`, `:active` |
 | `heading` | `flourish` | `:enabled` |
 | `scroll` | `bar` | `:enabled` |
 | `textarea` | `caret` | `:enabled` |

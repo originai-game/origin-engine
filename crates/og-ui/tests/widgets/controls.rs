@@ -4,9 +4,8 @@ use super::*;
 fn keyed_rows_measure_anchor_navigate_and_restore() {
     let mut rig = Rig::new((0..100).map(|n| format!("item{n}")).collect::<Vec<_>>());
     let b = &mut |ui: &mut Ui, keys: &mut Vec<String>| {
-        let range = ui.open_keyed_list(
-            "Rows",
-            keys,
+        let range = ui.open_list_inner(
+            "Rows".into(),
             ListDesc {
                 row_height: 40.0,
                 width: Size::Fixed(240.0),
@@ -14,6 +13,7 @@ fn keyed_rows_measure_anchor_navigate_and_restore() {
                 gap: 3.0,
                 ..Default::default()
             },
+            Some(og_ui::virtualize::Order::Untracked(keys)),
         );
         assert!(range.last - range.first < 15, "only a window is built");
         for i in range.first..range.last {
@@ -91,9 +91,8 @@ fn keyed_rows_measure_anchor_navigate_and_restore() {
 fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
     let mut rig = Rig::new((0..41).map(|n| n.to_string()).collect::<Vec<_>>());
     let b = &mut |ui: &mut Ui, keys: &mut Vec<String>| {
-        let range = ui.open_keyed_grid(
-            "Cells",
-            keys,
+        let range = ui.open_grid_inner(
+            "Cells".into(),
             GridDesc {
                 columns: 2,
                 cell_width: 100.0,
@@ -103,6 +102,7 @@ fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
                 gap: 4.0,
                 ..Default::default()
             },
+            Some(og_ui::virtualize::Order::Untracked(keys)),
         );
         for i in range.first..range.last {
             ui.grid_item(i, false);
@@ -181,57 +181,6 @@ fn toasts_stack_three_leave_on_time_and_replay_after_a_restore() {
             .count(),
         3,
         "the restored state brings them back"
-    );
-}
-
-#[test]
-fn a_meter_trail_follows_a_drop_by_tick_and_replays_identically() {
-    let run = || {
-        let mut rig = Rig::new(100.0f32);
-        let b = &mut |ui: &mut Ui, hp: &mut f32| {
-            ui.meter("Hp", *hp, 100.0, &MeterDesc::default());
-        };
-        rig.idle(2, b);
-        rig.state = 40.0;
-        let mut frames = Vec::new();
-        for _ in 0..40 {
-            rig.idle(1, b);
-            frames.push(rig.ui.frame().items.clone());
-        }
-        frames
-    };
-    let a = run();
-    assert_eq!(a, run(), "the same ticks draw the same frames");
-    let widths = |items: &Vec<DrawItem>| -> Vec<f32> {
-        items
-            .iter()
-            .filter_map(|i| match &i.cmd {
-                DrawCmd::Quad { rect, .. } => Some(rect.width),
-                // The track and the fill are parts drawn through the UI
-                // pass: their fills (not their shadows or strokes).
-                DrawCmd::Shape { shape, .. } if shape.mode == og_draw::UiMode::Fill => {
-                    Some(shape.half.x * 2.0)
-                }
-                _ => None,
-            })
-            .collect()
-    };
-    // The track, the trail, the fill: the trail starts at 100 % and ends at 40 %.
-    let first = widths(&a[0]);
-    let last = widths(&a[39]);
-    assert!(first.len() >= 3 && last.len() >= 2, "{first:?} {last:?}");
-    assert!(
-        first[1] > first[2] * 2.0,
-        "right after the drop the trail still shows the old 100 %: {first:?}"
-    );
-    let mid = widths(&a[15]);
-    assert!(
-        mid[1] < first[1] && mid[1] > first[2],
-        "half-way it is between: {mid:?}"
-    );
-    assert!(
-        last.len() == 2 || (last[1] - last[2]).abs() < 0.6,
-        "it caught up: {last:?}"
     );
 }
 

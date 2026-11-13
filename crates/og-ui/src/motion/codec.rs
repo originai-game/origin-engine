@@ -153,21 +153,6 @@ impl MotionWrite for W<'_> {
                 self.color4(color);
                 self.rect(clip);
             }
-            DrawCmd::Half {
-                center,
-                radius,
-                angle,
-                color,
-                clip,
-            } => {
-                self.u8(4);
-                self.f32(center.0);
-                self.f32(center.1);
-                self.f32(*radius);
-                self.f32(*angle);
-                self.color4(color);
-                self.rect(clip);
-            }
             DrawCmd::Text {
                 x,
                 baseline,
@@ -558,13 +543,6 @@ impl MotionRead for R<'_> {
                 center: (self.f32()?, self.f32()?),
                 w: self.f32()?,
                 h: self.f32()?,
-                angle: self.f32()?,
-                color: self.color4()?,
-                clip: self.rect()?,
-            },
-            4 => DrawCmd::Half {
-                center: (self.f32()?, self.f32()?),
-                radius: self.f32()?,
                 angle: self.f32()?,
                 color: self.color4()?,
                 clip: self.rect()?,

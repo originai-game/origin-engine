@@ -3,15 +3,15 @@
 //! records this tier's): a card in the dark default style, a row of the
 //! UI kit's iconoir icons cooked by og-cook's icon cook (a distance-field
 //! set drawn as glyphs, at 24 and 48 px, in two inks) and one inline in
-//! rich text, a picture keeping 16:9 across a growing column, a zoom view
-//! pinched to 2x by two touches, and a list two touches scrolled by 60 px.
+//! rich text, two pictures keeping 16:9 across growing columns, and a list
+//! two touches scrolled by 60 px.
 //!
 //! It needs the cook (native only), so the browser tiers do not run it.
 //!
 //! Ways it could fail: an icon missing or drawn as a box (a missing glyph,
 //! asserted 0), the icons blurred or cut (the field's range or the em
-//! square wrong), the picture
-//! out of proportion, the pinch or the two-finger scroll not applied.
+//! square wrong), the picture out of proportion, the two-finger scroll
+//! not applied.
 
 use crate::support;
 
@@ -165,9 +165,8 @@ fn vp() -> Viewport {
     }
 }
 
-fn build(ui: &mut Ui, tex: og_render::TextureHandle) -> ZoomResponse {
+fn build(ui: &mut Ui, tex: og_render::TextureHandle) {
     let t = *ui.theme();
-    let mut zoom = None;
     ui.panel(
         "Card",
         PanelDesc {
@@ -240,15 +239,15 @@ fn build(ui: &mut Ui, tex: og_render::TextureHandle) -> ZoomResponse {
                             ..Element::column()
                         },
                         |ui| {
-                            zoom = Some(ui.zoom_view(
+                            ui.image(
                                 "Map",
-                                &ZoomViewDesc {
+                                ImageDesc {
                                     texture: Some(tex),
                                     width: Size::grow(),
                                     aspect: 16.0 / 9.0,
-                                    ..ZoomViewDesc::default()
+                                    ..ImageDesc::default()
                                 },
-                            ));
+                            )
                         },
                     );
                     ui.scroll(
@@ -277,7 +276,6 @@ fn build(ui: &mut Ui, tex: og_render::TextureHandle) -> ZoomResponse {
             );
         },
     );
-    zoom.expect("the map")
 }
 
 /// Two touches at `a` and `b` (pointer 0 is og.Input's pointer).
@@ -368,9 +366,8 @@ fn the_materials_frame_matches_its_reference() {
     });
     let step = |ui: &mut Ui, input: InputFrame| {
         ui.begin(input, vp());
-        let z = build(ui, tex);
+        build(ui, tex);
         ui.end();
-        z
     };
     for _ in 0..30 {
         step(&mut ui, InputFrame::default());
@@ -379,17 +376,6 @@ fn the_materials_frame_matches_its_reference() {
         let (x, y) = ui.element(path).expect(path).center();
         Vec2::new(x, y)
     };
-    // A pinch on the map about its centre: 60 px apart to 120.
-    let map = center(&ui, "Card/Pictures/Middle/Map");
-    let mut p = og_input::Pointers::default();
-    for d in [30.0, 45.0, 60.0] {
-        step(
-            &mut ui,
-            touches(&mut p, [map - Vec2::new(d, 0.0), map + Vec2::new(d, 0.0)]),
-        );
-    }
-    // The fingers lift.
-    step(&mut ui, InputFrame::default());
     // Two fingers up the list by 60.
     let list = center(&ui, "Card/Pictures/Quests");
     let mut q = og_input::Pointers::default();
@@ -405,15 +391,9 @@ fn the_materials_frame_matches_its_reference() {
             ),
         );
     }
-    let mut zoom = step(&mut ui, InputFrame::default());
-    for _ in 0..2 {
-        zoom = step(&mut ui, InputFrame::default());
+    for _ in 0..3 {
+        step(&mut ui, InputFrame::default());
     }
-    assert!(
-        (zoom.zoom - 2.0).abs() < 1e-4,
-        "pinched to 2x ({})",
-        zoom.zoom
-    );
     let pic = ui.element("Card/Pictures/Left/Picture").expect("picture");
     assert!(
         (pic.width / pic.height - 16.0 / 9.0).abs() < 0.02,

@@ -132,7 +132,8 @@ impl Ui {
         u64_(&mut b, pinch.key);
         f32_(&mut b, pinch.center.x);
         f32_(&mut b, pinch.center.y);
-        f32_(&mut b, pinch.spread);
+        // The spread a zoom view read: unused, kept so version 23 reads.
+        f32_(&mut b, 0.0);
         let c = &s.click;
         u64_(&mut b, c.tick);
         f32_(&mut b, c.at.x);
@@ -726,8 +727,9 @@ impl Reader<'_> {
         let pinch = crate::scroll::Pinch {
             key: self.u64()?,
             center: Vec2::new(self.f32()?, self.f32()?),
-            spread: self.f32()?,
         };
+        // The unused spread (see `save_state`).
+        self.f32()?;
         s.pinch = on.then_some(pinch);
         s.click = crate::edit::Click {
             tick: self.u64()?,

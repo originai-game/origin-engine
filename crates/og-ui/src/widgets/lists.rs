@@ -62,26 +62,6 @@ impl Ui {
         self.open_list_inner(id.into(), desc, None)
     }
 
-    /// Notify a keyed container of patched rows before opening it. Order
-    /// changes arrive through open_keyed_list/grid's authoritative key slice.
-    pub fn invalidate_keyed_items(&mut self, id: impl Into<Id>, keys: &[String]) {
-        let key = self.key_for(id.into().as_str());
-        if let Some(v) = self.interaction.state.virtual_lists.get_mut(&key) {
-            v.invalidate(keys);
-        }
-    }
-
-    /// Measured rows with persistent collection keys. `row_height` estimates
-    /// unbuilt rows; keys, not `count`, determine their number and identity.
-    pub fn open_keyed_list(
-        &mut self,
-        id: impl Into<Id>,
-        keys: &[String],
-        desc: ListDesc,
-    ) -> ListRange {
-        self.open_list_inner(id.into(), desc, Some(Order::Untracked(keys)))
-    }
-
     pub fn open_list_inner(
         &mut self,
         id: Id,
@@ -420,59 +400,10 @@ impl Ui {
             && self.interaction.state.active != 0
     }
 
-    /// The index of the list or grid item a held press started on (a drag
-    /// in progress), for drawing what is dragged under the pointer.
-    pub fn dragging(&mut self, id: impl Into<Id>) -> Option<u32> {
-        let id = id.into();
-        let key = self.key_for(id.as_str());
-        let a = self
-            .interaction
-            .state
-            .anims
-            .get(&key)
-            .copied()
-            .unwrap_or_default();
-        (self.interaction.input.down && a.h > 0 && self.interaction.state.active != 0)
-            .then(|| (a.h - 1) as u32)
-    }
-
-    /// A virtualised list built by `row(ui, index)` for the rows in view;
-    /// answers the row clicked this tick.
-    pub fn list(
-        &mut self,
-        id: impl Into<Id>,
-        desc: ListDesc,
-        selected: Option<u32>,
-        mut row: impl FnMut(&mut Ui, u32),
-    ) -> Option<u32> {
-        let range = self.open_list(id, desc);
-        let mut clicked = None;
-        for k in range.first..range.last {
-            if self.list_item(k, selected == Some(k)).clicked {
-                clicked = Some(k);
-            }
-            row(self, k);
-            self.close();
-        }
-        self.close_list();
-        clicked
-    }
-
     /// Opens a virtualised grid (a wrapping, scrolling row of equal cells):
     /// call [`Ui::grid_item`] for each of `first..last`, then [`Ui::close_list`].
     pub fn open_grid(&mut self, id: impl Into<Id>, desc: GridDesc) -> ListRange {
         self.open_grid_inner(id.into(), desc, None)
-    }
-
-    /// Measured grid cells, keyed independently of their position. Each row
-    /// occupies its tallest cell; `cell_height` estimates unbuilt cells.
-    pub fn open_keyed_grid(
-        &mut self,
-        id: impl Into<Id>,
-        keys: &[String],
-        desc: GridDesc,
-    ) -> ListRange {
-        self.open_grid_inner(id.into(), desc, Some(Order::Untracked(keys)))
     }
 
     pub fn open_grid_inner(
@@ -660,26 +591,5 @@ impl Ui {
             self.tree.nodes[i].marks.ring = true;
         }
         r
-    }
-
-    /// A virtualised grid built by `cell(ui, index)`; answers the cell clicked.
-    pub fn grid(
-        &mut self,
-        id: impl Into<Id>,
-        desc: GridDesc,
-        selected: Option<u32>,
-        mut cell: impl FnMut(&mut Ui, u32),
-    ) -> Option<u32> {
-        let range = self.open_grid(id, desc);
-        let mut clicked = None;
-        for k in range.first..range.last {
-            if self.grid_item(k, selected == Some(k)).clicked {
-                clicked = Some(k);
-            }
-            cell(self, k);
-            self.close();
-        }
-        self.close_list();
-        clicked
     }
 }

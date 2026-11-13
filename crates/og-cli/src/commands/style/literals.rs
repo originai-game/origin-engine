@@ -291,7 +291,7 @@ mod tests {
         let css = "/* #fff in a comment */\n:root { --a: #fff; --b: url(x.png); }\n:root[data-scheme=light] { --a: 2px; }\n\
 button::part(base) { color: var(--a); border-image: var(--b) 28 24 fill / 50% var(--w) stretch; opacity: 0.5; flex: 1; padding: 0; transform: rotate(180deg); background: none; border: var(--s) solid transparent; }\n\
 panel::part(frame) { background: linear-gradient(90deg, var(--a), #000 50%); }\n\
-@media (width < 600px) { chip::part(base) { margin: 4px; } }\n\
+@media (width < 600px) { badge::part(base) { margin: 4px; } }\n\
 @keyframes k { from { opacity: 0; } to { box-shadow: 0 0 2px red; } }\n\
 slot::part(frame) { & :hover { transition: color 160ms; } color: var(--x, white); }\n\
 @font-face { font-family: X; src: url(a.ttf); }\n\

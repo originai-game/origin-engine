@@ -55,7 +55,6 @@ resolves against, so a scripted `touch_move_to` and a click agree.
 | `label(id, text, LabelDesc)` | MSDF text; wraps at its width (word breaks; between CJK characters under kinsoku, so no line starts with closing punctuation, a small kana or `ー` nor ends with an opening bracket, and a katakana word stays whole; long words between characters) unless `nowrap`; `align` start/center/end; type step from the ramp; `ellipsis` cuts it with "…" ("..." in a font without it) where it does not fit: a `nowrap` label on its one line (it can then shrink in a row), a wrapping one on its last line with `max_lines`; `fit_min` (auto-fit) takes the ramp's smaller sizes, largest first and with its own step's tracking and features, down to that step where the text does not fit (one line with `nowrap`, else its words and `max_lines`), and only then cuts | the whole text, cut or not |
 | `button(id, text, ButtonDesc) -> Response` | a box of `h-control-sm/md/lg` cornered by `radius.control`; `Secondary` (neutral fill, default), `Primary` (the style's `primary`, one per screen), `Quiet`, `Danger`, `Ghost` (clear inside a `lineStrong` outline); `square` makes it as wide as it is tall (an icon button); `disabled` turns neutral and inert; pressed shrinks by `press-scale` | the label |
 | `image(id, ImageDesc)` | a texture region (`uv`, `tint`), or a solid rectangle without a texture; `aspect` (width over height) keeps its proportions: with the height left to fit it is as tall as its laid-out width over it, with a fixed height and the width left to fit as wide as the height times it (`Element::aspect`, any element) | — |
-| `zoom_view(id, &ZoomViewDesc) -> ZoomResponse` | a zoomable picture (a map, an artwork): two touches pinch it about their centre and pan it, the wheel zooms about the pointer, a drag pans; focused (Tab, a pad) `+`/`-` zoom it, `0` fits it, the arrows pan it; it stays on its picture and within `min_zoom`..`max_zoom` (1 to 4 by default); answers the zoom and the centre; role `image` named by its id, its zoom as its value (§Scrolling) | — |
 | `progress(id, value, ProgressDesc)` | a track filled to 0–1, cornered by `radius.bar` | — |
 | `slider(id, &mut f32, SliderDesc) -> Response` | track, `primary` fill, thumb; a press anywhere on it sets the value, dragging follows; `min`/`max`/`step` | — |
 | `toggle(id, &mut bool, label) -> Response` | a switch (`primary` on) with a label; a click flips it | the label |
@@ -75,35 +74,26 @@ Any container with `interactive: true` reports its response from `close()`.
 | `stepper(id, &mut f32, StepperDesc)` | `Dec`, `Value`, `Inc`; bounded; Left/Right step while a button is focused; a screen reader's increment/decrement on the spinbutton | `−`, the value, `+` |
 | `radio(id, options, &mut usize, RadioDesc)` | `Option#i` rows: a ring, `primary` with a dot when chosen | the labels |
 | `checkbox(id, &mut bool, label)`, `checkbox_list(id, labels, &mut [bool])` | a box, `primary` with a tick (two rotated bars) | the label(s) |
-| `chip(id, text, ChipDesc)` | a box on `control`, cornered by `radius.control`; selected inverts to `ink` | the text |
 | `badge(id, text, Tone)` | a small box in a tone (neutral, success, warn, danger, info, primary, inverse); its ink reads 4.5:1 (`READABLE`) on what it is drawn on: a tone's or the primary's ink on a ground across the scale from the palette's `panel` (a light style's badge on its dark stage) lightens or darkens towards its own end until it does (`Srgba::readable_on`), the neutral `inkMuted` wherever it does not read on its `control` (and where no ink of its side could, the fill moves away from it) | the text |
-| `key_value(id, key, value, mono)` | `Key` (`inkMuted`) and `Value` (end) on one row | both |
 | `divider(id, vertical)`, `spacer(id, Option<Size>)` | a hairline in `border`; empty space | — |
-| `skeleton(id, SkeletonDesc)`, `spinner(id, size)` | the neutral fill with a passing sheen (still under reduced motion); eight dots turning by the tick | — |
 | `icon(id, name, IconDesc)` | an icon of the icon atlas (`set_icons`) by name, tinted: a cell of a texture grid, or an icon set's distance-field glyph fitted to its square (§Icon sets) | the name |
-| `meter(id, value, max, &MeterDesc)` | health (green, warn under 30 %, danger under 15 %), mana, xp (the palette's `mana` and `xp`), primary or custom; a drop leaves a pale trail that follows after `fast`, a rise grows over `slow`, by the tick; notches; a label inside, over the fill and over the track in whichever of `ink` and `inkInverse` reads better there, moved towards its end where neither reaches 4.5:1 (a mid blue or purple) | the label |
-| `cooldown(id, remaining, &CooldownDesc)` | a disc whose `primary` ring fills clockwise from the top as the cooldown runs out (two rotated half discs), full when ready; a label or icon in the middle | the label |
-| `minimap(id, &MinimapDesc)` | the map texture in a `lineStrong` frame, dots for markers (the player in `primary` and ringed), N, a zone label | `Map`, `Zone` |
-| `dialogue(id, &DialogueDesc)` | portrait slot (texture, icon or initial), speaker in `highlight`, the line typed at `chars_per_second` by the tick; a press finishes the line, the next answers `advanced` | `Body/Line` shows what is typed |
 | `joystick(id, JoystickDesc)` | a base and a knob following a press that started on it; answers −1..1 with a dead zone; at least three touch targets wide | — |
 | `dpad(id, DpadDesc)` | `Up`, `Down`, `Left`, `Right` arms (each ≥ 44 CSS px) answering which are held | the arm names |
-| `action_button(id, text, &ActionButtonDesc)` | a square touch button (≥ 44) cornered by `radius.control`: `pressed` while held, `clicked` on a tap; primary is the style's `primary` | the text |
-| `open_list`/`list_item`/`close_list`, `list(id, ListDesc, selected, row)` | a virtualised scroll list: only rows in view (and one each side) are built, fillers keep the full scroll range; `Row#i` rows select and focus | `Row#i` |
-| `open_grid`/`grid_item`/`close_list`, `grid(...)` | the same for a wrapping grid of equal cells (`Cell#i`) | `Cell#i` |
+| `open_list`/`list_item`/`close_list` | a virtualised scroll list: only rows in view (and one each side) are built, fillers keep the full scroll range; `Row#i` rows select and focus | `Row#i` |
+| `open_grid`/`grid_item`/`close_list` | the same for a wrapping grid of equal cells (`Cell#i`) | `Cell#i` |
 | `spotlight(id, Option<Rect>, SpotlightDesc)` | the scrim on four sides of a hole (`Top`, `Left`, `Right`, `Bottom`, `Hole`) with a `focus` edge; presses on the shades stop there, presses in the hole reach what is under it | — |
 | `toast(text, ToastDesc)`, `dismiss_toast(id)` | a queue in the UI state: at most three up (older leave first), 3.2 s (6 s danger), enter and leave by the tick, a press dismisses; stacked at `set_toast_anchor` | `Toasts/Toast#n`, the text |
 | `memory(id, initial)`, `remember(id, value)` | a number kept for an id in the UI state (a template's tab) | — |
 
-Widget memory between ticks (a select being open, a meter's trail, the
-dialogue's start, a transition's progress, a drag's source) lives in
+Widget memory between ticks (a select being open, a typewriter's start,
+a counter's progress, a drag's source) lives in
 `State::anims`, keyed by the element's path hash and dropped when the widget
 is not built; it, the toast queue, the UI clock, queued navigation and the
 focus scope are all in `save_state`, so a restored world replays the UI.
 
 **Drag and drop.** A press on a list row or grid cell marks it the source; a
 release over another row or cell answers `Response::dropped = Some(source)`
-there, and `dragging(id)` answers the source while the press is held; the
-cell under a drag shows the focus ring.
+there; the cell under a drag shows the focus ring.
 
 ## Scrolling (`src/scroll.rs`)
 
@@ -134,25 +124,21 @@ both ways. Its offsets are UI state, clamped by the layout to its content.
 - **Two touches** (og-input's `og.Pointers`): when two fingers are held
   on one scroll container (the innermost under each), it follows the
   movement of their centre, so a list of buttons, which one finger would
-  press, scrolls under two; on a zoom view (`zoom_view`) they pan it the
-  same way and zoom it by the change of their spread, about their centre
-  (pinch). The press the first finger began presses nothing once the
+  press, scrolls under two. The press the first finger began presses nothing once the
   second lands, and the primary pointer presses nothing while two are
   held; two fingers on anything else (a stick and a button) are no
   gesture. Two fingers lifting off a scroll container fling it with
   their last velocity, as one finger's drag does. The gesture is UI
-  state (`State::pinch`, `save_state` version 7). A zoom view also zooms
-  by the wheel about the pointer and pans by a drag, and takes focus from
-  keys and pads: `+` (`=`, the keypad's) and `-` zoom it about its centre
-  by 1.25, `0` fits it again, the arrows (↑ and ↓ too) pan it a tenth of
-  its size while it is focused.
+  state (`State::pinch`, `save_state` version 7). A picture the player
+  zooms and pans is a document's own: `onwheel`, `onpinch` and
+  `onpointermove` report to the game, which keeps the zoom and the pan and
+  binds them to CSS `scale` and `translate` (the `NodeGraph` and
+  `RpgWorldMap` components).
 
 `tests/widgets.rs` `scroll_views_scroll_both_ways_hand_off_fling_and_grab`
-covers each (and a restore); `two_fingers_scroll_lists_and_pinch_zoom_views`
-covers two touches, the zoom view and aspect ratios,
-`two_fingers_lifting_off_a_list_fling_it` the two-finger fling and
-`a_focused_zoom_view_takes_keys` the keys, and the kit's
-`tests/gestures.og.ts` drives them through the probe.
+covers each (and a restore); `two_fingers_scroll_a_list_without_clicking_its_row`
+covers two touches and `two_fingers_lifting_off_a_list_fling_it` the
+two-finger fling.
 
 ## Layers
 
@@ -460,8 +446,8 @@ then by its id; a text field or area, whose text is its value, by that
 label, else its placeholder, else its id), a **description** read after
 the name (a labelled field's placeholder; the mirror's
 `aria-placeholder`), a
-**value** (a slider's or stepper's number, a progress's percent, a meter's
-amount, a field's text, a select's choice, a cooldown's remaining share)
+**value** (a slider's or stepper's number, a progress's percent, a
+field's text, a select's choice)
 and **states** (`disabled`, `focused`, `focusable`, `checked`, `selected`,
 `expanded`, `collapsed` (expandable and closed), `pressed`, `busy`; `offscreen` in the tree for a control a
 scroll container cuts out of view). A component built from containers (a menu, a tree, a
@@ -546,8 +532,6 @@ past half-way once, then after `motion.duration.slow` every
 - A dialog or open menu is a focus scope: while it is the topmost, focus
   stays inside; when it opens, focus moves to its first control (or the one a
   widget asks for, the select's chosen option); when it closes, focus returns.
-- A dialogue box takes the focus when it appears (unless a dialog is open
-  over it), so a cutscene answers Enter, Space and A from its first line.
 - A press focuses the control without the ring; navigation shows the ring
   (the style's `focus`, a gap of what is behind, then the control).
 - Navigation that lands on a control outside its scroll container's view
@@ -612,11 +596,11 @@ addresses them with `@1` to `@3` after the buttons (`gamepad:a@2`).
 
 **Several touches.** `InputFrame::pointers` is og-input's `og.Pointers`
 (pointer 0 is `og.Input`'s pointer; 1 to 4 are further touches). The touch
-controls (`joystick`, `dpad`, `action_button`) answer any of them: a stick
-keeps the finger that started on it, a button answers whichever is over it,
-so a thumb on the stick and another on Hit work together
-(`templates/ui-kit/tests/multitouch.og.ts`). Two touches on one scroll
-container scroll it, on a zoom view pinch it (§Scrolling).
+controls (`joystick`, `dpad`, a document's `<button data-og-touch>`) answer
+any of them: a stick keeps the finger that started on it, a button is held
+while the touch that started on it is down, so a thumb on the stick and
+another on Hit work together. Two touches on one scroll container scroll
+it (§Scrolling).
 
 **A virtual cursor for pads (`src/vcursor.rs`).** `Ui::set_virtual_cursor(Some(
 VirtualCursorDesc { speed (900), accel (250 ms), magnet (0.5), scroll (1200) }))`,
@@ -650,16 +634,13 @@ upgrades with none).
 
 ## Motion (`src/motion.rs`)
 
-`transition(id, show, TransitionDesc, f)` (`open_transition` + `close`) moves
-its content in and out: fade, slide up/down/left/right (by `space.xl`) or
-scale (from 92 %), over `motion.duration.base` unless given, eased by the
-theme's curves (`ease_out` entering, `ease_exit` leaving, cubic Béziers solved
-by bisection: arithmetic only), advancing one tick per frame. Content is
-built while visible (it stays visible while it leaves) and takes no input
-while it moves. Dialogs scale in over a fading scrim; toasts slide. Under
-`Theme::reduced_motion` every movement becomes a fade and skeleton sheens stop.
-The transform applies to the laid-out rectangles (so drawing, hit testing and
-the probe agree), to opacity and to text size.
+Content moves in and out by CSS: a document's `transition:` and `animate:`
+directives, `@starting-style` and `@keyframes`, eased by the theme's curves
+(`ease_out` entering, `ease_exit` leaving, cubic Béziers solved by
+bisection: arithmetic only), advancing one tick per frame. Dialogs scale in
+over a fading scrim; toasts slide. Under `Theme::reduced_motion` every
+movement becomes a fade. The transform applies to the laid-out rectangles
+(so drawing, hit testing and the probe agree), to opacity and to text size.
 
 ## Styles (`src/style_file.rs`)
 
@@ -1063,8 +1044,8 @@ exactly as authored over any game, at any camera, sharp under TAA:
   rectangle once to `Overlay::clips` (deduplicated); every quad, image,
   rotated shape and glyph inside names it in `clip`, and the overlay pass
   discards outside it. A row half out of a list is cut mid-glyph; rotated
-  shapes (`DrawCmd::Bar`, `DrawCmd::Half`: chevrons, ticks, the d-pad's
-  arrows, cooldown pies) are cut at the edge instead of dropped
+  shapes (`DrawCmd::Bar`: chevrons, ticks, the d-pad's arrows) are cut at
+  the edge instead of dropped
   (`tests/gfx.rs` `a_scroll_container_clips_everything_it_draws` reads the
   pixels on both sides of the edge).
 
@@ -1203,13 +1184,13 @@ in each crate.
 | `tests/text_gfx.rs` (crates/og-tests-cooked: it cooks) | `references/<tier>/text-bidi.png`, `text-kerning.png`, `text-edit.png` and `text-mixed-runs.png` from the kit's fonts cooked at test time (og-cook, the project `tests/text-fonts`: the import settings, beside the kit's font files) and decoded from the blobs' bytes, as the browser tiers decode them; the scenes are og-tests-cooked's `tests/support/text_scenes.rs`, which og-tests-web includes: every script, kerned against unkerned (the title narrower kerned), ellipses, a selection, a composition and a text area; Latin labels mixing Japanese, shaped Arabic, Hebrew and Devanagari a run per face (every character in its face's atlas); no missing glyph |
 | `tests/support/scenes.rs` (crates/og-tests-ui) | not a test: builds the five reference scenes (`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`) for `gfx.rs`, `kit_gfx.rs` and, through `#[path]`, `crates/og-tests-web`, so the browser draws the same scenes; and the `text-mixed-runs` UI `text_gfx.rs` draws with cooked faces |
 | `tests/gfx.rs` (crates/og-tests-ui: it draws) | a glass panel blurs the frame under it and nothing else, and blurs the overlay layer below it (a bright bar spreads inside the panel) while what is above it stays sharp (`references/<tier>/glass.png`); the sample screen rendered headless matches `references/<tier>/sample-screen.png` (og-tests' tolerance: 32/255 per channel, ≤ 0.5 % outliers, RMSE ≤ 0.01) in at most 2 sprite draws per painter level, no missing glyph; `text-fields-2` (a double-clicked word, an undone field, an area a drag scrolled part way) matches its reference with no missing glyph; a scroll container cuts every sprite and text line it draws to its rectangle |
-| `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a HUD asking `back()` before an open dialog is built leaves Back to the dialog (a locked one lets it through); an anchored group moves out of `Viewport::covered`; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; a transition advances 1/15 per tick, is inert while moving, leaves; a meter's trail follows a drop and two runs draw identical frames; the dialogue types 15 characters in 30 ticks at 30/s, a press finishes, the next advances; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; a game's primary derives its hover, press and ink, high contrast takes `ink` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop; two fingers lifting off a list fling it (none under reduced motion); a focused zoom view zooms with + and -, fits with 0 and pans with the arrows, keeping the focus |
+| `tests/widgets.rs` | focus: arrows pick the aligned neighbour and wrap, Tab/Shift+Tab walk reading order and wrap, Enter and Space press, the gamepad d-pad and A, the stick at once then after 24 and every 11 ticks; a dialog takes focus, keeps Tab inside, blocks presses to what is under it, closes on the backdrop and Back (not when locked) and returns focus; a HUD asking `back()` before an open dialog is built leaves Back to the dialog (a locked one lets it through); an anchored group moves out of `Viewport::covered`; a select opens, chooses (mouse and keys) and closes on a press outside; a 1000-row list builds at most 13 rows, reaches its last row and scrolls a keyboard-focused row into view; toasts cap at three, leave after 3.2 s and come back with a restored state; anchors keep to the safe area and touch controls to 44 px; a joystick answers (1, 0) at its edge; a game's primary derives its hover, press and ink, high contrast takes `ink` for muted ink; a drag from cell 0 to cell 6 drops once and a click is no drop; two fingers lifting off a list fling it (none under reduced motion) |
 | `tests/style.rs` | a dressed card is nine atlas pieces that cover it with fixed corners, its shadow and corners reach past it; the default style emits no atlas piece; a style file names the wrong line (a missing palette role or radius, (a typo, a region outside the atlas, a glow without `soft`, a bad colour); every screen-transition kind keeps the old screen while covering, switches at full cover, ends, and is one fade per tick under reduced motion; a counter starts at `from`, never goes back, lands at 900 ms and replays after a restore; a refused press shakes and comes to rest, queues `Error` only, an enabled press queues `Press`; a glass part draws the blurred frame under its thinned frame, and under reduced transparency no glass and the frame whole |
 | `tests/packs.rs` | the six built-in styles parse, name only existing assets, and every ink a template draws on a dressed surface is at least 4.5:1 over the frame art under it (and `ink` on a selected tab) |
 | Style-pack contrast coverage | reusable packs retain their contrast coverage; deleted games' private styles are not engine packs. Check each button role's label in each state, panel ink, placeholders, slot counts, meter labels and badges against their composited ground, including rendered text strokes. |
 | `tests/a11y.rs` | roles, names, values and states of every widget; Tab walks `focus_order`; a screen reader's requests (focus, activate, increment, decrement) reach the control the path names and not one under a dialog, increment and decrement on a stepper's spinbutton step it within its range, and the tree's digest moves with what a mirror shows; a slider, a stepper (bounded or not), a progress and a meter carry their bounds and value as numbers; the page's reduced motion, contrast and transparency reach the theme and leave again, reduced transparency (the page's or the game's) flattening the scrim and the translucent fills |
-| `tests/materials_gfx.rs` (crates/og-tests-cooked: it cooks) | `references/<tier>/materials.png`: a dark card, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column, a zoom view pinched to 2x and a list two touches scrolled and flung as they lift; no missing glyph |
-| `tests/kit_gfx.rs` (crates/og-tests-ui: it draws) | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, chips, badges, meters with trail, notches and label, skeleton, four cooldown rings, stick, d-pad, action button, spinner, a toast) matches `references/<tier>/widget-set.png` in 4 sprite draws; the pies are the expected half-disc angles |
+| `tests/materials_gfx.rs` (crates/og-tests-cooked: it cooks) | `references/<tier>/materials.png`: a dark card, 16 of the kit's iconoir icons cooked at test time (og-cook) at 48 and 24 px and one inline in rich text, a 16:9 picture in a growing column and a list two touches scrolled and flung as they lift; no missing glyph |
+| `tests/kit_gfx.rs` (crates/og-tests-ui: it draws) | the widget set (tabs, an open select menu with the focus ring, stepper, radio, checkboxes, badges, stick, d-pad, a toast) matches `references/<tier>/widget-set.png` |
 | `templates/ui-kit/tests/*.og.ts` | through the command channel on the native host: every template at 1280×720 and 390×844@3 matches `references/<tier>/kit-{desktop,phone}-<screen>.png` over the pack's plain ground; the packs' approved states match their cells of `references/<tier>/kit-style-<pack>[-phone]-states.png`; an iris transition, the count-up and UI voices (`juice`); touch, keyboard and gamepad flows, drag and drop, the phone's safe area and 44 px targets, the tutorial spotlight (`templates/ui-kit/README.md`) |
 
 Reference frames are committed for `metal`; a tier without its own

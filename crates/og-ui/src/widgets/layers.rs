@@ -82,13 +82,6 @@ impl Ui {
         }
     }
 
-    /// An anchored group built by `f`.
-    pub fn anchor(&mut self, id: impl Into<Id>, desc: AnchorDesc, f: impl FnOnce(&mut Ui)) {
-        self.open_anchor(id, desc);
-        f(self);
-        self.close();
-    }
-
     /// Advances a presence memory and answers it with its eased value.
     fn presence(&mut self, key: u64, show: bool, ms: f32, instant: bool) -> (Presence, f32) {
         let fresh = !self.has_anim(key);
@@ -128,60 +121,6 @@ impl Ui {
             },
             e,
         )
-    }
-
-    /// Opens a transition container (a column); children follow until
-    /// [`Ui::close`]. Build them only while `visible`: it stays visible while
-    /// it leaves. Interaction inside waits until it settles.
-    pub fn open_transition(
-        &mut self,
-        id: impl Into<Id>,
-        show: bool,
-        desc: TransitionDesc,
-    ) -> Presence {
-        let id = id.into();
-        let i = self.push(
-            "transition",
-            id,
-            Element {
-                direction: Direction::Column,
-                ..Element::default()
-            },
-        );
-        self.tree.stack.push(i);
-        let key = self.tree.nodes[i].key;
-        let ms = if desc.duration_ms > 0.0 {
-            desc.duration_ms
-        } else {
-            desc.kind.duration_ms(self.env.theme.durations_ms.base)
-        };
-        let (pr, e) = self.presence(key, show, ms, desc.instant);
-        let distance = if desc.distance > 0.0 {
-            desc.distance
-        } else {
-            self.env.theme.space.xl
-        };
-        let mut f = fx(desc.kind, e, distance, self.env.theme.reduced_motion);
-        f.inert = pr.progress < 1.0 || !show;
-        self.tree.nodes[i].fx = Some(f);
-        self.tree.nodes[i].hidden = !pr.visible;
-        pr
-    }
-
-    /// A transition built by `f` while visible.
-    pub fn transition(
-        &mut self,
-        id: impl Into<Id>,
-        show: bool,
-        desc: TransitionDesc,
-        f: impl FnOnce(&mut Ui),
-    ) -> Presence {
-        let p = self.open_transition(id, show, desc);
-        if p.visible {
-            f(self);
-        }
-        self.close();
-        p
     }
 
     /// Opens a dialog: a scrim backdrop over everything with a centred
@@ -445,22 +384,6 @@ impl Ui {
         }
     }
 
-    /// A dialog built by `f` while visible.
-    pub fn modal(
-        &mut self,
-        id: impl Into<Id>,
-        open: bool,
-        desc: &ModalDesc,
-        f: impl FnOnce(&mut Ui),
-    ) -> ModalResponse {
-        let r = self.open_modal(id, open, desc);
-        if r.visible {
-            f(self);
-        }
-        self.close_modal();
-        r
-    }
-
     /// Queues a toast: it stacks at the toast anchor, enters, stays for its
     /// duration and leaves; at most three are up (older ones leave first).
     /// A press on one dismisses it. Callable between ticks. Returns its id.
@@ -507,16 +430,6 @@ impl Ui {
                 t.leaving = now.max(1);
             }
         }
-    }
-
-    /// The toasts up now (id, text), oldest first.
-    pub fn toasts(&self) -> Vec<(u32, String)> {
-        self.interaction
-            .state
-            .toasts
-            .iter()
-            .map(|t| (t.id, t.text.clone()))
-            .collect()
     }
 
     /// Builds the toast stack (called by `end`).

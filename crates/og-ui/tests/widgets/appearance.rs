@@ -17,56 +17,45 @@ fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
         ..Viewport::default()
     };
     let b = &mut |ui: &mut Ui, s: &mut JoystickResponse| {
-        ui.anchor(
+        ui.open_anchor(
             "Score",
             AnchorDesc {
                 anchor: Anchor::TopRight,
                 ..AnchorDesc::default()
             },
-            |ui| {
-                ui.label("Points", "1200", LabelDesc::default());
-            },
         );
-        ui.anchor(
+        ui.label("Points", "1200", LabelDesc::default());
+        ui.close();
+        ui.open_anchor(
             "Pad",
             AnchorDesc {
                 anchor: Anchor::BottomLeft,
                 ..AnchorDesc::default()
             },
-            |ui| {
-                *s = ui.joystick(
-                    "Stick",
-                    JoystickDesc {
-                        size: 60.0,
-                        ..JoystickDesc::default()
-                    },
-                );
+        );
+        *s = ui.joystick(
+            "Stick",
+            JoystickDesc {
+                size: 60.0,
+                ..JoystickDesc::default()
             },
         );
-        ui.anchor(
+        ui.close();
+        ui.open_anchor(
             "Buttons",
             AnchorDesc {
                 anchor: Anchor::BottomRight,
                 ..AnchorDesc::default()
             },
-            |ui| {
-                ui.action_button(
-                    "Jump",
-                    "Jump",
-                    &ActionButtonDesc {
-                        size: 20.0,
-                        ..ActionButtonDesc::default()
-                    },
-                );
-                ui.dpad(
-                    "Dpad",
-                    DpadDesc {
-                        size: 60.0,
-                        ..DpadDesc::default()
-                    },
-                );
+        );
+        ui.dpad(
+            "Dpad",
+            DpadDesc {
+                size: 60.0,
+                ..DpadDesc::default()
             },
         );
+        ui.close();
     };
     rig.idle(1, b);
     assert_eq!(rig.ui.breakpoint(), Breakpoint::PhonePortrait);
@@ -82,7 +71,7 @@ fn anchors_sit_in_the_safe_area_and_touch_controls_keep_44px() {
         (pad.y + pad.height - (844.0 - 34.0 - gutter)).abs() < 0.5,
         "above the home indicator: {pad:?}"
     );
-    for id in ["Stick", "Jump", "Dpad/Up", "Dpad/Left"] {
+    for id in ["Stick", "Dpad/Up", "Dpad/Left"] {
         let e = rig.ui.element(id).expect(id);
         assert!(
             e.width >= 44.0 && e.height >= 44.0,
@@ -134,7 +123,7 @@ fn hud_corners_sit_in_a_centred_band_on_an_ultrawide() {
     rig.ui.set_theme(t);
     let b = &mut |ui: &mut Ui, _: &mut ()| {
         for (id, anchor) in [("Vitals", Anchor::TopLeft), ("Map", Anchor::TopRight)] {
-            ui.anchor(
+            ui.open_anchor(
                 id,
                 AnchorDesc {
                     anchor,
@@ -142,8 +131,8 @@ fn hud_corners_sit_in_a_centred_band_on_an_ultrawide() {
                     height: Size::Fixed(48.0),
                     ..AnchorDesc::default()
                 },
-                |_| {},
             );
+            ui.close();
         }
     };
     let at = |rig: &Rig<()>, id: &str| rig.ui.element(id).expect(id).clone();
@@ -195,7 +184,8 @@ fn hud_corners_sit_in_a_centred_band_on_an_ultrawide() {
     // A dialog's backdrop covers the whole surface, band or not.
     rig.ui.set_hud_max_aspect(21.0 / 9.0);
     let d = &mut |ui: &mut Ui, _: &mut ()| {
-        ui.modal("Pause", true, &ModalDesc::default(), |_| {});
+        ui.open_modal("Pause", true, &ModalDesc::default());
+        ui.close_modal();
     };
     rig.idle(2, d);
     let scrim = at(&rig, "Pause");

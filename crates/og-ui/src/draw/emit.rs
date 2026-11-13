@@ -691,32 +691,6 @@ pub(crate) fn emit(
                 s.transform = [cos, sin, -sin, cos];
                 put(overlay, s, c);
             }
-            DrawCmd::Half {
-                center,
-                radius,
-                angle,
-                color,
-                clip,
-            } => {
-                let c = clips.index(overlay, clip);
-                let mut s = rect_shape(
-                    Rect::new(
-                        center.0 - radius,
-                        center.1 - radius,
-                        2.0 * radius,
-                        2.0 * radius,
-                    ),
-                    0.0,
-                    *color,
-                );
-                s.geometry = UiGeometry::Arc {
-                    start: angle - std::f32::consts::FRAC_PI_2,
-                    sweep: std::f32::consts::PI,
-                    thickness: *radius,
-                    cap: og_draw::UiCap::Butt,
-                };
-                put(overlay, s, c);
-            }
             DrawCmd::Shape { shape, clip } => {
                 let c = clips.index(overlay, clip);
                 put(overlay, (**shape).clone(), c);

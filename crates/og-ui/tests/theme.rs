@@ -201,7 +201,6 @@ fn the_default_css_puts_glass_on_floating_chrome_only() {
     for s in [
         "button::part(base)",
         "input::part(frame)",
-        "chip::part(base)",
         "slot::part(frame)",
         "input[type=checkbox][switch]::part(row)",
         "input[type=checkbox]::part(row)",

@@ -189,9 +189,7 @@ fn hud(ui: &mut Ui, input: InputFrame, editor: bool) -> (bool, HudEditorResponse
         }),
         ..Props::default()
     });
-    out.0 = ui
-        .action_button("Jump", "Jump", &ActionButtonDesc::default())
-        .clicked;
+    out.0 = ui.button("Jump", "Jump", ButtonDesc::default()).clicked;
     ui.set_props(Props {
         position: Position::Absolute,
         insets: Edges {

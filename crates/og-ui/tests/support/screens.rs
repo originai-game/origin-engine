@@ -382,7 +382,6 @@ pub fn sample_session(ui: &mut Ui, s: &mut Sample) {
 /// The game widget set's state.
 #[derive(Default)]
 pub struct Kit {
-    pub hp: f32,
     pub tab: usize,
     pub pick: usize,
     pub amount: f32,
@@ -501,46 +500,11 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
                             ..Element::default()
                         },
                         |ui| {
-                            ui.chip(
-                                "All",
-                                "All",
-                                ChipDesc {
-                                    selected: true,
-                                    ..ChipDesc::default()
-                                },
-                            );
-                            ui.chip("Weapons", "Weapons", ChipDesc::default());
                             ui.badge("New", "New", Tone::Primary);
                             ui.badge("Sale", "-20%", Tone::Success);
                         },
                     );
                     ui.divider("Rule", false);
-                    ui.meter(
-                        "Health",
-                        s.hp,
-                        100.0,
-                        &MeterDesc {
-                            label: format!("{} / 100", s.hp),
-                            ..MeterDesc::default()
-                        },
-                    );
-                    ui.meter(
-                        "Xp",
-                        620.0,
-                        1000.0,
-                        &MeterDesc {
-                            kind: MeterKind::Xp,
-                            segments: 5,
-                            ..MeterDesc::default()
-                        },
-                    );
-                    ui.skeleton(
-                        "Skeleton",
-                        SkeletonDesc {
-                            lines: 2,
-                            ..SkeletonDesc::default()
-                        },
-                    );
                 },
             );
             ui.column(
@@ -551,25 +515,6 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
                 },
                 |ui| {
                     ui.row(
-                        "Rings",
-                        Element {
-                            gap: t.space.md,
-                            ..Element::default()
-                        },
-                        |ui| {
-                            for (k, rem) in [1.0, 0.75, 0.4, 0.0].into_iter().enumerate() {
-                                ui.cooldown(
-                                    ui_idi("Ring", k as u32),
-                                    rem,
-                                    &CooldownDesc {
-                                        label: format!("{}", k + 1),
-                                        ..CooldownDesc::default()
-                                    },
-                                );
-                            }
-                        },
-                    );
-                    ui.row(
                         "Touch",
                         Element {
                             gap: t.space.lg,
@@ -579,17 +524,8 @@ pub fn kit_screen(ui: &mut Ui, s: &mut Kit) {
                         |ui| {
                             ui.joystick("Stick", JoystickDesc::default());
                             ui.dpad("Dpad", DpadDesc::default());
-                            ui.action_button(
-                                "Jump",
-                                "Jump",
-                                &ActionButtonDesc {
-                                    primary: true,
-                                    ..ActionButtonDesc::default()
-                                },
-                            );
                         },
                     );
-                    ui.spinner("Spinner", 0.0);
                 },
             );
         },

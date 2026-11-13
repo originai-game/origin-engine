@@ -824,17 +824,6 @@ impl Ui {
         (h.clamp(0.0, 1.5), p.clamp(0.0, 1.5))
     }
 
-    /// The colour of a control in its state: `rest` mixed towards `hover`
-    /// and `pressed` by how far into each it is.
-    pub(crate) fn state_color(
-        rest: Srgba,
-        hover: Srgba,
-        pressed: Srgba,
-        (h, p): (f32, f32),
-    ) -> Srgba {
-        mix_srgba(mix_srgba(rest, hover, h), pressed, p)
-    }
-
     /// The style's type step for `role` at this frame's breakpoint
     /// (docs/ui.md §3.1): its size, line height and tracking; Chinese,
     /// Japanese and Korean text a line height half again its size.

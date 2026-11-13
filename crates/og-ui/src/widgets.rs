@@ -1,6 +1,6 @@
 //! The game widget set over the core (`ui.rs`): layers (anchors, dialogs,
 //! menus, toasts), transitions, virtualised lists and grids, selection
-//! controls, HUD meters, touch controls and the dialogue box. Every widget
+//! controls, the gauge and touch controls. Every widget
 //! is one call with a desc whose zero value is the default, returns what
 //! happened this tick, and keeps what must persist between ticks in the
 //! UI state (so snapshots replay it). Colours are the theme's tokens.
@@ -14,7 +14,6 @@ use crate::motion::{TransitionKind, fx};
 use crate::style::{READABLE, Srgba};
 use crate::tokens::EaseRole;
 use crate::ui::{Anim, Response, Toast, Ui};
-use og_core::hash::StableHasher;
 use og_draw::TextureHandle;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
@@ -66,18 +65,6 @@ pub struct AnchorDesc {
     /// Shown settled the first time it is built: no style entrance or
     /// stagger (the screen a game opens on, which the web draws behind its
     /// play gate).
-    pub instant: bool,
-}
-
-/// How a transition moves.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct TransitionDesc {
-    pub kind: TransitionKind,
-    /// 0: `motion.duration.base`.
-    pub duration_ms: f32,
-    /// How far slides travel (0: `space.xl`).
-    pub distance: f32,
-    /// Shown at once the first time (no entrance).
     pub instant: bool,
 }
 
@@ -237,39 +224,6 @@ pub struct ToastDesc {
     pub duration_ms: f32,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ChipDesc {
-    pub selected: bool,
-    pub disabled: bool,
-}
-
-/// What a meter measures, which sets its colour.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub enum MeterKind {
-    /// `health`, `warn` under 30 %, `danger` under 15 %.
-    #[default]
-    Health,
-    /// `mana`.
-    Mana,
-    /// `xp`.
-    Xp,
-    /// `primary`.
-    Primary,
-    Custom(Srgba),
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct MeterDesc {
-    pub kind: MeterKind,
-    /// Text inside the bar (empty: none; the bar grows to fit it).
-    pub label: String,
-    pub width: Option<Size>,
-    /// 0: `space.md`, or the caption's line height with a label.
-    pub height: f32,
-    /// Notches dividing the bar into this many parts (0, 1: none).
-    pub segments: u32,
-}
-
 /// An HTML `<meter>` ([`Ui::gauge`]): its value, range and regions.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GaugeDesc {
@@ -340,16 +294,6 @@ impl MeterRegion {
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct CooldownDesc {
-    /// The diameter; 0: 56 (never under the touch target).
-    pub size: f32,
-    /// Text in the middle (a key, a count; empty: none).
-    pub label: String,
-    /// An icon of the atlas in the middle, by name.
-    pub icon: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
 pub struct IconDesc {
     /// 0: 24 CSS px.
     pub size: f32,
@@ -383,77 +327,6 @@ pub struct ArtDesc {
     pub offset: [f32; 2],
     /// Sampled at the nearest texel (CSS `image-rendering: pixelated`).
     pub nearest: bool,
-}
-
-/// A marker on a mini-map, in the map's 0–1 coordinates.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MapMarker {
-    pub x: f32,
-    pub y: f32,
-    pub tone: Tone,
-    /// The player: the accent, larger, ringed.
-    pub player: bool,
-}
-
-/// A zoomable picture ([`Ui::zoom_view`]): a map, an artwork.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ZoomViewDesc {
-    /// `None` draws a solid rectangle of `tint`.
-    pub texture: Option<TextureHandle>,
-    /// The picture: `None` is the whole texture (`[u0, v0, u1, v1]`, v down).
-    pub uv: Option<[f32; 4]>,
-    /// `None`: white.
-    pub tint: Option<Srgba>,
-    pub width: Size,
-    pub height: Size,
-    /// Width over height (0: none), as `ImageDesc::aspect`.
-    pub aspect: f32,
-    /// The zoom limits; 0: 1 and 4.
-    pub min_zoom: f32,
-    pub max_zoom: f32,
-}
-
-/// Where a zoom view is: its zoom and the middle of what it shows, as a
-/// fraction of its picture ((0.5, 0.5) at rest).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ZoomResponse {
-    pub zoom: f32,
-    pub center: og_core::glam::Vec2,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct MinimapDesc {
-    pub texture: Option<TextureHandle>,
-    pub uv: Option<[f32; 4]>,
-    /// 0: 160 CSS px square.
-    pub size: f32,
-    pub markers: Vec<MapMarker>,
-    /// A label under the frame (a zone name; empty: none).
-    pub label: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct DialogueDesc {
-    pub speaker: String,
-    pub text: String,
-    /// A portrait texture region (`None`: the icon, else the speaker's initial).
-    pub portrait: Option<(TextureHandle, [f32; 4])>,
-    /// A portrait from the icon atlas by name (when no texture is given).
-    pub portrait_icon: String,
-    /// Characters per second; 0: 40.
-    pub chars_per_second: f32,
-    /// The portrait on the right.
-    pub portrait_right: bool,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct DialogueResponse {
-    /// Characters shown.
-    pub shown: u32,
-    /// The whole line is shown.
-    pub done: bool,
-    /// Pressed (or activated) while done: show the next line.
-    pub advanced: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -494,43 +367,6 @@ pub struct DpadResponse {
     pub down: bool,
     pub left: bool,
     pub right: bool,
-}
-
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ActionButtonDesc {
-    /// 0: 64 (never under the touch target).
-    pub size: f32,
-    pub primary: bool,
-    /// An icon of the atlas by name, instead of the label.
-    pub icon: String,
-    /// The player can move, scale and fade it ([`crate::Ui::set_hud_edit`]).
-    pub customize: Option<crate::Customize>,
-    /// Kept a disc when its label is wider than it (it grows as a disc,
-    /// a pedal) instead of widening to a capsule.
-    pub round: bool,
-    /// A ring inside its edge lit clockwise from the top to this (0 to 1: a
-    /// boost's charge, a brake's pressure); it follows the pad's outline,
-    /// so a pad with a charge is drawn round. `None`: no ring.
-    pub charge: Option<f32>,
-    /// The lit ring's tone (`Neutral`: the primary's).
-    pub charge_tone: Tone,
-    /// Answers nothing and shows faded (out of ammunition, not yet learnt).
-    pub disabled: bool,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct SkeletonDesc {
-    pub width: Option<Size>,
-    /// 0: one body line.
-    pub height: f32,
-    /// Stacked lines (0, 1: one); the last is shorter.
-    pub lines: u32,
-}
-
-fn hash_str(s: &str) -> u64 {
-    let mut h = StableHasher::new();
-    h.write_str(s);
-    h.finish()
 }
 
 impl Ui {

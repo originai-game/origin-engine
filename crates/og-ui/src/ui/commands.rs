@@ -1390,10 +1390,9 @@ impl crate::ui::Tree {
 pub(crate) fn fade_cmd(c: &mut DrawCmd, k: f32) {
     match c {
         DrawCmd::Glass { alpha, .. } => *alpha *= k,
-        DrawCmd::Quad { color, .. }
-        | DrawCmd::Image { color, .. }
-        | DrawCmd::Bar { color, .. }
-        | DrawCmd::Half { color, .. } => color[3] *= k,
+        DrawCmd::Quad { color, .. } | DrawCmd::Image { color, .. } | DrawCmd::Bar { color, .. } => {
+            color[3] *= k
+        }
         DrawCmd::Text { color, glow, .. } => {
             color[3] *= k;
             if let Some((g, _)) = glow {
@@ -1580,7 +1579,7 @@ fn shift(c: &mut DrawCmd, dx: f32, dy: f32) -> bool {
         | DrawCmd::Quad { rect, .. }
         | DrawCmd::Image { rect, .. }
         | DrawCmd::Vector { rect, .. } => mv(rect),
-        DrawCmd::Bar { center, .. } | DrawCmd::Half { center, .. } => {
+        DrawCmd::Bar { center, .. } => {
             center.0 += dx;
             center.1 += dy;
         }
@@ -1629,7 +1628,6 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
             | DrawCmd::Quad { clip, .. }
             | DrawCmd::Image { clip, .. }
             | DrawCmd::Bar { clip, .. }
-            | DrawCmd::Half { clip, .. }
             | DrawCmd::Text { clip, .. } => *clip = r(clip),
             DrawCmd::StyledText { text, .. } => {
                 if let Some(clip) = text.clip_mut() {
@@ -1718,19 +1716,6 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
             center: p(center.0, center.1),
             w: w * sx,
             h: h * sy,
-            angle,
-            color,
-            clip: r(&clip),
-        },
-        DrawCmd::Half {
-            center,
-            radius,
-            angle,
-            color,
-            clip,
-        } => DrawCmd::Half {
-            center: p(center.0, center.1),
-            radius: radius * k,
             angle,
             color,
             clip: r(&clip),

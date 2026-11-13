@@ -128,7 +128,7 @@ pub(crate) const HIT_POINTER: u16 = 32;
 /// A focus scope (dialog backdrop, open menu).
 pub(crate) const HIT_SCOPE: u16 = 64;
 /// ↑ and ↓ are its own while it is focused (a multi-line text control
-/// edits with them, a zoom view pans).
+/// edits with them).
 pub(crate) const HIT_MULTILINE: u16 = 128;
 /// It takes drops of dragged elements (`Props::drop`).
 pub(crate) const HIT_DROP: u16 = 256;
@@ -333,8 +333,8 @@ pub struct State {
     /// wheel did, until it settles: `scroll-snap-stop: always` areas
     /// between there and where it settles stop it.
     pub wheel_from: Option<(u64, Vec2)>,
-    /// Two touches held at once (og.Pointers): the scroll container or
-    /// zoom view they move, and their centre and spread last tick.
+    /// Two touches held at once (og.Pointers): the scroll container
+    /// they move, and their centre last tick.
     pub pinch: Option<crate::scroll::Pinch>,
     /// The drag's velocity so far, CSS px per tick.
     pub drag_v: Vec2,

@@ -462,7 +462,7 @@ pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
     match kind {
         "label" if n.heading => "heading",
         "label" | "richtext" => "text",
-        "button" | "action" => "button",
+        "button" => "button",
         "link" => "link",
         "checkbox" => "checkbox",
         "radio" => "radio",
@@ -472,17 +472,14 @@ pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
         "select" => "combobox",
         "option" => "option",
         "tab" => "tab",
-        "chip" => "button",
         "progress" => "progressbar",
-        "skeleton" | "spinner" => "progressbar",
         "meter" => "meter",
-        "cooldown" => "timer",
         "badge" => "status",
         "toast" => "status",
         "divider" => "separator",
         "tooltip" => "tooltip",
-        "image" | "icon" | "portrait" | "map" | "zoom" => "image",
-        "joystick" | "dpad" | "dialogue" => "group",
+        "image" | "icon" => "image",
+        "joystick" | "dpad" => "group",
         // A container keys and pads reach (a shop card) is a button unless
         // its widget says otherwise.
         _ if n.nav => "button",

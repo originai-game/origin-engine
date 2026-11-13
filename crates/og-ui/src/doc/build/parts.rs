@@ -735,18 +735,6 @@ impl Ui {
         }
         Ok(draw)
     }
-
-    pub(crate) fn part_cycle(&self, part: &crate::dress::PartRef, default_ms: f32) -> f32 {
-        let values = self.part_values(part, None);
-        let animation = values.animations.first();
-        let ms = animation.map_or(default_ms, |a| a.duration_ms);
-        if ms <= 0.0 {
-            return 0.0;
-        }
-        let period = u64::from(self.ticks_for(ms));
-        let phase = (self.interaction.state.tick % period) as f32 / period as f32;
-        animation.map_or(phase, |a| a.ease.apply(phase))
-    }
 }
 
 impl crate::ui::Tree {

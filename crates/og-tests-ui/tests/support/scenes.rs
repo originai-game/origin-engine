@@ -93,7 +93,6 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
     let mut s = Kit {
-        hp: 100.0,
         amount: 3.0,
         checks: [true, false],
         pick: 1,
@@ -105,8 +104,6 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
         ui.end();
     };
     step(&mut ui, &mut s, InputFrame::default());
-    // A hit: the meter's trail shows the old value for a beat.
-    s.hp = 55.0;
     for _ in 0..4 {
         step(&mut ui, &mut s, InputFrame::default());
     }

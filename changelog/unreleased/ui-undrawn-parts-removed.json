@@ -1,0 +1,18 @@
+{
+  "breaking": [
+    {
+      "member": "Style pack part selectors (::part)",
+      "change": "A style pack is refused when it names a part of `chip`, `skeleton`, `spinner`, `cooldown`, `minimap`, `dialogue` or `actionbutton`, or `meter::part(trail)`, `meter::part(separator)` or `meter::part(label)`. No document element drew these parts, so the rules never dressed anything.",
+      "fix": "Delete those rules. The components that replaced them are dressed through their own named parts: `[part=\"Cooldown.cell\"]`, `[part=\"Minimap.frame\"]`, `[part=\"SkeletonGroup.line\"]`, `[part=\"Spinner.ring\"]`, `[part=\"ActionButton.disc\"]`, `[part=\"SpeechBubble.frame\"]`.",
+      "find": [
+        "chip::part",
+        "skeleton::part",
+        "spinner::part",
+        "cooldown::part",
+        "minimap::part",
+        "dialogue::part",
+        "actionbutton::part"
+      ]
+    }
+  ]
+}

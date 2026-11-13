@@ -26,14 +26,6 @@ pub enum Shape {
         angle: f32,
         color: Srgba,
     },
-    /// The half of a disc on the side `angle` points to (0: the right half,
-    /// clockwise on screen).
-    Half {
-        part: crate::dress::PartRef,
-        frame: Frame,
-        angle: f32,
-        color: Srgba,
-    },
     /// A ring's arc on the circle the frame holds: `sweep` radians from
     /// `start` (clockwise from +x on screen), `thickness` CSS px inwards,
     /// round ends. Dressed by `part` as a decorative subpart (its colour,
