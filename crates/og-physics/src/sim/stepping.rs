@@ -380,7 +380,7 @@ fn step_here(
     out.moved = moved;
     out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
     laps.lap(Phase::Readout);
-    ext::characters(scene, settings, dt, sim, &poses, &mut out)?;
+    ext::characters(scene, settings, dt, &shared.waters, sim, &poses, &mut out)?;
     super::platformers(scene, settings, dt, sim, &poses, &mut out)?;
     laps.lap(Phase::Controllers);
     ext::soft(scene, settings, dt, tick, shared, sim, &mut out, &mut laps)?;

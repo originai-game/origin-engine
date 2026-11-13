@@ -4,11 +4,17 @@ use super::*;
 
 /// Moves every og.CharacterController after the step, against the world as
 /// it now is: ride the platform it stood on, take the input and gravity,
-/// jump on the rising edge of `jump`, slide, climb, step and snap.
+/// jump on the rising edge of `jump`, slide, climb, step and snap. One with
+/// og.Buoyancy is in the water as a body is ([`swims`]): lifted by the
+/// water it displaces (it counts as density 1, the colliders' default),
+/// its rise and fall slowed against the water's, and carried by the
+/// water's flow, each by how much of it is under; its `submerged` is
+/// written unless its limp ragdoll's bones wrote it.
 pub(crate) fn characters(
     scene: &Scene,
     settings: &Physics,
     dt: f32,
+    waters: &[crate::WaterBody],
     sim: &mut Sim,
     poses: &BodyPoses,
     out: &mut StepOut,
@@ -43,6 +49,7 @@ pub(crate) fn characters(
             Some(g) if c.grounded => carried(poses, &sim.world, g, foot),
             _ => Vec3::ZERO,
         };
+        let swim = swims(scene, waters, sim, handle, b.entity.to_bits());
         let g = flat(settings.gravity) * c.gravity_scale;
         let mut vertical = if c.gravity_scale > 0.0 {
             c.velocity.y
@@ -61,7 +68,14 @@ pub(crate) fn characters(
             jumped = true;
         }
         if c.gravity_scale > 0.0 {
-            vertical = (vertical + g.y * dt).max(-c.max_fall_speed);
+            vertical += g.y * dt;
+            if let Some((b, under, water)) = swim.filter(|s| s.1 > 0.0) {
+                // Archimedes in moving water, as a hull's cell: ρV(g + a).
+                let held = (-g.y + water.acceleration.y).max(0.0);
+                vertical += b.water_density * under * held * dt;
+                vertical -= (vertical - water.velocity.y) * (b.drag * dt).min(1.0) * under;
+            }
+            vertical = vertical.max(-c.max_fall_speed);
             if c.grounded && !jumped && vertical < 0.0 {
                 // Pressed into the ground, so snapping and slopes hold.
                 vertical = vertical.max(g.y * dt);
@@ -72,6 +86,18 @@ pub(crate) fn characters(
         } else {
             c.movement
         };
+        // The water's flow carries it (a river's current, a wave's orbit):
+        // afloat with the water, as a floating body's drag leaves it; on
+        // the ground by how much of it is under, the ground holding the rest.
+        let across = across
+            + swim.map_or(Vec3::ZERO, |(_, under, water)| {
+                let carried = if c.grounded {
+                    under
+                } else {
+                    under.min(1.0).ceil()
+                };
+                Vec3::new(water.velocity.x, 0.0, water.velocity.z) * carried
+            });
         let desired = flat((across + Vec3::Y * vertical) * dt);
         let start = foot + ride;
         let mover = Mover {
@@ -161,6 +187,13 @@ pub(crate) fn characters(
             });
         }
         out.controls.push((b.entity, ControlOut::Character(c)));
+        let limp = sim
+            .ragdolls
+            .get(&b.entity.to_bits())
+            .is_some_and(|r| r.dynamic);
+        if let Some((float, submerged, _)) = swim.filter(|_| !limp) {
+            out.floats.push((b.entity, Buoyancy { submerged, ..float }));
+        }
     }
     Ok(())
 }

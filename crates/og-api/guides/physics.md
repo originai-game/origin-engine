@@ -341,6 +341,18 @@ sea's waves are the absolute world's, so a body moved by og.WorldOrigin rides
 the same water. Raise `samples` for long hulls that should pitch on the
 waves.
 
+The same component floats what is not a rigid body. On an og.Ragdoll's
+entity its bones float while it is limp, so a body knocked into a river
+drifts off face down instead of sinking through the bed. On an
+og.CharacterController's entity the character is lifted and slowed as far
+as it is under and carried by the water's flow. Both count as density 1:
+`waterDensity` 2 floats them half under, under 1 they sink. A character
+afloat is not grounded, so it cannot jump; read `submerged` and swim it
+yourself, for example above 0.6 set `gravityScale` 0 and drive `move` in
+three dimensions (a stroke up, a dive down), and give the gravity back
+when it drops. With no og.Buoyancy a character walks the bed and a ragdoll
+sinks, as before.
+
 **Water.** Every water answers the same three things, whichever component
 draws or simulates it: an og.Water (a lake at its level, a sea with a
 `wind`, a river along its course), an og.WaterSurface and an og.WaterLine.
@@ -356,7 +368,7 @@ draws or simulates it: an og.Water (a lake at its level, a sea with a
   over no water. Use it for anything the engine does not float for you: a
   swimmer (`depth` at the chest), a float that tilts with `normal`, debris
   carried by `velocity`, a camera that goes under (`depth` at the eye).
-- og.Buoyancy floats a hull on any of them.
+- og.Buoyancy floats a hull, a limp ragdoll or a character on any of them.
 
 What differs is the lift. An og.Water alone lifts only bodies with
 og.Buoyancy; everything else sinks through it. og.WaterSurface and

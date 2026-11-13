@@ -18753,7 +18753,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship."),
+                doc: doc!("Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship; of a limp ragdoll's mass or a character's height."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

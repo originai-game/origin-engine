@@ -1,4 +1,4 @@
-//! og.Buoyancy: a body's hull floated on the water it lies in (an og.Water's sea, a surface, a line).
+//! og.Buoyancy: what floats on the water it lies in (an og.Water's sea, a surface): a body's hull, a limp og.Ragdoll's bones, an og.CharacterController.
 
 use super::*;
 
@@ -70,6 +70,141 @@ fn hull(colliders: &rp::ColliderSet, rb: &rp::RigidBody, samples: u32) -> Option
     })
 }
 
+/// Where a box centred at `centre`, reaching `extent` along x and z, lies
+/// in the og.Water `w` (its centre in the water's frame); `None` off it.
+fn over(
+    w: &crate::WaterBody,
+    centre: Vec3,
+    extent: og_core::glam::Vec2,
+) -> Option<og_core::glam::Vec2> {
+    let local = og_core::glam::Vec2::new(centre.x - w.position.x, centre.z - w.position.z);
+    let over = match &w.river {
+        Some(river) => river
+            .at(og_core::glam::Vec2::new(centre.x, centre.z))
+            .is_some(),
+        None => {
+            local.x.abs() <= w.size.x * 0.5 + extent.x && local.y.abs() <= w.size.y * 0.5 + extent.y
+        }
+    };
+    over.then_some(local)
+}
+
+/// The world box of a body's solid colliders; `None` with none.
+pub(super) fn solid_box(world: &rp::PhysicsWorld, rb: &rp::RigidBody) -> Option<(Vec3, Vec3)> {
+    let mut min = Vec3::splat(f32::MAX);
+    let mut max = Vec3::splat(f32::MIN);
+    for &c in rb.colliders() {
+        let c = &world.colliders[c];
+        if c.is_sensor() {
+            continue;
+        }
+        let aabb = c.compute_aabb();
+        min = min.min(unv(aabb.mins));
+        max = max.max(unv(aabb.maxs));
+    }
+    (min.x <= max.x).then_some((min, max))
+}
+
+/// How much of a box from `min` to `max` (world y) lies under `level`, 0..1.
+pub(super) fn box_under(min: f32, max: f32, level: f32) -> f32 {
+    if max - min > 1e-6 {
+        ((level - min) / (max - min)).clamp(0.0, 1.0)
+    } else if min < level {
+        1.0
+    } else {
+        0.0
+    }
+}
+
+/// A limp og.Ragdoll's bones in the water for a tick (og.Buoyancy on its
+/// entity): each bone is lifted at its centre of mass by the water it
+/// displaces, as much of it as its box is under the level there, and
+/// slowed against the moving water; how much of the ragdoll's mass is
+/// under. A bone displaces its mass, as a body of the colliders' default
+/// density 1 does (its capsule is a stand-in, far thinner than the limb):
+/// `waterDensity` 2 floats a ragdoll half under, as it does a crate. Its
+/// box cuts the og.Water it straddles. `None` for no ragdoll, or one that
+/// follows its animation.
+#[allow(clippy::too_many_arguments)]
+fn bones(
+    scene: &Scene,
+    g: f32,
+    dt: f32,
+    waters: &[crate::WaterBody],
+    sim: &mut Sim,
+    entity: u64,
+    b: &Buoyancy,
+    cuts: &mut BTreeMap<u64, Vec<crate::water::WaterCut>>,
+) -> Option<f32> {
+    let bones = sim
+        .ragdolls
+        .get(&entity)
+        .filter(|s| s.dynamic)?
+        .bones
+        .clone();
+    let mut lo = Vec3::splat(f32::MAX);
+    let mut hi = Vec3::splat(f32::MIN);
+    let (mut total, mut under, mut fall) = (0.0, 0.0, 0.0);
+    for h in bones {
+        let rb = &sim.world.bodies[h];
+        let Some((min, max)) = solid_box(&sim.world, rb) else {
+            continue;
+        };
+        lo = lo.min(min);
+        hi = hi.max(max);
+        let mass = rb.mass();
+        total += mass;
+        fall += unv(rb.linvel()).y * mass;
+        let centre = unv(rb.center_of_mass());
+        let Some(water) =
+            crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds)
+        else {
+            continue;
+        };
+        let fraction = box_under(min.y, max.y, water.height);
+        if fraction <= 0.0 {
+            continue;
+        }
+        under += fraction * mass;
+        // As a hull's cell: ρV(g + a) up, and its speed through the water lost.
+        let held = Vec3::Y * g + water.acceleration;
+        let held = Vec3::new(held.x, held.y.max(0.0), held.z);
+        let lift = held * (b.water_density * mass * fraction * dt);
+        let rb = &mut sim.world.bodies[h];
+        let speed = unv(rb.linvel()) - water.velocity;
+        let slow = (b.drag * dt).min(1.0) * mass * fraction;
+        rb.apply_impulse(v(flat(lift - speed * slow)), true);
+        let keep = 1.0 - (b.angular_drag * fraction * dt).min(1.0);
+        let spin = unangvel(rb.angvel());
+        rb.set_angvel(angvel(spin * keep), true);
+    }
+    if total <= 0.0 {
+        return Some(0.0);
+    }
+    let centre = (lo + hi) * 0.5;
+    let level = crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds)
+        .map_or(lo.y, |l| l.height);
+    if lo.y < level && hi.y > level {
+        let extent = og_core::glam::Vec2::new(hi.x - lo.x, hi.z - lo.z) * 0.5;
+        for w in waters {
+            let Some(list) = cuts.get_mut(&w.entity) else {
+                continue;
+            };
+            let Some(local) = over(w, centre, extent) else {
+                continue;
+            };
+            list.push(crate::water::WaterCut::boxed(
+                entity,
+                local - extent,
+                local + extent,
+                level - lo.y,
+                fall / total,
+            ));
+        }
+    }
+    Some(under / total)
+}
+
 /// The footprint of a floating body's hull (its box `hull.lo` to `hull.hi`,
 /// turned and placed by `at`) in each og.Water of `cuts` it lies over:
 /// the rectangle its own x and z axes span over the water's xz, its box,
@@ -107,19 +242,9 @@ fn hull_cuts(
         let Some(list) = cuts.get_mut(&w.entity) else {
             continue;
         };
-        let local = og_core::glam::Vec2::new(centre.x - w.position.x, centre.z - w.position.z);
-        let over = match &w.river {
-            Some(river) => river
-                .at(og_core::glam::Vec2::new(centre.x, centre.z))
-                .is_some(),
-            None => {
-                local.x.abs() <= w.size.x * 0.5 + extent.x
-                    && local.y.abs() <= w.size.y * 0.5 + extent.y
-            }
-        };
-        if !over {
+        let Some(local) = over(w, centre, extent) else {
             continue;
-        }
+        };
         list.push(crate::water::WaterCut {
             entity,
             min: local - extent,
@@ -179,16 +304,39 @@ fn floats(
 ) {
     let g = -settings.gravity.y;
     for (e, b) in &scene.floats {
-        let Some(&h) = handles.get(&e.to_bits()) else {
-            continue;
-        };
+        let key = e.to_bits();
+        let hull = handles
+            .get(&key)
+            .and_then(|&h| float(scene, g, dt, waters, sim, h, key, b, cuts));
+        // Limp, its bones are what is in the water.
+        let bones = bones(scene, g, dt, waters, sim, key, b, cuts);
+        if let Some(submerged) = bones.or(hull) {
+            out.floats.push((*e, Buoyancy { submerged, ..*b }));
+        }
+    }
+}
+
+/// One floating body's hull in the water for a tick: its lift, drag and
+/// cut; how much of it is under. `None` for a body that is not dynamic or
+/// has no solid collider.
+#[allow(clippy::too_many_arguments)]
+fn float(
+    scene: &Scene,
+    g: f32,
+    dt: f32,
+    waters: &[crate::WaterBody],
+    sim: &mut Sim,
+    h: rp::RigidBodyHandle,
+    entity: u64,
+    b: &Buoyancy,
+    cuts: &mut BTreeMap<u64, Vec<crate::water::WaterCut>>,
+) -> Option<f32> {
+    {
         let rb = &sim.world.bodies[h];
         if !rb.is_dynamic() {
-            continue;
+            return None;
         }
-        let Some(hull) = hull(&sim.world.colliders, rb, b.samples) else {
-            continue;
-        };
+        let hull = hull(&sim.world.colliders, rb, b.samples)?;
         let at = *rb.position();
         // A cell's half height in the world, its box turned with the body.
         let up = [Vec3::X, Vec3::Y, Vec3::Z].map(|a| unv(at.rotation * v(a)).y.abs());
@@ -268,21 +416,33 @@ fn floats(
             let spin = unangvel(rb.angvel());
             rb.set_angvel(angvel(spin * keep), true);
         }
-        hull_cuts(
-            e.to_bits(),
-            &hull,
-            &at,
-            unv(rb.linvel()).y,
-            scene,
-            waters,
-            cuts,
-        );
-        out.floats.push((
-            *e,
-            Buoyancy {
-                submerged: under,
-                ..*b
-            },
-        ));
+        hull_cuts(entity, &hull, &at, unv(rb.linvel()).y, scene, waters, cuts);
+        Some(under)
     }
+}
+
+/// The water an og.CharacterController with og.Buoyancy is in (3D): its
+/// og.Buoyancy, how much of its colliders' box is under the level at its
+/// centre, and the water there. `None` without og.Buoyancy or over no
+/// water.
+pub(super) fn swims(
+    scene: &Scene,
+    waters: &[crate::WaterBody],
+    sim: &Sim,
+    h: rp::RigidBodyHandle,
+    entity: u64,
+) -> Option<(Buoyancy, f32, og_core::ocean::SurfacePoint)> {
+    if DIM != 3 {
+        return None;
+    }
+    let i = scene
+        .floats
+        .binary_search_by_key(&entity, |f| f.0.to_bits())
+        .ok()?;
+    let b = scene.floats[i].1;
+    let (min, max) = solid_box(&sim.world, &sim.world.bodies[h])?;
+    let centre = (min + max) * 0.5;
+    let water = crate::water::level(&scene.surfaces, waters, centre.x, centre.z, scene.seconds);
+    let under = water.map_or(0.0, |w| box_under(min.y, max.y, w.height));
+    Some((b, under, water.unwrap_or_default()))
 }

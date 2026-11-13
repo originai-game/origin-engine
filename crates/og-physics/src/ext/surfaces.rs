@@ -3,7 +3,8 @@
 use super::*;
 
 /// The bodies water acts on, from the rapier world: every dynamic body (it
-/// floats) and every controller (it splashes), with its colliders' box.
+/// floats), every controller (it splashes) and every og.Ragdoll with
+/// og.Buoyancy (it splashes), with its colliders' box, in entity order.
 fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) -> Vec<Floater> {
     let mut list = Vec::new();
     for b in &scene.bodies {
@@ -50,6 +51,46 @@ fn floaters(scene: &Scene, sim: &Sim, handles: &super::super::sim::Handles<'_>) 
             dynamic,
             hull: floats,
         });
+    }
+    // A ragdoll with og.Buoyancy (its bones are bodies of no entity): its
+    // bones' box splashes; its lift and its cut are `buoyancy`'s.
+    let bodies = list.len();
+    for (e, _) in &scene.floats {
+        let key = e.to_bits();
+        let Some(state) = sim.ragdolls.get(&key) else {
+            continue;
+        };
+        if list[..bodies].iter().any(|f| f.entity == key) {
+            continue;
+        }
+        let mut min = Vec3::splat(f32::MAX);
+        let mut max = Vec3::splat(f32::MIN);
+        let (mut velocity, mut mass) = (Vec3::ZERO, 0.0);
+        for &h in &state.bones {
+            let rb = &sim.world.bodies[h];
+            let Some((lo, hi)) = super::buoyancy::solid_box(&sim.world, rb) else {
+                continue;
+            };
+            min = min.min(lo);
+            max = max.max(hi);
+            velocity += unv(rb.linvel()) * rb.mass();
+            mass += rb.mass();
+        }
+        if min.x > max.x || mass <= 0.0 {
+            continue;
+        }
+        list.push(Floater {
+            entity: key,
+            min,
+            max,
+            centre: (min + max) * 0.5,
+            velocity: flat(velocity / mass),
+            dynamic: false,
+            hull: true,
+        });
+    }
+    if list.len() > bodies {
+        og_core::sort::sort_by_key(&mut list, |f| f.entity);
     }
     list
 }
