@@ -13,7 +13,7 @@
 //! built with, saved in the og.physics block's trailer.
 
 use crate::schema::Garment;
-use crate::verlet::Solids;
+use crate::verlet::{Solids, link};
 use og_core::glam::Vec3;
 use og_core::{Error, ErrorKind, Result};
 use serde::{Deserialize, Serialize};
@@ -225,12 +225,21 @@ impl GarmentState {
             for _ in 0..garment.iterations.clamp(1, 64) {
                 if stiffness > 0.0 {
                     for &(a, b, rest) in &self.edges {
-                        link(&mut self.points, &w, a, b, rest * scale, stiffness);
+                        let (a, b) = (a as usize, b as usize);
+                        link(
+                            &mut self.points,
+                            a,
+                            b,
+                            rest * scale,
+                            (w[a], w[b]),
+                            stiffness,
+                        );
                     }
                 }
                 if bending > 0.0 {
                     for &(a, b, rest) in &self.bends {
-                        link(&mut self.points, &w, a, b, rest * scale, bending);
+                        let (a, b) = (a as usize, b as usize);
+                        link(&mut self.points, a, b, rest * scale, (w[a], w[b]), bending);
                     }
                 }
                 for i in 0..n {
@@ -280,25 +289,6 @@ impl GarmentState {
             }
         }
     }
-}
-
-/// Moves `a` and `b` towards `rest` apart by `k` of the error, their
-/// weights `w` (0: held to the skin).
-fn link(points: &mut [Vec3], w: &[f32], a: u32, b: u32, rest: f32, k: f32) {
-    let (a, b) = (a as usize, b as usize);
-    let (wa, wb) = (w[a], w[b]);
-    let sum = wa + wb;
-    if sum <= 0.0 {
-        return;
-    }
-    let d = points[b] - points[a];
-    let len = d.length();
-    if len <= 1e-9 {
-        return;
-    }
-    let c = k * (len - rest) / (len * sum);
-    points[a] += d * (c * wa);
-    points[b] -= d * (c * wb);
 }
 
 #[cfg(test)]

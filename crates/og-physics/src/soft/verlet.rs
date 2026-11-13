@@ -36,8 +36,17 @@ fn planar(p: Vec3, flat: bool, z: f32) -> Vec3 {
     if flat { Vec3::new(p.x, p.y, z) } else { p }
 }
 
-/// Pulls `a` and `b` to `rest` apart, `wa`/`wb` their inverse masses (0 pinned).
-fn satisfy(points: &mut [Vec3], a: usize, b: usize, rest: f32, wa: f32, wb: f32) {
+/// The distance constraint of the ropes, cloth, garments and soft bodies:
+/// moves `a` and `b` towards `rest` apart by `k` of the error (1: all of
+/// it), `wa`/`wb` their inverse masses (0 pinned).
+pub(crate) fn link(
+    points: &mut [Vec3],
+    a: usize,
+    b: usize,
+    rest: f32,
+    (wa, wb): (f32, f32),
+    k: f32,
+) {
     let w = wa + wb;
     if w <= 0.0 {
         return;
@@ -47,9 +56,9 @@ fn satisfy(points: &mut [Vec3], a: usize, b: usize, rest: f32, wa: f32, wb: f32)
     if len <= 1e-9 {
         return;
     }
-    let k = (len - rest) / (len * w);
-    points[a] += d * (k * wa);
-    points[b] -= d * (k * wb);
+    let c = k * (len - rest) / (len * w);
+    points[a] += d * (c * wa);
+    points[b] -= d * (c * wb);
 }
 
 impl RopeState {
@@ -112,7 +121,7 @@ impl RopeState {
                 } else {
                     1.0
                 };
-                satisfy(&mut self.points, i, i + 1, rest, wa, wb);
+                link(&mut self.points, i, i + 1, rest, (wa, wb), 1.0);
             }
             if radius > 0.0 {
                 for (i, point) in self.points.iter_mut().enumerate().take(n).skip(1) {
@@ -326,16 +335,30 @@ impl ClothState {
                     for x in 0..cols {
                         let i = (y * cols + x) as usize;
                         if x + 1 < cols {
-                            satisfy(&mut self.points, i, i + 1, s, w(x, y), w(x + 1, y));
+                            link(&mut self.points, i, i + 1, s, (w(x, y), w(x + 1, y)), 1.0);
                         }
                         if y + 1 < rows {
                             let j = i + cols as usize;
-                            satisfy(&mut self.points, i, j, s, w(x, y), w(x, y + 1));
+                            link(&mut self.points, i, j, s, (w(x, y), w(x, y + 1)), 1.0);
                             if x + 1 < cols {
-                                satisfy(&mut self.points, i, j + 1, diag, w(x, y), w(x + 1, y + 1));
+                                link(
+                                    &mut self.points,
+                                    i,
+                                    j + 1,
+                                    diag,
+                                    (w(x, y), w(x + 1, y + 1)),
+                                    1.0,
+                                );
                             }
                             if x > 0 {
-                                satisfy(&mut self.points, i, j - 1, diag, w(x, y), w(x - 1, y + 1));
+                                link(
+                                    &mut self.points,
+                                    i,
+                                    j - 1,
+                                    diag,
+                                    (w(x, y), w(x - 1, y + 1)),
+                                    1.0,
+                                );
                             }
                         }
                     }

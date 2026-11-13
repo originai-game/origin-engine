@@ -10,7 +10,7 @@
 
 use crate::MeshDesc;
 use crate::schema::{SOFT_BOX, SOFT_MESH, SoftBody};
-use crate::verlet::Solids;
+use crate::verlet::{Solids, link};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};
 use serde::{Deserialize, Serialize};
@@ -446,19 +446,7 @@ impl SoftState {
                 if stiffness > 0.0 {
                     for &(a, b, rest) in &self.edges {
                         let (a, b) = (a as usize, b as usize);
-                        let (wa, wb) = (w[a], w[b]);
-                        let sum = wa + wb;
-                        if sum <= 0.0 {
-                            continue;
-                        }
-                        let d = self.points[b] - self.points[a];
-                        let len = d.length();
-                        if len <= 1e-9 {
-                            continue;
-                        }
-                        let k = stiffness * (len - rest) / (len * sum);
-                        self.points[a] += d * (k * wa);
-                        self.points[b] -= d * (k * wb);
+                        link(&mut self.points, a, b, rest, (w[a], w[b]), stiffness);
                     }
                 }
                 if volume_stiffness > 0.0 {
