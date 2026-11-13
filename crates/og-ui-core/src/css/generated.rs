@@ -27,7 +27,7 @@ pub const PSEUDOS: [&str; 8] = [
 ];
 
 /// The text properties generated text and the text pseudo-elements take,
-/// as a styled run of their text ([`super::spans`]).
+/// as a styled run of their text ([`crate::doc::spans`]).
 const TEXT: [&str; 12] = [
     "color",
     "font",

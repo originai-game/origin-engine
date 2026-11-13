@@ -1,7 +1,7 @@
 //! The descriptor at-rules a stylesheet declares beside its style rules:
 //! `@font-face`, `@property`, `@counter-style` and `@position-try`, and
 //! the `@import`ed stylesheets the cook supplied (docs/ui.md §3.2).
-//! [`super::stylesheet`] reads them; the cascade, fonts, counters and
+//! [`crate::doc::stylesheet`] reads them; the cascade, fonts, counters and
 //! anchor positioning read what they declare.
 use super::StyleDeclaration;
 

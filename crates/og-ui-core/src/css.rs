@@ -3,9 +3,13 @@
 //! ([`variables`]), the at-rules and queries, and each specification's
 //! properties lowered onto element props.
 //!
-//! What it takes from the document model is named here and nowhere else
-//! in the module: the reflected element props it lowers onto and the
-//! document's value types.
+//! What it takes from the document model is the one `use crate::doc`
+//! below and nothing else (`crate::structure` holds that): the reflected
+//! element props it lowers onto (`schema`), the name rule markup and CSS
+//! share (`syntax`), the cascade's answer to whether a property is one
+//! documents take (`build`), and the view-transition props, whose
+//! lowering needs the document (`view_transition`). Selectors, matching
+//! and the stylesheet reader stay in `doc`: they read the document tree.
 
 pub mod at_rules;
 pub(crate) mod boxes;
