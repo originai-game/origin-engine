@@ -1454,6 +1454,11 @@ the following is off by default on `Water`:
 - **Caustics** (`caustics`, `caustics_scale`): two scrolling cell patterns
   multiplied, added to the sunlight of every lit and terrain surface below
   the first surface that has them, inside its rectangle, fading with depth.
+- **Wind waves** (`wave_scale`, `wave_speed`, `wave_strength`): a lake's detail
+  normals are sixteen plane waves (water_detail.wgsl `lake_wave`) on a
+  geometric ladder of lengths, their directions within 75° of one
+  heading, slope amplitude as k^-1/2: a short-crested field without a
+  period. Fewer waves always cross in a lattice.
 - **Tessellation**: a surface is drawn as a grid of at most 256 m cells
   (`MAX_CELL`, at least `segments` a side, at most 256), so a 24 km sea is
   94 × 94 cells, not two triangles.
