@@ -307,12 +307,17 @@ test.skipIf(!og)("against the real og relay: a quick play room takes its matched
     const hb = listen(b);
     b.handle([{ op: "quick", mode: "duel", players: 2, name: "bob" }], hb.deliver);
     const first = (await hb.until(1))[0]!;
-    expect(first).toMatchObject({ type: "joined", peer: 1 });
+    // The two pages' sockets race to the relay: whichever quick play arrives
+    // first is peer 0, so the test reads the numbers the room gave.
+    const bob = Number(first["peer"]);
+    const ann = 1 - bob;
+    expect(first).toMatchObject({ type: "joined", peers: [{ peer: 0 }, { peer: 1 }] });
+    expect([ann, bob].sort()).toEqual([0, 1]);
     expect(String(first["room"])).toMatch(/^quick-duel-\d+$/);
-    await ha.until(1);
+    expect((await ha.until(1))[0]).toMatchObject({ type: "joined", room: first["room"], peer: ann });
     sockets[0]!.close();
-    expect((await hb.until(2))[1]).toMatchObject({ type: "joined", room: first["room"], peer: 2, peers: [{ peer: 0, name: "ann" }, { peer: 2, name: "bob" }] });
-    expect((await ha.until(3)).slice(1)).toEqual([{ type: "peer_left", peer: 1 }, { type: "peer_joined", peer: 2, name: "bob", was: 1 }]);
+    expect((await hb.until(2))[1]).toMatchObject({ type: "joined", room: first["room"], peer: 2, peers: [{ peer: ann, name: "ann" }, { peer: 2, name: "bob" }] });
+    expect((await ha.until(3)).slice(1)).toEqual([{ type: "peer_left", peer: bob }, { type: "peer_joined", peer: 2, name: "bob", was: bob }]);
     b.close();
     await ha.until(4);
     // The place is free again, and a stranger who knows the room's id and a player's name still gets none.
