@@ -1,6 +1,6 @@
 # Phong tessellation
 
-`crates/og-render/src/surface.rs` and `shaders/surface.wgsl` independently
+`crates/og-render/src/systems/softbody/surface.rs` and `shaders/surface.wgsl` independently
 implement the tangent-plane projection and barycentric interpolation in:
 
 Tamy Boubekeur and Marc Alexa, **Phong Tessellation**, ACM Transactions on

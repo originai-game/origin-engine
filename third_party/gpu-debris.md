@@ -30,7 +30,7 @@ workgroup, so debris has its own kernel, one thread per piece.
 
 ## Scene colliders
 
-`og-render/src/scene_colliders.rs` and `shaders/scene_colliders.wgsl` are
+`og-render/src/particles/scene_colliders.rs` and `shaders/scene_colliders.wgsl` are
 the packing and point-versus-collider tests of the GPU visual-body solver
 (branch `gpu/visual-cloth-softbody`, written in this repository), shared
 with it. They contain no third-party code.

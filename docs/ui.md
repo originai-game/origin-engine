@@ -1316,7 +1316,7 @@ reads against that dressing. Core parts keep their names and meanings.
 
 **Colour vision.** `UiDesc.colorVision` (`protanopia`, `deuteranopia`,
 `tritanopia`, default `none`) runs the whole frame through one final
-filter (`crates/og-render/src/color_vision.rs`): Fidaner 2005
+filter (`crates/og-render/src/post/color_vision.rs`): Fidaner 2005
 daltonisation by default, or with `colorVisionFilter: "simulate"` Viénot
 1999 (protan, deutan) and Brettel 1997 (tritan) as libDaltonLens publishes
 them (`third_party/daltonlens`). `colorVisionStrength` (0 to 1) blends

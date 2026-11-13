@@ -1,6 +1,6 @@
 # Colour vision simulation and correction
 
-The matrices in `crates/og-render/src/color_vision.rs`, applied by
+The matrices in `crates/og-render/src/post/color_vision.rs`, applied by
 `crates/og-render/shaders/color_filter.wgsl` (docs/ui.md §3.2).
 
 - Simulation: libDaltonLens, https://github.com/DaltonLens/libDaltonLens,

@@ -12,4 +12,4 @@ the BSD-style licence in `LICENSE`.
 roughness x / 31 and sqrt(1 - cos θ) y / 31), each texel eight little-endian
 IEEE halves: `g_ltc_1`'s four values, `g_ltc_2`'s first two, two zeros. 16 KiB:
 one uniform buffer, so og-render's rect lights take no texture slot
-(`crates/og-render/src/area.rs`).
+(`crates/og-render/src/shading/area.rs`).

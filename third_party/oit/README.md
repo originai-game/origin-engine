@@ -19,7 +19,7 @@ The linked-list construction and resolve are adapted from:
 - WebGPU Samples, revision `e040ec1a20dbbe01afed30c812e825b2639cfe5b`,
   `sample/a-buffer/`: BSD-3-Clause, `LICENSE-webgpu-samples`.
 
-Engine adaptations (crates/og-render/src/oit.rs, shaders/oit*.wgsl): one
+Engine adaptations (crates/og-render/src/shading/oit.rs, shaders/oit*.wgsl): one
 packed atomic-u32 arena at group 0 binding 12 (a header, a fragment count
 per pixel, then each pixel's own fixed run of seven-word nodes) rather
 than separate bindings and a global node pool; every fragment also

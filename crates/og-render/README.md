@@ -7,6 +7,33 @@ DX12, headless for executors) and the browser (WebGPU only).
 The crate knows nothing about the ECS. Its whole input is a `RenderScene`;
 the world → scene extraction belongs to the layer above.
 
+## Layout
+
+`src/` is one directory per owner, in three layers:
+
+| Directory | Owns |
+| --- | --- |
+| `gpu/` | The device and its capabilities, targets, textures, the pipeline cache |
+| `shader/` | The list of WGSL modules and how they are assembled, pipeline features |
+| `frame/` | The frame schedule: views, the graph, quality, timing, the floating origin |
+| `visibility/` | Instances, GPU culling, LOD, meshlets |
+| `mesh/` | Geometry that is drawn: lines, shapes, compaction |
+| `shading/` | Materials, lights and clusters, shadows, indirect light, reflections, decals, transparency |
+| `media/` | Fog, volumetric light, cloud marching |
+| `post/` | Full-screen stages, the HDR targets, tonemapping |
+| `particles/` | Particles, ribbons, effect materials |
+| `debug/` | Debug views, capture, the id pass |
+| `systems/<name>/` | A world system: environment, water, terrain, vegetation, crowd, destruction, fluids, softbody, sprites, stylise, ui |
+| `scene/` | `RenderScene`, the crate's whole input |
+| `renderer/` | The composition root: it owns the resources and runs the frame |
+
+The first ten are mechanisms. A mechanism names no world system and not
+the renderer; a world system names no other system and not the renderer,
+and what two systems need is a mechanism. `tests/structure.rs` holds the
+direction, with the list of what does not follow it yet; that list only
+shrinks. `lib.rs` keeps each module's name at the root (`use
+shading::ibl;`), so a path is `crate::ibl` wherever the file lives.
+
 ## Public types
 
 | Type | What it is |

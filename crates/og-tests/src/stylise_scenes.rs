@@ -1,4 +1,4 @@
-//! The stylisation scenes (`og-render/src/stylise.rs`, the IDL's `Stylise`
+//! The stylisation scenes (`og-render/src/systems/stylise/mod.rs`, the IDL's `Stylise`
 //! and `MaterialStyle`): each primitive group over a scene the references
 //! already know, so a frame shows the primitive and nothing else new.
 //!

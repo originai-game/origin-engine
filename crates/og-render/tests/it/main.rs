@@ -23,6 +23,8 @@ mod shaders;
 mod shared_frames;
 #[path = "../sprite_hooks.rs"]
 mod sprite_hooks;
+#[path = "../structure.rs"]
+mod structure;
 #[path = "../surface.rs"]
 mod surface;
 #[path = "../tier.rs"]

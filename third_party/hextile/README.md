@@ -19,7 +19,7 @@ Real-Time Hex-Tiling" (Journal of Computer Graphics Techniques 11(2),
 Changed: the per-cell hash is pcg2d on integer ids (Jarzynski and Olano,
 JCGT 2020) and the turn comes from it, not from `sin` and the ids'
 products; the lattice is placed from the world's zero with values the
-CPU computes in f64 per frame (`hex_lattice` in `crates/og-render/src/terrain.rs`),
+CPU computes in f64 per frame (`hex_lattice` in `crates/og-render/src/systems/terrain/mod.rs`),
 so it stays on the ground when the render origin moves; the normal
 taps reuse the colour taps' weights.
 

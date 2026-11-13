@@ -3,7 +3,7 @@
 Gediminas Mikelenas' procedural GPU grass for Bevy
 (https://github.com/GEMI/bevy-grass, tag `v0.20.3`, commit
 `76a1388ee01e9b0e3305a879b869503c4099d617`), ported to og-render's
-grass (`crates/og-render/src/grass.rs` and `shaders/grass*.wgsl`):
+grass (`crates/og-render/src/systems/vegetation/grass.rs` and `shaders/grass*.wgsl`):
 
 - the placement: a progressive blue-noise tile (Mitchell's best
   candidate) copied over 16 m chunks, each copy offset by a hash, blades

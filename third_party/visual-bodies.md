@@ -1,6 +1,6 @@
 # Visual bodies (GPU XPBD)
 
-`crates/og-render/src/visual_sim.rs` and `crates/og-render/shaders/visual_body.wgsl`
+`crates/og-render/src/systems/softbody/visual_sim.rs` and `crates/og-render/shaders/visual_body.wgsl`
 independently implement, from the published papers, the techniques of:
 
 - Miles Macklin, Matthias Müller and Nuttapong Chentanez, **XPBD:

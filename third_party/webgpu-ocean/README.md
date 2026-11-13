@@ -6,7 +6,7 @@
 - Files ported: `mls-mpm/clearGrid.wgsl`, `p2g_1.wgsl`, `p2g_2.wgsl`,
   `updateGrid.wgsl`, `g2p.wgsl` (the parameters of `mls-mpm.ts`)
 - Into: `crates/og-render/shaders/visual_fluid.wgsl`, driven by
-  `crates/og-render/src/visual_fluid.rs`
+  `crates/og-render/src/systems/fluids/visual_fluid.rs`
 
 The upstream credits, carried here: the method is Hu et al., *A Moving
 Least Squares Material Point Method with Displacement Discontinuity and
@@ -37,7 +37,7 @@ of upstream are not used (the engine's `fluid3d.wgsl` draws).
   `render/fluidRender.ts`: one-dimensional twice over x and y, then the
   two-dimensional square)
 - Into: `crates/og-render/shaders/fluid3d_blur.wgsl`, driven by
-  `crates/og-render/src/fluid3d.rs`. Changes: the range constants are
+  `crates/og-render/src/systems/fluids/fluid3d.rs`. Changes: the range constants are
   given in the fluid's drawn particle radius instead of upstream's fixed
   0.6, the filter size follows the fluid's smoothing, and an empty tap
   counts as a farther one.

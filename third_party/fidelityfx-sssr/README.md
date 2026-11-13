@@ -11,7 +11,7 @@ Copyright (c) 2021 Advanced Micro Devices, Inc.; the licences are in
 (MIT, Copyright (c) 2015 Playdead), as quoted in its header.
 
 The engine's screen-space reflections (`crates/og-render/shaders/ssr.wgsl`,
-`crates/og-render/src/ssr.rs`) port to WGSL:
+`crates/og-render/src/shading/ssr.rs`) port to WGSL:
 
 - The hierarchical march (`FFX_SSSR_HierarchicalRaymarch`,
   `FFX_SSSR_InitialAdvanceRay`, `FFX_SSSR_AdvanceRay`) over a

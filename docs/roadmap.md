@@ -103,7 +103,10 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   engine-internal front end; the documents stop writing through
   `Docs::host_mut`; og-ui's tests stop linking `og-render`.
 - **og-render:** culling, batches, the frame uniform and group 0 become
-  stages shared by the passes.
+  stages shared by the passes. The sources are grouped by owner (its
+  README, Layout); `tests/structure.rs` lists what still reaches the
+  wrong way (a mechanism into a world system or the renderer, one system
+  into another), and that list is worked down to nothing.
 - **Tiers (§2.6):** the mini-game tier end to end (passes that read the
   depth prepass build no graph without MRT yet, and secondary views draw
   nothing), then the GL tier on a device.

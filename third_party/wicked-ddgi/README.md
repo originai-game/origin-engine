@@ -8,7 +8,7 @@ Turánszki János; the licence is in `LICENSE`. Wicked's DDGI is in turn
 built on Majercik et al. 2019, "Dynamic Diffuse Global Illumination with
 Ray-Traced Irradiance Fields" (JCGT 8(2)).
 
-Ported to WGSL as the probe GI (`crates/og-render/src/gi_probes.rs`,
+Ported to WGSL as the probe GI (`crates/og-render/src/shading/gi_probes.rs`,
 `shaders/gi_common.wgsl`, `gi_trace.wgsl`, `gi_blend.wgsl`,
 `gi_probes.wgsl`). What came from it:
 

@@ -1,4 +1,4 @@
-//! The physical material lobes (`og-render/src/physical.rs`): the
+//! The physical material lobes (`og-render/src/shading/physical.rs`): the
 //! `materials-physical` reference board, and from frames: each lobe does
 //! what it is for and its map steers it, transmission shows the scene
 //! behind (blurred by roughness, tinted by absorption), a physical

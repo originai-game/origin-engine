@@ -453,7 +453,7 @@ publish builds.
 **Render targets, views, layers and custom shaders** are §10.8.
 
 **Render origin.** The frame is drawn relative to the point of an 8192 m grid
-nearest the camera (`og-render/src/origin.rs`), so the GPU's f32 arithmetic
+nearest the camera (`og-render/src/frame/origin.rs`), so the GPU's f32 arithmetic
 works on small numbers and `p - origin` is exact. Everything the renderer
 keeps between frames moves with the origin, so a move is invisible;
 patterns laid in the world add it back in f64. The origin never reaches the

@@ -1,5 +1,5 @@
 //! The physical material scene (`materials-physical`): every
-//! `MeshPhysicalMaterial` lobe og-render draws (`og-render/src/physical.rs`),
+//! `MeshPhysicalMaterial` lobe og-render draws (`og-render/src/shading/physical.rs`),
 //! with and without its maps, and transmissive objects in front of textured
 //! geometry.
 
