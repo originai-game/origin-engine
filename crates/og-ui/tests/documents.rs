@@ -1432,14 +1432,15 @@ fn a_disabled_controls_action_sends_nothing() {
 }
 
 /// `aria-disabled` is inert: its button stays in the tree and sends nothing
-/// when pressed, and one beside it still answers.
+/// when pressed or by its action, and one beside it still answers.
 #[test]
 fn an_aria_disabled_button_sends_nothing_when_pressed() {
     let mut ui = ui_with_font(test_font_metrics());
-    let doc = r#"<meta name="screen" content="map">
+    let doc = r#"<meta name="screen" content="map" data-layer="menu">
+<meta name="action:details" content="Look">
 <column id="Map">
-  <button id="Locked" aria-disabled={true} onclick={pick}>Locked</button>
-  <button id="Open" onclick={enter}>Open</button>
+  <button id="Locked" aria-disabled={true} onclick={pick} ondetails={peek}>Locked</button>
+  <button id="Open" onclick={enter} ondetails={look}>Open</button>
 </column>
 "#;
     ui.define_document(UiDocument::parse("map.svelte", doc).unwrap());
@@ -1485,6 +1486,11 @@ fn an_aria_disabled_button_sends_nothing_when_pressed() {
     assert!(ui.element("Locked").unwrap().disabled);
     assert_eq!(click(&mut ui, "Locked"), Vec::<String>::new());
     assert_eq!(click(&mut ui, "Open"), vec!["enter".to_string()]);
+    ui.fire_action("details");
+    assert_eq!(
+        step(&mut ui, InputFrame::default()),
+        vec!["look".to_string()]
+    );
 }
 
 /// A container query that resizes a slider and a disclosure: settlement

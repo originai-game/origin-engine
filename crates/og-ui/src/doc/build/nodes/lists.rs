@@ -140,10 +140,14 @@ impl NodesListsUi2 for Ui {
     ) {
         b.locals
             .push((var.to_string(), item, origin.map(|o| format!("{o}.{k}"))));
-        b.locals.push(("$index".into(), json!(k), None));
-        let NodeKind::For { key, .. } = &n.kind else {
+        let NodeKind::For { key, index, .. } = &n.kind else {
             unreachable!()
         };
+        b.locals.push((
+            index.clone().unwrap_or_else(|| "$index".into()),
+            json!(k),
+            None,
+        ));
         let row_key = b.eval(key);
         let Some(row_key) = row_key.as_str().filter(|key| !key.is_empty()) else {
             self.out.warnings_mut().push(format!(

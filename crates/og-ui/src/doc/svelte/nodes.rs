@@ -26,6 +26,7 @@ impl Parser {
             Node::Each {
                 list,
                 item,
+                index,
                 key,
                 body,
                 empty,
@@ -34,6 +35,7 @@ impl Parser {
                 let i = self.push(
                     NodeKind::For {
                         var: item.clone(),
+                        index: index.clone(),
                         list: expression(list, *at)?,
                         key: expression(key, *at)?,
                         empty: Vec::new(),

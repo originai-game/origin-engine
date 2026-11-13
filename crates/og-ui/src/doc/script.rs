@@ -239,8 +239,11 @@ pub(super) fn apply(doc: &mut UiDocument, consts: &[(usize, String, Expr)]) -> R
         }
         let mut scope = base.clone();
         for &block in chain.iter().rev() {
-            if let NodeKind::For { var, .. } = &doc.nodes[block].kind {
+            if let NodeKind::For { var, index, .. } = &doc.nodes[block].kind {
                 scope.remove(var);
+                if let Some(index) = index {
+                    scope.remove(index);
+                }
             }
             for (_, name, e) in consts.iter().filter(|(b, ..)| *b == block) {
                 let mut e = e.clone();

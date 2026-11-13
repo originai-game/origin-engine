@@ -272,6 +272,7 @@ impl Ui {
                 }
                 NodeKind::For {
                     var,
+                    index,
                     list,
                     key,
                     empty,
@@ -285,7 +286,11 @@ impl Ui {
                             level.items.push(level.entries.len());
                         }
                         b.locals.push((var.clone(), item, None));
-                        b.locals.push(("$index".into(), json!(k), None));
+                        b.locals.push((
+                            index.clone().unwrap_or_else(|| "$index".into()),
+                            json!(k),
+                            None,
+                        ));
                         if b.eval(key).as_str().is_some_and(|key| !key.is_empty()) {
                             self.instantiate(b, doc, &n.children, level, false);
                         }

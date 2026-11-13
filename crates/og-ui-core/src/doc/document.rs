@@ -189,8 +189,9 @@ impl UiDocument {
     fn locals(&self, mut i: usize) -> Vec<String> {
         let mut out = Vec::new();
         while i != NONE {
-            if let NodeKind::For { var, .. } = &self.nodes[i].kind {
+            if let NodeKind::For { var, index, .. } = &self.nodes[i].kind {
                 out.push(var.clone());
+                out.extend(index.clone());
             }
             i = self.nodes[i].parent;
         }

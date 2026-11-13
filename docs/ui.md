@@ -56,6 +56,10 @@ syntax. A document must meet these requirements:
   read-only. `onclick={action}` dispatches a named mounted action, not a
   call body. `bind:value` writes a writable store or keyed row field in the
   current tick batch; `value` alone is read-only.
+- `{#each $items as item, i (item.id)}` names the row's position `i`: from
+  0, in the list's order, following a move, insert or remove. It is for
+  display (a rank, a slot number); a key that uses it is refused, since a
+  row keeps its identity when the list reorders.
 - A declared input action dispatches a named markup event of its own:
   `<meta name="action:confirm" content="Start">` enables
   `onconfirm={start}`. A handler outside any `{#each}` row is the page's

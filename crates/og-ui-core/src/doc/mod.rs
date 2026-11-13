@@ -474,6 +474,9 @@ pub enum NodeKind {
     /// `for <var> in <list> { template }`.
     For {
         var: String,
+        /// The name the row's position (0 first) is read by, when the
+        /// block gives one.
+        index: Option<String>,
         list: Expr,
         key: Expr,
         empty: Vec<usize>,
