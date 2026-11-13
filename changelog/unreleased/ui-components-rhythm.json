@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "built-in UI components: rhythm",
+      "summary": "A rhythm group of built-in components under @ui/components/rhythm/, used by name like the rpg and shooter ones: RhythmSongSelect (the song list with jacket, artist, BPM and New, Cleared, Locked, Selected and Previewing in words, the selected song's details, loading and error states; reports choose and preview with the song's key, and retry from the error state), RhythmDifficulty (one tile per chart with its tier, level, best grade and score; reports choose), RhythmJudgement (Perfect to Miss with Early or Late and the combo or Combo broken; a new hit id draws the word afresh, so a pack's entrance animation replays), RhythmScoreHud (score, accuracy, a life gauge with Danger and Failed, the song's progress as a ProgressBar) and RhythmResults (grade, Cleared or Failed, score against the old best, Full combo or All perfect, max combo, accuracy and the judgement tally; reports retry and next, Escape and pad B being next). They judge, time and score nothing: the game passes every figure in. Each names its frames, rows, cells, titles and badges as parts (src/ui/components/rhythm/README.md)."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "rhythm.css dresses the rhythm components' parts in the pack's brass, soot and crimson, from its existing tokens, and pops the judgement in for each hit (a quick fade under reduced motion)."
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+/* fantasy × rhythm components: the built-in rhythm documents
+   (packages/engine/src/ui/components/rhythm) dressed through their named
+   parts and data-* states, in the pack's language: brass rims on soot,
+   crimson bands, small caps, gold for the selected and the best. The
+   components' own <style> holds layout only. Every value is a token set in
+   base.css. Bands take the shared crimson heading band and title dress at
+   the end of base.css. */
+
+/* HUD plate over the play field: lamp-black with a brass keyline. */
+[part="RhythmScoreHud.frame"] {
+  border: var(--stroke-hairline) solid var(--line);
+  border-radius: var(--radius-sm);
+   color: var(--scene-ink);
+  font-family: var(--font-body);
+}
+
+/* Captions in letter-spaced small caps. */
+:is([part="RhythmScoreHud.title"], [part="RhythmSongSelect.cell"] .label, [part="RhythmResults.frame"] .caption, [part="RhythmJudgement.combo"] .combo-word) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+/* Badges: a small brass-ruled plate, its word in caps. */
+:is([part="RhythmSongSelect.badge"], [part="RhythmDifficulty.badge"], [part="RhythmJudgement.badge"], [part="RhythmScoreHud.badge"], [part="RhythmResults.badge"]) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-2xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  border: var(--stroke-hairline) solid var(--line-strong-60);
+  border-radius: var(--radius-xs);
+  background: var(--panel);
+  color: var(--badge-ink);
+}
+:is([part="RhythmSongSelect.badge"], [part="RhythmDifficulty.badge"])[data-tag=selected] { color: var(--gold); border-color: var(--accent-60); }
+:is([part="RhythmSongSelect.badge"], [part="RhythmDifficulty.badge"])[data-tag=locked] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="RhythmSongSelect.badge"][data-tag=fresh] { color: var(--xp); border-color: var(--xp); }
+[part="RhythmSongSelect.badge"][data-tag=cleared] { color: var(--success); border-color: var(--success); }
+[part="RhythmSongSelect.badge"][data-tag=previewing] { color: var(--info); border-style: dashed; border-color: var(--info); }
+
+/* ── Song select: rows as the rpg list's brass-edged tiles. */
+button::part(RhythmSongSelect\.row) { border-image: none; border: var(--stroke-hairline) solid var(--line-strong-25); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+button::part(RhythmSongSelect\.row):hover { border-color: var(--line-strong); }
+button::part(RhythmSongSelect\.row):active { background: var(--cell-pressed-fill); }
+button[aria-selected=true]::part(RhythmSongSelect\.row) { border-color: var(--gold); background: var(--row-selected-fill); box-shadow: var(--fantasy-member-selected-shadow); }
+button[data-locked=true]::part(RhythmSongSelect\.row) { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }
+[part="RhythmSongSelect.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-sm); color: var(--title-ink); }
+[part="RhythmSongSelect.row"][aria-selected=true] [part="RhythmSongSelect.name"] { color: var(--ink-selected); }
+[part="RhythmSongSelect.row"][data-locked=true] [part="RhythmSongSelect.name"] { color: var(--ink-down); }
+[part="RhythmSongSelect.frame"] .artist { font-size: var(--font-step-sm); color: var(--ink-muted); }
+[part="RhythmSongSelect.frame"] .bpm { font-family: var(--font-mono); font-size: var(--font-step-sm); color: var(--figure-ink); }
+[part="RhythmSongSelect.jacket"] { border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-xs); }
+[part="RhythmSongSelect.jacket"].well { background: var(--cell-fill); box-shadow: var(--well-shadow); }
+[part="RhythmSongSelect.detail"] { border: var(--stroke-hairline) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-doll-ground); box-shadow: var(--fantasy-member-shadow); }
+[part="RhythmSongSelect.detail"] .detail-name { font-family: var(--font-display); font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--title-ink); }
+[part="RhythmSongSelect.detail"] .detail-artist { font-family: var(--label-font); font-size: var(--font-step-sm); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+[part="RhythmSongSelect.cell"] .value { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--figure-ink); }
+[part="RhythmSongSelect.frame"] .state-text { font-family: var(--label-font); color: var(--ink-faint); }
+[part="RhythmSongSelect.frame"] [data-status=error] .state-text { color: var(--danger); }
+
+/* ── Difficulty: tiles with the tier's colour as a rim, the word always beside it. */
+button::part(RhythmDifficulty\.row) { border-image: none; border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+button::part(RhythmDifficulty\.row):hover { box-shadow: var(--fantasy-member-selected-shadow); }
+button::part(RhythmDifficulty\.row):active { background: var(--cell-pressed-fill); }
+button[data-tier=easy]::part(RhythmDifficulty\.row) { border-color: var(--success); }
+button[data-tier=normal]::part(RhythmDifficulty\.row) { border-color: var(--info); }
+button[data-tier=hard]::part(RhythmDifficulty\.row) { border-color: var(--warn); }
+button[data-tier=expert]::part(RhythmDifficulty\.row) { border-color: var(--danger); }
+button[data-tier=master]::part(RhythmDifficulty\.row) { border-color: var(--epic); }
+button[data-tier=special]::part(RhythmDifficulty\.row) { border-color: var(--legendary); }
+button[aria-selected=true]::part(RhythmDifficulty\.row) { background: var(--row-selected-fill); box-shadow: var(--fantasy-member-selected-shadow); }
+button[data-locked=true]::part(RhythmDifficulty\.row) { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }
+[part="RhythmDifficulty.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--title-ink); }
+[part="RhythmDifficulty.row"][data-locked=true] [part="RhythmDifficulty.name"] { color: var(--ink-down); }
+[part="RhythmDifficulty.cell"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--figure-ink); }
+[part="RhythmDifficulty.badge"][data-tag=grade] { font-family: var(--font-display); font-size: var(--font-step-md); color: var(--gold); border-color: var(--accent-60); }
+[part="RhythmDifficulty.frame"] .score { font-family: var(--font-mono); font-size: var(--font-step-sm); color: var(--ink-muted); }
+[part="RhythmDifficulty.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Judgement: the word in display caps over the scene, each kind its own ink. */
+[part="RhythmJudgement.title"] { font-family: var(--font-display); font-size: var(--font-step-4xl); line-height: 1; letter-spacing: var(--font-tracking-xl); text-transform: uppercase; color: var(--title-ink); text-shadow: var(--title-shadow); }
+[part="RhythmJudgement.plate"][data-judgement=perfect] [part="RhythmJudgement.title"] { color: var(--gold); }
+[part="RhythmJudgement.plate"][data-judgement=great] [part="RhythmJudgement.title"] { color: var(--success); }
+[part="RhythmJudgement.plate"][data-judgement=good] [part="RhythmJudgement.title"] { color: var(--info); }
+[part="RhythmJudgement.plate"][data-judgement=bad] [part="RhythmJudgement.title"] { color: var(--warn); }
+[part="RhythmJudgement.plate"][data-judgement=miss] [part="RhythmJudgement.title"] { color: var(--ink-down); }
+/* Each new hit draws the plate afresh ({#key hit}), so it pops in; under
+   reduced motion it does not zoom and fades in quickly instead. */
+@keyframes fantasy-rhythm-pop { from { opacity: 0; scale: 1.4; } to { opacity: 1; scale: 1; } }
+[part="RhythmJudgement.plate"] { border-block: var(--stroke-hairline) solid var(--line); background: var(--well-50); animation: fantasy-rhythm-pop var(--motion-duration-fast) var(--motion-easing-snappy) both; }
+@media (prefers-reduced-motion: reduce) {
+  [part="RhythmJudgement.plate"] { animation: none; transition: opacity var(--motion-duration-fast) var(--motion-easing-out); }
+  @starting-style { [part="RhythmJudgement.plate"] { opacity: 0; } }
+}
+[part="RhythmJudgement.badge"][data-timing=early] { color: var(--info); border-color: var(--info); }
+[part="RhythmJudgement.badge"][data-timing=late] { color: var(--warn); border-color: var(--warn); }
+[part="RhythmJudgement.combo"] .count { font-family: var(--font-display); font-size: var(--font-step-4xl); line-height: 1; color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="RhythmJudgement.combo"][data-broken=true] .combo-word { color: var(--danger); }
+
+/* ── Score HUD. */
+[part="RhythmScoreHud.figure"] { font-family: var(--font-display); font-size: var(--font-step-4xl); line-height: 1; color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="RhythmScoreHud.cell"].accuracy [part="RhythmScoreHud.figure"] { font-size: var(--font-step-2xl); color: var(--figure-ink); }
+[part="RhythmScoreHud.badge"][data-tag=danger] { color: var(--danger); border-color: var(--danger); }
+[part="RhythmScoreHud.badge"][data-tag=failed] { background: var(--primary-active); color: var(--title-ink); border-color: var(--danger); }
+[part="RhythmScoreHud.frame"][data-failed=true] { border-color: var(--danger); }
+
+/* ── Results. */
+[part="RhythmResults.grade"] { font-family: var(--font-display); font-size: var(--font-step-6xl); line-height: 1; color: var(--gold); text-shadow: var(--title-shadow); }
+[part="RhythmResults.grade"][data-cleared=false] { color: var(--ink-down); }
+[part="RhythmResults.badge"][data-tag=cleared] { color: var(--success); border-color: var(--success); }
+[part="RhythmResults.badge"][data-tag=failed] { color: var(--danger); border-color: var(--danger); }
+[part="RhythmResults.badge"]:is([data-tag=fullCombo], [data-tag=allPerfect], [data-tag=newBest]) { color: var(--gold); border-color: var(--accent-60); }
+[part="RhythmResults.figure"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--figure-ink); }
+[part="RhythmResults.figure"].score { font-size: var(--font-step-4xl); line-height: 1; color: var(--title-ink); }
+[part="RhythmResults.frame"] .previous { font-family: var(--font-mono); font-size: var(--font-step-sm); color: var(--ink-muted); }
+[part="RhythmResults.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="RhythmResults.name"] { font-family: var(--label-font); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+[part="RhythmResults.row"][data-judgement=perfect] [part="RhythmResults.name"] { color: var(--gold); }
+[part="RhythmResults.row"][data-judgement=miss] [part="RhythmResults.name"] { color: var(--ink-down); }
+[part="RhythmResults.frame"] .count { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="RhythmResults.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+@media (width < 600px) {
+  [part="RhythmJudgement.title"] { font-size: var(--font-step-3xl); }
+  [part="RhythmScoreHud.figure"] { font-size: var(--font-step-3xl); }
+  [part="RhythmResults.grade"] { font-size: var(--font-step-5xl); }
+  :is([part="RhythmSongSelect.frame"], [part="RhythmDifficulty.frame"], [part="RhythmResults.frame"]) { padding: var(--space-sm); }
+}

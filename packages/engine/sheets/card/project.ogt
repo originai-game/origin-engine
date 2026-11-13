@@ -1,0 +1,18 @@
+type project
+version 1
+---
+# The card components' review sheet: `og ui sheet card` renders each page at
+# desktop and phone, 100 % and 150 % (docs/ui.md §6.2). The pages use the
+# built-in components by name, as a game does; each screen names its style
+# and page.
+name "Card kit sheet"
+id "card-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "table-fantasy" "style:fantasy;page:table"
+  screen "builder-fantasy" "style:fantasy;page:builder"
+  screen "run-fantasy" "style:fantasy;page:run"
+}

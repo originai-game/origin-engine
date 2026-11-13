@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "built-in UI components: strategy",
+      "summary": "A strategy group of built-in components under @ui/components/strategy/, used by name like the rpg and shooter ones: StrategySelection (the selected units and buildings as portrait cells with counts and health bars, the focused group's name, line, status and StatBar, and its command card: each plate with its <kbd data-action> key cap, a cooldown shade and time, an On mark for a toggle, and when disabled the reason in words; reports choose and command with the row's key), StrategyQueue (the production queue with a ProgressBar and time left per order, stack counts, waiting, paused and blocked words with the reason, count over limit and Queue full; reports cancel with the order's key), StrategyWave (wave n of N or an endless count, the phase in words, the next wave's HudTimer that turns warn at warnAt seconds, 5 by default, the incoming enemies by kind with counts, boss and unscouted marks, and Call early with its reward; reports callEarly) and StrategyTower (the tower's stats with the value after the next upgrade behind an arrow, its upgrade paths with tier of tiers, cost and data-state affordable, unaffordable, locked or maxed, each also a word and the reason when locked, and Sell with the refund; reports upgrade with the path's key and sell). They compute no costs, timing, legality or stats: the game passes every figure and flag in. Each names its frames, rows, cells, titles and badges as parts (src/ui/components/strategy/README.md)."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "strategy.css dresses the strategy components' parts in the pack's leather, brass, iron and crimson, from its existing tokens."
+    }
+  ]
+}

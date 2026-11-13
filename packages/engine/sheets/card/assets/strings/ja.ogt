@@ -1,0 +1,33 @@
+type strings
+version 1
+---
+# The card kit's strings in Japanese, as a game ships them, so the review's
+# CJK cells (og ui review --locales …,ja) show them.
+locale "ja"
+string "card.face.cost" "コスト {cost}"
+string "card.hand.name" "手札"
+string "card.hand.empty" "手札がありません"
+string "card.hand.play" "使う"
+string "card.hand.unplayable" "使用できません"
+string "card.piles.name" "山札"
+string "card.piles.count" "{label}：{count}"
+string "card.collection.filters" "絞り込み"
+string "card.collection.empty" "該当するカードがありません"
+string "card.collection.owned" "×{count}"
+string "card.collection.inDeck" "デッキに{count}枚"
+string "card.collection.locked" "未所持"
+string "card.collection.refused" "追加できません"
+string "card.collection.cards" "カード"
+string "card.deck.empty" "デッキは空です"
+string "card.deck.count" "{count} / {limit}"
+string "card.deck.size" "デッキ枚数"
+string "card.deck.copies" "×{count}"
+string "card.deck.less" "−"
+string "card.deck.more" "+"
+string "card.deck.add" "{name}を1枚追加"
+string "card.deck.remove" "{name}を1枚外す"
+string "card.reward.choices" "選択肢"
+string "card.reward.relic" "レリック"
+string "card.reward.empty" "選べるものがありません"
+string "card.map.name" "マップ"
+string "card.map.legend" "凡例"

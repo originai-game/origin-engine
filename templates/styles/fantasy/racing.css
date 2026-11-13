@@ -1,0 +1,126 @@
+/* fantasy × racing components: the built-in racing documents
+   (packages/engine/src/ui/components/racing) dressed through their named
+   parts and data-* states, in the pack's language: brass rims on soot,
+   crimson bands, small caps, gold for the player and the best. The
+   components' own <style> holds layout only. Every value is a token set in
+   base.css. Bands ([part$=".band"]) take base.css's crimson heading band. */
+
+/* ── HUD plates over the scene: lamp-black with a brass keyline. */
+:is([part="RacingTelemetry.frame"] .strip, [part="RacingLapHud.frame"], [part="RacingStandings.frame"]) {
+  border: var(--stroke-hairline) solid var(--line);
+  border-radius: var(--radius-sm);
+   color: var(--scene-ink);
+  font-family: var(--font-body);
+}
+
+/* Captions and short words in letter-spaced small caps. */
+:is([part="RacingLapHud.title"], [part="RacingLapHud.frame"] .label, [part="RacingLapHud.frame"] .sense,
+[part="RacingTelemetry.units"], [part="RacingTelemetry.frame"] .boost-label, [part="RacingResults.heading"]) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+/* Badges: a small brass-ruled plate, its word in caps. */
+:is([part="RacingTelemetry.badge"], [part="RacingLapHud.badge"], [part="RacingStandings.badge"], [part="RacingGarage.badge"],
+[part="RacingResults.badge"], [part="RacingStandings.frame"] .you, [part="RacingResults.frame"] .you) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-2xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  border: var(--stroke-hairline) solid var(--line-strong-60);
+  border-radius: var(--radius-xs);
+  background: var(--panel);
+  color: var(--badge-ink);
+}
+
+/* ── Telemetry. */
+[part="RacingTelemetry.dial"] .track, [part="RacingTelemetry.frame"] .boost-dial .track { stroke: var(--well-80); }
+[part="RacingTelemetry.dial"] .red { stroke: var(--team2); }
+[part="RacingTelemetry.dial"] .rev { stroke: var(--gold); }
+[part="RacingTelemetry.frame"] .boost-dial .boost { stroke: var(--mana); }
+[part="RacingTelemetry.frame"][data-boosting=true] .boost-dial .boost { stroke: var(--info); }
+[part="RacingTelemetry.frame"][data-redline=true] [part="RacingTelemetry.dial"] .rev { stroke: var(--danger); }
+[part="RacingTelemetry.frame"] .gauge { border-radius: 50%; background: var(--hud); box-shadow: var(--fantasy-ring-shadow); }
+[part="RacingTelemetry.speed"] { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="RacingTelemetry.gear"] { border: var(--stroke-regular) solid var(--accent); border-radius: var(--radius-xs); background: var(--fantasy-round-fill); box-shadow: var(--fantasy-round-shadow); }
+[part="RacingTelemetry.gear"] .gear-value { font-family: var(--font-display); font-size: var(--font-step-3xl); color: var(--ink-bright); }
+[part="RacingTelemetry.badge"] { background: var(--primary); color: var(--on-primary); border-color: var(--accent); }
+
+/* ── Lap and position. */
+[part="RacingLapHud.cell"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="RacingLapHud.cell"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
+[part="RacingLapHud.cell"][data-final=true] .now { color: var(--gold); }
+[part="RacingLapHud.frame"] .time { font-family: var(--font-mono); font-size: var(--font-step-lg); color: var(--figure-ink); }
+[part="RacingLapHud.row"].current .time { font-size: var(--font-step-2xl); color: var(--ink-bright); }
+[part="RacingLapHud.delta"][data-state=ahead] .time, [part="RacingLapHud.delta"][data-state=ahead] .sense { color: var(--success); }
+[part="RacingLapHud.delta"][data-state=behind] .time, [part="RacingLapHud.delta"][data-state=behind] .sense { color: var(--danger); }
+[part="RacingLapHud.row"][data-fresh=true] .time { color: var(--gold); }
+[part="RacingLapHud.frame"] .times { border-top: var(--stroke-hairline) solid var(--line-strong-33); padding-top: var(--space-xxs); }
+[part="RacingLapHud.badge"] { color: var(--gold); border-color: var(--accent-60); }
+
+/* ── Standings. */
+[part="RacingStandings.frame"] [part="RacingStandings.band"] { min-height: var(--size-md); padding: var(--space-xxs) var(--space-sm); background: var(--band-small-fill); }
+[part="RacingStandings.frame"] [part="RacingStandings.band"] [part="RacingStandings.title"] { font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-lg); }
+[part="RacingStandings.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="RacingStandings.row"][data-player=true] { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="RacingStandings.row"][data-state=retired] { color: var(--ink-done); }
+[part="RacingStandings.cell"] { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--title-ink); }
+[part="RacingStandings.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); }
+[part="RacingStandings.row"][data-player=true] [part="RacingStandings.name"] { color: var(--ink-selected); }
+[part="RacingStandings.row"][data-state=retired] :is([part="RacingStandings.name"], [part="RacingStandings.cell"]) { color: var(--ink-done); }
+[part="RacingStandings.gap"] { font-family: var(--font-mono); font-size: var(--font-step-sm); color: var(--ink-muted); }
+[part="RacingStandings.badge"][data-state=pitting] { color: var(--warn); border-color: var(--warn); }
+[part="RacingStandings.badge"][data-state=retired] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="RacingStandings.badge"][data-state=finished] { color: var(--success); border-color: var(--success); }
+[part="RacingStandings.frame"] .you, [part="RacingResults.frame"] .you { color: var(--gold); border-color: var(--accent-60); }
+[part="RacingStandings.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Banner: a crimson plate in brass with the call in display caps. */
+[part="RacingBanner.plate"] { border-block: var(--stroke-regular) solid var(--accent); background: var(--band-fill); box-shadow: var(--band-shadow); }
+[part="RacingBanner.title"] { font-family: var(--font-display); font-size: var(--font-step-4xl); letter-spacing: var(--font-tracking-xl); text-transform: uppercase; color: var(--title-ink); text-shadow: var(--title-shadow); }
+[part="RacingBanner.plate"][data-kind=countdown] [part="RacingBanner.title"], [part="RacingBanner.plate"][data-kind=go] [part="RacingBanner.title"] { font-size: var(--font-step-6xl); }
+[part="RacingBanner.plate"][data-kind=go] [part="RacingBanner.title"] { color: var(--gold); }
+[part="RacingBanner.badge"] { font-family: var(--font-display); font-size: var(--font-step-3xl); color: var(--gold); }
+[part="RacingBanner.frame"] .detail { font-family: var(--label-font); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+
+/* ── Garage. */
+button::part(RacingGarage\.tile) { border-image: none; border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+button::part(RacingGarage\.tile):hover { border-color: var(--line-strong); }
+button[aria-selected=true]::part(RacingGarage\.tile) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
+button[data-locked=true]::part(RacingGarage\.tile) { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }
+[part="RacingGarage.name"] { font-family: var(--font-display); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--ink); }
+[part="RacingGarage.tile"][data-locked=true] [part="RacingGarage.name"] { color: var(--ink-down); }
+[part="RacingGarage.badge"][data-tag=driving] { color: var(--gold); border-color: var(--accent-60); }
+[part="RacingGarage.badge"][data-tag=locked] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="RacingGarage.badge"][data-tag=price] { color: var(--gold); border-style: dashed; }
+[part="RacingGarage.hero"] { border: var(--stroke-hairline) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-doll-ground); box-shadow: var(--fantasy-member-shadow); }
+[part="RacingGarage.hero"][data-locked=true] .art { filter: grayscale(1) brightness(0.7); }
+[part="RacingGarage.hero"] .well { background: var(--cell-fill); border-radius: var(--radius-xs); }
+[part="RacingGarage.hero"] .hero-name { font-family: var(--font-display); font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--title-ink); }
+[part="RacingGarage.hero"] .hero-body { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+[part="RacingGarage.frame"] .count { font-family: var(--font-display); font-size: var(--font-step-lg); color: var(--ink-muted); }
+[part="RacingGarage.row"] { font-family: var(--label-font); color: var(--ink-label); }
+[part="RacingGarage.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Results. */
+[part="RacingResults.heading"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-40); }
+[part="RacingResults.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="RacingResults.row"][data-player=true] { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="RacingResults.cell"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--title-ink); }
+[part="RacingResults.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); }
+[part="RacingResults.row"][data-player=true] [part="RacingResults.name"] { color: var(--ink-selected); }
+[part="RacingResults.row"]:is([data-state=dnf], [data-state=dsq]) :is([part="RacingResults.name"], [part="RacingResults.cell"]) { color: var(--ink-done); }
+[part="RacingResults.frame"] :is(.time, .points) { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="RacingResults.badge"].fastest { color: var(--xp); border-color: var(--xp); }
+[part="RacingResults.badge"].out { color: var(--ink-down); border-color: var(--ink-down); }
+[part="RacingResults.frame"] .best { font-family: var(--label-font); font-size: var(--font-step-sm); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+[part="RacingResults.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+@media (width < 600px) {
+  [part="RacingTelemetry.speed"] { font-size: var(--font-step-3xl); }
+  [part="RacingLapHud.cell"] .now { font-size: var(--font-step-3xl); }
+  [part="RacingBanner.plate"][data-kind=countdown] [part="RacingBanner.title"], [part="RacingBanner.plate"][data-kind=go] [part="RacingBanner.title"] { font-size: var(--font-step-5xl); }
+  :is([part="RacingGarage.frame"], [part="RacingResults.frame"]) { padding: var(--space-sm); }
+}

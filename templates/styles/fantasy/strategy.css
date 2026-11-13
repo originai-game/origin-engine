@@ -1,0 +1,138 @@
+/* fantasy × strategy components: the built-in strategy documents
+   (packages/engine/src/ui/components/strategy) dressed through their named
+   parts and data-* states, in the pack's language: leather panels in brass
+   rims, lamp-black HUD plates, iron command plates, small caps for labels,
+   gold for what can be bought and crimson for the foe. The components' own
+   <style> holds layout only. Every value is a token set in base.css. Bands
+   ([part$=".band"]) take base.css's crimson heading band. */
+
+/* HUD plates over the field: lamp-black with a brass keyline. */
+:is([part="StrategyQueue.frame"], [part="StrategyWave.frame"]) {
+  box-sizing: border-box;
+  border: var(--stroke-hairline) solid var(--line);
+  border-radius: var(--radius-sm);
+   color: var(--scene-ink);
+  font-family: var(--font-body);
+}
+[part="StrategyQueue.frame"] { padding: var(--space-xs) var(--space-sm) var(--space-sm); }
+[part="StrategyQueue.frame"] [part="StrategyQueue.band"] { min-height: var(--size-md); padding: var(--space-xxs) var(--space-sm); background: var(--band-small-fill); }
+[part="StrategyQueue.band"] [part="StrategyQueue.title"] { font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-lg); }
+
+/* Captions and short words in letter-spaced small caps. */
+:is([part="StrategyWave.title"], [part="StrategySelection.frame"] .line, [part="StrategyTower.frame"] .label,
+[part="StrategyTower.frame"] .tier, [part="StrategySelection.frame"] .command-label) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+/* Badges: a small brass-ruled plate, its word in caps. */
+:is([part="StrategySelection.badge"], [part="StrategyQueue.badge"], [part="StrategyWave.badge"], [part="StrategyTower.badge"],
+[part="StrategySelection.frame"] .on) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-2xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  border: var(--stroke-hairline) solid var(--line-strong-60);
+  border-radius: var(--radius-xs);
+  background: var(--panel);
+  color: var(--badge-ink);
+}
+/* Reasons a thing cannot be done: a quiet italic line, never a colour alone. */
+:is([part="StrategySelection.reason"], [part="StrategyQueue.reason"], [part="StrategyTower.reason"]) {
+  font-family: var(--font-body);
+  font-size: var(--font-step-xs);
+  font-style: italic;
+  color: var(--warn);
+}
+:is([part="StrategySelection.frame"], [part="StrategyQueue.frame"], [part="StrategyTower.frame"]) .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Selection. */
+[part="StrategySelection.band"] .summary { color: var(--ink-label); }
+[part="StrategySelection.frame"] .roster { border: var(--stroke-hairline) solid var(--line-strong-33); border-radius: var(--radius-sm); background: var(--hud); }
+button::part(StrategySelection\.cell) { border-image: none; border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+button::part(StrategySelection\.cell):hover { border-color: var(--line-strong); }
+button[aria-selected=true]::part(StrategySelection\.cell) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
+button[data-kind=building]::part(StrategySelection\.cell) { border-radius: var(--radius-xs); border-style: double; }
+[part="StrategySelection.portrait"] { border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+[part="StrategySelection.portrait"] .mark { color: var(--title-ink); }
+[part="StrategySelection.cell"] .count { font-family: var(--font-display); font-size: var(--font-step-xs); color: var(--ink-bright); background: var(--well-80); }
+[part="StrategySelection.meter"] { border-radius: var(--radius-xs); background: var(--well-80); }
+[part="StrategySelection.meter"] .fill { background: var(--fantasy-health-fill); }
+[part="StrategySelection.detail"] { border-inline-start: var(--stroke-regular) solid var(--line); background: var(--row-hover-fill); }
+[part="StrategySelection.name"] { font-family: var(--font-display); font-size: var(--font-step-2xl); letter-spacing: var(--font-tracking-sm); color: var(--title-ink); text-shadow: var(--fantasy-name-shadow); }
+[part="StrategySelection.detail"] .status { font-style: italic; color: var(--ink-muted); }
+[part="StrategySelection.grid"] { padding: var(--space-xs); border: var(--stroke-hairline) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--hud); box-shadow: var(--fantasy-tray-shadow); }
+button::part(StrategySelection\.command) { border-image: none; border: var(--stroke-regular) solid var(--line-strong); border-radius: var(--radius-sm); background: var(--fantasy-command-fill); box-shadow: var(--fantasy-command-shadow); color: var(--button-ink); }
+button::part(StrategySelection\.command):hover { color: var(--button-hover-ink); border-color: var(--accent); }
+button::part(StrategySelection\.command):active { color: var(--button-pressed-ink); background: var(--cell-pressed-fill); }
+button::part(StrategySelection\.command):disabled { color: var(--button-disabled-ink); border-color: var(--ink-down); background: var(--fantasy-iron-fill); }
+button[data-active=true]::part(StrategySelection\.command) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
+[part="StrategySelection.command"] .cool { background: var(--well-80); }
+[part="StrategySelection.command"] .cool-text { font-family: var(--font-display); font-size: var(--font-step-lg); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="StrategySelection.key"] { font-family: var(--label-font); font-size: var(--font-step-2xs); color: var(--badge-ink); }
+[part="StrategySelection.frame"] .on { color: var(--gold); border-color: var(--accent-60); }
+[part="StrategySelection.command"] .reason { font-size: var(--font-step-2xs); }
+
+/* ── Production queue. */
+[part="StrategyQueue.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="StrategyQueue.row"][data-state=building] { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="StrategyQueue.cell"] { border: var(--stroke-hairline) solid var(--line-strong-60); border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--cell-shadow); color: var(--title-ink); }
+[part="StrategyQueue.cell"] .stack { font-family: var(--font-display); font-size: var(--font-step-xs); color: var(--ink-bright); background: var(--well-80); }
+[part="StrategyQueue.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-sm); color: var(--title-ink); }
+[part="StrategyQueue.frame"] .time { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="StrategyQueue.badge"].capacity { color: var(--ink-bright); }
+[part="StrategyQueue.badge"][data-full=true], [part="StrategyQueue.badge"].full { color: var(--warn); border-color: var(--warn); }
+[part="StrategyQueue.badge"][data-state=paused] { color: var(--warn); border-color: var(--warn); }
+[part="StrategyQueue.badge"][data-state=blocked] { color: var(--danger); border-color: var(--danger); }
+[part="StrategyQueue.badge"][data-state=waiting] { color: var(--ink-muted); }
+[part="StrategyQueue.row"][data-state=waiting] [part="StrategyQueue.name"] { color: var(--ink-muted); }
+[part="StrategyQueue.row"][data-state=blocked] [part="StrategyQueue.cell"] { border-color: var(--ink-down); }
+[part="StrategyQueue.row"] .cancel { color: var(--ink-label); }
+
+/* ── Waves. */
+[part="StrategyWave.cell"] .now { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="StrategyWave.cell"] .of { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--ink-muted); }
+[part="StrategyWave.frame"][data-final=true] [part="StrategyWave.cell"] .now { color: var(--gold); }
+[part="StrategyWave.badge"].phase[data-phase=active] { color: var(--danger); border-color: var(--danger); }
+[part="StrategyWave.badge"].phase[data-phase=done] { color: var(--success); border-color: var(--success); }
+[part="StrategyWave.badge"].final, [part="StrategyWave.badge"].boss { color: var(--gold); border-color: var(--accent-60); }
+[part="StrategyWave.frame"] .incoming { border-top: var(--stroke-hairline) solid var(--line-strong-33); padding-top: var(--space-xxs); }
+[part="StrategyWave.row"] .mark { color: var(--team2); }
+[part="StrategyWave.row"][data-boss=true] .mark { color: var(--gold); }
+[part="StrategyWave.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); color: var(--scene-ink); }
+[part="StrategyWave.row"][data-boss=true] [part="StrategyWave.name"] { font-family: var(--font-display); color: var(--title-ink); }
+[part="StrategyWave.row"][data-scouted=false] [part="StrategyWave.name"] { font-style: italic; color: var(--ink-faint); }
+[part="StrategyWave.frame"] .enemy-count { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--figure-ink); }
+[part="StrategyWave.frame"] .reward { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); color: var(--gold); }
+
+/* ── Tower inspector. */
+[part="StrategyTower.portrait"] { border: var(--stroke-regular) solid var(--accent); border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--fantasy-portrait-shadow); color: var(--title-ink); }
+[part="StrategyTower.badge"].level { color: var(--gold); border-color: var(--accent-60); }
+[part="StrategyTower.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="StrategyTower.row"] .value { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--figure-ink); }
+[part="StrategyTower.row"] .next { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--success); }
+[part="StrategyTower.path"] { border: var(--stroke-hairline) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+[part="StrategyTower.path"] .path-mark { color: var(--title-ink); }
+[part="StrategyTower.path"][data-state=affordable] { border-color: var(--accent-60); }
+[part="StrategyTower.path"][data-state=locked] { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }
+[part="StrategyTower.path"][data-state=locked] :is(.path-mark, [part="StrategyTower.name"]) { color: var(--ink-down); }
+[part="StrategyTower.path"][data-state=maxed] { border-color: var(--gold); }
+[part="StrategyTower.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-sm); color: var(--title-ink); }
+[part="StrategyTower.path"] .detail { font-size: var(--font-step-sm); color: var(--ink-muted); }
+[part="StrategyTower.path"] .track { border-radius: var(--radius-xs); background: var(--well-80); }
+[part="StrategyTower.path"] .fill { background: var(--fantasy-gold-fill); }
+[part="StrategyTower.cost"] { font-family: var(--font-display); font-size: var(--font-step-md); }
+[part="StrategyTower.cost"][data-state=affordable] { color: var(--on-primary); }
+[part="StrategyTower.cost"][data-state=unaffordable] { color: var(--danger); }
+[part="StrategyTower.cost"][data-state=locked] { color: var(--ink-disabled); }
+[part="StrategyTower.badge"].state[data-state=unaffordable] { color: var(--danger); border-color: var(--danger); }
+[part="StrategyTower.badge"].state[data-state=locked] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="StrategyTower.badge"].state[data-state=maxed] { color: var(--gold); border-color: var(--accent-60); }
+[part="StrategyTower.frame"] .refund { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); color: var(--gold); }
+
+@media (width < 600px) {
+  [part="StrategyWave.cell"] .now { font-size: var(--font-step-3xl); }
+  :is([part="StrategySelection.frame"], [part="StrategyTower.frame"]) { padding: var(--space-sm); }
+}

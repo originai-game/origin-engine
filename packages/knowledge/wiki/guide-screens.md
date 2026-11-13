@@ -502,8 +502,16 @@ and a `fixture:default`, so `og ui preview` shows it at once.
   `RpgItemCard`, `RpgCharacter`, `RpgQuestLog`, `RpgWorldMap`,
   `RpgConversation`, `RpgParty`, `RpgTurnOrder`, `RpgActionBar` and the
   rest: inventory, equipment, quests, map, dialogue and the combat HUD)
-  and `shooter/` (crosshair, ammunition, damage direction, killfeed,
-  combat HUD, loadout). Each group's README lists its members with their
+  `shooter/` (crosshair, ammunition, damage direction, killfeed,
+  combat HUD, loadout), `strategy/` (selection, queue, wave, tower),
+  `racing/` (telemetry, lap HUD, standings, banner, garage, results),
+  `card/` (hand, piles, collection, deck list, reward, run map),
+  `puzzle/` (goals, boosters, level path, summary), `idle/` (resources,
+  generators, purchases, prestige, offline summary), `rhythm/` (song
+  select, difficulty, score HUD, judgement, results), `arena/` (roster,
+  draft, versus, lobby, round HUD, scoreboard) and `general/` (`Shop`,
+  `ShopConfirm`, `Achievements`, `DailyQuests`, `DailyRewards`, `Chat`,
+  `Friends`). Each group's README lists its members with their
   props, intents and parts; eject one as `og ui eject rpg/backpack`.
 
 Expressions compute no geometry: the game passes a chart's line and a path

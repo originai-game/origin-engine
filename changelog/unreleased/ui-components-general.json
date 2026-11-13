@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "built-in UI components: general",
+      "summary": "A general group of built-in components most games share, used by name like the rpg and shooter groups: Shop (offer tiles with prices in one or more currencies, category tabs, the player's balances, and the game's soldOut, owned, affordable, featured and discount flags; a refused tile keeps the focus, names its verdict and reports nothing; reports buy, choosetab, tabNext/tabPrev and retry), ShopConfirm (the purchase confirmation with the cost and the balance left, as content for a host that owns modality and focus, such as the built-in confirm screen; reports confirm and cancel), Achievements (locked, in progress with a bar, unlocked with its date, hidden until unlocked, tier in words, rarity; reports claim), DailyQuests (rows with progress, reward and the game's refresh countdown; reports claim), DailyRewards (a login calendar of days in the state the game sends, claimed, today, upcoming or missed; today's tile is a button while canClaim holds and reports claim), Chat (channel tabs with unread counts, system, own and others' messages, an input row; reports choosetab and send, and writes the draft back through bind:draft) and Friends (presence in words, requests with accept and decline, invite, add, an empty state). They hold no money or reward logic: the game passes every price, verdict and figure and applies the intents. Each is dressed through named parts (Shop.offer, DailyRewards.day…); the fantasy pack dresses them in general.css. og ui eject general/<name> copies one."
+    }
+  ]
+}

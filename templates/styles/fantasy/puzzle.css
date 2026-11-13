@@ -1,0 +1,156 @@
+/* fantasy × puzzle components: the built-in puzzle documents
+   (packages/engine/src/ui/components/puzzle) dressed through their named
+   parts and data-* states, in the pack's language: brass rims on soot and
+   walnut, crimson bands, small caps, gold for stars, the current level and
+   the armed booster. The components' own <style> holds layout only. Every
+   colour, size and font is a token set in base.css. Bands ([part$=".band"])
+   and their titles take base.css's shared crimson heading band. */
+
+/* ── Panels: the rpg frames' leather in a double brass rim. */
+:is([part="PuzzleLevelPath.frame"], [part="PuzzleSummary.frame"]) {
+  box-sizing: border-box;
+  border: var(--stroke-regular) solid var(--frame-rim);
+  border-radius: var(--radius-xs);
+  background: var(--frame-fill);
+  box-shadow: var(--frame-shadow);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+[part="PuzzleSummary.frame"] { padding: var(--frame-pad); }
+/* HUD plates over the board: lamp-black with a brass keyline. */
+:is([part="PuzzleGoals.frame"], [part="PuzzleBoosters.frame"]) {
+  border: var(--stroke-hairline) solid var(--line);
+  border-radius: var(--radius-sm);
+   color: var(--scene-ink);
+  font-family: var(--font-body);
+}
+
+/* Captions in letter-spaced small caps. */
+:is([part="PuzzleGoals.label"], [part="PuzzleGoals.frame"] .score-label, [part="PuzzleBoosters.name"], [part="PuzzleSummary.level"]) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+/* Badges: a small brass-ruled plate, its word in caps. */
+:is([part="PuzzleLevelPath.badge"], [part="PuzzleLevelPath.here"], [part="PuzzleGoals.warning"], [part="PuzzleSummary.record"],
+[part="PuzzleBoosters.count"], [part="PuzzleBoosters.state"]) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-2xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  border: var(--stroke-hairline) solid var(--line-strong-60);
+  border-radius: var(--radius-xs);
+  background: var(--panel);
+  color: var(--badge-ink);
+}
+/* Stars: a gold mark when earned, an empty brass outline when not. */
+[part="PuzzleLevelPath.frame"] :is(.star, .badge-star) path { fill: var(--well-80); stroke: var(--line); stroke-width: var(--stroke-thin); }
+[part="PuzzleLevelPath.frame"] :is(.star.lit, .badge-star) path { fill: var(--gold); stroke: var(--accent); }
+
+/* ── Level path. */
+[part="PuzzleLevelPath.chapter"] { background: var(--band-small-fill); border-bottom: var(--stroke-hairline) solid var(--line-strong-40); }
+[part="PuzzleLevelPath.title"] { font-family: var(--font-display); font-size: var(--font-step-2xl); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--title-ink); text-shadow: var(--title-shadow); }
+[part="PuzzleLevelPath.badge"] { font-size: var(--font-step-sm); color: var(--gold); border-color: var(--accent-60); }
+[part="PuzzleLevelPath.trail"] { background: var(--line-strong-60); }
+[part="PuzzleLevelPath.trail"]:is([data-state=done], [data-state=current]) { background: var(--gold); }
+button::part(PuzzleLevelPath\.node) {
+  border-image: none;
+  border: var(--stroke-thick) solid var(--frame-rim);
+  background: var(--fantasy-seal-fill);
+  box-shadow: var(--fantasy-ring-shadow);
+  font-family: var(--font-display);
+  font-size: var(--font-step-3xl);
+  color: var(--ink-bright);
+  text-shadow: var(--button-text-shadow);
+}
+button::part(PuzzleLevelPath\.node):hover { border-color: var(--accent); color: var(--button-hover-ink); }
+button::part(PuzzleLevelPath\.node):active { background: var(--cell-pressed-fill); }
+button[data-state=done]::part(PuzzleLevelPath\.node) { border-color: var(--accent); background: var(--badge-fill); }
+button[data-state=current]::part(PuzzleLevelPath\.node) { border-color: var(--highlight); background: var(--fantasy-round-fill); box-shadow: var(--fantasy-acting-shadow); color: var(--ink-bright); }
+button[data-state=locked]::part(PuzzleLevelPath\.node) { border-color: var(--ink-down); background: var(--fantasy-member-down-fill); box-shadow: var(--fantasy-keyline-shadow); color: var(--ink-down); }
+button[aria-selected=true]::part(PuzzleLevelPath\.node) { box-shadow: var(--fantasy-marker-selected-shadow); }
+[part="PuzzleLevelPath.node"] .lock { color: var(--ink-down); }
+[part="PuzzleLevelPath.here"] { background: var(--primary); color: var(--on-primary); border-color: var(--accent); }
+[part="PuzzleLevelPath.empty"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Goals and moves. */
+:is([part="PuzzleGoals.counter"], [part="PuzzleGoals.score"]) { border: var(--stroke-hairline) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--hud); box-shadow: var(--well-shadow); }
+[part="PuzzleGoals.counter"][data-low=true] { border-color: var(--danger); }
+[part="PuzzleGoals.figure"] { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="PuzzleGoals.figure"][data-low=true] { color: var(--danger); animation: fantasy-puzzle-low var(--motion-duration-slow) var(--motion-easing-out) infinite alternate; }
+/* The low figure pulses; reduced motion keeps its ink and the warning's word and drops the pulse. */
+@keyframes fantasy-puzzle-low { from { scale: 1; } to { scale: 1.12; } }
+@media (prefers-reduced-motion: reduce) { [part="PuzzleGoals.figure"][data-low=true] { animation: none; } }
+[part="PuzzleGoals.warning"] { color: var(--danger); border-color: var(--danger); }
+[part="PuzzleGoals.goal"] { border: var(--stroke-hairline) solid var(--line-strong-33); border-radius: var(--radius-sm); background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+[part="PuzzleGoals.goal"][data-done=true] { border-color: var(--success); }
+[part="PuzzleGoals.goal"][data-done=true] .goal-art { opacity: 0.6; }
+[part="PuzzleGoals.count"] { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
+[part="PuzzleGoals.done"] path { stroke: var(--success); stroke-width: var(--stroke-thick); }
+[part="PuzzleGoals.frame"] .score-figure { font-family: var(--font-display); font-size: var(--font-step-3xl); color: var(--gold); text-shadow: var(--figure-shadow); }
+[part="PuzzleGoals.frame"] .none { font-family: var(--label-font); color: var(--ink-label); }
+
+/* ── Boosters. */
+button::part(PuzzleBoosters\.booster) {
+  border-image: none;
+  border: var(--stroke-regular) solid var(--cell-rim);
+  border-radius: var(--radius-md);
+  background: var(--fantasy-member-fill);
+  box-shadow: var(--fantasy-member-shadow);
+  font-family: var(--button-font);
+  text-shadow: var(--button-text-shadow);
+}
+button::part(PuzzleBoosters\.booster):hover { border-color: var(--accent); box-shadow: var(--cell-hover-shadow); }
+button::part(PuzzleBoosters\.booster):active { background: var(--cell-pressed-fill); }
+button[data-armed=true]::part(PuzzleBoosters\.booster) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
+button:disabled::part(PuzzleBoosters\.booster) { border-color: var(--ink-down); background: var(--fantasy-member-down-fill); box-shadow: var(--fantasy-keyline-shadow); }
+[part="PuzzleBoosters.booster"] .well { border-radius: 50%; background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+[part="PuzzleBoosters.booster"][data-available=false] .art { opacity: 0.45; }
+[part="PuzzleBoosters.booster"] .lock { color: var(--ink-down); }
+[part="PuzzleBoosters.count"] { font-family: var(--font-display); font-size: var(--font-step-sm); color: var(--ink-bright); background: var(--fantasy-round-fill); border-color: var(--accent); }
+[part="PuzzleBoosters.count"][data-available=false] { background: var(--panel); color: var(--ink-down); border-color: var(--ink-down); }
+[part="PuzzleBoosters.booster"][data-available=false] [part="PuzzleBoosters.name"] { color: var(--ink-down); }
+[part="PuzzleBoosters.state"][data-armed=true] { color: var(--gold); border-color: var(--accent-60); }
+[part="PuzzleBoosters.state"][data-armed=false] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="PuzzleBoosters.empty"] { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Level summary. */
+[part="PuzzleSummary.band"][data-result=lose] { background: var(--band-small-fill); }
+[part="PuzzleSummary.earned"] { font-family: var(--font-display); font-size: var(--font-step-2xl); letter-spacing: var(--font-tracking-sm); color: var(--gold); }
+[part="PuzzleSummary.stars"][data-result=lose] [part="PuzzleSummary.earned"] { color: var(--ink-done); }
+[part="PuzzleSummary.record"] { color: var(--gold); border-color: var(--accent-60); }
+[part="PuzzleSummary.breakdown"] { border-block: var(--stroke-hairline) solid var(--line-strong-40); background: var(--well-50); }
+[part="PuzzleSummary.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="PuzzleSummary.rowLabel"] { font-family: var(--font-body); font-size: var(--font-step-lg); color: var(--ink-muted); }
+[part="PuzzleSummary.rowValue"] { font-family: var(--font-mono); font-size: var(--font-step-lg); color: var(--figure-ink); }
+[part="PuzzleSummary.total"] { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="PuzzleSummary.total"] .total-label { font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; color: var(--ink-label); }
+[part="PuzzleSummary.total"] .total-value { font-family: var(--font-display); font-size: var(--font-step-3xl); color: var(--ink-selected); }
+/* The actions are the pack's iron and crimson buttons. */
+button::part(PuzzleSummary\.next), button::part(PuzzleSummary\.retry), button::part(PuzzleSummary\.menu) {
+  padding: 0 var(--space-md);
+  border: none;
+  border-radius: 0;
+  border-image: var(--button-image) 28 24 fill / 50% var(--button-image-end) stretch;
+  background: none;
+  box-shadow: none;
+  font-family: var(--button-font);
+  font-size: var(--font-step-xl);
+  letter-spacing: var(--font-tracking-md);
+  text-transform: uppercase;
+  text-shadow: var(--button-text-shadow);
+}
+button::part(PuzzleSummary\.next):hover, button::part(PuzzleSummary\.retry):hover, button::part(PuzzleSummary\.menu):hover { border-image-source: var(--button-image-hover); color: var(--button-hover-ink); }
+button::part(PuzzleSummary\.next):active, button::part(PuzzleSummary\.retry):active, button::part(PuzzleSummary\.menu):active { border-image-source: var(--button-image-pressed); color: var(--button-pressed-ink); }
+button.primary::part(PuzzleSummary\.next), button.primary::part(PuzzleSummary\.retry) { border-image-source: var(--button-primary-image); color: var(--on-primary); }
+button.primary::part(PuzzleSummary\.next):hover, button.primary::part(PuzzleSummary\.retry):hover { border-image-source: var(--button-primary-image-hover); color: var(--button-primary-hover-ink); }
+button.primary::part(PuzzleSummary\.next):active, button.primary::part(PuzzleSummary\.retry):active { border-image-source: var(--button-primary-image-pressed); color: var(--button-primary-pressed-ink); }
+
+@media (width < 600px) {
+  [part="PuzzleGoals.figure"] { font-size: var(--font-step-3xl); }
+  [part="PuzzleLevelPath.title"] { font-size: var(--font-step-lg); }
+  button::part(PuzzleLevelPath\.node) { font-size: var(--font-step-xl); }
+  [part="PuzzleSummary.frame"] { padding: var(--space-md); }
+}

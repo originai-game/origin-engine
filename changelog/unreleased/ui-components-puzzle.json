@@ -1,0 +1,24 @@
+{
+  "added": [
+    {
+      "member": "PuzzleLevelPath",
+      "summary": "A built-in puzzle component (packages/engine/src/ui/components/puzzle/level-path.svelte): a scrolling level path of chapters, each with its name and the stars the game counts, and its levels as round nodes placed across the path where the game says (x), each locked, open, current or done with its stars. Reports choose with the level's key and details (X, pad Y) on the focused level; a locked level is disabled and sends neither. Parts frame, chapter, title, badge, lane, trail, node, number, stars, here and empty."
+    },
+    {
+      "member": "PuzzleGoals",
+      "summary": "A built-in puzzle component (puzzle/goals.svelte): the in-level HUD with what limits the level (moves left or a countdown), a Running low warning when the game says so, the goals as icons with what is left of each and a check once met, and the score, all as the game counts them. The goals wrap under the counter and score by the component's own width, as the level path and booster tray tighten theirs. Parts frame, counter, label, figure, warning, goals, goal, count, done and score."
+    },
+    {
+      "member": "PuzzleBoosters",
+      "summary": "A built-in puzzle component (puzzle/boosters.svelte): the booster tray, each booster with its icon, count and name; one the game will not take now is disabled, locked and worded Unavailable, the armed one is pressed and worded Armed. Reports choose with the booster's key; the game spends, arms or refuses it. Parts frame, booster, count, name, state and empty."
+    },
+    {
+      "member": "PuzzleSummary",
+      "summary": "A built-in puzzle component (puzzle/summary.svelte): the end of a level, won or failed, with the level's name, the score on the shared StarBar, the stars the game awarded in words, a New best badge, the game's worded score breakdown and total, and Next (only when the game offers it), Retry and Map (also Escape and pad B), reported as next, retry and menu. Parts frame, band, title, level, stars, earned, record, breakdown, row, rowLabel, rowValue, total, actions, next, retry and menu."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "templates/styles/fantasy/puzzle.css dresses the puzzle components through their parts: brass-rimmed seals for levels (crimson for the current one, grey for locked), gold stars, the HUD plates for goals and boosters with the low counter's pulse (dropped under reduced motion), and the pack's iron and crimson buttons on the level summary."
+    }
+  ]
+}

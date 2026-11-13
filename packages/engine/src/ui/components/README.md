@@ -3,7 +3,8 @@
 Component documents built from og-ui's public elements and built into the
 engine: the HUD, feedback, world and pattern pieces that used to be
 TypeScript builders on `og.ui`, and, in a directory per group, a genre's
-components (`rpg/`, `shooter/`, each with its README). A game's document
+components (`rpg/`, `shooter/`, `strategy/` and the rest, each with its
+README). A game's document
 uses any of them by its declared name (`<AbilityBar slots={$slots} />`,
 `<RpgBackpack items={$items} />`) without a copy: the cook bundles it as
 `@ui/components/<path>` and the screen that uses it loads it. Copy one with
@@ -50,3 +51,11 @@ test cooks every one from its fixture at desktop and phone sizes.
 | RPG party, turn order and combat HUD | `rpg/vitals`, `rpg/party`, `rpg/turn-order`, `rpg/action-bar`, `rpg/combat-log`, `rpg/enemy-info`, `rpg/commands` |
 | Shooter HUD: aim, ammunition, damage direction, killfeed (`shooter/README.md`) | `shooter/crosshair`, `shooter/ammo-counter`, `shooter/damage-direction`, `shooter/killfeed`, `shooter/combat-hud` |
 | Shooter loadout | `shooter/loadout` |
+| Strategy selection, commands, production queue, waves, tower upgrades (`strategy/README.md`) | `strategy/selection`, `strategy/queue`, `strategy/wave`, `strategy/tower` |
+| Racing telemetry, laps, standings, banner, garage, results (`racing/README.md`) | `racing/telemetry`, `racing/lap-hud`, `racing/standings`, `racing/banner`, `racing/garage`, `racing/results` |
+| Card hand, piles, collection, deck, rewards, run map (`card/README.md`) | `card/face`, `card/hand`, `card/piles`, `card/collection`, `card/deck-list`, `card/reward`, `card/run-map` |
+| Puzzle goals, boosters, level path, summary (`puzzle/README.md`) | `puzzle/goals`, `puzzle/boosters`, `puzzle/level-path`, `puzzle/summary` |
+| Idle resources, generators, purchases, prestige, offline summary (`idle/README.md`) | `idle/resources`, `idle/generators`, `idle/purchases`, `idle/prestige`, `idle/offline` |
+| Rhythm song and difficulty selection, score HUD, judgement, results (`rhythm/README.md`) | `rhythm/song-select`, `rhythm/difficulty`, `rhythm/score-hud`, `rhythm/judgement`, `rhythm/results` |
+| Arena roster, draft, versus, lobby, round HUD, scoreboard (`arena/README.md`) | `arena/roster`, `arena/draft`, `arena/versus`, `arena/lobby`, `arena/round-hud`, `arena/scoreboard` |
+| Shop, achievements, daily quests and rewards, chat, friends (`general/README.md`) | `general/shop`, `general/shop-confirm`, `general/achievements`, `general/daily-quests`, `general/daily-rewards`, `general/chat`, `general/friends` |
