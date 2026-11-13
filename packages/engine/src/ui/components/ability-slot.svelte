@@ -1,5 +1,6 @@
 <meta name="component" content="AbilitySlot">
 <meta name="strings" content="./ability-slot.en.ogt">
+<meta name="parts" content="AbilitySlot.frame AbilitySlot.cell AbilitySlot.well AbilitySlot.icon AbilitySlot.ultimate AbilitySlot.figure AbilitySlot.percent AbilitySlot.badge AbilitySlot.track AbilitySlot.fill AbilitySlot.label">
 <meta name="prop:icon" content="string" data-doc="An icon of the atlas, drawn large on a gradient.">
 <meta name="prop:name" content="string" data-doc="What a screen reader calls it (Fireball).">
 <meta name="prop:action" content="string" data-doc="The action whose glyph the hotkey cap shows on the device used last (it follows a rebinding); empty is none.">
@@ -20,49 +21,49 @@
 <meta name="action:use" content="Use">
 <meta name="fixture:default" content='{"icon":"fire","name":"Fireball","action":"","hotkey":"Q","cooldown":4.2,"cooldownMax":8,"charges":2,"maxCharges":3,"cost":"40","unaffordable":false,"outOfRange":false,"active":false,"locked":false,"disabled":false,"ultimate":-1,"level":2,"maxLevel":3}'>
 
-<div id="AbilitySlot" class:ultimate={ultimate >= 0}>
-  <button id="Slot" onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:active={active} class:tinted={unaffordable || outOfRange} class:locked={locked} class:off={disabled} class:full={ultimate >= 1}>
+<div id="AbilitySlot" part="AbilitySlot.frame" class="bare" class:ultimate={ultimate >= 0}>
+  <button id="Slot" part="AbilitySlot.cell" onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:active={active} class:tinted={unaffordable || outOfRange} class:locked={locked} class:off={disabled} class:full={ultimate >= 1}>
     <div id="Face">
-      <div id="Art"><og-icon id="Icon" icon={icon}></og-icon></div>
-      <svg id="Ultimate" viewBox="0 0 64 64" hidden={ultimate < 0}><circle cx="32" cy="32" r="29" fill="none" stroke="#00000080" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>
-      <svg id="Sweep" viewBox="0 0 56 56" hidden={!(cooldown > 0)}><circle cx="28" cy="28" r="20" fill="none" stroke="#00000099" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
-      <span id="Time" hidden={!(cooldown > 0)}>{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
-      <span id="Percent" hidden={!(ultimate >= 0 && ultimate < 1)}>{formatPercent(ultimate)}</span>
-      <svg id="Slash" viewBox="0 0 56 56" hidden={!disabled}><path d="M8 48L48 8" stroke="#e5484dff" stroke-width="5" stroke-linecap="round"></path></svg>
+      <div id="Art" part="AbilitySlot.well"><og-icon id="Icon" part="AbilitySlot.icon" icon={icon}></og-icon></div>
+      <svg id="Ultimate" part="AbilitySlot.ultimate" viewBox="0 0 64 64" hidden={ultimate < 0}><circle cx="32" cy="32" r="29" fill="none" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>
+      <svg id="Sweep" viewBox="0 0 56 56" hidden={!(cooldown > 0)}><circle cx="28" cy="28" r="20" fill="none" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
+      <span id="Time" part="AbilitySlot.figure" hidden={!(cooldown > 0)}>{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
+      <span id="Percent" part="AbilitySlot.percent" hidden={!(ultimate >= 0 && ultimate < 1)}>{formatPercent(ultimate)}</span>
+      <svg id="Slash" viewBox="0 0 56 56" hidden={!disabled}><path d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>
       <og-icon id="Lock" icon="lock" hidden={!locked}></og-icon>
-      <span id="Cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span>
-      <span id="Charges" hidden={!(maxCharges > 1) || cooldown > 0}>{formatNumber(charges)}</span>
+      <span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable} hidden={!cost || cooldown > 0 || locked}>{cost}</span>
+      <span id="Charges" part="AbilitySlot.badge" class="charges" hidden={!(maxCharges > 1) || cooldown > 0}>{formatNumber(charges)}</span>
     </div>
   </button>
-  <div id="Pips" hidden={!(maxLevel > 0)} style:--ranks={maxLevel} style:--level={level}><div id="Ranked"></div></div>
-  <kbd id="Hotkey" data-action={action} hidden={!hotkey && !action}>{hotkey}</kbd>
+  <div id="Pips" part="AbilitySlot.track" hidden={!(maxLevel > 0)} style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>
+  <kbd id="Hotkey" part="AbilitySlot.label" data-action={action} hidden={!hotkey && !action}>{hotkey}</kbd>
 </div>
 
 <style>
 #Face { width: stretch; height: stretch; align-items: center; justify-content: center; }
-#AbilitySlot { align-items: center; gap: 3px; }
-#Slot { width: 56px; height: 56px; padding: 0; border-radius: 8px; overflow: hidden; border: 1px solid #ffffff4d; background: var(--control-strong); box-shadow: inset 0 2px 4px #00000080, 0 3px 6px #00000080; transition: scale 160ms ease-out; }
-.ultimate #Slot { width: 64px; height: 64px; border-radius: 32px; }
-#Art { width: stretch; height: stretch; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 30%, #ff9a3cff, #7a2a0eff); }
-#Icon { width: 34px; height: 34px; color: #ffffffff; }
-#Slot.tinted #Art { background: radial-gradient(circle at 50% 30%, #c0392bff, #4a0e0eff); }
-#Slot.tinted #Icon { color: #ff8080ff; }
-#Slot.locked #Art { filter: grayscale(1) brightness(0.35); }
-#Slot.off #Art { filter: grayscale(1) brightness(0.7); }
-#Slot.active { box-shadow: 0 0 12px var(--primary), inset 0 0 0 2px var(--primary); animation: breathe 1400ms ease-in-out infinite alternate; }
-#Slot.full { box-shadow: 0 0 14px var(--gold), inset 0 0 0 2px var(--gold); animation: breathe 1400ms ease-in-out infinite alternate; }
-#Ultimate { position: absolute; top: 0; inset-inline-start: 0; width: 64px; height: 64px; }
+#AbilitySlot { align-items: center; gap: var(--space-xxs); }
+#Slot { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; transition-property: scale; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
+.ultimate #Slot { width: var(--size-xl); height: var(--size-xl); border-radius: var(--radius-capsule); }
+#Art { width: stretch; height: stretch; align-items: center; justify-content: center; }
+#Icon { width: var(--size-md); height: var(--size-md); color: var(--ink); }
+#Slot.tinted #Art { background: var(--danger-45); }
+#Slot.tinted #Icon { color: var(--danger); }
+#Slot.locked #Art { filter: var(--filter-locked); }
+#Slot.off #Art { filter: var(--filter-spent); }
+#Slot.active { box-shadow: 0 0 var(--space-md) var(--primary), inset 0 0 0 var(--stroke-regular) var(--primary); animation-name: breathe; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
+#Slot.full { box-shadow: 0 0 var(--space-md) var(--gold), inset 0 0 0 var(--stroke-regular) var(--gold); animation-name: breathe; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
+#Ultimate { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
 #UltimateFill { stroke: var(--gold); }
-#Sweep { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }
-#Time { position: absolute; top: 16px; inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-lg); color: #ffffffff; text-shadow: 0 0 3px #000000ff; }
-#Percent { position: absolute; bottom: 2px; inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-caption); color: var(--gold); text-shadow: 0 1px 2px #000000ff; }
-#Slash { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }
-#Lock { position: absolute; top: 16px; inset-inline-start: 16px; width: 24px; height: 24px; color: var(--ink); }
-#Cost { position: absolute; bottom: 2px; inset-inline-start: 2px; padding: 0 4px; border-radius: 6px; background: #000000b3; font: var(--text-caption); color: var(--mana); }
+#Sweep { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--scrim); }
+#Time { position: absolute; top: var(--space-md); inset-inline-start: 0; width: stretch; text-align: center; font-size: var(--font-step-xl); }
+#Percent { position: absolute; bottom: var(--space-xxs); inset-inline-start: 0; width: stretch; text-align: center; font: var(--text-caption); color: var(--gold); }
+#Slash { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; stroke: var(--danger); }
+#Lock { position: absolute; top: var(--space-md); inset-inline-start: var(--space-md); width: var(--size-sm); height: var(--size-sm); color: var(--ink); }
+#Cost { position: absolute; bottom: var(--space-xxs); inset-inline-start: var(--space-xxs); padding: 0 var(--space-xs); font-size: var(--font-step-sm); color: var(--mana); }
 #Cost.short { color: var(--danger); }
-#Charges { position: absolute; top: 2px; inset-inline-start: 38px; min-width: 16px; padding: 0 3px; border-radius: 8px; background: #000000cc; font: var(--text-caption); color: var(--ink); align-items: center; }
-#Pips { width: calc(var(--ranks) * 9px - 3px); height: 6px; background: repeating-linear-gradient(90deg, #00000099 0px, #00000099 6px, #00000000 6px, #00000000 9px); }
-#Ranked { width: calc(var(--level) * 9px - 3px); height: 6px; background: repeating-linear-gradient(90deg, #ffc93cff 0px, #ffc93cff 6px, #00000000 6px, #00000000 9px); }
-#Hotkey { font: var(--text-caption); color: var(--ink-muted); }
+#Charges { position: absolute; top: var(--space-xxs); inset-inline-end: var(--space-xxs); min-width: var(--size-xs); padding: 0 var(--space-xxs); font-size: var(--font-step-sm); align-items: center; }
+#Pips { width: calc(var(--ranks) * var(--space-md) - var(--space-xs)); height: var(--space-xs); background: repeating-linear-gradient(90deg, var(--scrim) 0, var(--scrim) var(--space-sm), transparent var(--space-sm), transparent var(--space-md)); }
+#Ranked { width: calc(var(--level) * var(--space-md) - var(--space-xs)); height: var(--space-xs); background: repeating-linear-gradient(90deg, var(--gold) 0, var(--gold) var(--space-sm), transparent var(--space-sm), transparent var(--space-md)); }
+#Hotkey { font-size: var(--font-step-sm); }
 @keyframes breathe { from { opacity: 1; } to { opacity: 0.8; } }
 </style>

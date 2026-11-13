@@ -1,5 +1,6 @@
 <meta name="screen" content="pause" data-layer="menu" data-focus="Panel/Menu/Resume" data-under="blur" data-input="menu" data-pause="true" data-capture="true" data-remember="true" data-back="resume">
 <meta name="strings" content="./pause.en.ogt">
+<meta name="parts" content="pause.frame pause.title pause.objective">
 <meta name="prop:objective" content="string" data-doc="The current objective (empty: none).">
 <meta name="prop:played" content="number" data-doc="Seconds played this run.">
 <meta name="prop:canSave" content="bool" data-doc="Saving is allowed here.">
@@ -8,10 +9,10 @@
 <meta name="fixture:default" content="{&quot;canSave&quot;:true,&quot;objective&quot;:&quot;Reach the lighthouse&quot;,&quot;played&quot;:4520}">
 
 <row id="Pause">
-  <column id="Panel">
-    <text id="Title" heading="true">{t("screen.pause.title")}</text>
+  <column id="Panel" part="pause.frame">
+    <text id="Title" part="pause.title" heading="true">{t("screen.pause.title")}</text>
     <column id="Status">
-      <text id="Objective" hidden={!(($objective != ""))}>{$objective}</text>
+      <text id="Objective" part="pause.objective" hidden={!(($objective != ""))}>{$objective}</text>
       <text id="Played">{t("screen.pause.Played", { played: formatDuration($played) })}</text>
     </column>
     <grid id="Menu" focus-group="wrap">
@@ -28,25 +29,23 @@
 </row>
 
 <style>
-:root { --surface-saturation: 120%; }
-@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
-#Pause { width: stretch; height: stretch; padding: 32px; gap: 24px; justify-content: center; align-items: center; }
+#Pause { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-xl); justify-content: center; align-items: center; }
 @media (width < 600px), (height < 600px) {
-#Pause { padding: 16px; }
+#Pause { padding: var(--space-lg); }
 }
-#Panel { width: stretch; max-width: 400px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; opacity: 1; translate: 0 0; transition: opacity var(--motion-enter), translate var(--motion-enter); }
-@starting-style { #Panel { opacity: 0; translate: 0 24px; } }
+#Panel { width: stretch; max-width: var(--measure-lg); gap: var(--space-lg); opacity: 1; translate: 0 0; transition: opacity var(--motion-enter), translate var(--motion-enter); }
+@starting-style { #Panel { opacity: 0; translate: 0 var(--space-xl); } }
 @media (height < 600px) and (orientation: landscape) {
-#Panel { width: stretch; max-width: 640px; padding: 12px; gap: 8px; }
+#Panel { width: stretch; max-width: var(--measure-xl); gap: var(--space-sm); }
 }
-#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
-#Status { width: stretch; gap: 4px; }
+#Title { font-size: var(--type-xl2-size); }
+#Status { width: stretch; gap: var(--space-xs); }
 @media (height < 600px) and (orientation: landscape) {
 #Status { display: none; }
 }
 #Objective { color: var(--ink-muted); line-clamp: 2; }
 #Played { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Menu { width: stretch; gap: 8px; grid-template-columns: 1fr; }
+#Menu { width: stretch; gap: var(--space-sm); grid-template-columns: 1fr; }
 @media (height < 600px) and (orientation: landscape) {
 #Menu { grid-template-columns: 1fr 1fr; }
 }

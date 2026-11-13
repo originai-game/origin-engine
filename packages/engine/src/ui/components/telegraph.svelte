@@ -1,4 +1,5 @@
 <meta name="component" content="Telegraph">
+<meta name="parts" content="Telegraph.area">
 <meta name="prop:entity" content="number" data-doc="Its origin's entity, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-doc="Its origin on the ground without an entity (x y z).">
 <meta name="prop:shape" content="string" data-doc="Its area: disc (empty), ring, cone or line.">
@@ -12,7 +13,7 @@
 <meta name="fixture:default" content='{"entity":0,"at":"0 0 0","shape":"cone","radius":6,"inner":0.5,"angle":70,"width":0.2,"direction":30,"progress":0.55,"friendly":false}'>
 
 <ground id="Telegraph" entity={entity || null} at={at} size={(radius * 2) + " " + (radius * 2)} rotation={"0 " + direction + " 0"}>
-  <svg id="Area" viewBox="0 0 200 200" class:friendly={friendly} style:--p={progress}>
+  <svg id="Area" part="Telegraph.area" viewBox="0 0 200 200" class:friendly={friendly} style:--p={progress}>
     <g hidden={!(shape == '' || shape == 'disc')}>
       <circle class="edge" cx="100" cy="100" r="98"></circle>
       <circle class="fill" cx="100" cy="100" r={98 * progress}></circle>
@@ -35,9 +36,9 @@
 </ground>
 
 <style>
-#Telegraph { width: 200px; height: 200px; }
-#Area { width: 200px; height: 200px; --tone: #e5484dff; --wash: #e5484d40; }
-#Area.friendly { --tone: #4c8dffff; --wash: #4c8dff40; }
+#Telegraph { width: var(--measure-xs); height: var(--measure-xs); }
+[part="Telegraph.area"] { width: var(--measure-xs); height: var(--measure-xs); --tone: var(--danger); --wash: color-mix(in srgb, var(--danger) 25%, transparent); }
+[part="Telegraph.area"].friendly { --tone: var(--info); --wash: color-mix(in srgb, var(--info) 25%, transparent); }
 .edge { fill: var(--wash); stroke: var(--tone); stroke-width: 3; }
 .fill { fill: var(--wash); }
 .band { fill: none; stroke: var(--wash); }

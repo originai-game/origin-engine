@@ -1,5 +1,6 @@
 <meta name="screen" content="loading" data-layer="modal" data-focus="" data-under="hide" data-input="menu" data-pause="false" data-capture="true" data-remember="true" data-back="none">
 <meta name="strings" content="./loading.en.ogt">
+<meta name="parts" content="loading.scrim loading.frame loading.title">
 <meta name="prop:keyArt" content="number" data-doc="The key art's texture (og.load.texture; 0: the style's placeholder).">
 <meta name="prop:place" content="string" data-doc="Where the player is going.">
 <meta name="prop:tip" content="string" data-doc="A tip or a line of lore.">
@@ -11,15 +12,15 @@
 
 <stack id="Loading" interactive="true" onclick={nextTip}>
   <art id="Art" kind="tutorial" src={$keyArt}></art>
-  <column id="Scrim"></column>
+  <column id="Scrim" part="loading.scrim"></column>
   <column id="Foot">
     <spacer id="Node4"></spacer>
-    <column id="Tip">
+    <column id="Tip" part="loading.frame">
       <text id="Eyebrow">{t("screen.loading.tip")}</text>
       <text id="Text">{$tip}</text>
       <column id="Lore">{@render lore?.()}</column>
     </column>
-    <text id="Place" heading="true">{$place}</text>
+    <text id="Place" part="loading.title" heading="true">{$place}</text>
     <row id="Progress">
       <progress id="Bar" bind:value={$progress}></progress>
       <text id="Percent" hidden={!(!($ready))}>{t("screen.loading.Percent", { progress: formatPercent($progress) })}</text>
@@ -29,24 +30,22 @@
 </stack>
 
 <style>
-:root { --surface-saturation: 120%; }
-@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Loading { width: stretch; height: stretch; }
 #Art { object-fit: cover; width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
-#Scrim { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; background: #000000; opacity: 0.5; }
-#Foot { width: stretch; height: stretch; padding: 48px; gap: 12px; }
+#Scrim { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; background: var(--scrim); }
+#Foot { width: stretch; height: stretch; padding: var(--space-3xl); gap: var(--space-md); }
 @media (width < 600px), (height < 600px) {
-#Foot { padding: 24px; }
+#Foot { padding: var(--space-xl); }
 }
-#Tip { width: stretch; max-width: 720px; padding: 16px; gap: 6px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
+#Tip { width: stretch; max-width: var(--measure-xxl); gap: var(--space-sm); }
 #Eyebrow { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--primary); }
 #Text { font: var(--text-reading); letter-spacing: var(--type-reading-tracking); line-clamp: 4; }
 #Lore { width: stretch; }
-#Place { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
+#Place { font-size: var(--type-xl2-size); }
 @media (width < 600px), (height < 600px) {
-#Place { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+#Place { font-size: var(--type-lg-size); }
 }
-#Progress { width: stretch; gap: 12px; align-items: center; }
-#Bar { width: stretch; height: 12px; }
+#Progress { width: stretch; gap: var(--space-md); align-items: center; }
+#Bar { width: stretch; height: var(--space-md); }
 #Percent { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 </style>

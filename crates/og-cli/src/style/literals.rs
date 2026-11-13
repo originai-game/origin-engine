@@ -6,7 +6,8 @@
 //! length other than 0 (`px`, `em`, `rem`, viewport and print units), a
 //! duration (`ms`, `s`) or a `url()`. Keywords, `0`, unitless numbers (flex,
 //! z-index, line-height, opacity, `border-image` slices, sound volumes),
-//! percentages (gradient stops, positions, sizes) and angles stay
+//! percentages (gradient stops, positions, sizes), container-query units
+//! (`cqw`, `cqh`…: a share of the container, as a percentage is) and angles stay
 //! structural. `@font-face`, `@property` and `@counter-style` take their
 //! own descriptors, and `-og-sound` names sound files: both declare assets,
 //! so their `url()`s may stand anywhere. `@media` and `@container`
@@ -14,8 +15,8 @@
 
 const LENGTHS: &[&str] = &[
     "px", "em", "rem", "ex", "rex", "ch", "rch", "cap", "rcap", "ic", "ric", "lh", "rlh", "vw",
-    "vh", "vi", "vb", "vmin", "vmax", "svw", "svh", "lvw", "lvh", "dvw", "dvh", "cqw", "cqh",
-    "cqi", "cqb", "cqmin", "cqmax", "cm", "mm", "q", "in", "pt", "pc",
+    "vh", "vi", "vb", "vmin", "vmax", "svw", "svh", "lvw", "lvh", "dvw", "dvh", "cm", "mm", "q",
+    "in", "pt", "pc",
 ];
 const DURATIONS: &[&str] = &["ms", "s"];
 const COLOUR_FUNCTIONS: &[&str] = &[

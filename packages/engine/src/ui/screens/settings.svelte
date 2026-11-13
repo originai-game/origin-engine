@@ -1,5 +1,6 @@
 <meta name="screen" content="settings" data-layer="menu" data-focus="Tree" data-under="dim" data-input="menu" data-pause="false" data-capture="true" data-remember="true" data-back="back">
 <meta name="strings" content="./settings.en.ogt">
+<meta name="parts" content="settings.frame settings.band settings.title settings.row">
 <meta name="prop:note" content="string" data-doc="A line under the title (Some changes apply after a restart); empty: none.">
 <meta name="prop:pages" content="list" data-doc="The settings' pages as a keyed collection of { id, name }: a tab each.">
 <meta name="prop:entries" content="list" data-doc="The settings as a keyed collection of { id, page, name, description, kind: toggle|range|select|binding, value, min, max, step, options, action }, shown on their page's tab; each value is written back as the player changes it.">
@@ -11,11 +12,11 @@
 <meta name="action:tabPrev" content="Previous page">
 <meta name="fixture:default" content="{&quot;note&quot;:&quot;&quot;}">
 
-<column id="Screen">
-  <row id="Header">
+<column id="Screen" part="settings.frame" class="bare">
+  <row id="Header" part="settings.band">
     <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
     <column id="Heading">
-      <text id="Title" heading="true">{t("screen.settings.title")}</text>
+      <text id="Title" part="settings.title" heading="true">{t("screen.settings.title")}</text>
       <text id="Note" hidden={!(($note != ""))}>{$note}</text>
     </column>
   </row>
@@ -29,7 +30,7 @@
       <ul id="Entries">
         {#each $entries as e (e.id)}
           {#if e.page == $page}
-            <li class="entry" title={e.description}>
+            <li class="entry" part="settings.row" title={e.description}>
               {#if e.kind == "toggle"}
                 <label class="row">{e.name}<input type="checkbox" switch id="Toggle" bind:checked={e.value}></label>
               {/if}
@@ -60,21 +61,21 @@
 </column>
 
 <style>
-#Screen { width: stretch; height: stretch; padding: 32px; gap: 16px; }
+#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); }
 @media (width < 600px), (height < 600px) {
-#Screen { padding: 16px; gap: 12px; }
+#Screen { padding: var(--space-lg); gap: var(--space-md); }
 }
-#Header { width: stretch; gap: 12px; align-items: center; }
-#Heading { width: stretch; gap: 2px; }
-#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
+#Header { width: stretch; gap: var(--space-md); align-items: center; }
+#Heading { width: stretch; gap: var(--space-xxs); }
+#Title { font-size: var(--type-xl2-size); }
 @media (width < 600px), (height < 600px) {
-#Title { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
+#Title { font-size: var(--type-xl-size); }
 }
 #Note { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); line-clamp: 2; }
-#Tree { width: stretch; height: stretch; gap: 12px; }
-#Pages { display: flex; gap: 8px; flex-wrap: wrap; }
+#Tree { width: stretch; height: stretch; gap: var(--space-md); }
+#Pages { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
 #Entries { list-style: none; padding: 0; margin: 0; width: stretch; height: stretch; overflow-y: auto; }
-.entry { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.entry { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: var(--stroke-hairline) solid var(--line); }
 .entry .name { width: stretch; }
-#Foot { display: flex; justify-content: end; gap: 8px; width: stretch; }
+#Foot { display: flex; justify-content: end; gap: var(--space-sm); width: stretch; }
 </style>

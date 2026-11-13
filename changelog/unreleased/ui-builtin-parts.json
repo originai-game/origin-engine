@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "built-in UI components and screens",
+      "change": "Every built-in component and screen takes its colours, sizes, spacing, radii, strokes, shadows and timings from tokens and names its frames, bands, titles, rows, cells, wells, badges, figures and labels as parts, so the default style's role rules dress them. Their own panel fills, borders, radii, glass and text shadows are removed, colours written in markup (SVG fill and stroke attributes, colour fallbacks) moved to CSS, and sizes moved to the nearest token, so their appearance changes.",
+      "fix": "Restyle them from a style pack: set the role and semantic tokens in :root, or write a ::part rule on the part the component names. A game that needs the old look of one document copies it with og ui eject and edits its own copy."
+    }
+  ]
+}

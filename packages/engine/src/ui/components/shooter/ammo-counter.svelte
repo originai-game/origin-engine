@@ -37,10 +37,10 @@
 #Rounds { display: flex; align-items: baseline; gap: var(--space-sm); }
 /* The magazine is the largest number on the HUD; the reserve sits beside it,
    a step down and quieter, as Apex and Forza set a value beside its unit. */
-#Count { font: var(--text-display-md); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 max(var(--stroke-hairline), 0.04em) max(var(--stroke-hairline), 0.08em) var(--scene-shadow); }
+#Count { font: var(--text-display-md); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
 #Count.low { color: var(--warn); }
 #Count.empty { color: var(--danger); }
-#Reserve { font: var(--text-lg); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 max(var(--stroke-hairline), 0.04em) max(var(--stroke-hairline), 0.08em) var(--scene-shadow); }
+#Reserve { font: var(--text-lg); font-family: var(--font-mono); color: var(--scene-ink); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
 #Magazine { width: stretch; height: var(--stroke-thick); background: var(--sheen); }
 #MagazineFill { width: calc(var(--fill) * 100%); height: stretch; background: var(--scene-ink); transition: width var(--motion-ui-duration) var(--motion-ui-easing); }
 .low #MagazineFill { background: var(--warn); }

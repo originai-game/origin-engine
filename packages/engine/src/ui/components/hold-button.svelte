@@ -1,4 +1,5 @@
 <meta name="component" content="HoldButton">
+<meta name="parts" content="HoldButton.base HoldButton.icon HoldButton.label HoldButton.hint">
 <meta name="prop:label" content="string" data-doc="Its words and accessible name (Delete save).">
 <meta name="prop:holding" content="string" data-doc="What it says while it is held (Keep holding…); empty keeps its label.">
 <meta name="prop:hint" content="string" data-doc="A line under it, what to do (Hold to delete); empty for none.">
@@ -10,30 +11,30 @@
 <meta name="fixture:default" content='{"label":"Delete save","holding":"Keep holding…","hint":"Hold to delete","icon":"close","action":"","variant":"danger","disabled":false}'>
 
 <div id="HoldButton">
-  <button id="Button" data-hold="1200" data-action={action} onhold={confirm} aria-label={label} class:primary={variant == "primary"} class:secondary={variant == "secondary"} disabled={disabled}>
-    <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
-    <span id="Label" class="rest">{label}</span>
-    <span id="Holding" class="held" hidden={!holding}>{holding}</span>
+  <button id="Button" part="HoldButton.base" data-hold="1200" data-action={action} onhold={confirm} aria-label={label} class:primary={variant == "primary"} class:secondary={variant == "secondary"} disabled={disabled}>
+    <og-icon id="Icon" part="HoldButton.icon" icon={icon} hidden={!icon}></og-icon>
+    <span id="Label" part="HoldButton.label" class="rest">{label}</span>
+    <span id="Holding" part="HoldButton.label" class="held" hidden={!holding}>{holding}</span>
   </button>
-  <span id="Hint" hidden={!hint}>{hint}</span>
+  <span id="Hint" part="HoldButton.hint" hidden={!hint}>{hint}</span>
 </div>
 
 <style>
-#HoldButton { flex-direction: column; align-items: center; gap: 4px; }
-#Button { min-height: 44px; padding: 0 20px; gap: 8px; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid var(--danger); background: var(--panel-raised); color: var(--danger); }
-#Button::-og-hold { background: #e5484d59; }
-#Button.primary { border-width: 0; background: var(--primary); color: var(--on-primary); }
-#Button.primary::-og-hold { background: #ffffff59; }
-#Button.secondary { border-width: 0; background: var(--control-strong); color: var(--ink); }
-#Button.secondary::-og-hold { background: #ffffff40; }
-#Button:hover { filter: brightness(1.1); }
-#Button:disabled { opacity: 0.45; }
-#Icon { width: 18px; height: 18px; }
-#Icon, #Label, #Holding { color: var(--danger); }
-.primary #Icon, .primary #Label, .primary #Holding { color: var(--on-primary); }
-.secondary #Icon, .secondary #Label, .secondary #Holding { color: var(--ink); }
-#Label, #Holding { font: var(--text-body); white-space: nowrap; }
+#HoldButton { flex-direction: column; align-items: center; gap: var(--space-xs); }
+[part="HoldButton.base"] { min-height: var(--touch-target); padding: 0 var(--space-lg); gap: var(--space-sm); align-items: center; justify-content: center; border-radius: var(--button-radius); border: var(--stroke-hairline) solid var(--danger); background: var(--panel-raised); color: var(--danger); }
+[part="HoldButton.base"]::-og-hold { background: var(--danger-45); }
+[part="HoldButton.base"].primary { border-width: 0; background: var(--primary); color: var(--on-primary); }
+[part="HoldButton.base"].primary::-og-hold { background: var(--primary-active); }
+[part="HoldButton.base"].secondary { border-width: 0; background: var(--control-strong); color: var(--ink); }
+[part="HoldButton.base"].secondary::-og-hold { background: var(--sheen); }
+[part="HoldButton.base"]:hover { filter: brightness(1.1); }
+[part="HoldButton.base"]:disabled { opacity: var(--state-disabled-opacity); }
+[part="HoldButton.icon"] { width: var(--size-xs); height: var(--size-xs); }
+[part="HoldButton.icon"], [part="HoldButton.label"] { color: var(--danger); }
+.primary [part="HoldButton.icon"], .primary [part="HoldButton.label"] { color: var(--on-primary); }
+.secondary [part="HoldButton.icon"], .secondary [part="HoldButton.label"] { color: var(--ink); }
+[part="HoldButton.label"] { font: var(--text-body); white-space: nowrap; }
 #Button:not(:active) #Holding { display: none; }
 #Button:active #Label { display: none; }
-#Hint { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; }
+[part="HoldButton.hint"] { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; }
 </style>

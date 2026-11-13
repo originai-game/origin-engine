@@ -1,5 +1,6 @@
 <meta name="screen" content="tutorial" data-layer="popover" data-focus="" data-under="none" data-input="menu" data-pause="false" data-capture="false" data-remember="true" data-back="skip">
 <meta name="strings" content="./tutorial.en.ogt">
+<meta name="parts" content="tutorial.frame tutorial.title tutorial.text tutorial.step">
 <meta name="prop:title" content="string" data-doc="The step's title.">
 <meta name="prop:text" content="string" data-doc="What to do.">
 <meta name="prop:step" content="number" data-doc="The step, from 1.">
@@ -14,13 +15,13 @@
 
 <stack id="Tutorial">
   <column id="Highlight">{@render highlight?.()}</column>
-  <column id="Card">
+  <column id="Card" part="tutorial.frame">
     <art id="Art" kind="tutorial" src={$texture} hidden={!(($texture != 0.0))}></art>
-    <text id="Title" heading="true">{$title}</text>
-    <text id="Text">{$text}</text>
+    <text id="Title" part="tutorial.title" heading="true">{$title}</text>
+    <text id="Text" part="tutorial.text">{$text}</text>
     <column id="Hint">{@render hint?.()}</column>
     <row id="Foot">
-      <text id="Step">{t("screen.tutorial.Step", { step: $step, steps: $steps })}</text>
+      <text id="Step" part="tutorial.step">{t("screen.tutorial.Step", { step: $step, steps: $steps })}</text>
       <spacer id="Node9"></spacer>
       <button id="Skip" variant="quiet" onclick={skip}>{t("screen.tutorial.skip")}</button>
       <button id="Next" variant="primary" hidden={!(!($waits))} onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>
@@ -29,35 +30,23 @@
 </stack>
 
 <style>
-button, button::part(base) { height: 2rem; }
-button::part(base) { padding: 0 calc(6rem / 7); }
-@media (pointer: coarse) {
-button, button::part(base) { height: calc(22rem / 7); }
-}
-@media (-og-input: pad) {
-button, button::part(base) { height: calc(20rem / 7); }
-}
+button, button::part(base) { height: var(--control-sm); }
+button::part(base) { padding: 0 var(--space-md); }
 @media (width < 600px), (height < 600px) {
-button, button::part(base) { height: calc(16rem / 7); }
-button::part(base) { padding: 0 calc(8rem / 7); }
-}
-@media (width < 600px) and (pointer: coarse), (height < 600px) and (pointer: coarse) {
-button, button::part(base) { height: calc(22rem / 7); }
-}
-@media (width < 600px) and (-og-input: pad), (height < 600px) and (-og-input: pad) {
-button, button::part(base) { height: calc(24rem / 7); }
+button, button::part(base) { height: var(--control-md); }
+button::part(base) { padding: 0 var(--space-lg); }
 }
 #Tutorial { width: stretch; height: stretch; }
 #Highlight { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
-#Card { position: absolute; inset-inline-start: bind(x); top: bind(y); width: stretch; max-width: 360px; padding: 16px; gap: 8px; border-radius: 12px; background: linear-gradient(180deg, var(--panel-raised), var(--panel)); border: 1px solid var(--line-strong); box-shadow: 0 12px 32px #0000008c, 0 2px 6px #00000059; opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-enter); }
+#Card { position: absolute; inset-inline-start: bind(x); top: bind(y); width: stretch; max-width: var(--measure-md); gap: var(--space-sm); opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-enter); }
 @starting-style { #Card { opacity: 0; scale: 0.6; } }
 @media (width < 600px) and (orientation: portrait) {
-#Card { inset-inline-start: 12px; inset-inline-end: 12px; top: bind(y); }
+#Card { inset-inline-start: var(--space-md); inset-inline-end: var(--space-md); top: bind(y); }
 }
 #Art { width: stretch; }
-#Title { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+#Title { font-size: var(--type-lg-size); }
 #Text { font: var(--text-reading); letter-spacing: var(--type-reading-tracking); line-clamp: 5; }
 #Hint { width: stretch; }
-#Foot { width: stretch; gap: 8px; align-items: center; }
+#Foot { width: stretch; gap: var(--space-sm); align-items: center; }
 #Step { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 </style>

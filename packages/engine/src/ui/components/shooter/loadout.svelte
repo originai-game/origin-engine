@@ -60,7 +60,7 @@
    on the right too. */
 #Groups { width: stretch; height: stretch; overflow-y: auto; scrollbar-gutter: stable; padding-right: var(--space-lg); container-type: scroll-state; gap: var(--space-xl); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 3), 1fr)); align-content: start; }
 .group { gap: var(--space-sm); }
-.category { font: var(--text-caption); color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+.category { font: var(--text-caption); color: var(--ink-faint); text-transform: uppercase; letter-spacing: var(--font-tracking-lg); }
 .items { gap: var(--space-xs); }
 .item { width: stretch; height: auto; min-height: var(--size-touch); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
