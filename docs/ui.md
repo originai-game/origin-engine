@@ -1123,7 +1123,7 @@ its press sounds; both are `none` in the default style.
 Style selectors dress a component's named parts with their variants,
 states and attributes. The pack grammar lives in
 `crates/og-ui/src/style_file/css.rs` and document CSS in
-`crates/og-ui-core/src/doc/css.rs`; generated references come from them.
+`crates/og-ui-core/src/css/values.rs`; generated references come from them.
 Parser support for a literal does not override §3.1. A document's
 `<style>` controls appearance and layout, attributes content and
 behaviour; rules are document-scoped and never affect unrelated mounts.

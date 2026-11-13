@@ -4,36 +4,34 @@
 //! with its base string-table dependencies in an `og.UiDocument` blob.
 //! [`UiDocument::set_prop`] saves probe edits without rewriting other nodes.
 
-pub mod at_rules;
-pub(crate) mod boxes;
+pub use crate::css::at_rules;
+pub(crate) use crate::css::boxes;
 pub mod build;
 pub(crate) use og_css::calc;
 pub mod catalogue;
 #[doc(hidden)]
-pub mod contain_css;
-pub mod container;
-pub mod css;
+pub use crate::css::contain_css;
+pub use crate::css::container;
+pub use crate::css::values as css;
 #[doc(hidden)]
 pub mod extern_element;
-pub mod generated;
-pub(crate) mod image_css;
-pub(crate) mod interact_css;
+pub use crate::css::generated;
+pub(crate) use crate::css::image_css;
+pub(crate) use crate::css::interact_css;
 #[doc(hidden)]
 pub mod lists;
 pub mod matching;
-pub mod media;
+pub use crate::css::media;
 #[doc(hidden)]
 pub mod mf2;
 #[doc(hidden)]
-pub mod motion;
-pub(crate) mod multicol_css;
+pub use crate::css::motion;
 #[doc(hidden)]
-pub mod paint_css;
-pub(crate) mod position_css;
+pub use crate::css::paint_css;
 pub mod schema;
 #[doc(hidden)]
 pub mod schema_extra;
-pub(crate) mod scroll_css;
+pub(crate) use crate::css::scroll_css;
 pub mod selectors;
 #[doc(hidden)]
 pub mod spans;
@@ -41,11 +39,11 @@ pub mod spans;
 pub mod stylesheet;
 #[doc(hidden)]
 pub mod syntax;
-pub(crate) mod text_css;
+pub(crate) use crate::css::text_css;
 pub mod topology;
-pub(crate) mod tracks;
+pub(crate) use crate::css::tracks;
 pub mod types;
-pub mod variables;
+pub use crate::css::variables;
 pub mod view_transition;
 
 use crate::bind::{Expr, Format, Template};

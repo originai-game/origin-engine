@@ -205,7 +205,7 @@ pub(super) fn selects(selector: &str) -> bool {
 /// `view-transition-group` on an element, as the props
 /// `viewTransitionName` (empty: none), `viewTransitionClass` and
 /// `viewTransitionGroup` (empty: normal).
-pub(super) fn lower(
+pub(crate) fn lower(
     name: &str,
     value: &str,
 ) -> Option<Result<Vec<super::tracks::Lowered>, String>> {
@@ -257,7 +257,7 @@ pub(super) fn lower(
 }
 
 /// How the element properties are written (the catalogue's column).
-pub(super) fn form(prop: &str) -> Option<&'static str> {
+pub(crate) fn form(prop: &str) -> Option<&'static str> {
     Some(match prop {
         "viewTransitionName" | "view-transition-name" => "none | auto | match-element | <name>",
         "viewTransitionClass" | "view-transition-class" => "none | <name>+",

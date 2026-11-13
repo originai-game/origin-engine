@@ -205,7 +205,7 @@ impl Value {
     }
 }
 
-pub(super) fn declarations(text: &str) -> Result<Vec<super::StyleDeclaration>, String> {
+pub(crate) fn declarations(text: &str) -> Result<Vec<super::StyleDeclaration>, String> {
     let mut input = Parser::new(text);
     let mut result = Vec::new();
     while !input.is_exhausted() {
