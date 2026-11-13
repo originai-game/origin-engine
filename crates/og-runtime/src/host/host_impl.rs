@@ -21,13 +21,18 @@
 //! `impl<H: HostWire> WorldApi for H`: the traits are og-api's, and the
 //! orphan rule refuses a blanket impl of a foreign trait here.
 //!
-//! The expansion is split by module wave: `base` (Lifecycle through
-//! ProbeApi), `e6`, `p2` and `depth`.
+//! The expansion is one macro per layer: `engine`, `world`, `input`, `present`, `assets`, `ui`, `animation`, `simulation`, `story` and `platform`.
 
-mod base;
-mod depth;
-mod e6;
-mod p2;
+mod animation;
+mod assets;
+mod engine;
+mod input;
+mod platform;
+mod present;
+mod simulation;
+mod story;
+mod ui;
+mod world;
 
 use crate::ColumnPtr;
 /// The generated host traits the expansion implements.
@@ -64,10 +69,16 @@ pub trait HostWire: Wire {
 #[macro_export]
 macro_rules! host_bindings {
     ($host:ty) => {
-        $crate::__og_host_bindings_base!($host);
-        $crate::__og_host_bindings_e6!($host);
-        $crate::__og_host_bindings_p2!($host);
-        $crate::__og_host_bindings_depth!($host);
+        $crate::__og_host_bindings_engine!($host);
+        $crate::__og_host_bindings_world!($host);
+        $crate::__og_host_bindings_input!($host);
+        $crate::__og_host_bindings_present!($host);
+        $crate::__og_host_bindings_assets!($host);
+        $crate::__og_host_bindings_ui!($host);
+        $crate::__og_host_bindings_animation!($host);
+        $crate::__og_host_bindings_simulation!($host);
+        $crate::__og_host_bindings_story!($host);
+        $crate::__og_host_bindings_platform!($host);
     };
 }
 
