@@ -63,6 +63,8 @@ const KNOWN: &[(&str, &str)] = &[
     ("shader/shaders.rs", "systems/water"),
     ("shading/ibl.rs", "renderer"),
     ("shading/ibl.rs", "systems/environment"),
+    ("shading/ibl/bake.rs", "systems/environment"),
+    ("shading/ibl/probe_filter.rs", "systems/environment"),
     ("shading/probe_content.rs", "systems/terrain"),
     ("shading/probes.rs", "renderer"),
     ("shading/probes.rs", "systems/fluids"),
