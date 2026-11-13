@@ -15,7 +15,7 @@ pub mod filter;
 mod path;
 pub mod smil;
 
-pub use path::{Path, bounds, shape_path};
+pub use path::{Path, bounds, shape_path, subpaths};
 
 // ── the SVG document ─────────────────────────────────────────────────────
 

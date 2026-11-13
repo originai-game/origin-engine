@@ -498,17 +498,3 @@ pub(super) fn gradient(
         dither: true,
     })
 }
-
-/// A path's subpaths as `ShapeKind::Path` points: each its start, then
-/// three points per cubic.
-pub(crate) fn subpaths(p: &crate::svg::Path) -> Vec<(Vec<[f32; 2]>, bool)> {
-    p.subpaths
-        .iter()
-        .filter(|(_, cubics, _)| !cubics.is_empty())
-        .map(|(start, cubics, closed)| {
-            let mut pts: Vec<[f32; 2]> = vec![(*start).into()];
-            pts.extend(cubics.iter().flatten().map(|v: &Vec2| <[f32; 2]>::from(*v)));
-            (pts, *closed)
-        })
-        .collect()
-}

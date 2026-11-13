@@ -6,8 +6,8 @@
 //! shape's percentages) is resolved from the placed size when it is drawn,
 //! so the draw is a function of the box size alone.
 
+use super::boxes;
 use super::css::{Tok, describe, tokens};
-use super::{boxes, build};
 use crate::paint::{
     Blend, Builtin, ColorRef, Effect, FillRule, Gradient, GradientKind, Layer, Material, ShapeKind,
     Spread, Stop, TextShadow,

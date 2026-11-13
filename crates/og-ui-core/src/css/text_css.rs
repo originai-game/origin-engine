@@ -1014,7 +1014,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         let color = own("text-decoration-color")
             .and_then(|c| crate::css_color::parse_str(&c).ok())
             .map(|c| c.resolve(&crate::css_color::Context::of(theme)))
-            .map(crate::doc::css::hex)
+            .map(super::css::hex)
             .unwrap_or_else(|| "-".into());
         let thick = own("text-decoration-thickness")
             .and_then(|v| length_of(&v, own_size, own_size))
@@ -1350,12 +1350,12 @@ fn compute(
             let c = crate::css_color::parse_str(v)?;
             let c = if c.uses_current() {
                 // currentColor computes to the element's colour.
-                crate::css_color::parse_str(&crate::doc::css::hex(current))?
+                crate::css_color::parse_str(&super::css::hex(current))?
             } else {
                 c
             };
             match c.literal() {
-                Some(l) => crate::doc::css::hex(l),
+                Some(l) => super::css::hex(l),
                 None => v.to_string(),
             }
         }

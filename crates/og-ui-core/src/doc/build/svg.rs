@@ -20,7 +20,7 @@ use crate::doc::schema_extra::svg_prop;
 use crate::paint::{
     ColorRef, ElementDraw, Gradient, GradientKind, Paint, ShapeKind, Stop, Stroke, StrokeAlign,
 };
-use crate::svg::{Affine, GradientDef, PaintRef, Style, bounds, shape_path};
+use crate::svg::{Affine, GradientDef, PaintRef, Style, bounds, shape_path, subpaths};
 use og_core::glam::Vec2;
 
 mod defs;
@@ -28,7 +28,7 @@ mod shapes;
 mod smil;
 
 pub use defs::*;
-pub(crate) use defs::{css_clip, css_filter, srgba, subpaths};
+pub(crate) use defs::{css_clip, css_filter, srgba};
 pub use shapes::*;
 pub(super) use smil::animate;
 pub use smil::*;

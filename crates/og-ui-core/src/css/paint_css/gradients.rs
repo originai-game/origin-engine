@@ -15,7 +15,7 @@ pub(crate) fn color(t: &Tok) -> Result<ColorRef, String> {
         // `--panel-raised` names the role `panelRaised`, as in a colour
         // expression ([`crate::css_color`]).
         return Ok(ColorRef::Token {
-            name: crate::doc::css::camel(name),
+            name: super::super::css::camel(name),
             alpha: 1.0,
         });
     }

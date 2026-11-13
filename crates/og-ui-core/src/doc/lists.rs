@@ -10,6 +10,7 @@ use super::StyleDeclaration;
 use super::matching::{self, Tree};
 use super::selectors::Selector;
 use super::variables;
+pub use crate::css::image_css::list_style_image as image;
 use serde_json::Value;
 
 /// The user-agent rules HTML's stylesheet gives these elements (and the
@@ -167,25 +168,6 @@ pub(super) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
         }
         _ => Ok(vec![d]),
     }
-}
-
-/// `list-style-image`: `none` or `url(name)`, a picture the game
-/// registered (`UiDesc.images`); the name, or `None` for `none`.
-pub fn image(value: &str) -> Result<Option<String>, String> {
-    let v = value.trim();
-    if v == "none" {
-        return Ok(None);
-    }
-    let inner = v
-        .strip_prefix("url(")
-        .or_else(|| v.strip_prefix("image("))
-        .and_then(|r| r.strip_suffix(')'))
-        .ok_or_else(|| format!("list-style-image takes none or url(name), not {v}"))?;
-    let name = inner.trim().trim_matches(|c| c == '"' || c == '\'');
-    if name.is_empty() {
-        return Err("list-style-image: url() names a registered picture".into());
-    }
-    Ok(Some(name.to_string()))
 }
 
 fn integer(value: Option<&Value>) -> Option<i64> {

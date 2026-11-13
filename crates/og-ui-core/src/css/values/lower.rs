@@ -131,7 +131,7 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
             .map(|(prop, v)| e(prop, vec![Value::String(v)]))
             .collect()),
         "list-style-image" => {
-            super::lists::image(value)?;
+            super::image_css::list_style_image(value)?;
             Ok(vec![e(
                 "markerImage",
                 vec![Value::String(value.trim().into())],
@@ -935,7 +935,7 @@ fn hint_for(name: &str) -> String {
     if let Some(css) = css_name(&c).or(css_name(name)) {
         return format!(" (write `{css}`)");
     }
-    if crate::doc::schema::prop(&c).is_some() || crate::doc::schema::prop(name).is_some() {
+    if super::super::schema::prop(&c).is_some() || super::super::schema::prop(name).is_some() {
         return format!(" ({c} is an attribute: `{c} <value>`, without a colon)");
     }
     let near: Vec<&str> = STYLE

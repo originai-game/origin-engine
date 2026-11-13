@@ -6,6 +6,7 @@
 
 pub use crate::css::at_rules;
 pub(crate) use crate::css::boxes;
+pub use crate::css::{AtQuery, StyleDeclaration};
 pub mod build;
 pub(crate) use og_css::calc;
 pub mod catalogue;
@@ -277,18 +278,6 @@ pub struct PropSet {
     pub source: String,
 }
 
-/// One authored CSS declaration. Values remain token streams until the
-/// winning declaration's variables are resolved against its mounted parent.
-#[derive(Clone, Debug, PartialEq)]
-pub struct StyleDeclaration {
-    pub name: String,
-    pub value: variables::Value,
-    pub source: String,
-    pub important: bool,
-    /// This longhand's value must be extracted after var() substitution.
-    pub pending_shorthand: Option<&'static str>,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleRule {
     /// Inline styles outrank stylesheet declarations at equal importance.
@@ -316,14 +305,6 @@ impl PropSet {
     pub fn name(&self) -> &'static str {
         PROPS[self.spec].name
     }
-}
-
-/// The enclosing stylesheet query conditions, intersected when nested.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct AtQuery {
-    pub media: media::Query,
-    /// Enclosing `@container` conditions; each picks its own container.
-    pub container: Vec<container::Condition>,
 }
 
 /// A state value: an animatable prop or a colour.

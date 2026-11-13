@@ -31,5 +31,25 @@ pub mod variables;
 pub(crate) use og_css::calc;
 use values as css;
 
-use crate::doc::{AtQuery, StyleDeclaration, build, lists, syntax, view_transition};
+use crate::doc::{build, schema, syntax, view_transition};
 use og_core::ogt::Value;
+
+/// One authored CSS declaration. Values remain token streams until the
+/// winning declaration's variables are resolved against its mounted parent.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StyleDeclaration {
+    pub name: String,
+    pub value: variables::Value,
+    pub source: String,
+    pub important: bool,
+    /// This longhand's value must be extracted after var() substitution.
+    pub pending_shorthand: Option<&'static str>,
+}
+
+/// The enclosing stylesheet query conditions, intersected when nested.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AtQuery {
+    pub media: media::Query,
+    /// Enclosing `@container` conditions; each picks its own container.
+    pub container: Vec<container::Condition>,
+}
