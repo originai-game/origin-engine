@@ -18,6 +18,51 @@ import { spawnSite } from "./spawn-site.ts";
 import { decodeComponentField, decodeField, encodeComponentField, encodeField, plain, type RecordField } from "./runtime/record-bytes.ts";
 import { checkedProbe } from "./runtime/probe-params.ts";
 
+// ── state ─────────────────────────────────────────────────────────────────
+
+/**
+ * What the runtime remembers between calls, in one object: every part of
+ * the runtime reads and writes this copy.
+ */
+const rt = {
+  /** The host a loader bound (bindHost), or null before one did. */
+  host: null as HostBinding | null,
+  /** What GameDesc.ui was refused, while its registration runs; null outside one. */
+  uiRegistrationErrors: null as string[] | null,
+  /**
+   * Counts engine calls made through `abi()` and dispatches (game code entered
+   * or left): the engine changes a resource only inside one of them, so a
+   * resource handle's read made while the count holds is still the store's
+   * value (recordHandle).
+   */
+  engineCalls: 0,
+  /** The shared buffer as words, doubles, bytes and a view (words()); empty until first asked for and after a host change. */
+  sharedWords: new Uint32Array(0) as Uint32Array,
+  sharedFloats: new Float64Array(0) as Float64Array,
+  sharedBytes: new Uint8Array(0) as Uint8Array,
+  sharedView: new DataView(new ArrayBuffer(0)) as DataView,
+  /**
+   * Moves on whenever the engine may have written the buffer again (a call
+   * into game code, a query's archetypes asked for), and when a system call
+   * ends: what a system's query finds there is its own only while this holds.
+   */
+  sharedStamp: 0,
+  /** The layout epoch the cached component numbers were read in. */
+  componentIdsEpoch: 0,
+  /** The root of the engine being created: GameDesc.start (and the boot scene's hooks) spawn before its id is known. */
+  creatingRoot: undefined as string | undefined,
+  /** Moves on whenever views may have gone stale: after every call into game code, and at every structural change outside systems. */
+  epoch: 0,
+  /** The system, run condition or hook game code is running in now, or null outside one. */
+  running: null as Running | null,
+  /** The engine and tick of the call into game code in progress (og.assert's), or null between calls. */
+  calling: null as { readonly engine: number; readonly tick: number; readonly world: object } | null,
+  /** Whether the bound host is a publish build (the probe's hello says), learnt when the first engine is made. */
+  publishBuild: null as boolean | null,
+  /** Calls into game code in progress (systems, commands, facts, start): writes wait for their end. */
+  inGame: 0,
+};
+
 // ── host binding ──────────────────────────────────────────────────────────
 
 /** A typed array of the column kinds' element types. */
@@ -68,9 +113,7 @@ export const ARRAYS = {
   Uint8Array,
 } as const;
 
-let host: HostBinding | null = null;
 const queue: Array<(abi: HostAbi<Uint32Array, unknown>) => void> = [];
-let uiRegistrationErrors: string[] | null = null;
 const uiRegistrationReads = new Set([
   "og_engine_ui_patch", "og_engine_resource_layout", "og_engine_read_resource",
   "og_engine_component_id", "og_engine_component_layout", "og_engine_read_component",
@@ -83,12 +126,12 @@ const abiReturns = new Map(bindings.calls.filter(call => "symbol" in call)
 function registrationBoundary(abi: HostAbi<Uint32Array, unknown>): HostAbi<Uint32Array, unknown> {
   return new Proxy(abi, {
     get(target, property, receiver) {
-      if (!uiRegistrationErrors || typeof property !== "string" || uiRegistrationReads.has(property)) {
+      if (!rt.uiRegistrationErrors || typeof property !== "string" || uiRegistrationReads.has(property)) {
         return Reflect.get(target, property, receiver);
       }
       return () => {
         const reason = `GameDesc.ui may only register presentation data and read the world: ${property} is not allowed`;
-        uiRegistrationErrors?.push(reason);
+        rt.uiRegistrationErrors?.push(reason);
         if (abiReturns.get(property)?.startsWith("Result<")) return JSON.stringify(refused(reason));
         // Void/property APIs have no Result to return. The dispatcher catches
         // this and returns the registration failure to both hosts as a value.
@@ -106,10 +149,10 @@ export function bindHost(binding: HostBinding): void {
   }
   // Entity arguments are checked here, so null or undefined is refused
   // naming the call on both hosts alike (generated/abi.ts).
-  host = { ...binding, abi: registrationBoundary(checkEntities(binding.abi)) };
-  publishBuild = null;
+  rt.host = { ...binding, abi: registrationBoundary(checkEntities(binding.abi)) };
+  rt.publishBuild = null;
   // Another host's shared buffer and component numbers are not this one's.
-  sharedWords = new Uint32Array(0);
+  rt.sharedWords = new Uint32Array(0);
   forgetComponents();
   binding.abi.og_host_set_dispatcher(dispatch);
   for (const declare of queue.splice(0)) declare(binding.abi);
@@ -117,23 +160,16 @@ export function bindHost(binding: HostBinding): void {
 
 /** The bound host, for loaders. */
 export function boundHost(): HostBinding | null {
-  return host;
+  return rt.host;
 }
 
-/**
- * Counts engine calls made through `abi()` and dispatches (game code entered
- * or left): the engine changes a resource only inside one of them, so a
- * resource handle's read made while the count holds is still the store's
- * value (recordHandle).
- */
-let engineCalls = 0;
 
 function abi(): HostAbi<Uint32Array, unknown> {
-  if (!host) throw new Error("no engine host is loaded: start the game through @origingame/engine's web or node loader");
+  if (!rt.host) throw new Error("no engine host is loaded: start the game through @origingame/engine's web or node loader");
   // A resource handle's writes reach the engine before anything else does.
   if (dirtyRecords.length > 0) flushRecords();
-  engineCalls++;
-  return host.abi;
+  rt.engineCalls++;
+  return rt.host.abi;
 }
 
 // ── the shared buffer ─────────────────────────────────────────────────────
@@ -143,28 +179,18 @@ const SHARED_BYTES = 65536;
 /** Where a system call's archetypes start in it, in words: after the time scale's four doubles. */
 const FRAME_QUERY_WORD = 8;
 
-let sharedWords: Uint32Array = new Uint32Array(0);
-let sharedFloats: Float64Array = new Float64Array(0);
-let sharedBytes: Uint8Array = new Uint8Array(0);
-let sharedView: DataView = new DataView(new ArrayBuffer(0));
 
-/**
- * Moves on whenever the engine may have written the buffer again (a call
- * into game code, a query's archetypes asked for), and when a system call
- * ends: what a system's query finds there is its own only while this holds.
- */
-let sharedStamp = 0;
 
 /** The buffer as words (and its other views with it), made again once a grown wasm memory detached them. */
 function words(): Uint32Array {
-  if (sharedWords.length === 0) {
-    const { buffer, offset } = host!.shared();
-    sharedWords = new Uint32Array(buffer, offset, SHARED_BYTES / 4);
-    sharedFloats = new Float64Array(buffer, offset, SHARED_BYTES / 8);
-    sharedBytes = new Uint8Array(buffer, offset, SHARED_BYTES);
-    sharedView = new DataView(buffer, offset, SHARED_BYTES);
+  if (rt.sharedWords.length === 0) {
+    const { buffer, offset } = rt.host!.shared();
+    rt.sharedWords = new Uint32Array(buffer, offset, SHARED_BYTES / 4);
+    rt.sharedFloats = new Float64Array(buffer, offset, SHARED_BYTES / 8);
+    rt.sharedBytes = new Uint8Array(buffer, offset, SHARED_BYTES);
+    rt.sharedView = new DataView(buffer, offset, SHARED_BYTES);
   }
-  return sharedWords;
+  return rt.sharedWords;
 }
 
 /** What `og_engine_component_id` answers for a name the world has not registered as a component. */
@@ -172,7 +198,6 @@ const NO_COMPONENT = 4294967295;
 
 /** Component numbers by engine and name (`og_engine_component_id`), good for one layout epoch. */
 const componentIds = new Map<number, Map<string, number>>();
-let componentIdsEpoch = 0;
 
 /** A component's number in an engine's world; NO_COMPONENT while the world has not registered it. */
 function componentId(engine: number, name: string): number {
@@ -240,7 +265,7 @@ function decodeComponent(c: ComponentRecord): Record<string, unknown> | undefine
   const fields = c.fields;
   for (let i = 0; i < fields.length; i++) {
     const f = fields[i]!;
-    const value = decodeComponentField(sharedView, sharedBytes, f);
+    const value = decodeComponentField(rt.sharedView, rt.sharedBytes, f);
     if (value === undefined) return undefined;
     out[f.name] = value;
   }
@@ -256,7 +281,7 @@ function encodeComponent(c: ComponentRecord, value: Record<string, unknown>): bo
     // JSON leaves an undefined value out.
     if (x === undefined) continue;
     const f = c.byName.get(key);
-    if (!f || !encodeComponentField(sharedView, sharedBytes, f, x)) return false;
+    if (!f || !encodeComponentField(rt.sharedView, rt.sharedBytes, f, x)) return false;
     w[at++] = f.offset;
     w[at++] = f.size;
   }
@@ -266,7 +291,7 @@ function encodeComponent(c: ComponentRecord, value: Record<string, unknown>): bo
 
 /** Run now if a host is bound, else when one is. */
 function declare(call: (abi: HostAbi<Uint32Array, unknown>) => void): void {
-  if (host) call(host.abi);
+  if (rt.host) call(rt.host.abi);
   else queue.push(call);
 }
 
@@ -515,8 +540,6 @@ const gameMigrations = new WeakMap<object, readonly SaveMigrationIn[]>();
 const engineGames = new Map<number, object>();
 /** Each engine's CreateOptions.root: the project a spawn's source is relative to. */
 const engineRoots = new Map<number, string>();
-/** The root of the engine being created: GameDesc.start (and the boot scene's hooks) spawn before its id is known. */
-let creatingRoot: string | undefined;
 
 /** The og.game() token engine `id` runs (og.assert reads its game's sites by it). */
 export function engineGame(id: number): object | undefined {
@@ -566,31 +589,26 @@ export function defineGame(desc: GameDescIn = {}): GameToken {
 
 export function registerCommand(name: string, handler: Function, desc?: { usage?: string; doc?: string }): Result<void> {
   const id = callback(handler);
-  if (!host) {
+  if (!rt.host) {
     declare((a) => void a.og_commands_register(name, id, json(desc)));
     return { ok: true, value: undefined };
   }
-  return parse(host.abi.og_commands_register(name, id, json(desc)));
+  return parse(rt.host.abi.og_commands_register(name, id, json(desc)));
 }
 
 // ── views ─────────────────────────────────────────────────────────────────
 
-/** Moves on whenever views may have gone stale: after every call into game code, and at every structural change outside systems. */
-let epoch = 0;
 
 interface Running {
   readonly system: SystemEntry;
   readonly tick: number;
 }
 
-let running: Running | null = null;
 
-/** The engine and tick of the call into game code in progress (og.assert's), or null between calls. */
-let calling: { readonly engine: number; readonly tick: number; readonly world: object } | null = null;
 
 /** The engine, its world and the tick game code is running in now: og.assert records into it. */
 export function currentCall(): { readonly engine: number; readonly tick: number; readonly world: object } | null {
-  return calling;
+  return rt.calling;
 }
 
 /** A component token's field names and column kinds, worked out once. */
@@ -653,12 +671,12 @@ class ArchetypeViewImpl {
     this.#tick = tick;
     this.#types = types;
     this.#engine = engine;
-    this.#epoch = epoch;
+    this.#epoch = rt.epoch;
     this.#system = system;
   }
 
   #check(): void {
-    if (this.#epoch !== epoch) {
+    if (this.#epoch !== rt.epoch) {
       const owner = this.#system ? `system '${this.#system.name}'` : "a call outside systems";
       throw new Error(`stale ArchetypeView: it belonged to tick ${this.#tick}, ${owner}; views last for the system call they were handed to (outside systems, until the next structural change), so take them again from q.archetypes()`);
     }
@@ -699,7 +717,7 @@ class ArchetypeViewImpl {
     this.#check();
     const cached = this.#columns?.get(component.name) as Record<string, ColumnArray> | undefined;
     // A grown wasm memory detached the arrays: make them again.
-    if (cached && !(host!.fresh && Object.values(cached).some((a) => !host!.fresh!(a)))) return cached;
+    if (cached && !(rt.host!.fresh && Object.values(cached).some((a) => !rt.host!.fresh!(a)))) return cached;
     const s = this.#system;
     if (s && !s.reads.has(component.name) && !s.writes.has(component.name)) {
       throw new Error(`system '${s.name}' did not declare '${component.name}' in its reads or writes; declare it to get its columns`);
@@ -709,7 +727,7 @@ class ArchetypeViewImpl {
       throw new Error(`this archetype has no '${component.name}'; check a.has(${component.name}) first`);
     }
     const { names, kinds } = layoutOf(component);
-    const b = host!;
+    const b = rt.host!;
     const arrays = b.columns(abi().og_engine_view_column(this.#view, id), kinds, this.count);
     if (!arrays || arrays.length !== names.length) {
       throw new Error(`the ${b.name} host refused the columns of '${component.name}' (tick ${this.#tick})`);
@@ -743,11 +761,11 @@ class QueryImpl {
    * buffer since, or when they did not all fit.
    */
   archetypes(): readonly ArchetypeViewImpl[] {
-    if (this.#cached && this.#cachedEpoch === epoch) return this.#cached;
+    if (this.#cached && this.#cachedEpoch === rt.epoch) return this.#cached;
     const list: ArchetypeViewImpl[] = [];
     let at = FRAME_QUERY_WORD;
-    if (this.#described !== sharedStamp) {
-      sharedStamp++;
+    if (this.#described !== rt.sharedStamp) {
+      rt.sharedStamp++;
       abi().og_engine_query_archetypes(this.#handle, 0);
       at = 0;
     }
@@ -756,10 +774,10 @@ class QueryImpl {
       const total = w[at]!;
       const written = w[at + 1]!;
       const tick = w[at + 2]!;
-      if (w[at + 3] !== componentIdsEpoch) {
+      if (w[at + 3] !== rt.componentIdsEpoch) {
         // Layouts were declared again (a new engine, a reload): the numbers may have moved.
         forgetComponents();
-        componentIdsEpoch = w[at + 3]!;
+        rt.componentIdsEpoch = w[at + 3]!;
       }
       let p = at + 4;
       for (let k = 0; k < written; k++) {
@@ -771,12 +789,12 @@ class QueryImpl {
       }
       if (written === 0 || list.length >= total) break;
       // The rest did not fit: asked for from where this stopped.
-      sharedStamp++;
+      rt.sharedStamp++;
       abi().og_engine_query_archetypes(this.#handle, list.length);
       at = 0;
     }
     this.#cached = list;
-    this.#cachedEpoch = epoch;
+    this.#cachedEpoch = rt.epoch;
     return list;
   }
 
@@ -787,16 +805,14 @@ class QueryImpl {
 
 // ── declared access ───────────────────────────────────────────────────────
 
-/** Whether the bound host is a publish build (the probe's hello says), learnt when the first engine is made. */
-let publishBuild: boolean | null = null;
 
 /** Whether the bound host is a publish build, once an engine was made (null before). */
 export function isPublishBuild(): boolean | null {
-  return publishBuild;
+  return rt.publishBuild;
 }
 
 function learnBuild(engine: number): void {
-  publishBuild ??= (parse<{ build?: string } | null>(abi().og_engine_probe_hello(engine))?.build ?? "dev") === "publish";
+  rt.publishBuild ??= (parse<{ build?: string } | null>(abi().og_engine_probe_hello(engine))?.build ?? "dev") === "publish";
 }
 
 /**
@@ -806,15 +822,15 @@ function learnBuild(engine: number): void {
  * build lets the engine refuse it, which logs it once per system.
  */
 function checkAccess(access: "read" | "write", name: string): boolean {
-  if (access === "write" && uiRegistrationErrors) {
-    uiRegistrationErrors.push(`GameDesc.ui cannot write '${name}'; gameplay setup belongs in start`);
+  if (access === "write" && rt.uiRegistrationErrors) {
+    rt.uiRegistrationErrors.push(`GameDesc.ui cannot write '${name}'; gameplay setup belongs in start`);
     return false;
   }
-  const r = running;
+  const r = rt.running;
   if (!r) return true;
   const s = r.system;
   if (access === "write" ? s.writes.has(name) : s.reads.has(name) || s.writes.has(name)) return true;
-  if (publishBuild === true) return false;
+  if (rt.publishBuild === true) return false;
   const list = access === "write" ? "writes" : "reads or writes";
   throw new Error(`system '${s.name}' did not declare '${name}' among its ${list} (${access} refused): add it to the system's ${list}`);
 }
@@ -856,8 +872,6 @@ interface RecordCopy {
 /** Per world, per resource: its copy, or null for one read as JSON. */
 const records = new Map<number, Map<string, RecordCopy | null>>();
 const dirtyRecords: RecordCopy[] = [];
-/** Calls into game code in progress (systems, commands, facts, start): writes wait for their end. */
-let inGame = 0;
 
 function forgetRecords(world: number): void {
   records.delete(world);
@@ -866,13 +880,13 @@ function forgetRecords(world: number): void {
 
 function writeRecord(r: RecordCopy): void {
   r.dirty = false;
-  const answer = parse<Result<void>>(host!.abi.og_engine_write_resource_bytes(r.world, r.name, r.bytes));
-  engineCalls++;
+  const answer = parse<Result<void>>(rt.host!.abi.og_engine_write_resource_bytes(r.world, r.name, r.bytes));
+  rt.engineCalls++;
   if (!answer.ok) {
     r.at = -1;
     throw new Error(`${r.name}: ${answer.reason}`);
   }
-  r.at = engineCalls;
+  r.at = rt.engineCalls;
 }
 
 /** Writes every dirty record back, oldest first; throws the first refusal after writing the rest. */
@@ -889,7 +903,7 @@ function flushRecords(): void {
 }
 
 function recordLayout(world: number, name: string): RecordLayout | null {
-  const answer = parse<Result<RecordLayout>>(host!.abi.og_engine_resource_layout(world, name));
+  const answer = parse<Result<RecordLayout>>(rt.host!.abi.og_engine_resource_layout(world, name));
   return answer.ok ? answer.value : null;
 }
 
@@ -913,8 +927,8 @@ function recordOf(world: number, name: string): RecordCopy | null {
 
 /** Brings the copy up to the engine's value when an engine call happened since; false when the engine refused. */
 function refresh(r: RecordCopy): boolean {
-  if (r.dirty || r.at === engineCalls) return true;
-  const fetched = host!.abi.og_engine_read_resource(r.world, r.name);
+  if (r.dirty || r.at === rt.engineCalls) return true;
+  const fetched = rt.host!.abi.og_engine_read_resource(r.world, r.name);
   if (fetched.length === 0) return false;
   const epoch = new DataView(fetched.buffer, fetched.byteOffset, fetched.byteLength).getUint32(fetched.length - 4, true);
   if (epoch !== r.layout.epoch || fetched.length !== r.layout.size + 4) {
@@ -933,7 +947,7 @@ function refresh(r: RecordCopy): boolean {
     r.view = new DataView(r.bytes.buffer);
   }
   r.bytes.set(fetched);
-  r.at = engineCalls;
+  r.at = rt.engineCalls;
   return true;
 }
 
@@ -961,12 +975,12 @@ function recordHandle(world: WorldImpl, r: RecordCopy): object {
         if (!answer.ok) throw new Error(`${name}: ${answer.reason}`);
         return (lastValue = answer.value[key]);
       }
-      if (r.at !== engineCalls && !r.dirty) {
+      if (r.at !== rt.engineCalls && !r.dirty) {
         // Undeclared in a publish build: the engine refuses and logs it once;
         // the handle answers what it last read and the game keeps running.
         if (!checkAccess("read", name)) return lastValue;
         if (!refresh(r)) {
-          const answer = parse<Result<Record<string, unknown>>>(host!.abi.og_world_resource(id, name));
+          const answer = parse<Result<Record<string, unknown>>>(rt.host!.abi.og_world_resource(id, name));
           if (!answer.ok) throw new Error(`${name}: ${answer.reason}`);
           const value = answer.value[key];
           // A list reads as a frozen copy on this path too.
@@ -989,7 +1003,7 @@ function recordHandle(world: WorldImpl, r: RecordCopy): object {
       } catch (e) {
         throw new Error(`${name}.${key}: ${(e as Error).message}`);
       }
-      if (inGame === 0) return writeRecord(r);
+      if (rt.inGame === 0) return writeRecord(r);
       if (!r.dirty) {
         r.dirty = true;
         dirtyRecords.push(r);
@@ -1065,14 +1079,14 @@ function jsonResource(world: WorldImpl, token: Token, value: Record<string, unkn
   // call or dispatch happened since (`engineCalls`).
   const name = token.name;
   let last = value;
-  let at = engineCalls;
+  let at = rt.engineCalls;
   const read = (): Record<string, unknown> => {
-    if (at === engineCalls) return last;
+    if (at === rt.engineCalls) return last;
     if (name !== "og.Time" && !checkAccess("read", name)) return last;
-    const answer = parse<Result<Record<string, unknown>>>(host!.abi.og_world_resource(id, name));
+    const answer = parse<Result<Record<string, unknown>>>(rt.host!.abi.og_world_resource(id, name));
     if (answer.ok) {
       last = answer.value;
-      at = engineCalls;
+      at = rt.engineCalls;
     }
     return last;
   };
@@ -1099,7 +1113,7 @@ function rngStream(handle: number): object {
 
 /** A structural change outside systems: every view handed out so far goes stale. */
 function structural<T>(answer: T): T {
-  if (!running) epoch++;
+  if (!rt.running) rt.epoch++;
   return answer;
 }
 
@@ -1116,8 +1130,8 @@ export class WorldImpl {
 
   spawn(desc?: unknown): Result<number> {
     // SpawnDesc.source: the game's line that called spawn, outside a publish build (spawn-site.ts).
-    if (publishBuild !== true && (desc == null || (typeof desc === "object" && !(desc as { source?: unknown }).source))) {
-      const source = spawnSite(engineRoots.get(this.id) ?? creatingRoot);
+    if (rt.publishBuild !== true && (desc == null || (typeof desc === "object" && !(desc as { source?: unknown }).source))) {
+      const source = spawnSite(engineRoots.get(this.id) ?? rt.creatingRoot);
       if (source !== null) desc = { ...(desc as object | undefined), source };
     }
     return structural(parse(abi().og_world_spawn(this.id, json(desc))));
@@ -1148,7 +1162,7 @@ export class WorldImpl {
     if (c) {
       const engine = abi();
       // The answer overwrites what a system's query found in the shared buffer.
-      sharedStamp++;
+      rt.sharedStamp++;
       const epoch = engine.og_engine_read_component(this.id, entity, c.id);
       if (epoch === c.epoch) {
         const value = decodeComponent(c);
@@ -1163,10 +1177,10 @@ export class WorldImpl {
 
   set(entity: number, component: Token, value: unknown): Result<void> {
     // GameDesc.ui's refusal of a write names og_world_set.
-    const c = typeof entity === "number" && !uiRegistrationErrors && plain(value) ? componentRecord(this.id, component.name) : null;
+    const c = typeof entity === "number" && !rt.uiRegistrationErrors && plain(value) ? componentRecord(this.id, component.name) : null;
     if (c) {
       const engine = abi();
-      sharedStamp++;
+      rt.sharedStamp++;
       if (encodeComponent(c, value as Record<string, unknown>)) {
         const epoch = engine.og_engine_write_component(this.id, entity, c.id, c.epoch);
         if (epoch === c.epoch) return structural({ ok: true, value: undefined });
@@ -1180,8 +1194,8 @@ export class WorldImpl {
     if (resource.name !== "og.Time") checkAccess("read", resource.name);
     // A resource with a byte layout: its handle, made once per world. The
     // read here is what refuses an unregistered or undeclared resource.
-    const r = host ? recordOf(this.id, resource.name) : null;
-    if (r && (r.dirty || r.at === engineCalls || refresh(r))) return { ok: true, value: recordHandle(this, r) };
+    const r = rt.host ? recordOf(this.id, resource.name) : null;
+    if (r && (r.dirty || r.at === rt.engineCalls || refresh(r))) return { ok: true, value: recordHandle(this, r) };
     const answer = parse<Result<Record<string, unknown>>>(abi().og_world_resource(this.id, resource.name));
     if (!answer.ok) return answer;
     return { ok: true, value: r ? recordHandle(this, r) : jsonResource(this, resource, answer.value) };
@@ -1456,33 +1470,33 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
   }
   const fn = callbacks[id];
   const world = worldFor(engine);
-  const outer = running;
-  const outerCall = calling;
-  calling = { engine, tick, world };
-  engineCalls++;
-  inGame++;
+  const outer = rt.running;
+  const outerCall = rt.calling;
+  rt.calling = { engine, tick, world };
+  rt.engineCalls++;
+  rt.inGame++;
   // What the shared buffer held for an outer call is gone.
-  const described = ++sharedStamp;
+  const described = ++rt.sharedStamp;
   try {
     if (kind === 6) {
       const errors: string[] = [];
-      const outerRegistration = uiRegistrationErrors;
-      uiRegistrationErrors = errors;
+      const outerRegistration = rt.uiRegistrationErrors;
+      rt.uiRegistrationErrors = errors;
       try {
         const result = uiReactor(world).registerPresentation(() => { fn?.(world); });
         if (!result.ok) errors.push(result.reason);
         return errors.join("\n");
-      } finally { uiRegistrationErrors = outerRegistration; }
+      } finally { rt.uiRegistrationErrors = outerRegistration; }
     }
     if (kind === 0) {
       const system = systems.get(id);
       if (!system || !fn) return `the dispatcher has no system with callback id ${id}: the bundle declared ${systems.size} system(s); was the engine built from another bundle?`;
-      running = { system, tick };
+      rt.running = { system, tick };
       // The shared buffer opens with the time scale: scale, hitStop, scaledDt, scaledElapsed.
       words();
       const time = Object.freeze({
         tick, dt, elapsed, rate: rates.get(engine) ?? Math.round(1 / dt),
-        scale: sharedFloats[0]!, hitStop: sharedFloats[1]!, scaledDt: sharedFloats[2]!, scaledElapsed: sharedFloats[3]!,
+        scale: rt.sharedFloats[0]!, hitStop: rt.sharedFloats[1]!, scaledDt: rt.sharedFloats[2]!, scaledElapsed: rt.sharedFloats[3]!,
       });
       fn(new QueryImpl(query, system, engine, described), time, world);
       flushRecords();
@@ -1492,7 +1506,7 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
     if (kind === 3 || kind === 4) {
       const entry = (kind === 3 ? conditions : hookEntries).get(id);
       if (!entry) return `the dispatcher has no ${kind === 3 ? "run condition" : "hook"} with callback id ${id}`;
-      running = { system: entry, tick };
+      rt.running = { system: entry, tick };
       if (kind === 3) {
         const holds = fn(world) === true;
         flushRecords();
@@ -1525,13 +1539,13 @@ const dispatch: Dispatcher = (kind, engine, id, query, tick, dt, elapsed, payloa
         // The throw already failed the call; this refusal adds nothing.
       }
     }
-    inGame--;
-    running = outer;
-    calling = outerCall;
-    epoch++;
-    engineCalls++;
+    rt.inGame--;
+    rt.running = outer;
+    rt.calling = outerCall;
+    rt.epoch++;
+    rt.engineCalls++;
     // A system's archetypes in the shared buffer are retired with its views.
-    sharedStamp++;
+    rt.sharedStamp++;
   }
 };
 
@@ -1689,14 +1703,14 @@ export class Engine {
   /** Take fixed steps: the tick reached, or the first failing system with its tick. */
   advance(steps: number): Result<number> {
     const answer = parse<Result<number>>(abi().og_engine_advance(this.id, steps));
-    epoch++;
+    rt.epoch++;
     return answer;
   }
 
   /** Run a registered command action now, between ticks. */
   command(action: string, args: readonly string[] = []): Result<void> {
     const answer = parse<Result<void>>(abi().og_engine_command(this.id, action, JSON.stringify(args)));
-    epoch++;
+    rt.epoch++;
     this.pumpPlatform();
     return answer;
   }
@@ -1745,7 +1759,7 @@ export class Engine {
   } {
     this.pumpPlatform();
     const answer = parse<{ ok: boolean; ticks?: number }>(abi().og_engine_frame(this.id, elapsedMs));
-    epoch++;
+    rt.epoch++;
     this.pumpPlatform();
     return answer;
   }
@@ -1753,7 +1767,7 @@ export class Engine {
   /** The probe's JSON-RPC 2.0 entry: one request frame in, its answer frame out. */
   call(frame: string): string {
     const answer = abi().og_engine_call(this.id, frame);
-    epoch++;
+    rt.epoch++;
     return answer;
   }
 
@@ -1774,7 +1788,7 @@ export class Engine {
   }
 
   destroy(): boolean {
-    epoch++;
+    rt.epoch++;
     for (const scope of uiReactors.get(this.id)?.scopes.values() ?? []) scope.dispose();
     uiReactors.delete(this.id);
     engines.delete(this.id);
@@ -1790,12 +1804,12 @@ export class Engine {
 export function createEngine(game: GameToken, options: CreateOptions = {}): Result<Engine> {
   const handle = gameHandles.get(game);
   if (handle === undefined) return refused("not a game: pass the bundle's default export, the result of og.game()");
-  creatingRoot = options.root;
+  rt.creatingRoot = options.root;
   let answer: Result<number>;
   try {
     answer = parse<Result<number>>(abi().og_engine_create(handle, JSON.stringify(options)));
   } finally {
-    creatingRoot = undefined;
+    rt.creatingRoot = undefined;
   }
   if (!answer.ok) return answer;
   forgetRecords(answer.value);
@@ -1810,7 +1824,7 @@ function makeProbe(id: number) {
     get version() { return a().og_runtime_probe_get_version(id); },
     tick: () => a().og_runtime_probe_tick(id),
     state: () => parse(a().og_runtime_probe_state(id)),
-    advance: (steps: number) => { const t = a().og_runtime_probe_advance(id, steps); epoch++; return t; },
+    advance: (steps: number) => { const t = a().og_runtime_probe_advance(id, steps); rt.epoch++; return t; },
     pause: () => a().og_runtime_probe_pause(id),
     resume: () => a().og_runtime_probe_resume(id),
     input: (event: unknown) => a().og_runtime_probe_input(id, JSON.stringify(event)),
@@ -1819,7 +1833,7 @@ function makeProbe(id: number) {
     entity: (pid: string) => parse(a().og_runtime_probe_entity(id, pid)),
     bounds: (pid: string) => parse(a().og_runtime_probe_bounds(id, pid)),
     patch: (pid: string, parameter: string, value: unknown) => a().og_runtime_probe_patch(id, pid, parameter, JSON.stringify(value)),
-    run: (program: unknown) => { const r = parse(a().og_runtime_probe_run(id, JSON.stringify(program))); epoch++; return r; },
+    run: (program: unknown) => { const r = parse(a().og_runtime_probe_run(id, JSON.stringify(program))); rt.epoch++; return r; },
     hello: () => parse(a().og_engine_probe_hello(id)),
     capture: (width?: number, height?: number, fit?: number, region?: unknown) =>
       parse(a().og_engine_probe_capture(id, width, height, fit, json(region ?? undefined))),
@@ -1829,7 +1843,7 @@ function makeProbe(id: number) {
     reload: () => parse(a().og_engine_probe_reload(id)),
     snapshot: () => parse(a().og_engine_probe_snapshot(id)),
     restore: (sid: string) => {
-      epoch++;
+      rt.epoch++;
       const restored = a().og_engine_probe_restore(id, sid);
       uiReactors.get(id)?.restoreMounts();
       return restored;
