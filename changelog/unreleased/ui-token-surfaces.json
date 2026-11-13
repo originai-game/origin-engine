@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "default style tokens",
+      "summary": "The default style sets more surfaces as tokens, so a component or a pack names a value instead of writing one: --size-3xl to --size-7xl, --opacity-faint/dim/muted/soft, --filter-locked and --filter-spent, --font-leading-*, --font-tracking-*, --font-weight-*, --motion-easing-in-out and --motion-scale-press/swell/pop/shrink/breathe."
+    }
+  ]
+}
