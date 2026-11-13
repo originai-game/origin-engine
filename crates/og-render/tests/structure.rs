@@ -45,7 +45,7 @@ const KNOWN: &[(&str, &str)] = &[
     ("post/glass.rs", "renderer"),
     ("post/graph.rs", "renderer"),
     ("post/passes.rs", "systems/stylise"),
-    ("post/plan.rs", "systems/stylise"),
+    ("post/plan/targets.rs", "systems/stylise"),
     ("shader/pipeline_features.rs", "systems/terrain"),
     ("shader/pipeline_features.rs", "systems/vegetation"),
     ("shader/pipeline_features.rs", "systems/water"),
