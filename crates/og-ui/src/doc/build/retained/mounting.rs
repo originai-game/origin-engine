@@ -12,12 +12,12 @@ impl Ui {
         mount.validate()?;
         let doc = self
             .docs
-            .host()
-            .docs
+            .library
+            .documents
             .get(document)
             .cloned()
             .ok_or_else(|| format!("missing document '{document}'"))?;
-        content::check_instances(&self.docs.host().docs, document)?;
+        content::check_instances(&self.docs.library.documents, document)?;
         // Every mount reads the engine's `$ui` unless it binds its own.
         let mut inputs = inputs;
         if !inputs.contains_key("ui") {
@@ -92,7 +92,7 @@ impl Ui {
             if self.layer_leaves(k) {
                 return;
             }
-            self.docs.host_mut().layers.layers.remove(k);
+            self.docs.layers.layers.remove(k);
         }
         self.finish_unmount(mount);
     }
@@ -123,8 +123,7 @@ impl Ui {
                     let (frame, lead) = self.open_layer_frame(k);
                     events.extend(lead);
                     let shown = frame.is_some();
-                    let was =
-                        std::mem::replace(&mut self.docs.host_mut().layers.layers[k].shown, shown);
+                    let was = std::mem::replace(&mut self.docs.layers.layers[k].shown, shown);
                     if was && !shown {
                         host.release(self, &root);
                     }
@@ -139,7 +138,7 @@ impl Ui {
                 );
                 let emitted = host.emit(self, &root, env, &mut events, &mut writes);
                 if let Some(Some(frame)) = frame {
-                    let doc = &self.docs.host().docs[&host.registrations[&mount].document];
+                    let doc = &self.docs.library.documents[&host.registrations[&mount].document];
                     let path = root_path(&mount, doc);
                     events.extend(self.close_layer_frame(frame, &path));
                 }

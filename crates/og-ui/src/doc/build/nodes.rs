@@ -70,7 +70,7 @@ impl Ui {
                 return None;
             }
             NodeKind::Use(comp) => {
-                let Some(cdoc) = self.docs.host().docs.get(comp).cloned() else {
+                let Some(cdoc) = self.docs.library.documents.get(comp).cloned() else {
                     self.out.warnings_mut().push(format!(
                         "{}:{}: no component '{comp}' (load its document)",
                         doc.source, n.line
@@ -132,7 +132,7 @@ impl Ui {
                 let rp = self.resolve(b, n, &mount, &mut built, &b.inherited, &mut |s| {
                     self.docs.structure_matches(&doc, s)
                 });
-                self.docs.host_mut().component_root = self.docs.host_mut().structure.any;
+                self.docs.state.component_root = self.docs.library.structure.any;
                 self.out.warnings_mut().extend(
                     rp.cascade
                         .diagnostics
@@ -141,9 +141,9 @@ impl Ui {
                 );
                 let r =
                     self.mount_doc(cdoc, mount, id, &mut vm, b.env, rp.cascade.computed.clone());
-                self.docs.host_mut().component_root = false;
+                self.docs.state.component_root = false;
                 if opened {
-                    self.docs.host_mut().levels.pop();
+                    self.docs.state.levels.pop();
                 }
                 // The instance's own element props apply to its root.
                 if !rp.vals.is_empty()
@@ -219,7 +219,7 @@ impl Ui {
                 .map(|error| format!("{}:{} ({path}): {error}", doc.source, n.line)),
         );
         let structural = children.is_some();
-        self.docs.host_mut().levels.extend(children);
+        self.docs.state.levels.extend(children);
         self.docs.run_enter(&r);
         let built = self.build_resolved_node(
             b,
@@ -239,10 +239,10 @@ impl Ui {
         );
         self.docs.run_exit();
         if structural {
-            self.docs.host_mut().levels.pop();
+            self.docs.state.levels.pop();
         }
         if opened {
-            self.docs.host_mut().levels.pop();
+            self.docs.state.levels.pop();
         }
         built
     }
@@ -292,8 +292,8 @@ impl Ui {
         self.note_selection(key, &r);
         self.docs.remember_queried(b, i, &path, key, &r);
         self.docs
-            .host_mut()
-            .scroll_now
+            .containers
+            .scroll_read
             .extend(r.cascade.scroll_reads.iter().copied());
         if let Some(container) = r.container {
             self.build_container(container);

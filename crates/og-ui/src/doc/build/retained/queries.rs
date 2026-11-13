@@ -248,7 +248,7 @@ panel { width: 10px; height: 10px; }
         // As a wheel scroll leaves the list (the test does not paint, so
         // the range `scroll_by` clamps to is never recorded); the sticky
         // header, a container that does not scroll, ignores its offset.
-        let keys: Vec<u64> = ui.docs.host().scroll_states.keys().copied().collect();
+        let keys: Vec<u64> = ui.docs.containers.scroll_states.keys().copied().collect();
         for k in keys {
             ui.interaction.state_mut().scroll.insert(k, 40.0);
         }

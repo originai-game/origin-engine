@@ -28,8 +28,8 @@ impl RetainedHost {
             let registration = self.registrations[&mount].clone();
             let document = ui
                 .docs
-                .host()
-                .docs
+                .library
+                .documents
                 .get(&registration.document)
                 .cloned()
                 .ok_or_else(|| format!("missing document '{}'", registration.document))?;

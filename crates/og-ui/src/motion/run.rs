@@ -1135,7 +1135,7 @@ impl crate::ui::Style {
         let mut progress: Vec<Option<f32>> = vec![None; animations.len()];
         let mut styled = false;
         for (index, a) in animations.iter().enumerate() {
-            let Some(frames) = docs.host.keyframes.get(&a.name).cloned() else {
+            let Some(frames) = docs.library.keyframes.get(&a.name).cloned() else {
                 continue;
             };
             if !a.timeline.ticks() {

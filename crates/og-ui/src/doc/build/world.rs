@@ -652,7 +652,7 @@ impl Ui {
         let mut lifetime = 0;
         let mut keys = Vec::new();
         if let Some(a) = r.animations.first()
-            && let Some(frames) = self.docs.host().keyframes.get(&a.name).cloned()
+            && let Some(frames) = self.docs.library.keyframes.get(&a.name).cloned()
         {
             lifetime = ((a.duration_ms * self.env.ticks_per_second() as f32 / 1000.0).round()
                 as u32)

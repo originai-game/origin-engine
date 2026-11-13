@@ -423,8 +423,8 @@ impl Ui {
         self.tree.retire_owned(&owned);
         // Container sizes are layout's: the next frame measures and settles
         // them again, watched afresh.
-        self.docs.host.containers.clear();
-        self.docs.host.container_sizes.clear();
+        self.docs.containers.watched.clear();
+        self.docs.containers.sizes.clear();
         Ok(())
     }
 }

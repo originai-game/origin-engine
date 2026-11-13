@@ -243,7 +243,7 @@ impl crate::ui::Docs {
     /// Enters an element in the counter run and applies its counter
     /// properties; nothing unless some document uses generated content.
     pub(crate) fn run_enter(&mut self, r: &Resolved) {
-        if !self.host().uses_run {
+        if !self.library.uses_run {
             return;
         }
         // Style containment scopes its counters and quotes to its subtree.
@@ -260,7 +260,7 @@ impl crate::ui::Docs {
     }
 
     pub(crate) fn run_exit(&mut self) {
-        if self.host().uses_run {
+        if self.library.uses_run {
             self.state_mut().run.exit();
         }
     }

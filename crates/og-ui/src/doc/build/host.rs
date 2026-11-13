@@ -84,7 +84,6 @@ pub struct DocRecord {
     pub arts: Vec<(String, crate::slot::SlotSpec)>,
 }
 
-/// The documents a UI knows and what their mounts keep between ticks.
 /// A view transition's covers still opening after their layer left: the
 /// covers, their colour and image, and the tick it left.
 pub type Revealing = (
@@ -94,70 +93,11 @@ pub type Revealing = (
     u64,
 );
 
-#[derive(Clone, Debug, Default)]
-pub struct DocHost {
-    /// By name.
-    pub docs: BTreeMap<String, Arc<UiDocument>>,
-    /// The states triggers set (`on click state selection on`), by element key and group.
-    pub states: BTreeMap<(u64, String), String>,
-    /// `data-og-instant` elements whose first entrance has landed: a
-    /// later one plays (presentation, outside `world_hash`).
-    pub(crate) entered: BTreeSet<u64>,
-    /// Some defined document writes a CSS-wide keyword on a property, so
-    /// elements carry their winners to their children's `inherit`.
-    pub wide_keywords: bool,
-    /// The `$ui` store's value as last published.
-    pub(crate) ui_store: Option<Value>,
-    pub layers: crate::layer_stack::LayerStack,
-    /// The textures documents name by asset path (a view transition's
-    /// cover image), by path.
-    pub textures: BTreeMap<String, og_draw::TextureHandle>,
-    /// The alpha of the textures a `shape-outside: url()` names, by path
-    /// ([`Ui::define_texture_alpha`]).
-    pub alphas: BTreeMap<String, Arc<crate::layout::float::ImageAlpha>>,
-    /// The Rive artboards elements can play, by id ([`Ui::define_rive`]).
-    pub rive: BTreeMap<String, Arc<crate::rive::Artboard>>,
-    /// The `type ui-material` assets documents name (`-og-material:
-    /// "<path>" …`): each one's handle and its parameters' defaults.
-    pub materials: BTreeMap<
-        String,
-        (
-            og_draw::UiMaterialHandle,
-            [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
-        ),
-    >,
-    /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
-    pub keyframes: BTreeMap<String, Arc<crate::motion::css::Keyframes>>,
-    /// Query containers' settled content boxes, by layout key.
-    pub(crate) container_sizes: crate::doc::container::Sizes,
-    /// This tick's immediate-built elements under a query container, in
-    /// build order, with what settlement needs to resolve them again.
-    pub(crate) queried: Vec<Queried>,
-    /// Query containers watched for settlement, and those built this tick.
-    pub(crate) containers: BTreeSet<u64>,
-    pub(crate) containers_now: BTreeSet<u64>,
-    /// `scroll-state()` containers read: their offset and flags
-    /// (`media::scroll`) at this tick's start, those immediate builds read
-    /// this tick, and those whose flags changed at its start.
-    pub scroll_states: BTreeMap<u64, (og_core::glam::Vec2, u16)>,
-    pub scroll_now: BTreeSet<u64>,
-    pub scroll_changed: BTreeSet<u64>,
-    pub uses_run: bool,
-    /// What structural selectors of every defined document read.
-    pub structure: crate::doc::matching::Profile,
-    /// Global rules can read facts in a different document from their subject.
-    pub global_structure: crate::doc::matching::Profile,
-    /// The instantiated sibling levels of the screen being built.
-    pub levels: Vec<super::structure::Level>,
-    /// A component's root continues its instance's place among siblings.
-    pub component_root: bool,
-}
-
 /// What the documents keep between ticks that a snapshot carries: their
-/// mounts, the reactive session, the elements seen and the triggers' last
-/// values. The documents hold it in their state ([`super::state::DocState`]);
-/// the stages read and write it in [`Ui::save_state`] and
-/// [`Ui::restore_state`].
+/// mounts, the reactive session, the elements seen, the triggers' last
+/// values and the states they set. The documents hold it in their state
+/// ([`super::state::DocState`]); the stages read and write it in
+/// [`Ui::save_state`] and [`Ui::restore_state`].
 #[derive(Clone, Debug, Default)]
 pub struct DocMemory {
     pub retained: super::instances::RetainedHost,
@@ -167,6 +107,8 @@ pub struct DocMemory {
     pub seen_now: BTreeSet<u64>,
     /// A trigger's last value (`on change`), by element key and trigger.
     pub last: BTreeMap<(u64, usize), Value>,
+    /// The states triggers set (`on click state selection on`), by element key and group.
+    pub states: BTreeMap<(u64, String), String>,
 }
 
 impl DocMemory {
@@ -202,6 +144,19 @@ impl DocMemory {
                         (
                             (key(&s[0]), s[1].as_u64().unwrap_or(0) as usize),
                             s[2].clone(),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        self.states = v["states"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|s| {
+                        (
+                            (key(&s[0]), s[1].as_str().unwrap_or_default().to_string()),
+                            s[2].as_str().unwrap_or_default().to_string(),
                         )
                     })
                     .collect()
@@ -245,36 +200,15 @@ pub enum Mode {
     Hint,
 }
 
-/// What an immediate build evaluated for one element under a container:
-/// its expression and property inputs, and its structural selector results.
-#[derive(Clone, Debug, Default)]
-pub(crate) struct Replay {
-    pub(crate) cached: super::instances::CachedInputs,
-    pub(crate) decisions: Vec<(usize, bool)>,
-}
-
-/// One immediate-built element under a query container, in build order.
-#[derive(Clone, Debug)]
-pub(crate) struct Queried {
-    pub(crate) doc: Arc<UiDocument>,
-    pub(crate) node: usize,
-    pub(crate) path: String,
-    pub(crate) key: u64,
-    pub(crate) inherited: Arc<crate::doc::variables::Computed>,
-    pub(crate) computed: Arc<crate::doc::variables::Computed>,
-    pub(crate) reads: BTreeSet<u64>,
-    pub(crate) replay: Arc<Replay>,
-}
-
 impl Ui {
     /// A document by name.
     pub fn document(&self, name: &str) -> Option<&UiDocument> {
-        self.docs.host.docs.get(name).map(|d| &**d)
+        self.docs.library.documents.get(name).map(|d| &**d)
     }
 
     /// Every document's name.
     pub fn documents(&self) -> Vec<String> {
-        self.docs.host.docs.keys().cloned().collect()
+        self.docs.library.documents.keys().cloned().collect()
     }
 }
 
@@ -288,7 +222,7 @@ impl crate::ui::Docs {
         let Some(path) = m.asset else {
             return Ok(m.layer);
         };
-        let (handle, mut params) = *self.host.materials.get(&path).ok_or_else(|| {
+        let (handle, mut params) = *self.library.materials.get(&path).ok_or_else(|| {
             format!("-og-material: \"{path}\" is not a loaded UI material (a `type ui-material` asset under assets/)")
         })?;
         for k in 0..m.params {
@@ -321,10 +255,10 @@ impl Ui {
     /// The tick's document bookkeeping starts (from `begin`).
     pub(crate) fn docs_begin(&mut self) {
         self.docs.state.begin_tick();
-        let d = &mut self.docs.host;
-        d.queried.clear();
+        let c = &mut self.docs.containers;
+        c.queried.clear();
         // Last tick's containers, immediate and mounted, stay watched.
-        let mut live = std::mem::take(&mut d.containers_now);
+        let mut live = std::mem::take(&mut c.built);
         live.extend(self.docs.state.memory.retained.containers());
         self.watch_document_containers(live);
         self.docs.sync_scroll_states(&self.interaction, &self.tree);
@@ -348,7 +282,7 @@ impl crate::ui::Docs {
         tree: &mut crate::ui::Tree,
     ) {
         let key = tree.nodes[node].key;
-        let Some(board) = self.host.rive.get(id).cloned() else {
+        let Some(board) = self.library.rive.get(id).cloned() else {
             out.warnings.push(format!(
                 "{path}: og-rive src=\"{id}\" names no Rive artboard the UI has; og.load.document loads those its document names"
             ));

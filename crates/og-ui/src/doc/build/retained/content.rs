@@ -26,12 +26,18 @@ impl RetainedHost {
     ) -> Result<Child, String> {
         let (doc, index) = source;
         let node = &doc.nodes[index];
-        let instance = ui.docs.host().docs.get(component).cloned().ok_or_else(|| {
-            format!(
-                "{}:{}: no component '{component}' (load its document)",
-                doc.source, node.line
-            )
-        })?;
+        let instance = ui
+            .docs
+            .library
+            .documents
+            .get(component)
+            .cloned()
+            .ok_or_else(|| {
+                format!(
+                    "{}:{}: no component '{component}' (load its document)",
+                    doc.source, node.line
+                )
+            })?;
         unpassed(&doc, index, &instance)?;
         let user = Arc::new(context.clone());
         let mut lexical = Lexical::default();
@@ -158,8 +164,8 @@ impl RetainedHost {
             Some(ContentRef::Document(name)) => {
                 let document = ui
                     .docs
-                    .host()
-                    .docs
+                    .library
+                    .documents
                     .get(&name)
                     .cloned()
                     .ok_or_else(|| format!("content '{name}' names no loaded document"))?;
@@ -262,8 +268,8 @@ pub(super) fn mount_content(
         };
         let doc = ui
             .docs
-            .host()
-            .docs
+            .library
+            .documents
             .get(document)
             .cloned()
             .ok_or_else(|| format!("mount content '{name}': no document '{document}'"))?;

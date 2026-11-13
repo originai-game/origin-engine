@@ -143,7 +143,7 @@ impl Ui {
         let document = self
             .tree
             .part_host(self.tree.nodes[part.owner].key)
-            .and_then(|host| self.docs.host.docs.get(&host.document))
+            .and_then(|host| self.docs.library.documents.get(&host.document))
             .cloned();
         *self.tree.el_mut(i) = part.element;
         self.apply_box_fields(
@@ -466,7 +466,7 @@ impl Ui {
 
     pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
         let host = key.and_then(|k| self.tree.part_host(k));
-        let document = host.and_then(|h| self.docs.host.docs.get(&h.document));
+        let document = host.and_then(|h| self.docs.library.documents.get(&h.document));
         // A document's own part rules laid into the global ones: merged
         // once per document and global sheet, not for every part each tick.
         let merged = host

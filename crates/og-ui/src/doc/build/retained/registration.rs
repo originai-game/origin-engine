@@ -12,15 +12,15 @@ impl Ui {
     ) -> Result<(), String> {
         mount.validate()?;
         self.docs.state().memory.reactive.graph.check_idle(&mount)?;
-        if !self.docs.host().docs.contains_key(&document) {
+        if !self.docs.library.documents.contains_key(&document) {
             return Err(format!("missing document '{document}'"));
         }
-        super::content::check_instances(&self.docs.host().docs, &document)?;
+        super::content::check_instances(&self.docs.library.documents, &document)?;
         for reference in content.values() {
             let name = reference
                 .split_once('#')
                 .map_or(reference.as_str(), |(d, _)| d);
-            if !self.docs.host().docs.contains_key(name) {
+            if !self.docs.library.documents.contains_key(name) {
                 return Err(format!("mount content names a missing document '{name}'"));
             }
         }
@@ -70,7 +70,7 @@ impl Ui {
         // Disposal is immediate: a leaving cover would read removed stores.
         for mount in mounts {
             if let Some(k) = self.docs.mount_layer(&mount) {
-                self.docs.host_mut().layers.layers.remove(k);
+                self.docs.layers.layers.remove(k);
             }
             self.finish_unmount(&mount);
         }

@@ -138,7 +138,7 @@ impl Ui {
 
     /// The stack, bottom first.
     pub fn layer_stack(&self) -> Vec<LayerInfo> {
-        let st = &self.docs.host.layers.layers;
+        let st = &self.docs.layers.layers;
         let specs: Vec<LayerSpec> = st
             .iter()
             .map(|l| {
@@ -195,13 +195,12 @@ impl Ui {
         };
         let at = self
             .docs
-            .host
             .layers
             .layers
             .iter()
             .rposition(|l| self.screen_spec(&l.screen).is_ok_and(|s| s.kind <= kind))
             .map_or(0, |k| k + 1);
-        let st = &mut self.docs.host.layers;
+        let st = &mut self.docs.layers;
         st.next += 1;
         let serial = st.next;
         st.layers.insert(
@@ -229,23 +228,23 @@ impl Ui {
     /// focus), any other document none.
     pub fn sync_mount_layer(&mut self, mount: &SourceId, document: Option<&str>) {
         let screen = document.filter(|d| self.screen_spec(d).is_ok());
-        let st = &self.docs.host.layers.layers;
+        let st = &self.docs.layers.layers;
         let at = st.iter().position(|l| l.mount.as_ref() == Some(mount));
         if let Some(k) = at {
             if screen == Some(st[k].screen.as_str()) {
                 // Mounted again while it was leaving: it stays.
-                let l = &mut self.docs.host.layers.layers[k];
+                let l = &mut self.docs.layers.layers[k];
                 if l.leaving {
                     l.leaving = false;
                     l.since = 0;
                 }
                 return;
             }
-            self.docs.host.layers.layers.remove(k);
+            self.docs.layers.layers.remove(k);
         }
         if let Some(screen) = screen {
             if let Some(a) = self.active_layer() {
-                self.docs.host.layers.layers[a].focus = self.interaction.state.focus;
+                self.docs.layers.layers[a].focus = self.interaction.state.focus;
             }
             let _ = self.insert_screen(screen, Value::Null, Some(mount.clone()));
         }
@@ -255,7 +254,7 @@ impl Ui {
     /// stack, and a mounted screen without one joins it.
     pub(crate) fn sync_mount_layers(&mut self) {
         let all = self.docs.mounted_documents();
-        self.docs.host.layers.layers.retain(|l| {
+        self.docs.layers.layers.retain(|l| {
             l.mount
                 .as_ref()
                 .is_none_or(|m| all.iter().any(|(a, _)| a == m))
@@ -267,11 +266,11 @@ impl Ui {
 
     pub(crate) fn restore_docs_state(&mut self, v: &Value) -> Result<(), String> {
         self.docs.state.restore(v)?;
-        let d = &mut self.docs.host;
+        let stack = &mut self.docs.layers;
         let key = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
-        d.layers.next = v["next"].as_u64().unwrap_or(0) as u32;
-        d.layers.held_scale = v["heldScale"].as_f64().map(|x| x as f32);
-        d.layers.layers = v["layers"]
+        stack.next = v["next"].as_u64().unwrap_or(0) as u32;
+        stack.held_scale = v["heldScale"].as_f64().map(|x| x as f32);
+        stack.layers = v["layers"]
             .as_array()
             .map(|a| {
                 a.iter()
@@ -290,19 +289,6 @@ impl Ui {
                     .collect()
             })
             .unwrap_or_default();
-        d.states = v["states"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|s| {
-                        (
-                            (key(&s[0]), s[1].as_str().unwrap_or_default().to_string()),
-                            s[2].as_str().unwrap_or_default().to_string(),
-                        )
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
         self.sync_mount_layers();
         Ok(())
     }
@@ -311,8 +297,7 @@ impl Ui {
 impl crate::ui::Docs {
     /// The stack index of a mounted layer.
     pub fn mount_layer(&self, mount: &SourceId) -> Option<usize> {
-        self.host
-            .layers
+        self.layers
             .layers
             .iter()
             .position(|l| l.mount.as_ref() == Some(mount))
@@ -320,20 +305,20 @@ impl crate::ui::Docs {
 
     /// The layer state snapshots carry, as JSON.
     pub(crate) fn docs_state(&self) -> Value {
-        let d = &self.host;
+        let stack = &self.layers;
         let m = &self.state.memory;
         json!({
-            "next": d.layers.next,
-            "heldScale": d.layers.held_scale,
+            "next": stack.next,
+            "heldScale": stack.held_scale,
             "stores": m.reactive.save(),
             "mounts": m.retained.save(),
             "mountRegistrations": m.document_registration_state(),
             "seen": m.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
-            "layers": d.layers.layers.iter().map(|l| json!({
+            "layers": stack.layers.iter().map(|l| json!({
                 "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
                 "mount": l.mount, "since": l.since, "leaving": l.leaving,
             })).collect::<Vec<_>>(),
-            "states": d.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),
+            "states": m.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),
             "last": m.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
         })
     }

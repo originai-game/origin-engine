@@ -301,10 +301,10 @@ impl Ui {
     pub fn publish_ui_store(&mut self) {
         use crate::reactive::session::Command;
         let value = self.ui_store_value();
-        if self.docs.host.ui_store.as_ref() == Some(&value) {
+        if self.docs.state.ui_store.as_ref() == Some(&value) {
             return;
         }
-        let command = if self.docs.host.ui_store.is_none() {
+        let command = if self.docs.state.ui_store.is_none() {
             Command::Signal {
                 source: crate::doc::UI_STORE.clone(),
                 initial: value.clone(),
@@ -321,7 +321,7 @@ impl Ui {
             self.out.warnings.push(format!("$ui store: {e}"));
             return;
         }
-        self.docs.host.ui_store = Some(value);
+        self.docs.state.ui_store = Some(value);
     }
 
     /// The actions' state as JSON (dump_ui's `actions`).

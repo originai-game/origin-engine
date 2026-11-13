@@ -208,7 +208,7 @@ impl RetainedHost {
         {
             self.theme_epoch += 1;
         }
-        let scrolled = std::mem::take(&mut ui.docs.host_mut().scroll_changed);
+        let scrolled = std::mem::take(&mut ui.docs.containers.scroll_changed);
         self.rescroll(&scrolled);
         let viewport = ui.media_context();
         let [small, large] = ui.env.viewport().extremes();
@@ -546,7 +546,7 @@ impl RetainedHost {
         {
             self.resolve(ui, parent, env)?;
         }
-        let structurally_stale = ui.docs.host().structure.ancestors
+        let structurally_stale = ui.docs.library.structure.ancestors
             && self.topology.style_is_stale(identity) == Some(true);
         let inherited = parent.as_ref().map_or_else(Arc::default, |p| {
             self.elements[p]

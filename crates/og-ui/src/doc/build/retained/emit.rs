@@ -72,7 +72,7 @@ impl RetainedHost {
         let outside = element.parent_slot == NONE;
         // A subtree whose generated text reads the counter run is held
         // only while the run enters it as it did when it was built.
-        let uses_run = ui.docs.host().uses_run;
+        let uses_run = ui.docs.library.uses_run;
         let run_moved = uses_run
             && element.run_reads
             && element

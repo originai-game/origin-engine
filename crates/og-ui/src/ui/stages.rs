@@ -110,11 +110,16 @@ impl Out {
     }
 }
 
-/// Documents: their mounts, the layer stack and the reactive session.
-#[derive(Clone, Debug)]
+/// Documents: those defined, the layer stack, the containers they query
+/// and what building them keeps.
+#[derive(Clone, Debug, Default)]
 pub struct Docs {
-    /// Documents, their mounts and the layer stack (docs/ui.md §2.1, §2.1).
-    pub(crate) host: crate::doc::build::DocHost,
+    /// The documents defined and the assets they name (docs/ui.md §2.1).
+    pub(crate) library: crate::doc::build::library::Library,
+    /// The layer stack (docs/ui.md §2.1).
+    pub(crate) layers: crate::layer_stack::LayerStack,
+    /// The query containers documents read.
+    pub(crate) containers: crate::doc::build::containers::Containers,
     /// The documents' own state: their builds, outputs and memory, and the
     /// reactive session.
     pub(crate) state: crate::doc::build::state::DocState,
@@ -122,12 +127,6 @@ pub struct Docs {
 
 /// The fields of the documents' state the documents (og-ui) reach.
 impl Docs {
-    pub fn host(&self) -> &crate::doc::build::DocHost {
-        &self.host
-    }
-    pub fn host_mut(&mut self) -> &mut crate::doc::build::DocHost {
-        &mut self.host
-    }
     pub fn state(&self) -> &crate::doc::build::state::DocState {
         &self.state
     }

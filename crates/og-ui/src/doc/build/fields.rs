@@ -291,12 +291,12 @@ impl Ui {
                 p::ImageSource::Url(u)
                     if self
                         .docs
-                        .host
+                        .library
                         .textures
                         .contains_key(u.trim_start_matches('/')) =>
                 {
                     p::BgImage::Texture {
-                        texture: self.docs.host.textures[u.trim_start_matches('/')],
+                        texture: self.docs.library.textures[u.trim_start_matches('/')],
                         uv: [0.0, 0.0, 1.0, 1.0],
                         density,
                         nearest,
@@ -374,7 +374,7 @@ impl Ui {
                 |doc| crate::doc::at_rules::resolve(&doc.source, href),
             );
             self.docs
-                .host
+                .library
                 .textures
                 .get(&path)
                 .map(|t| (*t, [0.0, 0.0, 1.0, 1.0]))
@@ -860,7 +860,7 @@ impl Ui {
                 let (shape, reference, image) = match value {
                     OutsideShape::Shape(shape, reference) => (shape, reference, None),
                     OutsideShape::Image(path) => {
-                        let Some(alpha) = self.docs.host.alphas.get(path.trim_start_matches('/'))
+                        let Some(alpha) = self.docs.library.alphas.get(path.trim_start_matches('/'))
                         else {
                             // An image that cannot be read is no shape
                             // (CSS Shapes 1 §6.1): the float's box wraps.
@@ -1067,7 +1067,7 @@ impl Ui {
             // screen behind the web's play gate); the motion state then
             // knows it, so a later build does not replay it, and a later
             // entrance (after it left) plays.
-            if self.docs.host.entered.insert(self.tree.nodes[i].key)
+            if self.docs.state.entered.insert(self.tree.nodes[i].key)
                 && let Some(e) = props.enter.as_mut()
             {
                 e.transition = crate::motion::Transition::Instant;

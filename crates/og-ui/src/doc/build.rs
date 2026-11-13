@@ -55,7 +55,7 @@ pub struct Resolved {
     /// The layout key this element publishes as a query container.
     pub container: Option<u64>,
     /// An immediate build's inputs under a query container (settlement replay).
-    replay: Option<Arc<host::Replay>>,
+    replay: Option<Arc<containers::Replay>>,
     /// A numbered `<li>`'s number ([`super::lists::ordinal`]).
     pub ordinal: Option<i64>,
     /// Its effective CSS text and font style ([`super::text_css`]); `None`
@@ -727,9 +727,15 @@ impl Ui {
                 .find(|(at, _)| *at == s as *const _ as usize)
                 .map_or_else(|| structure(s), |&(_, matched)| matched)
         };
-        let scroll = |key: u64| self.docs.host.scroll_states.get(&key).map_or(0, |s| s.1);
+        let scroll = |key: u64| {
+            self.docs
+                .containers
+                .scroll_states
+                .get(&key)
+                .map_or(0, |s| s.1)
+        };
         let probe = super::container::Probe {
-            sizes: &self.docs.host.container_sizes,
+            sizes: &self.docs.containers.sizes,
             scroll: &scroll,
             inherited,
         };
@@ -785,7 +791,7 @@ impl Ui {
                 let s = vp.hud_insets(self.env.hud_max_aspect);
                 [s.top, s.right, s.bottom, s.left]
             },
-            containers: super::container::unit_basis(&chain, &self.docs.host.container_sizes),
+            containers: super::container::unit_basis(&chain, &self.docs.containers.sizes),
             vertical: cascade::root_vertical(inherited).unwrap_or(false),
             ..Default::default()
         };
@@ -806,7 +812,7 @@ impl Ui {
             attr: &attr,
             sheet: Some(&b.doc.sheet),
             starting: false,
-            carry: self.docs.host.wide_keywords,
+            carry: self.docs.library.wide_keywords,
         };
         let mut rule_applies = |rule: &super::StyleRule| {
             applies(&rule.query, &mut media_reads)
@@ -875,7 +881,7 @@ impl Ui {
         // `@starting-style`: the before-change style of an element's first
         // style, for its transitions.
         let key = crate::id::key_of_path(path);
-        let instant = !self.docs.host.entered.contains(&key)
+        let instant = !self.docs.state.entered.contains(&key)
             && sets
                 .iter()
                 .rev()
@@ -1322,7 +1328,7 @@ impl Ui {
         });
         if recording {
             let cached = b.recording.borrow_mut().take().unwrap_or_default();
-            r.replay = Some(Arc::new(host::Replay {
+            r.replay = Some(Arc::new(containers::Replay {
                 cached,
                 decisions: decisions.clone(),
             }));
@@ -1478,6 +1484,7 @@ pub mod host;
 pub mod instances;
 pub(crate) mod kbd;
 mod layout_props;
+pub(crate) mod library;
 pub(crate) mod media;
 pub(crate) mod mount;
 pub(crate) mod nodes;
@@ -1494,7 +1501,7 @@ pub(crate) mod text_motion;
 pub(crate) mod touch;
 pub(crate) mod viewport;
 pub(crate) mod world;
-pub use host::{Built, DocEvent, DocHost, DocMemory, DocResponse, Edit};
+pub use host::{Built, DocEvent, DocMemory, DocResponse, Edit};
 pub use instances::RetainedHost;
 
 /// The computed-value entry carrying the inherited `quotes`.

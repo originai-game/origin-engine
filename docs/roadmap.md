@@ -100,8 +100,7 @@ and is verified once on the GPU host. Open work is collected on PR #40.
 - **og-ui:** paint's reuse reads change bits instead of comparing each node
   with the one it replaced; a control becomes an element kind; the tree
   takes explicit insert, update and remove; the immediate API becomes an
-  engine-internal front end; the documents stop writing through
-  `Docs::host_mut`; og-ui's tests stop linking `og-render`.
+  engine-internal front end; og-ui's tests stop linking `og-render`.
 - **og-render:** culling, batches, the frame uniform and group 0 become
   stages shared by the passes. The sources are grouped by owner (its
   README, Layout); `tests/structure.rs` lists what still reaches the

@@ -6,7 +6,7 @@ use super::host::{DocRecord, FieldValidity, PopoverLink, Revealing};
 use super::{Built, DocEvent, DocMemory, Edit};
 use crate::style::Srgba;
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 #[derive(Clone, Debug, Default)]
@@ -71,6 +71,15 @@ pub struct DocState {
     /// copy is stale ([`crate::Ui::take_control_zones`]).
     pub zones: BTreeMap<u64, og_input::ControlZone>,
     pub zones_changed: bool,
+    /// The instantiated sibling levels of the screen being built.
+    pub levels: Vec<super::structure::Level>,
+    /// A component's root continues its instance's place among siblings.
+    pub component_root: bool,
+    /// `data-og-instant` elements whose first entrance has landed: a
+    /// later one plays (presentation, outside `world_hash`).
+    pub(crate) entered: BTreeSet<u64>,
+    /// The `$ui` store's value as last published.
+    pub(crate) ui_store: Option<Value>,
     /// The document-order counter and quote run of the tick being built,
     /// kept only while some defined document uses generated content.
     pub run: crate::doc::generated::Run,

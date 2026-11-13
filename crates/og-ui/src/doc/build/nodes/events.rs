@@ -300,7 +300,8 @@ impl Ui {
                 }
                 Act::State(g, s) => {
                     self.docs
-                        .host_mut()
+                        .state
+                        .memory
                         .states
                         .insert((key, g.clone()), s.clone());
                 }

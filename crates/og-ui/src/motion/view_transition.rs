@@ -240,7 +240,7 @@ fn sample(ui: &Ui, list: &[CssAnimation], t: f32) -> [f32; CHANNELS] {
                 built = f;
                 &built
             }
-            None => match ui.docs.host.keyframes.get(&a.name) {
+            None => match ui.docs.library.keyframes.get(&a.name) {
                 Some(f) => &**f,
                 None => continue,
             },
@@ -560,22 +560,15 @@ impl Ui {
         let run = self.interaction.state.view_transition.take()?;
         if run.skipped {
             // Kept while its layers may still read it.
-            if self
-                .docs
-                .host
-                .layers
-                .layers
-                .iter()
-                .any(|l| l.since == run.since)
-            {
+            if self.docs.layers.layers.iter().any(|l| l.since == run.since) {
                 self.interaction.state.view_transition = Some(run);
             }
             return None;
         }
         let style = self
             .docs
-            .host
-            .docs
+            .library
+            .documents
             .get(&run.screen)
             .and_then(|d| d.layer.transition.clone())?;
         let t = self.interaction.state.tick.saturating_sub(run.since) as f32 * 1000.0
@@ -583,7 +576,6 @@ impl Ui {
         // The new view: this frame's shared elements but a leaving layer's.
         let leaving: Vec<String> = self
             .docs
-            .host
             .layers
             .layers
             .iter()

@@ -9,55 +9,11 @@ impl Ui {
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
-        self.docs.host_mut().uses_run |= doc.nodes.iter().any(|n| {
-            n.rules.iter().any(|rule| {
-                rule.declarations
-                    .iter()
-                    .any(|d| crate::doc::generated::longhand(&d.name))
-            })
-        });
-        let prefix = format!("{}/", doc.name);
-        self.docs
-            .host_mut()
-            .keyframes
-            .retain(|name, _| !name.starts_with(&prefix));
-        for (n, k) in &doc.sheet.keyframes {
-            self.docs
-                .host_mut()
-                .keyframes
-                .insert(format!("{prefix}{n}"), Arc::new(k.clone()));
-        }
-        self.docs
-            .host_mut()
-            .structure
-            .merge(&crate::doc::matching::Profile::of_document(&doc));
-        for selector in doc
-            .nodes
-            .iter()
-            .flat_map(|n| &n.rules)
-            .filter_map(|r| r.structure.as_ref())
-            .filter(|s| s.global)
-        {
-            self.docs.host_mut().global_structure.add(selector);
-        }
-        self.docs.host_mut().wide_keywords |= doc.nodes.iter().any(|n| {
-            n.rules.iter().flat_map(|r| &r.declarations).any(|d| {
-                d.value.binding().is_some()
-                    || super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())
-                    || !d.name.starts_with("--")
-                        && matches!(
-                            crate::doc::stylesheet::wide_keyword(&d.source),
-                            Some("inherit" | "unset" | "revert" | "revert-layer")
-                        )
-            })
-        });
+        let name = doc.name.clone();
+        self.docs.library.define(doc);
         let mut retained = std::mem::take(&mut self.docs.state_mut().memory.retained);
-        retained.document_replaced(self, &doc.name);
+        retained.document_replaced(self, &name);
         self.docs.state_mut().memory.retained = retained;
-        self.docs
-            .host_mut()
-            .docs
-            .insert(doc.name.clone(), Arc::new(doc));
     }
 
     /// Registers a Rive artboard by its id (`ui/chest.riv#Chest`, as og-cook
@@ -66,16 +22,13 @@ impl Ui {
     /// reload): an element playing the old one goes on from where it was
     /// when it fits the new one, else starts it again.
     pub fn define_rive(&mut self, id: &str, artboard: Arc<crate::rive::Artboard>) {
-        self.docs.host_mut().rive.insert(id.to_owned(), artboard);
+        self.docs.library.rive.insert(id.to_owned(), artboard);
     }
 
     /// Binds the texture asset `path` a document names
     /// ([`UiDocument::cover_image`]) to its loaded handle.
     pub fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle) {
-        self.docs
-            .host_mut()
-            .textures
-            .insert(path.to_owned(), texture);
+        self.docs.library.textures.insert(path.to_owned(), texture);
     }
 
     /// Gives the texture asset `path` its alpha channel on the CPU, which
@@ -83,7 +36,7 @@ impl Ui {
     /// ([`UiDocument::shape_images`]); without it the float has no shape.
     pub fn define_texture_alpha(&mut self, path: &str, alpha: crate::ImageAlpha) {
         self.docs
-            .host_mut()
+            .library
             .alphas
             .insert(path.to_owned(), Arc::new(alpha));
     }
@@ -98,7 +51,7 @@ impl Ui {
         defaults: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
     ) {
         self.docs
-            .host_mut()
+            .library
             .materials
             .insert(path.to_owned(), (handle, defaults));
     }
@@ -112,7 +65,7 @@ impl Ui {
         props: &mut Value,
         env: &dyn Env,
     ) -> DocResponse {
-        let Some(doc) = self.docs.host().docs.get(name).cloned() else {
+        let Some(doc) = self.docs.library.documents.get(name).cloned() else {
             self.out.warnings_mut().push(format!(
                 "Ui::component: no document named '{name}' (load its .ogt with og.load.document)"
             ));
@@ -250,7 +203,7 @@ impl Ui {
             let d = match changed.get_mut(&doc) {
                 Some(d) => d,
                 None => {
-                    let d = (**self.docs.host().docs.get(&doc).ok_or("no document")?).clone();
+                    let d = (**self.docs.library.documents.get(&doc).ok_or("no document")?).clone();
                     changed.entry(doc.clone()).or_insert(d)
                 }
             };

@@ -631,7 +631,13 @@ impl Ui {
                         }
                     }
                 }
-                None => self.docs.host.states.get(&(key, g.name.clone())).cloned(),
+                None => self
+                    .docs
+                    .state
+                    .memory
+                    .states
+                    .get(&(key, g.name.clone()))
+                    .cloned(),
             };
             if g.name != "interaction" {
                 let s = state.unwrap_or_else(|| g.states[0].name.clone());

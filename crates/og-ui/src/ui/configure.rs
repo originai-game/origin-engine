@@ -134,10 +134,7 @@ impl Ui {
                 pending_plays: Vec::new(),
                 motion: Default::default(),
             },
-            docs: Docs {
-                host: Default::default(),
-                state: Default::default(),
-            },
+            docs: Default::default(),
             world: Default::default(),
         };
         ui.style.write_theme_tokens(desc.theme, &ui.env);

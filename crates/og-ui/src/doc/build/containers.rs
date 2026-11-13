@@ -4,16 +4,56 @@
 //! second build) and their render fields are replaced before paint. On the
 //! first frame every condition is unknown until its container is measured,
 //! so the first settlement runs this too.
-pub(crate) use super::host::Queried;
 use super::*;
 use crate::ui::settlement::{ContainerMeasurement, SettlementError};
+
+/// The query containers documents read: `@container` boxes layout settles,
+/// and the `scroll-state()` flags sampled as a tick starts.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Containers {
+    /// Query containers' settled content boxes, by layout key.
+    pub(crate) sizes: crate::doc::container::Sizes,
+    /// This tick's immediate-built elements under a query container, in
+    /// build order, with what settlement needs to resolve them again.
+    pub(crate) queried: Vec<Queried>,
+    /// Query containers watched for settlement, and those built this tick.
+    pub(crate) watched: BTreeSet<u64>,
+    pub(crate) built: BTreeSet<u64>,
+    /// `scroll-state()` containers read: their offset and flags
+    /// (`media::scroll`) at this tick's start, those immediate builds read
+    /// this tick, and those whose flags changed at its start.
+    pub(crate) scroll_states: BTreeMap<u64, (og_core::glam::Vec2, u16)>,
+    pub(crate) scroll_read: BTreeSet<u64>,
+    pub(crate) scroll_changed: BTreeSet<u64>,
+}
+
+/// What an immediate build evaluated for one element under a container:
+/// its expression and property inputs, and its structural selector results.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Replay {
+    pub(crate) cached: super::instances::CachedInputs,
+    pub(crate) decisions: Vec<(usize, bool)>,
+}
+
+/// One immediate-built element under a query container, in build order.
+#[derive(Clone, Debug)]
+pub(crate) struct Queried {
+    pub(crate) doc: Arc<UiDocument>,
+    pub(crate) node: usize,
+    pub(crate) path: String,
+    pub(crate) key: u64,
+    pub(crate) inherited: Arc<crate::doc::variables::Computed>,
+    pub(crate) computed: Arc<crate::doc::variables::Computed>,
+    pub(crate) reads: BTreeSet<u64>,
+    pub(crate) replay: Arc<Replay>,
+}
 
 impl Ui {
     /// Watches a query container for settlement as it is built: its first
     /// layout publishes even a zero box.
     pub fn build_container(&mut self, key: u64) {
-        self.docs.host.containers_now.insert(key);
-        if self.docs.host.containers.insert(key) {
+        self.docs.containers.built.insert(key);
+        if self.docs.containers.watched.insert(key) {
             self.watch_layout_container(key);
         }
     }
@@ -22,23 +62,23 @@ impl Ui {
     pub(super) fn watch_document_containers(&mut self, live: BTreeSet<u64>) {
         let gone: Vec<u64> = self
             .docs
-            .host
             .containers
+            .watched
             .difference(&live)
             .copied()
             .collect();
         for key in gone {
             self.unwatch_layout_container(key);
-            self.docs.host.container_sizes.remove(&key);
+            self.docs.containers.sizes.remove(&key);
         }
         let new: Vec<u64> = live
-            .difference(&self.docs.host.containers)
+            .difference(&self.docs.containers.watched)
             .copied()
             .collect();
         for key in new {
             self.watch_layout_container(key);
         }
-        self.docs.host.containers = live;
+        self.docs.containers.watched = live;
     }
 
     /// The settlement resolver for documents: records the measured boxes and
@@ -50,8 +90,8 @@ impl Ui {
         let mut changed = BTreeSet::new();
         for change in changes {
             self.docs
-                .host
-                .container_sizes
+                .containers
+                .sizes
                 .insert(change.key, (change.current.width, change.current.height));
             changed.insert(change.key);
         }
@@ -73,7 +113,7 @@ impl Ui {
     }
 
     fn requery_immediate(&mut self, changed: &BTreeSet<u64>) -> Vec<usize> {
-        let mut queried = std::mem::take(&mut self.docs.host.queried);
+        let mut queried = std::mem::take(&mut self.docs.containers.queried);
         // Elements restyled in this pass whose computed values changed, by
         // path: their descendants resolve again under the new values.
         let mut restyled: BTreeMap<String, Arc<crate::doc::variables::Computed>> = BTreeMap::new();
@@ -126,7 +166,7 @@ impl Ui {
                 dirty.push(index);
             }
         }
-        self.docs.host.queried = queried;
+        self.docs.containers.queried = queried;
         dirty
     }
 
@@ -203,7 +243,7 @@ impl crate::ui::Docs {
         let Some(replay) = r.replay.clone() else {
             return;
         };
-        self.host.queried.push(Queried {
+        self.containers.queried.push(Queried {
             doc: b.doc.clone(),
             node,
             path: path.to_owned(),
@@ -225,13 +265,13 @@ impl crate::ui::Docs {
         tree: &crate::ui::Tree,
     ) {
         use crate::doc::media::scroll::*;
-        let mut keys = std::mem::take(&mut self.host.scroll_now);
+        let mut keys = std::mem::take(&mut self.containers.scroll_read);
         keys.extend(self.state.memory.retained.scroll_reads());
         let mut states = BTreeMap::new();
         for key in keys {
             let offset = interaction.offset(key);
             let (old_offset, old) = self
-                .host
+                .containers
                 .scroll_states
                 .get(&key)
                 .copied()
@@ -248,11 +288,11 @@ impl crate::ui::Docs {
             }
             let flags = interaction.scroll_flags_now(key, tree) | scrolled;
             if flags != old {
-                self.host.scroll_changed.insert(key);
+                self.containers.scroll_changed.insert(key);
             }
             states.insert(key, (offset, flags));
         }
-        self.host.scroll_states = states;
+        self.containers.scroll_states = states;
     }
 }
 

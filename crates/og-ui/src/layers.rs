@@ -40,7 +40,7 @@ impl Ui {
     /// Answers the layer's serial.
     pub fn push_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
         if let Some(a) = self.active_layer() {
-            self.docs.host_mut().layers.layers[a].focus = self.interaction.state().focus;
+            self.docs.layers.layers[a].focus = self.interaction.state().focus;
         }
         self.insert_screen(screen, vm, None)
     }
@@ -62,7 +62,7 @@ impl Ui {
 
     /// Empties the stack (mounted layers are unmounted), with no transition.
     pub fn clear_screens(&mut self) {
-        for l in std::mem::take(&mut self.docs.host_mut().layers.layers) {
+        for l in std::mem::take(&mut self.docs.layers.layers) {
             if let Some(mount) = &l.mount {
                 self.finish_unmount(mount);
             }
@@ -72,7 +72,6 @@ impl Ui {
     /// A layer's viewmodel (the top one of that screen).
     pub fn screen_vm(&self, screen: &str) -> Option<&Value> {
         self.docs
-            .host()
             .layers
             .layers
             .iter()
@@ -85,7 +84,6 @@ impl Ui {
     pub fn set_screen_vm(&mut self, screen: &str, vm: Value) -> bool {
         match self
             .docs
-            .host_mut()
             .layers
             .layers
             .iter_mut()
@@ -110,7 +108,7 @@ impl Ui {
     /// kept one once none is; `None` when nothing changes.
     pub fn pause_time_scale(&mut self, current: f32) -> Option<f32> {
         let paused = self.paused();
-        let st = &mut self.docs.host_mut().layers;
+        let st = &mut self.docs.layers;
         match (paused, st.held_scale) {
             (true, None) => {
                 st.held_scale = Some(current);
@@ -145,7 +143,6 @@ impl Ui {
     pub fn screen(&mut self, screen: &str, vm: Value, env: &dyn Env) -> DocResponse {
         if !self
             .docs
-            .host()
             .layers
             .layers
             .iter()
@@ -160,7 +157,6 @@ impl Ui {
         }
         let k = self
             .docs
-            .host()
             .layers
             .layers
             .iter()
@@ -204,10 +200,9 @@ impl Ui {
             t < ends(covers) && self.draw_covers(covers, *color, image.as_deref(), t, true)
         });
         self.docs.state_mut().revealing = revealing;
-        for k in 0..self.docs.host().layers.layers.len() {
+        for k in 0..self.docs.layers.layers.len() {
             if self
                 .docs
-                .host()
                 .layers
                 .layers
                 .get(k)
@@ -228,7 +223,6 @@ impl Ui {
                 LayerOp::Pop(serial) => {
                     if let Some(k) = self
                         .docs
-                        .host()
                         .layers
                         .layers
                         .iter()
@@ -243,7 +237,7 @@ impl Ui {
                     Ok(())
                 }
                 LayerOp::Drop(serial) => {
-                    let st = &mut self.docs.host_mut().layers.layers;
+                    let st = &mut self.docs.layers.layers;
                     if let Some(k) = st.iter().position(|l| l.serial == serial) {
                         let l = st.remove(k);
                         if let Some(mount) = &l.mount {
@@ -258,14 +252,7 @@ impl Ui {
             }
         }
         // Layers draw in stack order, whoever built them first.
-        let order: Vec<String> = self
-            .docs
-            .host()
-            .layers
-            .layers
-            .iter()
-            .map(layer_id)
-            .collect();
+        let order: Vec<String> = self.docs.layers.layers.iter().map(layer_id).collect();
         let rank = |ui: &Ui, f: usize| {
             let n = &ui.tree.nodes()[f];
             if n.float == Float::Modal && ui.tree.kinds()[f].0 == "layer" {
@@ -299,11 +286,11 @@ impl Ui {
     /// when its screen has a view transition, starts it leaving: the cover
     /// closes over it before it goes.
     pub(crate) fn remove_layer(&mut self, k: usize) -> Layer {
-        let l = self.docs.host().layers.layers[k].clone();
+        let l = self.docs.layers.layers[k].clone();
         if self.layer_leaves(k) {
             return l;
         }
-        self.docs.host_mut().layers.layers.remove(k);
+        self.docs.layers.layers.remove(k);
         if let Some(mount) = &l.mount {
             self.finish_unmount(mount);
         }
@@ -314,9 +301,9 @@ impl Ui {
     /// true while it is leaving.
     pub(crate) fn layer_leaves(&mut self, k: usize) -> bool {
         let transition = self
-            .screen_spec(&self.docs.host().layers.layers[k].screen)
+            .screen_spec(&self.docs.layers.layers[k].screen)
             .is_ok_and(|s| s.transition.is_some());
-        let l = &mut self.docs.host_mut().layers.layers[k];
+        let l = &mut self.docs.layers.layers[k];
         if !transition {
             return false;
         }
@@ -338,7 +325,7 @@ impl Ui {
         k: usize,
         spec: &LayerSpec,
     ) -> (bool, Vec<CssAnimation>) {
-        let l = &self.docs.host().layers.layers[k];
+        let l = &self.docs.layers.layers[k];
         let (Some(vt), true) = (&spec.transition, l.since != 0) else {
             return (!l.leaving, Vec::new());
         };
@@ -346,7 +333,7 @@ impl Ui {
         if since == STARTS {
             since = self.interaction.state().tick;
             let screen = l.screen.clone();
-            self.docs.host_mut().layers.layers[k].since = since;
+            self.docs.layers.layers[k].since = since;
             self.style.start_view_transition(
                 &screen,
                 !leaving,
@@ -362,7 +349,7 @@ impl Ui {
                 self.docs.state_mut().ops.push(LayerOp::Drop(serial));
                 return (false, Vec::new());
             }
-            self.docs.host_mut().layers.layers[k].since = 0;
+            self.docs.layers.layers[k].since = 0;
             return (true, Vec::new());
         }
         let t = self.interaction.state().tick.saturating_sub(since) as f32 * 1000.0
@@ -393,7 +380,7 @@ impl Ui {
         }
         let t = t - wait;
         if t >= ends(&vt.new) {
-            self.docs.host_mut().layers.layers[k].since = 0;
+            self.docs.layers.layers[k].since = 0;
             return (true, Vec::new());
         }
         let (opening, plays): (Vec<_>, Vec<_>) = vt.new.iter().cloned().partition(is_cover);
@@ -424,7 +411,7 @@ impl Ui {
             f32::from(u8::from(t >= a.delay_ms))
         };
         let p = a.ease.apply(p);
-        let texture = image.and_then(|p| self.docs.host().textures.get(p).copied());
+        let texture = image.and_then(|p| self.docs.library.textures.get(p).copied());
         let desc = crate::ScreenTransitionDesc {
             kind,
             from,
@@ -449,8 +436,8 @@ impl Ui {
                 ..DocResponse::default()
             };
         };
-        let layer = self.docs.host().layers.layers[k].clone();
-        let doc = self.docs.host().docs[&layer.screen].clone();
+        let layer = self.docs.layers.layers[k].clone();
+        let doc = self.docs.library.documents[&layer.screen].clone();
         let mut vm = layer.vm.clone();
         let root_id = match doc.nodes.get(doc.root) {
             Some(n) if !n.id.is_empty() => n.id.clone(),
@@ -468,7 +455,7 @@ impl Ui {
         events.append(&mut r.events);
         events.extend(self.close_layer_frame(frame, &r.path));
         r.events = events;
-        if let Some(l) = self.docs.host_mut().layers.layers.get_mut(k)
+        if let Some(l) = self.docs.layers.layers.get_mut(k)
             && l.serial == layer.serial
         {
             l.vm = vm;
@@ -486,9 +473,9 @@ impl Ui {
             return (None, Vec::new());
         };
         let tick = self.interaction.state().tick;
-        let layer = self.docs.host().layers.layers[k].clone();
-        self.docs.host_mut().layers.layers[k].built = tick;
-        self.docs.host_mut().layers.layers[k].was_top = info.active;
+        let layer = self.docs.layers.layers[k].clone();
+        self.docs.layers.layers[k].built = tick;
+        self.docs.layers.layers[k].was_top = info.active;
         let mount = layer
             .mount
             .as_ref()
@@ -511,13 +498,13 @@ impl Ui {
             });
         }
         let (shows, animations) = self.layer_transition(k, &info.spec);
-        if info.hidden || !shows || !self.docs.host().docs.contains_key(&layer.screen) {
+        if info.hidden || !shows || !self.docs.library.documents.contains_key(&layer.screen) {
             return (None, lead);
         }
         for a in &animations {
             if let Some(frames) = crate::doc::view_transition::builtin_keyframes(&a.name) {
                 self.docs
-                    .host_mut()
+                    .library
                     .keyframes
                     .entry(a.name.clone())
                     .or_insert_with(|| std::sync::Arc::new(frames));

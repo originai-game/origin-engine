@@ -96,7 +96,6 @@ impl UiTree for UiProbe {
         self.0
             .lock()
             .docs
-            .host()
             .layers
             .layers
             .iter()
@@ -142,13 +141,12 @@ impl Ui {
         let doc_arts = self.art_slots();
         if doc_built.is_empty()
             && self.motion_dump().is_empty()
-            && self.docs.host().layers.layers.is_empty()
+            && self.docs.layers.layers.is_empty()
         {
             return out;
         }
         let layers: Vec<String> = self
             .docs
-            .host()
             .layers
             .layers
             .iter()
@@ -258,8 +256,8 @@ impl Ui {
             "documents".into(),
             Value::Array(
                 self.docs
-                    .host()
-                    .docs
+                    .library
+                    .documents
                     .values()
                     .map(|d| d.to_json())
                     .collect(),

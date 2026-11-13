@@ -12,8 +12,8 @@ impl RetainedHost {
     pub(crate) fn profile(&mut self, ui: &Ui, document: &str) -> &Profile {
         self.profiles.entry(document.to_owned()).or_insert_with(|| {
             ui.docs
-                .host()
-                .docs
+                .library
+                .documents
                 .get(document)
                 .map(|doc| Profile::of_document(doc))
                 .unwrap_or_default()
@@ -26,7 +26,7 @@ impl RetainedHost {
         ui: &Ui,
         nodes: impl IntoIterator<Item = &'a Arc<UiDocument>>,
     ) -> Profile {
-        let mut out = ui.docs.host().global_structure.clone();
+        let mut out = ui.docs.library.global_structure.clone();
         for doc in nodes {
             let profile = self.profile(ui, &doc.name).clone();
             out.merge(&profile);
@@ -131,12 +131,12 @@ impl RetainedHost {
     /// Runs after bindings and selector facts settle and before dirty styles
     /// drain.
     pub(crate) fn consume_selector_changes(&mut self, ui: &mut Ui) -> Result<(), String> {
-        for filter in &ui.docs.host().structure.filters {
+        for filter in &ui.docs.library.structure.filters {
             self.topology.register_filter(filter);
         }
         let changes = self.topology.take_changes();
         let facts = self.topology.take_fact_changes();
-        if !ui.docs.host().structure.any {
+        if !ui.docs.library.structure.any {
             return Ok(());
         }
         for change in changes {
