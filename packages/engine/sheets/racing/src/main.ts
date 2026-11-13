@@ -9,7 +9,7 @@
 // clips (`og render --keyframes`), call:<countdown|go|finalLap|finish>:<n>
 // steps the banner, and reduced:<on|off> sets reduced motion.
 
-import { og, type World } from "@origingame/engine";
+import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES } from "./fixtures.ts";
 
 const PAGES = ["race", "garage", "states"] as const;
@@ -44,9 +44,9 @@ function setStyle(world: World, name: string): void {
 }
 
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
-function stores(world: World): Record<string, unknown> {
+function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
-  const out: Record<string, unknown> = { page: scope.writable("page", "race") };
+  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "race") };
   const captions: Record<string, string> = {};
   for (const [member, states] of Object.entries(FIXTURES)) {
     for (const [state, fixture] of Object.entries(states)) {

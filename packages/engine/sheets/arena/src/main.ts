@@ -10,7 +10,7 @@
 // Commands: style:<fantasy|default>, page:<select|match|states>,
 // reduced:<on|off>.
 
-import { og, type World } from "@origingame/engine";
+import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 
 const PAGES = ["select", "match", "states"] as const;
@@ -60,9 +60,9 @@ function withArt(value: unknown): unknown {
 }
 
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
-function stores(world: World): Record<string, unknown> {
+function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
-  const out: Record<string, unknown> = { page: scope.writable("page", "select") };
+  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "select") };
   const captions: Record<string, string> = {};
   for (const [member, states] of Object.entries(FIXTURES)) {
     for (const [state, fixture] of Object.entries(states)) {
