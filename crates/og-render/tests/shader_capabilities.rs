@@ -68,6 +68,8 @@ volumetric raymarch                      | full         | -       | -      | -  
 particles                                | full         | -       | -      | full | -                 | stub      | -        | full
 pbr lean                                 | full         | full    | full   | full | stub              | full      | full     | full
 pbr lean, two planar reflections         | full         | full    | full   | full | full              | full      | full     | full
+volumetric (water)                       | full         | -       | -      | -    | -                 | -         | -        | -
+volumetric raymarch (water)              | full         | -       | -      | -    | -                 | -         | -        | -
 ";
     let table = table();
     assert!(
