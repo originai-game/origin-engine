@@ -182,7 +182,6 @@ fn plan_kind<'a>(
         Kind::Timeline => plan_timeline(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
         Kind::Video => plan_video(cx, state, s, hash, outs),
-        Kind::Environment => plan_environment(cx, state, s, hash, outs),
         Kind::Look => plan_look(cx, state, s, hash, outs),
         Kind::Palette => plan_palette(cx, state, s, hash, outs),
         Kind::Font => plan_font(cx, state, s, hash, outs),

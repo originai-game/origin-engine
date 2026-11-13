@@ -91,25 +91,6 @@ pub(super) fn plan_timeline<'a>(
     outs.push((s.rel.clone(), format::Timeline::NAME, st, Work::Timeline(s)));
 }
 
-pub(super) fn plan_environment<'a>(
-    _cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let PlanState { parsed_refs, .. } = state;
-    let deps = environment::environment_dependencies(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::EnvironmentMap::NAME,
-        st,
-        Work::Environment(s),
-    ));
-}
-
 pub(super) fn plan_look<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

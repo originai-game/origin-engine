@@ -83,7 +83,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (anim::RIG_TYPE, Kind::Rig),
     ("motion-action", Kind::MotionAction),
     (timeline::TIMELINE_TYPE, Kind::Timeline),
-    (environment::ENVIRONMENT_TYPE, Kind::Environment),
     (icons::ICONS_TYPE, Kind::Icons),
     (crate::look::LOOK_TYPE, Kind::Look),
     (texture_array::ARRAY_TYPE, Kind::TextureArray),
@@ -566,7 +565,6 @@ pub(crate) fn plan_groups(
                         | Kind::Sound
                         | Kind::TextureArray
                         | Kind::Flipbook
-                        | Kind::Environment
                         | Kind::Palette
                         | Kind::Look
                         | Kind::Lut

@@ -494,7 +494,6 @@ pub(crate) fn run(
         Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),
         Work::Effect(s) => effect::cook_effect(s, &|id| known.contains(id), p.stamp),
         Work::Vfx(s) => vfx::cook_vfx(s, &|id| known.contains(id), p.stamp),
-        Work::Environment(s) => environment::cook_environment(s, p.stamp),
         Work::Look(s) => look::cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp),
         Work::Palette(s) => look::cook_palette(s, p.stamp),
         Work::TextureArray(s, decl) => {

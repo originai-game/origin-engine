@@ -46,7 +46,10 @@
 //! with rows from the top; the +x face's right edge is towards −z. Either
 //! is baked the same way (`bake::bake` or `bake::bake_cube`).
 
-use super::{CookError, Source, assets_root};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    stamp,
+};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
@@ -519,4 +522,44 @@ pub(crate) fn environment_blob(
     )
     .raw("texels", packed, 16);
     (w.finish(), raw, zipped)
+}
+
+pub(crate) static ENVIRONMENT: KindDef = KindDef {
+    name: "environment",
+    extensions: &[],
+    types: &[ENVIRONMENT_TYPE],
+    by_content: false,
+    streams: true,
+    plan: plan_environment,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&ENVIRONMENT];
+
+fn plan_environment<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    let deps = environment_dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"environment 1", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::EnvironmentMap::NAME,
+        st,
+        Work::Job(Box::new(EnvironmentJob(s))),
+    ));
+}
+
+/// An environment's one output: its maps.
+struct EnvironmentJob<'a>(&'a Source);
+
+impl Job for EnvironmentJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_environment(self.0, p.stamp)
+    }
 }

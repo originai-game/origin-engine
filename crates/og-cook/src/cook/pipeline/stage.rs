@@ -308,7 +308,7 @@ pub(crate) fn resolve(
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
-        if s.kind == Kind::Environment {
+        if s.kind == Kind::System(&environment::ENVIRONMENT) {
             consumed.extend(environment::environment_files(
                 &s.rel,
                 assets_dir,
