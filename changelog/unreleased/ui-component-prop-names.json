@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "component props",
+      "summary": "A component's prop may share a name with a property one tag owns (count, which is <og-counter>'s value) or with a renamed HTML attribute (hidden): on a component it is passed as the prop under its own name. On any other element it is still refused with the tag to write."
+    }
+  ]
+}
