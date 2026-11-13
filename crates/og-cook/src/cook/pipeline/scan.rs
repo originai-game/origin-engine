@@ -61,7 +61,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     ("scene", Kind::Scene),
     (prefab::PREFAB_TYPE, Kind::Prefab),
     (sfx::SFX_TYPE, Kind::Sound),
-    (texture_array::ARRAY_TYPE, Kind::TextureArray),
     (model_text::MODEL_TYPE, Kind::Model),
 ];
 
@@ -535,10 +534,8 @@ pub(crate) fn plan_groups(
                             .meshes()
                             .any(|x| x.primitives().any(|p| p.morph_targets().next().is_some()))
                 });
-                let fits = matches!(
-                    src.kind,
-                    Kind::Model | Kind::Texture | Kind::Sound | Kind::TextureArray
-                ) || matches!(src.kind, Kind::System(k) if k.streams);
+                let fits = matches!(src.kind, Kind::Model | Kind::Texture | Kind::Sound)
+                    || matches!(src.kind, Kind::System(k) if k.streams);
                 if !fits || skinned {
                     refused = Some(format!(
                         "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, flipbooks, sounds, environment maps, palettes, looks and colour LUTs",

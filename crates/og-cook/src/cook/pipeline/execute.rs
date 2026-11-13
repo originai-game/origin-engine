@@ -188,15 +188,6 @@ pub(crate) fn run(
             audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
         }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
-        Work::TextureArray(s, decl) => {
-            let root = crate::cook::assets_root(s);
-            texture_array::cook(&s.rel, &root, decl, &options.texture, p.stamp)
-        }
-        Work::ArrayLayer(s, decl, n) => {
-            let root = crate::cook::assets_root(s);
-            texture_array::cook_layer(&root, decl, *n, &options.texture, p.stamp)
-                .map(|b| (b, Vec::new()))
-        }
         Work::Font(s, f) => {
             font::cook(&s.bytes, f, threads, p.stamp).map(|(b, n)| (b, vec![n.note]))
         }

@@ -12,8 +12,10 @@
 //! layer "tiles/dirt.png"
 //! ```
 
-use super::CookError;
 use super::texture;
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, stamp,
+};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
@@ -221,4 +223,85 @@ pub fn dependencies(root: &Path, decl: &ArrayDecl) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+pub(crate) static TEXTURE_ARRAY: KindDef = KindDef {
+    name: "texture-array",
+    extensions: &[],
+    types: &[ARRAY_TYPE],
+    by_content: false,
+    streams: true,
+    plan: plan_texture_array,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&TEXTURE_ARRAY];
+
+fn plan_texture_array<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { tex_desc, .. } = *cx;
+    let PlanState {
+        early_errors,
+        parsed_refs,
+        ..
+    } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    let root = crate::cook::assets_root(s);
+    match parse(&s.rel, &text, &|p| root.join(p).is_file()) {
+        Ok(decl) => {
+            let deps = dependencies(&root, &decl);
+            assets::record_dependencies(parsed_refs, &s.rel, &deps);
+            let base = [
+                b"texture-array 1".as_slice(),
+                tex_desc.as_bytes(),
+                &hash,
+                deps.as_bytes(),
+            ];
+            outs.push((
+                s.rel.clone(),
+                format::TextureArray::NAME,
+                stamp(&base),
+                Work::Job(Box::new(TextureArrayJob(s, decl.clone()))),
+            ));
+            for n in 0..decl.layers.len() {
+                let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
+                outs.push((
+                    layer_id(&s.rel, n),
+                    format::Texture::NAME,
+                    st,
+                    Work::Job(Box::new(ArrayLayerJob(s, decl.clone(), n))),
+                ));
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "texture-array", e)),
+    }
+}
+
+/// A texture array's one blob.
+struct TextureArrayJob<'a>(&'a Source, ArrayDecl);
+
+impl Job for TextureArrayJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let TextureArrayJob(s, decl) = self;
+        let Exec { options, .. } = ex;
+        let root = crate::cook::assets_root(s);
+        cook(&s.rel, &root, decl, &options.texture, p.stamp)
+    }
+}
+
+/// One layer of a texture array, cooked alone.
+struct ArrayLayerJob<'a>(&'a Source, ArrayDecl, usize);
+
+impl Job for ArrayLayerJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let ArrayLayerJob(s, decl, n) = self;
+        let Exec { options, .. } = ex;
+        let root = crate::cook::assets_root(s);
+        cook_layer(&root, decl, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+    }
 }

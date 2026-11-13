@@ -90,7 +90,6 @@ enum Kind {
     Scene,
     /// An `.ogt` of `type prefab`: cooked as a scene, flattened.
     Prefab,
-    TextureArray,
     /// A kind its system's module declares (`pipeline/kinds.rs`).
     System(&'static KindDef),
 }
@@ -104,7 +103,6 @@ impl Kind {
             Kind::Font => "font",
             Kind::Scene => "scene",
             Kind::Prefab => "prefab",
-            Kind::TextureArray => "texture-array",
             Kind::System(k) => k.name,
         }
     }
@@ -221,9 +219,6 @@ enum Work<'a> {
     Sound(&'a Source, Option<(u32, u32)>),
     /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
     SoundChunk(&'a Source, u32, u32),
-    /// A texture array's blob, and layer `n`'s texture.
-    TextureArray(&'a Source, texture_array::ArrayDecl),
-    ArrayLayer(&'a Source, texture_array::ArrayDecl, usize),
     Font(&'a Source, FontSettings),
     Scene(&'a Source),
     /// A fractured model's `#fracture`.
