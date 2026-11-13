@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.Terrain","summary":"A terrain draws faster on native Apple GPUs: its shaders read each layer's settings in place, where every layer sampled copied the whole 192-byte layer record, some of them several times. At 1280x720 on an Apple M4 Pro the 2 km island takes 7.4 to 7.9 ms a frame (8.4 to 9.8 before) and a displaced terrain 7.7 ms (10.3 to 10.6); a few pixels move by one step in 255."}
+  ]
+}

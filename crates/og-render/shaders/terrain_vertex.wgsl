@@ -214,8 +214,8 @@ fn terrain_relief(c: vec2<f32>, h: f32, step: f32, fade: f32, maps: TerrainMaps)
   var along_z = vec4<f32>(0.0);
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
-      let l = terrain.layers[pick.ids[k]];
-      let taps = select(1u, 3u, l.offset.w != 0.0 && (u32(l.mapping.w) & 1u) != 0u);
+      let li = pick.ids[k];
+      let taps = select(1u, 3u, terrain.layers[li].offset.w != 0.0 && (u32(terrain.layers[li].mapping.w) & 1u) != 0u);
       for (var j = 0u; j < taps; j++) {
         let at = select(p, p + select(dpy, dpx, j == 1u), j > 0u);
         let lh = layer_height(pick.ids[k], at, n, dpx, dpy);
@@ -234,14 +234,14 @@ fn terrain_relief(c: vec2<f32>, h: f32, step: f32, fade: f32, maps: TerrainMaps)
   let scale = fade * steep / max(terrain.displace.y, 1e-6);
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && w[k] > 0.0) {
-      let l = terrain.layers[pick.ids[k]];
-      let amount = l.offset.w * w[k] * scale;
+      let li = pick.ids[k];
+      let amount = terrain.layers[li].offset.w * w[k] * scale;
       out.d += relief[k] * amount;
-      if (amount != 0.0 && (u32(l.mapping.w) & 1u) != 0u) {
+      if (amount != 0.0 && (u32(terrain.layers[li].mapping.w) & 1u) != 0u) {
         let sx = (along_x[k] - 0.5 - relief[k]) * amount / spacing;
         let sz = (along_z[k] - 0.5 - relief[k]) * amount / spacing;
         out.slope += vec2<f32>(sx, sz);
-        if ((u32(l.mapping.w) & 2u) == 0u) { out.bare += vec2<f32>(sx, sz); }
+        if ((u32(terrain.layers[li].mapping.w) & 2u) == 0u) { out.bare += vec2<f32>(sx, sz); }
       }
     }
   }

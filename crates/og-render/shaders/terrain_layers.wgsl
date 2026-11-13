@@ -71,17 +71,17 @@ fn axis_plane(a: u32) -> u32 {
   return select(select(2u, 0u, a == 1u), 1u, a == 0u);
 }
 
-fn layer_projection(l: TerrainLayerGpu, n: vec3<f32>) -> Projection {
+fn layer_projection(li: u32, n: vec3<f32>) -> Projection {
   var o: Projection;
   o.planes = vec4<u32>(0u);
   o.w = vec4<f32>(0.0);
   o.whiteout = vec4<u32>(0u);
   o.count = 0u;
   var biplanar = 0.0;
-  if (l.look.z > 0.0) {
+  if (terrain.layers[li].look.z > 0.0) {
     let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
-    biplanar = smoothstep(l.look.z - 5.0, l.look.z + 5.0, angle);
-  } else if (l.mapping.y > 0.5) {
+    biplanar = smoothstep(terrain.layers[li].look.z - 5.0, terrain.layers[li].look.z + 5.0, angle);
+  } else if (terrain.layers[li].mapping.y > 0.5) {
     var w = pow(abs(n), vec3<f32>(4.0));
     w = w / max(w.x + w.y + w.z, 1e-5);
     o.planes = vec4<u32>(1u, 0u, 2u, 0u);
@@ -209,18 +209,18 @@ fn hex_tap(v: vec2<f32>, base: vec2<i32>, u: vec2<f32>, mf: vec2<f32>, c: vec2<f
   return o;
 }
 
-fn plane_taps(l: TerrainLayerGpu, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> PlaneTaps {
-  let k = l.mapping.x;
+fn plane_taps(li: u32, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> PlaneTaps {
+  let k = terrain.layers[li].mapping.x;
   let u = plane_of(p, plane) * k;
   let gx = plane_of(dpx, plane) * k;
   let gy = plane_of(dpy, plane) * k;
   var t: PlaneTaps;
-  t.coarse_uv = u * 0.25 + plane_of(l.coarse.xyz, plane);
+  t.coarse_uv = u * 0.25 + plane_of(terrain.layers[li].coarse.xyz, plane);
   t.coarse_dx = gx * 0.25;
   t.coarse_dy = gy * 0.25;
-  if (l.look.x <= 0.0) {
+  if (terrain.layers[li].look.x <= 0.0) {
     t.n = 1u;
-    t.uv[0] = u + plane_of(l.offset.xyz, plane);
+    t.uv[0] = u + plane_of(terrain.layers[li].offset.xyz, plane);
     t.dx[0] = gx;
     t.dy[0] = gy;
     t.turn[0] = vec2<f32>(1.0, 0.0);
@@ -228,10 +228,10 @@ fn plane_taps(l: TerrainLayerGpu, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy:
     t.w = vec3<f32>(1.0, 0.0, 0.0);
     return t;
   }
-  let hf = l.hex[plane];
-  var base = l.hex_base[0].xy;
-  if (plane == 1u) { base = l.hex_base[0].zw; }
-  if (plane == 2u) { base = l.hex_base[1].xy; }
+  let hf = terrain.layers[li].hex[plane];
+  var base = terrain.layers[li].hex_base[0].xy;
+  if (plane == 1u) { base = terrain.layers[li].hex_base[0].zw; }
+  if (plane == 2u) { base = terrain.layers[li].hex_base[1].xy; }
   // The demo's TriangleGrid, from the origin's cell.
   let st = u * HEX_SCALE;
   let sk = vec2<f32>(st.x - 0.57735027 * st.y, 1.15470054 * st.y) + hf.xy;
@@ -243,7 +243,7 @@ fn plane_taps(l: TerrainLayerGpu, plane: u32, p: vec3<f32>, dpx: vec3<f32>, dpy:
   t.w = max(vec3<f32>(-z * s2, s - f.y * s2, s - f.x * s2), vec3<f32>(0.0));
   t.n = 3u;
   let mf = hex_centre(hf.xy);
-  let strength = clamp(l.look.x, 0.0, 1.0);
+  let strength = clamp(terrain.layers[li].look.x, 0.0, 1.0);
   // The three hexagons in one loop: one copy of the tap's code (DXC
   // inlines every call, so three calls compiled three copies).
   let cells = array<vec2<f32>, 3>(vec2<f32>(s, s), vec2<f32>(s, 1.0 - s), vec2<f32>(1.0 - s, s));
@@ -312,12 +312,11 @@ fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
 // the lit pass samples them, without the distant quarter-frequency
 // blend, which depends on the eye); -1 without an albedo map.
 fn layer_height(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> f32 {
-  let l = terrain.layers[i];
-  if ((u32(l.mapping.w) & 1u) == 0u) { return -1.0; }
-  let proj = layer_projection(l, n);
+  if ((u32(terrain.layers[i].mapping.w) & 1u) == 0u) { return -1.0; }
+  let proj = layer_projection(i, n);
   var a = 0.0;
   for (var k = 0u; k < proj.count; k++) {
-    let t = plane_taps(l, proj.planes[k], p, dpx, dpy);
+    let t = plane_taps(i, proj.planes[k], p, dpx, dpy);
     a += taps_albedo(i, t, 0.0).albedo.a * proj.w[k];
   }
   return a;
@@ -418,8 +417,9 @@ fn pick_layers(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> LayerPick 
   var top = 0.0;
   var sum = 0.0;
   for (var i = 0u; i < count; i++) {
-    let l = terrain.layers[i];
-    let w = c[i / 4u][i % 4u] * band(angle, l.slope.x, l.slope.y, l.slope.z) * band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
+    let slope = terrain.layers[i].slope;
+    let alt = terrain.layers[i].altitude;
+    let w = c[i / 4u][i % 4u] * band(angle, slope.x, slope.y, slope.z) * band(altitude, alt.x, alt.y, alt.z);
     top = max(top, w);
     sum += w;
     // Insert below every weight at least as large (ties keep the lower layer first).
