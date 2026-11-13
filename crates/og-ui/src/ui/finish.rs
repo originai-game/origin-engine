@@ -1016,7 +1016,7 @@ impl Ui {
             .retain(|_, (owner, _)| tree.find(*owner).is_some() || docs.mount_owns(*owner));
         self.docs
             .state
-            .retain_element_memory(&|k| tree.find(k).is_some());
+            .retain_element_memory(|k| tree.find(k).is_some());
         self.front.touched = touched;
 
         // Scopes, scrollers, focus owners, groups and recognisers around

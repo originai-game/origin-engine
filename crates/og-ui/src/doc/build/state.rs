@@ -1,10 +1,9 @@
 //! The documents' own state (docs/ui.md §7): what a build keeps as it goes,
 //! what it tells code and the probe this tick, and what its mounts keep
-//! between ticks. The stages hold it for the documents behind
-//! [`DocumentState`] and reach it through its operations.
+//! between ticks. The stages hold it in [`crate::ui::Docs`].
 
 use super::host::{DocRecord, FieldValidity, PopoverLink, Revealing};
-use super::{Built, DocEvent, DocMemory, DocumentState, Edit, NoDocuments};
+use super::{Built, DocEvent, DocMemory, Edit};
 use crate::style::Srgba;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -82,25 +81,8 @@ pub struct DocState {
 }
 
 impl DocState {
-    fn adopt(memory: DocMemory) -> Self {
-        Self {
-            memory,
-            ..Self::default()
-        }
-    }
-}
-
-impl DocumentState for DocState {
-    fn clone_state(&self) -> Box<dyn DocumentState> {
-        Box::new(self.clone())
-    }
-    fn memory(&self) -> &DocMemory {
-        &self.memory
-    }
-    fn memory_mut(&mut self) -> &mut DocMemory {
-        &mut self.memory
-    }
-    fn begin_tick(&mut self) {
+    /// The tick's document bookkeeping starts.
+    pub(crate) fn begin_tick(&mut self) {
         self.run.clear();
         self.memory.begin();
         let d = self;
@@ -127,30 +109,21 @@ impl DocumentState for DocState {
         d.arts.clear();
         d.render_fields.clear();
     }
-    fn restore(&mut self, v: &Value) -> Result<(), String> {
+    /// Restores what a snapshot carried.
+    pub(crate) fn restore(&mut self, v: &Value) -> Result<(), String> {
         self.memory.restore(v)?;
         self.built_tick = 0;
         Ok(())
     }
-    fn edits(&self) -> &[Edit] {
-        &self.edits
-    }
-    fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields> {
-        self.render_fields.get(&key)
-    }
-    fn selection(&self, key: u64) -> Option<&Arc<crate::doc::generated::Selection>> {
-        self.selection.get(&key)
-    }
-    fn placeholder_ink(&self) -> Option<Srgba> {
-        self.placeholder_ink
-    }
-    fn last_art_entry(&self) -> Option<&(String, crate::slot::SlotSpec)> {
+    /// The art slot registered last, by the element being emitted or this tick.
+    pub(crate) fn last_art_entry(&self) -> Option<&(String, crate::slot::SlotSpec)> {
         match self.capture.last() {
             Some(record) => record.arts.last(),
             None => self.arts.last(),
         }
     }
-    fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
+    /// The art slot `path`'s spec, where it was registered.
+    pub(crate) fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
         if let Some((_, spec)) = self
             .capture
             .iter_mut()
@@ -165,36 +138,13 @@ impl DocumentState for DocState {
         }
         self.memory.record_art_slot_mut(path)
     }
-    fn retain_element_memory(&mut self, built: &dyn Fn(u64) -> bool) {
+    /// Keeps the widget memory of elements `built` this frame or kept by
+    /// their mounts, and forgets the rest.
+    pub(crate) fn retain_element_memory(&mut self, built: impl Fn(u64) -> bool) {
         let retained = &self.memory.retained;
         self.validity
             .retain(|k, _| built(*k) || retained.keeps_memory(*k));
         self.media_sent
             .retain(|k, _| built(*k) || retained.keeps_memory(*k));
-    }
-}
-
-impl crate::ui::Docs {
-    /// As the documents read it: a UI that has not built a document reads
-    /// a view of what it holds.
-    pub fn state(&self) -> &DocState {
-        let state: &dyn std::any::Any = self.document_state();
-        match state.downcast_ref::<DocState>() {
-            Some(state) => state,
-            None => state
-                .downcast_ref::<NoDocuments>()
-                .expect("the documents' state or none")
-                .view(|memory| DocState::adopt(memory.clone())),
-        }
-    }
-
-    /// As the documents write it: a UI that had not built a document takes
-    /// the documents' own state, with what it held.
-    pub fn state_mut(&mut self) -> &mut DocState {
-        self.adopt_document_state(|memory| Box::new(DocState::adopt(memory)));
-        let state: &mut dyn std::any::Any = self.document_state_mut();
-        state
-            .downcast_mut::<DocState>()
-            .expect("the documents' own state")
     }
 }

@@ -1735,11 +1735,10 @@ layers, style packs and the probe). The stages call the documents directly:
 the frame's end builds the layers no host built, and settlement restyles
 the mounted elements whose query containers changed. The documents' methods
 on the stage types are inherent, written beside the documents, and reach
-the stages' state only through each stage's accessors. Their own state (`DocState`:
-build cursor, the tick's outputs, mounts' memory, the reactive session) is
-held behind `doc::build::DocumentState` and reached only through its
-operations; a UI that built no document holds `NoDocuments`, with what a
-snapshot carries (`DocMemory`).
+the stages' state only through each stage's accessors. Their own state
+(`DocState`: build cursor, the tick's outputs, mounts' memory, the reactive
+session) is a field of the documents' stage (`ui::Docs`), the same for a UI
+that built no document; what a snapshot carries of it is `DocMemory`.
 
 The [gate rules](ci.md) own test lanes, locks and toolchain policy;
 `scripts/land.sh` owns landing on main. Release and platform installation

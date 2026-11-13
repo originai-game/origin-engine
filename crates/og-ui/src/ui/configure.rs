@@ -136,7 +136,7 @@ impl Ui {
             },
             docs: Docs {
                 host: Default::default(),
-                state: Box::new(crate::doc::build::NoDocuments::default()),
+                state: Default::default(),
             },
             world: Default::default(),
         };

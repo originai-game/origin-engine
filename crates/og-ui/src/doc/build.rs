@@ -887,7 +887,7 @@ impl Ui {
                     )
                 });
         if !instant
-            && !self.docs.state.memory().seen.contains(&key)
+            && !self.docs.state.memory.seen.contains(&key)
             && n.rules.iter().any(|rule| rule.starting)
         {
             let start = cascade::values_with(
@@ -1028,7 +1028,7 @@ impl Ui {
                 r.vals.push((p.spec, v));
             }
         }
-        for e in self.docs.state.edits().iter().filter(|e| e.path == path) {
+        for e in self.docs.state.edits.iter().filter(|e| e.path == path) {
             if let Some(v) = b.value(self, PROPS[e.spec].ty, &e.value) {
                 r.vals.push((e.spec, v));
                 built.edits.push((e.prop.clone(), e.source.clone()));
@@ -1494,9 +1494,7 @@ pub(crate) mod text_motion;
 pub(crate) mod touch;
 pub(crate) mod viewport;
 pub(crate) mod world;
-pub use host::{
-    Built, DocEvent, DocHost, DocMemory, DocResponse, DocumentState, Edit, NoDocuments,
-};
+pub use host::{Built, DocEvent, DocHost, DocMemory, DocResponse, Edit};
 pub use instances::RetainedHost;
 
 /// The computed-value entry carrying the inherited `quotes`.

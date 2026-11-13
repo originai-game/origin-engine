@@ -116,8 +116,8 @@ pub struct Docs {
     /// Documents, their mounts and the layer stack (docs/ui.md §2.1, §2.1).
     pub(crate) host: crate::doc::build::DocHost,
     /// The documents' own state: their builds, outputs and memory, and the
-    /// reactive session ([`crate::doc::build::DocumentState`]).
-    pub(crate) state: Box<dyn crate::doc::build::DocumentState>,
+    /// reactive session.
+    pub(crate) state: crate::doc::build::state::DocState,
 }
 
 /// The fields of the documents' state the documents (og-ui) reach.
@@ -128,39 +128,28 @@ impl Docs {
     pub fn host_mut(&mut self) -> &mut crate::doc::build::DocHost {
         &mut self.host
     }
-    pub fn document_state(&self) -> &dyn crate::doc::build::DocumentState {
-        &*self.state
+    pub fn state(&self) -> &crate::doc::build::state::DocState {
+        &self.state
     }
-    pub fn document_state_mut(&mut self) -> &mut dyn crate::doc::build::DocumentState {
-        &mut *self.state
-    }
-    /// Gives a UI that has not built a document the documents' own state,
-    /// made by `make` from what it held; a UI that has keeps its own.
-    pub fn adopt_document_state(
-        &mut self,
-        make: impl FnOnce(crate::doc::build::DocMemory) -> Box<dyn crate::doc::build::DocumentState>,
-    ) {
-        let state: &mut dyn std::any::Any = &mut *self.state;
-        if let Some(none) = state.downcast_mut::<crate::doc::build::NoDocuments>() {
-            self.state = make(std::mem::take(&mut none.memory));
-        }
+    pub fn state_mut(&mut self) -> &mut crate::doc::build::state::DocState {
+        &mut self.state
     }
     /// A mounted element owns layout key `key`.
     pub fn mount_owns(&self, key: u64) -> bool {
-        self.state.memory().retained.owns(key)
+        self.state.memory.retained.owns(key)
     }
     /// A mounted element keeps the widget memory of `key` while it is not built.
     pub fn mount_keeps_memory(&self, key: u64) -> bool {
-        self.state.memory().retained.keeps_memory(key)
+        self.state.memory.retained.keeps_memory(key)
     }
     /// The path of the deferred mounted element `key` focus waits for.
     pub fn deferred_focus_path(&self, key: u64) -> Option<&str> {
-        self.state.memory().retained.deferred_focus_path(key)
+        self.state.memory.retained.deferred_focus_path(key)
     }
     /// The mounts and the documents they mount.
     pub fn mounted_documents(&self) -> Vec<(crate::reactive::SourceId, String)> {
         self.state
-            .memory()
+            .memory
             .retained
             .registrations
             .iter()
@@ -169,7 +158,7 @@ impl Docs {
     }
     /// The bindings the mounts evaluated and the elements they reconciled this tick.
     pub fn mount_counts(&self) -> (usize, usize) {
-        let r = &self.state.memory().retained;
+        let r = &self.state.memory.retained;
         (r.evaluated, r.reconciled)
     }
     /// What restyled mounted element `key` and its bindings, for the debug view.
@@ -177,19 +166,15 @@ impl Docs {
         &self,
         key: u64,
     ) -> Option<(Vec<crate::UiDebugStyle>, crate::ui::DebugBindings)> {
-        self.state.memory().retained.debug_styles(key)
+        self.state.memory.retained.debug_styles(key)
     }
     /// Runs a command of the reactive session.
     pub fn execute(&mut self, command: crate::reactive::session::Command) -> Result<(), String> {
-        self.state
-            .memory_mut()
-            .reactive
-            .execute(command)
-            .map(|_| ())
+        self.state.memory.reactive.execute(command).map(|_| ())
     }
     /// The locale changed: what formats by it reads afresh.
     pub fn locale_changed(&mut self) {
-        self.state.memory_mut().reactive.graph.locale_changed();
+        self.state.memory.reactive.graph.locale_changed();
     }
 }
 

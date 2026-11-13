@@ -321,7 +321,7 @@ impl crate::ui::Docs {
     /// The layer state snapshots carry, as JSON.
     pub(crate) fn docs_state(&self) -> Value {
         let d = &self.host;
-        let m = self.state.memory();
+        let m = &self.state.memory;
         json!({
             "next": d.layers.next,
             "heldScale": d.layers.held_scale,

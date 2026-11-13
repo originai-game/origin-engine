@@ -119,7 +119,7 @@ impl Ui {
                 restyled.insert(q.path.clone(), r.cascade.computed.clone());
                 q.computed = r.cascade.computed.clone();
             }
-            let fields = self.docs.state.render_fields(q.key).cloned();
+            let fields = self.docs.state.render_fields.get(&q.key).cloned();
             if let Some(index) =
                 self.replace_fields(fields, &q.path, &q.doc, &q.doc.nodes[q.node], &r)
             {
@@ -226,7 +226,7 @@ impl crate::ui::Docs {
     ) {
         use crate::doc::media::scroll::*;
         let mut keys = std::mem::take(&mut self.host.scroll_now);
-        keys.extend(self.state.memory().retained.scroll_reads());
+        keys.extend(self.state.memory.retained.scroll_reads());
         let mut states = BTreeMap::new();
         for key in keys {
             let offset = interaction.offset(key);

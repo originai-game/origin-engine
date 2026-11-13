@@ -155,9 +155,9 @@ pub struct DocHost {
 
 /// What the documents keep between ticks that a snapshot carries: their
 /// mounts, the reactive session, the elements seen and the triggers' last
-/// values. The documents hold it in their state ([`DocumentState`]); the
-/// stages read and write it in [`Ui::save_state`] and [`Ui::restore_state`],
-/// with or without the documents.
+/// values. The documents hold it in their state ([`super::state::DocState`]);
+/// the stages read and write it in [`Ui::save_state`] and
+/// [`Ui::restore_state`].
 #[derive(Clone, Debug, Default)]
 pub struct DocMemory {
     pub retained: super::instances::RetainedHost,
@@ -217,111 +217,6 @@ impl DocMemory {
             .and_then(|r| r.arts.iter_mut().find(|(p, _)| p == path))
             .map(|(_, spec)| spec)
     }
-}
-
-/// The documents' state, held by the stages for them ([`crate::ui::Docs`]):
-/// what a build keeps as it goes, what it tells code and the probe this
-/// tick, and what its mounts keep between ticks. The documents define it;
-/// the stages reach it through these operations, and a UI that has not
-/// built a document holds [`NoDocuments`].
-pub trait DocumentState: std::any::Any + std::fmt::Debug + Send + Sync {
-    /// A copy, for a cloned UI.
-    fn clone_state(&self) -> Box<dyn DocumentState>;
-    /// What a snapshot carries.
-    fn memory(&self) -> &DocMemory;
-    fn memory_mut(&mut self) -> &mut DocMemory;
-    /// The tick's document bookkeeping starts.
-    fn begin_tick(&mut self);
-    /// Restores what a snapshot carried.
-    fn restore(&mut self, v: &Value) -> Result<(), String>;
-    /// The probe's edits of props (`ui:set`).
-    fn edits(&self) -> &[Edit];
-    /// The render fields element `key` registered this tick.
-    fn render_fields(&self, key: u64) -> Option<&super::fields::RenderFields>;
-    /// Element `key`'s `::selection` style.
-    fn selection(&self, key: u64) -> Option<&Arc<crate::doc::generated::Selection>>;
-    /// The `::placeholder` color of the text control being built.
-    fn placeholder_ink(&self) -> Option<Srgba>;
-    /// The art slot registered last, by the element being emitted or this tick.
-    fn last_art_entry(&self) -> Option<&(String, crate::slot::SlotSpec)>;
-    /// The art slot `path`'s spec, where it was registered.
-    fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec>;
-    /// Keeps the widget memory of elements `built` this frame or kept by
-    /// their mounts, and forgets the rest.
-    fn retain_element_memory(&mut self, built: &dyn Fn(u64) -> bool);
-}
-
-impl Clone for Box<dyn DocumentState> {
-    fn clone(&self) -> Self {
-        self.clone_state()
-    }
-}
-
-/// The documents' state of a UI that has not built a document: what a
-/// snapshot restored or the stages published into it, and a view of it the
-/// documents read as their own state ([`NoDocuments::view`]).
-#[derive(Debug, Default)]
-pub struct NoDocuments {
-    pub memory: DocMemory,
-    view: std::sync::OnceLock<Box<dyn std::any::Any + Send + Sync>>,
-}
-
-impl NoDocuments {
-    /// The documents' state made from this memory by `make`, made once
-    /// until the memory changes.
-    pub fn view<T: std::any::Any + Send + Sync>(&self, make: impl FnOnce(&DocMemory) -> T) -> &T {
-        let view = self.view.get_or_init(|| Box::new(make(&self.memory)));
-        (**view)
-            .downcast_ref()
-            .expect("one kind of documents' state")
-    }
-}
-
-impl Clone for NoDocuments {
-    fn clone(&self) -> Self {
-        Self {
-            memory: self.memory.clone(),
-            view: Default::default(),
-        }
-    }
-}
-
-impl DocumentState for NoDocuments {
-    fn clone_state(&self) -> Box<dyn DocumentState> {
-        Box::new(self.clone())
-    }
-    fn memory(&self) -> &DocMemory {
-        &self.memory
-    }
-    fn memory_mut(&mut self) -> &mut DocMemory {
-        self.view.take();
-        &mut self.memory
-    }
-    fn begin_tick(&mut self) {
-        self.memory_mut().begin();
-    }
-    fn restore(&mut self, v: &Value) -> Result<(), String> {
-        self.memory_mut().restore(v)
-    }
-    fn edits(&self) -> &[Edit] {
-        &[]
-    }
-    fn render_fields(&self, _: u64) -> Option<&super::fields::RenderFields> {
-        None
-    }
-    fn selection(&self, _: u64) -> Option<&Arc<crate::doc::generated::Selection>> {
-        None
-    }
-    fn placeholder_ink(&self) -> Option<Srgba> {
-        None
-    }
-    fn last_art_entry(&self) -> Option<&(String, crate::slot::SlotSpec)> {
-        None
-    }
-    fn art_slot_mut(&mut self, path: &str) -> Option<&mut crate::slot::SlotSpec> {
-        self.memory_mut().record_art_slot_mut(path)
-    }
-    fn retain_element_memory(&mut self, _: &dyn Fn(u64) -> bool) {}
 }
 
 /// What the controls naming a popover last did to it, by its key
@@ -430,7 +325,7 @@ impl Ui {
         d.queried.clear();
         // Last tick's containers, immediate and mounted, stay watched.
         let mut live = std::mem::take(&mut d.containers_now);
-        live.extend(self.docs.state.memory().retained.containers());
+        live.extend(self.docs.state.memory.retained.containers());
         self.watch_document_containers(live);
         self.docs.sync_scroll_states(&self.interaction, &self.tree);
     }
