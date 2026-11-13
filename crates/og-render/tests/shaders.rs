@@ -149,3 +149,49 @@ fn the_compiled_wgsl_is_the_source_without_its_comments() {
     assert!(files >= 50, "{files} WGSL files");
     assert!(removed > 50_000, "{removed} bytes of comments");
 }
+
+/// A mechanism's shader code has one copy, in the file that owns it: no
+/// other file writes these tokens (a definition of a library function, or
+/// the choice between a cascade's depth and a local light's value, which
+/// every caster takes from `shadow_depth` or `shadow_card`).
+#[test]
+fn a_mechanisms_shader_code_is_written_once() {
+    const OWNED: &[(&[&str], &[&str])] = &[
+        (
+            &["hash.wgsl"],
+            &[
+                "fn pcg(",
+                "fn hash_lowbias(",
+                "fn hash_unit(",
+                "fn lattice3(",
+            ],
+        ),
+        (
+            &["common.wgsl"],
+            &[
+                "fn oct_encode(",
+                "fn oct_decode(",
+                "fn fullscreen_clip(",
+                "fn view_point(",
+                "fn ign(",
+            ],
+        ),
+        (&["shadow_pass.wgsl"], &["local_value(", "local_distance("]),
+    ];
+    let built = std::path::Path::new(env!("OG_RENDER_SHADERS"));
+    let mut copies = Vec::new();
+    for entry in std::fs::read_dir(built).expect("the built shaders") {
+        let path = entry.expect("an entry").path();
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let text = std::fs::read_to_string(&path).expect("a WGSL file");
+        for (owners, tokens) in OWNED {
+            if owners.contains(&name.as_str()) {
+                continue;
+            }
+            for token in tokens.iter().filter(|t| text.contains(**t)) {
+                copies.push(format!("{name}: `{token}` belongs to {owners:?}"));
+            }
+        }
+    }
+    assert!(copies.is_empty(), "{}", copies.join("\n"));
+}

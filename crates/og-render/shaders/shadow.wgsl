@@ -172,15 +172,6 @@ fn shadow_value(in: VsOut, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f3
   return shadow_depth(in.world, in.clip, dx, dy, front);
 }
 
-// What a caster's fragment at `world` (`frag`: its position builtin,
-// `front`: its front_facing) stores.
-fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
-  if (shadow_pass.light.w > 0.0) {
-    return local_value(world, frag, dx, dy, front);
-  }
-  return vec4<f32>(frag.z, 0.0, 0.0, 1.0);
-}
-
 @fragment
 fn fs(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
   let dx = dpdxFine(in.world);

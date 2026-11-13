@@ -26,10 +26,7 @@ fn fs_shadow(in: TerrainShadowOut, @builtin(front_facing) front: bool) -> @locat
   if (terrain_hole_at(in.local)) { discard; }
   let dx = dpdxFine(in.world);
   let dy = dpdyFine(in.world);
-  if (shadow_pass.light.w > 0.0) {
-    return local_value(in.world, in.clip, dx, dy, front);
-  }
-  return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
+  return shadow_depth(in.world, in.clip, dx, dy, front);
 }
 
 // A terrain stamp's shadow (terrain_lit.wgsl's stamps): its mesh, never
@@ -52,8 +49,5 @@ fn vs_stamp_shadow(@location(0) position: vec3<f32>) -> StampShadowOut {
 
 @fragment
 fn fs_stamp_shadow(in: StampShadowOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
-  if (shadow_pass.light.w > 0.0) {
-    return local_value(in.world, in.clip, dpdxFine(in.world), dpdyFine(in.world), front);
-  }
-  return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
+  return shadow_depth(in.world, in.clip, dpdxFine(in.world), dpdyFine(in.world), front);
 }

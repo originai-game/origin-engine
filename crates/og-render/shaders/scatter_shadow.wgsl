@@ -35,8 +35,5 @@ fn fs_shadow(in: ScatterShadowOut, @builtin(front_facing) front: bool) -> @locat
   if ((material.emissive.w >= 0.0 && a < material.emissive.w) || scatter_dropped(in.clip.xy, in.fade)) {
     discard;
   }
-  if (shadow_pass.light.w > 0.0) {
-    return local_value(in.world, in.clip, dx, dy, front);
-  }
-  return vec4<f32>(in.clip.z, 0.0, 0.0, 1.0);
+  return shadow_depth(in.world, in.clip, dx, dy, front);
 }

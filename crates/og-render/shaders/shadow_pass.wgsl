@@ -1,5 +1,10 @@
-// The shadow pass's slot (group 0), shared by the casters' shaders
-// (shadow.wgsl, terrain_shadow.wgsl, scatter_shadow.wgsl): a cascade's
+// The shadow pass's slot (group 0) and what a caster does with it, shared
+// by every caster's shader (shadow.wgsl, custom_shadow.wgsl,
+// terrain_shadow.wgsl, scatter_shadow.wgsl, impostor_shadow.wgsl,
+// crowd_card_shadow.wgsl): a caster projects with `shadow_clip` or
+// `shadow_project` and ends its fragment stage in `shadow_depth` or
+// `shadow_card`. (The grass casts into cascades only and writes its
+// depth, grass_shadow.wgsl.) The slot is a cascade's
 // view, a spot light's or a cube face's, or one hemisphere of a point
 // light's dual-paraboloid map (shadows.rs). Selected with a dynamic offset.
 struct ShadowPass {
@@ -92,4 +97,40 @@ fn local_value(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, 
   let near = SHADOW_SIDE == 2u || (front == (SHADOW_SIDE == 0u));
   let far = SHADOW_SIDE == 2u || !near;
   return vec4<f32>(select(1.0, d, far), select(1.0, d, near), 0.0, 1.0);
+}
+
+// What a caster's fragment at `world` stores (`frag`: its position
+// builtin, `front`: its front_facing; `dx`, `dy`: the world position's
+// derivatives, taken before any discard): a cascade's depth, or a local
+// light's `local_value`. Every caster's fragment stage ends here.
+fn shadow_depth(world: vec3<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> vec4<f32> {
+  if (shadow_pass.light.w > 0.0) {
+    return local_value(world, frag, dx, dy, front);
+  }
+  return vec4<f32>(frag.z, 0.0, 0.0, 1.0);
+}
+
+// A card's fragment, which stands for a surface off its own plane: the
+// depth it writes and what it stores.
+struct CardShadow {
+  depth: f32,
+  value: vec4<f32>,
+};
+
+// `shadow_depth` for a card: `surface` is the point the fragment stands
+// for and `flat` that point through the pass's view projection (as
+// `shadow_project` takes it).
+fn shadow_card(surface: vec3<f32>, flat: vec4<f32>, frag: vec4<f32>, dx: vec3<f32>, dy: vec3<f32>, front: bool) -> CardShadow {
+  var o: CardShadow;
+  if (shadow_pass.paraboloid.x > 0.5) {
+    o.depth = clamp(length(surface - shadow_pass.light.xyz) / shadow_pass.light.w, 0.0, 1.0);
+  } else {
+    o.depth = clamp(flat.z / flat.w, 0.0, 1.0);
+  }
+  if (shadow_pass.light.w > 0.0) {
+    o.value = local_value(surface, frag, dx, dy, front);
+  } else {
+    o.value = vec4<f32>(o.depth, 0.0, 0.0, 1.0);
+  }
+  return o;
 }

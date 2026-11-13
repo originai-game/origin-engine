@@ -48,17 +48,9 @@ fn fs_crowd_card_shadow(in: CardShadowOut, @builtin(front_facing) front: bool) -
     discard;
   }
   let surface = in.world + in.toward * s.depth * in.blend.z;
+  let c = shadow_card(surface, mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0)), in.clip, dx, dy, front);
   var o: CardShadowFrag;
-  if (shadow_pass.paraboloid.x > 0.5) {
-    o.depth = clamp(length(surface - shadow_pass.light.xyz) / shadow_pass.light.w, 0.0, 1.0);
-  } else {
-    let c = mul_point(shadow_pass.view_proj, vec4<f32>(surface, 1.0));
-    o.depth = clamp(c.z / c.w, 0.0, 1.0);
-  }
-  if (shadow_pass.light.w > 0.0) {
-    o.value = local_value(surface, in.clip, dx, dy, front);
-  } else {
-    o.value = vec4<f32>(o.depth, 0.0, 0.0, 1.0);
-  }
+  o.depth = c.depth;
+  o.value = c.value;
   return o;
 }
