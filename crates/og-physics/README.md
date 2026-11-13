@@ -285,8 +285,8 @@ reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module
 | `og.Rope`, `og.Cloth` | Verlet strands and grids with pins, wind and gusts, pushed out of every solid collider; cloth with `friction` against solids, `substeps`, and self-collision by `thickness` (below); `rope_points`, `cloth_points` |
 | `og.SoftBody` | PBD soft volumes (`soft/softbody.rs`): an icosphere, a box's faces or a closed registered mesh (welded), 2D a ring; per substep, `iterations` passes of pins (`pinTop`), edge distances by `stiffness`, the volume constraint (Müller et al. 2007: every point along the volume's gradient, 2D the area's) towards `pressure` × the rest volume, and push-out of solids at `thickness`, then friction. One-way like cloth; lazy, so found by `SystemContext::query_with` over the granted type; its points and surface are the trailer's tag 5 (`SimExt::softs`), written only while one exists; `soft_body_points` |
 | `og.Garment` | Cloth on a skinned character (`soft/garment.rs`), 3D only: the host hands each tick the skin's targets for the rig's points in the world (`set_garment_rig` once, a welded mesh with each point's freedom; `set_garment_pose` each tick, after the animation; og-runtime's `garment.rs` skins them on the CPU), and per substep the points integrate gravity and a gusting wind, then `iterations` passes of edges, bends, the backstop behind the skin's normal, the reach (`freedom` × `maxDistance`, 0 within `pinTop` of the top) and push-out of solids at `radius`; the skin carries each point (`previous` moves with its correction). One-way like cloth; lazy; the trailer's tag 6 (`SimExt::garments`), shifted with the origin; `garment_points` |
-| `og.Fluid2D` | double density relaxation (Clavet et al.) on a grid in a fixed order, velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
-| `og.Fluid3D` | 3D profile: the same model over a spatial hash, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |
+| `og.Fluid2D` | double density relaxation (Clavet et al.) over a spatial hash in a fixed order (the solver og.Fluid3D runs, `src/fluid/solve.rs`), velocity capped at half the radius per substep; fluids of one `group` simulated together, layering by `density` and blending by `mixing` (below); `fluid_particles`, `fluid_mix` |
+| `og.Fluid3D` | 3D profile: the same solver, against 3D colliders and height fields, in optional `bounds`, with an emitter (`emitRate` up to `maxCount`) and a sink box; groups layer and mix as in 2D (below); `fluid3d_particles`, `fluid3d_mix` |
 | `og.WaterSurface`, `og.WaterLine` | a height field and a spring line splashed by crossing bodies (`og.Splash`), buoyancy and drag on dynamic bodies; `water_heights`, `water_line` |
 | `og.Ragdoll` | capsule bones from a host-registered rig (`set_ragdoll_rig`; og-runtime makes one from an og-anim skeleton) on limited ball joints in 3D and on limited hinges about z in 2D (rapier2d bodies, the bones in the xy plane at their animated z: a planar skeleton), following targets kinematically at weight 0 (og-runtime's `og.ragdollTargets` system hands it the animation's pose each tick, between og.anim and og.physics), simulated above it, `blend` moving to `weight` over `blend_time` |
 
@@ -372,24 +372,29 @@ layers do not meet.
   within the limit (1.12 rad at most landing under the body's weight; 3.03
   without a limit), and it recovers.
 
-### 3D particle fluids (`og.Fluid3D`, `src/fluid/fluid3d.rs`)
+### Particle fluids (`og.Fluid2D`, `og.Fluid3D`, `src/fluid/`)
 
 Double density relaxation (Clavet, Beaudoin and Poulin 2005) rather than
 position-based fluids: one neighbour search and two passes a substep, where
 PBF needs a solver loop of several iterations over the same pairs; it is
-stable at 60 Hz with two substeps and is the 2D fluid's model, so groups,
-layering, mixing, emitters and sinks mean the same in both.
+stable at 60 Hz with two substeps. One solver steps both: `solve.rs` is
+generic over the point (`Vec2` or `Vec3`: the cells a particle searches,
+the boundary's strength between unmixed fluids, how a point reads a world
+position), `pairs.rs` is its spatial hash, and `fluid2d.rs` and `fluid3d.rs`
+hold each component's state (spawn, group membership, 3D's emitter and
+sink). Groups, layering and mixing are that one code, so they mean the
+same in both.
 
 - **Step**: gravity, then per substep a prediction, the neighbour pairs
   from a spatial hash of cells the size of `radius` (a counting sort by
-  cell; each particle searches its own cell and 13 forward ones, so every
-  pair is found once, in a fixed order), viscosity on approaching pairs,
-  the double density relaxation (pressure against `restDensity` gives
-  cohesion and surface tension, near pressure keeps particles apart), and
-  the collisions: the 3D colliders near each particle (pushed out, their
-  normal velocity taken, the slide slowed), height fields (the surface
-  from the triangle under the point, so nothing tunnels the terrain) and
-  `bounds` around the entity.
+  cell; each particle searches its own cell and the forward ones, 13 in 3D
+  and 4 in 2D, so every pair is found once, in a fixed order), viscosity on
+  approaching pairs, the double density relaxation (pressure against
+  `restDensity` gives cohesion and surface tension, near pressure keeps
+  particles apart), and the collisions: the profile's colliders near each
+  particle (pushed out, their normal velocity taken, the slide slowed), in
+  3D the height fields (the surface from the triangle under the point, so
+  nothing tunnels the terrain) and `bounds` around the entity.
 - **Groups**: up to four fluids of one nonzero `group` step as one particle
   set, weighted by `density` (a heavier fluid sinks under a lighter one) and
   evening out their mix by `mixing`; the boundary between unmixed fluids is

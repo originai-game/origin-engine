@@ -295,7 +295,7 @@ pub(crate) struct Sim {
     pub(crate) surfaces: IdMap<u64, crate::water::SurfaceState>,
     pub(crate) lines: IdMap<u64, crate::water::LineState>,
     pub(crate) ragdolls: IdMap<u64, super::RagdollState>,
-    pub(crate) fluids3: IdMap<u64, crate::fluid3d::Fluid3State>,
+    pub(crate) fluids3: IdMap<u64, crate::fluid::Fluid3State>,
     /// Per og.WaterSurface and og.Water, the bodies that cut it in the last
     /// ticks, for the renderer's ripples, wakes and hull wave suppression:
     /// not world state (never saved, never read by the tick).

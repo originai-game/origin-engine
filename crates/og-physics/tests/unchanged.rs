@@ -36,7 +36,10 @@ use support::beyond::*;
 /// migration packs ccd and sensor as one-byte bools rather than u32s.
 /// Expanding those two fields back to u32 reproduced both previous pins,
 /// including all physics state blocks; simulation results did not change.
-const PINNED: [(u32, u64); 2] = [(3, 0x4531e49be1eff40f), (2, 0xebf409356ba43ecc)];
+/// The 2D fluid now steps in the 3D fluid's solver (one spatial hash, the
+/// velocity taken before the solids push out, wall friction), which moved
+/// the 2D pin and left the 3D one.
+const PINNED: [(u32, u64); 2] = [(3, 0x4531e49be1eff40f), (2, 0x05963289341f7447)];
 
 /// What G2-3 added to the types the world registers: left out of the
 /// table, as an older engine's trace leaves them.

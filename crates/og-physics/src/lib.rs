@@ -73,10 +73,7 @@ compile_error!("og-physics needs the `physics2d` or the `physics3d` feature (bot
 
 #[path = "vehicle/drivetrain.rs"]
 mod drivetrain;
-#[path = "fluid/fluid.rs"]
 mod fluid;
-#[path = "fluid/fluid3d.rs"]
-mod fluid3d;
 #[path = "soft/garment.rs"]
 mod garment;
 mod gather;

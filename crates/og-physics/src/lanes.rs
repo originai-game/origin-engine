@@ -302,26 +302,6 @@ pub(crate) fn for_each_chunk<P: Send, V: Send>(
     });
 }
 
-/// [`for_each_chunk`] over one slice.
-pub(crate) fn for_each_chunk_of<P: Send>(
-    items: &mut [P],
-    grain: usize,
-    f: impl Fn(usize, &mut [P]) + Sync + Send,
-) {
-    let size = ranges(items.len(), grain)
-        .first()
-        .map_or(1, |r| r.len().max(1));
-    let mut parts: Vec<(usize, &mut [P])> = items
-        .chunks_mut(size)
-        .enumerate()
-        .map(|(k, p)| (k * size, p))
-        .collect();
-    og_lanes::for_each_mut(og_lanes::Site::Physics, &mut parts, 1, |part| {
-        let (at, p) = part;
-        f(*at, p)
-    });
-}
-
 #[cfg(test)]
 mod tests {
     use super::Gauge;

@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og.Fluid2D",
+      "change": "og.Fluid2D steps with the solver og.Fluid3D uses: neighbours come from the spatial hash in its pair order, a particle pushed out of a solid loses its velocity into it and a little of its slide (as in 3D), and its spawn jitter differs. A 2D fluid settles to the same shape but not to the same particle positions, so the world hash of a world with one, and a snapshot or replay recorded on an earlier version, no longer match.",
+      "fix": "Re-record replays and pinned hashes of worlds with an og.Fluid2D; restore no snapshot holding one across the version. No field changed."
+    }
+  ]
+}

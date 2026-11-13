@@ -16,30 +16,16 @@ pub(super) fn fluid_set(
     g: Vec2,
     colliders: &rp::ColliderSet,
 ) {
-    if let [k] = members {
-        let (_, position, fluid) = &scene.fluids[*k];
-        let centre = Vec2::new(position.x, position.y);
-        let state = &mut taken[0].1;
-        state.leave();
-        let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
-        for p in &state.positions {
-            min = min.min(*p);
-            max = max.max(*p);
-        }
-        let near = Near::around(
-            colliders,
-            Vec3::new(min.x, min.y, position.z),
-            Vec3::new(max.x, max.y, position.z),
-            fluid.radius * 2.0,
-        );
-        state.step(fluid, dt, g, centre, position.z, &near);
-        return;
-    }
+    let grouped = members.len() > 1;
     let (mut min, mut max) = (Vec2::splat(f32::MAX), Vec2::splat(f32::MIN));
     let (mut z, mut reach) = (0.0f32, 0.0f32);
     for (slot, ((_, state), &k)) in taken.iter_mut().zip(members).enumerate() {
         let (_, position, fluid) = &scene.fluids[k];
-        state.join(slot as u32);
+        if grouped {
+            state.join(slot as u32);
+        } else {
+            state.leave();
+        }
         for p in &state.positions {
             min = min.min(*p);
             max = max.max(*p);
@@ -55,19 +41,15 @@ pub(super) fn fluid_set(
         Vec3::new(max.x, max.y, z),
         reach,
     );
-    let mut list: Vec<crate::fluid::Member<'_>> = taken
+    let mut list: Vec<crate::fluid::Body<'_, Vec2>> = taken
         .iter_mut()
         .zip(members.iter())
         .map(|((_, state), &k)| {
             let (_, position, fluid) = &scene.fluids[k];
-            crate::fluid::Member {
-                fluid,
-                state,
-                centre: Vec2::new(position.x, position.y),
-            }
+            state.body(fluid, Vec2::new(position.x, position.y))
         })
         .collect();
-    crate::fluid::step_group(&mut list, dt, g, z, &near);
+    crate::fluid::step(&mut list, dt, g, z, &near);
 }
 
 /// Steps the 3D fluids (the 3D profile only: the 2D one keeps none), each
@@ -75,7 +57,7 @@ pub(super) fn fluid_set(
 /// each set from its own particles, side by side on the lanes as
 /// [`soft`] steps the 2D ones.
 pub(super) fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
-    use crate::fluid3d::{Fluid3State, Member, step};
+    use crate::fluid::Fluid3State;
     if DIM != 3 {
         sim.fluids3.clear();
         return;
@@ -185,7 +167,7 @@ pub(super) fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim)
                 min = min.min(at - r);
                 max = max.max(at + r);
             }
-            reach = reach.max(fluid.radius.max(0.02) * 2.0);
+            reach = reach.max(fluid.radius.max(crate::fluid::MIN_RADIUS) * 2.0);
         }
         if min.x > max.x {
             return;
@@ -193,19 +175,24 @@ pub(super) fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim)
         // A particle moves at most half the radius a substep.
         let substeps = substeps_of(members) as f32;
         let near = Near::around(colliders, min, max, reach * (1.0 + substeps * 0.25));
-        let mut list: Vec<Member<'_>> = taken
+        for ((_, state), &k) in taken.iter_mut().zip(members.iter()) {
+            let (_, position, fluid) = &scene.fluids3[k];
+            state.emit(fluid, *position, dt);
+        }
+        let mut list: Vec<crate::fluid::Body<'_, Vec3>> = taken
             .iter_mut()
             .zip(members.iter())
             .map(|((_, state), &k)| {
                 let (_, position, fluid) = &scene.fluids3[k];
-                Member {
-                    fluid,
-                    state,
-                    centre: *position,
-                }
+                state.body(fluid, *position)
             })
             .collect();
-        step(&mut list, dt, gravity, &near);
+        crate::fluid::step(&mut list, dt, gravity, 0.0, &near);
+        drop(list);
+        for ((_, state), &k) in taken.iter_mut().zip(members.iter()) {
+            let (_, position, fluid) = &scene.fluids3[k];
+            state.sink(fluid, *position);
+        }
     });
     for (_, taken) in jobs {
         sim.fluids3.extend(taken);
