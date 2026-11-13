@@ -485,7 +485,6 @@ impl Ui {
             | Kind::Scroll
             | Kind::List
             | Kind::Cells
-            | Kind::Slot
             | Kind::Dialog
             | Kind::Details
             | Kind::Box => unreachable!("'{kind}' is built before the leaf controls"),
@@ -919,12 +918,6 @@ impl Ui {
         {
             let at = self.tree.parent();
             self.world_effects(b, n, r, at, &path);
-        }
-        if kind == Kind::Slot {
-            let at = self.tree.parent();
-            self.docs.state_mut().slots.insert(path.clone(), at);
-            let short = format!("{}/{}", b.mount, n.id);
-            self.docs.state_mut().slots.entry(short).or_insert(at);
         }
         self.docs.note_built(built);
         if shows_content {

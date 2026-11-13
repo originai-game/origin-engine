@@ -3,11 +3,10 @@
 //! code mix in one tree. Props are resolved in order (the line, the
 //! matching `at` blocks, a probe edit), bindings are evaluated against the
 //! viewmodel ([`crate::bind`]), `for` builds a list's rows (only those in
-//! view under `list` and `cells`), `slot`s are left for code to fill
-//! ([`Ui::open_slot`]), triggers fire, and controls write their values back
+//! view under `list` and `cells`), triggers fire, and controls write their values back
 //! into the viewmodel (two-way bindings). What the build saw is kept for
 //! the probe: every element's document line, bindings and their values,
-//! the slots and art slots, the probe's edits.
+//! the art slots, the probe's edits.
 
 use super::schema::{self, PROPS, Ty};
 use super::{Act, DocNode, Lit, NodeKind, Paint, PropValue, StateValue, UiDocument, When};

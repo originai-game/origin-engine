@@ -1,5 +1,5 @@
-//! A document's TypeScript declaration (docs/ui.md §2.1): its props, the
-//! events it can send and its slots, as one `.d.ts` that adds the document
+//! A document's TypeScript declaration (docs/ui.md §2.1): its props and the
+//! events it can send, as one `.d.ts` that adds the document
 //! to the engine's `UiScreens` or `UiComponents` registry. Then
 //! `og.ui.push(world, "shop", vm)` type-checks `vm` against the contract
 //! and og.ui.screenVm answers the contract's viewmodel type.
@@ -12,7 +12,6 @@
 //! A component the lookup cannot find leaves those names as any string,
 //! since its events would be missed.
 
-use crate::doc::schema::Kind;
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
@@ -280,19 +279,8 @@ pub fn document_dts<'a>(
     }
     out.pop();
     out.push_str(";\n\n");
-    // Slots.
-    let slots: BTreeSet<String> = doc
-        .nodes
-        .iter()
-        .filter(|n| n.kind == NodeKind::Element(Kind::Slot) && !n.id.is_empty())
-        .map(|n| format!("{}/{}", doc.name, n.id))
-        .collect();
     out.push_str(&format!(
-        "/** Its slots, by path. */\nexport type {t}Slot = {};\n\n",
-        union(&slots)
-    ));
-    out.push_str(&format!(
-        "declare module \"@origingame/engine\" {{\n  interface {registry} {{\n    {}: {{ props: {t}{key}; events: {t}Event; slots: {t}Slot }};\n  }}\n}}\n",
+        "declare module \"@origingame/engine\" {{\n  interface {registry} {{\n    {}: {{ props: {t}{key}; events: {t}Event }};\n  }}\n}}\n",
         lit(&doc.name)
     ));
     out

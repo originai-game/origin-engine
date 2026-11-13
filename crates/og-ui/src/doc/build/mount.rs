@@ -83,25 +83,6 @@ impl Ui {
         r
     }
 
-    /// Opens a document's slot so code fills it (its children follow until
-    /// [`Ui::close`]): a full path, or `<mount>/<slot id>`. False when no
-    /// such slot was built this tick.
-    pub fn open_slot(&mut self, path: &str) -> bool {
-        match self.docs.state().slots.get(path) {
-            Some(&i) if i < self.tree.nodes().len() => {
-                self.tree.stack_mut().push(i);
-                true
-            }
-            _ => {
-                self.out.warnings_mut().push(format!(
-                    "Ui::open_slot: no slot '{path}' this tick (mount the document first; slots: {})",
-                    self.docs.state().slots.keys().cloned().collect::<Vec<_>>().join(", ")
-                ));
-                false
-            }
-        }
-    }
-
     /// Events of documents built where code did not see them (screens
     /// built at the end of a tick), taken.
     /// The play, pause, seek, gain and loop requests documents' `<video>`

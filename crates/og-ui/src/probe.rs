@@ -189,9 +189,6 @@ impl Ui {
                         Value::Object(b.edits.iter().map(|(p, v)| (p.clone(), json!(v))).collect()),
                     );
                 }
-                if self.docs.state().slots.contains_key(&e.path) {
-                    d.insert("slot".into(), json!({ "kind": "code" }));
-                }
             }
             if let Some(m) = motion.get(e.path.as_str()) {
                 if !m.states.is_empty() {

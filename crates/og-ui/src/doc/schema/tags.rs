@@ -148,7 +148,6 @@ pub fn of(kind: Kind) -> Vec<(String, String)> {
         | Kind::Scroll
         | Kind::List
         | Kind::Cells
-        | Kind::Slot
         | Kind::Button
         | Kind::Kbd
         | Kind::Art

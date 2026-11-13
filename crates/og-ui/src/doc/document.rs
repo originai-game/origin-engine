@@ -439,15 +439,12 @@ impl UiDocument {
     /// Its static structure as JSON (dump_ui's `documents`, og.ui.document).
     pub fn to_json(&self) -> serde_json::Value {
         use serde_json::json;
-        let mut slots = Vec::new();
-        let mut arts = Vec::new();
-        for n in &self.nodes {
-            match n.kind {
-                NodeKind::Element(Kind::Slot) => slots.push(n.id.clone()),
-                NodeKind::Element(Kind::Art) => arts.push(n.id.clone()),
-                _ => {}
-            }
-        }
+        let arts: Vec<&str> = self
+            .nodes
+            .iter()
+            .filter(|n| n.kind == NodeKind::Element(Kind::Art))
+            .map(|n| n.id.as_str())
+            .collect();
         json!({
             "name": self.name,
             "kind": match self.kind { DocKind::Screen => "screen", DocKind::Component => "component" },
@@ -461,7 +458,6 @@ impl UiDocument {
             },
             "props": self.props.iter().map(|p| json!({ "name": p.name, "type": p.ty, "doc": p.doc, "default": p.default })).collect::<Vec<_>>(),
             "parts": self.parts,
-            "slots": slots,
             "arts": arts,
             "actions": self.actions.iter().map(|(a, h)| json!({ "action": a, "hint": h })).collect::<Vec<_>>(),
             "timelines": self.timelines.iter().map(|(n, _)| n.clone()).collect::<Vec<_>>(),

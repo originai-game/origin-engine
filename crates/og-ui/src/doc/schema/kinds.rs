@@ -70,8 +70,6 @@ kinds! {
         "A virtualised list: its `for` builds only the rows in view, each a selectable row.";
     Cells children "cells"
         "A virtualised grid of equal cells: its `for` builds only the cells in view.";
-    Slot children "slot"
-        "A named place, its box laid out with the document; content a mount passes is placed with `{@render}`.";
     Label leaf "label"
         "A text.";
     Button children "button"

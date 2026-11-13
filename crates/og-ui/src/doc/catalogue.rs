@@ -123,12 +123,7 @@ pub fn markdown() -> String {
     for (name, grammar, reason) in super::schema::MEDIA_FEATURES {
         let _ = writeln!(out, "| `{name}` | `{grammar}` | {reason} |");
     }
-    for (n, k) in Kind::ALL
-        .iter()
-        .copied()
-        .filter(|k| *k != Kind::Slot)
-        .enumerate()
-    {
+    for (n, k) in Kind::ALL.iter().copied().enumerate() {
         let own: Vec<&PropSpec> = PROPS
             .iter()
             .filter(|p| matches!(p.on, On::Kinds(ks) if ks.contains(&k)))
@@ -181,7 +176,7 @@ mod tests {
         let sections: Vec<&str> = md.split("\n## ").skip(1).collect();
         assert_eq!(
             sections.len(),
-            Kind::ALL.iter().filter(|k| **k != Kind::Slot).count() + 1,
+            Kind::ALL.len() + 1,
             "every element, then each kind"
         );
         let written = |p: &PropSpec| format!("\n| {} |", written(p));
@@ -192,12 +187,7 @@ mod tests {
                 p.name
             );
         }
-        for (k, s) in Kind::ALL
-            .iter()
-            .copied()
-            .filter(|k| *k != Kind::Slot)
-            .zip(&sections[1..])
-        {
+        for (k, s) in Kind::ALL.iter().copied().zip(&sections[1..]) {
             assert!(s.contains(&format!("`{}`", k.name())), "{s}");
             for p in PROPS.iter().filter(|p| p.on != On::All) {
                 assert_eq!(

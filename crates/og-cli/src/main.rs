@@ -247,7 +247,7 @@ commands:
                       refuses to overwrite one there without --force; --list prints each with its
                       README row
   ui types [project]  write .og/types/ui/<name>.d.ts for every screen and component document:
-                      its props, the events it can send and its slots, so og.ui.push(world, name,
+                      its props and the events it can send, so og.ui.push(world, name,
                       vm) checks vm; og check, og run, og build and og dev write them first
   frame measure <png> [--region x,y,w,h] [--against x,y,w,h] [--units px|fraction]
       [--metric contrast,highpass,mean,ramp] [--rows N] [--json] [--require-checked]

@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "UI document types (.og/types/ui/<name>.d.ts)",
+      "change": "A document's generated declaration no longer exports a `<Name>Slot` type or a `slots` member in its UiScreens or UiComponents entry, and og.ui.document's answer no longer has a `slots` list. Documents refuse `<slot>` (content is passed with `{#snippet}` and placed with `{@render}`), so the type was always `never` and the list always empty.",
+      "fix": "Remove references to `<Name>Slot`, `UiScreens[name][\"slots\"]`, `UiComponents[name][\"slots\"]` and the `slots` field of og.ui.document's answer; nothing replaces them."
+    }
+  ]
+}

@@ -112,11 +112,8 @@ impl RetainedHost {
             keys: Vec::new(),
             record: Default::default(),
             memories: Vec::new(),
-            // A slot, and a player's picture and time, change without a binding.
-            volatile: matches!(
-                node.kind,
-                NodeKind::Element(Kind::Slot | Kind::Video | Kind::Audio)
-            ),
+            // A player's picture and time change without a binding.
+            volatile: matches!(node.kind, NodeKind::Element(Kind::Video | Kind::Audio)),
             materialization,
             run_in: None,
             run_events: Default::default(),

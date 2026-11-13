@@ -198,10 +198,9 @@ impl RetainedHost {
         } else {
             self.rive.remove(identity);
         }
-        // A slot, and a viewport whose camera-controls turn it by the tick.
+        // A viewport whose camera-controls turn it by the tick.
         let node = &e.document.nodes[e.index];
         let volatile = owned.moved
-            || matches!(node.kind, NodeKind::Element(Kind::Slot))
             || (node.kind == NodeKind::Element(Kind::Viewport)
                 && node.props.iter().any(|p| p.name() == "cameraControls"));
         if volatile {

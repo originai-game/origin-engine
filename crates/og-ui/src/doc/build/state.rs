@@ -36,9 +36,8 @@ pub struct DocState {
     pub popovers: BTreeMap<u64, PopoverLink>,
     /// The id the last `#fragment` link named: CSS `:target`.
     pub target: Option<String>,
-    /// This tick's builds, slots and art slots.
+    /// This tick's builds and art slots.
     pub built: Vec<Built>,
-    pub slots: BTreeMap<String, usize>,
     pub arts: Vec<(String, crate::slot::SlotSpec)>,
     pub render_fields: BTreeMap<u64, super::fields::RenderFields>,
     /// Events queued for code (screens built at the end of a tick reach
@@ -114,7 +113,6 @@ impl DocState {
             }
         }
         d.built.clear();
-        d.slots.clear();
         d.arts.clear();
         d.render_fields.clear();
     }

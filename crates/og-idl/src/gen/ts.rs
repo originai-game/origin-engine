@@ -151,8 +151,8 @@ export type Value<T> = T extends { readonly [valueType]: infer V } ? V : never;
 export type View<T> = T extends ComponentType<infer F, any> ? ColumnViews<F> : never;
 
 /**
- * The game's screen documents by name, each with its viewmodel, events and
- * slots. Empty here: `og ui types` writes one `.og/types/ui/<name>.d.ts`
+ * The game's screen documents by name, each with its viewmodel and events.
+ * Empty here: `og ui types` writes one `.og/types/ui/<name>.d.ts`
  * per document that adds itself, so `og.ui.push(world, "shop", vm)` checks `vm`.
  */
 export interface UiScreens {}
