@@ -10,45 +10,11 @@
 // writes them into generated code an item attribute does not reach.
 #![allow(clippy::approx_constant)]
 
-use og_core::glam::{Quat, Vec3};
+use og_core::glam::Vec3;
 use og_core::{Reflect, Str64};
 
-/// Where an entity is, relative to its parent (or the world). The same
-/// schema as the engine's `og.Transform`; a world that registered it from
-/// the IDL (or from og-physics) adopts this type. Root motion moves it.
-#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Transform")]
-pub struct Transform {
-    /// The position, as three.js Object3D.position.
-    #[reflect(unit = "m")]
-    pub position: Vec3,
-    /// The rotation, as three.js Object3D.quaternion.
-    #[reflect(default = [0, 0, 0, 1])]
-    pub quaternion: Quat,
-    /// The scale, as three.js Object3D.scale.
-    #[reflect(default = [1, 1, 1])]
-    pub scale: Vec3,
-}
-
-impl Default for Transform {
-    fn default() -> Self {
-        Transform {
-            position: Vec3::ZERO,
-            quaternion: Quat::IDENTITY,
-            scale: Vec3::ONE,
-        }
-    }
-}
-
-impl Transform {
-    /// An unrotated, unscaled transform at `position`.
-    pub fn at(position: Vec3) -> Transform {
-        Transform {
-            position,
-            ..Transform::default()
-        }
-    }
-}
+/// `og.Transform`, og-ecs's: root motion moves it.
+pub use og_ecs::transform::Transform;
 
 /// `Skeleton.rootMotion`: the root joint animates in place; the entity does not move.
 pub const ROOT_MOTION_OFF: u32 = 0;

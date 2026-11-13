@@ -11,55 +11,11 @@ use serde::{Deserialize, Serialize};
 
 // ---- shared with the rest of the engine -------------------------------------
 
-/// Where an entity is, relative to the world (physics bodies are roots).
-///
-/// The same schema as the engine's `og.Transform` (position, quaternion,
-/// scale): a world that already registered it from the IDL adopts this type.
-#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Transform")]
-pub struct Transform {
-    /// The position, as three.js Object3D.position.
-    #[reflect(unit = "m")]
-    pub position: Vec3,
-    /// The rotation, as three.js Object3D.quaternion.
-    #[reflect(default = [0, 0, 0, 1])]
-    pub quaternion: Quat,
-    /// The scale, as three.js Object3D.scale. Physics scales collider sizes by it.
-    #[reflect(default = [1, 1, 1])]
-    pub scale: Vec3,
-}
-
-impl Default for Transform {
-    fn default() -> Self {
-        Transform {
-            position: Vec3::ZERO,
-            quaternion: Quat::IDENTITY,
-            scale: Vec3::ONE,
-        }
-    }
-}
-
-impl Transform {
-    /// An unrotated, unscaled transform at `position`.
-    pub fn at(position: Vec3) -> Transform {
-        Transform {
-            position,
-            ..Transform::default()
-        }
-    }
-}
-
-/// The entity this one's Transform is relative to. Set by SpawnDesc.parent.
-///
-/// The same schema as the engine's `og.Parent`: physics reads it to place
-/// ropes, cloths, fluids, water and ragdolls on child entities at their
-/// world transform (bodies and colliders are roots).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Parent")]
-pub struct Parent {
-    /// The parent.
-    pub entity: u64,
-}
+/// `og.Transform` (bodies are roots; collider sizes scale by its scale)
+/// and `og.Parent` (ropes, cloths, fluids, water and ragdolls on child
+/// entities sit at their world transform): og-ecs's, shared with every
+/// other module.
+pub use og_ecs::transform::{Parent, Transform, Velocity};
 
 // ---- components ---------------------------------------------------------------
 
@@ -348,20 +304,6 @@ impl Collider {
             ..self
         }
     }
-}
-
-/// Linear and angular velocity. Written back for dynamic bodies every tick
-/// (added to them by the step when missing); a kinematic body moves by it
-/// each tick (never added, never written). Set it to launch or stop a body.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.Velocity")]
-pub struct Velocity {
-    /// Metres per second (2D uses x and y).
-    #[reflect(unit = "m/s", tunable)]
-    pub linear: Vec3,
-    /// Radians per second about each axis (2D uses z).
-    #[reflect(unit = "rad/s", tunable)]
-    pub angular: Vec3,
 }
 
 // ---- resource -------------------------------------------------------------

@@ -103,14 +103,9 @@ impl Default for Perceivable {
     }
 }
 
-/// The engine's `og.Parent`, mirrored (same name and layout): a sound
-/// made by an agent's child is the agent's own.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Parent")]
-pub struct Parent {
-    /// The parent.
-    pub entity: u64,
-}
+/// `og.Parent`, og-ecs's: a sound made by an agent's child is the
+/// agent's own.
+pub use og_ecs::transform::Parent;
 
 /// A physics ray for sight: (origin, direction, max distance, layer mask,
 /// entity to ignore) → the first hit's distance and entity.

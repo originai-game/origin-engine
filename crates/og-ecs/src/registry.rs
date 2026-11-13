@@ -123,9 +123,8 @@ impl Registry {
     /// Registers a Rust type (idempotent). A host schema of the same name and
     /// layout is adopted by the Rust type.
     ///
-    /// Another Rust type of the same name and layout (two engine modules that
-    /// each declare `og.Transform`, as og-physics and og-anim do) shares the
-    /// schema: components of either type are the same rows. A typed resource
+    /// Another Rust type of the same name and layout (a module's mirror of
+    /// another module's component) shares the schema: components of either type are the same rows. A typed resource
     /// keeps the first type's value; reading or writing it through the other
     /// type is refused as a missing resource or a type mismatch.
     pub fn register<T: Reflect>(&mut self) -> Result<(SchemaId, bool)> {

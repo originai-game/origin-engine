@@ -2,7 +2,7 @@
 //! types are the layout (`og_core::reflect`); `crates/og-audio/README.md`
 //! lists them for the IDL (`crates/og-api/api/audio.ogt`).
 
-use og_core::glam::{Quat, Vec3};
+use og_core::glam::Vec3;
 use og_core::{List, Reflect};
 
 /// The buses a source can play on. `Master` is also the gain every bus
@@ -412,44 +412,9 @@ pub struct AudioStream {
     pub listener_at: Vec3,
 }
 
-/// The engine's `og.Parent`, mirrored so the system can place sources,
-/// listeners and zones on child entities at their world transform. Same
-/// name and layout, so it adopts the host's registration.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Parent")]
-pub struct Parent {
-    /// The parent (an entity's bits).
-    pub entity: u64,
-}
-
-/// The engine's `og.Transform`, mirrored so the system can read positions.
-/// Same name and layout, so it adopts the host's registration.
-#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Transform")]
-pub struct Transform {
-    pub position: Vec3,
-    pub quaternion: Quat,
-    pub scale: Vec3,
-}
-
-impl Default for Transform {
-    fn default() -> Self {
-        Transform {
-            position: Vec3::ZERO,
-            quaternion: Quat::IDENTITY,
-            scale: Vec3::ONE,
-        }
-    }
-}
-
-impl Transform {
-    pub fn at(position: Vec3) -> Transform {
-        Transform {
-            position,
-            ..Transform::default()
-        }
-    }
-}
+/// `og.Parent` and `og.Transform`, og-ecs's: the system places sources,
+/// listeners and zones on child entities at their world transform.
+pub use og_ecs::transform::{Parent, Transform};
 
 /// A bus's insert effects: a low- and high-pass, a compressor, side-chain
 /// ducking by another bus and a send to the shared reverb. One entity per

@@ -12,6 +12,7 @@
 //! | [`SnapshotEdit`], [`TypeValues`] | a snapshot opened for editing: what a save migration changes before a restore |
 //! | [`SelectionReport`] | what restoring a selection (tagged entities and chosen resources) did |
 //! | [`HookDesc`], [`StateDesc`], [`StateRun`] | add and remove hooks; state machines and the systems bound to their values |
+//! | [`transform`] | `og.Transform`, `og.Parent` and `og.Velocity`: the one Rust type of each, shared by every module |
 //! | [`SpatialDesc`], [`SpatialHash`], [`Neighbour`] | a spatial hash of entities' positions: radius and k-nearest queries |
 //!
 //! The model:
@@ -50,6 +51,7 @@ mod snapshot;
 mod spatial;
 mod state;
 mod storage;
+pub mod transform;
 mod world;
 
 pub use edit::{SelectionReport, SnapshotEdit, TypeValues};

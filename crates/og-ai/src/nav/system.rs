@@ -24,7 +24,7 @@ use crate::nav::mesh::{
 };
 use crate::steer;
 use og_core::IdMap;
-use og_core::glam::{Quat, Vec2, Vec3};
+use og_core::glam::{Vec2, Vec3};
 use og_core::{Error, ErrorKind, Reflect, Result};
 use og_ecs::{Entity, QueryDesc, StateBlock, SystemContext, SystemDesc, World};
 use std::any::Any;
@@ -425,32 +425,8 @@ pub fn enable_filters(world: &mut World) -> Result<()> {
     world.grant(SYSTEM_NAME, &[NavFilter::NAME])
 }
 
-/// The engine's `og.Transform`, mirrored (same name and layout).
-#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Transform")]
-pub struct Transform {
-    pub position: Vec3,
-    pub quaternion: Quat,
-    pub scale: Vec3,
-}
-
-impl Default for Transform {
-    fn default() -> Self {
-        Transform {
-            position: Vec3::ZERO,
-            quaternion: Quat::IDENTITY,
-            scale: Vec3::ONE,
-        }
-    }
-}
-
-/// The engine's `og.Velocity`, mirrored (same name and layout).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Velocity")]
-pub struct Velocity {
-    pub linear: Vec3,
-    pub angular: Vec3,
-}
+/// `og.Transform` and `og.Velocity`, og-ecs's.
+pub use og_ecs::transform::{Transform, Velocity};
 
 /// Which world axes agents move on.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

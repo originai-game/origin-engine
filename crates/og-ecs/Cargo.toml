@@ -10,6 +10,9 @@ autotests = false
 [dependencies]
 og-core = { path = "../og-core" }
 bytemuck = { workspace = true }
+# og.Velocity is in physics' saved state.
+glam = { workspace = true, features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 serde_json = "1"
