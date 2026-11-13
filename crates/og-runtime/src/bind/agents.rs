@@ -1,5 +1,5 @@
-//! The E6 modules on the runtime: navigation (`og.nav`, over og-ai's nav) and AI
-//! (`og.ai`, over og-ai), mounted on every world. Their registries (grids,
+//! The agents' modules on the runtime: navigation (`og.nav`, over og-ai's nav)
+//! and AI (`og.ai`, over og-ai), mounted on every world. Their registries (grids,
 //! navmeshes, flow fields, behaviours) are assets of the engine and outlive
 //! a hot reload; their systems belong to a world, so `assemble` mounts new
 //! ones as pending and the engine commits them when the world is the one
@@ -113,19 +113,15 @@ pub(crate) fn occluder(physics: &PhysicsSystem) -> og_audio::Occluder {
 
 /// og.ai, before the game's systems. `records` are every component and
 /// resource the world has (what a behaviour's checks may read).
-pub(crate) fn mount_front(
+pub(crate) fn mount_ai(
     world: &mut World,
     mount: Mount<'_>,
     profile: u32,
     physics: &PhysicsSystem,
     records: &[String],
 ) -> Result<(), String> {
-    crate::host::platform::mount(world, mount)?;
-    crate::world::stream::mount(world, mount)?;
-    crate::bind::net::mount(world, mount)?;
-    crate::bind::story::mount(world, mount)?;
     mount.modules.agents.borrow_mut().profile = profile;
-    mount_ai(world, mount, profile, physics, records)
+    ai_system(world, mount, profile, physics, records)
 }
 
 /// What og.ai hears of og.audio: the spatial sources that started this
@@ -156,7 +152,7 @@ pub(crate) fn hearing() -> og_ai::Hearing {
 
 /// og.ai over og-ai.
 #[cfg(feature = "ai")]
-fn mount_ai(
+fn ai_system(
     world: &mut World,
     mount: Mount<'_>,
     profile: u32,
@@ -193,7 +189,7 @@ fn mount_ai(
 /// og.ai idle (src/bind/agents_idle.rs): the system and block of a world that never
 /// thinks.
 #[cfg(not(feature = "ai"))]
-fn mount_ai(
+fn ai_system(
     world: &mut World,
     _mount: Mount<'_>,
     _profile: u32,
@@ -206,7 +202,7 @@ fn mount_ai(
 
 /// og.nav idle (src/bind/agents_idle.rs), before physics.
 #[cfg(not(feature = "nav"))]
-pub(crate) fn mount_back(
+pub(crate) fn mount_nav(
     world: &mut World,
     _mount: Mount<'_>,
     _profile: u32,
@@ -218,7 +214,7 @@ pub(crate) fn mount_back(
 
 /// og.nav, before physics.
 #[cfg(feature = "nav")]
-pub(crate) fn mount_back(
+pub(crate) fn mount_nav(
     world: &mut World,
     mount: Mount<'_>,
     profile: u32,

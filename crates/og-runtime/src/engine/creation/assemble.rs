@@ -337,7 +337,9 @@ pub(crate) fn assemble(
     }
 
     // The modules' systems before the game's (physics' collider recording,
-    // the UI's begin), then the game's, then the modules' after them.
+    // the UI's begin), then the game's, then the modules' after them. Every
+    // module is mounted from here, by name: the order of these calls is the
+    // order its systems run in, so it is written out, not looked up.
     let ui = super::modules::new_ui(game.tick, u64::from(seed), previous.as_ref().map(|p| p.0))?;
     let (physics, actions) = super::modules::mount_front(&mut world, engine_id, profile, &ui)?;
     let record_names: Vec<String> = layouts
@@ -346,7 +348,11 @@ pub(crate) fn assemble(
         .cloned()
         .collect();
     super::terrain::mount(&mut world, mount)?;
-    super::agents::mount_front(&mut world, mount, profile, &physics, &record_names)?;
+    crate::host::platform::mount(&mut world, mount)?;
+    crate::world::stream::mount(&mut world, mount)?;
+    crate::bind::net::mount(&mut world, mount)?;
+    crate::bind::story::mount(&mut world, mount)?;
+    super::agents::mount_ai(&mut world, mount, profile, &physics, &record_names)?;
 
     // State machines, before the systems bound to them.
     for state in &game.states {
@@ -560,7 +566,7 @@ pub(crate) fn assemble(
         &physics,
         profile,
     )?;
-    super::agents::mount_back(&mut world, mount, profile, &physics)?;
+    super::agents::mount_nav(&mut world, mount, profile, &physics)?;
     crate::bind::destruction::set_physics(&mount.modules.destruction, &physics);
     let mounted = super::modules::mount_back(
         &mut world,

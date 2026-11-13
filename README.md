@@ -225,7 +225,8 @@ crates/            Rust workspace
   og-idl           the IDL model, validator and generators (TypeScript, bindings, schema, wiki, host traits)
   og-api           api/<module>.ogt, the generated host traits, the host-neutral runtime surface
   og-records       the record and column tables generated from the IDL
-  og-runtime       the host-neutral implementation of the API
+  og-runtime       the host-neutral implementation of the API: engine/ (assembly, tick), host/ (the boundary),
+                   bind/ (one binding per domain crate), world/ (content, saves), present/ (the frame), author/ (the probe)
   og-host-web      wasm-bindgen host, run in a Worker on an OffscreenCanvas
   og-host-node     napi host (origin-engine.node), headless
   og-render        wgpu renderer

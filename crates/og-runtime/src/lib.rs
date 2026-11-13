@@ -24,8 +24,27 @@
 //!   the host refuses it after. The TypeScript runtime throws on a stale view
 //!   with its tick and system.
 //!
-//! Single-threaded by construction: every table is thread-local, and an
-//! engine never leaves the thread that created it.
+//! Single-threaded by construction: an engine never leaves the thread that
+//! created it. What an engine owns is on the engine (its world, its
+//! modules' state, its caches); only the process roots are thread-local
+//! (the declarations, the engines' table, the handles, the installed hooks
+//! and the call on the stack; `engine.rs` says why each stays).
+//!
+//! The sources, by what they answer to:
+//!
+//! - `engine/`: declarations, assembly, the tick, the dispatcher, the view
+//!   tables, each engine's module state. Assembly mounts every module by
+//!   name: the order of its calls is the schedule.
+//! - `host/`: the boundary both hosts forward to, its wire types and
+//!   layouts, and what only a host can answer.
+//! - `bind/`: one binding per domain crate over the runtime's engines, the
+//!   stub of each optional one, and the wiring where two domains meet.
+//! - `world/`: the world's content and its persistence (loads, prefabs,
+//!   streaming, the moving origin, saves).
+//! - `present/`: what a frame shows: extraction, interpolation, the
+//!   presentation checkpoint, looks, effects and game feel.
+//! - `author/`: what an author and an agent see of a running engine: the
+//!   probe and its views, the inspector, traces, recorded frames.
 
 #![recursion_limit = "256"]
 
