@@ -51,7 +51,7 @@ pub const TSGO_VERSION: &str = "7.0.2";
 
 /// The template's compiler options: the options of a project without a
 /// tsconfig.json of its own.
-const TEMPLATE_TSCONFIG: &str = include_str!("../../../packages/create/template/tsconfig.json");
+const TEMPLATE_TSCONFIG: &str = include_str!("../../../../packages/create/template/tsconfig.json");
 
 const USAGE: &str =
     "usage: og check [project|entry|tsconfig.json] [--json] [--checkers N] [--tool tsrs|tsgo]";

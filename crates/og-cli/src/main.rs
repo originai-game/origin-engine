@@ -7,51 +7,26 @@
 //! migrate three` (a three.js file rewritten towards og, the rest listed),
 //! `og build` (the play page), `og cook`, `og doctor` and `og api` (the IDL outputs).
 
-mod api;
+mod commands;
+use commands::{
+    api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
+    dev, doctor, explore, fmt, frame, i18n, migrate, prefab, probe, render, replay, run,
+    serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import,
+};
 mod api_lookup;
-mod assets;
-mod bake_lightmaps;
-mod bake_probes;
-mod bake_projection;
-mod bundle;
 mod bundle_cache;
-mod cache;
-mod check;
-mod compare;
 mod contact_sheet;
-mod cook;
-mod dev;
 mod device;
-mod doctor;
 mod doctor_project;
-mod explore;
-mod fmt;
-mod frame;
-mod i18n;
 mod keyframes;
 mod lockstep_lint;
-mod migrate;
 mod module_state;
-mod prefab;
-mod probe;
 mod project;
 mod publish;
 mod relay;
-mod render;
-mod replay;
-mod run;
-mod serve_relay;
-mod session;
-mod sfx;
-mod sprite;
-mod style;
 mod style_check;
-mod test;
 mod trace;
-mod ui;
-mod upgrade;
 mod vfx_catalogue;
-mod vfx_import;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

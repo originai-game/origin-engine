@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-conformance: tsrs (og check's checker) held to tsgo, the TypeScript
 # compiler it ports (typescript@TSGO_VERSION, the constant in
-# crates/og-cli/src/check.rs), on the same configs with the same checker
+# crates/og-cli/src/commands/check.rs), on the same configs with the same checker
 # count. A tsrs version move runs it before it lands (docs/ci.md §Toolchain).
 #
 #   scripts/tsrs-diff.sh [CONFIG...]
@@ -32,10 +32,10 @@ set -u -o pipefail
 . "$(dirname "$0")/lib.sh"
 cd "$OG_ROOT" || exit 1
 
-TSGO_VERSION="$(sed -n 's/^pub const TSGO_VERSION: &str = "\(.*\)";/\1/p' crates/og-cli/src/check.rs)"
+TSGO_VERSION="$(sed -n 's/^pub const TSGO_VERSION: &str = "\(.*\)";/\1/p' crates/og-cli/src/commands/check.rs)"
 # shellcheck disable=SC2016 # the $ is sed's, matched literally
 TSRS_VERSION="$(sed -n 's/^TSRS_VERSION="${TSRS_VERSION:-\(.*\)}"$/\1/p' scripts/install-tools.sh)"
-[ -n "$TSGO_VERSION" ] || { og_err "check-conformance: no TSGO_VERSION in crates/og-cli/src/check.rs"; exit 1; }
+[ -n "$TSGO_VERSION" ] || { og_err "check-conformance: no TSGO_VERSION in crates/og-cli/src/commands/check.rs"; exit 1; }
 [ -n "$TSRS_VERSION" ] || { og_err "check-conformance: no TSRS_VERSION in scripts/install-tools.sh"; exit 1; }
 TSRS="${TSRS:-tsrs}"
 command -v "$TSRS" >/dev/null || { og_err "check-conformance: no tsrs; run scripts/install-tools.sh"; exit 1; }

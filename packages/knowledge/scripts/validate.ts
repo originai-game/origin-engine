@@ -53,7 +53,7 @@ export function readRules(pkg: string): Rules {
 export const GUIDE_PREFIX = "guide-";
 
 /** The og-cli source that cites the guides by section, in the engine repository. */
-export const GUIDE_CITERS = ["crates/og-cli/src/migrate.rs"] as const;
+export const GUIDE_CITERS = ["crates/og-cli/src/commands/migrate.rs"] as const;
 
 /** What a scaffolded project must contain (scaffold/README.md describes each). */
 export const TEMPLATE_FILES = ["project.ogt", "src/main.ts", "package.json", "tsconfig.json", "tests/smoke.og.ts"] as const;

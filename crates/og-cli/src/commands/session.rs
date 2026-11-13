@@ -23,7 +23,7 @@ mod local {
     /// (a test's OG_RENDERER, a terminal's variables) each start their own
     /// host instead of finding another's and running alone. The variables
     /// the shell changes per command are left out, as session.ts does.
-    pub(super) fn directory(project: &Path) -> PathBuf {
+    pub(crate) fn directory(project: &Path) -> PathBuf {
         let worktree = project
             .ancestors()
             .find(|path| path.join(".git").exists())
@@ -43,7 +43,7 @@ mod local {
 
     // A local build identity, not a cook-cache key. Replaced binaries and
     // edited host sources invalidate the host, even at the same version.
-    pub(super) fn build(package: &Path) -> Result<String, String> {
+    pub(crate) fn build(package: &Path) -> Result<String, String> {
         fn stamp(path: &Path, hash: &mut impl Hasher) -> std::io::Result<()> {
             path.hash(hash);
             let m = fs::metadata(path)?;
@@ -98,7 +98,7 @@ mod local {
         Rejected { reason: String },
     }
 
-    pub(super) fn connect(project: &Path) -> Result<UnixStream, String> {
+    pub(crate) fn connect(project: &Path) -> Result<UnixStream, String> {
         use std::os::unix::process::CommandExt;
         use std::time::{Duration, Instant};
         let socket = directory(project).join("host.sock");

@@ -273,16 +273,16 @@ function nested(): Roots {
   cpSync(real.template, roots.template, { recursive: true, filter: (s) => !/\/(cooked|dist|node_modules)(\/|$)/.test(s) });
   cpSync(join(real.engine, "package.json"), join(roots.engine, "package.json"));
   cpSync(join(real.engine, "schema/api.schema.json"), join(roots.engine, "schema/api.schema.json"));
-  cpSync(join(real.pkg, "../../crates/og-cli/src/migrate.rs"), join(dir, "crates/og-cli/src/migrate.rs"));
+  cpSync(join(real.pkg, "../../crates/og-cli/src/commands/migrate.rs"), join(dir, "crates/og-cli/src/commands/migrate.rs"));
   return roots;
 }
 
 test("every section og migrate three cites is one the guide has", () => {
   const roots = nested();
   const before = new Set(validate(roots));
-  edit(join(roots.pkg, "../../crates/og-cli/src/migrate.rs"), (s) => `${s}\n// see three-to-og §12\n`);
+  edit(join(roots.pkg, "../../crates/og-cli/src/commands/migrate.rs"), (s) => `${s}\n// see three-to-og §12\n`);
   const p = validate(roots).filter((x) => !before.has(x));
-  expect(p).toEqual(["crates/og-cli/src/migrate.rs: cites three-to-og §12, which wiki/guide-three-to-og.md does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)"]);
+  expect(p).toEqual(["crates/og-cli/src/commands/migrate.rs: cites three-to-og §12, which wiki/guide-three-to-og.md does not have (its sections: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)"]);
   // And the real source cites some, so the check reads something.
-  expect(readFileSync(join(real.pkg, "../../crates/og-cli/src/migrate.rs"), "utf8")).toMatch(/three-to-og §\d+/);
+  expect(readFileSync(join(real.pkg, "../../crates/og-cli/src/commands/migrate.rs"), "utf8")).toMatch(/three-to-og §\d+/);
 });
