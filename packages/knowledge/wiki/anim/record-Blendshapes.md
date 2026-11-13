@@ -8,7 +8,7 @@ Module [`anim`](../anim.md) · [index](../index.md)
 
 Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost.
 
-Also known as: morph targets, shape keys, facial expression, blend shapes, three.js morphTargetInfluences
+Also known as: morph targets, shape keys, facial expression, face expression, smile, blend shapes, three.js morphTargetInfluences
 
 Token `og.Blendshapes`, registered under the schema name `og.Blendshapes`; its value type is `Blendshapes`.
 
@@ -29,7 +29,7 @@ Token `og.Blendshapes`, registered under the schema name `og.Blendshapes`; its v
 ```ogt
 component Blendshapes {
   doc "Morph-target weights of the skeleton entity's mesh, in the order of the glTF mesh's targets, up to 64 targets (w0...w7, then `influences`). With `source` clips the playing clips' weight channels write them; with `component` game code does. Under TAA a morphing mesh has motion vectors from its previous weights, so a talking face does not ghost."
-  aliases "morph targets, shape keys, facial expression, blend shapes, three.js morphTargetInfluences"
+  aliases "morph targets, shape keys, facial expression, face expression, smile, blend shapes, three.js morphTargetInfluences"
   field source BlendshapeSource "Who decides the weights: component (game code writes w0...w7) or clips (the animation writes them)."
   field mesh u32 "The glTF mesh index whose targets the weights drive (0 is the first mesh)." {
     min 0

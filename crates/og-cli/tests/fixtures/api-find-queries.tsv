@@ -83,7 +83,7 @@ count wolves killed toward a quest objective	og.story.progress
 bsp dungeon generator	og.procgen.bsp
 wave funtion colapse	og.procgen.wfc
 debug draw line	og.debug.line
-turn a turret to face the enemy	og.transform.lookAt
+turn a turret to face the enemy	og.transform.face | og.transform.lookAt
 slerp between two rotations	QuaternionMath.slerp
 move a platform back and forth along a track	og.PathFollower
 play an intro movie before the menu	og.VideoPlayer | og.load.video
