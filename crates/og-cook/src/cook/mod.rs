@@ -23,8 +23,8 @@ use pipeline::{
 mod systems;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
 use systems::{
-    autorig, e6, effect, environment, flipbook, fracture, fracture_cache, fx_field, lightmap,
-    rig2d, shader_check, story_functions, terrain, vfx,
+    autorig, behaviour, effect, environment, flipbook, fracture, fracture_cache, fx_field,
+    lightmap, navmesh, rig2d, shader_check, story, story_functions, strings, terrain, vfx,
 };
 mod formats;
 pub use formats::{

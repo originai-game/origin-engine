@@ -131,7 +131,7 @@ pub(super) fn plan_behaviour<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     // The stamp covers every subtree its `use` nodes reach.
-    let deps = e6::behaviour_dependencies(s);
+    let deps = behaviour::behaviour_dependencies(s);
     let st = stamp(&[b"behaviour", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),

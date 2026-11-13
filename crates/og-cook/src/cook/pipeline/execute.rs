@@ -485,16 +485,16 @@ pub(crate) fn run(
                 )],
             ))
         }
-        Work::Behaviour(s) => e6::cook_behaviour(s, p.stamp),
-        Work::Dialogue(s, functions) => e6::cook_story(s, p.stamp, false, Some(functions)),
-        Work::Quest(s) => e6::cook_story(s, p.stamp, true, None),
-        Work::Strings(s) => e6::cook_strings(s, p.stamp),
+        Work::Behaviour(s) => behaviour::cook_behaviour(s, p.stamp),
+        Work::Dialogue(s, functions) => story::cook_story(s, p.stamp, false, Some(functions)),
+        Work::Quest(s) => story::cook_story(s, p.stamp, true, None),
+        Work::Strings(s) => strings::cook_strings(s, p.stamp),
         Work::FontPack(s) => font_pack::cook(s, p.stamp),
         Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
         Work::MotionAction(s) => {
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
         }
-        Work::NavMesh(s) => e6::cook_navmesh(s, p.stamp),
+        Work::NavMesh(s) => navmesh::cook_navmesh(s, p.stamp),
         Work::Terrain(s) => terrain::cook_terrain(s, &|id| known.contains(id), p.stamp),
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::Timeline(s) => timeline::cook_timeline(s, &|id| known.contains(id), p.stamp),

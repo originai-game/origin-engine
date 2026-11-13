@@ -582,7 +582,7 @@ pub(crate) fn diagnose(
             }
         }
     }
-    for (rel, what) in e6::check_strings(&tables) {
+    for (rel, what) in strings::check_strings(&tables) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);
@@ -594,7 +594,7 @@ pub(crate) fn diagnose(
         .filter(|s| matches!(s.kind, Kind::Dialogue | Kind::Quest))
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
-    for (rel, what) in e6::check_story_keys(&tables, &stories, story_functions) {
+    for (rel, what) in story::check_story_keys(&tables, &stories, story_functions) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);
