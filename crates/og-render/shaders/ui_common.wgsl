@@ -1132,10 +1132,13 @@ fn mode_coverage(s: UiInstance, p: vec2<f32>, px: f32) -> f32 {
       let d = shape_distance(s, q).x - spread;
       shadow = 0.5 - 0.5 * erf1(d * 0.70710678 / sigma);
     }
-    if (!inner) {
-      return clamp(shadow, 0.0, 1.0);
-    }
     let inside = clamp(0.5 - shape_distance(s, p).x / px, 0.0, 1.0);
+    if (!inner) {
+      // An outer shadow is drawn outside the border box only (CSS
+      // Backgrounds 3 §7.1), so a transparent or translucent box shows
+      // what is under it, not its own shadow.
+      return (1.0 - inside) * clamp(shadow, 0.0, 1.0);
+    }
     return inside * clamp(1.0 - shadow, 0.0, 1.0);
   }
   let sd = shape_distance(s, p);

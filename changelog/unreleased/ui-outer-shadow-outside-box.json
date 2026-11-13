@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui documents",
+      "summary": "An outer box-shadow is drawn outside its border box only, as CSS specifies: a transparent or translucent box no longer shows its own shadow through itself."
+    }
+  ]
+}
