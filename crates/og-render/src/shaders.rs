@@ -273,6 +273,15 @@ pub fn shader_sources() -> Vec<ShaderSource> {
             constants: vec![("DISCARD".to_string(), 0.0)],
         });
     }
+    // The volumetric pass's pipelines under water (volumetric.rs
+    // `Medium::Water`): `VOL_WATER` true.
+    for (label, froxel) in [("volumetric", true), ("volumetric raymarch", false)] {
+        out.push(ShaderSource {
+            label: format!("{label} (water)"),
+            wgsl: crate::volumetric::source(froxel),
+            constants: vec![("VOL_WATER".to_string(), 1.0)],
+        });
+    }
     // Each module with lit features, as its variant without any
     // (pipeline_features.rs): the code the overrides fold away must leave a
     // module every backend takes.

@@ -27,5 +27,5 @@ fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
     transmittance *= tr;
   }
   // The water's fog has dimmed the scene already.
-  return vec4<f32>(acc, select(transmittance, 1.0, vol.water.x > 0.5));
+  return vec4<f32>(acc, select(transmittance, 1.0, VOL_WATER));
 }

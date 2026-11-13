@@ -15,23 +15,25 @@
 // output (in-scattered light, transmittance), blended over the lit image
 // as colour × transmittance + light.
 //
-// Under water (`vol.water`, volumetric.rs `Medium::Water`) the medium is the water the eye is in and the pass draws
+// Under water (`VOL_WATER`, volumetric.rs `Medium::Water`) the medium is the water the eye is in and the pass draws
 // the sun's own light in it (`water_in`): the light shafts. The frame's fog has already drawn the water's even light
 // and dimmed what is seen through it, so the transmittance it writes is 1.
+
+// True in the water's pipelines: each medium compiles its own, so the fog's carries none of the water's code.
+override VOL_WATER: bool = false;
 
 struct Vol {
   scatter: vec4<f32>,  // rgb: colour × scattering, w: anisotropy
   medium: vec4<f32>,   // x: density, y: height, z: height density, w: falloff
   extent: vec4<f32>,   // x: distance, y: raymarch steps, zw: the target's size in pixels
   grid: vec4<f32>,     // xyz: froxels across, down and deep, w: the frame's noise seed
-  water: vec4<f32>,    // x: 1 when the medium is the water the eye is under
 };
 
 @group(1) @binding(0) var<uniform> vol: Vol;
 
 fn vol_density(p: vec3<f32>) -> f32 {
   // The water's: its fog's, below its surface.
-  if (vol.water.x > 0.5) { return select(0.0, max(frame.fog_distance.x, 1e-5), p.y < frame.fog_height.x); }
+  if (VOL_WATER) { return select(0.0, max(frame.fog_distance.x, 1e-5), p.y < frame.fog_height.x); }
   return vol.medium.x + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
 }
 
@@ -87,7 +89,7 @@ fn water_in(p: vec3<f32>, dir: vec3<f32>, width: f32) -> vec3<f32> {
 // The light scattered towards the eye at p (frag: its pixel; `most`: as `locals_in`), a sample `width` metres
 // across: the medium's.
 fn medium_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32, width: f32) -> vec3<f32> {
-  if (vol.water.x > 0.5) { return water_in(p, dir, width); }
+  if (VOL_WATER) { return water_in(p, dir, width); }
   return sun_in(p, dir) + locals_in(p, dir, frag, most);
 }
 

@@ -85,6 +85,6 @@ fn fs_froxel(in: VolOut) -> @location(0) vec4<f32> {
   let k = clamp(f * vol.grid.z, 0.0, 1.0);
   let o = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
   // The water's fog has dimmed the scene already.
-  return vec4<f32>(o.rgb, select(o.a, 1.0, vol.water.x > 0.5));
+  return vec4<f32>(o.rgb, select(o.a, 1.0, VOL_WATER));
 }
 

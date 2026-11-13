@@ -126,7 +126,17 @@ const WATER_ANISOTROPY: f32 = 0.35;
 const WATER_REACH: f32 = 3.0;
 
 impl Medium {
-    fn uniform(&self) -> ([f32; 4], [f32; 4], f32, f32) {
+    /// The pipeline constants of the fog's pipelines (`water` false) or
+    /// the water's: `VOL_WATER` in volumetric.wgsl.
+    fn constants(water: bool) -> &'static [(&'static str, f64)] {
+        if water {
+            &[("VOL_WATER", 1.0)]
+        } else {
+            &[("VOL_WATER", 0.0)]
+        }
+    }
+
+    fn uniform(&self) -> ([f32; 4], [f32; 4], f32) {
         match *self {
             Medium::Fog(fog) => (
                 (fog.color.max(Vec3::ZERO) * fog.scattering.max(0.0))
@@ -139,13 +149,11 @@ impl Medium {
                     fog.falloff.max(1e-4),
                 ],
                 fog.distance.max(1.0),
-                0.0,
             ),
             Medium::Water { density } => (
                 [1.0, 1.0, 1.0, WATER_ANISOTROPY],
                 [0.0; 4],
                 (WATER_REACH / density.max(1e-3)).clamp(4.0, 96.0),
-                1.0,
             ),
         }
     }
@@ -160,20 +168,179 @@ struct VolUniform {
     medium: [f32; 4],
     extent: [f32; 4],
     grid: [f32; 4],
-    water: [f32; 4],
 }
 
 struct Froxels {
     frame_layout: wgpu::BindGroupLayout,
     inject_layout: wgpu::BindGroupLayout,
     integrate_layout: wgpu::BindGroupLayout,
-    inject: wgpu::ComputePipeline,
+    inject_pipeline: wgpu::PipelineLayout,
+    /// The inject pipeline of the fog and of the water, each made on the
+    /// first frame with its medium.
+    inject: [Option<wgpu::ComputePipeline>; 2],
     integrate: wgpu::ComputePipeline,
     scatter: wgpu::TextureView,
     sum: wgpu::TextureView,
     /// The volumes' slices deep ([`crate::RenderQuality::froxel_slices`]).
     slices: u32,
     sampler: wgpu::Sampler,
+}
+
+/// The apply pipeline (`froxel`: the grid's, else the raymarch's) of the
+/// medium whose `constants` ([`Medium::constants`]) it is made with.
+fn apply_pipeline(
+    device: &wgpu::Device,
+    module: &wgpu::ShaderModule,
+    layout: &wgpu::PipelineLayout,
+    froxel: bool,
+    constants: &[(&str, f64)],
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("volumetric apply"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module,
+            entry_point: Some("vs_volumetric"),
+            compilation_options: Default::default(),
+            buffers: &[],
+        },
+        primitive: Default::default(),
+        depth_stencil: None,
+        multisample: Default::default(),
+        fragment: Some(wgpu::FragmentState {
+            module,
+            entry_point: Some(if froxel { "fs_froxel" } else { "fs_raymarch" }),
+            compilation_options: wgpu::PipelineCompilationOptions {
+                constants,
+                ..Default::default()
+            },
+            targets: &[Some(wgpu::ColorTargetState {
+                format: crate::HDR_FORMAT,
+                // colour × transmittance + in-scattered light.
+                blend: Some(wgpu::BlendState {
+                    color: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::SrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    alpha: wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::Zero,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                }),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    })
+}
+
+/// A froxel compute pipeline at `entry_point` of the module.
+fn compute_pipeline(
+    device: &wgpu::Device,
+    module: &wgpu::ShaderModule,
+    layout: &wgpu::PipelineLayout,
+    label: &str,
+    entry_point: &str,
+    constants: &[(&str, f64)],
+) -> wgpu::ComputePipeline {
+    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: Some(label),
+        layout: Some(layout),
+        module,
+        entry_point: Some(entry_point),
+        compilation_options: wgpu::PipelineCompilationOptions {
+            constants,
+            ..Default::default()
+        },
+        cache: crate::pipeline_cache::of(device).as_ref(),
+    })
+}
+
+impl Froxels {
+    /// The grid's layouts, volumes and the integrate pipeline (the inject
+    /// pipelines are each medium's: [`Volumetric::ensure`]).
+    fn new(device: &wgpu::Device, module: &wgpu::ShaderModule) -> Froxels {
+        let compute = wgpu::ShaderStages::COMPUTE;
+        let table_ty = wgpu::BindingType::Buffer {
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+            has_dynamic_offset: false,
+            min_binding_size: None,
+        };
+        let frame_layout_c = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("volumetric frame"),
+            entries: &[
+                entry(0, compute, uniform_ty()),
+                entry(
+                    1,
+                    compute,
+                    texture_ty(wgpu::TextureViewDimension::D2Array, false),
+                ),
+                entry(
+                    2,
+                    compute,
+                    texture_ty(wgpu::TextureViewDimension::D2Array, false),
+                ),
+                entry(7, compute, table_ty),
+                entry(8, compute, table_ty),
+                entry(9, compute, table_ty),
+                // The water's light (caustics.wgsl `water_focus`).
+                entry(12, compute, uniform_ty()),
+            ],
+        });
+        let inject_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("volumetric inject"),
+            entries: &[entry(0, compute, uniform_ty()), storage_3d(1)],
+        });
+        let integrate_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("volumetric integrate"),
+            entries: &[
+                entry(0, compute, uniform_ty()),
+                entry(
+                    2,
+                    compute,
+                    texture_ty(wgpu::TextureViewDimension::D3, false),
+                ),
+                storage_3d(3),
+            ],
+        });
+        let layout = |label, group: &wgpu::BindGroupLayout| {
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(label),
+                bind_group_layouts: &[Some(&frame_layout_c), Some(group)],
+                immediate_size: 0,
+            })
+        };
+        let inject_pipeline = layout("volumetric inject", &inject_layout);
+        // The integrate pass reads no medium.
+        let integrate = compute_pipeline(
+            device,
+            module,
+            &layout("volumetric integrate", &integrate_layout),
+            "volumetric integrate",
+            "integrate",
+            &[],
+        );
+        Froxels {
+            frame_layout: frame_layout_c,
+            inject_layout,
+            integrate_layout,
+            inject_pipeline,
+            inject: [None, None],
+            integrate,
+            scatter: froxel_volume(device, "froxel scatter", FROXELS[2]),
+            sum: froxel_volume(device, "froxel sum", FROXELS[2]),
+            slices: FROXELS[2],
+            sampler: device.create_sampler(&wgpu::SamplerDescriptor {
+                label: Some("froxels"),
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                ..Default::default()
+            }),
+        }
+    }
 }
 
 /// A froxel volume `slices` deep.
@@ -202,7 +369,13 @@ pub(crate) struct Volumetric {
     uniform: wgpu::Buffer,
     froxels: Option<Froxels>,
     apply_layout: wgpu::BindGroupLayout,
-    apply: Option<wgpu::RenderPipeline>,
+    /// The module and the apply pipeline's layout, made on first use.
+    module: Option<(wgpu::ShaderModule, wgpu::PipelineLayout)>,
+    /// The apply pipeline of the fog and of the water, each made on the
+    /// first frame with its medium.
+    apply: [Option<wgpu::RenderPipeline>; 2],
+    /// Whether the frame's medium is the water.
+    water: bool,
     /// The lit features the renderer is made without (pipeline_features.rs).
     off: crate::pipeline_features::Features,
 }
@@ -345,146 +518,54 @@ impl Volumetric {
             }),
             froxels: None,
             apply_layout,
-            apply: None,
+            module: None,
+            apply: [None, None],
+            water: false,
             off,
         }
     }
 
-    /// Makes the pipelines on first use; `frame_layout`: the lit frame group's.
-    fn ensure(&mut self, device: &wgpu::Device, frame_layout: &wgpu::BindGroupLayout) {
-        if self.apply.is_some() {
-            return;
-        }
+    /// Makes the module, the froxel volumes and the pipelines of the
+    /// medium (`water`) on first use; `frame_layout`: the lit frame group's.
+    fn ensure(&mut self, device: &wgpu::Device, frame_layout: &wgpu::BindGroupLayout, water: bool) {
         let froxel = self.method == VolumetricMethod::Froxel;
-        let label = if froxel {
-            "volumetric"
-        } else {
-            "volumetric raymarch"
-        };
-        let module = crate::unbounded_shader(device, label, self.off.leave_out(source(froxel)));
-        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("volumetric apply"),
-            bind_group_layouts: &[Some(frame_layout), Some(&self.apply_layout)],
-            immediate_size: 0,
-        });
-        self.apply = Some(
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("volumetric apply"),
-                layout: Some(&layout),
-                vertex: wgpu::VertexState {
-                    module: &module,
-                    entry_point: Some("vs_volumetric"),
-                    compilation_options: Default::default(),
-                    buffers: &[],
-                },
-                primitive: Default::default(),
-                depth_stencil: None,
-                multisample: Default::default(),
-                fragment: Some(wgpu::FragmentState {
-                    module: &module,
-                    entry_point: Some(if froxel { "fs_froxel" } else { "fs_raymarch" }),
-                    compilation_options: Default::default(),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: crate::HDR_FORMAT,
-                        // colour × transmittance + in-scattered light.
-                        blend: Some(wgpu::BlendState {
-                            color: wgpu::BlendComponent {
-                                src_factor: wgpu::BlendFactor::One,
-                                dst_factor: wgpu::BlendFactor::SrcAlpha,
-                                operation: wgpu::BlendOperation::Add,
-                            },
-                            alpha: wgpu::BlendComponent {
-                                src_factor: wgpu::BlendFactor::Zero,
-                                dst_factor: wgpu::BlendFactor::One,
-                                operation: wgpu::BlendOperation::Add,
-                            },
-                        }),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                multiview_mask: None,
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            }),
-        );
-        if !froxel {
-            return;
-        }
-        let compute = wgpu::ShaderStages::COMPUTE;
-        let table_ty = wgpu::BindingType::Buffer {
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-            has_dynamic_offset: false,
-            min_binding_size: None,
-        };
-        let frame_layout_c = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("volumetric frame"),
-            entries: &[
-                entry(0, compute, uniform_ty()),
-                entry(
-                    1,
-                    compute,
-                    texture_ty(wgpu::TextureViewDimension::D2Array, false),
-                ),
-                entry(
-                    2,
-                    compute,
-                    texture_ty(wgpu::TextureViewDimension::D2Array, false),
-                ),
-                entry(7, compute, table_ty),
-                entry(8, compute, table_ty),
-                entry(9, compute, table_ty),
-                // The water's light (caustics.wgsl `water_focus`).
-                entry(12, compute, uniform_ty()),
-            ],
-        });
-        let inject_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("volumetric inject"),
-            entries: &[entry(0, compute, uniform_ty()), storage_3d(1)],
-        });
-        let integrate_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("volumetric integrate"),
-            entries: &[
-                entry(0, compute, uniform_ty()),
-                entry(
-                    2,
-                    compute,
-                    texture_ty(wgpu::TextureViewDimension::D3, false),
-                ),
-                storage_3d(3),
-            ],
-        });
-        let pipeline = |label, group: &wgpu::BindGroupLayout, entry_point| {
+        if self.module.is_none() {
+            let label = if froxel {
+                "volumetric"
+            } else {
+                "volumetric raymarch"
+            };
+            let module = crate::unbounded_shader(device, label, self.off.leave_out(source(froxel)));
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some(label),
-                bind_group_layouts: &[Some(&frame_layout_c), Some(group)],
+                label: Some("volumetric apply"),
+                bind_group_layouts: &[Some(frame_layout), Some(&self.apply_layout)],
                 immediate_size: 0,
             });
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some(label),
-                layout: Some(&layout),
-                module: &module,
-                entry_point: Some(entry_point),
-                compilation_options: Default::default(),
-                cache: crate::pipeline_cache::of(device).as_ref(),
-            })
+            if froxel {
+                self.froxels = Some(Froxels::new(device, &module));
+            }
+            self.module = Some((module, layout));
+        }
+        let Some((module, layout)) = &self.module else {
+            return;
         };
-        let inject = pipeline("volumetric inject", &inject_layout, "inject");
-        let integrate = pipeline("volumetric integrate", &integrate_layout, "integrate");
-        self.froxels = Some(Froxels {
-            frame_layout: frame_layout_c,
-            inject_layout,
-            integrate_layout,
-            inject,
-            integrate,
-            scatter: froxel_volume(device, "froxel scatter", FROXELS[2]),
-            sum: froxel_volume(device, "froxel sum", FROXELS[2]),
-            slices: FROXELS[2],
-            sampler: device.create_sampler(&wgpu::SamplerDescriptor {
-                label: Some("froxels"),
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                ..Default::default()
-            }),
-        });
+        let constants = Medium::constants(water);
+        if self.apply[water as usize].is_none() {
+            self.apply[water as usize] =
+                Some(apply_pipeline(device, module, layout, froxel, constants));
+        }
+        if let Some(f) = &mut self.froxels
+            && f.inject[water as usize].is_none()
+        {
+            f.inject[water as usize] = Some(compute_pipeline(
+                device,
+                module,
+                &f.inject_pipeline,
+                "volumetric inject",
+                "inject",
+                constants,
+            ));
+        }
     }
 
     /// Writes the frame's medium; `size`: the HDR target's. Another
@@ -500,7 +581,8 @@ impl Volumetric {
         tick: u64,
         quality: &crate::RenderQuality,
     ) {
-        self.ensure(device, frame_layout);
+        self.water = matches!(medium, Medium::Water { .. });
+        self.ensure(device, frame_layout, self.water);
         let slices = quality.froxel_slices();
         if let Some(f) = &mut self.froxels
             && f.slices != slices
@@ -509,7 +591,7 @@ impl Volumetric {
             f.sum = froxel_volume(device, "froxel sum", slices);
             f.slices = slices;
         }
-        let (scatter, fog, distance, water) = medium.uniform();
+        let (scatter, fog, distance) = medium.uniform();
         let u = VolUniform {
             scatter,
             medium: fog,
@@ -525,7 +607,6 @@ impl Volumetric {
                 slices as f32,
                 (tick % 64) as f32,
             ],
-            water: [water, 0.0, 0.0, 0.0],
         };
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
     }
@@ -544,6 +625,9 @@ impl Volumetric {
         caustics: &wgpu::Buffer,
     ) {
         let Some(f) = &self.froxels else {
+            return;
+        };
+        let Some(inject_pipeline) = &f.inject[self.water as usize] else {
             return;
         };
         let frame_group = bind_at(
@@ -584,7 +668,7 @@ impl Volumetric {
             timestamp_writes: None,
         });
         pass.set_bind_group(0, &frame_group, &[]);
-        pass.set_pipeline(&f.inject);
+        pass.set_pipeline(inject_pipeline);
         pass.set_bind_group(1, &inject, &[]);
         pass.dispatch_workgroups(FROXELS[0].div_ceil(8), FROXELS[1].div_ceil(8), f.slices);
         pass.set_pipeline(&f.integrate);
@@ -602,7 +686,7 @@ impl Volumetric {
         hdr: &wgpu::TextureView,
         depth: &wgpu::TextureView,
     ) {
-        let Some(pipeline) = &self.apply else {
+        let Some(pipeline) = &self.apply[self.water as usize] else {
             return;
         };
         let mut resources = vec![
