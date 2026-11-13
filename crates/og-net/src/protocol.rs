@@ -51,7 +51,7 @@
 //! given in the room and its holder is gone. What it sent meanwhile is lost. Only when the window passes, or the room refuses it, does the
 //! engine hear `left`.
 
-use crate::base64;
+use og_core::base64;
 use serde_json::{Value, json};
 
 /// Lockstep's channel.

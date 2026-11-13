@@ -89,31 +89,7 @@ fn data_uri(uri: &str, what: &str) -> Result<Vec<u8>, String> {
     if !head.ends_with(";base64") {
         return Err(format!("{what}: a data: URI that is not base64"));
     }
-    base64(payload).ok_or_else(|| format!("{what}: its base64 does not decode"))
-}
-
-fn base64(s: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(s.len() / 4 * 3);
-    let (mut acc, mut bits) = (0u32, 0u32);
-    for c in s.bytes() {
-        let v = match c {
-            b'A'..=b'Z' => c - b'A',
-            b'a'..=b'z' => c - b'a' + 26,
-            b'0'..=b'9' => c - b'0' + 52,
-            b'+' | b'-' => 62,
-            b'/' | b'_' => 63,
-            b'=' => break,
-            b' ' | b'\n' | b'\r' | b'\t' => continue,
-            _ => return None,
-        };
-        acc = (acc << 6) | v as u32;
-        bits += 6;
-        if bits >= 8 {
-            bits -= 8;
-            out.push((acc >> bits) as u8);
-        }
-    }
-    Some(out)
+    og_core::base64::decode(payload).ok_or_else(|| format!("{what}: its base64 does not decode"))
 }
 
 fn num(v: &Value, k: &str, default: f32) -> f32 {
@@ -980,13 +956,5 @@ mod tests {
         // A cut-short buffer is refused before anything is read from it.
         let short = r#"{"asset":{"version":"2.0"},"buffers":[{"uri":"data:;base64,AAAA","byteLength":40}]}"#;
         assert!(err(short.as_bytes().to_vec()).contains("cut short"));
-    }
-
-    #[test]
-    fn base64_decodes_padded_and_unpadded() {
-        assert_eq!(base64("aGVsbG8=").unwrap(), b"hello");
-        assert_eq!(base64("aGVsbG8").unwrap(), b"hello");
-        assert_eq!(base64("AAEC").unwrap(), [0, 1, 2]);
-        assert!(base64("a*b").is_none());
     }
 }

@@ -22,7 +22,6 @@
 //!   in order, and the client `og run --room ws://127.0.0.1:P/<room>`
 //!   drives an engine's room through.
 
-pub mod base64;
 pub mod lockstep;
 pub mod protocol;
 pub mod state;

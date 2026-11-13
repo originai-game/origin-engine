@@ -432,7 +432,7 @@ impl SearchIndex {
                 d.page,
                 d.len.map(|n| n.to_string()).join(","),
                 d.vscale,
-                crate::embed::base64(&d.vec.iter().map(|&x| x as u8).collect::<Vec<u8>>()),
+                og_core::base64::encode(&d.vec.iter().map(|&x| x as u8).collect::<Vec<u8>>()),
                 d.summary.replace(['\t', '\n'], " ")
             ));
             out.push_str("words\t");
@@ -463,7 +463,7 @@ impl SearchIndex {
                     }
                     let (scale, b64) = cols.next()?.split_once(':')?;
                     let vscale = scale.parse().ok()?;
-                    let vec = crate::embed::unbase64(b64)?
+                    let vec = og_core::base64::decode(b64)?
                         .into_iter()
                         .map(|x| x as i8)
                         .collect();

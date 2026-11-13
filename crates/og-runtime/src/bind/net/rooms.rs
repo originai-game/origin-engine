@@ -87,7 +87,7 @@ pub fn og_platform_room_leave(world: u32) -> Result<(), String> {
 pub fn og_platform_room_send(world: u32, data: String, to: Option<u32>) -> Result<(), String> {
     let v = parse(Some(&data))?;
     let payload = match v.get(BYTES_KEY).and_then(Value::as_str) {
-        Some(b) => match og_net::base64::decode(b) {
+        Some(b) => match og_core::base64::decode(b) {
             Some(bytes) => Payload::Bytes(bytes),
             None => return Err("the message's bytes are not base64".into()),
         },
@@ -163,7 +163,7 @@ pub fn og_platform_room_message(world: u32, message: u32) -> Option<RoomMessageD
         let m = n.messages.iter().find(|m| m.id == message)?;
         let (data, bytes) = match &m.payload {
             Payload::Json(d) => (d.clone(), None),
-            Payload::Bytes(b) => (Value::Null, Some(json!(og_net::base64::encode(b)))),
+            Payload::Bytes(b) => (Value::Null, Some(json!(og_core::base64::encode(b)))),
         };
         Some(RoomMessageData {
             message: m.id,

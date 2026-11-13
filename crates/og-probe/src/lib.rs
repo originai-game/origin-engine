@@ -25,7 +25,6 @@
 #![cfg_attr(feature = "publish", allow(dead_code, unused_imports))]
 
 pub mod assertions;
-pub mod base64;
 pub mod command;
 mod describe;
 pub mod expect;

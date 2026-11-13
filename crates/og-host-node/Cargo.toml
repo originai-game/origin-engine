@@ -33,6 +33,7 @@ ai = ["og-runtime/ai"]
 
 [dependencies]
 og-api = { path = "../og-api" }
+og-core = { path = "../og-core" }
 og-runtime = { path = "../og-runtime", default-features = false, features = ["shaping", "physics2d", "physics3d"] }
 # `og ui check` reads the UI frame's types (src/ui_check.rs).
 og-ui = { path = "../og-ui", default-features = false }

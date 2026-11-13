@@ -314,26 +314,5 @@ impl Harness {
 }
 
 pub fn base64_decode(text: &str) -> Vec<u8> {
-    let value = |c: u8| -> u32 {
-        match c {
-            b'A'..=b'Z' => u32::from(c - b'A'),
-            b'a'..=b'z' => u32::from(c - b'a') + 26,
-            b'0'..=b'9' => u32::from(c - b'0') + 52,
-            b'+' => 62,
-            b'/' => 63,
-            _ => panic!("not base64: {c}"),
-        }
-    };
-    let mut out = Vec::new();
-    for chunk in text.as_bytes().chunks(4) {
-        let data: Vec<u8> = chunk.iter().copied().filter(|c| *c != b'=').collect();
-        let n = data
-            .iter()
-            .enumerate()
-            .fold(0u32, |n, (i, c)| n | (value(*c) << (18 - 6 * i)));
-        for i in 0..data.len().saturating_sub(1) {
-            out.push((n >> (16 - 8 * i)) as u8);
-        }
-    }
-    out
+    og_core::base64::decode(text).expect("base64")
 }

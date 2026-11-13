@@ -12,7 +12,6 @@ pub(crate) mod timeline;
 pub use marks::MarksDesc;
 
 use crate::assertions::Assertions;
-use crate::base64;
 use crate::command::{
     self, CORE_ACTIONS, CommandDesc, CommandHandler, CommandInfo, CommandStep, CommandsReport,
     DumpHandler, Inbox, LogLine, Output, ParseError, Payload,
@@ -25,6 +24,7 @@ use crate::input::{
 };
 use crate::names::Names;
 use crate::value;
+use og_core::base64;
 use og_core::glam::{Mat3, Quat, Vec3};
 use og_core::{Error, ErrorKind, FieldType, Layout, Rng, Schema};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};

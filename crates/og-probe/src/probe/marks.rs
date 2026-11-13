@@ -4,9 +4,9 @@
 //! scene line that made it (IDL `probe.MarkedCapture`).
 
 use super::Probe;
-use crate::base64;
 use crate::frame::{PixelRect, decode_png, draw_mark};
 use crate::hooks::UiElement;
+use og_core::base64;
 use og_ecs::World;
 use serde_json::{Value, json};
 

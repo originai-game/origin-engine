@@ -17,8 +17,9 @@
 use crate::engine::{DECL, assemble};
 use crate::engine::{Engine, call, engine, extract_layouts, hooks, invalidate};
 use crate::present::extract::{RenderState, extract};
+use og_core::base64;
 use og_ecs::{Entity, World};
-use og_probe::{Capture, Frame, Probe, base64};
+use og_probe::{Capture, Frame, Probe};
 #[cfg(not(feature = "publish"))]
 use og_probe::{Rebuilt, Reloader};
 use serde_json::{Value, json};

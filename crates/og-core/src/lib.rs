@@ -2,6 +2,7 @@
 //!
 //! | module | what it owns |
 //! |---|---|
+//! | [`base64`] | [`base64::encode`] and [`base64::decode`]: bytes in JSON and text, the one copy |
 //! | [`error`] | [`Error`] (kind + reason) and [`Result`]: errors are values |
 //! | [`handle`] | generational handles: [`RawHandle`], [`HandleAllocator`], [`Handle`], [`Pool`] |
 //! | [`reflect`] | [`Reflect`] and `#[derive(Reflect)]`, [`Schema`] and its JSON, packed [`Layout`]s |
@@ -28,6 +29,7 @@ compile_error!(
 extern crate self as og_core;
 
 pub mod alloc;
+pub mod base64;
 pub mod ease;
 pub mod error;
 pub mod handle;

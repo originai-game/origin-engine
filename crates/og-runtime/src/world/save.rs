@@ -200,7 +200,7 @@ fn encode(
     payload.extend_from_slice(&version.to_le_bytes());
     payload.extend_from_slice(&body);
     let deflated = miniz_oxide::deflate::compress_to_vec(&payload, 6);
-    format!("{PREFIX}{VERSION}:{}", og_probe::base64::encode(&deflated))
+    format!("{PREFIX}{VERSION}:{}", og_core::base64::encode(&deflated))
 }
 
 /// The world snapshot a save's text holds (`og replay compare` diffs a
@@ -222,7 +222,7 @@ fn decode_save(save: &str) -> Result<Save, String> {
             "save format {format} is incompatible with engine save format {VERSION}; save migration is not supported"
         ));
     }
-    let deflated = unbase64(body).ok_or_else(|| {
+    let deflated = og_core::base64::decode(body).ok_or_else(|| {
         "the save's text is damaged (not base64): store and read it back unchanged".to_string()
     })?;
     let payload = miniz_oxide::inflate::decompress_to_vec_with_limit(&deflated, MAX_INFLATED)
@@ -279,32 +279,6 @@ fn upgraded(save: &str, current: u32) -> Result<Save, String> {
         s.steps = steps;
     }
     Ok(s)
-}
-
-fn unbase64(text: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(text.len() / 4 * 3);
-    let mut acc = 0u32;
-    let mut bits = 0;
-    for c in text.bytes() {
-        let v = match c {
-            b'A'..=b'Z' => c - b'A',
-            b'a'..=b'z' => c - b'a' + 26,
-            b'0'..=b'9' => c - b'0' + 52,
-            b'+' => 62,
-            b'/' => 63,
-            b'=' => break,
-            b' ' | b'\n' | b'\r' | b'\t' => continue,
-            _ => return None,
-        };
-        acc = (acc << 6) | u32::from(v);
-        bits += 6;
-        if bits >= 8 {
-            bits -= 8;
-            out.push((acc >> bits) as u8);
-            acc &= (1 << bits) - 1;
-        }
-    }
-    Some(out)
 }
 
 /// The refusal for a save this world does not take, with its fix.

@@ -694,7 +694,7 @@ impl RenderBackend for OffscreenBackend {
                 .map(|i| og_render::shared_frames::CursorImage {
                     width: i.width,
                     height: i.height,
-                    rgba: og_probe::base64::encode(&i.rgba),
+                    rgba: og_core::base64::encode(&i.rgba),
                     hotspot: i.hotspot,
                 });
             frames.set_cursor(shape.keyword, image);

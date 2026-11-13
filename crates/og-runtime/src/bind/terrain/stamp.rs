@@ -75,7 +75,7 @@ impl Patch {
             "stamp": stamp,
             "mode": MODES[usize::from(self.hole)],
             "rect": self.rect,
-            "patch": og_net::base64::encode(&bytes),
+            "patch": og_core::base64::encode(&bytes),
         })
     }
 
@@ -93,7 +93,8 @@ impl Patch {
             .map(|n| n.as_u64().map(|n| n as u32).ok_or_else(bad))
             .collect::<Result<_, _>>()?;
         let rect: [u32; 4] = r.try_into().map_err(|_| bad())?;
-        let bytes = og_net::base64::decode(v["patch"].as_str().ok_or_else(bad)?).ok_or_else(bad)?;
+        let bytes =
+            og_core::base64::decode(v["patch"].as_str().ok_or_else(bad)?).ok_or_else(bad)?;
         let n = (rect[2] as usize) * (rect[3] as usize);
         let values: Vec<f32> = if hole {
             bytes.iter().map(|b| f32::from(*b)).collect()

@@ -71,10 +71,10 @@
 //! [`Gate::Rewind`] hand back and applies [`Lockstep::input`] to
 //! og.PlayerInput.
 
-use crate::base64;
 use crate::protocol::{Event, LOCKSTEP_CHANNEL, Payload};
 use crate::state::{Snapshot, diff};
 use og_core::IdMap;
+use og_core::base64;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 use std::rc::Rc;

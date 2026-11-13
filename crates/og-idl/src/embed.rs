@@ -181,48 +181,6 @@ pub fn quantize(v: &[f32]) -> (Vec<i8>, f32) {
     )
 }
 
-const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-pub fn base64(bytes: &[u8]) -> String {
-    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for c in bytes.chunks(3) {
-        let n = (u32::from(c[0]) << 16)
-            | (u32::from(*c.get(1).unwrap_or(&0)) << 8)
-            | u32::from(*c.get(2).unwrap_or(&0));
-        for i in 0..4 {
-            if i <= c.len() {
-                out.push(B64[(n >> (18 - 6 * i) & 63) as usize] as char);
-            } else {
-                out.push('=');
-            }
-        }
-    }
-    out
-}
-
-pub fn unbase64(s: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::with_capacity(s.len() / 4 * 3);
-    for c in s.as_bytes().chunks(4) {
-        if c.len() != 4 {
-            return None;
-        }
-        let mut n = 0u32;
-        let mut pad = 0;
-        for &x in c {
-            let v = match x {
-                b'=' => {
-                    pad += 1;
-                    0
-                }
-                _ => B64.iter().position(|&b| b == x)? as u32,
-            };
-            n = (n << 6) | v;
-        }
-        out.extend_from_slice(&n.to_be_bytes()[1..4 - pad]);
-    }
-    Some(out)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -238,13 +196,5 @@ mod tests {
         let tremble = m.embed("the screen trembles");
         assert!(dot(&tremble, &m.embed("camera shake")) > dot(&tremble, &m.embed("save slot")));
         assert!(m.embed("zzqxv").iter().all(|&x| x == 0.0) || !m.tokens("zzqxv").is_empty());
-    }
-
-    #[test]
-    fn base64_round_trips() {
-        for n in 0..8 {
-            let b: Vec<u8> = (0..n).map(|i| (i * 37 + 200) as u8).collect();
-            assert_eq!(unbase64(&base64(&b)).unwrap(), b);
-        }
     }
 }

@@ -3011,6 +3011,7 @@ dependencies = [
  "og-api",
  "og-audio",
  "og-bundle",
+ "og-core",
  "og-net",
  "og-physics",
  "og-probe",

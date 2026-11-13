@@ -404,7 +404,7 @@ fn svg_asset_urls_supply_cursor_pixels_and_masks() {
         "{frame}"
     );
     assert_eq!(image["hotspot"], json!([1, 2]));
-    let rgba = og_net::base64::decode(image["rgba"].as_str().unwrap()).unwrap();
+    let rgba = og_core::base64::decode(image["rgba"].as_str().unwrap()).unwrap();
     for y in 0..4 {
         assert_eq!(&rgba[y * 16..y * 16 + 8], &[255; 8]);
         assert_eq!((rgba[y * 16 + 11], rgba[y * 16 + 15]), (0, 0));

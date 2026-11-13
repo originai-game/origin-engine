@@ -1,15 +1,6 @@
 use super::*;
 
 #[test]
-fn base64_round_trips_every_length() {
-    for n in 0..70u8 {
-        let bytes: Vec<u8> = (0..n).map(|i| i.wrapping_mul(37) ^ n).collect();
-        assert_eq!(unbase64(&og_probe::base64::encode(&bytes)).unwrap(), bytes);
-    }
-    assert!(unbase64("ab!c").is_none());
-}
-
-#[test]
 fn a_save_decodes_to_its_snapshot_and_other_text_is_refused_with_the_fix() {
     let save = encode(b"OGWS world bytes", 42, 3, None);
     assert!(save.starts_with("og-save:3:"));

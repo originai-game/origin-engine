@@ -186,7 +186,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
             shape.image.as_ref().map_or(Value::Null, |i| {
                 json!({
                     "width": i.width, "height": i.height,
-                    "rgba": og_probe::base64::encode(&i.rgba), "hotspot": i.hotspot,
+                    "rgba": og_core::base64::encode(&i.rgba), "hotspot": i.hotspot,
                 })
             })
         })
