@@ -38,7 +38,7 @@
 //! to nothing over the pixel that straddles it: the edge's antialiasing is
 //! exact at any size the vector is drawn, with nothing cooked per size.
 
-use super::{CookError, Source};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
@@ -428,6 +428,46 @@ fn draw(ctx: &Ctx, el: &Element, parent: &Style, mesh: &mut Mesh) -> Result<(), 
         fill(mesh, &contours, false, paint, eps)?;
     }
     Ok(())
+}
+
+pub(crate) static VECTOR: KindDef = KindDef {
+    name: "vector",
+    extensions: &[],
+    types: &[VECTOR_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_vector,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&VECTOR];
+
+fn plan_vector<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    // The stamp covers the SVG the vector names.
+    let svg = dependencies(s);
+    let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Vector::NAME,
+        st,
+        Work::Job(Box::new(VectorJob(s))),
+    ));
+}
+
+/// A vector drawing's one output.
+struct VectorJob<'a>(&'a Source);
+
+impl Job for VectorJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VectorJob(s) = self;
+        cook(s, p.stamp)
+    }
 }
 
 #[cfg(test)]

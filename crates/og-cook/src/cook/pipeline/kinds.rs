@@ -79,6 +79,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     vfx::KINDS,
     shader_check::KINDS,
     anim::KINDS,
+    vector::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

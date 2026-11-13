@@ -93,19 +93,6 @@ pub(super) fn plan_texture<'a>(
     }
 }
 
-pub(super) fn plan_vector<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    // The stamp covers the SVG the vector names.
-    let svg = vector::dependencies(s);
-    let st = stamp(&[b"vector", &hash, svg.as_bytes()]);
-    outs.push((s.rel.clone(), format::Vector::NAME, st, Work::Vector(s)));
-}
-
 pub(super) fn plan_rive<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

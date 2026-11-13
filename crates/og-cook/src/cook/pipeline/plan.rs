@@ -149,7 +149,6 @@ fn plan_kind<'a>(
         Kind::Texture => plan_texture(cx, state, s, hash, outs),
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
-        Kind::Vector => plan_vector(cx, state, s, hash, outs),
         Kind::Rive => plan_rive(cx, state, s, hash, outs),
         Kind::Style => plan_style(cx, state, s, hash, outs),
         Kind::Document => plan_document(cx, state, s, hash, outs),

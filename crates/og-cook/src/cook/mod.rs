@@ -95,7 +95,6 @@ enum Kind {
     Tilemap,
     Flipbook,
     Rig2d,
-    Vector,
     Rive,
     TextureArray,
     Video,
@@ -118,7 +117,6 @@ impl Kind {
             Kind::Tilemap => "tilemap",
             Kind::Flipbook => "flipbook",
             Kind::Rig2d => "rig2d",
-            Kind::Vector => "vector",
             Kind::Rive => "rive",
             Kind::TextureArray => "texture-array",
             Kind::Video => "video",
@@ -250,7 +248,6 @@ enum Work<'a> {
     FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
     Rig2d(&'a Source),
     Rig2dAtlas(&'a Source),
-    Vector(&'a Source),
     /// A `.riv`'s artboard, by name.
     Rive(&'a Source, String),
     /// A `.riv`'s embedded image, by asset index.
