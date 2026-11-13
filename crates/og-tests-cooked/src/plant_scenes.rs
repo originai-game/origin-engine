@@ -25,13 +25,17 @@
 //!   cross from mesh to card in the frame (the pines at 81 m, the oaks at
 //!   113 m). A card that is lit, shadowed or coloured unlike its mesh
 //!   shows as a band across the strip.
+//! - `toon_scene()` (`plant-scatter-toon`): `plant-scatter` under the
+//!   anime cel look's `MaterialStyle` (two bands, a cool shadow tint, a
+//!   2.5 px line outside the shape): the wood's leaves, cards and ground
+//!   take the look's bands and its line as masses, as its meshes do.
 
 use glam::{Mat4, Vec2, Vec3};
 use og_cook::runtime::Bundle;
 use og_render::{
-    Camera, DirectionalLight, Impostor, MaterialHandle, MeshHandle, Projection, RenderScene,
-    ScatterDraw, StandardMaterial, Terrain, TerrainData, TerrainLayer, TerrainScatter,
-    TextureSource, Wind, shapes,
+    Camera, DirectionalLight, Impostor, MaterialHandle, MaterialStyle, MeshHandle, OutlinePlace,
+    Projection, RenderScene, ScatterDraw, StandardMaterial, Terrain, TerrainData, TerrainLayer,
+    TerrainScatter, TextureSource, Wind, shapes,
 };
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -377,6 +381,23 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
         projection: Projection::Perspective {
             fov_y_degrees: 50.0,
         },
+        ..Default::default()
+    };
+    Ok(scene)
+}
+
+/// `plant-scatter-toon` ([module docs](self)).
+pub fn toon_scene() -> Result<RenderScene, String> {
+    let mut scene = scatter_scene()?;
+    // templates/looks/anime-cel-3d.ogt, its colours linear.
+    scene.look.stylise.material = MaterialStyle {
+        toon: true,
+        shadow_tint: [0.0232, 0.0296, 0.117],
+        shadow_tint_amount: 0.7,
+        outline_color: [0.007, 0.0052, 0.0212],
+        outline_width: 2.5,
+        outline_distance: 10.0,
+        outline_place: OutlinePlace::Outside,
         ..Default::default()
     };
     Ok(scene)

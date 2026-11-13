@@ -31,6 +31,7 @@ pub const NATIVE_SCENES: &[&str] = &[
     "plant-kinds",
     "plant-scatter",
     "plant-scatter-switch",
+    "plant-scatter-toon",
     "ui-vector",
     "ui-rive",
     "gltf-uv-transform",
@@ -135,6 +136,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             // As a game draws a wood: leaves alias without it, cards do not.
             g.desc.antialias = og_render::Antialias::Taa;
             g.frames = 16;
+            Ok(())
+        },
+        #[cfg(not(target_arch = "wasm32"))]
+        "plant-scatter-toon" => |g, _| {
+            g.scene = crate::plant_scenes::toon_scene()?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]

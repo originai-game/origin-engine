@@ -1408,7 +1408,9 @@ grew from `plant` blocks, each drawn as its wood and its leaves;
 scattered whole (a `ScatterDraw` per part, the leaves `with` the wood),
 each plant's copies cards from where a card's texel is a pixel (12 radii
 at 720 rows), in a light wind; `plant-scatter-switch`: oaks and pines
-along a 224 m strip, so both cross from mesh to card in the frame.
+along a 224 m strip, so both cross from mesh to card in the frame;
+`plant-scatter-toon`: `plant-scatter` under the anime cel look's
+`MaterialStyle`, the wood banded and lined as its meshes are.
 
 ## Water
 
