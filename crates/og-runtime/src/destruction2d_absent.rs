@@ -1,5 +1,5 @@
 //! The IDL's `destruction` module (its 2D half, og.PixelTerrain) in a
-//! build without og-runtime's `destruction` feature: og-destruct is not
+//! build without og-runtime's `destruction` feature: og-physics' destruction is not
 //! linked, and this module stands in for `destruction2d.rs`. Every 2D
 //! `og.destruction` call answers [`super::destruction::ABSENT`].
 //!

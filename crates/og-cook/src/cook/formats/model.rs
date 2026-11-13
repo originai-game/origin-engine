@@ -845,11 +845,11 @@ fn plan_model<'a>(
         outs.push((
             format!("{}#fracture", s.rel),
             format::Fracture::NAME,
-            // The asset's layout too: a new og_destruct version
+            // The asset's layout too: a new og-physics-data fracture version
             // recooks what the runtime would refuse.
             stamp(&[
                 b"fracture",
-                &og_destruct::ASSET_VERSION.to_le_bytes(),
+                &og_physics_data::fracture::ASSET_VERSION.to_le_bytes(),
                 &hash,
             ]),
             Box::new(FractureJob(s)),

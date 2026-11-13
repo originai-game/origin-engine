@@ -9,7 +9,7 @@
 //! drawn with its outer faces' materials and the cut faces' own interior
 //! material; beside it, `<model>#fracture` (`og.Fracture`) holds the
 //! chunks, their hierarchy, the bonds of the support graph and the anchors
-//! ([`og_destruct::FractureAsset`]).
+//! ([`og_physics_data::fracture::FractureAsset`]).
 //!
 //! ```text
 //! fracture {
@@ -57,9 +57,9 @@ use super::vox::Bin;
 use glam::{DMat4, DVec3};
 use og_core::Rng;
 use og_core::ogt::{Block, Document};
-use og_destruct::{Bond, Chunk, FractureAsset, NONE};
 use og_geom::Mesh;
 use og_geom::fracture::{self, Piece};
+use og_physics_data::fracture::{Bond, Chunk, FractureAsset, NONE};
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -1036,7 +1036,7 @@ pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
             materials_json.push(super::model_text::material("mortar", b, &mut maps, first)?);
             (materials_json.len() - 1) as u32
         }
-        None => og_destruct::NO_MATERIAL,
+        None => og_physics_data::fracture::NO_MATERIAL,
     };
     let mut bin = Bin::default();
     // The images, carried over into the new binary.

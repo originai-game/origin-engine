@@ -8,7 +8,10 @@ description = "Origin Engine physics: rapier2d/rapier3d rigid bodies, colliders,
 autotests = false
 
 [features]
-default = ["physics2d", "physics3d"]
+default = ["physics2d", "physics3d", "destruction"]
+# og.destruction's simulation: bond health, Blast's stress solver, islands
+# and the 2D pixel terrain (src/destruction.rs). No rapier in it.
+destruction = []
 physics2d = ["dep:rapier2d"]
 physics3d = ["dep:rapier3d", "og-physics-data/physics3d"]
 

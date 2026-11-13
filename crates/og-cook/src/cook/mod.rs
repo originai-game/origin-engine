@@ -110,7 +110,7 @@ pub(crate) struct Source {
     conformed: Option<std::sync::Arc<Vec<u8>>>,
     /// A model with a `fracture` block: its fracture asset
     /// (`fracture.rs`), cooked as `<model>#fracture`.
-    fracture: Option<og_destruct::FractureAsset>,
+    fracture: Option<og_physics_data::fracture::FractureAsset>,
 }
 
 impl Source {

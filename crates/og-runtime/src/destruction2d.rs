@@ -1,9 +1,9 @@
 //! og.destruction's 2D half: pixel terrain (og.PixelTerrain), the pieces
 //! cut from it (og.PixelPiece) and og.PixelDetached, over
-//! og_destruct::terrain2d.
+//! og_physics::destruction::terrain2d.
 //!
 //! - **The state** is world state: per og.PixelTerrain its cells
-//!   (og_destruct::terrain2d::PixelTerrain), its chunks' collider entities
+//!   (og_physics::destruction::terrain2d::PixelTerrain), its chunks' collider entities
 //!   and meshes; per og.PixelPiece its cells; and the changes queued by
 //!   carve2d, fill2d, explode2d and fracture2d, in the `og.destruction2d`
 //!   state block (snapshots, restores, replays and the world hash carry
@@ -35,8 +35,8 @@ use super::wire::{
 };
 use glam::{DVec2, Quat, Vec2, Vec3};
 use og_core::{Error, ErrorKind};
-use og_destruct::terrain2d::{BEDROCK, Cell, PixelTerrain};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
+use og_physics::destruction::terrain2d::{BEDROCK, Cell, PixelTerrain};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::any::Any;
@@ -396,7 +396,7 @@ fn runs_on(grid: &PixelTerrain, r: [i64; 4]) -> bool {
 }
 
 fn area(l: &[[f32; 2]]) -> f32 {
-    og_destruct::terrain2d::polygon_area(l)
+    og_physics::destruction::terrain2d::polygon_area(l)
 }
 
 /// Whether `p` is inside loop `l` (even-odd).

@@ -537,7 +537,7 @@ fn a_wall_tied_in_at_its_ends_blown_at_its_foot_leaves_two_piers_and_nothing_ove
         // length.
         let bundle = og_cook::runtime::Bundle::open(&project().join("cooked")).unwrap();
         let bytes = bundle.read("props/brick.ogt#fracture").unwrap();
-        let a = og_destruct::FractureAsset::from_bytes(
+        let a = og_physics::destruction::FractureAsset::from_bytes(
             &bundle.fracture("props/brick.ogt#fracture", &bytes).unwrap(),
         )
         .unwrap();

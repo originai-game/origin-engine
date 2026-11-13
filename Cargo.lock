@@ -2897,7 +2897,6 @@ dependencies = [
  "og-blob",
  "og-bundle",
  "og-core",
- "og-destruct",
  "og-draw",
  "og-ecs",
  "og-geom",
@@ -2960,15 +2959,6 @@ name = "og-css"
 version = "0.7.7"
 dependencies = [
  "og-core",
-]
-
-[[package]]
-name = "og-destruct"
-version = "0.7.7"
-dependencies = [
- "bincode",
- "glam 0.34.1",
- "serde",
 ]
 
 [[package]]
@@ -3145,6 +3135,7 @@ name = "og-physics-data"
 version = "0.7.7"
 dependencies = [
  "bincode",
+ "glam 0.34.1",
  "og-core",
  "rapier3d",
  "serde",
@@ -3248,7 +3239,6 @@ dependencies = [
  "og-bundle",
  "og-cook",
  "og-core",
- "og-destruct",
  "og-ecs",
  "og-env",
  "og-geom",

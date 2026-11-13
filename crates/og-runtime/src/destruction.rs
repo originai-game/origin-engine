@@ -1,12 +1,12 @@
 //! `og.destruction` (docs/design.md §2.7, "Destruction"): props that break
 //! into the chunks the cook cut them into (og-cook `cook/fracture.rs`).
 //!
-//! - **The asset** (`<model>#fracture`, og_destruct::FractureAsset) is read
+//! - **The asset** (`<model>#fracture`, og_physics::destruction::FractureAsset) is read
 //!   with its model ([`load_asset`]), and each chunk's hull is given to
 //!   physics as a convex mesh under [`hull_handle`]: the step that first
 //!   collides with a chunk builds nothing.
 //! - **The state** is world state: per og.Destructible its bonds' health
-//!   (og_destruct::Instance), its chunks' entities and bodies, and the
+//!   (og_physics::destruction::Instance), its chunks' entities and bodies, and the
 //!   damage queued by og.destruction.damage, .explode and .fracture, in the
 //!   `og.destruction` state block (snapshots, restores, replays and the
 //!   world hash carry it).
@@ -32,8 +32,10 @@ use super::wire::{
 };
 use glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind};
-use og_destruct::{Damage, FractureAsset, Instance, Material, Support, stress::StressLimits};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
+use og_physics::destruction::{
+    Damage, FractureAsset, Instance, Material, Support, stress::StressLimits,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::any::Any;
@@ -373,7 +375,7 @@ fn supports_of(
             continue;
         };
         let s = cp.2.max_element().max(1e-6);
-        let r = og_destruct::cube_root(ch.volume);
+        let r = og_physics::destruction::cube_root(ch.volume);
         out.push(Support {
             chunk: c,
             point: ch.centroid + cp.1.inverse() * (hit.point - cp.0) / s,
@@ -1110,7 +1112,11 @@ fn place_chunk(at: Breaking<'_>, frame: &Pose, c: u32, x: Vec3) -> Vec3 {
 }
 
 /// The prop's islands; none anchored unless its anchors hold.
-fn islands_of(inst: &Instance, a: &FractureAsset, anchors: bool) -> Vec<og_destruct::Island> {
+fn islands_of(
+    inst: &Instance,
+    a: &FractureAsset,
+    anchors: bool,
+) -> Vec<og_physics::destruction::Island> {
     let mut isl = inst.islands(a);
     if !anchors {
         isl.iter_mut().for_each(|i| i.anchored = false);
@@ -2281,7 +2287,7 @@ pub(crate) struct Drawn {
     /// Its fine pieces, the renderer's to move (og_render::DebrisPiece).
     pub debris: Vec<DrawnDebris>,
     /// The grit its broken joints shed, and the glTF material of its
-    /// mortar (og_destruct::NO_MATERIAL for none).
+    /// mortar (og_physics::destruction::NO_MATERIAL for none).
     pub crumbs: Vec<DrawnCrumb>,
     pub mortar: u32,
 }

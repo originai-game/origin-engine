@@ -13,7 +13,7 @@ default = ["cook", "basis", "transcode"]
 # og-render (og-bundle's `transcode`).
 transcode = ["og-bundle/transcode"]
 # The cook itself (native only): importers, encoders, the incremental manifest.
-cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-destruct", "dep:og-video", "dep:ufbx", "dep:libm"]
+cook = ["og-render-data/bake", "dep:resvg", "dep:blake3", "dep:og-ai", "dep:og-story", "dep:og-i18n", "og-nav/bake", "dep:gltf", "og-render-data/gltf", "dep:image", "dep:image_dds", "dep:draco-core", "dep:meshopt", "dep:mikktspace", "dep:fdsm", "dep:fdsm-ttf-parser", "dep:ttf-parser", "dep:skrifa", "dep:write-fonts", "dep:hound", "dep:symphonia", "dep:opus-pure", "dep:ruzstd", "dep:serde", "dep:serde_json", "dep:oxc_allocator", "dep:oxc_ast", "dep:oxc_ast_visit", "dep:oxc_parser", "dep:oxc_span", "dep:nalgebra", "dep:og-ui", "dep:naga", "dep:og-records", "og-timeline/import", "dep:og-geom", "dep:og-video", "dep:ufbx", "dep:libm"]
 # Encode textures with the basis-universal crate (a default). Without it the
 # cook looks for KTX-Software's `toktx` on PATH.
 basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
@@ -36,9 +36,9 @@ og-tilemap = { path = "../og-tilemap" }
 # `model { collider true }`: each primitive's triangle-mesh collider baked
 # as the physics that loads it builds it (og-physics-data, below og-physics).
 og-physics-data = { path = "../og-physics-data", features = ["physics3d"] }
-# `type model`: the cook builds its parts with og-geom's generators.
-# A model's `fracture` block: its chunks and support graph (`cook/systems/fracture.rs`).
-og-destruct = { path = "../og-destruct", optional = true }
+# `type model`: the cook builds its parts with og-geom's generators. A
+# model's `fracture` block: og-geom cuts the pieces, og-physics-data holds
+# the asset (`cook/systems/fracture.rs`).
 og-geom = { path = "../og-geom", optional = true }
 # A streamed `type video`: the IVF ffmpeg writes is read into units, and its
 # poster is frame 0 as rav1d decodes it (the frame the runtime shows first).

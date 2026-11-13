@@ -1,8 +1,10 @@
 //! Origin Engine physics data (`docs/design.md` §2.1, "Formats below
 //! features"): the meshes colliders are built from ([`MeshDesc`]), a
 //! baked triangle mesh's format and its bake ([`bake_trimesh`], feature
-//! `physics3d`), and the codec physics state is saved with, so the cook
-//! that bakes triangle meshes (og-cook) does not link the simulation.
+//! `physics3d`), the prefractured asset destruction breaks ([`fracture`])
+//! and the codec physics state is saved with, so the cook that bakes
+//! triangle meshes and cuts fractures (og-cook) does not link the
+//! simulation.
 //! og-physics re-exports every item at the path it had there.
 
 #[cfg(feature = "physics3d")]
@@ -11,6 +13,7 @@ use og_core::glam::Vec3;
 
 mod codec;
 pub use codec::*;
+pub mod fracture;
 #[cfg(feature = "physics3d")]
 pub mod trimesh;
 

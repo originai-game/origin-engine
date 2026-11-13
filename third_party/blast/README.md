@@ -9,9 +9,9 @@ What Origin ports, and where:
 
 | Origin | Blast |
 |---|---|
-| `crates/og-destruct/src/stress.rs` `StressProcessor` (prepare, solve, the coupling and bond matrices, CGNR) | `blast/source/shared/stress_solver/stress.cpp`, `bond.h`, `coupling.h`, `math/cgnr.h` |
+| `crates/og-physics/src/destruction/stress.rs` `StressProcessor` (prepare, solve, the coupling and bond matrices, CGNR) | `blast/source/shared/stress_solver/stress.cpp`, `bond.h`, `coupling.h`, `math/cgnr.h` |
 | `stress.rs` `bond_stress`, `StressLimits::damage` | `blast/source/sdk/extensions/stress/NvBlastExtStressSolver.cpp` (`calcSolverBondStresses`, `generateFractureCommand`'s stress multiplier) |
-| `crates/og-destruct/src/lib.rs` the asset model (support chunks, a chunk hierarchy, bonds as centroid, normal and area, bonds to the world), bond health as remaining effective area, radial damage falloff | `blast/docs/api/introduction.rst` (Support Model), `NvBlastExtDamageShaders` (`NvBlastExtRadialDamageDesc`) |
+| `crates/og-physics/src/destruction.rs` the asset model (support chunks, a chunk hierarchy, bonds as centroid, normal and area, bonds to the world), bond health as remaining effective area, radial damage falloff | `blast/docs/api/introduction.rst` (Support Model), `NvBlastExtDamageShaders` (`NvBlastExtRadialDamageDesc`) |
 
 Changes: scalar f32 only (Blast's SISD path); the mass scale is the
 arithmetic mean of the masses instead of the geometric mean (`ln` and `exp`

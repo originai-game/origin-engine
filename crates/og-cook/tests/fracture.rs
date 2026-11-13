@@ -10,7 +10,7 @@
 
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
-use og_destruct::FractureAsset;
+use og_physics_data::fracture::FractureAsset;
 use std::path::PathBuf;
 
 const WALL: &str = r#"type model
@@ -205,11 +205,11 @@ fn a_wall_cooks_into_chunks_that_tile_it_with_bonds_anchors_and_hidden_children(
     assert_eq!(shown[0].name, "intact");
     assert_eq!(model.materials[a.interior as usize].name, "interior");
     // No mortar block, no mortar.
-    assert_eq!(a.mortar, og_destruct::NO_MATERIAL);
+    assert_eq!(a.mortar, og_physics_data::fracture::NO_MATERIAL);
 }
 
 /// The extent of a chunk's hull along each axis.
-fn extent(c: &og_destruct::Chunk) -> glam::Vec3 {
+fn extent(c: &og_physics_data::fracture::Chunk) -> glam::Vec3 {
     let (lo, hi) = c.hull.iter().fold(
         (glam::Vec3::splat(f32::MAX), glam::Vec3::splat(f32::MIN)),
         |(lo, hi), p| (lo.min(*p), hi.max(*p)),

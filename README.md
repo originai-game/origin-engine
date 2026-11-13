@@ -234,8 +234,9 @@ crates/            Rust workspace
   og-motion        generated humanoid motion (CPU and wgpu compute)
   og-tween         tweens of reflected fields
   og-timeline      splines and the timeline sequencer
-  og-physics       rapier2d/rapier3d integration
-  og-physics-data  collider meshes, the baked triangle mesh format and its bake, the save codec
+  og-physics       simulation, one directory per mechanism: rigid bodies (rapier2d/rapier3d), characters, vehicles,
+                   soft bodies, fluids, water forces, destruction
+  og-physics-data  collider meshes, the baked triangle mesh format and its bake, the fracture asset, the save codec
   og-nav           grids, flow fields, navmesh, steering
   og-ai            behaviour trees, state machines, perception
   og-audio         command stream and mixer

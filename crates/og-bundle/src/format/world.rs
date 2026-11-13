@@ -464,13 +464,13 @@ row!(
         support: u32,
         /// The bonds of its support graph.
         bonds: u32,
-        /// Bytes of the asset in `asset` (`og_destruct::FractureAsset::to_bytes`).
+        /// Bytes of the asset in `asset` (`og_physics_data::fracture::FractureAsset::to_bytes`).
         asset_bytes: u32,
     }
 );
 
 /// The fracture blob: `asset` holds the chunks, the hierarchy, the bonds
-/// and the anchors (`og_destruct::FractureAsset`), which og-runtime decodes.
+/// and the anchors (`og_physics_data::fracture::FractureAsset`), which og-runtime decodes.
 pub struct Fracture;
 impl BlobKind for Fracture {
     const NAME: &'static str = "og.Fracture";

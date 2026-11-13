@@ -2,7 +2,7 @@
 use super::{cache, fracture::Fractured};
 use og_blob::{Blob, BlobWriter};
 use og_core::hash::hash_bytes;
-use og_destruct::FractureAsset;
+use og_physics_data::fracture::FractureAsset;
 use std::path::Path;
 
 pub(crate) fn run(

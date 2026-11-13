@@ -40,7 +40,6 @@ og-net = { path = "../og-net" }
 og-video = { path = "../og-video", default-features = false, optional = true }
 # og.motion: the motion model on the renderer's device (GPU only, no `reference`).
 og-motion = { path = "../og-motion", optional = true }
-og-destruct = { path = "../og-destruct", optional = true }
 bincode = "1.3.3"
 
 # og.load.imageData's decoder natively (PNG and JPEG, on a worker thread),
@@ -82,9 +81,9 @@ story = ["dep:og-story"]
 # og.video and a document's <video> and <audio> (og-video: the streamed
 # decode plan, natively its rav1d decoder; src/video.rs).
 video = ["dep:og-video"]
-# og.destruction: prefractured props and pixel terrain (og-destruct;
-# src/destruction.rs, src/destruction2d.rs).
-destruction = ["dep:og-destruct"]
+# og.destruction: prefractured props and pixel terrain (og-physics'
+# `destruction`; src/destruction.rs, src/destruction2d.rs).
+destruction = ["og-physics/destruction"]
 # og.motion: goals for humanoids and the motion model that draws them
 # (og-motion; src/motion.rs, src/motion/).
 motion = ["dep:og-motion"]

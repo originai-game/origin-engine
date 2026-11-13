@@ -48,7 +48,7 @@ mod describe;
 mod destruction;
 #[cfg(feature = "destruction")]
 mod destruction2d;
-// Without the `destruction` feature og-destruct is not linked: both halves
+// Without the `destruction` feature og-physics' destruction is not built: both halves
 // of og.destruction answer the refusal (src/destruction*_absent.rs).
 #[cfg(not(feature = "destruction"))]
 #[path = "destruction_absent.rs"]

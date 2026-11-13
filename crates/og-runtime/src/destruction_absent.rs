@@ -1,5 +1,5 @@
 //! The IDL's `destruction` module (its 3D half) in a build without
-//! og-runtime's `destruction` feature: og-destruct is not linked, and this
+//! og-runtime's `destruction` feature: og-physics' destruction is not linked, and this
 //! module stands in for `destruction.rs`. Every `og.destruction` call that
 //! answers a Result answers [`ABSENT`]; `capabilities` answers no visual
 //! debris.

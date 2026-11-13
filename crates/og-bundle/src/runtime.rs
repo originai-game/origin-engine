@@ -1535,7 +1535,7 @@ impl Bundle {
     }
 
     /// The asset bytes of a fracture blob (`og.Fracture`, a model's
-    /// `#fracture`), for `og_destruct::FractureAsset::from_bytes`.
+    /// `#fracture`), for `og_physics_data::fracture::FractureAsset::from_bytes`.
     pub fn fracture(&self, id: &str, bytes: &[u8]) -> Result<Vec<u8>, LoadError> {
         let blob = self.blob::<format::Fracture>(id, bytes)?;
         let meta = one::<format::FractureMeta>(&blob)?;
