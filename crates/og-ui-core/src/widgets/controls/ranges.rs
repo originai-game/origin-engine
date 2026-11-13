@@ -441,7 +441,7 @@ impl Ui {
             return;
         };
         let r = self.part_values(&reference, Some(self.tree.nodes[slot].key));
-        let [top, right, bottom, left] = crate::doc::boxes::SIDES.map(|side| {
+        let [top, right, bottom, left] = crate::css::boxes::SIDES.map(|side| {
             r.str(&format!("border{side}Style"))
                 .and_then(crate::decor::LineStyle::from_css)
                 .map_or(0.0, |_| {

@@ -88,7 +88,7 @@ pub struct BoxDecor {
     pub radius: Option<f32>,
     /// Its CSS paint beyond these: gradients, mask, filters, blend, text
     /// shadows, clip path and material.
-    pub css: Option<Box<crate::doc::paint_css::CssPaint>>,
+    pub css: Option<Box<crate::css::paint_css::CssPaint>>,
     /// Per-corner, elliptical or % `border-radius`, or a `corner-shape`.
     pub corners: Option<Corners>,
     /// Its content box's edges in from its border box (its border and
@@ -151,7 +151,7 @@ impl BoxDecor {
         self.css.as_ref().is_some_and(|c| {
             c.images
                 .iter()
-                .any(|l| l.attach == crate::doc::paint_css::Attach::Fixed)
+                .any(|l| l.attach == crate::css::paint_css::Attach::Fixed)
         })
     }
 
@@ -164,10 +164,10 @@ impl BoxDecor {
     pub(crate) fn over(
         &self,
         base: Option<&ElementDraw>,
-        frame: crate::doc::paint_css::LayerFrame,
+        frame: crate::css::paint_css::LayerFrame,
     ) -> ElementDraw {
         let size = frame.size;
-        let frame = crate::doc::paint_css::LayerFrame {
+        let frame = crate::css::paint_css::LayerFrame {
             borders: [3, 0, 1, 2].map(|k| self.borders[k].map_or(0.0, |b| b.width)),
             padding: self.content,
             ..frame

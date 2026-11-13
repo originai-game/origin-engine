@@ -1265,7 +1265,7 @@ impl Ui {
                         .draws
                         .get(&i)
                         .or_else(|| self.paint.part_draws.get(&i)),
-                    crate::doc::paint_css::LayerFrame {
+                    crate::css::paint_css::LayerFrame {
                         size: [r.width, r.height],
                         viewport: [self.env.viewport.width, self.env.viewport.height],
                         scroll,

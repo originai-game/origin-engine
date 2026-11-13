@@ -54,7 +54,7 @@ pub struct RichSpan {
     pub link: Option<String>,
     pub fx: SpanFx,
     /// Its CSS decoration's style, colour, thickness, offset and overline.
-    pub decoration: Option<crate::doc::text_css::Decoration>,
+    pub decoration: Option<crate::css::text_css::Decoration>,
     /// Where it sits in its line against the paragraph's text.
     pub valign: VerticalAlign,
 }
@@ -1928,7 +1928,7 @@ fn vertical_decoration_line(
     y: f32,
     length: f32,
     th: f32,
-    style: crate::doc::text_css::DecorationStyle,
+    style: crate::css::text_css::DecorationStyle,
     color: [f32; 4],
     clip: Rect,
     dpr: f32,
@@ -1950,13 +1950,13 @@ pub(crate) fn decoration_line(
     width: f32,
     y: f32,
     th: f32,
-    style: crate::doc::text_css::DecorationStyle,
+    style: crate::css::text_css::DecorationStyle,
     color: [f32; 4],
     clip: Rect,
     dpr: f32,
     cmds: &mut Vec<crate::draw::DrawCmd>,
 ) {
-    use crate::doc::text_css::DecorationStyle as S;
+    use crate::css::text_css::DecorationStyle as S;
     use crate::draw::DrawCmd;
     let mut quad = |r: Rect, radius: f32| {
         cmds.push(DrawCmd::Quad {

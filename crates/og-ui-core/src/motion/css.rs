@@ -30,9 +30,9 @@ impl CssTransition {
     pub fn covers(&self, property: &str) -> bool {
         self.property == property
             || self.property == "all"
-            || crate::doc::boxes::longhands(&self.property)
+            || crate::css::boxes::longhands(&self.property)
                 .iter()
-                .any(|p| crate::doc::css::css_name(p) == Some(property))
+                .any(|p| crate::css::values::css_name(p) == Some(property))
     }
 }
 

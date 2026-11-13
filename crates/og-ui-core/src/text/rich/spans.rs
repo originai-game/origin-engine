@@ -53,7 +53,7 @@ pub struct TextSpanStyle {
     /// A CSS `text-decoration` beyond the plain underline and strike: its
     /// lines, style, colour, thickness and offset (the lines it sets win
     /// over `underline` and `strike`).
-    pub decoration: Option<crate::doc::text_css::Decoration>,
+    pub decoration: Option<crate::css::text_css::Decoration>,
     /// CSS `vertical-align`: where it sits in its line against the
     /// paragraph's text (`Baseline` when unset).
     pub vertical_align: Option<crate::VerticalAlign>,

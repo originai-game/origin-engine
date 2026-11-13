@@ -326,7 +326,7 @@ fn primitive(
         "feBlend" => {
             let mode = n.get("mode").unwrap_or("normal");
             let mode =
-                crate::doc::paint_css::blend(mode).map_err(|e| format!("<feBlend> mode: {e}"))?;
+                crate::css::paint_css::blend(mode).map_err(|e| format!("<feBlend> mode: {e}"))?;
             return Ok(g.push(UiFilterOp::Blend(mode), [in1, in2], at));
         }
         "feColorMatrix" => UiFilterOp::ColorMatrix(color_matrix(n)?),

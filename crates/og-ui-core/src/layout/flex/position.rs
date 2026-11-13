@@ -275,7 +275,7 @@ pub(crate) fn position(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f3
         nodes[c].layout.x += dx;
         nodes[c].layout.y += dy;
         // The edges a sticky box is held to (`scroll-state(stuck)`).
-        use crate::doc::media::scroll::{BOTTOM, LEFT, RIGHT, TOP};
+        use crate::css::media::scroll::{BOTTOM, LEFT, RIGHT, TOP};
         nodes[c].layout.stuck = if nodes[c].props.position == Position::Sticky {
             let edge = |d: f32, lo: u16, hi: u16| match d {
                 d if d > 0.01 => lo,

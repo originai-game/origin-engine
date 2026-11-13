@@ -151,7 +151,7 @@ impl Unit {
 
     /// A computed root value as a number of this unit (`calc()` reduced).
     fn read(self, value: &str) -> Option<f32> {
-        let value = crate::doc::calc::reduce(value).unwrap_or_else(|_| value.to_owned());
+        let value = crate::css::calc::reduce(value).unwrap_or_else(|_| value.to_owned());
         let value = value.trim();
         match self {
             Unit::Ms => value
@@ -309,7 +309,7 @@ fn palette_css(theme: &Theme) -> BTreeMap<String, String> {
         .map(|(name, color)| {
             let [r, g, b] = color.rgb;
             (
-                format!("--{}", crate::doc::css::kebab(name)),
+                format!("--{}", crate::css::values::kebab(name)),
                 format!("rgb({r} {g} {b} / {})", color.alpha),
             )
         })
@@ -346,7 +346,7 @@ impl Ui {
             .chain(self.env.configured.roles.iter().map(|(name, _)| name))
             .filter_map(|name| {
                 let value = root
-                    .get(&format!("--{}", crate::doc::css::kebab(name)))?
+                    .get(&format!("--{}", crate::css::values::kebab(name)))?
                     .as_ref()?;
                 let color = crate::css_color::parse_str(value).ok()?.resolve(&context);
                 Some((name.to_owned(), color))
@@ -443,7 +443,7 @@ impl Ui {
         for role in crate::tokens::TypeRole::ALL {
             let token = &mut self.env.theme.tokens.typography.steps[role.index()][bp];
             if let Some(Some(value)) = root.get(&format!("--type-{}-font", role.name()))
-                && let Ok((names, fallback)) = crate::doc::text_css::family_list(value)
+                && let Ok((names, fallback)) = crate::css::text_css::family_list(value)
             {
                 let fallback = fallback
                     .strip_prefix("var(--font-")

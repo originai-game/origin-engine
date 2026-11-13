@@ -149,17 +149,17 @@ impl ShapeImage {
 /// Unresolved CSS shape geometry; layout resolves percentages after sizing.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Outside {
-    pub shape: crate::doc::paint_css::CssClip,
-    pub reference: crate::doc::paint_css::GeoBox,
+    pub shape: crate::css::paint_css::CssClip,
+    pub reference: crate::css::paint_css::GeoBox,
     /// An image's contour, in place of `shape`, over the content box.
     pub image: Option<ShapeImage>,
-    pub margin: crate::doc::paint_css::Pos,
+    pub margin: crate::css::paint_css::Pos,
     pub rtl: bool,
 }
 
 impl Outside {
     fn edges(&self, n: &Node, offset: [f32; 2], margin: f32) -> Vec<[[f32; 2]; 2]> {
-        use crate::doc::paint_css::GeoBox;
+        use crate::css::paint_css::GeoBox;
         use crate::paint::ShapeKind;
         use og_core::glam::Vec2;
         let vertical = n.layout.used.vertical;

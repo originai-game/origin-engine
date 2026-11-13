@@ -212,14 +212,14 @@ pub(crate) type DocumentPartRules = (
 pub struct Style {
     /// Global CSS part rules in cascade order and their at-rule descriptors.
     pub(crate) part_rules: Vec<crate::doc::StyleRule>,
-    pub(crate) part_sheet: crate::doc::at_rules::Sheet,
+    pub(crate) part_sheet: crate::css::at_rules::Sheet,
     pub(crate) root_tokens: Vec<(String, String)>,
     pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
     /// The root cascade of the four inputs above for one media context.
     /// Derived from them alone: a write of any calls `root_inputs_changed`.
     pub(crate) root_cascade: std::cell::RefCell<
         Option<(
-            crate::doc::media::Context,
+            crate::css::media::Context,
             std::sync::Arc<crate::doc::build::cascade::Cascade>,
         )>,
     >,
@@ -259,7 +259,7 @@ impl Style {
         self.part_rules_changed();
         &mut self.part_rules
     }
-    pub fn part_sheet_mut(&mut self) -> &mut crate::doc::at_rules::Sheet {
+    pub fn part_sheet_mut(&mut self) -> &mut crate::css::at_rules::Sheet {
         self.part_rules_changed();
         &mut self.part_sheet
     }
@@ -285,7 +285,7 @@ pub struct ThemeSource {
     pub(crate) configured: Theme,
     /// The viewport and preferences the root rules matched under; the
     /// breakpoint follows from its size.
-    pub(crate) media: crate::doc::media::Context,
+    pub(crate) media: crate::css::media::Context,
 }
 
 impl Style {

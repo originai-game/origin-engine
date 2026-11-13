@@ -2,7 +2,7 @@ use super::*;
 
 static DEFAULT_PART_SHEET: std::sync::LazyLock<(
     Vec<crate::doc::StyleRule>,
-    crate::doc::at_rules::Sheet,
+    crate::css::at_rules::Sheet,
 )> = std::sync::LazyLock::new(|| {
     crate::doc::stylesheet::part_rules(crate::DEFAULT_CSS)
         .expect("generated default CSS is checked by the theme drift test")

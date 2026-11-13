@@ -229,7 +229,7 @@ impl PartRef {
                     p = p.attr(intern(name), intern(value));
                 }
                 Simple::State(state) if !p.part.is_empty() && *state != crate::bind::InteractionState::Selected => {
-                    let name = crate::doc::css::kebab(&format!("{state:?}"));
+                    let name = crate::css::values::kebab(&format!("{state:?}"));
                     p = p.flag(intern(name.trim_start_matches('-')));
                 }
                 _ => return Err("write host classes and attributes before ::part(name), and standard state pseudo-classes after it".into()),
@@ -270,7 +270,7 @@ impl fmt::Display for PartRef {
                 write!(
                     f,
                     ":{}",
-                    crate::doc::css::kebab(&format!("{state:?}")).trim_start_matches('-')
+                    crate::css::values::kebab(&format!("{state:?}")).trim_start_matches('-')
                 )?;
             }
             Ok(())

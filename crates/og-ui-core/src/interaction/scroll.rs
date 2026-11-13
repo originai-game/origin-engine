@@ -91,7 +91,7 @@ pub enum Overscroll {
 }
 
 /// An element's CSS scroll and scrollbar properties beyond `overflow` and
-/// snap's type and alignment ([`crate::doc::scroll_css`]).
+/// snap's type and alignment ([`crate::css::scroll_css`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ScrollCss {
     /// `overscroll-behavior-x` and `-y` of a scroll container.
@@ -640,13 +640,13 @@ impl crate::ui::Interaction {
         })
     }
 
-    /// Element `key`'s `scroll-state()` flags ([`crate::doc::media::scroll`])
+    /// Element `key`'s `scroll-state()` flags ([`crate::css::media::scroll`])
     /// as the last frame laid it out: the edges a scroll container can still
     /// scroll toward, and the axes on which a snap area sits at its
     /// scroller's snap position, and the edges a sticky box is held to.
     /// `scrolled` is the document layer's.
     pub(crate) fn scroll_flags_now(&self, key: u64, tree: &crate::ui::Tree) -> u16 {
-        use crate::doc::media::scroll::*;
+        use crate::css::media::scroll::*;
         let get = |i: usize| {
             if tree.building {
                 tree.previous_node(i)
