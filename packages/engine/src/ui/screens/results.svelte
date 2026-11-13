@@ -1,5 +1,6 @@
 <meta name="screen" content="results" data-layer="menu" data-focus="Panel/Footer/Continue" data-under="hide" data-input="menu" data-pause="false" data-capture="true" data-remember="true" data-back="none">
 <meta name="strings" content="./results.en.ogt">
+<meta name="parts" content="results.frame results.title results.grade results.row results.label results.figure results.cell">
 <meta name="prop:won" content="bool" data-doc="The player won.">
 <meta name="prop:grade" content="string" data-doc="The grade (S, A, B …; empty: none).">
 <meta name="prop:title" content="string" data-doc="The result's line (Victory, Stage clear).">
@@ -13,35 +14,35 @@
 <meta name="fixture:default" content="{&quot;gained&quot;:1240,&quot;grade&quot;:&quot;A&quot;,&quot;level&quot;:18,&quot;rewards&quot;:[{&quot;amount&quot;:320,&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Gold&quot;,&quot;texture&quot;:0},{&quot;amount&quot;:1,&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Crate&quot;,&quot;texture&quot;:0}],&quot;stats&quot;:[{&quot;best&quot;:true,&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Score&quot;,&quot;value&quot;:48210},{&quot;best&quot;:false,&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Kills&quot;,&quot;value&quot;:14},{&quot;best&quot;:false,&quot;format&quot;:&quot;percent&quot;,&quot;id&quot;:&quot;item-2&quot;,&quot;name&quot;:&quot;Accuracy&quot;,&quot;value&quot;:0.62}],&quot;tab&quot;:&quot;summary&quot;,&quot;title&quot;:&quot;Victory&quot;,&quot;won&quot;:true,&quot;xp&quot;:0.45}">
 
 <column id="Results">
-  <column id="Panel">
+  <column id="Panel" part="results.frame">
     <scroll id="Page">
       <row id="Head">
         <column id="Text">
-          <text id="Title" heading="true" class:outcome-lost={!($won)} class:outcome-won={$won}>{$title}</text>
+          <text id="Title" part="results.title" heading="true" class:outcome-lost={!($won)} class:outcome-won={$won}>{$title}</text>
           <text id="Gained">{t("screen.results.Gained", { gained: $gained })}</text>
           <row id="Level">
             <text id="LevelValue">{t("screen.results.LevelValue", { level: $level })}</text>
             <progress id="Xp" bind:value={$xp}></progress>
           </row>
         </column>
-        <text id="Grade" heading="true" hidden={!(($grade != ""))}>{$grade}</text>
+        <text id="Grade" part="results.grade" heading="true" hidden={!(($grade != ""))}>{$grade}</text>
       </row>
       <column id="Celebration">{@render celebration?.()}</column>
       <tabs id="Tabs" items="Summary Graphs Scoreboard" keys="screen.results.summary screen.results.graphs screen.results.board" values="summary graphs board" bind:current={$tab} fill="true"></tabs>
       <column id="Summary" hidden={!(($tab == "summary"))}>
         <column id="Stats">
           {#each $stats as s (s.id)}
-            <row id="Stat">
-              <text id="Name">{s.name}</text>
+            <row id="Stat" part="results.row">
+              <text id="Name" part="results.label">{s.name}</text>
               <badge id="Best" tone="accent" hidden={!(s.best)}>{t("screen.results.best")}</badge>
               <spacer id="Node19"></spacer>
-              <text id="StatValue">{t("screen.results.StatValue", { format: s.format, value: s.format == 'percent' ? s.value * 100 : s.value })}</text>
+              <text id="StatValue" part="results.figure">{t("screen.results.StatValue", { format: s.format, value: s.format == 'percent' ? s.value * 100 : s.value })}</text>
             </row>
           {/each}
         </column>
         <row id="Rewards">
           {#each $rewards as r (r.id)}
-            <column id="Reward">
+            <column id="Reward" part="results.cell">
               <art id="Art" kind="itemIcon" src={r.texture}></art>
               <text id="Amount">{t("screen.results.Amount", { r_amount: formatCompact(r.amount), r_name: r.name })}</text>
             </column>
@@ -60,36 +61,34 @@
 </column>
 
 <style>
-:root { --surface-saturation: 120%; }
-@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
-#Results { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
+#Results { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; }
 @media (width < 600px), (height < 600px) {
-#Results { padding: 12px; }
+#Results { padding: var(--space-md); }
 }
-#Panel { width: stretch; max-width: 960px; height: stretch; max-height: 900px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
+#Panel { width: stretch; max-width: var(--measure-3xl); height: stretch; max-height: var(--measure-3xl); gap: var(--space-lg); }
 @media (width < 600px), (height < 600px) {
-#Panel { padding: 16px; gap: 12px; }
+#Panel { gap: var(--space-md); }
 }
 @media (height < 600px) and (orientation: landscape) {
-#Panel { flex-direction: row; padding: 12px; gap: 12px; }
+#Panel { flex-direction: row; }
 }
-#Page { width: stretch; height: stretch; gap: 16px; -og-scroll-fade: 40px; }
+#Page { width: stretch; height: stretch; gap: var(--space-lg); -og-scroll-fade: var(--space-xxl); }
 @media (width < 600px), (height < 600px) {
-#Page { gap: 12px; }
+#Page { gap: var(--space-md); }
 }
 @media (height < 600px) and (orientation: landscape) {
-#Page { gap: 8px; }
+#Page { gap: var(--space-sm); }
 }
-#Head { width: stretch; gap: 16px; align-items: center; }
-#Text { width: stretch; gap: 4px; }
-#Title { font: var(--text-xl4); letter-spacing: var(--type-xl4-tracking); }
+#Head { width: stretch; gap: var(--space-lg); align-items: center; }
+#Text { width: stretch; gap: var(--space-xs); }
+#Title { font-size: var(--type-xl4-size); }
 @media (width < 600px), (height < 600px) {
-#Title { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
+#Title { font-size: var(--type-xl2-size); }
 }
 #Title.outcome-lost { color: var(--danger); }
 #Title.outcome-won { color: var(--gold); }
 #Gained { color: var(--xp); }
-#Level { width: stretch; gap: 12px; align-items: center; }
+#Level { width: stretch; gap: var(--space-md); align-items: center; }
 #LevelValue { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Xp { width: stretch; }
 #Grade { font: var(--text-display-lg); letter-spacing: var(--type-display-lg-tracking); }
@@ -98,18 +97,17 @@
 }
 #Celebration { width: stretch; }
 #Tabs { width: stretch; }
-#Summary { width: stretch; gap: 12px; }
-#Stats { width: stretch; gap: 6px; }
-#Stat { width: stretch; gap: 8px; align-items: center; }
-#Name { color: var(--ink-muted); }
+#Summary { width: stretch; gap: var(--space-md); }
+#Stats { width: stretch; gap: var(--space-sm); }
+#Stat { width: stretch; gap: var(--space-sm); align-items: center; }
 #StatValue { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
-#Rewards { width: stretch; gap: 8px; flex-wrap: wrap; }
-#Reward { padding: 8px; gap: 4px; align-items: center; background: var(--panel-raised); border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; }
-#Art { width: 56px; height: 56px; }
+#Rewards { width: stretch; gap: var(--space-sm); flex-wrap: wrap; }
+#Reward { padding: var(--space-sm); gap: var(--space-xs); align-items: center; }
+#Art { width: var(--size-xl); height: var(--size-xl); }
 #Amount { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
 #Graph { width: stretch; }
 #Scores { width: stretch; }
-#Footer { width: stretch; gap: 8px; justify-content: end; flex-wrap: wrap; }
+#Footer { width: stretch; gap: var(--space-sm); justify-content: end; flex-wrap: wrap; }
 @media (height < 600px) and (orientation: landscape) {
 #Footer { flex-direction: column; width: fit-content; height: stretch; align-items: stretch; flex-wrap: nowrap; }
 }

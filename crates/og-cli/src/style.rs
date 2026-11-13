@@ -3,6 +3,8 @@ use og_ui::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+#[cfg(test)]
+mod builtin;
 mod generate;
 mod literals;
 

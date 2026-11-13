@@ -1,5 +1,6 @@
 <meta name="screen" content="splash" data-layer="modal" data-focus="" data-under="hide" data-input="menu" data-pause="false" data-capture="true" data-remember="true" data-back="none">
 <meta name="strings" content="./splash.en.ogt">
+<meta name="parts" content="splash.frame splash.mark">
 <meta name="prop:marks" content="list" data-doc="The marks in order: { name, texture } (texture: an og.load.texture handle, 0 for the placeholder).">
 <meta name="prop:mark" content="string" data-doc="The stable collection key selected now.">
 <meta name="prop:progress" content="number" data-doc="Boot progress, 0 to 1 (below 0: no bar).">
@@ -7,10 +8,10 @@
 <meta name="action:confirm" content="Skip">
 <meta name="fixture:default" content="{&quot;mark&quot;:&quot;item-0&quot;,&quot;marks&quot;:[{&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Studio&quot;,&quot;texture&quot;:0},{&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Engine&quot;,&quot;texture&quot;:0}],&quot;progress&quot;:0.4,&quot;status&quot;:&quot;Loading shaders&quot;}">
 
-<column id="Splash" interactive="true" onclick={skip} onconfirm={skip}>
+<column id="Splash" part="splash.frame" class="bare" interactive="true" onclick={skip} onconfirm={skip}>
   <spacer id="Node1"></spacer>
   {#each $marks as m (m.id)}
-    <column id="Mark" hidden={!((m.id == $mark))}>
+    <column id="Mark" part="splash.mark" hidden={!((m.id == $mark))}>
       <art id="Art" kind="logo" src={m.texture}></art>
       <text id="Name">{m.name}</text>
     </column>
@@ -24,19 +25,19 @@
 </column>
 
 <style>
-#Splash { width: stretch; height: stretch; padding: 48px; gap: 24px; justify-content: center; align-items: center; background: var(--backdrop); }
+#Splash { width: stretch; height: stretch; padding: var(--space-3xl); gap: var(--space-xl); justify-content: center; align-items: center; background: var(--backdrop); }
 @media (width < 600px), (height < 600px) {
-#Splash { padding: 24px; }
+#Splash { padding: var(--space-xl); }
 }
-#Mark { display: block; gap: 12px; align-items: center; opacity: 1; transition: opacity var(--motion-enter), display var(--motion-enter) allow-discrete; }
+#Mark { display: block; gap: var(--space-md); align-items: center; opacity: 1; transition: opacity var(--motion-enter), display var(--motion-enter) allow-discrete; }
 #Mark[hidden] { display: none; opacity: 0; transition: opacity var(--motion-exit), display var(--motion-exit) allow-discrete; }
 @starting-style { #Mark { opacity: 0; } }
-#Art { width: 360px; height: 160px; }
+#Art { width: var(--measure-md); height: var(--size-4xl); }
 @media (width < 600px), (height < 600px) {
-#Art { width: 260px; height: 116px; }
+#Art { width: var(--size-7xl); height: var(--size-3xl); }
 }
 #Name { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Boot { width: stretch; max-width: 360px; gap: 8px; align-items: center; }
+#Boot { width: stretch; max-width: var(--measure-md); gap: var(--space-sm); align-items: center; }
 #Bar { width: stretch; }
 #Status { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); line-clamp: 1; text-overflow: ellipsis; }
 </style>

@@ -82,7 +82,7 @@
 .lead-current { display: flex; flex-direction: column; flex: none; gap: var(--space-xxs); padding-inline-start: var(--space-md); align-items: flex-start; }
 .stat-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .stats { width: stretch; }
-[part="RpgItemCard.row"] { display: grid; grid-template-columns: var(--size-sm) 1fr auto 4.5em 3.5em; column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xxs) 0; }
+[part="RpgItemCard.row"] { display: grid; grid-template-columns: var(--size-sm) 1fr auto var(--size-xl) var(--size-lg); column-gap: var(--space-sm); align-items: center; width: stretch; padding: var(--space-xxs) 0; }
 .stat-value, .delta, .stat-current, .lead-value, .current-value { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat-value, .stat-current { text-align: end; }
 .lore { margin: 0; padding: var(--space-xs) var(--space-xs); flex: none; }
@@ -95,5 +95,5 @@
   .actions { flex-direction: row; }
   .act { min-height: var(--size-touch); }
 }
-@container (width < 360px) { [part="RpgItemCard.row"] { grid-template-columns: var(--size-sm) 1fr auto 4em; } .stat-current { display: none; } }
+@container (width < 360px) { [part="RpgItemCard.row"] { grid-template-columns: var(--size-sm) 1fr auto var(--size-xl); } .stat-current { display: none; } }
 </style>

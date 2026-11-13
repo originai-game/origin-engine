@@ -1,5 +1,6 @@
 <meta name="screen" content="calibration" data-layer="menu" data-focus="Panel/Foot/Next" data-under="dim" data-input="menu" data-pause="false" data-capture="true" data-remember="true" data-back="pop">
 <meta name="strings" content="./calibration.en.ogt">
+<meta name="parts" content="calibration.frame calibration.label">
 <meta name="prop:step" content="string" data-doc="brightness, offset or controller.">
 <meta name="prop:brightness" content="number" data-doc="The gamma's adjustment, 0 to 1 (two-way).">
 <meta name="prop:offset" content="number" data-doc="The audio offset in ms, -200 to 200 (two-way).">
@@ -10,7 +11,7 @@
 <meta name="fixture:default" content="{&quot;brightness&quot;:0.5,&quot;deadZone&quot;:0.12,&quot;offset&quot;:24,&quot;step&quot;:&quot;offset&quot;,&quot;taps&quot;:6}">
 
 <column id="Calibration">
-  <column id="Panel">
+  <column id="Panel" part="calibration.frame">
     <row id="Steps">
       <badge id="Brightness" tone="neutral" class:at-off={!(($step == "brightness"))} class:at-on={($step == "brightness")}>{t("screen.calibration.brightness")}</badge>
       <badge id="Offset" tone="neutral" class:at-off={!(($step == "offset"))} class:at-on={($step == "offset")}>{t("screen.calibration.offset")}</badge>
@@ -36,7 +37,7 @@
     <column id="ControllerStep" hidden={!(($step == "controller"))}>
       <text id="ControllerHint">{t("screen.calibration.controllerHint")}</text>
       <row id="DeadZone">
-        <text id="Label">{t("screen.calibration.deadZone")}</text>
+        <text id="Label" part="calibration.label">{t("screen.calibration.deadZone")}</text>
         <input type="range" id="DeadZoneValue" min="0" max="0.5" step="0.01" bind:value={$deadZone}>
       </row>
     </column>
@@ -49,21 +50,13 @@
 </column>
 
 <style>
-#Tap, #Tap::part(base) { height: calc(18rem / 7); }
-@media (pointer: coarse) {
-#Tap, #Tap::part(base) { height: calc(24rem / 7); }
-}
-@media (-og-input: pad) {
-#Tap, #Tap::part(base) { height: calc(26rem / 7); }
-}
-:root { --surface-saturation: 120%; }
-@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
-#Calibration { width: stretch; height: stretch; padding: 32px; justify-content: center; align-items: center; }
+#Tap, #Tap::part(base) { height: var(--control-lg); }
+#Calibration { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; }
 @media (width < 600px), (height < 600px) {
-#Calibration { padding: 12px; }
+#Calibration { padding: var(--space-md); }
 }
-#Panel { width: stretch; max-width: 640px; padding: 24px; gap: 16px;  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
-#Steps { width: stretch; gap: 8px; }
+#Panel { width: stretch; max-width: var(--measure-xl); gap: var(--space-lg); }
+#Steps { width: stretch; gap: var(--space-sm); }
 #Brightness.at-off { opacity: 0.5; }
 #Brightness.at-on { opacity: 1; }
 #Offset.at-off { opacity: 0.5; }
@@ -71,19 +64,19 @@
 #Controller.at-off { opacity: 0.5; }
 #Controller.at-on { opacity: 1; }
 #Test { width: stretch; }
-#BrightnessStep { width: stretch; gap: 8px; }
+#BrightnessStep { width: stretch; gap: var(--space-sm); }
 #BrightnessHint { line-clamp: 3; }
 #BrightnessValue { width: stretch; }
-#OffsetStep { width: stretch; gap: 8px; }
+#OffsetStep { width: stretch; gap: var(--space-sm); }
 #OffsetHint { line-clamp: 3; }
-#Measure { width: stretch; gap: 12px; align-items: center; }
+#Measure { width: stretch; gap: var(--space-md); align-items: center; }
 #Taps { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Manual { width: stretch; gap: 12px; align-items: center; }
+#Manual { width: stretch; gap: var(--space-md); align-items: center; }
 #ManualValue { width: stretch; }
-#Ms { width: 72px; text-align: end; }
-#ControllerStep { width: stretch; gap: 8px; }
+#Ms { width: var(--size-xl); text-align: end; }
+#ControllerStep { width: stretch; gap: var(--space-sm); }
 #ControllerHint { line-clamp: 3; }
-#DeadZone { width: stretch; gap: 12px; align-items: center; }
+#DeadZone { width: stretch; gap: var(--space-md); align-items: center; }
 #DeadZoneValue { width: stretch; }
-#Foot { width: stretch; gap: 8px; justify-content: end; }
+#Foot { width: stretch; gap: var(--space-sm); justify-content: end; }
 </style>
