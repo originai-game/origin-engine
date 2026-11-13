@@ -1,5 +1,5 @@
 //! Cook-only metadata and reference graph. Never part of a shipped bundle.
-use super::{CookError, Kind, Source, audio, each};
+use super::{CookError, Kind, Source, audio, each, scene};
 use crate::runtime::{Bundle, Manifest, ManifestOutput, asset_id};
 use og_core::ogt::{Block, Document, Entry, Value};
 use serde::{Deserialize, Serialize};
@@ -553,7 +553,8 @@ pub(crate) fn build(
             if let Ok(text) = std::str::from_utf8(&s.bytes) {
                 if let Ok(doc) = Document::parse(text) {
                     text_values(&doc.body, &mut values);
-                    if matches!(s.kind, Kind::Scene | Kind::Prefab) {
+                    if [Kind::System(&scene::SCENE), Kind::System(&scene::PREFAB)].contains(&s.kind)
+                    {
                         for scene in super::scene::subscenes(text, &|_| None) {
                             placed.extend(resolve(&scene, &s.rel, &known));
                         }

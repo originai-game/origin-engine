@@ -199,23 +199,6 @@ pub(crate) fn run(
                 budgets,
             },
         ),
-        Work::Scene(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("scene is not UTF-8".into()))?;
-            let doc = Document::parse(text).map_err(|e| CookError(e.to_string()))?;
-            let texts = |id: &str| prefab_texts.get(id).cloned();
-            scene::cook(
-                &doc,
-                &s.rel,
-                schemas,
-                &|id| known.contains(id),
-                &scene::Prefabs {
-                    texts: &texts,
-                    publish: options.publish,
-                },
-                p.stamp,
-            )
-        }
     }
 }
 

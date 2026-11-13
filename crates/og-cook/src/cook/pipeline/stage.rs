@@ -337,7 +337,7 @@ pub(crate) fn resolve(
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
     let prefab_texts: BTreeMap<String, String> = sources
         .iter()
-        .filter(|s| matches!(s.kind, Kind::Prefab | Kind::Scene))
+        .filter(|s| [Kind::System(&scene::SCENE), Kind::System(&scene::PREFAB)].contains(&s.kind))
         .map(|s| {
             (
                 s.rel.clone(),

@@ -42,7 +42,10 @@
 //! schema or inferred from the text; the fields it does not list keep the
 //! values the world holds. `save_scene` writes tuned resources there.
 
-use super::CookError;
+use super::{
+    CookError, Cx, Exec, Job, Kind, KindDef, Out, PlanState, Planned, Source, Work, hash_bytes,
+    prefab, stamp,
+};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::ogt::{Block, Document, Value};
@@ -909,4 +912,118 @@ pub fn cook(
         ref_rows.len()
     ));
     Ok((w.finish(), notes))
+}
+
+pub(crate) static SCENE: KindDef = KindDef {
+    name: "scene",
+    extensions: &[],
+    types: &["scene"],
+    by_content: false,
+    streams: false,
+    plan: plan_scene,
+};
+
+/// An `.ogt` of `type prefab`: cooked as a scene, flattened.
+pub(crate) static PREFAB: KindDef = KindDef {
+    name: "prefab",
+    extensions: &[],
+    types: &[super::prefab::PREFAB_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_scene,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&SCENE, &PREFAB];
+
+fn plan_scene<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options,
+        known,
+        prefab_texts,
+        schema_hash,
+        ..
+    } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let text = String::from_utf8_lossy(&s.bytes);
+    // Every prefab it reaches, transitively, with its text's
+    // hash: editing a prefab re-cooks what places it.
+    let texts = |id: &str| prefab_texts.get(id).cloned();
+    let reached = prefab::reached(&text, &texts);
+    let mut refs: BTreeSet<String> = references(&text).into_iter().collect();
+    let mut placed = Vec::new();
+    for id in &reached {
+        let t = prefab_texts.get(id);
+        if let Some(t) = t {
+            refs.extend(references(t));
+        }
+        placed.push(format!(
+            "{id}#{}",
+            t.map_or(0, |t| hash_bytes(t.as_bytes()))
+        ));
+    }
+    parsed_refs
+        .entry(s.rel.clone())
+        .or_default()
+        .extend(refs.iter().chain(reached.iter()).cloned());
+    let refs: Vec<String> = refs
+        .into_iter()
+        .map(|r| format!("{r}={}", known.contains(&r)))
+        .collect();
+    // A scene that places no prefab keeps the stamp it had.
+    let st = if placed.is_empty() && s.kind == Kind::System(&SCENE) {
+        stamp(&[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()])
+    } else {
+        stamp(&[
+            b"scene",
+            &hash,
+            &schema_hash,
+            refs.join("\n").as_bytes(),
+            placed.join("\n").as_bytes(),
+            &[options.publish as u8],
+        ])
+    };
+    outs.push((
+        s.rel.clone(),
+        format::Scene::NAME,
+        st,
+        Work::Job(Box::new(SceneJob(s))),
+    ));
+}
+
+/// A scene's or prefab's one output.
+struct SceneJob<'a>(&'a Source);
+
+impl Job for SceneJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let SceneJob(s) = self;
+        let Exec {
+            options,
+            schemas,
+            known,
+            prefab_texts,
+            ..
+        } = ex;
+        let text =
+            std::str::from_utf8(&s.bytes).map_err(|_| CookError("scene is not UTF-8".into()))?;
+        let doc = Document::parse(text).map_err(|e| CookError(e.to_string()))?;
+        let texts = |id: &str| prefab_texts.get(id).cloned();
+        cook(
+            &doc,
+            &s.rel,
+            schemas,
+            &|id| known.contains(id),
+            &Prefabs {
+                texts: &texts,
+                publish: options.publish,
+            },
+            p.stamp,
+        )
+    }
 }

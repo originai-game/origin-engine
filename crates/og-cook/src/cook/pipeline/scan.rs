@@ -57,8 +57,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
 
 /// The `type` of each `.ogt` the cook takes as an asset, with its kind.
 const OGT_KINDS: &[(&str, Kind)] = &[
-    ("scene", Kind::Scene),
-    (prefab::PREFAB_TYPE, Kind::Prefab),
     (sfx::SFX_TYPE, Kind::Sound),
     (model_text::MODEL_TYPE, Kind::Model),
 ];
@@ -461,7 +459,7 @@ pub(crate) fn plan_groups(
     // of them may declare a cell group, since only a cell loads its blob.
     let placing: Vec<&Source> = sources
         .iter()
-        .filter(|s| matches!(s.kind, Kind::Scene | Kind::Prefab))
+        .filter(|s| [Kind::System(&scene::SCENE), Kind::System(&scene::PREFAB)].contains(&s.kind))
         .collect();
     let placed: BTreeSet<String> = each(&placing, threads, |s| {
         super::scene::subscenes(&String::from_utf8_lossy(&s.bytes), &|_| None)
@@ -471,7 +469,10 @@ pub(crate) fn plan_groups(
     .collect();
     // Each scene's groups are its own text's: every scene is parsed for
     // them at once, and they are taken in the scenes' order.
-    let scenes: Vec<&Source> = sources.iter().filter(|s| s.kind == Kind::Scene).collect();
+    let scenes: Vec<&Source> = sources
+        .iter()
+        .filter(|s| s.kind == Kind::System(&scene::SCENE))
+        .collect();
     let declared = each(&scenes, threads, |s| {
         stream::groups_of(&s.rel, &String::from_utf8_lossy(&s.bytes), &|id| {
             known.contains(id)

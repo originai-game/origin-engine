@@ -2,11 +2,9 @@ use super::*;
 mod images;
 mod media;
 mod models;
-mod world;
 use images::*;
 use media::*;
 use models::*;
-use world::*;
 
 /// What every stage after the art contract reads.
 #[derive(Clone, Copy)]
@@ -145,7 +143,6 @@ fn plan_kind<'a>(
         Kind::Texture => plan_texture(cx, state, s, hash, outs),
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
-        Kind::Scene | Kind::Prefab => plan_scene(cx, state, s, hash, outs),
         Kind::System(k) => (k.plan)(cx, state, s, hash, outs),
     }
 }
