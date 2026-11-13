@@ -9,6 +9,8 @@
 //! | [`rng`] | [`Rng`], the deterministic generator shared with the platform scaffolds |
 //! | [`math`] | glam re-exported, plus deterministic `sin`/`cos`/`atan2`/`exp`/`ln`/`pow`, and [`math::world_pose`] down a parent chain |
 //! | [`ocean`] | [`ocean::Ocean`], a wind's sea of Gerstner waves, its displacement and its height at a point |
+//! | [`air`] | [`air::Air`], the world's wind and the local pushes on it, as one function of a point |
+//! | [`volume`] | [`volume::Volume`], the one shape of a region: a box or a sphere on its entity, with a fade |
 //! | [`shore`] | [`shore::Shore`], a sea's seabed: its depth and distance to the waterline, and the trains rolling in |
 //! | [`time`] | [`Time`], the fixed-tick clock |
 //! | [`hash`] | [`hash::StableHasher`], the stable 64-bit hash for world and layout hashes |
@@ -27,6 +29,7 @@ compile_error!(
 // The derive names `::og_core`; this lets the crate use it on its own types.
 extern crate self as og_core;
 
+pub mod air;
 pub mod alloc;
 pub mod ease;
 pub mod error;
@@ -43,6 +46,7 @@ pub mod rng;
 pub mod shore;
 pub mod sort;
 pub mod time;
+pub mod volume;
 
 pub use error::{Error, ErrorKind, Result};
 pub use handle::{Handle, HandleAllocator, Pool, RawHandle};
