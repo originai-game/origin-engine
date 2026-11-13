@@ -20,9 +20,9 @@ pub static DEFAULT_ROLE_CSS: std::sync::LazyLock<String> = std::sync::LazyLock::
 pub mod a11y;
 pub mod actions;
 pub use og_reactive::bind;
+pub(crate) use paint::decor;
 pub use style::css_color;
 pub use text::colr;
-pub(crate) mod decor;
 pub mod doc;
 mod draw;
 mod draw_codec;
@@ -55,20 +55,20 @@ pub use og_rive as rive;
 #[doc(hidden)]
 pub use text::rich;
 mod scroll;
+pub use paint::slot;
 pub use scroll::{Overscroll, ScrollCss, ScrollState};
-pub mod slot;
 pub use style::sound_css;
 #[doc(hidden)]
 pub mod style;
-pub use style::style_file;
-pub mod svg;
 pub use og_text::{glyphs, shape};
+pub use paint::svg;
+pub use style::style_file;
 mod text;
 pub use style::tokens;
 pub mod vcursor;
 #[rustfmt::skip]
 pub mod theme;
-pub mod particles;
+pub use paint::particles;
 #[doc(hidden)]
 pub mod ui;
 mod view_transition;

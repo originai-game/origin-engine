@@ -22,8 +22,12 @@ pub use og_draw::{
     UiVectorHandle,
 };
 
+pub(crate) mod decor;
 mod effect;
 mod element_draw;
+pub mod particles;
+pub mod slot;
+pub mod svg;
 
 pub use effect::{BackdropStage, Effect, GlassParts, Stroke};
 
