@@ -48,8 +48,8 @@ wind                                     | full         | full    | full   | ful
 meshlet lit                              | full         | full    | full   | full | stub              | full      | full     | full
 meshlet lit (planar)                     | full         | full    | full   | full | full              | full      | full     | full
 stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
-custom full lit=true                     | full         | -       | -      | full | -                 | -         | -        | -
-custom full lit=false                    | full         | -       | -      | full | -                 | -         | -        | -
+custom full lit=true                     | full         | -       | full   | full | -                 | full      | -        | full
+custom full lit=false                    | full         | -       | full   | full | -                 | full      | -        | full
 sprite                                   | -            | -       | -      | full | -                 | -         | -        | -
 sprite hooks                             | -            | -       | -      | full | -                 | -         | -        | -
 sprite hooks (colour only)               | -            | -       | -      | full | -                 | -         | -        | -

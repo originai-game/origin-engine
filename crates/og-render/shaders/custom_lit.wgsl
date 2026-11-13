@@ -72,7 +72,10 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   let mode = u32(material.flags.w);
   let alpha = select(1.0, out.color.a, (mode & 4u) != 0u);
   if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(out.color.rgb, alpha); }
-  if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
+  let view = u32(frame.light_color.w + 0.5);
+  // An unlit shader has no light to show apart; the cascades', the
+  // occlusion's and the terrain's views are other shaders'.
+  if (view > 0u && (!CUSTOM_LIT || view < 3u || view > 6u)) { return debug_unsupported(in.clip.xy); }
   if (!CUSTOM_LIT) {
     return vec4<f32>(apply_fog(out.color.rgb + out.emissive, in.world), alpha);
   }
@@ -90,24 +93,15 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) { shadow = cascade_shadow(in.world, n, n_dot_l); }
-  var color = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
-  // Rect lights through LTC with their shadows, points and spots with
-  // their cookies: the cluster's, or every light in a probe face
-  // (area.wgsl surface_local_lights), as terrain, scatter and the 3D fluid.
-  color += surface_local_lights(in.clip.xy, s, in.world, n, v);
-  let n_dot_v = max(dot(n, v), 1e-4);
-  let f_ibl = f_schlick_roughness(n_dot_v, s.f0, s.roughness);
-  let kd_ibl = (vec3<f32>(1.0) - f_ibl) * (1.0 - s.metallic);
-  // The environment, or the batch's reflection probe blended with it (probes.rs).
-  let irradiance = ambient_light_level(n, in.world);
-  // With the screen-space reflections over it (frame.wgsl ssr_reflected),
-  // unless blended: then it lies over the surface they were traced for.
-  var prefiltered = reflected_light(reflect(-v, n), in.world, s.roughness * frame.params.y) * frame.params.x;
-  if ((u32(material.flags.w) & 4u) == 0u) { prefiltered = ssr_reflected(prefiltered, in.world, in.clip.xy); }
-  let lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(n_dot_v, s.roughness), 0.0).rg;
-  color += (kd_ibl * irradiance * s.albedo * frame.params.x + prefiltered * (s.f0 * lut.x + lut.y)) * material.flags.z;  // Karis split sum (pbr_fs.wgsl)
-  color += out.emissive;
-  return vec4<f32>(apply_fog(color, in.world), alpha);
+  let sun = StyleSun(brdf(s, n, v, l) * frame.light_color.rgb * shadow, 1.0);
+  // The caustics, the local lights and the light around the surface, as
+  // every lit surface's (surface_shade.wgsl), without the frame's material
+  // style: the shader's colour is its own. Blended, it lies over the
+  // surface the screen's reflections were traced for.
+  let at = ShadeAt(in.world, n, v, in.clip.xy, EFFECTS, !oit_pass && (mode & 4u) == 0u, false);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, out.emissive, material.flags.z, 1.0);
+  if (view > 3u) { return vec4<f32>(shaded_debug(lit, s.albedo, view), alpha); }
+  return vec4<f32>(apply_fog(shaded_color(lit), in.world), alpha);
 }
 
 // The depth prepass (pbr_prepass.wgsl's targets) through the vertex entry.

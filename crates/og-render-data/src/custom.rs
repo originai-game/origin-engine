@@ -69,55 +69,55 @@ fn user_section(shader: &MaterialShader) -> String {
     s
 }
 
-/// The lit (and prepass) module of a full shader.
+/// The lit (and prepass) module of a full shader: the built-in lit
+/// shader's groups, with the effect group, the screen AO and the shared
+/// shading its lit fragment hands its surface to (custom_lit.wgsl).
 pub fn lit_source(shader: &MaterialShader, lit: bool) -> String {
-    format!(
-        "const CUSTOM_LIT: bool = {lit};\n{}{}{}{}{}{}{}{}{}{}{}{}{}{}{LIT_WGSL}",
-        crate::FRAME_WGSL,
-        crate::oit::OIT_WGSL,
-        crate::oit::ARENA_WGSL,
-        crate::clusters::wgsl(),
-        crate::particles_gpu::NOISE_WGSL,
-        crate::MATERIAL_WGSL,
-        crate::MATERIAL_MAPS_WGSL,
-        crate::MATERIAL_DISSOLVE_WGSL,
-        crate::skin::palette_wgsl(3),
-        crate::LIGHTING_WGSL,
-        crate::AREA_WGSL,
-        crate::INSTANCE_WGSL,
-        fx_section(),
-        user_section(shader),
+    crate::assemble(
+        &[
+            &format!("const CUSTOM_LIT: bool = {lit};\n"),
+            crate::FRAME_WGSL,
+            crate::oit::OIT_WGSL,
+            crate::oit::ARENA_WGSL,
+            &crate::clusters::wgsl(),
+            crate::particles_gpu::NOISE_WGSL,
+            crate::MATERIAL_WGSL,
+            crate::MATERIAL_MAPS_WGSL,
+            crate::MATERIAL_DISSOLVE_WGSL,
+            &crate::skin::palette_wgsl(3),
+            crate::LIGHTING_WGSL,
+            &crate::lightmap::probe_wgsl(),
+            crate::AREA_WGSL,
+            crate::INSTANCE_WGSL,
+            &crate::fx_wgsl(2),
+            wgsl!("decals.wgsl"),
+            crate::SCREEN_AO_WGSL,
+            crate::SURFACE_SHADE_WGSL,
+            &user_section(shader),
+            LIT_WGSL,
+        ],
+        &[],
     )
-}
-
-// The lit module's fx group (pbr.wgsl's declarations, which the prepass
-// reads), kept apart from pbr.wgsl's entry points.
-fn fx_section() -> &'static str {
-    "struct Fx {
-  view_proj_unjittered: mat4x4<f32>,
-  prev_view_proj: mat4x4<f32>,
-  screen: vec4<f32>,
-  ao: vec4<f32>,
-  decal_info: vec4<f32>,
-  reserved: vec4<f32>,
-};
-@group(2) @binding(0) var<uniform> fx: Fx;
-"
 }
 
 /// The shadow casters' module of a full shader.
 pub fn shadow_source(shader: &MaterialShader) -> String {
-    format!(
-        "{}{}{}{}{}{}{}{}{}{SHADOW_WGSL}",
-        crate::oit::OIT_WGSL,
-        crate::particles_gpu::NOISE_WGSL,
-        crate::MATERIAL_WGSL,
-        crate::MATERIAL_MAPS_WGSL,
-        crate::MATERIAL_DISSOLVE_WGSL,
-        crate::skin::palette_wgsl(2),
-        crate::SHADOW_PASS_WGSL,
-        crate::INSTANCE_WGSL,
-        user_section(shader),
+    // `screen_ao` is the lit module's; here a shader's call of it reads
+    // no occlusion.
+    crate::assemble(
+        &[
+            crate::oit::OIT_WGSL,
+            crate::particles_gpu::NOISE_WGSL,
+            crate::MATERIAL_WGSL,
+            crate::MATERIAL_MAPS_WGSL,
+            crate::MATERIAL_DISSOLVE_WGSL,
+            &crate::skin::palette_wgsl(2),
+            crate::SHADOW_PASS_WGSL,
+            crate::INSTANCE_WGSL,
+            &user_section(shader),
+            SHADOW_WGSL,
+        ],
+        &[crate::Capability::ScreenAo],
     )
 }
 

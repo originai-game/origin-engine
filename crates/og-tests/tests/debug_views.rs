@@ -158,7 +158,15 @@ fn every_shading_path_honours_each_diagnostic_or_marks_it_unsupported() {
                         | DebugView::IblSpecular
                         | DebugView::DirectLight
                 ),
-                "shader-full-dissolve" => view != DebugView::Albedo,
+                // A lit full shader hands its surface to the shared shading
+                // (custom_lit.wgsl), which draws the lighting terms.
+                "shader-full-dissolve" => !matches!(
+                    view,
+                    DebugView::Albedo
+                        | DebugView::IblDiffuse
+                        | DebugView::IblSpecular
+                        | DebugView::DirectLight
+                ),
                 "materials-physical" => matches!(
                     view,
                     DebugView::IblDiffuse

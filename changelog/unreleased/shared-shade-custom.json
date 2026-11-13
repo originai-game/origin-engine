@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "material shaders: a lit full shader (`type full`)",
+      "summary": "A lit full shader hands its surface to the renderer's one shading entry: it now takes the screen's occlusion, the probe GI, the light volumes and the caustics under water as a built-in material does, its reflection is bent towards the normal by roughness, and the albedo, image-based light and direct light debug views show it."
+    }
+  ]
+}
