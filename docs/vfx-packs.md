@@ -91,11 +91,9 @@ own. It installs the pack into a scratch game, then:
    (`og_gpu_acquire_all`) for that run only and releasing them before the
    next effect.
 
-All slots are held for one measured run, never across a pack.
-
 ## 5. The engine's packs: bundled and downloadable
 
-The engine's own effect packs ship two ways (the coordinator, 2026-11-07):
+The engine's own effect packs ship two ways:
 
 - **Bundled**: a few, in `packages/engine/extensions/<pack>/` like the UI
   kits. They are in every engine archive's `engine/extensions/`, `og ui
@@ -103,8 +101,8 @@ The engine's own effect packs ship two ways (the coordinator, 2026-11-07):
 - **Downloadable**: the rest, as plain Git files (no LFS) in
   `packages/vfx-packs/<pack>/`, outside the engine package and every engine
   archive. Each release carries one archive per pack,
-  `<version>/vfx/<pack>.tar.gz` (docs/release.md §1), and `og vfx add <pack>`
-  fetches it when no directory, bundled pack or installed pack has that name.
+  `<version>/vfx/<pack>.tar.gz` (docs/release.md §1), which `og vfx add`
+  fetches as below.
 
 Bundled: `pixel-scenario` (the Pixel VFX Forge library, `vfx2d`) and
 `effekseer-starter` (a curated set across the Effekseer contributors).
@@ -121,8 +119,9 @@ anything of `packages/vfx-packs/`. The downloadable packs of a release are
 the keys of its `manifest.json`'s `vfx`; `packages/vfx-packs/README.md`
 lists the ones on `main`.
 
-`og vfx add <pack> [project] [--any-engine]` for a downloadable pack, with
-`<downloads>` `$ORIGIN_ENGINE_DOWNLOADS` (default
+When no directory, bundled pack or installed pack has the name it is
+given, `og vfx add <pack> [project] [--any-engine]` fetches the
+downloadable pack, with `<downloads>` `$ORIGIN_ENGINE_DOWNLOADS` (default
 `https://origingame.ai/downloads/engine`, also a directory or `file://`; the
 launcher's variable) and `<v>` the running engine's version:
 

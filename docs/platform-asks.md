@@ -4,191 +4,278 @@ What the engine's `og.platform` (IDL module `platform`, docs/design.md §2.8)
 and its tools need from the OriginGame platform and origin-agent that they
 do not give today. The engine works without each one: the shell's bridge
 (`packages/engine/shell/platform.ts`) maps what it can onto Player protocol 2
-and answers the rest `unavailable`, falling back to the browser's storage for
-the store. Each ask names the shape the engine would use, so the bridge's
-mapping shrinks to a rename when it lands. Asks are numbered once and never
-renumbered; platform asks are collected at release.
+and answers the rest `unavailable`. Each ask names the shape the engine
+would use, so the bridge's mapping shrinks to a rename when it lands. The
+Player is one provider of the engine's provider contract
+(`@origingame/engine/provider`, docs/design.md §2.8 Providers); `point` and
+`ai.mark` are OriginGame's host extensions, not core methods.
 
-The Player is one provider of the engine's provider contract
-(`@origingame/engine/provider`, docs/design.md §2.8 Providers): each ask
-below is what that provider needs from the platform, not a shape the
-engine depends on. `point` and `ai.mark` are OriginGame's host extensions
-of the vocabulary, not core methods.
-
-Only open asks are listed; landed ones (1–8, 12, 14, 15, 18, 27) are in git
-history. Numbers are never reused.
+Asks are numbered once and never renumbered or reused. Only open asks are
+listed; landed ones (1–8, 12, 14, 15, 18, 27) are in git history. Nothing
+here carries a credential: every method is a name and arguments, and the
+Player owns the session.
 
 ## The Player's clock
 
-| # | Ask | Why | Until then (the engine's stand-in) |
-|---|---|---|---|
-| 9 | The Player's `hello` carries `time` (UTC ms, the Player's clock), and every answer carries `time` when the Player answered it | `og.platform.now` and `PlatformResult.time` are the host's clock handed to the game as host input, recorded in replays like a key press; an idle game credits the time away from a store answer's `time`. The Player's clock (one the platform can correct, the same for every device of a player) should be the one games read, not each browser's. | The engine's Worker (`packages/engine/src/web/worker.ts`) gives og.platform the browser's clock (`Date.now()` when the platform attaches and when each answer arrives) and says so: `og.platform.info(world).clock` is `browser`. An answer the page hands back with its own `time` is taken as is and `clock` reads `player`, so when this lands the shell's bridge (`packages/engine/shell/platform.ts`) only passes the field on. |
-
-State: open. The platform has implemented `time` on the protocol-2 hello
-and every result (framed Player, Stage and verify mode stamp at answer
-time; HTTP stamps its server's time; the framed Player corrects its clock
-from same-origin `GET /__og/time` and never moves it backwards), not yet
-deployed. The engine reads hello time and result time through both
-transports, the shell and the Worker to `attachPlatform`; an unstamped
-hello keeps the host-clock fallback. This is client consistency, not
-authoritative time.
-
-Nothing here carries a credential: every method is a name and arguments,
-and the Player owns the session, as protocol 2 already requires.
+**Ask 9, open.** The Player's `hello` carries `time` (UTC ms, the Player's
+clock), and every answer carries `time` when the Player answered it, so
+games read one clock the platform can correct rather than each browser's.
+State: the platform has implemented it (the framed Player corrects its
+clock from same-origin `GET /__og/time` and never moves it backwards), not
+yet deployed. The engine reads hello and result time on both transports.
+Until then the Worker gives og.platform the browser's clock and
+`og.platform.info(world).clock` reads `browser`; with a stamped answer it
+reads `player`.
 
 ## The top-level page
 
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 28 | (formerly the second 9) Player protocol 2 over same-origin HTTP for a top-level engine page: `POST /__player/v2/<game>/<release>/{hello,call,report}` on the game's own origin, the hand-off code redeemed from the hello's body, the framed Player's answers and errors, the session reports filed as the Player filed them; and Play (the game host's `/`, `/g/:slug`) opening a release whose entry says `<meta name="og-player" content="frame page">` as its own top-level document (307 to the release entry), the Stage page likewise for a Stage build (the creator overlay injected into the engine's document) | design §4: the shell is the play page and the brand surface; a frame costs the viewport, gestures, audio unlocking and the PWA on phones | every engine page is framed by the Player page or the Stage page | Open in production. The contract is origingame `docs/player-protocol.md` §The top-level engine page; the shell speaks it (`shell/transport.ts`, `docs/web-export.md` §The top-level page). The platform also needs the game-host ingress to admit `POST` with `Authorization` (never `Cookie`) on `/__player/v2/` (those hosts take only GET and HEAD and strip both), a production topology change the platform owns (`deploy/ovh/ingress-boundaries.conf`); production stays framed until that location is applied on the game hosts and the E2B templates are rebuilt, in that order. |
-
-Nothing in this ask carries a credential to game code beyond what a game
-on its own origin can already read: the game-scoped player credential the
-page holds (design §4: the page has nothing beyond the game's own scope to
-steal; the host ABI is the only route to platform APIs).
+**Ask 28, open in production.** Player protocol 2 over same-origin HTTP
+for a top-level engine page: `POST /__player/v2/<game>/<release>/{hello,call,report}`
+on the game's own origin, the hand-off code redeemed from the hello's body,
+the framed Player's answers and errors, and the session reports filed as
+the Player files them; and Play opening a release whose entry says
+`<meta name="og-player" content="frame page">` as its own top-level
+document (307 to the release entry), the Stage page likewise for a Stage
+build. The contract is origingame `docs/player-protocol.md` §The top-level
+engine page; the shell speaks it (`docs/web-export.md` §The top-level
+page). The platform still needs the game-host ingress to admit `POST` with
+`Authorization` (never `Cookie`) on `/__player/v2/`, then the E2B
+templates rebuilt, in that order. Until then every engine page is framed.
 
 ## The Stage overlay in the engine's document
 
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 10 | In in-document mode (`inPage`, a Stage build with `og-player` … `page`), the Stage overlay answers Player protocol 2 on the page's own window: its stand-in Player (`createGameListener` in `sdk/src/stage-page.ts`) takes `window` as the game window (today `gameWindow` is `frame?.contentWindow ?? null`, which is null in-page, so it answers nothing) and posts its answers to `window` at `location.origin`; it skips the Player messages it posted itself (a `hello` that lists `capabilities`, `result`, `start`, `gesture`, `pause`, `resume`): in one window it hears its own `hello`, which `readPlayerWireGameMessage` accepts, and would answer it forever; it answers as it does framed (`hello` with `started: true` and the scratch store's methods, `gesture` on the first trusted input, the scratch store's `result`s, Stage pause and resume as `pause`/`resume`), and may stamp each `result` with `time` (ask 9). The scratch store lives in the overlay's memory and an in-page Reload is `location.reload()`, so a Reload starts it empty: keep that (and say so on the Stage) or keep it per ticket in `sessionStorage`. | The overlay is the Player of a Stage build that is its own document: play starts from it, the creator's saves and store calls are its, and the shell keeps nothing of og.platform's on the shared Stage origin. | Without it a top-level Stage build has no Player. | The shell speaks it (`shell/player.ts`, `docs/web-export.md` §Player protocol 2): it ignores its own echo (a `hello` with `substrate` or without `capabilities`), repeats its hello every 250 ms until the overlay answers, holds og.platform until then (1.5 s) and keeps it in memory, never in `localStorage`, and registers no service worker there. Until the overlay answers, a top-level Stage build plays on the page's memory and draws its own gate after 300 ms. The platform's Stage runs in-document against this shell; production changes only with the ingress location and the E2B template rebuild. |
+**Ask 10, open.** In in-document mode (a Stage build with `og-player` …
+`page`), the Stage overlay answers Player protocol 2 on the page's own
+window: its stand-in Player (`createGameListener` in `sdk/src/stage-page.ts`)
+takes `window` as the game window and posts its answers to `window` at
+`location.origin`, skips the Player messages it posted itself (it hears its
+own `hello`), and answers as it does framed (`hello` with `started: true`,
+`gesture`, the scratch store's `result`s, `pause`/`resume`). A Reload
+starts the scratch store empty unless it is kept per ticket in
+`sessionStorage`. The shell speaks its side (`docs/web-export.md` §Player
+protocol 2); until the overlay answers, a top-level Stage build plays on
+the page's memory and draws its own gate after 300 ms. State: the
+platform's Stage runs in-document against this shell; production waits on
+ask 28's ingress change.
 
 ## Lanes: threaded engine pages
 
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 11 | Keep serving a release that ships `origingame.runtime.json` `{"version":1,"crossOriginIsolated":true}` (every `og build --publish` whose `isolation` is not `off`, the default `preferred` included) with COOP `same-origin` and COEP `require-corp` on its entry document and every file under it, CORP `cross-origin` on each file, and `allow="… cross-origin-isolated"` on the Player's iframe while a release is framed; at the top level (ask 9) the entry document's own COOP/COEP is what isolates it, so the 307 to the release entry must land on a response carrying them. Send no `worker-src` or `script-src` that excludes `blob:` on the play origin: wasm-bindgen-rayon starts the lanes pool's Workers from a `blob:` URL. | The lanes variant (`origin-engine-lanes_bg.wasm`, docs/web-export.md §Lanes) needs SharedArrayBuffer, so it boots only when the page is `crossOriginIsolated`; otherwise the shell plays the single-threaded module, correct but without lanes. Lanes split crowds of 128 animated characters or more, CPU culls of 2,048 objects or more and the physics step itself: rapier's parallel build runs on the lanes wasm's Worker pool through a relay from 500 bodies on two to four lanes (1,000 on five or six, 1,500 from seven), with ropes, cloths and fluids split too (crates/og-lanes/README.md); without isolation all of it runs on the engine Worker's one thread, with the same results. | Nothing to change, as read from this repository's side (platform `server/src/play/serve.ts` sends `isolationHeaders` for a declared release and a CSP of `frame-ancestors` only, `server/src/play/player.ts` adds `cross-origin-isolated` to the frame's `allow`). | Open: not verified against production. Publish one lanes build and check `__runtime_probe__.lanes.on` on Play, framed and at the top level, on desktop Chrome and a phone; a page downloads one module, a release carries both. |
+**Ask 11, open: not verified against production.** Keep serving a release
+that ships `origingame.runtime.json` `{"version":1,"crossOriginIsolated":true}`
+with COOP `same-origin` and COEP `require-corp` on its entry document and
+every file under it, CORP `cross-origin` on each file, and `allow="…
+cross-origin-isolated"` on the Player's iframe while a release is framed;
+at the top level the 307 must land on a response carrying COOP and COEP.
+Send no `worker-src` or `script-src` on the play origin that excludes
+`blob:`. Without isolation the shell plays the single-threaded module with
+the same results and no lanes (`docs/web-export.md` §Lanes). Nothing should
+need to change; verify by publishing one lanes build and checking
+`__runtime_probe__.lanes.on` on Play, framed and at the top level, on
+desktop Chrome and a phone.
 
 ## The type checker in the sandbox
 
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 13 | The `engine` class sandbox image keeps `@origingame/engine`'s `optionalDependencies` when it pre-installs the engine (no `--omit=optional`, no `--no-optional`), so `node_modules/@tsrs/<platform>/tsrs` and its `lib.*.d.ts` are in the image; count it in the image budget (≤ 600 MB): 32.5 MB for `@tsrs/linux-x64-gnu` unpacked, but bun 1.4.2 also installs `@tsrs/linux-x64-musl` (23.3 MB) on glibc because it ignores the package's `libc` field, so 55.9 MB unless the image prunes the musl package | `og check`, and the check `og run`, `og test`, `og build` and `og dev` make before bundling, must not reach the registry inside a sandbox; tsrs is found beside the engine package first (`crates/og-cli/src/check.rs`) | without the package `og check` falls back to tsgo through `bun x --package typescript@7.0.2 tsc` (the network or bun's cache), and `og doctor` reports tsrs missing with the fix | open |
-
-Not an ask, for the platform's own use: `@tsrs/wasm` (the same checker as
-a wasm module) returns diagnostics as JSON (`diagnostics: "json"`), the
-piece an in-browser check (the Player page, an online editor) would use.
-The engine does not consume it.
+**Ask 13, open.** The `engine` class sandbox image keeps
+`@origingame/engine`'s `optionalDependencies` when it pre-installs the
+engine (no `--omit=optional`), so `node_modules/@tsrs/<platform>/tsrs` and
+its `lib.*.d.ts` are in the image and `og check` never reaches the
+registry; count it in the image budget (about 33 MB, 56 MB if bun also
+installs the musl package on glibc). Until then `og check` falls back to
+tsgo through `bun x` (the network or bun's cache), and `og doctor` reports
+tsrs missing with the fix.
 
 ## Rooms
 
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 16 | Rooms in Player protocol 2, listed in `hello.capabilities` as `room.create`, `room.join`, `room.leave`, `room.send`. Calls (each `result` only acknowledges; a refusal is `{ ok: false, error: { code, message } }` with `code` one of `unavailable`, `not_found`, `full`, `invalid`, `offline`): `room.create { name?, capacity? }` (capacity 2 to 16), `room.join { room, name? }` (`room` 1–64 of letters, digits, `.`, `_`, `-`), `room.leave {}`, `room.send { to?, channel?, data? \| bytes? }` (`to` a peer number, else every other peer; `bytes` base64; 64 KiB a game message, 16 MiB for the engine's own `og.`-channel messages, a world snapshot for a late joiner). Events, pushed by the Player as `{ og: "player", protocol: 2, kind: "room", event }` in the order they happened, with `event` one of: `{ type: "joined", room, peer, peers: [{ peer, name }] }` (this peer is in; `peers` includes it), `{ type: "peer_joined", peer, name }`, `{ type: "peer_left", peer }` (after every message that peer sent), `{ type: "message", from, channel?, data? \| bytes? }`, `{ type: "left", reason? }` (roomLeave done, or the room was lost), `{ type: "error", op, code, message }`. Peer numbers are given in join order from 0 and never reused; messages from one sender arrive in the order sent. The platform relays (no authority, no simulation): lockstep runs in every engine. A Play link to a room (`?room=<id>`) may put the page in it at load, answered by the same `joined`. | og.platform.roomCreate/roomJoin/roomLeave/roomSend/roomPeers and og.net's lockstep (docs/design.md §2.8, §2.10): two players' engines in one room exchange inputs and world hashes; natively `og relay` carries them. | — | Open. The shell speaks it (`shell/platform.ts` `playerRooms`, `src/web/shell.ts` `RoomHost`, the Worker's `room`/`room-events` messages): with a Player whose hello lists `room.join` roomInfo's host is `player`; otherwise `none` and roomCreate/roomJoin are refused. The play page reads `?room=<id>` and the engine joins that room itself once the Player's hello lists `room.join` (the engine's side of the Play link is done; the platform's is to put `?room=` on the link). The shapes are og-net's protocol (`crates/og-net/src/protocol.rs`), the same the native relay speaks. The platform side is implemented (Rooms as its own service, `rooms-service/src/player-relay.ts`; the framed Player's client `sdk/src/player-rooms.ts`); open: deployment and a two-Player acceptance through a `?room=` Play link. |
+**Ask 16, open.** Rooms in Player protocol 2, listed in
+`hello.capabilities` as `room.create`, `room.join`, `room.leave`,
+`room.send`. Calls (each `result` only acknowledges; a refusal is `{ ok:
+false, error: { code, message } }` with `code` one of `unavailable`,
+`not_found`, `full`, `invalid`, `offline`): `room.create { name?, capacity? }`
+(capacity 2 to 16), `room.join { room, name? }` (`room` 1–64 of letters,
+digits, `.`, `_`, `-`), `room.leave {}`, `room.send { to?, channel?, data? |
+bytes? }` (`to` a peer number, else every other peer; `bytes` base64;
+64 KiB a game message, 16 MiB for the engine's own `og.`-channel messages).
+Events, pushed as `{ og: "player", protocol: 2, kind: "room", event }` in
+the order they happened: `{ type: "joined", room, peer, peers: [{ peer,
+name }] }` (`peers` includes this peer), `{ type: "peer_joined", peer,
+name }`, `{ type: "peer_left", peer }` (after every message that peer
+sent), `{ type: "message", from, channel?, data? | bytes? }`, `{ type:
+"left", reason? }`, `{ type: "error", op, code, message }`. Peer numbers are
+given in join order from 0 and never reused; messages from one sender
+arrive in order. The platform relays only: lockstep runs in every engine.
+A Play link `?room=<id>` puts the page in that room. The shapes are og-net's
+protocol (`crates/og-net/src/protocol.rs`).
+
+State: the engine's side is done, the Play link included. The platform
+side is implemented (`rooms-service/src/player-relay.ts`,
+`sdk/src/player-rooms.ts`); open are its deployment, `?room=` on the Play
+link and a two-Player acceptance. Until then a Player whose hello lists no
+`room.join` gives roomInfo host `none`, and roomCreate/roomJoin are
+refused.
 
 ## Source maps and field telemetry
 
-| # | Ask | Why | Before | State |
-|---|---|---|---|---|
-| 17 | Keep field telemetry's fields when filing `crash` and `sample` (framed Player and the play origin's `/__player/v2/<game>/<release>/report`), shapes in `docs/web-export.md` §Telemetry; never answer 400 for them (a 400 drops the whole report). At publication, take a publish build's `sourcemaps/` out of the directory before the release is served and store it privately under og-build.json's `sourcemaps.build`; map a stored crash's `stack` with `mapStack` from `@origingame/engine/sourcemap` (a public contract, `docs/web-export.md` §Source maps) when showing it. Aggregate `frames` per release (the bins add up), `stages` and `failures`. The `end` sample is posted on `pagehide`, so by the time the Player's listener runs its `MessageEvent.source` no longer equals the iframe's `contentWindow` (seen in Chrome 150): a Player that filters messages on `e.source === iframe.contentWindow` drops every `end`; accept it by origin and the report's game and release instead. | A crash report that carries its mapped stack, tick, engine, build, browser, device, GPU and memory is one an agent can fix; frame-time and hitch distributions per session say which releases play badly on which devices. | A `crash` is `{ name, fingerprint }`; a `sample` is `renderer` and `timings`; stacks name minified bundle lines. | Open. The engine sends them (`publish { telemetry off }` opts a game out); a play origin that drops unknown fields loses nothing it had. |
+**Ask 17, open.** Keep field telemetry's fields when filing `crash` and
+`sample` (framed Player and the play origin's
+`/__player/v2/<game>/<release>/report`), shapes in `docs/web-export.md`
+§Telemetry, and never answer 400 for them (a 400 drops the whole report).
+At publication, take a publish build's `sourcemaps/` out before the release
+is served and store it privately under og-build.json's `sourcemaps.build`;
+map a stored crash's `stack` with `mapStack` (`docs/web-export.md` §Source
+maps) when showing it. Aggregate `frames` per release, `stages` and
+`failures`. Accept the `end` sample by origin and the report's game and
+release, not by `e.source === iframe.contentWindow`, which no longer holds
+on `pagehide`. The engine sends them already; a play origin that drops
+unknown fields loses nothing it had.
 
 ## Purchases, ads, achievements, identity and share
 
-The engine owns the contract and the game-side API (IDL `platform`,
-`og api show platform`); accounts, money, ad networks and the catalogue
-stay the platform's. Each call is og.platform's request and answer
-(docs/design.md §2.8): the engine queues `{ request, method, args, tick }`,
-the host answers `{ ok, data }` or `{ ok: false, error: { code, message,
-retryable } }`, and the answer is applied at the next tick's start as host
-input, kept in the engine's log and in `og replay`'s trace. No credential
-crosses: the Player attaches the player's game-scoped session, and every id
-it hands back (a player, a friend, a purchase, an invite) is opaque, at most
-128 of letters, digits, `.`, `_`, `-` and `:`, and scoped to this game.
+The engine owns the contract and the game-side API (IDL `platform`); the
+accounts, money, ad networks and catalogue are the platform's. Every id the
+Player hands back is opaque, at most 128 of letters, digits, `.`, `_`, `-`
+and `:`, and scoped to this game.
 
-| # | Ask | Why | Until then (the engine's stand-in) |
-|---|---|---|---|
-| 19 | Player protocol 2 methods, each listed in `hello.capabilities` when the Player answers it, with these arguments and answers (the shell passes them through by name, `shell/platform.ts`). **Purchases:** `purchase.products { ids: string[] }` (≤ 100; empty: every product) → `{ products: [{ id, kind: "consumable" \| "durable" \| "subscription", title, description, price: { amount, currency, display } }] }`; `purchase.buy { product, quantity }` (1–99; the Player shows its own sheet and takes the money) → `{ purchase, product, quantity, state: "completed" \| "pending" }`, errors `cancelled`, `not_found`, `conflict` (a durable owned); `purchase.entitlements {}` → `{ entitlements: [{ purchase, product, kind, quantity, expires }] }` (owned durables, active subscriptions, unconsumed consumables; `expires` UTC ms or null); `purchase.consume { purchase }` → `{ purchase, product, consumed: true }`, `not_found` when not owned or consumed. **Ads:** `ad.ready { kind: "rewarded" \| "interstitial", placement }` → `{ kind, placement, ready }`; `ad.show { kind, placement }` → `{ kind, placement, outcome: "completed" \| "skipped" \| "shown" }`, errors `no_fill` (retryable), `rate_limited` (the platform's frequency cap); while the ad shows the Player sends `pause` before it and `resume` after it, and answers only after `resume`. **Achievements:** `achievement.unlock { id }` → `{ id, percent: 100, unlocked: true, new }`; `achievement.progress { id, percent }` (0–100; never lowered) → `{ id, percent, unlocked, new }`; `achievement.list {}` → `{ achievements: [{ id, percent, unlocked, time }] }`. **Identity:** `player.get {}` → `{ player, name, guest }`; `friends.list { count }` (1–200) → `{ friends: [{ player, name, online, playing }] }`, `unauthorized` for a guest; `invite.send { to: string \| null, message, payload }` (payload any JSON ≤ 1 KiB; `to` null: an invite link through the share sheet) → `{ invite, to }`, `cancelled` when the sheet closed; `invite.list {}` → `{ invites: [{ invite, from: { player, name }, payload, time, opened }] }` (`opened`: the invite the game was opened with). **Share:** `share { text, title, path, image }` (text 1–280, title ≤ 80; the Player builds the game's own Play link with `?share=<path>`; `image`: the frame drawn last) → `{ shared: true, target }`, `cancelled` when the sheet closed. **Notices:** unasked input pushed as `{ og: "player", protocol: 2, kind: "platform", notice: { kind, data, time? } }` with `kind` `purchase` (`{ purchase, product, quantity, state: "completed" \| "failed" \| "refunded" }`: a pending purchase settled, a refund), `entitlements` (`{ entitlements }`, changed without a call: another device, an expiry) or `invite` (the `invite.list` entry). New error codes `cancelled` (not retryable) and `no_fill` (retryable). A verification run answers every method from a scratch fake that never charges. | og.platform's `products`, `purchase`, `entitlements`, `consume`, `showAd`, `adReady`, `achievementUnlock`, `achievementProgress`, `achievements`, `player`, `friends`, `inviteSend`, `invites`, `share`, `supports` and `og.PlatformNotice`: the purchases, ads, achievements, identity and sharing commercial games need, behind the platform's accounts and payments. The engine keeps only `og.PlatformGrants` (which purchases a world delivered, so a consumable is delivered once across replays, relaunches and restores) and never treats it, a save or its log as proof of payment: a game asks for its entitlements on start. In a lockstep or rollback room each peer's answers are its own, so a system writing shared state hears none (docs/design.md §2.8). | Open. The shell passes each method through where the hello lists it and answers the rest `unavailable`; a published page without a Player answers every one `unavailable` (it never fakes a purchase); a dev page without a Player, `og run` and playtests answer from the local platform's deterministic fake (`src/platform-local.ts` `LocalFake`: `og run --platform-fake`, `PlaytestDesc.platform`), whose ads pause the game for a frame and answer after the resume. The Player's notices are forwarded to the engine (`shell/player.ts` kind `platform`). |
+**Ask 19, open.** Player protocol 2 methods, each listed in
+`hello.capabilities` when the Player answers it (the shell passes them
+through by name):
+
+- **Purchases:** `purchase.products { ids: string[] }` (≤ 100; empty:
+  every product) → `{ products: [{ id, kind: "consumable" | "durable" |
+  "subscription", title, description, price: { amount, currency, display } }] }`;
+  `purchase.buy { product, quantity }` (1–99; the Player shows its own
+  sheet) → `{ purchase, product, quantity, state: "completed" | "pending" }`,
+  errors `cancelled`, `not_found`, `conflict` (a durable owned);
+  `purchase.entitlements {}` → `{ entitlements: [{ purchase, product, kind,
+  quantity, expires }] }` (`expires` UTC ms or null);
+  `purchase.consume { purchase }` → `{ purchase, product, consumed: true }`,
+  `not_found` when not owned or consumed.
+- **Ads:** `ad.ready { kind: "rewarded" | "interstitial", placement }` →
+  `{ kind, placement, ready }`; `ad.show { kind, placement }` → `{ kind,
+  placement, outcome: "completed" | "skipped" | "shown" }`, errors
+  `no_fill` (retryable), `rate_limited`; the Player sends `pause` before
+  the ad and `resume` after it, and answers only after `resume`.
+- **Achievements:** `achievement.unlock { id }` → `{ id, percent: 100,
+  unlocked: true, new }`; `achievement.progress { id, percent }` (0–100;
+  never lowered) → `{ id, percent, unlocked, new }`; `achievement.list {}`
+  → `{ achievements: [{ id, percent, unlocked, time }] }`.
+- **Identity:** `player.get {}` → `{ player, name, guest }`;
+  `friends.list { count }` (1–200) → `{ friends: [{ player, name, online,
+  playing }] }`, `unauthorized` for a guest; `invite.send { to: string |
+  null, message, payload }` (payload JSON ≤ 1 KiB; `to` null: a link
+  through the share sheet) → `{ invite, to }`, `cancelled` when the sheet
+  closed; `invite.list {}` → `{ invites: [{ invite, from: { player, name },
+  payload, time, opened }] }`.
+- **Share:** `share { text, title, path, image }` (text 1–280, title ≤ 80;
+  the Player builds the game's Play link with `?share=<path>`) →
+  `{ shared: true, target }`, `cancelled` when the sheet closed.
+- **Notices:** unasked input pushed as `{ og: "player", protocol: 2, kind:
+  "platform", notice: { kind, data, time? } }` with `kind` `purchase`
+  (`{ purchase, product, quantity, state: "completed" | "failed" |
+  "refunded" }`), `entitlements` (`{ entitlements }`) or `invite` (the
+  `invite.list` entry).
+- New error codes `cancelled` (not retryable) and `no_fill` (retryable). A
+  verification run answers every method from a scratch fake that never
+  charges.
+
+The engine keeps only `og.PlatformGrants` (which purchases a world
+delivered) and never treats it, a save or its log as proof of payment.
+Until then the shell answers each method the hello does not list
+`unavailable`, a published page without a Player answers every one
+`unavailable`, and dev pages, `og run` and playtests answer from the local
+deterministic fake (`src/platform-local.ts` `LocalFake`).
 
 ## Missing-GPU warnings and unchecked frames
 
-| # | Ask | Why | Until then |
-|---|---|---|---|
-| 20 | **Optional:** set `OG_RENDERER=none` in GPU-less origin-agent sandbox images or `/etc/profile.d/origin-runner.sh` to make the warning expected. It is not a prerequisite for moving the engine pin. Read `renderer`, `adapterError` and unchecked counts in `og run` / `og test` JSON; report unchecked suites separately from passed suites. | An unavailable adapter warns loudly with wgpu's error and continues as renderer `none`: simulation, dumps and hashes are unchanged, screenshots are unchecked and `capture` is null. GPU tests/checks that did not run never count as passes. Exit status is zero unless an executed check failed. The switch removes only the warning's "unexpected" wording. | Existing images need no environment change. Keep the adapter warning and unchecked counts visible to the agent and player; zero exit status alone is not evidence that frames were checked. A sandbox class that gains a GPU leaves the switch unset. |
+**Ask 20, optional.** Set `OG_RENDERER=none` in GPU-less origin-agent
+sandbox images (or `/etc/profile.d/origin-runner.sh`) so the missing-adapter
+warning reads as expected; it is not a prerequisite for moving the engine
+pin. Read `renderer`, `adapterError` and the unchecked counts in `og run` /
+`og test` JSON and report unchecked suites apart from passed ones: a zero
+exit status alone does not prove frames were checked. Without the switch
+nothing breaks; the warning only says "unexpected".
 
 ## Quick play and matchmaking
 
-| # | Ask | Why | Until then |
-|---|---|---|---|
-| 21 | Rooms in Player protocol 2 gain `room.quick { mode, players, timeoutMs, name? }`, listed in `hello.capabilities` when the Player answers it: the platform's matchmaking puts the player in a queue keyed by (game, `mode`, `players`); `mode` is 1 to 32 of letters, digits, `.`, `_` and `-` (empty is `default`), `players` 1 to 16, `timeoutMs` 0 (wait until `room.leave`) to 600000. Once `players` players wait, the platform makes a room of capacity `players` that nobody else can join by id and pushes each of them the same `{ type: "joined", room, peer, peers }` as `room.join` (peers numbered in the order they queued, the room's other events as for any room). A wait past `timeoutMs` ends with `{ type: "error", op: "quick", code: "timeout", message }`; `room.leave` while queued takes the player out and answers `{ type: "left" }`; a second `room.quick` while queued or in a room is `invalid`. The queue may match by more than order (skill, region) as long as each match is `players` players of one game and mode. | og.platform.quickPlay (IDL `platform`): a game asks to be matched and hears og.RoomJoined once its room filled, then plays in lockstep as in any room (docs/design.md §2.10). The engine's side is done: the op is og-net's protocol `{ op: "quick", mode, players, timeoutMs, name }` (`crates/og-net/src/protocol.rs`), and natively `og relay` keeps the queue (`crates/og-net/src/relay.rs`, tested in `client.rs` and `packages/engine/tests/rooms.test.ts`). Matchmaking is the platform's (AGENTS.md §Ownership): the engine names no service. | On the web the shell passes `quick` to the Player's room host like `create` and `join`; a Player without `room.quick` should answer `{ type: "error", op: "quick", code: "unavailable" }`, which the game hears as og.RoomJoined with ok false and `unavailable`. Natively, quick play works through `og relay` (`og run . --room ws://127.0.0.1:47900/`, the arena's `quick:duel`). |
+**Ask 21, open.** Rooms in Player protocol 2 gain `room.quick { mode,
+players, timeoutMs, name? }`, listed in `hello.capabilities`: the
+platform's matchmaking queues the player by (game, `mode`, `players`);
+`mode` is 1 to 32 of letters, digits, `.`, `_` and `-` (empty is
+`default`), `players` 1 to 16, `timeoutMs` 0 (wait until `room.leave`) to
+600000. Once `players` players wait, the platform makes a room of capacity
+`players` that nobody else can join by id and pushes each of them the same
+`joined` as `room.join` (peers numbered in queue order). A wait past
+`timeoutMs` ends with `{ type: "error", op: "quick", code: "timeout",
+message }`; `room.leave` while queued answers `{ type: "left" }`; a second
+`room.quick` while queued or in a room is `invalid`. The queue may match by
+more than order as long as each match is `players` players of one game and
+mode. The engine's side is done (og-net's `{ op: "quick", … }`; natively
+`og relay` keeps the queue). Until then a Player without `room.quick`
+should answer `{ type: "error", op: "quick", code: "unavailable" }`.
 
 ## The inspector's Save on a web page
 
-| # | Ask | Why | Until then |
-|---|---|---|---|
-| 22 | The Stage (origin-agent's host of a dev build, the `og-probe` wire 1 at protocol 5, `origin-agent/packages/contracts/src/probe.ts`) accepts one pushed event from the page, `{ og: "probe", v: 1, kind: "scene_saved", scenes: [{ source, text }] }`, posted to the origin in `window.__OG_STAGE_HOST__` under the wire's rules (never `"*"`): `source` is a scene's project-relative path (`assets/scenes/main.ogt`, the boot scene's first), `text` its whole new text, at most 1 MiB a scene and 64 scenes an event. The Stage writes each `text` over `source` in the game's project (the sandbox's checkout, as the agent's own edits are written), refusing a `source` outside `assets/` or not ending in `.ogt`, and answers nothing on the wire; the creator sees the files changed as they see an agent's edit. Advertise it in the Stage's `hello` reply to the page as `capabilities: ["scene_saved"]`. | The inspector's Save (F1 in a development build, `docs/design.md` §3.6) is `save_scene`: natively the engine writes the scene files itself, but a web page writes no files (`shell/page.ts`, `saveScene` answers the text), so on the Stage an edit made in the panel is lost unless the page can hand the text to the host that owns the project. | A web page's Save answers the texts and writes nothing ("N lines ready; the page saves them"); the shell's save routing (`shell/wire.ts` `routeSavedScenes`) sends `scene_saved` only to a Stage whose `hello` lists the capability, and otherwise downloads each scene as a `.ogt` file named by its source (one file per scene, the browser's download) so the creator can put it back by hand. |
-
-## Native accessibility in Origin Desktop
-
-**Ask 25 — open.** Origin Desktop owns the OS AccessKit adapter for its
-Preview window. The engine owns no window and must not attach an adapter
-to another process's handle. The engine supplies the tree and consumes
-actions through the shared-frame socket (docs/design.md §2.6).
-
-After each shared-frame `Hello` on a new connection, Desktop sends
-`{"AccessibilitySubscribe":{"version":1}}`. Every message is a `u32`
-little-endian byte length followed by JSON. Version 1 pins AccessKit
-0.25.2's serde representation. Desktop deserializes the `update` field of
-`{"AccessibilityUpdate":{"version":1,"generation":0,"seq":42,"update":...}}`
-as `accesskit::TreeUpdate` and applies every update in socket order.
-The first update is a full tree; later updates contain changed nodes and
-focus. Dropping an incremental update loses tree state, even when Desktop
-skips the image for that sequence. Reconnection starts a new tree.
-
-Bounds are in the shared frame's physical pixels. Desktop supplies the
-Preview's placement transform and clips the embedded tree to the Preview.
-Desktop forwards its adapter's `ActionRequest` unchanged in the `request`
-field of `AccessibilityAction`, with `version: 1`. For example, in Rust:
-
-```rust
-let request = accesskit::ActionRequest {
-    action: accesskit::Action::Click,
-    target_tree: accesskit::TreeId::ROOT,
-    target_node: accesskit::NodeId(7), // id from the received tree
-    data: None,
-};
-let message = serde_json::json!({
-    "AccessibilityAction": { "version": 1, "request": request }
-});
-let body = serde_json::to_vec(&message)?;
-socket.write_all(&(body.len() as u32).to_le_bytes())?;
-socket.write_all(&body)?;
-```
-
-The engine supports the actions advertised on each node: focus, click,
-set value, increment, decrement, scroll into view, and directional page
-scroll. It applies them on the UI tick, not on the socket thread. Until
-this ask lands, native frames remain visual-only to the OS. The web DOM
-mirror is unchanged.
+**Ask 22, open.** The Stage (the `og-probe` wire 1 at protocol 5,
+`origin-agent/packages/contracts/src/probe.ts`) accepts one pushed event
+from the page, `{ og: "probe", v: 1, kind: "scene_saved", scenes: [{
+source, text }] }`, posted to the origin in `window.__OG_STAGE_HOST__`:
+`source` is a scene's project-relative path (`assets/scenes/main.ogt`),
+`text` its whole new text, at most 1 MiB a scene and 64 scenes an event.
+The Stage writes each `text` over `source` in the game's project, refusing
+a `source` outside `assets/` or not ending in `.ogt`, and answers nothing.
+It advertises this in its `hello` reply as `capabilities: ["scene_saved"]`.
+Until then the shell's save routing (`shell/wire.ts` `routeSavedScenes`)
+downloads each scene as a `.ogt` file named by its source, since a web page
+writes no files.
 
 ## The inspector's prefab Apply and Revert on a web page
 
-| # | Ask | Why | Until then |
-|---|---|---|---|
-| 23 | Beside #22's `scene_saved`, the Stage serves the page one call and takes one more pushed text. The call: `{ og: "probe", v: 1, kind: "call", method: "read_source", params: { source } }`, answered `{ kind: "result", result: { source, text } }` (or `{ kind: "error", code: "refused" }`) with the whole current text of a project file, refusing a `source` outside `assets/` or not ending in `.ogt` and answering at most 1 MiB. The pushed text: a prefab's Apply writes the prefab's file and the instance's scene, so the page sends both in one `scene_saved` (each `{ source, text }`, the prefab's `assets/prefabs/….ogt` among them), and the Stage writes every one as #22 says, all or none. Advertise the call as `capabilities: ["scene_saved", "read_source"]` in the Stage's `hello`. | The inspector's Apply (write an instance's override into its prefab, so every instance takes it) and Revert (back to the prefab's value) are `apply_prefab` and `revert_prefab`, which read the prefab's and the scene's source text and rewrite it (`docs/design.md` §3.6). Natively the engine reads the project's files; a web page has only the cooked bundle, so on the Stage Apply and Revert refuse with the file they could not read, and a creator who tunes a prefab instance on the web cannot make it the prefab's. | On a web page Apply and Revert say why they cannot run (the source is not readable here) and change nothing; Save still saves the instance's override into its scene (#22, or a download). Once the Stage reads sources, the page fetches the prefab's and the scene's texts before the edit and the result goes out as #22's `scene_saved`, or, to a Stage without `read_source`, as a download of each changed file, as #22's fallback. |
+**Ask 23, open.** Beside #22, the Stage serves the call `{ og: "probe", v:
+1, kind: "call", method: "read_source", params: { source } }`, answered
+`{ kind: "result", result: { source, text } }` (or `{ kind: "error", code:
+"refused" }`) with the whole current text of a project file under the same
+rules as #22 and at most 1 MiB. A prefab's Apply sends the prefab's file and
+the instance's scene in one `scene_saved`, which the Stage writes all or
+none. It advertises `capabilities: ["scene_saved", "read_source"]`. Until
+then Apply and Revert on a web page say the source is not readable here and
+change nothing.
+
+## Native accessibility in Origin Desktop
+
+**Ask 25, open.** Origin Desktop owns the OS AccessKit adapter for its
+Preview window; the engine supplies the tree and consumes actions through
+the shared-frame socket (docs/design.md §2.6) and never attaches to another
+process's window. After each shared-frame `Hello` on a new connection,
+Desktop sends `{"AccessibilitySubscribe":{"version":1}}`. Every message is a
+`u32` little-endian byte length followed by JSON. Version 1 pins AccessKit
+0.25.2's serde representation. Desktop deserializes the `update` field of
+`{"AccessibilityUpdate":{"version":1,"generation":0,"seq":42,"update":...}}`
+as `accesskit::TreeUpdate` and applies every update in socket order: the
+first is a full tree, later ones changed nodes and focus, and dropping one
+loses tree state. Reconnection starts a new tree. Bounds are in the shared
+frame's physical pixels; Desktop applies the Preview's placement transform
+and clips to it. Desktop forwards its adapter's `ActionRequest` unchanged
+as `{"AccessibilityAction":{"version":1,"request":...}}`; the engine applies
+the actions each node advertises on the UI tick. Until then native frames
+are visual-only to the OS.
 
 ## Creation choices in origin-agent
 
-**Ask 24, open.** The creation UI in `originai-game/origin-agent` collects
-genre, view, look, mood, UI style, platform, input and players before the
-first build. Languages and music have defaults. Use the released engine's
-create package, not a separate platform vocabulary:
+**Ask 24, open.** The creation UI collects genre, view, look, mood, UI
+style, platform, input and players before the first build (languages and
+music have defaults), from the released engine's create package rather than
+a platform vocabulary:
 
-- `CREATION_CHOICES` owns the enums. `creationSchema(readCatalogue().map(s => s.slug))`
-  returns the form's JSON Schema 2020-12. The look catalogue still owns its
-  37 slugs. There are 14 installable UI packs in this revision, not 16;
-  `cjk` and `shared` contain support assets, not styles.
-- `resolveCreationChoices(premise, partialChoices)` returns suggestions
-  with explicit choices preserved. Display and confirm the required
-  choices. The language heuristic recognizes kana and Han text, otherwise
-  defaults to English; the platform can supply a more accurate locale.
+- `CREATION_CHOICES` owns the enums, and
+  `creationSchema(readCatalogue().map(s => s.slug))` returns the form's
+  JSON Schema 2020-12.
+- `resolveCreationChoices(premise, partialChoices)` returns suggestions with
+  explicit choices preserved; display and confirm the required ones.
 - Send the confirmed object as `create({ dir, premise, choices })` or the
-  corresponding `og new` flags with `--no-prompt`. All callers get one
-  empty skeleton; there are no archetypes or 2D overlays.
-- Keep the resulting `project.ogt` `create` block as the decisions the
-  build agent reads. Do not store an independent editable copy of those
-  values that can diverge from the project.
-
-The complete shape is:
+  `og new` flags with `--no-prompt`. The `look`, `mood` and `ui` go to
+  `og create`, which writes the look file and project.ogt's `look`.
+- Keep the resulting `project.ogt` `create` block as the decisions the build
+  agent reads, with no separate editable copy that can diverge. Later
+  changes edit the project's sources; `--force` is not an update API.
 
 ```ts
 {
@@ -198,140 +285,66 @@ The complete shape is:
 }
 ```
 
-Pass the confirmed `look`, `mood` and `ui` to `og create`: it writes
-`assets/looks/<id>.ogt` and the top-level `look "looks/<id>.ogt"` in
-`project.ogt`, so the platform no longer writes that file or patches
-`og.game({})` (this replaces ask 12's source patching). The cook
-resolves the preset, mood and UI pack. The entry remains `og.game({})`.
-The other choices are constraints for the agent, not generated controls,
-translations, cameras, multiplayer or music.
-
-`profile` remains an optional runtime/build setting in project.ogt, omitted
-by the skeleton. `create.view` records intent and does not replace it.
-Languages install their script's font pack (docs/ui.md §3.4), which
-og.i18n chains with no code; `og check` warns about a language with no
-pack or table fonts, and og-i18n about missing tables. The lint does not
-prove glyph coverage; the missing-glyph warning names what a frame lacks.
-
-Changes after creation need the corresponding authored source/settings
-update; `--force` is not an update API. `artBrief`, `readLook`, `presetLook`
-and the knowledge mounting contracts keep their signatures. The mounted
-payload and archive contents change. The distribution no longer contains
-`archetypes/`, `create/archetypes/`, `create/template-2d/`, starter models,
-sprites, scenes, audio, fonts, or gameplay playtests. `create/template/`
-contains only the skeleton; `ui-sheet/` is a neutral style-control sheet,
-not the old UI gallery. No platform code should read gallery screen names,
-art or reference frames. `Roots.template`, `payload`, `installed`, `mount`
-and `summary` keep their public signatures. See the breaking changelog.
-
 ## Music and sound generation from the audio brief
 
 **Ask 26, open.** origin-agent's music and sound generation takes its
-requests from the engine's `audioBrief`, as its image and model generation
-takes them from `artBrief` (`docs/art.md` §2.2), instead of
-writing prompts of its own:
+requests from the engine's `audioBrief`, as image generation takes them from
+`artBrief` (`docs/art.md` §2.2), instead of writing prompts of its own:
 
-- **Where the request comes from.** For a game, call
-  `audioBrief({ ...readAudioChoices(projectDir), premise })` from the
-  released `@origingame/create-game` (or the dist's
-  `engine/knowledge/scripts/brief.ts`); before the game exists, from the
-  creation form's confirmed `music`, `mood` and `genre` (ask 24). The
-  premise is the one the maker wrote. Shapes: `docs/art.md` §2.9 and the
-  knowledge README §The audio brief.
-- **Music.** Generate each `cues[]` entry from its `prompt`, at its `bpm`,
-  `mode`, `beatsPerBar` and `seconds`, honouring `loop` (seamless at the
-  bar line, no fade or tail) and, when `stems` is not empty, one file per
-  stem of identical length, sample-aligned, named
-  `music/<id>-<stem>.ogg` beside the mix `music/<id>.ogg`. Deliver
-  `format` (Ogg Vorbis, 48 kHz stereo, −16 LUFS integrated, true peak
-  −1 dBFS); og cook decodes it with no converter (og-audio §5). A rhythm
-  song's tempo must be exact: verify the delivered file's beat grid
-  against `bpm` (a drift of more than 5 ms over the song is a refusal)
-  before writing it.
-- **Sound effects.** Generate each `sfx[]` entry from its `prompt`,
-  `variants` takes as `audio/<id>.wav`, `audio/<id>-2.wav`, …, in
-  `format` (WAV, 48 kHz mono, peak −1 dBFS), trimmed to start on the
-  transient.
-- **Writing it.** Put each file at `assets/<file>` in the game's project
-  through the agent's own file edits, and record the model and request in
-  the game's asset log as for art (`ai.mark` at publication, ask 6). Leave
-  `presets[]`' `.ogt` stand-ins in place: the build agent switches each
-  load once its file exists (og-audio §2). Never overwrite a file the
-  maker replaced by hand.
-- **Budget.** A game's full request is about 4 to 6 cues (1 to 3 minutes
-  of music, with stems for the play loops) and 10 to 20 effects; the
-  platform decides what it generates at creation and what on request,
-  and the presets keep the game audible meanwhile.
+- **The request.** `audioBrief({ ...readAudioChoices(projectDir), premise })`
+  from the released `@origingame/create-game`; before the game exists, from
+  the creation form's `music`, `mood` and `genre` (ask 24). Shapes:
+  `docs/art.md` §2.9.
+- **Music.** Each `cues[]` entry from its `prompt`, at its `bpm`, `mode`,
+  `beatsPerBar` and `seconds`, seamless at the bar line when `loop`, and,
+  when `stems` is not empty, one sample-aligned file per stem
+  (`music/<id>-<stem>.ogg`) beside the mix `music/<id>.ogg`, in `format`
+  (Ogg Vorbis, 48 kHz stereo, −16 LUFS integrated, true peak −1 dBFS). A
+  rhythm song whose beat grid drifts more than 5 ms from `bpm` over the song
+  is refused.
+- **Sound effects.** Each `sfx[]` entry from its `prompt`, `variants` takes
+  as `audio/<id>.wav`, `audio/<id>-2.wav`, …, in `format` (WAV, 48 kHz mono,
+  peak −1 dBFS), trimmed to start on the transient.
+- **Writing it.** Each file at `assets/<file>` through the agent's own file
+  edits, recorded in the asset log as for art; the `presets[]` stand-ins stay
+  in place, and a file the maker replaced is never overwritten.
 
-Until then the engine's side stands alone: `og new` records the choices,
-`audioBrief` lists the requests, and the presets synthesised by og cook
-give every game its sounds. Nothing is generated.
+Until then `og cook`'s synthesised presets give every game its sounds.
 
 ## The engine ships no skills
 
-**Ask 29, open.** From the first engine version after 0.7.7 the engine
-mounts no `game/skills/` and no `guides/`: the 25 engine skills (`og-2d`,
-`og-ai`, `og-anim`, `og-audio`, `og-build`, `og-core`, `og-destruction`,
-`og-feel`, `og-game`, `og-i18n`, `og-model`, `og-net`, `og-physics`,
-`og-platform-sdk`, `og-render`, `og-story`, `og-taste`, `og-ui`,
-`architecture-discipline`, `component-forge`, `level-texturing`,
-`localization`, `recipe-craft`, `ui-craft`, `visual-acceptance`) are
-deleted, and so are their `skill:<name>` pack pins. What a game agent reads
-of the engine is the `og` tool: `og api find <words>` (ranked entries with
-scores) and `og api show <name>` over one index of the API and the
-engine's guides (`og api show start`, `testing`, `determinism`, `looks`,
-`screens`, `animation`, `art-review`, `three-to-og`). The payload keeps
-`game-scaffold/origin-engine-ts/`, and the package keeps
-`knowledge/looks/catalogue.json` and `previews/`; `payload`,
-`defaultRoots`, `installed`, `mount`, `summary`, `artBrief`, `readLook`
-and `presetLook` keep their signatures.
-
-origin-agent `main` c4d64ef already sends no game agent to an engine
-skill (its instructions, create mode and own skills point at `og help` and
-`og api find`/`show`). What still reads the engine's old layout:
-
-- `server/src/core/engine.ts:3017`–`:3019`: the fallback that resolves
-  `guides/` through the `skill:og-game` pack
-  (`game/skills/og-game/guides/`). The guides are `og api` entries now;
-  drop the lookup.
-- `server/src/core/skill-pages.ts`: comments on og-game's and og-model's
-  sizes (comments only).
-- `scripts/knowledge/production-bundle.test.mjs:50`–`:54` keeps passing (it
-  already excludes `game/skills/og-*` other than the platform's
-  `og-platform`).
+**Ask 29, open.** The engine mounts no `game/skills/` and no `guides/`;
+what a game agent reads of the engine is `og help`, `og api find` and
+`og api show`. origin-agent's agents already point there; what still reads
+the old layout is the fallback in `server/src/core/engine.ts` that resolves
+`guides/` through the `skill:og-game` pack, which should be dropped.
 
 ## Picking the UI
 
 **Ask 30, open.** origin-agent's point-and-comment asks the engine's
 `pickUi(x, y)` (wire member `pick_ui`, an engine member beside protocol 5,
-listed in `hello.members`) first, and `pick(x, y)` second. `pickUi` answers
-the topmost UI element under the point that shows something or takes input:
-`{ id, path, kind, text, rect: { x, y, width, height }, layer, source, part,
-rule, rules }`, `source` the document line that built it
+listed in `hello.members`) first, and `pick(x, y)` second. `pickUi`
+answers the topmost UI element under the point that shows something or
+takes input: `{ id, path, kind, text, rect: { x, y, width, height }, layer,
+source, part, rule, rules }`, `source` the document line that built it
 (`ui/shop.ogt:42`), `part` the style part it is drawn as
-(`Button.base[primary][hover]`), `rules` the style rules that dress it, each
-`{ selector, source }` with its file and line, in the order they apply, and
-`rule` the most specific. A layout container that draws nothing answers
-`null`, so a HUD's full-screen root never hides the scene. `pick` keeps
-protocol 5's `PickResult`; its `source` now names the scene line that
-declares the entity (`scenes/main.ogt:12`), and outside a publish build it
-carries the same UI element as an extra `ui` field. The platform highlights
-the element's `rect` and opens its `source`, then the rule's. Nothing in
-protocol 5 changes.
+(`Button.base[primary][hover]`), `rules` the style rules that dress it,
+each `{ selector, source }`, in the order they apply, and `rule` the most
+specific. A layout container that draws nothing answers `null`. `pick`
+keeps protocol 5's `PickResult`; its `source` names the scene line that
+declares the entity, and outside a publish build it carries the UI element
+as an extra `ui` field. The platform highlights `rect` and opens `source`,
+then the rule's.
 
 ## The cursor over Origin Desktop's Preview
 
-**Ask 31, open.** Origin Desktop sets the OS cursor over its Preview from
-the engine's UI. After each shared-frame `Hello` on a new connection it
-sends `{"CursorSubscribe":{"version":1}}`; the engine answers with
-`{"Cursor":{"version":1,"keyword":"<css keyword>","image":<image or null>}}`
-for the current shape, then again whenever it changes (docs/design.md
-§2.6). `keyword` is a CSS cursor keyword (`default`, `pointer`, `text`,
-`grab`, `nwse-resize`, `none`…); `image`, when not null, is
+**Ask 31, open.** After each shared-frame `Hello` on a new connection
+Origin Desktop sends `{"CursorSubscribe":{"version":1}}`; the engine
+answers `{"Cursor":{"version":1,"keyword":"<css keyword>","image":<image or null>}}`
+for the current shape and again whenever it changes (docs/design.md §2.6).
+`keyword` is a CSS cursor keyword; `image`, when not null, is
 `{"width","height","rgba","hotspot":[x,y]}` with `rgba` the base64 of
-`width × height` RGBA8 pixels, rows top first, sRGB, straight alpha, at most
-128×128. Desktop shows the image with its hotspot while the pointer is over
-the Preview (winit's `CustomCursor::from_rgba`, scaled by the window's
-scale factor), else the keyword's OS cursor (winit `CursorIcon` by CSS
-name), and its own cursor outside the Preview. Until then the Preview
-keeps Desktop's arrow, and the web shell alone shows the UI's cursor.
+`width × height` RGBA8 pixels, rows top first, sRGB, straight alpha, at
+most 128×128. Desktop shows the image with its hotspot over the Preview
+(scaled by the window's scale factor), else the keyword's OS cursor. Until
+then the Preview keeps Desktop's arrow.

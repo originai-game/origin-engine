@@ -1,9 +1,9 @@
 # The local gate
 
 The gate is one script, `scripts/check.sh`; its GPU steps run on the GPU
-host (§The GPU host), and there is no GitHub CI. The rules it rests on are in AGENTS.md §Building and testing: one
-target directory, the dev profile for every native step, tests that never
-run `cargo`.
+host (§The GPU host), and there is no GitHub CI. Its standing rules are in
+AGENTS.md §Building and testing; this document holds the operational
+detail.
 
 ## Landing: a merge queue
 
@@ -18,54 +18,17 @@ art; keep missing-art cases as explicit placeholder tests. A reference that
 records clipping, incorrect values or broken layout is a defect, even when
 the comparison passes.
 
-Authors land their heads with `scripts/land.sh`. Start with a clean,
-committed branch. The command rebases onto fetched main and runs
-`check.sh quick` outside any landing lock, so several landers' gates
-overlap. It then joins the landing queue: one FIFO lock in the common Git
-directory, separate from the machine gate lock, held through the push.
-Only the lander at the head of the queue moves main.
-
-If main advanced while quick ran, the command compares both sides from the
-tested base. Disjoint file changes reuse the pass only when neither side
-touches common build inputs or generated/drift-checked files. Otherwise it
-rebases and runs quick once more at the head of the queue; per-step input
-records skip unaffected work. Main cannot move during that recheck, so a
-landing gates at most twice. Waiting landers queue behind it instead of
-racing it.
-
-The lock holder drains the queue. A lander whose first quick passed offers
-its head in `og-landing/batch/` and waits, watching for its head to be
-settled. The holder lands itself (stacking the offers already waiting on its
-own head when it rechecks), then repeats until no offer is left: every
-waiting head rebased onto main as one stack (a detached checkout,
-generated-only conflicts regenerated as below), one quick on the stack, one
-push. When the stack fails, bisection finds the first head that fails on
-those before it: the passing prefix is pushed, that head is handed back to
-its owner (a marker in `og-landing/failed/` naming the stack and the gate
-logs), and the heads after it go into the next round. Each landed waiter
-finds a marker in `og-landing/landed/`, moves its branch to its landed
-commit and exits without gating again. An offer that does not rebase
-cleanly lands on its own after the drain. Main is only pushed after quick
-passed on exactly the pushed tree. A recheck runs only what the rebase
-changed since that checkout's last pass: per-step, per-test-binary and
-per-Bun-file input records, and the checkout's own incremental target.
-
-The recheck has priority. `land.sh` runs it with `OG_LANDING_RECHECK=1`:
-`check.sh` gives it a lone gate's cores, every other `check.sh` lowers itself
-to nice 10, and a measurement draining admission yields to it (below). A push rejected because a writer outside the queue moved main
-stops with a message to run the command again.
-Conflicts confined to the IDL's generated directories
-(`og_idl::OUTPUT_DIRS`, including declarations and wiki) or the generated UI
-theme are regenerated from the rebased sources. Any other conflict stops the
-rebase untouched for the author. Regeneration builds the IDL generator without
-the hosts, so conflicted generated Rust cannot block it. Each conflict stop is
-handled separately, and the completed rebase is regenerated again: later commits
-can merge cleanly yet leave stale derived text. That final refresh is amended
-into the branch tip before quick runs. Generation failure stops landing.
-No force push is used. Rerunning after success is a no-op.
-
-`python3 scripts/test-landing.py` exercises concurrent landings against a
-disposable local bare remote, including overlap, shared inputs and failures.
+`scripts/land.sh` (AGENTS.md §Streams and landing) runs quick outside the
+FIFO landing lock, which is per Git directory, and rechecks at most once
+under it, with `OG_LANDING_RECHECK=1` giving the recheck priority over
+other gates and measurements. The lock holder lands the waiting heads
+(`og-landing/batch/`) as one stack; when it fails, bisection pushes the
+passing prefix and hands the first failing head back with a marker in
+`og-landing/failed/`. Main is pushed only after quick passed on exactly the
+pushed tree, never with a force push. Conflicts confined to generated
+files (`og_idl::OUTPUT_DIRS`, the UI theme) are regenerated; any other
+conflict stops for the author. `python3 scripts/test-landing.py` exercises
+concurrent landings against a disposable bare remote.
 
 ## Toolchain
 
@@ -96,10 +59,9 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
 
-Every target and profile uses LLVM, including dev, test, build scripts,
-release, wasm-test and wasm; there are no backend overrides. Four frontend threads
-(`-Zthreads=4`) are enabled on every target. Metadata embedding and the
-build-directory layout use Cargo's defaults. Consumers use Cargo's
+Every target and profile uses LLVM with four frontend threads
+(`-Zthreads=4`); there are no backend overrides. Metadata embedding and the
+build-directory layout use Cargo's defaults, and consumers read Cargo's
 artifact messages, not guessed executable paths.
 
 | Native target | Dev/test backend and frontend | Linker | Verification |
@@ -121,70 +83,40 @@ lld-link and the MSVC libraries; do not substitute the GNU target for the
 napi addon. `.gitattributes` keeps source and generated files LF and HDR
 images binary even with `core.autocrlf=true`.
 
-Windows selects DX12 and statically links DXC, so the installed engine
-needs no compiler DLL; game authors need the Microsoft Visual C++ x64
-redistributable (MSVCP140/VCRUNTIME140), not Visual Studio or Rust. The
-reference harness falls back to the GPU host's frames (`references/vulkan/`)
-under the cross-platform tolerance (§Reference frames).
+Windows selects DX12 and statically links DXC; game authors need only the
+Microsoft Visual C++ x64 redistributable (MSVCP140/VCRUNTIME140).
 `crates/og-tests/references/dx12/` holds a frame only where DX12
 legitimately differs (nearest-sampled texels whose edges fall on pixel
-centres), with the reason in the commit that recorded it. `og check` and the package's typecheck use
-the pinned tsgo through Bun, since tsrs has no Windows package. The
-Windows release package is built with `OG_RELEASE=1 sh
-packages/engine/scripts/build.sh --native && sh
-packages/engine/scripts/pack.sh --native` (docs/release.md §3).
+centres), with the reason in the commit that recorded it; every other frame
+is judged against `references/vulkan/` (§Reference frames). `og check` and
+the package's typecheck use the pinned tsgo, since tsrs has no Windows
+package. The Windows release package is built as docs/release.md §3 says.
 
-To run the gate on studio-win, also put on Git Bash's PATH: Python 3.12
-with numpy and Pillow, reachable as `python3` (a `python3.exe` copy of
-`python.exe`); cargo-nextest; and Bun. Point `CHROME` at Chrome for
-Testing (`chrome-win64/chrome.exe`). The scripts set `PYTHONUTF8=1` and
-take `C:/` paths as absolute. `scripts/lock.sh` identifies a holder by its
-start time from `ps -o lstart`, or from `/proc/<pid>/stat` where MSYS's
-`ps` has no `lstart`. Native GPU steps use DX12 on the NVIDIA driver
-(`OG_GFX_BACKEND=vulkan` for Vulkan), never WARP. web-reference's motion
-groups need the pinned og.motion weights (§The model bucket: the
-`OG_SHOWCASE_S3_*` credentials or a local copy with the pinned sha256).
+To run the gate on studio-win, also put Python 3.12 with numpy and Pillow
+(as `python3`), cargo-nextest and Bun on Git Bash's PATH, and point
+`CHROME` at Chrome for Testing. Native GPU steps use DX12 on the NVIDIA
+driver (`OG_GFX_BACKEND=vulkan` for Vulkan), never WARP.
 
 ## The GPU host
 
-The GPU host is an NVIDIA L4 (proprietary Vulkan driver, 595.99.02 at the
-switch) behind the personal orb provider `gcp-l4`: one GCP VM, one
-exclusive orb at a time (14 vCPU, 56 GiB). Pin
+The GPU host is an NVIDIA L4 (proprietary Vulkan driver) behind the
+personal orb provider `gcp-l4`: one GCP VM running one exclusive orb at a
+time, directly on the VM. Pin
 `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json` so llvmpipe is
-never picked. One thread, the GPU integrator, holds that orb: it runs the
-gate's GPU steps (`rust-gpu`, og-tests, the references) for the heads
-queued to it, in order, lands the heads that move frames or change a look
-with `scripts/land.sh`, and runs the GPU suites on main after the heads
-that landed on the CPU gate.
-Authors do not wait for it on every edit; they queue a milestone. Measured
-there on 2026-11-10: a cold native build 5 min 37 s (8 jobs, no compiler
-cache), an og-ui touch rebuild 23 s, the full `rust-gpu` step about 9 min
-at 4 workers. The VM is started and stopped by the owner; a stopped orb
-keeps its disk, not its processes.
-
-Who lands what (the owner, 2026-11-11): a head that moves no reference
-frame is landed by the thread that implemented it, from its own checkout
-(an orb or macrunner), on the CPU gate; a head that moves frames or
-changes a look lands from the GPU host. `land.sh`'s landing lock is per
-Git directory, so landers on different machines do not queue behind each
-other: the one whose push loses the race stops with "origin/main moved
-outside scripts/land.sh" and runs it again. The orb runs on the VM directly, not in a container.
-
-macrunner (Metal, Safari, iPhone) and studio-win (DX12, Chrome, Edge,
-Firefox) are development and compatibility hosts. They run the same gate
-at milestones and before a release; a failure there is a compatibility
-defect to fix, not a landing gate.
+never picked. The owner starts and stops the VM; a stopped orb keeps its
+disk, not its processes. One thread, the GPU integrator, holds that orb
+and runs the GPU steps for the heads queued to it, in order (AGENTS.md
+§Streams and landing). The compatibility hosts are listed in AGENTS.md
+§Building and testing.
 
 ## Reference frames
 
 One reference set serves every real GPU backend. New frames are recorded
-on the GPU host only (`RECORDING_TIER`, `vulkan`: the L4, §The GPU host),
-so a frame never flip-flops between hosts' renderings (§Re-capturing gfx
-references); `references/<tier>/` holds a frame for another backend only
-where it differs by design (§Windows x64 prerequisites). A frame is judged
-against its own tier's reference when one is committed, else the recording
-tier's, under one rule,
-`og_tests::compare::tolerance_for` (png.ts `toleranceFor` and
+on the GPU host only (`RECORDING_TIER`, `vulkan`), so a frame never
+flip-flops between hosts; `references/<tier>/` holds a frame for another
+backend only where it differs by design. A frame is judged against its own
+tier's reference when one is committed, else the recording tier's, under
+one rule, `og_tests::compare::tolerance_for` (png.ts `toleranceFor` and
 reference-gfx.ts `limitFor` in the browser):
 
 - against a reference recorded on the frame's own backend, or on a
@@ -197,26 +129,19 @@ reference-gfx.ts `limitFor` in the browser):
   difference above 0.012, which is what keeps a
   dimmer light or a colour shift from hiding inside the wider RMSE.
 
-`CROSS_PLATFORM` is set from the measured spread with a margin (2026-11-08,
-RTX 5060 on DX12, Vulkan and Chrome 150 on D3D12, against Metal): RMSE at
-most 0.0102, outliers at most 0.08 %, absolute channel bias at most 0.0057,
-almost all of it rasterisation and threshold ties along edges. The L4's
-worst default-tolerance scene, dof-high, measured RMSE 0.0095 and bias
-−0.0057 (2026-11-10). The RMSE and bias limits allow about twice the measured
-spread; outliers have a larger margin for edge ties.
-`og-tests` `the_cross_platform_tolerance_still_catches_small_regressions`
-proves that it still fails a 15 % dimmer sun, a lost shadow, text moved by
-3 px and a wrong text colour. A scene whose spread is wider by nature
-names its own `cross_tolerance` in `scenes.rs` with the measurement beside
-it (visual-garment, stylise-print, sprites-array, tilemap-lit); never widen
-one to absorb a defect.
+`CROSS_PLATFORM` allows about twice the measured spread between backends
+(mostly rasterisation ties along edges). `og-tests`
+`the_cross_platform_tolerance_still_catches_small_regressions` proves that
+it still fails a 15 % dimmer sun, a lost shadow, text moved by 3 px and a
+wrong text colour. A scene whose spread is wider by nature names its own
+`cross_tolerance` in `scenes.rs` with the measurement beside it; never
+widen one to absorb a defect.
 
 ## Linux renderer prerequisites
 
 `.agents/setup` upgrades `mesa-vulkan-drivers` below 25.0.7 (on Debian 12
-from bookworm-backports): Debian 12's Mesa 22.3.6 grows resident memory
-every frame and is killed under a 4 GiB limit. A warm setup skips apt when
-its prerequisites are met. No reference lane runs on lavapipe.
+from bookworm-backports), because Debian 12's Mesa 22.3.6 leaks memory
+every frame. No reference lane runs on lavapipe.
 
 ## Lanes
 
@@ -230,84 +155,51 @@ wasm products keyed by content. Neither lane partitions tests across machines.
 | `quick` | fmt, clippy, native test build, CPU tests, GPU tests outside og-tests, generated API drift, non-engine package tests, the lanes wasm type check |
 | `full` | quick plus og-tests, doctests, engine and extension Bun tests, bindgen-only wasm variants, fixtures, the browser tests of packages/engine's `test:browser` |
 
-`OG_GATE_SKIP` (comma-separated step names, e.g. `OG_GATE_SKIP=rust-gpu`)
-drops those steps from a run. Its one standing use is a head that moves no
-reference frame: the thread that implemented it lands it with
-`OG_GATE_SKIP=rust-gpu scripts/land.sh`, and the GPU host runs the GPU
-suites on main afterwards (`AGENTS.md` Landing). It is never the default,
-and nothing reads it from a configuration file. An unknown name fails the run. A
-skipped step prints `SKIPPED <step> (OG_GATE_SKIP)`, stays in the summary,
-and the final line says `NOT RUN (OG_GATE_SKIP)`, so a skip never reads as
-a pass. Steps that depend on it still run. `land.sh`'s quick runs read it
-from the environment of the lander that runs them.
+`OG_GATE_SKIP` (comma-separated step names) drops those steps from a run.
+Its one standing use is `OG_GATE_SKIP=rust-gpu scripts/land.sh` for a head
+that moves no reference frame (AGENTS.md §Streams and landing). It is never
+a default and is read only from the environment; an unknown name fails the
+run. A skipped step prints `SKIPPED <step> (OG_GATE_SKIP)` and the final
+line says `NOT RUN (OG_GATE_SKIP)`, so a skip never reads as a pass; steps
+that depend on it still run.
 
-`scripts/check.sh` owns admission and checkout ownership.
-`scripts/gate/run.py` schedules the dependency DAG. `step.sh` acquires GPU
-slots only for rendering steps and dispatches commands. Native build and
-execution are separate: nextest lists built binaries; pinned-nightly
-libtest JSON lists their tests, source files and GPU requirements without
-opening an adapter. CPU and GPU executions reuse those binaries.
+`scripts/check.sh` owns admission, `scripts/gate/run.py` schedules the
+dependency DAG, and `step.sh` takes GPU slots only for rendering steps.
+Native test binaries are built and listed once; CPU and GPU executions
+reuse them.
 
-Selection uses Cargo's resolved dependency graph, Bun's import graph
-(including package self-imports), and fixture input manifests. Passing
-snapshots are git trees of the working copy, including untracked files,
-under `target/og-gate/green`. Changes whose consumers are not proven,
-including runtime resources, native inputs, generated files and dynamic
-loads, run checks rather than skipping them. Rust source selection remains
-conservative at the binary's crate closure where shared helper usage is
-unknown. A test binary's closure is its own package's: the workspace crates
-Cargo resolves for it (dev- and build-dependencies included), every path
-under `crates/` their Rust sources name as `../og-x/...` or `crates/og-x/...`
-(a `#[path]` module, shared test support, the generated sources og-idl
-compares), and, for og-cli alone, og-host-node, whose addon the `og` its
-tests run loads. A Rust test outside og-cli that ran `og`, or one that
-reached another crate's `.rs` file without naming its path that way, would
-be skipped wrongly: add it to `RUNS` in `scripts/gate/inputs.py`, or name
-the path. Bun records each test file separately. A failure invalidates its
-record: after a failed nextest run, a binary keeps a passing record only
-when the run's JUnit report shows every one of its tests ran and none
-failed, so one failing binary does not send the others through the next
-run. An unchecked GPU run never creates a passing record.
+Selection uses Cargo's resolved dependency graph, Bun's import graph and
+fixture input manifests; passing snapshots are git trees of the working
+copy under `target/og-gate/green`. A test binary's closure is its own
+package's workspace crates, every path under `crates/` its Rust sources
+name as `../og-x/...` or `crates/og-x/...`, and, for og-cli alone,
+og-host-node. A Rust test outside og-cli that runs `og`, or one that reads
+another crate's `.rs` file without naming its path that way, must be added
+to `RUNS` in `scripts/gate/inputs.py`. An unchecked GPU run never creates
+a passing record.
 
-The Cargo profiles are `dev` (native tests), `release` (native shipping),
-`wasm-test` (functional and browser wasm), and `wasm` (shipping wasm and
-explicit performance runs). `wasm-test` uses opt-level 1, no LTO, 16 codegen
-units, incremental compilation and no debug info. Shipping package overrides
-remain in `wasm`. Every wasm size check uses shipping-profile bytes, not an
-upper-bound development profile. Normal wasm variants and lanes variants
-build concurrently because their Cargo outputs are separate. The shared
-sccache wrapper caches compilation, including build-std; each checkout
-retains its own target directory. Variants sharing a target build serially.
-
-Every web build ships wasm-bindgen's output directly, including publish,
-lanes and development variants. No gate lane runs the size gate.
-An explicit web-reference run builds the development host and the 3D publish
-and lanes modules its groups load, not the unused 2D publish pair. The gfx
-group separately builds only `og-tests-web`.
-`bash scripts/release-wasm.sh` prepares release wasm and checks its shipping
-size. `release.sh pack` calls it through the package build. `dev.txt` lists
-the shipping publish and lanes variants measured by the size gate, despite
-the directory's historical `dev` name. They use the `wasm` profile for releases.
-
-The deleted gameplay templates, gallery, art-samples, standalone
-wasm-determinism tool and replay-gate have no gate stage. Retained package
-and extension tests run in `full`; the old functional and kits lanes no
-longer exist.
+The profiles are as AGENTS.md §Building and testing names them;
+`OG_WASM_PROFILE` selects the wasm one. Every web build ships
+wasm-bindgen's output directly, and every wasm size check uses
+shipping-profile bytes. No gate lane runs the size gate: `bash
+scripts/release-wasm.sh` does, and `release.sh pack` calls it. `dev.txt`
+lists the shipping publish and lanes variants the size gate measures,
+despite its name.
 
 ### Test binaries
 
 Each crate has at most one default integration binary, `tests`, declared
-at `tests/it/main.rs` with `autotests = false`. Single-crate checks live inline under
-`#[cfg(test)]`; integration targets cover cross-crate contracts, GPU
-rendering and the CLI. nextest runs each test in its own process,
-including tests that change process-wide state; use nextest, or `cargo
-test -- --test-threads=1` when running them directly. Filters use
-`package(..) & test(/^module::/)`.
+at `tests/it/main.rs` with `autotests = false`. Single-crate checks live
+inline under `#[cfg(test)]`; integration targets cover cross-crate
+contracts, GPU rendering and the CLI. nextest runs each test in its own
+process; when running tests directly use `cargo test --
+--test-threads=1`. Filters use `package(..) & test(/^module::/)`.
 
 The test build (`--workspace`) and the gate's dev `og` and addon (`cargo
-build -p og-host-node -p og-cli`, in `rust-build`) share every library build. Cargo resolves features per command, so a
-feature that turns on in only one graph gives that crate and every crate
-above it a second build. Two are aligned on purpose:
+build -p og-host-node -p og-cli`, in `rust-build`) share every library
+build. Cargo resolves features per command, so a feature that turns on in
+only one graph builds that crate and every crate above it twice. Two are
+aligned on purpose:
 
 - syn 3: og-host-web's wasm-bindgen macros turn on `visit` and `visit-mut`
   in the test graph, so og-core-derive asks for the same features (`syn3`,
@@ -326,50 +218,27 @@ split, and the lowest such crate is its cause.
 |---|---|---|
 | `fmt` | `cargo fmt --all --check` | quick, full |
 | `clippy` | `cargo clippy --workspace --all-targets -- -D warnings` | quick, full |
-| `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests. Then `cargo build -p og-host-node -p og-cli`, the dev addon and `og` every later step uses: `packages/engine/scripts/build.sh` under the gate copies them and runs no cargo, since every cargo build re-links `target/debug/og`. | quick, full |
+| `rust-build` | nextest builds and lists native test binaries; quick excludes og-tests. Then `cargo build -p og-host-node -p og-cli`, the dev addon and `og` every later step uses; `packages/engine/scripts/build.sh` under the gate copies them and runs no cargo. | quick, full |
 | `rust-cpu`, `rust-gpu` | nextest executes the discovered tests with separate reports and bounded workers. | quick, full |
 | `doc-tests` | `cargo test --workspace --doc` | full |
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
-| `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of each `lanes` variant in `scripts/wasm-crates.txt` (wasm atomics, `target/wasm-mt`) whenever og-render, og-host-web or a crate they depend on changes. Under atomics wgpu's web types are not Send, which neither the native build nor the single-threaded wasm32 build sees. | quick, full |
-| `wasm-build` | Build `scripts/wasm-crates.txt` variants in `wasm-test` for the cross-host, publish and lanes tests. Normal variants share the wasm32 target; lanes variants share `target/wasm-mt`. Outputs go to `target/og-wasm/raw`. | full |
-| `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`, with glue in `bindgen`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
+| `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of each `lanes` variant in `scripts/wasm-crates.txt` whenever og-render, og-host-web or a crate they depend on changes, because under atomics wgpu's web types are not Send. | quick, full |
+| `wasm-build` | Build `scripts/wasm-crates.txt` variants in `wasm-test` for the cross-host, publish and lanes tests into `target/og-wasm/raw`. | full |
+| `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
-| `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`), without a second release build. | full |
+| `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`). | full |
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton. | full |
-| `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed: the hello page (its display-frame readback included), wire, player, export, device, unsupported-device, og.motion tick and colour-vision tests. | full |
-| `web-reference` | Native and web preparation, then headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3). Compare retained scenes under unchanged tolerances. | explicit |
+| `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed. | full |
+| `web-reference` | Headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3), compared under unchanged tolerances. | explicit |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. | explicit |
 
-The gate requires nextest. Missing adapters warn on every host; GPU tests
-are skipped, not passed. Bun tests have a 30-second per-test timeout through
-`OG_BUN_TEST_TIMEOUT`; a real hang fails.
-Refresh missing functional wasm with `scripts/check.sh --only wasm-bindgen`.
-Run release optimization and the size gate with `bash scripts/release-wasm.sh`.
-
-Fixtures several test processes read are made once under a file lock
-(og-cook's `tests/support`: the template and the rigged models, keyed by
-the test executable and the sources). `.config/nextest.toml` gives every
-slot to the tests that assert a wall-clock bound (and runs them last), two
-slots to the determinism runs that step two worlds or renderers at once,
-four at a time to the GPU-bound packages, and starts og-tests,
-og-tests-cooked, the cooks, the pile and the walk first.
-
-### CI
-
-There is no GitHub test CI: the gate is `scripts/check.sh`; never
-subscribe to or wait on GitHub checks. Every machine runs the same lane
-and needs a real GPU for rendering tests; an unchecked frame is never
-evidence of a rendering pass.
-
-nextest isolates tests in separate processes. Direct `cargo test` runs
-tests on threads of one process; use `--test-threads=1` for renderer
-tests to avoid simultaneous adapter creation in one process.
-
-`.github/workflows/release.yml` (`workflow_dispatch` only, no secrets,
-nothing published) is the fallback release pack when the Mac or the
-Windows host is unavailable (docs/release.md §3).
+The gate requires nextest. Bun tests have a 30-second per-test timeout
+(`OG_BUN_TEST_TIMEOUT`). Refresh missing functional wasm with
+`scripts/check.sh --only wasm-bindgen`. Never subscribe to or wait on
+GitHub checks; `.github/workflows/release.yml` is only the fallback release
+pack (docs/release.md §3).
 
 ## Running the gate locally
 
@@ -379,433 +248,190 @@ scripts/check.sh quick               # the quick lane (make quick)
 scripts/check.sh full                # the full lane, dependency-selected
 scripts/check.sh --all               # the full lane with nothing skipped
 scripts/check.sh quick --only rust-cpu # selected steps and prerequisites
-scripts/check.sh --only bun-test     # includes wasm-build and wasm-bindgen
 OG_GATE_JOBS=1 scripts/check.sh      # one step at a time, in lane order
 bash scripts/release-wasm.sh         # release bindgen wasm and its shipping-size check
-scripts/check.sh --list
 scripts/check.sh web-reference       # the browser tiers (make web-reference); needs Chrome
-make check                           # the same through the Makefile
+scripts/check.sh --list
 ```
 
-The path-aware state is `<target>/og-gate/` (the green trees).
-`<target>/og-wasm-cache/` retains compressed-size results. Never delete
-either to force a step; `--all` bypasses passing-input snapshots.
+The path-aware state is `<target>/og-gate/`, and `<target>/og-wasm-cache/`
+keeps compressed-size results; never delete either to force a step.
 
-`check.sh` and `land.sh` set `TMPDIR`, `TMP` and `TEMP` to a private
-`<checkout>/.og/tmp/run.*` directory before builds or API regeneration.
-This ignored scratch area stays on the checkout's volume, not macOS's
-system volume. Each invocation requires at least 2 GiB free there and
-removes only its own directory on exit, including failure and interruption
-after its children drain. Nested gates own separate directories. A forced
-kill or machine crash can leave scratch behind: check processes and open
-files before removing it; never sweep another gate's live directory.
+`check.sh` and `land.sh` keep scratch in a private
+`<checkout>/.og/tmp/run.*` directory (at least 2 GiB free) and remove only
+their own on exit. A forced kill can leave scratch behind: check processes
+and open files before removing it, and never sweep another gate's live
+directory.
 
-Standalone browser harnesses also create their profiles in `.og/tmp/`
-and remove them on close or launch failure. The Rust test scratch guard
-(`tests/temp.rs`) uses the gate's run directory when inherited, otherwise
-the checkout's `.og/tmp/`; look, autorig, prefab and CLI test projects
-remove their files on return or panic. Under the gate, its outer cleanup
-also covers children terminated by a signal (Rust destructors do not run
-on process termination).
+Admission, the per-checkout target lock and the FIFO GPU slots
+(`OG_GPU_SLOTS`, default 6) follow AGENTS.md §Building and testing and are
+implemented in `scripts/lock.sh`. A measurement draining admission yields
+to a waiting landing recheck at once and to every waiting gate after
+`OG_MEASURE_DRAIN` seconds (default 120). `OG_GATE_JOBS` bounds concurrent
+steps (default 2) and `OG_GATE_THREADS` the Cargo and nextest jobs per step.
 
-Bindgen outputs stay in each checkout's `target/og-wasm/`. There is no
-machine-wide wasm-output store or post-bindgen optimization pass. sccache
-still shares compiled dependencies between lanes (§The compiler cache).
-
-Each checkout holds its own target lock. Gates briefly register shared
-admission and then execute concurrently, without a machine-wide CPU lock.
-Exclusive admission closes the entrance and drains active gates for perf.
-The drain never holds the entrance long: it yields at once when a landing
-recheck waits, and after `OG_MEASURE_DRAIN` seconds (default 120) to every
-waiting gate, then queues again.
-It is separate from GPU ownership: nothing holds GPU slots while waiting
-for a child gate. Rendering steps acquire one of `OG_GPU_SLOTS` slots
-(default 6) in FIFO order;
-single-slot and all-slot requests share the queue. Owners are identified
-by PID and process birth, not command names. Inherited ownership lets a
-child reuse its parent's resources. The versioned implementation in
-`~/.cache/og-gate/gpu-lock.sh` applies to newly started callers.
-
-`OG_GATE_JOBS` bounds concurrent steps (default 2), and `OG_GATE_THREADS`
-bounds Cargo and nextest jobs per step. Unset, `scripts/check.sh` derives
-it at start: the performance cores (`nproc` off macOS) divided by the live
-gates in admission times `OG_GATE_JOBS`, at least 2, so a lone gate on an
-idle machine takes most of the cores. Both must be positive.
-The DAG starts a step only after its prerequisites complete. CPU tests
-hold no GPU slot; rendering tests reuse the same compiled binaries.
-
-Each run retains `<target>/evidence/gate/runs/<timestamp>-<pid>/run.json`,
-step logs, nextest JUnit reports and Bun per-file timing JSON. The summary
-reports PASS, FAIL or SKIPPED and wall time per step. Failure or cancellation
-stops child process groups before releasing ownership. Reports from a
-cancelled run are not evidence of a pass. `OG_EVIDENCE_DIR` defaults to
-`<target>/evidence`; `OG_WASM_OUT` points at `<target>/og-wasm`.
+Each run keeps its logs and reports under
+`<target>/evidence/gate/runs/<timestamp>-<pid>/` (`OG_EVIDENCE_DIR`
+defaults to `<target>/evidence`). Reports from a cancelled run are not
+evidence of a pass.
 
 ## Amp orbs
 
-`.agents/setup` installs the Linux build prerequisites, activates
-`rust-toolchain.toml` and reuses `scripts/install-tools.sh` for the pinned
-tools. It downloads a nextest binary, fetches both locked Cargo dependency
-graphs, installs `tools/bench` and `tests/install` from their Bun
-lockfiles and caches the pinned TypeScript executable. It does not compile
-the engine or run the gate; a stale snapshot reruns the idempotent setup.
-A repository-scoped login-shell hook loads `.agents/environment` and sets
-`CHROME` to the orb's agent-browser Chrome unless overridden (not claimed
-pixel-equivalent to the reference Chrome). `.agents/resume` does no
-installation or authentication. Validate changes with `shellcheck -s bash
-.agents/{setup,resume,environment}`, `time .agents/setup` twice, and the
-tools from a new `bash -lc` shell.
+`.agents/setup` installs the prerequisites and pinned tools and fetches the
+dependencies; it does not compile the engine or run the gate.
+`.agents/environment` points `CHROME` at the orb's agent-browser Chrome,
+which is not claimed pixel-equivalent to the reference Chrome. Validate
+changes with `shellcheck -s bash .agents/{setup,resume,environment}`,
+`time .agents/setup` twice, and the tools from a new `bash -lc` shell.
 
 ## The compiler cache
 
-sccache keeps a local disk cache on every host (the owner, 2026-11-07): a
-remote cache in OVH BHS measured 302.7 s for a cleaned `og-cli` rebuild on
-macrunner against 38.9 s from the local disk (about 3.7 s per remote hit),
-so there is none. The checkouts on one machine share its cache: on
-macrunner `/Volumes/app/.sccache`, on studio-win `SCCACHE_DIR=E:\sccache`,
-on an orb `~/.cache/sccache`.
+sccache keeps a local disk cache on every host and no remote cache,
+because remote hits were slower than local rebuilds. The checkouts on one
+machine share it: `/Volumes/app/.sccache` on macrunner,
+`SCCACHE_DIR=E:\sccache` on studio-win, `~/.cache/sccache` on an orb.
 
-One sccache server per host serves every checkout, and it is started cleanly.
-sccache's client starts a server when none answers, and that server keeps
-the environment of the build that started it, including that cargo's
-jobserver (`CARGO_MAKEFLAGS`) and its per-run `TMPDIR`. On 2026-11-09 such a
-server stalled every checkout on macrunner: it waited for tokens from one
-cargo whose jobs were all clients waiting on it. So `.cargo/config.toml`'s
-rustc wrapper is `og-sccache-wrap` (`crates/og-sccache-wrap`), not sccache.
-When no server answers on `SCCACHE_SERVER_PORT` (4226), it takes the lock
-`~/.cache/og-sccache/server.lock`, and if none answers yet it runs
-`sccache --start-server` without `CARGO_MAKEFLAGS`, `MAKEFLAGS` or `MFLAGS`,
-with `TMPDIR` `~/.cache/og-sccache/tmp` and `SCCACHE_ERROR_LOG`
-`~/.cache/og-sccache/server-error.log` (`SCCACHE_LOG=warn` unless set).
-Then it runs sccache with its arguments; the compile keeps the build's
-jobserver. It is an executable, not a script, because cargo on Windows
-runs only an `.exe` as the wrapper; studio-win uses the same.
-`scripts/install-tools.sh` builds it from the checkout without itself and
-installs it next to the other tools, so a host runs it once after a change
-to the crate.
-
-A clean server can still stall. sccache hands rustc the server's own
-jobserver, one token per CPU, and a rustc killed while it holds tokens for
-its threads never gives them back (mozilla/sccache#2874, still open in
-0.19). On 2026-11-09 macrunner's server ran dry after 4 h 48 min and
-13,299 requests: eight clients waited minutes with no rustc running. So on
-Unix the wrapper watches its compile. When it has waited `OG_SCCACHE_STALL`
-seconds (default 60, 0 turns the watch off) while the server, found by its
-port with `lsof`, runs no child and the client runs none of its own, it
-stops that server under the lock (TERM, then KILL after 10 s) and logs it in
-`~/.cache/og-sccache/watchdog.log`. Clients run with
-`SCCACHE_IGNORE_SERVER_IO_ERROR=1`, so the ones waiting on it compile
-locally instead of failing, and the next compile starts a fresh server with
-a full pool. This covers a server however it was started, including one
-started by a plain `sccache` wrapper outside this repository. On Windows
-the wrapper does not watch. `crates/og-sccache-wrap/tests/start.rs` fails
-if the server is started with a jobserver, if a stalled server is not
-stopped, or if a busy one is. `RUSTC_WRAPPER=` (empty) bypasses the wrapper and
-sccache, as CI does. To restart a server, run `sccache --stop-server`; the
-next compile starts a clean one. A server you start by hand must also go
-without the jobserver: `env -u CARGO_MAKEFLAGS -u MAKEFLAGS -u MFLAGS
-sccache --start-server`.
+One sccache server per host serves every checkout. `.cargo/config.toml`'s
+rustc wrapper is `og-sccache-wrap` (`crates/og-sccache-wrap`), which starts
+that server without the jobserver of the cargo that happens to need it
+first, and on Unix stops a server that has stalled for `OG_SCCACHE_STALL`
+seconds (default 60, 0 turns the watch off); its source comments and
+`tests/start.rs` hold the details. `RUSTC_WRAPPER=` (empty) bypasses the
+wrapper and sccache. To restart a server, run `sccache --stop-server`; a
+server started by hand must go without the jobserver: `env -u
+CARGO_MAKEFLAGS -u MAKEFLAGS -u MFLAGS sccache --start-server`.
 
 ## When to run what
 
-- **While writing code**: `cargo check -p <crate>` and that crate's own
-  tests. `scripts/check.sh quick` is the most a worktree runs, and what a
-  landing runs.
-- **After a batch of landings**: `scripts/check.sh full`. This includes
-  bindgen-only wasm, cross-host determinism and browser contracts, never
-  shipping-size measurements.
-- **Before packing a release**: `bash scripts/release-wasm.sh` builds the
-  shipping-profile variants, runs bindgen and checks their brotli size.
-  `scripts/release.sh pack` runs this preparation automatically.
-- Never `--all` after every edit; never touch files or delete
-  `target/og-gate/` to force a step.
-- **After re-recording a reference frame**: rerun only that frame's lane:
-  `scripts/check.sh --only rust-gpu` for og-tests' gfx references (§Re-capturing
-  gfx references), `--only bun-test` for a template's playtest frames,
-  `scripts/check.sh web-reference` for the browser tiers.
+While writing code run `cargo check -p <crate>` and that crate's tests;
+`quick` is the most a worktree runs, `full` follows a batch of landings,
+and `--all` is never run after every edit. After re-recording a reference
+frame, rerun only that frame's lane: `--only rust-gpu` for og-tests' gfx
+references, `--only bun-test` for a template's playtest frames,
+`web-reference` for the browser tiers.
 
 ## Uniform host coverage
 
-Every host runs the same named lane: no host-only subset, nextest
-partition or archive, or test routing. A missing adapter produces a loud
-warning with wgpu's error and skipped/unchecked counts, not a failing exit
-status; other initialization errors and failed checks still fail.
-`OG_RENDERER=none` only makes the missing adapter expected.
-
-Rust GPU tests declare `#[ignore = "requires GPU"]` in an adapter-aware
-`tests/it` binary (`tests/gpu.rs`); discovery enables them when an adapter
-exists. GPU tests that also need explicit perf selection use `requires GPU;
-perf`. Bun uses `gpuTest` from `packages/engine/tests/support/gpu.ts`,
-or `test.skipIf(gpuUnavailable || otherPrerequisiteMissing)`; never return
-early from a test body to skip. The gate forwards nextest's
-adapter-discovery warnings and does not cache an unchecked GPU run as
-green. Do not force unavailable GPU tests with `--run-ignored all/only`
-(rejected: nextest would call a runtime skip a pass); use `cargo test --
---ignored` for explicit ignored-test runs, as the perf lane does.
-
-Browser groups use separate ports and profile/output directories; work
-that writes the same project's export stays in one group. A serial/parallel
-pixel difference is a defect, not a reason to raise tolerances.
-
-The full lane's Bun cross-host tests compare native and wasm math, physics,
-animation and text digests using the development engine modules. Publish
-modules expose no debug digest command; they are compared through world
-snapshots. The lanes tests use real workers and assert parallel execution.
-There is no separate determinism workspace or determinism stage.
+Every host runs the same named lane, with no host-only subset or test
+routing. A missing adapter warns with wgpu's error and the skipped counts;
+other initialization errors and failed checks still fail. Rust GPU tests
+declare `#[ignore = "requires GPU"]` in an adapter-aware `tests/it` binary
+(`tests/gpu.rs`), which discovery enables when an adapter exists; perf ones
+use `requires GPU; perf`. Bun uses `gpuTest` from
+`packages/engine/tests/support/gpu.ts` or `test.skipIf(...)`; never return
+early from a test body to skip. Never force GPU tests with nextest's
+`--run-ignored`, which would count a runtime skip as a pass; use `cargo
+test -- --ignored`. A serial/parallel pixel difference between browser
+groups is a defect, not a reason to raise tolerances.
 
 ## The lanes wasm
 
 The lanes variant of og-host-web (docs/web-export.md §Lanes) is the
-publish build compiled for wasm atomics and shared memory, which needs a
-rebuilt std: `scripts/wasm-lanes.sh <cargo args>` runs `cargo build
---target wasm32-unknown-unknown -Z build-std=panic_abort,std` with
-`RUSTC_BOOTSTRAP=1`, `RUSTFLAGS` adding `+atomics,+bulk-memory` and the
-shared, imported memory (at most 4 GiB, the same wasm32 ceiling as the
-single-threaded module) with wasm-bindgen's TLS exports, and
-`CARGO_ENCODED_RUSTFLAGS` unset (cargo prefers it to `RUSTFLAGS`). It
-builds into `<target>/wasm-mt` (`scripts/wasm-lanes.sh --target-dir`
-prints it), so its flags never invalidate the single-threaded build, and
-needs the `rust-src` component. rustc's `unstable feature specified for
--Ctarget-feature: atomics` warning on every crate is expected.
-
-There is one lanes module per game profile (docs/web-export.md
-§Variants): `scripts/wasm-crates.txt`'s `lanes` lines build
-`og_host_web-lanes2d.wasm` and `og_host_web-lanes.wasm` in
-`target/wasm-mt`, sharing std and every dependency.
-
-wasm-bindgen writes `snippets/` (the pool's Worker script) beside
-`origin-engine-lanes.js`; build.sh copies each lanes module with its
-`snippets/` into its profile's directory (`dist/web-publish`,
-`dist/web-publish-2d`), and `scripts/pack.sh` refuses a package without
-either profile's lanes files. build.sh rewrites wasm-bindgen-rayon's
-positional `pkg.default(module, memory)` call to the single-object form
-`{ module_or_path, memory }` (`packages/engine/scripts/rayon-worker.sh`,
-which stops the build when the helper has neither form), and
-`tests/web-export.test.ts` checks the shipped scripts for a positional
-init. Under the gate (`OG_GATE=1`) build.sh exits 1 when
-`scripts/wasm-crates.txt` marks og-host-web `lanes` and either lanes
-module is missing.
-
-A Rust panic inside a lane aborts the pool Worker it runs on. The engine
-thread waits on og-lanes' own latch, which a recorded panic rings: the
-engine thread then panics with the lane's message and the page gets a
-structured `panic` error naming the tick and the lane's site
-(docs/web-export.md §Errors). `bun tests/web/lane-panic.ts` (in
-`web-reference`) injects a panic into a lane (`og_web_lanes_fault`) and
-needs the crash on the page within 5 s, then the same fault
-single-threaded.
+publish build compiled for wasm atomics and shared memory with a rebuilt
+std, one module per game profile. `scripts/wasm-lanes.sh <cargo args>`
+builds it into `<target>/wasm-mt`, so its flags never invalidate the
+single-threaded build; it needs the `rust-src` component, and rustc's
+`unstable feature specified for -Ctarget-feature: atomics` warning is
+expected. build.sh copies each lanes module with its `snippets/` into its
+profile's directory; under the gate it exits 1 when either is missing, and
+`scripts/pack.sh` refuses a package without them. A Rust panic inside a
+lane reaches the page as a structured `panic` error (docs/web-export.md
+§Errors), which `bun tests/web/lane-panic.ts` checks.
 
 ## `packages/engine/scripts/build.sh` outside the gate
 
-Standalone (`bun run build`, `bun run test` in `packages/engine`),
-build.sh does what it does under the gate whenever the gate has built in
-this target directory (`<target>/og-wasm/dev-all.txt` and the dev addon
-and `og` exist): the dev addon and `og` (brought up to date by the same
-`cargo build` as `rust-build`'s), the gate's wasm, and one line saying so. It compiles release and its own wasm only with `OG_RELEASE=1`,
-with `--linux-x64`, or when the gate has not built here; a release build
-holds the gate lock. `OG_RELEASE=1` calls `scripts/release-wasm.sh`, including
-the shipping-size check before packing. The publish and lanes modules it
-copies from `target/og-wasm/dev/` are byte-identical to those the size gate
-measures. `native/build-profile` records `dev` or `release`;
-`scripts/pack.sh` runs `OG_RELEASE=1 build.sh` first and packs only
-`release`.
+Standalone (`bun run build`, `bun run test` in `packages/engine`), build.sh
+reuses the gate's dev addon, `og` and wasm whenever the gate has built in
+this target directory, and says so. It compiles release and its own wasm
+only with `OG_RELEASE=1`, with `--linux-x64`, or when the gate has not
+built here; a release build holds the gate lock, and `OG_RELEASE=1` runs
+the shipping-size check. `native/build-profile` records `dev` or
+`release`, and `scripts/pack.sh` packs only `release`.
 
 ## Switches in `scripts/budgets.txt` and `scripts/wasm-crates.txt`
 
-- `wasm-crates.txt` lists the crates the wasm step builds. `required`
-  crates build in one cargo invocation and fail the gate on error;
-  `pending` crates build one at a time and a failure prints `WARN` (while
-  a crate is being ported; the step prints a `NOTE` once it builds). A
-  crate builds a `.wasm` only with `crate-type = ["cdylib", …]`.
-- A line `variant NAME CRATE FEATURES` builds CRATE's publish variant
-  once per line: `--no-default-features --features FEATURES` into
-  `<target>/wasm-NAME`, raw name `<crate>-NAME.wasm`, bindgen'd as
-  `origin-engine` and measured by the size gate as its own download.
-  og-host-web has two, one per game profile (docs/web-export.md
-  §Variants): `publish` (`publish,physics3d,shaping`, `dist/web-publish`)
-  and `publish2d` (`publish,physics2d,profile2d,shaping`,
-  `dist/web-publish-2d`); `build.sh` under the gate stops when a declared
-  variant's wasm is missing.
-- A line `lanes NAME CRATE FEATURES` does the same for the lanes variant
-  (§The lanes wasm), through `scripts/wasm-lanes.sh`, raw name
-  `<crate>-NAME.wasm` (NAME starts with `lanes`), bound as
-  `origin-engine-lanes` and measured as its own download. og-host-web has
-  two, in build order: `lanes2d` and `lanes`, with their publish variant's
-  features. Without `lanes` lines a crate marked `lanes` builds one lanes
-  module with `--features publish`.
-- `wasm_artifacts optional|required`: with `required` the size gate fails
-  when the wasm build produced no artifact.
-- `drift_check optional|required`: with `optional` a missing `og api
-  check` prints `SKIPPED: og api check not available yet`; with `required`
-  it fails the gate.
+Each file's comments describe its lines. `wasm-crates.txt` marks a crate
+`required` (fails the gate) or `pending` (warns while it is ported); its
+`variant` and `lanes` lines each build one download the size gate measures
+on its own (docs/web-export.md §Variants). `budgets.txt`'s
+`wasm_artifacts required` fails the size gate when no wasm was built, and
+`drift_check required` fails the gate when `og api check` is missing.
 
 ## Switches in the environment
 
-- `OG_RENDERER=none` takes the renderer away natively: og-render's
-  `Renderer::new` and `with_surface` answer `NoAdapter` ("OG_RENDERER=none:
-  this process runs without a renderer", `og_render::renderer_disabled`),
-  as on a machine with no usable adapter. The platform's `engine` and
-  `probe` sandboxes set it (docs/design.md §5). It is optional: an
-  unavailable adapter warns with wgpu's error and continues as tier `none`
-  (`attachRenderer`, packages/engine's node/index.ts); the switch only
-  removes the warning's "unexpected" wording. Without a renderer the run is
-  the same run: the simulation, the probe, `dump_*`, snapshots and the
-  world hash are identical (the native host keeps the play surface at
-  `--size`); a `screenshot` step writes no PNG and logs `<t>s screenshot:
-  no renderer, frame unchecked (<file>)` (og-probe's `FRAME_UNCHECKED`);
-  `hello.tier` is `none` and `capture` answers null. `og run --json`
-  reports `tier: "none"`, `renderer: "none"`, `adapterError`, the frames in
-  `unchecked` and `uncheckedCount`; `og test` runs every check outside
-  `run.frame`, prints one `~ <file>: no renderer, frame unchecked` line per
-  screenshot and counts unchecked suites separately from passes; exit
-  status is zero unless an executed check failed. `--require-checked` on
-  `og run`, `og test`, `og check`, `og ui check` (also preview), `og frame
-  measure`, and `og doctor` opts into exit 1 when checks remain unchecked.
-  Their JSON summaries use `uncheckedCount`, including zero when no check
-  was skipped. The `og test` aggregate retains `unchecked` as a deprecated
-  alias; per-playtest `unchecked` remains a list of files. `og doctor` reports the
-  renderer `none`, not as a problem. Any other value leaves the adapters
-  alone; the web host always has its canvas's. The gfx suites register
-  their GPU tests as skipped under the switch.
+- `OG_RENDERER=none` makes native og-render answer `NoAdapter`, as on a
+  machine with no usable adapter, so the no-renderer path is testable
+  beside a GPU; the platform's `engine` and `probe` sandboxes set it
+  (docs/design.md §5). Without a renderer the simulation, probe, `dump_*`,
+  snapshots and world hash are identical, screenshots are reported
+  unchecked, and `--require-checked` makes unchecked checks exit 1.
   `packages/engine/tests/no-renderer.test.ts` and og-runtime's
   `tests/no_renderer.rs` hold the contract.
-- `OG_GATE_JOBS`, `OG_GATE_MACHINE_LOCK`, `OG_GATE_MACHINE_DIR`
-  (§Running the gate locally), `OG_WASM_PROFILE` (§Lanes),
-  `OG_BUN_TEST_TIMEOUT`, `OG_UI_STYLES_JOBS`, `OG_UI_KIT_JOBS`,
-  `OG_WEB_JOBS` (§What runs where).
+- `OG_GATE_JOBS`, `OG_GATE_THREADS` (§Running the gate locally),
+  `OG_WASM_PROFILE` (§Lanes), `OG_BUN_TEST_TIMEOUT` and `OG_WEB_JOBS`
+  (§What runs where).
 
 ## Browser reference tiers
 
-The browser tier is WebGPU in headless Chrome for Testing. Reference
-frames are recorded on the GPU host's `vulkan` tier (png.ts `RECORDING`);
-a tier's references are looked up frame by frame: a frame with no file
-under `references/<tier>/` is judged against `references/vulkan/`, and a
-frame on neither fails the run ("no reference
-at …; record one with --record"), never passes. A tier gets its own
-reference only for a difference it makes by design, never to absorb a
-defect. Tolerances follow §Reference frames: the tight one against the
-tier's own frame, the cross-platform one against the recording tier's. `--record`
-writes the tier's references.
+The browser tier is WebGPU in headless Chrome for Testing. A frame with no
+file under `references/<tier>/` is judged against `references/vulkan/`
+under §Reference frames' rule, and a frame on neither fails the run, never
+passes. A tier gets its own reference only for a difference it makes by
+design; `--record` writes the tier's references. A missing Chrome is an
+error, never a skip.
 
-`web-reference` runs four groups (`WEB_GROUPS` in `scripts/gate/commands.sh`):
-- **ui**: the accessibility mirror (§The accessibility mirror in the
-  browser).
-- **gfx**: og-tests' and og-ui's scenes (§og-tests' gfx scenes in the
-  browser).
-- **vehicle-terrain** (`tests/fixtures/vehicle-terrain`,
-  its `tests/drive.og.ts`): reference.ts with `--project <dir> --playtest
-  <file> --out dist/test-reference/<name>`: the script and shots are read from the
-  playtest itself (its commands without screenshots, `quit` and `dump_*`,
-  each shot at its screenshot's tick, 60 t), so a retimed playtest moves
-  its browser frames with it; `--print` shows what a run would play.
-- **lane-panic**: `bun tests/web/lane-panic.ts` (§The lanes wasm).
-
-A missing Chrome is an error, never a skip.
+`web-reference` runs four groups (`WEB_GROUPS` in
+`scripts/gate/commands.sh`): **ui** (§The accessibility mirror in the
+browser), **gfx** (§og-tests' gfx scenes in the browser),
+**vehicle-terrain** (`tests/fixtures/vehicle-terrain`, its script and shots
+read from the playtest itself, so a retimed playtest moves its browser
+frames with it) and **lane-panic** (§The lanes wasm).
 
 ### og-tests' gfx scenes in the browser
 
-`packages/engine/tests/web/reference-gfx.ts` renders og-tests' gfx scenes
-(`crates/og-tests/src/scenes.rs`) in headless Chrome: `crates/og-tests-web`
-compiles them to a wasm-bindgen module (glTF and font assets embedded with
-`include_bytes!` on wasm32), opens each on an OffscreenCanvas at 1280×720
-on WebGPU, draws its frames as the native harness does
-(`og_tests::gfx::render_built`) and reads the target back. Each frame is
-compared with `crates/og-tests/references/webgpu/`, else `vulkan`, under
-§Reference frames' rule, and every frame's figures against `vulkan` are
-kept in the report. It builds only `og-tests-web`, in `wasm-test`, under
-`target/wasm-gfx`, so the gate's og-render artifacts stay put. Explicit
-`--time` or `--perf-out` runs use the shipping `wasm` profile instead.
-
-Options: `--scene a,b` selects scenes, including the cost scenes built but
-not in `SCENES` (`COSTS`: `point-shadows-cube`, `shadows-local-8-cube`,
-`shadows-local-8-paraboloid`, `shadows-soft-off`, `aa-off`, `taa-motion`)
-and the perf-only city scenes (`city-street`, `city-aerial`); `--time <n>`
-writes per-frame times of the perf scenes to
-`crates/og-tests/perf/<tier>-chrome-<adapter>/`; `--cpu-culling` makes
-WebGPU cull on the CPU (`Culling::Cpu`); `--perf-out <dir>` writes the
-timing JSON to `<dir>/<tier>[-cpu-culling]/` with the last frame's culling
-counts. The native counterpart is `og-gfx <scene> --frames <n>`, with
-`OG_GFX_CULLING=cpu|gpu|auto` (auto: the GPU path from 16,384 instances).
-
-The same module carries og-ui's reference scenes as `og-ui/<name>`
-(`sample-screen`, `text-glow`, `glass`, `widget-set`, `text-fields-2`),
-built by `crates/og-tests-ui/tests/support/scenes.rs` (included into
-og-tests-web by `#[path]`) and judged against
-`crates/og-tests-ui/references/<tier>/<name>.png`, else `vulkan`; and the four
-cooked-font text frames (`og-ui/text-bidi`, `text-kerning`, `text-edit`,
-`text-mixed-runs`, `crates/og-tests-cooked/tests/support/text_scenes.rs`).
-The module cannot cook, so the runner first cooks
-`crates/og-ui/tests/text-fonts` with `tests/fixtures/ui-text/assets/fonts` through
-`og cook` (`tests/web/text-fonts.ts`, the `og` of `packages/engine/native/`
-or `$OG_BIN`), serves the blobs beside the module and hands each page the
-manifest and files (`og_gfx_text_manifest`, `og_gfx_text_file`), as the
-native `text_gfx` test decodes the same cook.
+`packages/engine/tests/web/reference-gfx.ts` draws og-tests' and og-ui's
+reference scenes and the cooked-font text frames through the wasm module
+`crates/og-tests-web`, as the native harness does, and compares each with
+its `references/webgpu/` frame, else `vulkan`. It builds only
+`og-tests-web`, in `wasm-test` under `target/wasm-gfx` (the `wasm` profile
+for `--time` and `--perf-out`); its options are in the script.
 
 ### The accessibility mirror in the browser
 
-`packages/engine/tests/web/a11y.ts` runs the dev export of its `tests/fixtures/a11y`
-on a 1280×720 canvas, one tick per `frame` call, on the settings screen,
-and checks the shell's DOM mirror of `og.ui.a11y()` (src/web/a11y.ts): one
-element per node in tree order, nested by parent, at each node's bounds,
-with its role; the settings dialog, the section tabs, the Master slider,
-the Mute switch and Done as ARIA; Chrome's own accessibility tree
-(`Accessibility.getFullAXTree`) reading the switch and the slider; no tree
-in the frame answers of a settled screen; a screen-reader-style
-`element.click()` on Mute toggling it (dump_ui's `checked`, the mirror's
-`aria-checked`, the UI's focus and the DOM focus); the Graphics tab and
-Done clicked the same way, the "Settings saved" toast in the polite live
-region; `prefers-contrast: more` changing the frame and its end bringing
-it back; and the pause dialog arriving at full size under
-`prefers-reduced-motion: reduce`. It writes
+`packages/engine/tests/web/a11y.ts` runs the dev export of
+`tests/fixtures/a11y` and checks the shell's DOM mirror of `og.ui.a11y()`
+(src/web/a11y.ts) against the UI and Chrome's own accessibility tree:
+structure, bounds, roles, screen-reader-style clicks, the live region,
+`prefers-contrast` and `prefers-reduced-motion`. It writes
 `dist/test-a11y/out/a11y-<tier>.json`.
 
 ## Updating a budget
 
 Budgets come from `docs/design.md` §7 and live in `scripts/budgets.txt`.
 `wasm_core_brotli_bytes` is per download: a page downloads one engine
-module (the 3D or 2D publish variant by the game's profile, or that
-profile's lanes variant on an isolated page; docs/web-export.md
-§Variants), so each is held to it and the size gate's figure is the
-largest (`max_brotli_bytes` in `size-gate.json`, the `max` line of its
-table), never the sum. The table prints each variant's brotli size and its
-share of the budget. The budget is 16 MB brotli per download, one ceiling
-for every variant. It catches accidental growth (a dependency pulled in by
-mistake, monomorphisation, doc strings in a publish build) and is never a
-reason to cut a feature. Change the number in its own commit, with the
-measured value from `target/evidence/size-gate.json` and the reason in the
-message; a raise above a design §7 target changes design §7 in the same
-commit.
+module, so each variant is held to it and the size gate's figure is the
+largest (`max_brotli_bytes` in `size-gate.json`), never the sum. The
+budget is 16 MB brotli per download, one ceiling for every variant. It
+catches accidental growth and is never a reason to cut a feature. Change
+the number in its own commit, with the measured value from
+`target/evidence/size-gate.json` and the reason in the message; a raise
+above a design §7 target changes design §7 in the same commit.
 
 ## The model bucket
 
 og.motion's weights, which `packages/engine` ships, are not in git.
 `packages/engine/motion.json` pins the file (`file`, `sha256`, `bytes`,
 `key`, `url`). Every machine reads it anonymously from `url`, the public
-Cloudflare R2 bucket `origin-engine-models` (it holds only pinned model
-files and is not listable), so no credentials are needed to fetch. The
-private S3 bucket `origin-engine-showcase` on OVHcloud Object Storage
-(endpoint `https://s3.bhs.io.cloud.ovh.net`, region `bhs`) keeps the same
-file under `motion/<sha256>.safetensors`, as the fallback and the upload
-target; its credentials are `OG_SHOWCASE_S3_ACCESS_KEY` and
-`OG_SHOWCASE_S3_SECRET_KEY`, and `OG_SHOWCASE_BUCKET`,
-`OG_SHOWCASE_S3_ENDPOINT` and `OG_SHOWCASE_S3_REGION` override them. A new
-pin is put in both: `upload` for OVH, then `wrangler r2 object put
-origin-engine-models/<key> --file <file> --remote`.
-
-`bun packages/engine/scripts/motion-model.ts`:
-
-- `ensure`: install the pin at `packages/engine/<file>`: copy and verify
-  `OG_MOTION_MODEL` when set, else reuse a local copy whose size and
-  sha256 match, else fetch it. Development builds (including `OG_GATE=1
-  --native`) and `pack.sh` run it; a missing or stale model whose fetch
-  fails stops the build, rather than letting motion scenes draw og.anim
-  poses. Native-only release jobs do not fetch it. A bare `cargo build`
-  does not: run `ensure` before running scenes with it.
-- `verify`: read the remote key and check its size and sha256, even with a
-  local copy; run it when changing the pin.
-- `fetch <out>`: download the pin to `<out>`, checked against its sha256.
-- `upload <file>`: put `<file>` in the bucket, refused unless it is the
-  pinned file; a key already there at the pinned size is left.
+Cloudflare R2 bucket `origin-engine-models`, so no credentials are needed
+to fetch. The private S3 bucket `origin-engine-showcase` on OVHcloud
+Object Storage (endpoint `https://s3.bhs.io.cloud.ovh.net`, region `bhs`)
+keeps the same file under `motion/<sha256>.safetensors` as the fallback
+and the upload target; its credentials are `OG_SHOWCASE_S3_ACCESS_KEY` and
+`OG_SHOWCASE_S3_SECRET_KEY`. A new pin is put in both: `upload` for OVH,
+then `wrangler r2 object put origin-engine-models/<key> --file <file>
+--remote`. `bun packages/engine/scripts/motion-model.ts ensure` installs
+the pin; development builds and `pack.sh` run it and stop when it fails,
+while a bare `cargo build` does not.
 
 A second private bucket in the same project, `origin-generated-assets`
 (versioned, encrypted; puts send `x-amz-server-side-encryption: AES256`),
@@ -814,9 +440,8 @@ keeps generated source assets for later model runs; its layout is in its
 
 ## Re-capturing gfx references
 
-gfx tests in `og-tests` render a scene headless and compare it with a
-committed PNG (per-pixel tolerance plus an RMSE threshold). On mismatch
-they write `<scene>.actual.png` and `<scene>.diff.png` under
+gfx tests in `og-tests` compare a headless render with a committed PNG and
+on mismatch write `<scene>.actual.png` and `<scene>.diff.png` under
 `$OG_EVIDENCE_DIR/gfx/`. When a rendering change is intended:
 
 ```
@@ -826,25 +451,15 @@ git diff --stat -- '*/references/vulkan/*'                         # see which f
 ```
 
 `OG_GFX_CAPTURE` takes `1` or a comma list of og-tests scenes;
-`OG_UI_CAPTURE=1` rewrites og-ui's frames (crates/og-tests-ui/references:
-og-tests-ui draws them, so og-ui's own tests build no renderer and a
-renderer edit does not rerun them), including the cooked-font and
-material frames og-tests-cooked writes there. Record twice and compare the
-two sets byte for byte before committing, so no frame flips on the host.
-
-A scene with no reference on the adapter's tier is compared with
-`references/vulkan/` under the cross-platform tolerance (§Reference frames)
-and the test says so (`gfx <scene>: no <tier> reference …; comparing with
-vulkan's`); a scene on neither fails. Commit the new references with the
-change and describe what each moved frame now shows (AGENTS.md §Building
-and testing). Record on the GPU host; a frame from another tier never
-replaces a recording-tier reference. `references/metal/` stays as Metal's
-compatibility set from before the set moved to the L4 (2026-11-10); no new
-frame is recorded there. A project fixture whose playtest names
-`references/metal/<frame>.png` itself keeps that frame until it is
-re-recorded with its project. The browser tiers' own frames (`webgpu`)
-were recorded against Metal's and are re-checked against the L4 set
-later.
+`OG_UI_CAPTURE=1` rewrites og-ui's frames in
+`crates/og-tests-ui/references`. Record twice and compare the two sets byte
+for byte before committing, so no frame flips on the host. Commit the new
+references with the change and describe what each moved frame now shows.
+A frame from another tier never replaces a recording-tier reference.
+`references/metal/` is kept as Metal's compatibility set and nothing new
+is recorded there; a project fixture whose playtest names a
+`references/metal/` frame keeps it until it is re-recorded with its
+project.
 
 ## When the size gate fails
 
@@ -853,18 +468,15 @@ later.
 2. Find the growth: `cargo tree -p og-host-web --target
    wasm32-unknown-unknown -e normal` for new dependencies, and
    `scripts/wasm-size-report.sh target/og-wasm/raw/<name>.wasm` for where
-   the bytes are: the bindgen module as it ships, then per crate and for
-   the largest functions, each with its brotli beside its raw bytes.
-   Bindgen retains function names. Rank by
-   brotli: generic copies compress to little more than one copy.
+   the bytes are, per crate and for the largest functions. Rank by brotli:
+   generic copies compress to little more than one copy.
 3. Prefer removing the cause: drop or feature-gate the dependency, disable
    default features, move debug-only code behind the non-`publish`
    configuration, avoid monomorphisation blow-ups. A stable sort in engine
    code is `og_core::sort::{sort, sort_by, sort_by_key}`, and a `BTreeMap`
-   or `BTreeSet` built from an iterator is `og_core::sort::{map, set}`: the
-   standard library's `sort_by` and `collect` into a B-tree monomorphise
-   driftsort per element type and closure. A publish build carries no
-   reflected or record field docs (og-core's and og-api's `publish`), so a
-   new doc string costs a publish module nothing.
+   or `BTreeSet` built from an iterator is `og_core::sort::{map, set}`,
+   because the standard library's versions monomorphise driftsort per
+   element type and closure. A publish build carries no reflected field
+   docs, so a new doc string costs a publish module nothing.
 4. When the growth is intended, update the budget (§Updating a budget)
    rather than cutting the feature (design §7).

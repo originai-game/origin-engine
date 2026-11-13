@@ -1,281 +1,152 @@
 # Origin Engine repository guidance
 
-Current rules only; their history is in git. Design: `docs/design.md`, UI
+Current rules only; history is in git. Design `docs/design.md`, UI
 `docs/ui.md`, gate and toolchain `docs/ci.md`, release `docs/release.md`,
 status `docs/roadmap.md`. Platform contracts implemented here:
-`origingame/docs/game-workflow.md`, `origin-agent/packages/contracts/src/probe.ts`
-(probe, protocol 5).
+`origingame/docs/game-workflow.md` and
+`origin-agent/packages/contracts/src/probe.ts` (probe, protocol 5).
 
 ## Ownership
 
 - This repository owns the engine runtime, its TypeScript API, the cook, the
-  `og` tool, the project skeleton, the UI packs (kits and style packs) and the
-  generated wiki. Accounts, money, publishing, threads and the agent loop stay
-  in the platform, reached through the host ABI with game-scoped tokens. No
-  platform code imports engine internals; no engine code imports platform code.
-- The platform consumes released versions only: the signed per-target archives
-  at `https://origingame.ai/downloads/engine/<version>/` (`docs/release.md`
-  §1), never npm, a git revision or a checkout. A version is tested locally
-  (the install test, the platform's local stack) before a sandbox installs it.
-  Development sandboxes are InstaBox (`tests/install/instabox.ts`); E2B is
-  production only.
-- The platform is `originai-game/origin-agent` (agent server, runner, web,
-  probe contract, engine pin, `knowledge/`) and `originai-game/origingame`
-  (everything else).
-- Public contracts; changing one is a break (a minor version with a
-  breaking entry in its changelog fragment):
+  `og` tool, the project skeleton, the built-in UI components and style
+  packs, and the generated wiki. Accounts, money, publishing, threads and the
+  agent loop stay in the platform (`originai-game/origin-agent` and
+  `originai-game/origingame`), reached through the host ABI with game-scoped
+  tokens. Neither side imports the other's internals.
+- The platform consumes released versions only: the signed archives at
+  `https://origingame.ai/downloads/engine/<version>/` (`docs/release.md` §1).
+  A version is tested locally before a sandbox installs it. Development
+  sandboxes are InstaBox (`tests/install/instabox.ts`); E2B is production.
+- Public contracts; changing one is a break (a minor version with a breaking
+  changelog fragment):
   - `packages/knowledge/scripts/mount.ts`: `installed`, `mount`, `summary`.
-  - `packages/knowledge/scripts/lib.ts`: `payload(roots: Roots): PayloadFile[]`,
-    `defaultRoots(pkg?: string): Roots`, `PayloadFile { path; source; bytes;
-    symlink }`, `Roots { pkg; template; engine }`.
-  - `packages/engine/src/provider.ts` (`@origingame/engine/provider`): the
-    platform and room provider contract and `PROVIDER_VERSION`
-    (`docs/design.md` §2.8 Providers).
+  - `packages/knowledge/scripts/lib.ts`: `payload`, `defaultRoots`,
+    `PayloadFile`, `Roots`.
+  - `packages/engine/src/provider.ts` (`@origingame/engine/provider`) and
+    `PROVIDER_VERSION` (`docs/design.md` §2.8 Providers).
   - `packages/knowledge/scripts/brief.ts`: `artBrief`, `readLook`,
-    `presetLook` (re-exported by `@origingame/create-game`; `docs/art.md` §2.2).
-- The engine ships no skills. What a game author needs beyond a signature
-  (workflow, thresholds, pitfalls) is a guide in `crates/og-api/guides/`,
-  generated into the wiki and read through `og api find` and `og api show`,
-  or `og` command help. A guide never restates the API and names no
-  platform tool or service.
+    `presetLook` (`docs/art.md` §2.2).
+- The engine ships no skills. What a game author needs beyond a signature is
+  a guide in `crates/og-api/guides/` (read through `og api find` and
+  `og api show`) or `og` command help. A guide never restates the API and
+  names no platform tool or service.
 
 ## Principles
 
 - **The engine supplies facts and tools; the agent decides.** No engine
-  command scores, grades or refuses on taste. Checks report measurements and
-  findings; thresholds belong in the guides.
+  command scores or refuses on taste; thresholds belong in the guides.
 - **No gameplay templates.** `og create` writes one project skeleton; the
-  creation choices go into project.ogt's `create` block as constraints and
-  hints. Polished templates and showcase content come after the feature work.
-- **Feature checks live in fixtures** under `tests/fixtures/`, one per
-  feature, a few seconds each, run only when their inputs change.
-- **Fix at the root; port the state of the art.** A problem is fixed in the
-  engine where it arises, never worked around in a game, kit or test. A
-  missing feature starts from a search of current papers and permissive
-  implementations; keep their licences under `third_party/` or in the header.
+  creation choices go into project.ogt's `create` block.
+- **Fix at the root; port the state of the art.** A problem is fixed where it
+  arises, never worked around in a game, component or test. A missing feature
+  starts from current papers and permissive implementations; keep their
+  licences under `third_party/` or in the header.
 - **Size cuts never cost features.** Data only some games need is loaded or
-  packed on demand, not removed. Growth from a feature is accepted within the
-  size gate.
-- **A reference is the last approved look, not the standard.** A change
-  may move frames when the new frame is better in look, cost or
-  correctness; it is reviewed on its own merits against commercial games,
-  never against the old frame. Matching the old frame is required only of
-  a change that claims to move nothing (a refactor, a move, a speed-up
-  that keeps the look): there identity is the proof, and a moved frame is
-  a bug or a look change to send for review.
-- **Frozen is not obsolete.** A frozen kit, style pack or feature is one
-  whose quality is not there yet; it stays in the tree until it is rebuilt.
-  A cleanup deletes only what the owner names obsolete.
+  packed on demand.
+- **A reference is the last approved look, not the standard.** A change may
+  move frames when the new frame is better in look, cost or correctness; it
+  is reviewed on its own merits against commercial games, never against the
+  old frame. Only a change that claims to move nothing (a refactor, a move, a
+  speed-up that keeps the look) must match the old frame.
+- **Structure before size.** A refactor makes the structure clear: state
+  owned by its stage, pipelines as named steps, boundaries carried by types.
+  No file is split for its line count.
+- **A cleanup deletes only what the owner names obsolete.** Unfinished
+  features stay in the tree until they are rebuilt.
 
 ## Non-negotiable contracts
 
 - **Rust stays inside the engine.** Game code is TypeScript; a game author
-  never runs `cargo`. A feature that would need game-side Rust is an engine
-  feature.
-- **One API, two hosts.** The TypeScript API is generated from one IDL for the
-  wasm and native hosts; a member on one and not the other is a bug. Backend
-  limits are capability queries. Edit `crates/og-api/api/<module>.ogt`
-  (`prelude.ogt` holds the header and units, `parts.txt` the order; a large
-  module continues in `<module>-<subject>.ogt` parts).
-- **Deterministic by construction.** Fixed tick, engine-owned seeded
-  randomness, no wall clock in the tick, snapshot and restore of the whole
-  world. Rendering never feeds back into simulation; presentation state is
-  checkpointed beside the world, outside `world_hash` (`docs/design.md` §2.4).
-- **Observable from the first frame.** The command channel, the probe,
-  `dump_world`/`dump_entity`/`dump_ui` and frame capture exist in every build
-  except `publish`, which keeps only the player-facing probe members.
+  never runs `cargo`.
+- **One API, two hosts.** The TypeScript API is generated from one IDL
+  (`crates/og-api/api/*.ogt`) for the wasm and native hosts; a member on one
+  and not the other is a bug. Backend limits are capability queries.
+  Generated `.d.ts` and wiki are drift-checked; never hand-edit them.
+- **Deterministic by construction.** Fixed tick, seeded randomness, no wall
+  clock in the tick, whole-world snapshot and restore. Rendering never feeds
+  back into simulation (`docs/design.md` §2.4).
+- **Observable from the first frame.** The command channel, the probe, the
+  dumps and frame capture exist in every build except `publish`.
 - **Reflection is the single schema** for the inspector, Tune, the probe,
-  scene text and the wiki.
-- **Two text formats, one blob format.** `.ogt` text cooked into `.ogb` blobs
-  with a type hash, version and cook stamp.
+  scene text and the wiki. `.ogt` text cooks into `.ogb` blobs.
 - **The API is for a reader who has never seen it.** Zero-value desc structs,
-  no hidden state, errors as values, one documented entry per module, one
-  naming convention, the three.js vocabulary where it fits.
+  no hidden state, errors as values, the three.js vocabulary where it fits.
 - **Structure rules** (`docs/design.md` §2.1): a runtime module is an
-  optional feature with an absent stand-in that keeps the world's bytes; a
-  binding is written once for every host; cooked formats sit below feature
-  crates. A tier is a capability set, never a reduced copy (§2.6 Tiers).
-- **Structure before size.** A refactor exists to make the structure clear:
-  state grouped by the stage or subject that owns it, a pipeline as named
-  steps with explicit data between them, a boundary carried by types. Files
-  follow that structure. No file is split because of its line count, and
-  no stream is opened for a purely mechanical split.
-- **wgpu as published.** Never vendored or patched; work around it in
-  og-render or og-host-web.
-- **Rendering never blocks the engine thread on the web.** Engine in a Worker
-  with an OffscreenCanvas; the main thread owns input and the shell.
-- **Brand is one ink.** Splash, loading and "made with" use the platform's
-  `packages/brand` and the design tokens.
-- **One design language for the engine and origin-agent.** `packages/design`
-  (`tokens.json` and its document) generates og-ui's default style
-  (`crates/og-ui-core/src/theme.rs`, drift-checked); origin-agent pins it by
-  version. It binds the default style only, never a game's.
+  optional feature with an absent stand-in; a binding is written once for
+  every host; cooked formats sit below feature crates; a tier is a
+  capability set (§2.6 Tiers).
+- **wgpu as published**, never vendored or patched.
+- **The web engine runs in a Worker** with an OffscreenCanvas; the main
+  thread owns input and the shell.
+- **One design language.** `packages/design/tokens.json` generates og-ui's
+  default style (`crates/og-ui-core/src/theme.rs`, drift-checked), which
+  origin-agent pins by version. Brand surfaces use `packages/brand`. A game's
+  style pack restyles the built-in components through tokens and parts.
 
 ## Building and testing
 
-- Toolchain: a pinned nightly with LLVM on every target (no Cranelift);
-  versions and pins are in `docs/ci.md` §Toolchain, the one place they are
-  stated. A version move changes that table and its pin together.
+- Toolchain pins live only in `docs/ci.md` §Toolchain.
 - **One target directory per checkout.** Never set a private
-  `CARGO_TARGET_DIR` or copy the tree. Never delete a `target/`; clean one
-  crate with `cargo clean -p`, and free disk with `scripts/clean-targets.sh`.
-- **Streams on macrunner.** Development there is ordinary work on a branch.
-  The coordinator decides how many streams run at once: streams whose files
-  overlap run in order, the next starting once the previous has landed. Each
-  stream works in its own checkout; never switch or reset a checkout another
-  thread is using, never `git worktree add` a fresh one.
-- **Concurrent gates, bounded work.** `scripts/check.sh` takes shared admission
-  and a checkout-local output lock. CPU steps take no machine work lock;
-  each gate runs two steps, and each step's Cargo/nextest jobs share the
-  cores among the gates admitted at its start (at least two). Rendering
-  steps take FIFO GPU slots through `scripts/lock.sh`. Measurements take
-  exclusive admission, drain active gates, then acquire GPU slots separately.
-  Never hold all GPU slots while waiting for a child gate to acquire one.
-  Source `scripts/lock.sh`; never a private copy.
-- **Lanes of the gate** (`docs/ci.md` §Lanes): `quick` (fmt, clippy, logic
-  tests, drift, package tests) is the loop and what a landing runs;
-  `full` adds all Rust and Bun tests, retained UI-pack suites, fixtures,
-  bindgen-only wasm builds and browser functional tests. Shipping-size
-  checks run only before packing a release. Selection uses
-  dependency inputs; an unclassified change
-  runs checks rather than skipping them. Never touch files or delete
-  `target/og-gate/` to force a run; use `--all`.
-- **Profiles.** `dev` for everything native in the gate, `release` for what
-  ships natively, `wasm-test` for functional and browser wasm, `wasm` for
-  release wasm, its size gate and explicit performance runs. Compiling one
-  crate in two profiles in one step is a defect.
-- **Tests never run `cargo`.** Rust tests use `env!("CARGO_BIN_EXE_og")`; bun
-  and browser tests use the gate's `og` (`tests/support/og-bin.ts`). Shared
-  fixtures are made once under a file lock; what cannot run in parallel is
-  declared in `.config/nextest.toml`.
-- **A missing GPU is a warning:** the test counts as skipped or unchecked,
-  never as passed. Tests are not split across machines.
-- **One GPU host, one reference set.** The gate's GPU steps run on the
-  GPU host, an NVIDIA L4 on Vulkan in a `gcp-l4` orb (docs/ci.md §The GPU
-  host). Reference frames are recorded there, so a frame never flip-flops
-  between hosts; another tier records its own only where it differs by
-  design. Every other real GPU backend (Metal, DX12, WebGPU in Chrome) is
-  a compatibility check under the cross-platform tolerance
-  (`og_tests::compare::tolerance_for`, docs/ci.md §Reference frames).
-  `references/metal/` is kept as Metal's compatibility set; nothing new
-  is recorded there. macrunner (Metal, Safari, iPhone)
-  and studio-win (DX12, Chrome, Edge, Firefox) are development and
-  compatibility hosts, run at milestones and before a release, never a
-  landing gate; Android waits. The web is WebGPU only
-  until the planned GL tier (`docs/roadmap.md` §Direction). Nothing runs
-  on lavapipe; no `references/vulkan-cpu/`.
-- Generated `.d.ts` and wiki are drift-checked; never hand-edit them.
-- A test is kept only when it fails on a plausible regression; a re-recorded
-  frame is one the change moves on purpose, named in the report with why
-  the new frame is better.
-- There is no GitHub CI; the gate is `scripts/check.sh`, its GPU steps on
-  the GPU host.
+  `CARGO_TARGET_DIR`, copy the tree or delete a `target/`; use
+  `cargo clean -p` or `scripts/clean-targets.sh`.
+- **The gate is `scripts/check.sh`** (lanes in `docs/ci.md` §Lanes); there
+  is no GitHub CI. `quick` is the loop and what a landing runs; `full` adds
+  every test, fixtures and wasm builds. Use `--all` to force a run, never
+  touch files or delete `target/og-gate/`. GPU steps take slots through
+  `scripts/lock.sh` (source it, never copy it).
+- **Tests never run `cargo`.** Rust tests use `env!("CARGO_BIN_EXE_og")`, bun
+  tests `tests/support/og-bin.ts`.
+- **A test is kept only when it fails on a plausible regression.** A missing
+  GPU makes a test skipped or unchecked, never passed.
+- **One GPU host, one reference set.** References are recorded on the L4
+  (Vulkan, `gcp-l4` orb; `docs/ci.md` §The GPU host, §Reference frames).
+  Metal, DX12 and WebGPU are compatibility checks. macrunner and studio-win
+  are development hosts; their failures are never a landing gate, and
+  Windows-only gate failures are not worth a stream's time.
+- Never record a black or broken frame as a reference. A re-recorded frame is
+  named in the report with why the new one is better.
 
 ## Pitfalls
 
-- Never kill a process you did not start: `pgrep -f "check.sh quick"`
-  matches other checkouts' gates. Keep `$!` and stop only that; tell the owner
-  of anything else in your way. A killed script's `og test` keeps running;
-  check `ps` for `target/debug/og` before re-recording into the same files.
-- Never edit a shell script while a running shell is reading it.
-- GPU slots: take every slot for one measured run, not a whole series, and
-  call `og_gpu_acquire_all` only when the GPU is idle (it holds `gpu-all`
-  while it waits). Restore anything moved aside under the lock (Chrome's
-  Metal shader cache) before the slots free. Per-process GPU limits add up
-  across test runners: fix contention in the scheduler, not a timeout.
-- Land ready heads in stacks: regenerate once, run `quick` once, run the
-  targeted GPU checks on the GPU host together, return only a failing head.
-- `local main` can be ahead of `origin/main`: compare full object ids and
-  pin a measurement worktree to the requested commit.
-- The look presets are `include_str!` into og-cook: rebuild `og` (and the
-  addon) before capturing after a preset edit. Regenerate a game's copied
-  assets from committed sources before recording its references.
-- A capture records its effective state (AA, frame history, selection)
-  beside the image; equal ticks do not prove equal temporal history. A
-  checker's element attribution is a claim to check against the pixels.
-- Before calling an unknown option a defect, read the public parser and its
-  internal callers (`og run --device` passes `--preflight` itself).
-- A text change must not, as a side effect, change other fonts' cooked
-  output, charset or run-time mode. Run-time glyphs (`font { runtime
-  true }`), wider charsets and colour glyphs are features a font declares,
-  chosen for how the text looks and what it costs; check missing-glyph
-  diagnostics, frame cost and the cooked payload budget. Freeze the code
-  under test for a cross-host hash run.
-- Style packs are shipped asset roots: their tests and references live in
-  `templates/styles/{tests,references}/<pack>`. After moving fixtures, run
-  the cook-report budget and threaded-cook output tests.
-- A toolchain move runs workspace Clippy with all targets, `--keep-going`
-  and `-D warnings`.
+- Never kill a process you did not start (`pgrep -f` matches other
+  checkouts' gates); never edit a shell script a running shell is reading.
+- `local main` can be ahead of `origin/main`: compare full object ids.
+- Look presets are `include_str!` into og-cook: rebuild `og` before capturing
+  after a preset edit.
+- A text change must not change other fonts' cooked output, charset or mode.
 - Walkers and packagers never follow directory symlinks and skip `.og/`,
-  `cooked/`, `og-out/` and installs; a project must package after it ran.
-- The platform development key is full-featured: when a flow fails with
-  it, fix the credential contract, not the flow.
+  `cooked/`, `og-out/` and installs.
+- The platform development key is full-featured: when a flow fails with it,
+  fix the credential contract, not the flow.
 
 ## Streams and landing
 
-- The coordinator thread delegates streams with `create_thread`, as many at once
-  as the work allows (overlapping ones in order), each owning a whole feature
-  area on one branch.
-  Default mode: `external-agent:claude-code` with
-  `["model:claude-opus-5-5","effort:medium"]`, project `origingame/origin-engine`,
-  base commit named in the brief. Infrastructure, hard logic, backend work,
-  file splits and compatibility may run in Amp `high`. A hard problem (one
-  that resisted several rounds, a cost target missed widely, a look bounced by
-  art, a paper port) may go to Claude Code with
-  `["model:claude-fable-5-1","effort:high"]`, briefed with every attempt.
-  A stopped thread is not resumed; a new one starts from `origin/main`.
-- **Prerequisites first, then one stack.** The coordinator resolves what
-  other work depends on before anything else. Work with no prerequisite left
-  is finished whole and sent as one stack, landed in one `land.sh` run, not
-  batch by batch. Inside the stack, commits stay logical (a move and a logic
-  edit never share a commit), so a later failure bisects to one commit. A
-  stream does not stop between pieces of its work: it reports when its stack
-  is sent, or when a decision is needed.
-- Authors work on their branch on macrunner (or an orb) and run only the
-  fast checks before sending: `cargo check --workspace --all-targets`, Clippy
-  and the tests of their crates, and any identity check the change relies on
-  (cooked bytes, draw items, snapshot bytes). `land.sh`'s quick is the one
-  full CPU gate; a head it fails goes back to its branch. GPU work runs in
-  stages, not on every edit: at a milestone the author pushes the branch and
-  asks the GPU integrator for its GPU check (the GPU host has one L4, so GPU
-  runs queue there, FIFO). A Metal capture is a compatibility check, never
-  evidence for landing.
-- **Landing** (the owner, 2026-11-11). `scripts/land.sh` is a merge queue:
-  quick runs first outside it, then a FIFO landing lock is held through
-  rebase, at most one recheck (only for overlap or shared inputs; disjoint
-  changes reuse the pass) and push. Never push main directly; a lander on
-  another machine that loses the push race reruns `land.sh`. A head that
-  changes what a game's type check or playtest reaches (packages/engine,
-  the IDL, the generated `.d.ts`), and any stack of more than a few
-  commits, also runs `scripts/check.sh full --only fixtures` first: quick
-  runs no fixture, and a broken `og check` fails every game's `og test`.
-  A head that changes og-runtime's answers, packages/engine or the IDL
-  (its docs included: the engine's tests read them) also runs
-  `scripts/check.sh full --only bun-test`, which quick does not select.
-  Then, by what the head does to frames:
-  - **A head that moves no reference frame** (no change to a look, a
-    preset, a shader, a pass's output or a reference; a refactor, a speed-up,
-    a fix outside rendering) is landed by the thread that implemented it,
-    from its own checkout (an orb or macrunner), with
-    `OG_GATE_SKIP=rust-gpu scripts/land.sh`. It sets the skip itself and
-    posts to Slack. The GPU integrator, the one thread in the `gcp-l4`
-    orb, runs the full rust-gpu, the fixtures and the reference suites on
-    main afterwards, in batches; a frame that moved is bisected there and
-    goes back to its author as a fix-forward.
-  - **A head that moves frames or changes a look** goes to the GPU
-    integrator, which runs its GPU steps on the L4 and sends its captures
-    to the art runner, who reviews the look against commercial games (new
-    features' captures also need the owner's approval); the integrator
-    lands it with the full quick once approved and posts to Slack.
-  When unsure whether a head moves a frame, send it to the integrator. A
-  failure found later goes back to its branch as a fix-forward commit.
-- A file moves only when the structure it follows has changed; the move is
-  its own commit, verbatim (only `mod`, `use` and visibility edits), and is
-  reviewed with `git diff --color-moved`.
-- Reports carry their numbers and frame paths; evidence is committed only when
-  a test reads it. Every change a game sees, and every break with its fix,
-  is recorded in the same commit as one new fragment in
-  `changelog/unreleased/` (`scripts/changelog.ts`); a merge never edits
-  `packages/engine/changelog.json`, which `release.sh fold` and `bump`
-  build from the fragments (`docs/release.md` §3). Platform asks are drafted in the report and
-  collected by the coordinator for the release.
+- The coordinator delegates streams with `create_thread`, each owning a
+  feature area on one branch, overlapping ones in order. Default:
+  `external-agent:claude-code` with `["model:claude-opus-5-5","effort:medium"]`,
+  project `origingame/origin-engine`. A hard problem may go to
+  `["model:claude-fable-5-1","effort:high"]`. A stopped thread is not
+  resumed.
+- A stream finishes its work whole and sends it as one stack of logical
+  commits (a move and a logic edit never share one). Authors run only fast
+  checks: `cargo check --workspace --all-targets`, Clippy, their crates'
+  tests, and any identity check the change relies on.
+- **Landing** goes through `scripts/land.sh`, a merge queue; never push main
+  directly. A head touching packages/engine, the IDL or og-runtime's answers
+  also runs `scripts/check.sh full --only fixtures` and `--only bun-test`.
+  - A head that moves no frame is landed by its own thread with
+    `OG_GATE_SKIP=rust-gpu scripts/land.sh`; the L4 integrator checks main
+    afterwards in batches.
+  - A head that moves frames goes to the L4 integrator, which captures it,
+    gets the owner's approval for a new look, fixes any failure at the root
+    itself, and lands it.
+  - When unsure, send it to the integrator.
+- A file move is its own verbatim commit, reviewed with
+  `git diff --color-moved`.
+- Every change a game sees is one fragment in `changelog/unreleased/` in the
+  same commit (`scripts/changelog.ts`); never edit
+  `packages/engine/changelog.json` (`docs/release.md` §3). Docs-only commits
+  go to main directly.
+- Report landings and failures to Slack `#engine-dev` with the SHA range and
+  gate result.
