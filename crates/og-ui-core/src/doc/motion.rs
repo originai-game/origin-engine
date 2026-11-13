@@ -245,6 +245,13 @@ fn expand_shorthand(
 
 /// Extract one cascade-winning longhand after its shorthand substitutes.
 pub(crate) fn substituted(shorthand: &str, name: &str, source: String) -> Result<String, String> {
+    // Math over a variable (`calc(var(--slow) * 3)`) reduces before the parts
+    // are told apart: a part is known by its kind, and `calc(…)` has none.
+    let source = if super::calc::has_math(&source) {
+        super::calc::reduce(&source)?
+    } else {
+        source
+    };
     substituted_longhands(shorthand, &source)?
         .iter()
         .find(|(longhand, _)| longhand == name)
@@ -897,6 +904,21 @@ mod tests {
         let mut diagnostics = Vec::new();
         let (t, a) = resolve(&winners, "doc", &mut diagnostics);
         (t, a, diagnostics)
+    }
+
+    /// A shorthand whose duration is math over a token (the text after its
+    /// variables substitute) gives that duration, and the parts after it keep
+    /// their places. Ways it could fail: `calc(…)` read as a second name.
+    #[test]
+    fn a_substituted_shorthand_reduces_its_math_before_its_parts_are_told_apart() {
+        let part = |name: &str| {
+            let source = "pulse calc(  400ms  * 3) ease-out 100ms infinite".to_owned();
+            substituted("animation", name, source).unwrap()
+        };
+        assert_eq!(time(&part("animation-duration")), Some(1200.0));
+        assert_eq!(time(&part("animation-delay")), Some(100.0));
+        assert_eq!(part("animation-name"), "pulse");
+        assert_eq!(part("animation-iteration-count"), "infinite");
     }
 
     #[test]

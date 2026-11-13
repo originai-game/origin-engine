@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "animation and transition shorthands",
+      "summary": "A shorthand whose duration or delay is math over a token (animation: pulse calc(var(--motion-duration-slow) * 3) ease-out infinite) takes that time, and the parts after it keep their places. The calc() was read as a second name before."
+    }
+  ]
+}
