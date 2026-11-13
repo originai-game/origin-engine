@@ -149,7 +149,7 @@ fn motor_velocity(at: vec2<f32>) -> vec2<f32> {
     let out = select(vec2<f32>(0.0), d / dist, dist > 1e-4);
     var dir = out;
     if (b.z > 1.5) {
-      dir = vec2<f32>(-out.y, out.x);
+      dir = vec2<f32>(out.y, -out.x);
     } else if (b.z > 0.5) {
       dir = b.xy;
     }
