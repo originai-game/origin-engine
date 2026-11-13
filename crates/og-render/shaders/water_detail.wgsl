@@ -92,18 +92,24 @@ fn wave_slope(p: vec2<f32>, t: f32, w: f32) -> Detail {
 }
 
 // A lake's capillary ripples as a pixel of `w` metres holds them, for the surface seen from below a few metres
-// from the eye (water_below.wgsl), where they break the rim of Snell's window into shards: six wavelets 5 to 16 cm
-// long round the compass, their slopes' variance CAPILLARY together at the default wave strength. Those a pixel
-// cannot hold go to the covariance, as the detail's do, so the far rim is their blur and nothing flickers.
-// (From above they stay the glints' facets: lake_glints.)
+// from the eye (water_below.wgsl), where they break the rim of Snell's window into shards: sixteen wavelets 5 to
+// 39 cm long, a golden angle apart round the compass with their lengths shuffled among them, their slopes'
+// variance CAPILLARY together at the default wave strength. That many plane waves with unrelated directions sum to
+// a field with no period the eye finds (Berry's random waves: near enough Gaussian), where six drew the shards in
+// rows. Those a pixel cannot hold go to the covariance, as the detail's do, so the far rim is their blur and
+// nothing flickers. (From above they stay the glints' facets: lake_glints.)
 fn capillary_slope(p: vec2<f32>, t: f32, w: f32) -> Detail {
-  var waves = array<vec3<f32>, 6>(
-    vec3<f32>(0.996, 0.087, 126.0), vec3<f32>(-0.799, -0.602, 97.0), vec3<f32>(0.438, 0.899, 74.0),
-    vec3<f32>(0.139, -0.990, 57.0), vec3<f32>(-0.602, 0.799, 46.5), vec3<f32>(0.927, -0.375, 39.0));
-  // Six directions share each axis' variance: 3 a² / 2 = CAPILLARY.
-  let a = sqrt(CAPILLARY * clamp(water.waves.z / 0.35, 0.0, 1.0) / 1.5);
+  var waves = array<vec3<f32>, 16>(
+    vec3<f32>(0.955, 0.296, 17.1), vec3<f32>(-0.904, 0.427, 43.0), vec3<f32>(0.378, -0.926, 108.3),
+    vec3<f32>(0.347, 0.938, 33.0), vec3<f32>(-0.889, -0.457, 83.2), vec3<f32>(0.965, -0.263, 25.4),
+    vec3<f32>(-0.533, 0.846, 63.9), vec3<f32>(-0.178, -0.984, 19.5), vec3<f32>(0.796, 0.605, 49.1),
+    vec3<f32>(-0.996, 0.091, 123.6), vec3<f32>(0.673, -0.740, 37.7), vec3<f32>(0.004, 1.000, 94.9),
+    vec3<f32>(-0.678, -0.735, 29.0), vec3<f32>(0.997, 0.083, 72.9), vec3<f32>(-0.791, 0.612, 22.2),
+    vec3<f32>(0.170, -0.985, 56.0));
+  // Sixteen directions share each axis' variance: 4 a² = CAPILLARY.
+  let a = sqrt(CAPILLARY * clamp(water.waves.z / 0.35, 0.0, 1.0) / 4.0);
   var o = Detail(vec2<f32>(0.0), vec3<f32>(0.0));
-  for (var i = 0; i < 6; i++) {
+  for (var i = 0; i < 16; i++) {
     let d = waves[i];
     detail_wave(&o, d.xy, d.z, a, dot(d.xy, p) * d.z + t * water.waves.y * sqrt(d.z) * 1.6 + f32(i) * 2.4, w);
   }
