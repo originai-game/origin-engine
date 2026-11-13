@@ -9,7 +9,7 @@ use naga::valid::{Capabilities, ValidationFlags, Validator};
 fn every_kernel_validates_and_translates() {
     let mut failures = Vec::new();
     let mut count = 0;
-    for (name, wgsl) in og_motion::gpu::shader_sources() {
+    for (name, wgsl) in og_anim::motion::gpu::shader_sources() {
         count += 1;
         let module = match naga::front::wgsl::parse_str(wgsl) {
             Ok(m) => m,

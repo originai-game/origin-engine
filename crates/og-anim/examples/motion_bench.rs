@@ -1,7 +1,7 @@
 //! Times one generation on the GPU (and the CPU path for the first case) and,
 //! given a case file with expected outputs, checks the GPU against it.
 //!
-//!     cargo run --release -p og-motion --example bench -- <bundle.safetensors> [case.safetensors]
+//!     cargo run --release -p og-anim --features motion --example motion_bench -- <bundle.safetensors> [case.safetensors]
 //!
 //! `OG_MOTION_BACKEND=vulkan|dx12|metal` picks the backend (default: wgpu's primary ones).
 //!
@@ -10,10 +10,10 @@
 
 use std::time::Instant;
 
-use og_motion::contract::{FRAMES, MOTION_FEATURES};
-use og_motion::glue::{Statics, decoder_inputs, student_inputs};
-use og_motion::gpu::Gpu;
-use og_motion::{Bundle, Inputs, Model, StudentOutput, valid_frames};
+use og_anim::motion::contract::{FRAMES, MOTION_FEATURES};
+use og_anim::motion::glue::{Statics, decoder_inputs, student_inputs};
+use og_anim::motion::gpu::Gpu;
+use og_anim::motion::{Bundle, Inputs, Model, StudentOutput, valid_frames};
 
 fn read(path: &str) -> Bundle {
     Bundle::from_safetensors(&std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}")))

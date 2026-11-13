@@ -1,7 +1,7 @@
 //! Times the CPU path's generation (median of runs) and prints a hash of
 //! its output, natively or under wasm32-wasip1:
 //!
-//!     cargo run --release -p og-motion --example cpu_bench -- <bundle.safetensors> <case.safetensors> [n...]
+//!     cargo run --release -p og-anim --features motion --example motion_cpu_bench -- <bundle.safetensors> <case.safetensors> [n...]
 //!
 //! First it prints one character's profile: the median time of each stage
 //! of a job (pass 1 and pass 2 of the student's encoder, the student's
@@ -9,9 +9,9 @@
 
 use std::time::Instant;
 
-use og_motion::cpu::Cpu;
-use og_motion::glue::Statics;
-use og_motion::{Bundle, Inputs, Model};
+use og_anim::motion::cpu::Cpu;
+use og_anim::motion::glue::Statics;
+use og_anim::motion::{Bundle, Inputs, Model};
 
 fn read(path: &str) -> Bundle {
     Bundle::from_safetensors(&std::fs::read(path).unwrap_or_else(|e| panic!("{path}: {e}")))

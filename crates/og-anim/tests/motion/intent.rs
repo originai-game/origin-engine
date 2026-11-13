@@ -4,14 +4,17 @@
 //! on a synthetic skeleton.
 
 use og_anim::Trs;
+use og_anim::motion::contract::{FRAMES, JOINTS, MOTION_FEATURES, Pose};
+use og_anim::motion::intent::{Goal, Motion};
+use og_anim::motion::soma::{RELEASE_FRAMES, Skeleton, plant_feet};
+use og_anim::motion::{Bundle, Model, Request, decode_frame, encode, valid_frames};
 use og_core::glam::{Quat, Vec3};
-use og_motion::contract::{FRAMES, JOINTS, MOTION_FEATURES, Pose};
-use og_motion::intent::{Goal, Motion};
-use og_motion::soma::{RELEASE_FRAMES, Skeleton, plant_feet};
-use og_motion::{Bundle, Model, Request, decode_frame, encode, valid_frames};
 
 fn fixture(name: &str) -> Bundle {
-    let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/tests/motion/fixtures/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    );
     Bundle::from_safetensors(&std::fs::read(&path).unwrap()).unwrap()
 }
 
@@ -311,7 +314,7 @@ fn a_leg_reaching_full_extension_straightens_without_a_pop() {
         let ankle = asset.model_space(p)[24].translation;
         let short = (anchor - hip).length().min(0.9) - (ankle - hip).length();
         assert!(
-            short < 0.9 * og_motion::soma::SOFT_REACH + 1e-4,
+            short < 0.9 * og_anim::motion::soma::SOFT_REACH + 1e-4,
             "frame {f}: {short}"
         );
     }

@@ -1,5 +1,5 @@
 //! The IDL's `motion` module in a build without og-runtime's `motion`
-//! feature: og-motion (the motion model and its pose library) is not
+//! feature: og-anim's `motion` (the motion model and its pose library) is not
 //! linked, and this module stands in for `motion.rs` and `motion/`. Every
 //! `og.motion` call that answers a Result answers [`ABSENT`];
 //! `capabilities` answers no backend with it, `poses` no pose.

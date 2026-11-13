@@ -23,7 +23,7 @@
 //! a displacement of one channel, here the hips height. Reimplemented from
 //! the paper; no code is ported.
 
-use crate::soma::CONTACT;
+use crate::motion::soma::CONTACT;
 
 /// A generated clip's own flight, by its contacts.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -6,10 +6,10 @@
 # wgpu's create_buffer_init maps the buffer at creation, which on the web
 # copies its contents through a JS ArrayBuffer and was most of a large
 # boot's long GPU-process tasks in Chrome (fork s71): a crate that makes
-# GPU buffers writes them with writeBuffer there instead (og-motion's
+# GPU buffers writes them with writeBuffer there instead (og-anim's motion
 # buffer_init; og-render's clippy.toml bans it as well).
 disallowed-methods = [
-  { path = "wgpu::util::DeviceExt::create_buffer_init", reason = "mapped at creation on the web: buffer_init (og-render, og-motion)" },
+  { path = "wgpu::util::DeviceExt::create_buffer_init", reason = "mapped at creation on the web: buffer_init (og-render, og-anim motion)" },
   { path = "f32::sin", reason = "host libm: og_core::math::sin" },
   { path = "f32::cos", reason = "host libm: og_core::math::cos" },
   { path = "f32::sin_cos", reason = "host libm: og_core::math::sin_cos" },

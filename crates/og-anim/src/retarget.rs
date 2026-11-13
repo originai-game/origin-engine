@@ -5,7 +5,7 @@
 //!   humanoid bones ([`HUMAN_BONES`]), detected from the node names of the
 //!   common naming schemes ([`SCHEMES`]: Mixamo, VRM, Unity's humanoid,
 //!   Blender Rigify, Unreal's mannequin, plain Blender names, NVIDIA's SOMA,
-//!   the skeleton og-motion generates) or written in
+//!   the skeleton og.motion generates) or written in
 //!   a `type rig` .ogt ([`RigAsset`]), which can also name the scheme and
 //!   override single bones.
 //! - [`retarget`]: a clip of the source rig rewritten for the target rig.
@@ -482,7 +482,7 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
             bone_of(side, part)
         }
         "soma" => {
-            // NVIDIA's SOMA (MotionBricks, og-motion): Spine1, Spine2, Chest,
+            // NVIDIA's SOMA (MotionBricks, og.motion): Spine1, Spine2, Chest,
             // Neck1, LeftLeg (the thigh), LeftShin, LeftToeBase; a finger's 1
             // is its metacarpal (the thumb's is the standard one).
             let (side, rest) = side_prefix(&lower);

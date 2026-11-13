@@ -1,9 +1,9 @@
 //! The generated skeleton for og-anim: SOMA's 30 model joints as a
-//! [`SkeletonAsset`] (`soma` names, which [`og_anim::HumanoidMap`] reads),
+//! [`SkeletonAsset`] (`soma` names, which [`crate::HumanoidMap`] reads),
 //! generated poses as its local transforms, feet planted by contacts (and,
 //! given the ground, put down on it and stepped), and a run of frames as a
 //! [`ClipAsset`] that
-//! [`og_anim::retarget`] puts on a game's rig.
+//! [`crate::retarget`] puts on a game's rig.
 //!
 //! The rest pose is the bundle's `skeleton.*` tensors (og-motion-train's
 //! `scripts/export.py`): each joint's parent among the 30 and its local rest
@@ -12,11 +12,11 @@
 //! on the rest bone lengths (the model's own joint positions agree with them
 //! within its error, and a skeleton cannot stretch).
 
-use og_anim::{Channel, ChannelPath, ClipAsset, NONE, SkeletonAsset, SkeletonNode, Trs, two_bone};
+use crate::{Channel, ChannelPath, ClipAsset, NONE, SkeletonAsset, SkeletonNode, Trs, two_bone};
 use og_core::glam::{Mat3 as GMat3, Quat, Vec3 as GVec3};
 
-use crate::bundle::{Bundle, BundleError};
-use crate::contract::{JOINT_NAMES, JOINTS, Mat3, Pose, SAMPLE_RATE};
+use crate::motion::bundle::{Bundle, BundleError};
+use crate::motion::contract::{JOINT_NAMES, JOINTS, Mat3, Pose, SAMPLE_RATE};
 
 /// A contact above this is the foot on the ground.
 pub const CONTACT: f32 = 0.5;

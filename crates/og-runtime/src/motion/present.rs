@@ -55,7 +55,7 @@
 //!    [`MAX_OFFSET`]), retargeted to its rig (`og_anim::retarget`), its
 //!    feet planted in the world where the pose shows them on the ground
 //!    (never the model's contact channel) and stepped when left behind
-//!    (`og_motion::soma::Planter`), as the joint palette of its
+//!    (`og_anim::motion::soma::Planter`), as the joint palette of its
 //!    og.Skeleton's skin.
 //!
 //! Presentation only: nothing here writes the world, and nothing the tick
@@ -70,20 +70,22 @@ use crate::engine::{Engine, hooks};
 use crate::extract::rows;
 use crate::wire::{FromJson, record};
 use glam::{Mat4, Vec3};
-use og_anim::{HumanoidMap, NONE, Pose as AnimPose, RetargetOptions, SkeletonAsset, Trs};
-use og_core::IdMap;
-use og_motion::Bundle;
-use og_motion::contract::{
+use og_anim::motion::Bundle;
+use og_anim::motion::contract::{
     BOUNDARY_FRAMES, FRAMES, MAX_TOKENS, MIN_TOKENS, MOTION_FEATURES, POSES_PER_TOKEN,
 };
-use og_motion::contract::{LEFT_LEG, Pose, RIGHT_LEG, heading};
-use og_motion::cpu::{Cpu, Job};
-use og_motion::flight;
-use og_motion::glue::{Statics, StudentOutput, decoder_inputs, finish_character, student_inputs};
-use og_motion::gpu::{Gpu, GpuError};
-use og_motion::intent::{Batch, Frame, Goal, Motion};
-use og_motion::library::{Library, POSES};
-use og_motion::soma::{Leg, Planter, Skeleton};
+use og_anim::motion::contract::{LEFT_LEG, Pose, RIGHT_LEG, heading};
+use og_anim::motion::cpu::{Cpu, Job};
+use og_anim::motion::flight;
+use og_anim::motion::glue::{
+    Statics, StudentOutput, decoder_inputs, finish_character, student_inputs,
+};
+use og_anim::motion::gpu::{Gpu, GpuError};
+use og_anim::motion::intent::{Batch, Frame, Goal, Motion};
+use og_anim::motion::library::{Library, POSES};
+use og_anim::motion::soma::{Leg, Planter, Skeleton};
+use og_anim::{HumanoidMap, NONE, Pose as AnimPose, RetargetOptions, SkeletonAsset, Trs};
+use og_core::IdMap;
 use og_render::wgpu;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -1368,7 +1370,7 @@ fn run_flights(
                     unreachable!("a CPU model's flights are CPU jobs")
                 };
                 if jobs.iter().all(|j| j.left(cpu) == 0) {
-                    done.push((k, Ok(og_motion::cpu::gather(jobs))));
+                    done.push((k, Ok(og_anim::motion::cpu::gather(jobs))));
                 }
             }
         }
@@ -1863,7 +1865,7 @@ fn palette(
                 flight::local_height(local[0].translation.y, foot, r.clearance);
         }
     }
-    let clip = og_motion::soma::clip("motion", &r.soma, &frames);
+    let clip = og_anim::motion::soma::clip("motion", &r.soma, &frames);
     let out = og_anim::retarget(
         &r.soma,
         &r.soma_map,
@@ -1972,7 +1974,7 @@ fn palette(
         .into_iter()
         .enumerate()
     {
-        let down = contacts[contact] > og_motion::soma::CONTACT;
+        let down = contacts[contact] > og_anim::motion::soma::CONTACT;
         if ankle == NONE || !down {
             s.planted[k] = None;
             continue;
@@ -2736,9 +2738,9 @@ mod tests {
     fn jump_clip_lands_on_the_simulations_landing() {
         // Five frames standing, ten in the air, five landed.
         let pose = Pose {
-            positions: [[0.0; 3]; og_motion::contract::JOINTS],
+            positions: [[0.0; 3]; og_anim::motion::contract::JOINTS],
             rotations: [[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-                og_motion::contract::JOINTS],
+                og_anim::motion::contract::JOINTS],
         };
         let frame = |index: u32| Frame {
             pose,
@@ -2885,9 +2887,9 @@ mod tests {
         goals.agents.insert(a.entity, agent);
         let mut s = shown();
         let mut pose = Pose {
-            positions: [[0.0; 3]; og_motion::contract::JOINTS],
+            positions: [[0.0; 3]; og_anim::motion::contract::JOINTS],
             rotations: [[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
-                og_motion::contract::JOINTS],
+                og_anim::motion::contract::JOINTS],
         };
         pose.positions[LEFT_LEG][0] = -0.1;
         pose.positions[RIGHT_LEG][0] = 0.1;
@@ -2974,8 +2976,8 @@ mod tests {
             skeleton: 1,
             skin: 0,
         };
-        let crouch = og_motion::library::index("crouch").unwrap();
-        let wave = og_motion::library::index("wave").unwrap();
+        let crouch = og_anim::motion::library::index("crouch").unwrap();
+        let wave = og_anim::motion::library::index("wave").unwrap();
         for (pose, asked, kept) in [
             (JUMP, None, true),
             (wave, None, true),
@@ -3080,7 +3082,7 @@ mod tests {
             25 | 29 => Vec3::new(0.0, -0.05, 0.12),
             _ => Vec3::new(0.0, 0.12, 0.0),
         };
-        let mut rest: [Trs; og_motion::contract::JOINTS] =
+        let mut rest: [Trs; og_anim::motion::contract::JOINTS] =
             std::array::from_fn(|j| Trs::new(offset(j), glam::Quat::IDENTITY, Vec3::ONE));
         rest[0].translation = Vec3::new(0.0, 1.0, 0.0);
         Skeleton {
@@ -3220,9 +3222,9 @@ mod tests {
         let step = frames(&|k, p| {
             p[22].rotation = glam::Quat::from_rotation_x(-0.25 - 0.02 * k as f32);
         });
-        sys.add_clip(1, og_motion::soma::clip("crouch", &asset, &crouch))
+        sys.add_clip(1, og_anim::motion::soma::clip("crouch", &asset, &crouch))
             .unwrap();
-        sys.add_clip(2, og_motion::soma::clip("step", &asset, &step))
+        sys.add_clip(2, og_anim::motion::soma::clip("step", &asset, &step))
             .unwrap();
         let root = Trs::IDENTITY;
         let ankles = [map.nodes[16], map.nodes[20]].map(|n| n as usize);
@@ -3337,8 +3339,8 @@ mod tests {
         assert_eq!((s.warmup, s.starved), (27, 0));
         let frame = Frame {
             pose: Pose {
-                positions: [[0.0; 3]; og_motion::contract::JOINTS],
-                rotations: [[[0.0; 3]; 3]; og_motion::contract::JOINTS],
+                positions: [[0.0; 3]; og_anim::motion::contract::JOINTS],
+                rotations: [[[0.0; 3]; 3]; og_anim::motion::contract::JOINTS],
             },
             contacts: [0.0; 4],
             tag: 0,

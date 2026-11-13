@@ -34,10 +34,10 @@ use super::wire::{
     MotionStatus, PlaceGoalDesc, PoseGoalDesc, ToJson, WalkGoalDesc,
 };
 use glam::{Quat, Vec3};
+use og_anim::motion::library::{POSES, index as pose_index};
 use og_core::math::{atan2, sin_cos};
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
-use og_motion::library::{POSES, index as pose_index};
 use serde_json::{Value, json};
 use std::any::Any;
 use std::collections::{BTreeMap, VecDeque};

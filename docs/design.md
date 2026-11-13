@@ -505,7 +505,7 @@ A reconnection resets both and requires a new subscription.
   solver (ported to f32 with fixed orders) run in the tick before physics;
   bond health and chunk entities are a state block. Fine debris is visual
   only and never becomes bodies.
-- **Motion generation** (`og.motion`, og-motion): game code queues goals
+- **Motion generation** (`og.motion`, og-anim's `motion`): game code queues goals
   (a pose, a place and heading, a turn, a walk or run, a jump) and the
   engine's motion model, a student distilled from NVIDIA MotionBricks, fills
   in the motion. It runs in Rust with no third-party inference runtime, on

@@ -298,7 +298,7 @@ if (s.ok && s.value.goal === "none") nextBeat();
   og.MotionAgent.rig names. Until the weights are resident, or when they
   fail to load, og.motion.capabilities answers backend none.
 - The model is a 17.6M-parameter student distilled from NVIDIA
-  MotionBricks (og-motion). Its library: idle, walk, run, jump, crouch,
+  MotionBricks. Its library: idle, walk, run, jump, crouch,
   wave, cheer (og.motion.poses).
 - Goals end by fixed rules: walkTo when the mover arrives, pose, place and
   face after their duration; then the next queued goal starts. With

@@ -99,7 +99,7 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
 - Debug draw and debug views (physics, navigation, bounds, LOD, lighting
   terms); development builds only.
 
-**Animation and characters** (`og.anim`, `og.motion`, `og.tween`, `og.path`; og-anim, og-motion, og-tween)
+**Animation and characters** (`og.anim`, `og.motion`, `og.tween`, `og.path`; og-anim, og-tween)
 - Skeletal animation from glTF, blend graphs with layered state machines,
   root motion, two-bone and FABRIK IK, blendshapes, 2D skeletons.
 - Cloth on skinned garments (`og.Garment`), VAT crowds from baked clips
@@ -230,8 +230,8 @@ crates/            Rust workspace
   og-host-node     napi host (origin-engine.node), headless
   og-render        wgpu renderer
   og-render-data   what it draws as cooked data (meshes, textures, materials, terrains, shaders' WGSL), no GPU
-  og-anim          skeletal animation, blend graphs, IK, blendshapes
-  og-motion        generated humanoid motion (CPU and wgpu compute)
+  og-anim          skeletal animation, blend graphs, IK, blendshapes; generated humanoid motion (`motion`:
+                   CPU and wgpu compute)
   og-tween         tweens of reflected fields
   og-timeline      splines and the timeline sequencer
   og-physics       simulation, one directory per mechanism: rigid bodies (rapier2d/rapier3d), characters, vehicles,

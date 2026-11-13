@@ -17,13 +17,13 @@
 
 use std::collections::VecDeque;
 
-use crate::Model;
-use crate::contract::{
+use crate::motion::Model;
+use crate::motion::contract::{
     FRAMES, LEFT_LEG, MOTION_CONTACTS, MOTION_FEATURES, Pose, RIGHT_LEG, Request, encode, heading,
     mat_mul, mat_vec, rot_y, valid_frames,
 };
-use crate::gpu::{Gpu, GpuError};
-use crate::{Alignment, Generation, Inputs, decode_frame};
+use crate::motion::gpu::{Gpu, GpuError};
+use crate::motion::{Alignment, Generation, Inputs, decode_frame};
 
 /// What a character reaches next: one to four consecutive target poses (30
 /// Hz) in the world, and the token counts the generation may take (empty

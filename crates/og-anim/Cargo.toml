@@ -12,7 +12,56 @@ og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-lanes = { path = "../og-lanes" }
 glam = { workspace = true }
+# og.motion (feature `motion`): the weights are a bundle (one safetensors
+# file, the og-motion-train repository's export), parsed here; the model
+# runs in Rust on the CPU (the engine's path, the same bits on every host)
+# and on wgpu compute (an opt-in, the same bits only on one host), with one
+# implementation of everything around the two networks. Builds for
+# wasm32-unknown-unknown.
+wgpu = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+wgpu = { workspace = true, features = ["metal", "vulkan", "dx12"], optional = true }
+
+[target.'cfg(all(target_os = "windows", target_arch = "x86_64", target_env = "msvc"))'.dependencies]
+# The static DXC, as og-render: FXC compiles the kernels in about 30 s.
+wgpu = { workspace = true, features = ["static-dxc"], optional = true }
+
+[features]
+# Motion generation (src/motion.rs, src/motion/): a pose-conditioned
+# humanoid motion model (a student distilled from NVIDIA MotionBricks) run
+# on the CPU and on wgpu compute, with the encoding of world poses into its
+# inputs and the decoding of its motion. Without it og-anim links neither
+# wgpu nor serde.
+motion = ["dep:wgpu", "dep:bytemuck", "dep:serde", "dep:serde_json"]
+
+[dev-dependencies]
+naga = { version = "30.0.1", features = ["wgsl-in", "msl-out", "spv-out", "hlsl-out"] }
+
+# The motion tests and examples block on the GPU; the library never does.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+pollster = { workspace = true }
 
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"
+
+[[test]]
+name = "motion"
+path = "tests/motion/main.rs"
+required-features = ["motion"]
+
+[[example]]
+name = "motion_bench"
+required-features = ["motion"]
+
+[[example]]
+name = "motion_course"
+required-features = ["motion"]
+
+[[example]]
+name = "motion_cpu_bench"
+required-features = ["motion"]

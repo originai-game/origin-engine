@@ -1,8 +1,8 @@
 //! CPU-only experiment, not a runtime path. Inputs are source-locked plans and
 //! recorded poses; outputs are measurements. Never writes a world or an asset.
+use og_anim::motion::contract::Pose;
 use og_anim::{HumanoidMap, NONE, SkeletonAsset, Trs};
 use og_core::glam::{Quat, Vec3, Vec4};
-use og_motion::contract::Pose;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -116,7 +116,7 @@ fn roots(skeleton: &SkeletonAsset, map: &HumanoidMap, poses: &[Vec<Trs>]) -> Vec
                 position: world[map.node("hips").unwrap() as usize]
                     .translation
                     .to_array(),
-                yaw: og_motion::contract::heading(
+                yaw: og_anim::motion::contract::heading(
                     world[map.node("rightUpperLeg").unwrap() as usize]
                         .translation
                         .to_array(),
@@ -178,16 +178,16 @@ fn aligned(
 /// The generated clip on the plan's flight (docs/design.md §2.7, "Jumps"):
 /// retimed so its own takeoff and touchdown (`flight`) fall on the plan's,
 /// its hips at the plan's elevation plus the pose's local height
-/// (`og_motion::flight`). The plan's flight phase is its time fraction,
+/// (`og_anim::motion::flight`). The plan's flight phase is its time fraction,
 /// which is the controller's ballistic phase (v0 − v)/(2 v0) exactly.
 fn on_flight(
     skeleton: &SkeletonAsset,
     map: &HumanoidMap,
     base: &[Vec<Trs>],
     plan: &Plan,
-    flight: og_motion::flight::ClipFlight,
+    flight: og_anim::motion::flight::ClipFlight,
 ) -> Vec<Vec<Trs>> {
-    use og_motion::flight::{JumpTime, local_height, retime};
+    use og_anim::motion::flight::{JumpTime, local_height, retime};
     let hips = map.node("hips").unwrap() as usize;
     let feet = [
         map.node("leftFoot").unwrap() as usize,
@@ -240,7 +240,10 @@ fn on_flight(
 
 /// A clip's own flight by the plan's screen (no foot below 0.15 m of
 /// `scale`), from the first sample of the plan's lead-in.
-fn screened_flight(positions: &[[[f32; 3]; 30]], scale: f32) -> og_motion::flight::ClipFlight {
+fn screened_flight(
+    positions: &[[[f32; 3]; 30]],
+    scale: f32,
+) -> og_anim::motion::flight::ClipFlight {
     let contacts: Vec<[f32; 4]> = positions
         .iter()
         .map(|p| {
@@ -248,7 +251,8 @@ fn screened_flight(positions: &[[[f32; 3]; 30]], scale: f32) -> og_motion::fligh
             [down(24), down(24), down(28), down(28)]
         })
         .collect();
-    og_motion::flight::clip_flight(&contacts, 1, 1).expect("a recorded jump leaves the ground")
+    og_anim::motion::flight::clip_flight(&contacts, 1, 1)
+        .expect("a recorded jump leaves the ground")
 }
 
 /// Model-quality diagnostics only. The full source hips Y is retained here,
@@ -1269,7 +1273,7 @@ fn evaluate(
     plan: &Plan,
     rig: &str,
     review: bool,
-    flight: Option<og_motion::flight::ClipFlight>,
+    flight: Option<og_anim::motion::flight::ClipFlight>,
 ) -> serde_json::Value {
     // Keep the original raw-root baseline and its continuity bound. Neither
     // re-rooting nor the solve may relax that recorded acceptance bound.
@@ -1542,8 +1546,9 @@ fn main() {
     // The superseded contract, for comparison: generated pelvis Y kept.
     let generated_height = args[5..].iter().any(|arg| arg == "--generated-height");
     let input: Input = serde_json::from_slice(&std::fs::read(&args[1]).unwrap()).unwrap();
-    let bundle = og_motion::Bundle::from_safetensors(&std::fs::read(&args[2]).unwrap()).unwrap();
-    let soma = og_motion::soma::Skeleton::from_bundle(&bundle).unwrap();
+    let bundle =
+        og_anim::motion::Bundle::from_safetensors(&std::fs::read(&args[2]).unwrap()).unwrap();
+    let soma = og_anim::motion::soma::Skeleton::from_bundle(&bundle).unwrap();
     let skeleton = soma.asset();
     let map = HumanoidMap::with_scheme(&skeleton, "soma").unwrap();
     let target = traveller(&args[3]);
@@ -1559,7 +1564,7 @@ fn main() {
             .iter()
             .map(|p| Root {
                 position: p[0],
-                yaw: og_motion::contract::heading(p[26], p[22]),
+                yaw: og_anim::motion::contract::heading(p[26], p[22]),
             })
             .collect();
         let generated: Vec<_> = recording
@@ -1567,7 +1572,7 @@ fn main() {
             .iter()
             .map(|p| Root {
                 position: p[0],
-                yaw: og_motion::contract::heading(p[26], p[22]),
+                yaw: og_anim::motion::contract::heading(p[26], p[22]),
             })
             .collect();
         let model_drift = drift(&generated, &source);
@@ -1613,7 +1618,7 @@ fn main() {
         result["generated_flight"] = json!(flight.map(|f| [Some(f.takeoff), f.touchdown]));
         result["model_root_drift_soma"] = model_drift.clone();
         results.push(result);
-        let clip = og_motion::soma::clip("recorded", &skeleton, &base);
+        let clip = og_anim::motion::soma::clip("recorded", &skeleton, &base);
         let output = og_anim::retarget(
             &skeleton,
             &map,
@@ -1682,7 +1687,7 @@ fn main() {
         "root_provenance": if generated_height {
             "Ground-projected source hips [x,0,z] and source yaw stand in for controller root; generated pelvis Y unchanged. Horizontal/yaw correction only."
         } else {
-            "Ground-projected source hips [x,0,z] and source yaw stand in for controller root; the source's lowest foot above its clearance stands in for controller elevation; the generated clip is retimed onto the plan's flight and drawn in place (og_motion::flight)."
+            "Ground-projected source hips [x,0,z] and source yaw stand in for controller root; the source's lowest foot above its clearance stands in for controller elevation; the generated clip is retimed onto the plan's flight and drawn in place (og_anim::motion::flight)."
         },
         "original_library_training_jump_windows":0,
         "world_replay": hash_replay(),

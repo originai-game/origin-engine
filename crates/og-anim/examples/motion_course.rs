@@ -4,7 +4,7 @@
 //! skeleton with its feet planted, which a model's `animation { library }`
 //! retargets onto its rig at cook time.
 //!
-//!     cargo run --release -p og-motion --example course -- <bundle> <course.safetensors> <out.json> [out.glb]
+//!     cargo run --release -p og-anim --features motion --example motion_course -- <bundle> <course.safetensors> <out.json> [out.glb]
 //!
 //! A course (og-motion-train's `scripts/demo_course.py`) holds one
 //! character's four context poses (`context_positions` [4,30,3],
@@ -15,12 +15,12 @@
 
 use std::time::Instant;
 
+use og_anim::motion::contract::{JOINTS, Pose};
+use og_anim::motion::gpu::Gpu;
+use og_anim::motion::intent::{Goal, Motion};
+use og_anim::motion::soma::{self, Skeleton};
+use og_anim::motion::{Bundle, read_safetensors};
 use og_anim::{ChannelPath, ClipAsset, SkeletonAsset};
-use og_motion::contract::{JOINTS, Pose};
-use og_motion::gpu::Gpu;
-use og_motion::intent::{Goal, Motion};
-use og_motion::soma::{self, Skeleton};
-use og_motion::{Bundle, read_safetensors};
 
 fn poses(positions: &[f32], rotations: &[f32], first: usize, count: usize) -> Vec<Pose> {
     (first..first + count)

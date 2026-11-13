@@ -32,6 +32,8 @@ mod graph;
 mod graph2d;
 mod ik;
 mod machine;
+#[cfg(feature = "motion")]
+pub mod motion;
 mod pose;
 mod retarget;
 mod rig2d;

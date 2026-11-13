@@ -1,5 +1,5 @@
 //! The student and the decoder on wgpu compute: the shipping path, the
-//! same functions as [`crate::cpu`] (its tests compare the two).
+//! same functions as [`crate::motion::cpu`] (its tests compare the two).
 //!
 //! [`Gpu::new`] takes the caller's device (og-render's, beside which the
 //! model runs) and uploads the weights once, f32. Each network is one
@@ -14,14 +14,14 @@ use std::task::{Context, Poll, Waker};
 
 use wgpu::util::DeviceExt;
 
-use crate::bundle::{Bundle, BundleError, Config};
-use crate::contract::{COUNTS, FRAMES, MAX_TOKENS, SLOTS};
-use crate::cpu::{CONDITION_ROWS, SEQUENCE, argmax, check_config, tensor_shapes};
-use crate::glue::{
+use crate::motion::bundle::{Bundle, BundleError, Config};
+use crate::motion::contract::{COUNTS, FRAMES, MAX_TOKENS, SLOTS};
+use crate::motion::cpu::{CONDITION_ROWS, SEQUENCE, argmax, check_config, tensor_shapes};
+use crate::motion::glue::{
     CODES, DecoderInputs, HEADS, LOCAL_FEATURES, SLOT_FEATURES, Statics, StudentInputs,
     StudentOutput, TARGET_FEATURES, decoder_inputs, finish, student_inputs,
 };
-use crate::{Generation, Inputs};
+use crate::motion::{Generation, Inputs};
 
 /// A buffer holding `desc.contents`, as `create_buffer_init` makes it; on
 /// the web (fork s71, as og-render's `buffer_init`) created unmapped and
@@ -700,7 +700,7 @@ impl Gpu {
         })
     }
 
-    /// Generates motion for encoded inputs: [`crate::Model::generate`] on the GPU.
+    /// Generates motion for encoded inputs: [`crate::motion::Model::generate`] on the GPU.
     pub async fn generate(&mut self, inputs: &Inputs) -> Result<Generation, GpuError> {
         let student = self.student(&student_inputs(&self.statics, inputs)).await?;
         let local = self

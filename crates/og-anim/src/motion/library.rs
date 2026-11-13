@@ -9,8 +9,8 @@
 //! `poses.positions` `[n,30,3]` and `poses.rotations` `[n,30,3,3]` (every
 //! pose's frames one after another).
 
-use crate::bundle::{Bundle, BundleError};
-use crate::contract::{JOINTS, Pose};
+use crate::motion::bundle::{Bundle, BundleError};
+use crate::motion::contract::{JOINTS, Pose};
 
 /// The library's poses, in the bundle's order.
 pub const POSES: [&str; 7] = ["idle", "walk", "run", "jump", "crouch", "wave", "cheer"];

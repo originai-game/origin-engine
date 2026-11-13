@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/og-core", "crates/og-env", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-draw", "crates/og-render-data", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics-data", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-story", "crates/og-motion", "crates/og-i18n", "crates/og-net", "crates/og-css", "crates/og-text", "crates/og-ui-model", "crates/og-rive", "crates/og-reactive", "crates/og-ui-core", "crates/og-ui", "crates/og-video", "crates/og-video-wasm", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-sccache-wrap", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-ui", "crates/og-tests-web"]
+members = ["crates/og-core", "crates/og-env", "crates/og-geom", "crates/og-core-derive", "crates/og-ecs", "crates/og-lanes", "crates/og-api", "crates/og-records", "crates/og-idl", "crates/og-runtime", "crates/og-draw", "crates/og-render-data", "crates/og-render", "crates/og-bake", "crates/og-cook", "crates/og-bundle", "crates/og-blob", "crates/og-probe", "crates/og-input", "crates/og-physics-data", "crates/og-physics", "crates/og-anim", "crates/og-tween", "crates/og-timeline", "crates/og-tilemap", "crates/og-audio", "crates/og-nav", "crates/og-ai", "crates/og-story", "crates/og-i18n", "crates/og-net", "crates/og-css", "crates/og-text", "crates/og-ui-model", "crates/og-rive", "crates/og-reactive", "crates/og-ui-core", "crates/og-ui", "crates/og-video", "crates/og-video-wasm", "crates/og-host-web", "crates/og-host-node", "crates/og-cli", "crates/og-sccache-wrap", "crates/og-tests", "crates/og-tests-cooked", "crates/og-tests-ui", "crates/og-tests-web"]
 
 # A vendored dependency, patched in below; not a member (no fmt, clippy or tests of ours).
 exclude = ["third_party"]
@@ -43,11 +43,12 @@ debug = false
 # tests/evidence/P4/parity/). wgpu-hal's messages are wgpu's to verify.
 [profile.dev.package.objc2]
 debug-assertions = false
-# og.motion's model runs on the CPU every tick (crates/og-motion/src/cpu.rs):
+# og.motion's model runs on the CPU every tick (crates/og-anim/src/motion/cpu.rs):
 # about 1 GFLOP a generation, 40 ms optimised and seconds at opt-level 0,
 # which every test with a motion agent would wait for.
-[profile.dev.package.og-motion]
+[profile.dev.package.og-anim]
 opt-level = 3
+codegen-units = 16
 
 # Native shipping and explicit native performance runs. Never used for
 # tests, drift or the gate's addon; shipping wasm uses profile.wasm below.
@@ -65,7 +66,7 @@ lto = false
 codegen-units = 16
 incremental = true
 debug = false
-[profile.wasm-test.package.og-motion]
+[profile.wasm-test.package.og-anim]
 opt-level = 3
 
 # Shipping bindgen wasm, measured directly by the size gate: release at
@@ -112,11 +113,9 @@ opt-level = 3
 # The draw commands (og-render's before the split): the UI writes them every frame.
 [profile.wasm.package.og-draw]
 opt-level = 3
+# og.motion's per-frame decode, retargeting and foot plant are in it too
+# (the coordinator, 2026-11-02; the size gate measures it).
 [profile.wasm.package.og-anim]
-opt-level = 3
-# og.motion's per-frame decode, retargeting and foot plant (the coordinator,
-# 2026-11-02; the size gate measures it).
-[profile.wasm.package.og-motion]
 opt-level = 3
 [profile.wasm.package.og-lanes]
 opt-level = 3
@@ -349,8 +348,6 @@ codegen-units = 16
 [profile.dev.package.og-idl]
 codegen-units = 16
 [profile.dev.package.og-probe]
-codegen-units = 16
-[profile.dev.package.og-anim]
 codegen-units = 16
 [profile.dev.package.og-audio]
 codegen-units = 16

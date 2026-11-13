@@ -3,11 +3,14 @@
 //! NVIDIA number) and three characters with one, two and four targets and
 //! different allowed token counts.
 
-use og_motion::contract::{FRAMES, JOINTS, MOTION_FEATURES, POSE_FEATURES, Pose, SLOTS};
-use og_motion::{Bundle, Inputs, Model, Request, encode, valid_frames};
+use og_anim::motion::contract::{FRAMES, JOINTS, MOTION_FEATURES, POSE_FEATURES, Pose, SLOTS};
+use og_anim::motion::{Bundle, Inputs, Model, Request, encode, valid_frames};
 
 fn fixture(name: &str) -> Bundle {
-    let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/tests/motion/fixtures/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    );
     Bundle::from_safetensors(&std::fs::read(&path).unwrap()).unwrap()
 }
 

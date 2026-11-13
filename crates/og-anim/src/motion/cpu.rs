@@ -13,11 +13,11 @@
 
 use og_core::math::exp;
 
-use crate::bundle::Bundle;
-use crate::bundle::{BundleError, Config};
-use crate::contract::{COUNTS, FRAMES, Inputs, MAX_TOKENS, SLOTS};
-use crate::glue::{CODES, HEADS, LOCAL_FEATURES, SLOT_FEATURES, TARGET_FEATURES};
-use crate::glue::{DecoderInputs, Statics, StudentInputs, StudentOutput};
+use crate::motion::bundle::Bundle;
+use crate::motion::bundle::{BundleError, Config};
+use crate::motion::contract::{COUNTS, FRAMES, Inputs, MAX_TOKENS, SLOTS};
+use crate::motion::glue::{CODES, HEADS, LOCAL_FEATURES, SLOT_FEATURES, TARGET_FEATURES};
+use crate::motion::glue::{DecoderInputs, Statics, StudentInputs, StudentOutput};
 
 /// Lanes of [`dot`]'s accumulator.
 const LANES: usize = 8;
@@ -539,7 +539,7 @@ impl Cpu {
     pub fn job(&self, statics: &Statics, inputs: Inputs) -> Job {
         assert_eq!(inputs.n, 1, "a job is one character's generation");
         let width = self.config.student.width;
-        let student_inputs = crate::glue::student_inputs(statics, &inputs);
+        let student_inputs = crate::motion::glue::student_inputs(statics, &inputs);
         let slot_tokens = linear(
             &student_inputs.slots,
             SLOTS,
@@ -672,7 +672,7 @@ impl Cpu {
         student.tokens = (0..MAX_TOKENS * HEADS)
             .map(|t| argmax(pose[t * CODES..(t + 1) * CODES].iter().copied()) as u32)
             .collect();
-        let inputs = crate::glue::decoder_inputs(statics, &job.inputs, student);
+        let inputs = crate::motion::glue::decoder_inputs(statics, &job.inputs, student);
         let mask = inputs.token_mask[..MAX_TOKENS].to_vec();
         let mut x = inputs.codes[..160 * MAX_TOKENS].to_vec();
         masked(&mut x, &mask);

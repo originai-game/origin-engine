@@ -1,4 +1,4 @@
-# og-motion
+# og-anim motion (`og_anim::motion`, feature `motion`)
 
 Motion generation for humanoids (`docs/design.md` §2.7): a
 pose-conditioned motion model, a 17.6M-parameter student distilled from
@@ -8,26 +8,26 @@ returns the motion between them: 6 to 16 tokens of four frames at 30 Hz,
 with per-frame foot contacts. Its poses are presentation (§2.4).
 
 ```rust
-let bundle = og_motion::Bundle::from_safetensors(&bytes)?;
-let model = og_motion::Model::new(&bundle)?;                 // CPU (the `reference` feature)
+let bundle = og_anim::motion::Bundle::from_safetensors(&bytes)?;
+let model = og_anim::motion::Model::new(&bundle)?;                 // CPU (the `reference` feature)
 let (generation, alignments) = model.generate_requests(&requests);
-let pose = og_motion::decode_frame(generation.frame(0, 10), &alignments[0]);
+let pose = og_anim::motion::decode_frame(generation.frame(0, 10), &alignments[0]);
 
-let gpu = og_motion::gpu::Gpu::new(device, queue, &bundle)?; // wgpu compute
-let student = gpu.student(&og_motion::glue::student_inputs(&statics, &inputs)).await?;
+let gpu = og_anim::motion::gpu::Gpu::new(device, queue, &bundle)?; // wgpu compute
+let student = gpu.student(&og_anim::motion::glue::student_inputs(&statics, &inputs)).await?;
 
 // The intent API: goals per character, generated in batches, chained.
-let mut motion = og_motion::intent::Motion::default();
+let mut motion = og_anim::motion::intent::Motion::default();
 let hero = motion.add(recent_four_frames);
 motion.push(hero, Goal::placed(&library_pose, [x, z], heading));
 motion.generate_gpu(&mut gpu, 30).await?;                    // characters with < 30 frames queued
 let frame = motion.pop(hero);                                // a world pose and its foot contacts
 
 // On a game's rig: SOMA as og-anim's skeleton, feet planted, retargeted.
-let skeleton = og_motion::soma::Skeleton::from_bundle(&bundle)?;
+let skeleton = og_anim::motion::soma::Skeleton::from_bundle(&bundle)?;
 let mut local: Vec<_> = frames.iter().map(|p| skeleton.local(p)).collect();
-og_motion::soma::plant_feet(&skeleton.asset(), &mut local, &contacts);
-let clip = og_motion::soma::clip("walk", &skeleton.asset(), &local);
+og_anim::motion::soma::plant_feet(&skeleton.asset(), &mut local, &contacts);
+let clip = og_anim::motion::soma::clip("walk", &skeleton.asset(), &local);
 let on_rig = og_anim::retarget(&skeleton.asset(), &HumanoidMap::detect(&skeleton.asset()), &rig, &rig_map, &clip, &Default::default())?;
 ```
 
@@ -58,8 +58,8 @@ any redistribution. No weights are in this repository.
 
 ## Checks
 
-- `tests/reference.rs`: `encode` and the CPU path against og-motion-train's
-  numpy specification (`ogm/reference.py`) on `tests/fixtures/`, a random
+- `tests/motion/reference.rs`: `encode` and the CPU path against og-motion-train's
+  numpy specification (`ogm/reference.py`) on `tests/motion/fixtures/`, a random
   32-wide bundle and three synthetic characters with different token counts
   (written by `scripts/make_fixture.py`; no trained, captured or NVIDIA
   number in it). Tokens and counts equal, motion within 1e-3.
@@ -74,7 +74,7 @@ any redistribution. No weights are in this repository.
 
 ## Licensing of the weights
 
-- The test fixtures (`tests/fixtures/`) hold no trained, captured or NVIDIA
+- The test fixtures (`tests/motion/fixtures/`) hold no trained, captured or NVIDIA
   number: og-motion-train's `scripts/make_fixture.py` writes them from a
   fixed seed (random weights, codebook, statistics and offsets; synthetic
   poses), and a rerun gives the same bytes.

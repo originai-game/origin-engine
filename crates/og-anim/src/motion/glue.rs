@@ -11,8 +11,8 @@
 
 use og_core::math::{atan2, sin_cos};
 
-use crate::bundle::{Bundle, BundleError};
-use crate::contract::{
+use crate::motion::bundle::{Bundle, BundleError};
+use crate::motion::contract::{
     FRAMES, Inputs, JOINTS, MAX_TOKENS, MOTION_FEATURES, POSE_FEATURES, POSES_PER_TOKEN,
     SAMPLE_RATE, SLOTS, mat_mul, rotation_from_6d, rotation_to_6d, transpose,
 };

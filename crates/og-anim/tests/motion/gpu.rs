@@ -3,13 +3,16 @@
 //! Tokens and counts must be equal; the motion agrees
 //! within float reordering.
 
-use og_motion::contract::{FRAMES, MOTION_FEATURES};
-use og_motion::glue::{Statics, decoder_inputs, finish, student_inputs};
-use og_motion::gpu::Gpu;
-use og_motion::{Bundle, Inputs, Model, valid_frames};
+use og_anim::motion::contract::{FRAMES, MOTION_FEATURES};
+use og_anim::motion::glue::{Statics, decoder_inputs, finish, student_inputs};
+use og_anim::motion::gpu::Gpu;
+use og_anim::motion::{Bundle, Inputs, Model, valid_frames};
 
 fn fixture(name: &str) -> Bundle {
-    let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/tests/motion/fixtures/{name}",
+        env!("CARGO_MANIFEST_DIR")
+    );
     Bundle::from_safetensors(&std::fs::read(&path).unwrap()).unwrap()
 }
 
