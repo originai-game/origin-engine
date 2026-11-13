@@ -229,11 +229,11 @@ split, and the lowest such crate is its cause.
 | `drift` | The dev `og api check` checks generated declarations, wiki, schema and Rust glue against the IDL. | quick, full |
 | `bun-quick` | Non-engine package tests, without rebuilding native artifacts. | quick, full |
 | `wasm-lanes-check` | `scripts/wasm-lanes.sh check` of each `lanes` variant in `scripts/wasm-crates.txt` whenever og-render, og-host-web or a crate they depend on changes, because under atomics wgpu's web types are not Send. | quick, full |
-| `wasm-build` | Build `scripts/wasm-crates.txt` variants in `wasm-test` for the cross-host, publish and lanes tests into `target/og-wasm/raw`. | full |
+| `wasm-build` | Build `scripts/wasm-crates.txt` modules in `wasm-test` into `target/og-wasm/raw`. `OG_WASM_VARIANTS` picks them: `dev` (the development module alone: bun-test's cross-host tests, a landing), `reference` (adds the 3D publish pair, web-reference alone), `all` (every publish and lanes variant: a run with `browser`, and `scripts/release-wasm.sh`). Tests that load a publish or lanes module skip without one. | full |
 | `wasm-bindgen` | Bindgen-only modules for all variants in `target/og-wasm/dev`. `dev-all.txt` lists every module; `dev.txt` selects publish and lanes variants. | full, web-reference prerequisite |
 | `size-gate` | Brotli-11 bytes of each shipping-profile bindgen module in `dev.txt`, checked against `wasm_core_brotli_bytes` before packing. | release only |
 | `bun-test` | Package tests and typechecks using the dev addon and gate-produced wasm (`OG_GATE=1`). | full |
-| `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton. | full |
+| `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton; needs only the native `og`, so `--only fixtures` builds no wasm. | full |
 | `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed. | full |
 | `web-reference` | Headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3), compared under unchanged tolerances. | explicit |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |

@@ -38,6 +38,10 @@ declare const Bun: {
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
+// A landing's gate builds no publish or lanes module (OG_WASM_VARIANTS=dev,
+// docs/ci.md §Lanes): what loads one skips there and runs in the full lane
+// and release packing.
+const NO_PUBLISH_WASM = !existsSync(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"));
 const repo = join(pkg, "..", "..");
 const root = join(repo, "target", "evidence", "asset-stream", "project");
 const evidence = join(repo, "target", "evidence", "asset-stream");
@@ -434,7 +438,7 @@ test("what is resident never changes the simulation: the same flight hashes the 
   expect(fly(0)).toBe(fly(undefined));
 });
 
-test("og build --publish ships each group as its pack beside the first group, and precaches only the first group", async () => {
+test.skipIf(NO_PUBLISH_WASM)("og build --publish ships each group as its pack beside the first group, and precaches only the first group", async () => {
   // What each group takes once loaded, from the runtime, to hold the build's manifest to.
   const engine = start(false);
   const runtime = Object.fromEntries(budget(engine).groups.map((g) => [g.name, g.memory]));

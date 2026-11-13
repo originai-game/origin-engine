@@ -29,7 +29,7 @@
 //   `then` steps → "og test keeps the local store across a playtest's
 //   processes …" (tests/fixtures/relaunch)
 import { expect, test } from "bun:test";
-import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ogBin } from "./support/og-bin.ts";
 import { fileURLToPath } from "node:url";
@@ -44,6 +44,10 @@ declare const Bun: {
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
+// A landing's gate builds no publish or lanes module (OG_WASM_VARIANTS=dev,
+// docs/ci.md §Lanes): what loads one skips there and runs in the full lane
+// and release packing.
+const NO_PUBLISH_WASM = !existsSync(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"));
 
 function run<T = Record<string, unknown>>(host: string, which: string): T {
   const r = Bun.spawnSync(["bun", "tests/support/core-round.ts", "--host", host, "--case", which], { cwd: pkg });
@@ -148,7 +152,7 @@ test.skipIf(STALE_WASM)("an undeclared access throws with the system and the rec
   }
 }, 120_000);
 
-test.skipIf(STALE_WASM)("a publish build refuses an undeclared access and logs it once per system, and the game keeps running", () => {
+test.skipIf(STALE_WASM || NO_PUBLISH_WASM)("a publish build refuses an undeclared access and logs it once per system, and the game keeps running", () => {
   const r = run<Undeclared>("publish", "undeclared");
   for (const [kind, [system, record, list]] of Object.entries(NAMES)) {
     const a = r[kind as keyof Undeclared];

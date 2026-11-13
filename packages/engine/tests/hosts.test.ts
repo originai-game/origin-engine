@@ -3,7 +3,7 @@
 // addon and on the wasm module. Each host runs in its own process.
 import { fileURLToPath } from "node:url";
 import { expect, test } from "bun:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -15,6 +15,10 @@ const STALE_WASM = process.env.OG_WASM_STALE === "1";
 declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
+// A landing's gate builds no publish or lanes module (OG_WASM_VARIANTS=dev,
+// docs/ci.md §Lanes): what loads one skips there and runs in the full lane
+// and release packing.
+const NO_PUBLISH_WASM = !existsSync(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"));
 
 test("development digests agree across hosts and native lanes actually execute in parallel", () => {
   const run = (host: string, lanes: string) => {
@@ -172,7 +176,7 @@ test.skipIf(STALE_WASM)("tweens, presets, hit stop, slow motion and camera feel 
 // restored natively has the native world's hash (a publish module has no
 // world dump of its own). And it refuses a world of the other profile.
 for (const profile of ["3d", "2d"] as const) {
-  test.skipIf(STALE_WASM)(`the ${profile} lanes module steps a ${profile} physics scene to the native world, on one thread and on four Workers, and refuses the other profile`, () => {
+  test.skipIf(STALE_WASM || NO_PUBLISH_WASM)(`the ${profile} lanes module steps a ${profile} physics scene to the native world, on one thread and on four Workers, and refuses the other profile`, () => {
     const dir = mkdtempSync(join(tmpdir(), "og-lanes-profile-"));
     for (const [bodies, threads] of [["64", null], ["1024", "4"]] as const) {
       const node = physics("node", "--profile", profile, "--bodies", bodies, "--snapshot");

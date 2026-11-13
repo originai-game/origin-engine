@@ -150,16 +150,23 @@ EOF_LANES
   done
 }
 
+# OG_WASM_VARIANTS picks the modules beside the development one, which every
+# build makes: `all` (the default: release packing, release-wasm.sh, and a
+# gate run with the browser step) adds every publish and lanes variant;
+# `reference` (web-reference alone) only the 3D publish pair its panic check
+# loads; `dev` (a landing's bun-test) none (docs/ci.md §Lanes).
 step_wasm_build() {
+  local variants="${OG_WASM_VARIANTS:-all}"
+  case "$variants" in all|reference|dev) ;; *) og_err "OG_WASM_VARIANTS must be all, reference or dev, not '$variants'"; return 1 ;; esac
   if outputs_exist "$OG_WASM_OUT/built.txt" \
       && [ "$(cat "$OG_WASM_OUT/profile" 2>/dev/null)" = "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" ] \
-      && [ "$(cat "$OG_WASM_OUT/reference-only" 2>/dev/null)" = "${OG_WASM_REFERENCE_ONLY:-0}" ] \
+      && [ "$(cat "$OG_WASM_OUT/variants" 2>/dev/null)" = "$variants" ] \
       && skip_unchanged wasm-build "wasm-build (reusing $OG_WASM_OUT/raw)" "$(rule_wasm)"; then
     return $SKIP
   fi
   rm -rf "$OG_WASM_OUT"; mkdir -p "$OG_WASM_OUT"; : > "$OG_WASM_OUT/built.txt"
   printf '%s\n' "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" > "$OG_WASM_OUT/profile"
-  printf '%s\n' "${OG_WASM_REFERENCE_ONLY:-0}" > "$OG_WASM_OUT/reference-only"
+  printf '%s\n' "$variants" > "$OG_WASM_OUT/variants"
   if ! rustup target list --installed 2>/dev/null | grep -qx "$WASM_TRIPLE"; then
     og_err "rust target $WASM_TRIPLE is not installed (rust-toolchain.toml lists it; run 'rustup target add $WASM_TRIPLE')"
     return 1
@@ -172,12 +179,12 @@ step_wasm_build() {
     return 0
   fi
   (
-  export CARGO_BUILD_JOBS=1
   if [ -n "$required" ]; then
     og_say "required: $(printf '%s\n' "$required" | og_words)"
     # shellcheck disable=SC2086
     wasm_build "" "" $required || return 1
   fi
+  [ "$variants" != dev ] || exit 0
   local v vname vfeat
   for c in $(og_wasm_publish_crates); do
     v="$(og_wasm_variants "$c")"
@@ -187,7 +194,7 @@ step_wasm_build() {
       continue
     fi
     while read -r vname vfeat; do
-      [ "${OG_WASM_REFERENCE_ONLY:-0}" != 1 ] || [ "$vname" != publish2d ] || continue
+      [ "$variants" != reference ] || [ "$vname" != publish2d ] || continue
       og_say "publish variant $vname: $c (--no-default-features --features $vfeat)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_VARIANTS
@@ -197,7 +204,7 @@ EOF_VARIANTS
   ) > "$OG_WASM_OUT/normal.log" 2>&1 &
   local normal_pid=$!
   (
-  export CARGO_BUILD_JOBS=1
+  [ "$variants" != dev ] || exit 0
   for c in $(og_wasm_lanes_crates); do
     v="$(og_wasm_lanes_variants "$c")"
     if [ -z "$v" ]; then
@@ -207,7 +214,7 @@ EOF_VARIANTS
     fi
     # One lanes module per game profile (scripts/wasm-crates.txt `lanes`).
     while read -r vname vfeat; do
-      [ "${OG_WASM_REFERENCE_ONLY:-0}" != 1 ] || [ "$vname" != lanes2d ] || continue
+      [ "$variants" != reference ] || [ "$vname" != lanes2d ] || continue
       og_say "lanes variant $vname: $c (--no-default-features --features $vfeat, wasm atomics: scripts/wasm-lanes.sh)"
       wasm_build "$vname" "-$(printf '%s' "$vfeat" | tr ',' '\n' | sed "s|^|$c/|" | paste -sd, -)" "$c" || return 1
     done <<EOF_LANES

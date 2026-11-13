@@ -15,8 +15,9 @@ NEEDS = {
     'drift': ('rust-build',), 'bun-quick': (),
     'wasm-lanes-check': (), 'wasm-build': (), 'wasm-bindgen': ('wasm-build',),
     'bun-test': ('rust-cpu', 'rust-gpu', 'wasm-bindgen', 'bun-quick'),
-    'fixtures': ('bun-test',), 'doc-tests': ('rust-cpu',),
-    'browser': ('fixtures',),
+    # Fixtures run the native og alone: a fixtures-only run builds no wasm.
+    'fixtures': ('rust-build',), 'doc-tests': ('rust-cpu',),
+    'browser': ('bun-test', 'fixtures'),
     'web-reference': ('wasm-bindgen', 'rust-build'),
     'check-conformance': (),
 }
@@ -75,8 +76,10 @@ def main():
     env = dict(os.environ, GATE_LOGS=str(logs), OG_GATE_LANE=lane,
                FORCE_ALL=str(int(force)), OG_GATE_ALL='1' if lane == 'full' or force else '',
                OG_WASM_PROFILE='wasm-test', PYTHONUNBUFFERED='1')
-    # Only the publish panic check needs shipping-shaped modules here, in 3D.
-    env['OG_WASM_REFERENCE_ONLY'] = '1' if 'web-reference' in wanted and not wanted.intersection({'bun-test', 'fixtures', 'browser'}) else '0'
+    # The wasm beside the development module (commands.sh step_wasm_build):
+    # the browser tests load every publish and lanes variant, web-reference's
+    # panic check the 3D publish pair, and bun-test (a landing) none of them.
+    env['OG_WASM_VARIANTS'] = 'all' if 'browser' in wanted else 'reference' if 'web-reference' in wanted else 'dev'
     env.pop('OG_WASM_STALE', None)
     # Capture Cargo's authoritative graph once per run, before parallel readers.
     with (logs / 'cargo.json').open('w') as out:

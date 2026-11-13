@@ -29,13 +29,17 @@ import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@or
 import type { Entity, World } from "@origingame/engine";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 
 const STALE_WASM = process.env.OG_WASM_STALE === "1";
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
+// A landing's gate builds no publish or lanes module (OG_WASM_VARIANTS=dev,
+// docs/ci.md §Lanes): what loads one skips there and runs in the full lane
+// and release packing.
+const NO_PUBLISH_WASM = !existsSync(join(pkg, "dist", "web-publish", "origin-engine_bg.wasm"));
 
 declare const Bun: {
   spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
@@ -286,12 +290,13 @@ function round(host: string, ...args: string[]): Round {
 test.skipIf(STALE_WASM)("one world saves to the same text on both hosts, publish included, and each host's save restores on the other to the saved hash", () => {
   const node = round("node");
   const web = round("web");
-  const publish = round("publish");
   expect(web.save).toBe(node.save);
-  expect(publish.save).toBe(node.save);
+  if (!NO_PUBLISH_WASM) expect(round("publish").save).toBe(node.save);
   expect(web.hash).toBe(node.hash);
   const dir = mkdtempSync(join(tmpdir(), "og-save-"));
-  for (const [from, to] of [[node, "web"], [web, "node"], [node, "publish"]] as const) {
+  const pairs: Array<[Round, string]> = [[node, "web"], [web, "node"]];
+  if (!NO_PUBLISH_WASM) pairs.push([node, "publish"]);
+  for (const [from, to] of pairs) {
     const file = join(dir, `${from.host}.txt`);
     writeFileSync(file, from.save);
     const back = round(to, "--restore", file);

@@ -109,14 +109,15 @@ steps="$(bash "$root/scripts/check.sh" --list)" || exit 1
 case "$steps" in *wasm-opt*|*size-gate*) echo 'FAIL release measurements exposed as gate steps'; exit 1 ;; esac
 echo 'ok   no gate step selects release size measurements'
 
-# Reference groups load the development host and only the 3D publish pair.
-# Full functional tests still need both physics profiles.
-for reference_only in 0 1; do
+# A landing (dev) builds the development host alone; reference groups add
+# only the 3D publish pair; every variant is built for the browser tests and
+# release packing (all).
+for variants in all reference dev; do
   (
     . "$root/scripts/lib.sh"
     . "$root/scripts/gate/commands.sh"
-    OG_WASM_OUT="$scratch/selected-$reference_only"
-    OG_WASM_REFERENCE_ONLY="$reference_only" WASM_PROFILE_DEFAULT=wasm-test
+    OG_WASM_OUT="$scratch/selected-$variants"
+    OG_WASM_VARIANTS="$variants" WASM_PROFILE_DEFAULT=wasm-test
     WASM_TRIPLE=wasm32-unknown-unknown SKIP=3
     skip_unchanged() { return 1; }
     wasm_build() {
@@ -125,17 +126,12 @@ for reference_only in 0 1; do
       printf '%s\n' "$dest" >> "$OG_WASM_OUT/built-${1:-dev}.txt"
     }
     step_wasm_build >/dev/null || exit 1
-    expected=5; [ "$reference_only" = 0 ] || expected=3
-    [ "$(wc -l < "$OG_WASM_OUT/built.txt" | tr -d ' ')" = "$expected" ] || exit 1
-    [ -f "$OG_WASM_OUT/dev.wasm" ] && [ -f "$OG_WASM_OUT/publish.wasm" ] && [ -f "$OG_WASM_OUT/lanes.wasm" ] || exit 1
-    if [ "$reference_only" = 1 ]; then
-      [ ! -f "$OG_WASM_OUT/publish2d.wasm" ] && [ ! -f "$OG_WASM_OUT/lanes2d.wasm" ] || exit 1
-    else
-      [ -f "$OG_WASM_OUT/publish2d.wasm" ] && [ -f "$OG_WASM_OUT/lanes2d.wasm" ] || exit 1
-    fi
-  ) || exit 1
+    case "$variants" in all) expected="dev publish publish2d lanes lanes2d" ;; reference) expected="dev lanes publish" ;; dev) expected=dev ;; esac
+    [ "$(ls "$OG_WASM_OUT"/*.wasm | xargs -n1 basename | sed 's/\.wasm$//' | sort | xargs)" = "$(printf '%s\n' $expected | sort | xargs)" ] || exit 1
+    [ "$(wc -l < "$OG_WASM_OUT/built.txt" | tr -d ' ')" = "$(printf '%s\n' $expected | wc -l | tr -d ' ')" ] || exit 1
+  ) || { echo "FAIL OG_WASM_VARIANTS=$variants builds the wrong modules"; exit 1; }
 done
-echo 'ok   reference builds omit only the unused 2D publish pair'
+echo 'ok   landings build only the development wasm; reference builds omit only the 2D publish pair'
 
 # OG_GATE_SKIP drops named steps: an unknown name fails before anything runs,
 # and a skipped step is printed and summarised as not run, never as a pass.
