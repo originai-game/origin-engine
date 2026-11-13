@@ -1450,10 +1450,26 @@ the following is off by default on `Water`:
   under its waves, the frame's fog becomes the water's (exponential from
   the eye, the sky left clear), and the surface seen from below shows the
   scene above inside Snell's window (steeper than about 49°) and the
-  water's colour reflected outside it.
-- **Caustics** (`caustics`, `caustics_scale`): two scrolling cell patterns
-  multiplied, added to the sunlight of every lit and terrain surface below
-  the first surface that has them, inside its rectangle, fading with depth.
+  water's colour reflected outside it. The water's own light falls off
+  with depth (frame.wgsl `underwater_light`). The sun's share of it
+  (`water::underwater_light`, up to 0.6 at `caustics` 1) is not even:
+  the volumetric pass draws it as a volume (`volumetric::Medium::Water`,
+  volumetric.wgsl `water_in`), each sample lit through the sun's
+  cascades and the water's light field (`water_focus`, below), so the
+  light shafts run parallel along the refracted sun, end in the caustic
+  lines on the bed and are cut by what stands in the water. The frame's
+  fog draws the rest and dims the scene; the volume only adds light.
+  Without the volume (`RenderQuality::volumetric_fog` false, an
+  orthographic camera, a renderer made without caustics) the fog draws
+  the whole of it, even.
+- **Caustics** (`caustics`, `caustics_scale`): the sun's light as the
+  waves focus it (caustics.wgsl `water_focus`: 1 / |det(I + d c H)| of
+  the surface's curvature H, traced back along the refracted sun), on
+  every lit and terrain surface below the first surface that has them,
+  inside its rectangle, fading with depth. A lake's H is ten ripples in
+  octaves chosen by depth (`ripple_caustics`), a sea's its drawn waves'
+  own in a 64 × 64 grid of 0.4 m texels about the camera
+  (`wave_caustics`). The same field lights the water's volume above.
 - **Wind waves** (`wave_scale`, `wave_speed`, `wave_strength`): a lake's detail
   normals are sixteen plane waves (water_detail.wgsl `lake_wave`) on a
   geometric ladder of lengths, their directions within 75° of one

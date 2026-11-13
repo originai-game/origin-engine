@@ -14,11 +14,8 @@ impl Pass for VolumetricPass {
     type State = crate::volumetric::Volumetric;
     /// Whether the froxel pass runs.
     type Frame = bool;
-    /// The frame's fog and its scene.
-    type PlanIn<'a> = (
-        Option<&'a crate::volumetric::VolumetricFog>,
-        &'a RenderScene,
-    );
+    /// The frame's medium and its scene.
+    type PlanIn<'a> = (Option<&'a crate::volumetric::Medium>, &'a RenderScene);
     type UploadIn<'a> = ();
     type BindIn<'f> = ();
     type Plan<'f> = ();
@@ -27,17 +24,17 @@ impl Pass for VolumetricPass {
         &r.volumetric
     }
 
-    /// The frame's fog (both methods: the main pass applies the raymarched
-    /// one itself), and whether the froxel pass runs.
-    fn plan(r: &mut Renderer, (fog, scene): Self::PlanIn<'_>) -> bool {
-        let Some(fog) = fog else {
+    /// The frame's medium (both methods: the main pass applies the
+    /// raymarched one itself), and whether the froxel pass runs.
+    fn plan(r: &mut Renderer, (medium, scene): Self::PlanIn<'_>) -> bool {
+        let Some(medium) = medium else {
             return false;
         };
         r.volumetric.prepare(
             &r.device,
             &r.queue,
             &r.frame_layout,
-            fog,
+            medium,
             (r.width, r.height),
             scene.frame.tick,
             &scene.frame.quality,
@@ -62,6 +59,7 @@ impl Pass for VolumetricPass {
                 &r.lights.light_buffers[1],
                 &r.lights.light_buffers[2],
             ],
+            &r.lights.caustic_grid,
         );
     }
 }

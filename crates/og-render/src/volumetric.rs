@@ -27,6 +27,11 @@
 //! the lit image (colour × transmittance + in-scattered light) at each
 //! pixel's prepass depth, so opaque surfaces, the sky (at `distance`) and
 //! whatever was blended in front of them are all seen through the volume.
+//!
+//! Under water the same pass draws the water the eye is in
+//! ([`Medium::Water`]) instead: the sun's light in it, which the waves
+//! focus and whatever stands in the water shadows (volumetric.wgsl
+//! `water_in`), reaches the eye as light shafts.
 
 use glam::Vec3;
 
@@ -96,6 +101,56 @@ pub(crate) fn lights(method: VolumetricMethod) -> u32 {
         VolumetricMethod::Raymarch => RAYMARCH_LIGHTS,
     }
 }
+
+/// What the volumetric pass draws in a frame.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Medium {
+    /// The scene's fog, above water.
+    Fog(VolumetricFog),
+    /// The water the eye is under, of `density` extinction per metre (its
+    /// fog's: `water::underwater_fog`). The frame's fog draws the water's
+    /// even light and dims what is seen through it; the volume adds the
+    /// sun's own share of that light (`water::underwater_light`), lit
+    /// through the waves and the sun's shadows.
+    Water { density: f32 },
+}
+
+/// Henyey-Greenstein g of the sun's light in water as the volume scatters
+/// it. Sea water's single scattering is far more forward than this (g
+/// about 0.9, Petzold's measurements in Mobley, Light and Water, 1994,
+/// ch. 3), but the share the volume draws stands for the sun's light
+/// after every order of scattering, each of which spreads it.
+const WATER_ANISOTROPY: f32 = 0.35;
+/// How far the water's volume reaches, in the water's extinction lengths
+/// (what lies past it reaches the eye at under 5 %).
+const WATER_REACH: f32 = 3.0;
+
+impl Medium {
+    fn uniform(&self) -> ([f32; 4], [f32; 4], f32, f32) {
+        match *self {
+            Medium::Fog(fog) => (
+                (fog.color.max(Vec3::ZERO) * fog.scattering.max(0.0))
+                    .extend(fog.anisotropy.clamp(-0.95, 0.95))
+                    .to_array(),
+                [
+                    fog.density.max(0.0),
+                    fog.height,
+                    fog.height_density.max(0.0),
+                    fog.falloff.max(1e-4),
+                ],
+                fog.distance.max(1.0),
+                0.0,
+            ),
+            Medium::Water { density } => (
+                [1.0, 1.0, 1.0, WATER_ANISOTROPY],
+                [0.0; 4],
+                (WATER_REACH / density.max(1e-3)).clamp(4.0, 96.0),
+                1.0,
+            ),
+        }
+    }
+}
+
 const FROXEL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
 #[repr(C)]
@@ -105,6 +160,7 @@ struct VolUniform {
     medium: [f32; 4],
     extent: [f32; 4],
     grid: [f32; 4],
+    water: [f32; 4],
 }
 
 struct Froxels {
@@ -376,6 +432,8 @@ impl Volumetric {
                 entry(7, compute, table_ty),
                 entry(8, compute, table_ty),
                 entry(9, compute, table_ty),
+                // The water's light (caustics.wgsl `water_focus`).
+                entry(12, compute, uniform_ty()),
             ],
         });
         let inject_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -437,7 +495,7 @@ impl Volumetric {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         frame_layout: &wgpu::BindGroupLayout,
-        fog: &VolumetricFog,
+        medium: &Medium,
         size: (u32, u32),
         tick: u64,
         quality: &crate::RenderQuality,
@@ -451,18 +509,12 @@ impl Volumetric {
             f.sum = froxel_volume(device, "froxel sum", slices);
             f.slices = slices;
         }
+        let (scatter, fog, distance, water) = medium.uniform();
         let u = VolUniform {
-            scatter: (fog.color.max(Vec3::ZERO) * fog.scattering.max(0.0))
-                .extend(fog.anisotropy.clamp(-0.95, 0.95))
-                .to_array(),
-            medium: [
-                fog.density.max(0.0),
-                fog.height,
-                fog.height_density.max(0.0),
-                fog.falloff.max(1e-4),
-            ],
+            scatter,
+            medium: fog,
             extent: [
-                fog.distance.max(1.0),
+                distance,
                 quality.raymarch_steps() as f32,
                 size.0 as f32,
                 size.1 as f32,
@@ -473,6 +525,7 @@ impl Volumetric {
                 slices as f32,
                 (tick % 64) as f32,
             ],
+            water: [water, 0.0, 0.0, 0.0],
         };
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
     }
@@ -488,6 +541,7 @@ impl Volumetric {
         cascades: &wgpu::TextureView,
         locals: &wgpu::TextureView,
         tables: [&wgpu::Buffer; 3],
+        caustics: &wgpu::Buffer,
     ) {
         let Some(f) = &self.froxels else {
             return;
@@ -503,6 +557,7 @@ impl Volumetric {
                 (7, tables[0].as_entire_binding()),
                 (8, tables[1].as_entire_binding()),
                 (9, tables[2].as_entire_binding()),
+                (12, caustics.as_entire_binding()),
             ],
         );
         let inject = bind_at(

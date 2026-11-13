@@ -32,7 +32,7 @@ pub(super) struct MainPlan<'f> {
     pub(super) ribbon_frame: &'f ribbons::RibbonFrame,
     pub(super) line_frame: &'f lines::LineFrame,
     pub(super) metaball_groups: &'f [wgpu::BindGroup],
-    pub(super) volumetric_fog: Option<VolumetricFog>,
+    pub(super) volumetric_fog: Option<crate::volumetric::Medium>,
     /// The blended surfaces' order-independent pass (oit.rs), or `None`:
     /// sorted back to front.
     pub(super) oit: Option<oit::Oit>,

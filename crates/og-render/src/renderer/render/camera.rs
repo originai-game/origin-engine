@@ -50,7 +50,7 @@ impl Renderer {
         view_frustum: &Frustum,
         &aspect: &f32,
     ) -> (
-        Option<VolumetricFog>,
+        Option<crate::volumetric::Medium>,
         Option<Fog>,
         Option<[f32; 3]>,
         Vec<PlanarReflection>,
@@ -73,26 +73,41 @@ impl Renderer {
             scene.frame.origin,
         )
         .filter(|_| line.is_none());
-        // Volumetric fog replaces the plain fog (volumetric.rs): above
-        // water, for a perspective camera, where the quality lets it.
-        let volumetric_fog = scene.atmosphere.volumetric_fog.filter(|_| {
-            WORLD_3D && scene.frame.quality.volumetric_fog && under.is_none() && !cam.orthographic
+        // The volume (volumetric.rs), for a perspective camera, where the
+        // quality lets it. Above water it is the scene's volumetric fog,
+        // which replaces the plain fog. Under water it is the water's own,
+        // over the water's fog: the sun's share of the water's light
+        // (water::underwater_light), which is the caustics' light, so none
+        // in a renderer made without them (RenderDesc::without) or under a
+        // surface without them.
+        let volume = WORLD_3D && scene.frame.quality.volumetric_fog && !cam.orthographic;
+        let mut underwater = under.map(|i| {
+            let w = &scene_water[i];
+            water::underwater_light(w, w.mesh.and_then(|m| scene.mesh(m)))
         });
+        let volumetric_fog = match (under, &mut underwater) {
+            (Some(i), Some(light)) => {
+                let shafts =
+                    volume && light[2] > 0.0 && !self.info.without.contains(LitFeatures::CAUSTICS);
+                // Without the volume the water's fog keeps the sun's share.
+                if !shafts {
+                    light[2] = 0.0;
+                }
+                shafts.then(|| crate::volumetric::Medium::Water {
+                    density: scene_water[i].underwater_density,
+                })
+            }
+            _ => scene
+                .atmosphere
+                .volumetric_fog
+                .filter(|_| volume)
+                .map(crate::volumetric::Medium::Fog),
+        };
         let frame_fog = match under {
             Some(i) => Some(water::underwater_fog(&scene_water[i])),
             None if volumetric_fog.is_some() => None,
             None => scene.atmosphere.fog,
         };
-        let underwater = under.map(|i| {
-            let w = &scene_water[i];
-            let mut light = water::underwater_light(w, w.mesh.and_then(|m| scene.mesh(m)));
-            // The shafts are the caustics' light (water::underwater_light):
-            // none in a renderer made without them (RenderDesc::without).
-            if self.info.without.contains(LitFeatures::CAUSTICS) {
-                light[2] = 0.0;
-            }
-            light
-        });
         // Up to `planar_reflections` surfaces mirror the scene, each in its own pass: slot 0 a grid surface first,
         // such as a lake, else the first that asks (with two, the one material shaders read: `planar_reflection`),
         // slot 1 a second surface, only while it is in view (only it reads its mirror). With one, a second surface

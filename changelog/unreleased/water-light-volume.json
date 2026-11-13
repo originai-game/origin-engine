@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Water",
+      "summary": "The light shafts under water are the sun's light in the water itself, drawn as a volume: lit through the same wave focusing that draws the caustics (each shaft ends in the bright line it draws on the bed), running parallel along the refracted sun, and shadowed by whatever stands in the water. They replace straight beams fanned about the sun's place on screen, which no wave shaped and nothing shadowed. They take og.Water.caustics' strength as before, and need RenderQuality.volumetricFog (off at low quality, where the water's light is even). Rendering only."
+    }
+  ]
+}

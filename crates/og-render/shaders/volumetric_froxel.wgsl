@@ -27,15 +27,20 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let dir = view_ray(uv);
   let stretch = 1.0 / max(dot(dir, frame.view_forward.xyz), 1e-3);
   let jitter = froxel_noise(id);
+  // What a sample holds (the water's light is a pattern: `water_in`): the froxel's width there, and its share of
+  // the slice's depth.
+  let across = length(view_ray(uv + vec2<f32>(1.0 / vol.grid.x, 0.0)) - dir);
+  let deep = (slice_depth(f32(id.z + 1u) / vol.grid.z) - slice_depth(f32(id.z) / vol.grid.z)) * stretch / f32(INJECT_TAPS);
   var sigma_sum = 0.0;
   var light_sum = vec3<f32>(0.0);
   for (var t = 0u; t < INJECT_TAPS; t++) {
     let f = (f32(id.z) + (f32(t) + jitter) / f32(INJECT_TAPS)) / vol.grid.z;
     let p = frame.view_pos.xyz + dir * slice_depth(f) * stretch;
+    let along = slice_depth(f) * stretch;
     let sigma = vol_density(p);
     sigma_sum += sigma;
     if (sigma > 0.0) {
-      light_sum += sigma * (sun_in(p, dir) + locals_in(p, dir, uv * vol.extent.zw, 0xffffffffu));
+      light_sum += sigma * medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep));
     }
   }
   let n = f32(INJECT_TAPS);
@@ -78,6 +83,8 @@ fn fs_froxel(in: VolOut) -> @location(0) vec4<f32> {
   let s = textureSampleLevel(froxel_tex, froxel_sampler, vec3<f32>(uv, max(z, 0.5 / vol.grid.z)), 0.0);
   // Nearer than the first slice's far edge: that slice's share of it.
   let k = clamp(f * vol.grid.z, 0.0, 1.0);
-  return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
+  let o = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
+  // The water's fog has dimmed the scene already.
+  return vec4<f32>(o.rgb, select(o.a, 1.0, vol.water.x > 0.5));
 }
 
