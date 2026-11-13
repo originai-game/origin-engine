@@ -431,7 +431,7 @@ pub(super) fn swims(
     sim: &Sim,
     h: rp::RigidBodyHandle,
     entity: u64,
-) -> Option<(Buoyancy, f32, og_core::ocean::SurfacePoint)> {
+) -> Option<(Buoyancy, f32, og_env::ocean::SurfacePoint)> {
     if DIM != 3 {
         return None;
     }

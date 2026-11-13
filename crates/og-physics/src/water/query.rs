@@ -196,7 +196,7 @@ pub(crate) fn at(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema_ext::WaterLine;
+    use crate::WaterLine;
 
     fn still(entity: u64, position: Vec3, size: f32) -> WaterBody {
         WaterBody {
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn a_seas_point_is_its_own_surface_and_leans_with_the_wave() {
         let sea = WaterBody {
-            sea: og_core::ocean::Ocean::new(Vec2::new(0.0, -12.0), 1.0, 0.8),
+            sea: og_env::ocean::Ocean::new(Vec2::new(0.0, -12.0), 1.0, 0.8),
             ..still(4, Vec3::new(0.0, 1.0, 0.0), 2000.0)
         };
         let waters = [sea.clone()];

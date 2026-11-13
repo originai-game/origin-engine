@@ -379,7 +379,7 @@ fn a_character_with_buoyancy_floats_sinks_by_its_density_and_drifts_with_a_river
         entity: 2 << 40,
         position: Vec3::new(0.0, 0.0, 40.0),
         size: Vec2::new(600.0, 12.0),
-        river: og_core::river::River::new(&course, 12.0, 2.0).map(std::sync::Arc::new),
+        river: og_env::river::River::new(&course, 12.0, 2.0).map(std::sync::Arc::new),
         ..lake()
     };
     assert!(river.river.is_some());
