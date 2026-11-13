@@ -433,8 +433,20 @@ pub(crate) fn before_tick(eng: &Engine, world: &og_ecs::World) {
     if world.id_by_name("og.Water").is_ok() {
         p.set_waters(waters(eng, &Reader::World(world)).unwrap_or_default());
     }
-    let wind = eng.state.borrow().layouts.get("og.Wind").cloned();
-    crate::wind::before_tick(&p, world, wind.as_ref());
+    let (wind, motors) = {
+        let st = eng.state.borrow();
+        (
+            st.layouts.get("og.Wind").cloned(),
+            st.layouts.get("og.WindMotor").cloned(),
+        )
+    };
+    crate::wind::before_tick(
+        &p,
+        &Reader::World(world),
+        world,
+        wind.as_ref(),
+        motors.as_ref(),
+    );
 }
 
 /// An og.Water's surface (a lake's level, a sea's waves, a river's

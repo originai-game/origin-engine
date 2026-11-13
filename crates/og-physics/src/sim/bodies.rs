@@ -99,12 +99,14 @@ fn same_children(b: &Body, built: Option<&Vec<TrackedChild>>) -> bool {
 }
 
 /// Whether two og.RigidBody values build the same rapier body: sleep's
-/// fields (`canSleep`, `sleeping`) change none of it, and a save does not
+/// fields (`canSleep`, `sleeping`) and `airDrag` (read from the component
+/// every tick, `ext::air_drag`) change none of it, and a save does not
 /// keep them in [`Tracked`].
 fn same_body(a: &RigidBody, b: &RigidBody) -> bool {
     let shape = |x: &RigidBody| RigidBody {
         can_sleep: true,
         sleeping: false,
+        air_drag: 0.0,
         ..*x
     };
     shape(a) == shape(b)

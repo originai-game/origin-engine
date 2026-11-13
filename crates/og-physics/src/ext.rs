@@ -1,7 +1,7 @@
 //! Physics beyond rigid bodies, written once and compiled for each profile
 //! (like `sim.rs`), run by `sim::step` around the rigid-body step, a
 //! module per system: joints, the character controller, ropes and cloth,
-//! the particle fluids, water surfaces and lines, and buoyancy.
+//! the particle fluids, water surfaces and lines, buoyancy, and the air.
 //! `mover.rs` is the controllers' move against the world (both
 //! profiles); `platformer.rs` (2D), `vehicle2.rs` / `vehicle3.rs` and
 //! `ragdoll.rs` (both profiles, through each one's joint) hold what the profiles do differently.
@@ -29,6 +29,8 @@ pub(crate) fn entity_of(c: &rp::Collider) -> u64 {
     c.user_data as u64
 }
 
+#[path = "ext/air.rs"]
+mod air;
 #[path = "ext/buoyancy.rs"]
 mod buoyancy;
 #[path = "ext/carry.rs"]
@@ -46,6 +48,7 @@ mod soft;
 #[path = "ext/surfaces.rs"]
 mod surfaces;
 
+pub(crate) use air::*;
 pub(crate) use buoyancy::*;
 pub(crate) use carry::*;
 pub(crate) use characters::*;

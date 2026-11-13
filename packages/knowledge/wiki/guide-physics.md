@@ -51,6 +51,13 @@ of mass without changing the inertia: lower a car's below its wheel mounts to
 keep it on its wheels at full lock, or put a weight at a toy's base so it
 rights itself.
 
+Air: `airDrag` makes a body move with the air, og.Wind and the
+og.WindMotors reaching it (`render §8`). Its velocity closes on the air's
+at `airDrag` per second: 0.2 to 1 drifts a crate or a boat's sail, 3 to 10
+blows a leaf, a balloon or a paper lantern along. Leave it 0 for anything
+the wind should not move; `linearDamping` slows a body against the world,
+`airDrag` against the air.
+
 Compound bodies. A Collider without a RigidBody on a child entity whose
 og.Parent chain reaches a body is part of the nearest such body: a table of a
 top and four legs, a ship of a hull and a mast. It sits at its transform

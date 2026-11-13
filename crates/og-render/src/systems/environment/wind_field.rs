@@ -83,30 +83,11 @@ pub fn lean_cap(wind: Option<crate::Wind>, motors: bool) -> f32 {
         .max(if motors { MAX_LEAN } else { 0.0 })
 }
 
-/// How a [`WindMotor`] pushes the air.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum WindMotorKind {
-    /// Outward from its centre (a blast, a landing).
-    #[default]
-    Omni,
-    /// Along its direction (a fan, a rotor's downwash leaning the grass).
-    Directional,
-    /// Around its centre, counter-clockwise seen from above (a whirlwind).
-    Vortex,
-}
-
-/// A local push on the wind field (og.WindMotor), in the scene's space.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct WindMotor {
-    pub position: Vec3,
-    /// A directional motor's direction (its horizontal part).
-    pub direction: Vec3,
-    /// How far it reaches (m); its push fades to its edge.
-    pub radius: f32,
-    /// Its push at its centre (m/s).
-    pub strength: f32,
-    pub kind: WindMotorKind,
-}
+/// A local push on the wind field (og.WindMotor), in the scene's space,
+/// and how it pushes: the air's own motor (`og_core::air`), the one the
+/// tick moves ropes, cloths and bodies with. The field is a sheet over the
+/// ground, so it takes a motor's horizontal part.
+pub use og_core::air::{Motor as WindMotor, MotorKind as WindMotorKind};
 
 /// `Sim` in wind_field.wgsl.
 #[repr(C)]

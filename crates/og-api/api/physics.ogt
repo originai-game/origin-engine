@@ -80,6 +80,13 @@ module physics {
       unit m
       tunable true
     }
+    field airDrag f32 "How fast the air carries the body (0: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. In still air it slows the body like linearDamping." {
+      guide "physics §1"
+      min 0
+      max 100
+      unit perSecond
+      tunable true
+    }
     field canSleep bool "Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick)." {
       default true
     }

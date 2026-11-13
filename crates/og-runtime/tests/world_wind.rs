@@ -7,12 +7,20 @@
 //! `wind` (the state before: three winds a game had to keep in step), a
 //! record's own `wind` replaces the world's instead of adding to it, or
 //! still air leaves a default drift behind.
+//!
+//! The tick moves in the same air: an og.WindMotor carries a body with
+//! RigidBody.airDrag along the motor entity's forward, and not a body
+//! beyond its reach. Ways this could fail: the motors never reach physics
+//! (the state before: they only leaned vegetation), the push ignores the
+//! entity's rotation (the body drifts along -z), or the reach is not
+//! honoured (the far body moves).
 
 use glam::Vec3;
 use og_render::RenderScene;
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
-    og_engine_write_resource, og_game_game, og_host_begin_bundle, set_hooks, set_render_backend,
+    og_engine_write_resource, og_game_game, og_host_begin_bundle, og_world_get, og_world_insert,
+    og_world_spawn, set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::Cell;
@@ -133,4 +141,81 @@ fn the_worlds_wind_moves_vegetation_clouds_and_rain_together() {
     let own = frame();
     assert!(close(own.clouds, Vec3::new(3.0, 0.0, -6.0)), "{own:?}");
     assert!(close(own.rain, Vec3::NEG_Y), "{own:?}");
+}
+
+fn spawn(engine: u32, desc: Value, parts: &[(&str, Value)]) -> f64 {
+    let id = answer(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(desc.to_string()),
+    )))["value"]
+        .as_f64()
+        .unwrap();
+    for (name, v) in parts {
+        answer(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            id,
+            (*name).into(),
+            Some(v.to_string()),
+        )));
+    }
+    id
+}
+
+fn position(engine: u32, id: f64) -> Vec3 {
+    let t = answer(og_runtime::host_impl::answer(og_world_get(
+        engine,
+        id,
+        "og.Transform".into(),
+    )));
+    let p = &t["value"]["position"];
+    let f = |k: &str| p[k].as_f64().unwrap() as f32;
+    Vec3::new(f("x"), f("y"), f("z"))
+}
+
+#[test]
+fn a_wind_motor_carries_the_body_in_its_reach_along_its_forward() {
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let game = og_game_game(Some("{}".into()));
+    let engine = answer(og_engine_create(game, "{}".into()))["value"]
+        .as_u64()
+        .unwrap() as u32;
+    // A weightless ball the air carries, 2 m in front of the fan and 50 m
+    // to its side.
+    let ball = |z: f32| {
+        spawn(
+            engine,
+            json!({ "position": { "x": 0, "y": 3, "z": z } }),
+            &[
+                ("og.RigidBody", json!({ "gravityScale": 0, "airDrag": 2 })),
+                ("og.Collider", json!({ "shape": 1, "radius": 0.25 })),
+            ],
+        )
+    };
+    let near = ball(0.0);
+    let far = ball(50.0);
+    // A fan turned a quarter turn about y, so its forward (-z) is -x.
+    let turn = std::f32::consts::FRAC_1_SQRT_2;
+    spawn(
+        engine,
+        json!({
+            "position": { "x": 2, "y": 3, "z": 0 },
+            "quaternion": { "x": 0, "y": turn, "z": 0, "w": turn },
+        }),
+        &[(
+            "og.WindMotor",
+            json!({ "kind": 1, "radius": 6, "strength": 10 }),
+        )],
+    );
+    for _ in 0..60 {
+        answer(og_engine_frame(engine, 1000.0 / 60.0));
+    }
+    let moved = position(engine, near) - Vec3::new(0.0, 3.0, 0.0);
+    assert!(moved.x < -1.0, "carried along the fan's forward: {moved:?}");
+    assert!(
+        moved.y.abs() < 1e-3 && moved.z.abs() < 1e-3,
+        "and nowhere else: {moved:?}"
+    );
+    let still = position(engine, far) - Vec3::new(0.0, 3.0, 50.0);
+    assert!(still.length() < 1e-6, "beyond the reach: {still:?}");
 }

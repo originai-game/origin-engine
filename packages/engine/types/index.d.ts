@@ -13558,6 +13558,15 @@ export interface RigidBody {
    */
   centerOfMass: Vector3;
   /**
+   * How fast the air carries the body (0: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. In still air it slows the body like linearDamping.
+   * See `physics §1`.
+   *
+   * @range 0..100
+   * @unit perSecond (a rate per second: the fraction of a value that decays in one second)
+   * @tunable
+   */
+  airDrag: number;
+  /**
    * Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick).
    *
    * @default true
@@ -17610,7 +17619,7 @@ export interface Weather {
 }
 
 /**
- * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and og.Rope, og.Cloth and og.Garment are pushed in the tick. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. Still at speed 0. An og.Water's sea keeps its own wind.
+ * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind.
  * See `render §8`.
  *
  * The `Wind` resource (token `og.Wind`).
@@ -17663,8 +17672,8 @@ export interface Wind {
 /**
  * How an og.WindMotor pushes the wind.
  * - `"omni"`: Outward from its centre: a blast, a landing, a horse's hooves.
- * - `"directional"`: Along the entity's forward (its -z, horizontal part): a fan, a rotor's downwash leaning the grass one way.
- * - `"vortex"`: Around its centre, counter-clockwise seen from above: a whirlwind, a spell.
+ * - `"directional"`: Along the entity's forward (its -z; vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way.
+ * - `"vortex"`: Around its centre, counter-clockwise seen from above (in 2D, about z): a whirlwind, a spell.
  */
 export type WindMotorKind = "omni" | "directional" | "vortex";
 
@@ -17678,7 +17687,7 @@ export type WindMotorKind = "omni" | "directional" | "vortex";
 export declare function WindMotorKind(value?: WindMotorKind, options?: FieldOptions): FieldSpec<"WindMotorKind">;
 
 /**
- * A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and the field carries the push on after the motor stops. Needs no og.Wind. Only where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing); visual only, the same on every run. The 16 nearest the camera act.
+ * A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. Needs no og.Wind. In the tick it blows every og.Rope, og.Cloth and og.Garment hanging in its reach and carries a body with RigidBody.airDrag, the same on every run. Vegetation leans in it where the renderer simulates the wind (RenderCapabilities.compute; the 16 nearest the camera act), and the field carries the push on after the motor stops.
  * See `render §8`.
  *
  * The value of the `WindMotor` component (token `og.WindMotor`).
@@ -34250,7 +34259,7 @@ export declare namespace og {
    * Changing a RigidBody, a Collider or Transform.scale rebuilds the body (it loses its contacts' warm starts); a Transform or Velocity that game code changed moves it (a teleport).
    * See `physics §1`.
    */
-  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"RigidBodyType">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"bool">; readonly centerOfMass: FieldSpec<"Vector3">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool"> }, RigidBody>;
+  const RigidBody: ComponentType<{ readonly kind: FieldSpec<"RigidBodyType">; readonly mass: FieldSpec<"f32">; readonly linearDamping: FieldSpec<"f32">; readonly angularDamping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly lock: FieldSpec<"u32">; readonly ccd: FieldSpec<"bool">; readonly centerOfMass: FieldSpec<"Vector3">; readonly airDrag: FieldSpec<"f32">; readonly canSleep: FieldSpec<"bool">; readonly sleeping: FieldSpec<"bool"> }, RigidBody>;
   /**
    * The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). Sizes are scaled by og.Transform.scale.
    * A Collider without a RigidBody whose og.Parent chain reaches one is part of the nearest such body (a compound), placed relative to it; its density adds to the body's mass, and its friction, restitution, layers and sensor flag are its own. Events and queries name the collider's entity; RaycastHit.body and PointProjection.body name the body. A controller's body takes no children.
@@ -34621,12 +34630,12 @@ export declare namespace og {
    */
   const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
-   * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and og.Rope, og.Cloth and og.Garment are pushed in the tick. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. Still at speed 0. An og.Water's sea keeps its own wind.
+   * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind.
    * See `render §8`.
    */
   const Wind: ResourceType<{ readonly direction: FieldSpec<"Vector3">; readonly speed: FieldSpec<"f32">; readonly gust: FieldSpec<"f32">; readonly turbulence: FieldSpec<"f32">; readonly gustSize: FieldSpec<"f32"> }, Wind>;
   /**
-   * A local push on the renderer's wind at the entity's position: vegetation within `radius` leans away from it (omni), along it (directional) or around it (vortex), fading to nothing at the edge, and the field carries the push on after the motor stops. Needs no og.Wind. Only where the renderer simulates the wind (RenderCapabilities.compute; elsewhere it does nothing); visual only, the same on every run. The 16 nearest the camera act.
+   * A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. Needs no og.Wind. In the tick it blows every og.Rope, og.Cloth and og.Garment hanging in its reach and carries a body with RigidBody.airDrag, the same on every run. Vegetation leans in it where the renderer simulates the wind (RenderCapabilities.compute; the 16 nearest the camera act), and the field carries the push on after the motor stops.
    * See `render §8`.
    */
   const WindMotor: ComponentType<{ readonly kind: FieldSpec<"WindMotorKind">; readonly radius: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, WindMotor>;

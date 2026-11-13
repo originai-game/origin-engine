@@ -30141,6 +30141,7 @@ pub mod record {
         pub lock: u32,
         pub ccd: bool,
         pub center_of_mass: Vec3,
+        pub air_drag: f32,
         pub can_sleep: bool,
         pub sleeping: bool,
     }
@@ -30156,6 +30157,7 @@ pub mod record {
                 lock: Default::default(),
                 ccd: Default::default(),
                 center_of_mass: Default::default(),
+                air_drag: Default::default(),
                 can_sleep: true,
                 sleeping: Default::default(),
             }
@@ -30177,6 +30179,7 @@ pub mod record {
                 lock: field(o, "lock", d.lock)?,
                 ccd: field(o, "ccd", d.ccd)?,
                 center_of_mass: field(o, "centerOfMass", d.center_of_mass)?,
+                air_drag: field(o, "airDrag", d.air_drag)?,
                 can_sleep: field(o, "canSleep", d.can_sleep)?,
                 sleeping: field(o, "sleeping", d.sleeping)?,
             })

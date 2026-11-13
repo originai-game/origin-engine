@@ -85,7 +85,7 @@ pub const LOCK_ROTATION_Z: u32 = 32;
 /// an `og.Collider`. In the 2D profile the body moves in the xy plane and
 /// rotates about z.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.RigidBody", version = 3)]
+#[reflect(name = "og.RigidBody", version = 4)]
 pub struct RigidBody {
     /// dynamic (simulated), fixed (not moved by the solver), kinematic (Velocity each tick, Transform teleports).
     #[reflect(variants = ["dynamic", "fixed", "kinematic"], label = "Kind")]
@@ -114,6 +114,14 @@ pub struct RigidBody {
     /// og.Collider (a body without one has its mass at its origin).
     #[reflect(name = "centerOfMass", unit = "m", tunable)]
     pub center_of_mass: Vec3,
+    /// How fast the air carries the body, per second (0 = not at all): its
+    /// velocity closes on the air's where it is (og.Wind and every
+    /// og.WindMotor reaching it), so a leaf, a balloon or a sail blows
+    /// with the wind and through a fan's gust. In still air it slows the
+    /// body like linearDamping.
+    #[reflect(name = "airDrag", min = 0, max = 100, unit = "1/s", tunable)]
+    #[serde(skip)]
+    pub air_drag: f32,
     /// Whether the body may sleep when og.Physics.sleepTicks is set (it
     /// sleeps only with everything it touches); false keeps it, and what
     /// touches it, awake.
@@ -133,6 +141,7 @@ impl Default for RigidBody {
             mass: 0.0,
             linear_damping: 0.0,
             angular_damping: 0.0,
+            air_drag: 0.0,
             gravity_scale: 1.0,
             lock: 0,
             ccd: false,

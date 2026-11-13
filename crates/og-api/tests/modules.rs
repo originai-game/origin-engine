@@ -98,7 +98,7 @@ const VERSIONS: &[(&str, u32, u64)] = &[
     ("og.PointerMove", 1, 0x9328be6142683eea),
     ("og.PointerUp", 1, 0x2f71597da11eef1a),
     ("og.Pointers", 1, 0xe0a9491012ab78ea),
-    ("og.RigidBody", 3, 0x7d9e70b777d61b29),
+    ("og.RigidBody", 4, 0xe5f8299295c6b2eb),
     ("og.SensorEntered", 1, 0xa33b45062725b7f1),
     ("og.SensorExited", 1, 0xcaa743ce70b55c7a),
     ("og.Skeleton", 1, 0xdf1d8ad824fb1c2a),

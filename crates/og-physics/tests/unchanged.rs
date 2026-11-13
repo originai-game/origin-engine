@@ -76,6 +76,8 @@ const ADDED_FIELDS: &[(&str, &str)] = &[
     ("og.Cloth", "simulation"),
     ("og.Garment", "simulation"),
     ("og.Fluid3D", "simulation"),
+    // The air on bodies (0: not carried).
+    ("og.RigidBody", "airDrag"),
 ];
 
 fn table(snapshot: &og_net::Snapshot) -> BTreeMap<String, Vec<String>> {

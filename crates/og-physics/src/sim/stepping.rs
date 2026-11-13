@@ -146,6 +146,7 @@ fn body_kind(b: &Body) -> Result<rp::RigidBodyType> {
         ("mass", b.body.mass),
         ("linearDamping", b.body.linear_damping),
         ("angularDamping", b.body.angular_damping),
+        ("airDrag", b.body.air_drag),
     ] {
         if !(x >= 0.0 && x.is_finite()) {
             return Err(Error::new(
@@ -311,6 +312,9 @@ fn step_here(
     let handles = sync(settings, dt, scene, shared, sim)?;
     let pushes = std::mem::take(&mut shared.pushes);
     apply_pushes(sim, &handles, &pushes, dt);
+    // A vortex turns about the profile's up.
+    shared.air.axis = if sim.flat() { Vec3::Z } else { Vec3::Y };
+    ext::air_drag(scene, &shared.air, dt, sim, &handles);
     laps.lap(Phase::Sync);
     ext::sync_joints(scene, sim, &handles)?;
     super::vehicles(scene, dt, sim, &handles, &mut out)?;

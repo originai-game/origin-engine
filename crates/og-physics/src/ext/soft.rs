@@ -51,8 +51,10 @@ pub(crate) fn soft(
     let grains = crate::lanes::now();
     let flat2 = DIM == 2;
     let gravity = flat(settings.gravity);
-    // The world's wind pushes each beside its own.
-    let wind = flat(shared.wind);
+    // The world's air pushes each beside its own wind, as it blows where
+    // the body hangs (the middle of its points).
+    let air = shared.air.clone();
+    let air = &air;
     // Ropes.
     let live: BTreeSet<u64> = og_core::sort::set(scene.ropes.iter().map(|r| r.0.to_bits()));
     sim.ropes.retain(|e, _| live.contains(e));
@@ -87,7 +89,7 @@ pub(crate) fn soft(
         let (min, max) = bounds(&state.points, rope.length);
         let near = Near::around(colliders, min, max, rope.radius * 2.0 + 0.1);
         let rope = &Rope {
-            wind: rope.wind + wind,
+            wind: rope.wind + flat(air.at((min + max) * 0.5)),
             ..*rope
         };
         state.step(rope, dt, gravity, start, end, flat2, &near);
@@ -140,7 +142,7 @@ pub(crate) fn soft(
         let (min, max) = bounds(&state.points, size);
         let near = Near::around(colliders, min, max, cloth.radius * 2.0 + 0.1);
         let cloth = &Cloth {
-            wind: cloth.wind + wind,
+            wind: cloth.wind + flat(air.at((min + max) * 0.5)),
             ..*cloth
         };
         state.step(cloth, dt, tick, gravity, position, rotation, flat2, &near);
@@ -282,7 +284,7 @@ pub(crate) fn soft(
             let (min, max) = bounds(&state.points, garment.max_distance);
             let near = Near::around(colliders, min, max, garment.radius * 2.0 + 0.1);
             let garment = &Garment {
-                wind: garment.wind + wind,
+                wind: garment.wind + flat(air.at((min + max) * 0.5)),
                 ..*garment
             };
             state.step(garment, pose, dt, tick, gravity, &near);

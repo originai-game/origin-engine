@@ -13,15 +13,15 @@ A string: one of the variants below. The zero value is `"omni"`.
 | Variant | Doc |
 |---|---|
 | `"omni"` | Outward from its centre: a blast, a landing, a horse's hooves. |
-| `"directional"` | Along the entity's forward (its -z, horizontal part): a fan, a rotor's downwash leaning the grass one way. |
-| `"vortex"` | Around its centre, counter-clockwise seen from above: a whirlwind, a spell. |
+| `"directional"` | Along the entity's forward (its -z; vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way. |
+| `"vortex"` | Around its centre, counter-clockwise seen from above (in 2D, about z): a whirlwind, a spell. |
 
 ```ogt
 enum WindMotorKind {
   doc "How an og.WindMotor pushes the wind."
   variant omni "Outward from its centre: a blast, a landing, a horse's hooves."
-  variant directional "Along the entity's forward (its -z, horizontal part): a fan, a rotor's downwash leaning the grass one way."
-  variant vortex "Around its centre, counter-clockwise seen from above: a whirlwind, a spell."
+  variant directional "Along the entity's forward (its -z; vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way."
+  variant vortex "Around its centre, counter-clockwise seen from above (in 2D, about z): a whirlwind, a spell."
 }
 ```
 

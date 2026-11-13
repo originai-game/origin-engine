@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "RigidBody.airDrag",
+      "summary": "How fast the air carries a dynamic body (per second, 0 by default: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. A leaf, a balloon, a paper lantern or a 2D feather drifts on the wind and is thrown by a fan without game code; in still air it slows the body like linearDamping."
+    },
+    {
+      "member": "og.WindMotor",
+      "summary": "A motor now pushes in the tick as well as leaning vegetation: every og.Rope, og.Cloth and og.Garment hanging within its radius is blown by it, away from it (omni), along the entity's forward (directional, now with its vertical part: an updraft) or around it (vortex), and a body with RigidBody.airDrag is carried. Deterministic, in both profiles (a 2D vortex turns about z), and it needs neither og.Wind nor RenderCapabilities.compute. A game that kept a motor beside a rope or a cloth sees them move in it."
+    }
+  ]
+}

@@ -26,6 +26,7 @@ Token `og.RigidBody`, registered under the schema name `og.RigidBody`; its value
 | `lock` | `number` | `0` | 0 … 63 | — | — | Locked axes, a sum of the LOCK_* bits: 1, 2, 4 no translation along x, y, z; 8, 16, 32 no rotation about x, y, z (2D uses 1, 2 and 32). |
 | `ccd` | `boolean` | `false` | — | — | — | Enable continuous collision detection for fast small bodies that must not tunnel. |
 | `centerOfMass` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | tunable | Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. Needs an og.Collider. See `physics §1`. |
+| `airDrag` | `number` | `0` | 0 … 100 | `perSecond` | tunable | How fast the air carries the body (0: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. In still air it slows the body like linearDamping. See `physics §1`. |
 | `canSleep` | `boolean` | `true` | — | — | — | Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick). |
 | `sleeping` | `boolean` | `false` | — | — | — | Written: true while the body sleeps (Physics.sleepTicks). Write false to wake it; physics then writes it back as the body is. |
 
@@ -69,6 +70,13 @@ component RigidBody {
   field centerOfMass Vector3 "Moves the centre of mass from where the collider puts it (its shape's centre), in the entity's own frame and scaled by og.Transform.scale like Collider.offset; the inertia stays the shape's. Needs an og.Collider." {
     guide "physics §1"
     unit m
+    tunable true
+  }
+  field airDrag f32 "How fast the air carries the body (0: not at all): its velocity closes on the air's where it is, og.Wind and every og.WindMotor reaching it. In still air it slows the body like linearDamping." {
+    guide "physics §1"
+    min 0
+    max 100
+    unit perSecond
     tunable true
   }
   field canSleep bool "Whether the body may sleep when Physics.sleepTicks is set. A body sleeps only with every dynamic body it touches, so false keeps it and what touches it awake (a player's ball, a body game code moves every tick)." {

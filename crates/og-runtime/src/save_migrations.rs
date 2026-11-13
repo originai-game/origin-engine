@@ -150,6 +150,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
     },
     Migration {
         target: Target::Record,
+        name: "og.RigidBody",
+        from: 3,
+        to: 4,
+        note: "0.7.7 and earlier: gained airDrag (the air on bodies); the restore takes it at 0, a body the wind does not move",
+        run: None,
+    },
+    Migration {
+        target: Target::Record,
         name: "og.Physics",
         from: 1,
         to: 2,

@@ -2600,6 +2600,12 @@
           "tunable": true
         },
         {
+          "name": "airDrag",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "canSleep",
           "column": "bool",
           "default": true

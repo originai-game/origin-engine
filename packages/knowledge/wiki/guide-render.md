@@ -270,8 +270,9 @@ depth-normal prepass: the first one pays for it.
 
 - og.Wind is the world's one wind: set its direction and speed and the
   vegetation leans (5 cm per metre of height for each m/s), the clouds
-  drift (twice as fast aloft), rain and snow slant, and ropes, cloths and
-  garments are pushed, all the same way. A `wind` on og.Clouds,
+  drift (twice as fast aloft), rain and snow slant, ropes, cloths and
+  garments are pushed and a body with `RigidBody.airDrag` is carried, all
+  the same way. A `wind` on og.Clouds,
   og.Weather, og.Rope, og.Cloth or og.Garment adds to it: leave it at 0
   to follow the world, and set it only for air that differs there (a fan
   on one flag, a high cloud layer crossing the ground wind). A sea keeps
@@ -282,6 +283,10 @@ depth-normal prepass: the first one pays for it.
   crosses grass, copies and trees together, eddies, and vegetation springs
   into a gust and settles; og.Model sway keeps the wind's own gusts.
   Motors (16 act) ripple out and settle.
+- An og.WindMotor is one push on the air for everything: the tick blows
+  the ropes, cloths and garments in its reach and carries bodies with an
+  `airDrag` (a fan lifting a balloon, a blast scattering leaves), and the
+  vegetation leans in the same place the same way.
 - Water cost, cheapest first: a grid with detail waves; refraction and
   screen-space reflection; caustics (one surface a frame); a planar
   reflection, about a second scene pass at its resolution per surface;

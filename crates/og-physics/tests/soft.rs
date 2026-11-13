@@ -185,7 +185,7 @@ fn a_cloth_pinned_to_a_child_entity_follows_its_parent() {
     );
 }
 
-/// The world's wind (`set_wind`, og.Wind as the host reads it) pushes a rope
+/// The world's wind (`set_air`, og.Wind as the host reads it) pushes a rope
 /// and a cloth exactly as the same wind set on each of them does, and the
 /// two add: half from the world and half their own is that wind too.
 #[test]
@@ -193,7 +193,10 @@ fn the_worlds_wind_pushes_a_rope_and_a_cloth_as_their_own_does() {
     let blow = Vec3::new(1.0, 0.0, 6.0);
     let hang = |world_wind: Vec3, own: Vec3| {
         let (mut w, p) = world(Physics::default(), 1);
-        p.set_wind(world_wind);
+        p.set_air(og_core::air::Air {
+            wind: world_wind,
+            ..Default::default()
+        });
         let rope = w
             .spawn((
                 at(0.0, 5.0, 0.0),
@@ -236,4 +239,37 @@ fn the_worlds_wind_pushes_a_rope_and_a_cloth_as_their_own_does() {
         hem.z > still.1.last().unwrap().z + 0.1,
         "the cloth's hem at {hem}"
     );
+}
+
+/// A fan (an og.WindMotor in the world's air) blows the rope hanging in
+/// its reach and leaves alone the one hanging out of it: the air is asked
+/// where each hangs, not once for the world.
+#[test]
+fn a_motor_blows_the_rope_in_its_reach_and_not_the_one_beyond() {
+    let hang = |fan: bool| {
+        let (mut w, p) = world(Physics::default(), 1);
+        if fan {
+            p.set_air(og_core::air::Air {
+                motors: vec![og_core::air::Motor {
+                    position: Vec3::new(0.0, 4.0, 0.0),
+                    direction: Vec3::Z,
+                    radius: 5.0,
+                    strength: 12.0,
+                    kind: og_core::air::MotorKind::Directional,
+                }],
+                ..Default::default()
+            });
+        }
+        let ropes = [0.0, 20.0].map(|x| w.spawn((at(x, 5.0, 0.0), Rope::default())).unwrap());
+        run(&mut w, 90);
+        ropes.map(|r| *p.rope_points(r).unwrap().last().unwrap())
+    };
+    let (still, blown) = (hang(false), hang(true));
+    assert!(
+        blown[0].z > still[0].z + 0.2,
+        "in the fan's reach: {} against {}",
+        blown[0],
+        still[0]
+    );
+    assert_eq!(blown[1], still[1], "out of its reach");
 }

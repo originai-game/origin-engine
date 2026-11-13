@@ -408,11 +408,11 @@ pub(crate) struct Shared {
     /// as the tick started ([`PhysicsSystem::set_waters`]; derived from the
     /// world's components, not world state).
     pub waters: Vec<WaterBody>,
-    /// The world's wind (m/s) the next steps push ropes, cloths and
-    /// garments with, beside each one's own `wind`
-    /// ([`PhysicsSystem::set_wind`]; og.Wind as the host read it when the
-    /// tick started, not world state here).
-    pub wind: Vec3,
+    /// The world's air the next steps move things through: og.Wind and
+    /// the og.WindMotors as the host read them when the tick started
+    /// ([`PhysicsSystem::set_air`]; derived from the world's components,
+    /// not world state here).
+    pub air: og_core::air::Air,
 }
 
 /// One bone of a ragdoll rig, in the entity's space at the rest pose.
@@ -1169,10 +1169,16 @@ impl PhysicsSystem {
         with_sim!(self.shared, |s| Some(s.gravity()))
     }
 
-    /// The world's wind the steps push soft bodies with
-    /// ([`PhysicsSystem::set_wind`]).
+    /// The world's wind the steps move things in, without the motors'
+    /// local pushes ([`PhysicsSystem::set_air`]).
     pub fn wind(&self) -> Vec3 {
-        lock(&self.shared).wind
+        lock(&self.shared).air.wind
+    }
+
+    /// The air at `p` as the steps take it: the wind and every motor's
+    /// push there (m/s).
+    pub fn air_at(&self, p: Vec3) -> Vec3 {
+        lock(&self.shared).air.at(p)
     }
 
     /// The points of the og.Cloth on `entity`.
@@ -1445,11 +1451,13 @@ impl PhysicsSystem {
         lock(&self.shared).waters = waters;
     }
 
-    /// The world's wind (m/s; the host reads og.Wind as each tick starts)
-    /// the next steps push every og.Rope, og.Cloth and og.Garment with: its
-    /// velocity as an acceleration per second, added to their own `wind`.
-    pub fn set_wind(&self, wind: Vec3) {
-        lock(&self.shared).wind = wind;
+    /// The world's air (the host reads og.Wind and the og.WindMotors as
+    /// each tick starts) the next steps move things through. Every
+    /// og.Rope, og.Cloth and og.Garment is pushed by the air where it
+    /// hangs, its velocity as an acceleration per second added to their
+    /// own `wind`; a body with og.RigidBody.airDrag is carried towards it.
+    pub fn set_air(&self, air: og_core::air::Air) {
+        lock(&self.shared).air = air;
     }
 }
 

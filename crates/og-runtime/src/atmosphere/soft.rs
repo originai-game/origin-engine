@@ -100,8 +100,6 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
     }
     // og.Physics.gravity, for the bodies the renderer simulates.
     let gravity = physics.gravity().unwrap_or(Vec3::new(0.0, -9.81, 0.0));
-    // og.Wind as the tick's steps took it, beside each body's own.
-    let blowing = physics.wind();
     // Cloth: a double-sided mesh of its points, replaced every frame.
     for (e, v) in kept_rows(world, layouts.cloth.as_ref()) {
         let Ok(row) = record::Cloth::from_json(&v) else {
@@ -131,6 +129,13 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
             },
         );
         if visual(row.simulation) {
+            // The air where it hangs, as the tick's steps take it (og.Wind
+            // and the og.WindMotors reaching it), beside its own.
+            let (min, max) = c.points.iter().fold(
+                (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
+                |(min, max), p| (min.min(*p), max.max(*p)),
+            );
+            let blowing = physics.air_at((min + max) * 0.5);
             let body = og_render::VisualBody {
                 pinned: c.pinned.into(),
                 substeps: small_steps(row.substeps, row.iterations),
