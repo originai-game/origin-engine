@@ -1403,7 +1403,7 @@ Colour emoji are a font feature. The `emoji` pack is Noto Color Emoji's
 COLRv1 face (SIL OFL 1.1; script `Zsye`, no language, tried after every
 text pack), declared `color true` with `runtime true`: COLR v0 and v1
 glyphs are painted when first shown by the cook's painter
-(`crates/og-ui-core/src/colr.rs`) at `color_px` in the configured palette,
+(`crates/og-ui-core/src/text/colr.rs`) at `color_px` in the configured palette,
 onto colour pages with a silhouette field for shadow, glow and outline;
 CPAL 0xFFFF layers take the text colour at draw. GSUB forms skin tones,
 ZWJ sequences and flags; spaces and punctuation after an emoji take a text

@@ -4,6 +4,12 @@
 
 pub use og_text::text::*;
 
-#[cfg(feature = "shaping")]
+pub mod colr;
+pub(crate) mod edit;
+pub mod input_type;
+pub mod markup;
 pub mod paragraph;
+#[cfg(feature = "shaping")]
+pub mod rich;
+pub mod text_path;
 pub mod vertical;

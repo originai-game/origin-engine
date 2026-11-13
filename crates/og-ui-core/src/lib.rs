@@ -20,19 +20,19 @@ pub static DEFAULT_ROLE_CSS: std::sync::LazyLock<String> = std::sync::LazyLock::
 pub mod a11y;
 pub mod actions;
 pub use og_reactive::bind;
-pub mod colr;
 pub use style::css_color;
+pub use text::colr;
 pub(crate) mod decor;
 pub mod doc;
 mod draw;
 mod draw_codec;
 pub use style::dress;
-pub(crate) mod edit;
+pub(crate) use text::edit;
 pub mod element;
 pub mod hud_layout;
-#[doc(hidden)]
-pub mod input_type;
 pub use input_type::{InputMode, InputType};
+#[doc(hidden)]
+pub use text::input_type;
 #[doc(hidden)]
 pub mod id;
 #[doc(hidden)]
@@ -42,7 +42,7 @@ mod juice;
 pub mod layer_stack;
 #[doc(hidden)]
 pub mod layout;
-pub mod markup;
+pub use text::markup;
 pub mod motion;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native_a11y;
@@ -51,9 +51,9 @@ pub mod paint;
 pub use og_reactive::reactive;
 pub use style::paint_entry;
 mod recognize;
-#[doc(hidden)]
-pub mod rich;
 pub use og_rive as rive;
+#[doc(hidden)]
+pub use text::rich;
 mod scroll;
 pub use scroll::{Overscroll, ScrollCss, ScrollState};
 pub mod slot;
@@ -86,7 +86,7 @@ pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{
     DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, LayerRole, MAX_LAYERS, drawn_lines,
 };
-pub mod text_path;
+pub use text::text_path;
 pub mod transform3d;
 pub use element::{
     Affine, AutoRepeat, Breadth, Cursor, CursorImage, Customize, Dismiss, DragAxis, DragSpec,
