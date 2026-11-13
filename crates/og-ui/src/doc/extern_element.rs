@@ -175,7 +175,7 @@ fn under_svg(parent_tag: Option<&str>) -> bool {
     in_svg(parent_tag) || parent_tag.is_some_and(|p| SVG_SHAPES.contains(&p) || p == "use")
 }
 
-/// The internal kind lowercase `tag` names (one [`super::schema_extra`]
+/// The internal kind lowercase `tag` names (one [`super::schema::kinds`]
 /// registers), inside an element whose selector tag is `parent_tag`.
 /// `Some(Err(hint))`: the tag is known but not valid there. `None`: not
 /// an extern element.
@@ -304,7 +304,7 @@ pub fn property(kind: &str, attr: &str) -> Option<String> {
         "svgDef" => true,
         _ => false,
     };
-    svg.then(|| super::schema_extra::svg_prop(attr))
+    svg.then(|| super::schema::props::svg::svg_prop(attr))
         .flatten()
         .map(str::to_string)
 }

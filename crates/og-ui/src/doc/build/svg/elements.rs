@@ -424,7 +424,7 @@ impl Ui {
                 .unwrap_or_else(|e| {
                     warnings.push(format!(
                         "{}: {e}",
-                        crate::doc::schema_extra::svg_attr(p).unwrap_or(p)
+                        crate::doc::schema::props::svg::svg_attr(p).unwrap_or(p)
                     ));
                     0.0
                 })

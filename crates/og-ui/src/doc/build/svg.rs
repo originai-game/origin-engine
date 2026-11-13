@@ -16,7 +16,7 @@
 //! else.
 use super::*;
 use crate::doc::extern_element::{PRESENTATION, TEXT_PRESENTATION};
-use crate::doc::schema_extra::svg_prop;
+use crate::doc::schema::props::svg::svg_prop;
 use crate::paint::{
     ColorRef, ElementDraw, Gradient, GradientKind, Paint, ShapeKind, Stop, Stroke, StrokeAlign,
 };

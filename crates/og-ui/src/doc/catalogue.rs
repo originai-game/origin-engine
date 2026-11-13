@@ -101,7 +101,7 @@ pub fn tags(kind: &str) -> Vec<(String, String)> {
             "<meter id=\"Name\" value={$hp} min=\"0\" max=\"100\" low=\"25\" high=\"75\" optimum=\"90\" />".into(),
         )],
         "icon" => Vec::new(),
-        other => super::schema_extra::tags(other).unwrap_or_else(|| {
+        other => super::schema::kinds::tags(other).unwrap_or_else(|| {
             vec![(other.into(), format!("<{other} id=\"Name\">…</{other}>"))]
         }),
     };
@@ -136,7 +136,7 @@ fn written(p: &PropSpec) -> String {
                 "name" => "aria-label".into(),
                 "texture" => "src".into(),
                 "tabIndex" => "tabindex".into(),
-                other => super::schema_extra::svg_attr(other)
+                other => super::schema::props::svg::svg_attr(other)
                     .map_or_else(|| super::css::kebab(other), str::to_string),
             }
         ),

@@ -31,7 +31,6 @@ pub use crate::css::motion;
 pub use crate::css::paint_css;
 pub mod schema;
 #[doc(hidden)]
-pub mod schema_extra;
 pub(crate) use crate::css::scroll_css;
 pub mod selectors;
 #[doc(hidden)]
