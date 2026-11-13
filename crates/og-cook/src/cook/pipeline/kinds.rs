@@ -63,7 +63,7 @@ pub(crate) trait Job: Sync {
 }
 
 /// Every system's kinds, one line a system.
-pub(crate) static SYSTEMS: &[&[&KindDef]] = &[behaviour::KINDS, story::KINDS];
+pub(crate) static SYSTEMS: &[&[&KindDef]] = &[behaviour::KINDS, story::KINDS, strings::KINDS];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {
     SYSTEMS.iter().flat_map(|s| s.iter().copied())

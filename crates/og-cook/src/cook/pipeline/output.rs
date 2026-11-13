@@ -549,7 +549,7 @@ pub(crate) fn diagnose(
     // Across the string tables: every locale has every key, with its arguments.
     let tables: Vec<(&str, &[u8])> = sources
         .iter()
-        .filter(|s| s.kind == Kind::Strings)
+        .filter(|s| s.kind == Kind::System(&strings::STRINGS))
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
     // Diagnostics describe source assets, never change their cooked blobs.

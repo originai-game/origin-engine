@@ -1,6 +1,6 @@
 //! String tables (`type strings`): validated by og-i18n and kept as text.
 
-use super::{CookError, Source};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -63,4 +63,41 @@ pub(crate) fn check_strings(sources: &[(&str, &[u8])]) -> Vec<(String, String)> 
             Some((rel, what))
         })
         .collect()
+}
+
+pub(crate) static STRINGS: KindDef = KindDef {
+    name: "strings",
+    extensions: &[],
+    types: &[og_i18n::STRINGS_TYPE],
+    by_content: true,
+    streams: false,
+    plan: plan_strings,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&STRINGS];
+
+fn plan_strings<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"strings", &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::Strings::NAME,
+        st,
+        Work::Job(Box::new(StringsJob(s))),
+    ));
+}
+
+/// A string table's one output.
+struct StringsJob<'a>(&'a Source);
+
+impl Job for StringsJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_strings(self.0, p.stamp)
+    }
 }

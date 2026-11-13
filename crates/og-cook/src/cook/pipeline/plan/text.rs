@@ -84,7 +84,7 @@ pub(super) fn plan_document<'a>(
             }
         }
         for id in &doc.strings {
-            let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::Strings)
+            let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::System(&strings::STRINGS))
                 .ok_or_else(|| vec![format!("{}: missing string table {id}; add the table named by <meta name=\"strings\">", s.rel)])?;
             let text = std::str::from_utf8(&table.bytes).map_err(|_| vec![format!("{id}: string tables must be UTF-8")])?;
             og_i18n::StringTable::parse(text).map_err(|error| vec![format!("{id}: {error}")])?;
@@ -121,17 +121,6 @@ pub(super) fn plan_document<'a>(
         st,
         Work::Document(s, uses),
     ));
-}
-
-pub(super) fn plan_strings<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let st = stamp(&[b"strings", &hash]);
-    outs.push((s.rel.clone(), format::Strings::NAME, st, Work::Strings(s)));
 }
 
 pub(super) fn plan_font_pack<'a>(
