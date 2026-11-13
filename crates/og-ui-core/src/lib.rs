@@ -18,7 +18,7 @@ pub static DEFAULT_ROLE_CSS: std::sync::LazyLock<String> = std::sync::LazyLock::
 
 #[doc(hidden)]
 pub mod a11y;
-pub mod actions;
+pub use interaction::actions;
 pub use og_reactive::bind;
 pub(crate) use paint::decor;
 pub use style::css_color;
@@ -29,14 +29,15 @@ pub(crate) use draw::draw_codec;
 pub use style::dress;
 pub(crate) use text::edit;
 pub mod element;
-pub mod hud_layout;
 pub use input_type::{InputMode, InputType};
+pub use interaction::hud_layout;
 #[doc(hidden)]
 pub use text::input_type;
 #[doc(hidden)]
 pub mod id;
+pub mod interaction;
 #[doc(hidden)]
-pub mod input;
+pub use interaction::input;
 pub(crate) use motion::juice;
 #[doc(hidden)]
 pub mod layer_stack;
@@ -46,26 +47,25 @@ pub use text::markup;
 pub mod motion;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod native_a11y;
-mod nav;
 pub mod paint;
+pub(crate) use interaction::recognize;
+pub(crate) use interaction::scroll;
 pub use og_reactive::reactive;
-pub use style::paint_entry;
-mod recognize;
 pub use og_rive as rive;
-#[doc(hidden)]
-pub use text::rich;
-mod scroll;
 pub use paint::slot;
 pub use scroll::{Overscroll, ScrollCss, ScrollState};
+pub use style::paint_entry;
 pub use style::sound_css;
+#[doc(hidden)]
+pub use text::rich;
 #[doc(hidden)]
 pub mod style;
 pub use og_text::{glyphs, shape};
 pub use paint::svg;
 pub use style::style_file;
 mod text;
+pub use interaction::vcursor;
 pub use style::tokens;
-pub mod vcursor;
 #[rustfmt::skip]
 pub mod theme;
 pub use paint::particles;

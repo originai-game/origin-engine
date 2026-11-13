@@ -3,7 +3,7 @@
 The focus runtime and kit of rune (https://github.com/anomalyco/rune,
 commit `a8ca769b944598e179f33cc6843629b90e6ca831`, MIT, licence in
 `LICENSE`), the keyboard model ported to og-ui's navigation
-(`crates/og-ui-core/src/nav.rs`, `apply_list_keys`; the dropdown trigger in
+(`crates/og-ui-core/src/interaction/nav.rs`, `apply_list_keys`; the dropdown trigger in
 `crates/og-ui-core/src/widgets/controls/dropdown.rs`):
 
 - Home and End to a focus group's first and last member
