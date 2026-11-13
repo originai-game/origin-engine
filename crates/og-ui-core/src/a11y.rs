@@ -12,6 +12,8 @@
 //! drawing order: the page, then each layer over it), within the topmost
 //! dialog while one is open. [`A11yTree::focus_order`] lists them.
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod native_a11y;
 use crate::layout::{Node, Widget};
 
 /// Semantic information from render nodes, shared by navigation and diagnostics.
