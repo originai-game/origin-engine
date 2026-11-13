@@ -1,7 +1,5 @@
 use super::*;
-mod images;
 mod models;
-use images::*;
 use models::*;
 
 /// What every stage after the art contract reads.
@@ -76,7 +74,6 @@ pub(crate) fn plan<'a>(
         // relative references or write source-derived names/sub-asset ids;
         // their location remains part of the action, not the content hash.
         let hash = match s.kind {
-            Kind::Texture => stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()]),
             Kind::System(k) if k.by_content => {
                 stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
             }
@@ -138,7 +135,6 @@ fn plan_kind<'a>(
 ) {
     match s.kind {
         Kind::Model => plan_model(cx, state, s, hash, outs),
-        Kind::Texture => plan_texture(cx, state, s, hash, outs),
         Kind::System(k) => (k.plan)(cx, state, s, hash, outs),
     }
 }

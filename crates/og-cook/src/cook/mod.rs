@@ -31,7 +31,7 @@ pub use formats::{
     anim, audio, bc6h, cube_source, icons, ktx2_source, model_text, prefab, sfx, texture_array,
     video, vox,
 };
-use formats::{fbx, font, font_pack, model, motion, normal2d, psd, scene, texture, timeline};
+use formats::{fbx, font, font_pack, model, motion, psd, scene, texture, timeline};
 pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
 pub mod riv;
@@ -84,7 +84,6 @@ impl std::error::Error for CookError {}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Kind {
     Model,
-    Texture,
     /// A kind its system's module declares (`pipeline/kinds.rs`).
     System(&'static KindDef),
 }
@@ -93,7 +92,6 @@ impl Kind {
     fn name(self) -> &'static str {
         match self {
             Kind::Model => "model",
-            Kind::Texture => "texture",
             Kind::System(k) => k.name,
         }
     }
@@ -202,10 +200,6 @@ enum Work<'a> {
     /// A glTF image cooked as a texture: its index, kind, cut-off as a
     /// cut-out ([`model::TextureUse::cutout`]) and how it splits.
     GltfTexture(&'a Source, usize, u32, Option<u8>, Split),
-    Texture(&'a Source, u32, Split),
-    /// A 2D texture's `#normal` (normal2d.rs): made from it, or from the
-    /// file its `normal` line names (its bytes).
-    TextureNormal(&'a Source, Option<Vec<u8>>),
     /// A fractured model's `#fracture`.
     Fracture(&'a Source),
     /// Work its system's module plans and cooks (`pipeline/kinds.rs`).

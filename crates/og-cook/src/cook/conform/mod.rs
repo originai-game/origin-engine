@@ -93,7 +93,9 @@ pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, Strin
     let uses = texture2d::uses(&sources, &known, &sheets, &project_off);
     let mut out = BTreeMap::new();
     for s in &sources {
-        if s.kind != super::Kind::Texture || s.rel.to_ascii_lowercase().ends_with(".ktx2") {
+        if s.kind != super::Kind::System(&crate::cook::texture::TEXTURE)
+            || s.rel.to_ascii_lowercase().ends_with(".ktx2")
+        {
             continue;
         }
         let used = uses.get(&s.rel).map_or(&[][..], Vec::as_slice);

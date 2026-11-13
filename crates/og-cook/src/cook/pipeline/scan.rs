@@ -49,7 +49,6 @@ pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
 fn kind_by_extension(ext: &str) -> Option<Kind> {
     Some(match ext {
         "glb" | "gltf" | "vox" | "fbx" | "obj" => Kind::Model,
-        "png" | "jpg" | "jpeg" | "ktx2" | "webp" | "tga" | "psd" | "dds" | "svg" => Kind::Texture,
         _ => return kinds::by_extension(ext),
     })
 }
@@ -530,7 +529,7 @@ pub(crate) fn plan_groups(
                             .meshes()
                             .any(|x| x.primitives().any(|p| p.morph_targets().next().is_some()))
                 });
-                let fits = matches!(src.kind, Kind::Model | Kind::Texture)
+                let fits = matches!(src.kind, Kind::Model)
                     || matches!(src.kind, Kind::System(k) if k.streams);
                 if !fits || skinned {
                     refused = Some(format!(

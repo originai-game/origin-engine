@@ -32,7 +32,7 @@ mod layers;
 
 pub use engine::{ENGINE_VERSION, LAYER_TYPES, Rendered};
 
-use super::Source;
+use super::{Kind, Source};
 use og_core::ogt::{Block, Document, Entry, Value};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -392,7 +392,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         extra.push(Source {
             rel: super::animated::sheet_texture_id(&s.rel),
             path: s.path.clone(),
-            kind: super::Kind::Texture,
+            kind: Kind::System(&crate::cook::texture::TEXTURE),
             bytes: built.png,
             settings: Some((settings, doc)),
             settings_files: Vec::new(),

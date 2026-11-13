@@ -372,7 +372,7 @@ pub(in crate::cook) fn conform(
     let mesh: BTreeSet<String> = sources
         .iter()
         .filter(|s| {
-            s.kind == Kind::Texture
+            s.kind == Kind::System(&crate::cook::texture::TEXTURE)
                 && s.error.is_none()
                 && !s.rel.to_ascii_lowercase().ends_with(".ktx2")
         })
@@ -396,7 +396,7 @@ pub(in crate::cook) fn conform(
     let mut sheet_texts: Vec<SheetText> = Vec::new();
     for i in 0..sources.len() {
         let s = &sources[i];
-        if s.kind != Kind::Texture
+        if s.kind != Kind::System(&crate::cook::texture::TEXTURE)
             || s.error.is_some()
             || s.rel.to_ascii_lowercase().ends_with(".ktx2")
         {
@@ -546,7 +546,7 @@ pub(in crate::cook) fn conform(
         if let Some(index) = &done.index {
             push(
                 format!("{base}#index"),
-                Kind::Texture,
+                Kind::System(&crate::cook::texture::TEXTURE),
                 index.png(),
                 Some(pixel_import),
             );
@@ -571,7 +571,7 @@ pub(in crate::cook) fn conform(
         if let Some((rot, rot_index, (sx, sy))) = &done.rotations {
             push(
                 format!("{base}#rotations"),
-                Kind::Texture,
+                Kind::System(&crate::cook::texture::TEXTURE),
                 rot.png(),
                 Some(pixel_import),
             );
@@ -582,7 +582,7 @@ pub(in crate::cook) fn conform(
             if let Some(ri) = rot_index {
                 push(
                     format!("{base}#rotations-index"),
-                    Kind::Texture,
+                    Kind::System(&crate::cook::texture::TEXTURE),
                     ri.png(),
                     Some(pixel_import),
                 );

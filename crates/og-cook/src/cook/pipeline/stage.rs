@@ -320,7 +320,7 @@ pub(crate) fn resolve(
     // has import settings of its own, not only its directory's (which only a
     // texture cooked on its own reads) or a terrain names it as a layer (by asset id), s59.
     for s in sources.iter() {
-        if s.kind == Kind::Texture && s.own_settings() {
+        if s.kind == Kind::System(&crate::cook::texture::TEXTURE) && s.own_settings() {
             consumed.remove(&s.rel);
         }
         if s.kind == Kind::System(&terrain::TERRAIN) {

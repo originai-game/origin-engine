@@ -39,7 +39,7 @@
 //! count, delays, per-frame bounds and centroid and their drift, the loop
 //! seam and the alpha edge fringe. Measurements only, never a verdict.
 
-use super::Source;
+use super::{Kind, Source};
 use og_core::ogt::{Document, Entry, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -1633,7 +1633,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         extra.push(Source {
             rel: sheet_texture_id(&s.rel),
             path: s.path.clone(),
-            kind: super::Kind::Texture,
+            kind: Kind::System(&crate::cook::texture::TEXTURE),
             bytes: built.png,
             settings,
             settings_files: Vec::new(),

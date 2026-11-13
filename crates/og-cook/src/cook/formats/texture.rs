@@ -6,7 +6,11 @@
 //! PATH. With neither, texture cooking fails with a message naming both:
 //! a texture is never passed through uncompressed.
 
-use super::{CookError, TextureOptions};
+use super::{
+    Action, CookError, Cx, Exec, Job, KindDef, Out, Path, PlanState, Planned, Source, Split,
+    TextureOptions, Work, conform, ext, ktx2_source, mesh_texture, normal2d, not_split,
+    settings_block, stamp, texture_kind, texture_stream,
+};
 use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
@@ -647,6 +651,225 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
     w.table("meta", &[meta], row_hash::<TextureMeta>())
         .raw("ktx2", ktx, 16);
     Ok(w.finish())
+}
+
+/// An image file, a `.ktx2` as it is, or a sprite's 2D normal map.
+pub(crate) static TEXTURE: KindDef = KindDef {
+    name: "texture",
+    extensions: &[
+        "png", "jpg", "jpeg", "ktx2", "webp", "tga", "psd", "dds", "svg",
+    ],
+    types: &[],
+    by_content: true,
+    streams: true,
+    plan: plan_texture,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&TEXTURE];
+
+fn plan_texture<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        options,
+        group_of,
+        tex_desc,
+        ..
+    } = *cx;
+    let PlanState { early_errors, .. } = state;
+    match texture_kind(s).and_then(|k| Ok((k, texture_stream(s, k)?))) {
+        Ok((k, stream)) => {
+            // A mesh's texture under the art contract: its desc too.
+            let mesh = mesh_texture(s, options)
+                .map(|c| c.texture_desc())
+                .unwrap_or_default();
+            let kind = k.to_le_bytes();
+            let st = |word: &[u8]| {
+                let mut parts: Vec<&[u8]> = vec![b"texture", tex_desc.as_bytes(), &hash, &kind];
+                if !mesh.is_empty() {
+                    parts.push(mesh.as_bytes());
+                }
+                if !word.is_empty() {
+                    parts.push(word);
+                }
+                stamp(&parts)
+            };
+            let source = s.conformed.as_deref().map_or(&s.bytes[..], |b| &b[..]);
+            match stream.then(|| not_split(source, k, group_of.get(&s.rel))) {
+                Some(None) => {
+                    let mips = st(b"mips");
+                    outs.push((
+                        s.rel.clone(),
+                        format::Texture::NAME,
+                        st(b"tail"),
+                        Work::Job(Box::new(TextureJob(s, k, Split::Tail(mips)))),
+                    ));
+                    outs.push((
+                        crate::runtime::mips_id(&s.rel),
+                        format::Texture::NAME,
+                        mips,
+                        Work::Job(Box::new(TextureJob(s, k, Split::Mips))),
+                    ));
+                }
+                why => outs.push((
+                    s.rel.clone(),
+                    format::Texture::NAME,
+                    st(b""),
+                    Work::Job(Box::new(TextureJob(s, k, Split::Whole(why.flatten())))),
+                )),
+            }
+            // Its normal map for 2D lighting (`normal auto` or a file).
+            match normal2d::setting(settings_block(s, "texture")) {
+                Ok(None) => {}
+                Ok(Some(setting)) => {
+                    let file = match &setting {
+                        normal2d::NormalSetting::Auto => Ok(None),
+                        normal2d::NormalSetting::File(name) => {
+                            let path = s.path.parent().unwrap_or(Path::new(".")).join(name);
+                            std::fs::read(&path)
+                                .map(Some)
+                                .map_err(|e| format!("normal \"{name}\": {e}"))
+                        }
+                    };
+                    match file {
+                        Ok(file) => {
+                            let st = stamp(&[
+                                b"texture normal",
+                                tex_desc.as_bytes(),
+                                &hash,
+                                file.as_deref().unwrap_or(b"auto"),
+                            ]);
+                            outs.push((
+                                format!("{}#normal", s.rel),
+                                format::Texture::NAME,
+                                st,
+                                Work::Job(Box::new(TextureNormalJob(s, file))),
+                            ));
+                        }
+                        Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+                    }
+                }
+                Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+            }
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+    }
+}
+
+/// An image file's or a `.ktx2`'s output: the whole chain, or its part
+/// of a streamed one.
+struct TextureJob<'a>(&'a Source, u32, Split);
+
+impl Job for TextureJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let TextureJob(s, k, split) = self;
+        let Exec { options, .. } = ex;
+        if s.rel.ends_with(".ktx2") {
+            let explicit = settings_block(s, "texture")
+                .and_then(|b| b.get("kind"))
+                .map(|_| *k);
+            return split_texture(s, 0, split, p, |stamp| {
+                ktx2_source::cook(&s.bytes, explicit, &options.texture, stamp)
+            });
+        }
+        split_texture(s, 0, split, p, |stamp| {
+            let img = decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
+            if let Some(c) = mesh_texture(s, options) {
+                let mut t = options.texture.clone();
+                let (img, k, mips, note) = conform::mesh::texture(&c, None, img, *k, t.mipmaps);
+                t.mipmaps = mips;
+                let mut notes = vec![format!("{}x{} as a mesh's texture", img.width, img.height)];
+                notes.extend(note.map(|n| match n.strip_prefix("conform: ") {
+                    Some(w) if w != conform::mesh::UNCHANGED => {
+                        format!("conform: {}; {w}", conform::mesh::DEFAULT_MESH_TEXTURE)
+                    }
+                    _ => n,
+                }));
+                return cook(&img, k, &t, stamp).map(|b| (b, notes));
+            }
+            let note = format!(
+                "{}x{} {}",
+                img.width,
+                img.height,
+                match *k {
+                    format::kind::NORMAL => "normal (UASTC)",
+                    format::kind::LINEAR => "linear (UASTC)",
+                    format::kind::PIXEL => "pixel art (RGBA8, no mips)",
+                    _ => "colour (ETC1S)",
+                }
+            );
+            cook(&img, *k, &options.texture, stamp).map(|b| (b, vec![note]))
+        })
+    }
+
+    fn action(&self) -> Action<'_> {
+        let TextureJob(s, kind, split) = self;
+        Action::Input(
+            s.conformed.as_deref().unwrap_or(&s.bytes).as_slice(),
+            format!("{kind} {split:?} {} {:?}", ext(&s.rel), s.settings),
+            true,
+        )
+    }
+}
+
+/// A sprite's 2D normal map: its own file's, or one made from its colour.
+struct TextureNormalJob<'a>(&'a Source, Option<Vec<u8>>);
+
+impl Job for TextureNormalJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let TextureNormalJob(s, file) = self;
+        let Exec { options, .. } = ex;
+        {
+            let img = match file {
+                Some(bytes) => decode(bytes).map_err(CookError)?,
+                None => super::normal2d::auto(
+                    &decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?,
+                ),
+            };
+            let note = format!(
+                "{}x{} 2D normal map ({})",
+                img.width,
+                img.height,
+                if file.is_some() { "its file" } else { "auto" }
+            );
+            cook(&img, format::kind::NORMAL, &options.texture, p.stamp).map(|b| (b, vec![note]))
+        }
+    }
+}
+
+/// A texture output by how it stands to its source's mip chain (G3-3):
+/// `cook` makes the whole chain's blob under a stamp and its notes. A
+/// streamed texture's tail and `#mips` share one cook of the whole chain
+/// (under the `#mips` output's stamp, [`Source::whole_texture`]): `#mips`
+/// is that blob as it is, without the notes, which its tail reports with
+/// its own line.
+pub(crate) fn split_texture(
+    s: &Source,
+    image: usize,
+    split: &Split,
+    p: &Planned,
+    cook: impl FnOnce(u64) -> Result<(Vec<u8>, Vec<String>), CookError>,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    match split {
+        Split::Whole(why) => cook(p.stamp).map(|(b, mut notes)| {
+            notes.extend(why.iter().map(|w| format!("{}: {w}", p.id)));
+            (b, notes)
+        }),
+        Split::Mips => s
+            .whole_texture(image, p.stamp, || cook(p.stamp))
+            .map(|(b, _)| (b, Vec::new())),
+        Split::Tail(mips) => {
+            let (whole, mut notes) = s.whole_texture(image, *mips, || cook(*mips))?;
+            let (tail, note) = tail(&whole, p.stamp)?;
+            notes.push(format!("{}: {note}", p.id));
+            Ok((tail, notes))
+        }
+    }
 }
 
 #[cfg(test)]

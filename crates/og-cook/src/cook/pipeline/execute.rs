@@ -120,61 +120,7 @@ pub(crate) fn run(
                 }
                 texture::cook(&img, k, &t, stamp).map(|b| (b, notes))
             };
-            split_texture(s, *image, split, p, cook)
-        }
-        Work::Texture(s, k, split) if s.rel.ends_with(".ktx2") => {
-            let explicit = settings_block(s, "texture")
-                .and_then(|b| b.get("kind"))
-                .map(|_| *k);
-            split_texture(s, 0, split, p, |stamp| {
-                ktx2_source::cook(&s.bytes, explicit, &options.texture, stamp)
-            })
-        }
-        Work::Texture(s, k, split) => split_texture(s, 0, split, p, |stamp| {
-            let img =
-                texture::decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
-            if let Some(c) = mesh_texture(s, options) {
-                let mut t = options.texture.clone();
-                let (img, k, mips, note) = conform::mesh::texture(&c, None, img, *k, t.mipmaps);
-                t.mipmaps = mips;
-                let mut notes = vec![format!("{}x{} as a mesh's texture", img.width, img.height)];
-                notes.extend(note.map(|n| match n.strip_prefix("conform: ") {
-                    Some(w) if w != conform::mesh::UNCHANGED => {
-                        format!("conform: {}; {w}", conform::mesh::DEFAULT_MESH_TEXTURE)
-                    }
-                    _ => n,
-                }));
-                return texture::cook(&img, k, &t, stamp).map(|b| (b, notes));
-            }
-            let note = format!(
-                "{}x{} {}",
-                img.width,
-                img.height,
-                match *k {
-                    format::kind::NORMAL => "normal (UASTC)",
-                    format::kind::LINEAR => "linear (UASTC)",
-                    format::kind::PIXEL => "pixel art (RGBA8, no mips)",
-                    _ => "colour (ETC1S)",
-                }
-            );
-            texture::cook(&img, *k, &options.texture, stamp).map(|b| (b, vec![note]))
-        }),
-        Work::TextureNormal(s, file) => {
-            let img = match file {
-                Some(bytes) => texture::decode(bytes).map_err(CookError)?,
-                None => super::normal2d::auto(
-                    &texture::decode(s.conformed.as_deref().unwrap_or(&s.bytes))
-                        .map_err(CookError)?,
-                ),
-            };
-            let note = format!(
-                "{}x{} 2D normal map ({})",
-                img.width,
-                img.height,
-                if file.is_some() { "its file" } else { "auto" }
-            );
-            texture::cook(&img, format::kind::NORMAL, &options.texture, p.stamp)
-                .map(|b| (b, vec![note]))
+            texture::split_texture(s, *image, split, p, cook)
         }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::Job(job) => job.cook(
@@ -188,36 +134,6 @@ pub(crate) fn run(
                 budgets,
             },
         ),
-    }
-}
-
-/// A texture output by how it stands to its source's mip chain (G3-3):
-/// `cook` makes the whole chain's blob under a stamp and its notes. A
-/// streamed texture's tail and `#mips` share one cook of the whole chain
-/// (under the `#mips` output's stamp, [`Source::whole_texture`]): `#mips`
-/// is that blob as it is, without the notes, which its tail reports with
-/// its own line.
-fn split_texture(
-    s: &Source,
-    image: usize,
-    split: &Split,
-    p: &Planned,
-    cook: impl FnOnce(u64) -> Result<(Vec<u8>, Vec<String>), CookError>,
-) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    match split {
-        Split::Whole(why) => cook(p.stamp).map(|(b, mut notes)| {
-            notes.extend(why.iter().map(|w| format!("{}: {w}", p.id)));
-            (b, notes)
-        }),
-        Split::Mips => s
-            .whole_texture(image, p.stamp, || cook(p.stamp))
-            .map(|(b, _)| (b, Vec::new())),
-        Split::Tail(mips) => {
-            let (whole, mut notes) = s.whole_texture(image, *mips, || cook(*mips))?;
-            let (tail, note) = texture::tail(&whole, p.stamp)?;
-            notes.push(format!("{}: {note}", p.id));
-            Ok((tail, notes))
-        }
     }
 }
 
