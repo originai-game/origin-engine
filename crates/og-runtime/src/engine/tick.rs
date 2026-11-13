@@ -113,7 +113,13 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     super::stream::sound_chunks(&eng);
     let ticks = match stepped {
         Ok(Ok(n)) => n,
-        Ok(Err(e)) => return refuse(err(e)),
+        // A system failed: the world's clock stays on the tick it threw in
+        // (Time advances only after a tick's systems ran), which a catch-up
+        // frame may have reached several ticks past the last answer's.
+        Ok(Err(e)) => {
+            let tick = eng.world().map(|w| w.time().tick).ok();
+            return json!({ "ok": false, "reason": err(e), "tick": tick }).to_string();
+        }
         Err(e) => return refuse(e),
     };
     if ticks > 0 {

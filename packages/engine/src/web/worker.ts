@@ -1206,6 +1206,8 @@ export function startWorker(game: GameToken): void {
         const began = performance.now();
         const answered = engine.frame(last ? now - last : 0);
         if (!answered.ok) {
+          // The tick a system threw in, which a catch-up frame reaches past the last frame's.
+          if (typeof answered.tick === "number") lastTick = answered.tick;
           crash(answered.reason ?? "the engine refused a frame");
           return;
         }

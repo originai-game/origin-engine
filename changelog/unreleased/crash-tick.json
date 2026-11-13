@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "crash reports",
+      "summary": "A crash from a system that throws names the tick it threw in. A frame that caught up after a slow one stepped several ticks, and the report named the tick the previous frame had reached, a few ticks early."
+    }
+  ]
+}
