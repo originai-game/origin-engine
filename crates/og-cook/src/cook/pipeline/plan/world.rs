@@ -168,21 +168,6 @@ pub(super) fn plan_palette<'a>(
     outs.push((s.rel.clone(), format::Palette::NAME, st, Work::Palette(s)));
 }
 
-pub(super) fn plan_nav_mesh<'a>(
-    _cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let PlanState { parsed_refs, .. } = state;
-    let deps = navmesh::navmesh_dependencies(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    // Re-bake cached terrain surfaces with adaptive diagonals.
-    let st = stamp(&[b"navmesh 2", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::NavMesh::NAME, st, Work::NavMesh(s)));
-}
-
 pub(super) fn plan_scene<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

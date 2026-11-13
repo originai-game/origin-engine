@@ -187,7 +187,6 @@ fn plan_kind<'a>(
         Kind::Environment => plan_environment(cx, state, s, hash, outs),
         Kind::Look => plan_look(cx, state, s, hash, outs),
         Kind::Palette => plan_palette(cx, state, s, hash, outs),
-        Kind::NavMesh => plan_nav_mesh(cx, state, s, hash, outs),
         Kind::Font => plan_font(cx, state, s, hash, outs),
         Kind::Scene | Kind::Prefab => plan_scene(cx, state, s, hash, outs),
         Kind::System(k) => (k.plan)(cx, state, s, hash, outs),

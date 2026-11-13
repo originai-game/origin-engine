@@ -104,7 +104,6 @@ enum Kind {
     UiMaterial,
     Vector,
     Rive,
-    NavMesh,
     /// A font pack's `extension.json` (`kind font`, docs/ui.md §3.4).
     FontPack,
     Rig,
@@ -146,7 +145,6 @@ impl Kind {
             Kind::UiMaterial => "ui-material",
             Kind::Vector => "vector",
             Kind::Rive => "rive",
-            Kind::NavMesh => "navmesh",
             Kind::FontPack => "font-pack",
             Kind::Rig => "rig",
             Kind::MotionAction => "motion-action",
@@ -301,7 +299,6 @@ enum Work<'a> {
     RiveImage(&'a Source, usize),
     /// A font a `.riv`'s text uses.
     RiveFont(Box<riv::RivFont>),
-    NavMesh(&'a Source),
     FontPack(&'a Source),
     Rig(&'a Source),
     MotionAction(&'a Source),

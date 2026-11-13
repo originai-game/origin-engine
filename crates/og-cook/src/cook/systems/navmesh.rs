@@ -38,7 +38,10 @@
 //! A scene entity counts when it has a `model`, or an `og.Collider` box,
 //! sphere, capsule or cylinder (as its bounding box) on no dynamic body.
 
-use super::{CookError, Source, assets_root};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    stamp,
+};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 use og_core::glam::{Mat4, Quat, Vec3};
@@ -815,4 +818,45 @@ fn navmesh_blob(
         }
     }
     Ok((w, mesh.poly_count(), mesh.tiles.len()))
+}
+
+pub(crate) static NAVMESH: KindDef = KindDef {
+    name: "navmesh",
+    extensions: &[],
+    types: &[NAVMESH_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_nav_mesh,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&NAVMESH];
+
+fn plan_nav_mesh<'a>(
+    _cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let PlanState { parsed_refs, .. } = state;
+    let deps = navmesh_dependencies(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    // Re-bake cached terrain surfaces with adaptive diagonals.
+    let st = stamp(&[b"navmesh 2", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::NavMesh::NAME,
+        st,
+        Work::Job(Box::new(NavMeshJob(s))),
+    ));
+}
+
+/// A navmesh's one output: its bake.
+struct NavMeshJob<'a>(&'a Source);
+
+impl Job for NavMeshJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        cook_navmesh(self.0, p.stamp)
+    }
 }

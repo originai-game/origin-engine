@@ -80,7 +80,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (crate::shader::UI_MATERIAL_TYPE, Kind::UiMaterial),
     (vector::VECTOR_TYPE, Kind::Vector),
     (sfx::SFX_TYPE, Kind::Sound),
-    (navmesh::NAVMESH_TYPE, Kind::NavMesh),
     (anim::RIG_TYPE, Kind::Rig),
     ("motion-action", Kind::MotionAction),
     (terrain::TERRAIN_TYPE, Kind::Terrain),
