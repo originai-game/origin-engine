@@ -97,8 +97,6 @@ enum Kind {
     Rig2d,
     Vector,
     Rive,
-    Rig,
-    MotionAction,
     TextureArray,
     Video,
     /// A kind its system's module declares (`pipeline/kinds.rs`).
@@ -122,8 +120,6 @@ impl Kind {
             Kind::Rig2d => "rig2d",
             Kind::Vector => "vector",
             Kind::Rive => "rive",
-            Kind::Rig => "rig",
-            Kind::MotionAction => "motion-action",
             Kind::TextureArray => "texture-array",
             Kind::Video => "video",
             Kind::System(k) => k.name,
@@ -261,8 +257,6 @@ enum Work<'a> {
     RiveImage(&'a Source, usize),
     /// A font a `.riv`'s text uses.
     RiveFont(Box<riv::RivFont>),
-    Rig(&'a Source),
-    MotionAction(&'a Source),
     /// A texture array's blob, and layer `n`'s texture.
     TextureArray(&'a Source, texture_array::ArrayDecl),
     ArrayLayer(&'a Source, texture_array::ArrayDecl, usize),

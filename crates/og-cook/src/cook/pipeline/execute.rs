@@ -305,10 +305,6 @@ pub(crate) fn run(
         Work::Rive(s, name) => riv::cook(s, name, p.stamp),
         Work::RiveImage(s, n) => riv::cook_image(s, *n, &options.texture, p.stamp),
         Work::RiveFont(f) => riv::cook_font(f, threads, p.stamp),
-        Work::Rig(s) => anim::cook_rig(&s.bytes, p.stamp),
-        Work::MotionAction(s) => {
-            anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
-        }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::TextureArray(s, decl) => {
             let root = crate::cook::assets_root(s);

@@ -49,33 +49,6 @@ pub(super) fn plan_tilemap<'a>(
     }
 }
 
-pub(super) fn plan_rig<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let st = stamp(&[b"rig", &hash]);
-    outs.push((s.rel.clone(), format::Rig::NAME, st, Work::Rig(s)));
-}
-
-pub(super) fn plan_motion_action<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let st = stamp(&[b"motion-action", &hash]);
-    outs.push((
-        s.rel.clone(),
-        format::MotionAction::NAME,
-        st,
-        Work::MotionAction(s),
-    ));
-}
-
 pub(super) fn plan_scene<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

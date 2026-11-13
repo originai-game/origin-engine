@@ -71,8 +71,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (og_anim::RIG2D_TYPE, Kind::Rig2d),
     (vector::VECTOR_TYPE, Kind::Vector),
     (sfx::SFX_TYPE, Kind::Sound),
-    (anim::RIG_TYPE, Kind::Rig),
-    ("motion-action", Kind::MotionAction),
     (texture_array::ARRAY_TYPE, Kind::TextureArray),
     (video::VIDEO_TYPE, Kind::Video),
     (model_text::MODEL_TYPE, Kind::Model),

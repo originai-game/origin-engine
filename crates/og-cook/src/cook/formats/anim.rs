@@ -18,7 +18,9 @@
 //! `path::VISIBILITY`, resampled like any STEP channel.
 
 use super::model::{self, GltfSource, Strings};
-use super::{CookError, MeshOptions};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, MeshOptions, Out, PlanState, Planned, Source, Work, stamp,
+};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
@@ -1310,3 +1312,77 @@ fn cook_with(
         .raw("strings", strings.0, 1);
     Ok((w.finish(), notes))
 }
+
+pub(crate) static RIG: KindDef = KindDef {
+    name: "rig",
+    extensions: &[],
+    types: &[RIG_TYPE],
+    by_content: true,
+    streams: false,
+    plan: plan_rig,
+};
+
+fn plan_rig<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"rig", &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::Rig::NAME,
+        st,
+        Work::Job(Box::new(RigJob(s))),
+    ));
+}
+
+/// A rig's one output.
+struct RigJob<'a>(&'a Source);
+
+impl Job for RigJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let RigJob(s) = self;
+        cook_rig(&s.bytes, p.stamp)
+    }
+}
+
+pub(crate) static MOTION_ACTION: KindDef = KindDef {
+    name: "motion-action",
+    extensions: &[],
+    types: &["motion-action"],
+    by_content: true,
+    streams: false,
+    plan: plan_motion_action,
+};
+
+fn plan_motion_action<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"motion-action", &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::MotionAction::NAME,
+        st,
+        Work::Job(Box::new(MotionActionJob(s))),
+    ));
+}
+
+/// A motion action's one output.
+struct MotionActionJob<'a>(&'a Source);
+
+impl Job for MotionActionJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let MotionActionJob(s) = self;
+        let Exec { known, .. } = ex;
+        cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
+    }
+}
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&RIG, &MOTION_ACTION];
