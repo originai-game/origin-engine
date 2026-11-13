@@ -72,7 +72,7 @@ pub use paint::particles;
 #[doc(hidden)]
 pub mod ui;
 pub(crate) use motion::view_transition;
-pub mod viewport;
+pub use world::viewport;
 #[doc(hidden)]
 pub mod virtualize;
 #[doc(hidden)]
