@@ -11,6 +11,7 @@ mod pipeline_jobs;
 mod pipeline_select;
 mod skinned;
 
+pub(crate) use crowds::CrowdPlan;
 pub(crate) use pipeline_jobs::{Made, variant_job, variants};
 use pipeline_jobs::{Slot, Work, deferred};
 
