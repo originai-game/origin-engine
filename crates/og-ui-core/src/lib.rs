@@ -29,12 +29,12 @@ pub(crate) use draw::draw_codec;
 pub use style::dress;
 pub(crate) use text::edit;
 pub mod element;
+#[doc(hidden)]
+pub use element::id;
 pub use input_type::{InputMode, InputType};
 pub use interaction::hud_layout;
 #[doc(hidden)]
 pub use text::input_type;
-#[doc(hidden)]
-pub mod id;
 pub mod interaction;
 #[doc(hidden)]
 pub use interaction::input;
@@ -86,8 +86,7 @@ pub use doc::build::{DocEvent, DocResponse};
 pub use draw::{
     DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, LayerRole, MAX_LAYERS, drawn_lines,
 };
-pub use text::text_path;
-pub mod transform3d;
+pub use element::transform3d;
 pub use element::{
     Affine, AutoRepeat, Breadth, Cursor, CursorImage, Customize, Dismiss, DragAxis, DragSpec,
     DropSpec, Edges, FocusGroup, GestureSpec, GridFlow, GridLine, GridPlace, GridSpec, Interact,
@@ -125,6 +124,7 @@ pub use style::{
     Radius, Roles, Scheme, Space, Spring, Srgba, State, Theme, TypeRamp, TypeStep,
 };
 pub use style_file::{Art, Slice, SliceFill, StylePart, UiSound};
+pub use text::text_path;
 pub use text::{
     FontMetrics, Piece, UiFont, VisualGlyph, bidi_runs, needs_visual, pieces, pieces_with,
 };

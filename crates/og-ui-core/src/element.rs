@@ -14,8 +14,10 @@ use crate::motion::{PresenceSpec, Reduced, StateGroup, Transition};
 use crate::style::Breakpoint;
 
 mod frame;
+pub mod id;
 mod interact;
 mod placement;
+pub mod transform3d;
 
 pub use interact::*;
 pub use og_ui_model::{Affine, Transform};
