@@ -52,6 +52,19 @@ fn sphere(r: f32, c: [f32; 3], seg: u32, rings: u32) -> Mesh {
 /// material of base colour `color` and, with `png`, that image as its
 /// base colour texture.
 fn glb(mesh: &Mesh, nodes: usize, color: [f32; 4], png: Option<&[u8]>) -> Vec<u8> {
+    let nodes = (0..nodes)
+        .map(|i| serde_json::json!({ "mesh": 0, "translation": [i as f32 * 3.0, 0.0, 0.0] }))
+        .collect();
+    glb_nodes(mesh, nodes, color, png)
+}
+
+/// [`glb`] with the scene's root nodes as given (each draws mesh 0).
+fn glb_nodes(
+    mesh: &Mesh,
+    nodes: Vec<serde_json::Value>,
+    color: [f32; 4],
+    png: Option<&[u8]>,
+) -> Vec<u8> {
     let (p, n, uv, idx) = mesh;
     let mut bin: Vec<u8> = Vec::new();
     let mut views = Vec::new();
@@ -91,8 +104,8 @@ fn glb(mesh: &Mesh, nodes: usize, color: [f32; 4], png: Option<&[u8]>) -> Vec<u8
             { "bufferView": iv, "componentType": 5125, "count": idx.len(), "type": "SCALAR" },
         ],
         "meshes": [{ "primitives": [{ "attributes": { "POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2 }, "indices": 3, "material": 0 }] }],
-        "nodes": (0..nodes).map(|i| serde_json::json!({ "mesh": 0, "translation": [i as f32 * 3.0, 0.0, 0.0] })).collect::<Vec<_>>(),
-        "scenes": [{ "nodes": (0..nodes).collect::<Vec<_>>() }],
+        "scenes": [{ "nodes": (0..nodes.len()).collect::<Vec<_>>() }],
+        "nodes": nodes,
         "scene": 0,
     });
     if let Some(v) = img {
@@ -554,5 +567,66 @@ fn a_model_whose_triangles_all_cook_away_is_refused() {
             .any(|e| e.contains("models/line.glb") && e.contains("nothing left to draw")),
         "{:?}",
         report.errors()
+    );
+}
+
+/// A mesh under a mirrored node (glTF: a negative determinant turns the
+/// winding the renderer takes as the front) is voxelised in model space
+/// and brought back under the node: its triangles stay counter-clockwise
+/// from outside in the mesh's own space, as the unmirrored node's are, and
+/// agree with their normals. Before, they came back wound clockwise, right
+/// only under a renderer that ignored the node's mirror.
+#[test]
+fn voxels_under_a_mirrored_node_keep_the_mesh_s_winding() {
+    use glam::Vec3;
+    let volume = |name: &str, scale: [f32; 3]| {
+        let root = project(
+            name,
+            &[
+                ("project.ogt", PROJECT.as_bytes().to_vec()),
+                (
+                    "assets/looks/main.ogt",
+                    look("ArtShape {\n  voxel 0.25\n}\n").into_bytes(),
+                ),
+                (
+                    "assets/models/ball.glb",
+                    glb_nodes(
+                        &sphere(1.0, [0.5, 0.0, 0.0], 16, 12),
+                        vec![serde_json::json!({ "mesh": 0, "scale": scale })],
+                        [1.0; 4],
+                        None,
+                    ),
+                ),
+            ],
+        );
+        let report = cook(&root);
+        assert!(
+            notes(&report, "models/ball.glb")
+                .iter()
+                .any(|n| n.contains("voxel")),
+            "{:?}",
+            notes(&report, "models/ball.glb")
+        );
+        let tris = triangles(&root, "models/ball.glb");
+        let (mut volume, mut against) = (0.0, 0);
+        for t in tris.iter().flatten() {
+            let [a, b, c] = t.map(|v| Vec3::from(v.position));
+            let face = (b - a).cross(c - a);
+            volume += a.dot(b.cross(c)) / 6.0;
+            against += (face.dot(Vec3::from(t[0].normal)) <= 0.0) as usize;
+        }
+        let faces = tris.iter().flatten().count();
+        assert_eq!(
+            against, 0,
+            "{name}: of {faces} faces, wound against their normals"
+        );
+        volume
+    };
+    let plain = volume("voxel-plain", [1.0, 1.0, 1.0]);
+    let mirrored = volume("voxel-mirrored", [-1.0, 1.0, 1.0]);
+    assert!(plain > 3.0, "the ball's volume {plain}");
+    assert!(
+        (mirrored - plain).abs() < 0.05 * plain,
+        "mirrored {mirrored} against {plain}"
     );
 }

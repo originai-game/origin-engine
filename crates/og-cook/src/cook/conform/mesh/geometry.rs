@@ -992,6 +992,14 @@ pub(in crate::cook) fn primitive(
                         })
                         .collect();
                     *idx = ni;
+                    // Under a mirrored node the way back turns the winding:
+                    // the mesh's own is counter-clockwise from outside, and
+                    // the renderer takes a mirrored node's as clockwise.
+                    if place.determinant() < 0.0 {
+                        for t in idx.as_chunks_mut::<3>().0 {
+                            t.swap(1, 2);
+                        }
+                    }
                     ch.voxel = Some((edge, count));
                     ch.normals = true;
                     ch.colors = true;

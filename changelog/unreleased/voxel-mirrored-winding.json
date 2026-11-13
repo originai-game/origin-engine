@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ArtShape.voxel",
+      "summary": "A model voxelised under a mirrored node keeps counter-clockwise triangles that agree with their normals; it was wound the other way, which only drew right while the renderer ignored mirroring. Voxelised models re-cook."
+    }
+  ]
+}
