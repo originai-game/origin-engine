@@ -27,27 +27,11 @@ pub fn og_transform_decompose(matrix: String) -> Value {
 }
 
 /// The rotation that points -Z from `eye` towards `target`, +Y up by default.
-fn look_rotation(eye: glam::Vec3, target: glam::Vec3, up: glam::Vec3) -> glam::Quat {
-    let up = if up.length_squared() == 0.0 {
-        glam::Vec3::Y
-    } else {
-        up
-    };
-    let forward = (target - eye).normalize_or_zero();
-    if forward == glam::Vec3::ZERO {
-        return glam::Quat::IDENTITY;
-    }
-    let z = -forward;
-    let x = up.cross(z).normalize_or(glam::Vec3::X);
-    let y = z.cross(x);
-    glam::Quat::from_mat3(&glam::Mat3::from_cols(x, y, z))
-}
-
 pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> glam::Quat {
     let eye: glam::Vec3 = wire::arg(Some(&eye), "eye").unwrap_or_default();
     let target: glam::Vec3 = wire::arg(Some(&target), "target").unwrap_or_default();
     let up: glam::Vec3 = wire::arg(up.as_deref(), "up").unwrap_or_default();
-    look_rotation(eye, target, up)
+    og_core::facing::camera_look(eye, target, up)
 }
 
 pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> glam::Quat {
@@ -510,10 +494,10 @@ pub fn og_camera_look_at(world: u32, target: String) {
     let _ = (|| -> Result<(), String> {
         let eng = engine(world)?;
         let cam = record::Camera::from_json(&resource_value(&eng, "og.Camera")?)?;
-        let q = look_rotation(
+        let q = og_core::facing::camera_look(
             cam.position,
             wire::arg(Some(&target), "target")?,
-            glam::Vec3::Y,
+            og_core::facing::UP,
         );
         let value = json!({ "quaternion": quat_json(q) });
         let answer = super::engine::write_resource(world, "og.Camera", &value.to_string());
@@ -544,7 +528,7 @@ pub(crate) fn camera_of(cam: &record::Camera, w: f32, h: f32) -> og_ui::WorldVie
     og_ui::WorldView {
         view_proj: camera_view_proj(cam, w, h),
         eye: cam.position,
-        forward: cam.quaternion * glam::Vec3::NEG_Z,
+        forward: og_core::facing::camera_forward(cam.quaternion),
         orthographic: cam.orthographic,
     }
 }
@@ -611,6 +595,6 @@ pub fn og_camera_screen_to_ray(world: u32, x: f64, y: f64) -> crate::host::wire:
     })();
     answer.unwrap_or(wire::Ray {
         origin: glam::Vec3::ZERO,
-        direction: glam::Vec3::NEG_Z,
+        direction: og_core::facing::CAMERA_FORWARD,
     })
 }

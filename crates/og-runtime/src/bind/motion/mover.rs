@@ -2,18 +2,6 @@
 
 use super::*;
 
-/// A rotation's heading about +Y: 0 looks down +Z, π/2 down +X.
-pub(crate) fn heading_of(q: Quat) -> f32 {
-    let f = q * Vec3::Z;
-    atan2(f.x, f.z)
-}
-
-/// The rotation of heading `h`.
-pub(crate) fn rotation_of(h: f32) -> Quat {
-    let (s, c) = sin_cos(h * 0.5);
-    Quat::from_xyzw(0.0, s, 0.0, c)
-}
-
 /// The signed angle from `a` to `b`, in -π..π.
 pub(super) fn wrap(d: f32) -> f32 {
     let (s, c) = sin_cos(d);
@@ -238,7 +226,7 @@ pub(crate) fn advance(
             let to = Vec3::new(g.target.x - position.x, 0.0, g.target.z - position.z);
             let left = to.length();
             if left > ARRIVED {
-                *heading = turn(*heading, atan2(to.x, to.z), step);
+                *heading = turn(*heading, facing::heading_of(to.x, to.z), step);
                 // Braking to the speed the next goal starts at: solve
                 // d = v*dt, v² = v_end² + 2*a*(left-d), so braking cannot
                 // overshoot, even on a long tick. Speed is gained at the

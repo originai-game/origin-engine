@@ -25,7 +25,7 @@ use crate::input::{
 use crate::names::Names;
 use crate::value;
 use og_core::base64;
-use og_core::glam::{Mat3, Quat, Vec3};
+use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, FieldType, Layout, Rng, Schema};
 use og_ecs::{Entity, QueryDesc, SchemaId, World};
 use serde_json::{Map, Value, json};
@@ -421,9 +421,7 @@ fn look_at(eye: Vec3, target: Vec3) -> Option<Quat> {
     } else {
         Vec3::Y
     };
-    let x = up.cross(back).normalize();
-    let y = back.cross(x);
-    Some(Quat::from_mat3(&Mat3::from_cols(x, y, back)).normalize())
+    Some(Quat::from_mat3(&og_core::facing::camera_axes(-back, up)).normalize())
 }
 
 impl Probe {

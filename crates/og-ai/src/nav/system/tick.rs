@@ -639,12 +639,12 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, sys: &NavSystem, desc: &NavDesc) 
         let mut changed_rot = false;
         if agent.face_movement && v2.length_squared() > 0.0025 {
             let yaw = match plane {
-                Plane::Xz => og_core::math::atan2(v2.x, v2.y),
-                Plane::Xy => og_core::math::atan2(v2.y, v2.x),
+                Plane::Xz => og_core::facing::heading_of(v2.x, v2.y),
+                Plane::Xy => og_core::facing::heading_2d(v2),
             };
             let axis = match plane {
-                Plane::Xz => Vec3::Y,
-                Plane::Xy => Vec3::Z,
+                Plane::Xz => og_core::facing::UP,
+                Plane::Xy => og_core::facing::SPIN_2D,
             };
             let want = og_core::math::quat_from_axis_angle(axis, yaw);
             let have = t.quaternion.normalize();

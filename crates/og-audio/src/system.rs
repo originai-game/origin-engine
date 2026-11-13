@@ -566,7 +566,7 @@ fn cone_gain(s: &AudioSource, t: &Transform, ear: Vec3) -> f32 {
         return 1.0;
     }
     let to = (ear - t.position).normalize_or_zero();
-    let forward = (t.quaternion.normalize() * Vec3::Z).normalize_or_zero();
+    let forward = og_core::facing::forward(t.quaternion.normalize()).normalize_or_zero();
     if to == Vec3::ZERO || forward == Vec3::ZERO {
         return 1.0;
     }
@@ -692,7 +692,7 @@ fn wanted(
             direction = (ear.inverse * (p - ear.position)).normalize_or_zero();
             if direction == Vec3::ZERO {
                 // At the listener: straight ahead.
-                direction = Vec3::NEG_Z;
+                direction = og_core::facing::CAMERA_FORWARD;
             }
         }
         flags |= FLAG_SPATIAL as u32;

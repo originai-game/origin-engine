@@ -552,7 +552,7 @@ fn camera(
         cam["position"] = jv3(p);
     }
     let eye = pos.unwrap_or(row.position);
-    let look = target.map(|target| super::feel::look_rotation(eye, target));
+    let look = target.map(|target| og_core::facing::camera_look(eye, target, og_core::facing::UP));
     if let Some(q) = look {
         cam["quaternion"] = jq(q);
     }

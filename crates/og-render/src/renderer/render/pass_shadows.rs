@@ -316,7 +316,8 @@ impl Pass for CascadePass {
                 }
             };
             if light.shadow_box > 0.0 {
-                let level = Vec3::new(cam.forward.x, 0.0, cam.forward.z).normalize_or(Vec3::NEG_Z);
+                let level = Vec3::new(cam.forward.x, 0.0, cam.forward.z)
+                    .normalize_or(og_core::facing::CAMERA_FORWARD);
                 let focus = camera.position + level * light.shadow_focus
                     - Vec3::Y * light.shadow_focus_drop;
                 let fixed = shadow_fit::fit_box(

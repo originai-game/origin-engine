@@ -148,7 +148,9 @@ impl Performance {
             let hips = map.node("hips").expect("react validated hips") as usize;
             let direction = Vec3::from_array(reaction.direction);
             if direction.length_squared() > 0.0 {
-                let yaw = rotation_of(atan2(direction.x, direction.z) - heading_of(root.rotation));
+                let yaw = facing::from_heading(
+                    facing::heading_of(direction.x, direction.z) - facing::heading(root.rotation),
+                );
                 let parent = skeleton.nodes[hips].parent;
                 let parent_rotation = if parent == NONE {
                     Quat::IDENTITY
@@ -171,8 +173,8 @@ impl Performance {
             let head = *chain.last().expect("head in look chain") as usize;
             let rest = skeleton.model_space(&skeleton.rest_pose())[head].rotation;
             let constraint = og_anim::LookAt {
-                axis: rest.inverse() * Vec3::Z,
-                up_axis: rest.inverse() * Vec3::Y,
+                axis: rest.inverse() * facing::FORWARD,
+                up_axis: rest.inverse() * facing::UP,
                 max_yaw: look.max_yaw,
                 max_pitch: look.max_pitch,
                 weight: look.weight * look.time.weight(),
@@ -257,7 +259,8 @@ impl Performance {
         {
             let direction = Vec3::from_array(reaction.direction);
             if direction.length_squared() > 0.0 {
-                let turn = atan2(direction.x, direction.z) - heading_of(root.rotation);
+                let turn =
+                    facing::heading_of(direction.x, direction.z) - facing::heading(root.rotation);
                 let turn = atan2(og_core::math::sin(turn), og_core::math::cos(turn));
                 if turn.abs() > PLANTED_TURN {
                     return [true; 2];

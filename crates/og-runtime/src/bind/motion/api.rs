@@ -254,7 +254,7 @@ pub fn og_motion_status(
                     Kind::Place => (g.target, g.heading),
                     Kind::WalkTo => {
                         let d = g.target - c.start;
-                        (g.target, atan2(d.x, d.z))
+                        (g.target, facing::heading_of(d.x, d.z))
                     }
                     Kind::Jump => {
                         let (sx, cz) = sin_cos(g.heading);

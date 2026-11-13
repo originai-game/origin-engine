@@ -8,7 +8,7 @@ pub(crate) fn shaken_camera(camera: &Camera, shake: CameraShake) -> Camera {
     if shake == CameraShake::default() {
         return *camera;
     }
-    let forward = (camera.target - camera.position).normalize_or(Vec3::NEG_Z);
+    let forward = (camera.target - camera.position).normalize_or(og_core::facing::CAMERA_FORWARD);
     let right = forward.cross(camera.up).normalize_or(Vec3::X);
     let up = right.cross(forward);
     let height = match camera.projection {

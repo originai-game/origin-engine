@@ -246,8 +246,12 @@ fn index(h: u64) -> Option<usize> {
 #[allow(clippy::disallowed_methods)]
 fn camera_of(m: Mat4, v: &record::CameraView) -> og_render::Camera {
     let position = m.transform_point3(Vec3::ZERO);
-    let forward = m.transform_vector3(Vec3::NEG_Z).normalize_or(Vec3::NEG_Z);
-    let up = m.transform_vector3(Vec3::Y).normalize_or(Vec3::Y);
+    let forward = m
+        .transform_vector3(og_core::facing::CAMERA_FORWARD)
+        .normalize_or(og_core::facing::CAMERA_FORWARD);
+    let up = m
+        .transform_vector3(og_core::facing::UP)
+        .normalize_or(og_core::facing::UP);
     let zoom = v.zoom.max(0.01);
     og_render::Camera {
         position,

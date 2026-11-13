@@ -151,7 +151,7 @@ pub(super) fn system(
         let mut t = transform.1.decode(&tb);
         let (mut position, q) =
             transform_of(&wire::record::Transform::from_json(&t).map_err(invalid)?);
-        let mut heading = heading_of(q);
+        let mut heading = facing::heading(q);
         let (p0, h0) = (position, heading);
         advance(a, &s, &mut position, &mut heading, dt);
         if s.controller
@@ -205,7 +205,7 @@ pub(super) fn system(
         }
         if s.drive && (position != p0 || heading != h0) {
             t["position"] = json!({ "x": position.x, "y": position.y, "z": position.z });
-            let r = rotation_of(heading);
+            let r = facing::from_heading(heading);
             t["quaternion"] = json!({ "x": r.x, "y": r.y, "z": r.z, "w": r.w });
             let tb = transform.1.encode(Some(&tb), Some(&t)).map_err(invalid)?;
             ctx.set_bytes(e, transform.0, &tb)?;

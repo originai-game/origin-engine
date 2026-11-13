@@ -8,7 +8,10 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     // Lights: the first directional light, then point and spot lights in
     // entity order (deterministic); og-render culls them to the view and
     // keeps at most MAX_LIGHTS.
-    let forward = |m: Mat4| m.transform_vector3(Vec3::NEG_Z).normalize_or_zero();
+    let forward = |m: Mat4| {
+        m.transform_vector3(og_core::facing::CAMERA_FORWARD)
+            .normalize_or_zero()
+    };
     let layouts = &rs.draw;
     // The environment's sky is the built-in one each frame until the
     // directional light (its sun) and og.Sky or og.DayNight (atmosphere.rs)

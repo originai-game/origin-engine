@@ -156,7 +156,7 @@ pub(crate) fn vehicles(
         let chassis_mass = sim.world.bodies[chassis].mass().max(0.01);
         let forward = {
             let rb = &sim.world.bodies[chassis];
-            unv(rb.linvel()).dot(unv(rb.position().rotation * v(Vec3::X)))
+            unv(rb.linvel()).dot(unv(rb.position().rotation * v(og_core::facing::FORWARD_2D)))
         };
         // The drivetrain's torque and the gear's top wheel speed, the
         // gearbox kept in the block's vehicle section.
@@ -231,7 +231,7 @@ pub(crate) fn vehicles(
             }
         }
         let rb = &sim.world.bodies[chassis];
-        let forward = unv(rb.position().rotation * v(Vec3::X));
+        let forward = unv(rb.position().rotation * v(og_core::facing::FORWARD_2D));
         let speed = unv(rb.linvel()).dot(forward);
         let mut contacts = 0;
         for &wheel in &state.wheels {

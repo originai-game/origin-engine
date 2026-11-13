@@ -318,12 +318,10 @@ pub fn og_path_nearest(
     })
 }
 
-/// The frame of a path's point: -Z along the tangent, +Y its up.
+/// The frame of a path's point: a camera's, -Z along the tangent and +Y its
+/// up.
 fn facing(s: &og_timeline::PathSample) -> (Mat3, Quat) {
-    let z = -s.tangent;
-    let x = s.up.cross(z).normalize_or(Vec3::X);
-    let y = z.cross(x);
-    let m = Mat3::from_cols(x, y, z);
+    let m = og_core::facing::camera_axes(s.tangent, s.up);
     (m, Quat::from_mat3(&m).normalize())
 }
 

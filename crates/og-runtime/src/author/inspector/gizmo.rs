@@ -146,7 +146,7 @@ impl View {
             inverse: view_proj.inverse(),
             size: size.max(Vec2::ONE),
             eye,
-            forward: forward.normalize_or(Vec3::NEG_Z),
+            forward: forward.normalize_or(og_core::facing::CAMERA_FORWARD),
             orthographic,
         }
     }

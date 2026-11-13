@@ -126,7 +126,7 @@ pub(super) fn camera_system(
         }
         cam["position"] = json!({ "x": next.x, "y": next.y, "z": next.z });
         if !ortho {
-            let q = look_rotation(next, target);
+            let q = og_core::facing::camera_look(next, target, og_core::facing::UP);
             cam["quaternion"] = json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w });
         }
     }
@@ -221,18 +221,6 @@ pub(super) fn camera_zone(
     cam["zoneScroll"] = json!(scroll);
     cam["zoneScrollTime"] = json!(time);
     Ok(())
-}
-
-/// The rotation that points -Z from `eye` towards `target`, +Y up.
-pub(crate) fn look_rotation(eye: Vec3, target: Vec3) -> Quat {
-    let forward = (target - eye).normalize_or_zero();
-    if forward == Vec3::ZERO {
-        return Quat::IDENTITY;
-    }
-    let z = -forward;
-    let x = Vec3::Y.cross(z).normalize_or(Vec3::X);
-    let y = z.cross(x);
-    Quat::from_mat3(&glam::Mat3::from_cols(x, y, z))
 }
 
 /// A point of the Catmull-Rom spline through `p` (ends repeated) at segment

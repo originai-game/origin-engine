@@ -277,7 +277,11 @@ pub(crate) fn step_goals(
     for a in agents {
         let s = shown.entry(a.entity).or_insert_with(|| {
             let idle = r.library.frames(0);
-            let placed = Goal::placed(idle, [a.position.x, a.position.z], heading_of(a.rotation));
+            let placed = Goal::placed(
+                idle,
+                [a.position.x, a.position.z],
+                facing::heading(a.rotation),
+            );
             let mut recent = [placed.targets[0]; 4];
             for (k, t) in placed.targets.iter().take(4).enumerate() {
                 recent[k] = *t;

@@ -35,6 +35,7 @@ use crate::host::wire::{
 use crate::parse;
 use glam::{Quat, Vec3};
 use og_anim::motion::library::{POSES, index as pose_index};
+use og_core::facing;
 use og_core::math::{atan2, sin_cos};
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};

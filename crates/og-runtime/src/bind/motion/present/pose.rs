@@ -36,7 +36,7 @@ pub(crate) fn follow_hips(
     let h = heading(at(RIGHT_LEG).to_array(), at(LEFT_LEG).to_array());
     match *followed {
         Some((last, last_h)) if !cut && hips.distance(last) < 0.3 => {
-            let moved = rotation_of(heading_of(a.rotation) - last_h) * (hips - last);
+            let moved = facing::from_heading(facing::heading(a.rotation) - last_h) * (hips - last);
             let sim = Vec3::new(velocity.x, 0.0, velocity.z) * dt;
             *offset += moved * a.scale - sim;
             let k = og_core::math::exp(-dt * std::f32::consts::LN_2 / OFFSET_HALF_LIFE);
@@ -52,7 +52,7 @@ pub(crate) fn follow_hips(
 pub(crate) fn rerooted(skeleton: &Skeleton, asset: &SkeletonAsset, pose: &Pose) -> (Vec<Trs>, f32) {
     let h = heading(pose.positions[RIGHT_LEG], pose.positions[LEFT_LEG]);
     let mut local = skeleton.local(pose);
-    let undo = rotation_of(-h);
+    let undo = facing::from_heading(-h);
     local[0].translation = Vec3::new(0.0, local[0].translation.y, 0.0);
     local[0].rotation = (undo * local[0].rotation).normalize();
     // Measured on the transforms as drawn (forward kinematics), not on the

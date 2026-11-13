@@ -117,7 +117,7 @@ pub(crate) fn before_tick(eng: &crate::engine::Engine, world: &World) {
         .filter_map(|(e, v)| {
             let v = record::WindMotor::from_json(&v).ok()?;
             let (position, turn, _) = r.pose(og_ecs::Entity::from_bits(e))?;
-            Some(motor(&v, position, turn * Vec3::NEG_Z))
+            Some(motor(&v, position, og_core::facing::camera_forward(turn)))
         })
         .collect();
     let air = Air {
@@ -154,7 +154,8 @@ pub(crate) fn frame_air(
             Some(motor(
                 &v,
                 m.transform_point3(Vec3::ZERO),
-                m.transform_vector3(Vec3::NEG_Z).normalize_or_zero(),
+                m.transform_vector3(og_core::facing::CAMERA_FORWARD)
+                    .normalize_or_zero(),
             ))
         })
         .collect();

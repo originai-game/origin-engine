@@ -252,7 +252,7 @@ fn initial_face_to_idle_keeps_the_first_generated_window() {
         advance(agent, &a.settings, &mut a.position, &mut h, 1.0 / 60.0);
     }
     assert_ne!(agent.serial, s.serial);
-    a.rotation = rotation_of(h);
+    a.rotation = facing::from_heading(h);
     let next = request(&goals, &a, &s);
     s.reconcile_request(&mut motion, &next);
     let output = vec![0.0; FRAMES * MOTION_FEATURES];
@@ -378,7 +378,7 @@ fn prediction_never_merges_a_change_of_gait() {
             ..Default::default()
         }),
         position: Vec3::ZERO,
-        rotation: rotation_of(std::f32::consts::FRAC_PI_2),
+        rotation: facing::from_heading(std::f32::consts::FRAC_PI_2),
         scale: 1.0,
         skeleton: 1,
         skin: 0,

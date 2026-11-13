@@ -62,8 +62,8 @@
 //! reads depends on it.
 
 use super::{
-    AGENT, Agent, Goals, JumpStage, Kind, RUN_SPEED, Settings, advance, heading_of, lock,
-    performance, rotation_of, shared, transform_of,
+    AGENT, Agent, Goals, JumpStage, Kind, RUN_SPEED, Settings, advance, facing, lock, performance,
+    shared, transform_of,
 };
 use crate::RenderBackend;
 use crate::engine::{Engine, hooks};

@@ -131,7 +131,7 @@ pub(crate) fn predict(
     shown: &Shown,
     queued: f32,
 ) -> (Vec3, f32, usize, f32) {
-    let h0 = heading_of(a.rotation);
+    let h0 = facing::heading(a.rotation);
     match goals.agents.get(&a.entity) {
         Some(agent) if a.settings.drive => {
             let mut agent = agent.clone();
@@ -171,7 +171,7 @@ pub(crate) fn predict(
             if speed > 0.3 {
                 (
                     a.position + v * (queued + HORIZON),
-                    og_core::math::atan2(v.x, v.z),
+                    facing::heading_of(v.x, v.z),
                     gait(speed),
                     HORIZON,
                 )

@@ -160,7 +160,7 @@ pub(crate) fn camera_frame(cam: &Camera, aspect: f32, jitter_ndc: Vec2) -> Camer
         proj,
         view_proj,
         jittered_view_proj,
-        forward: (cam.target - cam.position).normalize_or(Vec3::NEG_Z),
+        forward: (cam.target - cam.position).normalize_or(og_core::facing::CAMERA_FORWARD),
         orthographic,
     }
 }

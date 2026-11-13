@@ -1,8 +1,8 @@
 //! The 3D car (the 3D profile only): rapier's raycast vehicle
 //! (`DynamicRayCastVehicleController`, after Bullet's btRaycastVehicle) on
 //! the entity's dynamic chassis, four wheels at the corners of `wheelBase`
-//! by `track`, forward along the chassis's local +z (three.js
-//! Object3D.lookAt aims +z), steering on the front axle. Updated before the
+//! by `track`, forward along the chassis's local +z (an object's forward,
+//! [`og_core::facing`]), steering on the front axle. Updated before the
 //! rigid-body step (it applies the suspension, drive and grip impulses).
 
 use super::sim::Sim;
@@ -235,7 +235,7 @@ pub(crate) fn vehicles(
         let steer = -veh.steer.clamp(-1.0, 1.0) * veh.max_steer;
         let speed_now = {
             let rb = &sim.world.bodies[chassis];
-            unv(rb.linvel()).dot(unv(rb.position().rotation * v(Vec3::Z)))
+            unv(rb.linvel()).dot(unv(rb.position().rotation * v(og_core::facing::FORWARD)))
         };
         let throttle = veh.throttle.clamp(-1.0, 1.0);
         let driven = specs.iter().filter(|s| s.drive).count().max(1) as f32;
@@ -340,7 +340,7 @@ pub(crate) fn vehicles(
         );
         state.controller.update_vehicle(dt, queries);
         let rb = &sim.world.bodies[chassis];
-        let forward = unv(rb.position().rotation * v(Vec3::Z));
+        let forward = unv(rb.position().rotation * v(og_core::facing::FORWARD));
         let speed = unv(rb.linvel()).dot(forward);
         let wheels = state.controller.wheels();
         let contacts = wheels

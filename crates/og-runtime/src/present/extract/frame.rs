@@ -181,10 +181,10 @@ fn camera(rs: &mut RenderState, b: &Begun) -> View {
         scene.frame.camera_cut = cut;
         let cam = &mut scene.frame.camera;
         cam.position = position;
-        cam.target = position + rot * Vec3::NEG_Z;
-        cam.up = rot * Vec3::Y;
+        cam.target = position + og_core::facing::camera_forward(rot);
+        cam.up = og_core::facing::up(rot);
         origin = render_origin(position, zero);
-        look_along = Some(rot * Vec3::NEG_Z);
+        look_along = Some(og_core::facing::camera_forward(rot));
         cam.near = c.near;
         cam.far = c.far;
         let zoom = c.zoom.max(0.01);

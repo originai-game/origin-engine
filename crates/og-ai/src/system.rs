@@ -440,8 +440,8 @@ fn run(
                 st.forward.get(&key).map_or_else(
                     || {
                         let axis = match plane {
-                            Plane::Xz => Vec3::Z,
-                            Plane::Xy => Vec3::X,
+                            Plane::Xz => og_core::facing::FORWARD,
+                            Plane::Xy => og_core::facing::FORWARD_2D,
                         };
                         plane.to_plane(xf.quaternion.normalize() * axis)
                     },

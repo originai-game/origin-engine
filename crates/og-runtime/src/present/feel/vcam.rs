@@ -238,7 +238,7 @@ fn evaluate(
     }
     v["pull"] = json!(pull);
     let mut rotation = match look {
-        Some((_, p)) => look_rotation(position, p),
+        Some((_, p)) => og_core::facing::camera_look(position, p, og_core::facing::UP),
         None => own.1,
     };
     let roll = row.roll;
