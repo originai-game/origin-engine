@@ -297,6 +297,7 @@ mod garment;
 mod garment_gpu;
 pub mod ocean_fft;
 mod shadow_cache;
+mod shadow_fit;
 mod shadow_target;
 mod shadows;
 pub use og_render_data::shapes;
@@ -460,10 +461,11 @@ pub use weather::{
 pub use wgpu;
 
 use deferred::{AsModule, Deferred, Sampled};
-use frame::{CASCADES, Cascade, Frustum};
+use frame::{CASCADES, Frustum};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
 use post::FramePass;
+use shadow_fit::Cascade;
 use shadow_target::{LOCAL_SHADOW_FORMAT, ShadowSet, ShadowTarget};
 use shadows::LOCAL_SHADOW_LAYERS;
 use sprites::{FontLayout, RunSource, SPRITE_LAYOUT, SPRITE_STRIDE};
