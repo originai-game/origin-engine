@@ -33,8 +33,11 @@ const tcp = net as unknown as {
   connect(port: number, host: string): Tcp;
 };
 
-/** `og relay --port 0` (with `shaping`: --latency, --jitter, --loss, --seed), and the port it printed. */
-async function relay(shaping: string[] = []): Promise<{ port: number; stop: () => void }> {
+/**
+ * `og relay --port 0` (with `shaping`: --latency, --jitter, --loss, --seed), the port it printed, and `logged`, which
+ * resolves once the relay has logged a line matching `line` (such as a peer joining a room).
+ */
+async function relay(shaping: string[] = []): Promise<{ port: number; stop: () => void; logged: (line: RegExp) => Promise<void> }> {
   const p = Bun.spawn([ogBin(), "relay", "--port", "0", ...shaping], { cwd: repo, stdout: "pipe", stderr: "pipe" });
   const reader = p.stdout.getReader();
   let text = "";
@@ -43,7 +46,14 @@ async function relay(shaping: string[] = []): Promise<{ port: number; stop: () =
     if (done) throw new Error(`og relay exited: ${text}${await new Response(p.stderr).text()}`);
     text += new TextDecoder().decode(value);
   }
-  return { port: Number(/:(\d+)\//.exec(text)![1]), stop: () => p.kill() };
+  const logged = async (line: RegExp) => {
+    while (!line.test(text)) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error(`og relay exited before logging ${line}: ${text}`);
+      text += new TextDecoder().decode(value);
+    }
+  };
+  return { port: Number(/:(\d+)\//.exec(text)![1]), stop: () => p.kill(), logged };
 }
 
 type Summary = {
@@ -302,8 +312,9 @@ test("a peer whose connection is cut comes back by itself, takes its seat back f
       if (code !== 0) throw new Error(`og run exited ${code}: ${err}${out}`);
       return JSON.parse(out.trim().split("\n").pop()!) as Summary & { lockstep: { seats: { seat: number; peer: number; until: number | null }[] } };
     };
+    // The second starts once the first is in the room, so the first is peer 0 however slowly it started.
     const first = run(r.port, "bot:1:tick");
-    await new Promise((done) => setTimeout(done, 300));
+    await r.logged(/room mend: peer 0 joined/);
     const [a, b] = await Promise.all([first, run(wire.address().port, "bot:2:tick")]);
     expect(cuts).toBe(1);
     // The room gave it a new number; the seat it held is its own again.
