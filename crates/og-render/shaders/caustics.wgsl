@@ -88,13 +88,13 @@ fn ripple_light(cell: vec2<f32>, octave: f32, k: f32, seconds: f32) -> f32 {
   return e / mean - 1.0;
 }
 
-// A lake's caustics at `p`, `depth` under its surface: what its ripples focus there, traced back along the
-// refracted sun to the surface. Ripples of every length cross a lake, the longer ones flatter (their slope as the
-// square root of their length), so each depth has the ripples that focus on it: the pattern is drawn in octaves,
-// the two about the receiver's depth blended, and its cells grow with depth as its two-thirds power (a hand wide
-// in the shallows, metres wide ten metres down) while the lines stay as sharp. Where a pixel holds whole cells
-// they fade to their mean.
-fn ripple_caustics(p: vec3<f32>, depth: f32) -> f32 {
+// A lake's caustics at `p`, `depth` under its surface, as a sample `width` metres across there sees them: what its
+// ripples focus there, traced back along the refracted sun to the surface. Ripples of every length cross a lake,
+// the longer ones flatter (their slope as the square root of their length), so each depth has the ripples that
+// focus on it: the pattern is drawn in octaves, the two about the receiver's depth blended, and its cells grow with
+// depth as its two-thirds power (a hand wide in the shallows, metres wide ten metres down) while the lines stay as
+// sharp. Where the sample holds whole cells they fade to their mean.
+fn ripple_caustics(p: vec3<f32>, depth: f32, width: f32) -> f32 {
   let l = normalize(frame.light_dir.xyz);
   if (l.y <= 0.0) { return 0.0; }
   let scale = frame.caustics.z;
@@ -106,11 +106,8 @@ fn ripple_caustics(p: vec3<f32>, depth: f32) -> f32 {
   let at = clamp(log2(max(k / RIPPLE_FOCUS, 1e-4)) / 1.5, -2.0, 4.0);
   let octave = floor(at);
   let k0 = k * exp2(-1.5 * octave);
-  // The pixel's reach along the bed (a pixel some 1.2 mrad wide, stretched by a grazing view) in the ripples' radians.
-  let to = frame.view_pos.xyz - p;
-  let dist = length(to);
-  let reach = select(0.0012 * dist * dist / max(abs(to.y), 0.25 * dist), 0.0, frame.view_pos.w > 0.5)
-    * 6.7 * scale * exp2(-octave);
+  // The sample's width in the ripples' radians.
+  let reach = width * 6.7 * scale * exp2(-octave);
   let keep = 1.0 - smoothstep(vec2<f32>(0.5), vec2<f32>(2.0), vec2<f32>(reach, reach * 0.5));
   // The sun's seconds to the ripples': a deep-water wave's sqrt(g k), k a cycle of the tile.
   let seconds = frame.time.x * 1.963 * sqrt(scale);
@@ -122,12 +119,25 @@ fn ripple_caustics(p: vec3<f32>, depth: f32) -> f32 {
   return clamp(light, -0.8, 5.0);
 }
 
-// Caustics under the frame's water, fading in below the surface: under a lake its ripples' (`ripple_caustics`),
-// under a sea (W2) its waves' own (`wave_caustics`).
+// A pixel's reach along a level bed at `p` (m): a pixel some 1.2 mrad wide, stretched by a grazing view (0 for an
+// orthographic eye).
+fn bed_reach(p: vec3<f32>) -> f32 {
+  let to = frame.view_pos.xyz - p;
+  let dist = length(to);
+  return select(0.0012 * dist * dist / max(abs(to.y), 0.25 * dist), 0.0, frame.view_pos.w > 0.5);
+}
+
 // Whether a pipeline has the caustics' code (pipeline_features.rs).
 override OG_CAUSTICS: bool = true;
 
-fn caustics(p: vec3<f32>) -> f32 {
+// The sun's light at `p` under the frame's water over what a flat surface would pass there, less 1 (0: as the flat
+// surface lights it; 0 above the water and outside it), as a sample `width` metres across sees it: the one light
+// field the waves make of the sun in the water. What lies under the water is lit by it (`caustics`), and the water
+// itself scatters it to the eye as the light shafts (volumetric.wgsl `water_in`), so a shaft ends in the bright
+// line it draws on the bed. Under a lake its ripples' (`ripple_caustics`), under a sea (W2) its waves' own
+// (`wave_caustics`, the grid's texel its width); fading in below the surface and out with depth, as the light
+// scatters.
+fn water_focus(p: vec3<f32>, width: f32) -> f32 {
   if (!OG_CAUSTICS) { return 0.0; }
   let c = frame.caustics;
   if (c.y <= 0.0) { return 0.0; }
@@ -137,5 +147,13 @@ fn caustics(p: vec3<f32>) -> f32 {
   if (depth <= 0.0) { return 0.0; }
   let fade = c.y * smoothstep(0.0, 0.4, depth) * exp(-depth * c.w);
   if (frame.caustics_cells[1].w > 0.5) { return wave_caustics(p, depth) * fade; }
-  return ripple_caustics(p, depth) * fade * RIPPLE_LIGHT;
+  return ripple_caustics(p, depth, width) * fade;
+}
+
+// Caustics on a surface at `p` under the frame's water: the water's light there (`water_focus`) as a pixel sees it,
+// a lake's at RIPPLE_LIGHT.
+fn caustics(p: vec3<f32>) -> f32 {
+  if (!OG_CAUSTICS) { return 0.0; }
+  let light = water_focus(p, bed_reach(p));
+  return light * select(RIPPLE_LIGHT, 1.0, frame.caustics_cells[1].w > 0.5);
 }
