@@ -23,8 +23,8 @@ use pipeline::{
 mod systems;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
 use systems::{
-    autorig, behaviour, effect, environment, flipbook, fracture, fracture_cache, fx_field,
-    lightmap, navmesh, rig2d, shader_check, story, story_functions, strings, terrain, vfx,
+    autorig, behaviour, effect, environment, flipbook, fracture, fracture_cache, lightmap, navmesh,
+    rig2d, shader_check, story, story_functions, strings, terrain, vfx,
 };
 mod formats;
 pub use formats::{
@@ -89,8 +89,6 @@ enum Kind {
     Scene,
     /// An `.ogt` of `type prefab`: cooked as a scene, flattened.
     Prefab,
-    Emitter,
-    Effect,
     Vfx,
     Style,
     Document,
@@ -120,8 +118,6 @@ impl Kind {
             Kind::Font => "font",
             Kind::Scene => "scene",
             Kind::Prefab => "prefab",
-            Kind::Emitter => "emitter",
-            Kind::Effect => "effect",
             Kind::Vfx => "vfx",
             Kind::Style => "style",
             Kind::Document => "document",
@@ -254,8 +250,6 @@ enum Work<'a> {
     Sound(&'a Source, Option<(u32, u32)>),
     /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
     SoundChunk(&'a Source, u32, u32),
-    Emitter(&'a Source),
-    Effect(&'a Source),
     Vfx(&'a Source),
     Style(&'a Source),
     /// A UI document and the ids of the documents defining the components

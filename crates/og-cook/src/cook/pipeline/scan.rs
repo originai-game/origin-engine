@@ -64,8 +64,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
 const OGT_KINDS: &[(&str, Kind)] = &[
     ("scene", Kind::Scene),
     (prefab::PREFAB_TYPE, Kind::Prefab),
-    (crate::fx::EMITTER_TYPE, Kind::Emitter),
-    (og_bundle::effect::EFFECT_TYPE, Kind::Effect),
     (og_bundle::vfx::VFX_TYPE, Kind::Vfx),
     ("tileset", Kind::Tileset),
     ("tilemap", Kind::Tilemap),

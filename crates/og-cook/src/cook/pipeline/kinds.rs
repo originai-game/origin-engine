@@ -75,6 +75,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     icons::KINDS,
     font_pack::KINDS,
     look::KINDS,
+    effect::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

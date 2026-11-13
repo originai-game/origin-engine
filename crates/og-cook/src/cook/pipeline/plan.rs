@@ -87,7 +87,6 @@ pub(crate) fn plan<'a>(
             Kind::Texture
             | Kind::Sound
             | Kind::Font
-            | Kind::Emitter
             | Kind::Document
             | Kind::Shader
             | Kind::Post
@@ -158,8 +157,6 @@ fn plan_kind<'a>(
         Kind::Texture => plan_texture(cx, state, s, hash, outs),
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
-        Kind::Emitter => plan_emitter(cx, state, s, hash, outs),
-        Kind::Effect => plan_effect(cx, state, s, hash, outs),
         Kind::Vfx => plan_vfx(cx, state, s, hash, outs),
         Kind::Shader => plan_shader(cx, state, s, hash, outs),
         Kind::Post => plan_post(cx, state, s, hash, outs),

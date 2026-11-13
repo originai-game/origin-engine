@@ -124,8 +124,8 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 rel: f.id,
                 path: s.path.clone(),
                 kind: match f.kind {
-                    OutKind::Emitter => Kind::Emitter,
-                    OutKind::Effect => Kind::Effect,
+                    OutKind::Emitter => Kind::System(&crate::cook::effect::EMITTER),
+                    OutKind::Effect => Kind::System(&crate::cook::effect::EFFECT),
                     OutKind::Model => Kind::Model,
                 },
                 settings_files: Vec::new(),

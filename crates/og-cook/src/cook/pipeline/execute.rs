@@ -188,74 +188,6 @@ pub(crate) fn run(
             let e = s.encoded(Some(*per))?;
             audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
         }
-        Work::Emitter(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("an emitter is text (UTF-8)".into()))?;
-            let baked = fx_field::bake(s, text).map_err(CookError)?;
-            let text = baked.as_str();
-            let missing = std::cell::RefCell::new(Vec::new());
-            let check = |id: &str| {
-                if !known.contains(crate::runtime::asset_id(id)) {
-                    missing.borrow_mut().push(id.to_string());
-                }
-            };
-            let em = crate::fx::parse_emitter_linked(
-                text,
-                &mut crate::fx::EmitterLinks {
-                    texture: &mut |id| {
-                        check(id);
-                        Ok(None)
-                    },
-                    array: &mut |id| {
-                        check(id);
-                        Ok(None)
-                    },
-                    mesh: &mut |m| {
-                        if let crate::fx::ParticleMesh::Asset(id) = m {
-                            check(id);
-                        }
-                        Ok(None)
-                    },
-                    emitter: &mut |id| {
-                        check(id);
-                        Ok(None)
-                    },
-                    effect: &mut |id| {
-                        check(id);
-                        Ok(None)
-                    },
-                },
-            )
-            .map_err(CookError)?;
-            let missing = missing.into_inner();
-            if !missing.is_empty() {
-                return Err(CookError(format!(
-                    "the emitter names asset(s) not under assets/ (a texture, texture array, mesh model or sub-emitter): {}",
-                    missing.join(", ")
-                )));
-            }
-            let mut w = og_blob::BlobWriter::new(
-                format::Emitter::type_hash(),
-                format::Emitter::schema_version(),
-                p.stamp,
-            );
-            w.table(
-                "meta",
-                &[format::EmitterMeta {
-                    text_bytes: text.len() as u32,
-                }],
-                format::row_hash::<format::EmitterMeta>(),
-            )
-            .raw("text", text.as_bytes().to_vec(), 16);
-            Ok((
-                w.finish(),
-                vec![format!(
-                    "{} particles, {} burst(s)",
-                    em.max_particles,
-                    em.bursts.len()
-                )],
-            ))
-        }
         Work::Shader(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("a shader is text (UTF-8)".into()))?;
@@ -472,7 +404,6 @@ pub(crate) fn run(
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
         }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
-        Work::Effect(s) => effect::cook_effect(s, &|id| known.contains(id), p.stamp),
         Work::Vfx(s) => vfx::cook_vfx(s, &|id| known.contains(id), p.stamp),
         Work::TextureArray(s, decl) => {
             let root = crate::cook::assets_root(s);
