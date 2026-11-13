@@ -8,6 +8,8 @@ rust-version.workspace = true
 description = "Origin Engine light baking: lightmap UVs from xatlas, a progressive CPU path tracer for lightmaps and spherical-harmonic light volumes (og bake lightmaps). Native only, no GPU."
 
 [dependencies]
+# The triangle BVH's build and ray tests.
+og-core = { path = "../og-core" }
 glam = { workspace = true }
 
 [build-dependencies]
