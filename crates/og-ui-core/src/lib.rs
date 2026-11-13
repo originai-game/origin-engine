@@ -40,7 +40,7 @@ pub mod interaction;
 pub use interaction::input;
 pub(crate) use motion::juice;
 #[doc(hidden)]
-pub mod layer_stack;
+pub use ui::layer_stack;
 #[doc(hidden)]
 pub mod layout;
 pub use text::markup;
