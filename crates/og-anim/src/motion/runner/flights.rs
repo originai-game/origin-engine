@@ -243,7 +243,7 @@ pub fn readback_delay_ms() -> f64 {
 pub const TAKEN: usize = 256;
 
 /// The batches decoded, the last one's characters and wall time, and the
-/// last [`TAKEN`] batches' ticks taken and due ([`Presenter`]'s).
+/// last [`TAKEN`] batches' ticks taken and due (the caller's ticks).
 pub type Stats = (u64, (usize, f64), VecDeque<(u64, u64)>);
 
 /// Runs the batches due by `tick` until they have landed, and with
