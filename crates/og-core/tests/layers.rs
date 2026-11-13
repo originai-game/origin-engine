@@ -66,7 +66,6 @@ const LAYERS: &[(&str, &[&str])] = &[
             "og-text",
             "og-tween",
             "og-ui",
-            "og-ui-core",
             "og-video",
             "og-video-wasm",
         ],
@@ -89,7 +88,7 @@ const LAYERS: &[(&str, &[&str])] = &[
 /// The domains made of more than one crate; every other domain crate is
 /// a domain of its own.
 const DOMAINS: &[&[&str]] = &[
-    &["og-reactive", "og-rive", "og-text", "og-ui", "og-ui-core"],
+    &["og-reactive", "og-rive", "og-text", "og-ui"],
     &["og-video", "og-video-wasm"],
 ];
 
@@ -99,9 +98,6 @@ const KNOWN: &[(&str, &str)] = &[
     ("og-ui", "og-input"),
     ("og-ui", "og-probe"),
     ("og-ui", "og-tween"),
-    ("og-ui-core", "og-input"),
-    ("og-ui-core", "og-probe"),
-    ("og-ui-core", "og-tween"),
 ];
 
 /// The `og-*` crates a manifest depends on outside its tests.

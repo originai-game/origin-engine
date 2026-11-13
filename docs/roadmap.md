@@ -110,10 +110,9 @@ and is verified once on the GPU host. Open work is collected on PR #40.
 - **Tiers (§2.6):** the mini-game tier end to end (passes that read the
   depth prepass build no graph without MRT yet, and secondary views draw
   nothing), then the GL tier on a device.
-- **Crate layers (2.1):** `crates/og-core/tests/layers.rs` lists the seven
-  edges that still break the rule, all in the UI crates and the probe
-  (`og-probe`, `og-ui` and `og-ui-core` onto `og-input`, `og-probe` and
-  `og-tween`); that list is worked down to nothing.
+- **Crate layers (2.1):** `crates/og-core/tests/layers.rs` lists the four
+  edges that still break the rule, all in the UI crate and the probe
+  (`og-probe` and `og-ui` onto `og-input`, `og-probe` and `og-tween`); that list is worked down to nothing.
 - **og-runtime:** one function per feature (`extract/frame.rs`,
   `destruction::run`); the latent bugs marked in place (baked reflection
   probes, destruction's body weights, a stamp's quaternion without `w`).

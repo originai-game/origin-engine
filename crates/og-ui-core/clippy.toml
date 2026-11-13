@@ -1,3 +1,0 @@
-# Not a simulation crate: og-ui's layout and motion are drawn, never read by the tick.
-# The root clippy.toml's ban on host libm does not apply here.
-disallowed-methods = []

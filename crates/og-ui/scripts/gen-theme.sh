@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates crates/og-ui-core/{src/theme.rs,default.css} and
+# Regenerates crates/og-ui/{src/theme.rs,default.css} and
 # packages/design/tokens.json from the design language's tokens
 # (packages/design/tokens/*.css):
 #
@@ -10,4 +10,4 @@ set -eu -o pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 root="$(cd "$here/../../.." && pwd)"
 cd "$root"
-cargo run -q -p og-ui --example gen-theme -- packages/design/tokens crates/og-ui-core/src/theme.rs crates/og-ui-core/default.css packages/design/tokens.json
+cargo run -q -p og-ui --example gen-theme -- packages/design/tokens crates/og-ui/src/theme.rs crates/og-ui/default.css packages/design/tokens.json

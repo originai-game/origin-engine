@@ -85,7 +85,7 @@ knowledge README's §The art brief, a public contract (AGENTS.md).
   grid.
 - **The UI kinds.** After the eight asset kinds, `ART_KINDS` continues with
   the art-slot kinds of docs/ui.md §3.3, named as og-ui's `SlotKind`
-  (`crates/og-ui-core/src/paint/slot.rs`); `UI_KINDS` gives each its aspects,
+  (`crates/og-ui/src/paint/slot.rs`); `UI_KINDS` gives each its aspects,
   focal point, safe area, fit, legible size and nine-slice states, and
   og-ui's tests hold the two declarations equal. A UI brief's prompt names
   what the conform will do to it, so the art is drawn for it.

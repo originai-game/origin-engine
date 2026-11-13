@@ -80,7 +80,7 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **The web engine runs in a Worker** with an OffscreenCanvas; the main
   thread owns input and the shell.
 - **One design language.** `packages/design/tokens/*.css` generates og-ui's
-  default style (`crates/og-ui-core/src/theme.rs`, drift-checked), which
+  default style (`crates/og-ui/src/theme.rs`, drift-checked), which
   origin-agent pins by version. Brand surfaces use `packages/brand`. A game's
   style pack restyles the built-in components through tokens and parts.
 

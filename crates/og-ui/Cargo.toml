@@ -13,11 +13,9 @@ default = ["shaping"]
 # conjuncts, marks placed by the font's GPOS. Without it a shaped script is
 # drawn unshaped (its characters in visual order); bidi, kerning and run-time
 # glyphs stay. og-runtime and og-host-web pass it on (`shaping`).
-shaping = ["og-ui-core/shaping", "og-text/shaping", "dep:parley"]
+shaping = ["og-text/shaping", "dep:parley"]
 
 [dependencies]
-# The stages the documents build into (og_ui re-exports all of it).
-og-ui-core = { path = "../og-ui-core", default-features = false }
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-input = { path = "../og-input" }

@@ -3401,36 +3401,6 @@ dependencies = [
  "og-rive",
  "og-text",
  "og-tween",
- "og-ui-core",
- "og-ui-model",
- "parley",
- "parley_engine",
- "regex-lite",
- "serde",
- "serde_json",
- "skrifa",
- "ttf-parser",
-]
-
-[[package]]
-name = "og-ui-core"
-version = "0.7.7"
-dependencies = [
- "accesskit",
- "bytemuck",
- "cssparser",
- "elsa",
- "og-core",
- "og-css",
- "og-draw",
- "og-ecs",
- "og-i18n",
- "og-input",
- "og-probe",
- "og-reactive",
- "og-rive",
- "og-text",
- "og-tween",
  "og-ui-model",
  "parley",
  "parley_engine",

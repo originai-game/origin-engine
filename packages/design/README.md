@@ -10,8 +10,8 @@ block holds what the dark scheme changes. Edit a value there, then run
 `crates/og-ui/scripts/gen-theme.sh`.
 
 - **The engine** generates og-ui's default style from `tokens/*.css`
-  (`crates/og-ui/scripts/gen-theme.sh` writes `crates/og-ui-core/src/theme.rs`,
-  `crates/og-ui-core/default.css` and [`tokens.json`](tokens.json), the same
+  (`crates/og-ui/scripts/gen-theme.sh` writes `crates/og-ui/src/theme.rs`,
+  `crates/og-ui/default.css` and [`tokens.json`](tokens.json), the same
   tokens as one tree;
   og-ui's `tests/theme.rs` fails on drift). The default style is
   origin-agent's look; a game may ship it, a built-in pack or a style of

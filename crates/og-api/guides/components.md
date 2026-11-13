@@ -1,4 +1,4 @@
-<!-- Generated from og-ui-core's document schema (crates/og-ui-core/src/doc/schema.rs) by `og api gen`. Do not edit: `og api check` fails on any difference. -->
+<!-- Generated from og-ui's document schema (crates/og-ui/src/doc/schema.rs) by `og api gen`. Do not edit: `og api check` fails on any difference. -->
 # The UI component catalogue
 
 Core elements and their reflected properties for scriptless Svelte documents. Unknown elements, properties, and values fail cooking. The `screens` guide describes contracts, bindings, styles, and content composition.

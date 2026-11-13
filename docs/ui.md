@@ -429,7 +429,7 @@ re-resolving only their readers. `accent-color` inks switches, sliders,
 radios and progress; `caret-color` a field's caret; `color-scheme` picks
 `light-dark()`'s side.
 
-Colours take all of CSS Color 4 and 5 (`crates/og-ui-core/src/style/css_color.rs`);
+Colours take all of CSS Color 4 and 5 (`crates/og-ui/src/style/css_color.rs`);
 out-of-gamut colours are mapped by OKLCh chroma reduction. A colour that
 reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
 others resolve against the active style when drawn. One parse
@@ -1063,7 +1063,7 @@ rules read its tokens with `var()`; `og style check` fails a declaration
 outside a `:root` rule that uses a literal colour, a length other than 0, a
 duration or a `url()`.
 
-The default stylesheet (`crates/og-ui-core/default.css`, generated from
+The default stylesheet (`crates/og-ui/default.css`, generated from
 `packages/design/tokens/*.css`) sets every value the core controls and
 built-in components draw with as a `:root` variable, and the theme reads
 them back each frame, so a pack restyles every control by setting tokens,
@@ -1124,7 +1124,7 @@ its press sounds; both are `none` in the default style.
 Style selectors dress a component's named parts with their variants,
 states and attributes. The pack grammar lives in
 `crates/og-ui/src/style_file/css.rs` and document CSS in
-`crates/og-ui-core/src/css/values.rs`; generated references come from them.
+`crates/og-ui/src/css/values.rs`; generated references come from them.
 Parser support for a literal does not override §3.1. A document's
 `<style>` controls appearance and layout, attributes content and
 behaviour; rules are document-scoped and never affect unrelated mounts.
@@ -1404,7 +1404,7 @@ Colour emoji are a font feature. The `emoji` pack is Noto Color Emoji's
 COLRv1 face (SIL OFL 1.1; script `Zsye`, no language, tried after every
 text pack), declared `color true` with `runtime true`: COLR v0 and v1
 glyphs are painted when first shown by the cook's painter
-(`crates/og-ui-core/src/text/colr.rs`) at `color_px` in the configured palette,
+(`crates/og-ui/src/text/colr.rs`) at `color_px` in the configured palette,
 onto colour pages with a silhouette field for shadow, glow and outline;
 CPAL 0xFFFF layers take the text colour at draw. GSUB forms skin tones,
 ZWJ sequences and flags; spaces and punctuation after an emoji take a text
@@ -1724,22 +1724,21 @@ privately. Per-frame UI cost is measured work; this document claims no
 unmeasured budget has passed. Author knowledge belongs in guides, not
 shipped skills.
 
-og-ui is crates along its stages. `og-ui-model` holds geometry and codec
+og-ui is crates along its mechanisms. `og-ui-model` holds geometry and codec
 primitives, `og-rive` Rive artboards and their player, `og-reactive`
-bindings and the reactive session. `og-ui-core` holds the immediate-mode
-toolkit: the stages and their state, input, layout, the CSS cascade (the
-style stage, which styles immediate widgets too), motion, paint and draw,
-the document model and the documents' state. `og-ui` holds the documents:
-the Svelte parse and writeback, build and mount, the SVG element build,
-layers, style packs and the probe. Core calls them through
-`doc::build::Documents`; they add methods to core's types through the
-extension traits in `og_ui::prelude` and reach the stages' state only
-through each stage's accessors. Their own state (`DocState`: build cursor,
-the tick's outputs, mounts' memory, the reactive session) is held by core
-behind `doc::build::DocumentState` and reached only through its
-operations; a UI that built no document holds core's `NoDocuments`, with
-what a snapshot carries (`DocMemory`). `og-ui` re-exports core under the
-same paths (`og_ui::…`).
+bindings and the reactive session. `og-ui` holds the toolkit and the
+documents in one crate: the stages and their state, input, layout, the CSS
+cascade (the style stage, which styles immediate widgets too), motion,
+paint and draw, the document model, and the documents themselves (the
+Svelte parse and writeback, build and mount, the SVG element build,
+layers, style packs and the probe). The stages call the documents through
+`doc::build::Documents`; the documents add methods to the stage types
+through the extension traits in `og_ui::prelude` and reach the stages'
+state only through each stage's accessors. Their own state (`DocState`:
+build cursor, the tick's outputs, mounts' memory, the reactive session) is
+held behind `doc::build::DocumentState` and reached only through its
+operations; a UI that built no document holds `NoDocuments`, with what a
+snapshot carries (`DocMemory`).
 
 The [gate rules](ci.md) own test lanes, locks and toolchain policy;
 `scripts/land.sh` owns landing on main. Release and platform installation

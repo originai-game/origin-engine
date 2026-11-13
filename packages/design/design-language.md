@@ -9,7 +9,7 @@ styles the portal, ops and mail). Values live in
 language at origingame d25f1f15.
 
 **Where it binds.** The language binds the engine's **default style** alone
-(`crates/og-ui-core/src/theme.rs`, generated from `tokens/*.css`; docs/ui.md
+(`crates/og-ui/src/theme.rs`, generated from `tokens/*.css`; docs/ui.md
 §3) and origin-agent. A game may draw in the default style, a built-in
 pack or a style of its own (generated or hand-made, a look's `ui` line);
 the engine requires none of them. A game's style may restyle, re-dress, re-shape
@@ -18,7 +18,7 @@ or replace anything here above the accessibility floor of docs/ui.md §6.1.
 **Carriers.** og-ui reads the generated constants (palette, space, radii,
 type ramp, densities, durations, springs, eases, press scale, control
 states, named transitions) and the default style's part dressings, and
-its default stylesheet (`crates/og-ui-core/default.css`) sets every value
+its default stylesheet (`crates/og-ui/default.css`) sets every value
 as a CSS variable that a game's style overrides (the token families of
 docs/ui.md §3.1). og-ui reads the theme back from them, so a value set
 there reaches every built-in control. origin-agent's web components and its
