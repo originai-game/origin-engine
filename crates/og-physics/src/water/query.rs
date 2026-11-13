@@ -1,7 +1,7 @@
 //! The water at a point: one answer for every kind (a lake, a sea, a river, a height field, a line).
 
 use super::{LineState, SurfaceState, WaterBody};
-use crate::schema_ext::WaterSurface;
+use crate::schema::WaterSurface;
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use og_ecs::Entity;

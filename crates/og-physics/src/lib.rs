@@ -82,9 +82,7 @@ mod gather;
 mod lanes;
 #[path = "rigid/outline.rs"]
 mod outline;
-#[path = "rigid/schema.rs"]
 mod schema;
-mod schema_ext;
 #[path = "soft/softbody.rs"]
 mod softbody;
 mod stats;
@@ -102,7 +100,6 @@ pub use garment::{GarmentPoints, GarmentPose, GarmentRig};
 pub use lanes::{Grains, grains, pool_bodies, set_grains};
 pub use outline::outline;
 pub use schema::*;
-pub use schema_ext::*;
 pub use stats::{Phase, PhaseStats, PhysicsStats, set_clock};
 
 pub use gather::world_pose;

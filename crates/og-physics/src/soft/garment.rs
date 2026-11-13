@@ -12,7 +12,7 @@
 //! of (point, tick); the state is the points with the edges they were
 //! built with, saved in the og.physics block's trailer.
 
-use crate::schema_ext::Garment;
+use crate::schema::Garment;
 use crate::verlet::Solids;
 use og_core::glam::Vec3;
 use og_core::{Error, ErrorKind, Result};

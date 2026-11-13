@@ -1,7 +1,7 @@
 //! og.WaterLine: its line of springs, splashed by and pushing the bodies in it.
 
 use super::{Crossing, Floater, WaterForce};
-use crate::schema_ext::WaterLine;
+use crate::schema::WaterLine;
 use og_core::IdMap;
 use og_core::glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};

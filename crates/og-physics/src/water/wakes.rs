@@ -1,7 +1,7 @@
 //! What the renderer reads of the bodies in a water: their cuts, tick by tick.
 
 use super::Floater;
-use crate::schema_ext::WaterSurface;
+use crate::schema::WaterSurface;
 use og_core::glam::{Vec2, Vec3};
 
 /// A body cutting a surface in one tick, for the renderer: an

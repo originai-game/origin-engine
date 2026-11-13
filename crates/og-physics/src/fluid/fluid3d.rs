@@ -31,7 +31,7 @@
 //! emitter's count and its carry are part of the og.physics state block.
 
 use crate::fluid::GROUP_SIZE;
-use crate::schema_ext::Fluid3D;
+use crate::schema::Fluid3D;
 use crate::verlet::Solids;
 use og_core::glam::Vec3;
 use serde::{Deserialize, Serialize};

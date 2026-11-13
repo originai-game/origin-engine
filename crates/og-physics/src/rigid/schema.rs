@@ -5,8 +5,8 @@
 //! RigidBody.kind stores stable `u32` codes and reflects public enum names.
 //! Other numeric codes are the `pub const`s below.
 
-use og_core::Reflect;
 use og_core::glam::{Quat, Vec3};
+use og_core::{List, Reflect};
 use serde::{Deserialize, Serialize};
 
 // ---- shared with the rest of the engine -------------------------------------
@@ -541,4 +541,43 @@ pub struct Contact {
     /// 0 for two solids touching; otherwise an overlap with a sensor: 1 `a` is the sensor, 2 `b` is, 3 both are.
     #[reflect(min = 0, max = 3)]
     pub sensor: u32,
+}
+
+/// What a collider's contacts do, beside its og.Collider: a one-way
+/// platform, a conveyor, friction and restitution of its own, entities it
+/// passes through. Read by the solver from a table frozen at the start of
+/// the step (data, not game callbacks: the step runs on worker threads).
+#[derive(Clone, Copy, Debug, PartialEq, Reflect)]
+#[reflect(name = "og.ContactHook")]
+pub struct ContactHook {
+    /// A one-way surface: solid only to what is on this side of it (world
+    /// space, within 45°; up for a platform jumped through from below);
+    /// what came in from elsewhere passes until it is clear. Zero is off.
+    #[reflect(name = "oneWay")]
+    pub one_way: Vec3,
+    /// The surface's own velocity along its contacts (world space, m/s): a
+    /// conveyor belt, a treadmill, a moving walkway. Zero is off.
+    #[reflect(name = "surfaceVelocity", unit = "m/s", tunable)]
+    pub surface_velocity: Vec3,
+    /// Its contacts' friction, replacing the pair's mean; negative keeps it.
+    #[reflect(min = -1, max = 2, default = -1, tunable)]
+    pub friction: f32,
+    /// Its contacts' restitution, replacing the pair's mean; negative keeps it.
+    #[reflect(min = -1, max = 1, default = -1, tunable)]
+    pub restitution: f32,
+    /// Entities (colliders or their bodies) it never collides with; 0s
+    /// are skipped.
+    pub ignore: List<u64, 8>,
+}
+
+impl Default for ContactHook {
+    fn default() -> Self {
+        ContactHook {
+            one_way: Vec3::ZERO,
+            surface_velocity: Vec3::ZERO,
+            friction: -1.0,
+            restitution: -1.0,
+            ignore: List::new(),
+        }
+    }
 }

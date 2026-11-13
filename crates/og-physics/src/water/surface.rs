@@ -1,7 +1,7 @@
 //! og.WaterSurface: its height field, splashed by and pushing the bodies in it.
 
 use super::{Crossing, Floater, WaterForce, per_tick};
-use crate::schema_ext::WaterSurface;
+use crate::schema::WaterSurface;
 use og_core::IdMap;
 use og_core::glam::Vec3;
 use serde::{Deserialize, Serialize};

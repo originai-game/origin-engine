@@ -9,7 +9,7 @@
 use super::sim::Sim;
 use super::{rp, unrot, unv, v};
 use crate::gather::Scene;
-use crate::schema_ext::*;
+use crate::schema::*;
 use crate::{StepOut, WheelPose};
 use og_core::Result;
 use og_core::glam::Vec3;

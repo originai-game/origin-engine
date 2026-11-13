@@ -9,7 +9,7 @@
 //! noise from an integer hash of (point, tick); the state is the points,
 //! saved with the rest of the simulation.
 
-use crate::schema_ext::{Cloth, PIN_LEFT, PIN_TOP, PIN_TOP_CORNERS, PIN_TOP_RINGS, Rope};
+use crate::schema::{Cloth, PIN_LEFT, PIN_TOP, PIN_TOP_CORNERS, PIN_TOP_RINGS, Rope};
 use og_core::glam::{Quat, Vec3};
 use serde::{Deserialize, Serialize};
 

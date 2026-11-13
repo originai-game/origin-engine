@@ -7,10 +7,10 @@
 //! them in the order of query 3.
 
 use crate::StepOut;
-use crate::schema::{BODY_KINEMATIC, Collider, Parent, RigidBody, Transform, Velocity};
-use crate::schema_ext::{
-    Buoyancy, CharacterController, Cloth, ContactHook, Fluid2D, Fluid3D, Garment, Joint,
-    PlatformerController, Ragdoll, Rope, SoftBody, Vehicle, VehicleWheel, WaterLine, WaterSurface,
+use crate::schema::{
+    BODY_KINEMATIC, Buoyancy, CharacterController, Cloth, Collider, ContactHook, Fluid2D, Fluid3D,
+    Garment, Joint, Parent, PlatformerController, Ragdoll, RigidBody, Rope, SoftBody, Transform,
+    Vehicle, VehicleWheel, Velocity, WaterLine, WaterSurface,
 };
 use og_core::glam::{Quat, Vec3};
 use og_core::{Layout, Reflect, Result};

@@ -10,7 +10,6 @@ use super::sim::{BodyPoses, Sim};
 use super::{pose, rp, unpose, unv, v};
 use crate::gather::{Control, Scene};
 use crate::schema::*;
-use crate::schema_ext::*;
 use crate::{ControlOut, StepOut};
 use og_core::Result;
 use og_core::glam::{Vec2, Vec3};

@@ -10,7 +10,7 @@
 use super::sim::Sim;
 use super::{pose, ragdoll_joint, rot, rp, unpose, v};
 use crate::gather::Scene;
-use crate::schema_ext::*;
+use crate::schema::*;
 use crate::{RagdollRig, StepOut};
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, IdMap, Result};

@@ -6,7 +6,7 @@
 //! the engine's speed and the clutch's time left), which is world state
 //! (the og.physics block's vehicle section).
 
-use crate::schema_ext::Vehicle;
+use crate::schema::Vehicle;
 use serde::{Deserialize, Serialize};
 
 /// The forward gears an empty `Vehicle.gears` stands for.
@@ -166,7 +166,7 @@ pub(crate) fn step(v: &Vehicle, g: &mut Gearbox, speed: f32, radius: f32, dt: f3
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema_ext::VEHICLE_DRIVETRAIN;
+    use crate::schema::VEHICLE_DRIVETRAIN;
 
     fn car() -> Vehicle {
         Vehicle {

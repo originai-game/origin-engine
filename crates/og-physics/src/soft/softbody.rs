@@ -9,7 +9,7 @@
 //! block's trailer.
 
 use crate::MeshDesc;
-use crate::schema_ext::{SOFT_BOX, SOFT_MESH, SoftBody};
+use crate::schema::{SOFT_BOX, SOFT_MESH, SoftBody};
 use crate::verlet::Solids;
 use og_core::glam::{Quat, Vec3};
 use og_core::{Error, ErrorKind, Result};

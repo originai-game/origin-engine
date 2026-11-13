@@ -18,7 +18,6 @@ use super::{
 use crate::fluid::FluidState;
 use crate::gather::Scene;
 use crate::schema::*;
-use crate::schema_ext::*;
 use crate::verlet::{ClothState, RopeState, Solids};
 use crate::water::{Floater, LineState, SurfaceState, WaterForce};
 use crate::{ControlOut, StepOut};

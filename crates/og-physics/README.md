@@ -272,7 +272,7 @@ their means.
 
 ## Beyond rigid bodies
 
-Components over the same rapier world and state block (`src/schema_ext.rs`,
+Components over the same rapier world and state block (each mechanism's `schema.rs`,
 reached from TypeScript through `crates/og-api/api/physics.ogt`'s physics module):
 
 | Record | What the step does with it |

@@ -15,7 +15,7 @@
 //! every sum is taken in the same order on every host. `+ - * /` and
 //! `sqrt` only. The particles are part of the og.physics state block.
 
-use crate::schema_ext::Fluid2D;
+use crate::schema::Fluid2D;
 use crate::verlet::Solids;
 use og_core::glam::{Vec2, Vec3};
 use serde::{Deserialize, Serialize};

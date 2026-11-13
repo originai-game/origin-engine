@@ -8,7 +8,7 @@
 use super::sim::Sim;
 use super::{rp, unv, v};
 use crate::gather::{Scene, WheelChild};
-use crate::schema_ext::*;
+use crate::schema::*;
 use crate::{StepOut, WheelPose};
 use og_core::Result;
 use og_core::glam::{Quat, Vec3};
