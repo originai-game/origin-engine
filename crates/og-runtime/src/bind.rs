@@ -19,14 +19,14 @@ pub(crate) mod destruction;
 pub(crate) mod destruction2d;
 // Without the `destruction` feature og-physics' destruction is not built: both halves
 // of og.destruction answer the refusal (bind/absent/destruction*.rs).
+pub(crate) mod agents;
+pub(crate) mod agents_idle;
 #[cfg(not(feature = "destruction"))]
 #[path = "bind/absent/destruction.rs"]
 pub(crate) mod destruction;
 #[cfg(not(feature = "destruction"))]
 #[path = "bind/absent/destruction2d.rs"]
 pub(crate) mod destruction2d;
-pub(crate) mod e6;
-pub(crate) mod e6_idle;
 pub(crate) mod garment;
 pub(crate) mod i18n;
 pub(crate) mod modules;

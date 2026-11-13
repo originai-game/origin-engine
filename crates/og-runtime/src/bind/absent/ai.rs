@@ -4,7 +4,7 @@
 //! what the full module answers with no behaviour loaded (null, false).
 //!
 //! The world is the full build's while the game never uses og.ai: the
-//! og.ai system and its state block are mounted idle (crate::bind::e6_idle), and
+//! og.ai system and its state block are mounted idle (crate::bind::agents_idle), and
 //! og.AiActionStarted and og.AiActionStopped stay lazy records whose
 //! registration is refused with [`ABSENT`].
 

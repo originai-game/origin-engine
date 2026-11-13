@@ -187,7 +187,7 @@ mod tests {
                 ray: None,
                 sink: None,
                 behaviours: None,
-                hearing: Some(crate::bind::e6::hearing()),
+                hearing: Some(crate::bind::agents::hearing()),
             },
         )
         .unwrap();
@@ -225,7 +225,7 @@ mod tests {
         assert_eq!(a.world_hash(), b.world_hash());
     }
 
-    /// og.ai links no audio: what it hears of og.audio is wired in e6.rs.
+    /// og.ai links no audio: what it hears of og.audio is wired in agents.rs.
     #[test]
     fn an_agent_hears_a_spatial_source_as_it_starts_and_not_a_flat_one() {
         use glam::Vec3;

@@ -346,7 +346,7 @@ pub(crate) fn assemble(
         .cloned()
         .collect();
     super::terrain::mount(&mut world, mount)?;
-    super::e6::mount_front(&mut world, mount, profile, &physics, &record_names)?;
+    super::agents::mount_front(&mut world, mount, profile, &physics, &record_names)?;
 
     // State machines, before the systems bound to them.
     for state in &game.states {
@@ -560,7 +560,7 @@ pub(crate) fn assemble(
         &physics,
         profile,
     )?;
-    super::e6::mount_back(&mut world, mount, profile, &physics)?;
+    super::agents::mount_back(&mut world, mount, profile, &physics)?;
     crate::bind::destruction::set_physics(&mount.modules.destruction, &physics);
     let mounted = super::modules::mount_back(
         &mut world,

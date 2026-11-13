@@ -185,7 +185,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
     rprobe::install(&engine, a.game.facts)?;
     {
         let mut probe = engine.probe.borrow_mut();
-        super::e6::commit(&engine, probe.inbox());
+        super::agents::commit(&engine, probe.inbox());
         super::timeline::commit(&engine, probe.inbox());
         register_module_actions(&mut probe, engine_id);
     }

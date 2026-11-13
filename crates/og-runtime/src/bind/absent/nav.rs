@@ -7,7 +7,7 @@
 //! false).
 //!
 //! The world is the full build's while the game never uses og.nav: the
-//! og.nav system and its state block are mounted idle (crate::bind::e6_idle),
+//! og.nav system and its state block are mounted idle (crate::bind::agents_idle),
 //! and og.NavFilter, og.Crowd and og.NavLinkReached stay lazy records whose
 //! registration is refused with [`ABSENT`].
 

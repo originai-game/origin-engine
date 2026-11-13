@@ -1,6 +1,6 @@
 //! The IDL's `ai` module over og-ai: behaviours (cooked or from text),
 //! blackboard access, noises and descriptions. The behaviour registry is
-//! the engine's (`e6::Modules::behaviours`); og.ai's system and memories are
+//! the engine's (`agents::Modules::behaviours`); og.ai's system and memories are
 //! the world's.
 
 use crate::engine::engine;
@@ -21,7 +21,7 @@ fn handle(h: f64) -> u64 {
 }
 
 fn system(engine: u32) -> Option<AiSystem> {
-    crate::bind::e6::with(engine, |m| m.ai.clone()).flatten()
+    crate::bind::agents::with(engine, |m| m.ai.clone()).flatten()
 }
 
 fn info(h: u64, b: &Behaviour) -> BehaviourInfo {
@@ -51,7 +51,7 @@ fn insert(world: u32, b: Behaviour) -> Result<BehaviourInfo, String> {
             crate::engine::lazy::ensure(&eng, eng.world()?, name)?;
         }
     }
-    let reg = crate::bind::e6::with(world, |m| m.behaviours.clone())
+    let reg = crate::bind::agents::with(world, |m| m.behaviours.clone())
         .ok_or_else(|| format!("no engine {world}"))?;
     let mut r = reg.lock().unwrap_or_else(|e| e.into_inner());
     let h = r.insert(b);
@@ -185,7 +185,7 @@ fn describe_value(
 ) -> Option<AiDescription> {
     let s = system(world_id)?;
     let mem = s.memory(e)?;
-    let reg = crate::bind::e6::with(world_id, |m| m.behaviours.clone())?;
+    let reg = crate::bind::agents::with(world_id, |m| m.behaviours.clone())?;
     let b: Arc<Behaviour> = reg
         .lock()
         .unwrap_or_else(|x| x.into_inner())

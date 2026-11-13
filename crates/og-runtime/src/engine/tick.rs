@@ -437,7 +437,7 @@ pub fn take_log(id: u32) -> String {
             for w in std::mem::take(&mut eng.assets.borrow_mut().warnings) {
                 log.push(json!({ "tick": 0, "warning": true, "text": w }));
             }
-            for w in super::e6::take_warnings(id) {
+            for w in super::agents::take_warnings(id) {
                 log.push(json!({ "tick": 0, "warning": true, "text": w }));
             }
             Value::Array(log).to_string()

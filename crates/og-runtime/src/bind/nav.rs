@@ -1,6 +1,6 @@
 //! The IDL's `nav` module over og-ai's nav: grids, flow fields, navmeshes
 //! (cooked, or built over a flat floor), path queries, obstacles and the
-//! agents' paths. The registry is the engine's (`e6::Modules::navs`);
+//! agents' paths. The registry is the engine's (`agents::Modules::navs`);
 //! og.nav's system and state block are the world's.
 
 use crate::engine::{Engine, engine};
@@ -129,11 +129,13 @@ pub fn og_nav_set_area(
 }
 
 fn plane_of(engine: u32) -> Plane {
-    crate::bind::e6::with(engine, |m| crate::bind::e6::plane_of(m.profile)).unwrap_or(Plane::Xz)
+    crate::bind::agents::with(engine, |m| crate::bind::agents::plane_of(m.profile))
+        .unwrap_or(Plane::Xz)
 }
 
 fn navs(engine: u32) -> Result<og_ai::nav::SharedNavs, String> {
-    crate::bind::e6::with(engine, |m| m.navs.clone()).ok_or_else(|| format!("no engine {engine}"))
+    crate::bind::agents::with(engine, |m| m.navs.clone())
+        .ok_or_else(|| format!("no engine {engine}"))
 }
 
 fn handle(h: f64) -> u64 {
@@ -418,7 +420,7 @@ pub fn og_nav_set_link_open(
 }
 
 pub fn og_nav_finish_link(world: u32, entity: f64) -> bool {
-    crate::bind::e6::with(world, |m| {
+    crate::bind::agents::with(world, |m| {
         m.nav
             .as_ref()
             .is_some_and(|n| n.finish_link(Entity::from_bits(handle(entity))))
@@ -749,7 +751,7 @@ pub fn og_nav_nearest(
 }
 
 fn path_of(engine: u32, e: Entity) -> Option<og_ai::nav::system::PathState> {
-    crate::bind::e6::with(engine, |m| m.nav.as_ref().and_then(|n| n.path_of(e))).flatten()
+    crate::bind::agents::with(engine, |m| m.nav.as_ref().and_then(|n| n.path_of(e))).flatten()
 }
 
 pub fn og_nav_path_of(world: u32, entity: f64) -> Option<NavPath> {

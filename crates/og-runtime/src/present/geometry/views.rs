@@ -131,11 +131,11 @@ pub(super) fn physics_view(rs: &mut RenderState) {
 pub(super) fn nav_view(rs: &mut RenderState) {
     let engine_id = rs.draw.engine;
     let Some((navs, nav, profile)) =
-        crate::bind::e6::with(engine_id, |m| (m.navs.clone(), m.nav.clone(), m.profile))
+        crate::bind::agents::with(engine_id, |m| (m.navs.clone(), m.nav.clone(), m.profile))
     else {
         return;
     };
-    let plane = crate::bind::e6::plane_of(profile);
+    let plane = crate::bind::agents::plane_of(profile);
     let lift = |p: Vec3| match plane {
         og_ai::nav::Plane::Xz => p + Vec3::Y * 0.05,
         og_ai::nav::Plane::Xy => p,

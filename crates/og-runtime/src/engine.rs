@@ -29,10 +29,10 @@ mod module_state;
 pub(crate) use module_state::{Modules, Mount};
 mod resources;
 use crate::{
-    author::trace, bind::anim, bind::e6, bind::i18n, bind::modules, bind::terrain, bind::timeline,
-    bind::video, host::api, host::codec, ok_void, present::art, present::atmosphere,
-    present::extract, present::feel, present::fx, present::interpolate, present::look,
-    present::probes, present::views, world::assets, world::save, world::stream,
+    author::trace, bind::agents, bind::anim, bind::i18n, bind::modules, bind::terrain,
+    bind::timeline, bind::video, host::api, host::codec, ok_void, present::art,
+    present::atmosphere, present::extract, present::feel, present::fx, present::interpolate,
+    present::look, present::probes, present::views, world::assets, world::save, world::stream,
 };
 pub(crate) use resources::{
     bump_layout_epoch, layout_epoch, world_query_views, write_resource_value,
@@ -744,7 +744,7 @@ pub(crate) fn declare_game(desc: &Value) -> u32 {
 /// build or the order: rprobe::MODULE_ACTIONS lists them, and a game's
 /// command of one of them is refused (a test holds the list to this).
 pub(crate) fn register_module_actions(probe: &mut og_probe::Probe, engine_id: u32) {
-    crate::bind::e6::register_commands(probe, engine_id);
+    crate::bind::agents::register_commands(probe, engine_id);
     crate::bind::timeline::register_commands(probe, engine_id);
     crate::bind::motion::register_commands(probe, engine_id);
     crate::bind::modules::docs::register_commands(probe, engine_id);

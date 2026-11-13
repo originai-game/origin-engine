@@ -47,7 +47,7 @@ pub(crate) type ModuleState = RefCell<Modules>;
 /// Runs `f` with an engine's modules (none for an engine that is gone).
 pub(crate) fn with<T>(engine: u32, f: impl FnOnce(&mut Modules) -> T) -> Option<T> {
     let eng = crate::engine::engine(engine).ok()?;
-    Some(f(&mut eng.modules.e6.borrow_mut()))
+    Some(f(&mut eng.modules.agents.borrow_mut()))
 }
 
 #[cfg(feature = "nav")]
@@ -124,7 +124,7 @@ pub(crate) fn mount_front(
     crate::world::stream::mount(world, mount)?;
     crate::bind::net::mount(world, mount)?;
     crate::bind::story::mount(world, mount)?;
-    mount.modules.e6.borrow_mut().profile = profile;
+    mount.modules.agents.borrow_mut().profile = profile;
     mount_ai(world, mount, profile, physics, records)
 }
 
@@ -164,7 +164,7 @@ fn mount_ai(
     records: &[String],
 ) -> Result<(), String> {
     let engine = mount.id;
-    let behaviours = mount.modules.e6.borrow().behaviours.clone();
+    let behaviours = mount.modules.agents.borrow().behaviours.clone();
     let p = physics.clone();
     let sight: og_ai::SightRay = Arc::new(move |o, d, max, mask, ex| {
         ray(&p, o, d, max, mask, ex).map(|h| (h.distance, h.entity))
@@ -186,11 +186,11 @@ fn mount_ai(
         },
     )
     .map_err(|e| e.reason().to_string())?;
-    mount.modules.e6.borrow_mut().pending_ai = Some(ai);
+    mount.modules.agents.borrow_mut().pending_ai = Some(ai);
     Ok(())
 }
 
-/// og.ai idle (src/e6_idle.rs): the system and block of a world that never
+/// og.ai idle (src/bind/agents_idle.rs): the system and block of a world that never
 /// thinks.
 #[cfg(not(feature = "ai"))]
 fn mount_ai(
@@ -200,11 +200,11 @@ fn mount_ai(
     _physics: &PhysicsSystem,
     records: &[String],
 ) -> Result<(), String> {
-    crate::bind::e6_idle::mount_ai(world, records, crate::bind::ai::ABSENT)
+    crate::bind::agents_idle::mount_ai(world, records, crate::bind::ai::ABSENT)
         .map_err(|e| e.reason().to_string())
 }
 
-/// og.nav idle (src/e6_idle.rs), before physics.
+/// og.nav idle (src/bind/agents_idle.rs), before physics.
 #[cfg(not(feature = "nav"))]
 pub(crate) fn mount_back(
     world: &mut World,
@@ -212,7 +212,7 @@ pub(crate) fn mount_back(
     _profile: u32,
     _physics: &PhysicsSystem,
 ) -> Result<(), String> {
-    crate::bind::e6_idle::mount_nav(world, crate::bind::nav::ABSENT)
+    crate::bind::agents_idle::mount_nav(world, crate::bind::nav::ABSENT)
         .map_err(|e| e.reason().to_string())
 }
 
@@ -224,7 +224,7 @@ pub(crate) fn mount_back(
     profile: u32,
     physics: &PhysicsSystem,
 ) -> Result<(), String> {
-    let navs = mount.modules.e6.borrow().navs.clone();
+    let navs = mount.modules.agents.borrow().navs.clone();
     let p = physics.clone();
     let avoid: og_ai::nav::Raycaster = Arc::new(move |o, d, max, mask, ex| {
         ray(&p, o, d, max, mask, ex).map(|h| (h.distance, h.normal))
@@ -239,7 +239,7 @@ pub(crate) fn mount_back(
         },
     )
     .map_err(|e| e.reason().to_string())?;
-    mount.modules.e6.borrow_mut().pending_nav = Some(nav);
+    mount.modules.agents.borrow_mut().pending_nav = Some(nav);
     Ok(())
 }
 
@@ -247,7 +247,7 @@ pub(crate) fn mount_back(
 /// engine's, and its probe's inbox takes og.ai's commands.
 pub(crate) fn commit(eng: &crate::engine::Engine, inbox: og_probe::Inbox) {
     {
-        let m = &mut *eng.modules.e6.borrow_mut();
+        let m = &mut *eng.modules.agents.borrow_mut();
         #[cfg(feature = "nav")]
         {
             m.nav = m.pending_nav.take().or(m.nav.take());
