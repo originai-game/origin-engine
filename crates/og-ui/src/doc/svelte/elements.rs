@@ -670,7 +670,10 @@ impl Parser {
                     "write label or i18n on the datalist's <option>, not on the input".into(),
                 ));
             }
+            // A component's props are its own names: `count` on a component
+            // is its prop, not <og-counter>'s value.
             if mapped.is_none()
+                && !component
                 && let Some((owner, attribute, _)) = schema::ELEMENT_ATTRIBUTES
                     .iter()
                     .find(|(_, _, property)| *property == name)
@@ -739,7 +742,7 @@ impl Parser {
             if name == "value" && internal == "kbd" {
                 name = "binding".into();
             }
-            if a.name == "hidden" {
+            if a.name == "hidden" && !component {
                 name = "visible".into();
             }
             // Selector facts only: `:lang()`, `:dir()`, `[data-…]` and
@@ -783,7 +786,7 @@ impl Parser {
                     format!("unknown attribute {}; use a reflected property", a.name),
                 ));
             };
-            let value = if a.name == "hidden" {
+            let value = if a.name == "hidden" && !component {
                 match value {
                     PropValue::Bind(e, _) => PropValue::Bind(Expr::Not(Box::new(e)), None),
                     PropValue::Lit(Lit::Bool(b)) => PropValue::Lit(Lit::Bool(!b)),

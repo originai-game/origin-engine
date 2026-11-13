@@ -364,3 +364,29 @@ fn rejects_wrong_syntax_and_reports_authored_locations() {
     .unwrap();
     assert_eq!(doc.warnings.len(), 1);
 }
+
+/// A component's prop may share a name with a property one tag owns
+/// (`count` is <og-counter>'s value) or with an HTML attribute that is
+/// renamed (`hidden`): on a component it is the prop under its own name, on
+/// any other element it is still refused with the tag to write. Ways it
+/// could fail: a built-in component whose prop a game cannot pass.
+#[test]
+fn a_component_prop_may_share_a_tag_owned_property_name() {
+    let doc = UiDocument::parse(
+        "props.svelte",
+        "<meta name='screen' content='x'><column><Loot count={3} reveal={1} hidden={true}/></column>",
+    )
+    .unwrap();
+    let passed: Vec<&str> = doc
+        .nodes
+        .iter()
+        .flat_map(|n| n.args.iter().map(|(name, ..)| name.as_str()))
+        .collect();
+    assert_eq!(passed, ["count", "reveal", "hidden"]);
+    let errors = UiDocument::parse(
+        "bad.svelte",
+        "<meta name='screen' content='x'><column><text count={3}/></column>",
+    )
+    .unwrap_err();
+    assert!(errors[0].contains("<og-counter value="), "{}", errors[0]);
+}
