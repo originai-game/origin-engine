@@ -157,7 +157,6 @@ fn plan_kind<'a>(
         Kind::Texture => plan_texture(cx, state, s, hash, outs),
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
-        Kind::Vfx => plan_vfx(cx, state, s, hash, outs),
         Kind::Shader => plan_shader(cx, state, s, hash, outs),
         Kind::Post => plan_post(cx, state, s, hash, outs),
         Kind::UiMaterial => plan_ui_material(cx, state, s, hash, outs),

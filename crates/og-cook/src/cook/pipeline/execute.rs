@@ -404,7 +404,6 @@ pub(crate) fn run(
             anim::cook_motion_action(&s.bytes, p.stamp, &|id| known.contains(id))
         }
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
-        Work::Vfx(s) => vfx::cook_vfx(s, &|id| known.contains(id), p.stamp),
         Work::TextureArray(s, decl) => {
             let root = crate::cook::assets_root(s);
             texture_array::cook(&s.rel, &root, decl, &options.texture, p.stamp)

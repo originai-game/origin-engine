@@ -1,18 +1,5 @@
 use super::*;
 
-pub(super) fn plan_vfx<'a>(
-    cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx { known, .. } = *cx;
-    let st = vfx::stamp_inputs(s, &|id| known.contains(id));
-    let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
-    outs.push((s.rel.clone(), format::Vfx::NAME, st, Work::Vfx(s)));
-}
-
 pub(super) fn plan_shader<'a>(
     _cx: &Cx<'a>,
     _state: &mut PlanState,

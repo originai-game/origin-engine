@@ -73,7 +73,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         .collect();
     let mut extra = Vec::new();
     for s in sources.iter_mut() {
-        if s.kind != Kind::Vfx || s.error.is_some() || !handles(&s.rel) {
+        if s.kind != Kind::System(&crate::cook::vfx::VFX) || s.error.is_some() || !handles(&s.rel) {
             continue;
         }
         let root = super::assets_root(s);
@@ -156,7 +156,7 @@ pub(crate) fn warnings(
 ) {
     for s in sources
         .iter()
-        .filter(|s| s.kind == Kind::Vfx && handles(&s.rel))
+        .filter(|s| s.kind == Kind::System(&crate::cook::vfx::VFX) && handles(&s.rel))
     {
         let text = String::from_utf8_lossy(&s.bytes);
         let found: Vec<&str> = text

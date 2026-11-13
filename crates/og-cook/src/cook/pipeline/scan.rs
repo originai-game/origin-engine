@@ -54,7 +54,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
         "ttf" | "otf" => Kind::Font,
         "riv" => Kind::Rive,
         "tmj" | "ldtk" => Kind::Tilemap,
-        "efkproj" | "efkefc" => Kind::Vfx,
         "svelte" => Kind::Document,
         _ => return kinds::by_extension(ext),
     })
@@ -64,7 +63,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
 const OGT_KINDS: &[(&str, Kind)] = &[
     ("scene", Kind::Scene),
     (prefab::PREFAB_TYPE, Kind::Prefab),
-    (og_bundle::vfx::VFX_TYPE, Kind::Vfx),
     ("tileset", Kind::Tileset),
     ("tilemap", Kind::Tilemap),
     ("flipbook", Kind::Flipbook),

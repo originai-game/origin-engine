@@ -3,7 +3,7 @@
 //! model and sound it names is an asset, and stores the text,
 //! which the runtime parses again.
 
-use super::{CookError, Source};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -77,4 +77,45 @@ pub(crate) fn cook_vfx(
             v.events.len()
         )],
     ))
+}
+
+pub(crate) static VFX: KindDef = KindDef {
+    name: "vfx",
+    extensions: &["efkproj", "efkefc"],
+    types: &[og_bundle::vfx::VFX_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_vfx,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&VFX];
+
+fn plan_vfx<'a>(
+    cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let st = stamp_inputs(s, &|id| known.contains(id));
+    let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Vfx::NAME,
+        st,
+        Work::Job(Box::new(VfxJob(s))),
+    ));
+}
+
+/// A VFX graph's one output.
+struct VfxJob<'a>(&'a Source);
+
+impl Job for VfxJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VfxJob(s) = self;
+        let Exec { known, .. } = ex;
+        cook_vfx(s, &|id| known.contains(id), p.stamp)
+    }
 }

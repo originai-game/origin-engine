@@ -89,7 +89,6 @@ enum Kind {
     Scene,
     /// An `.ogt` of `type prefab`: cooked as a scene, flattened.
     Prefab,
-    Vfx,
     Style,
     Document,
     Tileset,
@@ -118,7 +117,6 @@ impl Kind {
             Kind::Font => "font",
             Kind::Scene => "scene",
             Kind::Prefab => "prefab",
-            Kind::Vfx => "vfx",
             Kind::Style => "style",
             Kind::Document => "document",
             Kind::Tileset => "tileset",
@@ -250,7 +248,6 @@ enum Work<'a> {
     Sound(&'a Source, Option<(u32, u32)>),
     /// Chunk `n` (1 and up) of a sound cooked in chunks of so many QOA frames.
     SoundChunk(&'a Source, u32, u32),
-    Vfx(&'a Source),
     Style(&'a Source),
     /// A UI document and the ids of the documents defining the components
     /// it uses, which the runtime loads with it.
