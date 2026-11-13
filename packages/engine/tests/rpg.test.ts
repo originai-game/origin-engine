@@ -68,9 +68,11 @@ beforeAll(() => {
   if (cook.exitCode !== 0) throw new Error(`cooking ${root}: ${new TextDecoder().decode(cook.stderr)}`);
 });
 
+// A setup that throws before mkdtempSync leaves these empty, and
+// rmSync("") removes the working directory: the engine package.
 afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-  rmSync(styles, { recursive: true, force: true });
+  if (root) rmSync(root, { recursive: true, force: true });
+  if (styles) rmSync(styles, { recursive: true, force: true });
 });
 
 const DOCUMENTS = () => Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`);

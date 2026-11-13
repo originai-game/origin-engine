@@ -57,7 +57,8 @@ beforeAll(() => {
   cookProject(root, root);
 });
 
-afterAll(() => rmSync(root, { recursive: true, force: true }));
+// rmSync("") would remove the working directory (the engine package).
+afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 
 const DOCUMENTS = ["ui/loadoutTest.svelte", "ui/hudTest.svelte"];
 
