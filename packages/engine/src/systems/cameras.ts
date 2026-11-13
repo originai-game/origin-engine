@@ -175,7 +175,9 @@ export const followCamera = defineSystem(
       const r = tr.quaternion;
       const pos = { x: p[0]!, y: p[1]!, z: p[2]! };
       let offset = { x: f.offset[0]!, y: f.offset[1]!, z: f.offset[2]! };
-      if (f.followRotation[0]) offset = rotate({ x: r[0]!, y: r[1]!, z: r[2]!, w: r[3]! }, offset);
+      // With followRotation the offset is right, up and behind the entity: an entity faces its +Z with its
+      // right at -X, so the offset turns with it after a half turn about +Y.
+      if (f.followRotation[0]) offset = rotate({ x: r[0]!, y: r[1]!, z: r[2]!, w: r[3]! }, { x: -offset.x, y: offset.y, z: -offset.z });
       const cam = camera(world);
       if (!cam) return;
       const k = ease(time.dt, f.smoothTime[0]!);

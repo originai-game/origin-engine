@@ -118,10 +118,7 @@ fn transform(
         return Ok(None);
     };
     let t: record::Transform = r.transform.1.read(&b).map_err(invalid)?;
-    // The rotation was read from og.Transform's `rotation`, a field it does
-    // not have (its rotation is `quaternion`), so it has always been the
-    // identity; kept as it is until the shots' follow rotation is fixed.
-    Ok(Some((t.position, Quat::IDENTITY)))
+    Ok(Some((t.position, t.quaternion.normalize())))
 }
 
 /// `e`, when it is an entity, with its [`transform`].
@@ -167,8 +164,11 @@ fn evaluate(
     let mut position = own.0;
     if let Some((_, (fp, fr))) = follow {
         let offset = row.follow_offset;
+        // With followRotation the offset is right, up and behind the
+        // followed entity, so the default sits behind what faces +Z.
         let offset = if row.follow_rotation {
-            fr * offset
+            og_core::facing::right(fr) * offset.x + og_core::facing::up(fr) * offset.y
+                - og_core::facing::forward(fr) * offset.z
         } else {
             offset
         };

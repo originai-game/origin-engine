@@ -26,8 +26,8 @@ Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; i
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `follow` | `Entity` | `0` | — | — | — | The entity it follows: it sits at followOffset from it, easing by smoothTime. 0: it sits at its own entity's og.Transform position. |
-| `followOffset` | `Vector3` | `{ x: 0, y: 2, z: 6 }` | — | `m` | tunable | Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes. |
-| `followRotation` | `boolean` | `false` | — | — | — | Turn followOffset with the followed entity's rotation, so it stays behind it. |
+| `followOffset` | `Vector3` | `{ x: 0, y: 2, z: 6 }` | — | `m` | tunable | Where it sits relative to the followed entity, in world axes; with followRotation, x to that entity's right, y up and z behind it. |
+| `followRotation` | `boolean` | `false` | — | — | — | Turn followOffset with the followed entity's rotation, so it stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there. |
 | `smoothTime` | `number` | `0.25` | ≥ 0 | `s` | tunable | Roughly how long it takes to catch up with the followed entity; 0 snaps every tick. It snaps when it is enabled. |
 
 #### Aim
@@ -85,12 +85,12 @@ component VirtualCamera {
   }
   group "Position"
   field follow Entity "The entity it follows: it sits at followOffset from it, easing by smoothTime. 0: it sits at its own entity's og.Transform position."
-  field followOffset Vector3 "Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes." {
+  field followOffset Vector3 "Where it sits relative to the followed entity, in world axes; with followRotation, x to that entity's right, y up and z behind it." {
     default 0 2 6
     unit m
     tunable true
   }
-  field followRotation bool "Turn followOffset with the followed entity's rotation, so it stays behind it."
+  field followRotation bool "Turn followOffset with the followed entity's rotation, so it stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there."
   field smoothTime f32 "Roughly how long it takes to catch up with the followed entity; 0 snaps every tick. It snaps when it is enabled." {
     default 0.25
     min 0

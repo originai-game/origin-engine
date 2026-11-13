@@ -349,6 +349,22 @@ test("og.systems.cameras: a follow camera eases to its offset and a 2D follower 
   const follow = start(og.game({ systems: [...og.systems.cameras], start: rig(og.FollowCamera, { offset: { x: 0, y: 2, z: 6 }, smoothTime: 0 }) }));
   follow.advance(1);
   expect(must(follow.world.resource(og.Camera)).position).toEqual({ x: 1, y: 4, z: 9 });
+  // followRotation: the offset is behind the entity. Turned a quarter about +Y it faces +X, so six behind is -X.
+  const h = Math.SQRT1_2;
+  const behind = start(
+    og.game({
+      systems: [...og.systems.cameras],
+      start: (world: World) => {
+        const e = must(world.spawn({ name: "rig", position: { x: 1, y: 2, z: 3 }, quaternion: { x: 0, y: h, z: 0, w: h } }));
+        world.insert(e, og.FollowCamera, { offset: { x: 0, y: 2, z: 6 }, followRotation: true, smoothTime: 0 });
+      },
+    }),
+  );
+  behind.advance(1);
+  const at = must(behind.world.resource(og.Camera)).position;
+  expect(at.x).toBeCloseTo(-5, 5);
+  expect(at.y).toBeCloseTo(4, 5);
+  expect(at.z).toBeCloseTo(3, 5);
   const flat = start(og.game({ systems: [...og.systems.cameras], start: rig(og.Follow2D, { deadZone: { x: 0.5, y: 10 }, smoothTime: 0 }) }));
   flat.advance(1);
   const p = must(flat.world.resource(og.Camera)).position;

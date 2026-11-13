@@ -204,6 +204,57 @@ fn a_restore_mid_blend_continues_the_same_blend() {
 }
 
 #[test]
+fn follow_rotation_keeps_the_shot_behind_what_it_follows() {
+    let (engine, _) = start(false);
+    // Facing +X: a quarter turn about +Y from an entity's forward, +Z.
+    let h = std::f64::consts::FRAC_1_SQRT_2;
+    let player = spawn(
+        engine,
+        &[(
+            "og.Transform",
+            json!({
+                "position": { "x": 1, "y": 0, "z": 0 },
+                "quaternion": { "x": 0, "y": h, "z": 0, "w": h },
+            }),
+        )],
+    );
+    spawn(
+        engine,
+        &[(
+            "og.VirtualCamera",
+            json!({ "follow": player, "followRotation": true, "smoothTime": 0, "lookAt": player }),
+        )],
+    );
+    ticks(engine, 2);
+    let cam = camera(engine);
+    let p = |k: &str| cam["position"][k].as_f64().unwrap();
+    // The default offset (0, 2, 6): two up and six behind, so at x 1 - 6.
+    assert!((p("x") + 5.0).abs() < 1e-4, "behind: {}", cam["position"]);
+    assert!((p("y") - 2.0).abs() < 1e-4, "above: {}", cam["position"]);
+    assert!(p("z").abs() < 1e-4, "in line: {}", cam["position"]);
+}
+
+#[test]
+fn a_shot_that_looks_at_nothing_keeps_its_own_rotation() {
+    let (engine, _) = start(false);
+    let h = std::f64::consts::FRAC_1_SQRT_2;
+    spawn(
+        engine,
+        &[
+            (
+                "og.Transform",
+                json!({ "quaternion": { "x": 0, "y": h, "z": 0, "w": h } }),
+            ),
+            ("og.VirtualCamera", json!({})),
+        ],
+    );
+    ticks(engine, 2);
+    let q = &camera(engine)["quaternion"];
+    assert!((q["y"].as_f64().unwrap() - h).abs() < 1e-5, "rotation: {q}");
+    assert!((q["w"].as_f64().unwrap() - h).abs() < 1e-5, "rotation: {q}");
+}
+
+#[test]
 fn collision_pulls_in_at_once_and_eases_out() {
     let (engine, _) = start(false);
     let player = spawn(engine, &[("og.Transform", at(0.0, 0.0, 0.0))]);

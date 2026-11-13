@@ -1,0 +1,14 @@
+{
+  "breaking": [
+    {
+      "member": "og.FollowCamera.followRotation",
+      "change": "With followRotation the offset is x to the entity's right, y up and z behind it. It was turned by the entity's rotation as it stood, which put the default offset (0, 2, 6) six metres in front of an entity facing its +Z (a vehicle, a nav or motion agent), looking at its face.",
+      "fix": "Where a game set followRotation and chose an offset by hand, negate the offset's x and z; a game that left the default now gets the camera behind the entity."
+    },
+    {
+      "member": "og.VirtualCamera.followRotation",
+      "change": "followRotation now turns followOffset with the followed entity (x to its right, y up, z behind it), and a shot with no lookAt keeps its own og.Transform rotation. Both read a rotation that was always the identity, so the offset stayed in world axes and such a shot looked down world -Z.",
+      "fix": "Nothing where followRotation is off and the shot's entity is not rotated. A shot that set followRotation, or a rotated shot with no lookAt, now does what its fields say; re-record replays and pinned hashes of worlds with one."
+    }
+  ]
+}

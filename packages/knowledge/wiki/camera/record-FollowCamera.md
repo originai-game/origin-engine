@@ -12,15 +12,15 @@ Token `og.FollowCamera`, registered under the schema name `og.FollowCamera`; its
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `offset` | `Vector3` | `{ x: 0, y: 2, z: 6 }` | — | `m` | — | Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes. |
+| `offset` | `Vector3` | `{ x: 0, y: 2, z: 6 }` | — | `m` | — | Where the camera sits relative to the entity, in world axes; with followRotation, x to the entity's right, y up and z behind it. |
 | `lookOffset` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | `m` | — | The point the camera looks at, relative to the entity's position. |
-| `followRotation` | `boolean` | `false` | — | — | — | Turn the offset with the entity's rotation, so the camera stays behind it. |
+| `followRotation` | `boolean` | `false` | — | — | — | Turn the offset with the entity's rotation, so the camera stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there. |
 | `smoothTime` | `number` | `0.25` | ≥ 0 | `s` | tunable | Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick. |
 
 ```ogt
 component FollowCamera {
   doc "Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
-  field offset Vector3 "Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes." {
+  field offset Vector3 "Where the camera sits relative to the entity, in world axes; with followRotation, x to the entity's right, y up and z behind it." {
     default 0 2 6
     unit m
   }
@@ -28,7 +28,7 @@ component FollowCamera {
     default 0 1 0
     unit m
   }
-  field followRotation bool "Turn the offset with the entity's rotation, so the camera stays behind it."
+  field followRotation bool "Turn the offset with the entity's rotation, so the camera stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there."
   field smoothTime f32 "Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick." {
     default 0.25
     min 0

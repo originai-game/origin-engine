@@ -230,7 +230,7 @@ module camera {
 
   component FollowCamera {
     doc "Chases the entity carrying it with og.Camera: a third-person 3D view that eases towards a point offset from the entity and looks at it. Driven by og.systems.cameras; the first entity carrying one, in query order, drives the camera."
-    field offset Vector3 "Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes." {
+    field offset Vector3 "Where the camera sits relative to the entity, in world axes; with followRotation, x to the entity's right, y up and z behind it." {
       default 0 2 6
       unit m
     }
@@ -238,7 +238,7 @@ module camera {
       default 0 1 0
       unit m
     }
-    field followRotation bool "Turn the offset with the entity's rotation, so the camera stays behind it."
+    field followRotation bool "Turn the offset with the entity's rotation, so the camera stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there."
     field smoothTime f32 "Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick." {
       default 0.25
       min 0
@@ -383,12 +383,12 @@ module camera {
     }
     group "Position"
     field follow Entity "The entity it follows: it sits at followOffset from it, easing by smoothTime. 0: it sits at its own entity's og.Transform position."
-    field followOffset Vector3 "Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes." {
+    field followOffset Vector3 "Where it sits relative to the followed entity, in world axes; with followRotation, x to that entity's right, y up and z behind it." {
       default 0 2 6
       unit m
       tunable true
     }
-    field followRotation bool "Turn followOffset with the followed entity's rotation, so it stays behind it."
+    field followRotation bool "Turn followOffset with the followed entity's rotation, so it stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there."
     field smoothTime f32 "Roughly how long it takes to catch up with the followed entity; 0 snaps every tick. It snaps when it is enabled." {
       default 0.25
       min 0

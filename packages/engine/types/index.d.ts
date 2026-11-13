@@ -5267,7 +5267,7 @@ export interface OrbitCamera {
  */
 export interface FollowCamera {
   /**
-   * Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes.
+   * Where the camera sits relative to the entity, in world axes; with followRotation, x to the entity's right, y up and z behind it.
    *
    * @default { x: 0, y: 2, z: 6 }
    * @unit m (metres)
@@ -5280,7 +5280,9 @@ export interface FollowCamera {
    * @unit m (metres)
    */
   lookOffset: Vector3;
-  /** Turn the offset with the entity's rotation, so the camera stays behind it. */
+  /**
+   * Turn the offset with the entity's rotation, so the camera stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there.
+   */
   followRotation: boolean;
   /**
    * Roughly how long the camera takes to catch up with a moved entity; 0 snaps it there every tick.
@@ -5530,14 +5532,16 @@ export interface VirtualCamera {
    */
   follow: Entity;
   /**
-   * Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes.
+   * Where it sits relative to the followed entity, in world axes; with followRotation, x to that entity's right, y up and z behind it.
    *
    * @default { x: 0, y: 2, z: 6 }
    * @unit m (metres)
    * @tunable
    */
   followOffset: Vector3;
-  /** Turn followOffset with the followed entity's rotation, so it stays behind it. */
+  /**
+   * Turn followOffset with the followed entity's rotation, so it stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there.
+   */
   followRotation: boolean;
   /**
    * Roughly how long it takes to catch up with the followed entity; 0 snaps every tick. It snaps when it is enabled.

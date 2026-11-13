@@ -21237,7 +21237,7 @@
       "properties": {
         "offset": {
           "$ref": "#/$defs/Vector3",
-          "description": "Where the camera sits relative to the entity: in the entity's own axes with followRotation, else in world axes.",
+          "description": "Where the camera sits relative to the entity, in world axes; with followRotation, x to the entity's right, y up and z behind it.",
           "default": {
             "x": 0,
             "y": 2,
@@ -21257,7 +21257,7 @@
         },
         "followRotation": {
           "type": "boolean",
-          "description": "Turn the offset with the entity's rotation, so the camera stays behind it.",
+          "description": "Turn the offset with the entity's rotation, so the camera stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there.",
           "default": false
         },
         "smoothTime": {
@@ -21573,7 +21573,7 @@
         },
         "followOffset": {
           "$ref": "#/$defs/Vector3",
-          "description": "Where it sits relative to the followed entity: in that entity's own axes with followRotation, else in world axes.",
+          "description": "Where it sits relative to the followed entity, in world axes; with followRotation, x to that entity's right, y up and z behind it.",
           "default": {
             "x": 0,
             "y": 2,
@@ -21584,7 +21584,7 @@
         },
         "followRotation": {
           "type": "boolean",
-          "description": "Turn followOffset with the followed entity's rotation, so it stays behind it.",
+          "description": "Turn followOffset with the followed entity's rotation, so it stays behind it: an entity faces its local +Z, and the offset's z counts backwards from there.",
           "default": false
         },
         "smoothTime": {

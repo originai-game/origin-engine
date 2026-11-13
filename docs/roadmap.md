@@ -112,8 +112,8 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   nothing), then the GL tier on a device.
 - **og-runtime:** the remaining 7 `thread_local!` tables; one function per
   feature (`extract/frame.rs`, `destruction::run`); the latent bugs marked
-  in place (`followRotation`, baked reflection probes, destruction's body
-  weights, a stamp's quaternion without `w`).
+  in place (baked reflection probes, destruction's body weights, a
+  stamp's quaternion without `w`).
 - **Optional runtime modules (§2.1):** variants that leave modules out,
   then separate artifacts loaded after the first frame.
 - **One host implementation (§2.1):** native counterparts of the web
