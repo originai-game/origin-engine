@@ -144,31 +144,6 @@ pub(super) fn plan_rive<'a>(
     }
 }
 
-pub(super) fn plan_rig2d<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx { tex_desc, .. } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let deps = rig2d::dependency_hashes(s);
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"rig2d", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::Rig2D::NAME, st, Work::Rig2d(s)));
-    // Rigged from layered art: its parts packed into a texture beside it.
-    if Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| autorig::is_autorig(&d)) {
-        let st = stamp(&[b"rig2d atlas", tex_desc.as_bytes(), &hash, deps.as_bytes()]);
-        outs.push((
-            autorig::atlas_id(&s.rel),
-            format::Texture::NAME,
-            st,
-            Work::Rig2dAtlas(s),
-        ));
-    }
-}
-
 pub(super) fn plan_flipbook<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

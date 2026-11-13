@@ -289,7 +289,7 @@ pub(crate) fn resolve(
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
-        if s.kind == Kind::Rig2d {
+        if s.kind == Kind::System(&rig2d::RIG2D) {
             consumed.extend(autorig::part_files(
                 &s.rel,
                 assets_dir,

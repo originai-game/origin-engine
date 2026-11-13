@@ -42,7 +42,10 @@
 //! `rotateOffset`, `rotateMix`, `translateMix`) `along` constraints;
 //! DragonBones has no transform constraint.
 
-use super::{CookError, Source};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, autorig,
+    stamp,
+};
 use crate::format::{self, *};
 use og_anim::{
     Affine2, Armature2d, Attachment2d, AttachmentKind, Bone2d, BoneTimeline, Clip2d,
@@ -1289,4 +1292,67 @@ fn influences(
         vertices.push(influences);
     }
     Ok(vertices)
+}
+
+pub(crate) static RIG2D: KindDef = KindDef {
+    name: "rig2d",
+    extensions: &[],
+    types: &[og_anim::RIG2D_TYPE],
+    by_content: false,
+    streams: false,
+    plan: plan_rig2d,
+};
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&RIG2D];
+
+fn plan_rig2d<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { tex_desc, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = dependency_hashes(s);
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"rig2d", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Rig2D::NAME,
+        st,
+        Work::Job(Box::new(Rig2dJob(s))),
+    ));
+    // Rigged from layered art: its parts packed into a texture beside it.
+    if Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| autorig::is_autorig(&d)) {
+        let st = stamp(&[b"rig2d atlas", tex_desc.as_bytes(), &hash, deps.as_bytes()]);
+        outs.push((
+            autorig::atlas_id(&s.rel),
+            format::Texture::NAME,
+            st,
+            Work::Job(Box::new(Rig2dAtlasJob(s))),
+        ));
+    }
+}
+
+/// A 2D rig's one output.
+struct Rig2dJob<'a>(&'a Source);
+
+impl Job for Rig2dJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let Rig2dJob(s) = self;
+        cook(s, p.stamp)
+    }
+}
+
+/// A 2D rig's parts atlas.
+struct Rig2dAtlasJob<'a>(&'a Source);
+
+impl Job for Rig2dAtlasJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let Rig2dAtlasJob(s) = self;
+        let Exec { options, .. } = ex;
+        cook_atlas(s, &options.texture, p.stamp).map(|b| (b, Vec::new()))
+    }
 }

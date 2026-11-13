@@ -65,7 +65,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     ("flipbook", Kind::Flipbook),
     // A pixel effect becomes a sheet (`vfx2d::expand`).
     (vfx2d::VFX2D_TYPE, Kind::Flipbook),
-    (og_anim::RIG2D_TYPE, Kind::Rig2d),
     (sfx::SFX_TYPE, Kind::Sound),
     (texture_array::ARRAY_TYPE, Kind::TextureArray),
     (video::VIDEO_TYPE, Kind::Video),

@@ -36,7 +36,7 @@ pub(in crate::cook) use art_layout::paint_of;
 use art_layout::{Art, Grid, Layout, grid_of, relayout};
 use process::run;
 
-use super::super::{Kind, Source, flipbook, look, settings_block, tilemap};
+use super::super::{Kind, Source, flipbook, look, rig2d, settings_block, tilemap};
 use super::{AssetConform, ConformAction, ConformEntry, ProjectConform, TextureRole};
 use crate::look::LookFile;
 use og_core::hash::StableHasher;
@@ -214,8 +214,8 @@ pub(super) fn profile_2d(project: Option<&Document>) -> bool {
 pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConform> {
     let mut sheet_conform = BTreeMap::new();
     for (i, s) in sources.iter_mut().enumerate() {
-        if !(matches!(s.kind, Kind::Flipbook | Kind::Rig2d)
-            || s.kind == Kind::System(&tilemap::TILESET))
+        if !(s.kind == Kind::Flipbook
+            || [Kind::System(&tilemap::TILESET), Kind::System(&rig2d::RIG2D)].contains(&s.kind))
         {
             continue;
         }
@@ -271,7 +271,7 @@ pub(super) fn uses(
                     );
                 }
             }
-            Kind::Rig2d => {
+            Kind::System(k) if k == &rig2d::RIG2D => {
                 if let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes))
                     && let Some(p) = doc
                         .body

@@ -92,7 +92,6 @@ enum Kind {
     Style,
     Document,
     Flipbook,
-    Rig2d,
     Rive,
     TextureArray,
     Video,
@@ -112,7 +111,6 @@ impl Kind {
             Kind::Style => "style",
             Kind::Document => "document",
             Kind::Flipbook => "flipbook",
-            Kind::Rig2d => "rig2d",
             Kind::Rive => "rive",
             Kind::TextureArray => "texture-array",
             Kind::Video => "video",
@@ -240,8 +238,6 @@ enum Work<'a> {
     /// An `array true` sheet's texture array blob, and its layer `n`.
     FlipbookArray(&'a Source, Box<og_anim::FlipbookSheet>),
     FlipbookLayer(&'a Source, Box<og_anim::FlipbookSheet>, usize),
-    Rig2d(&'a Source),
-    Rig2dAtlas(&'a Source),
     /// A `.riv`'s artboard, by name.
     Rive(&'a Source, String),
     /// A `.riv`'s embedded image, by asset index.

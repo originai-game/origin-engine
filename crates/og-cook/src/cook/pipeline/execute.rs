@@ -285,10 +285,6 @@ pub(crate) fn run(
                 .filter(|_| !conform_off(s, options)),
             p.stamp,
         ),
-        Work::Rig2d(s) => rig2d::cook(s, p.stamp),
-        Work::Rig2dAtlas(s) => {
-            rig2d::cook_atlas(s, &options.texture, p.stamp).map(|b| (b, Vec::new()))
-        }
         Work::FlipbookArray(s, sheet) => flipbook::cook_array(s, sheet, &options.texture, p.stamp),
         Work::FlipbookLayer(s, sheet, n) => {
             flipbook::cook_layer(s, sheet, *n, &options.texture, p.stamp).map(|b| (b, Vec::new()))
