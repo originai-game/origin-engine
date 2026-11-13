@@ -64,7 +64,8 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | sccache (the compiler cache, run by og-sccache-wrap; not used in CI) | 0.19.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
 | og-sccache-wrap (the rustc wrapper `.cargo/config.toml` names) | this checkout's | `crates/og-sccache-wrap`, built and installed by `scripts/install-tools.sh` on every run |
 | mold (Linux native linker) | distribution package | `.agents/setup`, `scripts/install-tools.sh`; `.cargo/config.toml` selects it |
-| cargo-zigbuild, zig (`build.sh --linux-x64`) | 0.23.4, 0.17.0 here | not pinned; outside the gate |
+| cargo-zigbuild, zig (`build.sh --linux-x64`, release packing's Linux x86_64 addon and og against glibc 2.31) | 0.23.4, 0.17.0 | `CARGO_ZIGBUILD_VERSION`, `ZIG_VERSION` and their sha256 in `scripts/install-tools.sh` (Linux x86_64 only); outside the gate |
+| minisign (signs and checks a release's `SHA256SUMS`) | 0.11, the distribution's | `.agents/setup`; Homebrew's on macOS |
 | Chrome for Testing (`make web-reference`, browser tests) | 150 | `CHROME_PATH`; outside the gate |
 | Mesa lavapipe (CPU rendering in orbs) | minimum 25.0.7 | `.agents/setup`; Debian bookworm-backports supplies Mesa and apt resolves its dependencies |
 

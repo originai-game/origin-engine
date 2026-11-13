@@ -12,6 +12,9 @@
 #   og-sccache-wrap   the rustc wrapper .cargo/config.toml names
 #                     (crates/og-sccache-wrap): starts sccache's server without
 #                     a build's jobserver; built here from this checkout
+#   zig, cargo-zigbuild  `build.sh --linux-x64`'s cross build against glibc
+#                     2.31 (release packing), pinned by ZIG_VERSION and
+#                     CARGO_ZIGBUILD_VERSION with their sha256; Linux x86_64 only
 #   tsrs              `og check`'s type checker, pinned by TSRS_VERSION and the
 #                     SRI of its npm platform package; the package version
 #                     0.18.0-ts7.1.0-dev.20260929 is a binary that reports
@@ -31,6 +34,10 @@ SCCACHE_VERSION="${SCCACHE_VERSION:-0.19.0}"
 SHELLCHECK_VERSION="${SHELLCHECK_VERSION:-0.11.0}"
 TSRS_VERSION="${TSRS_VERSION:-0.18.0-ts7.1.0-dev.20260929}"
 TSRS_REPORTS="7.1.0-dev.20260930.4"
+ZIG_VERSION="${ZIG_VERSION:-0.17.0}"
+ZIG_SHA256=1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026
+CARGO_ZIGBUILD_VERSION="${CARGO_ZIGBUILD_VERSION:-0.23.4}"
+CARGO_ZIGBUILD_SHA256=6b69963040818ca1ef573d8135a95aa902e17cf7f873c32c6426642dadfe7f59
 BIN="${OG_TOOLS_BIN:-$HOME/.local/bin}"
 mkdir -p "$BIN"
 export PATH="$BIN:$PATH"
@@ -185,6 +192,39 @@ else
     cp -R "$tmp/package" "$BIN/../lib/tsrs-$TSRS_VERSION"
     ln -sf "$BIN/../lib/tsrs-$TSRS_VERSION/tsrs" "$BIN/tsrs"
     tsrs --version
+  fi
+fi
+
+# zig and cargo-zigbuild: release packing's Linux x86_64 addon and og
+# (packages/engine/scripts/build.sh --linux-x64). Outside the gate; the
+# release binaries, checked against their pinned sha256.
+sha256_is() { [ "$(sha256sum "$1" | awk '{print $1}')" = "$2" ] || { og_err "$1: sha256 is not the pinned $2"; exit 1; }; }
+if [ "$os-$arch" != Linux-x86_64 ]; then
+  og_say "zig, cargo-zigbuild: not installed on $os-$arch (release packing runs on Linux x86_64)"
+else
+  if command -v zig >/dev/null && [ "$(zig version)" = "$ZIG_VERSION" ]; then
+    og_say "zig $ZIG_VERSION: present"
+  else
+    og_say "zig $ZIG_VERSION: installing"
+    z="zig-x86_64-linux-$ZIG_VERSION"
+    fetch "https://ziglang.org/download/$ZIG_VERSION/$z.tar.xz" "$tmp/$z.tar.xz"
+    sha256_is "$tmp/$z.tar.xz" "$ZIG_SHA256"
+    tar -xJf "$tmp/$z.tar.xz" -C "$tmp"
+    rm -rf "$BIN/../lib/$z"; mkdir -p "$BIN/../lib"
+    cp -R "$tmp/$z" "$BIN/../lib/$z"
+    ln -sf "$BIN/../lib/$z/zig" "$BIN/zig"
+    zig version
+  fi
+  if command -v cargo-zigbuild >/dev/null && [ "$(cargo-zigbuild --version | awk '{print $2}')" = "$CARGO_ZIGBUILD_VERSION" ]; then
+    og_say "cargo-zigbuild $CARGO_ZIGBUILD_VERSION: present"
+  else
+    og_say "cargo-zigbuild $CARGO_ZIGBUILD_VERSION: installing"
+    c=cargo-zigbuild-x86_64-unknown-linux-gnu.tar.xz
+    fetch "https://github.com/rust-cross/cargo-zigbuild/releases/download/v$CARGO_ZIGBUILD_VERSION/$c" "$tmp/$c"
+    sha256_is "$tmp/$c" "$CARGO_ZIGBUILD_SHA256"
+    mkdir -p "$tmp/czb"; tar -xJf "$tmp/$c" -C "$tmp/czb"
+    cp "$(find "$tmp/czb" -type f -name cargo-zigbuild | head -1)" "$BIN/"
+    cargo-zigbuild --version
   fi
 fi
 

@@ -11,7 +11,7 @@ step() {
 
 # Cache prerequisites and a warm dev build (prewarm, at the end) in the
 # project snapshot.
-packages=(build-essential mold pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils)
+packages=(build-essential mold pkg-config libasound2-dev brotli shellcheck curl ca-certificates unzip xz-utils minisign)
 missing=()
 for package in "${packages[@]}"; do
   if [[ $(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true) != 'install ok installed' ]]; then
