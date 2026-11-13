@@ -428,7 +428,7 @@ re-resolving only their readers. `accent-color` inks switches, sliders,
 radios and progress; `caret-color` a field's caret; `color-scheme` picks
 `light-dark()`'s side.
 
-Colours take all of CSS Color 4 and 5 (`crates/og-ui-core/src/css_color.rs`);
+Colours take all of CSS Color 4 and 5 (`crates/og-ui-core/src/style/css_color.rs`);
 out-of-gamut colours are mapped by OKLCh chroma reduction. A colour that
 reads no role, `currentColor` or `light-dark()` reduces to sRGB at cook;
 others resolve against the active style when drawn. One parse

@@ -2,7 +2,13 @@
 //! in [`crate::theme`], a style file's over them) with the few conversions
 //! the renderer needs.
 
-use crate::theme as tokens;
+pub mod css_color;
+pub mod dress;
+pub mod paint_entry;
+pub mod sound_css;
+pub mod style_file;
+pub mod tokens;
+use crate::theme;
 pub use crate::theme::{
     Controls, Density, Durations, Palette, Radius, Space, Spring, Srgba, State, TypeRamp, TypeStep,
 };
@@ -328,17 +334,17 @@ impl Theme {
 
     pub fn new(scheme: Scheme) -> Theme {
         let palette = match scheme {
-            Scheme::Light => tokens::LIGHT,
-            Scheme::Dark => tokens::DARK,
+            Scheme::Light => theme::LIGHT,
+            Scheme::Dark => theme::DARK,
         };
         let art = crate::style_file::Art::default();
         let derived = crate::tokens::StyleTokens::derive_from(
             crate::tokens::V1 {
                 palette: &palette,
-                space: &tokens::SPACE,
-                radius: &tokens::RADIUS,
-                type_ramp: &tokens::TYPE_RAMP,
-                durations_ms: tokens::DURATIONS_MS,
+                space: &theme::SPACE,
+                radius: &theme::RADIUS,
+                type_ramp: &theme::TYPE_RAMP,
+                durations_ms: theme::DURATIONS_MS,
                 art: &art,
             },
             &[],
@@ -347,21 +353,21 @@ impl Theme {
             scheme,
             palette,
             roles: Roles::NONE,
-            space: tokens::SPACE,
-            radius: tokens::RADIUS,
+            space: theme::SPACE,
+            radius: theme::RADIUS,
             type_ramp: derived.typography.ramp(Breakpoint::Desktop, 1.0),
             density: DensityMode::Auto,
-            durations_ms: tokens::DURATIONS_MS,
-            press_scale: tokens::PRESS_SCALE,
-            state: tokens::STATE,
+            durations_ms: theme::DURATIONS_MS,
+            press_scale: theme::PRESS_SCALE,
+            state: theme::STATE,
             densities: Densities {
-                mouse: tokens::MOUSE,
-                pad: tokens::PAD,
-                touch: tokens::TOUCH,
+                mouse: theme::MOUSE,
+                pad: theme::PAD,
+                touch: theme::TOUCH,
             },
-            ease_out: tokens::EASE_OUT,
-            ease_exit: tokens::EASE_EXIT,
-            controls: tokens::CONTROLS,
+            ease_out: theme::EASE_OUT,
+            ease_exit: theme::EASE_EXIT,
+            controls: theme::CONTROLS,
             contrast: Contrast::Standard,
             outline: false,
             reduced_motion: false,
