@@ -145,6 +145,9 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   once final.
 - The 0.8.0 release publishes the pack catalogue (`docs/release.md` §The
   pack catalogue) for origin-agent's Engine page.
+- Water look, after the structure refactor: the light shafts under water
+  are faint, and the lake still shows bands from the wave sum
+  (water-underwater-shafts, water-planar).
 - UI blending into a linear target: the UI blends into the 8-bit sRGB
   output, so two equal paths can differ by 2 on NVIDIA; a linear target
   moves frames on every tier and is decided with the art review.
