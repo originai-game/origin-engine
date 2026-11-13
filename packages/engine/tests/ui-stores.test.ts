@@ -60,7 +60,9 @@ test("a 1,000-row list holds focus by key to row 999 and back, reorders, removes
     expect(node.removed).not.toContain("Item 995");
     expect(run("web")).toEqual(node);
   } finally { rmSync(root, { recursive: true, force: true }); }
-});
+  // Both hosts walk 1,000 rows: about 21 s alone on the L4 (the dev addon's
+  // round 15 s), so the gate's parallel bun-test ran past the 30 s default.
+}, 120_000);
 
 test("focus and hover stay outside simulation while recorded confirmation replays across hosts", () => {
   const root = mkdtempSync(join(tmpdir(), "og-ui-checkpoint-"));
