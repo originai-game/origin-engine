@@ -111,16 +111,17 @@ fn value_noise(x: vec2<f32>) -> f32 {
   return mix(mix(h.x, h.y, u.x), mix(h.z, h.w, u.x), u.y);
 }
 
-fn layer_coarse(l: TerrainLayerGpu, p: vec3<f32>) -> f32 {
-  if (l.look.w <= 0.0) { return 0.0; }
-  let tile = 1.0 / max(l.mapping.x, 1e-6);
-  return smoothstep(10.0 * tile, 40.0 * tile, distance(p, frame.view_pos.xyz)) * clamp(l.look.w, 0.0, 1.0);
+fn layer_coarse(li: u32, p: vec3<f32>) -> f32 {
+  let amount = terrain.layers[li].look.w;
+  if (amount <= 0.0) { return 0.0; }
+  let tile = 1.0 / max(terrain.layers[li].mapping.x, 1e-6);
+  return smoothstep(10.0 * tile, 40.0 * tile, distance(p, frame.view_pos.xyz)) * clamp(amount, 0.0, 1.0);
 }
 
-fn macro_tint(l: TerrainLayerGpu, p: vec3<f32>) -> vec3<f32> {
-  if (l.look.w <= 0.0) { return vec3<f32>(1.0); }
-  let m = clamp(l.look.w, 0.0, 1.0);
-  let at = (p.xz + frame.origin.xz) * l.mapping.x;
+fn macro_tint(li: u32, p: vec3<f32>) -> vec3<f32> {
+  if (terrain.layers[li].look.w <= 0.0) { return vec3<f32>(1.0); }
+  let m = clamp(terrain.layers[li].look.w, 0.0, 1.0);
+  let at = (p.xz + frame.origin.xz) * terrain.layers[li].mapping.x;
   // Three octaves in one loop (one copy of the noise's code): the slow
   // drift's two, then the hue's.
   let scale = array<f32, 3>(16.0, 5.0, 40.0);
@@ -138,13 +139,12 @@ fn macro_tint(l: TerrainLayerGpu, p: vec3<f32>) -> vec3<f32> {
 
 // Its albedo and height alone (the prepass: no normal map is read).
 fn sample_layer_albedo(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> vec4<f32> {
-  let l = terrain.layers[i];
-  if ((u32(l.mapping.w) & 1u) == 0u) { return vec4<f32>(1.0); }
-  let proj = layer_projection(l, n);
-  let coarse = layer_coarse(l, p);
+  if ((u32(terrain.layers[i].mapping.w) & 1u) == 0u) { return vec4<f32>(1.0); }
+  let proj = layer_projection(i, n);
+  let coarse = layer_coarse(i, p);
   var a = vec4<f32>(0.0);
   for (var k = 0u; k < proj.count; k++) {
-    let t = plane_taps(l, proj.planes[k], p, dpx, dpy);
+    let t = plane_taps(i, proj.planes[k], p, dpx, dpy);
     a += taps_albedo(i, t, coarse).albedo * proj.w[k];
   }
   return a;
@@ -176,9 +176,11 @@ struct UnfoldedAt {
   wall: f32,
 };
 
-fn unfolded_at(l: TerrainLayerGpu, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> UnfoldedAt {
+fn unfolded_at(
+  li: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, dpx: vec3<f32>, dpy: vec3<f32>,
+) -> UnfoldedAt {
   var o = UnfoldedAt(p, dpx, dpy, 0.0);
-  if (l.offset.w <= 0.0) { return o; }
+  if (terrain.layers[li].offset.w <= 0.0) { return o; }
   // The face's lean from the ground, along the ground (out of the stone).
   let lean = face - n * dot(face, n);
   let out = vec3<f32>(lean.x, 0.0, lean.z);
@@ -189,7 +191,7 @@ fn unfolded_at(l: TerrainLayerGpu, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, 
   if (wall <= 0.0 || len < 1e-4) { return o; }
   let dir = out / len;
   let k = max(dot(face, n), 0.0) / len + 1.0;
-  let depth = max(0.2 * l.offset.w - lift, 0.0);
+  let depth = max(0.2 * terrain.layers[li].offset.w - lift, 0.0);
   // (The depth changes down the wall as the height does: its footprint,
   // so the read's filter follows the unfolded face.)
   o.p = p - dir * depth * k;
@@ -207,16 +209,15 @@ fn unfolded_at(l: TerrainLayerGpu, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, 
 // tinted by its cell's tone (`cell_tone`, read from above where it
 // stands: a stone's walls take its top's tone).
 fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> LayerSample {
-  let l = terrain.layers[i];
-  let has_albedo = (u32(l.mapping.w) & 1u) != 0u;
-  let has_normal = (u32(l.mapping.w) & 2u) != 0u;
+  let has_albedo = (u32(terrain.layers[i].mapping.w) & 1u) != 0u;
+  let has_normal = (u32(terrain.layers[i].mapping.w) & 2u) != 0u;
   var s: LayerSample;
   s.albedo = vec4<f32>(1.0);
   s.normal = n;
   if (!has_albedo && !has_normal) { return s; }
-  let proj = layer_projection(l, n);
-  let at = unfolded_at(l, p, n, face, lift, dpx, dpy);
-  let coarse = layer_coarse(l, p);
+  let proj = layer_projection(i, n);
+  let at = unfolded_at(i, p, n, face, lift, dpx, dpy);
+  let coarse = layer_coarse(i, p);
   var albedo = vec4<f32>(0.0);
   var normal = vec3<f32>(0.0);
   var tone = vec3<f32>(0.0);
@@ -233,7 +234,7 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, 
       let share = select(at.wall, 1.0 - at.wall, j == 0u);
       if (j == 1u && (!has_albedo || share <= 0.0)) { break; }
       let here = j == 0u;
-      let taps = plane_taps(l, plane, select(at.p, p, here), select(at.dpx, dpx, here), select(at.dpy, dpy, here));
+      let taps = plane_taps(i, plane, select(at.p, p, here), select(at.dpx, dpx, here), select(at.dpy, dpy, here));
       if (here) {
         t = taps;
         w = hex_weights(t);
@@ -246,7 +247,7 @@ fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, 
     if (has_albedo) { albedo += a * proj.w[k]; }
     if (has_normal) {
       let m = taps_normal(i, t, w);
-      normal += plane_normal(proj.whiteout[k], plane, m.normal, n, l.mapping.z) * proj.w[k];
+      normal += plane_normal(proj.whiteout[k], plane, m.normal, n, terrain.layers[i].mapping.z) * proj.w[k];
       if (plane == 0u) {
         tone += m.tone * proj.w[k];
         tone_w += proj.w[k];
@@ -333,8 +334,7 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, face: vec3<f32>, lift: f32, cont
   var normal = vec3<f32>(0.0);
   for (var k = 0u; k < 4u; k++) {
     if (k < pick.n && w[k] > 0.0) {
-      let l = terrain.layers[pick.ids[k]];
-      albedo += samples[k].albedo.rgb * l.color.rgb * macro_tint(l, p) * w[k];
+      albedo += samples[k].albedo.rgb * terrain.layers[pick.ids[k]].color.rgb * macro_tint(pick.ids[k], p) * w[k];
       normal += samples[k].normal * w[k];
     }
   }
@@ -383,8 +383,9 @@ fn grass_layer_share(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>, layer: 
   var sum = 0.0;
   var mine = 0.0;
   for (var i = 0u; i < count; i++) {
-    let l = terrain.layers[i];
-    let w = c[i / 4u][i % 4u] * band(angle, l.slope.x, l.slope.y, l.slope.z) * band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
+    let slope = terrain.layers[i].slope;
+    let alt = terrain.layers[i].altitude;
+    let w = c[i / 4u][i % 4u] * band(angle, slope.x, slope.y, slope.z) * band(altitude, alt.x, alt.y, alt.z);
     sum += w;
     if (i == layer) { mine = w; }
   }
