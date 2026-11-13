@@ -312,7 +312,7 @@ impl Pass for CascadePass {
                 let level = Vec3::new(cam.forward.x, 0.0, cam.forward.z).normalize_or(Vec3::NEG_Z);
                 let focus = camera.position + level * light.shadow_focus
                     - Vec3::Y * light.shadow_focus_drop;
-                frame::fit_box(
+                shadow_fit::fit_box(
                     to_light,
                     bounds,
                     focus,
@@ -323,7 +323,7 @@ impl Pass for CascadePass {
                     scene.frame.origin,
                 )
             } else {
-                frame::fit_cascades(
+                shadow_fit::fit_cascades(
                     camera,
                     cam,
                     aspect,

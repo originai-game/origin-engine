@@ -1539,7 +1539,7 @@ impl GrassRenderer {
     /// Draws this frame's fields into a pass whose group 0 (and, lit, group
     /// 2: `fx`) the caller bound: the levels of detail that stand within
     /// `reach` of the camera or throw their shadow there (a cascade's
-    /// [`crate::frame::Cascade::reach`]; infinite: all of them). Answers
+    /// [`crate::shadow_fit::Cascade::reach`]; infinite: all of them). Answers
     /// the draws made.
     pub(crate) fn draw(
         &self,
