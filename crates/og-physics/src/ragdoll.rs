@@ -25,9 +25,10 @@ const BONE_GROUP: u32 = 1 << 31;
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct RagdollState {
     /// One body per rig bone, in rig order.
-    bones: Vec<rp::RigidBodyHandle>,
+    pub(crate) bones: Vec<rp::RigidBodyHandle>,
     joints: Vec<rp::ImpulseJointHandle>,
-    dynamic: bool,
+    /// Limp: the bones are simulated, not following the animation.
+    pub(crate) dynamic: bool,
     /// The bones' targets the last tick (their velocity when going limp).
     last: Vec<(Vec3, Quat)>,
     /// The rig's identity (bone count and lengths), so a new rig rebuilds.

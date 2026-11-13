@@ -281,3 +281,191 @@ fn floaters_stay_in_the_water_through_the_gales_crests() {
         );
     }
 }
+
+/// Hips, a 0.5 m spine and a 0.3 m neck, straight up from the entity.
+fn rig() -> RagdollRig {
+    let bone = |parent: Option<u32>, y: f32, length: f32| RagdollBone {
+        parent,
+        rest: (Vec3::new(0.0, y, 0.0), Quat::IDENTITY),
+        length,
+        axis: Vec3::Y,
+    };
+    RagdollRig {
+        bones: vec![
+            bone(None, 0.0, 0.3),
+            bone(Some(0), 0.3, 0.5),
+            bone(Some(1), 0.8, 0.3),
+        ],
+    }
+}
+
+/// A limp ragdoll dropped from `y` over the lake at `x`.
+fn limp(w: &mut World, p: &PhysicsSystem, x: f32, y: f32) -> Entity {
+    let ragdoll = Ragdoll {
+        weight: 1.0,
+        ..Ragdoll::default()
+    };
+    let e = w.spawn((at(x, y, 0.0), ragdoll)).unwrap();
+    p.set_ragdoll_rig(e, rig()).unwrap();
+    e
+}
+
+fn mean_height(p: &PhysicsSystem, e: Entity) -> f32 {
+    let pose = p.ragdoll_pose(e).unwrap();
+    pose.iter().map(|b| b.0.y).sum::<f32>() / pose.len() as f32
+}
+
+#[test]
+fn a_limp_ragdoll_with_buoyancy_floats_half_under_and_splashes_and_one_without_sinks() {
+    let (mut w, p) = world(5);
+    p.set_waters(vec![lake()]);
+    let floats = limp(&mut w, &p, 0.0, 1.5);
+    w.insert(floats, Buoyancy::default()).unwrap();
+    let sinks = limp(&mut w, &p, 6.0, 1.5);
+    let mut splashed = Vec::new();
+    for _ in 0..900 {
+        w.step().unwrap();
+        splashed.extend(w.pending_events::<Splash>().unwrap());
+    }
+    // Water of density 2 holds half its mass under, as it does a crate's
+    // volume (a bone's thin capsule displaces its mass, not its volume:
+    // by volume a 60 kg ragdoll would sink like the one beside it).
+    let b = w.get::<Buoyancy>(floats).unwrap();
+    assert!((b.submerged - 0.5).abs() < 0.08, "{}", b.submerged);
+    let y = mean_height(&p, floats);
+    assert!(y.abs() < 0.3, "it lies at the surface: {y}");
+    let pose = p.ragdoll_pose(floats).unwrap();
+    assert!(
+        (pose[0].0 - pose[1].0).length() < 0.35 && (pose[1].0 - pose[2].0).length() < 0.55,
+        "its joints hold: {pose:?}"
+    );
+    // The water slowed it to rest.
+    w.step().unwrap();
+    assert!((mean_height(&p, floats) - y).abs() < 2e-3);
+    assert!(
+        mean_height(&p, sinks) < -20.0,
+        "no og.Buoyancy, no lift: {}",
+        mean_height(&p, sinks)
+    );
+    // Going in is an og.Splash of the ragdoll's entity; the one without
+    // og.Buoyancy crosses in silence, as it did (its saves are unchanged).
+    let of = |e: Entity| splashed.iter().filter(|s| s.entity == e.to_bits()).count();
+    assert!(of(floats) >= 1, "{splashed:?}");
+    assert_eq!(of(sinks), 0);
+}
+
+/// A capsule character (0.4 radius, 1.8 m tall) with its middle at `y`.
+fn swimmer(w: &mut World, x: f32, y: f32, b: Option<Buoyancy>) -> Entity {
+    let e = w
+        .spawn((
+            at(x, y, 0.0),
+            Collider::capsule(0.4, 1.0),
+            CharacterController::default(),
+        ))
+        .unwrap();
+    if let Some(b) = b {
+        w.insert(e, b).unwrap();
+    }
+    e
+}
+
+#[test]
+fn a_character_with_buoyancy_floats_sinks_by_its_density_and_drifts_with_a_river() {
+    let (mut w, p) = world(7);
+    // A river 12 m wide flowing 2 m/s along +x at y 0, 40 m off the lake's
+    // swimmers in z.
+    let course = [Vec3::new(-300.0, 0.0, 40.0), Vec3::new(300.0, 0.0, 40.0)];
+    let river = WaterBody {
+        entity: 2 << 40,
+        position: Vec3::new(0.0, 0.0, 40.0),
+        size: Vec2::new(600.0, 12.0),
+        river: og_core::river::River::new(&course, 12.0, 2.0).map(std::sync::Arc::new),
+        ..lake()
+    };
+    assert!(river.river.is_some());
+    let lake = WaterBody {
+        size: Vec2::new(200.0, 40.0),
+        ..lake()
+    };
+    p.set_waters(vec![lake, river]);
+    let floats = swimmer(&mut w, 0.0, 3.0, Some(Buoyancy::default()));
+    let heavy = swimmer(
+        &mut w,
+        4.0,
+        3.0,
+        Some(Buoyancy {
+            water_density: 0.5,
+            ..Buoyancy::default()
+        }),
+    );
+    let plain = swimmer(&mut w, 8.0, 3.0, None);
+    let drifts = w
+        .spawn((
+            at(0.0, 0.0, 40.0),
+            Collider::capsule(0.4, 1.0),
+            CharacterController::default(),
+            Buoyancy::default(),
+        ))
+        .unwrap();
+    run(&mut w, 600);
+    let y = |w: &World, e: Entity| transform(w, e).position.y;
+    // Density 2 against its 1: half of its 1.8 m under, its middle at the
+    // surface, at rest, and not on any ground.
+    let b = w.get::<Buoyancy>(floats).unwrap();
+    assert!((b.submerged - 0.5).abs() < 0.02, "{}", b.submerged);
+    assert!(y(&w, floats).abs() < 0.04, "{}", y(&w, floats));
+    let c = w.get::<CharacterController>(floats).unwrap();
+    assert!(
+        !c.grounded && c.velocity.length() < 0.02,
+        "{:?}",
+        c.velocity
+    );
+    // Water lighter than it lifts half its weight: it sinks, slower than
+    // the one with no og.Buoyancy falls, which the water never touches.
+    let (h, f) = (y(&w, heavy), y(&w, plain));
+    assert!(h < -5.0 && f < h - 20.0, "heavy {h}, plain {f}");
+    assert_eq!(w.get::<Buoyancy>(heavy).unwrap().submerged, 1.0);
+    // The river carries the one afloat in it downstream at its current,
+    // as it does a floating crate: 2 m/s for 10 s.
+    let t = transform(&w, drifts).position;
+    assert!((t.x - 20.0).abs() < 0.5 && (t.z - 40.0).abs() < 0.1, "{t}");
+    assert!(y(&w, drifts).abs() < 0.04);
+}
+
+#[test]
+fn a_swimmer_and_a_floating_ragdoll_run_the_same_twice_and_through_a_restore() {
+    let build = || {
+        let (mut w, p) = world(11);
+        p.set_waters(vec![sea(DVec3::ZERO)]);
+        let c = swimmer(&mut w, 2.0, 2.0, Some(Buoyancy::default()));
+        let r = limp(&mut w, &p, -3.0, 2.0);
+        w.insert(r, Buoyancy::default()).unwrap();
+        (w, p, c, r)
+    };
+    let state = |w: &World, p: &PhysicsSystem, c: Entity, r: Entity| {
+        let t = transform(w, c).position;
+        let mut bits = vec![t.x.to_bits(), t.y.to_bits(), t.z.to_bits()];
+        for (at, _) in p.ragdoll_pose(r).unwrap() {
+            bits.extend([at.x.to_bits(), at.y.to_bits(), at.z.to_bits()]);
+        }
+        bits.push(w.get::<Buoyancy>(c).unwrap().submerged.to_bits());
+        bits.push(w.get::<Buoyancy>(r).unwrap().submerged.to_bits());
+        bits
+    };
+    let (mut a, pa, c, r) = build();
+    run(&mut a, 120);
+    let saved = a.snapshot();
+    run(&mut a, 240);
+    let first = state(&a, &pa, c, r);
+    // In a gale's sea they ride the waves: in the water, not flung or sunk.
+    let t = transform(&a, c).position;
+    assert!(t.y.abs() < 8.0, "{t}");
+    assert!(mean_height(&pa, r).abs() < 8.0);
+    let (mut b, pb, ..) = build();
+    run(&mut b, 360);
+    assert_eq!(state(&b, &pb, c, r), first);
+    let (mut d, pd, ..) = build();
+    d.restore(&saved).unwrap();
+    run(&mut d, 240);
+    assert_eq!(state(&d, &pd, c, r), first);
+}

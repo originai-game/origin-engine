@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "og.Buoyancy",
+      "summary": "og.Buoyancy floats whatever its entity is, not only a dynamic rigid body: an og.Ragdoll's bones while it is limp and an og.CharacterController are lifted by the water they displace, slowed against the moving water and carried by its flow (a river's current, a wave's orbit), on an og.Water or an og.WaterSurface. Both count as density 1, so the default floats them half under; `submerged` is written for each and a ragdoll with it crossing the surface is an og.Splash. Only an entity that already had og.Buoyancy beside an og.Ragdoll or an og.CharacterController (where it did nothing) steps differently."
+    }
+  ]
+}

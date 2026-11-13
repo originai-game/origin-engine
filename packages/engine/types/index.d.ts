@@ -16096,7 +16096,7 @@ export interface WaterLine {
 }
 
 /**
- * Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (its waves as drawn, og.physics.waterHeight's) or both on one entity. Its colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces (Archimedes), so a hull rights itself, pitches and rolls, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a default-density body half under.
+ * Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under.
  * See `physics §8`.
  *
  * The value of the `Buoyancy` component (token `og.Buoyancy`).
@@ -16137,7 +16137,7 @@ export interface Buoyancy {
    */
   angularDrag: number;
   /**
-   * Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship.
+   * Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship; of a limp ragdoll's mass or a character's height.
    *
    * @range 0..1
    * @readonly written by the engine
@@ -34367,7 +34367,7 @@ export declare namespace og {
    */
   const WaterLine: ComponentType<{ readonly width: FieldSpec<"f32">; readonly depth: FieldSpec<"f32">; readonly columns: FieldSpec<"u32">; readonly tension: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly spread: FieldSpec<"f32">; readonly splash: FieldSpec<"f32">; readonly buoyancy: FieldSpec<"f32">; readonly drag: FieldSpec<"f32"> }, WaterLine>;
   /**
-   * Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (its waves as drawn, og.physics.waterHeight's) or both on one entity. Its colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces (Archimedes), so a hull rights itself, pitches and rolls, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a default-density body half under.
+   * Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under.
    * See `physics §8`.
    */
   const Buoyancy: ComponentType<{ readonly waterDensity: FieldSpec<"f32">; readonly samples: FieldSpec<"u32">; readonly drag: FieldSpec<"f32">; readonly angularDrag: FieldSpec<"f32">; readonly submerged: FieldSpec<"f32"> }, Buoyancy>;

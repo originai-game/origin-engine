@@ -6,7 +6,7 @@ Module [`physics`](../physics.md) · [index](../index.md)
 
 ### `og.Buoyancy` (component)
 
-Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (its waves as drawn, og.physics.waterHeight's) or both on one entity. Its colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces (Archimedes), so a hull rights itself, pitches and rolls, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a default-density body half under.
+Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under.
 
 See `physics §8`.
 
@@ -20,12 +20,12 @@ Token `og.Buoyancy`, registered under the schema name `og.Buoyancy`; its value t
 | `samples` | `number` | `4` | 1 … 12 | — | — | Cells along each side of its colliders' box (1: one point at its centre; up to 12³ points): more follow its shape and the waves more closely. |
 | `drag` | `number` | `4` | 0 … 100 | `perSecond` | tunable | How much of its speed through the water it loses each second when fully under (in part when in part); off-centre cells slow its turning too, so it settles instead of bobbing. |
 | `angularDrag` | `number` | `3` | 0 … 100 | `perSecond` | tunable | How much of its spin it loses each second when fully under (in part when in part). |
-| `submerged` | `number` | `0` | 0 … 1 | — | read only | Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship. |
+| `submerged` | `number` | `0` | 0 … 1 | — | read only | Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship; of a limp ragdoll's mass or a character's height. |
 
 ```ogt
 component Buoyancy {
   aliases "bob on the sea, float on water, floating, buoyant hull"
-  doc "Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (its waves as drawn, og.physics.waterHeight's) or both on one entity. Its colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces (Archimedes), so a hull rights itself, pitches and rolls, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a default-density body half under."
+  doc "Floats its entity (3D profile) on the water under it, an og.WaterSurface (at its rest level) or an og.Water (its waves as drawn): a dynamic rigid body, a limp og.Ragdoll's bones or an og.CharacterController. A body's colliders' box is cut into `samples` cells a side, kept where a cell's centre lies in a solid collider; each cell under the surface pushes up at its centre by the water it displaces, so a hull rights itself and pitches, and `drag` and `angularDrag` slow it against the moving water. A body with it takes no og.WaterSurface `buoyancy`. `{}` floats a body of density 1 half under."
   guide "physics §8"
   field waterDensity f32 "The water's density, in og.Collider.density's units: the default 2 floats a body of the colliders' default density 1 half under, as wood floats; at 1 the same body hangs just under the surface, under it sinks." {
     default 2
@@ -52,7 +52,7 @@ component Buoyancy {
     unit perSecond
     tunable true
   }
-  field submerged f32 "Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship." {
+  field submerged f32 "Written: the fraction of its hull under water after the last step (0 above it or out of water, 1 sunk): for wakes, splashes and a sinking ship; of a limp ragdoll's mass or a character's height." {
     min 0
     max 1
     readonly true
