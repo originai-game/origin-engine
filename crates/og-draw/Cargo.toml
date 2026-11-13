@@ -8,7 +8,5 @@ description = "Origin Engine draw commands: the overlay's sprites, text and UI s
 
 [dependencies]
 og-core = { path = "../og-core" }
-# A mass element's timeline keys ease with og-tween's curves.
-og-tween = { path = "../og-tween" }
 glam = { workspace = true }
 bytemuck = { workspace = true }

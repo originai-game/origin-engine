@@ -13,5 +13,4 @@ import = ["dep:serde_json"]
 
 [dependencies]
 og-core = { path = "../og-core" }
-og-tween = { path = "../og-tween" }
 serde_json = { version = "1", optional = true }

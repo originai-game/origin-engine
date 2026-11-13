@@ -2977,7 +2977,6 @@ dependencies = [
  "bytemuck",
  "glam 0.34.1",
  "og-core",
- "og-tween",
 ]
 
 [[package]]
@@ -3192,7 +3191,6 @@ dependencies = [
  "og-draw",
  "og-lanes",
  "og-render-data",
- "og-tween",
  "pollster",
  "serde",
  "serde_json",
@@ -3384,7 +3382,6 @@ name = "og-timeline"
 version = "0.7.7"
 dependencies = [
  "og-core",
- "og-tween",
  "serde_json",
 ]
 

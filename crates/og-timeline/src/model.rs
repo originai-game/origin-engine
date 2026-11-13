@@ -44,9 +44,9 @@ use tracks::track;
 
 use crate::captions::{self, Cue};
 use crate::path::{PathDesc, PathKind};
+use og_core::ease::Ease;
 use og_core::glam::{Quat, Vec3};
 use og_core::ogt::{Block, Document, Entry, Number, Value};
-use og_tween::Ease;
 
 /// The `.ogt` type of a timeline.
 pub const TIMELINE_TYPE: &str = "timeline";
@@ -581,7 +581,7 @@ fn ease(e: &Entry) -> Result<Ease, String> {
             e,
             format!(
                 "ease '{w}' is invalid; use {} or a quoted cubic-bezier(x1, y1, x2, y2) with finite controls and x in [0,1], or steps(count, position) with a positive count (jump-none needs at least 2)",
-                og_tween::EASE_NAMES.join(", ")
+                og_core::ease::EASE_NAMES.join(", ")
             ),
         )
     })

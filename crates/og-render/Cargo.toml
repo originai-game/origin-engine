@@ -33,7 +33,6 @@ og-draw = { path = "../og-draw" }
 # What the renderer draws as data, and the WGSL it compiles (its build.rs).
 og-render-data = { path = "../og-render-data" }
 og-lanes = { path = "../og-lanes" }
-og-tween = { path = "../og-tween" }
 wgpu = { workspace = true }
 glam = { workspace = true }
 bytemuck = { workspace = true }

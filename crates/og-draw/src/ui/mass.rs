@@ -2,7 +2,7 @@
 
 use crate::{FontHandle, TextureHandle};
 use glam::Vec2;
-use og_tween::Ease;
+use og_core::ease::Ease;
 use std::sync::Arc;
 
 /// What each element of a template draws.

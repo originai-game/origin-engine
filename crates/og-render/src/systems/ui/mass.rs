@@ -17,8 +17,8 @@
 //! readback tests measure approximation error and preserve step boundaries.
 
 use glam::Vec2;
+use og_core::ease::{Ease, StepPosition};
 pub use og_draw::ui::mass::*;
-use og_tween::{Ease, StepPosition};
 use std::collections::BTreeMap;
 
 /// Private shader opcodes; authors always use the shared timing value.
@@ -400,7 +400,7 @@ mod tests {
     #[test]
     #[ignore = "requires GPU"]
     fn shared_mass_curves_match_gpu_readback() {
-        let mut curves = og_tween::EASES.to_vec();
+        let mut curves = og_core::ease::EASES.to_vec();
         curves.push(Ease::CubicBezier([0.17, 0.85, 0.63, 0.08]));
         for count in [1, 3, 4, 7, 1027, 8195] {
             for position in [

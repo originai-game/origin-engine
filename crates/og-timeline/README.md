@@ -17,7 +17,7 @@ paths"; `docs/design.md` §10.2). No ECS: og-runtime applies it to a world
 - **Seeking is exact**: a key's value at `t` depends on `t` and the keys,
   never on the ticks before, so a seek to `t` and playing to `t` evaluate
   the same. Between two keys that set a channel the later key's `ease`
-  (og-tween's curves, linear by default) mixes them; before the first and
+  (og-core's easing curves, linear by default) mixes them; before the first and
   after the last the value is held.
 - **Deterministic arithmetic**: `+ − × ÷`, `sqrt` and og-core's `sin`,
   `cos` and `atan2`; quaternions slerp through them.

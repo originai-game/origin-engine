@@ -3,9 +3,9 @@
 //! so a seek to `t` and playing to `t` give the same values.
 
 use crate::model::*;
+use og_core::ease::Ease;
 use og_core::glam::{Quat, Vec3};
 use og_core::math;
-use og_tween::Ease;
 
 /// A channel's value at `t`: held at the first key that has it before it,
 /// at the last after it; between two such keys, mixed by the later key's
