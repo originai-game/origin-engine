@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Water",
+      "summary": "A lake's wind waves no longer draw a regular grid (an egg crate with the sun's glints in rows): the surface detail is sixteen plane waves of unrelated lengths and directions about one heading, a short-crested field as a breeze makes, where four fixed cosines crossed at a right angle. Their slope variance is as before, so reflections and highlights keep their strength. Rendering only."
+    }
+  ]
+}
