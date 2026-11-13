@@ -53,9 +53,7 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
         e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
         "ttf" | "otf" => Kind::Font,
         "riv" => Kind::Rive,
-        "cube" => Kind::Lut,
         "tmj" | "ldtk" => Kind::Tilemap,
-        "hex" | "gpl" => Kind::Palette,
         "efkproj" | "efkefc" => Kind::Vfx,
         "svelte" => Kind::Document,
         _ => return kinds::by_extension(ext),
@@ -82,7 +80,6 @@ const OGT_KINDS: &[(&str, Kind)] = &[
     (sfx::SFX_TYPE, Kind::Sound),
     (anim::RIG_TYPE, Kind::Rig),
     ("motion-action", Kind::MotionAction),
-    (crate::look::LOOK_TYPE, Kind::Look),
     (texture_array::ARRAY_TYPE, Kind::TextureArray),
     (video::VIDEO_TYPE, Kind::Video),
     (model_text::MODEL_TYPE, Kind::Model),
@@ -560,14 +557,7 @@ pub(crate) fn plan_groups(
                 });
                 let fits = matches!(
                     src.kind,
-                    Kind::Model
-                        | Kind::Texture
-                        | Kind::Sound
-                        | Kind::TextureArray
-                        | Kind::Flipbook
-                        | Kind::Palette
-                        | Kind::Look
-                        | Kind::Lut
+                    Kind::Model | Kind::Texture | Kind::Sound | Kind::TextureArray | Kind::Flipbook
                 ) || matches!(src.kind, Kind::System(k) if k.streams);
                 if !fits || skinned {
                     refused = Some(format!(

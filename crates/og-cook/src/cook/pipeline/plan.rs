@@ -87,15 +87,13 @@ pub(crate) fn plan<'a>(
             Kind::Texture
             | Kind::Sound
             | Kind::Font
-            | Kind::Lut
             | Kind::Emitter
             | Kind::Document
             | Kind::Shader
             | Kind::Post
             | Kind::Tileset
             | Kind::Rig
-            | Kind::MotionAction
-            | Kind::Palette => stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()]),
+            | Kind::MotionAction => stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()]),
             Kind::System(k) if k.by_content => {
                 stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
             }
@@ -160,7 +158,6 @@ fn plan_kind<'a>(
         Kind::Texture => plan_texture(cx, state, s, hash, outs),
         Kind::Sound if s.rel.ends_with(".ogt") => plan_sfx(cx, state, s, hash, outs),
         Kind::Sound => plan_sound(cx, state, s, hash, outs),
-        Kind::Lut => plan_lut(cx, state, s, hash, outs),
         Kind::Emitter => plan_emitter(cx, state, s, hash, outs),
         Kind::Effect => plan_effect(cx, state, s, hash, outs),
         Kind::Vfx => plan_vfx(cx, state, s, hash, outs),
@@ -179,8 +176,6 @@ fn plan_kind<'a>(
         Kind::MotionAction => plan_motion_action(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),
         Kind::Video => plan_video(cx, state, s, hash, outs),
-        Kind::Look => plan_look(cx, state, s, hash, outs),
-        Kind::Palette => plan_palette(cx, state, s, hash, outs),
         Kind::Font => plan_font(cx, state, s, hash, outs),
         Kind::Scene | Kind::Prefab => plan_scene(cx, state, s, hash, outs),
         Kind::System(k) => (k.plan)(cx, state, s, hash, outs),

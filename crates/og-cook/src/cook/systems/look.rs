@@ -31,7 +31,10 @@
 
 pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS};
 pub use super::look_styles::{StyleFile, fonts_dir, style_licences, styles, styles_dir};
-use super::{CookError, Source};
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    stamp,
+};
 use crate::format::{self, BlobKind};
 use crate::look::{LookFile, MAX_EXTENDS, hex_to_linear};
 use og_blob::BlobWriter;
@@ -877,6 +880,135 @@ pub(crate) fn cook_palette(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
         vec![format!("{} colour palette", colours.len())],
     ))
 }
+
+pub(crate) static LUT: KindDef = KindDef {
+    name: "lut",
+    extensions: &["cube"],
+    types: &[],
+    by_content: true,
+    streams: true,
+    plan: plan_lut,
+};
+
+fn plan_lut<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"lut", &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::Lut::NAME,
+        st,
+        Work::Job(Box::new(LutJob(s))),
+    ));
+}
+
+/// A colour table's one output.
+struct LutJob<'a>(&'a Source);
+
+impl Job for LutJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let LutJob(s) = self;
+        let text = std::str::from_utf8(&s.bytes)
+            .map_err(|_| CookError("a .cube LUT is text (UTF-8)".into()))?;
+        let lut = crate::fx::parse_cube(text).map_err(CookError)?;
+        let mut w = og_blob::BlobWriter::new(
+            format::Lut::type_hash(),
+            format::Lut::schema_version(),
+            p.stamp,
+        );
+        w.table(
+            "meta",
+            &[format::LutMeta { size: lut.size }],
+            format::row_hash::<format::LutMeta>(),
+        )
+        .raw("rgba", lut.rgba, 16);
+        Ok((w.finish(), vec![format!("{0}³ colour table", lut.size)]))
+    }
+}
+
+pub(crate) static LOOK: KindDef = KindDef {
+    name: "look",
+    extensions: &[],
+    types: &[crate::look::LOOK_TYPE],
+    by_content: false,
+    streams: true,
+    plan: plan_look,
+};
+
+fn plan_look<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx {
+        known, assets_dir, ..
+    } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = look_dependencies(s, assets_dir, &|id| known.contains(id));
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Look::NAME,
+        st,
+        Work::Job(Box::new(LookJob(s))),
+    ));
+}
+
+/// A look's one output: the flattened look.
+struct LookJob<'a>(&'a Source);
+
+impl Job for LookJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let LookJob(s) = self;
+        let Exec { known, .. } = ex;
+        cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp)
+    }
+}
+
+pub(crate) static PALETTE: KindDef = KindDef {
+    name: "palette",
+    extensions: &["hex", "gpl"],
+    types: &[],
+    by_content: true,
+    streams: true,
+    plan: plan_palette,
+};
+
+fn plan_palette<'a>(
+    _cx: &Cx<'a>,
+    _state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let st = stamp(&[b"palette 1", &hash]);
+    outs.push((
+        s.rel.clone(),
+        format::Palette::NAME,
+        st,
+        Work::Job(Box::new(PaletteJob(s))),
+    ));
+}
+
+/// A palette's one output.
+struct PaletteJob<'a>(&'a Source);
+
+impl Job for PaletteJob<'_> {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let PaletteJob(s) = self;
+        cook_palette(s, p.stamp)
+    }
+}
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&LUT, &LOOK, &PALETTE];
 
 #[cfg(test)]
 mod tests;

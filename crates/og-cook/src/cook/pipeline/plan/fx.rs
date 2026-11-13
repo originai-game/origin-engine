@@ -1,16 +1,5 @@
 use super::*;
 
-pub(super) fn plan_lut<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let st = stamp(&[b"lut", &hash]);
-    outs.push((s.rel.clone(), format::Lut::NAME, st, Work::Lut(s)));
-}
-
 pub(super) fn plan_emitter<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

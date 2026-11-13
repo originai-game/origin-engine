@@ -385,7 +385,7 @@ pub(crate) fn contract(
         .flatten();
     if let Some(id) = project_look {
         match sources.iter().find(|s| s.rel == id) {
-            Some(s) if s.kind == Kind::Look => {
+            Some(s) if s.kind == Kind::System(&look::LOOK) => {
                 if let Ok(c) = look::contract(s, assets_dir, &|id| known.contains(id)) {
                     if let Ok(full) = look::flattened(s, assets_dir, &|id| known.contains(id)) {
                         match conform::texture2d::paint_of(&full, assets_dir) {

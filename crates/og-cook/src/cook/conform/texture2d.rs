@@ -561,7 +561,7 @@ pub(in crate::cook) fn conform(
                 .collect();
             push(
                 format!("{base}#palette"),
-                Kind::Palette,
+                Kind::System(&crate::cook::look::PALETTE),
                 hex.into_bytes(),
                 None,
             );

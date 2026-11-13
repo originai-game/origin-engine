@@ -74,6 +74,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     timeline::KINDS,
     icons::KINDS,
     font_pack::KINDS,
+    look::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

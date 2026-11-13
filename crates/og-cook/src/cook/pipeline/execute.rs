@@ -188,23 +188,6 @@ pub(crate) fn run(
             let e = s.encoded(Some(*per))?;
             audio::cook_chunk(&e, *n, p.stamp).map(|b| (b, Vec::new()))
         }
-        Work::Lut(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a .cube LUT is text (UTF-8)".into()))?;
-            let lut = crate::fx::parse_cube(text).map_err(CookError)?;
-            let mut w = og_blob::BlobWriter::new(
-                format::Lut::type_hash(),
-                format::Lut::schema_version(),
-                p.stamp,
-            );
-            w.table(
-                "meta",
-                &[format::LutMeta { size: lut.size }],
-                format::row_hash::<format::LutMeta>(),
-            )
-            .raw("rgba", lut.rgba, 16);
-            Ok((w.finish(), vec![format!("{0}³ colour table", lut.size)]))
-        }
         Work::Emitter(s) => {
             let text = std::str::from_utf8(&s.bytes)
                 .map_err(|_| CookError("an emitter is text (UTF-8)".into()))?;
@@ -491,8 +474,6 @@ pub(crate) fn run(
         Work::Fracture(s) => Ok(fracture::cook(s, p.stamp)),
         Work::Effect(s) => effect::cook_effect(s, &|id| known.contains(id), p.stamp),
         Work::Vfx(s) => vfx::cook_vfx(s, &|id| known.contains(id), p.stamp),
-        Work::Look(s) => look::cook_look(s, &assets_root(s), &|id| known.contains(id), p.stamp),
-        Work::Palette(s) => look::cook_palette(s, p.stamp),
         Work::TextureArray(s, decl) => {
             let root = crate::cook::assets_root(s);
             texture_array::cook(&s.rel, &root, decl, &options.texture, p.stamp)

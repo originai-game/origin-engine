@@ -76,34 +76,6 @@ pub(super) fn plan_motion_action<'a>(
     ));
 }
 
-pub(super) fn plan_look<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx {
-        known, assets_dir, ..
-    } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let deps = look::look_dependencies(s, assets_dir, &|id| known.contains(id));
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::Look::NAME, st, Work::Look(s)));
-}
-
-pub(super) fn plan_palette<'a>(
-    _cx: &Cx<'a>,
-    _state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let st = stamp(&[b"palette 1", &hash]);
-    outs.push((s.rel.clone(), format::Palette::NAME, st, Work::Palette(s)));
-}
-
 pub(super) fn plan_scene<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,
