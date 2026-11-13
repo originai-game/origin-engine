@@ -1,6 +1,6 @@
 //! The direction of the crate's dependencies (`README.md`, Layout): a
 //! mechanism (`gpu/`, `shader/`, `frame/`, `visibility/`, `mesh/`,
-//! `shading/`, `media/`, `post/`, `particles/`, `debug/`) names no world
+//! `shading/`, `media/`, `fields/`, `post/`, `particles/`, `debug/`) names no world
 //! system and not the renderer that composes them, and a world system
 //! (`systems/<name>/`) names no other system and not the renderer. What
 //! two systems share is a mechanism.
@@ -25,6 +25,7 @@ const MECHANISMS: &[&str] = &[
     "mesh",
     "shading",
     "media",
+    "fields",
     "post",
     "particles",
     "debug",
@@ -69,7 +70,6 @@ const KNOWN: &[(&str, &str)] = &[
     ("shading/ssr.rs", "renderer"),
     ("systems/environment/sky_capture.rs", "renderer"),
     ("systems/environment/wind_field.rs", "renderer"),
-    ("systems/fluids/visual_fluid.rs", "systems/softbody"),
     ("systems/sprites/overlay.rs", "systems/ui"),
     ("systems/sprites/sprite_skin.rs", "renderer"),
     ("systems/sprites/tiles_gpu.rs", "renderer"),
@@ -111,7 +111,6 @@ const KNOWN: &[(&str, &str)] = &[
     ("systems/vegetation/scatter_place.rs", "systems/environment"),
     ("systems/vegetation/scatter_place.rs", "systems/terrain"),
     ("systems/vegetation/trample.rs", "renderer"),
-    ("systems/vegetation/trample.rs", "systems/environment"),
     ("visibility/meshlet_gpu.rs", "systems/vegetation"),
     ("visibility/meshlet_gpu/encode.rs", "systems/environment"),
     ("visibility/meshlet_gpu/encode.rs", "systems/vegetation"),

@@ -7,12 +7,14 @@
 //! *Procedural Grass in Ghost of Tsushima* (GDC 2021).
 //!
 //! Stepped once per tick on the GPU, like the wind field
-//! ([`crate::wind_field::plan`]): a frame at a tick already drawn steps
+//! ([`crate::fields`]): a frame at a tick already drawn steps
 //! nothing. A renderer starting on a later tick knows nothing pressed
 //! before it (the map is visual, not world state: the tick never reads it,
 //! and nothing reads it back). Without compute it never runs and nothing
 //! is pressed.
 
+use crate::fields::catch_up::catch_up;
+use crate::fields::window;
 use crate::renderer::history::GpuCopy;
 use glam::{DVec2, IVec2, Vec3};
 
@@ -52,12 +54,11 @@ struct TrampleGpu {
 
 const SLOT: u64 = 1280;
 /// The most ticks one frame steps (a longer gap starts the map again).
-const MAX_STEPS: u64 = crate::wind_field::MAX_CATCH_UP;
+const MAX_STEPS: u64 = crate::fields::MAX_CATCH_UP;
 
 /// The map's first cell, in whole cells of the absolute world.
 fn grid_cell(camera: DVec2) -> IVec2 {
-    let c = (camera / CELL).floor();
-    IVec2::new(c.x as i32, c.y as i32) - IVec2::splat(N as i32 / 2)
+    window::first_cell(camera, CELL, N)
 }
 
 struct Gpu {
@@ -321,18 +322,14 @@ impl Trample {
         let origin = scene.frame.origin.as_dvec3();
         let eye = scene.frame.camera.position.as_dvec3() + origin;
         let cell = grid_cell(DVec2::new(eye.x, eye.z));
-        let corner = cell.as_dvec2() * CELL;
-        let rel = corner - DVec2::new(origin.x, origin.z);
-        self.grid = [rel.x as f32, rel.y as f32, CELL as f32, N as f32];
+        let corner = window::corner(cell, CELL);
+        let rel = window::corner_from(cell, CELL, DVec2::new(origin.x, origin.z));
+        self.grid = [rel.x, rel.y, CELL as f32, N as f32];
         // One step per tick; a first frame, a jump back or a long gap
         // starts from nothing pressed at the tick drawn.
         let last = if fresh { None } else { self.last };
-        let (restart, first, count) = match last {
-            Some((t, _)) if scene.frame.tick >= t && scene.frame.tick - t <= MAX_STEPS => {
-                (false, t + 1, scene.frame.tick - t)
-            }
-            _ => (true, scene.frame.tick, 1),
-        };
+        let steps = catch_up(last.map(|l| l.0), scene.frame.tick, 1);
+        let (restart, first, count) = (steps.restart, steps.first, steps.count);
         if count == 0 {
             return;
         }

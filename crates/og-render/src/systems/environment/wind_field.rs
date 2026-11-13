@@ -16,7 +16,7 @@
 //! The field steps once per tick, never per frame: a frame at the tick
 //! already drawn steps nothing, and each tick's step reads that tick's
 //! wind, so the same ticks draw the same field on every run. A first frame,
-//! a jump back or one of more than [`MAX_CATCH_UP`] ticks starts the field
+//! a jump back or one of more than [`crate::fields::MAX_CATCH_UP`] ticks starts the field
 //! from the wind's target and runs [`WARM_STEPS`] ticks up to the tick
 //! drawn. Visual only: nothing reads it back, and the tick never sees it
 //! (og.Wind's analytic lean stays what gameplay may read).
@@ -24,6 +24,8 @@
 //! Without compute (`RenderCapabilities.compute` false) the field never
 //! runs and every tier keeps og.Wind's analytic lean, as before.
 
+use crate::fields::catch_up::catch_up;
+use crate::fields::window;
 use crate::renderer::history::GpuCopy;
 use glam::{DVec2, IVec2, Vec3};
 
@@ -47,8 +49,6 @@ pub const COARSE_CELL: f64 = 16.0;
 pub const MAX_MOTORS: usize = 16;
 /// Jacobi iterations of the pressure per step (even: it ends in `pressure`).
 const JACOBI: u32 = 20;
-/// The most ticks a frame catches up on before starting the field again.
-pub const MAX_CATCH_UP: u64 = 8;
 /// Ticks run from the wind's target when the field starts.
 pub const WARM_STEPS: u64 = 90;
 /// Ticks the field keeps stepping after its last driver (og.Wind or a
@@ -131,35 +131,18 @@ pub const NO_GRID: WindGrid = [[0.0; 4], [0.0, 0.0, 0.0, N as f32]];
 /// The field's level cells: each level's first cell, in whole cells of
 /// the world (absolute, so the origin moving does not move them).
 fn level_cells(camera: DVec2) -> [IVec2; 2] {
-    [FINE_CELL, COARSE_CELL].map(|cell| {
-        let c = (camera / cell).floor();
-        IVec2::new(c.x as i32, c.y as i32) - IVec2::splat(N as i32 / 2)
-    })
+    [FINE_CELL, COARSE_CELL].map(|cell| window::first_cell(camera, cell, N))
 }
 
 /// The tiers' [`WindGrid`] for level cells `cells`, the scene's origin at
 /// `origin` (world).
 fn grid_of(cells: [IVec2; 2], origin: DVec2) -> WindGrid {
-    let corner = |c: IVec2, cell: f64| (c.as_dvec2() * cell - origin).as_vec2();
-    let fine = corner(cells[0], FINE_CELL);
-    let coarse = corner(cells[1], COARSE_CELL);
+    let fine = window::corner_from(cells[0], FINE_CELL, origin);
+    let coarse = window::corner_from(cells[1], COARSE_CELL, origin);
     [
         [fine.x, fine.y, FINE_CELL as f32, 1.0],
         [coarse.x, coarse.y, COARSE_CELL as f32, N as f32],
     ]
-}
-
-/// The ticks a frame at `tick` steps after `last` (the tick last stepped,
-/// `None` before any): `(start again, first tick, ticks)`.
-pub(crate) fn plan(last: Option<u64>, tick: u64) -> (bool, u64, u64) {
-    match last {
-        Some(l) if tick >= l && tick - l <= MAX_CATCH_UP => (false, l + 1, tick - l),
-        _ => (
-            true,
-            tick.saturating_sub(WARM_STEPS - 1),
-            WARM_STEPS.min(tick + 1),
-        ),
-    }
 }
 
 struct Gpu {
@@ -453,7 +436,8 @@ impl WindFieldSim {
         };
         let uniform = gpu.uniform.clone();
         let last = if fresh { None } else { self.last.map(|l| l.0) };
-        let (restart, first, count) = plan(last, scene.frame.tick);
+        let steps = catch_up(last, scene.frame.tick, WARM_STEPS);
+        let (restart, first, count) = (steps.restart, steps.first, steps.count);
         self.grid = grid_of(cells, DVec2::new(origin.x, origin.z));
         if count == 0 {
             return;
@@ -484,7 +468,7 @@ impl WindFieldSim {
                 ]
             };
             let corner = |level: usize, cell: f64| {
-                let c = cells[level].as_dvec2() * cell;
+                let c = window::corner(cells[level], cell);
                 [c.x as f32, c.y as f32, cell as f32, 0.0]
             };
             let sim = SimGpu {
@@ -626,25 +610,6 @@ fn motors_gpu(scene: &crate::RenderScene, eye: glam::DVec3) -> ([[f32; 4]; 2 * M
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// The field steps once per tick, never per frame: a frame at the tick
-    /// already stepped steps nothing; the ticks since are caught up one by
-    /// one; a first frame, a jump back or a long jump starts again from the
-    /// wind's target and runs WARM_STEPS ticks ending at the tick drawn, so
-    /// two renderers at one tick hold the same field.
-    #[test]
-    fn the_field_steps_once_per_tick() {
-        assert_eq!(plan(Some(100), 100), (false, 101, 0));
-        assert_eq!(plan(Some(100), 103), (false, 101, 3));
-        assert_eq!(plan(None, 1000), (true, 1000 - WARM_STEPS + 1, WARM_STEPS));
-        assert_eq!(plan(Some(100), 99), plan(None, 99), "back: again");
-        assert_eq!(
-            plan(Some(100), 100 + MAX_CATCH_UP + 1),
-            plan(None, 100 + MAX_CATCH_UP + 1)
-        );
-        // Near the start, as many ticks as there were.
-        assert_eq!(plan(None, 5), (true, 0, 6));
-    }
 
     /// The grid is snapped to whole cells of the world around the camera:
     /// a camera moving within a cell keeps it; the tiers' corners are taken

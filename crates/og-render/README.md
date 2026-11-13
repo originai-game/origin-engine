@@ -20,6 +20,7 @@ the world → scene extraction belongs to the layer above.
 | `mesh/` | Geometry that is drawn: lines, shapes, compaction |
 | `shading/` | Materials, lights and clusters, shadows, indirect light, reflections, decals, transparency |
 | `media/` | Fog, volumetric light, cloud marching |
+| `fields/` | What a camera-centred, tick-stepped map shares: its window snapped to world cells, the ticks a frame steps |
 | `post/` | Full-screen stages, the HDR targets, tonemapping |
 | `particles/` | Particles, ribbons, effect materials |
 | `debug/` | Debug views, capture, the id pass |
@@ -27,7 +28,7 @@ the world → scene extraction belongs to the layer above.
 | `scene/` | `RenderScene`, the crate's whole input |
 | `renderer/` | The composition root: it owns the resources and runs the frame |
 
-The first ten are mechanisms. A mechanism names no world system and not
+The first eleven are mechanisms. A mechanism names no world system and not
 the renderer; a world system names no other system and not the renderer,
 and what two systems need is a mechanism. `tests/structure.rs` holds the
 direction, with the list of what does not follow it yet; that list only

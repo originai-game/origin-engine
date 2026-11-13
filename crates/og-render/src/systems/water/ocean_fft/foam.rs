@@ -121,8 +121,7 @@ pub(super) struct FoamGpu {
 /// The camera's texel on each level (absolute world xz over the texel).
 pub(super) fn snaps(eye: DVec2) -> [[i32; 2]; 2] {
     std::array::from_fn(|l| {
-        let ts = LEVEL_SIZE[l] / f64::from(RES);
-        [(eye.x / ts).floor() as i32, (eye.y / ts).floor() as i32]
+        crate::fields::window::camera_cell(eye, LEVEL_SIZE[l] / f64::from(RES)).to_array()
     })
 }
 

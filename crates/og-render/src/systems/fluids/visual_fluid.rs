@@ -7,7 +7,7 @@
 //! The host hands in, each frame, where the fluid is and how it is set
 //! ([`VisualFluid`]); the renderer owns its particles. Ticks drive it as
 //! they drive visual bodies: a frame steps the ticks since the one it last
-//! drew (up to [`crate::visual_sim::MAX_CATCH_UP`]); a world that went
+//! drew (up to [`crate::fields::MAX_CATCH_UP`]); a world that went
 //! back, jumped further, or a fluid whose spawn changed starts again from
 //! its spawn box (no preroll: the box falls as a dam breaks).
 //!
@@ -145,7 +145,7 @@ mod h {
     pub const METRE_SPEED: usize = 56;
     pub const SUBSTEPS: usize = 57;
     pub const ALIVE: usize = 58;
-    pub const LEN: usize = ALIVE + crate::visual_sim::MAX_CATCH_UP as usize + 1;
+    pub const LEN: usize = ALIVE + crate::fields::MAX_CATCH_UP as usize + 1;
 }
 
 /// Where a fluid's grid lies and how its time runs: everything the header
@@ -285,12 +285,12 @@ pub(crate) struct Plan {
 }
 
 /// The frame's plan for a fluid last stepped to `last` (`None`: new) at
-/// `tick`: as a visual body's, with one tick instead of a preroll.
+/// `tick`: the ticks since, or one tick from its spawn (no preroll).
 pub(crate) fn plan(last: Option<u64>, tick: u64) -> Plan {
-    let p = crate::visual_sim::plan(last, tick);
+    let steps = crate::fields::catch_up::catch_up(last, tick, 1);
     Plan {
-        reset: p.reset,
-        steps: if p.reset { 1 } else { p.steps },
+        reset: steps.restart,
+        steps: steps.count as u32,
     }
 }
 

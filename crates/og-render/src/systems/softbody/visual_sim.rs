@@ -11,7 +11,7 @@
 //! three things at once: the rest lengths and volume, the targets of the
 //! pinned points (moved between the frame's two over its substeps), and
 //! the state a reset starts from. Ticks drive it: a frame steps the ticks
-//! since the last one it drew (up to [`MAX_CATCH_UP`]); a world that went
+//! since the last one it drew (up to [`crate::fields::MAX_CATCH_UP`]); a world that went
 //! back, a new body or a larger jump starts again from the rest shape and
 //! simulates [`PREROLL`] ticks before it is drawn, so it appears settled.
 //!
@@ -48,8 +48,6 @@ pub(crate) fn garment_source() -> String {
     format!("{COLLIDERS}\n{WGSL}{GARMENT_OUT}")
 }
 
-/// The most ticks one frame steps; past it the body starts again.
-pub const MAX_CATCH_UP: u64 = 8;
 /// The ticks a body that starts again simulates before it is drawn.
 pub const PREROLL: u32 = 60;
 /// Neighbours a point keeps for self-collision.
@@ -149,22 +147,21 @@ pub(crate) struct Plan {
 /// The frame's plan for a body last stepped to `last` (`None`: new) at
 /// `tick`.
 pub(crate) fn plan(last: Option<u64>, tick: u64) -> Plan {
-    match last {
-        Some(last) if tick == last => Plan {
-            reset: false,
-            steps: 0,
-            first: tick,
-        },
-        Some(last) if tick > last && tick - last <= MAX_CATCH_UP => Plan {
-            reset: false,
-            steps: (tick - last) as u32,
-            first: last + 1,
-        },
-        _ => Plan {
+    // The preroll settles the body, so it is as long at the world's first
+    // tick as at any other: its clock starts before the tick drawn.
+    let steps = crate::fields::catch_up::catch_up(last, tick, 1);
+    if steps.restart {
+        Plan {
             reset: true,
             steps: PREROLL,
             first: tick.wrapping_sub(u64::from(PREROLL)),
-        },
+        }
+    } else {
+        Plan {
+            reset: false,
+            steps: steps.count as u32,
+            first: steps.first,
+        }
     }
 }
 
@@ -921,7 +918,7 @@ mod tests {
             Plan {
                 reset: false,
                 steps: 0,
-                first: 100
+                first: 101
             }
         );
         assert_eq!(
