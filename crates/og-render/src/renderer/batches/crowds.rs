@@ -50,7 +50,10 @@ impl Renderer {
                     material: d.material,
                     first: 0,
                     count: 0,
-                    faces: m.side.into(),
+                    faces: crate::Faces {
+                        side: m.side,
+                        mirrored: c.mirrored(),
+                    },
                     transparent: m.transparent,
                     blend: m.blend,
                     physical: m.physical.is_some(),

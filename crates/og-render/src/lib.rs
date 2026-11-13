@@ -163,6 +163,7 @@ use systems::fluids::metaballs;
 use systems::sprites::light2d;
 use systems::sprites::overlay;
 use visibility::instances;
+pub use visibility::instances::mirrors;
 pub use visibility::lod;
 use visibility::meshlet_gpu;
 pub mod particles;

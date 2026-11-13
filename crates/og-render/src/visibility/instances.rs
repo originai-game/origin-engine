@@ -128,7 +128,7 @@ pub(crate) struct Run {
 /// Whether `m` mirrors what it places: a negative determinant, which turns
 /// every triangle's winding as seen (glTF: such a node's triangles are
 /// wound the other way).
-pub(crate) fn mirrors(m: &Mat4) -> bool {
+pub fn mirrors(m: &Mat4) -> bool {
     let (x, y, z) = (
         m.x_axis.truncate(),
         m.y_axis.truncate(),

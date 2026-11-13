@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.CrowdAnimation",
+      "summary": "A GPU crowd member whose world transform mirrors the model (a negative scale on one axis, as a character flipped by scale.x = -1) draws from outside, lit and shadowed as an unmirrored one. Before, a crowd's draws ignored the mirror and a front-sided member showed its far faces from inside. Mirrored and unmirrored members of one model draw as two crowds."
+    }
+  ]
+}

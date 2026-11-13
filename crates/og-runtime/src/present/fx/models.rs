@@ -408,11 +408,11 @@ pub(crate) fn crowd_model(
         member.pose = pose;
         member.fx = look.fx;
         member.receive_shadows = look.receive;
-        let at = scene
-            .objects
-            .crowds
-            .iter()
-            .position(|c| c.cast_shadows == look.cast && c.parts == skinned);
+        let at = scene.objects.crowds.iter().position(|c| {
+            c.cast_shadows == look.cast
+                && c.parts == skinned
+                && c.mirrored() == og_render::mirrors(&world_matrix)
+        });
         let row = match at {
             Some(i) => &mut scene.objects.crowds[i],
             None => {

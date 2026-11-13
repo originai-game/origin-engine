@@ -192,6 +192,8 @@ pub struct Crowd {
     pub layers: u32,
     /// Its far level, cards baked from its full mesh (module docs).
     pub impostor: Option<CrowdImpostor>,
+    /// Its members. They all mirror the model or none does
+    /// ([`Crowd::mirrored`]): a mirrored member goes in a crowd of its own.
     pub members: Vec<CrowdMember>,
 }
 
@@ -212,6 +214,16 @@ impl Default for Crowd {
 }
 
 impl Crowd {
+    /// Whether its members mirror the model (a transform with a negative
+    /// determinant, [`crate::mirrors`]): its draws then take clockwise as
+    /// the front, as a mirrored instance's do. The first member's answer
+    /// is the crowd's.
+    pub fn mirrored(&self) -> bool {
+        self.members
+            .first()
+            .is_some_and(|m| crate::mirrors(&m.transform))
+    }
+
     /// How many levels it draws (1 to [`MAX_CROWD_LEVELS`]): its mesh
     /// levels, and its card last when it has an impostor.
     pub fn levels(&self) -> usize {

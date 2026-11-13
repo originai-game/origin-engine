@@ -213,3 +213,50 @@ fn a_mirrored_instance_draws_its_outside() {
         );
     }
 }
+
+/// A crowd whose members mirror the model (characters flipped by
+/// `scale.x = -1`) draws them from outside, lit and shadowed. The walker
+/// and its walk are symmetric left to right half a stride apart, so a
+/// mirrored member is the plain one half a stride on, and the two frames
+/// agree. Before, a crowd's draws took the material's side alone and a
+/// mirrored member showed its far faces from inside.
+#[test]
+#[ignore = "requires GPU"]
+fn a_mirrored_crowd_draws_its_members_outsides() {
+    use glam::{Mat4, Vec3};
+    use og_render::{RenderTarget, Renderer};
+    let stride = (og_tests::fx_scenes::CROWD_FRAMES - 1) as f32;
+    let shot = |mirror: bool| {
+        let mut scene = og_tests::fx_scenes::crowd_scene(400);
+        let flip = Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0));
+        for m in &mut scene.objects.crowds[0].members {
+            if mirror {
+                m.transform *= flip;
+                m.pose.previous_transform *= flip;
+            } else {
+                m.pose.frame = (m.pose.frame + stride * 0.5) % stride;
+                m.pose.previous_frame = m.pose.frame;
+            }
+        }
+        assert_eq!(scene.objects.crowds[0].mirrored(), mirror);
+        let mut renderer =
+            Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");
+        renderer
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("capture")
+    };
+    let (plain, mirrored) = (shot(false), shot(true));
+    let moved = plain
+        .pixels
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(mirrored.pixels.as_chunks::<4>().0)
+        .filter(|(a, b)| (0..3).any(|c| a[c].abs_diff(b[c]) > 8))
+        .count();
+    assert!(
+        moved < 400,
+        "the mirrored crowd draws as the plain one half a stride on: {moved} pixels differ"
+    );
+}
