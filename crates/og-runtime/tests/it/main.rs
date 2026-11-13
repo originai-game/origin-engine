@@ -80,6 +80,8 @@ mod no_renderer;
 #[path = "../painted_2d.rs"]
 mod painted_2d;
 #[cfg(feature = "destruction")]
+#[path = "../path_follower.rs"]
+mod path_follower;
 #[path = "../pixel_terrain.rs"]
 mod pixel_terrain;
 #[path = "../prefabs.rs"]

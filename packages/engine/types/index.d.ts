@@ -30420,7 +30420,7 @@ export interface PathFollower {
    */
   loop: boolean;
   /**
-   * Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up).
+   * Turn og.Transform.quaternion to face along the tangent: the entity's forward (+Z) along it and +Y the path's up. For a camera riding the path, sample it and use og.transform.lookAt.
    */
   align: boolean;
   /**

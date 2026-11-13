@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "og.PathFollower.align",
+      "change": "An aligned follower now faces along the path as every object does: its +Z along the tangent. It used to be turned as a camera, -Z along the tangent, so a model travelled backwards. `offset` is unchanged (the path's right, up and backwards).",
+      "fix": "Remove any half-turn a game added to its model or its children to face it along the path. For a camera riding a path, sample the path and set og.transform.lookAt(position, position + tangent)."
+    }
+  ]
+}

@@ -53617,7 +53617,7 @@
         },
         "align": {
           "type": "boolean",
-          "description": "Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up).",
+          "description": "Turn og.Transform.quaternion to face along the tangent: the entity's forward (+Z) along it and +Y the path's up. For a camera riding the path, sample it and use og.transform.lookAt.",
           "default": false
         },
         "offset": {

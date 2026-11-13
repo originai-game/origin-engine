@@ -31153,7 +31153,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up)."),
+                doc: doc!("Turn og.Transform.quaternion to face along the tangent: the entity's forward (+Z) along it and +Y the path's up. For a camera riding the path, sample it and use og.transform.lookAt."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

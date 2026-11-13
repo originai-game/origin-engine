@@ -105,6 +105,12 @@ pub fn camera_axes(forward: Vec3, up: Vec3) -> Mat3 {
     Mat3::from_cols(x, y, z)
 }
 
+/// The axes of an object facing along `forward` with `up` roughly up: its
+/// columns are the object's local +X (its left), +Y and +Z (`forward`).
+pub fn axes(forward: Vec3, up: Vec3) -> Mat3 {
+    camera_axes(-forward, up)
+}
+
 /// The rotation of a camera or a light at `eye` looking at `target`: its
 /// -Z towards the target. A zero `up` is +Y; the identity when the two
 /// points are the same.

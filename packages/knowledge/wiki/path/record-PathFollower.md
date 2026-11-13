@@ -16,7 +16,7 @@ Token `og.PathFollower`, registered under the schema name `og.PathFollower`; its
 | `speed` | `number` | `1` | — | `mps` | tunable | Metres per second along the path; negative goes backwards. |
 | `distance` | `number` | `0` | — | `m` | — | How far along the path it is, from its start; written every tick, set it to place the entity. |
 | `loop` | `boolean` | `true` | — | — | — | Wrap at the end (and the start, going backwards); otherwise stop there and set `finished`. |
-| `align` | `boolean` | `false` | — | — | — | Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up). |
+| `align` | `boolean` | `false` | — | — | — | Turn og.Transform.quaternion to face along the tangent: the entity's forward (+Z) along it and +Y the path's up. For a camera riding the path, sample it and use og.transform.lookAt. |
 | `offset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Added to the path's point: along the path's right, up and backward axes with align, else world x, y and z. |
 | `playing` | `boolean` | `true` | — | — | — | Moves while true. |
 | `finished` | `boolean` | `false` | — | — | read only | Written: a path without loop reached its end. |
@@ -36,7 +36,7 @@ component PathFollower {
   field loop bool "Wrap at the end (and the start, going backwards); otherwise stop there and set `finished`." {
     default true
   }
-  field align bool "Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up)."
+  field align bool "Turn og.Transform.quaternion to face along the tangent: the entity's forward (+Z) along it and +Y the path's up. For a camera riding the path, sample it and use og.transform.lookAt."
   field offset Vector3 "Added to the path's point: along the path's right, up and backward axes with align, else world x, y and z." {
     unit m
   }

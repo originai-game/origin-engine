@@ -75,7 +75,7 @@ module path {
     field loop bool "Wrap at the end (and the start, going backwards); otherwise stop there and set `finished`." {
       default true
     }
-    field align bool "Turn og.Transform.quaternion to face along the tangent (local -Z forward, +Y the path's up)."
+    field align bool "Turn og.Transform.quaternion to face along the tangent: the entity's forward (+Z) along it and +Y the path's up. For a camera riding the path, sample it and use og.transform.lookAt."
     field offset Vector3 "Added to the path's point: along the path's right, up and backward axes with align, else world x, y and z." {
       unit m
     }
