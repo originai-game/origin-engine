@@ -3,6 +3,9 @@
 //! [`Lines`] of [`LineMode::Segments`] in world space, drawn over the
 //! finished frame ([`LineLayer::Overlay`]) so it reads in every capture.
 
+pub(crate) mod capture;
+pub(crate) mod id_pass;
+
 use crate::lines::{LineLayer, LineMode, Lines};
 use glam::{Mat4, Quat, Vec3};
 use std::f32::consts::TAU;

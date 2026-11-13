@@ -2,6 +2,15 @@
 //! (layer, kind, texture) so each run of one texture (or one font) in one
 //! layer is a single instanced draw.
 
+pub(crate) mod light2d;
+pub(crate) mod overlay;
+pub(crate) mod sprite_array;
+pub(crate) mod sprite_hooks;
+pub(crate) mod sprite_mesh;
+pub(crate) mod sprite_normals;
+pub(crate) mod sprite_skin;
+pub(crate) mod tiles_gpu;
+
 use crate::RenderError;
 use crate::effects::SpriteBlend;
 use crate::scene::SpriteFacing;

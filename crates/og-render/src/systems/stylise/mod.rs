@@ -10,6 +10,8 @@
 //! primitive the renderer lacks still applies and the rest of the frame is
 //! drawn.
 
+pub(crate) mod stylise_object;
+
 /// The primitive groups this renderer draws, by the names
 /// `RenderCapabilities.stylise` reports: `pixel`, `posterize`, `palette`,
 /// `dither`, `halftone`, `hatching`, `paint`, `paintDetail` (the painterly

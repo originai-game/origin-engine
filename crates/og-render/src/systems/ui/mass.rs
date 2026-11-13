@@ -468,7 +468,7 @@ mod tests {
         }
         let base = texels.len();
         texels.extend(table);
-        let source = include_str!("../../shaders/ui_mass.wgsl");
+        let source = include_str!("../../../shaders/ui_mass.wgsl");
         let structure = &source[source.find("struct MassTemplate").unwrap()
             ..source.find("// The table texture").unwrap()];
         let template = &source

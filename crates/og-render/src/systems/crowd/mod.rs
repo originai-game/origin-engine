@@ -67,6 +67,9 @@
 //! rule and gives it one record per part, culled as every skinned instance
 //! is. The two paths draw the same members at the same levels.
 
+pub(crate) mod crowd_gpu;
+pub(crate) mod crowd_impostor;
+
 use crate::scene::{Camera, MaterialHandle, MeshHandle};
 use crate::skin::{BakedClip, BakedPose, JointBox, SkinnedInstanceGpu};
 use glam::{Mat4, Vec3};

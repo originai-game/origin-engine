@@ -5,7 +5,7 @@ use crate::visual_sim::{Topology, VisualMesh, VisualPipelines};
 use crate::{Deferred, GarmentDeformation, GarmentTopology};
 use std::{collections::HashMap, sync::Arc};
 
-pub(crate) const WGSL: &str = include_str!("../shaders/garment.wgsl");
+pub(crate) const WGSL: &str = include_str!("../../../shaders/garment.wgsl");
 
 pub(crate) struct Mesh {
     topology: Arc<GarmentTopology>,

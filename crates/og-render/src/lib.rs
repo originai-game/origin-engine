@@ -69,88 +69,99 @@ macro_rules! wgsl3d {
 /// none of them (`RenderCapabilities.world3d`).
 pub const WORLD_3D: bool = cfg!(not(feature = "profile2d"));
 
-mod indirect_own;
+mod gpu;
+mod media;
+mod mesh;
 mod renderer;
+mod shader;
+mod shading;
+mod systems;
+mod visibility;
+use gpu::indirect_own;
 pub use renderer::*;
 
-pub mod wind_field;
-pub use wind_field::{WindMotor, WindMotorKind};
-pub mod trample;
+pub use systems::environment::wind_field;
+pub use systems::vegetation::trample;
 pub use trample::GrassPusher;
+pub use wind_field::{WindMotor, WindMotorKind};
 
-mod area;
-mod atmosphere;
-mod aurora;
-mod auto_quality;
-mod blue_noise;
-mod capture;
-mod clouds;
-mod clusters;
-mod color_vision;
+use debug::capture;
+use frame::auto_quality;
+use media::clouds;
+use mesh::compact;
 pub use og_draw::{ColorFilter, ColorVision, ColorVisionFilter};
-mod compact;
-mod crowd;
-mod crowd_gpu;
-mod crowd_impostor;
-mod cull_gpu;
 use og_render_data::custom;
-mod debris;
+use post::color_vision;
+use shader::blue_noise;
+use shading::area;
+use shading::clusters;
+use systems::crowd;
+use systems::crowd::crowd_gpu;
+use systems::crowd::crowd_impostor;
+use systems::destruction::debris;
+use systems::environment::atmosphere;
+use systems::environment::aurora;
+use visibility::cull_gpu;
 pub mod debug;
-mod deferred;
 pub use deferred::settle_pipelines;
-mod effect;
-mod effects;
-mod environment;
-mod fluid3d;
-pub mod foliage;
+use gpu::deferred;
+use particles::effect;
+use scene::effects;
+use shading::environment;
+use systems::fluids::fluid3d;
+pub use systems::vegetation::foliage;
 mod frame;
-mod fx;
-pub use og_render_data::geometry;
-mod gi_probes;
-mod gi_scene;
-mod glass;
-pub mod graph;
-mod hdr;
-use og_render_data::hooks;
-mod ibl;
-mod id_pass;
-mod instances;
-mod light2d;
-mod lightmap;
-mod lines;
-pub mod lod;
-pub use og_render_data::meshlet;
-mod meshlet_gpu;
-mod pipeline_features;
-mod probe_content;
-mod probe_grid;
-mod probe_select;
-mod probes;
-mod quality;
-mod sky_capture;
-mod ssgi;
-mod ssr;
+use debug::id_pass;
+use frame::fx;
+pub use frame::graph;
+use frame::origin;
+use frame::quality;
 pub use gi_probes::ProbeGlobalIllumination;
+use gpu::mips;
+use mesh::lines;
+pub use og_render_data::geometry;
+use og_render_data::hooks;
+pub use og_render_data::meshlet;
+pub use oit::{
+    DEFAULT_TRANSPARENCY_LAYERS, MAX_TRANSPARENCY_LAYERS, Transparency, TransparencyCounts,
+    weighted_order_bound, weighted_order_codes,
+};
+use post::glass;
+use post::hdr;
 pub use probe_content::{ProbeContent, ProbeRoom};
 pub use probe_grid::{MAX_GRID_CAPTURES, RealtimeLightVolume};
 pub use probes::{
     MAX_REFLECTION_PROBES, PROBE_MAX_RESOLUTION, PROBE_MIN_RESOLUTION, ProbeCapture, ProbeMode,
     ReflectionProbe,
 };
+use shader::pipeline_features;
+use shading::gi_probes;
+use shading::gi_scene;
+use shading::ibl;
+use shading::lightmap;
+use shading::material;
+use shading::oit;
+use shading::probe_content;
+use shading::probe_grid;
+use shading::probe_select;
+use shading::probes;
+use shading::ssgi;
+use shading::ssr;
 pub use ssgi::ScreenSpaceGlobalIllumination;
 pub use ssr::ScreenSpaceReflections;
-mod material;
-mod metaballs;
-mod mips;
-mod oit;
-pub use oit::{
-    DEFAULT_TRANSPARENCY_LAYERS, MAX_TRANSPARENCY_LAYERS, Transparency, TransparencyCounts,
-    weighted_order_bound, weighted_order_codes,
-};
-mod origin;
-mod overlay;
+use systems::environment::sky_capture;
+use systems::fluids::metaballs;
+use systems::sprites::light2d;
+use systems::sprites::overlay;
+use visibility::instances;
+pub use visibility::lod;
+use visibility::meshlet_gpu;
 pub mod particles;
-pub mod ui;
+use gpu::pipeline_cache;
+use particles::particles_gpu;
+pub use pipeline_cache::set_pipeline_cache_dir;
+pub use pipeline_features::LitFeatures;
+pub use systems::ui;
 pub use ui::{
     UI_GRADIENT_STOPS, UI_MASS_KEYS, UI_MASS_QUADS, UI_MATERIAL_PARAMS, UI_QUAD_LAYER_MAX, UiAlign,
     UiBackground, UiBackgroundSize, UiBlend, UiBorderImage, UiBuiltin, UiCap, UiClip,
@@ -165,10 +176,6 @@ pub use ui::{
     UiVectorStroke, UiVectorVertex, UiVerb, example_ui_material, flatten_cubic, flatten_quad,
     format_number, oklab, oklab_to_linear, square_to_quad, ui_material_module_source, ui_scrim,
 };
-mod particles_gpu;
-mod pipeline_cache;
-pub use pipeline_cache::set_pipeline_cache_dir;
-pub use pipeline_features::LitFeatures;
 
 thread_local! {
     /// Fork s60: the host's hook around the frame pipelines
@@ -278,74 +285,74 @@ fn source_upload_bytes(source: &TextureSource) -> u64 {
         TextureSource::Target(_) => 0,
     }
 }
-mod grass;
-mod impostor;
-mod physical;
-mod points;
+use mesh::points;
+use shading::physical;
+use systems::vegetation::grass;
+use systems::vegetation::impostor;
 mod post;
-mod post_custom;
-mod ribbons;
-mod ribbons_gpu;
-mod scatter;
-mod scatter_cull;
-mod scatter_place;
+use particles::ribbons;
+use particles::ribbons_gpu;
+use post::post_custom;
+use systems::vegetation::scatter;
+use systems::vegetation::scatter_cull;
+use systems::vegetation::scatter_place;
 mod scene;
-mod scene_colliders;
-mod shaders;
-pub use shaders::{ShaderSource, UNBOUNDED_MODULES, shader_sources};
-mod garment;
-mod garment_gpu;
-pub mod ocean_fft;
-mod shadow_cache;
-mod shadow_fit;
-mod shadow_keep;
-mod shadow_target;
-mod shadows;
-pub use og_render_data::shapes;
-mod skin;
+pub use caps::{Caps, Tier};
+use frame::timing;
+use frame::views;
 pub use garment::{GarmentDeformation, GarmentTopology};
-mod sky_physical;
-mod sprite_array;
-mod sprite_hooks;
-mod sprite_mesh;
-mod sprite_normals;
-mod sprite_skin;
-mod sprites;
-mod stylise;
-mod stylise_object;
-mod surface;
+pub use gpu::caps;
+use gpu::targets;
+use gpu::texture;
+use gpu::texture_array;
+use gpu::video;
+use media::volumetric;
+use mesh::skin;
+pub use og_render_data::shapes;
+use og_render_data::terrain_error;
+use particles::scene_colliders;
+use shader::shaders;
+pub use shaders::{ShaderSource, UNBOUNDED_MODULES, shader_sources};
+use shading::shadow_cache;
+use shading::shadow_fit;
+use shading::shadow_keep;
+use shading::shadow_target;
+use shading::shadows;
 pub use surface::SimulationSurface;
-mod sea_wakes;
-mod visual_fluid;
-mod visual_sim;
+use systems::environment::sky_physical;
+use systems::environment::weather;
+use systems::environment::wind;
+use systems::fluids::visual_fluid;
+use systems::softbody::garment;
+use systems::softbody::garment_gpu;
+use systems::softbody::surface;
+use systems::softbody::visual_sim;
+use systems::sprites;
+use systems::sprites::sprite_array;
+use systems::sprites::sprite_hooks;
+use systems::sprites::sprite_mesh;
+use systems::sprites::sprite_normals;
+use systems::sprites::sprite_skin;
+use systems::sprites::tiles_gpu;
+use systems::stylise;
+use systems::stylise::stylise_object;
+use systems::terrain;
+use systems::terrain::terrain_tiles;
+use systems::water;
+pub use systems::water::ocean_fft;
+use systems::water::sea_wakes;
+use systems::water::water_ripples;
+use systems::water::water_river;
+use visibility::upload;
 pub use visual_fluid::{VisualFluid, at_rest as visual_fluid_at_rest};
 pub use visual_sim::{VisualBody, VisualGarment};
-pub mod caps;
-pub use caps::{Caps, Tier};
-mod targets;
-mod terrain;
-use og_render_data::terrain_error;
-mod terrain_tiles;
-mod texture;
-mod texture_array;
-mod tiles_gpu;
-mod timing;
-mod upload;
-mod video;
-mod views;
-mod volumetric;
-mod water;
-mod water_ripples;
-mod water_river;
-mod weather;
-mod wind;
 
-#[cfg(feature = "gltf")]
-pub mod gltf;
 #[cfg(not(target_arch = "wasm32"))]
-mod headless;
+use gpu::headless;
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
-pub mod shared_frames;
+pub use gpu::shared_frames;
+#[cfg(feature = "gltf")]
+pub use mesh::gltf;
 
 pub use area::{CookieLayers, LightCookie, MAX_COOKIE_LAYERS, RECT_SHADOW_FOV, cookie_layers};
 pub use atmosphere::{DayNightLook, Fog, SkyLook, day_night};

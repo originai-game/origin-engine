@@ -28,7 +28,7 @@ use glam::Vec3;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub(crate) const WGSL: &str = include_str!("../shaders/visual_fluid.wgsl");
+pub(crate) const WGSL: &str = include_str!("../../../shaders/visual_fluid.wgsl");
 const COLLIDERS: &str = wgsl!("scene_colliders.wgsl");
 
 /// The solver's source: the colliders, then the fluid.

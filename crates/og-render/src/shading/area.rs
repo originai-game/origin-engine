@@ -53,7 +53,7 @@ pub const RECT_SHADOW_FOV: f32 = 150.0;
 /// The most local shadow array layers cookies take.
 pub const MAX_COOKIE_LAYERS: usize = 24;
 
-const LTC: &[u8; 16384] = include_bytes!("../../../third_party/ltc/ltc32.bin");
+const LTC: &[u8; 16384] = include_bytes!("../../../../third_party/ltc/ltc32.bin");
 
 /// The LTC table's uniform buffer (frame binding 11).
 pub(crate) fn ltc_buffer(device: &wgpu::Device, queue: &wgpu::Queue) -> wgpu::Buffer {

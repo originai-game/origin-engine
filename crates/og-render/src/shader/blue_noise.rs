@@ -13,7 +13,7 @@ pub(crate) const BLUE_NOISE_SIZE: u32 = 64;
 
 /// The thresholds, row-major, one byte a texel (`R8Unorm`).
 pub(crate) static BLUE_NOISE: &[u8; (BLUE_NOISE_SIZE * BLUE_NOISE_SIZE) as usize] =
-    include_bytes!("../data/blue-noise-64.r8");
+    include_bytes!("../../data/blue-noise-64.r8");
 
 #[cfg(test)]
 mod tests {

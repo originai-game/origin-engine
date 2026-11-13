@@ -5,7 +5,7 @@
 use crate::{Deferred, MeshData};
 use glam::Vec3;
 
-pub(crate) const WGSL: &str = include_str!("../shaders/surface.wgsl");
+pub(crate) const WGSL: &str = include_str!("../../../shaders/surface.wgsl");
 
 /// The CPU solve topology whose draw-only surface the renderer refines.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

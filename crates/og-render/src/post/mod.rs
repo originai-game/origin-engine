@@ -5,12 +5,16 @@
 //! depth-normal prepass. Also the size-dependent targets they and the main
 //! pass draw into, as render graph targets.
 
+pub(crate) mod color_vision;
 pub(crate) mod contact;
 mod flare;
 pub(crate) mod fsr;
+pub(crate) mod glass;
 mod graph;
+pub(crate) mod hdr;
 mod passes;
 mod plan;
+pub(crate) mod post_custom;
 mod smaa;
 mod targets;
 pub(crate) use flare::*;

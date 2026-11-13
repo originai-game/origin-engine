@@ -2,6 +2,14 @@
 //! lights' shadow views, frustum culling,
 //! and the frame uniform the lit shaders read (`shaders/frame.wgsl`).
 
+pub(crate) mod auto_quality;
+pub(crate) mod fx;
+pub mod graph;
+pub(crate) mod origin;
+pub(crate) mod quality;
+pub(crate) mod timing;
+pub(crate) mod views;
+
 use crate::scene::{Camera, Light, LightKind, Projection};
 use crate::shadows::{LOCAL_SHADOW_LAYERS, PARABOLOID_SCALE, PointShadows};
 use glam::{Mat4, Vec2, Vec3, Vec4};

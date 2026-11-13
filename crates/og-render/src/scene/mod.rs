@@ -8,6 +8,7 @@
 //! ([`RenderScene::set_material`], [`RenderScene::set_mesh`],
 //! [`RenderScene::set_texture`]).
 
+pub(crate) mod effects;
 mod environment;
 mod groups;
 mod resources;

@@ -25,7 +25,7 @@ use crate::{Deferred, MeshData, SceneCollider};
 use glam::{Mat4, Vec3};
 use std::sync::Arc;
 
-pub(crate) const WGSL: &str = include_str!("../shaders/visual_body.wgsl");
+pub(crate) const WGSL: &str = include_str!("../../../shaders/visual_body.wgsl");
 const COLLIDERS: &str = wgsl!("scene_colliders.wgsl");
 
 const SURFACE_OUT: &str = "

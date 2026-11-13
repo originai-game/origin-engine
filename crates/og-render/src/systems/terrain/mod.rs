@@ -61,6 +61,7 @@
 
 mod decals;
 mod renderer;
+pub(crate) mod terrain_tiles;
 pub(crate) use renderer::*;
 
 mod levels;

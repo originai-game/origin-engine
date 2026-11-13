@@ -43,7 +43,12 @@ use glam::{Mat4, Vec3, Vec4};
 use og_core::math;
 
 mod cpu;
+pub(crate) mod effect;
 mod noise;
+pub(crate) mod particles_gpu;
+pub(crate) mod ribbons;
+pub(crate) mod ribbons_gpu;
+pub(crate) mod scene_colliders;
 mod schedule;
 pub use cpu::*;
 pub(crate) use noise::*;
