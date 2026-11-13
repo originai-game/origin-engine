@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Transform",
+      "summary": "A mesh under a mirrored transform (a negative scale on one or three axes, as a glTF or FBX node may carry) draws its outside: its pipelines take clockwise as the front, so back-face culling, two-sided normals and shadows see the mesh's own sides. It drew inside-out before."
+    }
+  ]
+}

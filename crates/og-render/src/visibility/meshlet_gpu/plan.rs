@@ -146,7 +146,7 @@ pub(crate) fn plan<'a>(
         }
         let first_item = items.div_ceil(ITEM_ALIGN) * ITEM_ALIGN;
         let is_soft = view == 0 && lit && soft(batch);
-        let side = match batch.side {
+        let side = match batch.faces.side {
             Side::Front => 0,
             Side::Back => 1,
             Side::Double => 2,

@@ -3,17 +3,17 @@
 use super::*;
 
 impl GpuCulling {
-    /// The occluders' depth pipeline for `side`, from the compact vertices
+    /// The occluders' depth pipeline for `faces`, from the compact vertices
     /// when `compact` (`compact.rs`).
     pub(super) fn depth_pipeline(
         &mut self,
         device: &wgpu::Device,
-        side: Side,
+        faces: Faces,
         compact: bool,
         samples: u32,
     ) {
         self.depth_pipelines
-            .entry((side, compact, samples))
+            .entry((faces, compact, samples))
             .or_insert_with(|| {
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some("occluder depth"),
@@ -31,10 +31,7 @@ impl GpuCulling {
                             Some(crate::INSTANCE_LAYOUT),
                         ],
                     },
-                    primitive: wgpu::PrimitiveState {
-                        cull_mode: cull_mode(side),
-                        ..Default::default()
-                    },
+                    primitive: faces.primitive(faces.cull()),
                     depth_stencil: Some(wgpu::DepthStencilState {
                         format: DEPTH_FORMAT,
                         depth_write_enabled: Some(true),
@@ -151,18 +148,18 @@ impl GpuCulling {
         let occlusion = passes.iter().any(|x| x.kind == PassKind::Occluders);
         if occlusion {
             self.ensure_pyramid(device, width, height, samples);
-            let occluder_kinds: Vec<(Side, bool)> = {
-                let mut s: Vec<(Side, bool)> = batches
+            let occluder_kinds: Vec<(Faces, bool)> = {
+                let mut s: Vec<(Faces, bool)> = batches
                     .iter()
                     .filter(|x| x.first < base && materials[x.material].occluder)
-                    .map(|x| (x.side, x.compact))
+                    .map(|x| (x.faces, x.compact))
                     .collect();
                 og_core::sort::sort(&mut s);
                 s.dedup();
                 s
             };
-            for (side, compact) in occluder_kinds {
-                self.depth_pipeline(device, side, compact, samples);
+            for (faces, compact) in occluder_kinds {
+                self.depth_pipeline(device, faces, compact, samples);
             }
         }
 
@@ -501,9 +498,11 @@ impl GpuCulling {
                         if skinned_batch(i) || !materials[x.material].occluder {
                             continue;
                         }
-                        if kind != Some((x.side, x.compact)) {
-                            pass.set_pipeline(&self.depth_pipelines[&(x.side, x.compact, samples)]);
-                            kind = Some((x.side, x.compact));
+                        if kind != Some((x.faces, x.compact)) {
+                            pass.set_pipeline(
+                                &self.depth_pipelines[&(x.faces, x.compact, samples)],
+                            );
+                            kind = Some((x.faces, x.compact));
                         }
                         let mesh = &meshes[x.mesh];
                         let start = self.region(g as u32, x.first) as u64 * INSTANCE_STRIDE;

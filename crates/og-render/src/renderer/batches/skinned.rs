@@ -1,6 +1,7 @@
 //! The skinned instances' batches, palettes and culling.
 
 use super::*;
+use crate::instances::mirrors;
 
 impl Renderer {
     /// The skinned instances as (mesh, material) batches over the skinned
@@ -166,6 +167,7 @@ impl Renderer {
                 !s.cast_shadows,
                 views::layer_of(&scene.objects.skinned_layers, i),
                 probe_of[i],
+                mirrors(&s.transform),
             )
         });
         let mut batches: Vec<Batch> = Vec::new();
@@ -182,6 +184,7 @@ impl Renderer {
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
             let layers = views::layer_of(&scene.objects.skinned_layers, i);
             let probe = probe_of[i];
+            let mirrored = mirrors(&s.transform);
             if self.cache.meshes[mesh].index_count == 0 {
                 continue;
             }
@@ -191,7 +194,8 @@ impl Renderer {
                         && b.material == material
                         && b.cast == cast
                         && b.layers == layers
-                        && b.probe == probe =>
+                        && b.probe == probe
+                        && b.faces.mirrored == mirrored =>
                 {
                     b.count += 1;
                     b.simulated |= s.deformed.is_some();
@@ -203,7 +207,10 @@ impl Renderer {
                         material,
                         first: data.len() as u32,
                         count: 1,
-                        side: m.side,
+                        faces: Faces {
+                            side: m.side,
+                            mirrored,
+                        },
                         transparent: m.transparent,
                         blend: m.blend,
                         physical: m.physical.is_some(),

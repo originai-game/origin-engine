@@ -38,7 +38,7 @@ impl Renderer {
             (false, Some(sh)) => LitModule::Shader(sh),
             (false, None) => LitModule::Standard,
         };
-        Source::Lit(module, b.side, skinned, b.effects)
+        Source::Lit(module, b.faces, skinned, b.effects)
     }
 
     /// The OIT source of a billboard run (or its drop shadow): tone-mapped
@@ -92,7 +92,7 @@ impl Renderer {
             let physical = b.physical && self.lit.physical.is_some();
             wanted.push(Self::oit_lit_source(b, false, physical));
             if let Some(f) = Self::lightmap_family(&self.lights.lightmaps, b, physical) {
-                wanted.push(Source::Lightmap(f, b.side, b.effects));
+                wanted.push(Source::Lightmap(f, b.faces, b.effects));
             }
         }
         for b in skinned.iter().filter(|b| b.transparent && b.blend) {
@@ -123,7 +123,7 @@ impl Renderer {
             // the frame's features and the full one (pipeline_features.rs).
             let none = crate::pipeline_features::Features::NONE;
             let (declared, job) = match source {
-                Source::Lit(module, side, skinned, effects) => {
+                Source::Lit(module, faces, skinned, effects) => {
                     use oit::LitModule;
                     let physical =
                         matches!(module, LitModule::Physical | LitModule::PhysicalShader(_));
@@ -193,6 +193,7 @@ impl Renderer {
                         Made::Pipeline(oit::pipeline(
                             &device,
                             &constants,
+                            faces.front(),
                             HdrPipeline {
                                 alpha_to_coverage: false,
                                 label: name,
@@ -206,7 +207,7 @@ impl Renderer {
                                 },
                                 fs: "fs",
                                 buffers: if skinned { SKIN } else { PLAIN },
-                                cull: cull_mode(side),
+                                cull: faces.cull(),
                                 depth_write: false,
                                 depth_compare: wgpu::CompareFunction::Less,
                                 blend: None,
@@ -217,7 +218,7 @@ impl Renderer {
                     });
                     (declared, job)
                 }
-                Source::Lightmap(family, side, effects) => {
+                Source::Lightmap(family, faces, effects) => {
                     use lightmap::Family;
                     let lightmap_fx = self.fx_lean_layout.as_ref().unwrap_or(&self.fx_layout);
                     let (name, groups, shader, declared): (
@@ -273,7 +274,7 @@ impl Renderer {
                             family,
                             &layout,
                             &shader,
-                            (side, effects),
+                            (faces, effects),
                             samples,
                             mode,
                             off,
@@ -297,6 +298,7 @@ impl Renderer {
                         Made::Pipeline(oit::pipeline(
                             &device,
                             &[],
+                            wgpu::FrontFace::Ccw,
                             HdrPipeline {
                                 alpha_to_coverage: false,
                                 label: "billboard",
@@ -343,6 +345,7 @@ impl Renderer {
                         Made::Pipeline(oit::pipeline(
                             &device,
                             &[],
+                            wgpu::FrontFace::Ccw,
                             HdrPipeline {
                                 alpha_to_coverage: false,
                                 label: name,
@@ -384,6 +387,7 @@ impl Renderer {
                         Made::Pipeline(oit::pipeline(
                             &device,
                             &[],
+                            wgpu::FrontFace::Ccw,
                             HdrPipeline {
                                 alpha_to_coverage: false,
                                 label: "particles",

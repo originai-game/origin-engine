@@ -32,10 +32,10 @@ impl Renderer {
         physical: bool,
     ) -> &wgpu::RenderPipeline {
         if b.lean && !skinned {
-            return self.lit.lean_pipelines[&(b.side, b.effects, b.derivatives, b.compact)]
+            return self.lit.lean_pipelines[&(b.faces, b.effects, b.derivatives, b.compact)]
                 .get(self.frame_features);
         }
-        let key = (b.side, b.blend, skinned, b.effects);
+        let key = (b.faces, b.blend, skinned, b.effects);
         if b.array && !physical {
             return &self.lit.array_maps.as_ref().expect("an array batch").lit[&key];
         }
@@ -50,7 +50,7 @@ impl Renderer {
             }
             (true, Some(sh)) => &self.cache.physical_hook_pipelines[&(sh, key)],
             (false, Some(sh)) => {
-                &self.cache.hook_pipelines[&(sh, b.side, b.blend, b.effects, skinned)]
+                &self.cache.hook_pipelines[&(sh, b.faces, b.blend, b.effects, skinned)]
             }
             (false, None) => self.lit.pbr_pipelines[&key].get(self.frame_features),
         }
@@ -68,21 +68,21 @@ impl Renderer {
             return self
                 .cache
                 .surface_prepass_pipelines
-                .get(&(b.shader, b.side, b.array))
+                .get(&(b.shader, b.faces, b.array))
                 .map(|p| p.get());
         }
         if let Some(sh) = b.shader {
             return self
                 .cache
                 .hook_prepass_pipelines
-                .get(&(sh, b.side, skinned))
+                .get(&(sh, b.faces, skinned))
                 .map(|p| p.get());
         }
         if b.lean && !skinned {
             return self
                 .prepass
                 .lean_prepass_pipelines
-                .get(&(b.side, b.derivatives, b.compact))
+                .get(&(b.faces, b.derivatives, b.compact))
                 .map(|p| p.get(self.frame_features));
         }
         if b.array {
@@ -90,12 +90,12 @@ impl Renderer {
                 .lit
                 .array_maps
                 .as_ref()
-                .and_then(|a| a.prepass.get(&(b.side, skinned)))
+                .and_then(|a| a.prepass.get(&(b.faces, skinned)))
                 .map(|p| p.get());
         }
         self.prepass
             .prepass_pipelines
-            .get(&(b.side, skinned))
+            .get(&(b.faces, skinned))
             .map(|p| p.get(self.frame_features))
     }
 

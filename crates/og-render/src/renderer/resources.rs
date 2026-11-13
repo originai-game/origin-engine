@@ -241,12 +241,13 @@ pub(crate) struct SceneCache {
     pub(crate) shadow_shaders: Vec<wgpu::ShaderModule>,
     /// Their lit pipelines by (shader, side, blended, effects, skinned).
     pub(crate) hook_pipelines:
-        HashMap<(usize, Side, bool, bool, bool), Deferred<wgpu::RenderPipeline>>,
+        HashMap<(usize, Faces, bool, bool, bool), Deferred<wgpu::RenderPipeline>>,
     /// Their shadow and prepass pipelines by (shader, side, skinned).
-    pub(crate) hook_shadow_pipelines: HashMap<(usize, Side, bool), Deferred<ShadowSet>>,
-    pub(crate) hook_prepass_pipelines: HashMap<(usize, Side, bool), Deferred<wgpu::RenderPipeline>>,
+    pub(crate) hook_shadow_pipelines: HashMap<(usize, Faces, bool), Deferred<ShadowSet>>,
+    pub(crate) hook_prepass_pipelines:
+        HashMap<(usize, Faces, bool), Deferred<wgpu::RenderPipeline>>,
     pub(crate) surface_prepass_pipelines:
-        HashMap<(Option<usize>, Side, bool), Deferred<wgpu::RenderPipeline>>,
+        HashMap<(Option<usize>, Faces, bool), Deferred<wgpu::RenderPipeline>>,
     pub(crate) garments: HashMap<(u64, usize), crate::garment_gpu::Mesh>,
     /// The physical lit shader with a material shader, made when a physical
     /// material first uses it, and its pipelines by (shader, key).
@@ -338,7 +339,8 @@ pub(crate) struct Batch {
     pub(crate) material: usize,
     pub(crate) first: u32,
     pub(crate) count: u32,
-    pub(crate) side: Side,
+    /// Its material's side, and whether its instances mirror the mesh.
+    pub(crate) faces: Faces,
     /// In the sorted pass (blended or transmissive).
     pub(crate) transparent: bool,
     /// Blended: the pipeline blends and writes no depth.
@@ -418,13 +420,13 @@ pub(crate) struct SkinnedFrame {
 /// shader's `EFFECTS` override is false: the toon, rim, flash, dissolve,
 /// decal and AO code is compiled out (the features-off cost). The physical
 /// pipelines are keyed the same (`physical.rs`).
-pub(crate) type PbrKey = (Side, bool, bool, bool);
+pub(crate) type PbrKey = (Faces, bool, bool, bool);
 /// The shadow pipelines: (side, skinned, dissolving).
-pub(crate) type ShadowKey = (Side, bool, bool);
+pub(crate) type ShadowKey = (Faces, bool, bool);
 /// What a lit pass's draws switch pipelines on: (side, blended, effects,
 /// material shader, physical, lean, derivatives, compact, array).
 pub(crate) type LitDrawKey = (
-    Side,
+    Faces,
     bool,
     bool,
     Option<usize>,
@@ -438,7 +440,7 @@ pub(crate) type LitDrawKey = (
 /// as in [`PbrKey`] (a plain material has none of its own: the frame's
 /// decals or AO), `derivatives` as [`Batch::derivatives`], `compact`: the
 /// vertices are [`VertexEncoding::Compact`]'s.
-pub(crate) type LeanKey = (Side, bool, bool, bool);
+pub(crate) type LeanKey = (Faces, bool, bool, bool);
 
 /// What a frame's CPU culls share ([`Renderer::cull`]), kept between
 /// frames so no pass allocates it: the in-view test of each sorted
@@ -618,7 +620,7 @@ pub(crate) struct Shadows {
     pub(crate) shadow_pipelines: HashMap<ShadowKey, Deferred<ShadowSet>>,
     /// The shadow pipelines of compact casters (lean, from the compact
     /// vertices) by side.
-    pub(crate) compact_shadow_pipelines: HashMap<Side, Deferred<ShadowSet>>,
+    pub(crate) compact_shadow_pipelines: HashMap<Faces, Deferred<ShadowSet>>,
     /// What the shadow layers keep from frame to frame (`shadow_cache.rs`),
     /// and per shadow slot the texture a layer's static casters are kept
     /// in while dynamic ones are drawn over it (`shadow_keep.rs`), with

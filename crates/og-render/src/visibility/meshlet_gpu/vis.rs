@@ -369,7 +369,7 @@ impl VisBuffer {
                 device,
                 (&layout, &layout),
                 module,
-                Side::Double,
+                Side::Double.into(),
                 false,
                 None,
                 Some(("vs_meshlet_resolve", "fs_prepass_meshlet_resolve", true)),

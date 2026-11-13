@@ -105,7 +105,7 @@ impl Renderer {
         for &(b, first, count) in &main_list.ranges {
             let batch = &batches[b as usize];
             let key = (
-                batch.side,
+                batch.faces,
                 batch.shader,
                 batch.lean,
                 batch.derivatives,
@@ -231,9 +231,9 @@ impl Renderer {
             let mut side = None;
             for &(b, first, count) in &main_list.ranges {
                 let batch = &batches[b as usize];
-                if side != Some(batch.side) {
-                    p.set_pipeline(object.pipeline(batch.side, false));
-                    side = Some(batch.side);
+                if side != Some(batch.faces) {
+                    p.set_pipeline(object.pipeline(batch.faces, false));
+                    side = Some(batch.faces);
                 }
                 p.set_bind_group(1, &self.cache.materials[batch.material].bind_group, &[]);
                 let mesh = &self.cache.meshes[batch.mesh];
@@ -253,7 +253,7 @@ impl Renderer {
             }
             let skinned: Vec<&wgpu::RenderPipeline> = skinned_visible
                 .iter()
-                .map(|b| object.pipeline(b.side, true))
+                .map(|b| object.pipeline(b.faces, true))
                 .collect();
             stats.draw_calls += ctx.draw_skinned(
                 &mut p,

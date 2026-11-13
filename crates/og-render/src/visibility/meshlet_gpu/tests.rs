@@ -10,7 +10,7 @@ pub(super) fn batch(mesh: usize, first: u32, count: u32) -> Batch {
         material: 0,
         first,
         count,
-        side: Side::Front,
+        faces: Side::Front.into(),
         transparent: false,
         blend: false,
         physical: false,
@@ -137,7 +137,7 @@ pub(super) fn each_batch_s_window_holds_its_items_and_fits_the_buffer_at_its_off
 #[test]
 pub(super) fn only_the_camera_s_soft_rows_feed_the_soft_list_after_every_row() {
     let mut back = batch(1, 3, 10);
-    back.side = Side::Back;
+    back.faces = Side::Back.into();
     let batches = [batch(0, 0, 3), back];
     let slot = |m: usize| Some((m as u32, if m == 0 { 7 } else { 40 }));
     // The camera, a reflection (lit) and a shadow view all take batch 1.

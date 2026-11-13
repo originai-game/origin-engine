@@ -139,7 +139,7 @@ impl Renderer {
                     family,
                     groups,
                     module,
-                    (b.side, b.blend, b.effects),
+                    (b.faces, b.blend, b.effects),
                     self.samples,
                 );
             }
@@ -152,8 +152,8 @@ impl Renderer {
             });
             let opaque = batches.iter().filter(|b| !b.transparent);
             for (side, skinned) in opaque
-                .map(|b| (b.side, false))
-                .chain(skinned_visible.iter().map(|b| (b.side, true)))
+                .map(|b| (b.faces, false))
+                .chain(skinned_visible.iter().map(|b| (b.faces, true)))
             {
                 object.ensure(
                     &self.device,

@@ -43,8 +43,8 @@ impl MeshletGpu {
         let camera = || self.frame.iter().filter(|d| d.lit);
         let missing = camera().any(|d| {
             let b = &batches[d.batch as usize];
-            !self.lit.contains_key(&(b.side, b.effects))
-                || (prepass && !self.prepass.contains_key(&b.side))
+            !self.lit.contains_key(&(b.faces, b.effects))
+                || (prepass && !self.prepass.contains_key(&b.faces))
         });
         if !missing {
             return;
@@ -61,10 +61,11 @@ impl MeshletGpu {
         });
         for d in self.frame.iter().filter(|d| d.lit) {
             let b = &batches[d.batch as usize];
-            self.lit.entry((b.side, b.effects)).or_insert_with(|| {
-                crate::hdr_pipeline_with(
+            self.lit.entry((b.faces, b.effects)).or_insert_with(|| {
+                crate::hdr_pipeline_facing(
                     device,
                     &[("EFFECTS", b.effects as u32 as f64)],
+                    b.faces.front(),
                     crate::HdrPipeline {
                         alpha_to_coverage: true,
                         label: "pbr meshlet",
@@ -73,7 +74,7 @@ impl MeshletGpu {
                         vs: "vs_meshlet",
                         fs: "fs",
                         buffers: &[],
-                        cull: crate::cull_mode(b.side),
+                        cull: b.faces.cull(),
                         depth_write: true,
                         depth_compare: wgpu::CompareFunction::Less,
                         blend: None,
@@ -82,12 +83,12 @@ impl MeshletGpu {
                 )
             });
             if prepass {
-                self.prepass.entry(b.side).or_insert_with(|| {
+                self.prepass.entry(b.faces).or_insert_with(|| {
                     crate::prepass_pipeline(
                         device,
                         (&layout, &layout),
                         module,
-                        b.side,
+                        b.faces,
                         false,
                         None,
                         Some(("vs_prepass_meshlet", "fs_prepass", false)),
@@ -109,7 +110,7 @@ impl MeshletGpu {
     ) {
         let key = |d: &MeshletDraw| {
             let b = &batches[d.batch as usize];
-            (b.side, b.dissolve)
+            (b.faces, b.dissolve)
         };
         let shadows = || self.frame.iter().filter(|d| !d.lit);
         if shadows().all(|d| self.shadow.contains_key(&key(d))) {
@@ -126,7 +127,7 @@ impl MeshletGpu {
             bind_group_layouts: &[Some(pass), Some(material), None, Some(&self.draw_layout)],
             immediate_size: 0,
         });
-        let keys: Vec<(Side, bool)> = self.frame.iter().filter(|d| !d.lit).map(key).collect();
+        let keys: Vec<(Faces, bool)> = self.frame.iter().filter(|d| !d.lit).map(key).collect();
         for k in keys {
             self.shadow.entry(k).or_insert_with(|| {
                 crate::meshlet_shadow_pipeline(device, &layout, module, k.0, k.1)
@@ -134,11 +135,11 @@ impl MeshletGpu {
         }
     }
 
-    /// The early phase's depth pipeline for `side` at `samples`.
+    /// The early phase's depth pipeline for `faces` at `samples`.
     pub(super) fn depth_pipeline(
         &self,
         device: &wgpu::Device,
-        side: Side,
+        faces: Faces,
         samples: u32,
     ) -> wgpu::RenderPipeline {
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -150,10 +151,7 @@ impl MeshletGpu {
                 compilation_options: Default::default(),
                 buffers: &[],
             },
-            primitive: wgpu::PrimitiveState {
-                cull_mode: crate::cull_mode(side),
-                ..Default::default()
-            },
+            primitive: faces.primitive(faces.cull()),
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: crate::DEPTH_FORMAT,
                 depth_write_enabled: Some(true),

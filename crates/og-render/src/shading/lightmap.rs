@@ -30,7 +30,6 @@
 //! The data is renderer state that outlives frames: a render snapshot's
 //! restore (`Renderer::restore_state`) keeps it, as it keeps every upload.
 
-use crate::material::Side;
 use glam::Vec3;
 pub use og_render_data::lightmap::*;
 use std::collections::HashMap;
@@ -281,7 +280,7 @@ fn key<T>(a: &Arc<T>) -> usize {
 }
 
 /// A lightmapped pipeline's (side, blended, effects).
-pub(crate) type LitKey = (Side, bool, bool);
+pub(crate) type LitKey = (crate::Faces, bool, bool);
 
 /// The lit pipeline family a lightmapped batch draws with: each the lit
 /// shading of its kind of batch with the lightmap's vertex stream and
@@ -612,7 +611,7 @@ impl Lightmaps {
                     immediate_size: 0,
                 })
             });
-        let (side, blend, effects) = key;
+        let (faces, blend, effects) = key;
         let constants = &[("EFFECTS", effects as u32 as f64)];
         let vertices = if family == Family::Compact {
             crate::compact::LEAN_LAYOUT
@@ -625,9 +624,10 @@ impl Lightmaps {
             Some(LIGHTMAP_LAYOUT),
         ];
         let (vs, fs) = family.entries();
-        let p = crate::hdr_pipeline_with(
+        let p = crate::hdr_pipeline_facing(
             device,
             constants,
+            faces.front(),
             crate::HdrPipeline {
                 alpha_to_coverage: false,
                 label: "lit lightmapped",
@@ -636,7 +636,7 @@ impl Lightmaps {
                 vs,
                 fs,
                 buffers: &buffers,
-                cull: crate::cull_mode(side),
+                cull: faces.cull(),
                 depth_write: !blend,
                 depth_compare: wgpu::CompareFunction::Less,
                 blend: blend.then_some(wgpu::BlendState::ALPHA_BLENDING),
@@ -664,7 +664,7 @@ impl Lightmaps {
         family: Family,
         layout: &wgpu::PipelineLayout,
         module: &wgpu::ShaderModule,
-        (side, effects): (Side, bool),
+        (faces, effects): (crate::Faces, bool),
         samples: u32,
         mode: crate::oit::Oit,
         // The features left out (pipeline_features.rs).
@@ -686,6 +686,7 @@ impl Lightmaps {
         crate::oit::pipeline(
             device,
             &constants,
+            faces.front(),
             crate::HdrPipeline {
                 alpha_to_coverage: false,
                 label: "lit lightmapped",
@@ -694,7 +695,7 @@ impl Lightmaps {
                 vs,
                 fs,
                 buffers: &buffers,
-                cull: crate::cull_mode(side),
+                cull: faces.cull(),
                 depth_write: false,
                 depth_compare: wgpu::CompareFunction::Less,
                 blend: None,

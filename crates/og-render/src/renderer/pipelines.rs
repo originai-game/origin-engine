@@ -247,6 +247,17 @@ pub(crate) fn hdr_pipeline_with(
     constants: &[(&str, f64)],
     p: HdrPipeline,
 ) -> wgpu::RenderPipeline {
+    hdr_pipeline_facing(device, constants, wgpu::FrontFace::Ccw, p)
+}
+
+/// [`hdr_pipeline_with`] taking `front` as the front winding: a batch's
+/// ([`Faces::front`]).
+pub(crate) fn hdr_pipeline_facing(
+    device: &wgpu::Device,
+    constants: &[(&str, f64)],
+    front: wgpu::FrontFace,
+    p: HdrPipeline,
+) -> wgpu::RenderPipeline {
     let options = wgpu::PipelineCompilationOptions {
         constants,
         ..Default::default()
@@ -261,6 +272,7 @@ pub(crate) fn hdr_pipeline_with(
             buffers: p.buffers,
         },
         primitive: wgpu::PrimitiveState {
+            front_face: front,
             cull_mode: p.cull,
             ..Default::default()
         },
@@ -321,6 +333,54 @@ pub(crate) fn cull_mode(side: Side) -> Option<wgpu::Face> {
     }
 }
 
+/// The faces a batch draws: its material's [`Side`], and whether its
+/// instances mirror the mesh (a transform with a negative determinant:
+/// `instances.rs` keeps them runs of their own). A mirrored triangle winds
+/// the other way as seen, so a mirrored batch's pipelines take clockwise
+/// as the front: what they cull and what their fragments read as
+/// `front_facing` are then the mesh's own sides (glTF's rule for a node
+/// with a negative determinant; three.js turns `frontFace` the same way).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct Faces {
+    pub side: Side,
+    pub mirrored: bool,
+}
+
+impl From<Side> for Faces {
+    /// `side` of an unmirrored batch.
+    fn from(side: Side) -> Self {
+        Self {
+            side,
+            mirrored: false,
+        }
+    }
+}
+
+impl Faces {
+    /// The winding its pipelines take as the front.
+    pub(crate) fn front(self) -> wgpu::FrontFace {
+        if self.mirrored {
+            wgpu::FrontFace::Cw
+        } else {
+            wgpu::FrontFace::Ccw
+        }
+    }
+
+    /// The faces its lit pipelines cull ([`cull_mode`]).
+    pub(crate) fn cull(self) -> Option<wgpu::Face> {
+        cull_mode(self.side)
+    }
+
+    /// [`Faces::front`] and `cull` as a pipeline's primitive state.
+    pub(crate) fn primitive(self, cull: Option<wgpu::Face>) -> wgpu::PrimitiveState {
+        wgpu::PrimitiveState {
+            front_face: self.front(),
+            cull_mode: cull,
+            ..Default::default()
+        }
+    }
+}
+
 /// The lit pipeline for one (side, blending, skinned) combination.
 pub(crate) fn pbr_pipeline(
     device: &wgpu::Device,
@@ -338,7 +398,7 @@ pub(crate) fn lit_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
-    (side, transparent, skinned, effects): PbrKey,
+    (faces, transparent, skinned, effects): PbrKey,
     samples: u32,
     physical: bool,
     // The features left out (pipeline_features.rs).
@@ -352,9 +412,10 @@ pub(crate) fn lit_pipeline(
         Some(skin::SKINNED_INSTANCE_LAYOUT),
         Some(skin::SKIN_VERTEX_LAYOUT),
     ];
-    hdr_pipeline_with(
+    hdr_pipeline_facing(
         device,
         &constants,
+        faces.front(),
         HdrPipeline {
             // Opaque lit pixels write alpha 1 (every sample); alpha-to-coverage materials write their coverage.
             alpha_to_coverage: !transparent,
@@ -374,7 +435,7 @@ pub(crate) fn lit_pipeline(
             },
             fs: "fs",
             buffers: if skinned { &skin } else { &plain },
-            cull: cull_mode(side),
+            cull: faces.cull(),
             // Blended surfaces test against the opaque depth but do not write it.
             depth_write: !transparent,
             depth_compare: wgpu::CompareFunction::Less,
@@ -393,7 +454,7 @@ pub(crate) fn lean_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     module: &wgpu::ShaderModule,
-    (side, effects, derivatives, compact): LeanKey,
+    (faces, effects, derivatives, compact): LeanKey,
     samples: u32,
     // The features left out (pipeline_features.rs).
     off: &[(&'static str, f64)],
@@ -403,9 +464,10 @@ pub(crate) fn lean_pipeline(
     if !derivatives {
         constants.push(("DISCARD", 0.0));
     }
-    hdr_pipeline_with(
+    hdr_pipeline_facing(
         device,
         &constants,
+        faces.front(),
         HdrPipeline {
             alpha_to_coverage: false,
             label: if compact {
@@ -429,7 +491,7 @@ pub(crate) fn lean_pipeline(
                 }),
                 Some(INSTANCE_LAYOUT),
             ],
-            cull: cull_mode(side),
+            cull: faces.cull(),
             depth_write: true,
             depth_compare: wgpu::CompareFunction::Less,
             blend: None,
@@ -454,7 +516,7 @@ pub(crate) fn prepass_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
-    side: Side,
+    faces: Faces,
     skinned: bool,
     lean: Option<(bool, bool)>,
     // The meshlet path's (vertex, fragment) entry points: no vertex
@@ -466,7 +528,7 @@ pub(crate) fn prepass_pipeline(
     off: &[(&'static str, f64)],
 ) -> wgpu::RenderPipeline {
     prepass_variant(
-        device, layouts, module, side, skinned, lean, meshlet, None, off,
+        device, layouts, module, faces, skinned, lean, meshlet, None, off,
     )
 }
 
@@ -474,14 +536,14 @@ pub(crate) fn surface_prepass_pipeline(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
-    side: Side,
+    faces: Faces,
     array: bool,
 ) -> wgpu::RenderPipeline {
     prepass_variant(
         device,
         layouts,
         module,
-        side,
+        faces,
         false,
         None,
         None,
@@ -499,7 +561,7 @@ fn prepass_variant(
     device: &wgpu::Device,
     layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
     module: &wgpu::ShaderModule,
-    side: Side,
+    faces: Faces,
     skinned: bool,
     lean: Option<(bool, bool)>,
     meshlet: Option<(&str, &str, bool)>,
@@ -571,10 +633,7 @@ fn prepass_variant(
                 (false, false) => &plain,
             },
         },
-        primitive: wgpu::PrimitiveState {
-            cull_mode: cull_mode(side),
-            ..Default::default()
-        },
+        primitive: faces.primitive(faces.cull()),
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             depth_write_enabled: Some(true),
@@ -612,7 +671,7 @@ pub(crate) fn shadow_pipeline(
     device: &wgpu::Device,
     layouts: &[wgpu::PipelineLayout; 3],
     module: &wgpu::ShaderModule,
-    (side, skinned, dissolve): ShadowKey,
+    (faces, skinned, dissolve): ShadowKey,
     hooked: bool,
     compact: bool,
 ) -> ShadowSet {
@@ -657,10 +716,7 @@ pub(crate) fn shadow_pipeline(
             },
             // A cascade keeps the far sides, a local layer both
             // (shadow_target.rs).
-            primitive: wgpu::PrimitiveState {
-                cull_mode: target.cull(side),
-                ..Default::default()
-            },
+            primitive: faces.primitive(target.cull(faces.side)),
             depth_stencil: Some(target.depth()),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
@@ -672,7 +728,7 @@ pub(crate) fn shadow_pipeline(
                     (false, false) => "fs",
                 }),
                 compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: ShadowTarget::constants(side),
+                    constants: ShadowTarget::constants(faces.side),
                     ..Default::default()
                 },
                 targets: &[Some(target.color())],
@@ -691,7 +747,7 @@ pub(crate) fn meshlet_shadow_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
     module: &wgpu::ShaderModule,
-    side: Side,
+    faces: Faces,
     full: bool,
 ) -> ShadowSet {
     ShadowSet::new(|target| {
@@ -709,17 +765,14 @@ pub(crate) fn meshlet_shadow_pipeline(
                 buffers: &[],
             },
             // As `shadow_pipeline`'s casters.
-            primitive: wgpu::PrimitiveState {
-                cull_mode: target.cull(side),
-                ..Default::default()
-            },
+            primitive: faces.primitive(target.cull(faces.side)),
             depth_stencil: Some(target.depth()),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module,
                 entry_point: Some(if full { "fs_dissolve" } else { "fs_lean" }),
                 compilation_options: wgpu::PipelineCompilationOptions {
-                    constants: ShadowTarget::constants(side),
+                    constants: ShadowTarget::constants(faces.side),
                     ..Default::default()
                 },
                 targets: &[Some(target.color())],
@@ -735,10 +788,10 @@ pub(crate) fn meshlet_shadow_pipeline(
 pub(crate) struct PrepassState {
     /// Prepass pipelines by (side, skinned).
     pub(crate) prepass_pipelines:
-        HashMap<(Side, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+        HashMap<(Faces, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     /// Their prepass pipelines by (side, derivatives, compact).
     pub(crate) lean_prepass_pipelines:
-        HashMap<(Side, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
+        HashMap<(Faces, bool, bool), pipeline_features::Variants<Deferred<wgpu::RenderPipeline>>>,
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     pub(crate) stylise_object: Option<stylise_object::ObjectPass>,

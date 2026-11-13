@@ -42,7 +42,7 @@
 //! waits for the frame's own natively (copying them late for the last
 //! frame encoded).
 
-use crate::{Batch, DEPTH_FORMAT, GpuMaterial, GpuMesh, INSTANCE_STRIDE, Side, cull_mode};
+use crate::{Batch, DEPTH_FORMAT, Faces, GpuMaterial, GpuMesh, INSTANCE_STRIDE};
 use glam::{Mat4, Vec4};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -319,7 +319,7 @@ pub(crate) struct GpuCulling {
     hiz_reduce: wgpu::ComputePipeline,
     depth_module: wgpu::ShaderModule,
     depth_pipeline_layout: wgpu::PipelineLayout,
-    depth_pipelines: HashMap<(Side, bool, u32), wgpu::RenderPipeline>,
+    depth_pipelines: HashMap<(Faces, bool, u32), wgpu::RenderPipeline>,
     view: wgpu::Buffer,
     view_group: wgpu::BindGroup,
     params: [wgpu::Buffer; 2],

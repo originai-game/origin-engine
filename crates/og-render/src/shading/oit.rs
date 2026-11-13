@@ -173,10 +173,12 @@ pub(crate) fn targets() -> [Option<wgpu::ColorTargetState>; 3] {
 /// state, culling and depth test): the fragment entry of `mode`, the OIT
 /// targets, no depth write and no alpha to coverage. `p.layout` must be
 /// the arena's ([`OitState::layout`]) for the modes that bind it
-/// ([`Oit::arena`]); [`Oit::Mark`] draws no colour.
+/// ([`Oit::arena`]); [`Oit::Mark`] draws no colour. `front` is the front
+/// winding ([`crate::Faces::front`]).
 pub(crate) fn pipeline(
     device: &wgpu::Device,
     constants: &[(&str, f64)],
+    front: wgpu::FrontFace,
     p: HdrPipeline,
     mode: Oit,
 ) -> wgpu::RenderPipeline {
@@ -201,6 +203,7 @@ pub(crate) fn pipeline(
             buffers: p.buffers,
         },
         primitive: wgpu::PrimitiveState {
+            front_face: front,
             cull_mode: p.cull,
             ..Default::default()
         },
@@ -507,10 +510,10 @@ impl Arena {
 /// [`OitState::pipelines`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Source {
-    /// A blended mesh of a lit module: which, its side, skinned, effects.
-    Lit(LitModule, crate::Side, bool, bool),
-    /// A lightmapped blended mesh: its family, side and effects.
-    Lightmap(crate::lightmap::Family, crate::Side, bool),
+    /// A blended mesh of a lit module: which, its faces, skinned, effects.
+    Lit(LitModule, crate::Faces, bool, bool),
+    /// A lightmapped blended mesh: its family, faces and effects.
+    Lightmap(crate::lightmap::Family, crate::Faces, bool),
     /// Alpha billboards and their drop shadows (sprite.wgsl `fs`).
     Sprite,
     /// Billboards' text (sprite.wgsl `fs_msdf`).

@@ -33,7 +33,7 @@
 //! probes draw the same instances' level 0 as before.
 
 use crate::meshlet::{CLUSTER_TRIANGLES, MeshClusters};
-use crate::{Batch, RenderScene, Side};
+use crate::{Batch, Faces, RenderScene, Side};
 use glam::{Mat4, Vec3, Vec4};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -317,13 +317,13 @@ pub(crate) struct MeshletGpu {
     cull: wgpu::ComputePipeline,
     compact: compact::Compact,
     pub(crate) draw_layout: wgpu::BindGroupLayout,
-    lit: HashMap<(Side, bool), wgpu::RenderPipeline>,
-    prepass: HashMap<Side, wgpu::RenderPipeline>,
+    lit: HashMap<(Faces, bool), wgpu::RenderPipeline>,
+    prepass: HashMap<Faces, wgpu::RenderPipeline>,
     /// The lit module ([`lit_source`]) and its planar slot.
     lit_module: Option<(bool, wgpu::ShaderModule)>,
     /// The shadow casters' pipelines by (side, the whole vertex for an
     /// alpha-tested or dissolving material), and their module.
-    shadow: HashMap<(Side, bool), crate::ShadowSet>,
+    shadow: HashMap<(Faces, bool), crate::ShadowSet>,
     shadow_module: Option<wgpu::ShaderModule>,
     pools: Option<Pools>,
     params: wgpu::Buffer,
@@ -338,7 +338,7 @@ pub(crate) struct MeshletGpu {
     depth_module: wgpu::ShaderModule,
     depth_pipeline_layout: wgpu::PipelineLayout,
     depth_group: wgpu::BindGroup,
-    depth_pipelines: HashMap<(Side, u32), wgpu::RenderPipeline>,
+    depth_pipelines: HashMap<(Faces, u32), wgpu::RenderPipeline>,
     draw_params: wgpu::Buffer,
     batches: wgpu::Buffer,
     items: wgpu::Buffer,

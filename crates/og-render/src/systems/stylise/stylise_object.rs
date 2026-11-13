@@ -19,7 +19,7 @@
 //! `stylise_object.wgsl`) and its pipelines are made the first frame a
 //! look lays a pattern in object space; nothing is built or drawn before.
 
-use crate::{Side, skin};
+use crate::{Faces, skin};
 use std::collections::HashMap;
 
 pub(crate) const STYLISE_OBJECT_WGSL: &str = wgsl!("stylise_object.wgsl");
@@ -48,7 +48,7 @@ pub(crate) fn object_source() -> String {
 /// The object pass's module and its pipelines by (side, skinned).
 pub(crate) struct ObjectPass {
     module: wgpu::ShaderModule,
-    pipelines: HashMap<(Side, bool), wgpu::RenderPipeline>,
+    pipelines: HashMap<(Faces, bool), wgpu::RenderPipeline>,
 }
 
 impl ObjectPass {
@@ -68,10 +68,10 @@ impl ObjectPass {
         &mut self,
         device: &wgpu::Device,
         layouts: (&wgpu::PipelineLayout, &wgpu::PipelineLayout),
-        side: Side,
+        faces: Faces,
         skinned: bool,
     ) {
-        if self.pipelines.contains_key(&(side, skinned)) {
+        if self.pipelines.contains_key(&(faces, skinned)) {
             return;
         }
         let plain = [Some(crate::VERTEX_LAYOUT), Some(crate::INSTANCE_LAYOUT)];
@@ -93,10 +93,7 @@ impl ObjectPass {
                 compilation_options: Default::default(),
                 buffers: if skinned { &skin } else { &plain },
             },
-            primitive: wgpu::PrimitiveState {
-                cull_mode: crate::cull_mode(side),
-                ..Default::default()
-            },
+            primitive: faces.primitive(faces.cull()),
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: crate::DEPTH_FORMAT,
                 depth_write_enabled: Some(false),
@@ -118,11 +115,11 @@ impl ObjectPass {
             multiview_mask: None,
             cache: crate::pipeline_cache::of(device).as_ref(),
         });
-        self.pipelines.insert((side, skinned), p);
+        self.pipelines.insert((faces, skinned), p);
     }
 
     /// The pipeline [`ObjectPass::ensure`] made for (side, skinned).
-    pub fn pipeline(&self, side: Side, skinned: bool) -> &wgpu::RenderPipeline {
-        &self.pipelines[&(side, skinned)]
+    pub fn pipeline(&self, faces: Faces, skinned: bool) -> &wgpu::RenderPipeline {
+        &self.pipelines[&(faces, skinned)]
     }
 }

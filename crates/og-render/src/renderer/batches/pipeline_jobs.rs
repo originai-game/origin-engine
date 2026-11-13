@@ -41,7 +41,7 @@ impl Renderer {
             .map(|b| (b, false))
             .chain(skinned.iter().map(|b| (b, true)));
         for (b, is_skinned) in all {
-            let key = (b.shader, b.side, b.array);
+            let key = (b.shader, b.faces, b.array);
             if prepass
                 && !is_skinned
                 && !b.transparent
@@ -63,13 +63,13 @@ impl Renderer {
                                 }),
                             )
                         };
-                        let (device, side, array) = (device.clone(), b.side, b.array);
+                        let (device, faces, array) = (device.clone(), b.faces, b.array);
                         Work::Once(Box::new(move || {
                             Made::Pipeline(surface_prepass_pipeline(
                                 &device,
                                 (&layouts.0, &layouts.1),
                                 &module,
-                                side,
+                                faces,
                                 array,
                             ))
                         }))
@@ -84,7 +84,7 @@ impl Renderer {
                     .array_maps
                     .as_ref()
                     .expect("made with the material");
-                let key = (b.side, b.blend, is_skinned, b.effects);
+                let key = (b.faces, b.blend, is_skinned, b.effects);
                 add_job!(jobs, Slot::ArrayLit(key), a.lit.contains_key(&key), {
                     let (d, layouts, module) =
                         (device.clone(), a.layouts.clone(), a.module.clone());
@@ -98,7 +98,7 @@ impl Renderer {
                         ))
                     }))
                 });
-                let key = (b.side, is_skinned);
+                let key = (b.faces, is_skinned);
                 if prepass && !b.transparent {
                     add_job!(
                         jobs,
@@ -106,7 +106,7 @@ impl Renderer {
                         a.prepass.contains_key(&key),
                         {
                             let (d, layouts, module, side) =
-                                (device.clone(), a.layouts.clone(), a.module.clone(), b.side);
+                                (device.clone(), a.layouts.clone(), a.module.clone(), b.faces);
                             Work::Once(Box::new(move || {
                                 Made::Pipeline(prepass_pipeline(
                                     &d,
@@ -122,7 +122,7 @@ impl Renderer {
                         }
                     );
                 }
-                let key = (b.side, b.dissolve);
+                let key = (b.faces, b.dissolve);
                 if !is_skinned {
                     add_job!(jobs, Slot::ArrayShadow(key), a.shadow.contains_key(&key), {
                         let (d, layouts, module) = (
@@ -147,7 +147,7 @@ impl Renderer {
             if b.physical {
                 // The physical lit pipeline (the standard ones below draw the
                 // material's reflection).
-                let key = (b.side, b.blend, is_skinned, b.effects);
+                let key = (b.faces, b.blend, is_skinned, b.effects);
                 let physical = self.lit.physical.as_ref().expect("made with the material");
                 match b.shader {
                     None => {
@@ -199,8 +199,8 @@ impl Renderer {
                 }
             }
             if let Some(sh) = b.shader {
-                let key = (sh, b.side, b.blend, b.effects, is_skinned);
-                let lit = (b.side, b.blend, is_skinned, b.effects);
+                let key = (sh, b.faces, b.blend, b.effects, is_skinned);
+                let lit = (b.faces, b.blend, is_skinned, b.effects);
                 add_job!(
                     jobs,
                     Slot::Hook(key),
@@ -220,8 +220,8 @@ impl Renderer {
                     }
                 );
                 // Shadows and the prepass see the material shader's offset.
-                let key = (sh, b.side, is_skinned);
-                let shadow = (b.side, is_skinned, b.dissolve);
+                let key = (sh, b.faces, is_skinned);
+                let shadow = (b.faces, is_skinned, b.dissolve);
                 add_job!(
                     jobs,
                     Slot::HookShadow(key),
@@ -249,7 +249,7 @@ impl Renderer {
                                 device.clone(),
                                 pbr.clone(),
                                 self.cache.shaders[sh].clone(),
-                                b.side,
+                                b.faces,
                             );
                             Work::Once(Box::new(move || {
                                 Made::Pipeline(prepass_pipeline(
@@ -270,7 +270,7 @@ impl Renderer {
             if b.lean && !is_skinned {
                 // A plain material: the lean lit and prepass pipelines (its
                 // shadows take the shadow pipeline below, lean as well).
-                let key = (b.side, b.effects, b.derivatives, b.compact);
+                let key = (b.faces, b.effects, b.derivatives, b.compact);
                 add_job!(
                     jobs,
                     Slot::Lean(key),
@@ -286,7 +286,7 @@ impl Renderer {
                         }))
                     }
                 );
-                let key = (b.side, b.derivatives, b.compact);
+                let key = (b.faces, b.derivatives, b.compact);
                 if prepass {
                     add_job!(
                         jobs,
@@ -295,7 +295,7 @@ impl Renderer {
                         {
                             let (d, layouts, module) =
                                 (device.clone(), pbr.clone(), pbr_shader.clone());
-                            let (side, lean) = (b.side, (b.derivatives, b.compact));
+                            let (side, lean) = (b.faces, (b.derivatives, b.compact));
                             Work::Variants(variant_job(move |off: &[(&'static str, f64)]| {
                                 Made::Pipeline(prepass_pipeline(
                                     &d,
@@ -314,14 +314,14 @@ impl Renderer {
                 if b.compact {
                     add_job!(
                         jobs,
-                        Slot::CompactShadow(b.side),
-                        self.shadows.compact_shadow_pipelines.contains_key(&b.side),
+                        Slot::CompactShadow(b.faces),
+                        self.shadows.compact_shadow_pipelines.contains_key(&b.faces),
                         {
                             let (d, layouts, module, side) = (
                                 device.clone(),
                                 shadow_layouts.clone(),
                                 shadow_shader.clone(),
-                                b.side,
+                                b.faces,
                             );
                             Work::Once(Box::new(move || {
                                 Made::Shadows(shadow_pipeline(
@@ -337,7 +337,7 @@ impl Renderer {
                     );
                 }
             }
-            let key = (b.side, b.blend, is_skinned, b.effects);
+            let key = (b.faces, b.blend, is_skinned, b.effects);
             if !(b.lean && !is_skinned) {
                 add_job!(
                     jobs,
@@ -360,7 +360,7 @@ impl Renderer {
                     }
                 );
             }
-            let key = (b.side, is_skinned, b.dissolve);
+            let key = (b.faces, is_skinned, b.dissolve);
             add_job!(
                 jobs,
                 Slot::Shadow(key),
@@ -377,7 +377,7 @@ impl Renderer {
                 }
             );
             if prepass && !b.transparent && !(b.lean && !is_skinned) {
-                let key = (b.side, is_skinned);
+                let key = (b.faces, is_skinned);
                 add_job!(
                     jobs,
                     Slot::Prepass(key),
@@ -409,21 +409,21 @@ impl Renderer {
 /// and its key.
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Slot {
-    SurfacePrepass((Option<usize>, Side, bool)),
+    SurfacePrepass((Option<usize>, Faces, bool)),
     ArrayLit(PbrKey),
-    ArrayPrepass((Side, bool)),
-    ArrayShadow((Side, bool)),
+    ArrayPrepass((Faces, bool)),
+    ArrayShadow((Faces, bool)),
     Physical(PbrKey),
     PhysicalHook((usize, PbrKey)),
-    Hook((usize, Side, bool, bool, bool)),
-    HookShadow((usize, Side, bool)),
-    HookPrepass((usize, Side, bool)),
+    Hook((usize, Faces, bool, bool, bool)),
+    HookShadow((usize, Faces, bool)),
+    HookPrepass((usize, Faces, bool)),
     Lean(LeanKey),
-    LeanPrepass((Side, bool, bool)),
-    CompactShadow(Side),
+    LeanPrepass((Faces, bool, bool)),
+    CompactShadow(Faces),
     Pbr(PbrKey),
     Shadow(ShadowKey),
-    Prepass((Side, bool)),
+    Prepass((Faces, bool)),
 }
 
 /// What a batch pipeline's job makes.
@@ -531,17 +531,22 @@ mod tests {
             made += 1;
             Work::Once(Box::new(|| unreachable!("a test job is never run")))
         };
-        let front = Slot::Shadow((Side::Front, false, false));
-        let back = Slot::Shadow((Side::Back, false, false));
+        let front = Slot::Shadow((Side::Front.into(), false, false));
+        let back = Slot::Shadow((Side::Back.into(), false, false));
         add_job!(jobs, front, true, job());
         add_job!(jobs, back, true, job());
         assert_eq!(jobs.len(), 0, "held slots queue nothing");
         add_job!(jobs, front, false, job());
         add_job!(jobs, front, false, job());
-        add_job!(jobs, Slot::Prepass((Side::Front, false)), false, job());
+        add_job!(
+            jobs,
+            Slot::Prepass((Side::Front.into(), false)),
+            false,
+            job()
+        );
         add_job!(jobs, back, true, job());
         assert_eq!(jobs.len(), 2, "one job per wanted slot");
-        assert!(jobs[0].0 == front && jobs[1].0 == Slot::Prepass((Side::Front, false)));
+        assert!(jobs[0].0 == front && jobs[1].0 == Slot::Prepass((Side::Front.into(), false)));
         assert_eq!(made, 2, "a job is made only for a slot it queues");
     }
 }

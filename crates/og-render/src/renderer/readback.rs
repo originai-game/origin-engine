@@ -78,7 +78,7 @@ impl Renderer {
     fn warm_plain_lit(&mut self) -> bool {
         // With the effect shader when the frame puts it on every batch:
         // the variant without it would be made for nothing.
-        let key = (Side::Front, false, false, self.lit.plain_effects);
+        let key = (Side::Front.into(), false, false, self.lit.plain_effects);
         if !self.lit.pbr_pipelines.contains_key(&key) {
             let p = pbr_pipeline(
                 &self.device,
@@ -97,7 +97,7 @@ impl Renderer {
             );
             return true;
         }
-        let key = (Side::Front, false, false);
+        let key = (Side::Front.into(), false, false);
         if !self.shadows.shadow_pipelines.contains_key(&key) {
             let p = shadow_pipeline(
                 &self.device,
@@ -310,7 +310,9 @@ mod tests {
             .lit
             .pbr_pipelines
             .keys()
-            .filter(|&&(side, blend, skinned, _)| side == Side::Front && !blend && !skinned)
+            .filter(|&&(faces, blend, skinned, _)| {
+                faces == Side::Front.into() && !blend && !skinned
+            })
             .map(|&(.., effects)| effects)
             .collect();
         assert_eq!(plain, [true], "the plain lit variants made");

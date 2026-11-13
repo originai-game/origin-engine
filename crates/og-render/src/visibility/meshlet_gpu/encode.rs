@@ -72,8 +72,10 @@ impl MeshletGpu {
             batches,
             views.iter().map(|v| (v.taken.as_slice(), v.lit)),
             |m| pools.slots.get(&m).copied(),
-            |b| b.side == Side::Front,
-            |b| soft_on && occluder(b),
+            |b| b.faces == Side::Front.into(),
+            // A mirrored batch's triangles wind the other way: the hardware
+            // path's pipelines take that as the front (`Faces::front`).
+            |b| soft_on && occluder(b) && !b.faces.mirrored,
         );
         if rows.is_empty() || items as u64 * 8 > self.max_binding {
             return None;
@@ -304,9 +306,9 @@ impl MeshletGpu {
             for d in self.frame.iter().filter(|d| d.view == 0) {
                 let b = &batches[d.batch as usize];
                 if occluder(b) {
-                    let key = (b.side, samples);
+                    let key = (b.faces, samples);
                     if !self.depth_pipelines.contains_key(&key) {
-                        let pipeline = self.depth_pipeline(device, b.side, samples);
+                        let pipeline = self.depth_pipeline(device, b.faces, samples);
                         self.depth_pipelines.insert(key, pipeline);
                     }
                 }
@@ -331,7 +333,7 @@ impl MeshletGpu {
                 for d in self.frame.iter().filter(|d| d.view == 0) {
                     let b = &batches[d.batch as usize];
                     let (Some(pipeline), Some((_, group))) = (
-                        self.depth_pipelines.get(&(b.side, samples)),
+                        self.depth_pipelines.get(&(b.faces, samples)),
                         self.mesh_groups.get(&b.mesh),
                     ) else {
                         continue;

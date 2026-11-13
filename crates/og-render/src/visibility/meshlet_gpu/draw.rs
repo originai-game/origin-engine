@@ -22,9 +22,9 @@ impl MeshletGpu {
         for d in self.frame.iter().filter(|d| d.view == view && d.lit) {
             let b = &batches[d.batch as usize];
             let pipeline = if prepass {
-                self.prepass.get(&b.side)
+                self.prepass.get(&b.faces)
             } else {
-                self.lit.get(&(b.side, b.effects))
+                self.lit.get(&(b.faces, b.effects))
             };
             let (Some(pipeline), Some((_, group))) = (pipeline, self.mesh_groups.get(&b.mesh))
             else {
@@ -105,7 +105,7 @@ impl MeshletGpu {
         for d in self.frame.iter().filter(|d| d.view == view) {
             let b = &batches[d.batch as usize];
             let (Some(pipeline), Some((_, group))) = (
-                self.shadow.get(&(b.side, b.dissolve)),
+                self.shadow.get(&(b.faces, b.dissolve)),
                 self.mesh_groups.get(&b.mesh),
             ) else {
                 continue;

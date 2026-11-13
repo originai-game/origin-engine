@@ -45,7 +45,10 @@ impl Renderer {
                     material: r.material,
                     first: r.first,
                     count: r.count,
-                    side: m.side,
+                    faces: Faces {
+                        side: m.side,
+                        mirrored: r.mirrored,
+                    },
                     transparent: m.transparent,
                     blend: m.blend,
                     physical: m.physical.is_some(),

@@ -50,7 +50,7 @@ impl Renderer {
                     material: d.material,
                     first: 0,
                     count: 0,
-                    side: m.side,
+                    faces: m.side.into(),
                     transparent: m.transparent,
                     blend: m.blend,
                     physical: m.physical.is_some(),

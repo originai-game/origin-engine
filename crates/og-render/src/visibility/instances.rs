@@ -6,7 +6,10 @@
 //! frame, most of them where they were. So the sort is redone only when the
 //! submission's (mesh, material, caster) sequence or a drawn mesh's bounds changed,
 //! and a sphere and GPU transform are recomputed only for the instances
-//! whose transform changed (compared bit for bit). Everything kept is what
+//! whose transform changed (compared bit for bit). An instance whose
+//! transform mirrors its mesh ([`mirrors`]) is in a run of its own, drawn
+//! with the other winding as the front; one that starts or stops mirroring
+//! sorts the instances again. Everything kept is what
 //! a fresh build computes, by the same operations, so a frame is the same
 //! whether it was built fresh or from the last one.
 
@@ -117,6 +120,21 @@ pub(crate) struct Run {
     /// The reflection probe its instances sample (`probe_select.rs`; an
     /// index into the frame's probes, [`crate::probe_select::NONE`]: none).
     pub probe: u8,
+    /// Its instances mirror the mesh ([`mirrors`]): its triangles wind the
+    /// other way as seen ([`crate::Faces::mirrored`]).
+    pub mirrored: bool,
+}
+
+/// Whether `m` mirrors what it places: a negative determinant, which turns
+/// every triangle's winding as seen (glTF: such a node's triangles are
+/// wound the other way).
+pub(crate) fn mirrors(m: &Mat4) -> bool {
+    let (x, y, z) = (
+        m.x_axis.truncate(),
+        m.y_axis.truncate(),
+        m.z_axis.truncate(),
+    );
+    x.dot(y.cross(z)) < 0.0
 }
 
 /// An instance's GPU transform in `run`.
@@ -410,6 +428,7 @@ impl SortedInstances {
                 !inst.cast_shadows,
                 layers(i),
                 probe_of(i),
+                mirrors(&inst.transform),
             )
         });
         self.order.clear();
@@ -421,12 +440,13 @@ impl SortedInstances {
         self.meshes.clear();
         for &i in &order {
             let inst = &instances[i];
-            let (mesh, material, cast, mask, probe) = (
+            let (mesh, material, cast, mask, probe, mirrored) = (
                 inst.mesh.index(),
                 drawn(scene, &self.params_moved, inst.material.index()),
                 inst.cast_shadows,
                 layers(i),
                 probe_of(i),
+                mirrors(&inst.transform),
             );
             let (bounds, empty) = mesh_info(mesh);
             // Sorted by mesh: a mesh's instances are together.
@@ -442,7 +462,8 @@ impl SortedInstances {
                         && r.material == material
                         && r.cast == cast
                         && r.layers == mask
-                        && r.probe == probe =>
+                        && r.probe == probe
+                        && r.mirrored == mirrored =>
                 {
                     r.count += 1
                 }
@@ -456,6 +477,7 @@ impl SortedInstances {
                     dequant: dequant(mesh, material),
                     array: array(material),
                     probe,
+                    mirrored,
                 }),
             }
             let m = inst.transform;
@@ -472,7 +494,8 @@ impl SortedInstances {
 
     /// The same sort: recomputes what changed with the transforms; returns
     /// how many instances that was, `None` when one moved into another
-    /// reflection probe's box (the sort is then redone).
+    /// reflection probe's box or started or stopped mirroring its mesh
+    /// (the sort is then redone).
     fn refresh(
         &mut self,
         scene: &RenderScene,
@@ -501,6 +524,9 @@ impl SortedInstances {
                     t.layer = layer;
                     t.fx = fx;
                     continue;
+                }
+                if mirrors(m) != run.mirrored {
+                    return None;
                 }
                 self.spheres[k] = world_sphere(m, bounds);
                 if !self.probes.is_empty()
@@ -615,6 +641,47 @@ mod tests {
         kept.set_probes(Vec::new());
         let none = update(&mut kept, &scene);
         assert_eq!(runs(&none), vec![(crate::probe_select::NONE, 3)]);
+    }
+
+    /// An instance whose transform mirrors the mesh is a run of its own,
+    /// whatever turn it also carries; one that is flipped later sorts again
+    /// and changes run, and back.
+    #[test]
+    fn mirrored_instances_are_a_run_of_their_own() {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(MeshData::default());
+        let material = scene.add_material(Material::default());
+        let turned = Mat4::from_scale_rotation_translation(
+            Vec3::new(-2.0, -1.0, 0.5),
+            Quat::from_rotation_y(2.0),
+            Vec3::X,
+        );
+        let flipped = Mat4::from_scale_rotation_translation(
+            Vec3::new(1.0, 1.0, -1.0),
+            Quat::from_rotation_x(0.7),
+            Vec3::Y,
+        );
+        assert!(!mirrors(&turned), "two negative axes are a turn");
+        assert!(mirrors(&flipped));
+        for m in [Mat4::IDENTITY, flipped, turned] {
+            scene.add_instance(mesh, material, m);
+        }
+        let mut kept = SortedInstances::default();
+        let mut runs = |s: &RenderScene| {
+            let sorted = kept
+                .update(s, 3, info, 2, |_, _| None, |_| false, |_| false)
+                .unwrap();
+            let runs: Vec<_> = sorted.runs.iter().map(|r| (r.mirrored, r.count)).collect();
+            let order = sorted.submission.clone();
+            kept.restore(sorted.transforms, sorted.spheres);
+            (runs, order)
+        };
+        assert_eq!(runs(&scene), (vec![(false, 2), (true, 1)], vec![0, 2, 1]));
+        scene.objects.instances[0].transform = Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0));
+        assert_eq!(runs(&scene), (vec![(false, 1), (true, 2)], vec![2, 0, 1]));
+        scene.objects.instances[0].transform = Mat4::IDENTITY;
+        scene.objects.instances[1].transform = Mat4::IDENTITY;
+        assert_eq!(runs(&scene), (vec![(false, 3)], vec![0, 1, 2]));
     }
 
     /// Copies of one material aliased together (RenderScene::alias_material)

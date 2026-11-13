@@ -57,7 +57,7 @@ impl Renderer {
             if lit {
                 let physical = batch.physical && physical_fx.is_some();
                 let key = (
-                    batch.side,
+                    batch.faces,
                     batch.blend,
                     batch.effects,
                     batch.shader,
@@ -71,11 +71,11 @@ impl Renderer {
                 let lightmap = Self::lightmap_family(&self.lights.lightmaps, batch, physical)
                     .and_then(|f| match oit {
                         Some(m) => self
-                            .oit_pipeline(oit::Source::Lightmap(f, batch.side, batch.effects), m),
+                            .oit_pipeline(oit::Source::Lightmap(f, batch.faces, batch.effects), m),
                         None => self
                             .lights
                             .lightmaps
-                            .pipeline(f, (batch.side, batch.blend, batch.effects)),
+                            .pipeline(f, (batch.faces, batch.blend, batch.effects)),
                     })
                     .zip(self.lights.lightmaps.group(batch.mesh))
                     // Where the planar reflection takes a slot, a pass
@@ -131,7 +131,7 @@ impl Renderer {
                 );
             } else {
                 let key = (
-                    (batch.side, false, batch.dissolve),
+                    (batch.faces, false, batch.dissolve),
                     batch.shader,
                     batch.compact,
                     batch.array,
@@ -139,13 +139,15 @@ impl Renderer {
                 if shadow_key != Some(key) {
                     pass.set_pipeline(
                         match batch.shader {
-                            Some(sh) => &self.cache.hook_shadow_pipelines[&(sh, batch.side, false)],
+                            Some(sh) => {
+                                &self.cache.hook_shadow_pipelines[&(sh, batch.faces, false)]
+                            }
                             None if batch.array => {
                                 &self.lit.array_maps.as_ref().expect("an array batch").shadow
-                                    [&(batch.side, batch.dissolve)]
+                                    [&(batch.faces, batch.dissolve)]
                             }
                             None if batch.compact => {
-                                &self.shadows.compact_shadow_pipelines[&batch.side]
+                                &self.shadows.compact_shadow_pipelines[&batch.faces]
                             }
                             None => &self.shadows.shadow_pipelines[&key.0],
                         }
