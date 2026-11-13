@@ -1731,10 +1731,11 @@ documents in one crate: the stages and their state, input, layout, the CSS
 cascade (the style stage, which styles immediate widgets too), motion,
 paint and draw, the document model, and the documents themselves (the
 Svelte parse and writeback, build and mount, the SVG element build,
-layers, style packs and the probe). The stages call the documents through
-`doc::build::Documents`; the documents' methods on the stage types are
-inherent, written beside the documents, and reach the stages' state only
-through each stage's accessors. Their own state (`DocState`:
+layers, style packs and the probe). The stages call the documents directly:
+the frame's end builds the layers no host built, and settlement restyles
+the mounted elements whose query containers changed. The documents' methods
+on the stage types are inherent, written beside the documents, and reach
+the stages' state only through each stage's accessors. Their own state (`DocState`:
 build cursor, the tick's outputs, mounts' memory, the reactive session) is
 held behind `doc::build::DocumentState` and reached only through its
 operations; a UI that built no document holds `NoDocuments`, with what a

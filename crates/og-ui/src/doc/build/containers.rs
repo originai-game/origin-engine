@@ -56,12 +56,20 @@ impl Ui {
             changed.insert(change.key);
         }
         let mut dirty = self.requery_immediate(&changed);
-        let retained = match documents() {
-            Some(documents) => documents.requery(self, &changed),
-            None => Ok(Vec::new()),
-        };
-        dirty.extend(retained.map_err(SettlementError::Resolver)?);
+        dirty.extend(
+            self.requery_mounted(&changed)
+                .map_err(SettlementError::Resolver)?,
+        );
         Ok(dirty)
+    }
+
+    /// Restyles the mounted elements that read the query containers in
+    /// `changed`, answering their layout nodes.
+    fn requery_mounted(&mut self, changed: &BTreeSet<u64>) -> Result<Vec<usize>, String> {
+        let mut mounts = std::mem::take(&mut self.docs.state_mut().memory.retained);
+        let restyled = mounts.requery(self, changed);
+        self.docs.state_mut().memory.retained = mounts;
+        restyled
     }
 
     fn requery_immediate(&mut self, changed: &BTreeSet<u64>) -> Vec<usize> {

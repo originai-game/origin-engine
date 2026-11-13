@@ -19,7 +19,7 @@
 //! its gaps too. [`Ui::game_input`] tells gameplay whether input is its
 //! this tick.
 
-use crate::bind::{Env, NoEnv};
+use crate::bind::Env;
 use crate::doc::build::{DocEvent, DocResponse};
 use crate::doc::{Back, InputMode, LayerSpec, Under};
 pub use crate::layer_stack::{Layer, LayerInfo, LayerOp, LayerStack};
@@ -618,27 +618,6 @@ impl Ui {
             }
         }
         events
-    }
-}
-
-/// The documents the stages call: the layer stack's build where no host
-/// built it, and the mounted elements' container queries.
-pub(crate) struct MountedDocuments;
-
-impl crate::doc::build::Documents for MountedDocuments {
-    fn build(&self, ui: &mut Ui) {
-        ui.build_layers(&NoEnv);
-    }
-
-    fn requery(
-        &self,
-        ui: &mut Ui,
-        changed: &std::collections::BTreeSet<u64>,
-    ) -> Result<Vec<usize>, String> {
-        let mut host = std::mem::take(&mut ui.docs.state_mut().memory.retained);
-        let restyled = host.requery(ui, changed);
-        ui.docs.state_mut().memory.retained = host;
-        restyled
     }
 }
 

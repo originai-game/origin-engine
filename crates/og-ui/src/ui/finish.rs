@@ -158,9 +158,7 @@ impl Ui {
                 self.tree.path_of(i)
             ));
         }
-        if let Some(documents) = crate::doc::build::documents() {
-            documents.build(self);
-        }
+        self.build_layers(&crate::bind::NoEnv);
         self.build_toasts();
         self.tree.retire_nodes();
         self.tree.building = false;

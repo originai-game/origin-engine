@@ -1494,10 +1494,8 @@ pub(crate) mod text_motion;
 pub(crate) mod touch;
 pub(crate) mod viewport;
 pub(crate) mod world;
-pub(crate) use host::documents;
 pub use host::{
-    Built, DocEvent, DocHost, DocMemory, DocResponse, DocumentState, Documents, Edit, NoDocuments,
-    install_documents,
+    Built, DocEvent, DocHost, DocMemory, DocResponse, DocumentState, Edit, NoDocuments,
 };
 pub use instances::RetainedHost;
 
