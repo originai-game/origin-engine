@@ -7,7 +7,11 @@ run `cargo`.
 
 ## Landing: a merge queue
 
-Reference equality proves equivalence, not visual correctness. Inspect every
+Reference equality proves equivalence, not visual correctness, and a
+reference is the last approved look, not a standard: a change that improves
+the look or its cost moves frames and is reviewed on the new frames
+(AGENTS.md §Principles). Equality is required only of a change that claims
+to move nothing. Inspect every
 new or re-recorded frame before committing it, including phone layouts and
 non-default states. Populate screen fixtures with their supplied content and
 art; keep missing-art cases as explicit placeholder tests. A reference that

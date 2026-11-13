@@ -56,6 +56,13 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **Size cuts never cost features.** Data only some games need is loaded or
   packed on demand, not removed. Growth from a feature is accepted within the
   size gate.
+- **A reference is the last approved look, not the standard.** A change
+  may move frames when the new frame is better in look, cost or
+  correctness; it is reviewed on its own merits against commercial games,
+  never against the old frame. Matching the old frame is required only of
+  a change that claims to move nothing (a refactor, a move, a speed-up
+  that keeps the look): there identity is the proof, and a moved frame is
+  a bug or a look change to send for review.
 - **Frozen is not obsolete.** A frozen kit, style pack or feature is one
   whose quality is not there yet; it stays in the tree until it is rebuilt.
   A cleanup deletes only what the owner names obsolete.
@@ -159,7 +166,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   on lavapipe; no `references/vulkan-cpu/`.
 - Generated `.d.ts` and wiki are drift-checked; never hand-edit them.
 - A test is kept only when it fails on a plausible regression; a re-recorded
-  frame is one the change must move, and is named in the report.
+  frame is one the change moves on purpose, named in the report with why
+  the new frame is better.
 - There is no GitHub CI; the gate is `scripts/check.sh`, its GPU steps on
   the GPU host.
 
