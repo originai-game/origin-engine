@@ -43,7 +43,7 @@
 //! `<svg>` element. Anything else is refused with the icon and element
 //! named.
 
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
 use crate::ktx2;
 use og_blob::BlobWriter;
@@ -805,12 +805,7 @@ fn plan_icons<'a>(
     // The stamp covers every SVG the set names.
     let deps = dependencies(s);
     let st = stamp(&[b"icons", &hash, deps.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::Font::NAME,
-        st,
-        Work::Job(Box::new(IconsJob(s))),
-    ));
+    outs.push((s.rel.clone(), format::Font::NAME, st, Box::new(IconsJob(s))));
 }
 
 /// An icon set's one output.

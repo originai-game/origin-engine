@@ -43,8 +43,7 @@
 //! DragonBones has no transform constraint.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, autorig,
-    stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, autorig, stamp,
 };
 use crate::format::{self, *};
 use og_anim::{
@@ -1322,7 +1321,7 @@ fn plan_rig2d<'a>(
         s.rel.clone(),
         format::Rig2D::NAME,
         st,
-        Work::Job(Box::new(Rig2dJob(s))),
+        Box::new(Rig2dJob(s)),
     ));
     // Rigged from layered art: its parts packed into a texture beside it.
     if Document::parse(&String::from_utf8_lossy(&s.bytes)).is_ok_and(|d| autorig::is_autorig(&d)) {
@@ -1331,7 +1330,7 @@ fn plan_rig2d<'a>(
             autorig::atlas_id(&s.rel),
             format::Texture::NAME,
             st,
-            Work::Job(Box::new(Rig2dAtlasJob(s))),
+            Box::new(Rig2dAtlasJob(s)),
         ));
     }
 }

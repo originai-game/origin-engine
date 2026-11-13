@@ -5,8 +5,7 @@
 //! texture of its own.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, hash_bytes,
-    stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, hash_bytes, stamp,
 };
 use crate::format::{self, BlobKind};
 use crate::lightmap::{LightmapFile, pages_from_ktx2};
@@ -113,7 +112,7 @@ fn plan_lightmap<'a>(
         s.rel.clone(),
         format::Lightmap::NAME,
         st,
-        Work::Job(Box::new(LightmapJob(s))),
+        Box::new(LightmapJob(s)),
     ));
 }
 

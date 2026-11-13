@@ -4,7 +4,7 @@
 
 use super::{
     Action, CookError, Cx, Exec, Job, KindDef, MeshOptions, NODE_ROWS, Out, PlanState, Planned,
-    Source, Split, Work, anim, anim_settings, assets_root, conform_off, ext, fracture, hash_bytes,
+    Source, Split, anim, anim_settings, assets_root, conform_off, ext, fracture, hash_bytes,
     mesh_for, model_stream_textures, not_split, stamp, texture,
 };
 use crate::format::{self, *};
@@ -777,11 +777,7 @@ fn plan_model<'a>(
         };
         let not_split =
             stream_textures.then(|| not_split(&g.images[u.image], u.kind, group_of.get(&s.rel)));
-        let gltf_texture = |split| {
-            Work::Job(Box::new(GltfTextureJob(
-                s, u.image, u.kind, u.cutout, split,
-            )))
-        };
+        let gltf_texture = |split| Box::new(GltfTextureJob(s, u.image, u.kind, u.cutout, split));
         match not_split {
             Some(None) => {
                 let mips = st(b"mips");
@@ -842,7 +838,7 @@ fn plan_model<'a>(
             s.rel.clone(),
             format::Model::NAME,
             st,
-            Work::Job(Box::new(ModelJob(s, ids))),
+            Box::new(ModelJob(s, ids)),
         ),
     );
     if s.fracture.is_some() {
@@ -856,7 +852,7 @@ fn plan_model<'a>(
                 &og_destruct::ASSET_VERSION.to_le_bytes(),
                 &hash,
             ]),
-            Work::Job(Box::new(FractureJob(s))),
+            Box::new(FractureJob(s)),
         ));
     }
     if group_of.contains_key(&s.rel) {
@@ -869,7 +865,7 @@ fn plan_model<'a>(
             format!("{}#proxy", s.rel),
             format::Model::NAME,
             st,
-            Work::Job(Box::new(ProxyJob(s))),
+            Box::new(ProxyJob(s)),
         ));
     }
     // The impostor's three atlases (`model { impostor true }`),
@@ -903,7 +899,7 @@ fn plan_model<'a>(
                 id,
                 format::Texture::NAME,
                 st,
-                Work::Job(Box::new(ImpostorJob(s, b, kind as u8))),
+                Box::new(ImpostorJob(s, b, kind as u8)),
             ));
         }
     }
@@ -933,7 +929,7 @@ fn plan_model<'a>(
                         format!("{}#anim", s.rel),
                         format::Animation::NAME,
                         st,
-                        Work::Job(Box::new(AnimationJob(s, a))),
+                        Box::new(AnimationJob(s, a)),
                     ),
                 );
             }

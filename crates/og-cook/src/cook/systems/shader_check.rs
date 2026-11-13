@@ -5,8 +5,8 @@
 //! are og-bundle's (`og_bundle::shader`), which never builds naga.
 
 use super::{
-    BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, execute,
-    format, read_sibling, stamp,
+    BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, execute, format,
+    read_sibling, stamp,
 };
 use og_render_data::{MaterialShader, ShaderMode};
 
@@ -203,7 +203,7 @@ fn plan_shader<'a>(
         s.rel.clone(),
         format::Shader::NAME,
         st,
-        Work::Job(Box::new(ShaderJob(s))),
+        Box::new(ShaderJob(s)),
     ));
 }
 
@@ -266,12 +266,7 @@ fn plan_post<'a>(
         .map(|src| read_sibling(s, &src).unwrap_or_default())
         .unwrap_or_default();
     let st = stamp(&[b"post", &hash, wgsl.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::Post::NAME,
-        st,
-        Work::Job(Box::new(PostJob(s))),
-    ));
+    outs.push((s.rel.clone(), format::Post::NAME, st, Box::new(PostJob(s))));
 }
 
 /// A post pass's one output: its checked, canonical text.
@@ -337,7 +332,7 @@ fn plan_ui_material<'a>(
         s.rel.clone(),
         format::UiMaterial::NAME,
         st,
-        Work::Job(Box::new(UiMaterialJob(s))),
+        Box::new(UiMaterialJob(s)),
     ));
 }
 

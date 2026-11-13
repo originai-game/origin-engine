@@ -13,9 +13,7 @@
 //! ```
 
 use super::texture;
-use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, stamp,
-};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, stamp};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::ogt::Document;
@@ -266,7 +264,7 @@ fn plan_texture_array<'a>(
                 s.rel.clone(),
                 format::TextureArray::NAME,
                 stamp(&base),
-                Work::Job(Box::new(TextureArrayJob(s, decl.clone()))),
+                Box::new(TextureArrayJob(s, decl.clone())),
             ));
             for n in 0..decl.layers.len() {
                 let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
@@ -274,7 +272,7 @@ fn plan_texture_array<'a>(
                     layer_id(&s.rel, n),
                     format::Texture::NAME,
                     st,
-                    Work::Job(Box::new(ArrayLayerJob(s, decl.clone(), n))),
+                    Box::new(ArrayLayerJob(s, decl.clone(), n)),
                 ));
             }
         }

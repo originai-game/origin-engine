@@ -5,7 +5,7 @@ fn source(root: &Path, rel: &str) -> Source {
     Source {
         rel: rel.to_string(),
         path: root.join(rel),
-        kind: super::super::Kind::System(&LOOK),
+        kind: &LOOK,
         bytes: std::fs::read(root.join(rel)).unwrap(),
         settings: None,
         settings_files: Vec::new(),

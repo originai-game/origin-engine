@@ -215,7 +215,7 @@ pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConfo
     let mut sheet_conform = BTreeMap::new();
     for (i, s) in sources.iter_mut().enumerate() {
         let sheets = [&flipbook::FLIPBOOK, &tilemap::TILESET, &rig2d::RIG2D];
-        if !matches!(s.kind, Kind::System(k) if sheets.contains(&k)) {
+        if !sheets.contains(&s.kind) {
             continue;
         }
         if let Some((text, c)) = super::strip(&String::from_utf8_lossy(&s.bytes), &[]) {
@@ -255,12 +255,12 @@ pub(super) fn uses(
             });
         };
         match s.kind {
-            Kind::System(k) if k == &flipbook::FLIPBOOK => {
+            k if k == &flipbook::FLIPBOOK => {
                 if let Ok(sheet) = flipbook::sheet(s) {
                     add(sheet.texture.clone(), UseKind::Flipbook(Box::new(sheet)));
                 }
             }
-            Kind::System(k) if k == &tilemap::TILESET => {
+            k if k == &tilemap::TILESET => {
                 if let Ok(t) = og_tilemap::Tileset::parse(&String::from_utf8_lossy(&s.bytes))
                     && !t.texture.is_empty()
                 {
@@ -270,7 +270,7 @@ pub(super) fn uses(
                     );
                 }
             }
-            Kind::System(k) if k == &rig2d::RIG2D => {
+            k if k == &rig2d::RIG2D => {
                 if let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes))
                     && let Some(p) = doc
                         .body
@@ -280,12 +280,12 @@ pub(super) fn uses(
                     add(flipbook::resolve(s, p), UseKind::Fixed("a 2D rig's parts"));
                 }
             }
-            Kind::System(k) if k == &ui_documents::STYLE => {
+            k if k == &ui_documents::STYLE => {
                 for id in style_images(s, known) {
                     add(id, UseKind::Fixed("a UI style's atlas"));
                 }
             }
-            Kind::System(k) if k == &tilemap::TILEMAP => {
+            k if k == &tilemap::TILEMAP => {
                 if let Ok(m) = tilemap::MapSettings::parse(settings_block(s, "tilemap"))
                     && let Ok(map) = tilemap::import(&s.rel, &s.bytes, &m, &|id| known.contains(id))
                 {
@@ -372,7 +372,7 @@ pub(in crate::cook) fn conform(
     let mesh: BTreeSet<String> = sources
         .iter()
         .filter(|s| {
-            s.kind == Kind::System(&crate::cook::texture::TEXTURE)
+            s.kind == &crate::cook::texture::TEXTURE
                 && s.error.is_none()
                 && !s.rel.to_ascii_lowercase().ends_with(".ktx2")
         })
@@ -396,7 +396,7 @@ pub(in crate::cook) fn conform(
     let mut sheet_texts: Vec<SheetText> = Vec::new();
     for i in 0..sources.len() {
         let s = &sources[i];
-        if s.kind != Kind::System(&crate::cook::texture::TEXTURE)
+        if s.kind != &crate::cook::texture::TEXTURE
             || s.error.is_some()
             || s.rel.to_ascii_lowercase().ends_with(".ktx2")
         {
@@ -546,7 +546,7 @@ pub(in crate::cook) fn conform(
         if let Some(index) = &done.index {
             push(
                 format!("{base}#index"),
-                Kind::System(&crate::cook::texture::TEXTURE),
+                &crate::cook::texture::TEXTURE,
                 index.png(),
                 Some(pixel_import),
             );
@@ -562,7 +562,7 @@ pub(in crate::cook) fn conform(
                 .collect();
             push(
                 format!("{base}#palette"),
-                Kind::System(&crate::cook::look::PALETTE),
+                &crate::cook::look::PALETTE,
                 hex.into_bytes(),
                 None,
             );
@@ -571,7 +571,7 @@ pub(in crate::cook) fn conform(
         if let Some((rot, rot_index, (sx, sy))) = &done.rotations {
             push(
                 format!("{base}#rotations"),
-                Kind::System(&crate::cook::texture::TEXTURE),
+                &crate::cook::texture::TEXTURE,
                 rot.png(),
                 Some(pixel_import),
             );
@@ -582,7 +582,7 @@ pub(in crate::cook) fn conform(
             if let Some(ri) = rot_index {
                 push(
                     format!("{base}#rotations-index"),
-                    Kind::System(&crate::cook::texture::TEXTURE),
+                    &crate::cook::texture::TEXTURE,
                     ri.png(),
                     Some(pixel_import),
                 );

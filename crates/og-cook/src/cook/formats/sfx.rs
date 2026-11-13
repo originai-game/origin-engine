@@ -19,7 +19,7 @@
 //! ```
 
 use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, ext, stamp,
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, ext, stamp,
 };
 use crate::format::{self, *};
 use crate::qoa;
@@ -640,12 +640,7 @@ fn plan_sfx<'a>(
 ) {
     // A preset's stamp moves with the synthesiser.
     let st = stamp(&[b"sfx", SYNTH_VERSION.as_bytes(), &hash]);
-    outs.push((
-        s.rel.clone(),
-        format::Sound::NAME,
-        st,
-        Work::Job(Box::new(SfxJob(s))),
-    ));
+    outs.push((s.rel.clone(), format::Sound::NAME, st, Box::new(SfxJob(s))));
 }
 
 /// A sound preset's one output: its synthesised sound.

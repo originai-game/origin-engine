@@ -6,7 +6,7 @@
 //! cooked output.
 
 use super::*;
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::BlobKind;
 use og_blob::BlobWriter;
 
@@ -155,7 +155,7 @@ fn plan_font_pack<'a>(
         s.rel.clone(),
         format::FontPack::NAME,
         st,
-        Work::Job(Box::new(FontPackJob(s))),
+        Box::new(FontPackJob(s)),
     ));
 }
 

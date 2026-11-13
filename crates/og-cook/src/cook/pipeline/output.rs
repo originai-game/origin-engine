@@ -106,7 +106,7 @@ pub(crate) fn assemble(
         .iter()
         .map(|s| AssetReport {
             source: s.rel.clone(),
-            kind: s.kind.name().to_string(),
+            kind: s.kind.name.to_string(),
             source_bytes: s.bytes.len() as u64
                 + s.settings.as_ref().map_or(0, |(t, _)| t.len() as u64)
                 + s.gltf
@@ -277,7 +277,7 @@ pub(crate) fn write(
         }
         let mut asset = ManifestAsset {
             source: s.rel.clone(),
-            kind: s.kind.name().to_string(),
+            kind: s.kind.name.to_string(),
             source_hash: s.hash,
             source_bytes: reports[si].source_bytes,
             outputs: Vec::new(),
@@ -549,7 +549,7 @@ pub(crate) fn diagnose(
     // Across the string tables: every locale has every key, with its arguments.
     let tables: Vec<(&str, &[u8])> = sources
         .iter()
-        .filter(|s| s.kind == Kind::System(&strings::STRINGS))
+        .filter(|s| s.kind == &strings::STRINGS)
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
     // Diagnostics describe source assets, never change their cooked blobs.
@@ -591,7 +591,7 @@ pub(crate) fn diagnose(
     // Dialogues and quests: every key they show is in the base table.
     let stories: Vec<(&str, &[u8])> = sources
         .iter()
-        .filter(|s| [Kind::System(&story::DIALOGUE), Kind::System(&story::QUEST)].contains(&s.kind))
+        .filter(|s| [&story::DIALOGUE, &story::QUEST].contains(&s.kind))
         .map(|s| (s.rel.as_str(), s.bytes.as_slice()))
         .collect();
     for (rel, what) in story::check_story_keys(&tables, &stories, story_functions) {
@@ -644,9 +644,10 @@ pub(crate) fn diagnose(
         }
     }
     // A Tiled map's custom properties the importer does not read.
-    for s in sources.iter().filter(|s| {
-        s.kind == Kind::System(&tilemap::TILEMAP) && s.rel.to_ascii_lowercase().ends_with(".tmj")
-    }) {
+    for s in sources
+        .iter()
+        .filter(|s| s.kind == &tilemap::TILEMAP && s.rel.to_ascii_lowercase().ends_with(".tmj"))
+    {
         for what in tilemap::tiled_unread(&String::from_utf8_lossy(&s.bytes)) {
             warnings.push(format!("assets/{}: {what}", s.rel));
             if let Some(r) = reports.iter_mut().find(|r| r.source == s.rel) {
@@ -723,8 +724,8 @@ pub(crate) fn diagnose(
             let applies = sources.iter().any(|s| {
                 &s.rel == rel
                     && match s.kind {
-                        Kind::System(k) if k == &crate::cook::model::MODEL => true,
-                        Kind::System(k) if k == &flipbook::FLIPBOOK => c.motion.is_some(),
+                        k if k == &crate::cook::model::MODEL => true,
+                        k if k == &flipbook::FLIPBOOK => c.motion.is_some(),
                         _ => !c.texture_desc().is_empty(),
                     }
             });
@@ -763,7 +764,7 @@ pub(crate) fn save(
 ) {
     let assets_path = assets_dir.canonicalize().ok();
     let bounded = sources.iter().all(|s| {
-        s.kind != Kind::System(&video::VIDEO)
+        s.kind != &video::VIDEO
             && s.gltf.as_ref().is_none_or(|g| {
                 g.external.iter().all(|(name, _)| {
                     s.path

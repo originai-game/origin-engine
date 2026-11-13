@@ -81,19 +81,9 @@ impl fmt::Display for CookError {
 
 impl std::error::Error for CookError {}
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Kind {
-    /// A kind its system's module declares (`pipeline/kinds.rs`).
-    System(&'static KindDef),
-}
-
-impl Kind {
-    fn name(self) -> &'static str {
-        match self {
-            Kind::System(k) => k.name,
-        }
-    }
-}
+/// A source's kind: the declaration its system's module makes
+/// (`pipeline/kinds.rs`).
+type Kind = &'static KindDef;
 
 pub(crate) struct Source {
     rel: String,
@@ -187,18 +177,13 @@ enum Split {
     Mips,
 }
 
-enum Work<'a> {
-    /// Work its system's module plans and cooks (`pipeline/kinds.rs`).
-    Job(Box<dyn Job + 'a>),
-}
-
 struct Planned<'a> {
     source: usize,
     id: String,
     file: String,
     ty: &'static str,
     stamp: u64,
-    work: Option<Work<'a>>,
+    work: Option<Box<dyn Job + 'a>>,
 }
 
 fn output_file(id: &str) -> String {
@@ -381,10 +366,7 @@ pub fn cook_project_with_texture_cache(
     );
     let document_themes = vec![og_ui::Theme::default()];
     let mut style_tokens_hash = StableHasher::new();
-    for source in sources
-        .iter()
-        .filter(|s| s.kind == Kind::System(&ui_documents::STYLE))
-    {
+    for source in sources.iter().filter(|s| s.kind == &ui_documents::STYLE) {
         style_tokens_hash.write_str(&source.rel);
         style_tokens_hash.write(&source.hash.to_le_bytes());
     }

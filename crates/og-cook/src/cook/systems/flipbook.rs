@@ -12,7 +12,7 @@
 //! a sheet has at most [`super::texture_array::MAX_LAYERS`] of them.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root,
     conform_off, stamp, texture_array,
 };
 use crate::format::{self, *};
@@ -488,7 +488,7 @@ fn plan_flipbook<'a>(
         s.rel.clone(),
         format::Flipbook::NAME,
         st,
-        Work::Job(Box::new(FlipbookJob(s))),
+        Box::new(FlipbookJob(s)),
     ));
     // `array true`: the frames as the layers of a texture array.
     if let Ok(sheet) = sheet(s)
@@ -507,14 +507,14 @@ fn plan_flipbook<'a>(
                 texture_array::layer_id(&array_id(&s.rel), n),
                 format::Texture::NAME,
                 st,
-                Work::Job(Box::new(FlipbookLayerJob(s, sheet.clone(), n))),
+                Box::new(FlipbookLayerJob(s, sheet.clone(), n)),
             ));
         }
         outs.push((
             array_id(&s.rel),
             format::TextureArray::NAME,
             stamp(&base),
-            Work::Job(Box::new(FlipbookArrayJob(s, sheet))),
+            Box::new(FlipbookArrayJob(s, sheet)),
         ));
     }
 }

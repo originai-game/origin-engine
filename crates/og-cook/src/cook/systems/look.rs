@@ -32,8 +32,7 @@
 pub use super::look_assets::{BUILTINS, MOOD_LAYERS, PRESETS};
 pub use super::look_styles::{StyleFile, fonts_dir, style_licences, styles, styles_dir};
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
-    stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };
 use crate::format::{self, BlobKind};
 use crate::look::{LookFile, MAX_EXTENDS, hex_to_linear};
@@ -898,12 +897,7 @@ fn plan_lut<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     let st = stamp(&[b"lut", &hash]);
-    outs.push((
-        s.rel.clone(),
-        format::Lut::NAME,
-        st,
-        Work::Job(Box::new(LutJob(s))),
-    ));
+    outs.push((s.rel.clone(), format::Lut::NAME, st, Box::new(LutJob(s))));
 }
 
 /// A colour table's one output.
@@ -953,12 +947,7 @@ fn plan_look<'a>(
     let deps = look_dependencies(s, assets_dir, &|id| known.contains(id));
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
     let st = stamp(&[b"look 1", &hash, deps.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::Look::NAME,
-        st,
-        Work::Job(Box::new(LookJob(s))),
-    ));
+    outs.push((s.rel.clone(), format::Look::NAME, st, Box::new(LookJob(s))));
 }
 
 /// A look's one output: the flattened look.
@@ -993,7 +982,7 @@ fn plan_palette<'a>(
         s.rel.clone(),
         format::Palette::NAME,
         st,
-        Work::Job(Box::new(PaletteJob(s))),
+        Box::new(PaletteJob(s)),
     ));
 }
 

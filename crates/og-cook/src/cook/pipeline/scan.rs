@@ -228,9 +228,7 @@ pub(crate) fn scan_with(
         let extension = ext(rel);
         let kind = match (kind_by_extension(&extension), extension.as_str()) {
             (Some(kind), _) => kind,
-            (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => {
-                Kind::System(&font_pack::FONT_PACK)
-            }
+            (None, "json") if font_pack::is_pack(rel, &read(rel, path)?) => &font_pack::FONT_PACK,
             (None, "ogt") => {
                 let text = String::from_utf8(read(rel, path)?)
                     .map_err(|_| CookError(format!("{}: not UTF-8 text", path.display())))?;
@@ -349,7 +347,7 @@ pub(crate) fn scan_with(
         sources.push(Source {
             path: assets_dir.join(&dir),
             rel: dir,
-            kind: Kind::System(&ui_documents::STYLE),
+            kind: &ui_documents::STYLE,
             bytes,
             settings: None,
             settings_files: Vec::new(),
@@ -444,7 +442,7 @@ pub(crate) fn plan_groups(
     // of them may declare a cell group, since only a cell loads its blob.
     let placing: Vec<&Source> = sources
         .iter()
-        .filter(|s| [Kind::System(&scene::SCENE), Kind::System(&scene::PREFAB)].contains(&s.kind))
+        .filter(|s| [&scene::SCENE, &scene::PREFAB].contains(&s.kind))
         .collect();
     let placed: BTreeSet<String> = each(&placing, threads, |s| {
         super::scene::subscenes(&String::from_utf8_lossy(&s.bytes), &|_| None)
@@ -454,10 +452,7 @@ pub(crate) fn plan_groups(
     .collect();
     // Each scene's groups are its own text's: every scene is parsed for
     // them at once, and they are taken in the scenes' order.
-    let scenes: Vec<&Source> = sources
-        .iter()
-        .filter(|s| s.kind == Kind::System(&scene::SCENE))
-        .collect();
+    let scenes: Vec<&Source> = sources.iter().filter(|s| s.kind == &scene::SCENE).collect();
     let declared = each(&scenes, threads, |s| {
         stream::groups_of(&s.rel, &String::from_utf8_lossy(&s.bytes), &|id| {
             known.contains(id)
@@ -519,8 +514,7 @@ pub(crate) fn plan_groups(
                             .meshes()
                             .any(|x| x.primitives().any(|p| p.morph_targets().next().is_some()))
                 });
-                let fits = src.kind == Kind::System(&crate::cook::model::MODEL)
-                    || matches!(src.kind, Kind::System(k) if k.streams);
+                let fits = src.kind.streams;
                 if !fits || skinned {
                     refused = Some(format!(
                         "stream \"{}\": {a} is {}; a group holds glTF models without skins or morph targets, textures, texture arrays, flipbooks, sounds, environment maps, palettes, looks and colour LUTs",
@@ -528,7 +522,7 @@ pub(crate) fn plan_groups(
                         if skinned {
                             "a skinned or morphed model".to_string()
                         } else {
-                            format!("a {}", src.kind.name())
+                            format!("a {}", src.kind.name)
                         }
                     ));
                     break 'groups;

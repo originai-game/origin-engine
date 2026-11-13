@@ -109,7 +109,7 @@ pub(crate) fn import(
     for (i, s) in sources.iter_mut().enumerate() {
         // What a model says it is (`conform character`, `conform effect`),
         // read from its text or import settings before a text becomes a glb.
-        let role = if s.kind == Kind::System(&crate::cook::model::MODEL) {
+        let role = if s.kind == &crate::cook::model::MODEL {
             match conform::model_role(s) {
                 Ok(c) => c,
                 Err(e) => {
@@ -123,7 +123,7 @@ pub(crate) fn import(
         // A MagicaVoxel file is a model: meshed into a glTF binary here (its
         // import settings' `model { voxScale voxOrigin }` applied), so the
         // rest of the cook sees a .glb.
-        if s.kind == Kind::System(&crate::cook::model::MODEL) && ext(&s.rel) == "vox" {
+        if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "vox" {
             match vox::VoxSettings::parse(settings_block(s, "model"))
                 .and_then(|v| vox::to_glb(&s.bytes, &v))
             {
@@ -139,7 +139,7 @@ pub(crate) fn import(
         // files it read beside the glb's own (an OBJ's .mtl, the sources
         // of packed images) join its hash and are consumed with it.
         let mut imported = None;
-        if s.kind == Kind::System(&crate::cook::model::MODEL) && fbx::handles(&ext(&s.rel)) {
+        if s.kind == &crate::cook::model::MODEL && fbx::handles(&ext(&s.rel)) {
             match fbx::to_glb(&s.bytes, &s.path, &ext(&s.rel)) {
                 Ok(i) => {
                     s.bytes = i.glb;
@@ -153,7 +153,7 @@ pub(crate) fn import(
         }
         // A model written as text (`type model`): its parts built and
         // written as a glTF binary here, so the rest of the cook sees a .glb.
-        if s.kind == Kind::System(&crate::cook::model::MODEL) && ext(&s.rel) == "ogt" {
+        if s.kind == &crate::cook::model::MODEL && ext(&s.rel) == "ogt" {
             let text = String::from_utf8_lossy(&s.bytes).to_string();
             match model_text::to_glb(&text) {
                 Ok(glb) => {
@@ -167,7 +167,7 @@ pub(crate) fn import(
             }
         }
         // A `fracture` block: the glb cut into its chunks (`fracture.rs`).
-        if s.kind == Kind::System(&crate::cook::model::MODEL) {
+        if s.kind == &crate::cook::model::MODEL {
             let dir = s.path.parent().unwrap_or(Path::new("."));
             let text = model_texts.get(&s.rel).map(String::as_str);
             let input_stamp = stamp(&[
@@ -211,7 +211,7 @@ pub(crate) fn import(
                 }
             }
         }
-        if s.kind == Kind::System(&crate::cook::model::MODEL) {
+        if s.kind == &crate::cook::model::MODEL {
             let dir = s.path.parent().unwrap_or(Path::new("."));
             match model::load(&s.bytes, dir) {
                 Ok(mut g) => {
@@ -282,33 +282,33 @@ pub(crate) fn resolve(
     // A terrain's heightmap and control map are part of the terrain, an
     // environment's image part of the environment.
     for s in sources.iter() {
-        if s.kind == Kind::System(&terrain::TERRAIN) {
+        if s.kind == &terrain::TERRAIN {
             consumed.extend(terrain::terrain_files(
                 &s.rel,
                 assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
-        if s.kind == Kind::System(&rig2d::RIG2D) {
+        if s.kind == &rig2d::RIG2D {
             consumed.extend(autorig::part_files(
                 &s.rel,
                 assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
-        if s.kind == Kind::System(&lightmap::LIGHTMAP)
+        if s.kind == &lightmap::LIGHTMAP
             && let Some(p) = lightmap::pages_file(&s.rel, &String::from_utf8_lossy(&s.bytes))
         {
             consumed.insert(p);
         }
-        if s.kind == Kind::System(&timeline::TIMELINE) {
+        if s.kind == &timeline::TIMELINE {
             consumed.extend(timeline::caption_files(
                 &s.rel,
                 assets_dir,
                 &String::from_utf8_lossy(&s.bytes),
             ));
         }
-        if s.kind == Kind::System(&environment::ENVIRONMENT) {
+        if s.kind == &environment::ENVIRONMENT {
             consumed.extend(environment::environment_files(
                 &s.rel,
                 assets_dir,
@@ -320,10 +320,10 @@ pub(crate) fn resolve(
     // has import settings of its own, not only its directory's (which only a
     // texture cooked on its own reads) or a terrain names it as a layer (by asset id), s59.
     for s in sources.iter() {
-        if s.kind == Kind::System(&crate::cook::texture::TEXTURE) && s.own_settings() {
+        if s.kind == &crate::cook::texture::TEXTURE && s.own_settings() {
             consumed.remove(&s.rel);
         }
-        if s.kind == Kind::System(&terrain::TERRAIN) {
+        if s.kind == &terrain::TERRAIN {
             for layer in
                 terrain::layer_files(&s.rel, assets_dir, &String::from_utf8_lossy(&s.bytes))
             {
@@ -337,7 +337,7 @@ pub(crate) fn resolve(
     let known: BTreeSet<String> = sources.iter().map(|s| s.rel.clone()).collect();
     let prefab_texts: BTreeMap<String, String> = sources
         .iter()
-        .filter(|s| [Kind::System(&scene::SCENE), Kind::System(&scene::PREFAB)].contains(&s.kind))
+        .filter(|s| [&scene::SCENE, &scene::PREFAB].contains(&s.kind))
         .map(|s| {
             (
                 s.rel.clone(),
@@ -385,7 +385,7 @@ pub(crate) fn contract(
         .flatten();
     if let Some(id) = project_look {
         match sources.iter().find(|s| s.rel == id) {
-            Some(s) if s.kind == Kind::System(&look::LOOK) => {
+            Some(s) if s.kind == &look::LOOK => {
                 if let Ok(c) = look::contract(s, assets_dir, &|id| known.contains(id)) {
                     if let Ok(full) = look::flattened(s, assets_dir, &|id| known.contains(id)) {
                         match conform::texture2d::paint_of(&full, assets_dir) {
@@ -423,13 +423,10 @@ pub(crate) fn contract(
         ui_screens::screens(&d.body).map_err(|e| CookError(format!("project.ogt:{e}")))?;
     }
     let mut mesh_off: BTreeMap<String, String> = BTreeMap::new();
-    for s in sources.iter().filter(|s| {
-        [
-            Kind::System(&crate::cook::model::MODEL),
-            Kind::System(&flipbook::FLIPBOOK),
-        ]
-        .contains(&s.kind)
-    }) {
+    for s in sources
+        .iter()
+        .filter(|s| [&crate::cook::model::MODEL, &flipbook::FLIPBOOK].contains(&s.kind))
+    {
         let why = own_conform_off(s).or_else(|| {
             project_conform
                 .off_by(&s.rel)
@@ -549,7 +546,7 @@ pub(crate) fn group(
     // settings, to `<id>.face.ogb`, which the web reads on demand.
     let pack_faces: BTreeSet<String> = sources
         .iter()
-        .filter(|s| s.kind == Kind::System(&font_pack::FONT_PACK))
+        .filter(|s| s.kind == &font_pack::FONT_PACK)
         .flat_map(font_pack::faces)
         .collect();
     Grouped {

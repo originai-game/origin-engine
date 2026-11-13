@@ -43,8 +43,7 @@
 //! values the world holds. `save_scene` writes tuned resources there.
 
 use super::{
-    CookError, Cx, Exec, Job, Kind, KindDef, Out, PlanState, Planned, Source, Work, hash_bytes,
-    prefab, stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, hash_bytes, prefab, stamp,
 };
 use crate::format::{self, *};
 use og_blob::BlobWriter;
@@ -977,7 +976,7 @@ fn plan_scene<'a>(
         .map(|r| format!("{r}={}", known.contains(&r)))
         .collect();
     // A scene that places no prefab keeps the stamp it had.
-    let st = if placed.is_empty() && s.kind == Kind::System(&SCENE) {
+    let st = if placed.is_empty() && s.kind == &SCENE {
         stamp(&[b"scene", &hash, &schema_hash, refs.join("\n").as_bytes()])
     } else {
         stamp(&[
@@ -993,7 +992,7 @@ fn plan_scene<'a>(
         s.rel.clone(),
         format::Scene::NAME,
         st,
-        Work::Job(Box::new(SceneJob(s))),
+        Box::new(SceneJob(s)),
     ));
 }
 

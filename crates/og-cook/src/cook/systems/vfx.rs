@@ -3,7 +3,7 @@
 //! model and sound it names is an asset, and stores the text,
 //! which the runtime parses again.
 
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -101,12 +101,7 @@ fn plan_vfx<'a>(
     let Cx { known, .. } = *cx;
     let st = stamp_inputs(s, &|id| known.contains(id));
     let st = stamp(&[b"vfx", &hash, st.as_bytes()]);
-    outs.push((
-        s.rel.clone(),
-        format::Vfx::NAME,
-        st,
-        Work::Job(Box::new(VfxJob(s))),
-    ));
+    outs.push((s.rel.clone(), format::Vfx::NAME, st, Box::new(VfxJob(s))));
 }
 
 /// A VFX graph's one output.

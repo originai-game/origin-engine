@@ -19,7 +19,7 @@
 
 use super::model::{self, GltfSource, Strings};
 use super::{
-    CookError, Cx, Exec, Job, KindDef, MeshOptions, Out, PlanState, Planned, Source, Work, stamp,
+    CookError, Cx, Exec, Job, KindDef, MeshOptions, Out, PlanState, Planned, Source, stamp,
 };
 use crate::format::{self, *};
 use og_blob::BlobWriter;
@@ -1330,12 +1330,7 @@ fn plan_rig<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     let st = stamp(&[b"rig", &hash]);
-    outs.push((
-        s.rel.clone(),
-        format::Rig::NAME,
-        st,
-        Work::Job(Box::new(RigJob(s))),
-    ));
+    outs.push((s.rel.clone(), format::Rig::NAME, st, Box::new(RigJob(s))));
 }
 
 /// A rig's one output.
@@ -1369,7 +1364,7 @@ fn plan_motion_action<'a>(
         s.rel.clone(),
         format::MotionAction::NAME,
         st,
-        Work::Job(Box::new(MotionActionJob(s))),
+        Box::new(MotionActionJob(s)),
     ));
 }
 

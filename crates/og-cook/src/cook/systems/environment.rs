@@ -47,8 +47,7 @@
 //! is baked the same way (`bake::bake` or `bake::bake_cube`).
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
-    stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
@@ -551,7 +550,7 @@ fn plan_environment<'a>(
         s.rel.clone(),
         format::EnvironmentMap::NAME,
         st,
-        Work::Job(Box::new(EnvironmentJob(s))),
+        Box::new(EnvironmentJob(s)),
     ));
 }
 

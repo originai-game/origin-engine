@@ -39,8 +39,7 @@
 //! sphere, capsule or cylinder (as its bounding box) on no dynamic body.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
-    stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
@@ -848,7 +847,7 @@ fn plan_nav_mesh<'a>(
         s.rel.clone(),
         format::NavMesh::NAME,
         st,
-        Work::Job(Box::new(NavMeshJob(s))),
+        Box::new(NavMeshJob(s)),
     ));
 }
 

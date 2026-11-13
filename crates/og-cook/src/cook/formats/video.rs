@@ -63,8 +63,8 @@
 
 use super::texture;
 use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, audio,
-    hash_bytes, stamp, texture_array,
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, audio, hash_bytes,
+    stamp, texture_array,
 };
 use crate::format::{self, BlobKind, VideoMeta, row_hash};
 use og_blob::BlobWriter;
@@ -947,40 +947,32 @@ fn plan_video<'a>(
                 s.rel.clone(),
                 format::Video::NAME,
                 stamp(&base),
-                Work::Job(Box::new(VideoMetaJob(plan.clone()))),
+                Box::new(VideoMetaJob(plan.clone())),
             ));
             if plan.decl.stream {
                 outs.push((
                     stream_id(&s.rel),
                     format::VideoStream::NAME,
                     stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
-                    Work::Job(Box::new(VideoStreamJob(
-                        src.clone(),
-                        src_hash,
-                        plan.clone(),
-                    ))),
+                    Box::new(VideoStreamJob(src.clone(), src_hash, plan.clone())),
                 ));
                 if let Some(size) = og_video::stream::fallback_size(plan.size) {
                     outs.push((
                         stream_fallback_id(&s.rel),
                         format::VideoStream::NAME,
                         stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
-                        Work::Job(Box::new(VideoStreamJob(
+                        Box::new(VideoStreamJob(
                             src.clone(),
                             src_hash,
                             Box::new(fallback_plan(&plan, size)),
-                        ))),
+                        )),
                     ));
                 }
                 outs.push((
                     poster_id(&s.rel),
                     format::Texture::NAME,
                     stamp(&[&base[..], &[b"poster".as_slice()]].concat()),
-                    Work::Job(Box::new(VideoPosterJob(
-                        src.clone(),
-                        src_hash,
-                        plan.clone(),
-                    ))),
+                    Box::new(VideoPosterJob(src.clone(), src_hash, plan.clone())),
                 ));
             } else {
                 let frames = frames_id(&s.rel);
@@ -988,7 +980,7 @@ fn plan_video<'a>(
                     frames.clone(),
                     format::TextureArray::NAME,
                     stamp(&[&base[..], &[b"array".as_slice()]].concat()),
-                    Work::Job(Box::new(VideoArrayJob(s, plan.clone()))),
+                    Box::new(VideoArrayJob(s, plan.clone())),
                 ));
                 for n in 0..plan.frames as usize {
                     let st = stamp(&[&base[..], &[&(n as u32).to_le_bytes()[..]]].concat());
@@ -996,12 +988,7 @@ fn plan_video<'a>(
                         texture_array::layer_id(&frames, n),
                         format::Texture::NAME,
                         st,
-                        Work::Job(Box::new(VideoFrameJob(
-                            src.clone(),
-                            src_hash,
-                            plan.clone(),
-                            n,
-                        ))),
+                        Box::new(VideoFrameJob(src.clone(), src_hash, plan.clone(), n)),
                     ));
                 }
             }
@@ -1010,7 +997,7 @@ fn plan_video<'a>(
                     audio_id(&s.rel),
                     format::Sound::NAME,
                     stamp(&[&base[..], &[b"audio".as_slice()]].concat()),
-                    Work::Job(Box::new(VideoAudioJob(src.clone(), plan.clone()))),
+                    Box::new(VideoAudioJob(src.clone(), plan.clone())),
                 ));
             }
         }

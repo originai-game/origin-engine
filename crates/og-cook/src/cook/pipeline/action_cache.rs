@@ -1,5 +1,5 @@
 //! Shared results. FNV stamps stay in blobs; cache identity uses full inputs.
-use super::{Action, CookError, CookOptions, Planned, Work, cache, format};
+use super::{Action, CookError, CookOptions, Planned, cache, format};
 use og_blob::Blob;
 use std::path::Path;
 
@@ -10,15 +10,12 @@ pub(crate) fn run(
     project_key: Option<&str>,
     cook: impl FnOnce() -> Result<(Vec<u8>, Vec<String>), CookError>,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    let texture =
-        matches!(&p.work, Some(Work::Job(j)) if matches!(j.action(), Action::Input(.., true)));
-    let input = match &p.work {
-        Some(Work::Job(j)) => match j.action() {
-            Action::Project => project_key.map(|key| (key.as_bytes(), p.id.clone())),
-            Action::Never => None,
-            Action::Input(bytes, settings, _) => Some((bytes, settings)),
-        },
-        _ => project_key.map(|key| (key.as_bytes(), p.id.clone())),
+    let job = p.work.as_ref().map(|j| j.action());
+    let texture = matches!(job, Some(Action::Input(.., true)));
+    let input = match job {
+        Some(Action::Never) => None,
+        Some(Action::Input(bytes, settings, _)) => Some((bytes, settings)),
+        Some(Action::Project) | None => project_key.map(|key| (key.as_bytes(), p.id.clone())),
     };
     let action = directory.zip(input).map(|(dir, (bytes, settings))| {
         let mut options = options.clone();

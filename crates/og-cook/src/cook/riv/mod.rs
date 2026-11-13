@@ -26,8 +26,7 @@ pub(crate) enum Field {
 mod tests;
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, execute, hash_bytes,
-    stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, execute, hash_bytes, stamp,
 };
 use crate::format::{self, *};
 use og_blob::BlobWriter;
@@ -534,7 +533,7 @@ fn plan_rive<'a>(
                     format!("{}#font{}", s.rel, f.index),
                     format::Font::NAME,
                     st,
-                    Work::Job(Box::new(RiveFontJob(Box::new(f)))),
+                    Box::new(RiveFontJob(Box::new(f))),
                 ));
             }
             for n in images {
@@ -543,7 +542,7 @@ fn plan_rive<'a>(
                     format!("{}#image{n}", s.rel),
                     format::Texture::NAME,
                     st,
-                    Work::Job(Box::new(RiveImageJob(s, n))),
+                    Box::new(RiveImageJob(s, n)),
                 ));
             }
             for name in names {
@@ -552,7 +551,7 @@ fn plan_rive<'a>(
                     format!("{}#{name}", s.rel),
                     format::RiveArtboard::NAME,
                     st,
-                    Work::Job(Box::new(RiveJob(s, name))),
+                    Box::new(RiveJob(s, name)),
                 ));
             }
         }

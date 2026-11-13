@@ -32,7 +32,7 @@ mod layers;
 
 pub use engine::{ENGINE_VERSION, LAYER_TYPES, Rendered};
 
-use super::{Kind, Source};
+use super::Source;
 use og_core::ogt::{Block, Document, Entry, Value};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -357,7 +357,7 @@ pub fn is_vfx2d(text: &str) -> bool {
 pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
     let mut extra = Vec::new();
     for s in sources.iter_mut() {
-        if s.kind != super::Kind::System(&crate::cook::flipbook::FLIPBOOK) || s.error.is_some() {
+        if s.kind != &crate::cook::flipbook::FLIPBOOK || s.error.is_some() {
             continue;
         }
         let text = String::from_utf8_lossy(&s.bytes).into_owned();
@@ -392,7 +392,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         extra.push(Source {
             rel: super::animated::sheet_texture_id(&s.rel),
             path: s.path.clone(),
-            kind: Kind::System(&crate::cook::texture::TEXTURE),
+            kind: &crate::cook::texture::TEXTURE,
             bytes: built.png,
             settings: Some((settings, doc)),
             settings_files: Vec::new(),

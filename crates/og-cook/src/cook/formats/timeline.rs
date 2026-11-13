@@ -9,7 +9,7 @@
 
 use super::terrain::resolve;
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root,
     hash_bytes, stamp,
 };
 use crate::format::{self, BlobKind};
@@ -382,7 +382,7 @@ fn plan_timeline<'a>(
         s.rel.clone(),
         format::Timeline::NAME,
         st,
-        Work::Job(Box::new(TimelineJob(s))),
+        Box::new(TimelineJob(s)),
     ));
 }
 

@@ -2,8 +2,8 @@
 //! cooked into its one blob.
 
 use super::{
-    BlobKind, CookError, Cx, Exec, Job, Kind, KindDef, Out, PlanState, Planned, Source, Work,
-    assets, execute, format, hash_bytes, stamp, strings,
+    BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, execute,
+    format, hash_bytes, stamp, strings,
 };
 use og_ui::prelude::*;
 
@@ -44,7 +44,7 @@ fn plan_style<'a>(
         s.rel.clone(),
         format::Style::NAME,
         st,
-        Work::Job(Box::new(StyleJob(s))),
+        Box::new(StyleJob(s)),
     ));
 }
 
@@ -163,7 +163,7 @@ fn plan_document<'a>(
             }
         }
         for id in &doc.strings {
-            let table = sources.iter().find(|source| source.rel == *id && source.kind == Kind::System(&strings::STRINGS))
+            let table = sources.iter().find(|source| source.rel == *id && source.kind == &strings::STRINGS)
                 .ok_or_else(|| vec![format!("{}: missing string table {id}; add the table named by <meta name=\"strings\">", s.rel)])?;
             let text = std::str::from_utf8(&table.bytes).map_err(|_| vec![format!("{id}: string tables must be UTF-8")])?;
             og_i18n::StringTable::parse(text).map_err(|error| vec![format!("{id}: {error}")])?;
@@ -198,7 +198,7 @@ fn plan_document<'a>(
         s.rel.clone(),
         format::Document::NAME,
         st,
-        Work::Job(Box::new(DocumentJob(s, uses))),
+        Box::new(DocumentJob(s, uses)),
     ));
 }
 

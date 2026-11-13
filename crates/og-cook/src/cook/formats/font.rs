@@ -11,7 +11,7 @@
 
 use super::{
     CookError, Cx, Exec, FontSettings, Job, KindDef, Out, Palette, PlanState, Planned, Source,
-    Work, font_settings, stamp,
+    font_settings, stamp,
 };
 use crate::format::{self, *};
 use crate::ktx2;
@@ -1349,7 +1349,7 @@ fn plan_font<'a>(
                 s.rel.clone(),
                 format::Font::NAME,
                 st,
-                Work::Job(Box::new(FontJob(s, f))),
+                Box::new(FontJob(s, f)),
             ));
         }
         Err(e) => early_errors.push((s.rel.clone(), "font", e)),

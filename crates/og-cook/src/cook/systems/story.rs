@@ -1,7 +1,7 @@
 //! Dialogues and quests: Yarn compiled to the engine's IR, quests kept as
 //! data, and their keys checked against the base string table.
 
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -186,7 +186,7 @@ fn plan_dialogue<'a>(
         s.rel.clone(),
         format::Dialogue::NAME,
         st,
-        Work::Job(Box::new(DialogueJob(s, story_functions))),
+        Box::new(DialogueJob(s, story_functions)),
     ));
 }
 
@@ -202,7 +202,7 @@ fn plan_quest<'a>(
         s.rel.clone(),
         format::Quest::NAME,
         st,
-        Work::Job(Box::new(QuestJob(s))),
+        Box::new(QuestJob(s)),
     ));
 }
 

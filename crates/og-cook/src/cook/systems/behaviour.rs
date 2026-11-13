@@ -1,7 +1,7 @@
 //! Behaviours (`type behaviour`): validated by og-ai and stored as text.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets_root, stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets_root, stamp,
 };
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
@@ -99,7 +99,7 @@ fn plan<'a>(
         s.rel.clone(),
         format::Behaviour::NAME,
         st,
-        Work::Job(Box::new(Cook(s))),
+        Box::new(Cook(s)),
     ));
 }
 

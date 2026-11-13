@@ -9,19 +9,17 @@ pub(crate) fn run(
     prefab_texts: &BTreeMap<String, String>,
     budgets: &stats::Budgets,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
-    match p.work.as_ref().expect("planned work") {
-        Work::Job(job) => job.cook(
-            p,
-            &Exec {
-                options,
-                threads,
-                schemas,
-                known,
-                prefab_texts,
-                budgets,
-            },
-        ),
-    }
+    p.work.as_ref().expect("planned work").cook(
+        p,
+        &Exec {
+            options,
+            threads,
+            schemas,
+            known,
+            prefab_texts,
+            budgets,
+        },
+    )
 }
 
 /// The text of `rel` (an asset path) under the assets directory `s` came from.

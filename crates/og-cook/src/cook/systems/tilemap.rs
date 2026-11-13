@@ -6,8 +6,8 @@
 //! blob is the same whatever the source.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets,
-    settings_block, stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, settings_block,
+    stamp,
 };
 use crate::format::{self, *};
 use crate::runtime::asset_id;
@@ -1363,7 +1363,7 @@ fn plan_tileset<'a>(
         s.rel.clone(),
         format::Tileset::NAME,
         st,
-        Work::Job(Box::new(TilesetJob(s))),
+        Box::new(TilesetJob(s)),
     ));
 }
 
@@ -1416,7 +1416,7 @@ fn plan_tilemap<'a>(
                 s.rel.clone(),
                 format::Tilemap::NAME,
                 st,
-                Work::Job(Box::new(TilemapJob(s, m))),
+                Box::new(TilemapJob(s, m)),
             ));
         }
         Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),

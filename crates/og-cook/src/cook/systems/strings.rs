@@ -1,6 +1,6 @@
 //! String tables (`type strings`): validated by og-i18n and kept as text.
 
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -89,7 +89,7 @@ fn plan_strings<'a>(
         s.rel.clone(),
         format::Strings::NAME,
         st,
-        Work::Job(Box::new(StringsJob(s))),
+        Box::new(StringsJob(s)),
     ));
 }
 

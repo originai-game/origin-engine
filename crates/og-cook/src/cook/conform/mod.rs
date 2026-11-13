@@ -93,8 +93,7 @@ pub fn texture_roles(root: &Path) -> Result<BTreeMap<String, TextureRole>, Strin
     let uses = texture2d::uses(&sources, &known, &sheets, &project_off);
     let mut out = BTreeMap::new();
     for s in &sources {
-        if s.kind != super::Kind::System(&crate::cook::texture::TEXTURE)
-            || s.rel.to_ascii_lowercase().ends_with(".ktx2")
+        if s.kind != &crate::cook::texture::TEXTURE || s.rel.to_ascii_lowercase().ends_with(".ktx2")
         {
             continue;
         }
@@ -134,7 +133,7 @@ pub fn model_roles(root: &Path) -> Result<BTreeMap<String, ModelRole>, String> {
     let mut out = BTreeMap::new();
     for s in sources
         .iter()
-        .filter(|s| s.kind == super::Kind::System(&crate::cook::model::MODEL))
+        .filter(|s| s.kind == &crate::cook::model::MODEL)
     {
         let role = model_role(s).map_err(|e| format!("assets/{}: {e}", s.rel))?;
         if role != ModelRole::Prop {

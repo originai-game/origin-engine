@@ -43,7 +43,7 @@ pub(crate) struct PlanState {
 }
 
 /// One planned output: its id, type, stamp and work.
-pub(crate) type Out<'a> = (String, &'static str, u64, Work<'a>);
+pub(crate) type Out<'a> = (String, &'static str, u64, Box<dyn Job + 'a>);
 
 // Plan every output with its stamp.
 pub(crate) fn plan<'a>(
@@ -71,15 +71,14 @@ pub(crate) fn plan<'a>(
         // These cookers consume only bytes/options. The other kinds resolve
         // relative references or write source-derived names/sub-asset ids;
         // their location remains part of the action, not the content hash.
-        let hash = match s.kind {
-            Kind::System(k) if k.by_content => {
-                stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
-            }
-            _ => stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()]),
+        let hash = if s.kind.by_content {
+            stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
+        } else {
+            stamp(&[&s.hash.to_le_bytes(), s.rel.as_bytes()])
         }
         .to_le_bytes();
         let mut outs: Vec<Out> = Vec::new();
-        plan_kind(cx, &mut state, s, hash, &mut outs);
+        (s.kind.plan)(cx, &mut state, s, hash, &mut outs);
         for (id, ty, st, work) in outs {
             let file = if pack_faces.contains(&id) {
                 format!("{id}.{}", og_bundle::runtime::FONT_PACK_FACE)
@@ -121,17 +120,4 @@ pub(crate) fn plan<'a>(
         }
     }
     (plan, state)
-}
-
-/// Plans a source's outputs by its kind.
-fn plan_kind<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    match s.kind {
-        Kind::System(k) => (k.plan)(cx, state, s, hash, outs),
-    }
 }

@@ -38,7 +38,7 @@
 //! to nothing over the pixel that straddles it: the edge's antialiasing is
 //! exact at any size the vector is drawn, with nothing cooked per size.
 
-use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, stamp};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
 use crate::format::{self, *};
 use og_blob::BlobWriter;
 use og_core::glam::Vec2;
@@ -456,7 +456,7 @@ fn plan_vector<'a>(
         s.rel.clone(),
         format::Vector::NAME,
         st,
-        Work::Job(Box::new(VectorJob(s))),
+        Box::new(VectorJob(s)),
     ));
 }
 

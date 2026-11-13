@@ -3,9 +3,7 @@
 //! names is an asset, and stores the text, which the runtime parses again
 //! with the bundle's handles.
 
-use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, fx_field, stamp,
-};
+use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, fx_field, stamp};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
@@ -111,7 +109,7 @@ fn plan_emitter<'a>(
         s.rel.clone(),
         format::Emitter::NAME,
         st,
-        Work::Job(Box::new(EmitterJob(s))),
+        Box::new(EmitterJob(s)),
     ));
 }
 
@@ -218,7 +216,7 @@ fn plan_effect<'a>(
         s.rel.clone(),
         format::Effect::NAME,
         st,
-        Work::Job(Box::new(EffectJob(s))),
+        Box::new(EffectJob(s)),
     ));
 }
 

@@ -20,7 +20,7 @@
 //! to exactly the samples of the whole file.
 
 use super::{
-    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, ext,
+    Action, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, ext,
     settings_block, stamp,
 };
 use crate::format::{self, *};
@@ -707,7 +707,7 @@ fn plan_sound<'a>(
         s.rel.clone(),
         format::Sound::NAME,
         st,
-        Work::Job(Box::new(SoundJob(s, chunking))),
+        Box::new(SoundJob(s, chunking)),
     ));
     if let Some((per, count)) = chunking {
         for n in 1..count {
@@ -716,7 +716,7 @@ fn plan_sound<'a>(
                 format!("{}#chunk{n}", s.rel),
                 format::SoundChunk::NAME,
                 st,
-                Work::Job(Box::new(SoundChunkJob(s, per, n))),
+                Box::new(SoundChunkJob(s, per, n)),
             ));
         }
     }

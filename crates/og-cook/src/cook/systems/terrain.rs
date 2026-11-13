@@ -146,8 +146,7 @@
 //! top) to +z, columns from -x to +x.
 
 use super::{
-    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets, assets_root,
-    stamp,
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, assets_root, stamp,
 };
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
@@ -1008,7 +1007,7 @@ fn plan_terrain<'a>(
         s.rel.clone(),
         format::Terrain::NAME,
         st,
-        Work::Job(Box::new(TerrainJob(s))),
+        Box::new(TerrainJob(s)),
     ));
 }
 

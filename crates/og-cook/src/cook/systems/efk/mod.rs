@@ -21,7 +21,7 @@ mod xml;
 
 pub use convert::{Conversion, Finding, Links, Out, OutKind};
 
-use super::{Kind, Source, normalise_rel};
+use super::{Source, normalise_rel};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -73,7 +73,7 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
         .collect();
     let mut extra = Vec::new();
     for s in sources.iter_mut() {
-        if s.kind != Kind::System(&crate::cook::vfx::VFX) || s.error.is_some() || !handles(&s.rel) {
+        if s.kind != &crate::cook::vfx::VFX || s.error.is_some() || !handles(&s.rel) {
             continue;
         }
         let root = super::assets_root(s);
@@ -124,9 +124,9 @@ pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
                 rel: f.id,
                 path: s.path.clone(),
                 kind: match f.kind {
-                    OutKind::Emitter => Kind::System(&crate::cook::effect::EMITTER),
-                    OutKind::Effect => Kind::System(&crate::cook::effect::EFFECT),
-                    OutKind::Model => Kind::System(&crate::cook::model::MODEL),
+                    OutKind::Emitter => &crate::cook::effect::EMITTER,
+                    OutKind::Effect => &crate::cook::effect::EFFECT,
+                    OutKind::Model => &crate::cook::model::MODEL,
                 },
                 settings_files: Vec::new(),
                 settings: (f.kind == OutKind::Model).then(|| {
@@ -156,7 +156,7 @@ pub(crate) fn warnings(
 ) {
     for s in sources
         .iter()
-        .filter(|s| s.kind == Kind::System(&crate::cook::vfx::VFX) && handles(&s.rel))
+        .filter(|s| s.kind == &crate::cook::vfx::VFX && handles(&s.rel))
     {
         let text = String::from_utf8_lossy(&s.bytes);
         let found: Vec<&str> = text

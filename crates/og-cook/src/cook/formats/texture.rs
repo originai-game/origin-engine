@@ -8,8 +8,8 @@
 
 use super::{
     Action, CookError, Cx, Exec, Job, KindDef, Out, Path, PlanState, Planned, Source, Split,
-    TextureOptions, Work, conform, ext, ktx2_source, mesh_texture, normal2d, not_split,
-    settings_block, stamp, texture_kind, texture_stream,
+    TextureOptions, conform, ext, ktx2_source, mesh_texture, normal2d, not_split, settings_block,
+    stamp, texture_kind, texture_stream,
 };
 use crate::format::{self, *};
 use crate::ktx2;
@@ -707,20 +707,20 @@ fn plan_texture<'a>(
                         s.rel.clone(),
                         format::Texture::NAME,
                         st(b"tail"),
-                        Work::Job(Box::new(TextureJob(s, k, Split::Tail(mips)))),
+                        Box::new(TextureJob(s, k, Split::Tail(mips))),
                     ));
                     outs.push((
                         crate::runtime::mips_id(&s.rel),
                         format::Texture::NAME,
                         mips,
-                        Work::Job(Box::new(TextureJob(s, k, Split::Mips))),
+                        Box::new(TextureJob(s, k, Split::Mips)),
                     ));
                 }
                 why => outs.push((
                     s.rel.clone(),
                     format::Texture::NAME,
                     st(b""),
-                    Work::Job(Box::new(TextureJob(s, k, Split::Whole(why.flatten())))),
+                    Box::new(TextureJob(s, k, Split::Whole(why.flatten()))),
                 )),
             }
             // Its normal map for 2D lighting (`normal auto` or a file).
@@ -748,7 +748,7 @@ fn plan_texture<'a>(
                                 format!("{}#normal", s.rel),
                                 format::Texture::NAME,
                                 st,
-                                Work::Job(Box::new(TextureNormalJob(s, file))),
+                                Box::new(TextureNormalJob(s, file)),
                             ));
                         }
                         Err(e) => early_errors.push((s.rel.clone(), "texture", e)),

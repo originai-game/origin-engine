@@ -117,14 +117,12 @@ fn kinds() -> impl Iterator<Item = &'static KindDef> {
 
 /// The registered kind that claims a file extension.
 pub(crate) fn by_extension(ext: &str) -> Option<Kind> {
-    kinds()
-        .find(|k| k.extensions.contains(&ext))
-        .map(Kind::System)
+    kinds().find(|k| k.extensions.contains(&ext))
 }
 
 /// The registered kind that claims an `.ogt` type.
 pub(crate) fn by_type(ty: &str) -> Option<Kind> {
-    kinds().find(|k| k.types.contains(&ty)).map(Kind::System)
+    kinds().find(|k| k.types.contains(&ty))
 }
 
 #[cfg(test)]
