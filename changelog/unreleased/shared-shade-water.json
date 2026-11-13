@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.Water",
+      "summary": "A water surface takes the point, spot and rect lights around it (a lamp over a lake or a sea now lights it: its facets mirror the lamp, its body and its foam scatter it back), and gathers the light around it as every lit surface does: the probe GI, the light volumes and the hemisphere light reach its body, its foam and its reflection, so a pool under a roof no longer takes the open sky's light. Its own reflection, glitter and foam are unchanged outdoors."
+    }
+  ]
+}

@@ -8,7 +8,9 @@
 // surface_gather (a material with lobes of its own: the physical shader),
 // surface_ambient and surface_sum (a material that changes the light
 // around it before the sum: a mesh's toon ambient and coat), surface_shade
-// (everything else); surface_matte for a body that reflects nothing. After lighting.wgsl, area.wgsl, the light
+// (everything else); surface_matte for a body that reflects nothing;
+// surface_irradiance, surface_reflected and local_lights_on for a surface
+// with a reflection model of its own (the water). After lighting.wgsl, area.wgsl, the light
 // volumes' hook (lightmap.rs `probe_wgsl`) and screen_ao.wgsl or its stub.
 
 // Where and how a surface is shaded.
@@ -51,6 +53,15 @@ fn surface_irradiance(at: ShadeAt, ambient_n: vec3<f32>, gi: GiSample) -> vec3<f
   return irradiance;
 }
 
+// `prefiltered` (the environment along `r`, or a reflection probe's
+// capture) as a surface of `roughness` at `at` receives it: relit by the
+// light volumes and occluded by the probe GI's gather `gi` where there
+// are. After surface_irradiance at the same point (the light volumes'
+// weight is taken there).
+fn surface_reflected(prefiltered: vec3<f32>, at: ShadeAt, r: vec3<f32>, roughness: f32, gi: GiSample) -> vec3<f32> {
+  return gi_reflected_from(volume_reflected(prefiltered, at.p, r, roughness), r, at.p, gi);
+}
+
 // The gather for a surface of `roughness` that reflects around `around`
 // (its normal; an anisotropic surface's bent normal).
 fn surface_gather(at: ShadeAt, around: vec3<f32>, roughness: f32) -> Gathered {
@@ -70,8 +81,7 @@ fn surface_gather(at: ShadeAt, around: vec3<f32>, roughness: f32) -> Gathered {
   // rough surface reflects around its normal, not the mirror direction;
   // a back-facing leaf card otherwise mirrors the bright sky behind it).
   let r = normalize(mix(reflect(-at.v, around), around, roughness * roughness));
-  // Relit by the light volumes and occluded by the probe GI where there are.
-  o.prefiltered = gi_reflected_from(volume_reflected(reflected_light(r, at.p, roughness * frame.params.y), at.p, r, roughness), r, at.p, gi) * frame.params.x;
+  o.prefiltered = surface_reflected(reflected_light(r, at.p, roughness * frame.params.y), at, r, roughness, gi) * frame.params.x;
   // The screen-space reflections over it, for the surface they were traced for.
   if (at.opaque) { o.prefiltered = ssr_reflected(o.prefiltered, at.p, at.frag); }
   o.lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(clamp(dot(at.n, at.v), 1e-4, 1.0), roughness), 0.0).rg;

@@ -192,3 +192,50 @@ fn a_lake_draws_the_wake_of_the_boat_that_cuts_it() {
         "the wake changed the lake far from the boat ({away})"
     );
 }
+
+/// A lamp over the water lights it as it lights every surface: a red point
+/// light 3 m above the night sea ahead of the camera reddens the water
+/// under it (its facets mirror it and its body scatters it back), where
+/// the sea took the sun and the sky alone before.
+#[test]
+#[ignore = "requires GPU"]
+fn a_lamp_over_the_water_lights_it() {
+    use og_tests::ocean_scenes::ocean_scene;
+    let red_share = |image: &RgbaImage| {
+        let row = image.width as usize * 4;
+        let mut sum = [0f64; 3];
+        for px in image.pixels[image.height as usize / 2 * row..]
+            .as_chunks::<4>()
+            .0
+        {
+            for (s, c) in sum.iter_mut().zip(px) {
+                *s += f64::from(*c);
+            }
+        }
+        (sum[0] / (sum[0] + sum[1] + sum[2]).max(1.0)) as f32
+    };
+    let frame = |scene: &RenderScene| {
+        let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        for _ in 0..3 {
+            renderer
+                .render(scene, &RenderTarget::Offscreen)
+                .expect("render");
+        }
+        renderer.read_offscreen().expect("capture")
+    };
+    let mut scene = ocean_scene("water-ocean-night");
+    let dark = red_share(&frame(&scene));
+    scene.lighting.lights.push(og_render::Light {
+        position: Vec3::new(0.0, 3.0, -12.0),
+        color: Vec3::new(1.0, 0.05, 0.02),
+        intensity: 60.0,
+        range: 40.0,
+        ..Default::default()
+    });
+    let lit = red_share(&frame(&scene));
+    println!("the night sea's red share: {dark} bare, {lit} under the lamp");
+    assert!(
+        lit > dark + 0.1,
+        "the lamp did not light the water ({dark} bare, {lit} lit)"
+    );
+}

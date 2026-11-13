@@ -533,7 +533,13 @@ if (rippled() && !is_sea()) {
   let absorb = 1.0 - exp(-thickness / max(water.shallow.w, 1e-3));
   // The body scatters the light that reaches it: its deep colour is authored for daylight and darkens under less, at dusk, at night or under a storm's deck
   // (else the sea glowed a daylight teal under a dark sky). Shadowed water scatters less light still.
-  let light_in = frame.light_color.rgb * max(l.y, 0.0) + ambient_light_level(vec3<f32>(0.0, 1.0, 0.0), in.world) * frame.params.x;
+  // The light around the surface is gathered as every lit surface's (surface_shade.wgsl): the sky, and where there
+  // are the probe GI, the light volumes and the hemisphere light (a pool under a roof is not lit by the open sky).
+  let gi = gi_sample_at(in.world, in.normal);
+  let at_up = ShadeAt(in.world, vec3<f32>(0.0, 1.0, 0.0), v, px, false, false, false);
+  let at_flat = ShadeAt(in.world, in.normal, v, px, false, false, false);
+  let at_n = ShadeAt(in.world, n, v, px, false, false, false);
+  let light_in = frame.light_color.rgb * max(l.y, 0.0) + surface_irradiance(at_up, at_up.n, gi);
   // Full from 1.5 (the sun some 25° up on a clear day), then falling with the square of the light: a moonlit body
   // (the moon's light is a fair share of the sun's in the day-night look, so land reads at night) sits under the night
   // sky it lies beneath, as a real sea's does (its water-leaving light is a few percent of the sky's).
@@ -542,8 +548,8 @@ if (rippled() && !is_sea()) {
   var deep = water.deep.rgb * mix(0.4, 1.0, sun) * daylight;
   let sea = is_sea();
   // The sky's light on the sea from above and along its normal (web-ocean's skyUp and skyN).
-  let amb_up = ambient_light_level(in.normal, in.world) * frame.params.x;
-  let amb_n = ambient_light_level(n, in.world) * frame.params.x;
+  let amb_up = surface_irradiance(at_flat, in.normal, gi);
+  let amb_n = surface_irradiance(at_n, n, gi);
   // Under a closed cloud deck the light reaches the sea as the deck's own radiance, from the whole sky above (its a:
   // how much of the sky it closes): the foam takes it (below). The sun itself is hidden by the deck
   // for every surface at its source (Clouds::light). The foam's light under a live sky is the captured deck that
@@ -599,7 +605,9 @@ if (sea) { color += (deep - water.deep.rgb * mix(0.4, 1.0, sun) * daylight) * o.
   let f0 = water.extra.z;
   var fresnel = (f0 + (1.0 - f0) * pow(1.0 - saturate(dot(n, v)), 5.0)) * water.look.x;
   // The detail's slopes a pixel leaves out (LEAN, wave_slope) blur the mirrored sky as a sea's facets blur it.
-  var mip = max(sqrt(sqrt(detail.cov.x + detail.cov.y)) * frame.params.y, 0.5);
+  // The surface's roughness, from those slopes' spread.
+  var rough = sqrt(sqrt(detail.cov.x + detail.cov.y));
+  var mip = max(rough * frame.params.y, 0.5);
   var sig_v = 0.0;
   if (OG_SEA) {
 if (sea) {
@@ -616,7 +624,8 @@ if (sea) {
     let nv = normalize(n + vh * tilt);
     r = reflect(-v, nv);
     fresnel = (f0 + (1.0 - f0) * sea_fresnel(saturate(dot(n, v)), sig_v)) * water.look.x;
-    mip = max(sqrt(sqrt(sea_cov.x + sea_cov.y)) * frame.params.y, 0.5);
+    rough = sqrt(sqrt(sea_cov.x + sea_cov.y));
+    mip = max(rough * frame.params.y, 0.5);
   }
   }
   // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
@@ -627,7 +636,8 @@ if (sea) {
   // every ripple face turned to it, drew a soft disc twice the sun's width under each glint, and bloomed.
   let lake = !sea && !water2 && !water_js;
   let r_env = select(r, off_sun(r, mip), lake);
-  var reflected = overcast(reflected_light(r_env, in.world, mip) * sky_mirror, r_env);
+  // Relit by the light volumes and occluded by the probe GI where there are, as every surface's reflection.
+  var reflected = overcast(surface_reflected(reflected_light(r_env, in.world, mip), at_n, r_env, rough, gi) * sky_mirror, r_env);
   if (water.extra.y > 0.5) {
     // The mirrored scene, flipped left to right, shifted by the waves.
     var shift_r = (n - in.normal).xz * water.screen.zw * 60.0;
@@ -651,7 +661,7 @@ if (sea) {
     // face tilted from the eye (the rim of a floating body's funnel) reflected down into the bed, the bank and the
     // body itself, through the screen's trace and the environment's ground, as a ring of brown grit.
     let up_r = vec3<f32>(r.x, abs(r.y), r.z);
-    let up = overcast(reflected_light(up_r, in.world, mip) * sky_mirror, up_r);
+    let up = overcast(surface_reflected(reflected_light(up_r, in.world, mip), at_n, up_r, rough, gi) * sky_mirror, up_r);
     let spread = select(sqrt(max(detail.cov.x + detail.cov.y, 0.0)), sig_v, sea);
     let w = 2.0 * spread + 0.05;
     reflected = mix(deep + up * 0.25, reflected, smoothstep(-w, w, r.y));
@@ -818,6 +828,14 @@ if (sea) {
     color += glitter * sea_f.lace * 0.95 * 0.3;
   }
   }
+  // The point, spot and rect lights around it (area.wgsl), as on every lit surface: the facets mirror them over the
+  // slopes a pixel leaves out, the body scatters them back where it is deep enough to show its own colour, and the
+  // foam where it lies takes them as the matte layer it is.
+  let cover = clamp(max(foam * step(0.001, water.foam.w), sea_f.mask), 0.0, 1.0);
+  let body = water.deep.rgb * clamp(absorb * water.deep.w, 0.0, 1.0);
+  let lit = Surface(mix(body, water.foam.rgb, cover), 0.0, clamp(mix(rough, 1.0, cover), 0.09, 1.0),
+    vec3<f32>(f0 * water.look.x), 0.0, 0.0, n, 0.0);
+  color += local_lights_on(px, lit, in.world, n, v, false);
   return vec4<f32>(apply_fog(color, in.world), 1.0);
 }
 

@@ -187,11 +187,29 @@ impl WaterRenderer {
     }
 }
 
-/// The water module after the frame group and the lighting.
+/// The water module after the frame group, the light tables, the lighting,
+/// the light volumes' hook, the area lights and the shared shading (the
+/// surface gathers the light around it and takes the local lights as every
+/// lit surface; its reflection, glitter and foam are its own). It reads no
+/// screen occlusion through the shared shading: its own binding holds it.
 pub(crate) fn water_source(frame_wgsl: &str, lighting_wgsl: &str) -> String {
+    crate::assemble(
+        &[
+            frame_wgsl,
+            &crate::clusters::wgsl(),
+            lighting_wgsl,
+            &og_render_data::lightmap::probe_wgsl(),
+            crate::AREA_WGSL,
+            crate::SURFACE_SHADE_WGSL,
+            &water_parts(),
+        ],
+        &[crate::Capability::ScreenAo],
+    )
+}
+
+/// The water's own parts.
+fn water_parts() -> String {
     [
-        frame_wgsl,
-        lighting_wgsl,
         crate::ocean_fft::SHORE_WGSL,
         wgsl3d!("water.wgsl"),
         wgsl3d!("water_sea.wgsl"),
