@@ -34,6 +34,45 @@ pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> 
     og_core::facing::camera_look(eye, target, up)
 }
 
+/// The rotation that points an object's +Z from `position` towards `target`.
+pub fn og_transform_face(position: String, target: String, up: Option<String>) -> glam::Quat {
+    let position: glam::Vec3 = wire::arg(Some(&position), "position").unwrap_or_default();
+    let target: glam::Vec3 = wire::arg(Some(&target), "target").unwrap_or_default();
+    let up: glam::Vec3 = wire::arg(up.as_deref(), "up").unwrap_or_default();
+    og_core::facing::look(position, target, up)
+}
+
+/// A rotation argument as a unit quaternion (one that is not a rotation:
+/// the identity).
+pub(crate) fn rotation_arg(quaternion: &str, name: &str) -> glam::Quat {
+    let q: glam::Quat = wire::arg(Some(quaternion), name).unwrap_or_default();
+    if q.is_finite() && q.length_squared() > 0.0 {
+        q.normalize()
+    } else {
+        glam::Quat::IDENTITY
+    }
+}
+
+pub fn og_transform_forward(quaternion: String) -> glam::Vec3 {
+    og_core::facing::forward(rotation_arg(&quaternion, "quaternion"))
+}
+
+pub fn og_transform_right(quaternion: String) -> glam::Vec3 {
+    og_core::facing::right(rotation_arg(&quaternion, "quaternion"))
+}
+
+pub fn og_transform_up(quaternion: String) -> glam::Vec3 {
+    og_core::facing::up(rotation_arg(&quaternion, "quaternion"))
+}
+
+pub fn og_transform_camera_forward(quaternion: String) -> glam::Vec3 {
+    og_core::facing::camera_forward(rotation_arg(&quaternion, "quaternion"))
+}
+
+pub fn og_transform_camera_right(quaternion: String) -> glam::Vec3 {
+    og_core::facing::camera_right(rotation_arg(&quaternion, "quaternion"))
+}
+
 pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> glam::Quat {
     let axis: glam::Vec3 = wire::arg(Some(&axis), "axis").unwrap_or_default();
     og_core::math::quat_from_axis_angle(axis, angle as f32)

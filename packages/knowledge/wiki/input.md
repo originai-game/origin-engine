@@ -12,7 +12,7 @@ See `input`.
 
 - **TypeScript**: functions are the namespace `og.input`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Input`; 88 more are advanced (`og api show input --all`).
+- **Core** (what most games use): `og.Input`; 89 more are advanced (`og api show input --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -66,6 +66,7 @@ module input {
 | [`og.input.actionHeld`](input/fn-actionHeld.md) | function | `(world: World, name: string): boolean` | Whether an action has been down for its holdMs. |
 | [`og.input.actionValue`](input/fn-actionValue.md) | function | `(world: World, name: string): number` | An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. |
 | [`og.input.actionVector`](input/fn-actionVector.md) | function | `(world: World, name: string): Vector2` | A two-axis action's value (x right, y up; each -1 to 1 but the mouse's movement); (value, 0) for the others. |
+| [`og.input.moveRelative`](input/fn-moveRelative.md) | function | `(world: World, name: string, camera: Quaternion): Vector3` | A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wh… |
 | [`og.input.setActionMaps`](input/fn-setActionMaps.md) | function | `(world: World, actionMaps: readonly string[]): void` | The action maps whose actions are live, first the one whose bindings win a control another action map also binds (`["vehicle", "gameplay"]`: E exits the car, not interacts). |
 | [`og.input.actionMaps`](input/fn-actionMaps.md) | function | `(world: World): readonly string[]` | The live action maps as og.input.setActionMaps set them (empty: every action map). |
 | [`og.input.rebind`](input/fn-rebind.md) | function | `(world: World, desc?: RebindDesc): Result<RebindAnswer>` | Rebind one slot of an action (or one part of a composite) for the player. |

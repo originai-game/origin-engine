@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "og.transform.face",
+      "summary": "The rotation that turns an object to face a target (its +Z towards it), beside og.transform.lookAt for cameras and lights."
+    },
+    {
+      "member": "og.transform.forward",
+      "summary": "og.transform.forward, right and up give an object's directions from its rotation; og.transform.cameraForward and cameraRight give a camera's or a light's."
+    },
+    {
+      "member": "og.input.moveRelative",
+      "summary": "A two-axis action as a horizontal world vector seen from a camera: W walks into the screen wherever the camera has orbited. The `facing` guide states the axes once."
+    }
+  ]
+}

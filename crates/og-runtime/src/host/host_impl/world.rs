@@ -254,6 +254,29 @@ macro_rules! __og_host_bindings_world {
             ) -> String {
                 $crate::host_impl::json($crate::og_transform_look_at(eye, target, up))
             }
+            fn og_transform_face(
+                &self,
+                position: String,
+                target: String,
+                up: Option<String>,
+            ) -> String {
+                $crate::host_impl::json($crate::og_transform_face(position, target, up))
+            }
+            fn og_transform_forward(&self, quaternion: String) -> String {
+                $crate::host_impl::json($crate::og_transform_forward(quaternion))
+            }
+            fn og_transform_right(&self, quaternion: String) -> String {
+                $crate::host_impl::json($crate::og_transform_right(quaternion))
+            }
+            fn og_transform_up(&self, quaternion: String) -> String {
+                $crate::host_impl::json($crate::og_transform_up(quaternion))
+            }
+            fn og_transform_camera_forward(&self, quaternion: String) -> String {
+                $crate::host_impl::json($crate::og_transform_camera_forward(quaternion))
+            }
+            fn og_transform_camera_right(&self, quaternion: String) -> String {
+                $crate::host_impl::json($crate::og_transform_camera_right(quaternion))
+            }
             fn og_transform_from_axis_angle(&self, axis: String, angle: f64) -> String {
                 $crate::host_impl::json($crate::og_transform_from_axis_angle(axis, angle))
             }

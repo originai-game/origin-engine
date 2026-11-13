@@ -1,4 +1,5 @@
 {
+  "simulation": "changed",
   "breaking": [
     {
       "member": "og.FollowCamera.followRotation",

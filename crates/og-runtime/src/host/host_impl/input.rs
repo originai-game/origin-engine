@@ -42,6 +42,9 @@ macro_rules! __og_host_bindings_input {
             fn og_input_action_vector(&self, world: u32, name: String) -> String {
                 $crate::host_impl::json($crate::og_input_action_vector(world, name))
             }
+            fn og_input_move_relative(&self, world: u32, name: String, camera: String) -> String {
+                $crate::host_impl::json($crate::og_input_move_relative(world, name, camera))
+            }
             fn og_input_set_action_maps(&self, world: u32, contexts: String) {
                 $crate::og_input_set_action_maps(world, contexts)
             }

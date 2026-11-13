@@ -3160,7 +3160,7 @@
         },
         {
           "name": "lookAt",
-          "doc": "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras.",
+          "doc": "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras and lights. An object (a character, a vehicle) faces a target with og.transform.face.",
           "params": [
             {
               "name": "eye",
@@ -3182,6 +3182,102 @@
             }
           ],
           "returns": "Quaternion",
+          "publish": true
+        },
+        {
+          "name": "face",
+          "doc": "The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. A camera or a light uses og.transform.lookAt.\nSee `facing`.",
+          "params": [
+            {
+              "name": "position",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Where the object is."
+            },
+            {
+              "name": "target",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "What it faces."
+            },
+            {
+              "name": "up",
+              "type": "Vector3",
+              "optional": true,
+              "doc": "The up direction; the zero vector means +Y."
+            }
+          ],
+          "returns": "Quaternion",
+          "publish": true
+        },
+        {
+          "name": "forward",
+          "doc": "The way an object with this rotation faces: its local +Z, as a unit vector. A camera's or a light's is og.transform.cameraForward.\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The object's rotation."
+            }
+          ],
+          "returns": "Vector3",
+          "publish": true
+        },
+        {
+          "name": "right",
+          "doc": "An object's right: its local -X, as a unit vector (forward × up). A camera's or a light's is og.transform.cameraRight.\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The object's rotation."
+            }
+          ],
+          "returns": "Vector3",
+          "publish": true
+        },
+        {
+          "name": "up",
+          "doc": "An object's, a camera's or a light's up: its local +Y, as a unit vector.\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The rotation."
+            }
+          ],
+          "returns": "Vector3",
+          "publish": true
+        },
+        {
+          "name": "cameraForward",
+          "doc": "The way a camera or a light with this rotation looks: its local -Z, as a unit vector.\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The camera's or the light's rotation (og.Camera.quaternion)."
+            }
+          ],
+          "returns": "Vector3",
+          "publish": true
+        },
+        {
+          "name": "cameraRight",
+          "doc": "A camera's or a light's right: its local +X, the right of the screen, as a unit vector.\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The camera's or the light's rotation (og.Camera.quaternion)."
+            }
+          ],
+          "returns": "Vector3",
           "publish": true
         },
         {
@@ -3868,6 +3964,32 @@
             }
           ],
           "returns": "Vector2",
+          "publish": true
+        },
+        {
+          "name": "moveRelative",
+          "doc": "A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wherever it has orbited. The length is the action's (a stick's tilt is kept) and y is 0. A 2D game uses og.input.actionVector as it is.\nSee `facing`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "The two-axis action."
+            },
+            {
+              "name": "camera",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The camera's rotation (og.Camera.quaternion)."
+            }
+          ],
+          "returns": "Vector3",
           "publish": true
         },
         {
@@ -35171,7 +35293,7 @@
       ],
       "x-og-variants": {
         "omni": "Outward from its centre: a blast, a landing, a horse's hooves.",
-        "directional": "Along the entity's forward (its -z; vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way.",
+        "directional": "Along the entity's -Z, as a light shines (vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way.",
         "vortex": "Around its centre, counter-clockwise seen from above (in 2D, about z): a whirlwind, a spell."
       }
     },

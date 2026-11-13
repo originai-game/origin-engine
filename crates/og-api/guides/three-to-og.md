@@ -86,7 +86,7 @@ world.insert(hull, og.Mesh, { geometry: must(og.render.boxGeometry(world, { widt
 | `scale.set(x, y, z)`, `scale.setScalar(s)` | `{ scale: { x, y, z } }` |
 | `position.x += v` | read, change, write: `const t = must(world.get(e, og.Transform)); world.set(e, og.Transform, { position: { ...t.position, x: t.position.x + v } })`, or a system over the column (og-core) |
 | `lookAt(target)` (a camera or a light) | `{ quaternion: og.transform.lookAt(eye, target) }`: it points -Z at the target, as three.js turns cameras and lights |
-| `lookAt(target)` (any other object) | three.js points such an object's +Z at the target: `og.transform.lookAt(target, eye)`, the reverse, does the same |
+| `lookAt(target)` (any other object) | `{ quaternion: og.transform.face(position, target) }`: it points +Z at the target, as three.js turns a mesh (`facing §1`) |
 | `matrixWorld` | og.MatrixWorld (read only; the engine writes it) |
 | `visible`, `castShadow`, `receiveShadow`, `layers` | og.Mesh's (and og.Model's) `visible`, `castShadow`, `receiveShadow`, `layers` |
 | `name` | `SpawnDesc.name` |

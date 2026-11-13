@@ -449,6 +449,36 @@ pub fn og_transform_look_at(eye: String, target: String, up: Option<String>) -> 
 }
 
 #[wasm_bindgen]
+pub fn og_transform_face(position: String, target: String, up: Option<String>) -> String {
+    <Host as TransformApi>::og_transform_face(&Host, position, target, up)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_forward(quaternion: String) -> String {
+    <Host as TransformApi>::og_transform_forward(&Host, quaternion)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_right(quaternion: String) -> String {
+    <Host as TransformApi>::og_transform_right(&Host, quaternion)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_up(quaternion: String) -> String {
+    <Host as TransformApi>::og_transform_up(&Host, quaternion)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_camera_forward(quaternion: String) -> String {
+    <Host as TransformApi>::og_transform_camera_forward(&Host, quaternion)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_camera_right(quaternion: String) -> String {
+    <Host as TransformApi>::og_transform_camera_right(&Host, quaternion)
+}
+
+#[wasm_bindgen]
 pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
     <Host as TransformApi>::og_transform_from_axis_angle(&Host, axis, angle)
 }
@@ -631,6 +661,11 @@ pub fn og_input_action_value(world: u32, name: String) -> f64 {
 #[wasm_bindgen]
 pub fn og_input_action_vector(world: u32, name: String) -> String {
     <Host as InputApi>::og_input_action_vector(&Host, world, name)
+}
+
+#[wasm_bindgen]
+pub fn og_input_move_relative(world: u32, name: String, camera: String) -> String {
+    <Host as InputApi>::og_input_move_relative(&Host, world, name, camera)
 }
 
 #[wasm_bindgen]

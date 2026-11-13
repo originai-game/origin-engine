@@ -303,7 +303,7 @@ resource Gamepad {
 }
 ```
 
-<sub>Module `input` line 1000</sub>
+<sub>Module `input` line 1010</sub>
 
 <a id="member-Gamepad-connected"></a>
 
@@ -333,7 +333,7 @@ fn connected {
 }
 ```
 
-<sub>Module `input` line 1161</sub>
+<sub>Module `input` line 1171</sub>
 
 <a id="member-Gamepad-down"></a>
 
@@ -365,7 +365,7 @@ fn down {
 }
 ```
 
-<sub>Module `input` line 1168</sub>
+<sub>Module `input` line 1178</sub>
 
 <a id="member-Gamepad-pressed"></a>
 
@@ -397,7 +397,7 @@ fn pressed {
 }
 ```
 
-<sub>Module `input` line 1176</sub>
+<sub>Module `input` line 1186</sub>
 
 <a id="member-Gamepad-released"></a>
 
@@ -429,7 +429,7 @@ fn released {
 }
 ```
 
-<sub>Module `input` line 1184</sub>
+<sub>Module `input` line 1194</sub>
 
 <a id="member-Gamepad-axis"></a>
 
@@ -461,4 +461,4 @@ fn axis {
 }
 ```
 
-<sub>Module `input` line 1192</sub>
+<sub>Module `input` line 1202</sub>

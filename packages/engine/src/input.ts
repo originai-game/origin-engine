@@ -33,6 +33,7 @@ export const input = Object.freeze({
   actionHeld: (world: W, name: string) => abi().og_input_action_held(world.id, name),
   actionValue: (world: W, name: string) => abi().og_input_action_value(world.id, name),
   actionVector: (world: W, name: string) => parse(abi().og_input_action_vector(world.id, name)),
+  moveRelative: (world: W, name: string, camera: unknown) => parse(abi().og_input_move_relative(world.id, name, JSON.stringify(camera))),
   setActionMaps: (world: W, contexts: readonly string[]) => abi().og_input_set_action_maps(world.id, JSON.stringify(contexts)),
   actionMaps: (world: W) => parse(abi().og_input_action_maps(world.id)),
   rebind: (world: W, desc?: unknown) => parse(abi().og_input_rebind(world.id, json(desc))),

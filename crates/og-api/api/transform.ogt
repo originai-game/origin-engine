@@ -100,7 +100,7 @@ module transform {
   }
 
   fn lookAt {
-    doc "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras."
+    doc "The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras and lights. An object (a character, a vehicle) faces a target with og.transform.face."
     aliases "face, aim at, rotate towards, Unity Transform.LookAt, Godot look_at, three.js lookAt"
     param eye Vector3 "Where the viewer is."
     param target Vector3 "What it looks at."
@@ -108,6 +108,58 @@ module transform {
       optional true
     }
     returns Quaternion
+  }
+
+  fn face {
+    doc "The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. A camera or a light uses og.transform.lookAt."
+    aliases "turn towards, rotate to face, look rotation, Unity Quaternion.LookRotation"
+    guide "facing"
+    param position Vector3 "Where the object is."
+    param target Vector3 "What it faces."
+    param up Vector3 "The up direction; the zero vector means +Y." {
+      optional true
+    }
+    returns Quaternion
+  }
+
+  fn forward {
+    doc "The way an object with this rotation faces: its local +Z, as a unit vector. A camera's or a light's is og.transform.cameraForward."
+    aliases "front, facing direction, heading vector, Unity transform.forward, three.js getWorldDirection"
+    guide "facing"
+    param quaternion Quaternion "The object's rotation."
+    returns Vector3
+  }
+
+  fn right {
+    doc "An object's right: its local -X, as a unit vector (forward × up). A camera's or a light's is og.transform.cameraRight."
+    aliases "strafe direction, side vector, Unity transform.right"
+    guide "facing"
+    param quaternion Quaternion "The object's rotation."
+    returns Vector3
+  }
+
+  fn up {
+    doc "An object's, a camera's or a light's up: its local +Y, as a unit vector."
+    aliases "up vector, Unity transform.up"
+    guide "facing"
+    param quaternion Quaternion "The rotation."
+    returns Vector3
+  }
+
+  fn cameraForward {
+    doc "The way a camera or a light with this rotation looks: its local -Z, as a unit vector."
+    aliases "view direction, look direction, camera front, three.js Camera.getWorldDirection"
+    guide "facing"
+    param quaternion Quaternion "The camera's or the light's rotation (og.Camera.quaternion)."
+    returns Vector3
+  }
+
+  fn cameraRight {
+    doc "A camera's or a light's right: its local +X, the right of the screen, as a unit vector."
+    aliases "screen right, camera strafe direction"
+    guide "facing"
+    param quaternion Quaternion "The camera's or the light's rotation (og.Camera.quaternion)."
+    returns Vector3
   }
 
   fn fromAxisAngle {

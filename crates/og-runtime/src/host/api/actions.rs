@@ -187,6 +187,12 @@ pub fn og_input_action_vector(world: u32, name: String) -> glam::Vec2 {
     state_of(world, &name).map(|s| s.vector).unwrap_or_default()
 }
 
+/// A two-axis action as a horizontal world vector seen from `camera`.
+pub fn og_input_move_relative(world: u32, name: String, camera: String) -> glam::Vec3 {
+    let input = og_input_action_vector(world, name);
+    og_core::facing::move_relative(input, super::rotation_arg(&camera, "camera"))
+}
+
 pub fn og_input_set_action_maps(world: u32, contexts: String) {
     let list: Vec<String> = wire::arg(Some(&contexts), "actionMaps").unwrap_or_default();
     let _ = on_map(world, |m| m.set_contexts(list));

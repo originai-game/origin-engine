@@ -22,6 +22,7 @@ og.input.defineAction(world, { name: "jump", kind: "button", bindings: [{ contro
 
 // in a system
 const move = og.input.actionVector(world, "move");    // x right, y up
+const walk = og.input.moveRelative(world, "move", camera.quaternion); // on the ground, seen from the camera (facing §3)
 if (og.input.isActionJustPressed(world, "jump")) jump();
 ```
 

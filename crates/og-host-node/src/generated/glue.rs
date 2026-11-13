@@ -537,6 +537,42 @@ pub fn og_transform_look_at(env: Env, eye: String, target: String, up: Option<St
     <Host as TransformApi>::og_transform_look_at(&Host, eye, target, up)
 }
 
+#[napi(js_name = "og_transform_face")]
+pub fn og_transform_face(env: Env, position: String, target: String, up: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_face(&Host, position, target, up)
+}
+
+#[napi(js_name = "og_transform_forward")]
+pub fn og_transform_forward(env: Env, quaternion: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_forward(&Host, quaternion)
+}
+
+#[napi(js_name = "og_transform_right")]
+pub fn og_transform_right(env: Env, quaternion: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_right(&Host, quaternion)
+}
+
+#[napi(js_name = "og_transform_up")]
+pub fn og_transform_up(env: Env, quaternion: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_up(&Host, quaternion)
+}
+
+#[napi(js_name = "og_transform_camera_forward")]
+pub fn og_transform_camera_forward(env: Env, quaternion: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_camera_forward(&Host, quaternion)
+}
+
+#[napi(js_name = "og_transform_camera_right")]
+pub fn og_transform_camera_right(env: Env, quaternion: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_camera_right(&Host, quaternion)
+}
+
 #[napi(js_name = "og_transform_from_axis_angle")]
 pub fn og_transform_from_axis_angle(env: Env, axis: String, angle: f64) -> String {
     let _env = crate::EnvScope::enter(&env);
@@ -757,6 +793,12 @@ pub fn og_input_action_value(env: Env, world: u32, name: String) -> f64 {
 pub fn og_input_action_vector(env: Env, world: u32, name: String) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as InputApi>::og_input_action_vector(&Host, world, name)
+}
+
+#[napi(js_name = "og_input_move_relative")]
+pub fn og_input_move_relative(env: Env, world: u32, name: String, camera: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as InputApi>::og_input_move_relative(&Host, world, name, camera)
 }
 
 #[napi(js_name = "og_input_set_action_maps")]

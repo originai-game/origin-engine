@@ -2563,6 +2563,12 @@ export interface OriginShifted {
 
 
 
+
+
+
+
+
+
 // ── time ────────────────────────────────────────────────────────
 // Simulation time. Game code never reads the wall clock; it reads Time.
 // Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
@@ -3755,6 +3761,7 @@ export interface RumbleDesc {
    */
   readonly ms?: number;
 }
+
 
 
 
@@ -17676,7 +17683,7 @@ export interface Wind {
 /**
  * How an og.WindMotor pushes the wind.
  * - `"omni"`: Outward from its centre: a blast, a landing, a horse's hooves.
- * - `"directional"`: Along the entity's forward (its -z; vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way.
+ * - `"directional"`: Along the entity's -Z, as a light shines (vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way.
  * - `"vortex"`: Around its centre, counter-clockwise seen from above (in 2D, about z): a whirlwind, a spell.
  */
 export type WindMotorKind = "omni" | "directional" | "vortex";
@@ -32792,13 +32799,57 @@ export declare namespace og {
      */
     function decompose(matrix: Matrix4): Transform;
     /**
-     * The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras.
+     * The rotation that points -Z from an eye towards a target, as three.js Object3D.lookAt for cameras and lights. An object (a character, a vehicle) faces a target with og.transform.face.
      *
      * @param eye Where the viewer is.
      * @param target What it looks at.
      * @param up The up direction; the zero vector means +Y.
      */
     function lookAt(eye: Vector3, target: Vector3, up?: Vector3): Quaternion;
+    /**
+     * The rotation that turns an object at a position to face a target: its +Z towards it, as three.js Object3D.lookAt for a mesh. A camera or a light uses og.transform.lookAt.
+     * See `facing`.
+     *
+     * @param position Where the object is.
+     * @param target What it faces.
+     * @param up The up direction; the zero vector means +Y.
+     */
+    function face(position: Vector3, target: Vector3, up?: Vector3): Quaternion;
+    /**
+     * The way an object with this rotation faces: its local +Z, as a unit vector. A camera's or a light's is og.transform.cameraForward.
+     * See `facing`.
+     *
+     * @param quaternion The object's rotation.
+     */
+    function forward(quaternion: Quaternion): Vector3;
+    /**
+     * An object's right: its local -X, as a unit vector (forward × up). A camera's or a light's is og.transform.cameraRight.
+     * See `facing`.
+     *
+     * @param quaternion The object's rotation.
+     */
+    function right(quaternion: Quaternion): Vector3;
+    /**
+     * An object's, a camera's or a light's up: its local +Y, as a unit vector.
+     * See `facing`.
+     *
+     * @param quaternion The rotation.
+     */
+    function up(quaternion: Quaternion): Vector3;
+    /**
+     * The way a camera or a light with this rotation looks: its local -Z, as a unit vector.
+     * See `facing`.
+     *
+     * @param quaternion The camera's or the light's rotation (og.Camera.quaternion).
+     */
+    function cameraForward(quaternion: Quaternion): Vector3;
+    /**
+     * A camera's or a light's right: its local +X, the right of the screen, as a unit vector.
+     * See `facing`.
+     *
+     * @param quaternion The camera's or the light's rotation (og.Camera.quaternion).
+     */
+    function cameraRight(quaternion: Quaternion): Vector3;
     /**
      * A rotation about an axis, as three.js Quaternion.setFromAxisAngle.
      *
@@ -33043,6 +33094,15 @@ export declare namespace og {
      * @param name The action.
      */
     function actionVector(world: World, name: string): Vector2;
+    /**
+     * A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wherever it has orbited. The length is the action's (a stick's tilt is kept) and y is 0. A 2D game uses og.input.actionVector as it is.
+     * See `facing`.
+     *
+     * @param world The world.
+     * @param name The two-axis action.
+     * @param camera The camera's rotation (og.Camera.quaternion).
+     */
+    function moveRelative(world: World, name: string, camera: Quaternion): Vector3;
     /**
      * The action maps whose actions are live, first the one whose bindings win a control another action map also binds (`["vehicle", "gameplay"]`: E exits the car, not interacts). Empty (the default) is every action map, none winning. Takes effect from the next tick's actions.
      *

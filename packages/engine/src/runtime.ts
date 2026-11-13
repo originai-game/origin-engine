@@ -1857,6 +1857,13 @@ export const transform = Object.freeze({
   decompose: (matrix: unknown) => parse(abi().og_transform_decompose(JSON.stringify(matrix))),
   lookAt: (eye: unknown, target: unknown, up?: unknown) =>
     parse(abi().og_transform_look_at(JSON.stringify(eye), JSON.stringify(target), json(up))),
+  face: (position: unknown, target: unknown, up?: unknown) =>
+    parse(abi().og_transform_face(JSON.stringify(position), JSON.stringify(target), json(up))),
+  forward: (quaternion: unknown) => parse(abi().og_transform_forward(JSON.stringify(quaternion))),
+  right: (quaternion: unknown) => parse(abi().og_transform_right(JSON.stringify(quaternion))),
+  up: (quaternion: unknown) => parse(abi().og_transform_up(JSON.stringify(quaternion))),
+  cameraForward: (quaternion: unknown) => parse(abi().og_transform_camera_forward(JSON.stringify(quaternion))),
+  cameraRight: (quaternion: unknown) => parse(abi().og_transform_camera_right(JSON.stringify(quaternion))),
   fromAxisAngle: (axis: unknown, angle: number) => parse(abi().og_transform_from_axis_angle(JSON.stringify(axis), angle)),
 });
 

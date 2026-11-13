@@ -184,6 +184,18 @@ export interface HostAbi<A, V> {
   og_transform_decompose(matrix: string): string;
   /** `og.transform.lookAt` */
   og_transform_look_at(eye: string, target: string, up: string | undefined): string;
+  /** `og.transform.face` */
+  og_transform_face(position: string, target: string, up: string | undefined): string;
+  /** `og.transform.forward` */
+  og_transform_forward(quaternion: string): string;
+  /** `og.transform.right` */
+  og_transform_right(quaternion: string): string;
+  /** `og.transform.up` */
+  og_transform_up(quaternion: string): string;
+  /** `og.transform.cameraForward` */
+  og_transform_camera_forward(quaternion: string): string;
+  /** `og.transform.cameraRight` */
+  og_transform_camera_right(quaternion: string): string;
   /** `og.transform.fromAxisAngle` */
   og_transform_from_axis_angle(axis: string, angle: number): string;
   /** `og.time.setScale` */
@@ -258,6 +270,8 @@ export interface HostAbi<A, V> {
   og_input_action_value(world: number, name: string): number;
   /** `og.input.actionVector` */
   og_input_action_vector(world: number, name: string): string;
+  /** `og.input.moveRelative` */
+  og_input_move_relative(world: number, name: string, camera: string): string;
   /** `og.input.setActionMaps` */
   og_input_set_action_maps(world: number, action_maps: string): void;
   /** `og.input.actionMaps` */
@@ -1337,6 +1351,12 @@ export const SYMBOLS: readonly string[] = [
   "og_transform_compose",
   "og_transform_decompose",
   "og_transform_look_at",
+  "og_transform_face",
+  "og_transform_forward",
+  "og_transform_right",
+  "og_transform_up",
+  "og_transform_camera_forward",
+  "og_transform_camera_right",
   "og_transform_from_axis_angle",
   "og_time_set_scale",
   "og_time_hit_stop",
@@ -1374,6 +1394,7 @@ export const SYMBOLS: readonly string[] = [
   "og_input_action_held",
   "og_input_action_value",
   "og_input_action_vector",
+  "og_input_move_relative",
   "og_input_set_action_maps",
   "og_input_action_maps",
   "og_input_rebind",

@@ -231,8 +231,8 @@ squash, sounds and camera kicks from it.
 Give a dynamic chassis (a box collider) an og.Vehicle and its real mass:
 `RigidBody.mass 1000` for the default road car. A car-sized box at the
 default density weighs a few kilograms, and the engine's and brakes'
-newtons would throw it. The chassis's forward is its local +z (three.js
-`Object3D.lookAt` aims +z). The suspension and grip scale with the chassis's
+newtons would throw it. The chassis's forward is its local +Z, as every
+object's (`facing §1`). The suspension and grip scale with the chassis's
 mass (Bullet's units); the engine and the brakes do not, so a heavier car
 wants proportionally more `engineForce` and `brakeForce`.
 

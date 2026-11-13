@@ -606,7 +606,7 @@ module atmosphere {
   enum WindMotorKind {
     doc "How an og.WindMotor pushes the wind."
     variant omni "Outward from its centre: a blast, a landing, a horse's hooves."
-    variant directional "Along the entity's forward (its -z; vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way."
+    variant directional "Along the entity's -Z, as a light shines (vegetation takes the horizontal part): a fan, an updraft, a rotor's downwash leaning the grass one way."
     variant vortex "Around its centre, counter-clockwise seen from above (in 2D, about z): a whirlwind, a spell."
   }
 

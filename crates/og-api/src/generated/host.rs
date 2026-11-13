@@ -223,6 +223,18 @@ pub trait TransformApi: Wire {
     fn og_transform_decompose(&self, matrix: String) -> String;
     /// `og.transform.lookAt`
     fn og_transform_look_at(&self, eye: String, target: String, up: Option<String>) -> String;
+    /// `og.transform.face`
+    fn og_transform_face(&self, position: String, target: String, up: Option<String>) -> String;
+    /// `og.transform.forward`
+    fn og_transform_forward(&self, quaternion: String) -> String;
+    /// `og.transform.right`
+    fn og_transform_right(&self, quaternion: String) -> String;
+    /// `og.transform.up`
+    fn og_transform_up(&self, quaternion: String) -> String;
+    /// `og.transform.cameraForward`
+    fn og_transform_camera_forward(&self, quaternion: String) -> String;
+    /// `og.transform.cameraRight`
+    fn og_transform_camera_right(&self, quaternion: String) -> String;
     /// `og.transform.fromAxisAngle`
     fn og_transform_from_axis_angle(&self, axis: String, angle: f64) -> String;
 }
@@ -313,6 +325,8 @@ pub trait InputApi: Wire {
     fn og_input_action_value(&self, world: u32, name: String) -> f64;
     /// `og.input.actionVector`
     fn og_input_action_vector(&self, world: u32, name: String) -> String;
+    /// `og.input.moveRelative`
+    fn og_input_move_relative(&self, world: u32, name: String, camera: String) -> String;
     /// `og.input.setActionMaps`
     fn og_input_set_action_maps(&self, world: u32, action_maps: String);
     /// `og.input.actionMaps`
@@ -1509,6 +1523,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_transform_compose",
     "og_transform_decompose",
     "og_transform_look_at",
+    "og_transform_face",
+    "og_transform_forward",
+    "og_transform_right",
+    "og_transform_up",
+    "og_transform_camera_forward",
+    "og_transform_camera_right",
     "og_transform_from_axis_angle",
     "og_time_set_scale",
     "og_time_hit_stop",
@@ -1546,6 +1566,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_input_action_held",
     "og_input_action_value",
     "og_input_action_vector",
+    "og_input_move_relative",
     "og_input_set_action_maps",
     "og_input_action_maps",
     "og_input_rebind",
