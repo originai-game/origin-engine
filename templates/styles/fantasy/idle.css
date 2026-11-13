@@ -1,0 +1,142 @@
+/* fantasy × idle components: the built-in idle documents
+   (packages/engine/src/ui/components/idle) dressed through their named
+   parts and data-* states, in the pack's language: leather panels in a
+   brass double rim, crimson bands (the shared band and title dress at the
+   end of base.css), small caps for labels, gold for figures, brass-ruled
+   badges. A row button takes its plate through button::part(IdleGenerators\.row); the plain action
+   buttons (Buy, Prestige, Reset, Collect, Double) keep controls.css's
+   plates. Every value is a token set in base.css. */
+
+:is([part="IdleGenerators.band"], [part="IdlePurchases.band"], [part="IdlePrestige.band"]) {
+  justify-content: flex-start;
+  background: var(--band-lead-fill);
+  padding-inline-start: var(--space-md);
+}
+:is([part="IdleGenerators.title"], [part="IdlePurchases.title"], [part="IdlePrestige.title"], [part="IdleOffline.title"]) {
+  font-size: var(--font-step-3xl);
+  letter-spacing: var(--font-tracking-md);
+}
+
+/* Captions, badges and empty states in letter-spaced small caps. */
+:is([part="IdleResources.name"], [part="IdlePrestige.frame"] .caption, [part="IdleOffline.summary"], [part="IdlePrestige.frame"] .ask) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+[part="IdleOffline.summary"], [part="IdlePrestige.frame"] .ask { font-size: var(--font-step-md); }
+:is([part="IdleResources.badge"], [part="IdleGenerators.badge"], [part="IdlePurchases.badge"], [part="IdlePrestige.badge"]) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-2xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  border: var(--stroke-hairline) solid var(--line-strong-60);
+  border-radius: var(--radius-xs);
+  background: var(--panel);
+  color: var(--badge-ink);
+}
+:is([part="IdleResources.frame"], [part="IdleGenerators.frame"], [part="IdlePurchases.frame"], [part="IdleOffline.frame"]) .empty-text {
+  font-family: var(--label-font);
+  letter-spacing: var(--font-tracking-lg);
+  color: var(--ink-faint);
+}
+:is([part="IdleResources.frame"], [part="IdleGenerators.frame"], [part="IdlePurchases.frame"], [part="IdlePrestige.frame"], [part="IdleOffline.frame"]) :is(.icon, .row-icon, .cost-icon, .currency-icon, .req-mark, .arrow, .row-arrow) {
+  color: var(--accent);
+}
+
+/* ── Resources: lamp-black HUD chips with a brass keyline over the scene. */
+[part="IdleResources.row"] {
+  border: var(--stroke-hairline) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--plate-fill);
+  box-shadow: var(--plate-shadow);
+  color: var(--scene-ink);
+}
+[part="IdleResources.row"][data-full=true] { border-color: var(--gold); }
+[part="IdleResources.figure"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="IdleResources.rate"] { font-family: var(--font-mono); font-size: var(--font-step-xs); color: var(--figure-ink); }
+[part="IdleResources.rate"][data-trend=up] { color: var(--trend-up); }
+[part="IdleResources.rate"][data-trend=down] { color: var(--trend-down); }
+[part="IdleResources.badge"] { color: var(--gold); border-color: var(--accent-60); }
+/* The loading placeholder breathes; it holds still under reduced motion. */
+@keyframes fantasy-idle-breathe { from { opacity: 1; } to { opacity: 0.45; } }
+[part="IdleResources.placeholder"] { background: var(--line-strong-33); animation: fantasy-idle-breathe var(--motion-duration-slow) ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) {
+  [part="IdleResources.placeholder"] { animation: none; }
+}
+
+/* ── Generators: each row a plate in the member fill, the chosen one gold. */
+button::part(IdleGenerators\.row) {
+  border-image: none;
+  border: var(--stroke-regular) solid var(--line-strong-40);
+  border-radius: var(--radius-sm);
+  background: var(--fantasy-member-fill);
+  box-shadow: var(--fantasy-member-shadow);
+}
+button::part(IdleGenerators\.row):hover { border-color: var(--line-strong); }
+button::part(IdleGenerators\.row):active { background: var(--cell-pressed-fill); }
+button[aria-selected=true]::part(IdleGenerators\.row) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
+button[data-locked=true]::part(IdleGenerators\.row) { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }
+[part="IdleGenerators.row"] .art { border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+[part="IdleGenerators.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--ink); }
+[part="IdleGenerators.row"][aria-selected=true] [part="IdleGenerators.name"] { color: var(--ink-selected); }
+[part="IdleGenerators.row"][data-locked=true] :is([part="IdleGenerators.name"], [part="IdleGenerators.rate"]) { color: var(--ink-down); }
+[part="IdleGenerators.figure"] { font-family: var(--font-display); font-size: var(--font-step-xl); color: var(--gold); }
+[part="IdleGenerators.rate"] { font-family: var(--font-mono); font-size: var(--font-step-sm); color: var(--figure-ink); }
+[part="IdleGenerators.badge"][data-tag=auto] { color: var(--success); border-color: var(--success); }
+[part="IdleGenerators.badge"][data-tag=boost] { color: var(--gold); border-color: var(--accent-60); }
+[part="IdleGenerators.badge"][data-tag=locked] { color: var(--ink-down); border-color: var(--ink-down); }
+
+/* ── Purchases: the amount choice as a brass-ruled segmented strip; rows ruled. */
+button::part(IdlePurchases\.amount) {
+  border-image: none;
+  border: var(--stroke-hairline) solid var(--line-strong-40);
+  border-radius: var(--radius-xs);
+  background: var(--fantasy-menu-tab-fill);
+  color: var(--ink-label);
+}
+button::part(IdlePurchases\.amount):hover { border-color: var(--line-strong); }
+button::part(IdlePurchases\.amount):active { background: var(--cell-pressed-fill); }
+button[aria-checked=true]::part(IdlePurchases\.amount) { border-color: var(--gold); background: var(--fantasy-menu-tab-selected-fill); box-shadow: var(--fantasy-menu-tab-selected-shadow); }
+[part="IdlePurchases.amount"] { font-family: var(--label-font); font-size: var(--font-step-sm); letter-spacing: var(--font-tracking-lg); }
+[part="IdlePurchases.amount"][aria-checked=true] { color: var(--ink-selected); }
+[part="IdlePurchases.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="IdlePurchases.row"] .art { border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--cell-shadow); }
+[part="IdlePurchases.row"]:is([data-maxed=true], [data-locked=true]) .art { box-shadow: var(--cell-empty-shadow); }
+[part="IdlePurchases.name"] { font-family: var(--font-display); font-size: var(--font-step-lg); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--ink); }
+[part="IdlePurchases.effect"] { font-size: var(--font-step-sm); color: var(--ink); }
+[part="IdlePurchases.row"][data-locked=true] :is([part="IdlePurchases.name"], [part="IdlePurchases.effect"]) { color: var(--ink-down); }
+[part="IdlePurchases.row"][data-maxed=true] [part="IdlePurchases.name"] { color: var(--ink-done); }
+[part="IdlePurchases.cost"] { font-family: var(--font-mono); font-size: var(--font-step-sm); }
+[part="IdlePurchases.frame"] .count { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); }
+[part="IdlePurchases.badge"][data-tag=level] { color: var(--gold); border-color: var(--accent-60); }
+[part="IdlePurchases.badge"][data-tag=maxed] { color: var(--success); border-color: var(--success); }
+[part="IdlePurchases.badge"][data-tag=short] { color: var(--danger); border-color: var(--danger); }
+[part="IdlePurchases.badge"][data-tag=locked] { color: var(--ink-down); border-color: var(--ink-down); }
+
+/* ── Prestige: the totals in display figures, the changes ruled, the ask in a crimson well. */
+[part="IdlePrestige.figure"] { font-family: var(--font-display); font-size: var(--font-step-4xl); color: var(--ink-bright); text-shadow: var(--figure-shadow); }
+[part="IdlePrestige.figure"][data-tag=gain] { color: var(--gold); }
+[part="IdlePrestige.frame"] .currency { font-family: var(--label-font); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-lg); color: var(--title-ink); }
+[part="IdlePrestige.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="IdlePrestige.name"] { font-size: var(--font-step-md); color: var(--ink-label); }
+[part="IdlePrestige.cell"] { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="IdlePrestige.cell"][data-tag=after] { color: var(--trend-up); }
+[part="IdlePrestige.requirement"] { border: var(--stroke-hairline) solid var(--line-strong-33); border-radius: var(--radius-xs); background: var(--hud); }
+[part="IdlePrestige.requirement"] .req-text { font-size: var(--font-step-md); }
+[part="IdlePrestige.badge"][data-met=true] { color: var(--success); border-color: var(--success); }
+[part="IdlePrestige.badge"][data-met=false] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="IdlePrestige.confirm"] { border: var(--stroke-regular) solid var(--fantasy-crimson-lo); border-radius: var(--radius-xs); background: var(--hud); box-shadow: var(--well-shadow); }
+
+/* ── Offline: the haul as ruled rows, figures in gold. */
+[part="IdleOffline.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="IdleOffline.name"] { font-size: var(--font-step-lg); color: var(--ink); }
+[part="IdleOffline.figure"] { font-family: var(--font-display); font-size: var(--font-step-2xl); color: var(--gold); text-shadow: var(--figure-shadow); }
+[part="IdleOffline.frame"] .double-text { font-family: var(--label-font); font-size: var(--font-step-2xs); letter-spacing: var(--font-tracking-lg); }
+
+@media (width < 600px) {
+  :is([part="IdleGenerators.frame"], [part="IdlePurchases.frame"], [part="IdlePrestige.frame"], [part="IdleOffline.frame"]) { padding: var(--space-sm); }
+  [part="IdlePrestige.figure"] { font-size: var(--font-step-3xl); }
+  [part="IdleResources.figure"] { font-size: var(--font-step-lg); }
+}

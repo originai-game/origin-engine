@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "built-in UI components: racing",
+      "summary": "A racing group of built-in components under @ui/components/racing/, used by name like the rpg and shooter ones: RacingTelemetry (speed in the game's units, gear, a rev dial with its redline marked or a compact strip, boost, the shift cue), RacingLapHud (lap n/N, position p/N, current, best and last lap times, the split delta ahead or behind, the final lap, an optional checkpoint HudTimer that turns warn at warnAt seconds, 10 by default), RacingStandings (the running order with gaps, the player's row and pitting, retired and finished badges), RacingBanner (the 3-2-1 countdown, GO, final lap and finish calls; a new call id replays its entrance, which reduced motion skips), RacingGarage (the shown car with arrows and a tile strip, StatBar ratings, owned, locked and driven states, Buy disabled and named Too costly when the game says the car is not affordable; reports choose, select and buy with the car's key, and prev, next and back) and RacingResults (the classification with times, points, the fastest-lap mark, DNF and DSQ; reports continue and retry). They compute no times, gaps, points, prices or unlocks: the game passes them in. Each names its frames, rows, cells, titles and badges as parts (src/ui/components/racing/README.md)."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "racing.css dresses the racing components' parts in the pack's brass, soot and crimson, from its existing tokens."
+    }
+  ]
+}

@@ -1433,14 +1433,14 @@ outside this catalogue.
 | --- | --- | --- |
 | `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map | Built, dressed through its parts; art re-review pending |
 | `shooter` | Aim, ammunition, damage-direction HUD, killfeed, loadout | Built (pilot), not yet accepted |
-| `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection | Planned |
-| `racing` | Telemetry, laps and standings, race banner, garage selection, results screen | Planned |
-| `card` | Hand and piles, collection and deck building, reward-choice and run-map screens | Planned |
-| `puzzle` | Level path, goals and moves, level summary | Planned |
-| `idle` | Production and purchase rows, prestige preview, offline-summary screen | Planned |
-| `rhythm` | Song and difficulty selection, judgement presentation, results breakdown | Planned |
-| `arena` | Roster and character selection, draft, versus, team scoreboard, round HUD, lobby screen | Planned |
-| `general` | Shop, achievements, daily quests and rewards, chat, friends | Planned |
+| `strategy` | Selection and commands, production queue, waves, tower-upgrade inspection | Built, dressed in `fantasy` through its parts; not yet accepted |
+| `racing` | Telemetry, laps and standings, race banner, garage selection, results screen | Built, dressed in `fantasy` through its parts; not yet accepted |
+| `card` | Hand and piles, collection and deck building, reward-choice and run-map screens | Built, dressed in `fantasy` through its parts; not yet accepted |
+| `puzzle` | Level path, goals and moves, level summary | Built, dressed in `fantasy` through its parts; not yet accepted |
+| `idle` | Production and purchase rows, prestige preview, offline-summary screen | Built, dressed in `fantasy` through its parts; not yet accepted |
+| `rhythm` | Song and difficulty selection, judgement presentation, results breakdown | Built, dressed in `fantasy` through its parts; not yet accepted |
+| `arena` | Roster and character selection, draft, versus, team scoreboard, round HUD, lobby screen | Built, dressed in `fantasy` through its parts; not yet accepted |
+| `general` | Shop, achievements, daily quests and rewards, chat, friends | Built, dressed in `fantasy` through its parts; not yet accepted |
 
 Each group is built token- and part-only (§3.1, §3.2), with state
 fixtures (§6.1) and a review sheet (§6.2). Member inputs, intents and
@@ -1601,8 +1601,9 @@ project directory); a pack's own sheet is reviewed by its directory.
 | rhythm | scifi | pixel | Songs and difficulty; judgement and results |
 | arena | clean | fantasy | Selection, draft, lobby; teams, scores, round results |
 
-The `general` group's pages and pairing are set when it is built; the
-counts below cover the nine groups above.
+The `general` group is built with `fantasy` as its primary pack; its
+contrast sample is not yet chosen, and the counts below cover the nine
+groups above.
 
 Each sampled pair keeps four reference frames: normal desktop at 100 %,
 normal phone at 100 %, stress desktop at 150 %, stress phone at 150 %.

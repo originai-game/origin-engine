@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "card UI components",
+      "summary": "A card group of built-in components (src/ui/components/card/, README there): CardFace (a card's cost seal, art, name, type line and rules text), CardHand (the hand, overlapping as it grows and fanned by the game's per-card place; a card the game says is unplayable keeps its mark, offers no Play and never reports play; reports select and play by card key), CardPiles (draw, discard and exhaust counts; reports open by pile key), CardCollection (a deck builder's filter tabs and card grid with owned and in-deck badges; a card the game will not add stays in reach, is marked and says the game's reason, and reports inspect instead of add; reports add, inspect and choosefilter), CardDeckList (the deck's rows with copies, the size against the game's limit, plus and minus per row, each disabled and silent where the game refuses it; reports choose, add, remove and confirm), CardReward (pick one of the game's card or relic offers, or skip; it says so when there is none) and CardRunMap (the run map on the core NodeGraph with visited, current, reachable and out-of-reach rooms and a legend; reports NodeGraph's pick). Each takes the game's data as keyed rows and returns intents with their keys; legality, costs, targets and rewards stay the game's. Every member names its frames, rows, cells and badges as parts with their states as data-* attributes."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "card.css dresses the card group's parts in the pack's materials: walnut card plates in rarity-inked brass rims, crimson cost seals, tinted art windows by card type, panel frames for the collection, deck list and run map under the pack's shared heading band, relic seals rimmed by rarity, pile counts and the deck size bar."
+    }
+  ]
+}

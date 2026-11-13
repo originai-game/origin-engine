@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "built-in UI components: arena",
+      "summary": "An arena group of built-in components under @ui/components/arena/, used by name like the rpg and shooter ones: ArenaRoster (character selection: cells with portrait or icon, name and role in words, P1–P4 marks with a ready check, locked and taken cells disabled and named; reports choose with the character's key), ArenaDraft (ban and pick phases for two teams, filled, empty, banned and active slots, the team to choose and the turn's HudTimer; reports confirm), ArenaVersus (two sides with portraits, names, champions and ranks, the local player marked; a new reveal id replays the entrance, which reduced motion skips), ArenaScoreboard (two teams under their names and scores, K/D/A and score or score only, the local row marked You, disconnected players dimmed and named), ArenaRoundHud (round n of N, both team scores, the round HudTimer and a Round won / lost / drawn banner) and ArenaLobby (seats with host, ready and not-ready in words, open seats with Invite; reports invite with the seat's key, ready, unready and start). They compute no scores, ranks, outcomes, timers, legality or readiness: the game passes them in. Each names its frames, rows, cells, titles and badges as parts (src/ui/components/arena/README.md)."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "arena.css dresses the arena components' parts in the pack's brass, soot and crimson, the teams in its --team1 and --team2, from its existing tokens."
+    }
+  ]
+}

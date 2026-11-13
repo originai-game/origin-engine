@@ -1,0 +1,6 @@
+type look
+version 1
+---
+# Names the bundled fantasy pack so the cook bundles it (@styles/fantasy/); the sheet loads it itself.
+name "card sheet fantasy"
+ui "fantasy"

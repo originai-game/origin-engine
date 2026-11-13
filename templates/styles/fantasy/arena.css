@@ -1,0 +1,163 @@
+/* fantasy × arena components: the built-in arena documents
+   (packages/engine/src/ui/components/arena) dressed through their named
+   parts and data-* states, in the pack's language: brass rims on soot and
+   leather, crimson bands, small caps, gold for the local player, the
+   teams in the pack's --team1 / --team2. The components' own <style>
+   holds layout only. Every value is a token set in base.css. Bands
+   ([part$=".band"]) take base.css's shared crimson heading band. */
+
+/* The arena bands carry a phase, a line or a timer beside the title: one step under the shared band's. */
+:is([part="ArenaRoster.title"], [part="ArenaDraft.title"], [part="ArenaScoreboard.title"], [part="ArenaLobby.title"]) { font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-md); }
+[part="ArenaDraft.frame"] [part="ArenaDraft.band"] { padding: var(--space-xs) var(--space-md); }
+/* HUD over the scene: lamp-black plates with a brass keyline. */
+:is([part="ArenaRoundHud.team"], [part="ArenaRoundHud.round"]) {
+  border: var(--stroke-hairline) solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--plate-fill);
+  box-shadow: var(--plate-shadow);
+  color: var(--scene-ink);
+  font-family: var(--font-body);
+}
+
+/* Captions and short words in letter-spaced small caps. */
+:is([part="ArenaRoster.role"], [part="ArenaDraft.frame"] .section, [part="ArenaDraft.frame"] .player,
+[part="ArenaScoreboard.heading"], [part="ArenaRoundHud.frame"] .round-label, [part="ArenaRoundHud.frame"] .name,
+[part="ArenaVersus.rank"], [part="ArenaLobby.frame"] .detail, [part="ArenaDraft.frame"] .turn) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  color: var(--ink-label);
+}
+/* Badges: a small brass-ruled plate, its word in caps. */
+:is([part="ArenaRoster.badge"], [part="ArenaDraft.badge"], [part="ArenaScoreboard.badge"], [part="ArenaRoundHud.badge"],
+[part="ArenaLobby.badge"], [part="ArenaRoster.mark"], [part="ArenaVersus.frame"] .you) {
+  font-family: var(--label-font);
+  font-size: var(--font-step-2xs);
+  letter-spacing: var(--font-tracking-lg);
+  text-transform: uppercase;
+  border: var(--stroke-hairline) solid var(--line-strong-60);
+  border-radius: var(--radius-xs);
+  background: var(--panel);
+  color: var(--badge-ink);
+}
+/* The local player, wherever it is marked. */
+:is([part="ArenaScoreboard.badge"][data-tag=you], [part="ArenaRoundHud.badge"], [part="ArenaLobby.badge"][data-tag=you], [part="ArenaVersus.frame"] .you) {
+  color: var(--gold);
+  border-color: var(--accent-60);
+}
+/* Team inks. */
+:is([part="ArenaDraft.heading"], [part="ArenaVersus.heading"], [part="ArenaScoreboard.heading"], [part="ArenaRoundHud.score"], [part="ArenaScoreboard.score"])[data-team=a] { color: var(--team1); }
+:is([part="ArenaDraft.heading"], [part="ArenaVersus.heading"], [part="ArenaScoreboard.heading"], [part="ArenaRoundHud.score"], [part="ArenaScoreboard.score"])[data-team=b] { color: var(--team2); }
+
+/* ── Roster. */
+button::part(ArenaRoster\.cell) { border-image: none; border: var(--stroke-regular) solid var(--line-strong-40); border-radius: var(--radius-sm); background: var(--fantasy-member-fill); box-shadow: var(--fantasy-member-shadow); }
+button::part(ArenaRoster\.cell):hover { border-color: var(--line-strong); }
+button[aria-selected=true]::part(ArenaRoster\.cell) { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
+button[data-locked=true]::part(ArenaRoster\.cell), button[data-taken=true]::part(ArenaRoster\.cell) { background: var(--fantasy-member-down-fill); border-color: var(--ink-down); }
+[part="ArenaRoster.portrait"] { border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--fantasy-picture-shadow); color: var(--accent); }
+[part="ArenaRoster.cell"][data-role=tank] [part="ArenaRoster.portrait"] { box-shadow: var(--cell-rare-shadow); }
+[part="ArenaRoster.cell"][data-role=damage] [part="ArenaRoster.portrait"] { box-shadow: var(--cell-mythic-shadow); }
+[part="ArenaRoster.cell"][data-role=support] [part="ArenaRoster.portrait"] { box-shadow: var(--cell-uncommon-shadow); }
+[part="ArenaRoster.cell"][data-locked=true] [part="ArenaRoster.portrait"], [part="ArenaRoster.cell"][data-taken=true] [part="ArenaRoster.portrait"] { box-shadow: var(--cell-empty-shadow); color: var(--ink-down); }
+[part="ArenaRoster.name"] { font-family: var(--font-display); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--ink); }
+[part="ArenaRoster.cell"][aria-selected=true] [part="ArenaRoster.name"] { color: var(--ink-selected); }
+:is([part="ArenaRoster.cell"][data-locked=true], [part="ArenaRoster.cell"][data-taken=true]) :is([part="ArenaRoster.name"], [part="ArenaRoster.role"]) { color: var(--ink-down); }
+[part="ArenaRoster.role"][data-role=tank] { color: var(--info); }
+[part="ArenaRoster.role"][data-role=damage] { color: var(--danger); }
+[part="ArenaRoster.role"][data-role=support] { color: var(--success); }
+[part="ArenaRoster.badge"][data-tag=locked], [part="ArenaRoster.badge"][data-tag=taken] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="ArenaRoster.badge"][data-tag=selected] { color: var(--gold); border-color: var(--accent-60); }
+[part="ArenaRoster.mark"] { background: var(--well-80); }
+[part="ArenaRoster.mark"][data-slot="1"] { color: var(--team1); border-color: var(--team1); }
+[part="ArenaRoster.mark"][data-slot="2"] { color: var(--team2); border-color: var(--team2); }
+[part="ArenaRoster.mark"][data-slot="3"] { color: var(--success); border-color: var(--success); }
+[part="ArenaRoster.mark"][data-slot="4"] { color: var(--warn); border-color: var(--warn); }
+[part="ArenaRoster.mark"][data-ready=true] { background: var(--panel); }
+[part="ArenaRoster.frame"] .chosen-name { font-family: var(--font-display); font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; color: var(--title-ink); }
+[part="ArenaRoster.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Draft. */
+[part="ArenaDraft.team"] { border: var(--stroke-hairline) solid var(--line-strong-33); border-radius: var(--radius-sm); background: var(--fantasy-doll-ground); }
+[part="ArenaDraft.team"][aria-current=true] { border-color: var(--gold); box-shadow: var(--fantasy-member-selected-shadow); }
+[part="ArenaDraft.heading"] { font-family: var(--font-display); font-size: var(--font-step-xl); letter-spacing: var(--font-tracking-md); text-transform: uppercase; border-bottom: var(--stroke-hairline) solid var(--line-strong-40); }
+[part="ArenaDraft.badge"][data-phase=ban], [part="ArenaDraft.badge"][data-tag=banning] { color: var(--danger); border-color: var(--danger); }
+[part="ArenaDraft.badge"][data-phase=pick], [part="ArenaDraft.badge"][data-tag=picking] { color: var(--gold); border-color: var(--accent-60); }
+[part="ArenaDraft.badge"][data-phase=done] { color: var(--success); border-color: var(--success); }
+[part="ArenaDraft.badge"][data-tag=banned], [part="ArenaDraft.badge"][data-tag=open] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="ArenaDraft.slot"][data-kind=pick] { border-radius: var(--radius-xs); border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="ArenaDraft.slot"][data-state=active] { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="ArenaDraft.portrait"] { border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--cell-shadow); color: var(--accent); }
+[part="ArenaDraft.portrait"][data-state=empty] { box-shadow: var(--cell-empty-shadow); }
+[part="ArenaDraft.portrait"][data-state=banned] { color: var(--ink-down); }
+[part="ArenaDraft.portrait"] .strike { color: var(--danger); }
+[part="ArenaDraft.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); color: var(--ink); }
+[part="ArenaDraft.slot"][data-state=empty] [part="ArenaDraft.name"] { color: var(--ink-faint); }
+[part="ArenaDraft.slot"][data-state=banned] [part="ArenaDraft.name"] { color: var(--ink-done); text-decoration: line-through; }
+[part="ArenaDraft.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Versus. */
+[part="ArenaVersus.side"] { border: var(--stroke-regular) solid var(--frame-rim); border-radius: var(--radius-xs); background: var(--plate-fill); box-shadow: var(--plate-shadow); color: var(--ink); font-family: var(--font-body); }
+[part="ArenaVersus.side"][data-team=a] { border-color: var(--team1); }
+[part="ArenaVersus.side"][data-team=b] { border-color: var(--team2); }
+[part="ArenaVersus.heading"] { font-family: var(--font-display); font-size: var(--font-step-3xl); letter-spacing: var(--font-tracking-md); text-transform: uppercase; text-shadow: var(--title-shadow); }
+[part="ArenaVersus.card"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="ArenaVersus.card"][data-local=true] { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="ArenaVersus.portrait"] { border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--fantasy-portrait-shadow); color: var(--accent); }
+[part="ArenaVersus.name"] { font-family: var(--font-display); font-size: var(--font-step-xl); letter-spacing: var(--font-tracking-sm); color: var(--title-ink); }
+[part="ArenaVersus.card"][data-local=true] [part="ArenaVersus.name"] { color: var(--ink-selected); }
+[part="ArenaVersus.frame"] .character { font-family: var(--font-body); font-size: var(--font-step-md); color: var(--ink-muted); }
+[part="ArenaVersus.rank"] { color: var(--gold); }
+[part="ArenaVersus.frame"] .seal { border-radius: 50%; background: var(--fantasy-round-fill); box-shadow: var(--fantasy-vitals-ring-shadow); }
+[part="ArenaVersus.badge"] { line-height: 1; font-family: var(--font-display); font-size: var(--font-step-4xl); letter-spacing: var(--font-tracking-lg); color: var(--ink-bright); text-shadow: var(--title-shadow); }
+[part="ArenaVersus.frame"] .waiting { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Scoreboard. */
+/* The board is a table: its rules and the local row's wash sit on the cells. */
+[part="ArenaScoreboard.heading"] > th { border-bottom: var(--stroke-hairline) solid var(--line-strong-40); }
+[part="ArenaScoreboard.heading"] .team-name { font-family: var(--font-display); font-size: var(--font-step-xl); }
+[part="ArenaScoreboard.score"] { font-family: var(--font-display); font-size: var(--font-step-3xl); text-shadow: var(--figure-shadow); }
+[part="ArenaScoreboard.row"] > :is(th, td) { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="ArenaScoreboard.row"][data-local=true] > :is(th, td) { background: var(--accent-20); }
+[part="ArenaScoreboard.row"][data-local=true] > th { box-shadow: var(--row-selected-edge); }
+[part="ArenaScoreboard.row"][data-disconnected=true] { color: var(--ink-done); }
+[part="ArenaScoreboard.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); }
+[part="ArenaScoreboard.row"][data-local=true] [part="ArenaScoreboard.name"] { color: var(--ink-selected); }
+[part="ArenaScoreboard.row"][data-disconnected=true] :is([part="ArenaScoreboard.name"], [part="ArenaScoreboard.cell"]) { color: var(--ink-done); }
+[part="ArenaScoreboard.cell"] { font-family: var(--font-mono); font-size: var(--font-step-md); color: var(--figure-ink); }
+[part="ArenaScoreboard.badge"][data-tag=disconnected] { color: var(--ink-down); border-color: var(--ink-down); }
+[part="ArenaScoreboard.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* ── Round HUD. */
+[part="ArenaRoundHud.team"][data-local=true] { border-color: var(--gold); }
+[part="ArenaRoundHud.score"] { line-height: 1; font-family: var(--font-display); font-size: var(--font-step-4xl); text-shadow: var(--figure-shadow); }
+[part="ArenaRoundHud.round"] { background: var(--fantasy-round-fill); box-shadow: var(--fantasy-round-shadow); border-color: var(--accent); }
+[part="ArenaRoundHud.frame"] .round-label { color: var(--ink-bright); }
+[part="ArenaRoundHud.banner"] { border-block: var(--stroke-regular) solid var(--accent); background: var(--band-fill); box-shadow: var(--band-shadow); }
+[part="ArenaRoundHud.title"] { line-height: 1; font-family: var(--font-display); font-size: var(--font-step-4xl); letter-spacing: var(--font-tracking-xl); text-transform: uppercase; color: var(--title-ink); text-shadow: var(--title-shadow); }
+[part="ArenaRoundHud.banner"][data-outcome=won] [part="ArenaRoundHud.title"] { color: var(--gold); }
+[part="ArenaRoundHud.banner"][data-outcome=lost] [part="ArenaRoundHud.title"] { color: var(--danger); }
+[part="ArenaRoundHud.frame"] .detail { font-family: var(--label-font); font-size: var(--font-step-md); letter-spacing: var(--font-tracking-lg); color: var(--ink-label); }
+
+/* ── Lobby. */
+[part="ArenaLobby.row"] { border-bottom: var(--stroke-hairline) solid var(--line-strong-15); }
+[part="ArenaLobby.row"][data-local=true] { background: var(--row-selected-fill); box-shadow: var(--row-selected-edge); }
+[part="ArenaLobby.portrait"] { border-radius: var(--radius-xs); background: var(--cell-fill); box-shadow: var(--cell-shadow); color: var(--accent); }
+[part="ArenaLobby.portrait"][data-open=true] { box-shadow: var(--cell-empty-shadow); color: var(--ink-faint); }
+[part="ArenaLobby.name"] { font-family: var(--font-body); font-size: var(--font-step-lg); color: var(--ink); }
+[part="ArenaLobby.row"][data-local=true] [part="ArenaLobby.name"] { color: var(--ink-selected); }
+[part="ArenaLobby.row"][data-open=true] [part="ArenaLobby.name"] { font-family: var(--label-font); color: var(--ink-faint); }
+[part="ArenaLobby.badge"][data-tag=host] { color: var(--gold); border-color: var(--gold); }
+[part="ArenaLobby.cell"] { font-family: var(--label-font); font-size: var(--font-step-xs); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
+[part="ArenaLobby.cell"][data-ready=true] { color: var(--success); }
+[part="ArenaLobby.cell"][data-ready=false] { color: var(--ink-faint); }
+[part="ArenaLobby.frame"] .empty-text { font-family: var(--label-font); color: var(--ink-faint); }
+
+/* A frame cannot answer its own container query, so its padding and the
+   full-screen members' type follow the screen. */
+@media (width < 600px) {
+  :is([part="ArenaRoster.frame"], [part="ArenaDraft.frame"], [part="ArenaScoreboard.frame"], [part="ArenaLobby.frame"]) { padding: var(--space-sm); }
+  [part="ArenaRoundHud.score"] { font-size: var(--font-step-3xl); }
+  [part="ArenaRoundHud.title"] { font-size: var(--font-step-3xl); }
+  [part="ArenaVersus.badge"] { font-size: var(--font-step-2xl); }
+}

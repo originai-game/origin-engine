@@ -1,0 +1,20 @@
+type project
+version 1
+---
+# The puzzle components' review sheet: `og ui sheet puzzle` renders each page
+# at desktop and phone, 100 % and 150 % (docs/ui.md §6.2). The pages use the
+# built-in components by name, as a game does; each screen names its style
+# and page. play is the normal page (goals and moves over the board, the
+# booster tray), map the stress page (a long level path and a full level
+# summary), states every member in every fixture state it declares.
+name "Puzzle kit sheet"
+id "puzzle-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "play-fantasy" "style:fantasy;page:play"
+  screen "map-fantasy" "style:fantasy;page:map"
+  screen "states-fantasy" "style:fantasy;page:states"
+}

@@ -1,0 +1,19 @@
+type project
+version 1
+---
+# The general components' review sheet: `og ui sheet general` renders each
+# page at desktop and phone, 100 % and 150 % (docs/ui.md §6.2). The pages use
+# the built-in components by name, as a game does; each screen names its
+# style and page.
+name "General kit sheet"
+id "general-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "store-fantasy" "style:fantasy;page:store"
+  screen "progress-fantasy" "style:fantasy;page:progress"
+  screen "social-fantasy" "style:fantasy;page:social"
+  screen "states-fantasy" "style:fantasy;page:states"
+}

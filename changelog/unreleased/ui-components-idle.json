@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "built-in UI components: idle",
+      "summary": "An idle group of built-in components under @ui/components/idle/, used by name like the rpg and racing ones: IdleResources (a chip per currency with its amount and income, the game's formatted strings winning over compacted numbers, a Full badge and loading placeholders), IdleGenerators (producers with owned, yield, level, boost, Auto and a ProgressBar for the running cycle; reports choose, a locked row disabled), IdlePurchases (a ×1/×10/×100/Max radio group, or the game's own wording of each amount, reporting chooseamount, and upgrades with effect, level, count and cost; reports buy only for a row that is affordable and neither maxed nor locked), IdlePrestige (held and gained prestige currency, each bonus now and after the reset, the requirement met or not; reports request, then while the game sets confirming an inline Reset and Cancel, Escape cancelling) and IdleOffline (time away as the game's words or seconds through formatDuration, the haul per currency; reports collect and, when canDouble, double). They compute no income, prices, counts, gains or earnings: the game passes them in. Each names its frames, rows, cells, titles and badges as parts (src/ui/components/idle/README.md)."
+    },
+    {
+      "member": "fantasy style pack",
+      "summary": "idle.css dresses the idle components' parts in the pack's brass, leather and crimson, from its existing tokens, and breathes the loading placeholder (still under reduced motion)."
+    }
+  ]
+}
