@@ -25,7 +25,7 @@ pub use style::css_color;
 pub use text::colr;
 pub mod doc;
 mod draw;
-mod draw_codec;
+pub(crate) use draw::draw_codec;
 pub use style::dress;
 pub(crate) use text::edit;
 pub mod element;

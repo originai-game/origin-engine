@@ -35,6 +35,7 @@ use og_draw::{
     UiVectorHandle,
 };
 
+pub(crate) mod draw_codec;
 mod emit;
 mod order;
 
