@@ -23,6 +23,8 @@
 //! it; quantised, so the frame is close to the reference, not equal).
 //! `OG_GFX_PIPELINE_CACHE=DIR` keeps compiled pipelines in DIR across runs
 //! where the backend can (Vulkan; `RenderInfo::pipeline_cache`).
+//! `OG_GFX_PASSES=1` adds, with `--frames`, each render-graph pass's GPU
+//! milliseconds a frame, largest first.
 //! `OG_GFX_SERIAL=1` waits for the GPU after every timed frame and reports
 //! the mean wait as `gpu=`: the GPU's time per frame (its work starts at
 //! the frame's submit), which a frame time overlapped with the next
@@ -168,6 +170,46 @@ fn time_frames(
     Ok((ms, per_frame(cpu), serial.then(|| per_frame(gpu)), stats))
 }
 
+/// The GPU milliseconds a frame of each render-graph pass, largest first,
+/// over `frames` more frames (`OG_GFX_PASSES`); empty where the device has
+/// no timestamp queries.
+fn gpu_passes(
+    renderer: &mut Renderer,
+    built: &mut GfxScene,
+    frames: u32,
+) -> Result<String, String> {
+    static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    renderer.set_clock(Some(|| {
+        START.get_or_init(Instant::now).elapsed().as_secs_f64() * 1000.0
+    }));
+    let first = built.frames.max(1) + frames;
+    for f in 0..frames {
+        if let Some(update) = built.update {
+            update(&mut built.scene, first + f);
+        }
+        renderer
+            .render(&built.scene, &RenderTarget::Offscreen)
+            .map_err(|e| e.to_string())?;
+    }
+    let timed = renderer.gpu_timings(true);
+    renderer.set_clock(None);
+    let mut total = std::collections::BTreeMap::<String, f64>::new();
+    for pass in timed.iter().flat_map(|f| &f.passes) {
+        *total.entry(pass.name.clone()).or_default() += pass.ms();
+    }
+    let mut rows: Vec<_> = total.into_iter().collect();
+    rows.sort_by(|a, b| b.1.total_cmp(&a.1));
+    let mut line = String::new();
+    for (name, ms) in rows {
+        let _ = write!(line, " {name}={:.3}", ms / timed.len().max(1) as f64);
+    }
+    Ok(if line.is_empty() {
+        line
+    } else {
+        format!(" passes:{line}")
+    })
+}
+
 fn run(
     name: &str,
     out: Option<&str>,
@@ -239,6 +281,10 @@ fn run(
     } else {
         None
     };
+    let passes = match (&timing, std::env::var_os("OG_GFX_PASSES")) {
+        (Some(_), Some(_)) => gpu_passes(&mut renderer, &mut built, frames)?,
+        _ => String::new(),
+    };
     let info = renderer.info();
     let tier = info.backend_tier();
     let mut line = format!(
@@ -285,6 +331,7 @@ fn run(
             );
         }
     }
+    line.push_str(&passes);
     let reference = gfx::reference_path(&tier, name);
     if reference.exists() {
         let expected = gfx::load_png(&reference)?;
