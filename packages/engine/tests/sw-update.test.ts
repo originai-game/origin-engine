@@ -6,7 +6,7 @@
 import { expect, test } from "bun:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { preloadBundle } from "../src/web/worker.ts";
+import { preloadBundle } from "../src/web/boot.ts";
 import { downloadsOf, serviceWorkerLists, streamGroupsOf } from "../src/node/web-build.ts";
 
 declare const Bun: { build(o: { entrypoints: string[]; target: string; format: string }): Promise<{ success: boolean; outputs: Array<{ text(): Promise<string> }> }> };

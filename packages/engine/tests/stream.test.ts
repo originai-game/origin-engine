@@ -1,12 +1,12 @@
 // Streaming (phase 3): what the web host hands the engine to stream with.
 // The Worker gives the engine the browser's DecompressionStream to inflate
-// terrain tiles off the engine's work (worker.ts installInflater): each
+// terrain tiles off the engine's work (boot.ts installInflater): each
 // zlib stream comes back inflated under its key, a broken one fails under
 // its key (the engine then inflates that tile itself), and without the
 // stream the engine is told to inflate on its own.
 import { expect, test } from "bun:test";
 import { deflateSync } from "node:zlib";
-import { installInflater } from "../src/web/worker.ts";
+import { installInflater } from "../src/web/boot.ts";
 
 function host() {
   const put = new Map<number, Uint8Array>();

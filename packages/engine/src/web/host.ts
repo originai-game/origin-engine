@@ -172,3 +172,68 @@ export async function loadWebHost(glue: WebGlue, wasm?: unknown, threads?: numbe
   bindHost(binding);
   return binding;
 }
+
+/** The wasm exports the Worker uses beyond the binding symbols. */
+export interface WebExtras {
+  og_web_put_file(path: string, bytes: Uint8Array): void;
+  og_web_fail_file(path: string, reason: string): void;
+  og_web_put_texture(id: string, width: number, height: number, rgba: Uint8Array, srgb: boolean): void;
+  og_web_put_texture_encoded(id: string, format: string, width: number, height: number, srgb: boolean, levels: Uint8Array): string;
+  og_web_texture_target(engine: number, manifest: string, id: string, bytes: Uint8Array): string;
+  og_web_set_fetcher(fetch: (path: string) => void): void;
+  /** Streamed video's decoders (video.ts); absent in an older engine module. */
+  og_web_install_video?(
+    stream: (key: number, width: number, height: number, table: Uint32Array, data: Uint8Array) => boolean,
+    frame: (stream: number, player: number, frame: number, looped: boolean) => VideoFrame | null,
+    decoder: string,
+    hardware: boolean,
+    maxWidth: number,
+    maxHeight: number,
+  ): void;
+  og_web_set_transcoder?(transcode: (id: string, ktx2: Uint8Array, target: string) => void): void;
+  og_web_fail_texture?(id: string, reason: string): void;
+  og_web_set_inflater?(inflate: (key: number, bytes: Uint8Array) => void): void;
+  og_web_put_inflated?(key: number, bytes: Uint8Array): void;
+  og_web_fail_inflated?(key: number, reason: string): void;
+  og_web_set_image_decoder?(decode: (key: number, bytes: Uint8Array) => void): void;
+  og_web_put_image?(key: number, width: number, height: number, rgba: Uint8Array): void;
+  og_web_fail_image?(key: number, reason: string): void;
+  og_web_bundle_files(manifest: string): string;
+  og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
+  og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
+  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean): Promise<string>;
+  /** The page went fullscreen or left it (og.render.display's `fullscreen`; the setting follows). */
+  og_web_fullscreen?(engine: number, on: boolean): void;
+  /** What the browser granted the pointer lock: raw movement now, and whether it refused unadjustedMovement (og.input.mouse). */
+  og_web_mouse_report?(engine: number, active: boolean, unsupported: boolean): void;
+  og_web_set_viewport(engine: number, viewport: string): string;
+  og_web_resize?(engine: number, width: number, height: number): void;
+  og_web_lanes?(): string;
+  /** What the engine holds (the probe's `memory`, ProbeMemory), as JSON. */
+  og_web_memory?(engine: number): string;
+  /** The device the attached renderer runs on: its WebGPU limits and features, whether it is a fallback adapter (JSON, null before attaching). */
+  og_web_gpu?(engine: number): string;
+  /** Make one pipeline no frame used yet (og-render's Renderer::warm); false when none is left. */
+  og_web_warm?(engine: number): boolean;
+  /** The display's refresh interval the Worker measured, ms (automatic quality's budget at no frame cap). */
+  og_web_display_interval?(engine: number, ms: number): void;
+  /** Brackets the probe's `frame`: a harness's frame draws at the configured quality and is no sample of automatic quality. */
+  og_web_scripted_frame?(engine: number, on: boolean): void;
+  /** Test hook: destroy the GPU device; the renderer is made again on a new one and the game goes on. */
+  og_web_lose_device?(engine: number): boolean;
+  /** Fork s60: `span(on)` around the renderer's frame pipelines (og-render set_frame_pipelines_hook), which pipelines.ts makes asynchronously. */
+  og_web_frame_pipelines?(span: ((on: boolean) => void) | null): void;
+  /** Fork s63: the texture bytes a frame uploads at most (0: no limit). */
+  og_web_upload_budget?(bytes: number): void;
+  /** Fork s63: the textures still drawn from their stand-ins after the last frame. */
+  og_web_textures_deferred?(): number;
+  og_web_fonts_pending?(): number;
+  /** Fork s70: the page's loading screen covers the canvas: frames prepare without drawing (og-render set_covered). */
+  og_web_covered?(on: boolean): void;
+  /** `og render`'s every-frame capture (development builds): the display frame drawn last as RGBA8 rows at the canvas's size; empty until its readback lands. */
+  og_web_render_frame?(engine: number): Uint8Array;
+  /** The first Rust panic recorded (JSON: kind, message, location, tick, lane), or `null`. */
+  og_web_panic?(): string;
+  /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
+  og_web_lanes_fault?(site: string): boolean;
+}

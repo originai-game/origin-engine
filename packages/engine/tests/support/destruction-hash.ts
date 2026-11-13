@@ -42,7 +42,7 @@ if (which === "node") {
     glue["og_web_put_file"]!(`${root}/cooked/${o.file}`, bytes);
     if (o.type === "og.Texture") textures.push({ id: o.id, bytes });
   }
-  // And its transcode (worker.ts transcodeBundle): the wasm reads no Basis
+  // And its transcode (boot.ts transcodeBundle): the wasm reads no Basis
   // texture itself. With no renderer every texture is RGBA8, level 0.
   const { loadBasisTranscoder, transcodeKtx2 } = await import("../../src/web/basis.ts");
   const basis = await loadBasisTranscoder();

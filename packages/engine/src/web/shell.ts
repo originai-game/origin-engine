@@ -332,7 +332,7 @@ export interface Ready {
   readonly textureFormat: string | null;
   readonly files: number;
   readonly textures: number;
-  /** With `telemetry`: the device the renderer runs on (worker.ts deviceReport; shell/telemetry.ts gpuOf reads it). */
+  /** With `telemetry`: the device the renderer runs on (boot.ts deviceReport; shell/telemetry.ts gpuOf reads it). */
   readonly gpu?: { readonly info?: unknown; readonly limits?: unknown; readonly features?: readonly string[] };
 }
 
