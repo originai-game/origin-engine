@@ -8,6 +8,7 @@
 //! | [`reflect`] | [`Reflect`] and `#[derive(Reflect)]`, [`Schema`] and its JSON, packed [`Layout`]s |
 //! | [`ogt`] | the `.ogt` text format: [`ogt::Document`] reader and canonical writer |
 //! | [`rng`] | [`Rng`], the deterministic generator shared with the platform scaffolds |
+//! | [`facing`] | which way things face: the axes of an object, a camera and the 2D plane, headings, look rotations and [`facing::move_relative`], the one statement |
 //! | [`math`] | glam re-exported, plus deterministic `sin`/`cos`/`atan2`/`exp`/`ln`/`pow`, and [`math::world_pose`] down a parent chain |
 //! | [`noise`] | gradient noise on a seed: Perlin, simplex and [`noise::Fbm`], the one CPU copy |
 //! | [`procgen`] | weighted picks, permutations, Poisson-disk points, BSP rooms, wave function collapse |
@@ -32,6 +33,7 @@ pub mod alloc;
 pub mod base64;
 pub mod ease;
 pub mod error;
+pub mod facing;
 pub mod handle;
 pub mod hash;
 pub mod idmap;
