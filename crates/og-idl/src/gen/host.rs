@@ -388,6 +388,18 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "()",
         "Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers.",
     ),
+    (
+        "og_engine_trace",
+        &[("engine", "u32", "number"), ("on", "bool", "boolean")],
+        "()",
+        "Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's.",
+    ),
+    (
+        "og_engine_trace_take",
+        &[("engine", "u32", "number"), ("last", "bool", "boolean")],
+        "String",
+        "The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take).",
+    ),
 ];
 
 /// `crates/og-api/src/generated/host.rs`.

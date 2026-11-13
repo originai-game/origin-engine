@@ -85,6 +85,10 @@ pub trait Lifecycle: Wire {
     fn og_room_deliver(&self, engine: u32, event: String) -> bool;
     /// Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers.
     fn og_room_set_host(&self, engine: u32, info: String);
+    /// Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's.
+    fn og_engine_trace(&self, engine: u32, on: bool);
+    /// The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take).
+    fn og_engine_trace_take(&self, engine: u32, last: bool) -> String;
 }
 
 /// `reflect`: packages/knowledge/wiki/reflect.md.

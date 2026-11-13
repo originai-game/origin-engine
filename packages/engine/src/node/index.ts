@@ -72,10 +72,6 @@ export interface NativeExtras {
   og_node_render_restore(engine: number, snapshot: Uint8Array): string;
   /** Waits for every pipeline compile the process started (the full lit variants included), so the display frames after it repeat byte for byte. Development only. */
   og_node_settle_pipelines(): void;
-  /** `og run --trace`: turns the engine's trace on or off. */
-  og_node_trace(engine: number, on: boolean): void;
-  /** The trace's spans since the last take: `{ now, events }`, Chrome trace events on the engine's clock (src/trace.ts); `last` waits for the GPU's frames in flight. */
-  og_node_trace_take(engine: number, last: boolean): string;
   /** `og replay`: the world's portable hash within a `{ type: [field, ...] }` table, `{ hash }` (016x); with an empty table within the world's own, `{ hash, table }`; `{ error }` when refused. Not in publish builds. */
   og_node_replay_hash(engine: number, tableJson: string): string;
   /** `og replay compare`: og-net's diff of a recorded save (`og-save:2:...`, local) against the world now (remote), JSON, or `{ error }`. Not in publish builds. */

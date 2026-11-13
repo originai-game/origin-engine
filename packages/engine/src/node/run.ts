@@ -208,7 +208,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     /** Takes the engine's spans (each where it ran) onto the trace; `last` waits for the GPU's frames in flight. */
     function takeTrace(engineId: number, last = false): void {
       if (!trace) return;
-      const taken = extras.og_node_trace_take(engineId, last);
+      const taken = boundHost()!.abi.og_engine_trace_take(engineId, last);
       trace.append(taken, unixMs());
     }
     /** Keep maps until the run finishes, so errors retain their source locations. */
@@ -262,8 +262,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     // Loads made while the engine is created (its boot scene's) are traced too.
     const BEFORE_ENGINE = 0xffffffff;
     if (tracePath) {
-      extras.og_node_trace(BEFORE_ENGINE, true);
-      cleanup.push(() => extras.og_node_trace(BEFORE_ENGINE, false));
+      const abi = boundHost()!.abi;
+      abi.og_engine_trace(BEFORE_ENGINE, true);
+      cleanup.push(() => abi.og_engine_trace(BEFORE_ENGINE, false));
     }
     const project = projectText(control.inputRoot ?? root);
     const profile = projectProfile(project);
@@ -312,8 +313,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     // --capture-only: the frames step the ticks and draw nothing; screenshots and frame checks are captures.
     if (captureOnly) extras.og_node_capture_only(engine.id, true);
     if (tracePath) {
-      extras.og_node_trace(engine.id, true);
-      extras.og_node_trace(BEFORE_ENGINE, false);
+      const abi = boundHost()!.abi;
+      abi.og_engine_trace(engine.id, true);
+      abi.og_engine_trace(BEFORE_ENGINE, false);
     }
     // og.platform: the local store, in memory unless --platform-store names a file;
     // its clock the system's, or with --clock one that starts there and moves with the ticks.

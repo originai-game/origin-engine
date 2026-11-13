@@ -319,10 +319,6 @@ export interface WebExtras {
   og_web_panic?(): string;
   /** Test hook: the next item at a lanes site panics (in a lane when the call splits). */
   og_web_lanes_fault?(site: string): boolean;
-  /** The trace (crates/og-runtime/src/author/trace.rs): on or off for an engine (0xffffffff: the loads before one exists). */
-  og_web_trace?(engine: number, on: boolean): void;
-  /** The trace's spans since the last take: `{ now, events }`, Chrome trace events on the engine's clock. */
-  og_web_trace_take?(engine: number, last: boolean): string;
 }
 
 /** The trace's key for loads made before the engine exists (og-runtime's `BEFORE_ENGINE`). */
@@ -1080,14 +1076,16 @@ export function startWorker(game: GameToken): void {
   /** The run's trace while one is recorded (src/trace.ts): taken after every frame, so the engine holds a frame's spans at most. */
   let trace: Trace | null = null;
   const takeTrace = (last = false) => {
-    if (!trace || !engine || !glueRef?.og_web_trace_take) return;
-    trace.append(glueRef.og_web_trace_take(engine.id, last), unixMs());
+    const abi = boundHost()?.abi;
+    if (!trace || !engine || !abi) return;
+    trace.append(abi.og_engine_trace_take(engine.id, last), unixMs());
   };
   const traceOn = (on: boolean) => {
-    if (!engine || !glueRef?.og_web_trace) return false;
+    const abi = boundHost()?.abi;
+    if (!engine || !abi) return false;
     if (on && !trace) trace = new Trace({ producer: "og web trace", process: "og web" });
     if (!on) trace = null;
-    glueRef.og_web_trace(engine.id, on);
+    abi.og_engine_trace(engine.id, on);
     return true;
   };
   const relay = (answered: ReturnType<Engine["frame"]>) => {
@@ -1566,7 +1564,7 @@ export function startWorker(game: GameToken): void {
         }
         phase("bundle");
         // A trace from the boot on records the boot scene's loads too.
-        if (data.trace) glue.og_web_trace?.(TRACE_BEFORE_ENGINE, true);
+        if (data.trace) boundHost()?.abi.og_engine_trace(TRACE_BEFORE_ENGINE, true);
         const created = createEngine(game, {
           ...(data.seed === undefined ? {} : { seed: data.seed }),
           ...(data.root === undefined ? {} : { root: data.root }),
@@ -1582,7 +1580,7 @@ export function startWorker(game: GameToken): void {
         const sourceMap = isPublishBuild() === true ? null : loadOwnSourceMap();
         if (data.trace) {
           traceOn(true);
-          glue.og_web_trace?.(TRACE_BEFORE_ENGINE, false);
+          boundHost()?.abi.og_engine_trace(TRACE_BEFORE_ENGINE, false);
         }
         // og.platform: calls go to the page, which answers them (the Player, or the browser's storage).
         // The time is the browser's until the Player's answers carry its own (docs/platform-asks.md).

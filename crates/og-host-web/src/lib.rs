@@ -797,22 +797,6 @@ pub(crate) fn forget_engine(engine: u32) {
     RESIZES.with(|r| r.borrow_mut().remove(&engine));
 }
 
-/// The trace (og-runtime's `trace.rs`, the shell's `trace()`): turns the
-/// engine's trace on or off.
-#[wasm_bindgen]
-pub fn og_web_trace(engine: u32, on: bool) {
-    og_runtime::trace_set(engine, on);
-}
-
-/// The trace's spans since the last take, as JSON (`{ now, events }`, the
-/// events Chrome trace events on the engine's clock); `last` waits for the
-/// GPU's frames in flight where it can (natively only: the web's arrive in
-/// a later take).
-#[wasm_bindgen]
-pub fn og_web_trace_take(engine: u32, last: bool) -> String {
-    og_runtime::trace_take(engine, last)
-}
-
 /// What the engine holds (og-runtime's `memory_report`, the probe's
 /// `memory`: the wasm linear memory, the counted heap, the world, the
 /// streaming budget, the audio), as JSON: the engine Worker's `memory` call,

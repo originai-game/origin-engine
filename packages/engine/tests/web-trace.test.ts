@@ -3,8 +3,8 @@
 // (src/trace.ts, the document `og run --trace` writes natively) and the
 // shell reads it. The real Worker and shell, joined by a stand-in for the
 // Worker's message port, with the native host bound in place of the wasm
-// (tests/fixtures/web-glue/native.ts maps og_web_trace* to the same
-// og-runtime trace). No browser.
+// (the trace is a lifecycle member, og_engine_trace*, the same on both
+// hosts). No browser.
 //
 // The ways this could fail, each asserted below: the shell has no trace or
 // the Worker no `trace` call (the web had timings and no trace file); a

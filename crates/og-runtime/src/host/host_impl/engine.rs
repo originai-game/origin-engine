@@ -117,6 +117,12 @@ macro_rules! __og_host_bindings_engine {
             fn og_engine_take_log(&self, engine: u32) -> String {
                 $crate::og_engine_take_log(engine)
             }
+            fn og_engine_trace(&self, engine: u32, on: bool) {
+                $crate::trace_set(engine, on)
+            }
+            fn og_engine_trace_take(&self, engine: u32, last: bool) -> String {
+                $crate::trace_take(engine, last)
+            }
         }
 
         impl $crate::host_impl::api::CommandsApi for $host {

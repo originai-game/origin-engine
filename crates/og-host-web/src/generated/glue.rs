@@ -154,6 +154,16 @@ pub fn og_room_set_host(engine: u32, info: String) {
 }
 
 #[wasm_bindgen]
+pub fn og_engine_trace(engine: u32, on: bool) {
+    <Host as Lifecycle>::og_engine_trace(&Host, engine, on)
+}
+
+#[wasm_bindgen]
+pub fn og_engine_trace_take(engine: u32, last: bool) -> String {
+    <Host as Lifecycle>::og_engine_trace_take(&Host, engine, last)
+}
+
+#[wasm_bindgen]
 pub fn og_reflect_define_component(name: String, fields: String) -> String {
     <Host as ReflectApi>::og_reflect_define_component(&Host, name, fields)
 }

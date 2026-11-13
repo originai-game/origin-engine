@@ -66,6 +66,10 @@ export interface HostAbi<A, V> {
   og_room_deliver(engine: number, event: string): boolean;
   /** Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers. */
   og_room_set_host(engine: number, info: string): void;
+  /** Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's. */
+  og_engine_trace(engine: number, on: boolean): void;
+  /** The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take). */
+  og_engine_trace_take(engine: number, last: boolean): string;
   /** `defineComponent` */
   og_reflect_define_component(name: string, fields: string): string;
   /** `defineResource` */
@@ -1932,6 +1936,8 @@ export const SYMBOLS: readonly string[] = [
   "og_room_take",
   "og_room_deliver",
   "og_room_set_host",
+  "og_engine_trace",
+  "og_engine_trace_take",
 ];
 
 /** Why `value`, passed as `param` of `call` where an entity is expected, is not one. */
