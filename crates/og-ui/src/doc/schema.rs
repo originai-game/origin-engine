@@ -7,9 +7,11 @@
 pub mod kinds;
 pub mod parts;
 pub mod props;
+pub mod tags;
 pub use kinds::Kind;
 pub use parts::{PARTS, PartSpec, part};
 pub use props::PROPS;
+pub use tags::{ELEMENT_ATTRIBUTES, ELEMENT_TAGS};
 
 /// A prop's value type, as a document line writes it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -94,30 +96,6 @@ impl PropSpec {
         }
     }
 }
-
-/// Author tags for engine semantics without an HTML equivalent, mapped
-/// to the runtime kinds used by checkpoints.
-pub const ELEMENT_TAGS: &[(&str, Kind)] = &[
-    ("og-icon", Kind::Icon),
-    ("og-counter", Kind::Label),
-    ("og-typewriter", Kind::Label),
-    ("og-spotlight", Kind::Dialog),
-    ("og-rive", Kind::Column),
-    ("og-emitter", Kind::Box),
-    ("og-overlay", Kind::Box),
-];
-
-/// Tag-exclusive attributes and the runtime properties they populate.
-pub const ELEMENT_ATTRIBUTES: &[(&str, &str, &str)] = &[
-    ("og-counter", "value", "count"),
-    ("og-counter", "duration", "countDuration"),
-    ("og-counter", "decimals", "countDecimals"),
-    ("og-typewriter", "rate", "reveal"),
-    ("og-spotlight", "target", "spotlight"),
-    ("og-rive", "src", "rive"),
-    ("og-emitter", "effect", "emitter"),
-    ("og-overlay", "effect", "meta"),
-];
 
 /// Registered CSS value functions: name, grammar and extension reason.
 pub const CSS_FUNCTIONS: &[(&str, &str, &str)] = &[(

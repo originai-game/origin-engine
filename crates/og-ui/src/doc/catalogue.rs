@@ -29,86 +29,6 @@ fn value(p: &PropSpec) -> String {
     format!("`{}`", text.replace('|', "\\|"))
 }
 
-/// The tags a document writes a kind as, each with an example: HTML's name
-/// wherever HTML has the role (docs/ui.md §2).
-pub fn tags(kind: Kind) -> Vec<(String, String)> {
-    let void = |tag: &str| (tag.to_string(), format!("<{tag} id=\"Name\" />"));
-    let registered: Vec<_> = super::schema::ELEMENT_TAGS
-        .iter()
-        .filter(|(_, k)| *k == kind)
-        .map(|(tag, _)| {
-            if kind == Kind::Label || kind.container() {
-                (tag.to_string(), format!("<{tag} id=\"Name\">…</{tag}>"))
-            } else {
-                void(tag)
-            }
-        })
-        .collect();
-    let mut tags = match kind {
-        Kind::Label => vec![
-            ("text".into(), "<text id=\"Name\">…</text>".into()),
-            ("p".into(), "<p id=\"Name\">Read the <a href=\"rules\">rules</a>.</p>".into()),
-            ("span".into(), "<span id=\"Name\">…</span>".into()),
-            ("h1".into(), "<h1 id=\"Name\">…</h1> (to <h6>)".into()),
-            ("a".into(), "<a id=\"Name\" href=\"shop\">…</a>".into()),
-        ],
-        Kind::Box => vec![
-            ("div".into(), "<div id=\"Name\">…</div>".into()),
-            ("nav".into(), "<nav aria-label=\"Site\">…</nav> (section, header, footer, main, aside, article)".into()),
-            ("ul".into(), "<ul><li>…</li></ul>".into()),
-            ("ol".into(), "<ol start=\"1\"><li>…</li></ol>".into()),
-        ],
-        Kind::Image => vec![void("img")],
-        Kind::Field => vec![
-            void("input type=\"text\""),
-            (
-                "textarea".into(),
-                "<textarea id=\"Name\" rows=\"4\" />".into(),
-            ),
-        ],
-        Kind::Slider => vec![void("input type=\"range\"")],
-        Kind::Color => vec![(
-            "input".into(),
-            "<input type=\"color\" id=\"Name\" bind:value={$tint} />".into(),
-        )],
-        Kind::Radio => vec![(
-            "input".into(),
-            "<label><input type=\"radio\" value=\"easy\" bind:group={$level} /> Easy</label>".into(),
-        )],
-        Kind::Toggle => vec![
-            void("input type=\"checkbox\""),
-            void("input type=\"checkbox\" switch"),
-            (
-                "label".into(),
-                "<label id=\"Name\"><input type=\"checkbox\" /> Caption</label>".into(),
-            ),
-        ],
-        Kind::Divider => vec![void("hr")],
-        Kind::Select => vec![(
-            "select".into(),
-            "<select id=\"Name\" bind:value={$x}><optgroup label=\"G\"><option value=\"a\">A</option></optgroup></select>".into(),
-        )],
-        Kind::Details => vec![(
-            "details".into(),
-            "<details id=\"Name\" bind:open={$x}><summary>More</summary>…</details>".into(),
-        )],
-        Kind::Dialog => vec![(
-            "dialog".into(),
-            "<dialog id=\"Name\" modal bind:open={$x} aria-label=\"Quit?\">…</dialog>".into(),
-        )],
-        Kind::Meter => vec![(
-            "meter".into(),
-            "<meter id=\"Name\" value={$hp} min=\"0\" max=\"100\" low=\"25\" high=\"75\" optimum=\"90\" />".into(),
-        )],
-        Kind::Icon => Vec::new(),
-        other => super::schema::kinds::tags(other).unwrap_or_else(|| {
-            vec![(other.to_string(), format!("<{other} id=\"Name\">…</{other}>"))]
-        }),
-    };
-    tags.extend(registered);
-    tags
-}
-
 /// How a document writes `p`: its CSS declaration or HTML attribute.
 fn written(p: &PropSpec) -> String {
     if let Some((tag, name, _)) = super::schema::ELEMENT_ATTRIBUTES
@@ -213,7 +133,7 @@ pub fn markdown() -> String {
             .iter()
             .filter(|p| matches!(p.on, On::Kinds(ks) if ks.contains(&k)))
             .collect();
-        let written = tags(k);
+        let written = super::schema::tags::of(k);
         let _ = writeln!(
             out,
             "\n## {}. {} (`{}`): {}\n\n{} {} {}.",

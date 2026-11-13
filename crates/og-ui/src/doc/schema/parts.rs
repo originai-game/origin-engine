@@ -217,7 +217,7 @@ fn validate_selector(
         let known = tag.is_none_or(|tag| {
             PARTS.iter().any(|p| p.host.split('[').next() == Some(tag))
                 || super::Kind::ALL.iter().any(|k| {
-                    crate::doc::catalogue::tags(*k)
+                    super::tags::of(*k)
                         .iter()
                         .any(|(t, _)| t.split_whitespace().next() == Some(tag))
                 })
