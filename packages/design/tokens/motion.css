@@ -8,9 +8,18 @@
   --motion-duration-bounce: 640ms;
   --motion-easing-out: cubic-bezier(0.23, 1, 0.32, 1);
   --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
+  --motion-easing-in-out: cubic-bezier(0.42, 0, 0.58, 1);
   --motion-easing-spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%, 0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001);
   --motion-easing-snappy: linear(0, 0.016, 0.063 4.1%, 0.25 8.7%, 0.684 17.5%, 0.86 22.6%, 0.967 28%, 1.03 34%, 1.05 39.6%, 1.045 46.2%, 1.017 58.5%, 0.997 75.2%, 1);
   --motion-easing-bounce: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+  /* How far a moment scales: `press` a control going down, `swell` a hover or
+     a selection, `pop` a hit or a reward arriving, `shrink` what leaves; and
+     how low a waiting thing breathes. */
+  --motion-scale-press: 0.96;
+  --motion-scale-swell: 1.15;
+  --motion-scale-pop: 1.4;
+  --motion-scale-shrink: 0.6;
+  --motion-scale-breathe: 0.45;
   /* The timing table: what each moment of a UI moves on, by the duration, easing
      and spring names above (or a number of its own). A style overrides a row in
      its motion block (docs/ui.md §3.1); the default style takes these. hover:

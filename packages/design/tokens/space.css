@@ -25,6 +25,11 @@
   --size-lg: 48px;
   --size-xl: 64px;
   --size-xxl: 96px;
+  --size-3xl: 128px;
+  --size-4xl: 160px;
+  --size-5xl: 192px;
+  --size-6xl: 240px;
+  --size-7xl: 288px;
   --size-touch: 44px;
   /* Line widths (`--stroke-*`): material edges, hairline frames, field rims,
      open triggers, thick marks and the focus ring. */

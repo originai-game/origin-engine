@@ -1063,12 +1063,13 @@ number.
 | Token family | What it controls |
 |---|---|
 | `--color-*`, the role names (`--ink`, `--primary`…) | Colours, per scheme; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
-| `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes, line widths (`--stroke-edge` the material hairline) |
-| `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles |
+| `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes (`--size-xs` to `--size-7xl`; a layout takes a step, never a multiple of one), line widths (`--stroke-edge` the material hairline) |
+| `--type-*`, `--text-*`, `--font-*` | The type ramp and its roles; `--font-leading-*` (`flat`, `tight`, `snug`, `normal`), `--font-tracking-*` and `--font-weight-*` for text a part sizes itself |
 | `--density-compact-*`, `--density-pad-*`, `--density-touch-*` | Each input's control, row and header heights, gutter and section |
 | `--control-sm/md/lg`, `--row`, `--header`, `--gutter`, `--section`, `--touch-target` | The input's density, and the smallest finger target |
-| `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*` | Durations, the controls' enter and exit curves, the named transitions' springs (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`) |
+| `--motion-duration-*`, `--motion-easing-*`, `--motion-named-*`, `--motion-scale-*` | Durations, the controls' enter and exit curves (`in-out` for what loops), the named transitions' springs (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`), how far a moment scales (`press`, `swell`, `pop`, `shrink`) and how low a waiting thing breathes (`breathe`) |
 | `--state-*` | Hover wash, press scales (`press-scale` a button's part, `control-press-scale` a control row's), lift, disabled opacities (`touch-disabled-opacity` the stick, pad and action button), press duration, focus ring and player rings |
+| `--opacity-*`, `--filter-*` | How strongly a thing shows (`faint`, `dim` what cannot be used, `muted` what is done, `soft`), and what art takes out of reach (`--filter-locked`, `--filter-spent`) |
 | `--shadow-*`, `--elevation-*`, `--glass-*` | Shadows per scheme and the controls' inset shadows, the two drop elevations, glass blur and saturation |
 | `--button-*` | Radius, border width, rest and pressed shadows (stepper, details, keyboard keys and option rows take them) |
 | `--field-*` | Radius, border width and well shadow of text boxes, triggers, steppers, checkbox boxes and radio rings |

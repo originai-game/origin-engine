@@ -34,6 +34,18 @@
   --vars-material-saturate: 200%;
   --vars-scrim-blur: 8px;
   --vars-press-scale: 0.96;
+  /* How strongly a thing shows (`--opacity-*`): `faint` a watermark or an
+     empty slot's mark, `dim` what cannot be used, `muted` what is done or
+     secondary, `soft` what steps back a little. A disabled control takes
+     `--state-disabled-opacity`. */
+  --opacity-faint: 0.25;
+  --opacity-dim: 0.45;
+  --opacity-muted: 0.6;
+  --opacity-soft: 0.85;
+  /* What art takes when its subject is out of reach (`--filter-*`): `locked`
+     not yet earned, `spent` used up or defeated. */
+  --filter-locked: grayscale(1) brightness(0.7);
+  --filter-spent: saturate(0) brightness(0.55);
 }
 
 :root[data-scheme=dark] {
