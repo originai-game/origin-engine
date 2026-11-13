@@ -1,23 +1,23 @@
 /* fantasy: motion. Controls ease over the pack's slow, warm curve
-   (--fantasy-ease); a slot or a reply settles with a spring. Reduced motion
+   (--motion-easing-out); a slot or a reply settles with a spring. Reduced motion
    keeps every state change and drops the movement. The durations are
    tokens in base.css. */
 button::part(base), tabs::part(tab), input[type=range]::part(knob), slot::part(frame),
 button::part(RpgBackpack\.tab), button::part(RpgWorldMap\.marker) {
-  transition: background var(--fantasy-motion-ink) var(--fantasy-ease), border-color var(--fantasy-motion-ink) var(--fantasy-ease), box-shadow var(--fantasy-motion-glow) var(--fantasy-ease), color var(--fantasy-motion-ink) var(--fantasy-ease);
+  transition: background var(--motion-duration-fast) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out), box-shadow var(--motion-duration-base) var(--motion-easing-out), color var(--motion-duration-fast) var(--motion-easing-out);
 }
 button::part(RpgBackpack\.cell), button::part(RpgCharacter\.cell), button::part(RpgConversation\.row), button::part(RpgQuestLog\.row), button::part(RpgParty\.cell) {
-  transition: box-shadow var(--fantasy-motion-cell) var(--fantasy-ease), background var(--motion-duration-fast) var(--fantasy-ease), border-color var(--motion-duration-fast) var(--fantasy-ease);
+  transition: box-shadow var(--motion-duration-base) var(--motion-easing-out), background var(--motion-duration-fast) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out);
 }
 tabs::part(indicator) { transition: left var(--fantasy-motion-indicator), width var(--fantasy-motion-indicator); }
 @keyframes fantasy-glint { from { opacity: 0.55; } to { opacity: 1; } }
 [part="RpgBackpack.frame"] .badge.fresh { animation: fantasy-glint var(--fantasy-motion-glint) ease-in-out infinite alternate; }
-[part="RpgTurnOrder.cell"][data-acting=true] .ring { transition: box-shadow var(--fantasy-motion-ring) var(--fantasy-ease); }
+[part="RpgTurnOrder.cell"][data-acting=true] .ring { transition: box-shadow var(--motion-duration-slow) var(--motion-easing-out); }
 /* HUD: the bars run to their new value; the plates light over the warm curve. */
-[part="RpgVitals.frame"] .bar-fill, [part="RpgEnemyInfo.frame"] .bar-fill, [part="RpgParty.frame"] .bar-fill { transition: width var(--fantasy-motion-bar) var(--fantasy-ease); }
-[part="RpgActionBar.frame"] .cool { transition: height var(--fantasy-motion-glow) linear; }
+[part="RpgVitals.frame"] .bar-fill, [part="RpgEnemyInfo.frame"] .bar-fill, [part="RpgParty.frame"] .bar-fill { transition: width var(--motion-duration-slow) var(--motion-easing-out); }
+[part="RpgActionBar.frame"] .cool { transition: height var(--motion-duration-base) linear; }
 button::part(RpgActionBar\.skill), button::part(RpgActionBar\.item), button::part(RpgCommands\.cell), button::part(RpgMenuBar\.tab) {
-  transition: box-shadow var(--fantasy-motion-glow) var(--fantasy-ease), border-color var(--fantasy-motion-ink) var(--fantasy-ease), background var(--motion-duration-fast) var(--fantasy-ease), color var(--fantasy-motion-ink) var(--fantasy-ease);
+  transition: box-shadow var(--motion-duration-base) var(--motion-easing-out), border-color var(--motion-duration-fast) var(--motion-easing-out), background var(--motion-duration-fast) var(--motion-easing-out), color var(--motion-duration-fast) var(--motion-easing-out);
 }
 @keyframes fantasy-acting { from { box-shadow: var(--fantasy-acting-from); } to { box-shadow: var(--fantasy-acting-to); } }
 [part="RpgTurnOrder.cell"][data-acting=true] .ring { animation: fantasy-acting var(--fantasy-motion-acting) ease-in-out infinite alternate; }

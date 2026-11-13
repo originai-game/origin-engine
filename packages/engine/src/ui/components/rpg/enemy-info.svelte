@@ -13,7 +13,7 @@
   The targeted enemy: name, portrait, level, a health bar and its status
   effects. Read only.
 -->
-<section id="RpgEnemyInfo" part="RpgEnemyInfo.frame" aria-label={name}>
+<section id="RpgEnemyInfo" part="RpgEnemyInfo.frame" class="hud" aria-label={name}>
   <header class="small" part="RpgEnemyInfo.band"><h3 part="RpgEnemyInfo.title">{t("rpg.enemy.name")}</h3></header>
   <p part="RpgEnemyInfo.name">{name}</p>
   <div class="picture"><img class="portrait" src={portrait} alt="" hidden={!portrait}></div>

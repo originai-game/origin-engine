@@ -77,6 +77,18 @@ fn default_css_is_generated_from_the_design_tokens() {
             continue;
         }
         for selector in CssSelector::parse_list(header).expect("valid CSS selector") {
+            // A role rule is made only of `:where()`, so it has no specificity
+            // and any pack or document rule wins over it.
+            if matches!(&selector.compounds[0].0[0], Simple::Where(_)) {
+                assert!(
+                    selector
+                        .compounds
+                        .iter()
+                        .all(|c| matches!(c.0.as_slice(), [Simple::Where(_)])),
+                    "{header}"
+                );
+                continue;
+            }
             assert_eq!(selector.compounds.len(), 1, "{header}");
             let simple = &selector.compounds[0].0;
             assert!(matches!(&simple[0], Simple::Type(tag) if tag == &tag.to_lowercase()));

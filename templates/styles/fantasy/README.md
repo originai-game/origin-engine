@@ -42,14 +42,19 @@ variant restyles the pack by setting tokens alone
   `--radio-card-*`, `--switch-*-fill`, `--slider-knob-*`, `--field-fill`,
   `--field-focus-shadow`, `--panel-fill`, `--panel-shadow`, `--slot-fill`,
   `--tabs-indicator-glow`, `--keyboard-key-fill`, `--action-face-*`.
-- Pack-private `--fantasy-*`, where no engine token means that thing: its
-  materials (brass, walnut, soot, crimson), inks, the type steps in `em`
-  (`--fantasy-step-*`, so the player's text scale applies; the engine's
-  `--type-*` are px) and tracking, the art marks and filigree, the sound
-  files (`--fantasy-sfx-*`), the slow curve and its durations
-  (`--fantasy-ease`, `--fantasy-motion-*`), and the composite fills and
-  shadows of the rpg components (`--fantasy-cell-<rarity>-fill`/`-shadow`,
-  `--fantasy-frame-*`, `--fantasy-band*`…).
+- The role tokens (docs/ui.md §3.1): `--frame-*`, `--plate-*`, `--band-*`,
+  `--title-*`, `--row-*`, `--cell-*` (and `--cell-<rarity>-*`), `--badge-*`,
+  `--well-*`, `--figure-*`, `--label-*`, the state inks, `--trend-*`,
+  `--tone-*`, the art marks (`--mark-*`) and sounds (`--sfx-*`). The default
+  style dresses every frame, band, title, row and cell from them, so the
+  pack has no rule for those roles; it also sets the em type steps
+  (`--font-step-*`) and the curve and durations (`--motion-easing-out`,
+  `--motion-duration-*`).
+- Pack-private `--fantasy-*`, where no engine token means that thing: the
+  filigree and ground art, long loops (`--fantasy-motion-glint`,
+  `-acting`), and the composite fills and shadows one rpg component alone
+  wears (the minimap bezel, the compass strip, party members, the vitals
+  rings, command plates…).
 
 ## Art provenance
 

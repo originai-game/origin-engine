@@ -22,8 +22,8 @@ button::part(base) {
   background: none;
   box-shadow: none;
   font-family: var(--button-font);
-  font-size: var(--fantasy-step-19);
-  letter-spacing: var(--fantasy-tracking-wide);
+  font-size: var(--font-step-2xl);
+  letter-spacing: var(--font-tracking-wide);
   text-transform: uppercase;
   text-shadow: var(--button-text-shadow);
 }
@@ -40,43 +40,43 @@ button::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid
 /* ── Checkbox, switch and radio. */
 input[type=checkbox]::part(row), input[type=radio]::part(option) { border: none; box-shadow: none; background: none; }
 input[type=checkbox]::part(row):hover, input[type=radio]::part(option):hover { background: var(--accent-8); }
-input[type=checkbox]::part(box), input[type=radio]::part(ring) { border: var(--field-border-width) solid var(--line-strong); background: var(--fantasy-soot); box-shadow: var(--fantasy-well-shadow); }
-input[type=checkbox]::part(box):hover, input[type=radio]::part(ring):hover { border-color: var(--fantasy-brass-hi); }
-input[type=checkbox]::part(box):checked { border: var(--field-border-width) solid var(--fantasy-brass-hi); background: var(--checkbox-checked-fill); }
+input[type=checkbox]::part(box), input[type=radio]::part(ring) { border: var(--field-border-width) solid var(--line-strong); background: var(--well); box-shadow: var(--well-shadow); }
+input[type=checkbox]::part(box):hover, input[type=radio]::part(ring):hover { border-color: var(--accent); }
+input[type=checkbox]::part(box):checked { border: var(--field-border-width) solid var(--accent); background: var(--checkbox-checked-fill); }
 input[type=checkbox]::part(box):disabled, input[type=radio]::part(ring):disabled { border-color: var(--line); background: var(--fantasy-soot-disabled); }
 input[type=checkbox]::part(box):invalid { border-color: var(--danger); }
 input[type=checkbox]::part(mark) { background: var(--on-primary); }
-input[type=radio]::part(ring):checked { border: var(--field-border-width) solid var(--fantasy-brass-hi); }
+input[type=radio]::part(ring):checked { border: var(--field-border-width) solid var(--accent); }
 input[type=radio]::part(dot) { background: var(--gold); }
 input[type=radio]::part(card) { border: var(--field-border-width) solid var(--line-strong); background: var(--radio-card-fill); }
-input[type=radio]::part(card):hover { border-color: var(--fantasy-brass-hi); }
+input[type=radio]::part(card):hover { border-color: var(--accent); }
 input[type=radio]::part(card):checked { border-color: var(--gold); background: var(--radio-card-checked-fill); box-shadow: var(--radio-card-checked-shadow); }
 input[type=radio]::part(chosen) { background: var(--gold); }
-input[type=checkbox][switch]::part(track) { border: var(--field-border-width) solid var(--line-strong); background: var(--fantasy-soot); box-shadow: var(--fantasy-well-shadow); }
-input[type=checkbox][switch]::part(track):checked { background: var(--switch-checked-fill); border-color: var(--fantasy-brass-hi); }
+input[type=checkbox][switch]::part(track) { border: var(--field-border-width) solid var(--line-strong); background: var(--well); box-shadow: var(--well-shadow); }
+input[type=checkbox][switch]::part(track):checked { background: var(--switch-checked-fill); border-color: var(--accent); }
 input[type=checkbox][switch]::part(knob) { border: var(--field-border-width) solid var(--fantasy-knob-rim); background: var(--switch-knob-fill); }
 input[type=checkbox]::part(focus):focus-visible, input[type=radio]::part(focus):focus-visible,
 input[type=checkbox][switch]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Tabs: uppercase, underlined in gold when selected. */
 tabs::part(track) { background: none; border-bottom: var(--stroke-hairline) solid var(--line-strong-33); }
-tabs::part(tab) { background: none; color: var(--ink-muted); font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+tabs::part(tab) { background: none; color: var(--ink-muted); font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
 tabs::part(tab):hover { background: var(--fantasy-tab-hover-wash); }
-tabs::part(tab):active { background: var(--fantasy-soot-50); }
+tabs::part(tab):active { background: var(--well-50); }
 tabs::part(tab):checked { color: var(--gold); background: var(--fantasy-tab-selected-wash); }
-tabs::part(tab):disabled { color: var(--fantasy-ink-disabled); }
+tabs::part(tab):disabled { color: var(--ink-disabled); }
 tabs::part(indicator) { height: var(--stroke-regular); background: var(--gold); border-radius: 0; box-shadow: var(--tabs-indicator-glow); }
 tabs::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Slider. */
-input[type=range]::part(track) { background: var(--fantasy-soot); border: var(--stroke-hairline) solid var(--line); box-shadow: var(--fantasy-well-shadow); }
+input[type=range]::part(track) { background: var(--well); border: var(--stroke-hairline) solid var(--line); box-shadow: var(--well-shadow); }
 input[type=range]::part(fill) { background: var(--fantasy-gold-fill); }
 input[type=range]::part(tick) { background: var(--line-strong-60); }
 input[type=range]::part(knob) { border: var(--stroke-hairline) solid var(--fantasy-knob-rim); background: var(--slider-knob-fill); box-shadow: var(--slider-knob-shadow); }
 input[type=range]::part(knob):hover { box-shadow: var(--slider-knob-hover-shadow); }
 input[type=range]::part(knob):active { background: var(--slider-knob-pressed-fill); }
 input[type=range]::part(knob):disabled { background: var(--line); }
-input[type=range]::part(core) { background: var(--fantasy-walnut-deep); }
+input[type=range]::part(core) { background: var(--control); }
 input[type=range]::part(bubble) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--panel); color: var(--ink); }
 input[type=range]::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); }
 
@@ -95,24 +95,24 @@ input::part(placeholder), textarea::part(placeholder) { color: var(--ink-faint);
 input::part(selection), textarea::part(selection) { background: var(--fantasy-amber-40); }
 input::part(caret), textarea::part(caret) { background: var(--gold); }
 input::part(reveal):hover, input::part(clear):hover { background: var(--accent-11); }
-select::part(trigger):hover { border-color: var(--fantasy-brass-hi); }
+select::part(trigger):hover { border-color: var(--accent); }
 select::part(trigger):open { border-color: var(--gold); }
 select::part(list) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--panel); box-shadow: var(--dropdown-list-shadow); }
 select::part(option) { border: none; box-shadow: none; background: none; color: var(--ink); }
 select::part(option):hover { background: var(--accent-11); }
-select::part(option):active { background: var(--fantasy-soot); }
-select::part(option):disabled { color: var(--fantasy-ink-disabled); }
-select::part(group) { color: var(--fantasy-ink-label); font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+select::part(option):active { background: var(--well); }
+select::part(option):disabled { color: var(--ink-disabled); }
+select::part(group) { color: var(--ink-label); font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
 stepper::part(value) { border: none; background: none; box-shadow: none; color: var(--ink); }
 stepper::part(button), input[type=number]::part(button) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-iron-fill); }
-stepper::part(button):hover, input[type=number]::part(button):hover { border-color: var(--fantasy-brass-hi); }
+stepper::part(button):hover, input[type=number]::part(button):hover { border-color: var(--accent); }
 stepper::part(button):active, input[type=number]::part(button):active { background: var(--fantasy-iron-pressed); box-shadow: var(--button-pressed-shadow); }
 stepper::part(button):disabled, input[type=number]::part(button):disabled { border-color: var(--line); background: var(--fantasy-iron-disabled); }
 input::part(focus):focus-visible, textarea::part(focus):focus-visible, select::part(focus):focus-visible,
 stepper::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
 
 /* ── Details. */
-details::part(summary) { border: none; border-bottom: var(--stroke-hairline) solid var(--line-strong-33); background: none; box-shadow: none; color: var(--fantasy-ink-label); font-family: var(--fantasy-caps); letter-spacing: var(--fantasy-tracking); text-transform: uppercase; }
+details::part(summary) { border: none; border-bottom: var(--stroke-hairline) solid var(--line-strong-33); background: none; box-shadow: none; color: var(--ink-label); font-family: var(--label-font); letter-spacing: var(--font-tracking-lg); text-transform: uppercase; }
 details::part(summary):hover { background: var(--accent-8); }
 details::part(summary):open { color: var(--gold); }
 details::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--state-focus-ring-offset); }
@@ -133,38 +133,38 @@ popover::part(arrow) { background: var(--panel); }
 og-spotlight::part(edge) { border: var(--stroke-regular) solid var(--gold); }
 
 /* ── Slot (core), chip, badge. */
-slot::part(frame) { border: var(--stroke-regular) solid var(--fantasy-slot-rim); background: var(--slot-fill); box-shadow: var(--slot-shadow); }
-slot::part(frame):hover { border-color: var(--fantasy-brass-hi); }
-slot::part(frame):active { background: var(--fantasy-well-pressed); }
+slot::part(frame) { border: var(--stroke-regular) solid var(--cell-rim); background: var(--slot-fill); box-shadow: var(--slot-shadow); }
+slot::part(frame):hover { border-color: var(--accent); }
+slot::part(frame):active { background: var(--well); }
 slot::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); outline-offset: var(--fantasy-focus-offset-plate); }
-chip::part(base) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-walnut); color: var(--ink); }
-chip::part(base):hover { border-color: var(--fantasy-brass-hi); }
-chip::part(base):active { background: var(--fantasy-soot); }
-chip::part(base):disabled { color: var(--fantasy-ink-disabled); border-color: var(--line); }
-badge::part(base) { background: var(--fantasy-crimson-deep); color: var(--on-primary); border: var(--stroke-hairline) solid var(--fantasy-brass-hi); }
+chip::part(base) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--panel-raised); color: var(--ink); }
+chip::part(base):hover { border-color: var(--accent); }
+chip::part(base):active { background: var(--well); }
+chip::part(base):disabled { color: var(--ink-disabled); border-color: var(--line); }
+badge::part(base) { background: var(--primary-active); color: var(--on-primary); border: var(--stroke-hairline) solid var(--accent); }
 
 /* ── Bars, progress, meters, cooldowns. */
-progress::part(track), meter::part(track) { background: var(--fantasy-soot); border: var(--stroke-hairline) solid var(--line); box-shadow: var(--fantasy-well-shadow); }
+progress::part(track), meter::part(track) { background: var(--well); border: var(--stroke-hairline) solid var(--line); box-shadow: var(--well-shadow); }
 progress::part(fill) { background: var(--fantasy-gold-fill); }
 meter::part(fill) { background: var(--fantasy-gold-fill); }
 meter.health::part(fill) { background: var(--fantasy-health-fill); }
 meter.mana::part(fill) { background: var(--fantasy-mana-fill); }
 meter::part(trail) { background: var(--accent-53); }
-meter::part(separator) { background: var(--fantasy-soot); }
+meter::part(separator) { background: var(--well); }
 meter::part(label) { color: var(--ink); }
-cooldown::part(track) { background: var(--fantasy-soot); }
+cooldown::part(track) { background: var(--well); }
 cooldown::part(sweep) { background: var(--shadow-63); }
 cooldown::part(core):active { background: var(--accent-20); }
-skeleton::part(frame), skeleton::part(line) { background: var(--fantasy-walnut); }
+skeleton::part(frame), skeleton::part(line) { background: var(--panel-raised); }
 skeleton::part(sheen) { background: var(--fantasy-skeleton-sheen); }
 spinner::part(dot) { background: var(--gold); }
 
 /* ── Keyboard (on-screen). */
-keyboard::part(panel) { border-top: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-leather-deep); }
+keyboard::part(panel) { border-top: var(--stroke-hairline) solid var(--line-strong); background: var(--backdrop); }
 keyboard::part(key), keyboard::part(candidate) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--keyboard-key-fill); color: var(--ink); }
-keyboard::part(key):hover, keyboard::part(candidate):hover { border-color: var(--fantasy-brass-hi); }
-keyboard::part(key):active, keyboard::part(candidate):active { background: var(--fantasy-soot); }
-keyboard::part(key):disabled { color: var(--fantasy-ink-disabled); }
+keyboard::part(key):hover, keyboard::part(candidate):hover { border-color: var(--accent); }
+keyboard::part(key):active, keyboard::part(candidate):active { background: var(--well); }
+keyboard::part(key):disabled { color: var(--ink-disabled); }
 keyboard::part(focus):focus-visible { outline: var(--state-focus-ring-width) solid var(--focus); }
 
 /* ── Touch controls. */
@@ -181,7 +181,7 @@ dialogue::part(continue) { color: var(--gold); }
 /* pending: heading flourish — the registry exposes h1..h6::part(flourish),
    but a text element.s ::part is read as a text span and refuses background
    ("unsupported text span property background"):
-   h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: var(--fantasy-rule-image) center / 100% var(--fantasy-rule-height) no-repeat; } */
+   h1::part(flourish), h2::part(flourish), h3::part(flourish) { background: var(--band-rule-image) center / 100% var(--fantasy-rule-height) no-repeat; } */
 scroll::part(bar) { background: var(--line-strong-60); border-radius: var(--radius-xs); }
 
 /* ── The remaining registry parts: icon children take the gold ink, the
@@ -190,14 +190,14 @@ scroll::part(bar) { background: var(--line-strong-60); border-radius: var(--radi
    undrawn. */
 details::part(root) { border-bottom: var(--stroke-hairline) solid var(--line-strong-20); }
 details::part(content) { padding: var(--space-xs) var(--space-sm) var(--space-sm); color: var(--ink); }
-keyboard::part(preview) { border-bottom: var(--stroke-hairline) solid var(--line-strong-40); background: var(--fantasy-soot); color: var(--ink); font-family: var(--font-body); }
-keyboard::part(candidates) { border-bottom: var(--stroke-hairline) solid var(--line-strong-27); background: var(--fantasy-walnut-dark); }
+keyboard::part(preview) { border-bottom: var(--stroke-hairline) solid var(--line-strong-40); background: var(--well); color: var(--ink); font-family: var(--font-body); }
+keyboard::part(candidates) { border-bottom: var(--stroke-hairline) solid var(--line-strong-27); background: var(--panel); }
 input::part(composition), textarea::part(composition) { text-decoration-line: underline; text-decoration-color: var(--gold); }
 input::part(reveal-icon), input::part(clear-icon) { color: var(--ink-muted); }
 og-icon::part(secondary) { color: var(--gold); }
 og-icon::part(image), art::part(icon), artslot::part(icon), actionbutton::part(icon), cooldown::part(icon), dialogue::part(portraitIcon) { color: var(--ink); }
 cooldown::part(mask), actionbutton::part(mask) { background: var(--shadow-63); }
 minimap::part(image) { filter: saturate(0.85) brightness(0.9); }
-minimap::part(markerOutline) { background: var(--fantasy-soot); }
+minimap::part(markerOutline) { background: var(--well); }
 dialogue::part(initial) { color: var(--gold); font-family: var(--font-display); }
 joystick::part(direction) { background: var(--gold); }

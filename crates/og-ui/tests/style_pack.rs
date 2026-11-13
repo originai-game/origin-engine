@@ -328,3 +328,59 @@ fn pack_audio_preserves_sample_sets_ranges_silence_and_replay() {
         assert!(og_ui::sound_css::parse(bad).is_err(), "{bad}");
     }
 }
+
+/// A role part wears the default dress from the role tokens, a pack restyles
+/// it by setting those tokens alone, and a pack token may read any default
+/// token.
+#[test]
+fn a_pack_restyles_role_parts_through_role_tokens_alone() {
+    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    let inner = |pack: Option<&str>| {
+        let doc = UiDocument::parse(
+            "@ui/test/main.svelte",
+            r#"<meta name="component" content="Shop"><meta name="parts" content="Shop.frame"><section id="Box" part="Shop.frame"><div id="In"></div></section><style>[part="Shop.frame"] { display: flex; width: 300px; } #In { width: stretch; height: 10px; }</style>"#,
+        )
+        .unwrap();
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(doc);
+        if let Some(css) = pack {
+            let pack = StylePack::parse(
+                "styles/test",
+                vec![("styles/test/main.css".into(), css.into())],
+            )
+            .unwrap();
+            ui.set_style_pack(&pack).unwrap();
+        }
+        ui.mount_document(
+            SourceId::new("test", "test"),
+            "Shop",
+            Default::default(),
+            Default::default(),
+            &NoEnv,
+        )
+        .unwrap();
+        ui.begin(Default::default(), Viewport::new(800.0, 600.0));
+        ui.build_retained_documents(&NoEnv).unwrap();
+        ui.end();
+        ui.elements()
+            .iter()
+            .find(|e| e.path.ends_with("/In"))
+            .unwrap()
+            .width
+    };
+    let default = inner(None);
+    assert!(
+        default < 300.0,
+        "the default frame pads its content: {default}"
+    );
+    assert_eq!(
+        inner(Some(":root { --frame-pad: 21px; --frame-rim-width: 4px; }")),
+        250.0
+    );
+    assert_eq!(
+        inner(Some(
+            ":root { --frame-pad: calc(var(--font-weight-bold) * 0.01px); --frame-rim-width: 0px; }"
+        )),
+        286.0
+    );
+}

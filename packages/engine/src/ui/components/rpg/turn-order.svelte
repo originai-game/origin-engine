@@ -11,7 +11,7 @@
   them. All portraits share the width, so five fit a phone. Reports
   nothing.
 -->
-<section id="RpgTurnOrder" part="RpgTurnOrder.frame" aria-label={t("rpg.turns.name")}>
+<section id="RpgTurnOrder" part="RpgTurnOrder.frame" class="bare" aria-label={t("rpg.turns.name")}>
   <div class="track">
     <div class="end start"></div>
     <ol class="turns">

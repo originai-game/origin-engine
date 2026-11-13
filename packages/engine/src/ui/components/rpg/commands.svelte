@@ -9,7 +9,7 @@
   A turn's commands as a row of plates, each an icon over its label; the
   selected one is the primary plate. Reports choose (a command's key).
 -->
-<section id="RpgCommands" part="RpgCommands.frame" aria-label={t("rpg.commands.name")}>
+<section id="RpgCommands" part="RpgCommands.frame" class="hud" aria-label={t("rpg.commands.name")}>
   <header class="small" part="RpgCommands.band"><h3 part="RpgCommands.title">{t("rpg.commands.name")}</h3></header>
   <div class="plates" role="toolbar">
     {#each commands as c (c.id)}

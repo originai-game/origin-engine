@@ -4,7 +4,7 @@ The design language Origin Engine and origin-agent share, apart from the
 platform's: [`design-language.md`](design-language.md) and its values,
 [`tokens/`](tokens): CSS files of custom properties on `:root`, one per
 surface (`color.css`, `type.css`, `space.css`, `effect.css`, `motion.css`,
-`state.css`, `density.css`, `derived.css`, `contrast.css`). A token is
+`state.css`, `density.css`, `role.css`, `derived.css`, `contrast.css`). A token is
 named by its path (`--motion-duration-fast`); a `:root[data-scheme=dark]`
 block holds what the dark scheme changes. Edit a value there, then run
 `crates/og-ui/scripts/gen-theme.sh`.

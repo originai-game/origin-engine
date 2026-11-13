@@ -12,7 +12,7 @@
   The menu's top bar: its screens as tabs and a close button. Reports tab
   (a screen's key), tabPrev, tabNext and close (the button, Escape or B).
 -->
-<nav id="RpgMenuBar" part="RpgMenuBar.frame" aria-label={t("rpg.menu.name")} ontabNext={tabNext} ontabPrev={tabPrev} onback={close}>
+<nav id="RpgMenuBar" part="RpgMenuBar.frame" class="bare" aria-label={t("rpg.menu.name")} ontabNext={tabNext} ontabPrev={tabPrev} onback={close}>
   <div class="menu-wrap">
     <scroll class="menu-scroll">
       <div class="menu-tabs" role="tablist">

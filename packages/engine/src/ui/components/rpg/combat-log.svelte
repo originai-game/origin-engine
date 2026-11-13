@@ -8,7 +8,7 @@
   The combat log: the newest lines at the foot, each inked by its tone.
   Scrolls inside the height it is given. Read only.
 -->
-<section id="RpgCombatLog" part="RpgCombatLog.frame" role="log" aria-label={t("rpg.log.name")}>
+<section id="RpgCombatLog" part="RpgCombatLog.frame" class="hud" role="log" aria-label={t("rpg.log.name")}>
   <header class="small" part="RpgCombatLog.band"><h3 part="RpgCombatLog.title">{t("rpg.log.name")}</h3></header>
   <scroll class="lines">
     {#each lines as l (l.id)}

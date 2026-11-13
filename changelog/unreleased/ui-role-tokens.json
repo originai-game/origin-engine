@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI role tokens",
+      "summary": "Built-in components' shared parts (frame, band, title, row, cell, badge, well, figure, label) are dressed once by the default style from role tokens (--frame-*, --band-*, --title-*, --row-*, --cell-*), so a style pack restyles all of them by setting tokens. class hud makes a frame a HUD plate and class bare leaves it undressed. --font-step-* are type sizes in em that follow the player's text scale."
+    }
+  ]
+}
