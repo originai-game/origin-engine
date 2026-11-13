@@ -190,14 +190,14 @@ applies the `codemod` of every breaking entry crossed to `src/` and
 `assets/` text, and lists every line where another breaking entry's `find`
 identifiers appear (`manual`) and the entries with no identifiers
 (`review`). It never downgrades. Its options, exit codes and JSON are in
-`crates/og-cli/src/upgrade.rs`.
+`crates/og-cli/src/commands/upgrade.rs`.
 
 **`og replay`** is the evidence that a version runs a game the same:
 `record` writes a trace of per-tick world hashes and keyframes, and
 `compare` replays it with the og at hand and names the first divergent
 tick and the fields that differ. The hash covers only the types and fields
 the recording saw, so a field a later version adds does not move it. Its
-options are in `crates/og-cli/src/replay.rs` and its shapes in
+options are in `crates/og-cli/src/commands/replay.rs` and its shapes in
 `packages/engine/src/node/replay.ts`.
 
 **`scripts/release.sh`** has one verb per step; its header lists them.
