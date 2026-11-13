@@ -899,7 +899,7 @@ pub fn parse_hex(s: &str) -> Option<[u8; 3]> {
 }
 
 /// Whether a parsed flipbook sheet takes animated sources.
-pub(super) fn is_animated(doc: &Document) -> bool {
+pub(crate) fn is_animated(doc: &Document) -> bool {
     doc.ty == "flipbook" && doc.body.get("source").is_some()
 }
 
@@ -1591,7 +1591,7 @@ pub fn inspect_built(b: &Built) -> Inspection {
 /// as its texture, `Source::conformed`, so the sheet reads its size), the
 /// packed image a texture source of its own (`<sheet>#sheet`, pixel art
 /// under `filter nearest`), and the files it read are consumed.
-pub(super) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
+pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
     let mut extra = Vec::new();
     for s in sources.iter_mut() {
         if s.kind != super::Kind::Flipbook || s.error.is_some() {

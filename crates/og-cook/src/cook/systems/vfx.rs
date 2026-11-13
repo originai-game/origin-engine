@@ -9,7 +9,7 @@ use og_blob::BlobWriter;
 
 /// Every asset id the file names with whether it is known, so the stamp
 /// moves when one appears or goes (an unparsable file stamps on its bytes).
-pub(super) fn stamp_inputs(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
+pub(crate) fn stamp_inputs(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
     let text = String::from_utf8_lossy(&s.bytes);
     let Ok(v) = og_bundle::vfx::parse_vfx(&text) else {
         return String::new();
@@ -23,7 +23,7 @@ pub(super) fn stamp_inputs(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
         .join("\n")
 }
 
-pub(super) fn cook_vfx(
+pub(crate) fn cook_vfx(
     s: &Source,
     known: &dyn Fn(&str) -> bool,
     stamp: u64,

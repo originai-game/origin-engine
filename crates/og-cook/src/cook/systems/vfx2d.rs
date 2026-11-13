@@ -354,7 +354,7 @@ pub fn is_vfx2d(text: &str) -> bool {
 /// frames a texture source of their own (`<id>#sheet`, pixel art; the
 /// renderer's version is part of its import text, so a renderer change
 /// cooks it again), and the recipe file it names is consumed.
-pub(super) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
+pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
     let mut extra = Vec::new();
     for s in sources.iter_mut() {
         if s.kind != super::Kind::Flipbook || s.error.is_some() {

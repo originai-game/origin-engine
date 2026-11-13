@@ -9,10 +9,10 @@ use crate::format::{self, BlobKind};
 use crate::lightmap::{LightmapFile, pages_from_ktx2};
 use og_blob::BlobWriter;
 
-pub(super) const LIGHTMAP_TYPE: &str = crate::lightmap::LIGHTMAP_TYPE;
+pub(crate) const LIGHTMAP_TYPE: &str = crate::lightmap::LIGHTMAP_TYPE;
 
 /// The pages file a lightmap names, asset-relative.
-pub(super) fn pages_file(rel: &str, text: &str) -> Option<String> {
+pub(crate) fn pages_file(rel: &str, text: &str) -> Option<String> {
     let file = LightmapFile::parse(text).ok()?;
     let dir = rel.rsplit_once('/').map_or("", |(d, _)| d);
     Some(if dir.is_empty() {
@@ -23,7 +23,7 @@ pub(super) fn pages_file(rel: &str, text: &str) -> Option<String> {
 }
 
 /// The stamp's dependency: the pages file's hash.
-pub(super) fn dependencies(s: &Source) -> String {
+pub(crate) fn dependencies(s: &Source) -> String {
     let text = String::from_utf8_lossy(&s.bytes);
     match pages_file(&s.rel, &text) {
         Some(p) => {
@@ -35,7 +35,7 @@ pub(super) fn dependencies(s: &Source) -> String {
     }
 }
 
-pub(super) fn cook_lightmap(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook_lightmap(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("a lightmap is text (UTF-8)".into()))?;
     let file = LightmapFile::parse(text).map_err(CookError)?;

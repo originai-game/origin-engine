@@ -7,7 +7,7 @@ use super::{CookError, Source};
 use crate::format::{self, BlobKind};
 use og_blob::BlobWriter;
 
-pub(super) fn cook_effect(
+pub(crate) fn cook_effect(
     s: &Source,
     known: &dyn Fn(&str) -> bool,
     stamp: u64,

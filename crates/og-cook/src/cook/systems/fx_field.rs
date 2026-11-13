@@ -34,7 +34,7 @@ fn read(s: &Source, id: &str) -> Result<Vec<u8>, String> {
 }
 
 /// The bytes' hash of every field texture, for the emitter's stamp.
-pub(super) fn stamp(s: &Source, text: &str) -> String {
+pub(crate) fn stamp(s: &Source, text: &str) -> String {
     fields(text)
         .iter()
         .map(|(_, id, _)| {
@@ -46,7 +46,7 @@ pub(super) fn stamp(s: &Source, text: &str) -> String {
 }
 
 /// `text` with each `field "<texture>"` line baked into a `fieldGrid` line.
-pub(super) fn bake(s: &Source, text: &str) -> Result<String, String> {
+pub(crate) fn bake(s: &Source, text: &str) -> Result<String, String> {
     let found = fields(text);
     if found.is_empty() {
         return Ok(text.to_string());

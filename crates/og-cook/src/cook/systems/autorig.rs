@@ -44,10 +44,10 @@ mod template;
 #[cfg(test)]
 mod tests;
 
-pub(super) use parts::Part;
+pub(crate) use parts::Part;
 
 /// The suffix of the atlas texture a rig with `parts` cooks beside itself.
-pub(super) fn atlas_id(rel: &str) -> String {
+pub(crate) fn atlas_id(rel: &str) -> String {
     format!("{rel}#atlas")
 }
 
@@ -86,7 +86,7 @@ fn string_of(doc: &Document, key: &str) -> Option<String> {
 
 /// The files a rig's `parts` names (the PSD, or each PNG of the folder),
 /// as asset ids: part of the rig, not textures of their own.
-pub(super) fn part_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
+pub(crate) fn part_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     let Ok(doc) = Document::parse(text) else {
         return Vec::new();
     };
@@ -104,12 +104,12 @@ pub(super) fn part_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
 }
 
 /// Whether a rig's text names `parts` (an auto-rig).
-pub(super) fn is_autorig(doc: &Document) -> bool {
+pub(crate) fn is_autorig(doc: &Document) -> bool {
     doc.body.get("parts").is_some()
 }
 
 /// The rig and its atlas from a rig's text with `parts`.
-pub(super) fn build(
+pub(crate) fn build(
     s: &Source,
     doc: &Document,
 ) -> Result<(Rig2dAsset, Image, Vec<String>), String> {

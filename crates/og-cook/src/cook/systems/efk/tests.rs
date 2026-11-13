@@ -4,11 +4,12 @@
 use super::*;
 
 const SPRITE: &[u8] =
-    include_bytes!("../../../tests/fixtures/effekseer/Simple_Sprite_BillBoard.efkproj");
-const RING: &[u8] = include_bytes!("../../../tests/fixtures/effekseer/Simple_Ring_Shape1.efkproj");
+    include_bytes!("../../../../tests/fixtures/effekseer/Simple_Sprite_BillBoard.efkproj");
+const RING: &[u8] =
+    include_bytes!("../../../../tests/fixtures/effekseer/Simple_Ring_Shape1.efkproj");
 const RIBBON: &[u8] =
-    include_bytes!("../../../tests/fixtures/effekseer/Simple_Ribbon_Sword.efkproj");
-const EFKEFC: &[u8] = include_bytes!("../../../tests/fixtures/effekseer/iwai-ume.efkefc");
+    include_bytes!("../../../../tests/fixtures/effekseer/Simple_Ribbon_Sword.efkproj");
+const EFKEFC: &[u8] = include_bytes!("../../../../tests/fixtures/effekseer/iwai-ume.efkefc");
 
 /// A PNG's first bytes, for a texture `w` by `h`.
 fn png(w: u32, h: u32) -> Vec<u8> {

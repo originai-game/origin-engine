@@ -18,7 +18,7 @@ use og_core::ogt::{Block, Document, Entry, Value};
 use std::path::PathBuf;
 
 /// The project's `assets/` directory, from a source's path and asset id.
-pub(super) fn assets_root(s: &Source) -> PathBuf {
+pub(crate) fn assets_root(s: &Source) -> PathBuf {
     let mut p = s.path.clone();
     for _ in s.rel.split('/') {
         p.pop();
@@ -29,12 +29,12 @@ pub(super) fn assets_root(s: &Source) -> PathBuf {
 /// A path the sheet names: relative to the sheet's directory when that file
 /// exists (`hero.png`, `../art/hero.png`), else an asset id
 /// (`sprites/hero.png`).
-pub(super) fn resolve(s: &Source, path: &str) -> String {
+pub(crate) fn resolve(s: &Source, path: &str) -> String {
     resolve_in(&assets_root(s), &s.rel, path)
 }
 
 /// [`resolve`] for asset `rel` under the assets directory `root`.
-pub(super) fn resolve_in(root: &std::path::Path, rel: &str, path: &str) -> String {
+pub(crate) fn resolve_in(root: &std::path::Path, rel: &str, path: &str) -> String {
     let id = crate::runtime::asset_id(path);
     let mut parts: Vec<&str> = rel.split('/').collect();
     parts.pop();
@@ -65,7 +65,7 @@ fn string_of(doc: &Document, key: &str) -> Option<String> {
 
 /// The hashes of what the sheet depends on (its texture and atlas files),
 /// for the cook stamp: editing either recooks the sheet.
-pub(super) fn dependency_hashes(s: &Source) -> String {
+pub(crate) fn dependency_hashes(s: &Source) -> String {
     let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
         return String::new();
     };
@@ -228,7 +228,7 @@ fn read_atlas(text: &str) -> Result<(Vec<AtlasFrame>, Vec<Entry>), String> {
 }
 
 /// The canonical sheet of a flipbook source.
-pub(super) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
+pub(crate) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| "a flipbook sheet is text (UTF-8)".to_string())?;
     let mut doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
@@ -315,7 +315,7 @@ pub(super) fn sheet(s: &Source) -> Result<og_anim::FlipbookSheet, String> {
 }
 
 /// Cooks a flipbook sheet blob.
-pub(super) fn cook(
+pub(crate) fn cook(
     s: &Source,
     motion: Option<&super::conform::mesh::Motion>,
     stamp: u64,
@@ -357,7 +357,7 @@ pub(super) fn cook(
 }
 
 /// The texture array output of an `array true` sheet.
-pub(super) fn array_id(rel: &str) -> String {
+pub(crate) fn array_id(rel: &str) -> String {
     format!("{rel}#array")
 }
 
@@ -372,7 +372,7 @@ fn array_kind(sheet: &og_anim::FlipbookSheet) -> u32 {
 /// Checks that an `array true` sheet's frames can be an array's layers:
 /// at least one, at most the array limit, all of one size, inside the
 /// texture.
-pub(super) fn check_array(sheet: &og_anim::FlipbookSheet) -> Result<(), String> {
+pub(crate) fn check_array(sheet: &og_anim::FlipbookSheet) -> Result<(), String> {
     let max = super::texture_array::MAX_LAYERS;
     let Some(first) = sheet.frames.first() else {
         return Err("an `array true` sheet needs frames".into());
@@ -402,7 +402,7 @@ pub(super) fn check_array(sheet: &og_anim::FlipbookSheet) -> Result<(), String> 
 }
 
 /// The texture array blob of an `array true` sheet.
-pub(super) fn cook_array(
+pub(crate) fn cook_array(
     s: &Source,
     sheet: &og_anim::FlipbookSheet,
     opts: &super::TextureOptions,
@@ -429,7 +429,7 @@ pub(super) fn cook_array(
 }
 
 /// Layer `n` of an `array true` sheet: frame `n` cut out of the texture.
-pub(super) fn cook_layer(
+pub(crate) fn cook_layer(
     s: &Source,
     sheet: &og_anim::FlipbookSheet,
     n: usize,

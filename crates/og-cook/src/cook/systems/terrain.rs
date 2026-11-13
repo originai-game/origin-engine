@@ -151,7 +151,7 @@ use og_blob::BlobWriter;
 use og_core::ogt::{Block, Document};
 use std::path::{Path, PathBuf};
 
-pub(super) const TERRAIN_TYPE: &str = "terrain";
+pub(crate) const TERRAIN_TYPE: &str = "terrain";
 
 /// The most layers a terrain has (og-render's `MAX_TERRAIN_LAYERS`).
 const MAX_LAYERS: usize = og_render_data::MAX_TERRAIN_LAYERS;
@@ -166,7 +166,7 @@ fn assets_root(s: &Source) -> PathBuf {
 
 /// The asset path (under `assets/`) a terrain file's `name` refers to:
 /// beside the terrain file when it is there, else under `assets/`.
-pub(super) fn resolve(terrain_rel: &str, root: &Path, name: &str) -> String {
+pub(crate) fn resolve(terrain_rel: &str, root: &Path, name: &str) -> String {
     let dir = terrain_rel.rsplit_once('/').map_or("", |(d, _)| d);
     let beside = if dir.is_empty() {
         name.to_string()
@@ -245,7 +245,7 @@ fn flag(b: &Block, key: &str, default: bool) -> Result<bool, String> {
 /// The files a terrain reads besides itself (its heightmap and control
 /// map, by asset path), for the stamp and so the walk does not cook them
 /// as textures.
-pub(super) fn terrain_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
+pub(crate) fn terrain_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     let Ok(doc) = Document::parse(text) else {
         return Vec::new();
     };
@@ -258,7 +258,7 @@ pub(super) fn terrain_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
 
 /// The layer textures a terrain names (`layers`, `layerNormals`, each
 /// `layer`'s `albedo` and `normal`), as the asset ids it loads them by.
-pub(super) fn layer_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
+pub(crate) fn layer_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     let Ok(doc) = Document::parse(text) else {
         return Vec::new();
     };
@@ -279,7 +279,7 @@ pub(super) fn layer_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
 
 /// The stamp's dependencies: each file the terrain reads, with its hash,
 /// and whether each layer texture is an asset.
-pub(super) fn terrain_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
+pub(crate) fn terrain_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
     let root = assets_root(s);
     let text = String::from_utf8_lossy(&s.bytes);
     let mut out: Vec<String> = terrain_files(&s.rel, &root, &text)
@@ -314,7 +314,7 @@ pub(super) fn terrain_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> 
 }
 
 /// A decoded heightmap: samples in 0..1 (PNG) or as stored (EXR), row-major.
-pub(super) struct Heightmap {
+pub(crate) struct Heightmap {
     pub columns: u32,
     pub rows: u32,
     pub values: Vec<f32>,
@@ -323,7 +323,7 @@ pub(super) struct Heightmap {
 
 /// Decodes a heightmap: a grey (or any) PNG to its first channel at 16
 /// bits in 0..1, an EXR to its first channel as stored.
-pub(super) fn decode_heightmap(name: &str, bytes: &[u8]) -> Result<Heightmap, String> {
+pub(crate) fn decode_heightmap(name: &str, bytes: &[u8]) -> Result<Heightmap, String> {
     let exr = name.to_ascii_lowercase().ends_with(".exr");
     let img = image::load_from_memory(bytes).map_err(|e| format!("{name}: {e}"))?;
     let (columns, rows) = (img.width(), img.height());
@@ -353,7 +353,7 @@ pub(super) fn decode_heightmap(name: &str, bytes: &[u8]) -> Result<Heightmap, St
 }
 
 /// A terrain file's settings, read and checked.
-pub(super) struct TerrainDoc {
+pub(crate) struct TerrainDoc {
     /// The heightmap (an asset path), or none: `generate` makes the field.
     pub heightmap: Option<String>,
     pub generate: Option<super::terrain_generate::Generate>,
@@ -413,7 +413,7 @@ const LAYER_KEYS: [&str; 19] = [
     "cellVariation",
 ];
 
-pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, String> {
+pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     let body = &doc.body;
     for e in &body.entries {
@@ -625,7 +625,7 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<TerrainDoc, St
 
 /// A terrain's samples, read from its heightmap (and control map) or made
 /// by its generator.
-pub(super) struct Field {
+pub(crate) struct Field {
     pub columns: u32,
     pub rows: u32,
     /// Metres above the origin (what the runtime's terrain draws, before
@@ -642,7 +642,7 @@ pub(super) struct Field {
 }
 
 /// Reads (or makes) a terrain file's samples.
-pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
+pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
     let read = |rel: &str, what: &str| {
         std::fs::read(root.join(rel)).map_err(|_| {
             format!("the {what} '{rel}' does not exist beside the terrain or under assets/")
@@ -745,7 +745,7 @@ pub(super) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
     })
 }
 
-pub(super) fn cook_terrain(
+pub(crate) fn cook_terrain(
     s: &Source,
     known: &dyn Fn(&str) -> bool,
     stamp: u64,

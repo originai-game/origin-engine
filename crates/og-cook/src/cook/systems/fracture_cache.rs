@@ -5,7 +5,7 @@ use og_core::hash::hash_bytes;
 use og_destruct::FractureAsset;
 use std::path::Path;
 
-pub(super) fn run(
+pub(crate) fn run(
     directory: Option<&Path>,
     input: &str,
     stamp: u64,

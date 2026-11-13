@@ -4,7 +4,7 @@ use og_story::yarn::types::{Function, Signature, Type};
 use std::collections::BTreeMap;
 use std::path::Path;
 
-pub(super) fn read(root: &Path) -> Result<BTreeMap<String, Function>, String> {
+pub(crate) fn read(root: &Path) -> Result<BTreeMap<String, Function>, String> {
     let source = match std::fs::read_to_string(root.join("project.ogt")) {
         Ok(source) => source,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(BTreeMap::new()),

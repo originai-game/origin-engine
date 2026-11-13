@@ -52,7 +52,7 @@ use og_blob::BlobWriter;
 use og_core::ogt::Document;
 use std::path::{Path, PathBuf};
 
-pub(super) const ENVIRONMENT_TYPE: &str = "environment";
+pub(crate) const ENVIRONMENT_TYPE: &str = "environment";
 
 const KEYS: [&str; 8] = [
     "source",
@@ -66,7 +66,7 @@ const KEYS: [&str; 8] = [
 ];
 
 /// What an environment bakes from.
-pub(super) enum EnvironmentSource {
+pub(crate) enum EnvironmentSource {
     /// An equirectangular `.hdr` or `.exr`.
     Equirect(String),
     /// A KTX2 cube map.
@@ -98,7 +98,7 @@ fn assets_root(s: &Source) -> PathBuf {
 }
 
 /// An environment file's settings, read and checked.
-pub(super) struct EnvironmentDoc {
+pub(crate) struct EnvironmentDoc {
     pub source: EnvironmentSource,
     /// The size given (`None`: 128, or a prefiltered file's own).
     pub size: Option<u32>,
@@ -125,7 +125,7 @@ fn number(doc: &Document, key: &str, default: f32) -> Result<f32, String> {
     }
 }
 
-pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc, String> {
+pub(crate) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc, String> {
     let doc = Document::parse(text).map_err(|e| e.to_string())?;
     for e in &doc.body.entries {
         if !KEYS.contains(&e.key.as_str()) || e.block.is_some() {
@@ -265,14 +265,14 @@ pub(super) fn parse(rel: &str, root: &Path, text: &str) -> Result<EnvironmentDoc
 
 /// The images an environment reads (by asset path), for the stamp and so
 /// the walk does not list them.
-pub(super) fn environment_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
+pub(crate) fn environment_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
     parse(rel, root, text)
         .map(|d| d.source.files())
         .unwrap_or_default()
 }
 
 /// The stamp's dependency: the images with their hashes.
-pub(super) fn environment_dependencies(s: &Source) -> String {
+pub(crate) fn environment_dependencies(s: &Source) -> String {
     let root = assets_root(s);
     environment_files(&s.rel, &root, &String::from_utf8_lossy(&s.bytes))
         .into_iter()
@@ -289,7 +289,7 @@ pub(super) fn environment_dependencies(s: &Source) -> String {
 }
 
 /// Cooks one `type environment` file.
-pub(super) fn cook_environment(
+pub(crate) fn cook_environment(
     s: &Source,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
@@ -473,7 +473,7 @@ pub(super) fn cook_environment(
 /// A `type environment` blob of `map`: its meta (the source's size, the
 /// cook's intensity, turn and samples; 0 samples: levels taken as given),
 /// irradiance and zlib'd RGB9E5 texels; with the texels' raw and packed bytes.
-pub(super) fn environment_blob(
+pub(crate) fn environment_blob(
     map: &og_render_data::EnvironmentMapData,
     (width, height): (u32, u32),
     intensity: f32,

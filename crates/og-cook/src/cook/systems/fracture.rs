@@ -96,7 +96,7 @@ struct Anchor {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct Settings {
+pub(crate) struct Settings {
     chunks: u32,
     seed: u32,
     children: u32,
@@ -136,7 +136,7 @@ fn count(b: &Block, k: &str, default: u32, min: u32, max: u32) -> Result<u32, St
 }
 
 impl Settings {
-    pub(super) fn parse(b: &Block) -> Result<Settings, String> {
+    pub(crate) fn parse(b: &Block) -> Result<Settings, String> {
         const KEYS: [&str; 13] = [
             "style",
             "chunks",
@@ -289,7 +289,7 @@ impl Settings {
 
     /// A source's `fracture` block: the top of a `type model` text, else
     /// its import settings'.
-    pub(super) fn of(
+    pub(crate) fn of(
         text: Option<&str>,
         settings: Option<&Document>,
     ) -> Result<Option<Settings>, String> {
@@ -931,7 +931,7 @@ fn mime(bytes: &[u8]) -> &'static str {
 }
 
 /// What [`fracture_glb`] makes.
-pub(super) struct Fractured {
+pub(crate) struct Fractured {
     /// The chunked model as a glTF binary, its images inside.
     pub glb: Vec<u8>,
     pub asset: FractureAsset,
@@ -941,7 +941,7 @@ pub(super) struct Fractured {
 }
 
 /// Fractures glTF binary `glb` (read beside `dir`) by `s`.
-pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fractured, String> {
+pub(crate) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fractured, String> {
     let g = model::load(glb, dir)?;
     let (mesh, material) = flatten(&g)?;
     let (lo, hi) = fracture::bounds(&mesh);
@@ -1222,7 +1222,7 @@ pub(super) fn fracture_glb(glb: &[u8], dir: &Path, s: &Settings) -> Result<Fract
 }
 
 /// The `#fracture` blob of a fractured model.
-pub(super) fn cook(s: &super::Source, stamp: u64) -> (Vec<u8>, Vec<String>) {
+pub(crate) fn cook(s: &super::Source, stamp: u64) -> (Vec<u8>, Vec<String>) {
     use crate::format::{self, BlobKind};
     let a = s
         .fracture

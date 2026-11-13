@@ -10,6 +10,12 @@
 //! are written only when their bytes change; outputs of removed or failed
 //! sources are deleted. The same inputs give byte-identical `cooked/`.
 
+mod systems;
+pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
+use systems::{
+    autorig, e6, effect, environment, flipbook, fracture, fracture_cache, fx_field, lightmap,
+    rig2d, shader_check, story_functions, terrain, vfx,
+};
 mod formats;
 pub use formats::{
     anim, audio, bc6h, cube_source, icons, ktx2_source, model_text, prefab, sfx, texture_array,
@@ -17,47 +23,23 @@ pub use formats::{
 };
 use formats::{fbx, font, font_pack, model, motion, normal2d, psd, scene, texture, timeline};
 mod action_cache;
-pub mod animated;
 pub mod asset_move;
 pub mod assets;
-mod autorig;
 pub mod cache;
 pub mod conform;
 pub use conform::{ConformAction, ConformEntry};
-mod e6;
-mod effect;
-pub mod efk;
-mod environment;
-mod flipbook;
-mod fracture;
-mod fracture_cache;
-mod fx_field;
 mod import_defaults;
 mod index;
-mod lightmap;
-pub mod look;
-mod look_assets;
-mod look_styles;
-pub mod probes;
-mod rig2d;
 pub mod riv;
-mod shader_check;
 pub mod stats;
-mod story_functions;
 mod stream;
-pub mod strings_extract;
-mod terrain;
-mod terrain_generate;
 #[cfg(test)]
 #[path = "../../../../tests/temp.rs"]
 mod test_dir;
-pub mod tilemap;
 pub mod ts_refs;
 pub mod ui_components;
 pub mod ui_screens;
 pub mod vector;
-mod vfx;
-pub mod vfx2d;
 
 mod execute;
 mod options;

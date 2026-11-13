@@ -66,7 +66,7 @@ pub fn vfx_text(c: &Conversion) -> String {
 
 /// The cook's step: every Effekseer source becomes its vfx text, and what
 /// it generates joins the sources; the models it reads are consumed.
-pub(super) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
+pub(crate) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>) {
     let by_lower: BTreeMap<String, String> = sources
         .iter()
         .map(|s| (s.rel.to_ascii_lowercase(), s.rel.clone()))
@@ -149,7 +149,7 @@ pub(super) fn expand(sources: &mut Vec<Source>, consumed: &mut BTreeSet<String>)
 
 /// The findings of the imported effects, as the cook's warnings and their
 /// reports' notes (on every cook, cached or not).
-pub(super) fn warnings(
+pub(crate) fn warnings(
     sources: &[Source],
     reports: &mut [super::AssetReport],
     warnings: &mut Vec<String>,

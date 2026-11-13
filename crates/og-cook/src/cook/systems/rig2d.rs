@@ -64,7 +64,7 @@ fn string_of(doc: &Document, key: &str) -> Option<String> {
 
 /// The hashes of what the rig depends on (its texture, its DragonBones
 /// export and atlas), for the cook stamp.
-pub(super) fn dependency_hashes(s: &Source) -> String {
+pub(crate) fn dependency_hashes(s: &Source) -> String {
     let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
         return String::new();
     };
@@ -86,7 +86,7 @@ pub(super) fn dependency_hashes(s: &Source) -> String {
 }
 
 /// The canonical rig of a source, and notes on what an import dropped.
-pub(super) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
+pub(crate) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
     let text = std::str::from_utf8(&s.bytes).map_err(|_| "a 2D rig is text (UTF-8)".to_string())?;
     let mut doc = Document::parse(text).map_err(|e| e.reason().to_string())?;
     let root = super::flipbook::assets_root(s);
@@ -168,7 +168,7 @@ pub(super) fn rig(s: &Source) -> Result<(Rig2dAsset, Vec<String>), String> {
 }
 
 /// The atlas texture of a rig that names `parts`.
-pub(super) fn cook_atlas(
+pub(crate) fn cook_atlas(
     s: &Source,
     opts: &super::TextureOptions,
     stamp: u64,
@@ -184,7 +184,7 @@ pub(super) fn cook_atlas(
     super::texture::cook(&image, kind, opts, stamp)
 }
 
-pub(super) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let (rig, mut notes) = rig(s).map_err(CookError)?;
     let text = rig.to_text();
     notes.insert(

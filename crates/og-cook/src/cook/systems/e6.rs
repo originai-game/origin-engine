@@ -46,8 +46,8 @@ use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::ogt::{Block, Document, Entry};
 use std::path::{Path, PathBuf};
 
-pub(super) const BEHAVIOUR_TYPE: &str = "behaviour";
-pub(super) const NAVMESH_TYPE: &str = "navmesh";
+pub(crate) const BEHAVIOUR_TYPE: &str = "behaviour";
+pub(crate) const NAVMESH_TYPE: &str = "navmesh";
 
 fn assets_root(s: &Source) -> PathBuf {
     let mut p = s.path.clone();
@@ -77,7 +77,7 @@ fn parse_behaviour(
 /// What a behaviour's stamp covers beyond its own bytes: every subtree
 /// file its `use` nodes reach, by path and hash (so editing a subtree
 /// re-validates the trees that use it).
-pub(super) fn behaviour_dependencies(s: &Source) -> String {
+pub(crate) fn behaviour_dependencies(s: &Source) -> String {
     let mut deps = Vec::new();
     let text = String::from_utf8_lossy(&s.bytes);
     let _ = parse_behaviour(s, &text, &mut |p, b| {
@@ -86,7 +86,7 @@ pub(super) fn behaviour_dependencies(s: &Source) -> String {
     deps.join("\n")
 }
 
-pub(super) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("a behaviour is text (UTF-8)".into()))?;
     let b = parse_behaviour(s, text, &mut |_, _| {}).map_err(CookError)?;
@@ -123,7 +123,7 @@ pub(super) fn cook_behaviour(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Str
 }
 
 /// Yarn is compiled to engine IR; quests retain their data representation.
-pub(super) fn cook_story(
+pub(crate) fn cook_story(
     s: &Source,
     stamp: u64,
     quest: bool,
@@ -201,7 +201,7 @@ pub(super) fn cook_story(
 /// The cook's check of dialogues and quests against the base string table:
 /// every key they show is in it, and every argument its message takes is
 /// passed. As (source, line) warnings; nothing without a string table.
-pub(super) fn check_story_keys(
+pub(crate) fn check_story_keys(
     tables: &[(&str, &[u8])],
     stories: &[(&str, &[u8])],
     functions: &std::collections::BTreeMap<String, og_story::yarn::types::Function>,
@@ -314,7 +314,7 @@ fn f32_of(b: Option<&Block>, key: &str, default: f32) -> f32 {
 /// The files a navmesh depends on (its scene and the models it and the
 /// scene name, its terrains and their heightmaps), with their hashes, for
 /// the cook stamp.
-pub(super) fn navmesh_dependencies(s: &Source) -> String {
+pub(crate) fn navmesh_dependencies(s: &Source) -> String {
     let Ok(doc) = Document::parse(&String::from_utf8_lossy(&s.bytes)) else {
         return String::new();
     };
@@ -554,7 +554,7 @@ fn entry_block(e: &Entry) -> Option<&Block> {
     e.block.as_ref()
 }
 
-pub(super) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook_navmesh(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text =
         std::str::from_utf8(&s.bytes).map_err(|_| CookError("a navmesh is text (UTF-8)".into()))?;
     let doc = Document::parse(text).map_err(|e| CookError(e.to_string()))?;
@@ -1036,7 +1036,7 @@ fn navmesh_blob(
 }
 
 /// Cooks a string table (`type strings`): validated by og-i18n, kept as text.
-pub(super) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text = std::str::from_utf8(&s.bytes)
         .map_err(|_| CookError("a string table is text (UTF-8)".into()))?;
     let t = og_i18n::StringTable::parse(text).map_err(CookError)?;
@@ -1073,7 +1073,7 @@ pub(super) fn cook_strings(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<Strin
 /// The cook's check across a project's string tables: per table, every
 /// key the base table has and it lacks, takes other arguments for, or
 /// has that the base lacks (og-i18n's `check_tables`), as (source, line).
-pub(super) fn check_strings(sources: &[(&str, &[u8])]) -> Vec<(String, String)> {
+pub(crate) fn check_strings(sources: &[(&str, &[u8])]) -> Vec<(String, String)> {
     let tables: Vec<(String, og_i18n::StringTable)> = sources
         .iter()
         .filter_map(|(rel, bytes)| {

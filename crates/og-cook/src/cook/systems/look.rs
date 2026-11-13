@@ -177,7 +177,7 @@ pub fn builtin(name: &str) -> Option<(&'static str, &'static [u8])> {
 /// the game has its own of that slug). The cook adds each to the bundle
 /// once. A look that does not resolve names none here; its own cook reports
 /// why.
-pub(super) fn builtin_files(
+pub(crate) fn builtin_files(
     rel: &str,
     text: &str,
     root: &Path,
@@ -736,7 +736,7 @@ fn resolve(
 
 /// The stamp's dependencies: every base's id and text hash, and whether the
 /// assets the look names are in the bundle.
-pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) -> bool) -> String {
+pub(crate) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) -> bool) -> String {
     let text = String::from_utf8_lossy(&s.bytes);
     let mut seen = vec![s.rel.clone()];
     let mut bases = Vec::new();
@@ -776,7 +776,7 @@ pub(super) fn look_dependencies(s: &Source, root: &Path, known: &dyn Fn(&str) ->
 /// The look `s` flattened over its chain and checked, every block: what
 /// conformance reads beside the contract (`Stylise`'s paint fields, which
 /// painted 2D styles apply in texel space, `conform/texture2d.rs`).
-pub(super) fn flattened(
+pub(crate) fn flattened(
     s: &Source,
     root: &Path,
     known: &dyn Fn(&str) -> bool,
@@ -789,7 +789,7 @@ pub(super) fn flattened(
 /// blocks (`crate::look::ART_RESOURCES`), which the cook reads before any
 /// asset of the game cooks. An error is the look's own (its cook reports it
 /// too).
-pub(super) fn contract(
+pub(crate) fn contract(
     s: &Source,
     root: &Path,
     known: &dyn Fn(&str) -> bool,
@@ -801,7 +801,7 @@ pub(super) fn contract(
 }
 
 /// Cooks one `type look` file.
-pub(super) fn cook_look(
+pub(crate) fn cook_look(
     s: &Source,
     root: &Path,
     known: &dyn Fn(&str) -> bool,
@@ -851,7 +851,7 @@ fn cook_with(
 }
 
 /// Cooks one `.hex` or `.gpl` palette.
-pub(super) fn cook_palette(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+pub(crate) fn cook_palette(s: &Source, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text =
         std::str::from_utf8(&s.bytes).map_err(|_| CookError("a palette is text (UTF-8)".into()))?;
     let colours = crate::look::parse_palette(&s.rel, text).map_err(CookError)?;
