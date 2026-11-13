@@ -73,6 +73,11 @@ pub fn of(kind: Kind) -> Vec<(String, String)> {
             ),
         ],
         Kind::Divider => vec![void("hr")],
+        Kind::Datetime => vec![(
+            "input type=\"date\"".into(),
+            "<input type=\"date\" id=\"Name\" /> (time, datetime-local, month, week)".into(),
+        )],
+        Kind::File => vec![void("input type=\"file\"")],
         Kind::Select => vec![(
             "select".into(),
             "<select id=\"Name\" bind:value={$x}><optgroup label=\"G\"><option value=\"a\">A</option></optgroup></select>".into(),
@@ -111,6 +116,10 @@ pub fn of(kind: Kind) -> Vec<(String, String)> {
             "svg",
             "<svg id=\"Name\" viewBox=\"0 0 40 40\">…</svg>",
         ),
+        Kind::SvgText => one(
+            "text",
+            "<svg viewBox=\"0 0 40 40\"><text x=\"20\" y=\"24\" text-anchor=\"middle\">…</text></svg>",
+        ),
         Kind::SvgGroup => one("g", "<g transform=\"rotate(-90 20 20)\" stroke=\"var(--accent)\">…</g>"),
         Kind::SvgUse => one("use", "<use href=\"#Coin\" x={i * 12} y=\"0\" width=\"10\" height=\"10\" />"),
         Kind::SvgForeign => one(
@@ -144,14 +153,11 @@ pub fn of(kind: Kind) -> Vec<(String, String)> {
         | Kind::Kbd
         | Kind::Art
         | Kind::Progress
-        | Kind::Datetime
         | Kind::Video
         | Kind::Audio
-        | Kind::File
         | Kind::Tabs
         | Kind::Badge
-        | Kind::Spacer
-        | Kind::SvgText => vec![(kind.to_string(), format!("<{kind} id=\"Name\">…</{kind}>"))],
+        | Kind::Spacer => vec![(kind.to_string(), format!("<{kind} id=\"Name\">…</{kind}>"))],
     };
     // The `og-` tags of its kind, after HTML's.
     tags.extend(

@@ -656,9 +656,9 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `color-value` | `text` | Its colour as `#rrggbb` (HTML `value`; written back). Two-way only with an explicit bind: attribute. |
 
-## 20. `<datetime>` (`datetime`): A date or time input (`<input type="date|time|datetime-local|month|week">`): a stepper per part, two-way `dateValue` in HTML's format
+## 20. `<input type="date">` (`datetime`): A date or time input (`<input type="date|time|datetime-local|month|week">`): a stepper per part, two-way `dateValue` in HTML's format
 
-A date or time input (`<input type="date|time|datetime-local|month|week">`): a stepper per part, two-way `dateValue` in HTML's format. A leaf; text-bearing controls accept text content: `<datetime id="Name">…</datetime>`.
+A date or time input (`<input type="date|time|datetime-local|month|week">`): a stepper per part, two-way `dateValue` in HTML's format. A leaf; text-bearing controls accept text content: `<input type="date" id="Name" /> (time, datetime-local, month, week)`.
 
 Its own props, beside every element's:
 
@@ -709,9 +709,9 @@ Its own props, beside every element's:
 | `loop` | `bool` | Starts again at its end. |
 | `controls` | `bool` | Draws a play and pause button and its time. |
 
-## 23. `<file>` (`file`): A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`
+## 23. `<input type="file">` (`file`): A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`
 
-A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`. A leaf; text-bearing controls accept text content: `<file id="Name">…</file>`.
+A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`. A leaf; text-bearing controls accept text content: `<input type="file" id="Name" />`.
 
 Its own props, beside every element's:
 
@@ -1109,9 +1109,9 @@ Its own props, beside every element's:
 | `filter` | `text` | SVG `filter="url(#id)"`: the `<filter>` the element and its subtree are drawn through. |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-## 43. `<svgText>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path
+## 43. `<text>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path
 
-SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path. A leaf; text-bearing controls accept text content: `<svgText id="Name">…</svgText>`.
+SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path. A leaf; text-bearing controls accept text content: `<svg viewBox="0 0 40 40"><text x="20" y="24" text-anchor="middle">…</text></svg>`.
 
 Its own props, beside every element's:
 
