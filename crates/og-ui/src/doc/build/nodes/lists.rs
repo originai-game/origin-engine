@@ -1,16 +1,12 @@
 use super::*;
 
-pub(crate) trait NodesListsUi {
+impl Ui {
     /// An `<li>`'s marker: hung before its start edge (`outside`, CSS's
     /// default: anchored to the item, so it costs the item no room), or
     /// first in its row (`inside`). A disc, circle or square is a shape on
     /// the first line, as browsers paint it, so no font has to carry the
     /// bullet; a number is text.
-    fn list_marker(&mut self, item: &str, kind: &str, text: &str, inside: bool, ink: Option<Srgba>);
-}
-
-impl NodesListsUi for Ui {
-    fn list_marker(
+    pub(crate) fn list_marker(
         &mut self,
         item: &str,
         kind: &str,
@@ -102,34 +98,9 @@ impl NodesListsUi for Ui {
     }
 }
 
-pub(crate) trait NodesListsUi2 {
+impl Ui {
     /// One item of a `for` outside a virtualised container.
-    fn build_item(
-        &mut self,
-        b: &mut Build<'_>,
-        n: &DocNode,
-        var: &str,
-        item: Value,
-        k: usize,
-        origin: Option<&str>,
-    );
-
-    /// A `list` or `cells` and its `for`: only the rows in view are built.
-    #[allow(clippy::too_many_arguments)]
-    fn build_virtual(
-        &mut self,
-        b: &mut Build<'_>,
-        n: &DocNode,
-        kind: &str,
-        id: &str,
-        r: &Resolved,
-        props: Props,
-        path: &str,
-    );
-}
-
-impl NodesListsUi2 for Ui {
-    fn build_item(
+    pub(crate) fn build_item(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -177,8 +148,9 @@ impl NodesListsUi2 for Ui {
         b.locals.pop();
     }
 
+    /// A `list` or `cells` and its `for`: only the rows in view are built.
     #[allow(clippy::too_many_arguments)]
-    fn build_virtual(
+    pub(crate) fn build_virtual(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -264,12 +236,8 @@ impl NodesListsUi2 for Ui {
     }
 }
 
-pub(crate) trait NodesListsDocs {
-    fn art_spec(&mut self, path: &str, r: &Resolved);
-}
-
-impl NodesListsDocs for crate::ui::Docs {
-    fn art_spec(&mut self, path: &str, r: &Resolved) {
+impl crate::ui::Docs {
+    pub(crate) fn art_spec(&mut self, path: &str, r: &Resolved) {
         let s = crate::slot::SlotSpec::from_props(
             path,
             |p| r.str(p).map(str::to_string),

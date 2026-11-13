@@ -105,15 +105,6 @@ pub mod style_pack;
 
 pub use probe::{SharedUi, UiProbe};
 
-/// The document build's extension traits: `use og_ui::prelude::*` brings
-/// its methods on [`Ui`] and [`UiDocument`] into scope.
-pub mod prelude {
-    pub use crate::doc::build::{
-        LayersUi, MountUi, MountUi3, ProbeUi, RetainedMountingUi, StylePackUi, SvelteUiDocument,
-        SvelteUiDocument2, TouchUi,
-    };
-}
-
 #[cfg(test)]
 mod structure;
 

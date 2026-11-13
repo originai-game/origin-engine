@@ -5,7 +5,6 @@
 //! puts world-anchored documents on screen.
 
 use og_core::glam::Vec3;
-use og_ui::prelude::*;
 use og_ui::*;
 use serde_json::Value;
 use std::collections::BTreeMap;

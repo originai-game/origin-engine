@@ -20,7 +20,6 @@
 //! state, and a literal `border-radius` other than 0. The default
 //! argument is the project's `assets/ui`.
 
-use og_ui::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 

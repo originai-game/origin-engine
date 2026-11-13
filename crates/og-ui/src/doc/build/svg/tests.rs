@@ -1,6 +1,4 @@
 use crate::doc::UiDocument;
-use crate::doc::build::DocsState;
-use crate::doc::build::ext::*;
 use crate::reactive::SourceId;
 use crate::reactive::session::Command;
 use crate::{DrawCmd, InputFrame, Ui, UiDesc, Viewport};

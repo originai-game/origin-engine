@@ -1,23 +1,9 @@
 use super::*;
 
-pub(crate) trait RetainedRegistrationUi {
+impl Ui {
     /// Register once over the host protocol; the next frame compiles with its
     /// real host environment, after source callbacks have settled.
-    fn register_document_mount(
-        &mut self,
-        mount: SourceId,
-        document: String,
-        inputs: BTreeMap<String, SourceId>,
-        content: BTreeMap<String, String>,
-    ) -> Result<(), String>;
-
-    fn unmount_scope(&mut self, scope: &str);
-
-    fn inherit_document_registrations(&mut self, previous: &Self);
-}
-
-impl RetainedRegistrationUi for Ui {
-    fn register_document_mount(
+    pub(crate) fn register_document_mount(
         &mut self,
         mount: SourceId,
         document: String,
@@ -70,7 +56,7 @@ impl RetainedRegistrationUi for Ui {
         Ok(())
     }
 
-    fn unmount_scope(&mut self, scope: &str) {
+    pub(crate) fn unmount_scope(&mut self, scope: &str) {
         let mounts: Vec<_> = self
             .docs
             .state()
@@ -93,7 +79,7 @@ impl RetainedRegistrationUi for Ui {
         }
     }
 
-    fn inherit_document_registrations(&mut self, previous: &Self) {
+    pub(crate) fn inherit_document_registrations(&mut self, previous: &Self) {
         let registrations = previous.docs.state().memory.retained.registrations.clone();
         self.docs.state_mut().memory.retained = RetainedHost {
             pending_mounts: registrations.keys().cloned().collect(),
@@ -104,20 +90,17 @@ impl RetainedRegistrationUi for Ui {
     }
 }
 
-pub(crate) trait RetainedRegistrationDocs {
-    fn document_mount_inputs(&self) -> Value;
-
-    fn registered_document_mounts(&mut self, mounts: Vec<SourceId>) -> Result<(), String>;
-}
-
-impl RetainedRegistrationDocs for crate::ui::Docs {
-    fn document_mount_inputs(&self) -> Value {
+impl crate::ui::Docs {
+    pub(crate) fn document_mount_inputs(&self) -> Value {
         json!(self.state().memory.retained.registrations.iter().map(|(mount, registration)| {
             json!({ "mount": mount, "inputs": registration.inputs.values().collect::<Vec<_>>() })
         }).collect::<Vec<_>>())
     }
 
-    fn registered_document_mounts(&mut self, mounts: Vec<SourceId>) -> Result<(), String> {
+    pub(crate) fn registered_document_mounts(
+        &mut self,
+        mounts: Vec<SourceId>,
+    ) -> Result<(), String> {
         self.state()
             .memory
             .reactive

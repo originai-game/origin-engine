@@ -1,32 +1,9 @@
 use super::*;
 
-pub(crate) trait RetainedFrameRetainedHost {
+impl RetainedHost {
     /// Marks what this frame's interaction, clock and frame-wide inputs
     /// require to be built again, before anything is emitted.
-    fn mark_frame(&mut self, ui: &mut Ui);
-
-    /// Marks the listeners of the actions fired since the last mark.
-    fn mark_fired(&mut self, ui: &Ui);
-
-    /// Goes on one tick with each Rive frame not built this frame: its
-    /// player advances and its draw is replaced on its node, which paints
-    /// again on its own; nothing is resolved or built.
-    fn advance_rive(&mut self, ui: &mut Ui);
-
-    /// Builds the listeners of actions that triggers fired while this
-    /// frame was built and that are not built yet, as every listener after
-    /// the trigger in the frame reacts.
-    fn emit_fired(
-        &mut self,
-        ui: &mut Ui,
-        env: &dyn Env,
-        events: &mut Vec<DocEvent>,
-        writes: &mut Vec<(BindingContext, String, Value)>,
-    ) -> Result<(), String>;
-}
-
-impl RetainedFrameRetainedHost for RetainedHost {
-    fn mark_frame(&mut self, ui: &mut Ui) {
+    pub(crate) fn mark_frame(&mut self, ui: &mut Ui) {
         let signature = Signature {
             viewport: *ui.env.viewport(),
             unit: ui.env.unit(),
@@ -123,7 +100,8 @@ impl RetainedFrameRetainedHost for RetainedHost {
         self.mark_fired(ui);
     }
 
-    fn mark_fired(&mut self, ui: &Ui) {
+    /// Marks the listeners of the actions fired since the last mark.
+    pub(crate) fn mark_fired(&mut self, ui: &Ui) {
         // Whether a listener's layer takes input is the build's question
         // (`docs.accepts`): every listener of a fired action is built.
         let fired = &ui.interaction.actions().fired;
@@ -137,7 +115,10 @@ impl RetainedFrameRetainedHost for RetainedHost {
         self.fired = fired.len();
     }
 
-    fn advance_rive(&mut self, ui: &mut Ui) {
+    /// Goes on one tick with each Rive frame not built this frame: its
+    /// player advances and its draw is replaced on its node, which paints
+    /// again on its own; nothing is resolved or built.
+    pub(crate) fn advance_rive(&mut self, ui: &mut Ui) {
         let elements = &self.elements;
         self.rive.retain(|identity| elements.contains_key(identity));
         self.unbuilt_hidden
@@ -183,7 +164,10 @@ impl RetainedFrameRetainedHost for RetainedHost {
         }
     }
 
-    fn emit_fired(
+    /// Builds the listeners of actions that triggers fired while this
+    /// frame was built and that are not built yet, as every listener after
+    /// the trigger in the frame reacts.
+    pub(crate) fn emit_fired(
         &mut self,
         ui: &mut Ui,
         env: &dyn Env,

@@ -1,7 +1,6 @@
 use crate::ScreenWipe;
 use crate::Side;
 use crate::UiDocument;
-use crate::doc::build::ext::*;
 use crate::doc::view_transition::*;
 
 fn spec(css: &str) -> Result<Option<ViewTransition>, String> {

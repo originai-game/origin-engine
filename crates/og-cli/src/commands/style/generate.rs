@@ -149,7 +149,6 @@ pub(super) fn run(args: &[&str]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use og_ui::prelude::*;
 
     #[test]
     fn every_finish_and_look_is_a_loadable_css_pack() {

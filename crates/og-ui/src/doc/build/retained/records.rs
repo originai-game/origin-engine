@@ -1,17 +1,8 @@
 use super::*;
 
-pub(crate) trait RetainedRecordsRetainedHost {
+impl RetainedHost {
     /// The retained elements' records, mounted ones in tree order.
-    fn records(&self) -> impl Iterator<Item = &super::host::DocRecord>;
-
-    fn collect_rendered<'a>(&'a self, child: &'a Child, out: &mut Vec<&'a MountedNode>);
-
-    #[cfg(test)]
-    fn record(&self, key: u64) -> Option<&super::host::DocRecord>;
-}
-
-impl RetainedRecordsRetainedHost for RetainedHost {
-    fn records(&self) -> impl Iterator<Item = &super::host::DocRecord> {
+    pub(crate) fn records(&self) -> impl Iterator<Item = &super::host::DocRecord> {
         let mut order = Vec::new();
         for root in self.roots.values() {
             self.collect_rendered(root, &mut order);
@@ -21,7 +12,7 @@ impl RetainedRecordsRetainedHost for RetainedHost {
             .map(|identity| &self.elements[identity].record)
     }
 
-    fn collect_rendered<'a>(&'a self, child: &'a Child, out: &mut Vec<&'a MountedNode>) {
+    pub(crate) fn collect_rendered<'a>(&'a self, child: &'a Child, out: &mut Vec<&'a MountedNode>) {
         match child {
             Child::Element(identity) => {
                 let element = &self.elements[identity];
@@ -53,7 +44,7 @@ impl RetainedRecordsRetainedHost for RetainedHost {
     }
 
     #[cfg(test)]
-    fn record(&self, key: u64) -> Option<&super::host::DocRecord> {
+    pub(crate) fn record(&self, key: u64) -> Option<&super::host::DocRecord> {
         let identity = self.by_key.get(&key)?;
         Some(&self.elements.get(identity)?.record)
     }

@@ -11,7 +11,6 @@
 pub use super::screens::*;
 use og_core::glam::{Vec2, Vec3};
 use og_render::{Background, ColorSpace, Mips, RenderDesc, RenderScene, TextureData, Tonemap};
-use og_ui::prelude::*;
 use og_ui::*;
 
 /// Adds the MSDF test font to a scene; the UI font for it, with the font's

@@ -5,44 +5,10 @@
 //! target are visited, never the tree.
 use super::*;
 
-pub(crate) trait RetainedPointerRetainedHost {
+impl RetainedHost {
     /// The handler of `when` on the element of `key` or its nearest
     /// mounted ancestor with one: its element and the action it names.
-    fn handler(&self, key: u64, when: &When) -> Option<(MountedNode, String)>;
-
-    fn row_key(&self, key: u64) -> String;
-
-    /// Fires `when` at `key`: its handler's `emit` event, the point in the
-    /// handler's box and `extra` its value.
-    fn dispatch(
-        &self,
-        ui: &Ui,
-        env: &dyn Env,
-        key: u64,
-        when: When,
-        extra: serde_json::Map<String, Value>,
-        events: &mut Vec<DocEvent>,
-    );
-
-    /// [`Self::dispatch`] with the point at `p` (screen CSS px).
-    #[allow(clippy::too_many_arguments)]
-    fn dispatch_at(
-        &self,
-        ui: &Ui,
-        env: &dyn Env,
-        key: u64,
-        when: When,
-        p: og_core::glam::Vec2,
-        extra: serde_json::Map<String, Value>,
-        events: &mut Vec<DocEvent>,
-    );
-
-    /// The tick's drag, drop, pointer and wheel events.
-    fn input_events(&mut self, ui: &Ui, env: &dyn Env, events: &mut Vec<DocEvent>);
-}
-
-impl RetainedPointerRetainedHost for RetainedHost {
-    fn handler(&self, key: u64, when: &When) -> Option<(MountedNode, String)> {
+    pub(crate) fn handler(&self, key: u64, when: &When) -> Option<(MountedNode, String)> {
         let mut at = self
             .owner_of
             .get(&key)
@@ -62,7 +28,7 @@ impl RetainedPointerRetainedHost for RetainedHost {
         }
     }
 
-    fn row_key(&self, key: u64) -> String {
+    pub(crate) fn row_key(&self, key: u64) -> String {
         self.owner_of
             .get(&key)
             .or_else(|| self.by_key.get(&key))
@@ -71,7 +37,9 @@ impl RetainedPointerRetainedHost for RetainedHost {
             .unwrap_or_default()
     }
 
-    fn dispatch(
+    /// Fires `when` at `key`: its handler's `emit` event, the point in the
+    /// handler's box and `extra` its value.
+    pub(crate) fn dispatch(
         &self,
         ui: &Ui,
         env: &dyn Env,
@@ -91,8 +59,9 @@ impl RetainedPointerRetainedHost for RetainedHost {
         );
     }
 
+    /// [`Self::dispatch`] with the point at `p` (screen CSS px).
     #[allow(clippy::too_many_arguments)]
-    fn dispatch_at(
+    pub(crate) fn dispatch_at(
         &self,
         ui: &Ui,
         env: &dyn Env,
@@ -140,7 +109,8 @@ impl RetainedPointerRetainedHost for RetainedHost {
         events.extend(b.events);
     }
 
-    fn input_events(&mut self, ui: &Ui, env: &dyn Env, events: &mut Vec<DocEvent>) {
+    /// The tick's drag, drop, pointer and wheel events.
+    pub(crate) fn input_events(&mut self, ui: &Ui, env: &dyn Env, events: &mut Vec<DocEvent>) {
         let input = &ui.interaction.input();
         let (hot, active) = (ui.interaction.state().hot, ui.interaction.state().active);
         let moved = [input.pointer.x, input.pointer.y] != self.pointer.pointer;
@@ -239,8 +209,6 @@ impl RetainedPointerRetainedHost for RetainedHost {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
-    use crate::doc::build::DocsState;
-    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
     use crate::{InputFrame, Ui, UiDesc, Viewport};

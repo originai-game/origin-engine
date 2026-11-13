@@ -1,5 +1,4 @@
 //! CSS directories are the authoring format; no manifest or generated atlas.
-use og_ui::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 

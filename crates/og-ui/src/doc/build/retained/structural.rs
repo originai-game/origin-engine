@@ -9,109 +9,8 @@ fn key_hash(value: &Value) -> u64 {
     crate::id::key_of_path(&value.to_string())
 }
 
-pub(crate) trait RetainedStructuralRetainedHost {
-    fn compile_branch(
-        &mut self,
-        ui: &mut Ui,
-        source: (Arc<UiDocument>, usize),
-        context: BindingContext,
-        parent: Option<&MountedNode>,
-        id: String,
-        env: &dyn Env,
-    ) -> Result<Child, String>;
-
-    /// A block of `source`'s children, shown while `expression` holds: an
-    /// `{#if}`, a rendered snippet (always), or a snippet's definition and
-    /// an optional render of no snippet (never).
-    #[allow(clippy::too_many_arguments)]
-    fn compile_block(
-        &mut self,
-        ui: &mut Ui,
-        source: (Arc<UiDocument>, usize),
-        context: BindingContext,
-        parent: Option<&MountedNode>,
-        id: String,
-        expression: &Expr,
-        env: &dyn Env,
-    ) -> Result<Child, String>;
-
-    fn compile_branch_children(
-        &mut self,
-        ui: &mut Ui,
-        branch: &BranchInstance,
-        env: &dyn Env,
-    ) -> Result<Vec<Child>, String>;
-
-    fn refresh_branch(
-        &mut self,
-        ui: &mut Ui,
-        id: &MountedNode,
-        value: &Value,
-        env: &dyn Env,
-    ) -> Result<(), String>;
-
-    fn set_branch(
-        &mut self,
-        ui: &mut Ui,
-        id: &MountedNode,
-        enabled: bool,
-        env: &dyn Env,
-    ) -> Result<(), String>;
-
-    fn block_start(&self, children: &[Child], target: &MountedNode, at: usize) -> Option<usize>;
-
-    fn compile_each(
-        &mut self,
-        ui: &mut Ui,
-        source: (Arc<UiDocument>, usize),
-        context: BindingContext,
-        parent: Option<&MountedNode>,
-        id: String,
-        env: &dyn Env,
-    ) -> Result<Child, String>;
-
-    fn compile_row(
-        &mut self,
-        ui: &mut Ui,
-        each: &EachInstance,
-        key: Option<&str>,
-        env: &dyn Env,
-    ) -> Result<Vec<Child>, String>;
-
-    fn plan_len(&self, child: &Child) -> usize;
-
-    fn logical_roots(&self, child: &Child, out: &mut Vec<MountedNode>);
-
-    fn each_start(&self, id: &MountedNode) -> usize;
-
-    fn place_row(&mut self, children: &[Child], start: usize) -> Result<(), String>;
-
-    fn remove_child(&mut self, ui: &mut Ui, child: Child);
-
-    fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String>;
-
-    fn edit_each(
-        &mut self,
-        ui: &mut Ui,
-        each: &mut EachInstance,
-        edit: &CollectionEdit,
-        start: usize,
-        env: &dyn Env,
-    ) -> Result<(), String>;
-
-    /// An each over a list held in a row, whose list changed to `value`:
-    /// rows whose keys left go, new keys' rows are made, kept rows move.
-    fn refresh_held(
-        &mut self,
-        ui: &mut Ui,
-        id: &MountedNode,
-        value: &Value,
-        env: &dyn Env,
-    ) -> Result<(), String>;
-}
-
-impl RetainedStructuralRetainedHost for RetainedHost {
-    fn compile_branch(
+impl RetainedHost {
+    pub(crate) fn compile_branch(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
@@ -128,8 +27,11 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         self.compile_block(ui, source, context, parent, id, &expression, env)
     }
 
+    /// A block of `source`'s children, shown while `expression` holds: an
+    /// `{#if}`, a rendered snippet (always), or a snippet's definition and
+    /// an optional render of no snippet (never).
     #[allow(clippy::too_many_arguments)]
-    fn compile_block(
+    pub(crate) fn compile_block(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
@@ -188,7 +90,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         Ok(Child::Branch(identity))
     }
 
-    fn compile_branch_children(
+    pub(crate) fn compile_branch_children(
         &mut self,
         ui: &mut Ui,
         branch: &BranchInstance,
@@ -222,7 +124,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         Ok(children)
     }
 
-    fn refresh_branch(
+    pub(crate) fn refresh_branch(
         &mut self,
         ui: &mut Ui,
         id: &MountedNode,
@@ -243,7 +145,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         self.set_branch(ui, id, truthy(value), env)
     }
 
-    fn set_branch(
+    pub(crate) fn set_branch(
         &mut self,
         ui: &mut Ui,
         id: &MountedNode,
@@ -277,7 +179,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         result
     }
 
-    fn block_start(
+    pub(crate) fn block_start(
         &self,
         children: &[Child],
         target: &MountedNode,
@@ -319,7 +221,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         None
     }
 
-    fn compile_each(
+    pub(crate) fn compile_each(
         &mut self,
         ui: &mut Ui,
         source: (Arc<UiDocument>, usize),
@@ -406,7 +308,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         Ok(Child::Each(identity))
     }
 
-    fn compile_row(
+    pub(crate) fn compile_row(
         &mut self,
         ui: &mut Ui,
         each: &EachInstance,
@@ -498,7 +400,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         Ok(children)
     }
 
-    fn plan_len(&self, child: &Child) -> usize {
+    pub(crate) fn plan_len(&self, child: &Child) -> usize {
         match child {
             Child::Element(_) => 1,
             Child::Each(id) => self.each[id]
@@ -516,7 +418,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         }
     }
 
-    fn logical_roots(&self, child: &Child, out: &mut Vec<MountedNode>) {
+    pub(crate) fn logical_roots(&self, child: &Child, out: &mut Vec<MountedNode>) {
         match child {
             Child::Element(id) => out.push(id.clone()),
             Child::Branch(id) => {
@@ -540,13 +442,13 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         }
     }
 
-    fn each_start(&self, id: &MountedNode) -> usize {
+    pub(crate) fn each_start(&self, id: &MountedNode) -> usize {
         let parent = &self.each[id].parent;
         self.block_start(&self.elements[parent].children, id, 0)
             .expect("mounted each position")
     }
 
-    fn place_row(&mut self, children: &[Child], start: usize) -> Result<(), String> {
+    pub(crate) fn place_row(&mut self, children: &[Child], start: usize) -> Result<(), String> {
         let mut roots = Vec::new();
         for child in children {
             self.logical_roots(child, &mut roots);
@@ -566,7 +468,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         Ok(())
     }
 
-    fn remove_child(&mut self, ui: &mut Ui, child: Child) {
+    pub(crate) fn remove_child(&mut self, ui: &mut Ui, child: Child) {
         match child {
             Child::Branch(id) => {
                 let branch = self.branches.remove(&id).expect("mounted branch");
@@ -638,7 +540,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         }
     }
 
-    fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
+    pub(crate) fn refresh_collections(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         let mut error = None;
         for change in ui.docs.state_mut().memory.reactive.sources.take_changes() {
             let SourceChange::Collection(edit) = change.change else {
@@ -687,7 +589,7 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         error.map_or(Ok(()), Err)
     }
 
-    fn edit_each(
+    pub(crate) fn edit_each(
         &mut self,
         ui: &mut Ui,
         each: &mut EachInstance,
@@ -766,7 +668,9 @@ impl RetainedStructuralRetainedHost for RetainedHost {
         Ok(())
     }
 
-    fn refresh_held(
+    /// An each over a list held in a row, whose list changed to `value`:
+    /// rows whose keys left go, new keys' rows are made, kept rows move.
+    pub(crate) fn refresh_held(
         &mut self,
         ui: &mut Ui,
         id: &MountedNode,

@@ -1,28 +1,7 @@
 use super::*;
-use crate::doc::build::ext::*;
 
-pub trait RetainedMountingUi {
-    fn mount_document(
-        &mut self,
-        mount: SourceId,
-        document: &str,
-        inputs: BTreeMap<String, SourceId>,
-        content: BTreeMap<String, String>,
-        env: &dyn Env,
-    ) -> Result<(), String>;
-
-    /// Unmounts a mount. A mounted screen leaves the stack with it; when its
-    /// screen has a view transition, the mount stays until the cover has
-    /// closed over it.
-    fn unmount_document(&mut self, mount: &SourceId);
-
-    fn build_retained_documents(&mut self, env: &dyn Env) -> Result<(), String>;
-
-    fn mounted_topology(&self) -> &Topology;
-}
-
-impl RetainedMountingUi for Ui {
-    fn mount_document(
+impl Ui {
+    pub fn mount_document(
         &mut self,
         mount: SourceId,
         document: &str,
@@ -105,7 +84,10 @@ impl RetainedMountingUi for Ui {
         result
     }
 
-    fn unmount_document(&mut self, mount: &SourceId) {
+    /// Unmounts a mount. A mounted screen leaves the stack with it; when its
+    /// screen has a view transition, the mount stays until the cover has
+    /// closed over it.
+    pub fn unmount_document(&mut self, mount: &SourceId) {
         if let Some(k) = self.docs.mount_layer(mount) {
             if self.layer_leaves(k) {
                 return;
@@ -115,7 +97,7 @@ impl RetainedMountingUi for Ui {
         self.finish_unmount(mount);
     }
 
-    fn build_retained_documents(&mut self, env: &dyn Env) -> Result<(), String> {
+    pub fn build_retained_documents(&mut self, env: &dyn Env) -> Result<(), String> {
         let mut host = std::mem::take(&mut self.docs.state_mut().memory.retained);
         if host.built_tick == Some(self.tick()) {
             self.docs.state_mut().memory.retained = host;
@@ -198,17 +180,13 @@ impl RetainedMountingUi for Ui {
         result
     }
 
-    fn mounted_topology(&self) -> &Topology {
+    pub fn mounted_topology(&self) -> &Topology {
         &self.docs.state().memory.retained.topology
     }
 }
 
-pub(crate) trait RetainedMountingUi2 {
-    fn finish_unmount(&mut self, mount: &SourceId);
-}
-
-impl RetainedMountingUi2 for Ui {
-    fn finish_unmount(&mut self, mount: &SourceId) {
+impl Ui {
+    pub(crate) fn finish_unmount(&mut self, mount: &SourceId) {
         let mut host = std::mem::take(&mut self.docs.state_mut().memory.retained);
         host.remove_mount(self, mount);
         self.docs.state_mut().memory.retained = host;

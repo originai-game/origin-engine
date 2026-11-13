@@ -1466,7 +1466,8 @@ pub mod cascade;
 pub(crate) mod color;
 pub(crate) mod containers;
 pub(crate) mod datetime;
-pub(crate) mod ext;
+#[cfg(test)]
+mod ext;
 #[doc(hidden)]
 pub mod fields;
 pub(crate) mod generated;
@@ -1493,14 +1494,12 @@ pub(crate) mod text_motion;
 pub(crate) mod touch;
 pub(crate) mod viewport;
 pub(crate) mod world;
-pub use ext::*;
 pub(crate) use host::documents;
 pub use host::{
     Built, DocEvent, DocHost, DocMemory, DocResponse, DocumentState, Documents, Edit, NoDocuments,
     install_documents,
 };
 pub use instances::RetainedHost;
-pub(crate) use state::DocsState;
 
 /// The computed-value entry carrying the inherited `quotes`.
 pub const QUOTES: &str = "@quotes";

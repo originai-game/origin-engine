@@ -22,32 +22,8 @@ pub(crate) mod structural;
 pub(crate) mod virtualized;
 pub(crate) use super::instances::*;
 
-pub(crate) trait RetainedRetainedHost {
-    fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String>;
-
-    fn document_replaced(&mut self, ui: &mut Ui, document: &str);
-
-    fn rebuild_mount(&mut self, ui: &mut Ui, mount: &SourceId);
-
-    fn bind(
-        &mut self,
-        ui: &mut Ui,
-        element: &mut ElementInstance,
-        input: Input,
-        expression: BindingExpression,
-        env: &dyn Env,
-    ) -> Result<(), String>;
-
-    fn remove_mount(&mut self, ui: &mut Ui, mount: &SourceId);
-
-    /// Queues `node`'s `use:` events of `phase` (`create`, `update`,
-    /// `destroy`): an update only for the action whose params are
-    /// `changed`'s expression, with its new value.
-    fn use_events(&mut self, node: &MountedNode, phase: &str, changed: Option<(&Expr, Value)>);
-}
-
-impl RetainedRetainedHost for RetainedHost {
-    fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
+impl RetainedHost {
+    pub(crate) fn restore_instances(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         while let Some(mount) = self.pending_mounts.first().cloned() {
             let registration = self.registrations[&mount].clone();
             let document = ui
@@ -106,7 +82,7 @@ impl RetainedRetainedHost for RetainedHost {
         Ok(())
     }
 
-    fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
+    pub(crate) fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
         self.profiles.remove(document);
         let mounts: Vec<_> = self
             .registrations
@@ -119,14 +95,14 @@ impl RetainedRetainedHost for RetainedHost {
         }
     }
 
-    fn rebuild_mount(&mut self, ui: &mut Ui, mount: &SourceId) {
+    pub(crate) fn rebuild_mount(&mut self, ui: &mut Ui, mount: &SourceId) {
         let registration = self.registrations[mount].clone();
         self.remove_mount(ui, mount);
         self.pending_mounts.insert(mount.clone());
         self.registrations.insert(mount.clone(), registration);
     }
 
-    fn bind(
+    pub(crate) fn bind(
         &mut self,
         ui: &mut Ui,
         element: &mut ElementInstance,
@@ -175,7 +151,7 @@ impl RetainedRetainedHost for RetainedHost {
         Ok(())
     }
 
-    fn remove_mount(&mut self, ui: &mut Ui, mount: &SourceId) {
+    pub(crate) fn remove_mount(&mut self, ui: &mut Ui, mount: &SourceId) {
         let bindings: Vec<_> = self
             .inputs
             .iter()
@@ -234,7 +210,15 @@ impl RetainedRetainedHost for RetainedHost {
         self.pending_mounts.remove(mount);
     }
 
-    fn use_events(&mut self, node: &MountedNode, phase: &str, changed: Option<(&Expr, Value)>) {
+    /// Queues `node`'s `use:` events of `phase` (`create`, `update`,
+    /// `destroy`): an update only for the action whose params are
+    /// `changed`'s expression, with its new value.
+    pub(crate) fn use_events(
+        &mut self,
+        node: &MountedNode,
+        phase: &str,
+        changed: Option<(&Expr, Value)>,
+    ) {
         let Some(element) = self.elements.get(node) else {
             return;
         };

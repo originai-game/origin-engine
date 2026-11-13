@@ -1732,9 +1732,9 @@ cascade (the style stage, which styles immediate widgets too), motion,
 paint and draw, the document model, and the documents themselves (the
 Svelte parse and writeback, build and mount, the SVG element build,
 layers, style packs and the probe). The stages call the documents through
-`doc::build::Documents`; the documents add methods to the stage types
-through the extension traits in `og_ui::prelude` and reach the stages'
-state only through each stage's accessors. Their own state (`DocState`:
+`doc::build::Documents`; the documents' methods on the stage types are
+inherent, written beside the documents, and reach the stages' state only
+through each stage's accessors. Their own state (`DocState`:
 build cursor, the tick's outputs, mounts' memory, the reactive session) is
 held behind `doc::build::DocumentState` and reached only through its
 operations; a UI that built no document holds `NoDocuments`, with what a

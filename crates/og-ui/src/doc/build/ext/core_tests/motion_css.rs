@@ -1,6 +1,5 @@
 //! Documents driving transitions and animations tick by tick.
 use crate::doc::UiDocument;
-use crate::prelude::*;
 use crate::{InputFrame, Ui, UiDesc, Viewport};
 use serde_json::{Value, json};
 

@@ -278,20 +278,10 @@ pub(super) fn invalid(r: &Resolved) -> bool {
             .is_some_and(|m| v > m)
 }
 
-pub(crate) trait DatetimeUi {
+impl Ui {
     /// Builds a date or time input; answers its response (`changed` when
     /// it wrote a value back).
-    fn datetime_input(
-        &mut self,
-        b: &mut Build<'_>,
-        n: &DocNode,
-        id: &str,
-        r: &Resolved,
-    ) -> crate::ui::Response;
-}
-
-impl DatetimeUi for Ui {
-    fn datetime_input(
+    pub(crate) fn datetime_input(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,

@@ -5,7 +5,6 @@ use super::{
     BlobKind, CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, assets, execute,
     format, hash_bytes, stamp, strings,
 };
-use og_ui::prelude::*;
 
 pub(crate) static STYLE: KindDef = KindDef {
     name: "style",

@@ -16,7 +16,6 @@
 //! the checkout this crate was built in. It is read when a game first uses
 //! a name it does not define.
 
-use og_ui::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;

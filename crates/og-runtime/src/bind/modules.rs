@@ -23,7 +23,6 @@ mod ui_config;
 pub(crate) use ui_config::{LoadedStyle, load_style, new_ui, ui_font};
 pub use ui_config::{og_load_style, og_ui_configure};
 mod ui_desc;
-use og_ui::prelude::*;
 use ui_desc::paint;
 pub use ui_desc::{
     THEME_COLORS, TYPE_STEPS, og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer,

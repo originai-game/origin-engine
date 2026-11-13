@@ -1,30 +1,7 @@
 use super::*;
 
-pub(crate) trait RetainedRefreshRetainedHost {
-    fn sync_facts(
-        &mut self,
-        ui: &mut Ui,
-        element: &ElementInstance,
-        env: &dyn Env,
-    ) -> Result<(), String>;
-
-    fn refresh(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String>;
-
-    /// Materialized nodes in invalidated style intervals resolve before they
-    /// draw; deferred rows keep their interval until they materialize.
-    fn resolve_invalidated_styles(&mut self);
-
-    /// The mounted elements whose interaction state the probe forced.
-    fn forced_keys(&self, ui: &Ui) -> Vec<u64>;
-
-    fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String>;
-
-    fn resolve(&mut self, ui: &mut Ui, identity: &MountedNode, env: &dyn Env)
-    -> Result<(), String>;
-}
-
-impl RetainedRefreshRetainedHost for RetainedHost {
-    fn sync_facts(
+impl RetainedHost {
+    pub(crate) fn sync_facts(
         &mut self,
         ui: &mut Ui,
         element: &ElementInstance,
@@ -212,7 +189,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         Ok(())
     }
 
-    fn refresh(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
+    pub(crate) fn refresh(&mut self, ui: &mut Ui, env: &dyn Env) -> Result<(), String> {
         self.restore_instances(ui, env)?;
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
@@ -365,7 +342,9 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         Ok(())
     }
 
-    fn resolve_invalidated_styles(&mut self) {
+    /// Materialized nodes in invalidated style intervals resolve before they
+    /// draw; deferred rows keep their interval until they materialize.
+    pub(crate) fn resolve_invalidated_styles(&mut self) {
         for (parent, range) in self.topology.take_style_invalidations() {
             let virtual_rows = parent.as_ref().and_then(|parent| {
                 let element = self.elements.get(parent)?;
@@ -414,7 +393,8 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         }
     }
 
-    fn forced_keys(&self, ui: &Ui) -> Vec<u64> {
+    /// The mounted elements whose interaction state the probe forced.
+    pub(crate) fn forced_keys(&self, ui: &Ui) -> Vec<u64> {
         if ui.interaction.state().motion.forced.is_empty() {
             return Vec::new();
         }
@@ -425,7 +405,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             .collect()
     }
 
-    fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String> {
+    pub(crate) fn sync_interaction(&mut self, ui: &mut Ui) -> Result<(), String> {
         use crate::bind::InteractionState::{
             Active, Focus, FocusVisible, FocusWithin, Hover, PopoverOpen, Target,
         };
@@ -550,7 +530,7 @@ impl RetainedRefreshRetainedHost for RetainedHost {
         Ok(())
     }
 
-    fn resolve(
+    pub(crate) fn resolve(
         &mut self,
         ui: &mut Ui,
         identity: &MountedNode,

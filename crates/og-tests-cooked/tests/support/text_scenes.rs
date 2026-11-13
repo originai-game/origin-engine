@@ -39,7 +39,6 @@ use og_render::{
     Background, ColorSpace, Glyph, Kern, Mips, MsdfFont, RenderDesc, RenderScene, TextureData,
     Tonemap,
 };
-use og_ui::prelude::*;
 use og_ui::shape::FontFile;
 use og_ui::*;
 use std::sync::Arc;

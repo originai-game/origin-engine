@@ -491,58 +491,16 @@ fn srgba(w: &str) -> Result<crate::style::Srgba, String> {
     })
 }
 
-pub(crate) trait WorldUi {
+impl Ui {
     /// An element's emitter and meta effects, on node `i`.
-    fn world_effects(&mut self, b: &Build<'_>, n: &DocNode, r: &Resolved, i: usize, path: &str);
-
-    /// A `<panel world>`: its subtree drawn into the render target `src`
-    /// names (shown by the game on a plane), and rays from the pointer
-    /// that meet its quad reach its controls.
-    #[allow(clippy::too_many_arguments)]
-    fn build_world_panel(
+    pub(crate) fn world_effects(
         &mut self,
-        b: &mut Build<'_>,
+        b: &Build<'_>,
         n: &DocNode,
         r: &Resolved,
-        props: Props,
-        path: String,
-        key: u64,
-        built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
-    ) -> Option<String>;
-
-    /// An `<anchor mass>`: a mass element of the template its `mass` names
-    /// (defined from the element: a number, or with `max` a bar; its first
-    /// CSS animation's `@keyframes` its timeline), held in the tree by a
-    /// hidden leaf so the retained document keeps it.
-    fn build_mass(
-        &mut self,
-        b: &mut Build<'_>,
-        n: &DocNode,
-        r: &Resolved,
-        name: &str,
+        i: usize,
         path: &str,
-        key: u64,
-    );
-
-    /// An `<anchor>`: opened as the native anchor, kept for placement while
-    /// its subtree is not built again.
-    #[allow(clippy::too_many_arguments)]
-    fn build_anchor(
-        &mut self,
-        b: &mut Build<'_>,
-        n: &DocNode,
-        r: &Resolved,
-        props: Props,
-        path: String,
-        key: u64,
-        built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
-    ) -> Option<String>;
-}
-
-impl WorldUi for Ui {
-    fn world_effects(&mut self, b: &Build<'_>, n: &DocNode, r: &Resolved, i: usize, path: &str) {
+    ) {
         let palette = self.theme().palette;
         let emitter = r
             .str("emitter")
@@ -572,8 +530,11 @@ impl WorldUi for Ui {
         }
     }
 
+    /// A `<panel world>`: its subtree drawn into the render target `src`
+    /// names (shown by the game on a plane), and rays from the pointer
+    /// that meet its quad reach its controls.
     #[allow(clippy::too_many_arguments)]
-    fn build_world_panel(
+    pub(crate) fn build_world_panel(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -620,7 +581,11 @@ impl WorldUi for Ui {
         Some(path)
     }
 
-    fn build_mass(
+    /// An `<anchor mass>`: a mass element of the template its `mass` names
+    /// (defined from the element: a number, or with `max` a bar; its first
+    /// CSS animation's `@keyframes` its timeline), held in the tree by a
+    /// hidden leaf so the retained document keeps it.
+    pub(crate) fn build_mass(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -789,8 +754,10 @@ impl WorldUi for Ui {
         );
     }
 
+    /// An `<anchor>`: opened as the native anchor, kept for placement while
+    /// its subtree is not built again.
     #[allow(clippy::too_many_arguments)]
-    fn build_anchor(
+    pub(crate) fn build_anchor(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -848,8 +815,6 @@ impl WorldUi for Ui {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
-    use crate::doc::build::DocsState;
-    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::reactive::session::Command;
     use crate::world::WorldView;

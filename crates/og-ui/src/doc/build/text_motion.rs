@@ -5,38 +5,10 @@
 
 use super::*;
 
-pub(crate) trait TextMotionUi {
+impl Ui {
     /// A counter that interpolates to `value` over its duration in ms
     /// (900 by default).
-    fn count_text(&mut self, id: &str, value: f32, desc: &LabelDesc, r: &Resolved);
-
-    /// What a typewriter text (`rate` graphemes per second) shows
-    /// this tick: it starts again when its text changes and is whole under
-    /// reduced motion. It fires `onrevealed` once as the last character
-    /// shows. Its progress is widget memory (kept in snapshots); it builds
-    /// every tick until it is whole.
-    fn reveal<'a>(&mut self, key: u64, text: &'a str, cps: Option<f32>) -> &'a str;
-
-    /// A `<select>` drawn as a cycler: previous, its option, next; each
-    /// press steps (wrapping, past disabled options) and writes `value`
-    /// back. Answers whether it changed.
-    fn cycler(&mut self, b: &mut Build<'_>, n: &DocNode, id: &str, r: &Resolved) -> bool;
-
-    /// An open `<og-spotlight target="id">`: the page dimmed but
-    /// for the element of that id, the dialog's content a callout against
-    /// it. Answers the shade's response and whether the callout layer is
-    /// open (it is when the element is on the page).
-    fn open_spotlight(
-        &mut self,
-        id: &str,
-        _: (u64, &str),
-        target: &str,
-        r: &Resolved,
-    ) -> (crate::ui::Response, bool);
-}
-
-impl TextMotionUi for Ui {
-    fn count_text(&mut self, id: &str, value: f32, desc: &LabelDesc, r: &Resolved) {
+    pub(crate) fn count_text(&mut self, id: &str, value: f32, desc: &LabelDesc, r: &Resolved) {
         let shown = self.counter(
             id,
             f64::from(value),
@@ -59,7 +31,12 @@ impl TextMotionUi for Ui {
         }
     }
 
-    fn reveal<'a>(&mut self, key: u64, text: &'a str, cps: Option<f32>) -> &'a str {
+    /// What a typewriter text (`rate` graphemes per second) shows
+    /// this tick: it starts again when its text changes and is whole under
+    /// reduced motion. It fires `onrevealed` once as the last character
+    /// shows. Its progress is widget memory (kept in snapshots); it builds
+    /// every tick until it is whole.
+    pub(crate) fn reveal<'a>(&mut self, key: u64, text: &'a str, cps: Option<f32>) -> &'a str {
         let Some(cps) = cps.filter(|c| *c > 0.0) else {
             return text;
         };
@@ -102,7 +79,16 @@ impl TextMotionUi for Ui {
         &text[..end]
     }
 
-    fn cycler(&mut self, b: &mut Build<'_>, n: &DocNode, id: &str, r: &Resolved) -> bool {
+    /// A `<select>` drawn as a cycler: previous, its option, next; each
+    /// press steps (wrapping, past disabled options) and writes `value`
+    /// back. Answers whether it changed.
+    pub(crate) fn cycler(
+        &mut self,
+        b: &mut Build<'_>,
+        n: &DocNode,
+        id: &str,
+        r: &Resolved,
+    ) -> bool {
         let strs = |name: &str| match r.get(name) {
             Some(V::Strs(s)) => s.clone(),
             _ => Vec::new(),
@@ -183,7 +169,11 @@ impl TextMotionUi for Ui {
         true
     }
 
-    fn open_spotlight(
+    /// An open `<og-spotlight target="id">`: the page dimmed but
+    /// for the element of that id, the dialog's content a callout against
+    /// it. Answers the shade's response and whether the callout layer is
+    /// open (it is when the element is on the page).
+    pub(crate) fn open_spotlight(
         &mut self,
         id: &str,
         (key, path): (u64, &str),

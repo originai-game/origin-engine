@@ -17,7 +17,6 @@
 //!   `images_take_object_fit_position_and_inherited_image_rendering`
 
 use crate::support;
-use og_ui::prelude::*;
 
 use og_core::glam::Vec2;
 use og_ui::*;

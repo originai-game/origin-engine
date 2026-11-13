@@ -17,7 +17,6 @@
 //!   following UiDesc.hudMaxAspect → `safe_area_insets_clear_the_hosts_covered_control`
 
 use crate::support::{Doc, both};
-use og_ui::prelude::*;
 use og_ui::*;
 use serde_json::json;
 

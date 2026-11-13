@@ -1,24 +1,8 @@
 use super::*;
 
-pub(crate) trait RetainedVirtualizedRetainedHost {
+impl RetainedHost {
     #[allow(clippy::too_many_arguments)]
-    fn emit_virtual(
-        &mut self,
-        ui: &mut Ui,
-        element: &ElementInstance,
-        build: &mut Build<'_>,
-        props: Props,
-        env: &dyn Env,
-        events: &mut Vec<DocEvent>,
-        writes: &mut Vec<(BindingContext, String, Value)>,
-    ) -> Result<(), String>;
-
-    fn dematerialize(&mut self, child: &Child) -> Result<(), String>;
-}
-
-impl RetainedVirtualizedRetainedHost for RetainedHost {
-    #[allow(clippy::too_many_arguments)]
-    fn emit_virtual(
+    pub(crate) fn emit_virtual(
         &mut self,
         ui: &mut Ui,
         element: &ElementInstance,
@@ -202,7 +186,7 @@ impl RetainedVirtualizedRetainedHost for RetainedHost {
         result
     }
 
-    fn dematerialize(&mut self, child: &Child) -> Result<(), String> {
+    pub(crate) fn dematerialize(&mut self, child: &Child) -> Result<(), String> {
         let children = match child {
             Child::Element(id) => {
                 if self.topology.node(id).unwrap().materialization == Materialization::Deferred {

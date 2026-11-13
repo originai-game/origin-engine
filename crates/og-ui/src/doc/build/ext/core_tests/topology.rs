@@ -1,6 +1,5 @@
 use crate::UiDocument;
 use crate::bind::InteractionState;
-use crate::doc::build::ext::*;
 use crate::doc::topology::*;
 use crate::reactive::SourceId;
 use crate::reactive::graph::MountedNode;

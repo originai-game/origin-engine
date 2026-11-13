@@ -22,43 +22,13 @@ pub(super) fn popover_key(mount: &str, id: &str) -> u64 {
     crate::id::key_of_path(&format!("{mount}#{id}~popover"))
 }
 
-pub(crate) trait PopoverUi {
+impl Ui {
     /// Whether popover `pk` is open (widget memory: kept in snapshots).
-    fn popover_open(&mut self, pk: u64) -> bool;
-
-    fn set_popover_open(&mut self, pk: u64, open: bool);
-
-    /// After element `key` is built: its `title` tooltip, and what it does
-    /// to the popovers it names.
-    fn popover_invoker(&mut self, b: &Build<'_>, r: &Resolved, key: u64, resp: crate::ui::Response);
-
-    /// Builds a `popover` element: nothing in its place but an empty box,
-    /// and, open, a layer against the control that opened it. It is built
-    /// every frame (its controls are other elements).
-    #[allow(clippy::too_many_arguments)]
-    fn build_popover(
-        &mut self,
-        b: &mut Build<'_>,
-        n: &DocNode,
-        id: &str,
-        r: &Resolved,
-        path: String,
-        key: u64,
-        built: Built,
-        build_children: impl FnOnce(&mut Ui, &mut Build<'_>, Option<Props>),
-    ) -> Option<String>;
-
-    /// Popover layer `at`'s anchor positioning against its implicit anchor
-    /// (the layout pass reads its `anchor` node, or `point`), and its arrow.
-    fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>);
-}
-
-impl PopoverUi for Ui {
-    fn popover_open(&mut self, pk: u64) -> bool {
+    pub(crate) fn popover_open(&mut self, pk: u64) -> bool {
         self.has_anim(pk) && self.anim(pk).h != 0
     }
 
-    fn set_popover_open(&mut self, pk: u64, open: bool) {
+    pub(crate) fn set_popover_open(&mut self, pk: u64, open: bool) {
         if self.popover_open(pk) == open {
             return;
         }
@@ -88,7 +58,9 @@ impl PopoverUi for Ui {
         );
     }
 
-    fn popover_invoker(
+    /// After element `key` is built: its `title` tooltip, and what it does
+    /// to the popovers it names.
+    pub(crate) fn popover_invoker(
         &mut self,
         b: &Build<'_>,
         r: &Resolved,
@@ -155,8 +127,11 @@ impl PopoverUi for Ui {
         }
     }
 
+    /// Builds a `popover` element: nothing in its place but an empty box,
+    /// and, open, a layer against the control that opened it. It is built
+    /// every frame (its controls are other elements).
     #[allow(clippy::too_many_arguments)]
-    fn build_popover(
+    pub(crate) fn build_popover(
         &mut self,
         b: &mut Build<'_>,
         n: &DocNode,
@@ -285,7 +260,9 @@ impl PopoverUi for Ui {
         Some(path)
     }
 
-    fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>) {
+    /// Popover layer `at`'s anchor positioning against its implicit anchor
+    /// (the layout pass reads its `anchor` node, or `point`), and its arrow.
+    pub(crate) fn place_popover(&mut self, r: &Resolved, at: usize, point: Option<[f32; 2]>) {
         let (spec, authored) = Self::anchor_spec(r, &mut Props::default());
         if authored {
             self.tree.props_mut(at).anchor = Some(Box::new(spec));

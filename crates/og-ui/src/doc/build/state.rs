@@ -174,18 +174,10 @@ impl DocumentState for DocState {
     }
 }
 
-/// The documents' state of a UI's [`crate::ui::Docs`].
-pub trait DocsState {
+impl crate::ui::Docs {
     /// As the documents read it: a UI that has not built a document reads
     /// a view of what it holds.
-    fn state(&self) -> &DocState;
-    /// As the documents write it: a UI that had not built a document takes
-    /// the documents' own state, with what it held.
-    fn state_mut(&mut self) -> &mut DocState;
-}
-
-impl DocsState for crate::ui::Docs {
-    fn state(&self) -> &DocState {
+    pub fn state(&self) -> &DocState {
         let state: &dyn std::any::Any = self.document_state();
         match state.downcast_ref::<DocState>() {
             Some(state) => state,
@@ -196,7 +188,9 @@ impl DocsState for crate::ui::Docs {
         }
     }
 
-    fn state_mut(&mut self) -> &mut DocState {
+    /// As the documents write it: a UI that had not built a document takes
+    /// the documents' own state, with what it held.
+    pub fn state_mut(&mut self) -> &mut DocState {
         self.adopt_document_state(|memory| Box::new(DocState::adopt(memory)));
         let state: &mut dyn std::any::Any = self.document_state_mut();
         state

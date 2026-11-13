@@ -34,7 +34,6 @@
 use crate::support::{Doc, both};
 use og_core::glam::Vec2;
 use og_draw::{UiAlign, UiMode};
-use og_ui::prelude::*;
 use og_ui::*;
 
 fn lin(hex: &str) -> [f32; 4] {

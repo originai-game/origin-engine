@@ -2,8 +2,6 @@ use crate::Ui;
 use crate::UiDocument;
 use crate::doc::build::Build;
 use crate::doc::build::Built;
-use crate::doc::build::DocsState;
-use crate::doc::build::ext::*;
 use serde_json::json;
 use std::sync::Arc;
 

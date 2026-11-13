@@ -2,19 +2,9 @@
 //! whose `@container` conditions read a changed box, from their cached inputs.
 use super::*;
 
-pub(crate) trait RetainedQueriesRetainedHost {
+impl RetainedHost {
     /// Marks the mounted elements that read a `changed` scroll state dirty.
-    fn rescroll(&mut self, changed: &BTreeSet<u64>);
-
-    /// Resolves the materialized elements that read `changed` containers,
-    /// and those that inherit from them, then replaces their render fields
-    /// from the unstyled baseline. The resolved values stay on the element,
-    /// so its next emission keeps them. Answers the layout nodes restyled.
-    fn requery(&mut self, ui: &mut Ui, changed: &BTreeSet<u64>) -> Result<Vec<usize>, String>;
-}
-
-impl RetainedQueriesRetainedHost for RetainedHost {
-    fn rescroll(&mut self, changed: &BTreeSet<u64>) {
+    pub(crate) fn rescroll(&mut self, changed: &BTreeSet<u64>) {
         if changed.is_empty() {
             return;
         }
@@ -27,7 +17,15 @@ impl RetainedQueriesRetainedHost for RetainedHost {
         self.dirty.extend(readers);
     }
 
-    fn requery(&mut self, ui: &mut Ui, changed: &BTreeSet<u64>) -> Result<Vec<usize>, String> {
+    /// Resolves the materialized elements that read `changed` containers,
+    /// and those that inherit from them, then replaces their render fields
+    /// from the unstyled baseline. The resolved values stay on the element,
+    /// so its next emission keeps them. Answers the layout nodes restyled.
+    pub(crate) fn requery(
+        &mut self,
+        ui: &mut Ui,
+        changed: &BTreeSet<u64>,
+    ) -> Result<Vec<usize>, String> {
         if changed.is_empty() {
             return Ok(Vec::new());
         }
@@ -74,8 +72,6 @@ impl RetainedQueriesRetainedHost for RetainedHost {
 #[cfg(test)]
 mod tests {
     use crate::doc::UiDocument;
-    use crate::doc::build::DocsState;
-    use crate::doc::build::ext::*;
     use crate::reactive::SourceId;
     use crate::{InputFrame, Ui, UiDesc, Viewport};
     use std::collections::BTreeMap;

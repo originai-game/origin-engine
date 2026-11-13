@@ -3,7 +3,6 @@
 //! `touch_move_to` / `move_to_text` / `dump_ui` against the live tree.
 
 use crate::support;
-use og_ui::prelude::*;
 
 use og_ecs::{World, WorldDesc};
 use og_probe::{Probe, UiElement};

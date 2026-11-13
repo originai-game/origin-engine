@@ -3,7 +3,6 @@
 //! crates/og-ui/tests/input_types.rs.
 
 use crate::support;
-use og_ui::prelude::*;
 use og_ui::reactive::SourceId;
 use og_ui::*;
 use serde_json::json;

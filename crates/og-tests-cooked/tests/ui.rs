@@ -3,7 +3,6 @@
 
 use og_tests_cooked::gfx::{self, Rendered};
 use og_tests_cooked::scenes::{self, GfxScene};
-use og_ui::prelude::*;
 
 fn render(scene: &str) -> Rendered {
     let mut built: GfxScene = scenes::build(scene).expect("scene");
