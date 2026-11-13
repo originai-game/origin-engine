@@ -49,6 +49,7 @@ mod camera;
 
 mod draw_ctx;
 mod schedule;
+mod shadow_encode;
 use schedule::{PassDesc, Timed};
 mod pass;
 use pass::{CullFrame, EncodeCx, FrameCulling, FramePlans, ListsMoved, Pass, PassFrames};
