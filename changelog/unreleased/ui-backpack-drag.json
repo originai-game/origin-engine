@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "RpgBackpack: move",
+      "summary": "A slot of the built-in backpack drags onto another and the bag reports move with { dragged, target }, the two items' keys; the dragged slot springs home and the game reorders, swaps or stacks. A locked item does not drag. A press without a drag reports choose as before."
+    }
+  ]
+}

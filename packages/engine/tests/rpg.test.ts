@@ -230,6 +230,38 @@ test("RpgBackpack: cells and tabs report by key, the bumpers page the tabs, and 
   });
 });
 
+test("RpgBackpack: a cell dragged onto another reports move with both keys; a press without a drag still chooses, and a locked cell stays put", () => {
+  const events: Event[] = [];
+  const items = (MEMBERS.backpack!.fixture.items as Record<string, unknown>[]).map((i) => ({ ...i }));
+  const drag = (e: Engine, from: El, to: El) => {
+    const at = (el: El, t: number) => ({ x: el.x + el.width / 2 + (to.x - from.x) * t, y: el.y + el.height / 2 + (to.y - from.y) * t });
+    const send = (action: string, p: { x: number; y: number }, button: string) => {
+      expect(e.probe.input({ kind: "pointer", action, ...p, button } as never)).toBeTrue();
+      e.advance(2);
+    };
+    send("move", at(from, 0), "none");
+    send("down", at(from, 0), "left");
+    for (const t of [0.25, 0.5, 0.75, 1]) send("move", at(from, t), "left");
+    send("up", at(from, 1), "left");
+    e.advance(4);
+  };
+  const moves = () => events.filter((v) => v.name === "move").map((v) => (v as Event & { value: { dragged: string; target: string } }).value).map((v) => `${v.dragged}>${v.target}`);
+  run(member("backpack", { items }, { events }), (e) => {
+    drag(e, row(e, "blade"), row(e, "potion"));
+    expect(moves()).toEqual(["blade>potion"]);
+    expect(intents(events, ["choose"])).toEqual([]);
+    tap(e, row(e, "potion"));
+    expect(intents(events, ["choose"])).toEqual(["choose:potion"]);
+    expect(moves()).toEqual(["blade>potion"]);
+  });
+  events.length = 0;
+  items[0]!.locked = true;
+  run(member("backpack", { items }, { events }), (e) => {
+    drag(e, row(e, "blade"), row(e, "potion"));
+    expect(moves()).toEqual([]);
+  });
+});
+
 test("RpgMenuBar: a tab reports its key; the close button, Escape and the pad's B close", () => {
   const events: Event[] = [];
   run(member("menu-bar", {}, { events }), (e) => {

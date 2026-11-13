@@ -18,7 +18,10 @@
   A bag of items: a titled band, category tabs, a grid of slots and a
   footer with the carried weight and the purse. The game owns what a
   category holds, the order and every number; the bag reports choose (an
-  item's key), tab (a category's key), tabNext and tabPrev. The grid
+  item's key), tab (a category's key), tabNext and tabPrev. A slot drags
+  onto another (a locked one stays put) and the bag reports move with
+  { dragged, target }, the two items' keys; the dragged slot springs
+  home, and the game reorders, swaps or stacks as it sees fit. The grid
   fills the height it is given and scrolls inside it. Each slot carries
   data-rarity, data-equipped and the like; a style pack draws them.
 -->
@@ -38,7 +41,7 @@
     <scroll class="grid-scroll">
       <div class="grid" role="grid" aria-label={title}>
         {#each items as i (i.id)}
-          <button part="RpgBackpack.cell" data-rarity={i.rarity} data-equipped={i.equipped} data-fresh={i.fresh} data-locked={i.locked} data-broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} onclick={choose}><div class="face">
+          <button part="RpgBackpack.cell" data-rarity={i.rarity} data-equipped={i.equipped} data-fresh={i.fresh} data-locked={i.locked} data-broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} draggable={!i.locked} data-drag-type="item" data-accept="item" onclick={choose} ondrop={move}><div class="face">
             <og-icon class="art" icon={i.icon}></og-icon>
             <span class="count" hidden={!(i.count > 1)}>{formatNumber(i.count)}</span>
             <div class="badge equipped" hidden={!i.equipped} aria-label={t("rpg.backpack.equipped")}><og-icon icon="check"></og-icon></div>

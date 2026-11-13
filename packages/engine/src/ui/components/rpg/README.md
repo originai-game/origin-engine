@@ -38,7 +38,7 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 
 | Document | Inputs (props) | Intents |
 | --- | --- | --- |
-| `RpgBackpack` | `title`, `tabs` keyed `{ id, label }`, `tab`, `items` keyed `{ id, name, icon, count, rarity, equipped, fresh, locked, broken }`, `selected`, `weight`, `load` 0–1, `gold` | `choose` (cell), `choosetab` (tab), `tabNext`/`tabPrev` (E/Q, bumpers) |
+| `RpgBackpack` | `title`, `tabs` keyed `{ id, label }`, `tab`, `items` keyed `{ id, name, icon, count, rarity, equipped, fresh, locked, broken }`, `selected`, `weight`, `load` 0–1, `gold` | `choose` (cell), `move` with `{ dragged, target }` (a cell dropped on another; a locked one does not drag), `choosetab` (tab), `tabNext`/`tabPrev` (E/Q, bumpers) |
 | `RpgItemCard` | `name`, `icon`, `art` (texture), `rarity`, `kind`, `lead` and `stats` keyed `{ id, icon, label, value, delta, trend, current }`, `lore`, `primary`, `secondary`, `canPrimary`, `canSecondary` | `equip`, `discard` |
 | `RpgCharacter` | `title` (a heading band; empty shows the name header), `name`, `line`, `portrait`, `figure`, `slots` keyed `{ id, side (start, end), label, icon, rarity }`, `selected`, `attributes` keyed `{ id, group (a, b), icon, label, value }` | `choose` (slot), `unequip` (details: X, pad Y) |
 | `RpgStats` | `title`, `groups` keyed `{ id, column (a, b) }`, `rows` keyed `{ id, group, icon, label, value }` | none |
