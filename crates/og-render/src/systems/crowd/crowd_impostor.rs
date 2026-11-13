@@ -288,13 +288,7 @@ impl CrowdImpostors {
             b.clip[3] = k as u32;
             queue.write_buffer(&self.uniform, k as u64 * SLOT, bytemuck::bytes_of(&b));
         }
-        let level0 = |t: &wgpu::Texture| {
-            t.create_view(&wgpu::TextureViewDescriptor {
-                base_mip_level: 0,
-                mip_level_count: Some(1),
-                ..Default::default()
-            })
-        };
+        let level0 = |t: &wgpu::Texture| crate::mips::level_view(t, "crowd impostor level", 0);
         let (albedo0, data0) = (level0(&albedo), level0(&data));
         let [msaa_albedo, msaa_data, msaa_depth] = &self.msaa.as_ref().expect("made above").1;
         {

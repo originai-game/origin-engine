@@ -208,16 +208,7 @@ pub(super) fn view_glow(
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     });
-    let levels: Vec<wgpu::TextureView> = (0..texture.mip_level_count())
-        .map(|level| {
-            texture.create_view(&wgpu::TextureViewDescriptor {
-                label: Some("view glow level"),
-                base_mip_level: level,
-                mip_level_count: Some(1),
-                ..Default::default()
-            })
-        })
-        .collect();
+    let levels = crate::mips::level_views(&texture, "view glow level");
     let uniforms: Vec<wgpu::Buffer> = (0..levels.len() as u32)
         .map(|level| {
             crate::buffer_init(

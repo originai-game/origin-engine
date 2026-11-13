@@ -303,16 +303,7 @@ impl GlassPasses {
             view_formats: &[],
         });
         let pyramid_view = pyramid.create_view(&Default::default());
-        let levels: Vec<wgpu::TextureView> = (0..LEVELS)
-            .map(|k| {
-                pyramid.create_view(&wgpu::TextureViewDescriptor {
-                    label: Some("glass level"),
-                    base_mip_level: k,
-                    mip_level_count: Some(1),
-                    ..Default::default()
-                })
-            })
-            .collect();
+        let levels = crate::mips::level_views(&pyramid, "glass level");
         let group = |view: &wgpu::TextureView, params: &wgpu::Buffer| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("glass"),

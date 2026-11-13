@@ -305,13 +305,7 @@ impl State {
     fn new(device: &wgpu::Device, upscale: (u32, u32)) -> State {
         let half = ((upscale.0 / 2).max(1), (upscale.1 / 2).max(1));
         let spd = texture(device, "fsr spd mips", half, F::Rgba16Float, 3);
-        let level = |m| {
-            spd.create_view(&wgpu::TextureViewDescriptor {
-                base_mip_level: m,
-                mip_level_count: Some(1),
-                ..Default::default()
-            })
-        };
+        let level = |m| crate::mips::level_view(&spd, "fsr spd level", m);
         let pixels = u64::from(upscale.0) * u64::from(upscale.1);
         let groups = u64::from(upscale.0.div_ceil(32)) * u64::from(upscale.1.div_ceil(32));
         State {

@@ -263,15 +263,7 @@ impl Targets {
             wgpu::TextureFormat::Rg32Float,
             PYRAMID_LEVELS,
         );
-        let hiz_levels = (0..PYRAMID_LEVELS)
-            .map(|level| {
-                hiz.create_view(&wgpu::TextureViewDescriptor {
-                    base_mip_level: level,
-                    mip_level_count: Some(1),
-                    ..Default::default()
-                })
-            })
-            .collect();
+        let hiz_levels = crate::mips::level_views(&hiz, "ssr depth pyramid level");
         let view = |label: &str, size, format| {
             texture(device, label, size, format, 1).create_view(&Default::default())
         };

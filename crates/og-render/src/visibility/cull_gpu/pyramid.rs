@@ -119,7 +119,7 @@ impl GpuCulling {
                 view_formats: &[],
             })
             .create_view(&Default::default());
-        let levels = 32 - width.max(height).leading_zeros();
+        let levels = crate::mips::mip_count(width, height);
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("depth pyramid"),
             size: wgpu::Extent3d {
@@ -134,15 +134,7 @@ impl GpuCulling {
             usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
             view_formats: &[],
         });
-        let level_views: Vec<wgpu::TextureView> = (0..levels)
-            .map(|l| {
-                texture.create_view(&wgpu::TextureViewDescriptor {
-                    base_mip_level: l,
-                    mip_level_count: Some(1),
-                    ..Default::default()
-                })
-            })
-            .collect();
+        let level_views = crate::mips::level_views(&texture, "depth pyramid level");
         let base_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("depth pyramid base"),
             layout: &self.hiz_base_layout[multisampled as usize],

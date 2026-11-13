@@ -15,6 +15,25 @@ pub(crate) fn mip_count(width: u32, height: u32) -> u32 {
     32 - width.max(height).max(1).leading_zeros()
 }
 
+/// A view of level `level` of `texture` alone: what a pass that fills one
+/// level of a chain draws into or stores to, and what the pass after it
+/// reads.
+pub(crate) fn level_view(texture: &wgpu::Texture, label: &str, level: u32) -> wgpu::TextureView {
+    texture.create_view(&wgpu::TextureViewDescriptor {
+        label: Some(label),
+        base_mip_level: level,
+        mip_level_count: Some(1),
+        ..Default::default()
+    })
+}
+
+/// [`level_view`] of every level of `texture`, from 0.
+pub(crate) fn level_views(texture: &wgpu::Texture, label: &str) -> Vec<wgpu::TextureView> {
+    (0..texture.mip_level_count())
+        .map(|level| level_view(texture, label, level))
+        .collect()
+}
+
 impl MipGenerator {
     pub(crate) fn new(device: &wgpu::Device) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -123,16 +142,7 @@ impl MipGenerator {
     /// of a texture the GPU is still reading waited for it on lavapipe
     /// (the former test sample
     pub(crate) fn chain(&self, device: &wgpu::Device, texture: &wgpu::Texture) -> MipChain {
-        let levels: Vec<wgpu::TextureView> = (0..texture.mip_level_count())
-            .map(|mip| {
-                texture.create_view(&wgpu::TextureViewDescriptor {
-                    label: Some("mip"),
-                    base_mip_level: mip,
-                    mip_level_count: Some(1),
-                    ..Default::default()
-                })
-            })
-            .collect();
+        let levels = level_views(texture, "mip");
         let groups = levels
             .iter()
             .take(levels.len().saturating_sub(1))
