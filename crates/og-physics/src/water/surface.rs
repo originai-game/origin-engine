@@ -42,6 +42,17 @@ impl SurfaceState {
     /// The height (relative to rest) at a world xz, bilinear; `centre` is
     /// the entity's position. Zero outside the square.
     pub fn height_at(&self, centre: Vec3, x: f32, z: f32) -> f32 {
+        self.sample(&self.heights, centre, x, z)
+    }
+
+    /// How fast the height at a world xz is rising (m/s), as
+    /// [`Self::height_at`] reads the height.
+    pub fn velocity_at(&self, centre: Vec3, x: f32, z: f32) -> f32 {
+        self.sample(&self.velocities, centre, x, z)
+    }
+
+    /// One of the grids at a world xz, bilinear; zero outside the square.
+    fn sample(&self, grid: &[f32], centre: Vec3, x: f32, z: f32) -> f32 {
         let n = self.n();
         let cell = self.size / (n - 1) as f32;
         let u = (x - (centre.x - self.size * 0.5)) / cell;
@@ -51,7 +62,7 @@ impl SurfaceState {
         }
         let (i, j) = ((u as usize).min(n - 2), (v as usize).min(n - 2));
         let (fu, fv) = (u - i as f32, v - j as f32);
-        let h = |a: usize, b: usize| self.heights[b * n + a];
+        let h = |a: usize, b: usize| grid[b * n + a];
         let top = h(i, j) + (h(i + 1, j) - h(i, j)) * fu;
         let bottom = h(i, j + 1) + (h(i + 1, j + 1) - h(i, j + 1)) * fu;
         top + (bottom - top) * fv

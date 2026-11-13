@@ -1635,6 +1635,12 @@ pub fn og_load_replay_completions(env: Env, world: u32, completions: String) -> 
     <Host as LoadApi>::og_load_replay_completions(&Host, world, completions)
 }
 
+#[napi(js_name = "og_physics_water")]
+pub fn og_physics_water(env: Env, world: u32, point: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PhysicsApi>::og_physics_water(&Host, world, point)
+}
+
 #[napi(js_name = "og_physics_water_height")]
 pub fn og_physics_water_height(env: Env, world: u32, entity: f64, x: f64, z: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

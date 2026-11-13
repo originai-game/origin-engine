@@ -34,6 +34,18 @@ impl LineState {
 
     /// The surface height (relative to rest) at world x, linear between springs.
     pub fn height_at(&self, centre: Vec2, x: f32) -> f32 {
+        self.sample(&self.heights, centre, x)
+    }
+
+    /// How fast the surface at world `x` is rising (m/s), as
+    /// [`Self::height_at`] reads its height.
+    pub fn velocity_at(&self, centre: Vec2, x: f32) -> f32 {
+        self.sample(&self.velocities, centre, x)
+    }
+
+    /// The springs' heights or speeds at world `x`, between two springs;
+    /// zero off the line.
+    fn sample(&self, springs: &[f32], centre: Vec2, x: f32) -> f32 {
         let n = self.n();
         let step = self.width / (n - 1) as f32;
         let u = (x - (centre.x - self.width * 0.5)) / step;
@@ -42,7 +54,7 @@ impl LineState {
         }
         let i = (u as usize).min(n - 2);
         let f = u - i as f32;
-        self.heights[i] + (self.heights[i + 1] - self.heights[i]) * f
+        springs[i] + (springs[i + 1] - springs[i]) * f
     }
 
     pub fn step(

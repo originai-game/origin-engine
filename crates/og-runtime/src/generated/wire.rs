@@ -8892,6 +8892,60 @@ impl ToJson for RigidBodyType {
     }
 }
 
+/// `WaterPoint`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WaterPoint {
+    pub water: u64,
+    pub height: f32,
+    pub depth: f32,
+    pub velocity: Vec3,
+    pub acceleration: Vec3,
+    pub normal: Vec3,
+}
+
+impl Default for WaterPoint {
+    fn default() -> Self {
+        Self {
+            water: Default::default(),
+            height: Default::default(),
+            depth: Default::default(),
+            velocity: Default::default(),
+            acceleration: Default::default(),
+            normal: Default::default(),
+        }
+    }
+}
+
+impl FromJson for WaterPoint {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            water: field(o, "water", d.water)?,
+            height: field(o, "height", d.height)?,
+            depth: field(o, "depth", d.depth)?,
+            velocity: field(o, "velocity", d.velocity)?,
+            acceleration: field(o, "acceleration", d.acceleration)?,
+            normal: field(o, "normal", d.normal)?,
+        })
+    }
+}
+
+impl ToJson for WaterPoint {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("water".into(), self.water.to_json());
+        o.insert("height".into(), self.height.to_json());
+        o.insert("depth".into(), self.depth.to_json());
+        o.insert("velocity".into(), self.velocity.to_json());
+        o.insert("acceleration".into(), self.acceleration.to_json());
+        o.insert("normal".into(), self.normal.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `QueryFilter`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct QueryFilter {

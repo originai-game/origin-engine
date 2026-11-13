@@ -33,7 +33,8 @@ mod wakes;
 
 pub use body::WaterBody;
 pub(crate) use line::LineState;
-pub(crate) use query::{level, ripple};
+pub use query::WaterAt;
+pub(crate) use query::{at, level, ripple};
 pub(crate) use submersion::Under;
 pub(crate) use surface::SurfaceState;
 pub use wakes::{Wakes, WaterCut};

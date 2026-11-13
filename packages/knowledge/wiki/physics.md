@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `SHAPE_BOX`, `SHAPE_SPHERE`, `SHAPE_HEIGHTFIELD`, `og.RigidBody`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 111 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `SHAPE_BOX`, `SHAPE_SPHERE`, `SHAPE_HEIGHTFIELD`, `og.RigidBody`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 113 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -108,6 +108,8 @@ module physics {
 | [`og.WaterLine`](physics/record-WaterLine.md) | component |  | 2D water for side-scrollers: a `width` × `depth` pool whose top edge (at the entity's y, centred on its x) is `columns` springs, each pulled to its rest height by `tension`, damped by `damping` and p… |
 | [`og.Buoyancy`](physics/record-Buoyancy.md) | component |  | Floats a dynamic rigid body (3D profile) on the water under it: an og.WaterSurface (at its rest level), an og.Water (its waves as drawn, og.physics.waterHeight's) or both on one entity. |
 | [`og.Splash`](physics/record-Splash.md) | event |  | Something crossed a water surface (an og.Water, og.WaterSurface or og.WaterLine): for splash particles and sounds. |
+| [`WaterPoint`](physics/type-WaterPoint.md) | struct |  | The water at a point (og.physics.water): whose it is, where its surface stands over the point and how it moves there. |
+| [`og.physics.water`](physics/fn-water.md) | function | `(world: World, point: Vector3): Result<WaterPoint \| null>` | The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motio… |
 | [`og.physics.waterHeight`](physics/fn-waterHeight.md) | function | `(world: World, entity: Entity, x: number, z: number): Result<number>` | The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurf… |
 | [`QueryFilter`](physics/type-QueryFilter.md) | desc struct |  | Which colliders a scene query considers. |
 | [`RaycastDesc`](physics/type-RaycastDesc.md) | desc struct |  | A ray for og.physics.castRay. |

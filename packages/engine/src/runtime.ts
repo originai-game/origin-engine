@@ -2065,6 +2065,7 @@ export const physics = Object.freeze({
   garmentPoints: (world: WorldImpl, entity: number) => parse(abi().og_physics_garment_points(world.id, entity)),
   fluidParticles: (world: WorldImpl, entity: number) => parse(abi().og_physics_fluid_particles(world.id, entity)),
   fluid3dParticles: (world: WorldImpl, entity: number) => parse(abi().og_physics_fluid3d_particles(world.id, entity)),
+  water: (world: WorldImpl, point: unknown) => parse(abi().og_physics_water(world.id, JSON.stringify(point))),
   waterHeight: (world: WorldImpl, entity: number, x: number, z: number) =>
     parse(abi().og_physics_water_height(world.id, entity, x, z)),
   vehicleWheels: (world: WorldImpl, entity: number) => parse(abi().og_physics_vehicle_wheels(world.id, entity)),

@@ -1364,6 +1364,11 @@ pub fn og_load_replay_completions(world: u32, completions: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_physics_water(world: u32, point: String) -> String {
+    <Host as PhysicsApi>::og_physics_water(&Host, world, point)
+}
+
+#[wasm_bindgen]
 pub fn og_physics_water_height(world: u32, entity: f64, x: f64, z: f64) -> String {
     <Host as PhysicsApi>::og_physics_water_height(&Host, world, entity, x, z)
 }

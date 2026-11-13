@@ -16170,6 +16170,43 @@ export interface Splash {
   readonly speed: number;
 }
 
+/**
+ * The water at a point (og.physics.water): whose it is, where its surface stands over the point and how it moves there.
+ */
+export interface WaterPoint {
+  /** The water's entity (its og.Water, og.WaterSurface or og.WaterLine). */
+  readonly water: Entity;
+  /**
+   * The surface over the point (world y), as it is drawn: og.physics.waterHeight's.
+   *
+   * @unit m (metres)
+   */
+  readonly height: number;
+  /**
+   * How far the point is under the surface; negative over it.
+   *
+   * @unit m (metres)
+   */
+  readonly depth: number;
+  /**
+   * How the water moves at the surface there: a sea's waves carrying it round, a river's current, a splash's rise; zero on still water.
+   *
+   * @unit mps (metres per second)
+   */
+  readonly velocity: Vector3;
+  /**
+   * How the water's velocity changes there (a sea's waves; zero elsewhere): what a floating thing feels beside gravity.
+   *
+   * @unit mps2 (metres per second squared)
+   */
+  readonly acceleration: Vector3;
+  /**
+   * The surface's unit normal there: up on still water, leaning with a wave's slope (z is 0 on an og.WaterLine).
+   */
+  readonly normal: Vector3;
+}
+
+
 
 /**
  * Which colliders a scene query considers. The zero value considers every solid collider on every layer.
@@ -34345,6 +34382,15 @@ export declare namespace og {
    * See `physics`.
    */
   namespace physics {
+    /**
+     * The water at a point: of every og.Water (a lake, a sea, a river), og.WaterSurface and og.WaterLine over it, the one whose surface stands highest, with the point's depth under it and the water's motion and slope there, at this tick. One call answers whether something is in water, how deep, and where the water carries it: swimming, a float that tilts with the waves, spray that drifts with the current, a camera that knows it is under. Inside a system it reads og.Water and og.Transform.
+     * See `physics §8`.
+     *
+     * @param world The world.
+     * @param point The point, in world space, in metres (an og.WaterLine reads x and y).
+     * @returns Null over no water; an og.Water drawn over a mesh (`geometry`) is not looked at.
+     */
+    function water(world: World, point: Vector3): Result<WaterPoint | null>;
     /**
      * The water's surface at a point (world y), as it is drawn: an og.Water's level, with its sea's waves (og.Water.wind) or its river's course at this tick, plus the waves bodies raised on an og.WaterSurface or og.WaterLine (at `x`; `z` ignored) as the last step left them. For boats that bob and spray that starts on the surface.
      *
