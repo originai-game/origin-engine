@@ -44,8 +44,8 @@ pub(crate) fn draw_levels(
         // Each terrain's own pipeline: the standard one, or the layer-array
         // variant's.
         pass.set_pipeline(match which {
-            TerrainPass::Lit => d.passes.lit.get(d.features),
-            TerrainPass::Prepass => d.passes.prepass.get(d.features),
+            TerrainPass::Lit => d.passes.lit[usize::from(d.mirrored)].get(d.features),
+            TerrainPass::Prepass => d.passes.prepass[usize::from(d.mirrored)].get(d.features),
             TerrainPass::Shadow(t) => d.passes.shadow.get().get(t),
         });
         pass.set_bind_group(2, &d.corners, &[]);
@@ -71,21 +71,25 @@ pub(crate) fn draw_levels(
         let Some(stamp_group) = &d.stamp_group else {
             continue;
         };
-        let mut bound = false;
+        // The facing of the stamp pipeline bound, once one is.
+        let mut bound = None;
         for st in &d.stamps {
             if (matches!(which, TerrainPass::Shadow(_)) && !st.cast_shadows)
                 || !frustum.intersects_sphere(st.center, st.radius)
             {
                 continue;
             }
-            if !bound {
+            if bound != Some(st.mirrored) {
+                let m = usize::from(st.mirrored);
                 pass.set_pipeline(match which {
-                    TerrainPass::Lit => d.passes.stamp_lit.get(d.features),
-                    TerrainPass::Prepass => d.passes.stamp_prepass.get(d.features),
+                    TerrainPass::Lit => d.passes.stamp_lit[m].get(d.features),
+                    TerrainPass::Prepass => d.passes.stamp_prepass[m].get(d.features),
                     TerrainPass::Shadow(t) => d.passes.stamp_shadow.get().get(t),
                 });
-                pass.set_bind_group(1, &d.group, &[0]);
-                bound = true;
+                if bound.is_none() {
+                    pass.set_bind_group(1, &d.group, &[0]);
+                }
+                bound = Some(st.mirrored);
             }
             if let Some(b) = probes.as_deref_mut() {
                 b.at(pass, st.center, st.radius);

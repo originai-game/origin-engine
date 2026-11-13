@@ -475,6 +475,7 @@ impl TerrainRenderer {
                 features: self.features,
                 levels: out,
                 cast_shadows: t.cast_shadows,
+                mirrored: crate::mirrors(&t.transform),
                 terrain: ti,
                 arrayed,
                 stamps: Vec::new(),

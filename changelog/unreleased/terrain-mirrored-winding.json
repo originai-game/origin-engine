@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og.Terrain",
+      "summary": "A terrain under a mirrored transform (a negative scale on one or three axes) draws its ground: its lit pass and depth prepass take clockwise as the front. It was culled to the background before."
+    },
+    {
+      "member": "og.TerrainStamp",
+      "summary": "A stamp mesh under a mirrored transform draws its outside, as a mirrored mesh does. It drew inside-out before."
+    }
+  ]
+}

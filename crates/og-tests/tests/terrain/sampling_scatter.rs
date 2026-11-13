@@ -198,7 +198,7 @@ fn is_background(img: &RgbaImage, at: (u32, u32)) -> bool {
 #[ignore = "requires GPU"]
 fn a_terrain_honours_its_transform() {
     let quarter = Mat4::from_rotation_y(std::f32::consts::FRAC_PI_2);
-    let cases: [(&str, Mat4, Vec3, bool); 7] = [
+    let cases: [(&str, Mat4, Vec3, bool); 8] = [
         (
             "identity along x",
             Mat4::IDENTITY,
@@ -222,6 +222,12 @@ fn a_terrain_honours_its_transform() {
             "scaled along x",
             Mat4::from_scale(Vec3::new(2.0, 1.0, 1.0)),
             Vec3::new(48.0, 0.0, 0.0),
+            true,
+        ),
+        (
+            "mirrored along x",
+            Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0)),
+            Vec3::new(24.0, 0.0, 0.0),
             true,
         ),
         (

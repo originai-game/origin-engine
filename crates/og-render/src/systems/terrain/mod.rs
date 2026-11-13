@@ -451,6 +451,9 @@ pub(crate) struct TerrainDraw {
     pub features: Features,
     pub levels: Vec<LevelDraw>,
     pub cast_shadows: bool,
+    /// Its transform mirrors it: it draws with the pipelines that take
+    /// clockwise as the front ([`TerrainPasses::lit`]).
+    pub mirrored: bool,
     /// Its index in [`crate::RenderScene::terrains`], and whether its group
     /// is the layer-array variant's (grass generation binds the group).
     pub terrain: usize,
@@ -470,6 +473,8 @@ pub(crate) struct StampDraw {
     pub center: Vec3,
     pub radius: f32,
     pub cast_shadows: bool,
+    /// Its own transform mirrors its mesh ([`TerrainDraw::mirrored`]).
+    pub mirrored: bool,
 }
 
 /// `TerrainStampUniform` in terrain.wgsl.
@@ -675,12 +680,15 @@ pub(crate) struct TerrainPipelines<'a> {
 #[derive(Clone)]
 pub(crate) struct TerrainPasses {
     /// The lit and prepass pipelines for the frame's features
-    /// (pipeline_features.rs).
-    pub lit: Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>,
-    pub prepass: Rc<Variants<Deferred<wgpu::RenderPipeline>>>,
+    /// (pipeline_features.rs), each twice: `[0]` for a terrain (or stamp)
+    /// as it is made, `[1]` for one its transform mirrors (a negative
+    /// determinant, [`crate::mirrors`]), which take clockwise as the
+    /// front. The shadows draw both faces and need no second.
+    pub lit: [Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>; 2],
+    pub prepass: [Rc<Variants<Deferred<wgpu::RenderPipeline>>>; 2],
     pub shadow: Rc<Deferred<crate::ShadowSet>>,
-    pub stamp_lit: Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>,
-    pub stamp_prepass: Rc<Variants<Deferred<wgpu::RenderPipeline>>>,
+    pub stamp_lit: [Rc<Variants<crate::deferred::Sampled<wgpu::RenderPipeline>>>; 2],
+    pub stamp_prepass: [Rc<Variants<Deferred<wgpu::RenderPipeline>>>; 2],
     pub stamp_shadow: Rc<Deferred<crate::ShadowSet>>,
     /// The corner cache's writer (`terrain_corners.wgsl`).
     pub corners: Rc<Deferred<wgpu::ComputePipeline>>,
@@ -690,17 +698,26 @@ impl TerrainPasses {
     /// Starts compiling what a frame draws a terrain with on worker
     /// threads (deferred.rs): the corners' writer and the lit pass, the
     /// prepass and the shadows when the frame draws them, and the same
-    /// for its stamps.
-    pub(crate) fn start(&self, features: Features, prepass: bool, shadows: bool, stamps: bool) {
+    /// for its stamps. `mirrored`: the terrain's transform mirrors it
+    /// (a mirrored stamp's pipelines are made when it is first drawn).
+    pub(crate) fn start(
+        &self,
+        features: Features,
+        mirrored: bool,
+        prepass: bool,
+        shadows: bool,
+        stamps: bool,
+    ) {
         use crate::deferred::Start;
-        self.lit.start(features);
+        let m = usize::from(mirrored);
+        self.lit[m].start(features);
         if prepass {
-            self.prepass.start(features);
+            self.prepass[m].start(features);
         }
         if stamps {
-            self.stamp_lit.start(features);
+            self.stamp_lit[0].start(features);
             if prepass {
-                self.stamp_prepass.start(features);
+                self.stamp_prepass[0].start(features);
             }
         }
         let mut items: Vec<&dyn Start> = vec![&*self.corners];

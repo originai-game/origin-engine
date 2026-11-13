@@ -70,8 +70,13 @@ impl Renderer {
         let terrain_casters = terrain_draws.iter().any(|d| d.cast_shadows);
         // The variants the prepare made (holes, layer arrays), and stamps.
         for d in &terrain_draws {
-            d.passes
-                .start(d.features, prepass, d.cast_shadows, !d.stamps.is_empty());
+            d.passes.start(
+                d.features,
+                d.mirrored,
+                prepass,
+                d.cast_shadows,
+                !d.stamps.is_empty(),
+            );
         }
         // Scattered copies: the chunks this frame needs built, what to draw.
         let scatter_batches = if !WORLD_3D {

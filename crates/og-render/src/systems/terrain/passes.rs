@@ -74,19 +74,30 @@ pub(super) fn terrain_passes(
     };
     const STAMP_BUFFERS: &[Option<wgpu::VertexBufferLayout<'static>>] =
         &[Some(crate::VERTEX_LAYOUT)];
+    // A mirrored terrain's or stamp's triangles wind the other way on
+    // screen: its pipelines take clockwise as the front (`Faces::front`).
+    let front = |mirrored: bool| {
+        crate::Faces {
+            side: crate::Side::Front,
+            mirrored,
+        }
+        .front()
+    };
     let lit = |label: &'static str,
                layout: &wgpu::PipelineLayout,
                vs: &'static str,
                fs: &'static str,
-               buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
+               buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>],
+               mirrored: bool| {
         let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
         Variants::new(declared, move |features| {
             let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
             let constants = lit_constants(features);
             crate::deferred::Sampled::anywhere(samples, move |samples| {
-                crate::hdr_pipeline_with(
+                crate::hdr_pipeline_facing(
                     &device,
                     &constants,
+                    front(mirrored),
                     crate::HdrPipeline {
                         alpha_to_coverage: false,
                         label,
@@ -125,53 +136,54 @@ pub(super) fn terrain_passes(
             bias: Default::default(),
         })
     };
-    let prepass =
-        |label: &'static str,
-         layout: &wgpu::PipelineLayout,
-         vs: &'static str,
-         fs: &'static str,
-         buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>]| {
-            let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
-            Variants::new(declared, move |features| {
-                let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
-                let constants = lit_constants(features);
-                Deferred::anywhere(move || {
-                    let module = module.module();
-                    let options = || wgpu::PipelineCompilationOptions {
-                        constants: &constants,
+    let prepass = |label: &'static str,
+                   layout: &wgpu::PipelineLayout,
+                   vs: &'static str,
+                   fs: &'static str,
+                   buffers: &'static [Option<wgpu::VertexBufferLayout<'static>>],
+                   mirrored: bool| {
+        let (device, layout, module) = (device.clone(), layout.clone(), lit_module.clone());
+        Variants::new(declared, move |features| {
+            let (device, layout, module) = (device.clone(), layout.clone(), module.clone());
+            let constants = lit_constants(features);
+            Deferred::anywhere(move || {
+                let module = module.module();
+                let options = || wgpu::PipelineCompilationOptions {
+                    constants: &constants,
+                    ..Default::default()
+                };
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&layout),
+                    vertex: wgpu::VertexState {
+                        module,
+                        entry_point: Some(vs),
+                        compilation_options: options(),
+                        buffers,
+                    },
+                    primitive: wgpu::PrimitiveState {
+                        front_face: front(mirrored),
+                        cull_mode: Some(wgpu::Face::Back),
                         ..Default::default()
-                    };
-                    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                        label: Some(label),
-                        layout: Some(&layout),
-                        vertex: wgpu::VertexState {
-                            module,
-                            entry_point: Some(vs),
-                            compilation_options: options(),
-                            buffers,
-                        },
-                        primitive: wgpu::PrimitiveState {
-                            cull_mode: Some(wgpu::Face::Back),
-                            ..Default::default()
-                        },
-                        depth_stencil: depth(true),
-                        multisample: Default::default(),
-                        fragment: Some(wgpu::FragmentState {
-                            module,
-                            entry_point: Some(fs),
-                            compilation_options: options(),
-                            targets: &[
-                                target(crate::post::GBUFFER_FORMAT),
-                                target(crate::post::LINDEPTH_FORMAT),
-                                target(crate::post::OUTLINE_FORMAT),
-                            ],
-                        }),
-                        multiview_mask: None,
-                        cache: crate::pipeline_cache::of(&device).as_ref(),
-                    })
+                    },
+                    depth_stencil: depth(true),
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some(fs),
+                        compilation_options: options(),
+                        targets: &[
+                            target(crate::post::GBUFFER_FORMAT),
+                            target(crate::post::LINDEPTH_FORMAT),
+                            target(crate::post::OUTLINE_FORMAT),
+                        ],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
                 })
             })
-        };
+        })
+    };
     // An open surface: both faces cast (the bias in the lit pass keeps
     // its own lit side from shadowing itself); a stamp's back faces too.
     let shadow = |label: &'static str,
@@ -221,14 +233,17 @@ pub(super) fn terrain_passes(
         })
     };
     TerrainPasses {
-        lit: Rc::new(lit("terrain", &lit_layout, "vs", "fs", &[])),
-        prepass: Rc::new(prepass(
-            "terrain prepass",
-            &prepass_layout,
-            "vs",
-            "fs_prepass",
-            &[],
-        )),
+        lit: [false, true].map(|m| Rc::new(lit("terrain", &lit_layout, "vs", "fs", &[], m))),
+        prepass: [false, true].map(|m| {
+            Rc::new(prepass(
+                "terrain prepass",
+                &prepass_layout,
+                "vs",
+                "fs_prepass",
+                &[],
+                m,
+            ))
+        }),
         shadow: Rc::new(shadow(
             "terrain shadow",
             &shadow_layout,
@@ -236,20 +251,26 @@ pub(super) fn terrain_passes(
             "fs_shadow",
             &[],
         )),
-        stamp_lit: Rc::new(lit(
-            "terrain stamp",
-            &stamp_lit_layout,
-            "vs_stamp",
-            "fs_stamp",
-            STAMP_BUFFERS,
-        )),
-        stamp_prepass: Rc::new(prepass(
-            "terrain stamp prepass",
-            &stamp_prepass_layout,
-            "vs_stamp",
-            "fs_stamp_prepass",
-            STAMP_BUFFERS,
-        )),
+        stamp_lit: [false, true].map(|m| {
+            Rc::new(lit(
+                "terrain stamp",
+                &stamp_lit_layout,
+                "vs_stamp",
+                "fs_stamp",
+                STAMP_BUFFERS,
+                m,
+            ))
+        }),
+        stamp_prepass: [false, true].map(|m| {
+            Rc::new(prepass(
+                "terrain stamp prepass",
+                &stamp_prepass_layout,
+                "vs_stamp",
+                "fs_stamp_prepass",
+                STAMP_BUFFERS,
+                m,
+            ))
+        }),
         stamp_shadow: Rc::new(shadow(
             "terrain stamp shadow",
             &stamp_shadow_layout,

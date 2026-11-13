@@ -20,8 +20,10 @@ impl TerrainRenderer {
             .chain(self.arrays.as_ref().map(|(_, p)| p))
             .chain(self.holed.iter().flatten());
         for passes in all {
-            for lit in passes.lit.each().chain(passes.stamp_lit.each()) {
-                lit.set_samples(samples);
+            for lit in passes.lit.iter().chain(&passes.stamp_lit) {
+                for lit in lit.each() {
+                    lit.set_samples(samples);
+                }
             }
         }
     }
@@ -46,6 +48,7 @@ impl TerrainRenderer {
             if let Some(passes) = passes {
                 passes.start(
                     self.features,
+                    crate::mirrors(&t.transform),
                     prepass,
                     t.cast_shadows,
                     !scene.world.terrain_stamps.is_empty(),
@@ -57,7 +60,12 @@ impl TerrainRenderer {
     /// Makes one of its pipelines no frame used yet (Renderer::warm).
     pub(crate) fn warm(&self) -> bool {
         let p = &self.passes;
-        crate::deferred::warm_one(&[p.lit.full(), p.prepass.full(), &*p.shadow, &*p.corners])
+        crate::deferred::warm_one(&[
+            p.lit[0].full(),
+            p.prepass[0].full(),
+            &*p.shadow,
+            &*p.corners,
+        ])
     }
 
     /// Drops every terrain's bind group (a layer texture was replaced):

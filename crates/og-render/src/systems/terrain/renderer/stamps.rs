@@ -78,6 +78,7 @@ impl TerrainRenderer {
                     center,
                     radius,
                     cast_shadows: st.cast_shadows && terrain.cast_shadows,
+                    mirrored: crate::mirrors(&st.transform),
                 },
             ));
             slots.push(StampGpu::new(st.transform, terrain.transform, st.blend));
