@@ -80,6 +80,7 @@ pub(crate) static SYSTEMS: &[&[&KindDef]] = &[
     shader_check::KINDS,
     anim::KINDS,
     vector::KINDS,
+    tilemap::KINDS,
 ];
 
 fn kinds() -> impl Iterator<Item = &'static KindDef> {

@@ -275,14 +275,6 @@ pub(crate) fn run(
                 )],
             ))
         }
-        Work::Tileset(s) => {
-            let text = std::str::from_utf8(&s.bytes)
-                .map_err(|_| CookError("a tileset is text (UTF-8)".into()))?;
-            tilemap::cook_tileset(text, &|id| known.contains(id), p.stamp)
-        }
-        Work::Tilemap(s, m) => {
-            tilemap::cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
-        }
         Work::Flipbook(s) => flipbook::cook(
             s,
             options

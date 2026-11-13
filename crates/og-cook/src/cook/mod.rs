@@ -91,8 +91,6 @@ enum Kind {
     Prefab,
     Style,
     Document,
-    Tileset,
-    Tilemap,
     Flipbook,
     Rig2d,
     Rive,
@@ -113,8 +111,6 @@ impl Kind {
             Kind::Prefab => "prefab",
             Kind::Style => "style",
             Kind::Document => "document",
-            Kind::Tileset => "tileset",
-            Kind::Tilemap => "tilemap",
             Kind::Flipbook => "flipbook",
             Kind::Rig2d => "rig2d",
             Kind::Rive => "rive",
@@ -240,8 +236,6 @@ enum Work<'a> {
     /// A UI document and the ids of the documents defining the components
     /// it uses, which the runtime loads with it.
     Document(&'a Source, Vec<String>),
-    Tileset(&'a Source),
-    Tilemap(&'a Source, tilemap::MapSettings),
     Flipbook(&'a Source),
     /// An `array true` sheet's texture array blob, and its layer `n`.
     FlipbookArray(&'a Source, Box<og_anim::FlipbookSheet>),

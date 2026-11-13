@@ -5,7 +5,10 @@
 //! live behind the `cook` feature and never reach the wasm runtime); the
 //! blob is the same whatever the source.
 
-use super::CookError;
+use super::{
+    CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, Work, assets,
+    settings_block, stamp,
+};
 use crate::format::{self, *};
 use crate::runtime::asset_id;
 use og_blob::BlobWriter;
@@ -1334,3 +1337,102 @@ pub fn references_of_tileset(bytes: &[u8], known: &dyn Fn(&str) -> bool) -> Stri
         .map(|t| format!("{}={}", t.texture, known(asset_id(&t.texture))))
         .unwrap_or_default()
 }
+
+pub(crate) static TILESET: KindDef = KindDef {
+    name: "tileset",
+    extensions: &[],
+    types: &["tileset"],
+    by_content: true,
+    streams: false,
+    plan: plan_tileset,
+};
+
+fn plan_tileset<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState { parsed_refs, .. } = state;
+    let deps = references_of_tileset(&s.bytes, &|id| known.contains(id));
+    assets::record_dependencies(parsed_refs, &s.rel, &deps);
+    let st = stamp(&[b"tileset", &hash, deps.as_bytes()]);
+    outs.push((
+        s.rel.clone(),
+        format::Tileset::NAME,
+        st,
+        Work::Job(Box::new(TilesetJob(s))),
+    ));
+}
+
+/// A tile set's one output.
+struct TilesetJob<'a>(&'a Source);
+
+impl Job for TilesetJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let TilesetJob(s) = self;
+        let Exec { known, .. } = ex;
+        let text = std::str::from_utf8(&s.bytes)
+            .map_err(|_| CookError("a tileset is text (UTF-8)".into()))?;
+        cook_tileset(text, &|id| known.contains(id), p.stamp)
+    }
+}
+
+pub(crate) static TILEMAP: KindDef = KindDef {
+    name: "tilemap",
+    extensions: &["tmj", "ldtk"],
+    types: &["tilemap"],
+    by_content: false,
+    streams: false,
+    plan: plan_tilemap,
+};
+
+fn plan_tilemap<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    hash: [u8; 8],
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Cx { known, .. } = *cx;
+    let PlanState {
+        early_errors,
+        parsed_refs,
+        ..
+    } = state;
+    match MapSettings::parse(settings_block(s, "tilemap")) {
+        Ok(m) => {
+            let refs = references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
+            assets::record_dependencies(parsed_refs, &s.rel, &refs.join("\n"));
+            let st = stamp(&[
+                b"tilemap",
+                &hash,
+                m.describe().as_bytes(),
+                refs.join("\n").as_bytes(),
+            ]);
+            outs.push((
+                s.rel.clone(),
+                format::Tilemap::NAME,
+                st,
+                Work::Job(Box::new(TilemapJob(s, m))),
+            ));
+        }
+        Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
+    }
+}
+
+/// A map's one output.
+struct TilemapJob<'a>(&'a Source, MapSettings);
+
+impl Job for TilemapJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let TilemapJob(s, m) = self;
+        let Exec { known, .. } = ex;
+        cook_tilemap(&s.rel, &s.bytes, m, &|id| known.contains(id), p.stamp)
+    }
+}
+
+/// The kinds this module cooks.
+pub(crate) static KINDS: &[&KindDef] = &[&TILESET, &TILEMAP];

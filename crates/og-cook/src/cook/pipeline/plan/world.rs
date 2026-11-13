@@ -1,54 +1,5 @@
 use super::*;
 
-pub(super) fn plan_tileset<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx { known, .. } = *cx;
-    let PlanState { parsed_refs, .. } = state;
-    let deps = tilemap::references_of_tileset(&s.bytes, &|id| known.contains(id));
-    assets::record_dependencies(parsed_refs, &s.rel, &deps);
-    let st = stamp(&[b"tileset", &hash, deps.as_bytes()]);
-    outs.push((s.rel.clone(), format::Tileset::NAME, st, Work::Tileset(s)));
-}
-
-pub(super) fn plan_tilemap<'a>(
-    cx: &Cx<'a>,
-    state: &mut PlanState,
-    s: &'a Source,
-    hash: [u8; 8],
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Cx { known, .. } = *cx;
-    let PlanState {
-        early_errors,
-        parsed_refs,
-        ..
-    } = state;
-    match tilemap::MapSettings::parse(settings_block(s, "tilemap")) {
-        Ok(m) => {
-            let refs = tilemap::references(&s.rel, &s.bytes, &m, &|id| known.contains(id));
-            assets::record_dependencies(parsed_refs, &s.rel, &refs.join("\n"));
-            let st = stamp(&[
-                b"tilemap",
-                &hash,
-                m.describe().as_bytes(),
-                refs.join("\n").as_bytes(),
-            ]);
-            outs.push((
-                s.rel.clone(),
-                format::Tilemap::NAME,
-                st,
-                Work::Tilemap(s, m),
-            ));
-        }
-        Err(e) => early_errors.push((s.rel.clone(), "tilemap", e)),
-    }
-}
-
 pub(super) fn plan_scene<'a>(
     cx: &Cx<'a>,
     state: &mut PlanState,

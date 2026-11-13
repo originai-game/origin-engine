@@ -53,7 +53,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
         e if audio::EXTENSIONS.contains(&e) => Kind::Sound,
         "ttf" | "otf" => Kind::Font,
         "riv" => Kind::Rive,
-        "tmj" | "ldtk" => Kind::Tilemap,
         "svelte" => Kind::Document,
         _ => return kinds::by_extension(ext),
     })
@@ -63,8 +62,6 @@ fn kind_by_extension(ext: &str) -> Option<Kind> {
 const OGT_KINDS: &[(&str, Kind)] = &[
     ("scene", Kind::Scene),
     (prefab::PREFAB_TYPE, Kind::Prefab),
-    ("tileset", Kind::Tileset),
-    ("tilemap", Kind::Tilemap),
     ("flipbook", Kind::Flipbook),
     // A pixel effect becomes a sheet (`vfx2d::expand`).
     (vfx2d::VFX2D_TYPE, Kind::Flipbook),

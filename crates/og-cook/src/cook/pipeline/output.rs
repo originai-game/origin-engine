@@ -644,10 +644,9 @@ pub(crate) fn diagnose(
         }
     }
     // A Tiled map's custom properties the importer does not read.
-    for s in sources
-        .iter()
-        .filter(|s| s.kind == Kind::Tilemap && s.rel.to_ascii_lowercase().ends_with(".tmj"))
-    {
+    for s in sources.iter().filter(|s| {
+        s.kind == Kind::System(&tilemap::TILEMAP) && s.rel.to_ascii_lowercase().ends_with(".tmj")
+    }) {
         for what in tilemap::tiled_unread(&String::from_utf8_lossy(&s.bytes)) {
             warnings.push(format!("assets/{}: {what}", s.rel));
             if let Some(r) = reports.iter_mut().find(|r| r.source == s.rel) {

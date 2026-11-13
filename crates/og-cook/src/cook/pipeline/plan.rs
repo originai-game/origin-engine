@@ -82,7 +82,7 @@ pub(crate) fn plan<'a>(
         // relative references or write source-derived names/sub-asset ids;
         // their location remains part of the action, not the content hash.
         let hash = match s.kind {
-            Kind::Texture | Kind::Sound | Kind::Font | Kind::Document | Kind::Tileset => {
+            Kind::Texture | Kind::Sound | Kind::Font | Kind::Document => {
                 stamp(&[&s.hash.to_le_bytes(), ext(&s.rel).as_bytes()])
             }
             Kind::System(k) if k.by_content => {
@@ -152,8 +152,6 @@ fn plan_kind<'a>(
         Kind::Rive => plan_rive(cx, state, s, hash, outs),
         Kind::Style => plan_style(cx, state, s, hash, outs),
         Kind::Document => plan_document(cx, state, s, hash, outs),
-        Kind::Tileset => plan_tileset(cx, state, s, hash, outs),
-        Kind::Tilemap => plan_tilemap(cx, state, s, hash, outs),
         Kind::Rig2d => plan_rig2d(cx, state, s, hash, outs),
         Kind::Flipbook => plan_flipbook(cx, state, s, hash, outs),
         Kind::TextureArray => plan_texture_array(cx, state, s, hash, outs),

@@ -214,7 +214,9 @@ pub(super) fn profile_2d(project: Option<&Document>) -> bool {
 pub(super) fn strip_sheets(sources: &mut [Source]) -> BTreeMap<usize, AssetConform> {
     let mut sheet_conform = BTreeMap::new();
     for (i, s) in sources.iter_mut().enumerate() {
-        if !matches!(s.kind, Kind::Flipbook | Kind::Tileset | Kind::Rig2d) {
+        if !(matches!(s.kind, Kind::Flipbook | Kind::Rig2d)
+            || s.kind == Kind::System(&tilemap::TILESET))
+        {
             continue;
         }
         if let Some((text, c)) = super::strip(&String::from_utf8_lossy(&s.bytes), &[]) {
@@ -259,7 +261,7 @@ pub(super) fn uses(
                     add(sheet.texture.clone(), UseKind::Flipbook(Box::new(sheet)));
                 }
             }
-            Kind::Tileset => {
+            Kind::System(k) if k == &tilemap::TILESET => {
                 if let Ok(t) = og_tilemap::Tileset::parse(&String::from_utf8_lossy(&s.bytes))
                     && !t.texture.is_empty()
                 {
@@ -284,7 +286,7 @@ pub(super) fn uses(
                     add(id, UseKind::Fixed("a UI style's atlas"));
                 }
             }
-            Kind::Tilemap => {
+            Kind::System(k) if k == &tilemap::TILEMAP => {
                 if let Ok(m) = tilemap::MapSettings::parse(settings_block(s, "tilemap"))
                     && let Ok(map) = tilemap::import(&s.rel, &s.bytes, &m, &|id| known.contains(id))
                 {
