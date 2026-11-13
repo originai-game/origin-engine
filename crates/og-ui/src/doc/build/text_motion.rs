@@ -171,15 +171,15 @@ impl Ui {
 
     /// An open `<og-spotlight target="id">`: the page dimmed but
     /// for the element of that id, the dialog's content a callout against
-    /// it. Answers the shade's response and whether the callout layer is
-    /// open (it is when the element is on the page).
+    /// it. Answers the shade's response; the callout layer it opens is
+    /// closed by `close`.
     pub(crate) fn open_spotlight(
         &mut self,
         id: &str,
         (key, path): (u64, &str),
         target: &str,
         r: &Resolved,
-    ) -> (crate::ui::Response, bool) {
+    ) -> crate::ui::Response {
         // Its place in the tree, as a modal dialog's: a retained document
         // finds the element's node by its id under its parent.
         let at = self.layer_place(&crate::Id::from(id), key);
@@ -218,6 +218,6 @@ impl Ui {
             crate::layout::Float::Popover,
             found.unwrap_or(NONE),
         );
-        (shade, true)
+        shade
     }
 }

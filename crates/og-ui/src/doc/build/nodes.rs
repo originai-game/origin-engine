@@ -5,6 +5,21 @@ use crate::doc::schema::Kind;
 pub(crate) mod events;
 pub(crate) mod lists;
 
+/// What a container element opened around its content, and so how it
+/// closes.
+enum Shell {
+    /// A plain box, a panel or a scroll area: closed by `close`.
+    Box,
+    /// A button holding content.
+    Button,
+    /// A disclosure.
+    Details,
+    /// A dialog, modal or not.
+    Dialog,
+    /// A spotlight's callout layer.
+    Spotlight,
+}
+
 impl Ui {
     /// Builds node `i` (and its subtree); `root_id` names a mount's root.
     /// Answers its path (none when it is not shown).
@@ -450,13 +465,30 @@ impl Ui {
             Kind::Joystick | Kind::Dpad => {
                 resp = self.build_touch_control(kind, id.as_str(), &r, &styled);
             }
-            other => {
-                self.out
-                    .warnings_mut()
-                    .push(format!("{}:{}: '{other}' is not built", doc.source, n.line));
-                *self.front.accent_mut() = None;
-                return None;
-            }
+            // Every kind is named here, so a new one cannot go unbuilt:
+            // these have a builder of their own or hold content, above.
+            Kind::Viewport
+            | Kind::Anchor
+            | Kind::Ground
+            | Kind::Svg
+            | Kind::SvgGroup
+            | Kind::SvgShape
+            | Kind::SvgText
+            | Kind::SvgForeign
+            | Kind::SvgUse
+            | Kind::SvgDef
+            | Kind::Column
+            | Kind::Row
+            | Kind::Stack
+            | Kind::Grid
+            | Kind::Panel
+            | Kind::Scroll
+            | Kind::List
+            | Kind::Cells
+            | Kind::Slot
+            | Kind::Dialog
+            | Kind::Details
+            | Kind::Box => unreachable!("'{kind}' is built before the leaf controls"),
         }
         *self.front.accent_mut() = None;
         let last = self.tree.last_closed();
@@ -685,7 +717,8 @@ impl Ui {
     }
 
     /// A container element and its content: a dialog, a disclosure, a
-    /// spotlight, a button with content and the rest.
+    /// spotlight, a button with content and the rest. What it opens is its
+    /// [`Shell`], which says how it closes.
     #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     pub(crate) fn doc_container(
         &mut self,
@@ -729,29 +762,30 @@ impl Ui {
             bare: r.str("appearance") == Some("none"),
         };
         let mut opened: Option<bool> = None;
-        // A spotlight's callout layer, open (closed by `close`).
-        let mut spot = false;
         // A closed dialog or disclosure builds no content (HTML renders
         // none): opened, its controls are built fresh and take input.
         let mut shows_content = true;
-        match kind {
+        let shell = match kind {
             Kind::Dialog if open_now(self) && r.str("spotlight").is_some() => {
                 let target = r.str("spotlight").unwrap_or_default();
-                let (shade, anchored) = self.open_spotlight(id.as_str(), (key, &path), target, r);
-                spot = anchored;
+                let shade = self.open_spotlight(id.as_str(), (key, &path), target, r);
                 if shade.clicked && r.str("closedby") == Some("any") {
                     opened = Some(false);
                 }
+                Shell::Spotlight
             }
             Kind::Dialog => {
                 (opened, shows_content) =
                     self.doc_dialog(b, id, &path, r, &dialog, &open_now, opened);
+                Shell::Dialog
             }
             Kind::Details => {
                 (opened, shows_content) = self.doc_details(b, id, key, r, &open_now, opened);
+                Shell::Details
             }
             Kind::Button => {
                 resp = self.open_button(id.as_str(), r.button_desc());
+                Shell::Button
             }
             Kind::Panel => {
                 self.open_panel(
@@ -761,6 +795,7 @@ impl Ui {
                         ..Default::default()
                     },
                 );
+                Shell::Box
             }
             Kind::Scroll => {
                 self.open_scroll(
@@ -771,6 +806,7 @@ impl Ui {
                         ..Default::default()
                     },
                 );
+                Shell::Box
             }
             Kind::List | Kind::Cells => {
                 let inherited = std::mem::replace(&mut b.inherited, r.cascade.computed.clone());
@@ -793,6 +829,7 @@ impl Ui {
                 self.fire(b, n, key, &path, resp);
                 return Some(path);
             }
+            // Any other container is a plain box, a row's content in a row.
             _ => {
                 self.open(
                     id.as_str(),
@@ -804,8 +841,9 @@ impl Ui {
                         ..Element::default()
                     },
                 );
+                Shell::Box
             }
-        }
+        };
         let fields = fields::RenderFields::capture(
             self,
             key,
@@ -919,14 +957,14 @@ impl Ui {
             self.generated_box(b, n, r, &path, false);
             b.inherited = inherited;
         }
-        match kind {
-            Kind::Dialog if spot => {
+        match shell {
+            Shell::Spotlight => {
                 self.close();
             }
-            Kind::Dialog => self.close_dialog(&dialog),
-            Kind::Details => self.close_details(),
-            Kind::Button => self.close_button(),
-            _ => resp = self.close(),
+            Shell::Dialog => self.close_dialog(&dialog),
+            Shell::Details => self.close_details(),
+            Shell::Button => self.close_button(),
+            Shell::Box => resp = self.close(),
         }
         if let Some(open) = opened {
             self.docs.state_mut().happened.push(When::Toggle);
