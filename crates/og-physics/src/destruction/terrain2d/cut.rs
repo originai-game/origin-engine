@@ -3,13 +3,7 @@
 
 use super::Cell;
 use glam::Vec2;
-
-pub fn splitmix(x: u64) -> u64 {
-    let mut z = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^ (z >> 31)
-}
+use og_core::hash::splitmix64;
 
 /// Solid cells cut from a grid: their cells row by row from `origin` (in
 /// the grid's cells), `width` wide, 0 where empty.
@@ -109,7 +103,8 @@ pub fn voronoi(cells: &[(i32, i32, Cell)], n: u32, seed: u64) -> Vec<Sub> {
     let n = (n as usize).clamp(1, cells.len());
     let mut seeds: Vec<(i64, i64)> = Vec::with_capacity(n);
     for i in 0..n as u64 {
-        let c = cells[(splitmix(seed ^ i.wrapping_mul(0x9e37_79b9)) % cells.len() as u64) as usize];
+        let c =
+            cells[(splitmix64(seed ^ i.wrapping_mul(0x9e37_79b9)) % cells.len() as u64) as usize];
         if !seeds.contains(&(c.0 as i64, c.1 as i64)) {
             seeds.push((c.0 as i64, c.1 as i64));
         }

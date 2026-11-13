@@ -15,9 +15,7 @@ use serde_json::{Value, json};
 
 fn text_hash(s: &str) -> u32 {
     // FNV-1a: cheap and stable across hosts.
-    s.bytes().fold(0x811c_9dc5u32, |h, b| {
-        (h ^ u32::from(b)).wrapping_mul(0x0100_0193)
-    })
+    og_core::hash::hash_bytes32(s.bytes())
 }
 
 fn round(x: f32) -> f64 {

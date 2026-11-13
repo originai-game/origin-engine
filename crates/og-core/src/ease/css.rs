@@ -281,13 +281,11 @@ fn linear(stops: &[&str]) -> Option<Ease> {
 
 /// FNV-1a over the points' bits: a `linear()` curve's wire identity.
 pub(super) fn points_hash(p: &[[f32; 2]]) -> u64 {
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    let mut h = crate::hash::StableHasher::new();
     for v in p.iter().flatten() {
-        for b in v.to_bits().to_le_bytes() {
-            h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);
-        }
+        h.write_u32(v.to_bits());
     }
-    h
+    h.finish()
 }
 
 /// Every `linear()` curve made in this process, once each.

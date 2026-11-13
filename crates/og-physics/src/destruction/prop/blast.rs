@@ -18,14 +18,6 @@ pub const SPIN: f32 = 0.1;
 /// The fastest turn (rad/s) a blast gives a piece.
 pub const TURN_MAX: f32 = 12.0;
 
-/// A fixed scramble of `x` (splitmix64's finaliser, public domain): a
-/// piece's own share of a blast, the same on every run and host.
-pub fn scramble(mut x: u64) -> u64 {
-    x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    x ^ (x >> 31)
-}
-
 /// A blast's push on a piece of mass `m` at `at` (its velocity and turn),
 /// `None` where it does not reach. A blast's front is not a smooth field
 /// near the charge: each piece there takes its own share of the push (up
@@ -46,7 +38,7 @@ pub fn blast_push(
     if m <= 0.0 || j <= 0.0 {
         return None;
     }
-    let r = scramble(first);
+    let r = og_core::hash::mix64(first);
     let u = |s: u32| ((r >> s) & 0x3ff) as f32 / 1023.0;
     let axis = Vec3::new(u(0) - 0.5, u(10) - 0.5, u(20) - 0.5).normalize_or(Vec3::X);
     let dir = (at - falloff.point).normalize_or(Vec3::Y);

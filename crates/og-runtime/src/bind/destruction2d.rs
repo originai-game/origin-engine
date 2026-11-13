@@ -34,12 +34,14 @@ use crate::host::wire::{
 };
 use crate::present::extract::{Hierarchy, RenderState};
 use glam::{Quat, Vec2, Vec3};
+use og_core::hash::splitmix64 as splitmix;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
-use og_physics::destruction::terrain2d::collider::{chunk_mesh, mesh_handle, piece_mesh};
-use og_physics::destruction::terrain2d::cut::{Sub, pushed, splitmix, voronoi};
+use og_physics::destruction::terrain2d::collider::{chunk_mesh, piece_mesh};
+use og_physics::destruction::terrain2d::cut::{Sub, pushed, voronoi};
 use og_physics::destruction::terrain2d::state::{Body, Ground, Look, Op, Piece, State};
 use og_physics::destruction::terrain2d::{BEDROCK, Cell, PixelTerrain};
+use og_physics::generated_mesh_handle as mesh_handle;
 use serde_json::{Value, json};
 use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet};

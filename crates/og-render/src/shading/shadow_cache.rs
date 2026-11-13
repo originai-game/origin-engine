@@ -240,12 +240,7 @@ pub(crate) struct ShadowCache {
 
 /// The hash the cache keys on (FNV-1a over 32-bit words).
 pub(crate) fn hash_words(words: impl IntoIterator<Item = u32>) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for w in words {
-        h ^= u64::from(w);
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    }
-    h
+    og_core::hash::hash_words(words.into_iter().map(u64::from))
 }
 
 /// What a sorted instance's shadow is drawn from, as [`ShadowCache::split`]

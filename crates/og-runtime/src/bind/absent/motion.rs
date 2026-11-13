@@ -97,11 +97,7 @@ pub(crate) mod present {
         /// step always none while no agent moves.
         pub(crate) fn hash(&self) -> u64 {
             let text = format!("{:?}|{:?}|{:?}|", None::<f64>, self.stepped, None::<()>);
-            let mut h = 0xcbf2_9ce4_8422_2325u64;
-            for b in text.bytes() {
-                h = (h ^ u64::from(b)).wrapping_mul(0x0000_0100_0000_01b3);
-            }
-            h
+            og_core::hash::hash_bytes(text.as_bytes())
         }
     }
 

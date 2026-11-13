@@ -338,11 +338,11 @@ pub(crate) fn palette_icons(
 /// The palette colour (sRGB bytes) nearest a linear colour, by Oklab
 /// distance, as a linear colour.
 fn nearest(palette: &[[u8; 3]], linear: [f32; 3]) -> [f32; 3] {
-    let target = oklab(linear);
+    let target = og_render::oklab(linear);
     let mut best = (f32::MAX, linear);
     for c in palette {
         let lin = c.map(|v| srgb_to_linear(v as f32 / 255.0));
-        let p = oklab(lin);
+        let p = og_render::oklab(lin);
         let d = (0..3)
             .map(|i| (p[i] - target[i]) * (p[i] - target[i]))
             .sum::<f32>();
@@ -361,21 +361,6 @@ fn srgb_to_linear(c: f32) -> f32 {
     } else {
         ((c + 0.055) / 1.055).powf(2.4)
     }
-}
-
-/// Björn Ottosson's Oklab of a linear sRGB colour.
-// Rendering only: the UI's icon tint, never read by the tick.
-#[allow(clippy::disallowed_methods)]
-fn oklab(c: [f32; 3]) -> [f32; 3] {
-    let [r, g, b] = c;
-    let l = (0.412_221_46 * r + 0.536_332_55 * g + 0.051_445_995 * b).cbrt();
-    let m = (0.211_903_5 * r + 0.680_699_5 * g + 0.107_396_96 * b).cbrt();
-    let s = (0.088_302_46 * r + 0.281_718_85 * g + 0.629_978_7 * b).cbrt();
-    [
-        0.210_454_26 * l + 0.793_617_8 * m - 0.004_072_047 * s,
-        1.977_998_5 * l - 2.428_592_2 * m + 0.450_593_7 * s,
-        0.025_904_037 * l + 0.782_771_77 * m - 0.808_675_77 * s,
-    ]
 }
 
 /// A look's `ArtCamera` on the main camera, as it is applied under the

@@ -137,12 +137,8 @@ pub fn velocity(agent: &Agent, walls: &[(Vec2, Vec2)], neighbours: &[Neighbour],
 /// unequal margins break it as RVO2's demos do with noise, but the same on
 /// every host and every run.
 fn margin(seed: u64) -> f32 {
-    // splitmix64's finaliser: neighbouring entities spread over [0, 1).
-    let mut z = seed.wrapping_add(0x9e37_79b9_7f4a_7c15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^= z >> 31;
-    (z >> 40) as f32 / (1u64 << 24) as f32 * MARGIN
+    // Neighbouring entities spread over [0, 1).
+    og_core::hash::unit24_of64(og_core::hash::splitmix64(seed)) * MARGIN
 }
 
 /// The largest margin, as a share of the radius. A thousandth left an

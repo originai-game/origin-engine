@@ -1034,9 +1034,7 @@ pub fn compile_with_functions(
                 (*subtitle).to_string()
             } else {
                 let key = whens.join("\n");
-                let hash = key.bytes().fold(0xcbf29ce484222325_u64, |h, b| {
-                    (h ^ u64::from(b)).wrapping_mul(0x100000001b3)
-                });
+                let hash = og_core::hash::hash_bytes(key.as_bytes());
                 let base = format!("{title}.when_{hash:016x}");
                 let occurrence = c.instructions.entry(base).or_default();
                 let subtitle = format!("when_{hash:016x}_{}", *occurrence);

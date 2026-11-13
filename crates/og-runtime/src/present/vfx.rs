@@ -297,16 +297,11 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
 
 // ── shared arithmetic ───────────────────────────────────────────────────────
 
-fn splitmix(x: u64) -> u64 {
-    let mut z = x.wrapping_add(0x9e37_79b9_7f4a_7c15);
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^ (z >> 31)
-}
+use og_core::hash::splitmix64 as splitmix;
 
 /// An element's random value, 0 to 1, fixed per instance.
 fn random(seed: u32, element: usize) -> f32 {
-    (splitmix(u64::from(seed) << 16 | element as u64) >> 40) as f32 / (1u64 << 24) as f32
+    og_core::hash::unit24_of64(splitmix(u64::from(seed) << 16 | element as u64))
 }
 
 /// The renderer id of an instance's element (a system, a trail, a mesh).

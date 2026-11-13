@@ -5,23 +5,6 @@ use super::{Cell, PixelTerrain};
 use crate::MeshDesc;
 use glam::{DVec2, Vec3};
 
-/// A generated mesh's handle: FNV-1a over its geometry's 32-bit words with
-/// [`crate::GENERATED_MESH`] set, so equal meshes share one and a
-/// replay or a restore names the same handle.
-pub fn mesh_handle(mesh: &MeshDesc) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    let mut eat = |x: u32| {
-        h = (h ^ x as u64).wrapping_mul(0x0000_0100_0000_01b3);
-    };
-    for c in mesh.positions.iter().flat_map(|p| p.to_array()) {
-        eat(c.to_bits());
-    }
-    for &i in mesh.indices.iter().flatten() {
-        eat(i);
-    }
-    crate::GENERATED_MESH | (h & (crate::GENERATED_MESH - 1))
-}
-
 /// A point on the border of the rectangle `r` (x0, y0, x1, y1), as its
 /// distance clockwise from (x0, y0): up the left side, along the top, down
 /// the right side, back along the bottom.

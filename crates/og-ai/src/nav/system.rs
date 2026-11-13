@@ -747,12 +747,10 @@ pub fn install(world: &mut World, navs: SharedNavs, desc: NavDesc) -> Result<Nav
 
 /// A deterministic value in [-1, 1] from an entity and a tick.
 fn noise(e: u64, tick: u64) -> f32 {
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
-    for b in e.to_le_bytes().iter().chain(tick.to_le_bytes().iter()) {
-        h ^= *b as u64;
-        h = h.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-    ((h >> 40) as f32 / (1u64 << 24) as f32) * 2.0 - 1.0
+    let mut h = og_core::hash::StableHasher::new();
+    h.write_u64(e);
+    h.write_u64(tick);
+    og_core::hash::unit24_of64(h.finish()) * 2.0 - 1.0
 }
 
 /// What [`plan`] answers: world corners, a status, the navmesh polygon

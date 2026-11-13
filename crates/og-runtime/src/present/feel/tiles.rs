@@ -508,19 +508,7 @@ fn region_mesh(region: og_tilemap::MapRegion, profile: u32) -> (u64, og_physics:
     } else {
         flat
     };
-    // FNV-1a over the geometry's 32-bit words.
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    let mut eat = |x: u32| {
-        h = (h ^ x as u64).wrapping_mul(0x0000_0100_0000_01b3);
-    };
-    for c in mesh.positions.iter().flat_map(|p| p.to_array()) {
-        eat(c.to_bits());
-    }
-    for &i in mesh.indices.iter().flatten() {
-        eat(i);
-    }
-    let handle = og_physics::GENERATED_MESH | (h & (og_physics::GENERATED_MESH - 1));
-    (handle, mesh)
+    (og_physics::generated_mesh_handle(&mesh), mesh)
 }
 
 pub(super) fn tilemap_system(

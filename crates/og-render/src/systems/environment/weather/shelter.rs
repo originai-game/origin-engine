@@ -56,23 +56,16 @@ pub(crate) fn shelter_key(
     spheres: impl Iterator<Item = (Vec3, f32)>,
     terrains: usize,
 ) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    let mut put = |x: u64| {
-        h ^= x;
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    };
-    put(cell[0] as u64);
-    put(cell[1] as u64);
-    for v in [w.fall.x, w.fall.y, w.fall.z, w.shelter] {
-        put(u64::from(v.to_bits()));
-    }
-    put(terrains as u64);
-    for (c, r) in spheres {
-        for v in [c.x, c.y, c.z, r] {
-            put(u64::from(v.to_bits()));
-        }
-    }
-    h
+    let bits = |v: f32| u64::from(v.to_bits());
+    let weather = [w.fall.x, w.fall.y, w.fall.z, w.shelter].map(bits);
+    let spheres = spheres.flat_map(|(c, r)| [c.x, c.y, c.z, r].map(bits));
+    og_core::hash::hash_words(
+        [cell[0] as u64, cell[1] as u64]
+            .into_iter()
+            .chain(weather)
+            .chain([terrains as u64])
+            .chain(spheres),
+    )
 }
 
 #[cfg(test)]

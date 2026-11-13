@@ -58,16 +58,6 @@ impl Damage {
     }
 }
 
-/// A fixed scramble of `x` (Chris Wellons's lowbias32, public domain):
-/// a chunk's own variation, the same on every run and host.
-fn mix(mut x: u32) -> u32 {
-    x ^= x >> 16;
-    x = x.wrapping_mul(0x7feb_352d);
-    x ^= x >> 15;
-    x = x.wrapping_mul(0x846c_a68b);
-    x ^ (x >> 16)
-}
-
 /// Where something holds up a chunk of an island no anchor holds: a loose
 /// island resting on a pier, a pile or the ground, for
 /// [`Instance::stress`]. In the model's space, as the chunk's own points.
@@ -266,7 +256,8 @@ impl Instance {
             // unevenly, a course holding a brick longer or shorter, rather
             // than in a drawn staircase. At most 0.23 of the bearing, so no
             // block reaches half its length past what bears it.
-            let give = 0.6 + 0.8 * (mix(c as u32) >> 8) as f32 / (1u32 << 24) as f32;
+            let give =
+                0.6 + 0.8 * (og_core::hash::lowbias32(c as u32) >> 8) as f32 / (1u32 << 24) as f32;
             let (cu, cv) = (ch.centroid.dot(u), ch.centroid.dot(v));
             let third = |c: f32, lo: f32, hi: f32| {
                 hi >= lo && (c - 0.5 * (lo + hi)).abs() <= give * (hi - lo) / 6.0 + 1e-3

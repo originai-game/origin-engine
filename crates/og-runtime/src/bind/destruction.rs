@@ -31,9 +31,10 @@ use crate::host::wire::{
     ExplosionDesc, FromJson, record,
 };
 use glam::{Quat, Vec3};
+use og_core::hash::mix64 as scramble;
 use og_core::{Error, ErrorKind};
 use og_ecs::{Entity, QueryDesc, SchemaId, StateBlock, SystemContext, SystemDesc, World};
-use og_physics::destruction::prop::blast::{Explosion, blast_push, push_blasted_pieces, scramble};
+use og_physics::destruction::prop::blast::{Explosion, blast_push, push_blasted_pieces};
 use og_physics::destruction::prop::breaking::{
     Breaking, Hits, REST_EVERY, REST_SPEED, Settings, WEDGED_AFTER, break_masonry, crumble,
     islands_of, place_chunk, shed_crumbs, wear,

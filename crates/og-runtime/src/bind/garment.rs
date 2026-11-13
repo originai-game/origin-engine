@@ -63,18 +63,12 @@ pub(crate) struct Garments {
 
 fn key_of(id: &str, mesh: u32) -> u64 {
     // FNV-1a: stable across hosts and runs.
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut h = og_core::hash::StableHasher::new();
     // Rebuild saved authoring-space constraints with bind-space lengths.
-    for b in b"bind-rest:1"
-        .iter()
-        .copied()
-        .chain(id.bytes())
-        .chain(mesh.to_le_bytes())
-    {
-        h ^= u64::from(b);
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    }
-    h
+    h.write(b"bind-rest:1");
+    h.write(id.as_bytes());
+    h.write_u32(mesh);
+    h.finish()
 }
 
 /// Welds glTF mesh `mesh` of a loaded model: `None` when the model has no

@@ -138,6 +138,18 @@ pub use og_physics_data::MeshDesc;
 /// a handle with it still fits a JavaScript number (below 2^53).
 pub const GENERATED_MESH: u64 = 1 << 52;
 
+/// A generated mesh's handle: FNV-1a over its geometry's 32-bit words with
+/// [`GENERATED_MESH`] set, so equal meshes share one and a replay or a
+/// restore names the same handle.
+pub fn generated_mesh_handle(mesh: &MeshDesc) -> u64 {
+    let coords = mesh.positions.iter().flat_map(|p| p.to_array());
+    let words = coords
+        .map(f32::to_bits)
+        .chain(mesh.indices.iter().flatten().copied());
+    let h = og_core::hash::hash_words(words.map(u64::from));
+    GENERATED_MESH | (h & (GENERATED_MESH - 1))
+}
+
 /// A rotation taking unit vector `from` to unit vector `to`, from square
 /// roots only (glam's `from_rotation_arc` reaches for `sin_cos` when they
 /// are opposite).

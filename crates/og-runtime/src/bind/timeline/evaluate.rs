@@ -39,14 +39,8 @@ pub(super) const NESTED: u32 = 0x8000_0000;
 pub(super) const NESTED_TRACKS: u32 = 0x400;
 
 pub(super) fn nest_id(parent: u32, key: usize) -> u32 {
-    let mut h: u32 = 0x811c_9dc5;
-    for b in parent
-        .to_le_bytes()
-        .into_iter()
-        .chain((key as u32).to_le_bytes())
-    {
-        h = (h ^ u32::from(b)).wrapping_mul(0x0100_0193);
-    }
+    let bytes = parent.to_le_bytes().into_iter();
+    let h = og_core::hash::hash_bytes32(bytes.chain((key as u32).to_le_bytes()));
     NESTED | (h & !(NESTED | (NESTED_TRACKS - 1)))
 }
 

@@ -98,12 +98,8 @@ pub(super) fn shape_layout(
 /// FNV-1a over the shape's names and layouts: equal on two peers exactly
 /// when their inputs are read the same way.
 pub(super) fn fingerprint(parts: &[&crate::host::codec::Layout], max: u32) -> u64 {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    let mut eat = |b: &[u8]| {
-        for x in b {
-            h = (h ^ u64::from(*x)).wrapping_mul(0x0000_0100_0000_01b3);
-        }
-    };
+    let mut h = og_core::hash::StableHasher::new();
+    let mut eat = |b: &[u8]| h.write(b);
     for l in parts {
         eat(l.schema.as_bytes());
         for f in l.fields.iter() {
@@ -113,7 +109,7 @@ pub(super) fn fingerprint(parts: &[&crate::host::codec::Layout], max: u32) -> u6
         eat(b";");
     }
     eat(&max.to_le_bytes());
-    h.max(1)
+    h.finish().max(1)
 }
 
 pub fn og_net_shape(world: u32, desc: Option<String>) -> Result<(), String> {

@@ -12,11 +12,7 @@ pub(super) struct Seeded(pub(super) u64);
 
 impl Seeded {
     pub(super) fn next(&mut self) -> f32 {
-        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
-        let mut z = self.0;
-        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-        ((z ^ (z >> 31)) >> 40) as f32 / (1u64 << 24) as f32
+        og_core::hash::unit24_of64(og_core::hash::splitmix64_next(&mut self.0))
     }
 
     /// A direction, evenly over the sphere.

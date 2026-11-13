@@ -133,14 +133,11 @@ pub struct Effects {
 }
 
 fn hash3(a: u64, b: u64, c: u64) -> u64 {
-    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    let mut h = og_core::hash::StableHasher::new();
     for x in [a, b, c] {
-        for byte in x.to_le_bytes() {
-            h ^= byte as u64;
-            h = h.wrapping_mul(0x0000_0100_0000_01b3);
-        }
+        h.write_u64(x);
     }
-    h
+    h.finish()
 }
 
 /// Starts an agent's memory for a behaviour.
