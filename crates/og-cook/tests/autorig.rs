@@ -11,6 +11,7 @@
 //! folder's files rig differently; the parts cook as stray textures of
 //! their own; a refusal names neither the layer nor the file.
 
+use og_anim::cooked::BundleAnim;
 use og_anim::{AttachmentKind, Rig2dAsset};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};

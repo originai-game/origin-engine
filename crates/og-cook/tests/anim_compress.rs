@@ -1,5 +1,5 @@
 //! Animation sample compression (`animation { compress true tolerance t }`,
-//! `og_cook::anim_codec`) and sparse morph targets, on every committed
+//! og-anim's `cooked::anim_codec`) and sparse morph targets, on every committed
 //! animated model (fx-showcase's walker, trickster, strider with its
 //! retargeted library clips, stout, puppet2d and the library itself; the
 //! game template, third-person and og-tests carry copies of the same
@@ -16,9 +16,10 @@
 //! `anim-compress.json` (sizes, errors, the frame comparison),
 //! `anim-compress-f32.png`, `anim-compress-quantized.png` and the diff.
 
+use og_anim::cooked::{BundleAnim, CookedAnimation};
 use og_anim::{ClipAsset, Pose, bind, sample};
 use og_cook::cook::{CookOptions, cook_project};
-use og_cook::runtime::{Bundle, CookedAnimation};
+use og_cook::runtime::Bundle;
 use og_render::{RenderScene, SkinData, SkinnedInstance};
 use std::path::{Path, PathBuf};
 
@@ -305,7 +306,7 @@ fn compressed_clips_stay_within_tolerance_and_shrink() {
 }
 
 /// Frame `j` of every lane of a quantised channel, written out from the
-/// format's description (`og_cook::anim_codec`): the key on a kept frame,
+/// format's description (og-anim's `cooked::anim_codec`): the key on a kept frame,
 /// else a hold (STEP), a lerp per lane or a normalised lerp on the shorter
 /// arc between the kept frames around it. Independent of og-anim's
 /// sampler, which reads the keys where they lie.

@@ -13,7 +13,7 @@
 //!   frame that the interpolation between its kept neighbours (lerp, or
 //!   normalised lerp on the shorter arc for rotations; a hold for STEP
 //!   channels) rebuilds within the tolerance of the resampled value. The
-//!   loader keeps the keys as stored ([`samples`], `og_anim::Samples`) and
+//!   loader keeps the keys as stored ([`samples`], `crate::Samples`) and
 //!   og-anim rebuilds a dropped frame the same way when it samples it
 //!   (the decoding arithmetic is og-anim's, which this encoder measures
 //!   against), so a resident clip costs what its cooked form costs and
@@ -29,8 +29,8 @@
 //! bits is always stored once (lossless). Decoding uses only `+ - * /` and
 //! `sqrt` in a fixed order, so every host rebuilds the same floats.
 
-use crate::format::{ChannelRow, path};
-use og_anim::{QuantizedKeys, Samples, dequantize, nlerp4, normalize4, unpack_quat};
+use crate::{QuantizedKeys, Samples, dequantize, nlerp4, normalize4, unpack_quat};
+use og_bundle::format::{ChannelRow, path};
 
 /// [`ChannelRow::codec`] values.
 pub mod codec {
@@ -81,7 +81,7 @@ fn pack_quat(q: [f32; 4]) -> [u16; 3] {
 /// A channel's frames as og-anim keeps them resident, from its row and the
 /// blob's `samples` and `packed` sections: f32 and constant samples
 /// copied, quantised keys kept as stored (og-anim samples them where they
-/// lie, `og_anim::Samples`).
+/// lie, `crate::Samples`).
 pub fn samples(
     row: &ChannelRow,
     frames: u32,
@@ -143,10 +143,10 @@ pub fn decode(
     samples_: &[f32],
     packed: &[u16],
 ) -> Result<Vec<f32>, String> {
-    let channel = og_anim::Channel {
+    let channel = crate::Channel {
         node: row.node,
         node_name: String::new(),
-        path: og_anim::ChannelPath::from_code(row.path)
+        path: crate::ChannelPath::from_code(row.path)
             .ok_or_else(|| format!("channel path {}", row.path))?,
         step: row_step(row),
         lanes: row.lanes,
@@ -156,7 +156,7 @@ pub fn decode(
 }
 
 fn row_step(row: &ChannelRow) -> bool {
-    row.interpolation == crate::format::interpolation::STEP
+    row.interpolation == og_bundle::format::interpolation::STEP
 }
 
 /// The value at frame `j` between kept frames `fa` (value `a`) and `fb`.
@@ -334,9 +334,11 @@ pub fn encode(
 }
 
 #[cfg(test)]
+// The test curves are made with the host's libm: they are inputs, outside the tick.
+#[allow(clippy::disallowed_methods)]
 mod tests {
     use super::*;
-    use crate::format::interpolation;
+    use og_bundle::format::interpolation;
 
     fn row(e: &Encoded, path: u32, lanes: u32, step: bool) -> ChannelRow {
         ChannelRow {

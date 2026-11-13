@@ -162,8 +162,8 @@ impl ModelInfo {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct SkinnedModel {
     pub skeleton: og_anim::SkeletonAsset,
-    pub streams: Vec<og_bundle::runtime::SkinStream>,
-    pub morphs: Vec<og_bundle::runtime::MorphTargets>,
+    pub streams: Vec<og_anim::cooked::SkinStream>,
+    pub morphs: Vec<og_anim::cooked::MorphTargets>,
     pub meshes: Option<Vec<Option<MeshHandle>>>,
 }
 

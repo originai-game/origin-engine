@@ -362,11 +362,13 @@ array exists like a texture.
 
 ## Formats
 
-The blob formats (`format.rs`), how animation channels hold their samples
-(`anim_codec.rs`) and how textures reach the GPU are og-bundle's, with
-the loaders that read them: `crates/og-bundle/README.md` §Formats and
-§Animation samples. og-cook writes them and re-exports the modules under
-the same paths (`og_cook::format`, `og_cook::runtime`, ...).
+The blob formats (`format.rs`) and how textures reach the GPU are
+og-bundle's, with the loaders that read them
+(`crates/og-bundle/README.md` §Formats); how animation channels hold
+their samples is og-anim's (`cooked/anim_codec.rs`,
+`crates/og-anim/README.md` §Cooked samples). og-cook writes them and
+re-exports the modules under the same paths (`og_cook::format`,
+`og_cook::runtime`, `og_cook::anim_codec`, ...).
 
 ### Asset ids, the manifest and stamps
 

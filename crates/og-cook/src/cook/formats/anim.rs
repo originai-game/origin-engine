@@ -799,7 +799,7 @@ pub fn cook(
         ..settings.clone()
     };
     let (own_blob, _) = cook_with(src, bytes, mesh, &exact, stamp, &[])?;
-    let own = crate::runtime::CookedAnimation::from_bytes("model#anim", &own_blob)
+    let own = og_anim::cooked::CookedAnimation::from_bytes("model#anim", &own_blob)
         .map_err(|e| CookError(e.to_string()))?;
     let mut extra: Vec<og_anim::ClipAsset> = Vec::new();
     let mut notes = Vec::new();
@@ -830,7 +830,7 @@ pub fn cook(
             ..lib_settings.clone()
         };
         let (lib_blob, _) = cook_with(&lib_src, &lib_bytes, mesh, &lib_exact, 0, &[])?;
-        let library = crate::runtime::CookedAnimation::from_bytes("library#anim", &lib_blob)
+        let library = og_anim::cooked::CookedAnimation::from_bytes("library#anim", &lib_blob)
             .map_err(|e| fail(e.to_string()))?;
         let source_map =
             humanoid(root, lib_settings.rig.as_deref(), &library.skeleton).map_err(fail)?;

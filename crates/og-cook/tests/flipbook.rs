@@ -6,6 +6,7 @@
 //! origin; the sheet's own clip loses to a tag; editing the atlas leaves a
 //! stale blob; a pixel texture is compressed or mipmapped.
 
+use og_anim::cooked::BundleAnim;
 use og_anim::{FlipMode, FlipbookSheet};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};

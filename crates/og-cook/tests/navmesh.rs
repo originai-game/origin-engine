@@ -3,6 +3,7 @@
 //! a navmesh without them cooked with no new sections, so the blobs of
 //! earlier navmeshes stay as they were.
 
+use og_ai::nav::cooked::BundleNav;
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use og_core::glam::Vec3;

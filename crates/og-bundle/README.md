@@ -13,7 +13,7 @@ let (model, textures) = bundle.load_model_with_textures("assets/models/ship.glb"
 let parts = model.add_to(&mut render_scene, &textures);
 parts.instance(&mut render_scene, transform);
 let scene = bundle.load_scene("scenes/main.ogt")?;                             // plain data for the host to spawn
-let anim = bundle.load_animation("assets/models/walker.glb")?;                 // og_anim::SkeletonAsset, ClipAssets, skin and morph streams
+let anim = bundle.load_animation("assets/models/walker.glb")?;                 // with og_anim::cooked::BundleAnim in scope: SkeletonAsset, ClipAssets, skin and morph streams
 let map = bundle.load_tilemap("maps/room.tmj")?;                              // og_tilemap::TilemapAsset; its TilesetRef::Asset ids through bundle.load_tileset
 let terrain = bundle.load_terrain("terrain/island.ogt")?;                     // CookedTerrain: og_render::TerrainData, layers naming their textures
 let env = bundle.load_environment("env/studio.ogt")?;                         // og_render::EnvironmentMapData, prefiltered at cook time
@@ -23,7 +23,7 @@ let env = bundle.load_environment("env/studio.ogt")?;                         //
 
 | Feature | Default | What it adds | Targets |
 |---|---|---|---|
-| (none) | | `runtime` (Bundle, loaders), `format`, `ktx2`, `meshopt_codec`, `qoa`, `anim_codec`, `fx`, `look`, `lightmap`, `scene_text`, `shader`. Pure Rust: og-blob, og-core, og-render-data, og-draw, og-anim, og-tilemap, og-timeline, og-ai (`nav`), glam, bytemuck, miniz_oxide | every target; `cargo check -p og-bundle --target wasm32-unknown-unknown` |
+| (none) | | `runtime` (Bundle, loaders), `format`, `ktx2`, `meshopt_codec`, `qoa`, `fx`, `look`, `lightmap`, `scene_text`, `shader`. Pure Rust: og-blob, og-core, og-render-data, og-draw, og-tilemap, og-timeline, glam, bytemuck, miniz_oxide | every target; `cargo check -p og-bundle --target wasm32-unknown-unknown` |
 | `transcode` | no | `CookedTexture::to_texture_data` (RGBA8 level 0) and `to_texture_source` (every level in the device's block format) for Basis textures (basisu's C++ transcoder, ruzstd) | native |
 | `basis` | no | `ktx2::from_basis`, the KTX2 container rebuilt from basis-universal's `.basis` output (og-cook's encoder; ruzstd) | native |
 
@@ -91,32 +91,11 @@ basisu transcodes here, on the web the engine Worker transcodes with
 Binomial's transcoder once the renderer is attached, to the format
 `og_web_texture_target` names.
 
-## Animation samples
+## Animation and navmesh loaders
 
-`src/anim_codec.rs` holds a channel one of three ways (`ChannelRow::codec`):
-
-| Codec | When | Stored |
-|---|---|---|
-| f32 | the default | `frames × lanes` f32, as resampled |
-| constant | every frame the same bits (always), or within `tolerance` of the first (compressed) | one sample |
-| quantised | `animation { compress true }` | rotations as 48-bit smallest-three (the largest component's index in 2 bits, the others in 15 bits over ±1/√2); translations, scales and morph weights as unorm16 per lane over the channel's own `min`/`extent` (in `samples`); then keyframe reduction: the first and last frame kept, and every frame dropped that the interpolation between its kept neighbours (lerp, normalised lerp on the shorter arc, a hold for STEP) rebuilds within `tolerance` of the resampled value; the kept frames' indices as u16 when any was dropped |
-
-A visibility channel (0 or 1, STEP) is never approximated: its tolerance
-is 0 whatever the setting, so a compressed one keeps exactly the frames
-where the flag changes and the ends, and its unorm over [0, 1] rebuilds 0
-and 1 bit for bit (`anim_codec`'s unit test, og-cook's `tests/vox.rs`).
-
-The loader keeps each channel as stored (`anim_codec::samples`, og-anim's
-`Samples`: f32, one constant sample, or the quantised keys with their
-kept frames' indices and ranges), so a resident clip costs what its
-cooked form costs (`ClipAsset::sample_bytes`, the blob's `samples` and
-`packed` sections). og-anim samples the keys where they lie: a dropped
-frame is rebuilt when it is read with the same interpolation the
-reduction measured, scalar and in a fixed order, so every host gets the
-same floats and a pose is bit for bit the one the frames written out as
-f32 give (og-cook's `tests/anim_compress.rs`: the world hash of every clip played
-forwards, slowed and backwards is the same tick for tick). A channel whose 16-bit quantisation alone would
-miss the tolerance stays f32. The tolerance is per lane in the channel's units
-(metres, unit-quaternion components, scale, weight); its default, 1e-4, is
-0.1 mm and 0.011°. Retargeting reads the clips uncompressed, then the
-model's `#anim` compresses the result.
+The blob schemas of animations, flipbooks, rigs and navmeshes are here
+(`format`); their loaders build og-anim's and og-ai's types, so they live
+in those crates and og-bundle depends on neither: `og_anim::cooked`
+(`BundleAnim`, `CookedAnimation`, `anim_codec`; og-anim's README §Cooked
+samples) and `og_ai::nav::cooked` (`BundleNav`). Both add their loaders
+to `Bundle` as a trait's methods.

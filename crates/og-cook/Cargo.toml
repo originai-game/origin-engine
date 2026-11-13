@@ -20,7 +20,7 @@ basis = ["og-bundle/basis", "dep:basis-universal", "dep:ruzstd"]
 
 [dependencies]
 # The blob formats and the runtime loaders (re-exported: `og_cook::runtime`, ...).
-og-bundle = { path = "../og-bundle", features = ["nav"] }
+og-bundle = { path = "../og-bundle" }
 og-blob = { path = "../og-blob" }
 og-core = { path = "../og-core" }
 # The cooked data the renderer draws (docs/design.md §2.1, "Formats below

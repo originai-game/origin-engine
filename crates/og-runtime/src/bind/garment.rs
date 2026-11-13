@@ -499,7 +499,7 @@ mod tests {
             part_shown: vec![],
             part_variants: vec![],
         };
-        let stream = |primitive| og_bundle::runtime::SkinStream {
+        let stream = |primitive| og_anim::cooked::SkinStream {
             primitive,
             mesh: 3,
             joints: vec![[0, 1, 0, 0]; 4],

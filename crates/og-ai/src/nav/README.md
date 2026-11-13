@@ -8,10 +8,10 @@ triangles into the walkable heightfield is behind the `bake` feature, which
 only og-cook enables: the wasm never carries it.
 
 ```rust
-let mut navs = og_nav::Navs::default();
-let grid = navs.insert(og_nav::Nav::Grid(og_nav::Grid::new(256, 256, 1.0, Vec2::ZERO)));
-let nav = og_nav::install(&mut world, Arc::new(Mutex::new(navs)), og_nav::NavDesc { plane: og_nav::Plane::Xy, raycast: None, plans_per_tick: og_nav::PLANS_PER_TICK })?;
-world.spawn((Transform::default(), og_nav::NavAgent { nav: grid, target, seeking: true, ..Default::default() }))?;
+let mut navs = og_ai::nav::Navs::default();
+let grid = navs.insert(og_ai::nav::Nav::Grid(og_ai::nav::Grid::new(256, 256, 1.0, Vec2::ZERO)));
+let nav = og_ai::nav::install(&mut world, Arc::new(Mutex::new(navs)), og_ai::nav::NavDesc { plane: og_ai::nav::Plane::Xy, raycast: None, plans_per_tick: og_ai::nav::PLANS_PER_TICK })?;
+world.spawn((Transform::default(), og_ai::nav::NavAgent { nav: grid, target, seeking: true, ..Default::default() }))?;
 world.step()?;   // the agent plans (jump point search), follows the corners, arrives
 ```
 

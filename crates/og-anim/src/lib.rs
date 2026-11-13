@@ -13,6 +13,7 @@
 //! | [`Samples`], [`QuantizedKeys`] | a channel's frames in memory: f32, one constant sample, or the cooked quantised keys sampled where they lie (with [`unpack_quat`], [`dequantize`], [`nlerp4`], the decoding arithmetic the cook measures against) |
 //! | [`HumanoidMap`], [`RigAsset`], [`retarget`] | humanoid bone maps (detected from Mixamo, VRM, Unity, Rigify, Unreal, Blender or SOMA names, or a `type rig` .ogt) and clips rewritten from one rig to another (rest correction, bone lengths, scaled root travel, foot IK) |
 //! | [`Rig2dAsset`], [`Skeleton2D`], [`Skeleton2DEvent`], [`IkTarget2D`], [`install_skeleton2d`] | 2D skeletal animation: the `type rig2d` asset (bones, slots, region and weighted-mesh attachments, IK, clips with bone, slot and deform keys), played by `og.skeleton2d` and drawn as triangles |
+//! | [`cooked`] | the cooked assets: [`cooked::BundleAnim`] (the animation, flipbook and rig loaders of og-bundle's `Bundle`), [`cooked::CookedAnimation`] and the sample codec |
 //! | [`AnimationSystem`] | asset registration, the final pose, the per-entity [`AnimOutput`] (joint palette, blendshape weights) and [`PaletteSink`], the renderer contract |
 //!
 //! **Determinism.** f32 with `+ - * /` and `sqrt` (no host trigonometry:
@@ -27,6 +28,7 @@
 
 mod asset;
 mod codec;
+pub mod cooked;
 mod flipbook;
 mod graph;
 mod graph2d;

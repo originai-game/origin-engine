@@ -24,7 +24,6 @@ use og_render_data::{
 use std::collections::BTreeMap;
 use std::fmt;
 
-mod animation;
 mod hdr;
 mod media;
 mod model;
@@ -32,7 +31,6 @@ mod scene;
 mod terrain;
 mod uncooked;
 
-pub use animation::*;
 pub use hdr::{HdrRows, exr_size, hdr_size, is_exr, is_hdr};
 pub use media::*;
 pub use model::*;
@@ -489,6 +487,16 @@ impl Manifest {
 /// Normalises an asset id: `assets/x` and `x` name the same asset.
 pub fn asset_id(path: &str) -> &str {
     path.strip_prefix("assets/").unwrap_or(path)
+}
+
+/// The animation blob id of a model id (`models/x.glb` → `models/x.glb#anim`).
+pub fn anim_id(id: &str) -> String {
+    let id = asset_id(id);
+    if id.ends_with("#anim") {
+        id.to_string()
+    } else {
+        format!("{id}#anim")
+    }
 }
 
 /// The cooked bundle a game loads from.
@@ -1050,13 +1058,6 @@ impl Bundle {
         SceneDesc::decode(asset_id(id), &blob)
     }
 
-    /// Decodes an animation blob (`<model>#anim`): the skeleton, the clips
-    /// and the per-vertex skin and morph data, as og-anim's assets.
-    pub fn animation(&self, id: &str, bytes: &[u8]) -> Result<CookedAnimation, LoadError> {
-        let blob = self.blob::<format::Animation>(id, bytes)?;
-        CookedAnimation::decode(asset_id(id), &blob)
-    }
-
     /// The clip names of an animation blob (`<model>#anim`), in glTF order,
     /// without decoding its clips (what `GltfInfo.animations` lists).
     pub fn clip_names(&self, id: &str, bytes: &[u8]) -> Result<Vec<String>, LoadError> {
@@ -1071,14 +1072,6 @@ impl Bundle {
                     .ok_or_else(|| invalid(&blob, "clip name out of range"))
             })
             .collect()
-    }
-
-    /// Reads and decodes a glTF's animation blob (native); `id` is the model's
-    /// id with or without `#anim`.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn load_animation(&self, id: &str) -> Result<CookedAnimation, LoadError> {
-        let id = anim_id(id);
-        self.animation(&id, &self.read(&id)?)
     }
 
     /// Reads and decodes a model (native).
@@ -1207,21 +1200,24 @@ impl SceneResources for Meshes {
     fn add_instance(&mut self, _: MeshHandle, _: MaterialHandle, _: Mat4) {}
 }
 
-fn invalid(blob: &Blob, reason: impl Into<String>) -> LoadError {
+/// A refusal of `blob`'s content, for the loaders other crates keep.
+pub fn invalid(blob: &Blob, reason: impl Into<String>) -> LoadError {
     LoadError::Invalid {
         path: blob.path().to_string(),
         reason: reason.into(),
     }
 }
 
-fn one<T: og_core::Reflect + bytemuck::Pod>(blob: &Blob) -> Result<T, LoadError> {
+/// The one row of `blob`'s `meta` section.
+pub fn one<T: og_core::Reflect + bytemuck::Pod>(blob: &Blob) -> Result<T, LoadError> {
     let rows = blob.table::<T>("meta", row_hash::<T>())?;
     rows.first()
         .copied()
         .ok_or_else(|| invalid(blob, "empty meta section"))
 }
 
-fn table<T: og_core::Reflect + bytemuck::Pod>(
+/// The rows of `blob`'s section `name`, checked against `T`'s row hash.
+pub fn table<T: og_core::Reflect + bytemuck::Pod>(
     blob: &Blob,
     name: &str,
 ) -> Result<Vec<T>, LoadError> {
@@ -1373,44 +1369,6 @@ fn decode_tilemap(blob: &Blob) -> Result<og_tilemap::TilemapAsset, LoadError> {
     Ok(map)
 }
 
-impl Bundle {
-    /// Decodes a flipbook sheet blob (`og.Flipbook`) into its sheet.
-    pub fn flipbook(&self, id: &str, bytes: &[u8]) -> Result<og_anim::FlipbookSheet, LoadError> {
-        let blob = self.blob::<format::Flipbook>(id, bytes)?;
-        let meta = one::<format::FlipbookMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        let text = text
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the sheet text is cut short or not UTF-8"))?;
-        og_anim::FlipbookSheet::parse(text).map_err(|e| invalid(&blob, e.reason()))
-    }
-
-    /// Decodes a 2D rig blob (`og.Rig2D`) into its rig.
-    pub fn rig2d(&self, id: &str, bytes: &[u8]) -> Result<og_anim::Rig2dAsset, LoadError> {
-        let blob = self.blob::<format::Rig2D>(id, bytes)?;
-        let meta = one::<format::Rig2DMeta>(&blob)?;
-        let text = blob.raw("text")?;
-        let text = text
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
-        og_anim::Rig2dAsset::parse(text).map_err(|e| invalid(&blob, e.reason()))
-    }
-
-    /// Reads and decodes a 2D rig (native).
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn load_rig2d(&self, id: &str) -> Result<og_anim::Rig2dAsset, LoadError> {
-        self.rig2d(id, &self.read(id)?)
-    }
-
-    /// Reads and decodes a flipbook sheet (native).
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn load_flipbook(&self, id: &str) -> Result<og_anim::FlipbookSheet, LoadError> {
-        self.flipbook(id, &self.read(id)?)
-    }
-}
-
 // ── E6: behaviours and navmeshes ─────────────────────────────────────────
 
 impl Bundle {
@@ -1474,18 +1432,6 @@ impl Bundle {
             ));
         }
         Ok(rgb[..n * 3].as_chunks::<3>().0.to_vec())
-    }
-
-    /// The humanoid map of a rig blob (`og.Rig`).
-    pub fn rig(&self, id: &str, bytes: &[u8]) -> Result<og_anim::RigAsset, LoadError> {
-        let blob = self.blob::<format::Rig>(id, bytes)?;
-        let meta = one::<format::RigMeta>(&blob)?;
-        let text = blob
-            .raw("text")?
-            .get(..meta.text_bytes as usize)
-            .and_then(|t| std::str::from_utf8(t).ok())
-            .ok_or_else(|| invalid(&blob, "the rig text is cut short or not UTF-8"))?;
-        og_anim::RigAsset::parse(text).map_err(|e| invalid(&blob, e.reason().to_string()))
     }
 
     /// The authored reaction and its head-local hand contact.
@@ -1562,149 +1508,6 @@ impl Bundle {
         .map_err(|e| invalid(&blob, e))
     }
 
-    /// Decodes a navmesh blob (`og.NavMesh`): the heightfield and the tiles
-    /// the cook built (link them with `og_ai::nav::NavMesh::from_tiles`).
-    #[cfg(feature = "nav")]
-    pub fn navmesh(
-        &self,
-        id: &str,
-        bytes: &[u8],
-    ) -> Result<(og_ai::nav::Heightfield, Vec<og_ai::nav::Tile>), LoadError> {
-        let blob = self.blob::<format::NavMesh>(id, bytes)?;
-        let m = one::<format::NavMeshMeta>(&blob)?;
-        // The heightfield's two tables are meshopt vertex streams: `rows`
-        // rows of u32s. A stream too short to hold its rows (256 of them
-        // take a byte or more) is refused before anything is allocated.
-        let stream = |name: &str, rows: usize, stride: usize| -> Result<Vec<u32>, LoadError> {
-            let encoded = blob.raw(name)?;
-            if rows == 0 {
-                return Ok(Vec::new());
-            }
-            if rows > encoded.len().saturating_mul(256) {
-                return Err(invalid(&blob, format!("{name} is cut short")));
-            }
-            let bytes = meshopt_codec::decode_vertex_buffer(encoded, rows, stride)
-                .map_err(|e| invalid(&blob, format!("{name}: {e}")))?;
-            Ok(bytes
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|c| u32::from_le_bytes(*c))
-                .collect())
-        };
-        let cells = (m.width as usize)
-            .checked_mul(m.depth as usize)
-            .ok_or_else(|| invalid(&blob, "the grid is too large"))?;
-        // A column's spans follow the previous column's.
-        let mut first = 0u32;
-        let mut columns = Vec::with_capacity(cells);
-        for count in stream("columns", cells, size_of::<format::NavColumnRow>())? {
-            columns.push([first, count]);
-            first = first
-                .checked_add(count)
-                .ok_or_else(|| invalid(&blob, "the columns hold too many spans"))?;
-        }
-        let spans = stream("spans", first as usize, size_of::<format::NavSpanRow>())?;
-        let tiles = table::<format::NavTileRow>(&blob, "tiles")?;
-        let verts = table::<format::NavVertRow>(&blob, "verts")?;
-        let polys = table::<format::NavPolyRow>(&blob, "polys")?;
-        let index_bytes = blob.raw("poly_verts")?;
-        let indices: Vec<u32> = index_bytes
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|c| u32::from_le_bytes(*c))
-            .collect();
-        let params = og_ai::nav::NavParams {
-            cell_size: m.cell_size,
-            cell_height: m.cell_height,
-            agent_height: m.agent_height,
-            agent_radius: m.agent_radius,
-            agent_climb: m.agent_climb,
-            max_slope: m.max_slope,
-            tile_size: m.tile_size,
-            max_error: m.max_error,
-        };
-        let field = og_ai::nav::Heightfield {
-            params,
-            origin: glam::Vec3::new(m.origin_x, m.origin_y, m.origin_z),
-            width: m.width,
-            depth: m.depth,
-            columns,
-            spans: spans
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|&[floor, clear]| og_ai::nav::Span { floor, clear })
-                .collect(),
-        };
-        // G2-4's polygon areas, one byte per row of `polys` (absent before:
-        // every polygon is ground).
-        let poly_areas = blob.raw_opt("poly_areas").unwrap_or_default();
-        if !poly_areas.is_empty() && poly_areas.len() != polys.len() {
-            return Err(invalid(
-                &blob,
-                "poly_areas does not hold one area per polygon",
-            ));
-        }
-        let mut out = Vec::with_capacity(tiles.len());
-        for t in &tiles {
-            let vs = verts
-                .get(t.vert_first as usize..(t.vert_first + t.vert_count) as usize)
-                .ok_or_else(|| invalid(&blob, "a tile's vertices are out of range"))?;
-            let ps = polys
-                .get(t.poly_first as usize..(t.poly_first + t.poly_count) as usize)
-                .ok_or_else(|| invalid(&blob, "a tile's polygons are out of range"))?;
-            let mut tile = og_ai::nav::Tile {
-                verts: vs.iter().map(|v| glam::Vec3::new(v.x, v.y, v.z)).collect(),
-                lattice: vs.iter().map(|v| (v.lx, v.lz)).collect(),
-                polys: Vec::with_capacity(ps.len()),
-            };
-            for (k, p) in ps.iter().enumerate() {
-                let area = poly_areas
-                    .get(t.poly_first as usize + k)
-                    .copied()
-                    .unwrap_or(0);
-                let idx = indices
-                    .get(p.index_first as usize..(p.index_first + p.index_count) as usize)
-                    .ok_or_else(|| invalid(&blob, "a polygon's vertices are out of range"))?;
-                if idx.len() < 3 || idx.iter().any(|&i| i as usize >= tile.verts.len()) {
-                    return Err(invalid(&blob, "a polygon names a vertex its tile lacks"));
-                }
-                tile.polys.push(og_ai::nav::Poly {
-                    verts: idx.iter().map(|&i| i as u16).collect(),
-                    links: vec![og_ai::nav::mesh::NONE; idx.len()],
-                    region: p.region,
-                    area,
-                });
-            }
-            out.push(tile);
-        }
-        Ok((field, out))
-    }
-
-    /// A navmesh blob's baked areas (G2-4: the `areas` section, each a
-    /// byte area id then its shape; empty in a blob without areas), which
-    /// the mesh re-marks when an obstacle rebuilds a tile
-    /// (`og_ai::nav::NavMesh::from_tiles_with_areas`).
-    #[cfg(feature = "nav")]
-    pub fn navmesh_areas(
-        &self,
-        id: &str,
-        bytes: &[u8],
-    ) -> Result<Vec<(og_ai::nav::Shape, u8)>, LoadError> {
-        let blob = self.blob::<format::NavMesh>(id, bytes)?;
-        let mut b = blob.raw_opt("areas").unwrap_or_default();
-        let mut out = Vec::new();
-        while let Some((&area, rest)) = b.split_first() {
-            b = rest;
-            let shape = og_ai::nav::Shape::read(&mut b)
-                .ok_or_else(|| invalid(&blob, "an area's shape is cut short"))?;
-            out.push((shape, area));
-        }
-        Ok(out)
-    }
-
     /// A navmesh blob's agent profiles (G2-4: the `profiles` section, the
     /// names one per line, the blob's own tables' first): empty for a
     /// navmesh of one unnamed agent.
@@ -1720,7 +1523,8 @@ impl Bundle {
 
     /// The navmesh blob of agent profile `profile` inside `bytes` (the
     /// blob itself for its first profile, or `""`), which
-    /// [`Self::navmesh`], [`Self::navmesh_areas`] and [`Self::navmesh_links`]
+    /// og-ai's `nav::cooked::BundleNav` loaders (`navmesh`, `navmesh_areas`,
+    /// `navmesh_links`)
     /// read like any other; `None` for a profile it does not have.
     pub fn navmesh_profile<'b>(
         &self,
@@ -1737,30 +1541,6 @@ impl Bundle {
         }
         let blob = self.blob::<format::NavMesh>(id, bytes)?;
         Ok(Some(blob.raw(&format!("profile.{profile}"))?))
-    }
-
-    /// A navmesh blob's baked off-mesh links (G2-4: the `links` section,
-    /// each a `u32` id then the link; empty in a blob without links).
-    #[cfg(feature = "nav")]
-    pub fn navmesh_links(
-        &self,
-        id: &str,
-        bytes: &[u8],
-    ) -> Result<Vec<(u32, og_ai::nav::Link)>, LoadError> {
-        let blob = self.blob::<format::NavMesh>(id, bytes)?;
-        let mut b = blob.raw_opt("links").unwrap_or_default();
-        let mut out = Vec::new();
-        while b.len() >= 4 {
-            let link = u32::from_le_bytes(b[..4].try_into().unwrap());
-            b = &b[4..];
-            let l = og_ai::nav::Link::read(&mut b)
-                .ok_or_else(|| invalid(&blob, "a link is cut short"))?;
-            out.push((link, l));
-        }
-        if !b.is_empty() {
-            return Err(invalid(&blob, "the links section ends inside a link"));
-        }
-        Ok(out)
     }
 }
 

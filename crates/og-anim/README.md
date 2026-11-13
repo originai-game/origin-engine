@@ -10,7 +10,7 @@ root motion back each tick.
 
 ```rust
 let anim = og_anim::install(&mut world)?;                       // after the systems that set players and parameters
-let cooked = bundle.load_animation("models/walker.glb")?;        // og-bundle runtime: skeleton, clips, skin and morph streams
+let cooked = bundle.load_animation("models/walker.glb")?;        // cooked::BundleAnim on og-bundle's Bundle: skeleton, clips, skin and morph streams
 anim.add_skeleton(1, cooked.skeleton.clone())?;
 for (i, c) in cooked.clips.iter().enumerate() { anim.add_clip(10 + i as u64, c.clone())?; }
 let graph = GraphAsset::parse(&text, &|name| cooked.clips.iter().position(|c| c.name == name).map(|i| 10 + i as u64))?;
@@ -641,8 +641,8 @@ symmetric rest pose; mirroring twice gives the clip back (within f32).
 
 A channel holds its frames as `Samples` (`src/samples.rs`): `F32`
 (`frames × lanes`), `Constant` (one sample) or `Quantized` (the cooked
-keys of og-cook's `animation { compress true tolerance }`, its
-`src/anim_codec.rs`: smallest-three rotations, unorm16 lanes over a
+keys of og-cook's `animation { compress true tolerance }`,
+`src/cooked/anim_codec.rs`: smallest-three rotations, unorm16 lanes over a
 per-lane range, the kept frames' indices). The loader hands the blob's
 storage over as it is, so a registered `ClipAsset` costs what its cooked
 form costs (`ClipAsset::sample_bytes`). Sampling reads a frame from the
@@ -659,6 +659,36 @@ keys and from the written-out frames to the same world hash, tick for
 tick. `Channel::decoded` writes the frames out (the cook re-encodes a
 retargeted or mirrored clip from them); `mirror` and `retarget` emit f32
 channels.
+
+## Cooked samples
+
+`src/cooked/anim_codec.rs` holds a channel one of three ways (`ChannelRow::codec`):
+
+| Codec | When | Stored |
+|---|---|---|
+| f32 | the default | `frames × lanes` f32, as resampled |
+| constant | every frame the same bits (always), or within `tolerance` of the first (compressed) | one sample |
+| quantised | `animation { compress true }` | rotations as 48-bit smallest-three (the largest component's index in 2 bits, the others in 15 bits over ±1/√2); translations, scales and morph weights as unorm16 per lane over the channel's own `min`/`extent` (in `samples`); then keyframe reduction: the first and last frame kept, and every frame dropped that the interpolation between its kept neighbours (lerp, normalised lerp on the shorter arc, a hold for STEP) rebuilds within `tolerance` of the resampled value; the kept frames' indices as u16 when any was dropped |
+
+A visibility channel (0 or 1, STEP) is never approximated: its tolerance
+is 0 whatever the setting, so a compressed one keeps exactly the frames
+where the flag changes and the ends, and its unorm over [0, 1] rebuilds 0
+and 1 bit for bit (`anim_codec`'s unit test, og-cook's `tests/vox.rs`).
+
+The loader keeps each channel as stored (`anim_codec::samples`, into
+`Samples`: f32, one constant sample, or the quantised keys with their
+kept frames' indices and ranges), so a resident clip costs what its
+cooked form costs (`ClipAsset::sample_bytes`, the blob's `samples` and
+`packed` sections). og-anim samples the keys where they lie: a dropped
+frame is rebuilt when it is read with the same interpolation the
+reduction measured, scalar and in a fixed order, so every host gets the
+same floats and a pose is bit for bit the one the frames written out as
+f32 give (og-cook's `tests/anim_compress.rs`: the world hash of every clip played
+forwards, slowed and backwards is the same tick for tick). A channel whose 16-bit quantisation alone would
+miss the tolerance stays f32. The tolerance is per lane in the channel's units
+(metres, unit-quaternion components, scale, weight); its default, 1e-4, is
+0.1 mm and 0.011°. Retargeting reads the clips uncompressed, then the
+model's `#anim` compresses the result.
 
 ## Flipbooks (sprite animation)
 

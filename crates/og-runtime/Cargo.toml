@@ -84,9 +84,9 @@ destruction = ["og-physics/destruction"]
 # og.motion: goals for humanoids and the motion model that draws them
 # (og-anim's `motion`; src/motion.rs, src/motion/).
 motion = ["og-anim/motion"]
-# og.nav: grids, flow fields, navmeshes and their agents (og-ai's nav, and
-# og-bundle's navmesh loaders; src/nav.rs).
-nav = ["dep:og-ai", "og-bundle/nav"]
+# og.nav: grids, flow fields, navmeshes and their agents (og-ai's nav,
+# with its cooked navmesh loaders; src/nav.rs).
+nav = ["dep:og-ai"]
 # og.ai: behaviour trees and state machines (og-ai's behaviours and
 # perception; src/ai.rs). Its agents
 # move through og.nav, so it needs `nav`.

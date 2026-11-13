@@ -12,6 +12,7 @@
 //! way; an opt-out is ignored or not reported; a project without a
 //! contract cooks differently; the source image is written.
 
+use og_anim::cooked::BundleAnim;
 use og_cook::cook::ConformAction;
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};

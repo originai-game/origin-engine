@@ -5,6 +5,7 @@ use crate::host::wire::{
     FillDesc, FlipMode, FlipbookClipInfo, FlipbookInfo, ResizeDesc, SetTileDesc, TileCell,
     TileLayerInfo, TileObject, TileOrientation, TilemapDesc, TilemapInfo, ToJson,
 };
+use og_anim::cooked::BundleAnim;
 
 // ── loading ────────────────────────────────────────────────────────────────
 

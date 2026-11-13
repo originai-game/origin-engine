@@ -9,6 +9,7 @@
 //! rounded to the wrong frame; editing the recipe file leaves a stale sheet.
 
 use og_anim::FlipMode;
+use og_anim::cooked::BundleAnim;
 use og_cook::cook::vfx2d;
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};

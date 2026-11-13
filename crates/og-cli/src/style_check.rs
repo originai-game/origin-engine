@@ -67,6 +67,7 @@
 //! build, and `og doctor --project` has one line of it.
 
 use crate::compare::{delta_e00, lab};
+use og_anim::cooked::BundleAnim;
 use og_cook::cook::conform::{ModelRole, TextureRole};
 use og_cook::format::{codec, kind};
 use og_cook::look::LookFile;

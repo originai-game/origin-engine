@@ -177,7 +177,7 @@ pub mod interpolation {
 
 row!(
     /// One channel of a clip's `frames` samples, held as its `codec` says
-    /// (`crate::anim_codec`): `frames × lanes` floats of `samples` from
+    /// (og-anim's `cooked::anim_codec`): `frames × lanes` floats of `samples` from
     /// `sample_offset` (f32), one sample there (constant), or `keys`
     /// quantised keys in `packed` from `packed_offset` with their per-lane
     /// range in `samples` (quantised; the loader rebuilds every frame).
@@ -188,7 +188,7 @@ row!(
         interpolation: u32,
         lanes: u32,
         sample_offset: u32,
-        /// `crate::anim_codec::codec`: 0 f32, 1 constant, 2 quantised.
+        /// og-anim's `cooked::anim_codec::codec`: 0 f32, 1 constant, 2 quantised.
         codec: u32,
         /// Kept keys: `frames` for f32, 1 for constant.
         keys: u32,

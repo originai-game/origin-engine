@@ -13,6 +13,7 @@
 //! or a Bézier `curve` is dropped or played as a line; a child armature
 //! plays the wrong clip or at its parent's frame rate.
 
+use og_anim::cooked::BundleAnim;
 use og_anim::{AttachmentKind, Ease};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};

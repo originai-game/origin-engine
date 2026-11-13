@@ -27,6 +27,7 @@ use crate::host::wire::{
     RetargetDesc, ToJson,
 };
 use crate::parse;
+use og_anim::cooked::BundleAnim;
 use og_anim::{AnimationSystem, ClipAsset, GraphAsset, HumanoidMap, RigAsset, SkeletonAsset};
 use og_core::IdMap;
 use serde_json::{Value, json};

@@ -13,6 +13,7 @@
 //!   showed it on the left.
 
 use glam::{Mat4, Vec3};
+use og_anim::cooked::BundleAnim;
 use og_cook::runtime::Bundle;
 use og_render::{
     Background, Camera, DirectionalLight, Exposure, JointPalette, RenderScene, SkinData,

@@ -45,6 +45,8 @@
 use super::Report;
 use crate::format::{self, codec, kind};
 use crate::runtime::Bundle;
+use og_ai::nav::cooked::BundleNav;
+use og_anim::cooked::BundleAnim;
 use og_core::ogt::Block;
 use og_ui::prelude::*;
 use serde_json::{Value, json};

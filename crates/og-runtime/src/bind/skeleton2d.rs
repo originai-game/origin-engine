@@ -15,6 +15,7 @@ use crate::host::wire::{Rig2DClipInfo, Rig2DInfo, Skeleton2DBox, ToJson};
 use crate::present::extract::{Hierarchy, RenderState};
 use crate::present::feel::{feel_of, set_filter};
 use glam::{Mat4, Vec2, Vec3, Vec4};
+use og_anim::cooked::BundleAnim;
 use og_anim::{IkTarget2D, Rig2dAsset, Skeleton2D, Transform};
 use og_core::IdMap;
 use og_ecs::{Entity, QueryDesc, World};

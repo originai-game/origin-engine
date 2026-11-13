@@ -1,21 +1,15 @@
 //! Animation blobs, skin streams and morph targets.
 
-use super::*;
-
-/// The animation blob id of a model id (`models/x.glb` → `models/x.glb#anim`).
-pub fn anim_id(id: &str) -> String {
-    let id = asset_id(id);
-    if id.ends_with("#anim") {
-        id.to_string()
-    } else {
-        format!("{id}#anim")
-    }
-}
+use glam::{Mat4, Quat, Vec3};
+use og_blob::{Blob, Expect};
+use og_bundle::format::{self, *};
+use og_bundle::meshopt_codec;
+use og_bundle::runtime::{LoadError, asset_id, invalid, one, table};
 
 /// The joints and weights of one skinned model primitive, per cooked vertex.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SkinStream {
-    /// The primitive's index in the model blob ([`CookedModel::primitives`]).
+    /// The primitive's index in the model blob (og-bundle's `CookedModel::primitives`).
     pub primitive: usize,
     pub mesh: usize,
     /// Indices into the skin's joints.
@@ -42,15 +36,15 @@ pub struct MorphTargets {
 #[derive(Clone, Debug, PartialEq)]
 pub struct CookedAnimation {
     pub id: String,
-    pub skeleton: og_anim::SkeletonAsset,
-    pub clips: Vec<og_anim::ClipAsset>,
+    pub skeleton: crate::SkeletonAsset,
+    pub clips: Vec<crate::ClipAsset>,
     pub skin_streams: Vec<SkinStream>,
     pub morphs: Vec<MorphTargets>,
 }
 
 impl CookedAnimation {
     /// The clip called `name`.
-    pub fn clip(&self, name: &str) -> Option<&og_anim::ClipAsset> {
+    pub fn clip(&self, name: &str) -> Option<&crate::ClipAsset> {
         self.clips.iter().find(|c| c.name == name)
     }
 
@@ -67,7 +61,7 @@ impl CookedAnimation {
         CookedAnimation::decode(asset_id(id), &blob)
     }
 
-    pub(super) fn decode(id: &str, blob: &Blob) -> Result<CookedAnimation, LoadError> {
+    pub(crate) fn decode(id: &str, blob: &Blob) -> Result<CookedAnimation, LoadError> {
         let bad = |r: String| invalid(blob, r);
         let meta = one::<AnimMeta>(blob)?;
         let nodes = table::<NodeRow>(blob, "nodes")?;
@@ -98,15 +92,15 @@ impl CookedAnimation {
         {
             return Err(bad("counts disagree with the meta row".into()));
         }
-        let mut skeleton = og_anim::SkeletonAsset {
+        let mut skeleton = crate::SkeletonAsset {
             hidden,
             ..Default::default()
         };
         for n in &nodes {
-            skeleton.nodes.push(og_anim::SkeletonNode {
+            skeleton.nodes.push(crate::SkeletonNode {
                 name: s(n.name_offset, n.name_len)?,
                 parent: n.parent,
-                rest: og_anim::Trs::new(
+                rest: crate::Trs::new(
                     Vec3::new(n.tx, n.ty, n.tz),
                     Quat::from_xyzw(n.rx, n.ry, n.rz, n.rw),
                     Vec3::new(n.sx, n.sy, n.sz),
@@ -123,7 +117,7 @@ impl CookedAnimation {
             let inverse_bind = r
                 .map(|j| Mat4::from_cols_slice(&ibms[j * 16..j * 16 + 16]))
                 .collect();
-            skeleton.skins.push(og_anim::Skin {
+            skeleton.skins.push(crate::Skin {
                 name: s(k.name_offset, k.name_len)?,
                 joints: js,
                 inverse_bind,
@@ -139,16 +133,16 @@ impl CookedAnimation {
                 .ok_or_else(|| bad("clip channels out of range".into()))?;
             let mut chs = Vec::with_capacity(rows.len());
             for ch in rows {
-                let path = og_anim::ChannelPath::from_code(ch.path)
+                let path = crate::ChannelPath::from_code(ch.path)
                     .ok_or_else(|| bad(format!("channel path {}", ch.path)))?;
-                let data = crate::anim_codec::samples(ch, c.frames, &samples, &packed)
+                let data = super::anim_codec::samples(ch, c.frames, &samples, &packed)
                     .map_err(|e| bad(format!("clip channel: {e}")))?;
                 let node_name = skeleton
                     .nodes
                     .get(ch.node as usize)
                     .map(|n| n.name.clone())
                     .ok_or_else(|| bad("channel node out of range".into()))?;
-                chs.push(og_anim::Channel {
+                chs.push(crate::Channel {
                     node: ch.node,
                     node_name,
                     path,
@@ -162,13 +156,13 @@ impl CookedAnimation {
                 .ok_or_else(|| bad("clip events out of range".into()))?
                 .iter()
                 .map(|e| {
-                    Ok(og_anim::ClipEvent {
+                    Ok(crate::ClipEvent {
                         name: s(e.name_offset, e.name_len)?,
                         time: e.time,
                     })
                 })
                 .collect::<Result<Vec<_>, LoadError>>()?;
-            let clip = og_anim::ClipAsset {
+            let clip = crate::ClipAsset {
                 name: s(c.name_offset, c.name_len)?,
                 duration: c.duration,
                 rate: c.rate,

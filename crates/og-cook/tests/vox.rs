@@ -3,6 +3,7 @@
 //! `.vox` it names, so the conversion waits for it), an edit of them
 //! re-cooks the model, and a bad one is refused by line.
 
+use og_anim::cooked::BundleAnim;
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};
 use std::path::{Path, PathBuf};
@@ -201,7 +202,7 @@ fn an_animated_vox_cooks_its_frames_into_clips() {
     let packed = bundle.load_animation("models/packed.vox").unwrap();
     let plain_frames = bundle.load_animation("models/plain.vox").unwrap();
     // Compressed (resident as quantised keys), still exact.
-    let frames_of = |a: &og_cook::runtime::CookedAnimation| -> Vec<_> {
+    let frames_of = |a: &og_anim::cooked::CookedAnimation| -> Vec<_> {
         a.clips
             .iter()
             .flat_map(|c| {

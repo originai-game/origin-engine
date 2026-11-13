@@ -9,12 +9,14 @@
 //! | [`flow`] | [`FlowField`]: Dijkstra from target cells, a direction per cell, bilinear sampling |
 //! | [`mesh`] | [`Heightfield`] (walkable floors per column), [`NavMesh`] (tiles of convex polygons from monotone regions and their contours), path queries with the funnel and [`Filter`]s, `move_along`, obstacles of any [`Shape`] and areas that rebuild only their tiles, off-mesh [`Link`]s |
 //! | [`shape`] | [`Shape`]: boxes, turned boxes, cylinders and convex prisms, their cell test and byte form |
+//! | [`cooked`] | [`cooked::BundleNav`]: a cooked `og.NavMesh` blob decoded into the heightfield, tiles, areas and links |
 //! | `bake` (feature `bake`) | the voxeliser og-cook runs: triangles to a heightfield, with ledge, headroom and radius filters |
 //! | [`crate::steer`] | seek, flee, arrive, pursue, evade, wander, separation, avoidance, accelerate |
 //! | [`system`] | the `og.NavAgent` and `og.Steering` records, [`Navs`] (an engine's grids, meshes and fields), [`install`] and the `og.nav` system and state block |
 
 #[cfg(feature = "bake")]
 pub mod bake;
+pub mod cooked;
 pub mod flow;
 pub mod grid;
 pub mod mesh;

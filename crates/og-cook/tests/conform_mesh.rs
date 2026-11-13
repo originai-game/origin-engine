@@ -9,6 +9,7 @@
 //! welded corner; voxels off the grid by half a cell; a stepped clip
 //! interpolating between its poses; `conform off` ignored.
 
+use og_anim::cooked::BundleAnim;
 use og_cook::cook::{ConformAction, ConformEntry};
 use og_cook::runtime::Bundle;
 use og_cook::{CookOptions, cook_project};

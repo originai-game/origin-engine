@@ -4,7 +4,6 @@
 //!
 //! | module | what it owns |
 //! |---|---|
-//! | [`anim_codec`] | how animation channels hold their samples: f32, constant, quantised keys with keyframe reduction |
 //! | [`format`] | the asset blobs: reflected root and row structs, type hashes, section names |
 //! | [`runtime`] | [`runtime::Bundle`] (the manifest as an index), loaders into og-render types and [`runtime::SceneDesc`] |
 //! | [`ktx2`] | KTX2 parsing, lossless RGBA8 textures; `.basis` ↔ KTX2 with `basis`/`transcode` |
@@ -21,7 +20,6 @@
 //! `transcode` adds native Basis Universal transcoding to RGBA8; `basis`
 //! the `.basis` → KTX2 wrapping og-cook's encoder uses.
 
-pub mod anim_codec;
 pub mod effect;
 pub mod format;
 pub mod fx;

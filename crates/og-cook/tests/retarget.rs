@@ -17,6 +17,7 @@
 //!
 //! Evidence: `$OG_EVIDENCE_DIR/retarget-contacts.json`.
 
+use og_anim::cooked::BundleAnim;
 use og_anim::{ClipAsset, HumanoidMap, Pose, SkeletonAsset, bind, sample};
 use og_cook::cook::{CookOptions, cook_project};
 use og_cook::runtime::Bundle;

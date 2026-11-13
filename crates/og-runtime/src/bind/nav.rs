@@ -9,6 +9,7 @@ use crate::host::wire::{
     NavLinkKind, NavMeshDesc, NavMeshInfo, NavPath, NavRebuild, NavShape, NavShapeKind, PathDesc,
     TilemapGridDesc,
 };
+use og_ai::nav::cooked::BundleNav;
 use og_ai::nav::{
     Algorithm, Filter, FlowField, Grid, Heightfield, Nav, NavMesh, NavParams, Obstacle, Plane,
     Scratch, Shape,

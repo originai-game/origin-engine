@@ -1,6 +1,6 @@
 //! How a clip channel holds its frames in memory ([`Samples`]): f32 as
 //! resampled, one sample for a constant channel, or the quantised keys the
-//! cook stored (og-cook's `anim_codec`, an `animation { compress true }`
+//! cook stored (`cooked::anim_codec`, an `animation { compress true }`
 //! import setting), sampled where they lie, so a resident clip costs what
 //! its cooked form costs.
 //!

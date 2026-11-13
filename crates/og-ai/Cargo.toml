@@ -13,6 +13,9 @@ description = "Origin Engine navigation and AI: grid A* and jump point search, f
 [dependencies]
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
+# A cooked navmesh decodes into the nav types (`nav::cooked`); the blob
+# schema is og-bundle's.
+og-bundle = { path = "../og-bundle" }
 
 [features]
 default = []

@@ -11,6 +11,10 @@ autotests = false
 og-core = { path = "../og-core" }
 og-ecs = { path = "../og-ecs" }
 og-lanes = { path = "../og-lanes" }
+# The cooked animation, flipbook and rig blobs decode into this crate's
+# assets (`cooked`); the blob schemas are og-bundle's.
+og-blob = { path = "../og-blob" }
+og-bundle = { path = "../og-bundle" }
 glam = { workspace = true }
 # og.motion (feature `motion`): the weights are a bundle (one safetensors
 # file, the og-motion-train repository's export), parsed here; the model

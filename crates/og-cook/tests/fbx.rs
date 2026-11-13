@@ -10,8 +10,9 @@
 //! the textures and `.mtl` beside a model are cooked a second time as
 //! assets of their own, or not hashed, so an edited `.mtl` never re-cooks.
 
+use og_anim::cooked::{BundleAnim, CookedAnimation};
 use og_anim::{Pose, bind, sample};
-use og_cook::runtime::{Bundle, CookedAnimation, CookedModel};
+use og_cook::runtime::{Bundle, CookedModel};
 use og_cook::{CookOptions, cook_project};
 use std::path::{Path, PathBuf};
 

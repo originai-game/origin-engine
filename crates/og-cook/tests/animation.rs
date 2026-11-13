@@ -15,8 +15,9 @@
 //! Evidence: `$OG_EVIDENCE_DIR/anim-cook-resample.json` (default
 //! `<target tmp>/evidence/`): per clip, rates, frames and the largest error.
 
+use og_anim::cooked::{BundleAnim, CookedAnimation};
 use og_cook::cook::{CookOptions, cook_project};
-use og_cook::runtime::{Bundle, CookedAnimation};
+use og_cook::runtime::Bundle;
 use std::path::PathBuf;
 
 use crate::support;
