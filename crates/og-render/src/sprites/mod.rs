@@ -3,7 +3,6 @@
 //! layer is a single instanced draw.
 
 pub(crate) mod light2d;
-pub(crate) mod overlay;
 pub(crate) mod sprite_array;
 pub(crate) mod sprite_hooks;
 pub(crate) mod sprite_mesh;
@@ -549,7 +548,7 @@ fn bent_shadow(
 #[cfg(test)]
 mod tests;
 
-/// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
+/// The batch's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("sprite", crate::sprite_source());
     // A sprite drawn with a material shader: every hook, parameters and
@@ -573,7 +572,6 @@ pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("sprite mesh", crate::sprite_mesh::source());
     add("sprite skin", crate::sprite_skin::source());
     add("tiles", crate::tiles_gpu::source());
-    add("overlay", crate::overlay::overlay_source());
     add(
         "overlay array",
         crate::sprite_array::OVERLAY_ARRAY_WGSL.to_string(),

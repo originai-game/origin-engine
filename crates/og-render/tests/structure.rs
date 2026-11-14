@@ -1,6 +1,7 @@
 //! The direction of the crate's dependencies (`README.md`, Layout): a
 //! mechanism (`gpu/`, `shader/`, `frame/`, `visibility/`, `mesh/`,
-//! `shading/`, `media/`, `fields/`, `post/`, `particles/`, `debug/`) names no world
+//! `shading/`, `media/`, `fields/`, `post/`, `particles/`, `sprites/`,
+//! `debug/`) names no world
 //! system and not the renderer that composes them, and a world system
 //! (`systems/<name>/`) names no other system and not the renderer. What
 //! two systems share is a mechanism.
@@ -28,30 +29,23 @@ const MECHANISMS: &[&str] = &[
     "fields",
     "post",
     "particles",
+    "sprites",
     "debug",
 ];
 
 /// `(file under src/, the directory it names)`.
 const KNOWN: &[(&str, &str)] = &[
-    ("debug/id_pass.rs", "systems/sprites"),
     ("debug/id_pass.rs", "systems/terrain"),
     ("debug/id_pass.rs", "systems/vegetation"),
     ("frame/mod.rs", "systems/environment"),
-    ("frame/views/write.rs", "systems/sprites"),
-    ("particles/particles_gpu.rs", "systems/sprites"),
-    ("particles/particles_gpu/prepare.rs", "systems/sprites"),
     ("shader/pipeline_features.rs", "systems/terrain"),
     ("shader/pipeline_features.rs", "systems/vegetation"),
     ("shader/pipeline_features.rs", "systems/water"),
     ("shading/ibl.rs", "systems/environment"),
     ("shading/probes.rs", "systems/fluids"),
-    ("systems/sprites/overlay.rs", "systems/ui"),
+    ("sprites/sprite_array.rs", "systems/ui"),
     ("systems/terrain/mod.rs", "systems/vegetation"),
     ("systems/terrain/renderer/prepare.rs", "systems/vegetation"),
-    ("systems/ui/mass.rs", "systems/sprites"),
-    ("systems/ui/pass.rs", "systems/sprites"),
-    ("systems/ui/pass/draw.rs", "systems/sprites"),
-    ("systems/ui/pass/upload.rs", "systems/sprites"),
     ("systems/vegetation/grass.rs", "systems/terrain"),
     ("systems/vegetation/grass/draw.rs", "systems/terrain"),
     ("systems/vegetation/grass/prepare.rs", "systems/terrain"),

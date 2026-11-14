@@ -23,12 +23,13 @@ the world → scene extraction belongs to the layer above.
 | `fields/` | What a camera-centred, tick-stepped map shares: its window snapped to world cells, the ticks a frame steps |
 | `post/` | Full-screen stages, the HDR targets, tonemapping |
 | `particles/` | Particles, ribbons, effect materials |
+| `sprites/` | The 2D batch: sprites, MSDF text, tiles, 2D lights, as the world, particles and the UI's overlay draw them |
 | `debug/` | Debug views, capture, the id pass |
-| `systems/<name>/` | A world system: environment, water, terrain, vegetation, crowd, destruction, fluids, softbody, sprites, stylise, ui |
+| `systems/<name>/` | A world system: environment, water, terrain, vegetation, crowd, destruction, fluids, softbody, stylise, ui (its shapes and the overlay pass) |
 | `scene/` | `RenderScene`, the crate's whole input |
 | `renderer/` | The composition root: it owns the resources and runs the frame |
 
-The first eleven are mechanisms. A mechanism names no world system and not
+The first twelve are mechanisms. A mechanism names no world system and not
 the renderer; a world system names no other system and not the renderer,
 and what two systems need is a mechanism. `tests/structure.rs` holds the
 direction, with the list of what does not follow it yet; that list only

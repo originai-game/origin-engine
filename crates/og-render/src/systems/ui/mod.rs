@@ -34,6 +34,7 @@
 pub(crate) mod build;
 pub mod filter;
 pub mod mass;
+pub(crate) mod overlay;
 pub(crate) mod pass;
 
 pub use og_draw::ui::*;
@@ -58,6 +59,7 @@ impl crate::RenderScene {
 
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
+    add("overlay", crate::overlay::overlay_source());
     // The UI pass (src/ui): its shapes, the built-in materials' composite
     // and a custom material's.
     add("ui", crate::ui::pass::ui_source());
