@@ -46,16 +46,16 @@ Streams report to the coordinator thread
 Each must be met before 0.8.0. The performance pass re-measures each
 baseline on the L4 and restates its target there at the same ratio.
 
-| Item | Target |
-|---|---|
-| FSR 3.1 | at most TAAU + 0.5 ms on thin geometry at every scale, within 0.05 dB of the reference, grass not regressed |
-| GI probes | screen GI at 0.72–0.80 of the path-traced reference, cheaper than now |
-| First frame | terrain-near setup and first frame at most 2.0 s, no pipeline compiled alone above 0.5 s, on a cold driver cache |
-| Crowds at 50k | at most 12 ms a frame median (perf_crowd_50k), reference frames unmoved |
-| UI per-frame cost | follows the change, not the tree |
-| Watercolour look | a watercolour primitive (Bousseau, MNPR) in place of today's oil-like result, with the art review |
-| Distant impostors | their own shadow, the view from below and sway, with the art review |
-| Latest features on wasm, determinism and browser tiers | measured before the release |
+| Item | Target | L4, 2026-11-14 (b089eb332, release, Vulkan) |
+|---|---|---|
+| FSR 3.1 | at most TAAU + 0.5 ms on thin geometry at every scale, within 0.05 dB of the reference, grass not regressed | miss: the resolve is TAAU + 0.37, + 0.46 and + 0.54 ms at scales 0.5, 0.67 and 0.77 (1080p, `fsr::cost`); against the reference (`fsr::compare`) FSR is 0.84–1.71 dB under TAAU on thin static geometry, 3.6–3.8 dB over it while panning, and 0.18–0.29 dB under it on grass |
+| GI probes | screen GI at 0.72–0.80 of the path-traced reference, cheaper than now | miss: screen GI gathers 0.63–0.66 of a path-traced reference's indirect light in gi-room (0.58–0.60 with an 8 m reach); at 1080p under TAA a frame is 0.45 ms without GI, 2.01 ms with the probes (main pass 1.24, probes 0.62), 5.25 ms with screen GI (its pass 4.27) and 5.36 ms with both |
+| First frame | terrain-near setup and first frame at most 2.0 s, no pipeline compiled alone above 0.5 s, on a cold driver cache | miss: terrain-near 2.57 s (median of 5, NVIDIA's shader cache emptied before each), gltf-reference 1.77 s, materials 1.79 s; compiled alone (one compile worker), a lit variant takes up to 1.57 s, an OIT variant 1.52 s, the terrain's 0.50 s |
+| Crowds at 50k | at most 12 ms a frame median (perf_crowd_50k), reference frames unmoved | met: 9.22 ms a frame; the GPU's passes are 5.48 ms (main 2.4, prepass 1.9, cascades 0.8, cull 0.3), so the frame waits on the CPU |
+| UI per-frame cost | follows the change, not the tree | miss: the retained tree follows the change (1,022 elements idle 0.23 ms, one label 0.65 ms) but scrolling 1,000 rows costs 59 ms a tick; mounted screens cost their tree when idle (0.5–8.6 ms, leaderboard 8.6 ms for 44 elements) and a dense menu of 356 elements 70 ms, mostly allocation in style resolution (`perf_every_library_and_kit_screen`, `perf_dense_menu_300_elements_40_animating`) |
+| Watercolour look | a watercolour primitive (Bousseau, MNPR) in place of today's oil-like result, with the art review | — |
+| Distant impostors | their own shadow, the view from below and sway, with the art review | — |
+| Latest features on wasm, determinism and browser tiers | measured before the release | — |
 
 Deferred by the owner: UI text scale at 200 %, accessibility beyond
 AccessKit, the overlay's GPU cost, SSSR and FSR follow-ups, W7 (CPU FFT
