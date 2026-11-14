@@ -131,7 +131,7 @@ fn builtin_mesh(eng: &crate::engine::Engine, shape: &VfxShape) -> Result<MeshHan
     Ok(h)
 }
 
-/// The flash's material (og_render's glow), made once.
+/// The glow element's material (og_render's glow), made once.
 fn flash_material(eng: &crate::engine::Engine) -> EffectMaterialHandle {
     let mut rs = eng.render.borrow_mut();
     if let Some(h) = rs.effects.flash {
@@ -158,7 +158,7 @@ fn link(eng: &crate::engine::Engine, kind: &VfxKind) -> Result<Link, String> {
                 .map(|e| crate::present::effect::load_effect(eng, e))
                 .transpose()?,
         ),
-        VfxKind::Flash { .. } => {
+        VfxKind::Glow { .. } => {
             Link::Mesh(builtin_mesh(eng, &VfxShape::Sphere)?, flash_material(eng))
         }
         VfxKind::Sound { id, .. } => Link::Sound(crate::world::assets::handle(

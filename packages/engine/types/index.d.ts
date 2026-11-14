@@ -32888,7 +32888,7 @@ export interface VfxInfo {
    */
   readonly impact: number;
   /**
-   * Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, flash, flipbook, shake, sound).
+   * Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, glow, flipbook, shake, sound).
    */
   readonly elements: readonly string[];
 }

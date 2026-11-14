@@ -1,5 +1,5 @@
 type vfx
-version 1
+version 2
 ---
 # A heal on a target standing at the origin: a glowing column, two trails
 # spiralling up it, rising motes, a sigil on the ground and a green light;
@@ -52,7 +52,7 @@ decal {
   size 2.2 0.5 2.2
   fade 0.5
 }
-flash {
+glow {
   at 1.2
   life 0.25
   offset 0 1 0

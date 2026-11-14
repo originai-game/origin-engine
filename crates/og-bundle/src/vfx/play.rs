@@ -73,7 +73,7 @@ pub enum VfxDrawKind {
         seed: u64,
     },
     /// An effect mesh: a `mesh` element with its effect material, or a
-    /// `flash` (the glow sphere, additive).
+    /// `glow` (the glow sphere, additive).
     Mesh {
         transform: Mat4,
         /// Its life, 0 to 1.
@@ -285,7 +285,7 @@ impl Vfx {
                     color: tinted(*color, tint),
                     blend: *blend,
                 },
-                VfxKind::Flash { size, color } if alive => VfxDrawKind::Mesh {
+                VfxKind::Glow { size, color } if alive => VfxDrawKind::Mesh {
                     transform: local * Mat4::from_scale(Vec3::splat(size.eval(x, rnd))),
                     life: x,
                     seed: u64::from(seed) ^ i as u64,

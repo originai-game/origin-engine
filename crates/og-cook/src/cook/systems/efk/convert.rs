@@ -249,7 +249,7 @@ pub fn convert(project: &Project, links: &Links<'_>) -> Conversion {
         cx.end
     }
     .max(1.0 / FPS);
-    let mut vfx = String::from("type vfx\nversion 1\n---\n");
+    let mut vfx = format!("type vfx\nversion {}\n---\n", og_bundle::vfx::VFX_VERSION);
     let _ = writeln!(vfx, "# Converted from Effekseer by og vfx import.");
     let _ = writeln!(vfx, "duration {}", n(duration));
     if cx.looping {

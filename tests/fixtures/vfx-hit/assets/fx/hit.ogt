@@ -1,12 +1,12 @@
 type vfx
-version 1
+version 2
 ---
 # A heavy hit on the ground: a flash, sparks, embers and dust, a shock ring,
 # a scorch left behind, a burst of light and a shake; the impact lands on
 # the third tick.
 duration 1.6
 impact 0.05
-flash {
+glow {
   at 0
   life 0.2
   offset 0 0.35 0

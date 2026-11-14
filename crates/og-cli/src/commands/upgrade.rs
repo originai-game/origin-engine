@@ -187,6 +187,18 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
                 }
                 continue;
             }
+            if b["codemod"]["kind"] == "vfx-glow" {
+                for (file, text, touched) in &mut texts {
+                    if file.extension().is_some_and(|e| e == "ogt")
+                        && let Some((upgraded, n)) = vfx_glow(text)
+                    {
+                        *text = upgraded;
+                        *touched = true;
+                        codemods.push(json!({ "version": version, "member": member, "file": rel(file), "from": "flash", "to": "glow", "count": n }));
+                    }
+                }
+                continue;
+            }
             if b["codemod"]["kind"] == "ui-kits" {
                 review.push(json!({
                     "version": version, "member": member,
@@ -303,6 +315,48 @@ fn lit_mesh_without_blend(text: &str) -> Option<(usize, &str)> {
         }
     }
     mesh.filter(|_| lit)
+}
+
+/// A composed effect (`.ogt` of `type vfx`) at version 1 rewritten to
+/// version 2: its `version` line, and each `flash` element (a line of the
+/// body at the top level, not inside an element's block) renamed `glow`.
+/// With the number of elements renamed; `None` for any other file and
+/// for one with no `flash`.
+fn vfx_glow(text: &str) -> Option<(String, usize)> {
+    let (head, _) = text.split_once("\n---")?;
+    let word = |l: &str| l.split('#').next().unwrap_or("").trim().to_string();
+    if !head.lines().any(|l| word(l) == "type vfx") || !head.lines().any(|l| word(l) == "version 1")
+    {
+        return None;
+    }
+    let body_at = head.lines().count() + 1;
+    let (mut out, mut n, mut depth) = (String::with_capacity(text.len()), 0, 0usize);
+    for (i, l) in text.split_inclusive('\n').enumerate() {
+        let w = word(l);
+        if i < body_at {
+            if w == "version 1" {
+                out.push_str(&l.replacen("1", "2", 1));
+                continue;
+            }
+        } else if depth == 0 && (w == "flash" || w.starts_with("flash ") || w.starts_with("flash{"))
+        {
+            let at = l.find("flash").expect("the word");
+            out.push_str(&l[..at]);
+            out.push_str("glow");
+            out.push_str(&l[at + "flash".len()..]);
+            n += 1;
+            depth += w.matches('{').count();
+            depth = depth.saturating_sub(w.matches('}').count());
+            continue;
+        }
+        if i >= body_at {
+            depth += w.matches('{').count();
+            depth = depth.saturating_sub(w.matches('}').count());
+        }
+        out.push_str(l);
+    }
+    // A version 1 file without a flash reads the same at version 1.
+    (n > 0).then_some((out, n))
 }
 
 /// The game's own text: `src/`, `assets/` and `tests/` (TypeScript, JavaScript and

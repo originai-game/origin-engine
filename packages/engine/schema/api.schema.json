@@ -56867,7 +56867,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, flash, flipbook, shake, sound)."
+          "description": "Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, glow, flipbook, shake, sound)."
         }
       },
       "required": [

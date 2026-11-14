@@ -1,0 +1,12 @@
+{
+  "breaking": [
+    {
+      "member": "type vfx",
+      "change": "A composed effect's `flash` element is `glow` from `type vfx` version 2, so it no longer shares its name with og.tween.flash and PostEffects.flash; VfxInfo.elements reports it as `glow`. Version 1 files still load, their `flash` read as `glow`; a version 2 file that says `flash` is refused with the new name. og vfx import and the cook's Effekseer conversion write version 2.",
+      "fix": "Write `glow { ... }` and `version 2` in a type vfx file (og upgrade rewrites a version 1 file's top-level flash elements).",
+      "codemod": {
+        "kind": "vfx-glow"
+      }
+    }
+  ]
+}

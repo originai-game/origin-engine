@@ -5,7 +5,7 @@
 //!
 //! ```text
 //! type vfx
-//! version 1
+//! version 2
 //! ---
 //! duration 1.2                      # seconds the effect lasts (its elements' ends within)
 //! loop false                        # start over at the end
@@ -59,7 +59,7 @@
 //!   size 2 1 2                      # x, the depth it reaches, z
 //!   fade 1                          # seconds it fades out over at its end
 //! }
-//! flash {                           # a soft bright glow that faces the eye
+//! glow {                            # a soft bright glow that faces the eye
 //!   at 0.25  life 0.15  size curve 0 1 1 3  color 4 3 2 1
 //! }
 //! shake {                           # og.camera.shake trauma
@@ -98,6 +98,10 @@ use og_render_data::{EffectValue, ParticleBlend};
 
 /// The `.ogt` type of a composed effect file.
 pub const VFX_TYPE: &str = "vfx";
+
+/// The `type vfx` version this engine writes; it reads every version from
+/// 1 (whose `flash` element is version 2's `glow`).
+pub const VFX_VERSION: u32 = 2;
 /// The event an `impact` line sends.
 pub const IMPACT: &str = "impact";
 /// Elements in one effect at most.
@@ -224,7 +228,7 @@ pub enum VfxKind {
         fade: f32,
         color: [f32; 4],
     },
-    Flash {
+    Glow {
         size: EffectValue,
         color: [f32; 4],
     },
@@ -255,7 +259,7 @@ impl VfxKind {
             VfxKind::Beam { .. } => "beam",
             VfxKind::Light { .. } => "light",
             VfxKind::Decal { .. } => "decal",
-            VfxKind::Flash { .. } => "flash",
+            VfxKind::Glow { .. } => "glow",
             VfxKind::Shake { .. } => "shake",
             VfxKind::Sound { .. } => "sound",
             VfxKind::Flipbook { .. } => "flipbook",
@@ -300,7 +304,7 @@ impl Vfx {
                 VfxKind::Flipbook { id, .. } => push(&mut r.flipbooks, id),
                 VfxKind::Light { .. }
                 | VfxKind::Decal { .. }
-                | VfxKind::Flash { .. }
+                | VfxKind::Glow { .. }
                 | VfxKind::Shake { .. } => {}
             }
         }
@@ -348,8 +352,11 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
             doc.ty
         ));
     }
-    if doc.version != 1 {
-        return Err(format!("vfx version {} (this engine reads 1)", doc.version));
+    if !(1..=VFX_VERSION).contains(&doc.version) {
+        return Err(format!(
+            "vfx version {} (this engine reads 1 to {VFX_VERSION})",
+            doc.version
+        ));
     }
     let mut vfx = Vfx {
         duration: -1.0,
@@ -394,7 +401,7 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
                     name: name.into(),
                 });
             }
-            _ => vfx.elements.push(element(e)?),
+            _ => vfx.elements.push(element(e, doc.version)?),
         }
     }
     if vfx.duration < 0.0 {
@@ -424,9 +431,9 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
     Ok(vfx)
 }
 
-fn element(e: &Entry) -> Result<VfxElement, String> {
+fn element(e: &Entry, version: u32) -> Result<VfxElement, String> {
     let line = e.line;
-    let kinds = "emitter, mesh, trail, beam, light, decal, flash, shake, sound, flipbook";
+    let kinds = "emitter, mesh, trail, beam, light, decal, glow, shake, sound, flipbook";
     let mut el = VfxElement {
         at: 0.0,
         life: 0.0,
@@ -493,10 +500,21 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                 fade: 0.0,
                 color: [1.0; 4],
             },
-            "flash" => VfxKind::Flash {
+            // Version 1 named the glow `flash`, as og.tween.flash and
+            // PostEffects.flash name other things.
+            "glow" => VfxKind::Glow {
                 size: EffectValue::Constant(1.0),
                 color: [1.0; 4],
             },
+            "flash" if version == 1 => VfxKind::Glow {
+                size: EffectValue::Constant(1.0),
+                color: [1.0; 4],
+            },
+            "flash" => {
+                return Err(format!(
+                    "line {line}: `flash` is `glow` from vfx version 2 (`og upgrade` rewrites it)"
+                ));
+            }
             "shake" => VfxKind::Shake { trauma: 0.2 },
             "sound" => VfxKind::Sound {
                 id: id(e, "sound")?,
@@ -560,7 +578,7 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                 | VfxKind::Trail { color, .. }
                 | VfxKind::Beam { color, .. }
                 | VfxKind::Decal { color, .. }
-                | VfxKind::Flash { color, .. }
+                | VfxKind::Glow { color, .. }
                 | VfxKind::Flipbook { color, .. },
             ) => *color = self::color(k)?,
             ("color", VfxKind::Light { color, .. }) => {
@@ -604,7 +622,7 @@ fn element(e: &Entry) -> Result<VfxElement, String> {
                     _ => return Err(format!("line {kl}: uv <u0> <v0> <u1> <v1>")),
                 }
             }
-            ("size", VfxKind::Flash { size, .. }) => *size = value(k, 0)?,
+            ("size", VfxKind::Glow { size, .. }) => *size = value(k, 0)?,
             ("size", VfxKind::Flipbook { size, .. }) => *size = one(k)?.max(0.0),
             ("trauma", VfxKind::Shake { trauma }) => *trauma = one(k)?.clamp(0.0, 1.0),
             ("volume", VfxKind::Sound { volume, .. }) => *volume = one(k)?.max(0.0),
@@ -712,6 +730,34 @@ mod tests {
         assert_eq!(r.emitters, ["fx/sparks.ogt"]);
         assert_eq!(r.effects, ["fx/shock.ogt"]);
         assert_eq!(r.sounds, ["sfx/boom.wav"]);
+    }
+
+    /// Version 1's `flash` is version 2's `glow`: an old file reads as the
+    /// renamed one does, and a version 2 file that still says `flash` is
+    /// told the new name.
+    #[test]
+    fn a_version_1_flash_reads_as_glow_and_version_2_names_the_rename() {
+        let body =
+            "---\nduration 1\n{} {\n  at 0\n  life 0.2\n  size curve 0 1 1 2\n  color 2 1 0.5\n}\n";
+        let old = parse_vfx(&format!(
+            "type vfx\nversion 1\n{}",
+            body.replace("{}", "flash")
+        ))
+        .unwrap();
+        let new = parse_vfx(&format!(
+            "type vfx\nversion 2\n{}",
+            body.replace("{}", "glow")
+        ))
+        .unwrap();
+        assert_eq!(old, new);
+        assert_eq!(new.elements[0].kind.name(), "glow");
+        let err = parse_vfx(&format!(
+            "type vfx\nversion 2\n{}",
+            body.replace("{}", "flash")
+        ))
+        .unwrap_err();
+        assert!(err.contains("`flash` is `glow`"), "{err}");
+        assert!(parse_vfx("type vfx\nversion 3\n---\nduration 1\n").is_err());
     }
 
     #[test]

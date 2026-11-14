@@ -439,7 +439,7 @@ effect materials and meshes and warns of what it could not carry.
 
 ```text
 type vfx
-version 1
+version 2
 ---
 duration 1.2
 loop false
@@ -490,7 +490,7 @@ A value is a number, `random <min> <max>` (fixed per instance) or
 | `beam` | `to <x> <y> <z>` from the element, `width`, `effect`, `segments`, `jitter`, `color` |
 | `light` | a point light: `color`, `intensity` (a value), `distance` |
 | `decal` | projected down the element's -y: `uv <u0> <v0> <u1> <v1>` (a region of RenderSettings.decalAtlas), `size <x> <y> <z>` with y the depth it reaches, `fade <seconds>` at its end, `color` |
-| `flash` | a soft glow facing the eye: `size` (a value), `color` |
+| `glow` | a soft glow facing the eye: `size` (a value), `color` (version 1 named it `flash`) |
 | `shake` | `trauma` (og.camera.shake) |
 | `flipbook "<id>"` | a camera-facing og.Sprite with og.Flipbook playing the sheet's first clip; `size` its height, the width by the frame's shape; `color`, `blend additive \| alpha`; for `life` or the clip's length |
 | `sound "<id>"` | `volume`, `playbackRate <min> <max>` picked by the seed; a child entity with og.AudioSource, cut when the effect despawns |
