@@ -1,4 +1,5 @@
 use super::*;
+use crate::fields::window;
 
 /// W2: a sea's caustics grid (`shaders/water_caustics.wgsl`, caustics.wgsl
 /// `wave_caustics`): [`CAUSTIC_RES`]² texels of [`CAUSTIC_TEXEL`] metres
@@ -36,17 +37,11 @@ pub(crate) fn caustic_layout_entry() -> wgpu::BindGroupLayoutEntry {
 /// xz, snapped to whole texels of the absolute world (so the grid does not
 /// swim as the camera moves), the texel, the texels along an edge.
 pub(crate) fn caustic_grid(eye: Vec3, origin: Vec3) -> [f32; 4] {
-    let at = |e: f32, o: f32| {
-        let abs = f64::from(e) + f64::from(o);
-        let first = ((abs / CAUSTIC_TEXEL).floor() - f64::from(CAUSTIC_RES / 2)) * CAUSTIC_TEXEL;
-        (first - f64::from(o)) as f32
-    };
-    [
-        at(eye.x, origin.x),
-        at(eye.z, origin.z),
-        CAUSTIC_TEXEL as f32,
-        CAUSTIC_RES as f32,
-    ]
+    let origin = glam::DVec2::new(f64::from(origin.x), f64::from(origin.z));
+    let camera = glam::DVec2::new(f64::from(eye.x), f64::from(eye.z)) + origin;
+    let first = window::first_cell(camera, CAUSTIC_TEXEL, CAUSTIC_RES);
+    let corner = window::corner_from(first, CAUSTIC_TEXEL, origin);
+    [corner.x, corner.y, CAUSTIC_TEXEL as f32, CAUSTIC_RES as f32]
 }
 
 /// W2: the pass that writes a sea's curvature into the caustics grid
