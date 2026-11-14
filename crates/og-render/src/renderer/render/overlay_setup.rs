@@ -33,6 +33,7 @@ impl Renderer {
                     .make_overlay(
                         &self.device,
                         &self.overlay.layout,
+                        crate::overlay::OVERLAY_LAYOUT,
                         self.overlay.output_format,
                         self.overlay.linear_format,
                     );

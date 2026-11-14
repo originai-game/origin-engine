@@ -181,12 +181,14 @@ impl SpriteArrayPipelines {
     }
 
     /// Makes the overlay's pipelines once: `overlay_layout` is the
-    /// overlay's group 0, `output` the output's format and `linear` its
-    /// sRGB view's (the overlay draws through it when there is one).
+    /// overlay's group 0 and `instances` its instance record's layout,
+    /// `output` the output's format and `linear` its sRGB view's (the
+    /// overlay draws through it when there is one).
     pub fn make_overlay(
         &mut self,
         device: &wgpu::Device,
         overlay_layout: &wgpu::BindGroupLayout,
+        instances: wgpu::VertexBufferLayout<'static>,
         output: wgpu::TextureFormat,
         linear: Option<wgpu::TextureFormat>,
     ) {
@@ -202,7 +204,7 @@ impl SpriteArrayPipelines {
             label: Some("overlay array"),
             source: wgpu::ShaderSource::Wgsl(OVERLAY_ARRAY_WGSL.into()),
         });
-        let buffers = [Some(crate::overlay::OVERLAY_LAYOUT)];
+        let buffers = [Some(instances)];
         let pipeline = |format| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("overlay array"),
