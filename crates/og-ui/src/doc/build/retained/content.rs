@@ -62,6 +62,26 @@ impl RetainedHost {
                 },
             );
         }
+        // Its style props (`--name={value}`), and those of the instance it
+        // is the root of: custom properties its root inherits.
+        for (name, expression) in &node.custom {
+            lexical.props.insert(
+                name.clone(),
+                PropRef {
+                    expression: expression.clone().into(),
+                    model: None,
+                    context: user.clone(),
+                },
+            );
+        }
+        if index == doc.root {
+            for (name, prop) in style_props(&context) {
+                lexical
+                    .props
+                    .entry(name.clone())
+                    .or_insert_with(|| prop.clone());
+            }
+        }
         // A prop its user leaves out reads its default (`data-default`).
         for prop in &instance.props {
             if let Some(default) = &prop.default
@@ -203,6 +223,16 @@ impl RetainedHost {
 /// declares with no default (`data-default` on its `<meta name="prop:…">`)
 /// is refused: the prop would be unbound, and the document built nothing.
 /// Content props are passed as snippets and children, not arguments.
+/// The style props of the instance `context` is inside: its props named as
+/// custom properties.
+pub(crate) fn style_props(context: &BindingContext) -> impl Iterator<Item = (&String, &PropRef)> {
+    context
+        .lexical
+        .props
+        .iter()
+        .filter(|(name, _)| name.starts_with("--"))
+}
+
 fn unpassed(doc: &UiDocument, index: usize, instance: &UiDocument) -> Result<(), String> {
     let node = &doc.nodes[index];
     let missing = instance.props.iter().find(|p| {

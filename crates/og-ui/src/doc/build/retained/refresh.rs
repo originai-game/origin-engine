@@ -569,6 +569,21 @@ impl RetainedHost {
                 .clone()
         });
         let e = self.elements.get_mut(identity).unwrap();
+        // An instance's root inherits the instance's style props as if a
+        // box around it set them: its own rules and `style:` win. Null (or
+        // a list) leaves the property as inherited.
+        let mut inherited = inherited;
+        if e.index == e.document.root {
+            for (name, _) in super::content::style_props(&e.context) {
+                let text = match e.cached.expression(&Expr::Path(name.clone())) {
+                    Value::String(s) => s,
+                    Value::Number(x) => x.to_string(),
+                    Value::Bool(x) => x.to_string(),
+                    _ => continue,
+                };
+                Arc::make_mut(&mut inherited).insert(name.clone(), Some(text));
+            }
+        }
         for id in &e.bindings {
             if let Some((_, Input::Property(property, Ty::Paint))) = self.inputs.get(id) {
                 e.cached

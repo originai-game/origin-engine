@@ -8,6 +8,10 @@
 //!   one ignored; an `!important` rule losing to it; a null value set
 //!   instead of leaving var()'s fallback; a keyed insert keeping stale
 //!   values → `bound_custom_properties_feed_the_cascade`
+//! - an instance's style prop (`<Chip --w={…}/>`) not reaching the
+//!   component's root, read once, not inherited below the root, beating
+//!   the root's own rule, set when null, or lost where a component's root
+//!   is another component → `an_instance_hands_its_root_custom_properties`
 //! - calc() left unreduced (or reduced wrongly) where a rule reads a
 //!   variable, or a mixed-unit calc() accepted → `calc_reduces_once_its_variables_are_known`
 //! - env(safe-area-inset-*) blind to the host's covered control, folding it
@@ -16,7 +20,8 @@
 //!   to the HUD band on an ultrawide (or narrowing a 16:9 surface), or not
 //!   following UiDesc.hudMaxAspect → `safe_area_insets_clear_the_hosts_covered_control`
 
-use crate::support::{Doc, with_doc};
+use crate::support::{Doc, test_font_metrics, ui_with_font, with_doc};
+use og_ui::reactive::SourceId;
 use og_ui::*;
 use serde_json::json;
 
@@ -75,6 +80,93 @@ fn bound_custom_properties_feed_the_cascade() {
             assert_eq!(heights(d), [6.0, 10.0, 14.0]);
         },
     );
+}
+
+#[test]
+fn an_instance_hands_its_root_custom_properties() {
+    let mut ui = ui_with_font(test_font_metrics());
+    for (source, text) in [
+        (
+            "ui/chip.svelte",
+            r#"<meta name="component" content="Chip">
+<div id="Chip"><div id="Inner"></div></div>
+<style>
+#Chip { width: var(--w, 10px); height: 4px; }
+#Inner { width: var(--w, 10px); height: 2px; }
+</style>"#,
+        ),
+        (
+            "ui/firm.svelte",
+            r#"<meta name="component" content="Firm">
+<div id="Firm"><div id="Inner"></div></div>
+<style>
+#Firm { --w: 30px; width: var(--w); height: 4px; }
+#Inner { width: var(--w); height: 2px; }
+</style>"#,
+        ),
+        (
+            "ui/wrap.svelte",
+            r#"<meta name="component" content="Wrap"><Chip/>"#,
+        ),
+        (
+            "ui/t.svelte",
+            r#"<meta name="component" content="t">
+<div><div id="Root">
+  <Chip id="Fixed" --w="40px"/>
+  <Chip id="Bound" --w={$w}/>
+  <Firm id="Own" --w="40px"/>
+  <Chip id="Unset" --w={$missing}/>
+  <Chip id="Plain"/>
+  <Wrap id="Through" --w="60px"/>
+</div></div>
+<style>#Root { --w: 20px; }</style>"#,
+        ),
+    ] {
+        ui.define_document(UiDocument::parse(source, text).unwrap_or_else(|e| panic!("{e:?}")));
+    }
+    let mut d = Doc {
+        ui,
+        events: Vec::new(),
+        viewport: Viewport::new(800.0, 900.0),
+        focus: None,
+    };
+    let mut inputs = std::collections::BTreeMap::new();
+    for (name, value) in [("w", json!("50px")), ("missing", json!(null))] {
+        d.store(name, value);
+        inputs.insert(name.to_string(), SourceId::new("test", name));
+    }
+    d.ui.mount_document(
+        SourceId::new("test", "t"),
+        "t",
+        inputs,
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap_or_else(|e| panic!("mounts: {e}"));
+    d.step(InputFrame::default());
+    let widths = |d: &Doc, id: &str| {
+        let root = d.get(id);
+        let inner =
+            d.ui.probe_elements()
+                .into_iter()
+                .find(|e| e.path == format!("{}/Inner", root.path))
+                .unwrap_or_else(|| panic!("no {id}/Inner"));
+        (root.width, inner.width)
+    };
+    // The root inherits it, and so does what is under the root.
+    assert_eq!(widths(&d, "Fixed"), (40.0, 40.0));
+    assert_eq!(widths(&d, "Bound"), (50.0, 50.0));
+    // It is inherited, so the root's own rule wins.
+    assert_eq!(widths(&d, "Own"), (30.0, 30.0));
+    // Null sets nothing: the user's own value is inherited, as without it.
+    assert_eq!(widths(&d, "Unset"), (20.0, 20.0));
+    assert_eq!(widths(&d, "Plain"), (20.0, 20.0));
+    // A component whose root is a component hands it on.
+    assert_eq!(widths(&d, "Through"), (60.0, 60.0));
+    // A change re-reads it.
+    set(&mut d, "w", json!("70px"));
+    assert_eq!(widths(&d, "Bound"), (70.0, 70.0));
+    assert_eq!(widths(&d, "Fixed"), (40.0, 40.0));
 }
 
 /// Sets signal store `name`.

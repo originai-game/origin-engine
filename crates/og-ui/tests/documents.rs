@@ -487,7 +487,8 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
   <column id="Branch"><button id="Nested">Nested</button></column>
   <button id="Sibling">Sibling</button>
   <Badge id="Component"/>
-  <div id="Slot"><Badge id="Override"/></div>
+  <Badge id="Override" --width="66px"/>
+  <Badge id="Bound" --width={$wide}/>
   <text id="Rich" spans={$spans}>ABC</text>
   <text id="Plain">ABC</text>
 </column>
@@ -501,7 +502,6 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
 #Invalid { opacity: var(--missing); }
 #Branch { --width: 44px; }
 #Nested, #Sibling { width: var(--width); }
-#Slot { --width: 66px; }
 #Rich::part(emphasis) { font: var(--ramp); }
 </style>"#;
     let mut ui = ui_with_font(test_font_metrics());
@@ -516,7 +516,7 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
     );
     ui.push_screen(
         "cascade",
-        json!({"spans":[{"name":"emphasis","position":0,"length":3,"properties":{}}]}),
+        json!({"wide":"84px","spans":[{"name":"emphasis","position":0,"length":3,"properties":{}}]}),
     )
     .unwrap();
     // A diagnostic is reported in the frame its element resolves.
@@ -531,7 +531,8 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
         ("Branch/Nested", 44.0),
         ("Sibling", 32.0),
         ("Component", 32.0),
-        ("Slot/Override", 66.0),
+        ("Override", 66.0),
+        ("Bound", 84.0),
     ] {
         assert_eq!(
             ui.element(&format!("cascade/Root/{path}")).unwrap().width,
@@ -553,6 +554,43 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
             .iter()
             .any(|e| e.contains("opacity") && e.contains("--missing"))
     );
+}
+
+/// A component is styled through what it declares: its props, its parts
+/// and the custom properties it reads, which an instance sets with a style
+/// prop. A user's rule does not reach its root.
+#[test]
+fn a_document_rule_stops_at_a_component_instance() {
+    let parse = |body: &str| {
+        UiDocument::parse(
+            "user.svelte",
+            &format!(r#"<meta name="component" content="user">{body}"#),
+        )
+        .map(|_| ())
+        .map_err(|e| e.join("\n"))
+    };
+    for rule in ["#Mine", ".loud", "Badge", "#Root > Badge", "[data-tone]"] {
+        let error = parse(&format!(
+            r#"<column id="Root"><Badge id="Mine" class="loud" data-tone="x"/></column>
+<style>{rule} {{ --width: 66px; }}</style>"#
+        ))
+        .unwrap_err();
+        assert!(
+            error.contains("selects a <Badge> instance") && error.contains("--name"),
+            "{rule}: {error}"
+        );
+    }
+    // A rule that only sweeps over it passes it by.
+    parse(
+        r#"<column id="Root"><Badge id="Mine"/></column>
+<style>* { --width: 66px; } #Root > * { --width: 66px; }</style>"#,
+    )
+    .unwrap();
+    // One spelling each: `--name` on an instance, `style:--name` on an element.
+    let error = parse(r#"<column><Badge style:--width="66px"/></column>"#).unwrap_err();
+    assert!(error.contains("write --width="), "{error}");
+    let error = parse(r#"<column --width="66px"></column>"#).unwrap_err();
+    assert!(error.contains("write style:--width="), "{error}");
 }
 
 #[test]

@@ -515,7 +515,8 @@ pub struct DocNode {
     pub links: Vec<String>,
     /// Its `style:--name={value}` custom properties, in order: inline
     /// declarations that win over every rule but an `!important` one and
-    /// inherit like any custom property.
+    /// inherit like any custom property. On a component instance, its
+    /// `--name={value}` style props: what the instance's root inherits.
     pub custom: Vec<(String, Expr)>,
     /// Its `use:name={params}` actions, in order: the game's handler of
     /// each hears it made, its params change and it go (docs/ui.md §2).

@@ -166,6 +166,21 @@ impl RetainedHost {
                 env,
             )?;
         }
+        // An instance's root inherits the instance's style props.
+        if index == doc.root {
+            let given: Vec<Expr> = super::content::style_props(&element.context)
+                .map(|(name, _)| Expr::Path(name.clone()))
+                .collect();
+            for expression in given {
+                self.bind(
+                    ui,
+                    &mut element,
+                    Input::Expression(expression.clone()),
+                    BindingExpression::Expression(expression),
+                    env,
+                )?;
+            }
+        }
         self.sync_facts(ui, &element, env)?;
         // Its box pseudo-elements' rules match against it: their
         // conditions are its inputs.

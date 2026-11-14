@@ -1,0 +1,15 @@
+{
+  "breaking": [
+    {
+      "member": "UI document scoped CSS",
+      "change": "A document's rule no longer reaches a component instance. A rule whose subject names one (#Mine, .loud, Badge, [data-tone] on <Badge id=\"Mine\" class=\"loud\"/>) is refused when the document is parsed; a rule that only sweeps over one (*, #Root > *) passes it by.",
+      "fix": "Pass a prop, set a custom property on the instance (<Badge --width=\"66px\"/>), or dress a part the component declares from the style pack ([part=\"Badge.frame\"])."
+    }
+  ],
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "Style props, as in Svelte: --name=\"value\" or --name={expr} on a component instance is a custom property its root inherits, so the component's own rules win, null sets nothing, and a component whose root is another component hands it on. style:--name stays the element's spelling; each is refused on the other with the right one named."
+    }
+  ]
+}

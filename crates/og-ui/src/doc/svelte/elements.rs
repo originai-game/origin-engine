@@ -505,12 +505,36 @@ impl Parser {
                 });
                 continue;
             }
-            if let Some(name) = a
-                .name
-                .strip_prefix("style:")
-                .filter(|n| n.starts_with("--"))
-            {
-                // A bound custom property: the data a rule's var() reads.
+            // A custom property: the data a rule's var() reads. An element
+            // sets its own with `style:--name`; an instance hands its root
+            // one to inherit with `--name` (Svelte's style props).
+            let custom = match a.name.strip_prefix("style:") {
+                Some(name) if name.starts_with("--") => {
+                    if component {
+                        return Err((
+                            a.at,
+                            format!(
+                                "style: is an element's directive; on a component write {name}=… (a style prop)"
+                            ),
+                        ));
+                    }
+                    Some(name)
+                }
+                None if a.name.starts_with("--") => {
+                    if !component {
+                        return Err((
+                            a.at,
+                            format!(
+                                "{0} is a component's style prop; on an element write style:{0}=…",
+                                a.name
+                            ),
+                        ));
+                    }
+                    Some(a.name.as_str())
+                }
+                _ => None,
+            };
+            if let Some(name) = custom {
                 if name.len() < 3
                     || !name[2..]
                         .chars()

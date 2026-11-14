@@ -517,6 +517,32 @@ pub fn apply(
                 Expr::Lit(serde_json::Value::Bool(true)) => None,
                 c => Some(c),
             };
+            // A component is styled through what it declares. A rule that
+            // names an instance is refused; one that only sweeps over it
+            // (`*`, a pack's global rule) passes it by.
+            if let NodeKind::Use(component) = &doc.nodes[*i].kind {
+                let names = parsed.compounds.last().is_some_and(|subject| {
+                    subject.0.iter().any(|simple| {
+                        matches!(
+                            simple,
+                            super::selectors::Simple::Type(_)
+                                | super::selectors::Simple::Id(_)
+                                | super::selectors::Simple::Class(_)
+                                | super::selectors::Simple::Attribute { .. }
+                        )
+                    })
+                });
+                if names && !parsed.global && !rule.ua {
+                    return Err((
+                        rule.at,
+                        format!(
+                            "{} selects a <{component}> instance, and a document's rules stop at a component: pass a prop, set a custom property on the instance (<{component} --name=\"value\"/>), or dress a part it declares from the style pack ([part=\"{component}.…\"])",
+                            parsed.source
+                        ),
+                    ));
+                }
+                continue;
+            }
             let kind = match doc.nodes[*i].kind {
                 NodeKind::Element(k) => k,
                 _ => Kind::Column,

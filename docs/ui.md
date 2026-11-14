@@ -128,6 +128,8 @@ tick.
   property; `style:--name` a custom property) are the element's own
   declarations: they beat every rule but an `!important` one, and
   `style:prop|important` beats that too. A bound value carries its unit.
+  On a component instance a custom property is a style prop, written
+  bare: `<Meter --fill={$hp / $max}/>`.
 - `bind:this={name}` makes `name` the element's id, readable wherever an
   expression names an element and as `#name` in CSS.
 - `use:name={params}` sends a DocEvent of kind `use` named `name` with
@@ -647,6 +649,17 @@ collections passed as props. Mount content passes by reference:
 (a bare document name renders its root). Rendered content's paths sit
 under the snippet name (`…/Card#a/body/Desc`); an instance's root takes
 the instance's id.
+
+A component is styled through what it declares, never from outside by
+selector. Its user has three handles: a prop; a style prop
+(`<Badge --width="66px"/>`, `--width={$w}`), a custom property the
+instance's root inherits as if a box around it set it, so the component's
+own rules win and `null` sets nothing; and, from a style pack, the parts
+it names (`[part="Badge.frame"]`). A document's rule that names an
+instance (`#Mine`, `.loud`, `Badge`, `[data-tone]`) is refused at parse
+with those three as the fix; a rule that only sweeps over one (`*`,
+`#Root > *`) passes it by. `style:` is an element's directive and refused
+on an instance, as a bare `--name` is on an element.
 
 A screen opts into CSS View Transitions 1 and 2 with `@view-transition {
 navigation: auto; }`. The engine's mapping:
@@ -1184,7 +1197,8 @@ properties and report their names; an invalid winning declaration does not
 revive a lower one. Unshadowed engine tokens resolve against the active
 style. Data reaches the cascade through `style:--name={expr}`, an inline
 declaration (a number plain, a string as is, `null` unset) that
-re-resolves only its element and inheritors. `calc()`, `min()`, `max()`
+re-resolves only its element and inheritors; an instance's
+`--name={expr}` reaches its root the same way, as an inherited value. `calc()`, `min()`, `max()`
 and `clamp()` reduce once their `var()`s are known (at cook when constant);
 `s`, `rad` and `turn` convert to `ms` and `deg`. None of this relaxes
 §3.1.
