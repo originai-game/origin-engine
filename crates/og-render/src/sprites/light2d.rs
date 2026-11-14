@@ -27,7 +27,7 @@ use crate::effects::{
 use glam::{Mat4, Vec2, Vec3};
 use std::cell::Cell;
 
-pub(crate) const LIGHT2D_WGSL: &str = wgsl!("light2d.wgsl");
+pub(crate) const LIGHT2D_WGSL: &str = wgsl_library!("light2d.wgsl");
 pub(crate) const LIGHT2D_SHADOW_WGSL: &str = wgsl_library!("light2d_shadow.wgsl");
 
 /// The most occluder edges one frame's shadow rows trace, over all lights

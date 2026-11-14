@@ -15,7 +15,7 @@ use crate::effects::SpriteBlend;
 use crate::sprites::SPRITE_ARRAY_LAYOUT;
 
 pub(crate) const SPRITE_ARRAY_WGSL: &str = wgsl!("sprite_array.wgsl");
-pub(crate) const OVERLAY_ARRAY_WGSL: &str = wgsl!("overlay_array.wgsl");
+pub(crate) const OVERLAY_ARRAY_WGSL: &str = wgsl_library!("overlay_array.wgsl");
 
 /// The module's source as the renderer compiles it.
 pub(crate) fn source() -> String {

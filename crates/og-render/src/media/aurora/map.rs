@@ -319,4 +319,4 @@ fn footprint_group(
 }
 
 /// The footprint pass's compute shader.
-pub(crate) const FOOTPRINT_WGSL: &str = wgsl!("aurora_footprint.wgsl");
+pub(crate) const FOOTPRINT_WGSL: &str = wgsl_library!("aurora_footprint.wgsl");

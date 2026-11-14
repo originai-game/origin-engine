@@ -70,6 +70,21 @@ macro_rules! wgsl3d {
     };
 }
 
+/// [`wgsl_library!`] for a 3D world subsystem's module: empty in a
+/// `profile2d` build, as [`wgsl3d!`].
+#[cfg(not(feature = "profile2d"))]
+macro_rules! wgsl3d_library {
+    ($($file:literal),+) => {
+        wgsl_library!($($file),+)
+    };
+}
+#[cfg(feature = "profile2d")]
+macro_rules! wgsl3d_library {
+    ($($file:literal),+) => {
+        ""
+    };
+}
+
 /// Whether this renderer draws the 3D world subsystems: terrain, planar
 /// water, the 3D fluids, the scattered copies and volumetric fog. False in
 /// a `profile2d` build (the 2D profile's web modules), which leaves their

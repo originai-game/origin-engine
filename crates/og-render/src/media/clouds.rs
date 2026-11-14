@@ -383,7 +383,7 @@ impl CloudNoise {
 }
 
 /// The noise volume's compute shader, after the hashes it draws from.
-pub(crate) const NOISE_WGSL: &str = concat!(wgsl!("hash.wgsl"), wgsl!("clouds_noise.wgsl"));
+pub(crate) const NOISE_WGSL: &str = wgsl_library!("clouds_noise.wgsl");
 
 #[cfg(test)]
 mod tests {

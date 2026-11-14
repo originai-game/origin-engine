@@ -17,7 +17,5 @@ fn fs(v: VsOut) -> @location(0) vec4f {
 @fragment
 fn fs_srgb_encode(v: VsOut) -> @location(0) vec4f {
   let c = blend(v.uv);
-  return vec4f(select(c.rgb * 12.92,
-    1.055 * pow(max(c.rgb, vec3f(0.0)), vec3f(1.0 / 2.4)) - 0.055,
-    c.rgb > vec3f(0.0031308)), c.a);
+  return vec4f(srgb_encode(c.rgb), c.a);
 }

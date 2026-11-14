@@ -209,7 +209,7 @@ pub(crate) struct GridProjector {
 }
 
 /// The module's source (`crate::shaders` validates it).
-pub(crate) const PROBE_GRID_WGSL: &str = wgsl!("probe_grid.wgsl");
+pub(crate) const PROBE_GRID_WGSL: &str = wgsl_library!("probe_grid.wgsl");
 
 const PARAMS_STRIDE: u64 = 256;
 

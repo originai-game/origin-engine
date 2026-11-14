@@ -1,0 +1,11 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "shaders: the WGSL library",
+      "change": "Every game shader now has `face_dir(face: u32, uv: vec2<f32>) -> vec3<f32>` (a cube face's direction at its NDC point) in scope from the engine's one copy; a shader that declares its own `face_dir` no longer compiles.",
+      "fix": "Delete your own copy and call the library's, or rename yours.",
+      "find": ["face_dir"]
+    }
+  ]
+}

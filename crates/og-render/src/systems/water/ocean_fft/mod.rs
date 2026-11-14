@@ -40,7 +40,7 @@ pub fn foam_layer(cascades: u32) -> u32 {
     LAYERS * cascades
 }
 
-const FFT_WGSL: &str = wgsl3d!("ocean_fft.wgsl");
+const FFT_WGSL: &str = wgsl3d_library!("ocean_fft.wgsl");
 const MIPS_WGSL: &str = wgsl3d!("ocean_fft_mips.wgsl");
 const FOAM_WGSL: &str = wgsl3d!("ocean_foam.wgsl");
 /// The seabed's shoaling (W1), prepended to water.wgsl and ocean_foam.wgsl.

@@ -829,10 +829,4 @@ pub(crate) fn fluid_source(shared: &str) -> String {
 }
 
 /// The 3D fluid's blur module.
-pub(crate) const FLUID_BLUR_WGSL: &str = concat!(
-    wgsl3d!("hash.wgsl"),
-    wgsl3d!("common.wgsl"),
-    wgsl3d!("color.wgsl"),
-    wgsl3d!("noise.wgsl"),
-    wgsl3d!("fluid3d_blur.wgsl")
-);
+pub(crate) const FLUID_BLUR_WGSL: &str = wgsl3d_library!("fluid3d_blur.wgsl");

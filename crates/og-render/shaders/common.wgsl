@@ -79,3 +79,22 @@ fn orthonormal_basis(n: vec3<f32>) -> mat3x3<f32> {
   let bt = vec3<f32>(b, s + n.y * n.y * a, -n.y);
   return mat3x3<f32>(t, bt, n);
 }
+
+// The direction of cube face `face`'s point `uv` (NDC, -1..1): the IBL's
+// cube maps and the probe grid's captures.
+fn face_dir(face: u32, uv: vec2<f32>) -> vec3<f32> {
+  // uv is the fragment's NDC position in [-1,1] (y up; texture row 0 is NDC
+  // y = +1). Faces in wgpu's order +x,-x,+y,-y,+z,-z with the WebGPU/Vulkan
+  // cube convention (sc, tc) = per-face axes, tc = -uv.y. (The spike flipped
+  // v a second time, which mirrored the sky vertically; it never drew it.)
+  let u = uv.x;
+  let v = uv.y;
+  switch face {
+    case 0u: { return normalize(vec3<f32>(1.0, v, -u)); }
+    case 1u: { return normalize(vec3<f32>(-1.0, v, u)); }
+    case 2u: { return normalize(vec3<f32>(u, 1.0, -v)); }
+    case 3u: { return normalize(vec3<f32>(u, -1.0, v)); }
+    case 4u: { return normalize(vec3<f32>(u, v, 1.0)); }
+    default: { return normalize(vec3<f32>(-u, v, -1.0)); }
+  }
+}

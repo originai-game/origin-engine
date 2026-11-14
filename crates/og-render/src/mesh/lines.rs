@@ -425,7 +425,7 @@ pub(crate) struct LineRenderer {
 
 /// The lines module (`crate::shaders` validates it), after the standard
 /// material's uniform (the wires' group 1).
-pub(crate) const LINES_WGSL: &str = concat!(wgsl!("material.wgsl"), wgsl!("lines.wgsl"));
+pub(crate) const LINES_WGSL: &str = wgsl_library!("material.wgsl", "lines.wgsl");
 
 impl LineRenderer {
     pub fn new(

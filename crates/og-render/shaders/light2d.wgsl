@@ -239,7 +239,7 @@ fn fs_dir(in: LightOut) -> LightDirOut {
   var to_light = in.direction.xy;
   if (in.flags.y < 1.5) { to_light = in.light.xy - in.world; }
   let d = normalize(vec3<f32>(to_light, in.direction.z) + vec3<f32>(0.0, 0.0, 1e-6));
-  let w = dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
+  let w = luma(c);
   var o: LightDirOut;
   o.light = vec4<f32>(c, 0.0);
   o.dir = vec4<f32>(d * w, w);

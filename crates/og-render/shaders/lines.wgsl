@@ -137,13 +137,6 @@ fn expand(vi: u32, l: LineIn) -> LineOut {
   return o;
 }
 
-fn encode(c: vec3<f32>) -> vec3<f32> {
-  let x = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
-  let lo = x * 12.92;
-  let hi = 1.055 * pow(x, vec3<f32>(1.0 / 2.4)) - 0.055;
-  return select(hi, lo, x <= vec3<f32>(0.0031308));
-}
-
 @fragment
 fn fs(in: LineOut) -> @location(0) vec4<f32> {
   return shade(in, in.color);
@@ -181,7 +174,7 @@ fn shade(in: LineOut, color: vec4<f32>) -> vec4<f32> {
     discard;
   }
   if (lf.viewport.w > 0.5) {
-    return vec4<f32>(encode(c.rgb), c.a);
+    return vec4<f32>(srgb_encode(clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), c.a);
   }
   return c;
 }

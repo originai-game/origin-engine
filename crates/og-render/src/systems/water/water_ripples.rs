@@ -458,7 +458,7 @@ pub(crate) fn plan(at: Option<(u64, u64)>, wakes: &WaterWakes) -> Plan<'_> {
 }
 
 /// The ripples' compute shader.
-pub(crate) const WGSL: &str = wgsl3d!("water_ripples.wgsl");
+pub(crate) const WGSL: &str = wgsl3d_library!("water_ripples.wgsl");
 
 #[cfg(test)]
 mod tests {

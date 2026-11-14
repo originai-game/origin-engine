@@ -180,6 +180,7 @@ fn a_mechanisms_shader_code_is_written_once() {
                 "fn is_sky_depth(",
                 "fn quad_corner(",
                 "fn orthonormal_basis(",
+                "fn face_dir(",
                 "const SKY_VIEW_DEPTH",
             ],
         ),

@@ -99,9 +99,7 @@ fn fs_smaa(in: VsOut) -> @location(0) vec4<f32> {
 @fragment
 fn fs_smaa_srgb(in: VsOut) -> @location(0) vec4<f32> {
   let c = resolve(in, false, true);
-  return vec4<f32>(select(c.rgb * 12.92,
-    1.055 * pow(max(c.rgb, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) - 0.055,
-    c.rgb > vec3<f32>(0.0031308)), c.a);
+  return vec4<f32>(srgb_encode(c.rgb), c.a);
 }
 
 fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {

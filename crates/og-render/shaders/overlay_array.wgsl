@@ -53,13 +53,6 @@ fn vs(@builtin(vertex_index) vi: u32, s: OverlayIn) -> OverlayOut {
   return o;
 }
 
-fn encode(c: vec3<f32>) -> vec3<f32> {
-  let x = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
-  let lo = x * 12.92;
-  let hi = 1.055 * pow(x, vec3<f32>(1.0 / 2.4)) - 0.055;
-  return select(hi, lo, x <= vec3<f32>(0.0031308));
-}
-
 @fragment
 fn fs(in: OverlayOut) -> @location(0) vec4<f32> {
   let c = textureSample(sprite_array, sprite_array_sampler, in.uv, in.layer) * in.color;
@@ -68,7 +61,7 @@ fn fs(in: OverlayOut) -> @location(0) vec4<f32> {
     discard;
   }
   if (overlay.output.w > 0.5) {
-    return vec4<f32>(encode(c.rgb), c.a);
+    return vec4<f32>(srgb_encode(clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), c.a);
   }
   return c;
 }

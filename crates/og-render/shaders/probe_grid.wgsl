@@ -23,19 +23,6 @@ const INV_2PI: f32 = 0.1591549431;
 
 var<workgroup> partial: array<array<vec4<f32>, 3>, 64>;
 
-// The cube direction of a face texel (ibl.wgsl's `face_dir`: u right, v
-// up, texture row 0 at v = +1).
-fn grid_face_dir(face: u32, u: f32, v: f32) -> vec3<f32> {
-  switch face {
-    case 0u: { return normalize(vec3<f32>(1.0, v, -u)); }
-    case 1u: { return normalize(vec3<f32>(-1.0, v, u)); }
-    case 2u: { return normalize(vec3<f32>(u, 1.0, -v)); }
-    case 3u: { return normalize(vec3<f32>(u, -1.0, v)); }
-    case 4u: { return normalize(vec3<f32>(u, v, 1.0)); }
-    default: { return normalize(vec3<f32>(-u, v, -1.0)); }
-  }
-}
-
 // The world direction a capture texel shows: the face cameras are
 // right-handed, so each face holds its view mirrored (ibl.wgsl's
 // `fs_probe_copy` reads it the same way).
@@ -58,7 +45,7 @@ fn cs_project(@builtin(local_invocation_index) t: u32) {
     let py = r / n;
     let u = (f32(px) + 0.5) * inv * 2.0 - 1.0;
     let v = 1.0 - (f32(py) + 0.5) * inv * 2.0;
-    let d = grid_world_dir(grid_face_dir(face, u, v));
+    let d = grid_world_dir(face_dir(face, vec2<f32>(u, v)));
     // The texel's solid angle.
     let w = 4.0 * inv * inv / pow(1.0 + u * u + v * v, 1.5);
     var l = textureLoad(capture, vec2<u32>(px, py), face, 0).rgb;
