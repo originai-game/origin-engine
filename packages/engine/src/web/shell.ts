@@ -71,7 +71,7 @@ import { createRpcRings, readFrames, waitForFrames, writeFrame, type RpcRings } 
 import { localPlatform, storagePersistence, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "../platform-local.ts";
 import type { RoomProvider } from "../provider.ts";
 import { Pending } from "./pending.ts";
-import type { BootPhases } from "./worker-state.ts";
+import type { BootPhases } from "./worker/state.ts";
 import type { TraceDocument } from "../trace.ts";
 
 /** The PNG data URL of the last cursor image drawn, by the image it was drawn from. */
