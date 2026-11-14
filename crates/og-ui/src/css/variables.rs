@@ -18,19 +18,68 @@ pub struct Value(Vec<Piece>);
 
 /// Custom values and inherited standard declarations have separate namespaces.
 /// None is the guaranteed-invalid custom value; an empty string is valid.
-/// An element shares its parent's custom values until it sets one, so a
-/// root with many tokens costs a child nothing to inherit.
-#[derive(Clone, Debug, Default, PartialEq)]
+///
+/// An element shares its parent's custom values. They are a shared base
+/// (the root's tokens, most often) and a small layer of the names set over
+/// it between that base and this element, so an element that sets one
+/// copies the layer, never the base: a style's thousand tokens cost an
+/// element nothing to inherit or to set one over.
+#[derive(Clone, Debug, Default)]
 pub struct Computed {
-    custom: Arc<BTreeMap<String, Option<String>>>,
+    base: Arc<Map>,
+    /// The names set over `base`: `Some` a value, `None` a name removed.
+    layer: Arc<BTreeMap<String, Option<Option<String>>>>,
     pub(crate) properties: BTreeMap<String, String>,
 }
 
-impl std::ops::Deref for Computed {
-    type Target = BTreeMap<String, Option<String>>;
+type Map = BTreeMap<String, Option<String>>;
 
-    fn deref(&self) -> &Self::Target {
-        &self.custom
+/// The layer folds into a new base once it holds more names than this and
+/// a quarter of the base: a layer stays small next to what it shares.
+const LAYER: usize = 32;
+
+impl PartialEq for Computed {
+    fn eq(&self, other: &Self) -> bool {
+        self.properties == other.properties
+            && (self.shares(other)
+                || if Arc::ptr_eq(&self.base, &other.base) {
+                    self.layer == other.layer
+                } else {
+                    self.iter().eq(other.iter())
+                })
+    }
+}
+
+/// The names of a base and a layer over it, in order, the layer's over
+/// the base's and without the names it removes.
+struct Merged<'a> {
+    base: std::iter::Peekable<std::collections::btree_map::Iter<'a, String, Option<String>>>,
+    layer:
+        std::iter::Peekable<std::collections::btree_map::Iter<'a, String, Option<Option<String>>>>,
+}
+
+impl<'a> Iterator for Merged<'a> {
+    type Item = (&'a String, &'a Option<String>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let order = match (self.base.peek(), self.layer.peek()) {
+                (None, None) => return None,
+                (Some(_), None) => std::cmp::Ordering::Greater,
+                (None, Some(_)) => std::cmp::Ordering::Less,
+                (Some((b, _)), Some((l, _))) => l.cmp(b),
+            };
+            if order == std::cmp::Ordering::Equal {
+                self.base.next();
+            }
+            let from_layer = order != std::cmp::Ordering::Greater;
+            if !from_layer {
+                return self.base.next();
+            }
+            if let (name, Some(value)) = self.layer.next()? {
+                return Some((name, value));
+            }
+        }
     }
 }
 
@@ -39,23 +88,79 @@ impl Computed {
         Self::default()
     }
 
+    /// Whether both hold the same maps (one was cloned from the other and
+    /// neither set a name since).
+    fn shares(&self, other: &Computed) -> bool {
+        Arc::ptr_eq(&self.base, &other.base) && Arc::ptr_eq(&self.layer, &other.layer)
+    }
+
+    pub fn get(&self, name: &str) -> Option<&Option<String>> {
+        match self.layer.get(name) {
+            Some(set) => set.as_ref(),
+            None => self.base.get(name),
+        }
+    }
+
+    pub fn contains_key(&self, name: &str) -> bool {
+        self.get(name).is_some()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.iter().next().is_none()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &Option<String>)> {
+        Merged {
+            base: self.base.iter().peekable(),
+            layer: self.layer.iter().peekable(),
+        }
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = &String> {
+        self.iter().map(|(name, _)| name)
+    }
+
     pub fn insert(&mut self, name: String, value: Option<String>) -> Option<Option<String>> {
         if name.starts_with("--og-") {
             return None;
         }
-        // The map is shared with the parent's: an unchanged value (a
-        // child's carried flow, most often) must not copy it.
-        if self.custom.get(&name) == Some(&value) {
-            return Some(value);
+        let old = self.get(&name).cloned();
+        // An unchanged value (a child's carried flow, most often) must not
+        // copy the layer it shares.
+        if old.as_ref() == Some(&value) {
+            return old;
         }
-        Arc::make_mut(&mut self.custom).insert(name, value)
+        if self.base.get(&name) == Some(&value) {
+            Arc::make_mut(&mut self.layer).remove(&name);
+        } else {
+            Arc::make_mut(&mut self.layer).insert(name, Some(value));
+        }
+        self.fold();
+        old
     }
 
     pub fn remove(&mut self, name: &str) -> Option<Option<String>> {
-        if !self.custom.contains_key(name) {
-            return None;
+        let old = self.get(name).cloned()?;
+        let layer = Arc::make_mut(&mut self.layer);
+        if self.base.contains_key(name) {
+            layer.insert(name.to_owned(), None);
+        } else {
+            layer.remove(name);
         }
-        Arc::make_mut(&mut self.custom).remove(name)
+        self.fold();
+        Some(old)
+    }
+
+    fn fold(&mut self) {
+        if self.layer.len() <= LAYER.max(self.base.len() / 4) {
+            return;
+        }
+        let base: Map = self
+            .iter()
+            .map(|(name, value)| (name.clone(), value.clone()))
+            .collect();
+        self.base = Arc::new(base);
+        self.layer = Default::default();
     }
 
     pub fn extend(&mut self, values: impl IntoIterator<Item = (String, Option<String>)>) {
@@ -65,35 +170,61 @@ impl Computed {
     }
 
     /// These values with `over`'s laid on top: every name `over` holds with
-    /// its value, the rest with these. Starts from `over`'s map (shared, not
-    /// copied) and adds only the names it lacks, so an `over` that already
-    /// holds nearly all of them, such as a host's computed values over the
-    /// root tokens, costs a lookup a name instead of an insert.
-    pub fn under(self, over: &Computed) -> Computed {
-        let mut custom = over.custom.clone();
-        for (name, value) in self.custom.iter() {
-            if !custom.contains_key(name) {
-                Arc::make_mut(&mut custom).insert(name.clone(), value.clone());
+    /// its value, the rest with these. Starts from `over`'s maps (shared,
+    /// not copied) and, where both share a base, visits only the layers:
+    /// a host's computed values over the root tokens cost a lookup a name
+    /// either of them set, not one a token.
+    pub fn under(mut self, over: &Computed) -> Computed {
+        let mut out = Computed {
+            base: over.base.clone(),
+            layer: over.layer.clone(),
+            properties: std::mem::take(&mut self.properties),
+        };
+        out.properties
+            .extend(over.properties.iter().map(|(k, v)| (k.clone(), v.clone())));
+        if Arc::ptr_eq(&self.base, &over.base) {
+            // What `over` lacks of these is in their layer, or a base
+            // name `over`'s layer removed.
+            for (name, value) in self.layer.iter() {
+                if let Some(value) = value
+                    && !over.contains_key(name)
+                {
+                    out.insert(name.clone(), value.clone());
+                }
+            }
+            for (name, removed) in over.layer.iter() {
+                if removed.is_none()
+                    && let Some(value) = self.get(name)
+                {
+                    out.insert(name.clone(), value.clone());
+                }
+            }
+        } else {
+            for (name, value) in self.iter() {
+                if !over.contains_key(name) {
+                    out.insert(name.clone(), value.clone());
+                }
             }
         }
-        let mut properties = self.properties;
-        properties.extend(over.properties.iter().map(|(k, v)| (k.clone(), v.clone())));
-        Computed { custom, properties }
+        out
     }
 
     pub fn dependency_names(&self) -> impl Iterator<Item = &String> {
-        self.custom.keys().chain(self.properties.keys())
+        self.keys().chain(self.properties.keys())
     }
 
     /// The names whose [`Self::dependency`] differs between these values
-    /// and `other`, in order. A custom map both share (an element's,
-    /// carried from its parent unchanged) is not walked.
+    /// and `other`, in order. The custom maps both share (an element's,
+    /// carried from its parent unchanged) are not walked.
     pub fn changed<'a>(&'a self, other: &'a Computed) -> Vec<&'a String> {
-        let names: std::collections::BTreeSet<&String> = if Arc::ptr_eq(&self.custom, &other.custom)
-        {
-            self.properties
+        let properties = self.properties.keys().chain(other.properties.keys());
+        let names: BTreeSet<&String> = if self.shares(other) {
+            properties.collect()
+        } else if Arc::ptr_eq(&self.base, &other.base) {
+            self.layer
                 .keys()
-                .chain(other.properties.keys())
+                .chain(other.layer.keys())
+                .chain(properties)
                 .collect()
         } else {
             self.dependency_names()
@@ -110,7 +241,15 @@ impl Computed {
         self.properties
             .get(name)
             .map(String::as_str)
-            .or_else(|| self.custom.get(name).and_then(Option::as_deref))
+            .or_else(|| self.get(name).and_then(Option::as_deref))
+    }
+}
+
+impl std::ops::Index<&str> for Computed {
+    type Output = Option<String>;
+
+    fn index(&self, name: &str) -> &Option<String> {
+        self.get(name).expect("no custom property of that name")
     }
 }
 
@@ -336,13 +475,10 @@ pub fn compute(
             &mut cycles,
         );
     }
-    let mut out = inherited.clone();
-    for name in specified.keys() {
-        out.remove(name);
-    }
-    for name in &cycles {
-        out.insert(name.clone(), None);
-    }
+    // The declared names resolve into their own map, cycles as
+    // guaranteed-invalid; they are laid over the inherited values last,
+    // where one that is unchanged copies nothing.
+    let mut done: Map = cycles.iter().map(|name| (name.clone(), None)).collect();
     let mut errors: Vec<_> = cycles
         .iter()
         .map(|name| {
@@ -355,7 +491,7 @@ pub fn compute(
         name: &str,
         specified: &BTreeMap<String, Value>,
         inherited: &Computed,
-        out: &mut Computed,
+        done: &mut Map,
         tokens: &mut impl FnMut(&str) -> Option<String>,
         errors: &mut Vec<String>,
         inherited_reads: &mut BTreeSet<String>,
@@ -363,15 +499,16 @@ pub fn compute(
         if name.starts_with("--og-") {
             return None;
         }
-        if !specified.contains_key(name) {
+        let Some(value) = specified.get(name) else {
             inherited_reads.insert(name.into());
-        }
-        if let Some(value) = out.get(name) {
+            return match inherited.get(name) {
+                Some(value) => value.clone(),
+                None => tokens(name),
+            };
+        };
+        if let Some(value) = done.get(name) {
             return value.clone();
         }
-        let Some(value) = specified.get(name) else {
-            return tokens(name);
-        };
         let mut significant = value.0.iter().filter(|piece| {
             !matches!(piece,
                 Piece::Text(text) if text.trim().is_empty() || text.starts_with("/*")
@@ -392,7 +529,7 @@ pub fn compute(
                     dependency,
                     specified,
                     inherited,
-                    out,
+                    done,
                     tokens,
                     errors,
                     inherited_reads,
@@ -405,7 +542,7 @@ pub fn compute(
                 }
             },
         };
-        out.insert(name.into(), result.clone());
+        done.insert(name.into(), result.clone());
         result
     }
     let mut inherited_reads = BTreeSet::new();
@@ -414,12 +551,14 @@ pub fn compute(
             name,
             specified,
             inherited,
-            &mut out,
+            &mut done,
             tokens,
             &mut errors,
             &mut inherited_reads,
         );
     }
+    let mut out = inherited.clone();
+    out.extend(done);
     (out, errors, inherited_reads)
 }
 
