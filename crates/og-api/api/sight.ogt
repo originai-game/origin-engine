@@ -1,0 +1,105 @@
+module sight {
+  doc "Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame."
+  guide "world §11"
+
+  enum SightPlane {
+    doc "The plane an og.SightMap lies in."
+    variant ground "The ground of a 3D world: x and z. The fog is drawn on each pixel's surface, whatever its height."
+    variant flat "A 2D world's plane: x and y."
+  }
+
+  column SightPlane {
+    doc "A SightPlane field: the variant's index."
+    array Uint32Array
+    stride 1
+    value SightPlane
+  }
+
+  component SightMap {
+    aliases "fog of war, FOW, unexplored map, shroud, line of sight map, vision map, reveal the map, RTS fog, roguelike field of view, FOV, minimap fog, dark unexplored area"
+    doc "Fog of war over a rectangle of the ground: the og.Volume on its entity gives its extent (its box's x and z, or x and y on the flat plane; none: no map), cut into cells. Each tick every og.Sight sees the cells within its radius that no og.SightBlocker hides, and what a team has seen stays explored. The first og.SightMap in entity order is the world's; changing its cell or extent's size starts it again unexplored. Drawn for `team` over the lit frame: seen ground as it is, explored ground dimmed, the rest covered; nothing outside the map is covered."
+    guide "world §11"
+    field cell f32 "A cell's side. A map has at most 512 cells a side: a larger extent takes a larger cell." {
+      default 1
+      min 0.05
+      unit m
+    }
+    field plane SightPlane "The plane it lies in."
+    field team u32 "The team whose sight is drawn (the player's)." {
+      max 31
+    }
+    field color Color "What covers ground the team has never seen (linear, before exposure)." {
+      default 0 0 0
+    }
+    field explored f32 "How much of the scene shows on ground the team has seen before and does not see now: 0 covered like the unseen, 1 as if seen." {
+      default 0.35
+      min 0
+      max 1
+      tunable true
+    }
+    field drawn bool "Whether the fog is drawn. False keeps the map (og.sight still answers) and shows the whole frame: a spectator, a debug view." {
+      default true
+    }
+  }
+
+  component Sight {
+    aliases "vision radius, sight range, unit vision, reveals fog, scout, line of sight source, field of view source"
+    doc "A team's eyes on the og.SightMap: from its entity's world position it sees every cell within `radius` that no og.SightBlocker hides (symmetric: between two open cells, one sees the other exactly when the other sees it). A blocker's near face is seen. Height is not looked at."
+    guide "world §11"
+    field team u32 "The team that sees through it (as og.AiAgent.team, og.Perceivable.team)." {
+      max 31
+    }
+    field radius f32 "How far it sees; 0 sees nothing." {
+      default 8
+      min 0
+      unit m
+      tunable true
+    }
+  }
+
+  component SightBlocker {
+    aliases "blocks vision, wall blocks line of sight, opaque to sight, vision blocker, sight occluder"
+    doc "Stops sight on the og.SightMap: the cells whose centre lies inside the og.Volume on its entity (a box or a sphere, at its entity's pose, cut at its own height) hide what is behind them. Without an og.Volume it blocks nothing. A wall thinner than a cell may fall between cell centres: make it at least a cell thick."
+    guide "world §11"
+    field enabled bool "Whether it blocks (a door: false while open)." {
+      default true
+    }
+  }
+
+  fn visible {
+    doc "Whether a team sees a point this tick: the point's cell of the og.SightMap is within one of the team's og.Sight and not hidden. Use it to hide what stands in the fog (an enemy unit is drawn while `visible` holds for the player's team) and for what an AI may know."
+    aliases "is visible to team, can see position, in fog of war, is in line of sight, unit visible, is revealed"
+    guide "world §11"
+    param world World "The world."
+    param team u32 "The team (0 to 31)."
+    param point Vector3 "The point, in world space (its x and z on the ground plane, x and y on the flat plane)."
+    returns Result.bool "False outside the map, and in a world without an og.SightMap. Refused for a point that is not finite."
+  }
+
+  fn explored {
+    doc "Whether a team has ever seen a point (or had it revealed): its cell of the og.SightMap is explored."
+    aliases "has seen, was explored, discovered area, map revealed at"
+    param world World "The world."
+    param team u32 "The team (0 to 31)."
+    param point Vector3 "The point, in world space."
+    returns Result.bool "False outside the map, and in a world without an og.SightMap. Refused for a point that is not finite."
+  }
+
+  fn reveal {
+    doc "Mark the ground within a radius of a point as explored by a team without anyone seeing it: a map bought, a scout's report, the start area. Lasts until og.sight.forget."
+    aliases "reveal map, uncover fog, explore area, show map, remove fog of war"
+    param world World "The world."
+    param team u32 "The team (0 to 31)."
+    param point Vector3 "The centre, in world space."
+    param radius f32 "How far around it, in metres."
+    returns Result.Void "Refused for a world without an og.SightMap, a team over 31, or a point or radius that is not finite."
+  }
+
+  fn forget {
+    doc "Forget what a team explored: its map is unexplored again but for what it sees this tick (a new round, a memory wipe)."
+    aliases "reset fog of war, clear explored, hide map again, unexplore"
+    param world World "The world."
+    param team u32 "The team (0 to 31)."
+    returns Result.Void "Refused for a world without an og.SightMap or a team over 31."
+  }
+}

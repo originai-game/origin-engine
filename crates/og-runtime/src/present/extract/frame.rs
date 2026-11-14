@@ -324,6 +324,9 @@ fn effects(
     super::fx::snap_to_grid(rs);
     // Cloth meshes are instances too: keyed for per-object motion.
     keys.extend(super::atmosphere::extract(world, rs, h));
+    // The fog of war, as this tick's start cast it.
+    rs.scene.look.fog_of_war =
+        crate::bind::sight::extract(world, rs.draw.engine, rs.draw.sight.as_ref());
     // The wind copies' parameters, from the og.Wind just read.
     let (wind, tick, rate) = (
         rs.scene.atmosphere.wind,

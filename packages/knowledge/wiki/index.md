@@ -2,7 +2,7 @@
 
 # The Origin Engine API
 
-`@origingame/engine`, API version 1: 41 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
+`@origingame/engine`, API version 1: 42 modules, generated from `crates/og-api/api.ogt`. Each module has an overview page and every function, component and type a page of its own under `<module>/`; every signature is quoted from the IDL. `og api find <words>` ranks every entry; `og api show <name>` prints one.
 
 The Origin Engine API. Game code declares components and systems, and reads the world through typed views over engine memory.
 
@@ -53,6 +53,7 @@ Every failure is a returned Result; desc objects may omit any field; nothing rea
 | [`motion`](motion.md) | `og.motion.*` | kept | Generated motion for humanoids: the engine's motion model moves a character between the game's goals, on the GPU. Give a humanoid og.Skeleton an og.MotionAgent, then queue goals (og.motion.walkTo, og.motion.jump, og.motion.pose, ...). |
 | [`destruction`](destruction.md) | `og.destruction.*` | kept | Props that break (walls, crates, pillars, glass) and 2D ground that carves. A model cooked with a `fracture { }` block is cut by the cook into Voronoi chunks bonded where they touch; hits, og.destruction.damage and explode break an og.Destructible's bonds, each unanchored island falls as one body, and a stress solver (NVIDIA Blast's) breaks what can no longer carry its own weight. og.PixelTerrain is 2D ground of cells. |
 | [`vfx`](vfx.md) | `og.vfx.*` | kept | Composed effects: one effect (a fireball's impact, a heal, a level-up) as a timeline of elements in an `.ogt` of `type vfx`: emitters, meshes, trails, beams, lights, decals, flashes, flipbooks, shakes and sounds. |
+| [`sight`](sight.md) | `og.sight.*` | kept | Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame. |
 
 ## Guides
 

@@ -138,6 +138,7 @@ pub use bind::procgen::{
     og_procgen_bsp, og_procgen_noise, og_procgen_noise_grid, og_procgen_poisson_disk,
     og_procgen_wfc,
 };
+pub use bind::sight::{og_sight_explored, og_sight_forget, og_sight_reveal, og_sight_visible};
 pub use bind::skeleton2d::{og_anim_rig2d_info, og_anim_skeleton2d_boxes, og_load_rig2d};
 pub use bind::story::{
     og_story_advance, og_story_ambient, og_story_bark, og_story_barks, og_story_choose,

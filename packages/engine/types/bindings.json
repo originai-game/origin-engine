@@ -565,6 +565,12 @@
       "array": "Uint32Array",
       "stride": 2,
       "value": "VfxAsset"
+    },
+    {
+      "name": "SightPlane",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "SightPlane"
     }
   ],
   "components": [
@@ -8138,6 +8144,81 @@
           "column": "u32",
           "default": 4294967295,
           "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 108,
+      "name": "SightMap",
+      "schema": "og.SightMap",
+      "module": "sight",
+      "fields": [
+        {
+          "name": "cell",
+          "column": "f32",
+          "default": 1
+        },
+        {
+          "name": "plane",
+          "column": "SightPlane",
+          "default": "ground"
+        },
+        {
+          "name": "team",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "color",
+          "column": "Color",
+          "default": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          }
+        },
+        {
+          "name": "explored",
+          "column": "f32",
+          "default": 0.35,
+          "tunable": true
+        },
+        {
+          "name": "drawn",
+          "column": "bool",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": 109,
+      "name": "Sight",
+      "schema": "og.Sight",
+      "module": "sight",
+      "fields": [
+        {
+          "name": "team",
+          "column": "u32",
+          "default": 0
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 8,
+          "tunable": true
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "name": "SightBlocker",
+      "schema": "og.SightBlocker",
+      "module": "sight",
+      "fields": [
+        {
+          "name": "enabled",
+          "column": "bool",
+          "default": true
         }
       ]
     }
@@ -26712,6 +26793,114 @@
         }
       ],
       "returns": "Result<VfxInfo>",
+      "publish": true
+    },
+    {
+      "id": 611,
+      "kind": "fn",
+      "path": "og.sight.visible",
+      "symbol": "og_sight_visible",
+      "module": "sight",
+      "name": "visible",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "team",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Result<bool>",
+      "publish": true
+    },
+    {
+      "id": 612,
+      "kind": "fn",
+      "path": "og.sight.explored",
+      "symbol": "og_sight_explored",
+      "module": "sight",
+      "name": "explored",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "team",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Result<bool>",
+      "publish": true
+    },
+    {
+      "id": 613,
+      "kind": "fn",
+      "path": "og.sight.reveal",
+      "symbol": "og_sight_reveal",
+      "module": "sight",
+      "name": "reveal",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "team",
+          "type": "u32",
+          "optional": false
+        },
+        {
+          "name": "point",
+          "type": "Vector3",
+          "optional": false
+        },
+        {
+          "name": "radius",
+          "type": "f32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 614,
+      "kind": "fn",
+      "path": "og.sight.forget",
+      "symbol": "og_sight_forget",
+      "module": "sight",
+      "name": "forget",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "team",
+          "type": "u32",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
       "publish": true
     }
   ],

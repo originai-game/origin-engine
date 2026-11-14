@@ -3258,3 +3258,23 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> String {
 pub fn og_vfx_info(world: u32, asset: f64) -> String {
     <Host as VfxApi>::og_vfx_info(&Host, world, asset)
 }
+
+#[wasm_bindgen]
+pub fn og_sight_visible(world: u32, team: u32, point: String) -> String {
+    <Host as SightApi>::og_sight_visible(&Host, world, team, point)
+}
+
+#[wasm_bindgen]
+pub fn og_sight_explored(world: u32, team: u32, point: String) -> String {
+    <Host as SightApi>::og_sight_explored(&Host, world, team, point)
+}
+
+#[wasm_bindgen]
+pub fn og_sight_reveal(world: u32, team: u32, point: String, radius: f64) -> String {
+    <Host as SightApi>::og_sight_reveal(&Host, world, team, point, radius)
+}
+
+#[wasm_bindgen]
+pub fn og_sight_forget(world: u32, team: u32) -> String {
+    <Host as SightApi>::og_sight_forget(&Host, world, team)
+}

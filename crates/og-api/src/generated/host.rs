@@ -1461,10 +1461,22 @@ pub trait VfxApi: Wire {
     fn og_vfx_info(&self, world: u32, asset: f64) -> String;
 }
 
-/// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi {}
+/// `sight`: packages/knowledge/wiki/sight.md.
+pub trait SightApi: Wire {
+    /// `og.sight.visible`
+    fn og_sight_visible(&self, world: u32, team: u32, point: String) -> String;
+    /// `og.sight.explored`
+    fn og_sight_explored(&self, world: u32, team: u32, point: String) -> String;
+    /// `og.sight.reveal`
+    fn og_sight_reveal(&self, world: u32, team: u32, point: String, radius: f64) -> String;
+    /// `og.sight.forget`
+    fn og_sight_forget(&self, world: u32, team: u32) -> String;
+}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi> Host for T {}
+/// Every trait: a host is a type that implements all of them.
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi {}
+
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2079,6 +2091,10 @@ pub const SYMBOLS: &[&str] = &[
     "og_destruction_cell2d",
     "og_vfx_spawn",
     "og_vfx_info",
+    "og_sight_visible",
+    "og_sight_explored",
+    "og_sight_reveal",
+    "og_sight_forget",
 ];
 
 pub use og_records::{COLUMNS, ColumnDecl, FieldDecl, RECORDS, RecordDecl};

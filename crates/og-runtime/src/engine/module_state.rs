@@ -8,7 +8,7 @@
 
 use crate::{
     bind::agents, bind::destruction, bind::destruction2d, bind::i18n, bind::modules, bind::motion,
-    bind::net, bind::story, bind::terrain, bind::timeline, bind::video, bind::wind,
+    bind::net, bind::sight, bind::story, bind::terrain, bind::timeline, bind::video, bind::wind,
     engine::invariants, host::platform, present::atmosphere, present::particle_events,
     present::vfx, world::origin, world::stream,
 };
@@ -48,6 +48,7 @@ pub(crate) struct Modules {
     pub invariants: invariants::ModuleState,
     pub origin: origin::ModuleState,
     pub air: wind::ModuleState,
+    pub sight: sight::ModuleState,
 }
 
 /// The engine a world is assembled for, as its modules mount on it: its

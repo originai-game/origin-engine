@@ -349,6 +349,8 @@ export interface ColumnKinds {
   MotionGoalKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: MotionGoalKind };
   /** A VfxAsset handle field (0 is none). */
   VfxAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: VfxAsset };
+  /** A SightPlane field: the variant's index. */
+  SightPlane: { readonly array: Uint32Array; readonly stride: 1; readonly value: SightPlane };
 }
 
 // ── math ────────────────────────────────────────────────────────
@@ -32869,6 +32871,114 @@ export interface VfxInfo {
 
 
 
+// ── sight ───────────────────────────────────────────────────────
+// Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame.
+// See `world §11`.
+
+/**
+ * The plane an og.SightMap lies in.
+ * - `"ground"`: The ground of a 3D world: x and z. The fog is drawn on each pixel's surface, whatever its height.
+ * - `"flat"`: A 2D world's plane: x and y.
+ */
+export type SightPlane = "ground" | "flat";
+
+/**
+ * A SightPlane field: the variant's index.
+ *
+ * A `SightPlane` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SightPlane(value?: SightPlane, options?: FieldOptions): FieldSpec<"SightPlane">;
+
+/**
+ * Fog of war over a rectangle of the ground: the og.Volume on its entity gives its extent (its box's x and z, or x and y on the flat plane; none: no map), cut into cells. Each tick every og.Sight sees the cells within its radius that no og.SightBlocker hides, and what a team has seen stays explored. The first og.SightMap in entity order is the world's; changing its cell or extent's size starts it again unexplored. Drawn for `team` over the lit frame: seen ground as it is, explored ground dimmed, the rest covered; nothing outside the map is covered.
+ * See `world §11`.
+ *
+ * The value of the `SightMap` component (token `og.SightMap`).
+ */
+export interface SightMap {
+  /**
+   * A cell's side. A map has at most 512 cells a side: a larger extent takes a larger cell.
+   *
+   * @default 1
+   * @range 0.05..
+   * @unit m (metres)
+   */
+  cell: number;
+  /** The plane it lies in. */
+  plane: SightPlane;
+  /**
+   * The team whose sight is drawn (the player's).
+   *
+   * @range ..31
+   */
+  team: number;
+  /**
+   * What covers ground the team has never seen (linear, before exposure).
+   *
+   * @default { r: 0, g: 0, b: 0 }
+   */
+  color: Color;
+  /**
+   * How much of the scene shows on ground the team has seen before and does not see now: 0 covered like the unseen, 1 as if seen.
+   *
+   * @default 0.35
+   * @range 0..1
+   * @tunable
+   */
+  explored: number;
+  /**
+   * Whether the fog is drawn. False keeps the map (og.sight still answers) and shows the whole frame: a spectator, a debug view.
+   *
+   * @default true
+   */
+  drawn: boolean;
+}
+
+/**
+ * A team's eyes on the og.SightMap: from its entity's world position it sees every cell within `radius` that no og.SightBlocker hides (symmetric: between two open cells, one sees the other exactly when the other sees it). A blocker's near face is seen. Height is not looked at.
+ * See `world §11`.
+ *
+ * The value of the `Sight` component (token `og.Sight`).
+ */
+export interface Sight {
+  /**
+   * The team that sees through it (as og.AiAgent.team, og.Perceivable.team).
+   *
+   * @range ..31
+   */
+  team: number;
+  /**
+   * How far it sees; 0 sees nothing.
+   *
+   * @default 8
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
+}
+
+/**
+ * Stops sight on the og.SightMap: the cells whose centre lies inside the og.Volume on its entity (a box or a sphere, at its entity's pose, cut at its own height) hide what is behind them. Without an og.Volume it blocks nothing. A wall thinner than a cell may fall between cell centres: make it at least a cell thick.
+ * See `world §11`.
+ *
+ * The value of the `SightBlocker` component (token `og.SightBlocker`).
+ */
+export interface SightBlocker {
+  /**
+   * Whether it blocks (a door: false while open).
+   *
+   * @default true
+   */
+  enabled: boolean;
+}
+
+
+
+
+
 // ── og ──────────────────────────────────────────────────────────
 
 /**
@@ -37652,5 +37762,63 @@ export declare namespace og {
      * @returns Refused for an effect not loaded in this world.
      */
     function info(world: World, asset: VfxAsset): Result<VfxInfo>;
+  }
+  /**
+   * Fog of war over a rectangle of the ground: the og.Volume on its entity gives its extent (its box's x and z, or x and y on the flat plane; none: no map), cut into cells. Each tick every og.Sight sees the cells within its radius that no og.SightBlocker hides, and what a team has seen stays explored. The first og.SightMap in entity order is the world's; changing its cell or extent's size starts it again unexplored. Drawn for `team` over the lit frame: seen ground as it is, explored ground dimmed, the rest covered; nothing outside the map is covered.
+   * See `world §11`.
+   */
+  const SightMap: ComponentType<{ readonly cell: FieldSpec<"f32">; readonly plane: FieldSpec<"SightPlane">; readonly team: FieldSpec<"u32">; readonly color: FieldSpec<"Color">; readonly explored: FieldSpec<"f32">; readonly drawn: FieldSpec<"bool"> }, SightMap>;
+  /**
+   * A team's eyes on the og.SightMap: from its entity's world position it sees every cell within `radius` that no og.SightBlocker hides (symmetric: between two open cells, one sees the other exactly when the other sees it). A blocker's near face is seen. Height is not looked at.
+   * See `world §11`.
+   */
+  const Sight: ComponentType<{ readonly team: FieldSpec<"u32">; readonly radius: FieldSpec<"f32"> }, Sight>;
+  /**
+   * Stops sight on the og.SightMap: the cells whose centre lies inside the og.Volume on its entity (a box or a sphere, at its entity's pose, cut at its own height) hide what is behind them. Without an og.Volume it blocks nothing. A wall thinner than a cell may fall between cell centres: make it at least a cell thick.
+   * See `world §11`.
+   */
+  const SightBlocker: ComponentType<{ readonly enabled: FieldSpec<"bool"> }, SightBlocker>;
+  /**
+   * Fog of war: which ground each team sees now and has seen before. An og.SightMap lays a grid over the og.Volume on its entity; every og.Sight is a team's eyes, and og.SightBlocker regions stop them. The map is world state, cast again as each tick starts: saved, restored and hashed with the world, the same on every host. The game asks it about a point (og.sight.visible, og.sight.explored), and the renderer draws the same cells over the frame.
+   * See `world §11`.
+   */
+  namespace sight {
+    /**
+     * Whether a team sees a point this tick: the point's cell of the og.SightMap is within one of the team's og.Sight and not hidden. Use it to hide what stands in the fog (an enemy unit is drawn while `visible` holds for the player's team) and for what an AI may know.
+     * See `world §11`.
+     *
+     * @param world The world.
+     * @param team The team (0 to 31).
+     * @param point The point, in world space (its x and z on the ground plane, x and y on the flat plane).
+     * @returns False outside the map, and in a world without an og.SightMap. Refused for a point that is not finite.
+     */
+    function visible(world: World, team: number, point: Vector3): Result<boolean>;
+    /**
+     * Whether a team has ever seen a point (or had it revealed): its cell of the og.SightMap is explored.
+     *
+     * @param world The world.
+     * @param team The team (0 to 31).
+     * @param point The point, in world space.
+     * @returns False outside the map, and in a world without an og.SightMap. Refused for a point that is not finite.
+     */
+    function explored(world: World, team: number, point: Vector3): Result<boolean>;
+    /**
+     * Mark the ground within a radius of a point as explored by a team without anyone seeing it: a map bought, a scout's report, the start area. Lasts until og.sight.forget.
+     *
+     * @param world The world.
+     * @param team The team (0 to 31).
+     * @param point The centre, in world space.
+     * @param radius How far around it, in metres.
+     * @returns Refused for a world without an og.SightMap, a team over 31, or a point or radius that is not finite.
+     */
+    function reveal(world: World, team: number, point: Vector3, radius: number): Result<void>;
+    /**
+     * Forget what a team explored: its map is unexplored again but for what it sees this tick (a new round, a memory wipe).
+     *
+     * @param world The world.
+     * @param team The team (0 to 31).
+     * @returns Refused for a world without an og.SightMap or a team over 31.
+     */
+    function forget(world: World, team: number): Result<void>;
   }
 }

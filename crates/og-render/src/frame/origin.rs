@@ -60,6 +60,12 @@ impl RenderScene {
         if let crate::ShadowBounds::Sphere { center, .. } = &mut self.lighting.light.shadow_bounds {
             *center += d;
         }
+        if let Some(f) = &mut self.look.fog_of_war {
+            f.min -= match f.plane {
+                crate::SightPlane::Ground => glam::Vec2::new(origin.x, origin.z),
+                crate::SightPlane::Flat => origin.truncate(),
+            };
+        }
         for m in &mut self.atmosphere.wind_motors {
             m.position -= origin;
         }

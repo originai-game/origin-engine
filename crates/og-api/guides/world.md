@@ -353,3 +353,31 @@ from og.load.scene) is a cell.
 - og.ai.restart starts a behaviour afresh. `dump_ai:<entity>` writes an
   agent's state, running node and blackboard: read it before guessing why
   an agent stands still.
+
+## 11. Fog of war
+
+- One entity carries the map: og.SightMap with an og.Volume whose box is
+  the play area (its x and z; x and y with `plane: flat` in a 2D world),
+  and `team` the player's. A cell of 1 m suits units a metre or two
+  across; a map has at most 512 cells a side, so a 2 km map takes 4 m
+  cells.
+- Everything that sees carries og.Sight (its team and radius): units,
+  buildings, a flare that lives two seconds. Walls and woods carry
+  og.SightBlocker beside an og.Volume at least a cell thick; a door sets
+  `enabled`. Height is not looked at: a unit on a cliff sees no further
+  and a low wall hides as a tower does.
+- The map is cast as each tick starts, from where things stood then, so
+  every system of the tick reads one answer. It is world state: saves,
+  replays and the world hash carry what each team explored.
+- The engine draws the ground's fog and nothing else. What stands in it
+  is the game's rule, one line per kind in a system that runs every tick:
+  an enemy is drawn while `og.sight.visible(world, team, position)` holds
+  for the player's team (set its og.Model's or og.Mesh's `visible`), a building
+  once seen stays drawn where `og.sight.explored` holds. Give AI the same
+  call with its own team so it knows what the player could know of it.
+- og.sight.reveal explores an area nobody sees (the start, a bought map);
+  og.sight.forget starts a team again. `drawn: false` shows the whole
+  frame and keeps the answers: a spectator or a debug view.
+- The fog's edge is a ramp a cell wide and moves a cell at a time. For a
+  softer look use smaller cells; for a minimap read og.sight.explored on
+  the points it shows.

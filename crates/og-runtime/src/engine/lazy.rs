@@ -441,6 +441,20 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::weather::STRIKE,
         enable: |w, _| crate::bind::weather::enable(w, crate::bind::weather::STRIKE),
     },
+    // og.sight: read by the runtime's before-tick hook (bind::sight); no
+    // module to grant. Naming any registers the three and the state block.
+    Lazy {
+        name: crate::bind::sight::RECORDS[0],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: crate::bind::sight::RECORDS[1],
+        enable: |_, _| Ok(()),
+    },
+    Lazy {
+        name: crate::bind::sight::RECORDS[2],
+        enable: |_, _| Ok(()),
+    },
 ];
 
 /// Lazy records registered together: naming one registers the rest.
@@ -450,6 +464,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::bind::story::RECORDS,
     &crate::present::feel::vcam::RECORDS,
     &crate::bind::weather::RECORDS,
+    &crate::bind::sight::RECORDS,
     &crate::bind::destruction::RECORDS,
     &crate::bind::destruction2d::RECORDS,
     &crate::present::vfx::RECORDS,
@@ -540,6 +555,9 @@ pub(crate) fn ensure(eng: &Engine, world: &mut World, name: &str) -> Result<(), 
     if name == crate::world::stream::cells::CELL {
         crate::world::stream::cells::attach(mount, world)?;
     }
+    if name == crate::bind::sight::MAP {
+        crate::bind::sight::attach(mount, world)?;
+    }
     for partner in with_partners(lazy.name) {
         if partner != lazy.name {
             ensure(eng, world, partner)?;
@@ -600,6 +618,9 @@ pub(crate) fn enable(world: &mut World, mount: Mount<'_>, name: &str) -> Result<
             }
             if name == crate::world::stream::cells::CELL {
                 crate::world::stream::cells::attach(mount, world)?;
+            }
+            if name == crate::bind::sight::MAP {
+                crate::bind::sight::attach(mount, world)?;
             }
             Ok(())
         }
