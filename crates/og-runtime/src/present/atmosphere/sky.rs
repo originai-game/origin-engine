@@ -123,15 +123,7 @@ pub(super) fn extract(
 
     // The sky: a chosen look, drawn per pixel and lit by.
     if let Some(s) = resource(world, layouts.sky.as_ref())
-        // The hand read's sunDirection default (zero, so +Y below), not
-        // the IDL's (0.45, 0.8, 0.35).
-        && let Ok(s) = record::Sky::from_json_over(
-            &s,
-            record::Sky {
-                sun_direction: Vec3::ZERO,
-                ..Default::default()
-            },
-        )
+        && let Ok(s) = record::Sky::from_json(&s)
         && s.enabled
     {
         let look = SkyLook {
@@ -151,7 +143,14 @@ pub(super) fn extract(
             moon_direction: s.moon_direction,
             physical: air,
         };
-        let dir = s.sun_direction.normalize_or(Vec3::Y);
+        // A zero sunDirection follows the light the frame is lit by (the
+        // first DirectionalLight as `lights` took it, the built-in sun
+        // with none): the sun stands where the light comes from.
+        let dir = s
+            .sun_direction
+            .try_normalize()
+            .or_else(|| scene.lighting.light.direction_to_light.try_normalize())
+            .unwrap_or(Vec3::Y);
         let sun = rgb(&s.sun_color);
         scene.lighting.environment.sky = ProceduralSky {
             sun_direction: dir,

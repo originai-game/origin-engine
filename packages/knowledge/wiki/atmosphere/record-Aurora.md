@@ -94,4 +94,4 @@ resource Aurora {
 }
 ```
 
-<sub>Module `atmosphere` line 367</sub>
+<sub>Module `atmosphere` line 365</sub>

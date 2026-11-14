@@ -32206,7 +32206,7 @@ pub mod record {
                 zenith: Color { r: 0.18_f32, g: 0.36_f32, b: 0.78_f32 },
                 horizon: Color { r: 0.78_f32, g: 0.84_f32, b: 0.92_f32 },
                 ground: Color { r: 0.16_f32, g: 0.14_f32, b: 0.12_f32 },
-                sun_direction: Vec3::new(0.45_f32, 0.8_f32, 0.35_f32),
+                sun_direction: Default::default(),
                 sun_color: Color { r: 1.0_f32, g: 0.95_f32, b: 0.88_f32 },
                 sun_size: 1.8_f32,
                 sun_intensity: 40.0_f32,

@@ -11042,9 +11042,9 @@
           "name": "sunDirection",
           "column": "Vector3",
           "default": {
-            "x": 0.45,
-            "y": 0.8,
-            "z": 0.35
+            "x": 0,
+            "y": 0,
+            "z": 0
           }
         },
         {

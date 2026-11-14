@@ -127,9 +127,7 @@ module atmosphere {
     field ground Color "Below the horizon." {
       default 0.16 0.14 0.12
     }
-    field sunDirection Vector3 "Towards the sun (match your DirectionalLight)." {
-      default 0.45 0.8 0.35
-    }
+    field sunDirection Vector3 "Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given."
     field sunColor Color "The sun's colour." {
       default 1 0.95 0.88
     }

@@ -19364,7 +19364,7 @@ pub const RECORDS: &[RecordDecl] = &[
             FieldDecl {
                 name: "sunDirection",
                 column: "Vector3",
-                default: "{\"x\":0.45,\"y\":0.8,\"z\":0.35}",
+                default: "{\"x\":0,\"y\":0,\"z\":0}",
                 readonly: false,
                 tunable: false,
                 min: None,
@@ -19373,7 +19373,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Towards the sun (match your DirectionalLight)."),
+                doc: doc!("Towards the sun: the opposite of the way its light shines. Zero (the default) follows the frame's light: towards the first DirectionalLight (its entity's +Z; it shines down -Z), or the built-in sun's (0.45, 0.8, 0.35) with none. A non-zero direction is used as given."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

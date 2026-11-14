@@ -1,11 +1,13 @@
 //! Where the sky's sun stands, as the renderer is handed it: og.DayNight's
-//! azimuth is a heading (about +Y from +Z towards +X), so 90 rises in +X.
+//! azimuth is a heading (about +Y from +Z towards +X), so 90 rises in +X;
+//! og.Sky's sun follows the DirectionalLight unless a direction is given.
 
 use og_core::glam::Vec3;
 use og_render::{Background, RenderScene, RgbaImage};
 use og_runtime::{
     Dispatch, Fetch, Hooks, RenderBackend, og_engine_create, og_engine_frame,
-    og_engine_write_resource, og_game_game, og_host_begin_bundle, set_hooks, set_render_backend,
+    og_engine_write_resource, og_game_game, og_host_begin_bundle, og_world_insert, og_world_spawn,
+    set_hooks, set_render_backend,
 };
 use serde_json::{Value, json};
 use std::cell::Cell;
@@ -99,4 +101,70 @@ fn a_day_night_azimuth_of_90_puts_the_rising_sun_towards_positive_x() {
     write(engine, "og.DayNight", dawn(90.0));
     let rising = sun(engine, &seen);
     assert!((rising - Vec3::X).length() < 1e-3, "azimuth 90: {rising}");
+}
+
+#[test]
+fn a_sky_with_no_sun_direction_draws_its_sun_where_the_light_comes_from() {
+    let (engine, seen) = engine();
+    // No DirectionalLight yet: the frame is lit by the built-in sun, and
+    // the sky's sun stands there.
+    write(engine, "og.Sky", json!({ "enabled": true }));
+    let built_in = og_render::DirectionalLight::default()
+        .direction_to_light
+        .normalize();
+    let drawn = sun(engine, &seen);
+    assert!((drawn - built_in).length() < 1e-4, "no light: {drawn}");
+
+    // A light standing at `from` and aimed at the origin shines along
+    // -from: the direction towards it is `from`.
+    let from = Vec3::new(-3.0, 2.0, 5.0);
+    let aim = og_core::facing::camera_look(from, Vec3::ZERO, Vec3::ZERO);
+    let light = answer(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some("{}".into()),
+    )))["value"]
+        .as_f64()
+        .unwrap();
+    for (name, fields) in [
+        (
+            "og.Transform",
+            json!({ "quaternion": { "x": aim.x, "y": aim.y, "z": aim.z, "w": aim.w } }),
+        ),
+        ("og.DirectionalLight", json!({ "intensity": 2 })),
+    ] {
+        let a = answer(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            light,
+            name.into(),
+            Some(fields.to_string()),
+        )));
+        assert_eq!(a["ok"], json!(true), "{a}");
+    }
+    let drawn = sun(engine, &seen);
+    assert!(
+        (drawn - from.normalize()).length() < 1e-4,
+        "towards the light {}: {drawn}",
+        from.normalize()
+    );
+    assert!(
+        (drawn - built_in).length() > 0.5,
+        "the light points elsewhere than the built-in sun"
+    );
+
+    // A direction given is used as given, whatever the light does.
+    write(
+        engine,
+        "og.Sky",
+        json!({ "sunDirection": { "x": 0, "y": 0, "z": -2 } }),
+    );
+    let drawn = sun(engine, &seen);
+    assert!((drawn - Vec3::NEG_Z).length() < 1e-4, "as given: {drawn}");
+    // Zero again: back with the light.
+    write(
+        engine,
+        "og.Sky",
+        json!({ "sunDirection": { "x": 0, "y": 0, "z": 0 } }),
+    );
+    let drawn = sun(engine, &seen);
+    assert!((drawn - from.normalize()).length() < 1e-4, "{drawn}");
 }
