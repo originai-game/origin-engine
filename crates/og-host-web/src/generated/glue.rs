@@ -644,8 +644,8 @@ pub fn og_input_action(world: u32, name: String) -> String {
 }
 
 #[wasm_bindgen]
-pub fn og_input_is_action_pressed(world: u32, name: String) -> bool {
-    <Host as InputApi>::og_input_is_action_pressed(&Host, world, name)
+pub fn og_input_is_action_down(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_is_action_down(&Host, world, name)
 }
 
 #[wasm_bindgen]
@@ -659,8 +659,8 @@ pub fn og_input_is_action_just_released(world: u32, name: String) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_input_action_held(world: u32, name: String) -> bool {
-    <Host as InputApi>::og_input_action_held(&Host, world, name)
+pub fn og_input_is_action_held(world: u32, name: String) -> bool {
+    <Host as InputApi>::og_input_is_action_held(&Host, world, name)
 }
 
 #[wasm_bindgen]
@@ -809,13 +809,13 @@ pub fn og_input_down(world: u32, key: String) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_input_pressed(world: u32, key: String) -> bool {
-    <Host as InputApi>::og_input_pressed(&Host, world, key)
+pub fn og_input_just_pressed(world: u32, key: String) -> bool {
+    <Host as InputApi>::og_input_just_pressed(&Host, world, key)
 }
 
 #[wasm_bindgen]
-pub fn og_input_released(world: u32, key: String) -> bool {
-    <Host as InputApi>::og_input_released(&Host, world, key)
+pub fn og_input_just_released(world: u32, key: String) -> bool {
+    <Host as InputApi>::og_input_just_released(&Host, world, key)
 }
 
 #[wasm_bindgen]
@@ -834,13 +834,13 @@ pub fn og_input_button_down(world: u32, button: String) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_input_button_pressed(world: u32, button: String) -> bool {
-    <Host as InputApi>::og_input_button_pressed(&Host, world, button)
+pub fn og_input_button_just_pressed(world: u32, button: String) -> bool {
+    <Host as InputApi>::og_input_button_just_pressed(&Host, world, button)
 }
 
 #[wasm_bindgen]
-pub fn og_input_button_released(world: u32, button: String) -> bool {
-    <Host as InputApi>::og_input_button_released(&Host, world, button)
+pub fn og_input_button_just_released(world: u32, button: String) -> bool {
+    <Host as InputApi>::og_input_button_just_released(&Host, world, button)
 }
 
 #[wasm_bindgen]
@@ -849,13 +849,13 @@ pub fn og_pointers_down(world: u32, id: u32) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_pointers_pressed(world: u32, id: u32) -> bool {
-    <Host as InputApi>::og_pointers_pressed(&Host, world, id)
+pub fn og_pointers_just_pressed(world: u32, id: u32) -> bool {
+    <Host as InputApi>::og_pointers_just_pressed(&Host, world, id)
 }
 
 #[wasm_bindgen]
-pub fn og_pointers_released(world: u32, id: u32) -> bool {
-    <Host as InputApi>::og_pointers_released(&Host, world, id)
+pub fn og_pointers_just_released(world: u32, id: u32) -> bool {
+    <Host as InputApi>::og_pointers_just_released(&Host, world, id)
 }
 
 #[wasm_bindgen]
@@ -884,13 +884,13 @@ pub fn og_gamepad_down(world: u32, button: String, pad: Option<u32>) -> bool {
 }
 
 #[wasm_bindgen]
-pub fn og_gamepad_pressed(world: u32, button: String, pad: Option<u32>) -> bool {
-    <Host as InputApi>::og_gamepad_pressed(&Host, world, button, pad)
+pub fn og_gamepad_just_pressed(world: u32, button: String, pad: Option<u32>) -> bool {
+    <Host as InputApi>::og_gamepad_just_pressed(&Host, world, button, pad)
 }
 
 #[wasm_bindgen]
-pub fn og_gamepad_released(world: u32, button: String, pad: Option<u32>) -> bool {
-    <Host as InputApi>::og_gamepad_released(&Host, world, button, pad)
+pub fn og_gamepad_just_released(world: u32, button: String, pad: Option<u32>) -> bool {
+    <Host as InputApi>::og_gamepad_just_released(&Host, world, button, pad)
 }
 
 #[wasm_bindgen]
@@ -2284,13 +2284,13 @@ pub fn og_i18n_format_currency(world: u32, amount: f64, currency: String) -> Str
 }
 
 #[wasm_bindgen]
-pub fn og_i18n_format_date(world: u32, seconds: f64, format: Option<String>) -> String {
-    <Host as I18nApi>::og_i18n_format_date(&Host, world, seconds, format)
+pub fn og_i18n_format_date(world: u32, time_ms: f64, format: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_format_date(&Host, world, time_ms, format)
 }
 
 #[wasm_bindgen]
-pub fn og_i18n_format_time(world: u32, seconds: f64, format: Option<String>) -> String {
-    <Host as I18nApi>::og_i18n_format_time(&Host, world, seconds, format)
+pub fn og_i18n_format_time(world: u32, time_ms: f64, format: Option<String>) -> String {
+    <Host as I18nApi>::og_i18n_format_time(&Host, world, time_ms, format)
 }
 
 #[wasm_bindgen]

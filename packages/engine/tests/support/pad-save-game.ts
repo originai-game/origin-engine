@@ -9,7 +9,7 @@ const PadFollow = defineSystem("PadFollow", { reads: [og.Gamepad], writes: [PadR
   const pads = world.resource(og.Gamepad);
   const run = world.resource(PadRun);
   if (!pads.ok || !run.ok) return;
-  if (pads.value.pressed("a", 1)) run.value.presses += 1;
+  if (pads.value.justPressed("a", 1)) run.value.presses += 1;
   run.value.x += pads.value.axis("leftX", 1) * time.dt;
   run.value.connected = pads.value.connected(1) ? 1 : 0;
 });

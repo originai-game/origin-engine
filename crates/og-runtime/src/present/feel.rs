@@ -351,7 +351,7 @@ slots!(
     /// og.Afterimage's fields.
     AfterimageSlots {
         count: "count",
-        interval: "interval",
+        interval: "intervalTicks",
         color: "color",
         opacity: "opacity",
         additive: "additive",

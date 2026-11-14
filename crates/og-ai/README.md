@@ -103,7 +103,7 @@ Built-in keys, written every think: `self`, `position`, `sees`, `heard`,
 
 ## Records
 
-- `og.AiAgent` (component): `behaviour`, `active`, `thinkEvery`; written:
+- `og.AiAgent` (component): `behaviour`, `active`, `thinkEveryTicks`; written:
   `status` (`AI_RUNNING`, `AI_SUCCESS`, `AI_FAILURE`), `state`, `node`,
   `changes`. A behaviour starts afresh on the agent's first think, when
   `behaviour` changes, and after `og.ai.restart(world, agent)`
@@ -113,7 +113,7 @@ Built-in keys, written every think: `self`, `position`, `sees`, `heard`,
   centre) where it then stands, what it saw and heard forgotten; actions
   without a speed keep the speed it first started with.
 - `og.Perception` (component): `sight`, `fov`, `eyeHeight`, `occlude`,
-  `occluders`, `hearing`, `memory`, `team`, `forward`; written: `target`,
+  `occluderMask`, `hearing`, `memory`, `team`, `forward`; written: `target`,
   `sees`, `lastSeen`, `sinceSeen`, `heard`, `heardAt`, `sinceHeard`.
 - `og.Perceivable` (component): `team`, `eyeHeight`.
 - `og.AiChanged` (event): `entity`, `state`, `node`, `status`, when the
@@ -131,7 +131,7 @@ host's `SightRay`; spatial sounds that started and `noise` calls within
 `hearing × loudness`, at the source's world position down its `og.Parent`
 chain; an agent does not hear its own: a sound of its entity or of an
 entity under it, or a noise whose `source` is one of them), then every
-`thinkEvery` ticks the tree or machine,
+`thinkEveryTicks` ticks the tree or machine,
 then the running action's target and speed go to the agent's
 `og.NavAgent` (no moving action stops it) and its commands to the queue
 (`take_commands`). Checks read the agent's components and the world's

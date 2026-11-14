@@ -22,7 +22,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `resources` | `readonly AnyResource[]` | `[]` | — | — | — | The game's own resources, created at their defaults. |
 | `commands` | `Readonly<Record<string, CommandHandler>>` | `{}` | — | — | — | Game actions registered into the command channel, by action name. |
 | `commandHelp` | `Readonly<Record<string, CommandDesc>>` | `{}` | — | — | — | Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: "<x>:<y>", doc: "Move the hero there." } }`. An action without an entry is listed by name alone. |
-| `maxCatchUp` | `number` | `4` | 1 … 60 | `ticks` | — | The most ticks one frame may run to catch up with the clock; the accumulator drops the rest. |
+| `maxCatchUpTicks` | `number` | `4` | 1 … 60 | `ticks` | — | The most ticks one frame may run to catch up with the clock; the accumulator drops the rest. |
 | `facts` | `FactsFn \| null` | `null` | — | — | — | The game's own facts for the probe's state(). |
 | `start` | `StartFn \| null` | `null` | — | — | — | Called once before the first tick, after the first scene spawned. A throw fails the run: no tick runs on the half-built world, `og run`, `og test` and `og dev` exit non-zero naming the error with its stack, and the web shell shows it. |
 | `ui` | `UiSetupFn \| null` | `null` | — | — | — | Register retained UI after start and after a hot-reload restore; never reruns start. The engine checks world_hash before and after: duplicate IDs, incompatible store types and gameplay writes fail registration. A fresh-process restore runs start, then ui, then restores named presentation values. |
@@ -53,7 +53,7 @@ struct GameDesc {
   field resources List.AnyResource "The game's own resources, created at their defaults."
   field commands Map.CommandHandler "Game actions registered into the command channel, by action name."
   field commandHelp Map.CommandDesc "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone."
-  field maxCatchUp u32 "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest." {
+  field maxCatchUpTicks u32 "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest." {
     default 4
     min 1
     max 60

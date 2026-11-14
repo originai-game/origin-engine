@@ -252,7 +252,7 @@ test("an RTS's orders cross the room as commands once each, in lockstep and in r
   for (const r of [...lock, ...roll]) {
     expect(r.lockstep.startTick!).toBeLessThan(58);
     expect(r.lockstep.desync).toBeNull();
-    // Orders at ticks 100 to 380 act inputDelay (2) ticks on: the last at 382.
+    // Orders at ticks 100 to 380 act inputDelayTicks (2) ticks on: the last at 382.
     expect(r.facts).toMatchObject({ orders0: 30, orders1: 30, lastTick: 382 });
     expect(r.confirmedHash).toBe(lock[0]!.confirmedHash);
   }
@@ -337,11 +337,11 @@ test("a peer whose connection is cut comes back by itself, takes its seat back f
   }
 }, 120_000);
 
-// Wall time decides this one: a 2.5 s SIGSTOP against a 0.8 s stallTimeout,
+// Wall time decides this one: a 2.5 s SIGSTOP against a 0.8 s stallTimeoutMs,
 // both peers paced at 60 Hz. A loaded machine slips the pacing and the test
 // times out, so it runs in the perf lane (scripts/perf.sh sets OG_PERF=1,
 // under exclusive admission), not in the gate.
-test.skipIf(!process.env.OG_PERF)("a peer frozen past stallTimeout is dropped at one tick, then takes its seat back from the room's world", async () => {
+test.skipIf(!process.env.OG_PERF)("a peer frozen past stallTimeoutMs is dropped at one tick, then takes its seat back from the room's world", async () => {
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   // Paced at 60 Hz, whatever the machine's speed: the stall from 2 s to 4.5 s, the drop near
   // tick 170 and the rejoin near tick 280 fall well inside 900 ticks (15 s).

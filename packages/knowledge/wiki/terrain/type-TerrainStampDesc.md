@@ -17,9 +17,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How it is turned: its og.Terrain entity's world rotation. |
 | `scale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | How it is scaled: its og.Terrain entity's world scale. |
 | `geometry` | `Geometry` | `0` | — | — | — | The mesh (its og.TerrainStamp's geometry). |
-| `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the mesh stands: its og.TerrainStamp entity's world position. |
-| `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How the mesh is turned: its entity's world rotation. |
-| `size` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | How the mesh is scaled: its entity's world scale. |
+| `meshPosition` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where the mesh stands: its og.TerrainStamp entity's world position. |
+| `meshQuaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | How the mesh is turned: its entity's world rotation. |
+| `meshScale` | `Vector3` | `{ x: 1, y: 1, z: 1 }` | — | — | — | How the mesh is scaled: its entity's world scale. |
 | `mode` | `TerrainStampMode` | `"carve"` | — | — | — | What it does to the ground. |
 | `depth` | `number` | `0.25` | ≥ 0 | `m` | — | carve: how far below the mesh's underside the ground goes, so it stays hidden under the mesh. |
 
@@ -36,11 +36,11 @@ struct TerrainStampDesc {
     default 1 1 1
   }
   field geometry Geometry "The mesh (its og.TerrainStamp's geometry)."
-  field position Vector3 "Where the mesh stands: its og.TerrainStamp entity's world position." {
+  field meshPosition Vector3 "Where the mesh stands: its og.TerrainStamp entity's world position." {
     unit m
   }
-  field rotation Quaternion "How the mesh is turned: its entity's world rotation."
-  field size Vector3 "How the mesh is scaled: its entity's world scale." {
+  field meshQuaternion Quaternion "How the mesh is turned: its entity's world rotation."
+  field meshScale Vector3 "How the mesh is scaled: its entity's world scale." {
     default 1 1 1
   }
   field mode TerrainStampMode "What it does to the ground."

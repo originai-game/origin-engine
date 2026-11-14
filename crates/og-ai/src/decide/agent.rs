@@ -9,7 +9,7 @@ use og_ecs::World;
 
 /// An agent that thinks with a behaviour (`og.ai.load`).
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.AiAgent")]
+#[reflect(name = "og.AiAgent", version = 2)]
 pub struct AiAgent {
     /// The behaviour it runs (og.ai.load); 0 runs nothing.
     pub behaviour: u64,
@@ -17,8 +17,14 @@ pub struct AiAgent {
     #[reflect(default = 1)]
     pub active: bool,
     /// Thinks every this many ticks (1: every tick).
-    #[reflect(name = "thinkEvery", min = 1, max = 600, default = 1, unit = "ticks")]
-    pub think_every: u32,
+    #[reflect(
+        name = "thinkEveryTicks",
+        min = 1,
+        max = 600,
+        default = 1,
+        unit = "ticks"
+    )]
+    pub think_every_ticks: u32,
     /// AI_RUNNING, AI_SUCCESS or AI_FAILURE after the last think (0 before the first; written by og.ai).
     pub status: u32,
     /// The state machine's state, an index into its states (written by og.ai).
@@ -34,7 +40,7 @@ impl Default for AiAgent {
         AiAgent {
             behaviour: 0,
             active: true,
-            think_every: 1,
+            think_every_ticks: 1,
             status: 0,
             state: 0,
             node: 0,

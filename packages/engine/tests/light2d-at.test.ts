@@ -44,10 +44,10 @@ const Blind = defineSystem("LaBlind", { writes: [Seen] }, (_q, _t, world) => {
 });
 
 function start(world: World): void {
-  // White, intensity 2, radius 6, linear falloff, at the origin.
-  must(world.insert(must(world.spawn({ name: "lamp" })), og.Light2D, { intensity: 2, radius: 6, falloff: 1 }));
+  // White, intensity 2, distance 6, linear falloff, at the origin.
+  must(world.insert(must(world.spawn({ name: "lamp" })), og.Light2D, { intensity: 2, distance: 6, falloff: 1 }));
   // Red on layer 2 only, below.
-  must(world.insert(must(world.spawn({ name: "red", position: { x: 0, y: -1, z: 0 } })), og.Light2D, { color: { r: 1, g: 0, b: 0 }, radius: 4, falloff: 1, layers: 2 }));
+  must(world.insert(must(world.spawn({ name: "red", position: { x: 0, y: -1, z: 0 } })), og.Light2D, { color: { r: 1, g: 0, b: 0 }, distance: 4, falloff: 1, layers: 2 }));
   // A wall at x 2, through a parent at x 1.5 (the wall is 0.5 right of it).
   const holder = must(world.spawn({ name: "holder", position: { x: 1.5, y: 0, z: 0 } }));
   const wall = must(world.spawn({ name: "wall", parent: holder, position: { x: 0.5, y: 0, z: 0 } }));

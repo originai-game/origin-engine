@@ -581,7 +581,7 @@ pub fn og_physics_shape_cast(
         let desc = ShapeCastDesc {
             shape: shape(d.shape),
             position: d.position,
-            rotation: d.rotation,
+            rotation: d.quaternion,
             direction: d.direction,
             max_distance: d.max_distance,
             filter: filter(d.filter)?,
@@ -602,7 +602,7 @@ pub fn og_physics_overlap(world: u32, desc: Option<String>) -> Result<serde_json
         let desc = OverlapDesc {
             shape: shape(d.shape),
             position: d.position,
-            rotation: d.rotation,
+            rotation: d.quaternion,
             filter: filter(d.filter)?,
         };
         let hits = query(world)?.overlap(&desc).map_err(err)?;

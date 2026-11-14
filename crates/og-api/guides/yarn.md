@@ -251,7 +251,7 @@ else if (v) og.story.choose(world, c.value, v.choices[0].index);
 - A line's `#voice:` plays through og.audio on the conversation's own
   entity, an og.AudioSource on the sfx bus, from the tick after the line
   is shown; it stops when the line moves on. For auto-advance, advance
-  once the view's `voiceLeft` reaches 0.
+  once the view's `voiceTicksLeft` reaches 0.
 - A line's `#shot:` (else its node's) names a virtual camera's entity or a
   cast role. While the line shows, og.story makes that og.VirtualCamera
   og.CameraBrain.solo (with `soloBlend` -1): a name is the entity of that

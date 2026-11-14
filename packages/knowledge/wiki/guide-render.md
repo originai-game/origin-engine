@@ -432,7 +432,7 @@ og.debug) and shader time stay at the tick.
 | volumetric fog | grows with slices | plain fog |
 | planar reflection | a second scene pass | screen-space reflection |
 | colour adjustments | ~0.5 ms CPU per change | hold still |
-| CameraView | a draw of all its layers admit | `layers`, `every` |
+| CameraView | a draw of all its layers admit | `layers`, `everyTicks` |
 | render target depth | a second draw of opaque meshes | leave off |
 
 - `RenderOptions.without` leaves features out of every lit pipeline, which
@@ -446,7 +446,7 @@ og.debug) and shader time stay at the tick.
 - A CameraView draws everything its layers admit: skinned models, material
   hooks and shaders, terrain, sky, particles, lines, points, world sprites
   and text, lit and shadowed by the frame's lights. Keep it cheap with
-  `layers` and `every` (a monitor at 4 costs a quarter).
+  `layers` and `everyTicks` (a monitor at 4 costs a quarter).
 - An hdr target is exposed by the frame that shows it (a mirror, a portal);
   an ldr one is finished (a monitor, a minimap). No view runs bloom, AO,
   SSR, depth of field, grading or custom passes, whose inputs are the main

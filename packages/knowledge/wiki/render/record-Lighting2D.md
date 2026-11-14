@@ -45,4 +45,4 @@ resource Lighting2D {
 }
 ```
 
-<sub>Module `render` line 2038</sub>
+<sub>Module `render` line 2040</sub>

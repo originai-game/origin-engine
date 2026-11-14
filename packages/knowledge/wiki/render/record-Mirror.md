@@ -16,7 +16,7 @@ Token `og.Mirror`, registered under the schema name `og.Mirror`; its value type 
 | `width` | `number` | `1` | ≥ 0.001 | `m` | — | The mirror's width along the entity's local +X. |
 | `height` | `number` | `1` | ≥ 0.001 | `m` | — | Its height along local +Y. |
 | `layers` | `number` | `1` | — | — | — | Three.js layers it reflects, as og.Camera.layers. |
-| `every` | `number` | `1` | — | — | — | Draw once every this many ticks, as CameraView.every. |
+| `everyTicks` | `number` | `1` | — | — | — | Draw once every this many ticks, as CameraView.everyTicks. |
 | `active` | `boolean` | `true` | — | — | — | Whether it draws. |
 
 ```ogt
@@ -36,7 +36,7 @@ component Mirror {
   field layers u32 "Three.js layers it reflects, as og.Camera.layers." {
     default 1
   }
-  field every u32 "Draw once every this many ticks, as CameraView.every." {
+  field everyTicks u32 "Draw once every this many ticks, as CameraView.everyTicks." {
     default 1
   }
   field active bool "Whether it draws." {
@@ -45,4 +45,4 @@ component Mirror {
 }
 ```
 
-<sub>Module `render` line 4088</sub>
+<sub>Module `render` line 4092</sub>

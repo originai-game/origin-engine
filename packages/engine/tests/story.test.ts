@@ -302,8 +302,8 @@ test("og.story ambient barks draw on the story's stream: the same seed says the 
     const e = start();
     const w = e.world;
     const [a, b] = guards(e);
-    must(og.story.ambient(w, { entity: a, topic: "idle", every: 40, jitter: 30 }));
-    must(og.story.ambient(w, { entity: b, topic: "idle", every: 40, jitter: 30 }));
+    must(og.story.ambient(w, { entity: a, topic: "idle", everyTicks: 40, jitterTicks: 30 }));
+    must(og.story.ambient(w, { entity: b, topic: "idle", everyTicks: 40, jitterTicks: 30 }));
     const said: string[] = [];
     for (let t = 0; t < 400; t++) {
       e.advance(1);
@@ -324,15 +324,15 @@ test("og.story voice: a voiced line plays on its own og.AudioSource entity, the 
   guards(e);
   must(og.story.startQuest(w, "watch"));
   const c = must<number>(og.story.start(w, { dialogue: "guard" }));
-  type V = View & { voice: string; voiceTicks: number; voiceLeft: number };
+  type V = View & { voice: string; voiceTicks: number; voiceTicksLeft: number };
   let v = og.story.view(w, c) as unknown as V;
   expect([v.key, v.voice]).toEqual(["guard.halt", "vo/guard_halt.wav"]);
   const total = v.voiceTicks;
   expect(total).toBeGreaterThan(1);
   e.advance(1);
   v = og.story.view(w, c) as unknown as V;
-  expect(v.voiceLeft).toBeGreaterThan(0);
-  expect(v.voiceLeft).toBeLessThanOrEqual(total);
+  expect(v.voiceTicksLeft).toBeGreaterThan(0);
+  expect(v.voiceTicksLeft).toBeLessThanOrEqual(total);
 
   e.probe.commands("0:dump_story:story.json");
   e.advance(1);
@@ -350,7 +350,7 @@ test("og.story voice: a voiced line plays on its own og.AudioSource entity, the 
   // Played out: the view says so and the voice's entity is gone.
   e.advance(total + 1);
   v = og.story.view(w, c) as unknown as V;
-  expect(v.voiceLeft).toBe(0);
+  expect(v.voiceTicksLeft).toBe(0);
   expect(w.alive(voice as never)).toBeFalse();
 
   // Advancing emits `halted`; og.StoryEvent where event.name == 'halted' counts it, twice over two visits.

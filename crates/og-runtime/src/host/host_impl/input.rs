@@ -24,8 +24,8 @@ macro_rules! __og_host_bindings_input {
             fn og_input_action(&self, world: u32, name: String) -> String {
                 $crate::host_impl::json($crate::og_input_action(world, name))
             }
-            fn og_input_is_action_pressed(&self, world: u32, name: String) -> bool {
-                $crate::og_input_is_action_pressed(world, name)
+            fn og_input_is_action_down(&self, world: u32, name: String) -> bool {
+                $crate::og_input_is_action_down(world, name)
             }
             fn og_input_is_action_just_pressed(&self, world: u32, name: String) -> bool {
                 $crate::og_input_is_action_just_pressed(world, name)
@@ -33,8 +33,8 @@ macro_rules! __og_host_bindings_input {
             fn og_input_is_action_just_released(&self, world: u32, name: String) -> bool {
                 $crate::og_input_is_action_just_released(world, name)
             }
-            fn og_input_action_held(&self, world: u32, name: String) -> bool {
-                $crate::og_input_action_held(world, name)
+            fn og_input_is_action_held(&self, world: u32, name: String) -> bool {
+                $crate::og_input_is_action_held(world, name)
             }
             fn og_input_action_value(&self, world: u32, name: String) -> f64 {
                 $crate::og_input_action_value(world, name)
@@ -133,11 +133,11 @@ macro_rules! __og_host_bindings_input {
             fn og_input_down(&self, world: u32, key: String) -> bool {
                 $crate::og_input_down(world, key)
             }
-            fn og_input_pressed(&self, world: u32, key: String) -> bool {
-                $crate::og_input_pressed(world, key)
+            fn og_input_just_pressed(&self, world: u32, key: String) -> bool {
+                $crate::og_input_just_pressed(world, key)
             }
-            fn og_input_released(&self, world: u32, key: String) -> bool {
-                $crate::og_input_released(world, key)
+            fn og_input_just_released(&self, world: u32, key: String) -> bool {
+                $crate::og_input_just_released(world, key)
             }
             fn og_input_axis(&self, world: u32, negative: String, positive: String) -> f64 {
                 $crate::og_input_axis(world, negative, positive)
@@ -155,20 +155,20 @@ macro_rules! __og_host_bindings_input {
             fn og_input_button_down(&self, world: u32, button: String) -> bool {
                 $crate::og_input_button_down(world, button)
             }
-            fn og_input_button_pressed(&self, world: u32, button: String) -> bool {
-                $crate::og_input_button_pressed(world, button)
+            fn og_input_button_just_pressed(&self, world: u32, button: String) -> bool {
+                $crate::og_input_button_just_pressed(world, button)
             }
-            fn og_input_button_released(&self, world: u32, button: String) -> bool {
-                $crate::og_input_button_released(world, button)
+            fn og_input_button_just_released(&self, world: u32, button: String) -> bool {
+                $crate::og_input_button_just_released(world, button)
             }
             fn og_pointers_down(&self, world: u32, id: u32) -> bool {
                 $crate::og_pointers_down(world, id)
             }
-            fn og_pointers_pressed(&self, world: u32, id: u32) -> bool {
-                $crate::og_pointers_pressed(world, id)
+            fn og_pointers_just_pressed(&self, world: u32, id: u32) -> bool {
+                $crate::og_pointers_just_pressed(world, id)
             }
-            fn og_pointers_released(&self, world: u32, id: u32) -> bool {
-                $crate::og_pointers_released(world, id)
+            fn og_pointers_just_released(&self, world: u32, id: u32) -> bool {
+                $crate::og_pointers_just_released(world, id)
             }
             fn og_pointers_position(&self, world: u32, id: u32) -> String {
                 $crate::host_impl::json($crate::og_pointers_position(world, id))
@@ -185,11 +185,21 @@ macro_rules! __og_host_bindings_input {
             fn og_gamepad_down(&self, world: u32, button: String, pad: Option<u32>) -> bool {
                 $crate::og_gamepad_down(world, button, pad)
             }
-            fn og_gamepad_pressed(&self, world: u32, button: String, pad: Option<u32>) -> bool {
-                $crate::og_gamepad_pressed(world, button, pad)
+            fn og_gamepad_just_pressed(
+                &self,
+                world: u32,
+                button: String,
+                pad: Option<u32>,
+            ) -> bool {
+                $crate::og_gamepad_just_pressed(world, button, pad)
             }
-            fn og_gamepad_released(&self, world: u32, button: String, pad: Option<u32>) -> bool {
-                $crate::og_gamepad_released(world, button, pad)
+            fn og_gamepad_just_released(
+                &self,
+                world: u32,
+                button: String,
+                pad: Option<u32>,
+            ) -> bool {
+                $crate::og_gamepad_just_released(world, button, pad)
             }
             fn og_gamepad_axis(&self, world: u32, axis: String, pad: Option<u32>) -> f64 {
                 $crate::og_gamepad_axis(world, axis, pad)

@@ -7,7 +7,7 @@
 // events come back through og_room_deliver, the room named as a Play link
 // names it (og_room_set_host's `join`). Prints the session's end as JSON.
 //
-//   bun tests/support/net-peer.ts --host node|web --port <relay port> --room <id> --ticks <n> [--rollback <maxPrediction>]
+//   bun tests/support/net-peer.ts --host node|web --port <relay port> --room <id> --ticks <n> [--rollback <maxPredictionTicks>]
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

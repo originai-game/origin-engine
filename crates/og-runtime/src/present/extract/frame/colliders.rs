@@ -27,7 +27,7 @@ pub(super) fn colliders(world: &World, rs: &mut RenderState, h: &mut Hierarchy) 
             continue;
         };
         let world_m = h.world_of(e);
-        let q = v.rotation.normalize();
+        let q = v.quaternion.normalize();
         let local = Mat4::from_rotation_translation(q, v.offset);
         let m = world_m * local;
         let collider = match v.shape {

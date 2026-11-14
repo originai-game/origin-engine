@@ -60,8 +60,9 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
   from a CLDR subset built into the engine: the languages the plural rules
   cover and zh-Hant. Any other language is written as en.
 - Formatting follows the active locale, else the requested one, else en.
-- A date or time is seconds since 1970-01-01 00:00 UTC that the game
-  passes in (a save's timestamp, a server's event time). Nothing reads a
+- A date or time is milliseconds since 1970-01-01 00:00 UTC that the game
+  passes in (og.platform.now, PlatformResult.time, a save's timestamp, a
+  server's event time), in a message's arguments too. Nothing reads a
   clock, so the same value gives the same text on every host and in a
   replay. A message's dates are UTC; formatDate and formatTime take an
   offset for the player's zone.

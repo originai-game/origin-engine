@@ -1,0 +1,252 @@
+{
+  "breaking": [
+    {
+      "member": "og.AiAgent.thinkEveryTicks",
+      "change": "Renamed from thinkEvery: a member counted in ticks says Ticks. Same value, default 1.",
+      "fix": "Rename thinkEvery to thinkEveryTicks.",
+      "codemod": {
+        "from": "thinkEvery",
+        "to": "thinkEveryTicks"
+      }
+    },
+    {
+      "member": "og.Lockstep.stallTimeoutMs",
+      "change": "Renamed from stallTimeout: a member in milliseconds says Ms. Same value, default 5000.",
+      "fix": "Rename stallTimeout to stallTimeoutMs.",
+      "codemod": {
+        "from": "stallTimeout",
+        "to": "stallTimeoutMs"
+      }
+    },
+    {
+      "member": "og.Lockstep.hashEveryTicks",
+      "change": "Renamed from hashEvery. Same value, default 10.",
+      "fix": "Rename hashEvery to hashEveryTicks.",
+      "codemod": {
+        "from": "hashEvery",
+        "to": "hashEveryTicks"
+      }
+    },
+    {
+      "member": "og.Lockstep.maxPredictionTicks, LockstepStatus.maxPredictionTicks",
+      "change": "Renamed from maxPrediction, in the resource and in og.net.status's answer (the probe's lockstep status with it).",
+      "fix": "Rename maxPrediction to maxPredictionTicks.",
+      "codemod": {
+        "from": "maxPrediction",
+        "to": "maxPredictionTicks"
+      }
+    },
+    {
+      "member": "og.Lockstep.inputDelayTicks",
+      "change": "Renamed from inputDelay. Same value, default 2.",
+      "fix": "Rename inputDelay to inputDelayTicks where it is og.Lockstep's field; a game's own inputDelay is not this one.",
+      "find": [
+        "inputDelay"
+      ]
+    },
+    {
+      "member": "LockstepStatus.predictedTicks",
+      "change": "Renamed from predicted (og.net.status).",
+      "fix": "Read predictedTicks.",
+      "find": [
+        ".predicted"
+      ]
+    },
+    {
+      "member": "GameDesc.maxCatchUpTicks",
+      "change": "Renamed from maxCatchUp. Same value, default 4.",
+      "fix": "Rename maxCatchUp to maxCatchUpTicks in og.game's desc.",
+      "codemod": {
+        "from": "maxCatchUp",
+        "to": "maxCatchUpTicks"
+      }
+    },
+    {
+      "member": "DialogueView.voiceTicksLeft, BarkView.voiceTicksLeft",
+      "change": "Renamed from voiceLeft (og.story.view, og.story.barks), beside voiceTicks. The probe's dump_story keeps its own voiceLeft.",
+      "fix": "Rename voiceLeft to voiceTicksLeft. The probe's `dump_story` keeps its `voiceLeft` key, so a test that reads that dump does not change.",
+      "find": [
+        "voiceLeft"
+      ]
+    },
+    {
+      "member": "og.Time.hitStopTicks",
+      "change": "The og.Time resource's field hitStop is hitStopTicks (a system's `time`, world.resource(og.Time), the probe's get:og.Time). The function og.time.hitStop and og.TimeScale.hitStop keep their names.",
+      "fix": "Read time.hitStopTicks. Leave og.time.hitStop(world, ticks) calls as they are.",
+      "find": [
+        "hitStop"
+      ]
+    },
+    {
+      "member": "DebugDrawDesc.ticks",
+      "change": "Renamed from duration: how many ticks a debug shape stays.",
+      "fix": "In the desc of og.debug calls, write ticks where duration was.",
+      "find": [
+        "og.debug."
+      ]
+    },
+    {
+      "member": "og.Afterimage.intervalTicks, og.ReflectionProbe.intervalTicks",
+      "change": "Renamed from interval. Same values, defaults 3 and 30.",
+      "fix": "Rename interval to intervalTicks on og.Afterimage and og.ReflectionProbe, in code and in scene text.",
+      "find": [
+        "og.Afterimage",
+        "og.ReflectionProbe",
+        "interval"
+      ]
+    },
+    {
+      "member": "og.CameraView.everyTicks, og.Mirror.everyTicks",
+      "change": "Renamed from every. Same value: draw once every this many ticks.",
+      "fix": "Rename every to everyTicks on og.CameraView and og.Mirror, in code and in scene text.",
+      "find": [
+        "og.CameraView",
+        "og.Mirror",
+        "every:"
+      ]
+    },
+    {
+      "member": "AmbientDesc.everyTicks, AmbientDesc.jitterTicks",
+      "change": "Renamed from every and jitter (og.story.ambient).",
+      "fix": "Write og.story.ambient(world, { entity, topic, everyTicks, jitterTicks }).",
+      "find": [
+        "og.story.ambient",
+        "story.ambient("
+      ]
+    },
+    {
+      "member": "og.i18n.formatDate, og.i18n.formatTime",
+      "change": "The moment is milliseconds since 1970-01-01 00:00 UTC (parameter timeMs), no longer seconds, so og.platform.now and PlatformResult.time pass straight in. A message's {d, date} and {d, time} arguments are milliseconds too. A value still in seconds formats as a moment in January 1970. og.i18n.formatDuration still takes a length in seconds.",
+      "fix": "Multiply a moment kept in seconds by 1000, or pass the host's milliseconds as they are; do the same for the date and time arguments of og.i18n.t.",
+      "find": [
+        "formatDate",
+        "formatTime",
+        ", date",
+        ", time"
+      ]
+    },
+    {
+      "member": "ShapeCastDesc.quaternion, OverlapDesc.quaternion, RagdollBoneDesc.quaternion, VfxSpawnDesc.quaternion, DebugDrawDesc.quaternion, og.Collider.quaternion, WheelPose.quaternion, BonePose.quaternion",
+      "change": "Renamed from rotation in each: a member of type Quaternion is named quaternion, as og.Transform's. Scalar angles keep rotation.",
+      "fix": "Rename rotation to quaternion in the descs of og.physics.castShape, og.physics.overlap, og.physics.ragdoll rigs, og.vfx.spawn and og.debug calls, on og.Collider (code and scene text), and where og.physics.vehicleWheels' and og.physics.ragdollPose's answers are read. Scalar rotation members (an environment map's, a text's, Path2's ellipses) are unchanged.",
+      "find": [
+        "rotation"
+      ]
+    },
+    {
+      "member": "TerrainStampDesc.meshPosition, TerrainStampDesc.meshQuaternion, TerrainStampDesc.meshScale",
+      "change": "Renamed from position, rotation and size: the stamped mesh's transform. The terrain's own origin, quaternion and scale keep their names.",
+      "fix": "In og.terrain.stamp's desc write meshPosition, meshQuaternion and meshScale.",
+      "find": [
+        "terrain.stamp(",
+        "TerrainStampDesc"
+      ]
+    },
+    {
+      "member": "WfcCell.quarterTurns",
+      "change": "Renamed from rotation: quarter turns clockwise, 0 to 3, an integer and not a quaternion.",
+      "fix": "In WfcDesc.fixed cells write quarterTurns.",
+      "find": [
+        "procgen.wfc(",
+        "fixed:"
+      ]
+    },
+    {
+      "member": "og.Perception.occluderMask",
+      "change": "Renamed from occluders: the collision layers that block sight are a mask.",
+      "fix": "Rename occluders to occluderMask on og.Perception.",
+      "find": [
+        "occluders"
+      ]
+    },
+    {
+      "member": "og.VirtualCamera.collisionMask",
+      "change": "Renamed from collisionLayers.",
+      "fix": "Rename collisionLayers to collisionMask.",
+      "codemod": {
+        "from": "collisionLayers",
+        "to": "collisionMask"
+      }
+    },
+    {
+      "member": "og.PlatformerController.oneWayMask",
+      "change": "Renamed from oneWayLayers.",
+      "fix": "Rename oneWayLayers to oneWayMask.",
+      "codemod": {
+        "from": "oneWayLayers",
+        "to": "oneWayMask"
+      }
+    },
+    {
+      "member": "og.Light2D.distance",
+      "change": "Renamed from radius: where the light reaches zero, as og.PointLight.distance. A timeline's light track on a 2D light names distance too. sourceRadius is unchanged.",
+      "fix": "Rename radius to distance on og.Light2D, in code, scene text and timeline light tracks.",
+      "find": [
+        "og.Light2D",
+        "Light2D"
+      ]
+    },
+    {
+      "member": "og.PlatformerController.run",
+      "change": "Renamed from moveX: the run input, -1 to 1.",
+      "fix": "Set run where moveX was set.",
+      "find": [
+        "moveX"
+      ]
+    },
+    {
+      "member": "og.PlatformerController.addVelocity",
+      "change": "Renamed from impulse: it is a velocity change in metres per second, not newton-seconds.",
+      "fix": "Set addVelocity where the controller's impulse was set. og.physics.applyImpulse, og.Contact.impulse and og.Ragdoll.impulse are unchanged.",
+      "find": [
+        "og.PlatformerController",
+        "impulse"
+      ]
+    },
+    {
+      "member": "TilemapDesc.tilePixelWidth, TilemapDesc.tilePixelHeight, TilemapDesc.tileSize",
+      "change": "Renamed from tileWidth, tileHeight (a tile's size in pixels) and unit (world units per tile width). TilemapInfo.tileWidth and tileHeight, in world units, keep their names.",
+      "fix": "In og.tilemap.create's desc write tilePixelWidth, tilePixelHeight and tileSize. Leave reads of TilemapInfo.tileWidth and tileHeight.",
+      "find": [
+        "tilemap.create(",
+        "tileWidth",
+        "tileHeight"
+      ]
+    },
+    {
+      "member": "og.input.isActionDown",
+      "change": "Renamed from isActionPressed: a control that is held is down. isActionJustPressed and isActionJustReleased are unchanged.",
+      "fix": "Rename isActionPressed to isActionDown.",
+      "codemod": {
+        "from": "isActionPressed",
+        "to": "isActionDown"
+      }
+    },
+    {
+      "member": "og.input.isActionHeld",
+      "change": "Renamed from actionHeld: every boolean reader of an action starts with is. og.ui.actionHeld is another function and keeps its name.",
+      "fix": "Rename og.input.actionHeld to og.input.isActionHeld.",
+      "find": [
+        "input.actionHeld"
+      ]
+    },
+    {
+      "member": "ActionState, og.Input, og.Pointers, og.Gamepad",
+      "change": "The tick a control went down is justPressed and the tick it went up justReleased, in every field and method; down and held are unchanged. ActionState: pressed → justPressed, released → justReleased. og.Input: pressed() → justPressed(), released() → justReleased(), buttonPressed() → buttonJustPressed(), buttonReleased() → buttonJustReleased(), pressed0-3 → justPressed0-3, released0-3 → justReleased0-3, buttonsPressed → buttonsJustPressed, buttonsReleased → buttonsJustReleased. og.Pointers: pressed() → justPressed(), released() → justReleased(), pressedMask → justPressedMask, releasedMask → justReleasedMask. og.Gamepad: pressed() → justPressed(), released() → justReleased(), pressed0-7 → justPressed0-7, released0-7 → justReleased0-7. The old names are gone, so old code fails to compile instead of reading another state.",
+      "fix": "Rename by the table. Where code meant the held state, use down (input.down, buttonDown, pointers.down, pads.down, ActionState.down), not justPressed.",
+      "find": [
+        "pressed",
+        "released",
+        "Pressed(",
+        "Released(",
+        "buttonsPressed",
+        "buttonsReleased"
+      ]
+    },
+    {
+      "member": "og replay compare, world hash",
+      "change": "World hashes name each record's fields, so the renamed component fields above move the hash of a world that holds one (og.Input, og.Pointers, og.Gamepad, og.Collider, og.Light2D, og.PlatformerController, og.AiAgent, og.Perception, og.Lockstep, og.VirtualCamera, og.CameraView, og.Mirror, og.Afterimage, og.ReflectionProbe). A trace recorded on an earlier version names the old fields, so og replay compare reports a difference at its first tick. No tick steps differently, and a save from an earlier version loads with its values under the new names.",
+      "fix": "Re-record replay traces and pinned world hashes on this version."
+    }
+  ]
+}

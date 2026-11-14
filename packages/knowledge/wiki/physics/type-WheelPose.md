@@ -11,7 +11,7 @@ A wheel of an og.Vehicle as the last step left it, for drawing.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The wheel's centre in world space. |
-| `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation (steering and spin) in world space. |
+| `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its rotation (steering and spin) in world space. |
 | `contact` | `boolean` | `false` | — | — | — | Whether it touches the ground. |
 | `slip` | `number` | `0` | 0 … 1 | — | — | How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D. See `physics §7`. |
 | `sideSpeed` | `number` | `0` | — | `mps` | — | How fast the tyre's contact moves sideways over the ground (along its axle; 0 in the air and in 2D): a slide's speed, for the squeal's pitch or a skid mark's darkness. |
@@ -23,7 +23,7 @@ struct WheelPose {
   field position Vector3 "The wheel's centre in world space." {
     unit m
   }
-  field rotation Quaternion "Its rotation (steering and spin) in world space."
+  field quaternion Quaternion "Its rotation (steering and spin) in world space."
   field contact bool "Whether it touches the ground."
   field slip f32 "How much the tyre slides (rapier's skid info turned round): 0 it grips, towards 1 it asks for more than its grip holds (0.5 is twice as much); 0 in the air and in 2D." {
     guide "physics §7"

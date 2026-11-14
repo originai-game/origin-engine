@@ -154,8 +154,8 @@ pub fn og_input_actions(world: u32) -> Vec<crate::host::wire::ActionInfo> {
 pub fn og_input_action(world: u32, name: String) -> Option<crate::host::wire::ActionState> {
     state_of(world, &name).map(|s| wire::ActionState {
         down: s.down,
-        pressed: s.pressed,
-        released: s.released,
+        just_pressed: s.pressed,
+        just_released: s.released,
         held: s.held,
         value: s.value,
         vector: s.vector,
@@ -163,7 +163,7 @@ pub fn og_input_action(world: u32, name: String) -> Option<crate::host::wire::Ac
     })
 }
 
-pub fn og_input_is_action_pressed(world: u32, name: String) -> bool {
+pub fn og_input_is_action_down(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.down)
 }
 
@@ -175,7 +175,7 @@ pub fn og_input_is_action_just_released(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.released)
 }
 
-pub fn og_input_action_held(world: u32, name: String) -> bool {
+pub fn og_input_is_action_held(world: u32, name: String) -> bool {
     state_of(world, &name).is_some_and(|s| s.held)
 }
 

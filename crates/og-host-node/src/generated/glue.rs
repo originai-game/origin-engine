@@ -771,10 +771,10 @@ pub fn og_input_action(env: Env, world: u32, name: String) -> String {
     <Host as InputApi>::og_input_action(&Host, world, name)
 }
 
-#[napi(js_name = "og_input_is_action_pressed")]
-pub fn og_input_is_action_pressed(env: Env, world: u32, name: String) -> bool {
+#[napi(js_name = "og_input_is_action_down")]
+pub fn og_input_is_action_down(env: Env, world: u32, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_is_action_pressed(&Host, world, name)
+    <Host as InputApi>::og_input_is_action_down(&Host, world, name)
 }
 
 #[napi(js_name = "og_input_is_action_just_pressed")]
@@ -789,10 +789,10 @@ pub fn og_input_is_action_just_released(env: Env, world: u32, name: String) -> b
     <Host as InputApi>::og_input_is_action_just_released(&Host, world, name)
 }
 
-#[napi(js_name = "og_input_action_held")]
-pub fn og_input_action_held(env: Env, world: u32, name: String) -> bool {
+#[napi(js_name = "og_input_is_action_held")]
+pub fn og_input_is_action_held(env: Env, world: u32, name: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_action_held(&Host, world, name)
+    <Host as InputApi>::og_input_is_action_held(&Host, world, name)
 }
 
 #[napi(js_name = "og_input_action_value")]
@@ -969,16 +969,16 @@ pub fn og_input_down(env: Env, world: u32, key: String) -> bool {
     <Host as InputApi>::og_input_down(&Host, world, key)
 }
 
-#[napi(js_name = "og_input_pressed")]
-pub fn og_input_pressed(env: Env, world: u32, key: String) -> bool {
+#[napi(js_name = "og_input_just_pressed")]
+pub fn og_input_just_pressed(env: Env, world: u32, key: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_pressed(&Host, world, key)
+    <Host as InputApi>::og_input_just_pressed(&Host, world, key)
 }
 
-#[napi(js_name = "og_input_released")]
-pub fn og_input_released(env: Env, world: u32, key: String) -> bool {
+#[napi(js_name = "og_input_just_released")]
+pub fn og_input_just_released(env: Env, world: u32, key: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_released(&Host, world, key)
+    <Host as InputApi>::og_input_just_released(&Host, world, key)
 }
 
 #[napi(js_name = "og_input_axis")]
@@ -999,16 +999,16 @@ pub fn og_input_button_down(env: Env, world: u32, button: String) -> bool {
     <Host as InputApi>::og_input_button_down(&Host, world, button)
 }
 
-#[napi(js_name = "og_input_button_pressed")]
-pub fn og_input_button_pressed(env: Env, world: u32, button: String) -> bool {
+#[napi(js_name = "og_input_button_just_pressed")]
+pub fn og_input_button_just_pressed(env: Env, world: u32, button: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_button_pressed(&Host, world, button)
+    <Host as InputApi>::og_input_button_just_pressed(&Host, world, button)
 }
 
-#[napi(js_name = "og_input_button_released")]
-pub fn og_input_button_released(env: Env, world: u32, button: String) -> bool {
+#[napi(js_name = "og_input_button_just_released")]
+pub fn og_input_button_just_released(env: Env, world: u32, button: String) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_input_button_released(&Host, world, button)
+    <Host as InputApi>::og_input_button_just_released(&Host, world, button)
 }
 
 #[napi(js_name = "og_pointers_down")]
@@ -1017,16 +1017,16 @@ pub fn og_pointers_down(env: Env, world: u32, id: u32) -> bool {
     <Host as InputApi>::og_pointers_down(&Host, world, id)
 }
 
-#[napi(js_name = "og_pointers_pressed")]
-pub fn og_pointers_pressed(env: Env, world: u32, id: u32) -> bool {
+#[napi(js_name = "og_pointers_just_pressed")]
+pub fn og_pointers_just_pressed(env: Env, world: u32, id: u32) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_pointers_pressed(&Host, world, id)
+    <Host as InputApi>::og_pointers_just_pressed(&Host, world, id)
 }
 
-#[napi(js_name = "og_pointers_released")]
-pub fn og_pointers_released(env: Env, world: u32, id: u32) -> bool {
+#[napi(js_name = "og_pointers_just_released")]
+pub fn og_pointers_just_released(env: Env, world: u32, id: u32) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_pointers_released(&Host, world, id)
+    <Host as InputApi>::og_pointers_just_released(&Host, world, id)
 }
 
 #[napi(js_name = "og_pointers_position")]
@@ -1059,16 +1059,16 @@ pub fn og_gamepad_down(env: Env, world: u32, button: String, pad: Option<u32>) -
     <Host as InputApi>::og_gamepad_down(&Host, world, button, pad)
 }
 
-#[napi(js_name = "og_gamepad_pressed")]
-pub fn og_gamepad_pressed(env: Env, world: u32, button: String, pad: Option<u32>) -> bool {
+#[napi(js_name = "og_gamepad_just_pressed")]
+pub fn og_gamepad_just_pressed(env: Env, world: u32, button: String, pad: Option<u32>) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_gamepad_pressed(&Host, world, button, pad)
+    <Host as InputApi>::og_gamepad_just_pressed(&Host, world, button, pad)
 }
 
-#[napi(js_name = "og_gamepad_released")]
-pub fn og_gamepad_released(env: Env, world: u32, button: String, pad: Option<u32>) -> bool {
+#[napi(js_name = "og_gamepad_just_released")]
+pub fn og_gamepad_just_released(env: Env, world: u32, button: String, pad: Option<u32>) -> bool {
     let _env = crate::EnvScope::enter(&env);
-    <Host as InputApi>::og_gamepad_released(&Host, world, button, pad)
+    <Host as InputApi>::og_gamepad_just_released(&Host, world, button, pad)
 }
 
 #[napi(js_name = "og_gamepad_axis")]
@@ -2740,15 +2740,15 @@ pub fn og_i18n_format_currency(env: Env, world: u32, amount: f64, currency: Stri
 }
 
 #[napi(js_name = "og_i18n_format_date")]
-pub fn og_i18n_format_date(env: Env, world: u32, seconds: f64, format: Option<String>) -> String {
+pub fn og_i18n_format_date(env: Env, world: u32, time_ms: f64, format: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as I18nApi>::og_i18n_format_date(&Host, world, seconds, format)
+    <Host as I18nApi>::og_i18n_format_date(&Host, world, time_ms, format)
 }
 
 #[napi(js_name = "og_i18n_format_time")]
-pub fn og_i18n_format_time(env: Env, world: u32, seconds: f64, format: Option<String>) -> String {
+pub fn og_i18n_format_time(env: Env, world: u32, time_ms: f64, format: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);
-    <Host as I18nApi>::og_i18n_format_time(&Host, world, seconds, format)
+    <Host as I18nApi>::og_i18n_format_time(&Host, world, time_ms, format)
 }
 
 #[napi(js_name = "og_i18n_format_duration")]

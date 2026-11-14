@@ -5,11 +5,11 @@
 //! 1. **Perception**, for every agent with an `og.Perception`: the nearest
 //!    `og.Perceivable` of another team within `sight`, inside the `fov`
 //!    cone around its forward, not hidden behind a collider (a physics ray
-//!    from eye to eye, `occluders` layers); a sound heard when a spatial
+//!    from eye to eye, `occluderMask` layers); a sound heard when a spatial
 //!    source started (`og.SoundStarted`) or a game noise (`og.ai.noise`)
 //!    within `hearing` × its loudness. The results are the component's
 //!    written fields and the behaviour's built-in keys.
-//! 2. **Thinking**, every `thinkEvery` ticks: the behaviour tree or state
+//! 2. **Thinking**, every `thinkEveryTicks` ticks: the behaviour tree or state
 //!    machine, with the agent's memory and blackboard.
 //! 3. **Acting**: the running action's target and speed go to the agent's
 //!    `og.NavAgent` (og.nav plans and moves after the game's systems); no
@@ -468,7 +468,7 @@ fn run(
                 if p.occlude
                     && dist > 1e-4
                     && let Some(ray) = &desc.ray
-                    && let Some((hd, he)) = ray(eye, d / dist, dist, p.occluders, e)
+                    && let Some((hd, he)) = ray(eye, d / dist, dist, p.occluder_mask, e)
                     && he != t.e
                     && hd < dist - 0.05
                 {
@@ -545,7 +545,7 @@ fn run(
             }
             continue;
         };
-        let every = agent.think_every.max(1) as u64;
+        let every = agent.think_every_ticks.max(1) as u64;
         if !(tick + n as u64).is_multiple_of(every) {
             continue;
         }

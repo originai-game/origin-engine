@@ -121,7 +121,7 @@
     field clearColor Color "The linear colour it clears to with clear." {
       default 0 0 0
     }
-    field every u32 "Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter." {
+    field everyTicks u32 "Draw once every this many ticks (when the tick is a multiple of it); the target keeps its image between. 0 and 1 draw every frame: a security monitor at 4 costs a quarter." {
       default 1
     }
     field active bool "Whether it draws." {
@@ -145,7 +145,7 @@
     field layers u32 "Three.js layers it reflects, as og.Camera.layers." {
       default 1
     }
-    field every u32 "Draw once every this many ticks, as CameraView.every." {
+    field everyTicks u32 "Draw once every this many ticks, as CameraView.everyTicks." {
       default 1
     }
     field active bool "Whether it draws." {

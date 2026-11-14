@@ -14,7 +14,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `parent` | `number` | `-1` | — | — | — | The parent bone's index (it must come earlier); -1 for the root. |
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | The bone's rest position relative to the entity. |
-| `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | The bone's rest rotation relative to the entity; a zero quaternion is no rotation. |
+| `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | The bone's rest rotation relative to the entity; a zero quaternion is no rotation. |
 | `length` | `number` | `0.25` | — | `m` | — | How long the bone is (to its child). |
 | `axis` | `Vector3` | `{ x: 0, y: 1, z: 0 }` | — | — | — | The direction the bone points in its own frame (towards its child). |
 | `joint` | `number` | `-1` | — | — | — | The skeleton joint (its index in the skin) the bone stands for, so the model is drawn with it; -1 for none. |
@@ -29,7 +29,7 @@ struct RagdollBoneDesc {
   field position Vector3 "The bone's rest position relative to the entity." {
     unit m
   }
-  field rotation Quaternion "The bone's rest rotation relative to the entity; a zero quaternion is no rotation."
+  field quaternion Quaternion "The bone's rest rotation relative to the entity; a zero quaternion is no rotation."
   field length f32 "How long the bone is (to its child)." {
     default 0.25
     unit m

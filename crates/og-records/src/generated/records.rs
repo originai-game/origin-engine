@@ -565,7 +565,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "hitStop",
+                name: "hitStopTicks",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -804,7 +804,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "buttonsPressed",
+                name: "buttonsJustPressed",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -821,7 +821,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "buttonsReleased",
+                name: "buttonsJustReleased",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -923,7 +923,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed0",
+                name: "justPressed0",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -940,7 +940,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed1",
+                name: "justPressed1",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -957,7 +957,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed2",
+                name: "justPressed2",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -974,7 +974,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed3",
+                name: "justPressed3",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -991,7 +991,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released0",
+                name: "justReleased0",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1008,7 +1008,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released1",
+                name: "justReleased1",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1025,7 +1025,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released2",
+                name: "justReleased2",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1042,7 +1042,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released3",
+                name: "justReleased3",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1151,7 +1151,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressedMask",
+                name: "justPressedMask",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1168,7 +1168,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "releasedMask",
+                name: "justReleasedMask",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1607,7 +1607,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed0",
+                name: "justPressed0",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1624,7 +1624,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed1",
+                name: "justPressed1",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1641,7 +1641,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed2",
+                name: "justPressed2",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1658,7 +1658,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed3",
+                name: "justPressed3",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1675,7 +1675,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed4",
+                name: "justPressed4",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1692,7 +1692,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed5",
+                name: "justPressed5",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1709,7 +1709,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed6",
+                name: "justPressed6",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1726,7 +1726,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "pressed7",
+                name: "justPressed7",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1743,7 +1743,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released0",
+                name: "justReleased0",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1760,7 +1760,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released1",
+                name: "justReleased1",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1777,7 +1777,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released2",
+                name: "justReleased2",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1794,7 +1794,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released3",
+                name: "justReleased3",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1811,7 +1811,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released4",
+                name: "justReleased4",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1828,7 +1828,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released5",
+                name: "justReleased5",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1845,7 +1845,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released6",
+                name: "justReleased6",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -1862,7 +1862,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "released7",
+                name: "justReleased7",
                 column: "u32",
                 default: "0",
                 readonly: true,
@@ -4398,7 +4398,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "collisionLayers",
+                name: "collisionMask",
                 column: "u32",
                 default: "0",
                 readonly: false,
@@ -9661,7 +9661,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "radius",
+                name: "distance",
                 column: "f32",
                 default: "5",
                 readonly: false,
@@ -9754,10 +9754,10 @@ pub const RECORDS: &[RecordDecl] = &[
                 min: Some(0.0),
                 max: Some(3.14159),
                 step: None,
-                unit: "",
+                unit: "rad",
                 worldspace: "",
                 label: "",
-                doc: doc!("A spot's half-angle at full intensity, in radians."),
+                doc: doc!("A spot's half-angle at full intensity."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
@@ -9771,10 +9771,10 @@ pub const RECORDS: &[RecordDecl] = &[
                 min: Some(0.0),
                 max: Some(3.14159),
                 step: None,
-                unit: "",
+                unit: "rad",
                 worldspace: "",
                 label: "",
-                doc: doc!("A spot's half-angle where it reaches zero, in radians (at least innerAngle)."),
+                doc: doc!("A spot's half-angle where it reaches zero (at least innerAngle)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
@@ -11373,7 +11373,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "interval",
+                name: "intervalTicks",
                 column: "u32",
                 default: "3",
                 readonly: false,
@@ -11493,13 +11493,13 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks)."),
+                doc: doc!("baked (rendered once, or loaded from `og bake probes`) or realtime (every intervalTicks ticks)."),
                 variants: &["baked", "realtime"],
                 capacity: 0,
                 list: 0,
             },
             FieldDecl {
-                name: "interval",
+                name: "intervalTicks",
                 column: "u32",
                 default: "30",
                 readonly: false,
@@ -12166,7 +12166,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "every",
+                name: "everyTicks",
                 column: "u32",
                 default: "1",
                 readonly: false,
@@ -12275,7 +12275,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "every",
+                name: "everyTicks",
                 column: "u32",
                 default: "1",
                 readonly: false,
@@ -12286,7 +12286,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Draw once every this many ticks, as CameraView.every."),
+                doc: doc!("Draw once every this many ticks, as CameraView.everyTicks."),
                 variants: &[],
                 capacity: 0,
                 list: 0,
@@ -13154,7 +13154,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "rotation",
+                name: "quaternion",
                 column: "Quaternion",
                 default: "{\"x\":0,\"y\":0,\"z\":0,\"w\":1}",
                 readonly: false,
@@ -14789,7 +14789,7 @@ pub const RECORDS: &[RecordDecl] = &[
         schema: "og.PlatformerController",
         fields: &[
             FieldDecl {
-                name: "moveX",
+                name: "run",
                 column: "f32",
                 default: "0",
                 readonly: false,
@@ -14840,7 +14840,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "impulse",
+                name: "addVelocity",
                 column: "Vector2",
                 default: "{\"x\":0,\"y\":0}",
                 readonly: false,
@@ -15180,7 +15180,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "oneWayLayers",
+                name: "oneWayMask",
                 column: "u32",
                 default: "0",
                 readonly: false,
@@ -27899,7 +27899,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "thinkEvery",
+                name: "thinkEveryTicks",
                 column: "u32",
                 default: "1",
                 readonly: false,
@@ -28059,7 +28059,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "occluders",
+                name: "occluderMask",
                 column: "u32",
                 default: "0",
                 readonly: false,
@@ -31623,7 +31623,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "inputDelay",
+                name: "inputDelayTicks",
                 column: "u32",
                 default: "2",
                 readonly: false,
@@ -31640,7 +31640,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "hashEvery",
+                name: "hashEveryTicks",
                 column: "u32",
                 default: "10",
                 readonly: false,
@@ -31691,7 +31691,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "stallTimeout",
+                name: "stallTimeoutMs",
                 column: "u32",
                 default: "5000",
                 readonly: false,
@@ -31725,7 +31725,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "maxPrediction",
+                name: "maxPredictionTicks",
                 column: "u32",
                 default: "8",
                 readonly: false,

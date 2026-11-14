@@ -59,7 +59,7 @@ for the process and one still); the cold cook of the whole fixture is
 417 ms. Method: `og sprite inspect assets/props/props.ogt --out sheet.png`,
 then count the texels of `sheet.png` with alpha ≥ 16.
 
-**b. 2D soft shadows.** `penumbra:R` puts one light (radius 30, falloff
+**b. 2D soft shadows.** `penumbra:R` puts one light (distance 30, falloff
 0.1) on a white floor, a 0.3×3 wall 3 units from it, and takes ambient,
 grade and vignette off; the screenshot's column through the wall's lower
 shadow edge is read from black to lit, 10 % to 90 %:

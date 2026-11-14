@@ -96,8 +96,8 @@ test("og.i18n: format functions follow the active locale, else the requested one
   expect(og.i18n.formatNumber(de, -0.001, { decimals: 2, grouping: false })).toBe("0,00");
   expect(og.i18n.formatCompact(de, 1234567)).toBe("1,2\u00a0Mio.");
   expect(og.i18n.formatCurrency(de, 1234.5, "EUR")).toBe("1.234,50\u00a0€");
-  // 2026-11-02 15:05:09 UTC; Tokyo is 540 minutes ahead.
-  const t = 1793631909;
+  // 2026-11-02 15:05:09 UTC in milliseconds, as og.platform.now gives it; Tokyo is 540 minutes ahead.
+  const t = 1793631909000;
   expect(og.i18n.formatDate(de, t)).toBe("02.11.2026");
   expect(og.i18n.formatDate(de, t, { style: "full" })).toBe("Montag, 2. November 2026");
   expect(og.i18n.formatTime(de, t, { offsetMinutes: 540 })).toBe("00:05");

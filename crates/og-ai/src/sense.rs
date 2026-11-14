@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 /// What an agent sees and hears, and how.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.Perception")]
+#[reflect(name = "og.Perception", version = 2)]
 pub struct Perception {
     /// How far it sees.
     #[reflect(min = 0, max = 500, default = 8, unit = "m", tunable)]
@@ -25,7 +25,8 @@ pub struct Perception {
     #[reflect(default = 1)]
     pub occlude: bool,
     /// Collision layers that block sight (0: every layer).
-    pub occluders: u32,
+    #[reflect(name = "occluderMask")]
+    pub occluder_mask: u32,
     /// How far it hears a sound of loudness 1.
     #[reflect(min = 0, max = 500, default = 6, unit = "m", tunable)]
     pub hearing: f32,
@@ -63,7 +64,7 @@ impl Default for Perception {
             fov: 120.0,
             eye_height: 0.0,
             occlude: true,
-            occluders: 0,
+            occluder_mask: 0,
             hearing: 6.0,
             memory: 3.0,
             team: 0,

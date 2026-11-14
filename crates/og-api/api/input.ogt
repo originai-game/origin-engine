@@ -60,7 +60,7 @@ module input {
 
   enum ActionKind {
     doc "What an action gives."
-    variant button "On or off: down, pressed, released, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it."
+    variant button "On or off: down, justPressed, justReleased, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it."
     variant axis "One value, -1 to 1: A and D, a stick's x, a trigger (0 to 1), the wheel, the mouse's x movement (CSS px)."
     variant axis2 "Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement."
   }
@@ -148,8 +148,8 @@ module input {
   struct ActionState {
     doc "An action this tick."
     field down bool "Its binding is past the threshold (or its toggle is on)."
-    field pressed bool "It went down this tick (a press and a release between two ticks set both edges)."
-    field released bool "It went up this tick."
+    field justPressed bool "It went down this tick (a press and a release between two ticks set both edges)."
+    field justReleased bool "It went up this tick."
     field held bool "Down for its holdMs."
     field value f32 "A button's strength (0 to 1: a trigger's travel), an axis's value, a two-axis value's length."
     field vector Vector2 "A two-axis action's value (x right, y up); value and 0 for the others."
@@ -209,7 +209,7 @@ module input {
   }
 
   struct CaptureDesc {
-    doc "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go."
+    doc "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; the control that went down for it moves no action until it is let go."
     desc true
     field action String "The action."
     field slot u32 "Which binding: 0 the first; one past the last adds one."
@@ -347,7 +347,7 @@ module input {
     returns Option.ActionState
   }
 
-  fn isActionPressed {
+  fn isActionDown {
     doc "Whether an action is down this tick (false for an unknown one)."
     param world World "The world."
     param name String "The action."
@@ -369,7 +369,7 @@ module input {
     returns bool
   }
 
-  fn actionHeld {
+  fn isActionHeld {
     doc "Whether an action has been down for its holdMs."
     param world World "The world."
     param name String "The action."
@@ -599,8 +599,8 @@ module input {
     variant rightTrigger "The right trigger, as a button."
     variant back "Back, Select or View."
     variant start "Start, Options or Menu."
-    variant leftStick "The left stick pressed in."
-    variant rightStick "The right stick pressed in."
+    variant leftStick "The left stick clicked in."
+    variant rightStick "The right stick clicked in."
     variant up "The d-pad's up."
     variant down "The d-pad's down."
     variant left "The d-pad's left."
@@ -622,7 +622,7 @@ module input {
     doc "What an injected key event does."
     variant press "Down, then up on the next tick."
     variant down "Held down until an up."
-    variant up "Released."
+    variant up "Let go."
   }
 
   enum PointerAction {
@@ -694,7 +694,7 @@ module input {
 
   struct PointerLockReport {
     doc "The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it."
-    field locked bool "Locked now (true) or released (false)."
+    field locked bool "Locked now (true) or unlocked (false)."
   }
 
   struct GamepadInput {
@@ -771,7 +771,7 @@ module input {
   }
 
   resource Input {
-    doc "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods."
+    doc "The input state at the start of this tick (og-input's og.Input, version 3). Edges (justPressed, justReleased) last exactly one tick; read the state through the methods."
     doc "Key sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4."
     group "Pointer"
     field pointer Vector2 "The pointer position." {
@@ -789,10 +789,10 @@ module input {
     field buttons u32 "Held pointer buttons, as a mask." {
       readonly true
     }
-    field buttonsPressed u32 "Buttons that went down this tick." {
+    field buttonsJustPressed u32 "Buttons that went down this tick." {
       readonly true
     }
-    field buttonsReleased u32 "Buttons that went up this tick." {
+    field buttonsJustReleased u32 "Buttons that went up this tick." {
       readonly true
     }
     field buttonsReleaseNext u32 "Buttons a click releases at the end of the next tick." {
@@ -811,30 +811,30 @@ module input {
     field keys3 u32 "Held keys, word 3: codes 96 to 127 of KEY_CODES." {
       readonly true
     }
-    group "Keys pressed this tick"
-    field pressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
+    group "Keys that went down this tick"
+    field justPressed0 u32 "Keys that went down this tick, word 0: codes 0 to 31 of KEY_CODES." {
       readonly true
     }
-    field pressed1 u32 "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES." {
+    field justPressed1 u32 "Keys that went down this tick, word 1: codes 32 to 63 of KEY_CODES." {
       readonly true
     }
-    field pressed2 u32 "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES." {
+    field justPressed2 u32 "Keys that went down this tick, word 2: codes 64 to 95 of KEY_CODES." {
       readonly true
     }
-    field pressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
+    field justPressed3 u32 "Keys that went down this tick, word 3: codes 96 to 127 of KEY_CODES." {
       readonly true
     }
-    group "Keys released this tick"
-    field released0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
+    group "Keys that went up this tick"
+    field justReleased0 u32 "Keys that went up this tick, word 0: codes 0 to 31 of KEY_CODES." {
       readonly true
     }
-    field released1 u32 "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES." {
+    field justReleased1 u32 "Keys that went up this tick, word 1: codes 32 to 63 of KEY_CODES." {
       readonly true
     }
-    field released2 u32 "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES." {
+    field justReleased2 u32 "Keys that went up this tick, word 2: codes 64 to 95 of KEY_CODES." {
       readonly true
     }
-    field released3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
+    field justReleased3 u32 "Keys that went up this tick, word 3: codes 96 to 127 of KEY_CODES." {
       readonly true
     }
     group "Keys a press releases next tick"
@@ -851,16 +851,16 @@ module input {
       readonly true
     }
     fn down {
-      doc "Whether a key is held."
+      doc "Whether a key is down."
       param key String "A KeyboardEvent.code name, such as KeyW or Space."
       returns bool
     }
-    fn pressed {
+    fn justPressed {
       doc "Whether a key went down this tick."
       param key String "A KeyboardEvent.code name."
       returns bool
     }
-    fn released {
+    fn justReleased {
       doc "Whether a key went up this tick."
       param key String "A KeyboardEvent.code name."
       returns bool
@@ -880,16 +880,16 @@ module input {
       returns Vector2
     }
     fn buttonDown {
-      doc "Whether a pointer button is held."
+      doc "Whether a pointer button is down."
       param button PointerButton "The button."
       returns bool
     }
-    fn buttonPressed {
+    fn buttonJustPressed {
       doc "Whether a pointer button went down this tick."
       param button PointerButton "The button."
       returns bool
     }
-    fn buttonReleased {
+    fn buttonJustReleased {
       doc "Whether a pointer button went up this tick."
       param button PointerButton "The button."
       returns bool
@@ -902,10 +902,10 @@ module input {
     field heldMask u32 "Pointers held down, as a mask." {
       readonly true
     }
-    field pressedMask u32 "Pointers that went down this tick." {
+    field justPressedMask u32 "Pointers that went down this tick." {
       readonly true
     }
-    field releasedMask u32 "Pointers that went up this tick." {
+    field justReleasedMask u32 "Pointers that went up this tick." {
       readonly true
     }
     field releaseNextMask u32 "Pointers a click releases at the end of the next tick." {
@@ -967,16 +967,16 @@ module input {
       unit cssPx
     }
     fn down {
-      doc "Whether a pointer is held."
+      doc "Whether a pointer is down."
       param id u32 "The pointer, 0 to 4."
       returns bool
     }
-    fn pressed {
+    fn justPressed {
       doc "Whether a pointer went down this tick."
       param id u32 "The pointer, 0 to 4."
       returns bool
     }
-    fn released {
+    fn justReleased {
       doc "Whether a pointer went up this tick."
       param id u32 "The pointer, 0 to 4."
       returns bool
@@ -1008,7 +1008,7 @@ module input {
   }
 
   resource Gamepad {
-    doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays."
+    doc "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays."
     doc "Button masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice)."
     guide "input §4"
     group "Pads"
@@ -1043,54 +1043,54 @@ module input {
     field buttons7 u32 "Held buttons of pad 7." {
       readonly true
     }
-    group "Pressed this tick"
-    field pressed0 u32 "Buttons of pad 0 that went down this tick." {
+    group "Went down this tick"
+    field justPressed0 u32 "Buttons of pad 0 that went down this tick." {
       readonly true
     }
-    field pressed1 u32 "Buttons of pad 1 that went down this tick." {
+    field justPressed1 u32 "Buttons of pad 1 that went down this tick." {
       readonly true
     }
-    field pressed2 u32 "Buttons of pad 2 that went down this tick." {
+    field justPressed2 u32 "Buttons of pad 2 that went down this tick." {
       readonly true
     }
-    field pressed3 u32 "Buttons of pad 3 that went down this tick." {
+    field justPressed3 u32 "Buttons of pad 3 that went down this tick." {
       readonly true
     }
-    field pressed4 u32 "Buttons of pad 4 that went down this tick." {
+    field justPressed4 u32 "Buttons of pad 4 that went down this tick." {
       readonly true
     }
-    field pressed5 u32 "Buttons of pad 5 that went down this tick." {
+    field justPressed5 u32 "Buttons of pad 5 that went down this tick." {
       readonly true
     }
-    field pressed6 u32 "Buttons of pad 6 that went down this tick." {
+    field justPressed6 u32 "Buttons of pad 6 that went down this tick." {
       readonly true
     }
-    field pressed7 u32 "Buttons of pad 7 that went down this tick." {
+    field justPressed7 u32 "Buttons of pad 7 that went down this tick." {
       readonly true
     }
-    group "Released this tick"
-    field released0 u32 "Buttons of pad 0 that went up this tick." {
+    group "Went up this tick"
+    field justReleased0 u32 "Buttons of pad 0 that went up this tick." {
       readonly true
     }
-    field released1 u32 "Buttons of pad 1 that went up this tick." {
+    field justReleased1 u32 "Buttons of pad 1 that went up this tick." {
       readonly true
     }
-    field released2 u32 "Buttons of pad 2 that went up this tick." {
+    field justReleased2 u32 "Buttons of pad 2 that went up this tick." {
       readonly true
     }
-    field released3 u32 "Buttons of pad 3 that went up this tick." {
+    field justReleased3 u32 "Buttons of pad 3 that went up this tick." {
       readonly true
     }
-    field released4 u32 "Buttons of pad 4 that went up this tick." {
+    field justReleased4 u32 "Buttons of pad 4 that went up this tick." {
       readonly true
     }
-    field released5 u32 "Buttons of pad 5 that went up this tick." {
+    field justReleased5 u32 "Buttons of pad 5 that went up this tick." {
       readonly true
     }
-    field released6 u32 "Buttons of pad 6 that went up this tick." {
+    field justReleased6 u32 "Buttons of pad 6 that went up this tick." {
       readonly true
     }
-    field released7 u32 "Buttons of pad 7 that went up this tick." {
+    field justReleased7 u32 "Buttons of pad 7 that went up this tick." {
       readonly true
     }
     group "Left sticks"
@@ -1176,14 +1176,14 @@ module input {
       returns bool
     }
     fn down {
-      doc "Whether a button is held."
+      doc "Whether a button is down."
       param button GamepadButton "The button."
       param pad u32 "The pad, 0 to 7; omitted is 0." {
         optional true
       }
       returns bool
     }
-    fn pressed {
+    fn justPressed {
       doc "Whether a button went down this tick."
       param button GamepadButton "The button."
       param pad u32 "The pad, 0 to 7; omitted is 0." {
@@ -1191,7 +1191,7 @@ module input {
       }
       returns bool
     }
-    fn released {
+    fn justReleased {
       doc "Whether a button went up this tick."
       param button GamepadButton "The button."
       param pad u32 "The pad, 0 to 7; omitted is 0." {

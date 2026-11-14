@@ -1370,8 +1370,8 @@ restyles only the readers when it changes.
 (keyboard and mouse, Xbox, PlayStation, Switch, generic pad, touch); core
 input glyphs and action prompts own this, and components hard-code no
 button letters. Actions declare `actionMap`; `og.input.setActionMaps`
-selects maps; `isActionPressed` reads held state, `isActionJustPressed`
-and `isActionJustReleased` tick edges; `actionHeld` keeps its `holdMs`
+selects maps; `isActionDown` reads the down state, `isActionJustPressed`
+and `isActionJustReleased` tick edges; `isActionHeld` keeps its `holdMs`
 threshold; physical controls keep their W3C codes.
 
 ### 3.3 Assets and generation

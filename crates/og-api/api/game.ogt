@@ -39,7 +39,7 @@ module game {
     field resources List.AnyResource "The game's own resources, created at their defaults."
     field commands Map.CommandHandler "Game actions registered into the command channel, by action name."
     field commandHelp Map.CommandDesc "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone."
-    field maxCatchUp u32 "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest." {
+    field maxCatchUpTicks u32 "The most ticks one frame may run to catch up with the clock; the accumulator drops the rest." {
       default 4
       min 1
       max 60

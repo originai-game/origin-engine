@@ -60,7 +60,7 @@ Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; i
 | `collide` | `boolean` | `false` | — | — | — | Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body. |
 | `radius` | `number` | `0.2` | ≥ 0 | `m` | — | The sphere collision keeps clear. |
 | `damping` | `number` | `0.4` | ≥ 0 | `s` | tunable | Roughly how long it takes to ease back out once the way is clear; 0 snaps. |
-| `collisionLayers` | `number` | `0` | — | — | — | The physics layers collision considers (a collider counts when its layers meet these); 0 every layer. |
+| `collisionMask` | `number` | `0` | — | — | — | The physics layers collision considers (a collider counts when its layers meet these); 0 every layer. |
 
 #### Controller state
 
@@ -148,7 +148,7 @@ component VirtualCamera {
     unit s
     tunable true
   }
-  field collisionLayers u32 "The physics layers collision considers (a collider counts when its layers meet these); 0 every layer."
+  field collisionMask u32 "The physics layers collision considers (a collider counts when its layers meet these); 0 every layer."
   group "Controller state"
   field eased Vector3 "Controller state: the followed point after smoothing, before collision, in world space (a floating-origin rebase shifts it)." {
     readonly true

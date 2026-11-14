@@ -41,7 +41,7 @@ Controls are named by strings:
 | `pad.leftX`, `pad.leftY`, `pad.rightX`, `pad.rightY` | one stick axis |
 | `pad.leftTrigger`, `pad.rightTrigger` | a trigger, 0 to 1 |
 | `pad.leftXY`, `pad.rightXY`, `pad.dpad` | a stick or the d-pad as two axes |
-| `touch` | a touch held |
+| `touch` | a touch that is down |
 | `touch.xy` | a touch stick: a drag from where the touch started |
 | any one-axis control plus `+` or `-` | its half, 0 to 1 (`pad.leftX+`): a direction as a button |
 
@@ -169,8 +169,8 @@ if (c.done) {
 og.platform.saveSettings(world, { ...settings, controls: og.input.saveBindings(world) });
 ```
 
-- From the next tick a capture blinds every action until it ends, and what
-  was pressed for it moves no action until it is let go. `Escape` and
+- From the next tick a capture blinds every action until it ends, and the
+  control that went down for it moves no action until it is let go. `Escape` and
   `pad.back` cancel it unless the capture names its own cancel controls.
 - A rebinding sharing a control with another action of its action map is
   refused by default and answers the conflicts; `swap`, `replace` and
@@ -207,8 +207,8 @@ og.platform.saveSettings(world, { ...settings, controls: og.input.saveBindings(w
   browser event's timeStamp, the command channel from the step's time.
   Use it for timing-critical presses (rhythm, fighting inputs); it is part
   of the event, so a replay carries it.
-- og.Input's edges (pressed, released) last exactly one tick; a press and a
-  release between two ticks set both. An injected `press` or `click` is
+- og.Input's edges (justPressed, justReleased) last exactly one tick; a
+  press and a release between two ticks set both. An injected `press` or `click` is
   down, then up on the next tick.
 - Text arrives as TextInput events, apart from the keys: a text longer than
   255 bytes comes as several in order. A text field types from them once a

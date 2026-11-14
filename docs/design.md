@@ -696,7 +696,7 @@ room. It rests on §2.4's determinism and snapshot.
   `og.net.shape`, fingerprinted in the start message) is written at the start
   of each tick from each seat's input; its packed bytes cross the room. A
   game submits its input with `og.net.submit` from the only system that
-  reads `og.Input`; it acts `inputDelay` ticks later, and every other system
+  reads `og.Input`; it acts `inputDelayTicks` ticks later, and every other system
   reads the seat inputs. Commands (`og.net.command`) act on one tick and are
   never predicted.
 - **Start.** Until the room holds `players` peers each world runs freely.
@@ -705,14 +705,14 @@ room. It rests on §2.4's determinism and snapshot.
 - **The tick gate.** Tick t runs only when every seated player's input for t
   is in (og-probe's `set_gate`); a frame that cannot run a tick runs none.
 - **Rollback** (`og.Lockstep.mode rollback`): a tick may run on predicted
-  inputs up to `maxPrediction` ticks past the last confirmed one; a wrong
+  inputs up to `maxPredictionTicks` ticks past the last confirmed one; a wrong
   prediction rewinds to that tick's snapshot (no `og.WorldRestored`) and
   runs the ticks again. Only final ticks (run on real inputs) are hashed and
   compared, so the confirmed world equals lockstep's for the same inputs.
   Presentation is deduplicated outside the tick, and `og.net.resimulating`
   tells a game's own effects to hold.
 - **Stall, drop and rejoin.** A silent peer is reported (`og.PeerStalled`,
-  session-only), and past `stallTimeout` or gone its seat is dropped at an
+  session-only), and past `stallTimeoutMs` or gone its seat is dropped at an
   agreed tick, so `og.SeatDropped` arrives at one tick on every peer. Wall
   time decides only when a peer is reported and dropped. A returning peer
   (with `rejoin`) gets its seat back from a snapshot, and `og.SeatRejoined`
@@ -1083,7 +1083,7 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   instance, at most `MAX_REFLECTION_PROBES`. A `baked` probe is rendered by
   `og bake probes` into the cook cache under a key of its content, so a
   changed room is a new key, and `og doctor --project` reports a stale one;
-  a `realtime` probe redraws every `interval` ticks.
+  a `realtime` probe redraws every `intervalTicks` ticks.
 - **SSR** (`PostEffects.ssr`): stochastic screen-space reflection after AMD
   FidelityFX SSSR and its denoiser (MIT, `third_party/fidelityfx-sssr`),
   on opaque surfaces of the main perspective 3D camera, over the probes and

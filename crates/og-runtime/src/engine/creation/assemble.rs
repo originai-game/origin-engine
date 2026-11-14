@@ -101,7 +101,8 @@ pub(super) const REGISTERED_BY_MODULES: &[&str] = &[
 /// og.SoftBody, og.Garment and og.Fluid3D, version 2: simulation; og.Skeleton2D,
 /// version 2: a second blended clip; the runtime's
 /// og.VideoPlayer, version 2: an f64 time; og.Wind, version 2: the
-/// simulated field's turbulence and gust size).
+/// simulated field's turbulence and gust size; the records whose fields
+/// took the API's one name per meaning, `save_migrations::renamed`).
 pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
     use og_core::Reflect;
     schema.version = match schema.name.as_str() {
@@ -123,9 +124,23 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         "og.Garment" => og_physics::Garment::schema().version,
         "og.Fluid3D" => og_physics::Fluid3D::schema().version,
         crate::bind::video::PLAYER => crate::bind::video::PLAYER_VERSION,
-        // R11: Light2D's kind, cone, height and layers; Occluder2D's
-        // polygon and layers; Lighting2D's shadowAngles.
-        "og.Light2D" | "og.Occluder2D" | "og.Lighting2D" => 2,
+        // R11: Light2D's kind, cone, height and layers (2); its radius
+        // named distance (3).
+        "og.Light2D" => 3,
+        // R11: Occluder2D's polygon and layers; Lighting2D's shadowAngles.
+        "og.Occluder2D" | "og.Lighting2D" => 2,
+        // One name per meaning: fields renamed, their values as they were
+        // (og.Collider's is og-physics's version above; og-ai's and the
+        // controller's modules register the same 2).
+        "og.AiAgent"
+        | "og.Perception"
+        | "og.PlatformerController"
+        | "og.Lockstep"
+        | "og.VirtualCamera"
+        | "og.CameraView"
+        | "og.Mirror"
+        | "og.Afterimage"
+        | "og.ReflectionProbe" => 2,
         // G2: turbulence and gustSize, the simulated field's (2); the
         // world's wind, `strength` gone into `speed` (3).
         "og.Wind" => 3,

@@ -25,7 +25,7 @@ export const lit = og.game({
     l.ambient = { r: 0.2, g: 0.25, b: 0.3 };
     l.maxLayer = 40;
     const lamp = must(world.spawn({ name: "lamp", position: { x: -3, y: 1, z: 0 } }));
-    must(world.insert(lamp, og.Light2D, { radius: 6, intensity: 2, falloff: 1.5, sourceRadius: 0.5, castShadows: false }));
+    must(world.insert(lamp, og.Light2D, { distance: 6, intensity: 2, falloff: 1.5, sourceRadius: 0.5, castShadows: false }));
     const wall = must(world.spawn({ name: "wall", position: { x: 1, y: 0, z: 0 } }));
     must(world.insert(wall, og.Occluder2D, { width: 2, height: 0.5 }));
   },

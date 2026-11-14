@@ -225,7 +225,7 @@ pub struct ActionState {
 impl ActionState {
     pub fn to_json(&self) -> Value {
         json!({
-            "down": self.down, "pressed": self.pressed, "released": self.released, "held": self.held,
+            "down": self.down, "justPressed": self.pressed, "justReleased": self.released, "held": self.held,
             "value": self.value, "vector": { "x": self.vector.x, "y": self.vector.y },
             "device": self.device.name(),
         })

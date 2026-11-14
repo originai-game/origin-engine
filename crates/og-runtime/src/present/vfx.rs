@@ -257,8 +257,8 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
             let p = d.position;
             spawn.insert("position".into(), json!({ "x": p.x, "y": p.y, "z": p.z }));
         }
-        if given("rotation") {
-            let q = d.rotation;
+        if given("quaternion") {
+            let q = d.quaternion;
             spawn.insert(
                 "quaternion".into(),
                 json!({ "x": q.x, "y": q.y, "z": q.z, "w": q.w }),

@@ -539,11 +539,11 @@ module terrain {
       default 1 1 1
     }
     field geometry Geometry "The mesh (its og.TerrainStamp's geometry)."
-    field position Vector3 "Where the mesh stands: its og.TerrainStamp entity's world position." {
+    field meshPosition Vector3 "Where the mesh stands: its og.TerrainStamp entity's world position." {
       unit m
     }
-    field rotation Quaternion "How the mesh is turned: its entity's world rotation."
-    field size Vector3 "How the mesh is scaled: its entity's world scale." {
+    field meshQuaternion Quaternion "How the mesh is turned: its entity's world rotation."
+    field meshScale Vector3 "How the mesh is scaled: its entity's world scale." {
       default 1 1 1
     }
     field mode TerrainStampMode "What it does to the ground."

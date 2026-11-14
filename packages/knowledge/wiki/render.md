@@ -107,7 +107,7 @@ module render {
 | [`og.Lighting2D`](render/record-Lighting2D.md) | resource |  | 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus e… |
 | [`Light2DKind`](render/type-Light2DKind.md) | enum |  | What shape of light a Light2D is. |
 | [`Light2DKind()`](#column-Light2DKind) | column kind |  | A Light2DKind field: the variant's index. |
-| [`og.Light2D`](render/record-Light2D.md) | component |  | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below… |
+| [`og.Light2D`](render/record-Light2D.md) | component |  | A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at distance with (1 - d/distance)^falloff (faded over its last tenth, so even a fall… |
 | [`og.Occluder2D`](render/record-Occluder2D.md) | component |  | A shape that blocks 2D light (walls, crates, characters), centred on the entity's position and turned and scaled with it about z: a width by height rectangle, or the polygon `points` gives. |
 | [`og.LightMask2D`](render/record-LightMask2D.md) | component |  | The light layers that light the entity's sprite, flipbook, 2D rig or tilemap: a Light2D lights it when their `layers` share a bit. |
 | [`og.Decal`](render/record-Decal.md) | component |  | A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface in… |
@@ -126,7 +126,7 @@ module render {
 | [`SpriteDesc`](render/type-SpriteDesc.md) | desc struct |  | A textured or solid quad in the world's xy plane facing +z (or turned to the camera, `facing`), drawn this frame only (immediate mode, as og.render.text): submit it every tick it should show. |
 | [`og.render.sprite`](render/fn-sprite.md) | function | `(world: World, desc?: SpriteDesc): Result<void>` | Draw a sprite this frame. |
 | [`og.Sprite`](render/record-Sprite.md) | component |  | A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and s… |
-| [`og.Afterimage`](render/record-Afterimage.md) | component |  | Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by co… |
+| [`og.Afterimage`](render/record-Afterimage.md) | component |  | Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted … |
 | [`FloatingTextDesc`](render/type-FloatingTextDesc.md) | desc struct |  | A damage number or pickup text that pops at a point, rises, spreads and fades by itself (no per-tick submission). |
 | [`og.render.floatingText`](render/fn-floatingText.md) | function | `(world: World, desc?: FloatingTextDesc): Result<void>` | Spawn a floating text (damage numbers, +coins, `blocked`). |
 | [`og.render.measureText`](render/fn-measureText.md) | function | `(world: World, desc?: TextMeasureDesc): Result<TextMetrics>` | The size text takes when og.render.text draws it, for centring, wrapping and layout. |
@@ -323,7 +323,7 @@ column ToneMapping {
 }
 ```
 
-<sub>Module `render` line 633</sub>
+<sub>Module `render` line 635</sub>
 
 ```ogt
 column AoResolutionSetting {
@@ -334,7 +334,7 @@ column AoResolutionSetting {
 }
 ```
 
-<sub>Module `render` line 655</sub>
+<sub>Module `render` line 657</sub>
 
 ```ogt
 column QualityPreset {
@@ -345,7 +345,7 @@ column QualityPreset {
 }
 ```
 
-<sub>Module `render` line 670</sub>
+<sub>Module `render` line 672</sub>
 
 ```ogt
 column Texture {
@@ -356,7 +356,7 @@ column Texture {
 }
 ```
 
-<sub>Module `render` line 848</sub>
+<sub>Module `render` line 850</sub>
 
 ```ogt
 column Lut {
@@ -367,7 +367,7 @@ column Lut {
 }
 ```
 
-<sub>Module `render` line 855</sub>
+<sub>Module `render` line 857</sub>
 
 ```ogt
 column EnvironmentMap {
@@ -378,7 +378,7 @@ column EnvironmentMap {
 }
 ```
 
-<sub>Module `render` line 862</sub>
+<sub>Module `render` line 864</sub>
 
 ```ogt
 column ParticleEmitter {
@@ -389,7 +389,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>Module `render` line 930</sub>
+<sub>Module `render` line 932</sub>
 
 ```ogt
 column AoMethod {
@@ -400,7 +400,7 @@ column AoMethod {
 }
 ```
 
-<sub>Module `render` line 946</sub>
+<sub>Module `render` line 948</sub>
 
 ```ogt
 column AoResolution {
@@ -411,7 +411,7 @@ column AoResolution {
 }
 ```
 
-<sub>Module `render` line 959</sub>
+<sub>Module `render` line 961</sub>
 
 ```ogt
 column DofQuality {
@@ -422,7 +422,7 @@ column DofQuality {
 }
 ```
 
-<sub>Module `render` line 972</sub>
+<sub>Module `render` line 974</sub>
 
 ```ogt
 column ScreenBlur {
@@ -433,7 +433,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>Module `render` line 987</sub>
+<sub>Module `render` line 989</sub>
 
 ```ogt
 column SpriteBlend {
@@ -444,7 +444,7 @@ column SpriteBlend {
 }
 ```
 
-<sub>Module `render` line 1000</sub>
+<sub>Module `render` line 1002</sub>
 
 ```ogt
 column SpriteFacing {
@@ -455,7 +455,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>Module `render` line 1015</sub>
+<sub>Module `render` line 1017</sub>
 
 ```ogt
 column StripBlend {
@@ -466,7 +466,7 @@ column StripBlend {
 }
 ```
 
-<sub>Module `render` line 1028</sub>
+<sub>Module `render` line 1030</sub>
 
 ```ogt
 column GiMethod {
@@ -477,7 +477,7 @@ column GiMethod {
 }
 ```
 
-<sub>Module `render` line 1457</sub>
+<sub>Module `render` line 1459</sub>
 
 ```ogt
 column Palette {
@@ -488,7 +488,7 @@ column Palette {
 }
 ```
 
-<sub>Module `render` line 1529</sub>
+<sub>Module `render` line 1531</sub>
 
 ```ogt
 column Look {
@@ -499,7 +499,7 @@ column Look {
 }
 ```
 
-<sub>Module `render` line 1536</sub>
+<sub>Module `render` line 1538</sub>
 
 ```ogt
 column DitherPattern {
@@ -510,7 +510,7 @@ column DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1553</sub>
+<sub>Module `render` line 1555</sub>
 
 ```ogt
 column MaterialSurface {
@@ -521,7 +521,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>Module `render` line 1568</sub>
+<sub>Module `render` line 1570</sub>
 
 ```ogt
 column OutlinePlace {
@@ -532,7 +532,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>Module `render` line 1582</sub>
+<sub>Module `render` line 1584</sub>
 
 ```ogt
 column StyliseSpace {
@@ -543,7 +543,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>Module `render` line 1597</sub>
+<sub>Module `render` line 1599</sub>
 
 ```ogt
 column PosterizeMode {
@@ -554,7 +554,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1610</sub>
+<sub>Module `render` line 1612</sub>
 
 ```ogt
 column HalftoneMode {
@@ -565,7 +565,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1624</sub>
+<sub>Module `render` line 1626</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -576,7 +576,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1638</sub>
+<sub>Module `render` line 1640</sub>
 
 ```ogt
 column Light2DKind {
@@ -587,7 +587,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2069</sub>
+<sub>Module `render` line 2071</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -598,7 +598,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 2897</sub>
+<sub>Module `render` line 2901</sub>
 
 ```ogt
 column Shader {
@@ -609,7 +609,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 2947</sub>
+<sub>Module `render` line 2951</sub>
 
 ```ogt
 column LineMode {
@@ -620,7 +620,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3754</sub>
+<sub>Module `render` line 3758</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -631,7 +631,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 3965</sub>
+<sub>Module `render` line 3969</sub>
 
 ```ogt
 column RenderTarget {
@@ -642,7 +642,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 3974</sub>
+<sub>Module `render` line 3978</sub>
 
 ```ogt
 column Post {
@@ -653,7 +653,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4114</sub>
+<sub>Module `render` line 4118</sub>
 
 ## Constants
 
@@ -669,28 +669,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 2194</sub>
+<sub>Module `render` line 2198</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2815</sub>
+<sub>Module `render` line 2819</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2816</sub>
+<sub>Module `render` line 2820</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2817</sub>
+<sub>Module `render` line 2821</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 2889</sub>
+<sub>Module `render` line 2893</sub>

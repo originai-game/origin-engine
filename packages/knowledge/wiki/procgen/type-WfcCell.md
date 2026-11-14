@@ -13,7 +13,7 @@ A cell fixed before generation starts (an entrance, a river's source).
 | `x` | `number` | `0` | — | — | — | The column. |
 | `y` | `number` | `0` | — | — | — | The row. |
 | `tile` | `number` | `0` | — | — | — | The tile's index in WfcDesc.tiles. |
-| `rotation` | `number` | `0` | — | — | — | Quarter turns clockwise, 0 to 3. |
+| `quarterTurns` | `number` | `0` | — | — | — | Quarter turns clockwise, 0 to 3. |
 
 ```ogt
 struct WfcCell {
@@ -21,7 +21,7 @@ struct WfcCell {
   field x u32 "The column."
   field y u32 "The row."
   field tile u32 "The tile's index in WfcDesc.tiles."
-  field rotation u32 "Quarter turns clockwise, 0 to 3."
+  field quarterTurns u32 "Quarter turns clockwise, 0 to 3."
 }
 ```
 

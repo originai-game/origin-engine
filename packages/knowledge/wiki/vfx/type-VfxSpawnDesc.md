@@ -14,7 +14,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `asset` | `VfxAsset` | `0` | — | — | — | The effect (og.load.vfx). |
 | `position` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | — | Where: in the world, or in the parent's space with a parent. |
-| `rotation` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its turn, as position. |
+| `quaternion` | `Quaternion` | `{ x: 0, y: 0, z: 0, w: 1 }` | — | — | — | Its turn, as position. |
 | `parent` | `Entity \| null` | `null` | — | — | — | An entity to follow (a sword's tip, a character's chest): the effect's entity becomes its child, so it moves with it and despawns with it. |
 | `scale` | `number` | `1` | ≥ 0 | — | — | Its size (og.Vfx.scale). |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Its tint (og.Vfx.tint). |
@@ -28,7 +28,7 @@ struct VfxSpawnDesc {
   field position Vector3 "Where: in the world, or in the parent's space with a parent." {
     unit m
   }
-  field rotation Quaternion "Its turn, as position."
+  field quaternion Quaternion "Its turn, as position."
   field parent Option.Entity "An entity to follow (a sword's tip, a character's chest): the effect's entity becomes its child, so it moves with it and despawns with it."
   field scale f32 "Its size (og.Vfx.scale)." {
     default 1

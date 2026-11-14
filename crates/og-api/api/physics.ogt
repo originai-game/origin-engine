@@ -125,7 +125,7 @@ module physics {
     field offset Vector3 "Position of the shape relative to the entity." {
       unit m
     }
-    field rotation Quaternion "Rotation of the shape relative to the entity."
+    field quaternion Quaternion "Rotation of the shape relative to the entity."
     field friction f32 "Coulomb friction (0 is ice, 1 rubber); a pair uses the mean of both colliders." {
       default 0.5
       min 0

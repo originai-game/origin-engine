@@ -204,7 +204,7 @@ pub fn og_physics_vehicle_wheels(
                 .into_iter()
                 .map(|w| WheelPose {
                     position: w.position,
-                    rotation: w.quaternion,
+                    quaternion: w.quaternion,
                     contact: w.contact,
                     slip: w.slip,
                     side_speed: w.side_speed,
@@ -227,7 +227,10 @@ pub fn og_physics_ragdoll_pose(
         |bones| {
             bones
                 .into_iter()
-                .map(|(position, rotation)| BonePose { position, rotation })
+                .map(|(position, quaternion)| BonePose {
+                    position,
+                    quaternion,
+                })
                 .collect::<Vec<_>>()
         },
     )
@@ -593,7 +596,7 @@ fn rig_of(d: RagdollRigDesc) -> Result<KeptRig, String> {
         }
         rig.bones.push(RagdollBone {
             parent: (parent >= 0).then_some(parent as u32),
-            rest: (b.position, unit(b.rotation)),
+            rest: (b.position, unit(b.quaternion)),
             length: b.length,
             axis: b.axis,
         });
@@ -682,7 +685,7 @@ pub(crate) fn rig_from_skeleton(s: &og_anim::SkeletonAsset) -> Result<RagdollRig
         bones.push(RagdollBoneDesc {
             parent: parent.map_or(-1, |p| p as i32),
             position: at.translation,
-            rotation: at.rotation,
+            quaternion: at.rotation,
             length,
             axis,
             joint: j as i32,

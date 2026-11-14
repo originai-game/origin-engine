@@ -38,8 +38,11 @@ use support::beyond::*;
 /// including all physics state blocks; simulation results did not change.
 /// The 2D fluid now steps in the 3D fluid's solver (one spatial hash, the
 /// velocity taken before the solids push out, wall friction), which moved
-/// the 2D pin and left the 3D one.
-const PINNED: [(u32, u64); 2] = [(3, 0x4531e49be1eff40f), (2, 0x05963289341f7447)];
+/// the 2D pin and left the 3D one. The hash names its fields, so one name
+/// per meaning moved both pins (og.Collider.quaternion, and
+/// og.PlatformerController's run, addVelocity and oneWayMask); hashing
+/// those four under their old names reproduced both previous pins.
+const PINNED: [(u32, u64); 2] = [(3, 0x8ad8f6da64100e5b), (2, 0x9d87a6f8cce70810)];
 
 /// What G2-3 added to the types the world registers: left out of the
 /// table, as an older engine's trace leaves them.
@@ -114,8 +117,9 @@ fn a_world_using_no_g2_3_feature_hashes_as_before() {
 }
 /// The portable hash after 400 ticks of [`resting`], as 583b9cd5 (the
 /// commit before sleep) left it, except the 3D character's fall onto the
-/// floor, which no longer snaps, and the bool packing change (see [`PINNED`]).
-const RESTING: [(u32, u64); 2] = [(3, 0x1eb8ee8560987053), (2, 0x42a8e523a985135e)];
+/// floor, which no longer snaps, the bool packing change and the renamed
+/// fields (see [`PINNED`]).
+const RESTING: [(u32, u64); 2] = [(3, 0x7d3648ff60d67f13), (2, 0x76a2c2fb2955f36b)];
 
 /// Bodies at rest for hundreds of ticks with sleep off: a dynamic box on
 /// the floor, a kinematic platform standing still, and an idle character

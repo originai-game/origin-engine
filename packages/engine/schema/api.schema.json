@@ -3848,7 +3848,7 @@
           "publish": true
         },
         {
-          "name": "isActionPressed",
+          "name": "isActionDown",
           "doc": "Whether an action is down this tick (false for an unknown one).",
           "params": [
             {
@@ -3908,7 +3908,7 @@
           "publish": true
         },
         {
-          "name": "actionHeld",
+          "name": "isActionHeld",
           "doc": "Whether an action has been down for its holdMs.",
           "params": [
             {
@@ -10608,7 +10608,7 @@
         },
         {
           "name": "ambient",
-          "doc": "Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops.",
+          "doc": "Let an entity bark a topic on its own, every `everyTicks` ticks (and up to `jitterTicks` more), as og.story.bark would; `everyTicks` 0 stops it. In saves; a despawned entity stops.",
           "params": [
             {
               "name": "world",
@@ -11811,7 +11811,7 @@
     },
     {
       "name": "i18n",
-      "doc": "Localization: one string table per locale (`.ogt` of `type strings`), messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain and direction.\nFormatting writes from a CLDR subset built into the engine. A date or time is seconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.\nSee `localization`.",
+      "doc": "Localization: one string table per locale (`.ogt` of `type strings`), messages in a subset of ICU MessageFormat with CLDR plural rules, and the locale the host asks for. The active locale is the best loaded table for the request, else the base table; a key it lacks is read from its `fallback` table, then the base. It also sets the UI's font chain and direction.\nFormatting writes from a CLDR subset built into the engine. A date or time is milliseconds since 1970-01-01 00:00 UTC that the game passes in: nothing reads a clock, so the same value gives the same text on every host and in a replay.\nSee `localization`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -12015,10 +12015,10 @@
               "doc": "The world (its active locale)."
             },
             {
-              "name": "seconds",
+              "name": "timeMs",
               "type": "f64",
               "optional": false,
-              "doc": "Seconds since 1970-01-01 00:00 UTC; fractions are dropped."
+              "doc": "Milliseconds since 1970-01-01 00:00 UTC, as og.platform.now and PlatformResult.time; fractions of a second are dropped."
             },
             {
               "name": "format",
@@ -12041,10 +12041,10 @@
               "doc": "The world (its active locale)."
             },
             {
-              "name": "seconds",
+              "name": "timeMs",
               "type": "f64",
               "optional": false,
-              "doc": "Seconds since 1970-01-01 00:00 UTC; fractions are dropped."
+              "doc": "Milliseconds since 1970-01-01 00:00 UTC, as og.platform.now and PlatformResult.time; fractions of a second are dropped."
             },
             {
               "name": "format",
@@ -15564,7 +15564,7 @@
       "functions": [
         {
           "name": "submit",
-          "doc": "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.\nSee `networking §3`.",
+          "doc": "Give this peer's player's input: in lockstep, for the tick inputDelayTicks ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.\nSee `networking §3`.",
           "params": [
             {
               "name": "world",
@@ -15639,7 +15639,7 @@
         },
         {
           "name": "command",
-          "doc": "Give a command for this peer's player: in lockstep, for the tick inputDelay ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.",
+          "doc": "Give a command for this peer's player: in lockstep, for the tick inputDelayTicks ticks on (with this tick's input), sent once and read on every peer by og.net.commands at that tick; alone, or with lockstep off, at the next tick. Given while a rollback re-simulates a tick it is ignored (its first run gave it already). Callable from a system.",
           "generics": [
             {
               "name": "C",
@@ -15727,7 +15727,7 @@
         },
         {
           "name": "finalHash",
-          "doc": "The shared hash (og.net.hash) of the final world of `tick`, hex: the world every peer agrees on once each input for the ticks before it arrived, kept for the last 1024 final ticks while hashing (hashEvery above 0). In lockstep every tick run is final; in rollback a tick is final some ticks after it first ran. Null before the tick is final, after it is no longer kept, or outside lockstep.",
+          "doc": "The shared hash (og.net.hash) of the final world of `tick`, hex: the world every peer agrees on once each input for the ticks before it arrived, kept for the last 1024 final ticks while hashing (hashEveryTicks above 0). In lockstep every tick run is final; in rollback a tick is final some ticks after it first ran. Null before the tick is final, after it is no longer kept, or outside lockstep.",
           "params": [
             {
               "name": "world",
@@ -17648,7 +17648,7 @@
           "description": "Each game action's argument form and one sentence, by its name in commands, for `help`: `{ place: { usage: \"<x>:<y>\", doc: \"Move the hero there.\" } }`. An action without an entry is listed by name alone.",
           "default": {}
         },
-        "maxCatchUp": {
+        "maxCatchUpTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -18052,7 +18052,7 @@
           "maximum": 10,
           "readOnly": true
         },
-        "hitStop": {
+        "hitStopTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -18538,7 +18538,7 @@
           "maximum": 4294967295,
           "description": "The tile's index in WfcDesc.tiles."
         },
-        "rotation": {
+        "quarterTurns": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -18549,7 +18549,7 @@
         "x",
         "y",
         "tile",
-        "rotation"
+        "quarterTurns"
       ],
       "additionalProperties": false
     },
@@ -18742,7 +18742,7 @@
         "axis2"
       ],
       "x-og-variants": {
-        "button": "On or off: down, pressed, released, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it.",
+        "button": "On or off: down, justPressed, justReleased, held. An analog control (a trigger, a half axis) presses it at ActionDesc.threshold and lets go under three quarters of it.",
         "axis": "One value, -1 to 1: A and D, a stick's x, a trigger (0 to 1), the wheel, the mouse's x movement (CSS px).",
         "axis2": "Two values, x right and y up: WASD, a stick, the d-pad, a touch stick, the mouse's movement."
       }
@@ -18939,11 +18939,11 @@
           "type": "boolean",
           "description": "Its binding is past the threshold (or its toggle is on)."
         },
-        "pressed": {
+        "justPressed": {
           "type": "boolean",
           "description": "It went down this tick (a press and a release between two ticks set both edges)."
         },
-        "released": {
+        "justReleased": {
           "type": "boolean",
           "description": "It went up this tick."
         },
@@ -18966,8 +18966,8 @@
       },
       "required": [
         "down",
-        "pressed",
-        "released",
+        "justPressed",
+        "justReleased",
         "held",
         "value",
         "vector",
@@ -19167,7 +19167,7 @@
     "CaptureDesc": {
       "x-og-kind": "desc",
       "x-og-module": "input",
-      "description": "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go.",
+      "description": "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; the control that went down for it moves no action until it is let go.",
       "type": "object",
       "properties": {
         "action": {
@@ -19505,8 +19505,8 @@
         "rightTrigger": "The right trigger, as a button.",
         "back": "Back, Select or View.",
         "start": "Start, Options or Menu.",
-        "leftStick": "The left stick pressed in.",
-        "rightStick": "The right stick pressed in.",
+        "leftStick": "The left stick clicked in.",
+        "rightStick": "The right stick clicked in.",
         "up": "The d-pad's up.",
         "down": "The d-pad's down.",
         "left": "The d-pad's left.",
@@ -19549,7 +19549,7 @@
       "x-og-variants": {
         "press": "Down, then up on the next tick.",
         "down": "Held down until an up.",
-        "up": "Released."
+        "up": "Let go."
       }
     },
     "PointerAction": {
@@ -19714,7 +19714,7 @@
       "properties": {
         "locked": {
           "type": "boolean",
-          "description": "Locked now (true) or released (false)."
+          "description": "Locked now (true) or unlocked (false)."
         }
       },
       "required": [
@@ -20104,7 +20104,7 @@
             },
             "locked": {
               "type": "boolean",
-              "description": "Locked now (true) or released (false)."
+              "description": "Locked now (true) or unlocked (false)."
             }
           },
           "required": [
@@ -20119,7 +20119,7 @@
     "Input": {
       "x-og-kind": "resource",
       "x-og-module": "input",
-      "description": "The input state at the start of this tick (og-input's og.Input, version 2). Edges (pressed, released) last exactly one tick; read the state through the methods.\nKey sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.",
+      "description": "The input state at the start of this tick (og-input's og.Input, version 3). Edges (justPressed, justReleased) last exactly one tick; read the state through the methods.\nKey sets are 128 bits over og-input's KEY_CODES (KeyboardEvent.code names): code i is bit i % 32 of word i / 32. Button masks: left 1, middle 2, right 4.",
       "type": "object",
       "properties": {
         "pointer": {
@@ -20157,7 +20157,7 @@
           "default": 0,
           "readOnly": true
         },
-        "buttonsPressed": {
+        "buttonsJustPressed": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20165,7 +20165,7 @@
           "default": 0,
           "readOnly": true
         },
-        "buttonsReleased": {
+        "buttonsJustReleased": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20213,7 +20213,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed0": {
+        "justPressed0": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20221,7 +20221,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed1": {
+        "justPressed1": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20229,7 +20229,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed2": {
+        "justPressed2": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20237,7 +20237,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed3": {
+        "justPressed3": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20245,7 +20245,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released0": {
+        "justReleased0": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20253,7 +20253,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released1": {
+        "justReleased1": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20261,7 +20261,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released2": {
+        "justReleased2": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20269,7 +20269,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released3": {
+        "justReleased3": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20326,7 +20326,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressedMask": {
+        "justPressedMask": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20334,7 +20334,7 @@
           "default": 0,
           "readOnly": true
         },
-        "releasedMask": {
+        "justReleasedMask": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20496,7 +20496,7 @@
     "Gamepad": {
       "x-og-kind": "resource",
       "x-og-module": "input",
-      "description": "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. A pad is world state and replays.\nButton masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).\nSee `input §4`.",
+      "description": "Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. A pad is world state and replays.\nButton masks are bit `GamepadButton` index per pad; edges last exactly one tick, and a press and a release between two ticks leave both edges set. Read them through the methods. Sticks and triggers are raw: dead zones are the actions' (og.input.setDeadzones). `devices` holds each pad's family as the host told it (og.input.padDevice).\nSee `input §4`.",
       "type": "object",
       "properties": {
         "connectedMask": {
@@ -20579,7 +20579,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed0": {
+        "justPressed0": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20587,7 +20587,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed1": {
+        "justPressed1": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20595,7 +20595,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed2": {
+        "justPressed2": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20603,7 +20603,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed3": {
+        "justPressed3": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20611,7 +20611,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed4": {
+        "justPressed4": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20619,7 +20619,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed5": {
+        "justPressed5": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20627,7 +20627,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed6": {
+        "justPressed6": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20635,7 +20635,7 @@
           "default": 0,
           "readOnly": true
         },
-        "pressed7": {
+        "justPressed7": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20643,7 +20643,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released0": {
+        "justReleased0": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20651,7 +20651,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released1": {
+        "justReleased1": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20659,7 +20659,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released2": {
+        "justReleased2": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20667,7 +20667,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released3": {
+        "justReleased3": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20675,7 +20675,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released4": {
+        "justReleased4": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20683,7 +20683,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released5": {
+        "justReleased5": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20691,7 +20691,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released6": {
+        "justReleased6": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -20699,7 +20699,7 @@
           "default": 0,
           "readOnly": true
         },
-        "released7": {
+        "justReleased7": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -21962,7 +21962,7 @@
           "x-og-unit": "s",
           "x-og-tunable": true
         },
-        "collisionLayers": {
+        "collisionMask": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -23090,8 +23090,9 @@
         },
         "anisotropyRotation": {
           "type": "number",
-          "description": "The stretch's direction in radians from the tangent (+u) towards the bitangent.",
-          "default": 0
+          "description": "The stretch's direction from the tangent (+u) towards the bitangent.",
+          "default": 0,
+          "x-og-unit": "rad"
         },
         "anisotropyMap": {
           "anyOf": [
@@ -25855,14 +25856,14 @@
       ],
       "x-og-variants": {
         "point": "Light all around its position, to radius.",
-        "spot": "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to radius.",
-        "global": "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no radius and no shadows."
+        "spot": "A cone along the entity's local +x (turned with its Transform about z), innerAngle to outerAngle either side of the axis, to distance.",
+        "global": "Light on every lit pixel of its layers at full intensity, from the direction of the entity's local +x at height (for normal maps); no distance and no shadows."
       }
     },
     "Light2D": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at radius with (1 - d/r)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.",
+      "description": "A light in the 2D plane at the entity's position (z ignored): color times intensity at its centre, falling to zero at distance with (1 - d/distance)^falloff (faded over its last tenth, so even a falloff below 1 ends without a rim), shadowed by occluders when castShadows. Lighting2D.enabled turns 2D lighting on; at most 64 are drawn.",
       "type": "object",
       "properties": {
         "color": {
@@ -25881,7 +25882,7 @@
           "minimum": 0,
           "x-og-tunable": true
         },
-        "radius": {
+        "distance": {
           "type": "number",
           "description": "Where the light reaches zero, in world units.",
           "default": 5,
@@ -25914,17 +25915,19 @@
         },
         "innerAngle": {
           "type": "number",
-          "description": "A spot's half-angle at full intensity, in radians.",
+          "description": "A spot's half-angle at full intensity.",
           "default": 0.35,
           "minimum": 0,
-          "maximum": 3.14159
+          "maximum": 3.14159,
+          "x-og-unit": "rad"
         },
         "outerAngle": {
           "type": "number",
-          "description": "A spot's half-angle where it reaches zero, in radians (at least innerAngle).",
+          "description": "A spot's half-angle where it reaches zero (at least innerAngle).",
           "default": 0.6,
           "minimum": 0,
-          "maximum": 3.14159
+          "maximum": 3.14159,
+          "x-og-unit": "rad"
         },
         "height": {
           "type": "number",
@@ -27145,7 +27148,7 @@
     "Afterimage": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).",
+      "description": "Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).",
       "type": "object",
       "properties": {
         "count": {
@@ -27157,7 +27160,7 @@
           "minimum": 0,
           "maximum": 16
         },
-        "interval": {
+        "intervalTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -27682,10 +27685,10 @@
         },
         "mode": {
           "$ref": "#/$defs/ReflectionProbeMode",
-          "description": "baked (rendered once, or loaded from `og bake probes`) or realtime (every interval ticks).",
+          "description": "baked (rendered once, or loaded from `og bake probes`) or realtime (every intervalTicks ticks).",
           "default": "baked"
         },
-        "interval": {
+        "intervalTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -29787,7 +29790,7 @@
             "b": 0
           }
         },
-        "every": {
+        "everyTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -29834,11 +29837,11 @@
           "description": "Three.js layers it reflects, as og.Camera.layers.",
           "default": 1
         },
-        "every": {
+        "everyTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Draw once every this many ticks, as CameraView.every.",
+          "description": "Draw once every this many ticks, as CameraView.everyTicks.",
           "default": 1
         },
         "active": {
@@ -30972,7 +30975,7 @@
           },
           "x-og-unit": "m"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "Rotation of the shape relative to the entity.",
           "default": {
@@ -31786,10 +31789,10 @@
     "PlatformerController": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayLayers`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).\nSee `physics §6`.",
+      "description": "A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayMask`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).\nSee `physics §6`.",
       "type": "object",
       "properties": {
-        "moveX": {
+        "run": {
           "type": "number",
           "description": "The run input, -1 (left) to 1 (right). Set it every tick.",
           "default": 0,
@@ -31806,7 +31809,7 @@
           "description": "Held to drop through a one-way platform.",
           "default": false
         },
-        "impulse": {
+        "addVelocity": {
           "$ref": "#/$defs/Vector2",
           "description": "A velocity change to take on the next step (a knock-back, a spring, a recoil): added to `velocity`, then set back to zero. One with an upward y leaves the ground; the run's acceleration and gravity act on the result from then on.\nSee `physics §6`.",
           "default": {
@@ -31965,7 +31968,7 @@
           "x-og-unit": "s",
           "x-og-tunable": true
         },
-        "oneWayLayers": {
+        "oneWayMask": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -34139,7 +34142,7 @@
           },
           "x-og-unit": "m"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "The shape's rotation; a zero quaternion is no rotation.",
           "default": {
@@ -34226,7 +34229,7 @@
           },
           "x-og-unit": "m"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "Its rotation; a zero quaternion is no rotation.",
           "default": {
@@ -34282,7 +34285,7 @@
           "description": "The wheel's centre in world space.",
           "x-og-unit": "m"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "Its rotation (steering and spin) in world space."
         },
@@ -34308,7 +34311,7 @@
       },
       "required": [
         "position",
-        "rotation",
+        "quaternion",
         "contact",
         "slip",
         "sideSpeed",
@@ -34339,7 +34342,7 @@
           },
           "x-og-unit": "m"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "The bone's rest rotation relative to the entity; a zero quaternion is no rotation.",
           "default": {
@@ -34407,14 +34410,14 @@
           "description": "The bone's position in world space.",
           "x-og-unit": "m"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "Its rotation in world space."
         }
       },
       "required": [
         "position",
-        "rotation"
+        "quaternion"
       ],
       "additionalProperties": false
     },
@@ -39161,7 +39164,7 @@
           "default": 16,
           "minimum": 1
         },
-        "tileWidth": {
+        "tilePixelWidth": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -39169,7 +39172,7 @@
           "default": 16,
           "minimum": 1
         },
-        "tileHeight": {
+        "tilePixelHeight": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -39177,7 +39180,7 @@
           "default": 16,
           "minimum": 1
         },
-        "unit": {
+        "tileSize": {
           "type": "number",
           "description": "World units per tile width.",
           "default": 1
@@ -41672,7 +41675,7 @@
           "description": "Thinks while true.",
           "default": true
         },
-        "thinkEvery": {
+        "thinkEveryTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -41754,7 +41757,7 @@
           "description": "Colliders hide what is behind them.",
           "default": true
         },
-        "occluders": {
+        "occluderMask": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -42694,7 +42697,7 @@
           "maximum": 4294967295,
           "description": "The voice's length in ticks (0: no voice, or one that did not load)."
         },
-        "voiceLeft": {
+        "voiceTicksLeft": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -42753,7 +42756,7 @@
         "spans",
         "voice",
         "voiceTicks",
-        "voiceLeft",
+        "voiceTicksLeft",
         "speaker",
         "shot",
         "choices",
@@ -42911,14 +42914,14 @@
           "description": "Only this dialogue's barks (empty: any).",
           "default": ""
         },
-        "every": {
+        "everyTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
           "description": "Ticks between asks (0 stops it).",
           "default": 600
         },
-        "jitter": {
+        "jitterTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -42978,7 +42981,7 @@
           "type": "string",
           "description": "Its voice clip (empty: none), played as a conversation's."
         },
-        "voiceLeft": {
+        "voiceTicksLeft": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -43008,7 +43011,7 @@
         "spans",
         "speaker",
         "voice",
-        "voiceLeft",
+        "voiceTicksLeft",
         "ticksLeft",
         "priority"
       ],
@@ -52465,7 +52468,7 @@
           "description": "The mesh (its og.TerrainStamp's geometry).",
           "default": 0
         },
-        "position": {
+        "meshPosition": {
           "$ref": "#/$defs/Vector3",
           "description": "Where the mesh stands: its og.TerrainStamp entity's world position.",
           "default": {
@@ -52475,7 +52478,7 @@
           },
           "x-og-unit": "m"
         },
-        "rotation": {
+        "meshQuaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "How the mesh is turned: its entity's world rotation.",
           "default": {
@@ -52485,7 +52488,7 @@
             "w": 1
           }
         },
-        "size": {
+        "meshScale": {
           "$ref": "#/$defs/Vector3",
           "description": "How the mesh is scaled: its entity's world scale.",
           "default": {
@@ -53200,7 +53203,7 @@
           "default": 2,
           "minimum": 0
         },
-        "duration": {
+        "ticks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -53208,7 +53211,7 @@
           "default": 0,
           "x-og-unit": "ticks"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "The shape's rotation: a box's or a sphere's circles', the axes' frame.",
           "default": {
@@ -54213,13 +54216,13 @@
       ],
       "x-og-variants": {
         "lockstep": "Each tick waits until every seated player's input for it is in: no prediction, no rollback; a late input holds the world.",
-        "rollback": "A tick runs on a missing input predicted as the player's last, up to maxPrediction ticks past the last tick whose inputs are all in; when the real input differs the world is rewound to its snapshot and the ticks re-run within the frame (GGPO-style). Hashes and og.Desync cover the confirmed world."
+        "rollback": "A tick runs on a missing input predicted as the player's last, up to maxPredictionTicks past the last tick whose inputs are all in; when the real input differs the world is rewound to its snapshot and the ticks re-run within the frame (GGPO-style). Hashes and og.Desync cover the confirmed world."
       }
     },
     "Lockstep": {
       "x-og-kind": "resource",
       "x-og-module": "net",
-      "description": "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelay and hashEvery (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.\nSee `networking §1`.",
+      "description": "Lockstep's settings and this peer's place. The game sets enabled, players, inputDelayTicks and hashEveryTicks (the authority's are the room's once it starts: changes while running wait for the next start); the engine sets localPlayer and running. It is this peer's own: never hashed, never compared.\nSee `networking §1`.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -54244,7 +54247,7 @@
           "default": 0,
           "readOnly": true
         },
-        "inputDelay": {
+        "inputDelayTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -54254,7 +54257,7 @@
           "maximum": 30,
           "x-og-unit": "ticks"
         },
-        "hashEvery": {
+        "hashEveryTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -54275,7 +54278,7 @@
           "description": "lockstep (the default: every tick waits for every input) or rollback (ticks run on predicted inputs and are rewound when an input differs; set before the room starts, the authority's is the room's).",
           "default": "lockstep"
         },
-        "stallTimeout": {
+        "stallTimeoutMs": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -54290,7 +54293,7 @@
           "description": "Whether a dropped player that comes back (also under a new peer number after a lost connection, or as a newcomer of the same name) takes its seat again (og.SeatRejoined); when off, a seat once dropped stays empty and newcomers take only seats never held. The authority's is the room's.",
           "default": true
         },
-        "maxPrediction": {
+        "maxPredictionTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -54393,7 +54396,7 @@
     "SeatDropped": {
       "x-og-kind": "event",
       "x-og-module": "net",
-      "description": "A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeout. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.",
+      "description": "A seat's player was dropped: it left the room, or stalled past og.Lockstep.stallTimeoutMs. Sent at the start of the first tick the seat is empty, the same tick on every peer (a hashed event: the confirmed world holds it); from then on its og.PlayerInput is the zero value until og.SeatRejoined.",
       "type": "object",
       "properties": {
         "seat": {
@@ -54462,7 +54465,7 @@
     "PeerStalled": {
       "x-og-kind": "event",
       "x-og-module": "net",
-      "description": "A running peer has sent nothing for a second (or half of stallTimeout, if shorter): for a \"waiting for player\" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.",
+      "description": "A running peer has sent nothing for a second (or half of stallTimeoutMs, if shorter): for a \"waiting for player\" message. This peer's own (wall time decides it): never hashed, and a peer that speaks again is reported again the next time it falls silent.",
       "type": "object",
       "properties": {
         "peer": {
@@ -54722,7 +54725,7 @@
           "type": "boolean",
           "description": "Whether the room runs in rollback (og.Lockstep.mode, the authority's)."
         },
-        "maxPrediction": {
+        "maxPredictionTicks": {
           "anyOf": [
             {
               "type": "integer",
@@ -54733,7 +54736,7 @@
               "type": "null"
             }
           ],
-          "description": "The room's maxPrediction while running in rollback; 0 in lockstep.",
+          "description": "The room's maxPredictionTicks while running in rollback; 0 in lockstep.",
           "x-og-unit": "ticks"
         },
         "confirmedTick": {
@@ -54772,7 +54775,7 @@
           "description": "The last tick through which every other running peer has all of this peer's inputs (each input message acknowledges); null alone or before the start.",
           "x-og-unit": "ticks"
         },
-        "predicted": {
+        "predictedTicks": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
@@ -54819,11 +54822,11 @@
         "waits",
         "desync",
         "rollback",
-        "maxPrediction",
+        "maxPredictionTicks",
         "confirmedTick",
         "finalTick",
         "acknowledged",
-        "predicted",
+        "predictedTicks",
         "rollbacks",
         "resimulatedTicks",
         "stalled",
@@ -56770,7 +56773,7 @@
           },
           "x-og-unit": "m"
         },
-        "rotation": {
+        "quaternion": {
           "$ref": "#/$defs/Quaternion",
           "description": "Its turn, as position.",
           "default": {

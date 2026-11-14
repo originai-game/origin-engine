@@ -60,10 +60,10 @@ module input {
 | [`og.input.defineAction`](input/fn-defineAction.md) | function | `(world: World, desc?: ActionDesc): Result<void>` | Define (or redefine) a gameplay action. |
 | [`og.input.actions`](input/fn-actions.md) | function | `(world: World): readonly ActionInfo[]` | Every action, in definition order, with its bindings now and its defaults: what a controls screen lists. |
 | [`og.input.action`](input/fn-action.md) | function | `(world: World, name: string): ActionState \| null` | An action this tick: down, the edges, held, its value and vector, and the device that drove it. |
-| [`og.input.isActionPressed`](input/fn-isActionPressed.md) | function | `(world: World, name: string): boolean` | Whether an action is down this tick (false for an unknown one). |
+| [`og.input.isActionDown`](input/fn-isActionDown.md) | function | `(world: World, name: string): boolean` | Whether an action is down this tick (false for an unknown one). |
 | [`og.input.isActionJustPressed`](input/fn-isActionJustPressed.md) | function | `(world: World, name: string): boolean` | Whether an action went down this tick. |
 | [`og.input.isActionJustReleased`](input/fn-isActionJustReleased.md) | function | `(world: World, name: string): boolean` | Whether an action went up this tick. |
-| [`og.input.actionHeld`](input/fn-actionHeld.md) | function | `(world: World, name: string): boolean` | Whether an action has been down for its holdMs. |
+| [`og.input.isActionHeld`](input/fn-isActionHeld.md) | function | `(world: World, name: string): boolean` | Whether an action has been down for its holdMs. |
 | [`og.input.actionValue`](input/fn-actionValue.md) | function | `(world: World, name: string): number` | An action's value: a button's strength (0 to 1), an axis's value, a two-axis value's length. |
 | [`og.input.actionVector`](input/fn-actionVector.md) | function | `(world: World, name: string): Vector2` | A two-axis action's value (x right, y up; each -1 to 1 but the mouse's movement); (value, 0) for the others. |
 | [`og.input.moveRelative`](input/fn-moveRelative.md) | function | `(world: World, name: string, camera: Quaternion): Vector3` | A two-axis action as a horizontal world vector seen from a camera: the action's y goes into the screen and its x to the screen's right, whatever the camera's pitch, so W walks away from the camera wh… |
@@ -107,10 +107,10 @@ module input {
 | [`A11yActionKind`](input/type-A11yActionKind.md) | enum |  | What an assistive technology asks of a UI control. |
 | [`A11yRequest`](input/type-A11yRequest.md) | struct |  | A screen reader's request on a UI control (an engine extension of protocol 5): the web shell's mirror of og.ui.a11y() sends it when a reader focuses, activates or adjusts a mirrored node. |
 | [`InjectedInput`](input/type-InjectedInput.md) | union |  | One input event in the game's own vocabulary, as the probe's input() and playtest scripts carry it. |
-| [`og.Input`](input/record-Input.md) | resource |  | The input state at the start of this tick (og-input's og.Input, version 2). |
+| [`og.Input`](input/record-Input.md) | resource |  | The input state at the start of this tick (og-input's og.Input, version 3). |
 | [`og.Pointers`](input/record-Pointers.md) | resource |  | Every pointer on the play surface at once, at the start of this tick (og-input's og.Pointers): a touch stick and a touch button can be held together. |
 | [`og.PointerLock`](input/record-PointerLock.md) | resource |  | Pointer lock for mouse-look (a first- or third-person camera turned by the mouse), as browser games ask for it with requestPointerLock: the game sets `wanted` (a system that writes og.PointerLock), t… |
-| [`og.Gamepad`](input/record-Gamepad.md) | resource |  | Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 2), in the W3C standard layout. |
+| [`og.Gamepad`](input/record-Gamepad.md) | resource |  | Up to eight gamepads at the start of this tick (og-input's og.Gamepad, version 3), in the W3C standard layout. |
 | [`og.KeyDown`](input/record-KeyDown.md) | event |  | A key went down (a down for a held key is a repeat and sets no edge). |
 | [`og.TextInput`](input/record-TextInput.md) | event |  | Text typed or composed (an engine extension): the shell sends it from the page's `beforeinput` and composition events, the probe's `type:`, `compose:` and `commit:` from scripts. |
 | [`og.KeyUp`](input/record-KeyUp.md) | event |  | A key went up. |

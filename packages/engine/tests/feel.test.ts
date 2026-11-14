@@ -99,7 +99,7 @@ const Watch = defineSystem("FtWatch", { reads: [og.TweenCompleted, og.Transform]
   }
   log.ticks += 1;
   log.scaledDt = time.scaledDt;
-  log.hitStop = time.hitStop;
+  log.hitStop = time.hitStopTicks;
   for (const a of q.archetypes()) {
     for (let i = 0; i < a.count; i++) {
       if (a.entity(i) === world.find("mover")) log.y = a.column(og.Transform).position[i * 3 + 1]!;
@@ -273,7 +273,7 @@ test("a hit stop holds physics and scaled tweens while systems keep ticking, and
   const log = must(engine.world.resource(Log));
   expect(log.ticks).toBe(16);
   expect(log.scaledDt).toBe(0);
-  expect(must(engine.world.resource(og.Time)).hitStop).toBe(0);
+  expect(must(engine.world.resource(og.Time)).hitStopTicks).toBe(0);
   engine.advance(1);
   expect(must(engine.world.get(box, og.Transform)).position.y).toBeLessThan(before);
   // Slow motion halves the scaled step the systems see.

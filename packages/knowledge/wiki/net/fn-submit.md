@@ -6,7 +6,7 @@ Module [`net`](../net.md) · [index](../index.md)
 
 ### `og.net.submit`
 
-Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.
+Give this peer's player's input: in lockstep, for the tick inputDelayTicks ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system.
 
 See `networking §3`.
 
@@ -25,7 +25,7 @@ Binding symbol `og_net_submit` · publish builds: kept
 
 ```ogt
 fn submit {
-  doc "Give this peer's player's input: in lockstep, for the tick inputDelay ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system."
+  doc "Give this peer's player's input: in lockstep, for the tick inputDelayTicks ticks from the one running (sent to every peer when the tick ends); otherwise, for the next tick. It holds until the next call. Callable from a system."
   guide "networking §3"
   param world World "The world."
   param input InputDesc "The buttons and axes."

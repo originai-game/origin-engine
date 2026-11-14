@@ -11,8 +11,8 @@ use og_core::{Reflect, Str64, Str256};
 use og_ecs::World;
 
 /// The input state at the start of a tick, as systems poll it (IDL
-/// `input.Input`). Edges (`pressed`, `released`, the button edges, `wheel`)
-/// last exactly one tick: an event delivered between ticks N-1 and N is seen
+/// `input.Input`). Edges (`justPressed`, `justReleased`, the button edges,
+/// `wheel`; the Rust fields keep `pressed`, `released`) last exactly one tick: an event delivered between ticks N-1 and N is seen
 /// by every system of tick N, and the edges expire when tick N ends.
 ///
 /// Every field is an IDL member (read only), and a game's handle reads them
@@ -21,7 +21,7 @@ use og_ecs::World;
 /// 128-bit key sets as four `u32` words each over [`KEY_CODES`] (bit `i` is
 /// word `i / 32`, bit `i % 32`; `keys0` holds codes 0–31).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Input", version = 2)]
+#[reflect(name = "og.Input", version = 3)]
 pub struct Input {
     /// The pointer position.
     #[reflect(unit = "cssPx")]
@@ -36,10 +36,10 @@ pub struct Input {
     /// Held pointer buttons (left 1, middle 2, right 4).
     pub buttons: u32,
     /// Buttons that went down this tick.
-    #[reflect(name = "buttonsPressed")]
+    #[reflect(name = "buttonsJustPressed")]
     pub buttons_pressed: u32,
     /// Buttons that went up this tick.
-    #[reflect(name = "buttonsReleased")]
+    #[reflect(name = "buttonsJustReleased")]
     pub buttons_released: u32,
     /// Buttons a click releases when this tick ends.
     #[reflect(name = "buttonsReleaseNext")]
@@ -53,14 +53,22 @@ pub struct Input {
     /// Held keys, codes 96–127.
     pub keys3: u32,
     /// Keys that went down this tick, codes 0–31.
+    #[reflect(name = "justPressed0")]
     pub pressed0: u32,
+    #[reflect(name = "justPressed1")]
     pub pressed1: u32,
+    #[reflect(name = "justPressed2")]
     pub pressed2: u32,
+    #[reflect(name = "justPressed3")]
     pub pressed3: u32,
     /// Keys that went up this tick, codes 0–31.
+    #[reflect(name = "justReleased0")]
     pub released0: u32,
+    #[reflect(name = "justReleased1")]
     pub released1: u32,
+    #[reflect(name = "justReleased2")]
     pub released2: u32,
+    #[reflect(name = "justReleased3")]
     pub released3: u32,
     /// Keys a press releases when this tick ends, codes 0–31.
     #[reflect(name = "releaseNext0")]
@@ -661,16 +669,16 @@ impl Input {
 /// [`Input`]'s do; a click holds its pointer until the end of the next tick.
 /// `movement` sums pointer 0's relative movement over the tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Pointers", version = 1)]
+#[reflect(name = "og.Pointers", version = 2)]
 pub struct Pointers {
     /// Pointers held down (a touch, or any button of pointer 0).
     #[reflect(name = "heldMask")]
     pub held: u32,
     /// Pointers that went down this tick.
-    #[reflect(name = "pressedMask")]
+    #[reflect(name = "justPressedMask")]
     pub pressed: u32,
     /// Pointers that went up this tick.
-    #[reflect(name = "releasedMask")]
+    #[reflect(name = "justReleasedMask")]
     pub released: u32,
     /// Pointers a click releases when this tick ends.
     #[reflect(name = "releaseNextMask")]
@@ -892,7 +900,7 @@ impl Pointers {
 /// change, through the same ring as keys, so it is world state and replays.
 /// `devices` holds each pad's family, four bits per pad ([`Gamepad::device`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
-#[reflect(name = "og.Gamepad", version = 2)]
+#[reflect(name = "og.Gamepad", version = 3)]
 pub struct Gamepad {
     /// Connected pads: bit `pad`.
     #[reflect(name = "connectedMask")]
@@ -911,22 +919,38 @@ pub struct Gamepad {
     pub buttons6: u32,
     pub buttons7: u32,
     /// Buttons that went down this tick.
+    #[reflect(name = "justPressed0")]
     pub pressed0: u32,
+    #[reflect(name = "justPressed1")]
     pub pressed1: u32,
+    #[reflect(name = "justPressed2")]
     pub pressed2: u32,
+    #[reflect(name = "justPressed3")]
     pub pressed3: u32,
+    #[reflect(name = "justPressed4")]
     pub pressed4: u32,
+    #[reflect(name = "justPressed5")]
     pub pressed5: u32,
+    #[reflect(name = "justPressed6")]
     pub pressed6: u32,
+    #[reflect(name = "justPressed7")]
     pub pressed7: u32,
     /// Buttons that went up this tick.
+    #[reflect(name = "justReleased0")]
     pub released0: u32,
+    #[reflect(name = "justReleased1")]
     pub released1: u32,
+    #[reflect(name = "justReleased2")]
     pub released2: u32,
+    #[reflect(name = "justReleased3")]
     pub released3: u32,
+    #[reflect(name = "justReleased4")]
     pub released4: u32,
+    #[reflect(name = "justReleased5")]
     pub released5: u32,
+    #[reflect(name = "justReleased6")]
     pub released6: u32,
+    #[reflect(name = "justReleased7")]
     pub released7: u32,
     /// Left sticks.
     #[reflect(name = "leftStick0")]

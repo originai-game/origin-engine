@@ -6,7 +6,7 @@ Module [`story`](../story.md) · [index](../index.md)
 
 ### `og.story.ambient`
 
-Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops.
+Let an entity bark a topic on its own, every `everyTicks` ticks (and up to `jitterTicks` more), as og.story.bark would; `everyTicks` 0 stops it. In saves; a despawned entity stops.
 
 Also known as: idle barks, ambient dialogue, chatter, random lines, background banter
 
@@ -25,7 +25,7 @@ Binding symbol `og_story_ambient` · publish builds: kept
 
 ```ogt
 fn ambient {
-  doc "Let an entity bark a topic on its own, every `every` ticks (and up to `jitter` more), as og.story.bark would; `every` 0 stops it. In saves; a despawned entity stops."
+  doc "Let an entity bark a topic on its own, every `everyTicks` ticks (and up to `jitterTicks` more), as og.story.bark would; `everyTicks` 0 stops it. In saves; a despawned entity stops."
   aliases "idle barks, ambient dialogue, chatter, random lines, background banter"
   param world World "The world."
   param desc AmbientDesc "Who, which topic and how often."

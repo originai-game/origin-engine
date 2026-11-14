@@ -91,7 +91,7 @@ function expectOneWorld(peers: Peer[]): void {
     expect(p.status.running).toBe(true);
     expect(p.status.startTick!).toBeLessThan(58);
     expect(p.status.desync).toBeNull();
-    // Orders at ticks 100 to 380 act inputDelay (2) ticks on: the last at 382.
+    // Orders at ticks 100 to 380 act inputDelayTicks (2) ticks on: the last at 382.
     expect(p.facts).toMatchObject({ orders0: 30, orders1: 30, lastTick: 382 });
     expect(p.confirmedHash).not.toBeNull();
   }

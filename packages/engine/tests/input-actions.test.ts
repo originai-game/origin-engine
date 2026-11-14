@@ -100,7 +100,7 @@ test("actions over keys and a pad, rebound by a capture, saved, and glyphed", ()
   engine.destroy();
 });
 
-test("pressed is continuous, just-pressed/released are tick edges, and action maps survive restore", () => {
+test("down is continuous, just-pressed/released are tick edges, and action maps survive restore", () => {
   const created = createEngine(og.game({}) as unknown as GameToken);
   if (!created.ok) throw new Error(created.reason);
   const engine = created.value;
@@ -109,7 +109,13 @@ test("pressed is continuous, just-pressed/released are tick edges, and action ma
     expect(og.input.defineAction(world, { name, actionMap, bindings: [{ control: "Space" }] }).ok).toBe(true);
   }
   og.input.setActionMaps(world, ["gameplay"]);
-  const poll = () => [og.input.isActionPressed(world, "jump"), og.input.isActionJustPressed(world, "jump"), og.input.isActionJustReleased(world, "jump")];
+  const poll = () => {
+    const edges = [og.input.isActionDown(world, "jump"), og.input.isActionJustPressed(world, "jump"), og.input.isActionJustReleased(world, "jump")];
+    // ActionState's down, justPressed and justReleased are the same three.
+    const state = og.input.action(world, "jump")!;
+    expect([state.down, state.justPressed, state.justReleased]).toEqual(edges);
+    return edges;
+  };
   const key = (action: "down" | "up") => engine.probe.input({ kind: "key", key: "Space", action } as never);
   key("down");
   engine.advance(1);
@@ -128,18 +134,18 @@ test("pressed is continuous, just-pressed/released are tick edges, and action ma
   og.input.setActionMaps(world, ["menu", "gameplay"]);
   key("down");
   engine.advance(1);
-  expect(og.input.isActionPressed(world, "confirm")).toBe(true);
-  expect(og.input.isActionPressed(world, "jump")).toBe(false);
+  expect(og.input.isActionDown(world, "confirm")).toBe(true);
+  expect(og.input.isActionDown(world, "jump")).toBe(false);
   expect(og.input.actions(world).find((a) => a.name === "confirm")).toMatchObject({ actionMap: "menu" });
   const snapshot = engine.probe.snapshot() as { id: string };
   og.input.setActionMaps(world, ["gameplay", "menu"]);
   engine.advance(1);
-  expect(og.input.isActionPressed(world, "jump")).toBe(true);
-  expect(og.input.isActionPressed(world, "confirm")).toBe(false);
+  expect(og.input.isActionDown(world, "jump")).toBe(true);
+  expect(og.input.isActionDown(world, "confirm")).toBe(false);
   expect(engine.probe.restore(snapshot.id)).toBe(true);
   expect(og.input.actionMaps(world)).toEqual(["menu", "gameplay"]);
   engine.advance(1);
-  expect(og.input.isActionPressed(world, "confirm")).toBe(true);
-  expect(og.input.isActionPressed(world, "jump")).toBe(false);
+  expect(og.input.isActionDown(world, "confirm")).toBe(true);
+  expect(og.input.isActionDown(world, "jump")).toBe(false);
   engine.destroy();
 });

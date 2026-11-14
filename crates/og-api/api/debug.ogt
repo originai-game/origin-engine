@@ -14,10 +14,10 @@ module debug {
       default 2
       min 0
     }
-    field duration u32 "How many ticks after this one it stays; 0 is this frame only (draw it every tick it should show)." {
+    field ticks u32 "How many ticks after this one it stays; 0 is this frame only (draw it every tick it should show)." {
       unit ticks
     }
-    field rotation Quaternion "The shape's rotation: a box's or a sphere's circles', the axes' frame."
+    field quaternion Quaternion "The shape's rotation: a box's or a sphere's circles', the axes' frame."
   }
 
   fn line {

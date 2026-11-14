@@ -277,11 +277,11 @@ export default og.game({ systems: [Turn], start(world) { /* spawn the cube with 
 - `renderer.render(scene, camera)`, `requestAnimationFrame` and the
   resize handler are deleted: the engine draws every frame.
 - Input listeners (`addEventListener("keydown")`) become reads of
-  og.Input in a system (`input.pressed("Space")`, `og api show input`): the main
+  og.Input in a system (`input.justPressed("Space")`, `og api show input`): the main
   thread owns the events and the tick sees them at its start.
 - For rebindable controls, define actions with `og.input.defineAction` and
   an `actionMap` such as `gameplay`. `setActionMaps` enables maps in priority
-  order; names stay world-global. Poll `isActionPressed` while held,
+  order; names stay world-global. Poll `isActionDown` while it is down,
   `isActionJustPressed` on the press tick, and `isActionJustReleased` on the
   release tick. A tap between ticks sets both edges. Key names remain
   `KeyboardEvent.code` values such as `KeyW`, not locale-dependent text.

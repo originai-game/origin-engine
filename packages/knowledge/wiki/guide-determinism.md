@@ -100,7 +100,7 @@ input delay, stalls, desyncs and testing a room are in `networking §1` to
   system reads og.PlayerInput (or the game's own input shape, declared
   with og.net.shape before the room starts, the same on every peer). An
   input read anywhere else is this peer's alone and parts the peers.
-- Inputs act `inputDelay` ticks after they are submitted. Design for it:
+- Inputs act `inputDelayTicks` ticks after they are submitted. Design for it:
   local feedback (a sound, a flash) may react at once from the
   presentation, the simulation may not.
 - The findings of §1's `og check` report part the peers here, not only a

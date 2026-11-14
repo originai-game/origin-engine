@@ -187,7 +187,7 @@ gpuTest("2D lighting: Lighting2D darkens lit layers and a Light2D lights around 
         l.enabled = true;
         l.ambient = { r: 0, g: 0, b: 0 };
         const e = must(w.spawn({ name: "lamp", position: { x: -6, y: 0, z: 0 } }));
-        w.insert(e, og.Light2D, { radius: 5, intensity: 1.5 });
+        w.insert(e, og.Light2D, { distance: 5, intensity: 1.5 });
       },
     }),
   );

@@ -26,8 +26,8 @@ pub fn og_story_ambient(world: u32, desc: Option<String>) -> Result<(), String> 
         let d: crate::host::wire::AmbientDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
         bark_target(d.entity, &d.topic)?;
         let (entity, topic, dialogue) = (d.entity, d.topic, d.dialogue);
-        let every = d.every.min(1_000_000_000);
-        let jitter = d.jitter.min(1_000_000_000);
+        let every = d.every_ticks.min(1_000_000_000);
+        let jitter = d.jitter_ticks.min(1_000_000_000);
         story(world, |lib, s| {
             if every > 0 {
                 let known = lib
@@ -74,7 +74,7 @@ pub(super) fn bark_view(
             side: sp.map_or("left", |x| x.side.as_str()).to_string(),
         },
         voice: b.voice.clone(),
-        voice_left: b.voice_left(s.tick),
+        voice_ticks_left: b.voice_left(s.tick),
         ticks_left: b.until.saturating_sub(s.tick),
         priority: b.priority,
     }

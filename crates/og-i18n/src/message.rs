@@ -1,6 +1,7 @@
 //! A subset of ICU MessageFormat: literal text, `{name}`, `{n, number}`
 //! (styles `compact` and `currency/EUR`), `{d, date[, full|long|medium|
-//! short]}` and `{t, time[, medium|short]}` (seconds since 1970-01-01 UTC),
+//! short]}` and `{t, time[, medium|short]}` (milliseconds since 1970-01-01
+//! UTC),
 //! `{n, plural, [offset:k] =N {..} zero|one|two|few|many|other {..}}` (with
 //! `#`, the number less the offset, inside), `{key, select, word {..}
 //! other {..}}`, and apostrophe quoting (`''` is a quote; `'{` starts a

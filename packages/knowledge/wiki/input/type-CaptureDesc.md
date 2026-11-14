@@ -6,7 +6,7 @@ Module [`input`](../input.md) · [index](../index.md)
 
 ### `CaptureDesc` (desc struct)
 
-A capture of the player's next input for a slot of an action: a controls screen's "press a key". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go.
+A capture of the player's next input for a slot of an action: a controls screen's "press a key". From the next tick every action reads nothing until it ends; the control that went down for it moves no action until it is let go.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -21,7 +21,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct CaptureDesc {
-  doc "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; what was pressed for it moves no action until it is let go."
+  doc "A capture of the player's next input for a slot of an action: a controls screen's \"press a key\". From the next tick every action reads nothing until it ends; the control that went down for it moves no action until it is let go."
   desc true
   field action String "The action."
   field slot u32 "Which binding: 0 the first; one past the last adds one."

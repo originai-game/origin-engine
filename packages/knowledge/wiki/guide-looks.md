@@ -368,7 +368,7 @@ from above, the play area lies at one depth and falls in one band.
   og.Environment.intensity), as outside the box, and the surfaces as
   drawn. Crossing the box's face changes what is reflected, not how
   bright it is.
-- `realtime` probes render six faces per update. Raise `interval` before
+- `realtime` probes render six faces per update. Raise `intervalTicks` before
   adding probes.
 
 <a id="guide-looks-16"></a>

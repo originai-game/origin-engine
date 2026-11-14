@@ -12,12 +12,12 @@
 //!   *authority*, the lowest peer number among the peers running (before
 //!   the start: present), then starts at its tick boundary T: it sends every
 //!   other peer `start` with its world's snapshot, the seats (by peer number,
-//!   in that order) and the settings (`players`, `inputDelay`, `hashEvery`,
-//!   the mode and `maxPrediction` are the authority's), and each restores
-//!   the snapshot. Every seat's inputs are required from `T + inputDelay`;
+//!   in that order) and the settings (`players`, `inputDelayTicks`, `hashEveryTicks`,
+//!   the mode and `maxPredictionTicks` are the authority's), and each restores
+//!   the snapshot. Every seat's inputs are required from `T + inputDelayTicks`;
 //!   the ticks before are empty input.
 //! - **Inputs.** After tick t, a seated peer makes its input for
-//!   `t + inputDelay` (the last og.net.submit, held) and sends every input
+//!   `t + inputDelayTicks` (the last og.net.submit, held) and sends every input
 //!   of its own the other peers have not acknowledged yet (each input
 //!   message carries its sender's confirmed tick, the acknowledgement), so
 //!   a message the room loses or delays costs nothing but time: the next
@@ -25,10 +25,10 @@
 //!   unreliably; everything else is reliable and ordered per sender.
 //! - **Confirmed ticks.** Tick t is *confirmed* once every seat that is
 //!   occupied at t has its real input for t, and every tick before it is.
-//! - **Lockstep** (the default, `maxPrediction` 0): tick t runs only when it
-//!   is confirmed ([`Lockstep::gate`]); with `inputDelay` of at least 1
+//! - **Lockstep** (the default, `maxPredictionTicks` 0): tick t runs only when it
+//!   is confirmed ([`Lockstep::gate`]); with `inputDelayTicks` of at least 1
 //!   nobody waits on itself.
-//! - **Rollback**: tick t runs once `t <= confirmed + maxPrediction`, a
+//! - **Rollback**: tick t runs once `t <= confirmed + maxPredictionTicks`, a
 //!   missing input *predicted* as its seat's last real input (empty for a
 //!   seat its holder has not sent for yet). Each tick's inputs as it ran
 //!   them are kept; a real input that differs from the one a tick ran with
@@ -45,12 +45,12 @@
 //!   for. A `start` whose [`Config::shape`] differs is refused.
 //! - **Late join.** A peer that joins a running room is admitted by the
 //!   authority at its next boundary T: a free seat (one never held, or
-//!   left) from `T + inputDelay`, or none (a spectator). The authority
+//!   left) from `T + inputDelayTicks`, or none (a spectator). The authority
 //!   tells everyone (`admit`) and hands the newcomer a `start` with its
 //!   last confirmed world (tick S, at most T), the seats' histories and
 //!   every input it holds from S; every other peer sends the newcomer its
 //!   own inputs from S. In lockstep, delivery in order per sender makes
-//!   `T + inputDelay` safe: no peer can have run a tick past it before the
+//!   `T + inputDelayTicks` safe: no peer can have run a tick past it before the
 //!   admit arrives, since that tick needs the authority's input sent after
 //!   the admit; in rollback a peer that predicted past it rewinds when the
 //!   newcomer's first input differs from its prediction (empty).
@@ -59,7 +59,7 @@
 //!   before its departure, so all agree on that tick.
 //! - **Hashes.** Each peer hashes its world after every confirmed tick
 //!   ([`crate::state::Snapshot::shared_hash`]: everything but the peer's
-//!   own session) and keeps the snapshot; every `hashEvery` ticks it sends
+//!   own session) and keeps the snapshot; every `hashEveryTicks` ticks it sends
 //!   the hashes since its last batch. The first tick whose hashes differ is
 //!   the first divergent tick, exactly: og.Desync, and both peers ask each
 //!   other for their snapshot of that tick, whose component-level diff
@@ -93,19 +93,19 @@ pub const WIRE_VERSION: u64 = 4;
 pub struct Config {
     pub enabled: bool,
     pub players: u32,
-    pub input_delay: u32,
-    pub hash_every: u32,
+    pub input_delay_ticks: u32,
+    pub hash_every_ticks: u32,
     /// Rollback (true) or lockstep (false, the default).
     pub rollback: bool,
     /// In rollback, the most ticks a peer runs past its last confirmed one.
-    pub max_prediction: u32,
+    pub max_prediction_ticks: u32,
     /// This peer's own cap on prediction (what it can re-simulate in half
     /// a frame, measured by the runtime): it decides only when this peer
     /// waits, never what the room's confirmed world is.
     pub budget: u32,
     /// Milliseconds a running peer may stay silent before the authority
     /// drops it (0 never drops a peer that is still in the room).
-    pub stall_timeout: u32,
+    pub stall_timeout_ms: u32,
     /// Whether a dropped peer that comes back, or a newcomer, takes a seat
     /// a dropped or departed peer held (else such a seat stays empty).
     pub rejoin: bool,
@@ -125,12 +125,12 @@ impl Default for Config {
         Config {
             enabled: false,
             players: 2,
-            input_delay: 2,
-            hash_every: 10,
+            input_delay_ticks: 2,
+            hash_every_ticks: 10,
             rollback: false,
-            max_prediction: 8,
+            max_prediction_ticks: 8,
             budget: u32::MAX,
-            stall_timeout: 5000,
+            stall_timeout_ms: 5000,
             rejoin: true,
             state_bytes: 0,
             shape: 0,
@@ -144,7 +144,7 @@ pub enum Gate {
     /// Take the tick.
     Go,
     /// Hold: an input the tick needs has not arrived (in rollback: the tick
-    /// is further than `maxPrediction` past the last confirmed one).
+    /// is further than `maxPredictionTicks` past the last confirmed one).
     Wait,
     /// Restore this snapshot (a peer's world at `tick`: the start, or a late
     /// join), keeping the session, then ask again.
@@ -401,7 +401,7 @@ struct Proposal {
 /// A peer silent this long is reported (og.PeerStalled, status `stalled`).
 const STALL_NOTICE_MS: u64 = 1000;
 /// How long a peer of a full room holds its lobby for the authority's start
-/// when og.Lockstep.stallTimeout is 0 (else it holds that long).
+/// when og.Lockstep.stallTimeoutMs is 0 (else it holds that long).
 const START_HOLD_MS: u64 = 5000;
 
 fn hex(h: u64) -> String {
@@ -864,8 +864,8 @@ mod tests {
         Config {
             enabled: true,
             players,
-            input_delay: delay,
-            hash_every: every,
+            input_delay_ticks: delay,
+            hash_every_ticks: every,
             ..Config::default()
         }
     }
@@ -873,7 +873,7 @@ mod tests {
     fn rollback(players: u32, delay: u32, predict: u32) -> Config {
         Config {
             rollback: true,
-            max_prediction: predict,
+            max_prediction_ticks: predict,
             ..cfg(players, delay, 1)
         }
     }
@@ -892,7 +892,7 @@ mod tests {
 
     /// [`offline`], with the commands `cfg` gives ([`command`]).
     fn offline_with(cfg: &Config, until: u64) -> u64 {
-        let (players, delay) = (cfg.players, u64::from(cfg.input_delay));
+        let (players, delay) = (cfg.players, u64::from(cfg.input_delay_ticks));
         let mut state = 7;
         for t in 0..until {
             let inputs: Vec<Vec<u8>> = (0..players)
@@ -1079,7 +1079,7 @@ mod tests {
         );
         assert!(ran < 20, "{ran}");
         assert_eq!(p.ls.waiting_for, vec![1]);
-        assert_eq!(p.ls.status()["predicted"], json!(5));
+        assert_eq!(p.ls.status()["predictedTicks"], json!(5));
         // Peer 1 catches up: peer 0 rolls back once its inputs arrive and
         // both end on the offline world.
         for _ in 0..200 {
@@ -1100,7 +1100,7 @@ mod tests {
             (
                 Config {
                     rollback: true,
-                    max_prediction: 6,
+                    max_prediction_ticks: 6,
                     ..cfg(2, 3, 4)
                 },
                 lossy(11, 3, 3, 10),
@@ -1176,7 +1176,7 @@ mod tests {
         room.run_to(100);
         assert_eq!(room.hashes(100)[0], room.hashes(100)[1]);
         // An authority that never starts (lockstep off on it): the hold
-        // ends after stallTimeout and the lobby runs freely.
+        // ends after stallTimeoutMs and the lobby runs freely.
         let mut room = Room::new(None);
         room.join(
             0,
@@ -1188,7 +1188,7 @@ mod tests {
         room.join(
             1,
             Config {
-                stall_timeout: 400,
+                stall_timeout_ms: 400,
                 ..cfg(2, 2, 1)
             },
         );
@@ -1215,13 +1215,13 @@ mod tests {
         // playing on a seat the authority emptied.
         for mode in [
             Config {
-                stall_timeout: 400,
+                stall_timeout_ms: 400,
                 ..cfg(2, 2, 1)
             },
             Config {
                 rollback: true,
-                max_prediction: 6,
-                stall_timeout: 400,
+                max_prediction_ticks: 6,
+                stall_timeout_ms: 400,
                 ..cfg(2, 2, 1)
             },
         ] {
@@ -1251,13 +1251,13 @@ mod tests {
     fn a_stalled_peer_is_dropped_at_one_tick_on_every_peer_and_takes_its_seat_back() {
         let modes = [
             Config {
-                stall_timeout: 400,
+                stall_timeout_ms: 400,
                 ..cfg(3, 2, 1)
             },
             Config {
                 rollback: true,
-                max_prediction: 6,
-                stall_timeout: 400,
+                max_prediction_ticks: 6,
+                stall_timeout_ms: 400,
                 ..cfg(3, 2, 1)
             },
         ];
@@ -1357,7 +1357,7 @@ mod tests {
             cfg(4, 2, 1),
             Config {
                 rollback: true,
-                max_prediction: 6,
+                max_prediction_ticks: 6,
                 ..cfg(4, 2, 1)
             },
         ];
@@ -1402,7 +1402,7 @@ mod tests {
     fn stall_timeout_0_never_drops_a_silent_peer() {
         let mut room = Room::new(None);
         let mode = Config {
-            stall_timeout: 0,
+            stall_timeout_ms: 0,
             ..cfg(2, 2, 1)
         };
         for id in 0..2 {

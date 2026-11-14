@@ -641,7 +641,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
           break;
         }
         // In rollback the world reaches --ticks on predicted inputs: the run
-        // goes on (predicting at most maxPrediction ahead) until that tick's
+        // goes on (predicting at most maxPredictionTicks ahead) until that tick's
         // world is final and every peer acknowledged this one's inputs for it
         // (they may have been lost), so `confirmedHash` is the room's (finalHash).
         if (ticks !== undefined && tick >= ticks && (room === undefined || rollbackDone(ticks) || tick > ticks + 600)) break;

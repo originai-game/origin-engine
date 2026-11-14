@@ -314,7 +314,7 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
     insert(
         turned,
         "og.ReflectionProbe",
-        json!({ "mode": "realtime", "interval": 4 }),
+        json!({ "mode": "realtime", "intervalTicks": 4 }),
     );
     answer(og_engine_frame(engine, 1000.0 / 60.0));
     let (volumes, gi, probes) = seen.borrow().clone();

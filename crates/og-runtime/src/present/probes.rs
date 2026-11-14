@@ -15,7 +15,7 @@
 //! `og.EnvironmentMap` output of the manifest). A baked probe whose key is
 //! in the bundle samples that map; one whose key is not (never baked,
 //! moved, or its room changed since) draws its own capture on its first
-//! frame, as a realtime probe does every `interval` ticks.
+//! frame, as a realtime probe does every `intervalTicks` ticks.
 
 use crate::engine::Engine;
 use crate::host::wire::{FromJson, ReflectionProbeMode, record};
@@ -101,7 +101,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             ReflectionProbeMode::Baked => ProbeMode::Baked,
             ReflectionProbeMode::Realtime => ProbeMode::Realtime,
         };
-        p.interval = v.interval.max(1);
+        p.interval = v.interval_ticks.max(1);
         p.intensity = v.intensity.max(0.0);
         probes.push(p);
     }

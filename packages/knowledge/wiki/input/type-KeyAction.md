@@ -14,14 +14,14 @@ A string: one of the variants below. The zero value is `"press"`.
 |---|---|
 | `"press"` | Down, then up on the next tick. |
 | `"down"` | Held down until an up. |
-| `"up"` | Released. |
+| `"up"` | Let go. |
 
 ```ogt
 enum KeyAction {
   doc "What an injected key event does."
   variant press "Down, then up on the next tick."
   variant down "Held down until an up."
-  variant up "Released."
+  variant up "Let go."
 }
 ```
 

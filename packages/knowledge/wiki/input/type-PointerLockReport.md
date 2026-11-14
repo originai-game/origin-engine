@@ -10,12 +10,12 @@ The host reports whether the pointer is locked to the play surface now (an engin
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `locked` | `boolean` | `false` | — | — | — | Locked now (true) or released (false). |
+| `locked` | `boolean` | `false` | — | — | — | Locked now (true) or unlocked (false). |
 
 ```ogt
 struct PointerLockReport {
   doc "The host reports whether the pointer is locked to the play surface now (an engine extension of protocol 5): the web shell sends one from the page's pointerlockchange, and a playtest can send its own; og.PointerLock.locked follows it."
-  field locked bool "Locked now (true) or released (false)."
+  field locked bool "Locked now (true) or unlocked (false)."
 }
 ```
 

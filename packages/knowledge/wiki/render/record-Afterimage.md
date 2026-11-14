@@ -6,14 +6,14 @@ Module [`render`](../render.md) · [index](../index.md)
 
 ### `og.Afterimage` (component)
 
-Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
+Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block).
 
 Token `og.Afterimage`, registered under the schema name `og.Afterimage`; its value type is `Afterimage`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `count` | `number` | `4` | 0 … 16 | — | — | How many ghosts. |
-| `interval` | `number` | `3` | ≥ 1 | `ticks` | — | Ticks between ghosts. |
+| `intervalTicks` | `number` | `3` | ≥ 1 | `ticks` | — | Ticks between ghosts. |
 | `opacity` | `number` | `0.5` | 0 … 1 | — | tunable | The newest ghost's alpha. |
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | A linear tint (above 1 with additive, a glow). |
 | `additive` | `boolean` | `false` | — | — | — | Add the ghosts instead of blending them. |
@@ -21,13 +21,13 @@ Token `og.Afterimage`, registered under the schema name `og.Afterimage`; its val
 
 ```ogt
 component Afterimage {
-  doc "Ghosts of the entity's og.Sprite: every `interval` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block)."
+  doc "Ghosts of the entity's og.Sprite: every `intervalTicks` ticks its pose (position, rotation, scale, frame, flips) is kept, and the last `count` are drawn behind it, fading from `opacity` to 0, tinted by color. A dash, a speed-up, a teleport. The history is world state (the og.sprite state block)."
   field count u32 "How many ghosts." {
     default 4
     min 0
     max 16
   }
-  field interval u32 "Ticks between ghosts." {
+  field intervalTicks u32 "Ticks between ghosts." {
     default 3
     min 1
     unit ticks
@@ -48,4 +48,4 @@ component Afterimage {
 }
 ```
 
-<sub>Module `render` line 2631</sub>
+<sub>Module `render` line 2635</sub>

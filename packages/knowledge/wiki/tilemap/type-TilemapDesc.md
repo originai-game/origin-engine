@@ -14,9 +14,9 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 |---|---|---|---|---|---|---|
 | `width` | `number` | `16` | ≥ 1 | — | — | Cells across. |
 | `height` | `number` | `16` | ≥ 1 | — | — | Cells down. |
-| `tileWidth` | `number` | `16` | ≥ 1 | — | — | A tile's width in pixels (its cell's). |
-| `tileHeight` | `number` | `16` | ≥ 1 | — | — | A tile's height in pixels (its cell's; half the width for the usual isometric diamond). |
-| `unit` | `number` | `1` | — | — | — | World units per tile width. |
+| `tilePixelWidth` | `number` | `16` | ≥ 1 | — | — | A tile's width in pixels (its cell's). |
+| `tilePixelHeight` | `number` | `16` | ≥ 1 | — | — | A tile's height in pixels (its cell's; half the width for the usual isometric diamond). |
+| `tileSize` | `number` | `1` | — | — | — | World units per tile width. |
 | `orientation` | `TileOrientation` | `"orthogonal"` | — | — | — | How the cells are laid out. |
 | `tilesets` | `readonly string[]` | `[]` | — | — | — | The tilesets' asset ids (tileset `.ogt` files, such as `tiles/dungeon.ogt`). |
 | `layers` | `readonly TileLayerDesc[]` | `[]` | — | — | — | The layers, drawing order. |
@@ -33,15 +33,15 @@ struct TilemapDesc {
     default 16
     min 1
   }
-  field tileWidth u32 "A tile's width in pixels (its cell's)." {
+  field tilePixelWidth u32 "A tile's width in pixels (its cell's)." {
     default 16
     min 1
   }
-  field tileHeight u32 "A tile's height in pixels (its cell's; half the width for the usual isometric diamond)." {
+  field tilePixelHeight u32 "A tile's height in pixels (its cell's; half the width for the usual isometric diamond)." {
     default 16
     min 1
   }
-  field unit f32 "World units per tile width." {
+  field tileSize f32 "World units per tile width." {
     default 1
   }
   field orientation TileOrientation "How the cells are laid out."

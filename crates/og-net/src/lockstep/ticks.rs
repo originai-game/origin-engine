@@ -66,7 +66,7 @@ impl Lockstep {
                 // scripted run's steps spent in a lobby), but only so long
                 // (an authority that never starts leaves a free lobby).
                 let since = *self.full_since.get_or_insert(self.now);
-                let bound = match cfg.stall_timeout {
+                let bound = match cfg.stall_timeout_ms {
                     0 => START_HOLD_MS,
                     t => u64::from(t),
                 };
@@ -163,7 +163,7 @@ impl Lockstep {
 
     fn start(&mut self, cfg: &Config, tick: u64, bytes: Vec<u8>) {
         let players = cfg.players.max(1);
-        let delay = u64::from(cfg.input_delay.max(1));
+        let delay = u64::from(cfg.input_delay_ticks.max(1));
         let peers: Vec<u32> = self.peers.keys().copied().collect();
         let mut seats = vec![Vec::new(); players as usize];
         for (s, p) in peers.iter().take(players as usize).enumerate() {
@@ -178,16 +178,16 @@ impl Lockstep {
             start: tick,
             players,
             delay,
-            hash_every: u64::from(cfg.hash_every),
+            hash_every: u64::from(cfg.hash_every_ticks),
             max_prediction: if cfg.rollback {
-                u64::from(cfg.max_prediction)
+                u64::from(cfg.max_prediction_ticks)
             } else {
                 0
             },
             seats,
             running: peers.iter().copied().collect(),
             admitted: peers.iter().copied().collect(),
-            stall_timeout: u64::from(cfg.stall_timeout),
+            stall_timeout: u64::from(cfg.stall_timeout_ms),
             rejoin: cfg.rejoin,
             shape: cfg.shape,
         };
@@ -307,7 +307,7 @@ impl Lockstep {
 
     /// After tick `tick_after - 1` ran (the world's tick is `tick_after`):
     /// on a tick run for the first time, this peer's input for the tick
-    /// `inputDelay` on; then the world's hash and snapshot (`hash` gives
+    /// `inputDelayTicks` on; then the world's hash and snapshot (`hash` gives
     /// both), kept for a rollback, and the hashes of every tick now final.
     pub fn after_tick(&mut self, tick_after: u64, hash: &mut dyn FnMut() -> (u64, Vec<u8>)) {
         let Some(run) = &self.run else { return };
@@ -443,10 +443,10 @@ impl Lockstep {
             "peers": self.peers.keys().collect::<Vec<_>>(),
             "startTick": run.map(|r| r.start),
             "players": run.map(|r| r.players),
-            "inputDelay": run.map(|r| r.delay),
-            "hashEvery": run.map(|r| r.hash_every),
+            "inputDelayTicks": run.map(|r| r.delay),
+            "hashEveryTicks": run.map(|r| r.hash_every),
             "rollback": run.map(|r| r.max_prediction > 0),
-            "maxPrediction": run.map(|r| r.max_prediction),
+            "maxPredictionTicks": run.map(|r| r.max_prediction),
             "seats": run.map(|r| r.holds_json()),
             "spectators": run.map(|r| r.running.iter().filter(|p| r.open_seat(**p).is_none()).collect::<Vec<_>>()),
             "waitingFor": self.waiting_for,
@@ -454,7 +454,7 @@ impl Lockstep {
             "confirmedTick": run.map(|_| self.confirmed),
             "finalTick": run.map(|_| self.hashed),
             "acknowledged": run.and(self.acks.values().copied().min()),
-            "predicted": run.map(|_| self.frontier.saturating_sub(1).saturating_sub(self.confirmed)),
+            "predictedTicks": run.map(|_| self.frontier.saturating_sub(1).saturating_sub(self.confirmed)),
             "rollbacks": self.rollbacks,
             "resimulatedTicks": self.resimulated,
             "snapshotBytes": self.ring.values().map(|(_, b)| b.len()).sum::<usize>(),

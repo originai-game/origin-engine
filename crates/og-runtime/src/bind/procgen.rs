@@ -105,7 +105,7 @@ pub fn og_procgen_wfc(desc: Option<String>) -> Result<crate::host::wire::WfcResu
         let fixed = d
             .fixed
             .iter()
-            .map(|c| (c.x, c.y, c.tile, c.rotation))
+            .map(|c| (c.x, c.y, c.tile, c.quarter_turns))
             .collect();
         let out = procgen::wfc(&Wfc {
             seed: d.seed,

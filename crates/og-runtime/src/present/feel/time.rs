@@ -6,14 +6,14 @@ use super::*;
 pub(crate) fn time_scale_json(scale: og_core::TimeScale, time: og_core::Time) -> Value {
     json!({
         "scale": scale.scale,
-        "hitStop": scale.hit_stop,
+        "hitStopTicks": scale.hit_stop,
         "scaledDt": scale.dt(&time),
         "scaledElapsed": scale.elapsed,
     })
 }
 
 /// A system call's time scale, written to the shared buffer as four
-/// doubles: scale, hitStop, scaledDt, scaledElapsed
+/// doubles: scale, hitStopTicks, scaledDt, scaledElapsed
 /// ([`crate::host::shared`]; `dispatch` in runtime.ts reads them).
 pub(crate) fn put_time(
     shared: &mut [u8],

@@ -224,7 +224,7 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "og_engine_frame",
         &[("engine", "u32", "number"), ("elapsed_ms", "f64", "number")],
         "String",
-        "One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUp` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran.",
+        "One display frame: feed `elapsed_ms` of wall clock to the fixed-tick accumulator (unless paused), run the command steps due, take the ticks it allows up to `GameDesc.maxCatchUpTicks` through the probe, then render when a renderer is attached. JSON `{ ok, ticks, tick, rendered, paused, quit }` or a refusal; `quit` is true once a `quit` command ran.",
     ),
     (
         "og_host_begin_bundle",

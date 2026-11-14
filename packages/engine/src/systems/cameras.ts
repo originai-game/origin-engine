@@ -108,7 +108,7 @@ interface InputValue {
   pointerInside: boolean;
   wheel: { x: number; y: number };
   buttonDown(b: string): boolean;
-  buttonPressed(b: string): boolean;
+  buttonJustPressed(b: string): boolean;
 }
 
 /** og.orbitCamera: OrbitControls over og.Input. */
@@ -127,7 +127,7 @@ export const orbitCamera = defineSystem(
       if (o.enabled[0] && input.ok) {
         const i = input.value as unknown as InputValue;
         const ptr = o.pointer;
-        if (i.buttonPressed("left") && i.pointerInside) {
+        if (i.buttonJustPressed("left") && i.pointerInside) {
           o.dragging[0] = 1;
           ptr[0] = i.pointer.x;
           ptr[1] = i.pointer.y;

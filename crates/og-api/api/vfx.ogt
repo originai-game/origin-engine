@@ -53,7 +53,7 @@ module vfx {
     field position Vector3 "Where: in the world, or in the parent's space with a parent." {
       unit m
     }
-    field rotation Quaternion "Its turn, as position."
+    field quaternion Quaternion "Its turn, as position."
     field parent Option.Entity "An entity to follow (a sword's tip, a character's chest): the effect's entity becomes its child, so it moves with it and despawns with it."
     field scale f32 "Its size (og.Vfx.scale)." {
       default 1
