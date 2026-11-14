@@ -98,6 +98,7 @@ pub const SCENES: &[&str] = &[
     "water-underwater",
     "water-underwater-shafts",
     "terrain-grass",
+    "terrain-snow-track",
     "lights-256",
     "atmosphere-moon",
     "materials",
@@ -1445,6 +1446,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "terrain-grass" => |g, _| {
             g.scene = crate::terrain_scenes::grass_scene();
+            Ok(())
+        },
+        // Footprints in lying snow: an og.GrassPusher stepping a tick at
+        // a time packs a track into it (og-render's trample map).
+        "terrain-snow-track" => |g, _| {
+            g.scene = crate::terrain_scenes::snow_track_scene();
+            g.frames = crate::terrain_scenes::SNOW_TRACK_STEPS;
+            g.update = Some(crate::terrain_scenes::snow_track_update);
             Ok(())
         },
         // The rendering fields of the Grand View Garden fork merge

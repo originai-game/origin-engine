@@ -69,6 +69,7 @@ references! {
     fluids => "fluid-3d",
     terrain => "terrain-layers",
     grass => "terrain-grass",
+    snow_track => "terrain-snow-track",
     meshlets => "meshlet-forest",
     particles => "particles",
     trails => "trails-beams",
