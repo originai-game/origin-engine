@@ -27,6 +27,7 @@ pub(crate) mod destruction;
 #[cfg(not(feature = "destruction"))]
 #[path = "bind/absent/destruction2d.rs"]
 pub(crate) mod destruction2d;
+pub(crate) mod forces;
 pub(crate) mod garment;
 pub(crate) mod i18n;
 pub(crate) mod modules;

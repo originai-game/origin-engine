@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `SHAPE_BOX`, `SHAPE_SPHERE`, `SHAPE_HEIGHTFIELD`, `og.RigidBody`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 113 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `SHAPE_BOX`, `SHAPE_SPHERE`, `SHAPE_HEIGHTFIELD`, `og.RigidBody`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 116 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -51,6 +51,9 @@ module physics {
 | [`RigidBodyType()`](#column-RigidBodyType) | column kind |  | A RigidBodyType field: the variant's index. |
 | [`og.RigidBody`](physics/record-RigidBody.md) | component |  | A body the physics step simulates. |
 | [`og.Collider`](physics/record-Collider.md) | component |  | The shape an entity collides with, attached to its RigidBody (or, without one, a static collider at its Transform). |
+| [`ForceFieldKind`](physics/type-ForceFieldKind.md) | enum |  | How an og.ForceField accelerates. |
+| [`ForceFieldKind()`](#column-ForceFieldKind) | column kind |  | A ForceFieldKind field: the variant's index. |
+| [`og.ForceField`](physics/record-ForceField.md) | component |  | An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. |
 | [`og.Velocity`](physics/record-Velocity.md) | component |  | Linear and angular velocity. |
 | [`og.Physics`](physics/record-Physics.md) | resource |  | The physics settings of the world. |
 | [`og.CollisionStarted`](physics/record-CollisionStarted.md) | event |  | Two solid colliders started touching during the tick. |
@@ -158,6 +161,7 @@ Each is a factory, `RigidBodyType(value?, options?)`, that makes one field of a 
 | Column | Value | Typed array | Stride | Doc |
 |---|---|---|---|---|
 | <a id="column-RigidBodyType"></a>`RigidBodyType` | `RigidBodyType` | `Uint32Array` | 1 | A RigidBodyType field: the variant's index. |
+| <a id="column-ForceFieldKind"></a>`ForceFieldKind` | `ForceFieldKind` | `Uint32Array` | 1 | A ForceFieldKind field: the variant's index. |
 
 ```ogt
 column RigidBodyType {
@@ -169,6 +173,17 @@ column RigidBodyType {
 ```
 
 <sub>Module `physics` line 35</sub>
+
+```ogt
+column ForceFieldKind {
+  doc "A ForceFieldKind field: the variant's index."
+  array Uint32Array
+  stride 1
+  value ForceFieldKind
+}
+```
+
+<sub>Module `physics` line 162</sub>
 
 ## Constants
 
@@ -334,172 +349,172 @@ const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
 ```
 
-<sub>Module `physics` line 306</sub>
+<sub>Module `physics` line 338</sub>
 
 ```ogt
 const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
 ```
 
-<sub>Module `physics` line 307</sub>
+<sub>Module `physics` line 339</sub>
 
 ```ogt
 const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
 ```
 
-<sub>Module `physics` line 308</sub>
+<sub>Module `physics` line 340</sub>
 
 ```ogt
 const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
 ```
 
-<sub>Module `physics` line 309</sub>
+<sub>Module `physics` line 341</sub>
 
 ```ogt
 const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
 ```
 
-<sub>Module `physics` line 310</sub>
+<sub>Module `physics` line 342</sub>
 
 ```ogt
 const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
 ```
 
-<sub>Module `physics` line 311</sub>
+<sub>Module `physics` line 343</sub>
 
 ```ogt
 const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
 ```
 
-<sub>Module `physics` line 312</sub>
+<sub>Module `physics` line 344</sub>
 
 ```ogt
 const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
 ```
 
-<sub>Module `physics` line 313</sub>
+<sub>Module `physics` line 345</sub>
 
 ```ogt
 const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
 ```
 
-<sub>Module `physics` line 314</sub>
+<sub>Module `physics` line 346</sub>
 
 ```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 688</sub>
+<sub>Module `physics` line 720</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 689</sub>
+<sub>Module `physics` line 721</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 690</sub>
+<sub>Module `physics` line 722</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 691</sub>
+<sub>Module `physics` line 723</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 692</sub>
+<sub>Module `physics` line 724</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 693</sub>
+<sub>Module `physics` line 725</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>Module `physics` line 707</sub>
+<sub>Module `physics` line 739</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>Module `physics` line 708</sub>
+<sub>Module `physics` line 740</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>Module `physics` line 709</sub>
+<sub>Module `physics` line 741</sub>
 
 ```ogt
 const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
 ```
 
-<sub>Module `physics` line 710</sub>
+<sub>Module `physics` line 742</sub>
 
 ```ogt
 const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
 ```
 
-<sub>Module `physics` line 711</sub>
+<sub>Module `physics` line 743</sub>
 
 ```ogt
 const SIMULATION_GAMEPLAY u32 0 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
 ```
 
-<sub>Module `physics` line 1020</sub>
+<sub>Module `physics` line 1052</sub>
 
 ```ogt
 const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
 ```
 
-<sub>Module `physics` line 1021</sub>
+<sub>Module `physics` line 1053</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1022</sub>
+<sub>Module `physics` line 1054</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1023</sub>
+<sub>Module `physics` line 1055</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1024</sub>
+<sub>Module `physics` line 1056</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1025</sub>
+<sub>Module `physics` line 1057</sub>
 
 ```ogt
 const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
 ```
 
-<sub>Module `physics` line 1194</sub>
+<sub>Module `physics` line 1226</sub>
 
 ```ogt
 const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
 ```
 
-<sub>Module `physics` line 1195</sub>
+<sub>Module `physics` line 1227</sub>
 
 ```ogt
 const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
 ```
 
-<sub>Module `physics` line 1196</sub>
+<sub>Module `physics` line 1228</sub>

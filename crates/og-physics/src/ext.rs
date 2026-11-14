@@ -41,6 +41,8 @@ mod carry;
 mod characters;
 #[path = "fluid/fluids.rs"]
 mod fluids;
+#[path = "rigid/forces.rs"]
+mod forces;
 #[path = "rigid/joints.rs"]
 mod joints;
 #[path = "rigid/points.rs"]
@@ -55,6 +57,7 @@ pub(crate) use buoyancy::*;
 pub(crate) use carry::*;
 pub(crate) use characters::*;
 use fluids::*;
+pub(crate) use forces::*;
 pub(crate) use joints::*;
 pub(crate) use points::*;
 pub(crate) use soft::*;

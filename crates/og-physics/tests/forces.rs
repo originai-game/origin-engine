@@ -12,6 +12,12 @@
 //! moved below a box does not right it; og.RigidBody.airDrag does nothing,
 //! overshoots the air's speed, moves a body that asked for none, takes the
 //! world's wind where a motor blows, or blows a 2D body out of its plane.
+//!
+//! og.ForceField (`set_forces`). Ways this could fail: a field accelerates
+//! by mass (a heavy body lags), reaches a body outside its volume, moves a
+//! static body, leaves a body that fell asleep in it asleep when it is
+//! switched on, pushes a 2D body out of its plane, or never reaches a
+//! character (an updraft that lifts crates and not the hero).
 
 use crate::support;
 
@@ -220,4 +226,142 @@ fn air_drag_stays_in_the_plane_in_2d() {
     let v = velocity(&w, leaf).linear;
     assert!(v.x > 1.9 && v.z == 0.0, "{v}");
     assert_eq!(transform(&w, leaf).position.z, 0.0);
+}
+
+/// A field over `volume` at the origin.
+fn field(
+    kind: og_env::force::FieldKind,
+    direction: Vec3,
+    strength: f32,
+    volume: Option<og_env::volume::Volume>,
+) -> og_env::force::Forces {
+    og_env::force::Forces {
+        fields: vec![og_env::force::Field {
+            at: og_env::volume::Placement::at(Vec3::ZERO),
+            volume,
+            kind,
+            direction,
+            strength,
+        }],
+    }
+}
+
+fn cube(size: f32) -> Option<og_env::volume::Volume> {
+    Some(og_env::volume::Volume {
+        size: Vec3::splat(size),
+        ..Default::default()
+    })
+}
+
+/// A field accelerates what is inside its volume, a heavy body as a light
+/// one, and nothing outside it; a field that pulls draws bodies in.
+#[test]
+fn a_force_field_accelerates_bodies_inside_its_volume_whatever_their_mass() {
+    use og_env::force::FieldKind;
+    let (mut w, p, light) = floating(PROFILE_3D);
+    let body = |w: &mut World, x: f32, mass: f32| {
+        spawn_body(
+            w,
+            at(x, 0.0, 0.0),
+            RigidBody {
+                mass,
+                ..RigidBody::dynamic()
+            },
+            Collider::sphere(0.5),
+        )
+    };
+    let heavy = body(&mut w, 3.0, 200.0);
+    let outside = body(&mut w, 30.0, 2.0);
+    let wall = spawn_static(&mut w, at(-3.0, 0.0, 0.0), Collider::sphere(0.5));
+    p.set_forces(field(FieldKind::Directional, Vec3::Y, 6.0, cube(12.0)));
+    run(&mut w, 30);
+    // Half a second at 6 m/s²: 3 m/s, both still inside the 12 m cube.
+    for e in [light, heavy] {
+        let v = velocity(&w, e).linear;
+        assert!(close(v, Vec3::new(0.0, 3.0, 0.0)), "{v}");
+    }
+    assert_eq!(velocity(&w, outside).linear, Vec3::ZERO);
+    assert_eq!(transform(&w, wall).position, Vec3::new(-3.0, 0.0, 0.0));
+    assert!(close(p.force_at(Vec3::new(1.0, 2.0, 0.0)), Vec3::Y * 6.0));
+    assert_eq!(p.force_at(Vec3::new(30.0, 0.0, 0.0)), Vec3::ZERO);
+
+    // A well with no volume pulls everything towards its centre.
+    let (mut w, p, _) = floating(PROFILE_3D);
+    let far = body(&mut w, 40.0, 2.0);
+    p.set_forces(field(FieldKind::Radial, Vec3::Y, -5.0, None));
+    run(&mut w, 60);
+    let v = velocity(&w, far).linear;
+    assert!(close(v, Vec3::new(-5.0, 0.0, 0.0)), "{v}");
+}
+
+/// A crate asleep on the floor rises when an updraft stronger than
+/// gravity is switched on under it.
+#[test]
+fn a_force_field_switched_on_moves_a_body_that_slept_in_it() {
+    use og_env::force::FieldKind;
+    let settings = Physics {
+        sleep_ticks: 30,
+        sleep_speed: 0.1,
+        ..Physics::default()
+    };
+    let (mut w, p) = world(settings, 1);
+    enable_lazy(&mut w);
+    floor(&mut w);
+    let crate_ = spawn_body(
+        &mut w,
+        at(0.0, 0.5, 0.0),
+        RigidBody::dynamic(),
+        Collider::cuboid(Vec3::ONE),
+    );
+    run(&mut w, 240);
+    assert!(
+        w.get::<RigidBody>(crate_).unwrap().sleeping,
+        "the crate came to rest"
+    );
+    p.set_forces(field(FieldKind::Directional, Vec3::Y, 20.0, cube(8.0)));
+    run(&mut w, 30);
+    let y = transform(&w, crate_).position.y;
+    assert!(y > 1.0, "lifted to {y}");
+}
+
+/// In the 2D profile a field's z does not push a body out of its plane.
+#[test]
+fn a_force_field_stays_in_the_plane_in_2d() {
+    use og_env::force::FieldKind;
+    let (mut w, p, e) = floating(PROFILE_2D);
+    let direction = Vec3::new(1.0, 0.0, 1.0).normalize();
+    p.set_forces(field(FieldKind::Directional, direction, 4.0, None));
+    run(&mut w, 60);
+    let v = velocity(&w, e).linear;
+    assert!(v.x > 2.8 && v.z == 0.0, "{v}");
+    assert_eq!(transform(&w, e).position.z, 0.0);
+}
+
+/// An updraft lifts a character standing in it, and gravity has it back
+/// when the field is gone.
+#[test]
+fn a_force_field_lifts_a_character_by_its_vertical_part() {
+    use og_env::force::FieldKind;
+    let (mut w, p) = world(Physics::default(), 1);
+    floor(&mut w);
+    let hero = w
+        .spawn((
+            at(0.0, 0.82, 0.0),
+            Collider::capsule(0.3, 1.0),
+            CharacterController::default(),
+        ))
+        .unwrap();
+    run(&mut w, 30);
+    let stood = transform(&w, hero).position.y;
+    assert!(w.get::<CharacterController>(hero).unwrap().grounded);
+    // Sideways and up: only the lift reaches it.
+    let direction = Vec3::new(1.0, 1.0, 0.0).normalize();
+    p.set_forces(field(FieldKind::Directional, direction, 40.0, cube(20.0)));
+    run(&mut w, 30);
+    let lifted = transform(&w, hero).position;
+    assert!(lifted.y > stood + 1.0, "lifted to {}", lifted.y);
+    assert_eq!(lifted.x, 0.0, "a character takes the vertical part");
+    p.set_forces(Default::default());
+    run(&mut w, 240);
+    assert!((transform(&w, hero).position.y - stood).abs() < 0.05);
 }

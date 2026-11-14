@@ -384,6 +384,26 @@ of crates floats without a component on each. An og.Water drawn over a
 mesh (`geometry`) is a look only: it has no height to ask for and nothing
 crosses it.
 
+Force fields. An og.ForceField accelerates what is inside the og.Volume
+beside it, a heavy body as a light one, so it is the tool for gravity that
+differs by place; og.WindMotor moves things by their drag instead, light
+things most.
+
+| For | Field |
+|---|---|
+| A low-gravity room | directional, up, `strength` under 9.81 (6 leaves about 0.4 g) |
+| A jump pad or an updraft | directional, up, `strength` over 9.81, a volume a few metres tall |
+| A gravity well, a magnet | radial, negative `strength`, a sphere with a `fade` |
+| A whirlpool, a tornado | vortex, with a weak radial pull beside it to hold things in |
+
+- A body a field reaches does not fall asleep. Bound a field with a volume
+  and turn `enabled` off when it is not needed; a field without a volume
+  keeps every body in the world awake.
+- A rope, a cloth, a soft body and a fluid take the field at the middle of
+  their points: a field much smaller than one moves all of it or none.
+- A character controller takes the vertical part only (it is lifted and
+  falls slower); push it sideways through its `move`.
+
 ## 9. Destruction
 
 Fracture is cooked, never computed at run time (`determinism §4`):

@@ -152,6 +152,38 @@ module physics {
     }
   }
 
+  enum ForceFieldKind {
+    doc "How an og.ForceField accelerates."
+    variant directional "Along its `direction`: an updraft, a jump pad, a low-gravity room (up, against gravity)."
+    variant radial "Away from the entity, or towards it with a negative `strength`: a gravity well, a magnet, a blast."
+    variant vortex "Around its `direction` through the entity, counter-clockwise seen against it (from above for the default): a whirlpool, a tornado."
+  }
+
+  column ForceFieldKind {
+    doc "A ForceFieldKind field: the variant's index."
+    array Uint32Array
+    stride 1
+    value ForceFieldKind
+  }
+
+  component ForceField {
+    aliases "gravity zone, low gravity room, gravity well, pull objects towards a point, attract or repel bodies, updraft, jump pad, tractor beam, anti-gravity area, whirlpool"
+    doc "An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run."
+    guide "physics §8"
+    field kind ForceFieldKind "How it accelerates."
+    field direction Vector3 "A directional field's direction and a vortex's axis, in the entity's space (it turns with the entity); its length does not matter." {
+      default 0 1 0
+    }
+    field strength f32 "Its acceleration inside the volume, fading with the volume's `fade` past it. Negative reverses it: a radial field pulls in." {
+      default 10
+      unit mps2
+      tunable true
+    }
+    field enabled bool "Whether it acts." {
+      default true
+    }
+  }
+
   component Velocity {
     doc "Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse."
     field linear Vector3 "The linear velocity (2D uses x and y)." {

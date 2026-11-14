@@ -140,6 +140,11 @@ pub(crate) struct Shared {
     /// ([`PhysicsSystem::set_air`]; derived from the world's components,
     /// not world state here).
     pub air: og_env::air::Air,
+    /// The world's force fields the next steps accelerate things by: the
+    /// og.ForceFields as the host read them when the tick started
+    /// ([`PhysicsSystem::set_forces`]; derived from the world's
+    /// components, not world state here).
+    pub forces: og_env::force::Forces,
 }
 
 /// At most this many mesh-derived shapes are cached (a scale animated every
