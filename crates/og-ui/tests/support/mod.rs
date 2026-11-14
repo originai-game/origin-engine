@@ -8,6 +8,7 @@
 mod doc;
 mod engine_documents;
 mod screens;
+mod stores;
 
 // Not every binary that includes this support mounts documents.
 #[allow(unused_imports)]
@@ -17,6 +18,8 @@ pub use engine_documents::*;
 use og_ui::*;
 pub use screens::*;
 use std::path::PathBuf;
+#[allow(unused_imports)]
+pub use stores::*;
 
 pub fn dressed(css: &str) -> Ui {
     let mut ui = ui_with_font(test_font_metrics());

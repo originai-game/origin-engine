@@ -2,10 +2,12 @@
 //! each a document of `type screen` declaring its layer (HUD, menu, modal,
 //! popover, toast, tooltip, system), its input mode, its default focus and
 //! focus memory, what Back does, whether it pauses the game and what
-//! happens to the layers under it. [`Ui::push_screen`], `pop_screen`,
-//! `replace_screen` and `clear_screens` manage it; [`Ui::screen`] builds a
-//! layer where code calls it, and [`Ui::build_layers`] builds the rest once
-//! per tick, in stack order, before the frame is laid out.
+//! happens to the layers under it. Every layer is a mounted document: a
+//! screen a scope mounted with its stores, or one pushed by name with a
+//! viewmodel, whose values its mount holds. [`Ui::push_screen`],
+//! `pop_screen`, `replace_screen` and `clear_screens` manage the stack, and
+//! [`Ui::build_layers`] builds the mounted documents once per tick, before
+//! the frame is laid out.
 //!
 //! The stack is ordered by layer kind, then by push order (Unreal
 //! CommonUI's layer groups): a modal pushed before a menu stays over it, a
@@ -20,9 +22,9 @@
 //! this tick.
 
 use crate::bind::Env;
-use crate::doc::build::{DocEvent, DocResponse};
+use crate::doc::build::DocEvent;
 use crate::doc::{Back, InputMode, LayerSpec, Under};
-pub use crate::layer_stack::{Layer, LayerInfo, LayerOp, LayerStack};
+pub use crate::layer_stack::{Layer, LayerInfo, LayerOp, LayerStack, pushed};
 pub(crate) use crate::layer_stack::{LayerFrame, STARTS, ends, layer_id};
 use crate::layout::{Direction, Element, Float, NONE};
 use crate::motion::css::CssAnimation;
@@ -37,12 +39,31 @@ fn is_cover(a: &CssAnimation) -> bool {
 impl Ui {
     /// Pushes a screen with its viewmodel, over the layers of its kind and
     /// below those of a later kind; the active layer remembers its focus.
-    /// Answers the layer's serial.
+    /// The screen is mounted under its name ([`pushed`]) holding the
+    /// viewmodel's values as its stores (its `default` fixture's when
+    /// `vm` is null), so it is on the stack once. Answers the layer's
+    /// serial.
     pub fn push_screen(&mut self, screen: &str, vm: Value) -> Result<u32, String> {
-        if let Some(a) = self.active_layer() {
-            self.docs.layers.layers[a].focus = self.interaction.state().focus;
+        self.screen_spec(screen)?;
+        let mount = pushed(screen);
+        if let Some(k) = self.docs.mount_layer(&mount) {
+            if !self.docs.layers.layers[k].leaving {
+                return Err(format!("the screen '{screen}' is already on the stack"));
+            }
+            // Pushed again while its cover closes over it: it goes now.
+            self.docs.layers.layers.remove(k);
+            self.finish_unmount(&mount);
         }
-        self.insert_screen(screen, vm, None)
+        let values = match vm {
+            Value::Null => self
+                .document(screen)
+                .and_then(|d| d.fixture("default").cloned())
+                .unwrap_or_default(),
+            vm => vm,
+        };
+        self.mount_with_values(mount.clone(), screen, &values)?;
+        let k = self.docs.mount_layer(&mount).expect("a mounted screen");
+        Ok(self.docs.layers.layers[k].serial)
     }
 
     /// Pops the active layer; answers its screen.
@@ -57,45 +78,20 @@ impl Ui {
         if let Some(k) = self.active_layer() {
             self.remove_layer(k);
         }
-        self.insert_screen(screen, vm, None)
+        self.push_screen(screen, vm)
     }
 
-    /// Empties the stack (mounted layers are unmounted), with no transition.
+    /// Empties the stack (its screens are unmounted), with no transition.
     pub fn clear_screens(&mut self) {
         for l in std::mem::take(&mut self.docs.layers.layers) {
-            if let Some(mount) = &l.mount {
-                self.finish_unmount(mount);
-            }
+            self.finish_unmount(&l.mount);
         }
     }
 
-    /// A layer's viewmodel (the top one of that screen).
-    pub fn screen_vm(&self, screen: &str) -> Option<&Value> {
-        self.docs
-            .layers
-            .layers
-            .iter()
-            .rev()
-            .find(|l| l.screen == screen && l.mount.is_none())
-            .map(|l| &l.vm)
-    }
-
-    /// Sets a layer's viewmodel (the top one of that screen); false when it is not on the stack.
-    pub fn set_screen_vm(&mut self, screen: &str, vm: Value) -> bool {
-        match self
-            .docs
-            .layers
-            .layers
-            .iter_mut()
-            .rev()
-            .find(|l| l.screen == screen && l.mount.is_none())
-        {
-            Some(l) => {
-                l.vm = vm;
-                true
-            }
-            None => false,
-        }
+    /// The viewmodel of the screen pushed by that name, as it is now: what
+    /// it was pushed with and what its two-way bindings wrote since.
+    pub fn screen_vm(&self, screen: &str) -> Option<Value> {
+        self.mount_values(&pushed(screen))
     }
 
     /// Some layer pauses the game.
@@ -137,48 +133,8 @@ impl Ui {
         self.input_mode() != InputMode::Menu
     }
 
-    /// Mounts a screen as a layer (pushed when it is not on the stack),
-    /// with its viewmodel for this tick, and builds it now, so code fills
-    /// its slots after this call. Its events since the last call come back.
-    pub fn screen(&mut self, screen: &str, vm: Value, env: &dyn Env) -> DocResponse {
-        if !self
-            .docs
-            .layers
-            .layers
-            .iter()
-            .any(|l| l.screen == screen && l.mount.is_none())
-            && let Err(e) = self.push_screen(screen, Value::Null)
-        {
-            self.out.warnings_mut().push(format!("Ui::screen: {e}"));
-            return DocResponse::default();
-        }
-        if !vm.is_null() {
-            self.set_screen_vm(screen, vm);
-        }
-        let k = self
-            .docs
-            .layers
-            .layers
-            .iter()
-            .rposition(|l| l.screen == screen && l.mount.is_none())
-            .unwrap_or(0);
-        let mut r = self.build_layer(k, env);
-        let mut queued = Vec::new();
-        self.docs.state_mut().queued.retain(|e| {
-            if e.mount == screen {
-                queued.push(e.clone());
-                false
-            } else {
-                true
-            }
-        });
-        queued.append(&mut r.events);
-        r.events = queued;
-        r
-    }
-
-    /// Builds every layer code did not build this tick (bottom first);
-    /// their events wait for code ([`Ui::take_doc_events`]). Then the layer
+    /// Builds the mounted documents, the stack's layers among them; their
+    /// events wait for code ([`Ui::take_doc_events`]). Then the layer
     /// changes triggers asked for. `end` calls it (with no host) when the
     /// host did not.
     pub fn build_layers(&mut self, env: &dyn Env) {
@@ -200,18 +156,6 @@ impl Ui {
             t < ends(covers) && self.draw_covers(covers, *color, image.as_deref(), t, true)
         });
         self.docs.state_mut().revealing = revealing;
-        for k in 0..self.docs.layers.layers.len() {
-            if self
-                .docs
-                .layers
-                .layers
-                .get(k)
-                .is_some_and(|l| l.built != tick && l.mount.is_none())
-            {
-                let r = self.build_layer(k, env);
-                self.docs.state_mut().queued.extend(r.events);
-            }
-        }
         for op in std::mem::take(&mut self.docs.state_mut().ops) {
             let done = match op {
                 LayerOp::Push(s, vm) => self.push_screen(&s, vm).map(|_| ()),
@@ -240,9 +184,7 @@ impl Ui {
                     let st = &mut self.docs.layers.layers;
                     if let Some(k) = st.iter().position(|l| l.serial == serial) {
                         let l = st.remove(k);
-                        if let Some(mount) = &l.mount {
-                            self.finish_unmount(mount);
-                        }
+                        self.finish_unmount(&l.mount);
                     }
                     Ok(())
                 }
@@ -251,49 +193,52 @@ impl Ui {
                 self.out.warnings_mut().push(e);
             }
         }
-        // Layers draw in stack order, whoever built them first.
+        // Layers draw in stack order, whoever built them first, each under
+        // the floats its own elements opened (a popover, a dialog, a
+        // spotlight): those stay written while their layer is opened anew.
         let order: Vec<String> = self.docs.layers.layers.iter().map(layer_id).collect();
-        let rank = |ui: &Ui, f: usize| {
-            let n = &ui.tree.nodes()[f];
-            if n.float == Float::Modal && ui.tree.kinds()[f].0 == "layer" {
-                order.iter().position(|o| *o == n.id).map_or(0, |p| p + 1)
-            } else {
-                0
-            }
-        };
-        let mut floats = std::mem::take(self.tree.floating_mut());
-        let layered: Vec<usize> = floats
+        let floats = std::mem::take(self.tree.floating_mut());
+        let owners = &self.docs.state().memory.retained.owner_of;
+        let ranks: Vec<Option<(usize, bool)>> = floats
             .iter()
-            .copied()
-            .filter(|&f| rank(self, f) > 0)
-            .collect();
-        if layered.len() > 1 {
-            let mut sorted = layered.clone();
-            sorted.sort_by_key(|&f| rank(self, f));
-            let mut it = sorted.into_iter();
-            for f in floats.iter_mut() {
-                if layered.contains(f) {
-                    *f = it.next().unwrap_or(*f);
+            .map(|&f| {
+                let n = &self.tree.nodes()[f];
+                if n.float == Float::Modal && self.tree.kinds()[f].0 == "layer" {
+                    return order.iter().position(|o| *o == n.id).map(|p| (p, false));
                 }
-            }
-        }
-        *self.tree.floating_mut() = floats;
+                let mount = &owners.get(&n.key)?.mount;
+                self.docs.mount_layer(mount).map(|p| (p, true))
+            })
+            .collect();
+        let mut ranked: Vec<(usize, (usize, bool))> = floats
+            .iter()
+            .zip(&ranks)
+            .filter_map(|(&f, rank)| rank.map(|rank| (f, rank)))
+            .collect();
+        ranked.sort_by_key(|&(_, rank)| rank);
+        let mut ranked = ranked.into_iter();
+        *self.tree.floating_mut() = floats
+            .into_iter()
+            .zip(&ranks)
+            .map(|(f, rank)| match rank {
+                Some(_) => ranked.next().map_or(f, |(f, _)| f),
+                None => f,
+            })
+            .collect();
     }
 }
 
 impl Ui {
-    /// Removes layer `k` from the stack (a mounted one is unmounted), or,
-    /// when its screen has a view transition, starts it leaving: the cover
-    /// closes over it before it goes.
+    /// Removes layer `k` from the stack, unmounted, or, when its screen
+    /// has a view transition, starts it leaving: the cover closes over it
+    /// before it goes.
     pub(crate) fn remove_layer(&mut self, k: usize) -> Layer {
         let l = self.docs.layers.layers[k].clone();
         if self.layer_leaves(k) {
             return l;
         }
         self.docs.layers.layers.remove(k);
-        if let Some(mount) = &l.mount {
-            self.finish_unmount(mount);
-        }
+        self.finish_unmount(&l.mount);
         l
     }
 
@@ -427,42 +372,6 @@ impl Ui {
         true
     }
 
-    /// Builds layer `k` of the stack.
-    pub(crate) fn build_layer(&mut self, k: usize, env: &dyn Env) -> DocResponse {
-        let (frame, lead) = self.open_layer_frame(k);
-        let Some(frame) = frame else {
-            return DocResponse {
-                events: lead,
-                ..DocResponse::default()
-            };
-        };
-        let layer = self.docs.layers.layers[k].clone();
-        let doc = self.docs.library.documents[&layer.screen].clone();
-        let mut vm = layer.vm.clone();
-        let root_id = match doc.nodes.get(doc.root) {
-            Some(n) if !n.id.is_empty() => n.id.clone(),
-            _ => "Root".to_string(),
-        };
-        let mut r = self.mount_doc(
-            doc.clone(),
-            layer.screen.clone(),
-            &root_id,
-            &mut vm,
-            env,
-            Default::default(),
-        );
-        let mut events = lead;
-        events.append(&mut r.events);
-        events.extend(self.close_layer_frame(frame, &r.path));
-        r.events = events;
-        if let Some(l) = self.docs.layers.layers.get_mut(k)
-            && l.serial == layer.serial
-        {
-            l.vm = vm;
-        }
-        r
-    }
-
     /// Opens layer `k`'s frame: its activation events, and, unless a layer
     /// above hides it, its float with the spec's backdrop, scope and
     /// presence, input routed to it as the stack decides. Its content
@@ -476,10 +385,7 @@ impl Ui {
         let layer = self.docs.layers.layers[k].clone();
         self.docs.layers.layers[k].built = tick;
         self.docs.layers.layers[k].was_top = info.active;
-        let mount = layer
-            .mount
-            .as_ref()
-            .map_or(layer.screen.clone(), |m| m.id.clone());
+        let mount = layer.mount.id.clone();
         // CommonUI's OnActivated / OnDeactivated, before the layer's own events.
         let mut lead = Vec::new();
         if info.active != layer.was_top {

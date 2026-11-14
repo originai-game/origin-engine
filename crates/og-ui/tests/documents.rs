@@ -337,13 +337,10 @@ fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
 /// pressable while the rest is not, and without one nothing is dimmed.
 #[test]
 fn tutorial_lights_a_target_in_the_document_under_it() {
-    struct Env(std::collections::BTreeMap<String, String>, Value);
+    struct Env(std::collections::BTreeMap<String, String>);
     impl bind::Env for Env {
         fn translate(&self, key: &str) -> Option<String> {
             self.0.get(key).cloned()
-        }
-        fn lookup(&self, root: &str) -> Option<Value> {
-            self.1.get(root.trim_start_matches('$')).cloned()
         }
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -372,8 +369,14 @@ fn tutorial_lights_a_target_in_the_document_under_it() {
     let mut vm = doc.fixtures[0].1.clone();
     vm["target"] = json!("Dodge");
     ui.push_screen("hud", Value::Null).unwrap();
-    ui.push_screen("tutorial", vm.clone()).unwrap();
-    let mut env = Env(messages, vm);
+    let stores: Vec<(&str, Value)> = vm
+        .as_object()
+        .unwrap()
+        .iter()
+        .map(|(name, value)| (name.as_str(), value.clone()))
+        .collect();
+    register_screen(&mut ui, "tutorial", &stores);
+    let env = Env(messages);
     let step = |ui: &mut Ui, env: &Env, input: InputFrame| -> Vec<String> {
         ui.begin(input, Viewport::new(1280.0, 720.0));
         ui.build_layers(env);
@@ -391,7 +394,9 @@ fn tutorial_lights_a_target_in_the_document_under_it() {
     };
     // A press and its release at the centre of path: the events it raised.
     let click = |ui: &mut Ui, env: &Env, path: &str| -> Vec<String> {
-        let e = ui.element(path).unwrap();
+        let e = ui
+            .element(path)
+            .unwrap_or_else(|| panic!("no {path} among {:?}", paths(ui)));
         let at = og_core::glam::Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0);
         let mut names = Vec::new();
         for (pressed, released) in [(true, false), (false, true)] {
@@ -440,7 +445,7 @@ fn tutorial_lights_a_target_in_the_document_under_it() {
         card.y >= target.bottom() || card.bottom() <= target.y,
         "the card {card:?} stands clear of the target {target:?}"
     );
-    assert!(ui.element("tutorial/Tutorial/Spot/Title").is_some());
+    assert!(ui.element("tutorial/Tutorial/Spot/card/Title").is_some());
     assert!(ui.element("tutorial/Tutorial/Card").is_none());
     assert_eq!(
         click(&mut ui, &env, "hud/Hud/Block"),
@@ -453,13 +458,12 @@ fn tutorial_lights_a_target_in_the_document_under_it() {
         "the lit element takes its press"
     );
     assert_eq!(
-        click(&mut ui, &env, "tutorial/Tutorial/Spot/Foot/Skip"),
+        click(&mut ui, &env, "tutorial/Tutorial/Spot/card/Foot/Skip"),
         ["skip"]
     );
 
     // Without a target nothing is dimmed and the card stands at x and y.
-    // (Left out, as a game that points at nothing leaves it.)
-    env.1.as_object_mut().unwrap().remove("target");
+    set_store(&mut ui, "target", json!(""));
     settle(&mut ui, &env);
     assert!(
         !paths(&ui).iter().any(|p| p.starts_with("Spot~spotlight")),
@@ -470,7 +474,7 @@ fn tutorial_lights_a_target_in_the_document_under_it() {
     assert_eq!((card.x, card.y), (64.0, 120.0));
     assert_eq!(click(&mut ui, &env, "hud/Hud/Block"), ["block"]);
     assert_eq!(
-        click(&mut ui, &env, "tutorial/Tutorial/Card/Foot/Skip"),
+        click(&mut ui, &env, "tutorial/Tutorial/Card/card/Foot/Skip"),
         ["skip"]
     );
 }
@@ -485,8 +489,8 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
   <column id="Branch"><button id="Nested">Nested</button></column>
   <button id="Sibling">Sibling</button>
   <Badge id="Component"/>
-  <Badge id="Override"/>
-  <text id="Rich" spans={spans}>ABC</text>
+  <div id="Slot"><Badge id="Override"/></div>
+  <text id="Rich" spans={$spans}>ABC</text>
   <text id="Plain">ABC</text>
 </column>
 <style>
@@ -499,7 +503,7 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
 #Invalid { opacity: var(--missing); }
 #Branch { --width: 44px; }
 #Nested, #Sibling { width: var(--width); }
-#Override { --width: 66px; }
+#Slot { --width: 66px; }
 #Rich::part(emphasis) { font: var(--ramp); }
 </style>"#;
     let mut ui = ui_with_font(test_font_metrics());
@@ -517,8 +521,11 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
         json!({"spans":[{"name":"emphasis","position":0,"length":3,"properties":{}}]}),
     )
     .unwrap();
+    // A diagnostic is reported in the frame its element resolves.
+    let mut warnings = Vec::new();
     for _ in 0..3 {
         tick(&mut ui, InputFrame::default());
+        warnings.extend(ui.frame().warnings.iter().cloned());
     }
     for (path, width) in [
         ("Child", 32.0),
@@ -526,7 +533,7 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
         ("Branch/Nested", 44.0),
         ("Sibling", 32.0),
         ("Component", 32.0),
-        ("Override", 66.0),
+        ("Slot/Override", 66.0),
     ] {
         assert_eq!(
             ui.element(&format!("cascade/Root/{path}")).unwrap().width,
@@ -539,14 +546,12 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
             > ui.element("cascade/Root/Plain").unwrap().height
     );
     assert!(
-        ui.frame()
-            .warnings
+        warnings
             .iter()
             .any(|e| e.contains("--a") && e.contains("cycle"))
     );
     assert!(
-        ui.frame()
-            .warnings
+        warnings
             .iter()
             .any(|e| e.contains("opacity") && e.contains("--missing"))
     );
@@ -603,14 +608,14 @@ fn boolean_attribute_selectors_follow_svelte_presence() {
 #[test]
 fn inline_bindings_and_inheritance_are_isolated_from_author_variables() {
     let source = r#"<meta name="screen" content="isolated" data-layer="hud">
-<div id="Root" style:width={width} style:color={color} style:--author={width}>
+<div id="Root" style:width={$width} style:color={$color} style:--author={$width}>
   <div id="Inherited" />
   <div id="Author" />
-  <div id="Normal" style:width={width} />
-  <div id="Important" style:width|important={width} />
-  <div id="Optional" style:width={optional} />
+  <div id="Normal" style:width={$width} />
+  <div id="Important" style:width|important={$width} />
+  <div id="Optional" style:width={$optional} />
   <text id="InheritedColor">inherited</text>
-  <text id="BoundColor" style:color={color}>bound</text>
+  <text id="BoundColor" style:color={$color}>bound</text>
   <text id="HiddenColor">hidden</text>
 </div>
 <style>
@@ -627,16 +632,25 @@ fn inline_bindings_and_inheritance_are_isolated_from_author_variables() {
 </style>"#;
     let mut ui = ui_with_font(test_font());
     ui.define_document(UiDocument::parse("isolated.svelte", source).unwrap());
-    ui.push_screen("isolated", json!({"width":"138px", "color":"#0000ff"}))
-        .unwrap();
+    mount_screen(
+        &mut ui,
+        "isolated",
+        &[
+            ("width", json!("138px")),
+            ("color", json!("#0000ff")),
+            ("optional", json!("104px")),
+        ],
+    );
     for (width, color, rgb) in [
         (138.0, "#0000ff", [0.0, 0.0, 1.0, 1.0]),
         (220.0, "#ff0000", [1.0, 0.0, 0.0, 1.0]),
     ] {
-        ui.set_screen_vm(
-            "isolated",
-            json!({"width":format!("{width}px"), "color":color,
-                "optional": if width == 138.0 { Some("104px") } else { None }}),
+        set_store(&mut ui, "width", json!(format!("{width}px")));
+        set_store(&mut ui, "color", json!(color));
+        set_store(
+            &mut ui,
+            "optional",
+            json!(if width == 138.0 { Some("104px") } else { None }),
         );
         for _ in 0..3 {
             tick(&mut ui, InputFrame::default());
@@ -777,7 +791,7 @@ fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() 
         "rows.svelte",
         r#"<meta name="screen" content="rows">
 <column id="Root">
-  {#each items as item (item.id)}
+  {#each $items as item (item.id)}
     <button id="Row" onclick={choose}>{item.name}</button>
   {:else}
     <text id="Empty">No rows</text>
@@ -791,7 +805,7 @@ fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() 
     ui.define_document(document);
     let a = json!({"id": "sword", "name": "Sword"});
     let b = json!({"id": "shield", "name": "Shield"});
-    ui.push_screen("rows", json!({"items": [a, b]})).unwrap();
+    mount_screen(&mut ui, "rows", &[("items", json!([a, b]))]);
     tick(&mut ui, InputFrame::default());
     assert!(
         ui.doc_built()
@@ -800,7 +814,11 @@ fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() 
     );
     assert!(!ui.doc_built().iter().any(|e| e.path.ends_with("/Empty")));
 
-    ui.set_screen_vm("rows", json!({"items": [b, a]}));
+    edit_store(
+        &mut ui,
+        "items",
+        json!({"op": "move", "key": "shield", "before": "sword"}),
+    );
     tick(&mut ui, InputFrame::default());
     let paths: Vec<_> = ui
         .doc_built()
@@ -810,7 +828,9 @@ fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() 
         .collect();
     assert_eq!(paths, ["rows/Root/Row#shield", "rows/Root/Row#sword"]);
 
-    ui.set_screen_vm("rows", json!({"items": []}));
+    for key in ["shield", "sword"] {
+        edit_store(&mut ui, "items", json!({"op": "remove", "key": key}));
+    }
     tick(&mut ui, InputFrame::default());
     assert!(ui.doc_built().iter().any(|e| e.path == "rows/Root/Empty"));
     assert!(!ui.doc_built().iter().any(|e| e.path.contains("Row#")));
@@ -1369,8 +1389,8 @@ fn pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows() 
         "structure.svelte",
         r#"<meta name="screen" content="structure">
 <column id="Root">
-  {#each items as item (item.id)}<text id="Item" class={item.kind}>{item.id}</text>{/each}
-  {#if note}<text id="Note">{note}</text>{/if}
+  {#each $items as item (item.id)}<text id="Item" class={item.kind}>{item.id}</text>{/each}
+  {#if $note}<text id="Note">{$note}</text>{/if}
   <column id="Box"></column>
 </column>
 <style>
@@ -1395,11 +1415,11 @@ fn pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows() 
         row("g2", "gem"),
         row("g3", "gem"),
     );
-    ui.push_screen(
+    mount_screen(
+        &mut ui,
         "structure",
-        json!({"items": [g1, c1, g2, g3], "note": "Note"}),
-    )
-    .unwrap();
+        &[("items", json!([g1, c1, g2, g3])), ("note", json!("Note"))],
+    );
     tick(&mut ui, InputFrame::default());
     // Gem ranks 1, 2, 3 (the coin is not counted); the note is second last.
     assert_eq!(measure(&ui, "g1").0, 111.0);
@@ -1407,10 +1427,15 @@ fn pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows() 
     assert_ne!(measure(&ui, "g2").0, 111.0);
     assert_eq!(measure(&ui, "Note").0, 222.0);
     assert_eq!(measure(&ui, "Box").1, 17.0);
-    ui.set_screen_vm(
-        "structure",
-        json!({"items": [c1, g3, g1, g2], "note": null}),
-    );
+    // The order becomes c1, g3, g1, g2, and the note goes.
+    for (key, before) in [("c1", "g1"), ("g3", "g1")] {
+        edit_store(
+            &mut ui,
+            "items",
+            json!({"op": "move", "key": key, "before": before}),
+        );
+    }
+    set_store(&mut ui, "note", Value::Null);
     tick(&mut ui, InputFrame::default());
     // Without the note, g2 is second last but its filtered rank wins.
     assert_eq!(measure(&ui, "g3").0, 111.0);
@@ -1419,6 +1444,95 @@ fn pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows() 
     assert!(g1_width != 111.0 && g1_width != 222.0, "{g1_width}");
     assert!(c1_width != 111.0 && c1_width != 222.0, "{c1_width}");
     assert_ne!(measure(&ui, "Box").1, 17.0);
+}
+
+/// A pushed viewmodel's list is iterated by its rows' `id`s: rows that
+/// each have a unique string `id` are a keyed list, and a screen that
+/// iterates any other list is told what the rows need.
+///
+/// Ways it could fail: rows with `id`s held as one value (the each finds
+/// no keyed list), a list without `id`s drawn empty with no reason given.
+#[test]
+fn a_pushed_viewmodel_s_list_is_iterated_by_its_rows_ids() {
+    let screen = |name: &str| {
+        UiDocument::parse(
+            &format!("{name}.svelte"),
+            &format!(
+                r#"<meta name="screen" content="{name}">
+<column id="Root">
+  {{#each $rows as row (row.id)}}<text id="Row">{{row.name}}</text>{{/each}}
+</column>
+"#
+            ),
+        )
+        .unwrap()
+    };
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(screen("keyed"));
+    ui.define_document(screen("plain"));
+    ui.push_screen(
+        "keyed",
+        json!({"rows": [{"id": "a", "name": "ash"}, {"id": "o", "name": "oak"}]}),
+    )
+    .unwrap();
+    tick(&mut ui, InputFrame::default());
+    let texts: Vec<String> = ui
+        .probe_elements()
+        .iter()
+        .filter(|e| !e.text.is_empty())
+        .map(|e| e.text.clone())
+        .collect();
+    assert_eq!(texts, ["ash", "oak"]);
+    ui.pop_screen();
+    tick(&mut ui, InputFrame::default());
+    ui.push_screen("plain", json!({"rows": [{"name": "ash"}, {"name": "oak"}]}))
+        .unwrap();
+    ui.begin(InputFrame::default(), viewport());
+    let refused = ui.build_retained_documents(&bind::NoEnv).unwrap_err();
+    ui.end();
+    assert_eq!(
+        refused,
+        "plain.svelte:3: each over '$rows' needs a keyed list; give each of its rows a unique string id"
+    );
+}
+
+/// A pushed screen's viewmodel is read back as it is now: what was
+/// pushed, rows in their order, with what the screen's controls wrote.
+///
+/// Ways it could fail: the pushed object answered after a control wrote
+/// (the write is lost to the game), keyed rows read back out of order or
+/// not at all, a screen that is not on the stack answering.
+#[test]
+fn a_pushed_screen_s_viewmodel_reads_back_with_what_its_controls_wrote() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "options.svelte",
+            r#"<meta name="screen" content="options">
+<column id="Root"><input type="checkbox" id="On" bind:checked={$on}></column>
+"#,
+        )
+        .unwrap(),
+    );
+    let pushed = json!({
+        "on": false,
+        "rows": [{"id": "b", "n": 2}, {"id": "a", "n": 1}],
+        "title": "Options",
+    });
+    assert_eq!(ui.screen_vm("options"), None);
+    ui.push_screen("options", pushed.clone()).unwrap();
+    assert_eq!(ui.screen_vm("options"), Some(pushed.clone()));
+    tick(&mut ui, InputFrame::default());
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(ui.focus_path(0), "options/Root/On");
+    tick(&mut ui, key("Space"));
+    tick(&mut ui, InputFrame::default());
+    let mut written = pushed;
+    written["on"] = json!(true);
+    assert_eq!(ui.screen_vm("options"), Some(written));
+    ui.pop_screen();
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(ui.screen_vm("options"), None);
 }
 
 /// Container queries restyle, before paint, the kinds that build
@@ -1436,8 +1550,8 @@ fn container_queries_restyle_lists_grids_and_rive_frames_before_paint() {
         r#"<meta name="screen" content="loot">
 <column id="Shelf">
   <column id="ChestFrame"><og-rive id="Chest" src="ui/chest.riv#Chest"/></column>
-  <list id="Log" row-height="20" height="80">{#each rows as row (row.id)}<text>{row.id}</text>{/each}</list>
-  <cells id="Bag" cell-width="30" cell-height="30" height="70">{#each rows as row (row.id)}<panel/>{/each}</cells>
+  <list id="Log" row-height="20" height="80">{#each $rows as row (row.id)}<text>{row.id}</text>{/each}</list>
+  <cells id="Bag" cell-width="30" cell-height="30" height="70">{#each $rows as row (row.id)}<panel/>{/each}</cells>
 </column>
 <style>
 #Shelf { width: 50%; padding: 0px; container: shelf / inline-size; }

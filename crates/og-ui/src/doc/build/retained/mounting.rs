@@ -149,11 +149,3 @@ impl Ui {
         &self.docs.state().memory.retained.topology
     }
 }
-
-impl Ui {
-    pub(crate) fn finish_unmount(&mut self, mount: &SourceId) {
-        let mut host = std::mem::take(&mut self.docs.state_mut().memory.retained);
-        host.remove_mount(self, mount);
-        self.docs.state_mut().memory.retained = host;
-    }
-}

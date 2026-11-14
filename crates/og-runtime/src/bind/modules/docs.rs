@@ -686,9 +686,7 @@ pub fn og_ui_layers(world: u32) -> Vec<wire::UiLayer> {
 }
 
 pub fn og_ui_screen_vm(world: u32, screen: String) -> Option<Value> {
-    on_ui(world, |ui| ui.screen_vm(&screen).cloned())
-        .ok()
-        .flatten()
+    on_ui(world, |ui| ui.screen_vm(&screen)).ok().flatten()
 }
 
 pub fn og_ui_doc_events(world: u32) -> Vec<wire::UiDocEvent> {

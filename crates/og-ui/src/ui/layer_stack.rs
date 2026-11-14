@@ -21,19 +21,37 @@ pub enum LayerOp {
     Drop(u32),
 }
 
+/// The scope of the mounts the stack makes itself: a screen pushed by
+/// name is mounted in it under that name, holding its viewmodel's values.
+pub const PUSHED: &str = "og.screen";
+
+/// The mount of the screen `screen` pushed by name.
+pub fn pushed(screen: &str) -> SourceId {
+    SourceId::new(PUSHED, screen)
+}
+
+/// A mount's name in element paths and layer ids: `scope:id`, and for a
+/// screen pushed by name the screen's name alone.
+pub fn mount_path(mount: &SourceId) -> String {
+    if mount.scope == PUSHED {
+        mount.id.clone()
+    } else {
+        format!("{}:{}", mount.scope, mount.id)
+    }
+}
+
 /// One screen on the stack.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Layer {
     /// Unique for the UI's life: what a push answers.
     pub serial: u32,
     pub screen: String,
-    /// Its viewmodel (two-way bindings write into it); unused by a mounted layer.
-    pub vm: Value,
-    /// The retained mount it shows: a `type screen` document a scope
-    /// mounted with store inputs (`scope.mount`). It is on the stack while
-    /// it is mounted, and leaves it, unmounted, when it is popped.
-    pub mount: Option<SourceId>,
-    /// A mounted layer was emitted last frame (a hidden one is released).
+    /// The mount it shows: a `type screen` document a scope mounted with
+    /// its stores (`scope.mount`), or one pushed by name ([`pushed`]). It
+    /// is on the stack while it is mounted, and leaves it, unmounted, when
+    /// it is popped.
+    pub mount: SourceId,
+    /// It was emitted last frame (a hidden one is released).
     pub shown: bool,
     /// The tick its view transition's cover started (0: none running).
     pub since: u64,
@@ -87,6 +105,7 @@ pub struct LayerFrame {
 pub struct LayerInfo {
     pub serial: u32,
     pub screen: String,
+    /// The scope's mount it shows; none for a screen pushed by name.
     pub mount: Option<SourceId>,
     pub spec: LayerSpec,
     pub top: bool,
@@ -113,13 +132,10 @@ impl LayerInfo {
     }
 }
 
-/// A layer's node id: its screen's name (its probe path's first segment),
-/// or for a mounted layer its mount's (`scope:id`).
+/// A layer's node id, its probe path's first segment: its mount's name
+/// ([`mount_path`]).
 pub fn layer_id(l: &Layer) -> String {
-    match &l.mount {
-        Some(m) => format!("{}:{}", m.scope, m.id),
-        None => l.screen.clone(),
-    }
+    mount_path(&l.mount)
 }
 
 impl Ui {
@@ -158,7 +174,7 @@ impl Ui {
             .map(|(k, l)| LayerInfo {
                 serial: l.serial,
                 screen: l.screen.clone(),
-                mount: l.mount.clone(),
+                mount: Some(l.mount.clone()).filter(|m| m.scope != PUSHED),
                 spec: specs[k].clone(),
                 top: k + 1 == st.len(),
                 active: active == Some(k),
@@ -173,26 +189,12 @@ impl Ui {
 pub const STARTS: u64 = u64::MAX;
 
 impl Ui {
-    /// Puts a layer into the stack at its kind's place.
-    pub fn insert_screen(
-        &mut self,
-        screen: &str,
-        vm: Value,
-        mount: Option<SourceId>,
-    ) -> Result<u32, String> {
+    /// Puts `mount`'s layer into the stack at its kind's place.
+    fn insert_screen(&mut self, screen: &str, mount: SourceId) -> Result<u32, String> {
         let spec = self.screen_spec(screen)?;
         let kind = spec.kind;
         // Its cover starts the first tick it is built.
         let since = if spec.transition.is_some() { STARTS } else { 0 };
-        let vm = if mount.is_some() {
-            Value::Null
-        } else if vm.is_null() {
-            self.document(screen)
-                .and_then(|d| d.fixture("default").cloned())
-                .unwrap_or(Value::Object(Default::default()))
-        } else {
-            vm
-        };
         let at = self
             .docs
             .layers
@@ -208,10 +210,13 @@ impl Ui {
             Layer {
                 serial,
                 screen: screen.to_string(),
-                vm,
                 mount,
+                shown: false,
                 since,
-                ..Layer::default()
+                leaving: false,
+                focus: 0,
+                was_top: false,
+                built: 0,
             },
         );
         Ok(serial)
@@ -222,14 +227,14 @@ impl Ui {
         self.layer_stack().iter().position(|l| l.active)
     }
 
-    /// Keeps a retained mount's layer in step with its document: a
+    /// Keeps a mount's layer in step with its document: a
     /// `type screen` document is a layer of the stack for as long as it is
     /// mounted (inserted at its kind's place; the active layer remembers its
     /// focus), any other document none.
     pub fn sync_mount_layer(&mut self, mount: &SourceId, document: Option<&str>) {
         let screen = document.filter(|d| self.screen_spec(d).is_ok());
         let st = &self.docs.layers.layers;
-        let at = st.iter().position(|l| l.mount.as_ref() == Some(mount));
+        let at = st.iter().position(|l| &l.mount == mount);
         if let Some(k) = at {
             if screen == Some(st[k].screen.as_str()) {
                 // Mounted again while it was leaving: it stays.
@@ -246,21 +251,28 @@ impl Ui {
             if let Some(a) = self.active_layer() {
                 self.docs.layers.layers[a].focus = self.interaction.state.focus;
             }
-            let _ = self.insert_screen(screen, Value::Null, Some(mount.clone()));
+            let _ = self.insert_screen(screen, mount.clone());
         }
     }
 
-    /// After a restore: a mounted layer whose mount is gone leaves the
-    /// stack, and a mounted screen without one joins it.
+    /// After a restore: a layer whose mount is gone leaves the stack, and
+    /// a mounted screen without one joins it.
     pub(crate) fn sync_mount_layers(&mut self) {
         let all = self.docs.mounted_documents();
-        self.docs.layers.layers.retain(|l| {
-            l.mount
-                .as_ref()
-                .is_none_or(|m| all.iter().any(|(a, _)| a == m))
-        });
+        self.docs
+            .layers
+            .layers
+            .retain(|l| all.iter().any(|(a, _)| *a == l.mount));
         for (mount, document) in all {
-            self.sync_mount_layer(&mount, Some(&document));
+            // A layer saved with its mount stays as it was saved: leaving,
+            // or of a document not loaded yet.
+            let saved = self
+                .docs
+                .mount_layer(&mount)
+                .is_some_and(|k| self.docs.layers.layers[k].screen == document);
+            if !saved {
+                self.sync_mount_layer(&mount, Some(&document));
+            }
         }
     }
 
@@ -270,25 +282,48 @@ impl Ui {
         let key = |v: &Value| v.as_str().and_then(|s| s.parse::<u64>().ok()).unwrap_or(0);
         stack.next = v["next"].as_u64().unwrap_or(0) as u32;
         stack.held_scale = v["heldScale"].as_f64().map(|x| x as f32);
+        // A state saved before pushed screens were mounts keeps a pushed
+        // screen's viewmodel in its layer, with no mount: it is mounted
+        // here, holding that viewmodel's values.
+        let mut carried = Vec::new();
         stack.layers = v["layers"]
             .as_array()
             .map(|a| {
                 a.iter()
-                    .map(|l| Layer {
-                        serial: l["serial"].as_u64().unwrap_or(0) as u32,
-                        screen: l["screen"].as_str().unwrap_or_default().to_string(),
-                        vm: l["vm"].clone(),
-                        focus: key(&l["focus"]),
-                        was_top: l["wasTop"].as_bool().unwrap_or(false),
-                        mount: serde_json::from_value(l["mount"].clone()).ok(),
-                        shown: false,
-                        since: l["since"].as_u64().unwrap_or(0),
-                        leaving: l["leaving"].as_bool().unwrap_or(false),
-                        built: 0,
+                    .map(|l| {
+                        let screen = l["screen"].as_str().unwrap_or_default().to_string();
+                        let mount =
+                            serde_json::from_value(l["mount"].clone()).unwrap_or_else(|_| {
+                                carried.push((screen.clone(), l["vm"].clone()));
+                                pushed(&screen)
+                            });
+                        Layer {
+                            serial: l["serial"].as_u64().unwrap_or(0) as u32,
+                            screen,
+                            focus: key(&l["focus"]),
+                            was_top: l["wasTop"].as_bool().unwrap_or(false),
+                            mount,
+                            shown: false,
+                            since: l["since"].as_u64().unwrap_or(0),
+                            leaving: l["leaving"].as_bool().unwrap_or(false),
+                            built: 0,
+                        }
                     })
                     .collect()
             })
             .unwrap_or_default();
+        for (screen, values) in carried {
+            let mount = pushed(&screen);
+            let inputs = self.hold_values(&mount, &screen, &values)?;
+            self.register_mount(
+                mount,
+                crate::doc::build::instances::Registration {
+                    document: screen,
+                    inputs,
+                    content: Default::default(),
+                },
+            );
+        }
         self.sync_mount_layers();
         Ok(())
     }
@@ -297,10 +332,7 @@ impl Ui {
 impl crate::ui::Docs {
     /// The stack index of a mounted layer.
     pub fn mount_layer(&self, mount: &SourceId) -> Option<usize> {
-        self.layers
-            .layers
-            .iter()
-            .position(|l| l.mount.as_ref() == Some(mount))
+        self.layers.layers.iter().position(|l| &l.mount == mount)
     }
 
     /// The layer state snapshots carry, as JSON.
@@ -315,7 +347,7 @@ impl crate::ui::Docs {
             "mountRegistrations": m.document_registration_state(),
             "seen": m.seen_now.iter().map(u64::to_string).collect::<Vec<_>>(),
             "layers": stack.layers.iter().map(|l| json!({
-                "serial": l.serial, "screen": l.screen, "vm": l.vm, "focus": l.focus.to_string(), "wasTop": l.was_top,
+                "serial": l.serial, "screen": l.screen, "focus": l.focus.to_string(), "wasTop": l.was_top,
                 "mount": l.mount, "since": l.since, "leaving": l.leaving,
             })).collect::<Vec<_>>(),
             "states": m.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),

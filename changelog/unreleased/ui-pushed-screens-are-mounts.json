@@ -1,0 +1,31 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.push",
+      "change": "A screen is on the stack once: pushing a screen that is already on the stack is refused with an error, where it stacked a second copy.",
+      "fix": "Pop the screen before pushing it again, or use og.ui.replace."
+    },
+    {
+      "member": "og.ui.push",
+      "change": "A list a pushed screen iterates with {#each} has rows that each carry a unique nonempty string id, the key the each names ((row.id)). A screen iterating any other list reports \"each over '$rows' needs a keyed list; give each of its rows a unique string id\" and is not drawn. A list the screen only reads whole is unaffected.",
+      "fix": "Give each row of an iterated list a unique string id and key the each by it."
+    },
+    {
+      "member": "document",
+      "change": "A document whose root is a block ({#if}, {#each}) is refused with \"a document's root is one element; put the block inside it\".",
+      "fix": "Wrap the block in one root element."
+    }
+  ],
+  "added": [
+    {
+      "member": "og.ui.screenVm",
+      "summary": "og.ui.screenVm(screen) returns the screen's values as they are now: what was pushed, with what the screen's controls wrote through bind:. It is null once the screen has left the stack."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "og.ui.push",
+      "summary": "A pushed screen is built the way a mounted document is, so it resolves only the elements whose values changed and keeps its elements' state across frames. A dropdown or tooltip a layer opens is ordered just above that layer."
+    }
+  ]
+}

@@ -43,7 +43,14 @@ impl RetainedHost {
         env: &dyn Env,
     ) -> Result<Child, String> {
         let (doc, index) = source;
-        let parent = parent.ok_or("a block requires an element parent")?.clone();
+        let parent = parent
+            .ok_or_else(|| {
+                format!(
+                    "{}:{}: a document's root is one element; put the block inside it",
+                    doc.source, doc.nodes[index].line
+                )
+            })?
+            .clone();
         context.node.key = crate::id::child_key(parent.key, &format!("$if:{id}"));
         let identity = context.node.clone();
         let topology = &self.topology;
@@ -257,7 +264,19 @@ impl RetainedHost {
         let identity = context.node.clone();
         let (order, revision, binding) = match &list {
             ListRef::Collection(source) => {
-                let collection = ui.docs.state().memory.reactive.sources.keyed(source)?;
+                let sources = &ui.docs.state().memory.reactive.sources;
+                // A list held as one value (a viewmodel's, whose rows have
+                // no `id`) has no rows to keep by key.
+                let collection = sources.keyed(source).map_err(|error| {
+                    if sources.read(source).is_ok() {
+                        format!(
+                            "{}:{}: each over '{path}' needs a keyed list; give each of its rows a unique string id",
+                            doc.source, doc.nodes[index].line
+                        )
+                    } else {
+                        error
+                    }
+                })?;
                 (collection.keys().to_vec(), collection.revision(), None)
             }
             ListRef::Nested { key, .. } => {

@@ -15,7 +15,7 @@ fn ui(style: &str, reduced: bool) -> Ui {
     ui.set_theme(theme);
     let text = format!(
         r#"<meta name="screen" content="m" data-layer="hud">
-<panel id="Card" class:on={{on}} class:paused={{paused}}/>
+<panel id="Card" class:on={{$on}} class:paused={{$paused}}/>
 <style>{style}</style>"#
     );
     ui.define_document(UiDocument::parse("m.svelte", &text).unwrap());
@@ -24,9 +24,22 @@ fn ui(style: &str, reduced: bool) -> Ui {
     ui
 }
 
-/// One tick with `vm`; answers the card's channel values.
+/// One tick with `vm`'s values in the screen's stores; answers the card's
+/// channel values.
 fn tick(ui: &mut Ui, vm: &Value) -> [f32; crate::element::CHANNELS] {
-    ui.set_screen_vm("m", vm.clone());
+    let mount = crate::layers::pushed("m");
+    let inputs = ui.docs.state().memory.retained.registrations[&mount]
+        .inputs
+        .clone();
+    for (name, value) in vm.as_object().unwrap() {
+        ui.docs
+            .execute(crate::reactive::session::Command::Set {
+                source: inputs[name].clone(),
+                value: value.clone(),
+                force: false,
+            })
+            .unwrap();
+    }
     ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
     ui.end();
     let i = (0..ui.tree.nodes().len())

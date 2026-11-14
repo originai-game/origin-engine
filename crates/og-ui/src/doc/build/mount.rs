@@ -145,26 +145,40 @@ impl Ui {
             value: v,
             source: value.to_string(),
         });
+        self.doc_edited(path);
         Ok(())
     }
 
     /// Drops the probe's edits of `path` (all of them: empty).
     pub fn clear_doc_edits(&mut self, path: &str) {
-        self.docs
-            .state_mut()
-            .edits
-            .retain(|e| !path.is_empty() && e.path != path);
+        let (dropped, kept) = std::mem::take(&mut self.docs.state_mut().edits)
+            .into_iter()
+            .partition(|e| path.is_empty() || e.path == path);
+        self.docs.state_mut().edits = kept;
+        let dropped: Vec<Edit> = dropped;
+        for e in dropped {
+            self.doc_edited(&e.path);
+        }
     }
 
-    /// The document element built at `path` last tick: its document's name
-    /// and node.
+    /// The probe's edits of the element at `path` changed: it resolves and
+    /// is written again.
+    fn doc_edited(&mut self, path: &str) {
+        let host = &mut self.docs.state_mut().memory.retained;
+        if let Some(identity) = host.by_key.get(&crate::id::key_of_path(path)).cloned() {
+            host.dirty.insert(identity.clone());
+            host.emit.insert(identity);
+        }
+    }
+
+    /// The mounted document element at `path`: its document's name and
+    /// node.
     pub fn doc_element(&self, path: &str) -> Option<(&str, usize)> {
-        self.docs
-            .state()
-            .built
-            .iter()
-            .find(|b| b.path == path)
-            .map(|b| (b.doc.as_str(), b.node))
+        let host = &self.docs.state().memory.retained;
+        let element = host
+            .elements
+            .get(host.by_key.get(&crate::id::key_of_path(path))?)?;
+        Some((element.document.name.as_str(), element.index))
     }
 
     /// Writes the probe's edits into their documents' text (`ui:save`):

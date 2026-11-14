@@ -30,30 +30,37 @@ impl Ui {
             }
             source.validate()?;
         }
+        self.register_mount(
+            mount.clone(),
+            Registration {
+                document: document.clone(),
+                inputs,
+                content,
+            },
+        );
+        self.sync_mount_layer(&mount, Some(&document));
+        Ok(())
+    }
+
+    /// Registers `mount` as `registration` declares it, unchecked and
+    /// without its layer: it compiles at the next build.
+    pub(crate) fn register_mount(&mut self, mount: SourceId, mut registration: Registration) {
         // Every mount reads the engine's `$ui` unless it binds its own, as
         // `Ui::mount_document`'s do.
-        let mut inputs = inputs;
-        if !inputs.contains_key("ui") {
+        if !registration.inputs.contains_key("ui") {
             self.publish_ui_store();
-            inputs.insert("ui".into(), crate::doc::UI_STORE.clone());
+            registration
+                .inputs
+                .insert("ui".into(), crate::doc::UI_STORE.clone());
         }
-        let registration = Registration {
-            document,
-            inputs,
-            content,
-        };
-        let document = registration.document.clone();
         if self.docs.state().memory.retained.registrations.get(&mount) == Some(&registration) {
-            self.sync_mount_layer(&mount, Some(&document));
-            return Ok(());
+            return;
         }
         let mut host = std::mem::take(&mut self.docs.state_mut().memory.retained);
         host.remove_mount(self, &mount);
         host.registrations.insert(mount.clone(), registration);
-        host.pending_mounts.insert(mount.clone());
+        host.pending_mounts.insert(mount);
         self.docs.state_mut().memory.retained = host;
-        self.sync_mount_layer(&mount, Some(&document));
-        Ok(())
     }
 
     pub(crate) fn unmount_scope(&mut self, scope: &str) {

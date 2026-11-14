@@ -19,6 +19,7 @@ pub(crate) mod refresh;
 pub(crate) mod registration;
 pub(crate) mod selection;
 pub(crate) mod structural;
+pub(crate) mod values;
 pub(crate) mod virtualized;
 pub(crate) use super::instances::*;
 
@@ -251,11 +252,11 @@ impl RetainedHost {
     }
 }
 
-/// A mount's root path: `scope:id`, and for a screen, whose layer is
-/// `scope:id`, its root's id under it (`scope:id/Menu`), as a pushed
-/// screen's root is `<screen>/<root id>`.
+/// A mount's root path: its name ([`mount_path`]: `scope:id`, a pushed
+/// screen's name), and for a screen, whose layer has that name, its
+/// root's id under it (`scope:id/Menu`, `pause/Menu`).
 fn root_path(mount: &SourceId, doc: &UiDocument) -> String {
-    let base = format!("{}:{}", mount.scope, mount.id);
+    let base = crate::layer_stack::mount_path(mount);
     if doc.kind != crate::doc::DocKind::Screen {
         return base;
     }

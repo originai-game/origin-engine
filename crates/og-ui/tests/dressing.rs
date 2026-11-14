@@ -731,7 +731,7 @@ fn button_parts_keep_separate_boxes_and_host_event_ownership() {
         UiDocument::parse(
             "part-box.svelte",
             r#"<meta name="screen" content="parts" data-layer="hud">
-{#if show}<button id="Button" onclick={activate}>Go</button>{/if}
+<div id="Host">{#if $show}<button id="Button" onclick={activate}>Go</button>{/if}</div>
 <style>
 #Button {
   width: 180px; height: 60px; translate: 24px 0;
@@ -746,12 +746,11 @@ button::part(base) {
         )
         .unwrap(),
     );
-    ui.push_screen("parts", serde_json::json!({"show":true}))
-        .unwrap();
+    mount_screen(&mut ui, "parts", &[("show", serde_json::json!(true))]);
     for _ in 0..3 {
         tick(&mut ui, InputFrame::default());
-        let host = ui.element("parts/Button").unwrap();
-        let part = ui.element("parts/Button/::part(base)#0").unwrap();
+        let host = ui.element("parts/Host/Button").unwrap();
+        let part = ui.element("parts/Host/Button/::part(base)#0").unwrap();
         assert_eq!((host.width, host.height), (180.0, 60.0));
         assert_eq!((part.width, part.height), (80.0, 22.0));
         assert_eq!((part.x - host.x, part.y - host.y), (12.0, 8.0));
@@ -801,7 +800,7 @@ button::part(base) {
         "settled part returns to cached commands"
     );
     ui.take_doc_events();
-    let part = ui.element("parts/Button/::part(base)#0").unwrap();
+    let part = ui.element("parts/Host/Button/::part(base)#0").unwrap();
     let pointer = og_core::math::Vec2::new(part.x + 10.0, part.y + 10.0);
     for down in [true, false] {
         tick(
@@ -824,11 +823,11 @@ button::part(base) {
             .collect::<Vec<_>>(),
         ["activate"]
     );
-    ui.set_screen_vm("parts", serde_json::json!({"show":false}));
+    set_store(&mut ui, "show", serde_json::json!(false));
     tick(&mut ui, InputFrame::default());
-    assert!(ui.element("parts/Button").is_none());
-    assert!(ui.element("parts/Button/::part(base)#0").is_none());
-    ui.set_screen_vm("parts", serde_json::json!({"show":true}));
+    assert!(ui.element("parts/Host/Button").is_none());
+    assert!(ui.element("parts/Host/Button/::part(base)#0").is_none());
+    set_store(&mut ui, "show", serde_json::json!(true));
     tick(&mut ui, InputFrame::default());
     assert_eq!(ui.elements().iter().filter(|e| e.kind == "part").count(), 1);
 }
