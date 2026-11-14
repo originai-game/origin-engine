@@ -94,8 +94,8 @@ use gpu::layout::{sampler_entry, tex2d, texture_entry, uniform_entry};
 use gpu::texture::{solid_texture, target_texture, texture_bytes, view_bytes};
 pub use renderer::*;
 
+pub use fields::trample;
 pub use fields::wind_field;
-pub use systems::vegetation::trample;
 pub use trample::GrassPusher;
 pub use wind_field::{WindMotor, WindMotorKind};
 
