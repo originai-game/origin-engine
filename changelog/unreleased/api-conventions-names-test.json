@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "the API's naming rules",
+      "summary": "The names the conventions guide states are kept by a test over every field of the API: a field in milliseconds is named ms or ends in Ms, one in ticks has Tick in its name, a Quaternion is named quaternion or ends in Quaternion, a rotation, heading or yaw with a unit is in radians, a fov and a slope are in degrees, and damping is a decay rate per second. The members that differ are listed there with their reasons: tick stamps (LockstepSeat.since and until, LockstepStatus.acknowledged, WorldRestored.from), ArtCamera.yaw (the art contract is in degrees), and the spring and reverb dampings (SpringBone.damping, Joint.damping, ReverbZone.damping)."
+    }
+  ]
+}
