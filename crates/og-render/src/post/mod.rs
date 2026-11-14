@@ -84,6 +84,9 @@ pub(crate) const AO_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 /// The AO texture with contact shadows (contact.wgsl `cs_contact_compose`):
 /// the AO in r, the contact lights' masks in gba.
 pub(crate) const CONTACT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+/// The object pass's target: xyz the position's bits, w the packed normal
+/// with bit 0 set (0: no instance).
+pub(crate) const OBJECT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
 /// The view depth the prepass clears to (sky).
 pub(crate) const FAR_DEPTH: f32 = 1.0e9;
 
