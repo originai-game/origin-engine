@@ -189,7 +189,7 @@ fn spawn(
 /// [`ParticleEmitter::emission`] leaves out (particles_sim.wgsl `spawn`).
 const EMISSION_STREAM: u32 = 15;
 
-/// A solid shape of the scene ([`crate::RenderScene::colliders`]): what
+/// A solid shape of the scene (og-render's `RenderScene::colliders`): what
 /// CPU-simulated particles bounce off and visual bodies meet, the scene's
 /// ground and solid shapes as the host knows them (og-runtime gives its
 /// og.Collider boxes, spheres, capsules and terrains' height fields). A particle
@@ -220,7 +220,7 @@ pub enum SceneCollider {
         b: Vec3,
         radius: f32,
     },
-    /// A height field placed as [`crate::Terrain::transform`] places it
+    /// A height field placed as og-render's `Terrain::transform` places it
     /// (centred, along its x and z): solid below its surface, within its
     /// rectangle.
     HeightField {
@@ -327,7 +327,7 @@ fn collide(
 /// `frequency` (cells per metre): its whole cells and the rest, in f64, so
 /// a world-space system samples the field it would at the world's zero
 /// (`origin.rs`). Zero at a zero origin.
-pub(crate) fn noise_origin(origin: Vec3, frequency: f32) -> ([i32; 3], Vec3) {
+pub fn noise_origin(origin: Vec3, frequency: f32) -> ([i32; 3], Vec3) {
     let at = |o: f32| {
         let x = f64::from(o) * f64::from(frequency);
         let w = x.floor();
@@ -360,7 +360,7 @@ fn attract(attractors: &[Attractor], p: Vec3) -> Vec3 {
 /// Curl noise at lattice point `q` (`whole` cells added): the curl of
 /// three value noise fields by central differences, about -1 to 1 on each
 /// axis. `curl_noise` in particles_sim.wgsl.
-pub(crate) fn curl_noise(q: Vec3, whole: [i32; 3], seed: u32) -> Vec3 {
+pub fn curl_noise(q: Vec3, whole: [i32; 3], seed: u32) -> Vec3 {
     const H: f32 = 0.05;
     let psi = |q: Vec3, k: u32| value_noise3_at(q, whole, seed ^ (0x4444 + k * 0x1111));
     let d = |k: u32, axis: Vec3| (psi(q + axis * H, k) - psi(q - axis * H, k)) / (2.0 * H);
@@ -372,7 +372,7 @@ pub(crate) fn curl_noise(q: Vec3, whole: [i32; 3], seed: u32) -> Vec3 {
 }
 
 /// A grid field's vector at `g` (in cells, tiling), trilinear.
-pub(crate) fn grid_sample(cells: u32, vectors: &[Vec3], g: Vec3) -> Vec3 {
+pub fn grid_sample(cells: u32, vectors: &[Vec3], g: Vec3) -> Vec3 {
     let n = cells.max(1) as i32;
     let fl = g.floor();
     let f = g - fl;
@@ -394,7 +394,7 @@ pub(crate) fn grid_sample(cells: u32, vectors: &[Vec3], g: Vec3) -> Vec3 {
 /// Where a field's lattice stands at the render origin `origin`: a curl
 /// field's whole cells and the rest (as [`noise_origin`]), a grid's
 /// offset in cells within one tile.
-pub(crate) fn field_origin(field: &VectorField, origin: Vec3) -> ([i32; 3], Vec3) {
+pub fn field_origin(field: &VectorField, origin: Vec3) -> ([i32; 3], Vec3) {
     match field {
         VectorField::Curl { frequency, .. } => noise_origin(origin, *frequency),
         VectorField::Grid { size, cells, .. } => {
@@ -409,7 +409,7 @@ pub(crate) fn field_origin(field: &VectorField, origin: Vec3) -> ([i32; 3], Vec3
 
 /// An emitter's attractors in its simulation space at a tick placed by
 /// `transform`: carried into the world for a world-space system.
-pub(crate) fn placed_attractors(e: &ParticleEmitter, transform: Mat4) -> Vec<Attractor> {
+pub fn placed_attractors(e: &ParticleEmitter, transform: Mat4) -> Vec<Attractor> {
     e.attractors
         .iter()
         .take(MAX_ATTRACTORS)
@@ -538,7 +538,7 @@ pub fn shape_points(shape: &EmitterShape, mesh: Option<&MeshData>) -> Vec<[f32; 
 /// emitter's space for a local one (`local`: its transform this step).
 /// Nothing, as before, for an emitter that takes no wind or has no drag
 /// for the air to hold.
-pub(crate) fn carrying_air(e: &ParticleEmitter, air: Vec3, local: Option<Mat4>) -> Vec3 {
+pub fn carrying_air(e: &ParticleEmitter, air: Vec3, local: Option<Mat4>) -> Vec3 {
     let share = e.wind.clamp(0.0, 1.0);
     if share == 0.0 || e.drag <= 0.0 || air == Vec3::ZERO {
         return Vec3::ZERO;
@@ -604,7 +604,7 @@ fn integrate(
 /// For a slot, the particle index spawned into it by `step` (the newest of
 /// the step's spawns that maps to this slot), if any.
 #[inline]
-pub(crate) fn slot_spawn(slot: u32, max: u32, first: u64, count: u32) -> Option<(u32, u32)> {
+pub fn slot_spawn(slot: u32, max: u32, first: u64, count: u32) -> Option<(u32, u32)> {
     let first_mod = (first % max as u64) as u32;
     let off = (slot + max - first_mod) % max;
     if off >= count {
@@ -646,7 +646,7 @@ fn index_of(step: &TickStep, slot: u32, max: u32) -> u32 {
 }
 
 /// The seed of a system's `k`-th sub-emitter's particles.
-pub(crate) fn child_seed(seed: u32, k: usize) -> u32 {
+pub fn child_seed(seed: u32, k: usize) -> u32 {
     pcg(seed ^ pcg(0x5ab_e317 ^ k as u32))
 }
 
@@ -905,7 +905,7 @@ impl CpuParticles {
 
 /// What a particle looks like at its age: (size, colour, rotation, frame
 /// of `frames`: the sheet's, or an array emitter's layers).
-pub(crate) fn appearance(
+pub fn appearance(
     e: &ParticleEmitter,
     p: &ParticleState,
     frames: u32,
@@ -934,7 +934,7 @@ pub(crate) fn appearance(
 /// times its age, or with [`ParticleEmitter::spin_over_life`] times the
 /// curve's integral over its life (`particle_rotation` in
 /// particle_common.wgsl).
-pub(crate) fn particle_rotation(e: &ParticleEmitter, p: &ParticleState, t: f32) -> f32 {
+pub fn particle_rotation(e: &ParticleEmitter, p: &ParticleState, t: f32) -> f32 {
     match &e.spin_over_life {
         None => p.misc[1] + p.misc[2] * p.pos_age[3],
         Some(c) => p.misc[1] + p.misc[2] * p.vel_life[3] * c.integral(t),
@@ -943,7 +943,7 @@ pub(crate) fn particle_rotation(e: &ParticleEmitter, p: &ParticleState, t: f32) 
 
 /// The frames an array emitter's particles go through: `sheet.frames` of
 /// the array's `layers` (0: every layer).
-pub(crate) fn array_frames(sheet: &SpriteSheet, layers: u32) -> u32 {
+pub fn array_frames(sheet: &SpriteSheet, layers: u32) -> u32 {
     match sheet.frames {
         0 => layers,
         n => n.min(layers),
@@ -951,7 +951,7 @@ pub(crate) fn array_frames(sheet: &SpriteSheet, layers: u32) -> u32 {
     .max(1)
 }
 
-pub(crate) fn sheet_frames(sheet: &SpriteSheet) -> u32 {
+pub fn sheet_frames(sheet: &SpriteSheet) -> u32 {
     let all = sheet.columns.max(1) * sheet.rows.max(1);
     if sheet.frames == 0 {
         all

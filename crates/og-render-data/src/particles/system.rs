@@ -56,7 +56,7 @@ pub struct ParticleClock {
 
 impl ParticleClock {
     /// Seconds of the system's time at the start of `tick`.
-    fn at(&self, tick: u64, dt: f64) -> f64 {
+    pub(crate) fn at(&self, tick: u64, dt: f64) -> f64 {
         self.time + tick.saturating_sub(self.tick) as f64 * (dt * f64::from(self.scale))
     }
 }
@@ -76,7 +76,7 @@ pub struct ParticleTick {
 
 /// A particle system's ticks, as many as its live particles can come from
 /// (one lifetime at its time scale), recorded as each tick ends whether or
-/// not a frame was drawn ([`RenderScene::particle_history`]). The renderer
+/// not a frame was drawn (og-render's `RenderScene::particle_history`). The renderer
 /// steps a system through the ticks it has not drawn from these, not from
 /// the frame's system alone, so its particles are a function of the ticks:
 /// the same after a frame on every tick, after ticks stepped without frames
@@ -84,7 +84,7 @@ pub struct ParticleTick {
 /// presentation). Presentation state: never the world's.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ParticleHistory {
-    ticks: std::collections::VecDeque<ParticleTick>,
+    pub(crate) ticks: std::collections::VecDeque<ParticleTick>,
 }
 
 impl ParticleHistory {
@@ -145,7 +145,7 @@ impl ParticleHistory {
 }
 
 /// `sys`'s time scale (non-finite as 1, negative as 0).
-fn time_scale(sys: &ParticleSystem) -> f32 {
+pub fn time_scale(sys: &ParticleSystem) -> f32 {
     if sys.time_scale.is_finite() {
         sys.time_scale.max(0.0)
     } else {
@@ -155,7 +155,7 @@ fn time_scale(sys: &ParticleSystem) -> f32 {
 
 /// The clock of tick `tick` after `clock` stepped the tick before: the same
 /// clock, or re-anchored at `tick` where the scale changes.
-fn next_clock(clock: ParticleClock, tick: u64, scale: f32, dt: f64) -> ParticleClock {
+pub(crate) fn next_clock(clock: ParticleClock, tick: u64, scale: f32, dt: f64) -> ParticleClock {
     if clock.scale == scale {
         clock
     } else {
@@ -169,7 +169,7 @@ fn next_clock(clock: ParticleClock, tick: u64, scale: f32, dt: f64) -> ParticleC
 
 /// A lifetime in ticks at `scale` (slowed particles live more ticks),
 /// replayed at most 16 normal lifetimes back.
-fn window(e: &ParticleEmitter, scale: f32, tick_rate: f32) -> u64 {
+pub(crate) fn window(e: &ParticleEmitter, scale: f32, tick_rate: f32) -> u64 {
     let window = (e.max_lifetime() as f64 * tick_rate as f64).ceil() as u64 + 1;
     if scale >= 1.0 {
         window
