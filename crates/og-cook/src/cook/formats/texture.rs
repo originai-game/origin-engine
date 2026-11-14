@@ -9,7 +9,7 @@
 use super::{
     Action, CookError, Cx, Exec, Job, KindDef, Out, Path, PlanState, Planned, Source, Split,
     TextureOptions, conform, ext, ktx2_source, mesh_texture, normal2d, not_split, settings_block,
-    stamp, texture_kind, texture_stream,
+    stamp, sway2d, texture_kind, texture_stream,
 };
 use crate::format::{self, *};
 use crate::ktx2;
@@ -756,6 +756,37 @@ fn plan_texture<'a>(
                 }
                 Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
             }
+            // Its parts for og.Wind (`sway clumps`, `sway tiers`, a map).
+            match sway2d::setting(settings_block(s, "texture")) {
+                Ok(None) => {}
+                Ok(Some(setting)) => {
+                    let map = setting.map.as_ref().map_or(Ok(None), |name| {
+                        let path = s.path.parent().unwrap_or(Path::new(".")).join(name);
+                        std::fs::read(&path)
+                            .map(Some)
+                            .map_err(|e| format!("sway \"{name}\": {e}"))
+                    });
+                    match map {
+                        Ok(map) => {
+                            let st = stamp(&[
+                                b"texture sway 1",
+                                tex_desc.as_bytes(),
+                                &hash,
+                                &kind,
+                                map.as_deref().unwrap_or(b"found"),
+                            ]);
+                            outs.push((
+                                crate::runtime::sway_id(&s.rel),
+                                format::Texture::NAME,
+                                st,
+                                Box::new(TextureSwayJob(s, k, setting.plant, map)),
+                            ));
+                        }
+                        Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+                    }
+                }
+                Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
+            }
         }
         Err(e) => early_errors.push((s.rel.clone(), "texture", e)),
     }
@@ -840,6 +871,66 @@ impl Job for TextureNormalJob<'_> {
             cook(&img, format::kind::NORMAL, &options.texture, p.stamp).map(|b| (b, vec![note]))
         }
     }
+}
+
+/// A 2D plant's wind parts (`sway`): the parts packed into one texture of
+/// the source's kind, with their table in its `sway` section.
+struct TextureSwayJob<'a>(&'a Source, u32, sway2d::Plant, Option<Vec<u8>>);
+
+impl Job for TextureSwayJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let TextureSwayJob(s, k, plant, map) = self;
+        let Exec { options, .. } = ex;
+        let img = decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
+        let map = map
+            .as_deref()
+            .map(|b| decode(b).map_err(|e| CookError(format!("the parts map: {e}"))))
+            .transpose()?;
+        let (parts_img, parts) =
+            sway2d::split(&img, *plant, map.as_ref(), *k == format::kind::PIXEL)
+                .map_err(CookError)?;
+        let moving = parts.parts.iter().filter(|p| p.flutter > 0.0).count();
+        let note = format!(
+            "{}x{} wind parts: {moving} {} ({}), {} that stand or bend",
+            parts_img.width,
+            parts_img.height,
+            match plant {
+                sway2d::Plant::Clumps => "clumps",
+                sway2d::Plant::Tiers => "tiers",
+            },
+            if map.is_some() { "its map" } else { "found" },
+            parts.parts.len() - moving,
+        );
+        let blob = cook(&parts_img, *k, &options.texture, p.stamp)?;
+        with_sway(&blob, &parts, p.stamp).map(|b| (b, vec![note]))
+    }
+}
+
+/// A cooked texture's blob again with the parts table in its `sway`
+/// section.
+fn with_sway(
+    texture: &[u8],
+    parts: &crate::runtime::SwayParts,
+    stamp: u64,
+) -> Result<Vec<u8>, CookError> {
+    let bad = |e: String| CookError(format!("the parts' texture blob: {e}"));
+    let blob = og_blob::Blob::parse(texture, "texture").map_err(|e| bad(e.to_string()))?;
+    let meta = blob
+        .table::<TextureMeta>("meta", row_hash::<TextureMeta>())
+        .map_err(|e| bad(e.to_string()))?
+        .first()
+        .copied()
+        .ok_or_else(|| bad("no meta row".into()))?;
+    let ktx = blob.raw("ktx2").map_err(|e| bad(e.to_string()))?;
+    let mut w = BlobWriter::new(
+        format::Texture::type_hash(),
+        format::Texture::schema_version(),
+        stamp,
+    );
+    w.table("meta", &[meta], row_hash::<TextureMeta>())
+        .raw("ktx2", ktx.to_vec(), 16)
+        .raw("sway", parts.to_bytes(), 4);
+    Ok(w.finish())
 }
 
 /// A texture output by how it stands to its source's mip chain (G3-3):

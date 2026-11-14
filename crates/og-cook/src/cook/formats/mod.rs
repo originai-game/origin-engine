@@ -19,6 +19,7 @@ pub mod prefab;
 pub(super) mod psd;
 pub(super) mod scene;
 pub mod sfx;
+pub(super) mod sway2d;
 pub(super) mod texture;
 pub mod texture_array;
 pub(super) mod timeline;

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "type import: texture { sway clumps | tiers [\"map.png\"] }",
+      "summary": "The cook cuts a 2D plant's texture into the parts og.Sprite.sway moves, cooked as `<id>#sway`: `clumps` for a broadleaf tree or a bush, `tiers` for a conifer, or the parts of a map image of the texture's size (one flat colour per part, clear where the plant stands still). Drawn at rest the parts are the texture, texel for texel."
+    }
+  ]
+}

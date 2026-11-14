@@ -268,6 +268,8 @@ conform off            # the art contract leaves this image as drawn; or `confor
 texture {
   kind normal          # color (default) | normal | linear | pixel (sprite sheets and tilesets: RGBA8 lossless, sRGB, no mips, sampled nearest)
   stream true          # stream the levels above 256 texels: `<id>` holds the mip tail, `<id>#mips` the whole chain (default false; refused with kind pixel)
+  sway clumps          # a 2D plant's wind parts as `<id>#sway` (og.Sprite.sway draws them): clumps (a broadleaf tree, a bush) | tiers (a conifer),
+                       # then optionally a parts map beside the texture ("oak_parts.png": its size, one flat colour per part, clear where the plant stands still)
 }
 animation {
   rate 30                     # resampling rate for every clip; default: the source's key rate
