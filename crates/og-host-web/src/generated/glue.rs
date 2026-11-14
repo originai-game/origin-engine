@@ -489,6 +489,36 @@ pub fn og_transform_camera_right(quaternion: String) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_transform_heading(quaternion: String) -> f64 {
+    <Host as TransformApi>::og_transform_heading(&Host, quaternion)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_from_heading(heading: f64) -> String {
+    <Host as TransformApi>::og_transform_from_heading(&Host, heading)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_face2d(position: String, target: String) -> String {
+    <Host as TransformApi>::og_transform_face2d(&Host, position, target)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_forward2d(quaternion: String) -> String {
+    <Host as TransformApi>::og_transform_forward2d(&Host, quaternion)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_heading2d(quaternion: String) -> f64 {
+    <Host as TransformApi>::og_transform_heading2d(&Host, quaternion)
+}
+
+#[wasm_bindgen]
+pub fn og_transform_from_heading2d(heading: f64) -> String {
+    <Host as TransformApi>::og_transform_from_heading2d(&Host, heading)
+}
+
+#[wasm_bindgen]
 pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> String {
     <Host as TransformApi>::og_transform_from_axis_angle(&Host, axis, angle)
 }

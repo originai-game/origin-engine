@@ -419,7 +419,7 @@ impl Default for LookAt {
             bones: 1,
             target: Vec3::ZERO,
             space: IK_WORLD,
-            axis: Vec3::Z,
+            axis: og_core::facing::FORWARD,
             up_axis: Vec3::Y,
             up: Vec3::Y,
             max_yaw: 3.1416,

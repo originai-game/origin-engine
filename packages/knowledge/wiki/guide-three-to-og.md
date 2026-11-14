@@ -92,6 +92,8 @@ world.insert(hull, og.Mesh, { geometry: must(og.render.boxGeometry(world, { widt
 | `position.x += v` | read, change, write: `const t = must(world.get(e, og.Transform)); world.set(e, og.Transform, { position: { ...t.position, x: t.position.x + v } })`, or a system over the column (og-core) |
 | `lookAt(target)` (a camera or a light) | `{ quaternion: og.transform.lookAt(eye, target) }`: it points -Z at the target, as three.js turns cameras and lights |
 | `lookAt(target)` (any other object) | `{ quaternion: og.transform.face(position, target) }`: it points +Z at the target, as three.js turns a mesh (`facing §1`) |
+| `rotation.y = angle` (a yaw) | `{ quaternion: og.transform.fromHeading(angle) }`; `og.transform.heading(quaternion)` reads it back |
+| `rotation.z = Math.atan2(dy, dx)`, a sprite turned towards a point | `{ quaternion: og.transform.face2d(position, target) }`: a 2D thing's +X towards the target, about +Z; `og.transform.fromHeading2d(angle)` for the angle itself (`facing §2`) |
 | `matrixWorld` | og.MatrixWorld (read only; the engine writes it) |
 | `visible`, `castShadow`, `receiveShadow`, `layers` | og.Mesh's (and og.Model's) `visible`, `castShadow`, `receiveShadow`, `layers` |
 | `name` | `SpawnDesc.name` |

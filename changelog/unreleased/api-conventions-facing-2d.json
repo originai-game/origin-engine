@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "og.transform.face2d, og.transform.forward2d",
+      "summary": "The 2D half of the facing calls. face2d(position, target) is the rotation about +Z that turns a 2D thing's +X towards the target (their xy; the same point twice gives no turn), where og.transform.face points +Z at it and turns a sprite out of the plane. forward2d(quaternion) is the way a 2D thing faces: its local +X, as a unit vector."
+    },
+    {
+      "member": "og.transform.heading2d, og.transform.fromHeading2d",
+      "summary": "The 2D heading of a rotation (radians about +Z from +X towards +Y, so half pi faces up) and the rotation of one. They replace math.atan2(forward.y, forward.x) and og.transform.fromAxisAngle({ x: 0, y: 0, z: 1 }, angle)."
+    },
+    {
+      "member": "og.transform.heading, og.transform.fromHeading",
+      "summary": "The heading an object faces (radians about +Y from +Z towards +X, so half pi faces +X) and the rotation of an upright object facing one: the pair the 2D calls are named after. They replace math.atan2(forward.x, forward.z) and og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, heading)."
+    }
+  ]
+}

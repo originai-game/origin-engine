@@ -200,6 +200,18 @@ export interface HostAbi<A, V> {
   og_transform_camera_forward(quaternion: string): string;
   /** `og.transform.cameraRight` */
   og_transform_camera_right(quaternion: string): string;
+  /** `og.transform.heading` */
+  og_transform_heading(quaternion: string): number;
+  /** `og.transform.fromHeading` */
+  og_transform_from_heading(heading: number): string;
+  /** `og.transform.face2d` */
+  og_transform_face2d(position: string, target: string): string;
+  /** `og.transform.forward2d` */
+  og_transform_forward2d(quaternion: string): string;
+  /** `og.transform.heading2d` */
+  og_transform_heading2d(quaternion: string): number;
+  /** `og.transform.fromHeading2d` */
+  og_transform_from_heading2d(heading: number): string;
   /** `og.transform.fromAxisAngle` */
   og_transform_from_axis_angle(axis: string, angle: number): string;
   /** `og.time.setScale` */
@@ -1369,6 +1381,12 @@ export const SYMBOLS: readonly string[] = [
   "og_transform_up",
   "og_transform_camera_forward",
   "og_transform_camera_right",
+  "og_transform_heading",
+  "og_transform_from_heading",
+  "og_transform_face2d",
+  "og_transform_forward2d",
+  "og_transform_heading2d",
+  "og_transform_from_heading2d",
   "og_transform_from_axis_angle",
   "og_time_set_scale",
   "og_time_hit_stop",

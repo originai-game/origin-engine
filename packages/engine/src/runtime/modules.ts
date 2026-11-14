@@ -20,6 +20,13 @@ export const transform = Object.freeze({
   up: (quaternion: unknown) => parse(abi().og_transform_up(JSON.stringify(quaternion))),
   cameraForward: (quaternion: unknown) => parse(abi().og_transform_camera_forward(JSON.stringify(quaternion))),
   cameraRight: (quaternion: unknown) => parse(abi().og_transform_camera_right(JSON.stringify(quaternion))),
+  heading: (quaternion: unknown) => abi().og_transform_heading(JSON.stringify(quaternion)),
+  fromHeading: (heading: number) => parse(abi().og_transform_from_heading(heading)),
+  face2d: (position: unknown, target: unknown) =>
+    parse(abi().og_transform_face2d(JSON.stringify(position), JSON.stringify(target))),
+  forward2d: (quaternion: unknown) => parse(abi().og_transform_forward2d(JSON.stringify(quaternion))),
+  heading2d: (quaternion: unknown) => abi().og_transform_heading2d(JSON.stringify(quaternion)),
+  fromHeading2d: (heading: number) => parse(abi().og_transform_from_heading2d(heading)),
   fromAxisAngle: (axis: unknown, angle: number) => parse(abi().og_transform_from_axis_angle(JSON.stringify(axis), angle)),
 });
 

@@ -130,6 +130,13 @@ pub fn look(position: Vec3, target: Vec3, up: Vec3) -> Quat {
     camera_look(target, position, up)
 }
 
+/// The rotation of a 2D entity at `position` facing `target`: about +Z,
+/// its +X towards the target. The identity when the two points are the
+/// same.
+pub fn look_2d(position: Vec2, target: Vec2) -> Quat {
+    from_heading_2d(heading_2d(target - position))
+}
+
 /// A two-axis input (`x` right, `y` forward) as a horizontal world vector
 /// seen from a camera with rotation `camera`: `y` goes into the screen and
 /// `x` to its right, whatever the camera's pitch, and the length is kept.
@@ -184,6 +191,12 @@ mod tests {
     fn a_2d_heading_turns_from_x_towards_y() {
         assert!(near(forward_2d(from_heading_2d(FRAC_PI_2)), Vec3::Y));
         assert!((heading_2d(Vec2::new(0.0, 1.0)) - FRAC_PI_2).abs() < 1e-6);
+        // Facing a target turns +X towards it and stays in the plane.
+        let (at, target) = (Vec2::new(2.0, 1.0), Vec2::new(-1.0, 5.0));
+        let q = look_2d(at, target);
+        assert!(near(forward_2d(q), (target - at).normalize().extend(0.0)));
+        assert!(near(q * SPIN_2D, SPIN_2D));
+        assert_eq!(look_2d(at, at), Quat::IDENTITY);
     }
 
     #[test]

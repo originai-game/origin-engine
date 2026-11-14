@@ -266,7 +266,7 @@ fn gather(
         .map(|(e, v)| {
             let v = record::Light2D::from_json(&v)?;
             let (p, q, _) = pose(e);
-            let x = q * Vec3::X;
+            let x = og_core::facing::forward_2d(q);
             let axis = Vec2::new(x.x, x.y);
             let len = axis.length();
             Ok(Light {

@@ -6,7 +6,7 @@ Transforms in the three.js vocabulary: position, quaternion and scale, composed 
 
 - **TypeScript**: functions are the namespace `og.transform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Transform`, `og.MatrixWorld`, `og.transform.lookAt`, `og.transform.fromAxisAngle`; 14 more are advanced (`og api show transform --all`).
+- **Core** (what most games use): `og.Transform`, `og.MatrixWorld`, `og.transform.lookAt`, `og.transform.fromAxisAngle`; 20 more are advanced (`og api show transform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -38,6 +38,12 @@ module transform {
 | [`og.transform.up`](transform/fn-up.md) | function | `(quaternion: Quaternion): Vector3` | An object's, a camera's or a light's up: its local +Y, as a unit vector. |
 | [`og.transform.cameraForward`](transform/fn-cameraForward.md) | function | `(quaternion: Quaternion): Vector3` | The way a camera or a light with this rotation looks: its local -Z, as a unit vector. |
 | [`og.transform.cameraRight`](transform/fn-cameraRight.md) | function | `(quaternion: Quaternion): Vector3` | A camera's or a light's right: its local +X, the right of the screen, as a unit vector. |
+| [`og.transform.heading`](transform/fn-heading.md) | function | `(quaternion: Quaternion): number` | The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. |
+| [`og.transform.fromHeading`](transform/fn-fromHeading.md) | function | `(heading: number): Quaternion` | The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X. |
+| [`og.transform.face2d`](transform/fn-face2d.md) | function | `(position: Vector3, target: Vector3): Quaternion` | The rotation that turns a 2D thing at a position to face a target: about +Z, its +X towards it, staying in the xy plane. |
+| [`og.transform.forward2d`](transform/fn-forward2d.md) | function | `(quaternion: Quaternion): Vector3` | The way a 2D thing with this rotation faces: its local +X, as a unit vector. |
+| [`og.transform.heading2d`](transform/fn-heading2d.md) | function | `(quaternion: Quaternion): number` | The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). |
+| [`og.transform.fromHeading2d`](transform/fn-fromHeading2d.md) | function | `(heading: number): Quaternion` | The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up). |
 | [`og.transform.fromAxisAngle`](transform/fn-fromAxisAngle.md) | function | `(axis: Vector3, angle: number): Quaternion` | A rotation about an axis, as three.js Quaternion.setFromAxisAngle. |
 
 ## Column kinds

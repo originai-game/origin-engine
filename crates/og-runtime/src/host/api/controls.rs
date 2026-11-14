@@ -73,6 +73,35 @@ pub fn og_transform_camera_right(quaternion: String) -> glam::Vec3 {
     og_core::facing::camera_right(rotation_arg(&quaternion, "quaternion"))
 }
 
+pub fn og_transform_heading(quaternion: String) -> f64 {
+    og_core::facing::heading(rotation_arg(&quaternion, "quaternion")) as f64
+}
+
+pub fn og_transform_from_heading(heading: f64) -> glam::Quat {
+    og_core::facing::from_heading(heading as f32)
+}
+
+/// The rotation about +Z that points a 2D thing's +X from `position`
+/// towards `target` (their xy).
+pub fn og_transform_face2d(position: String, target: String) -> glam::Quat {
+    let position: glam::Vec3 = wire::arg(Some(&position), "position").unwrap_or_default();
+    let target: glam::Vec3 = wire::arg(Some(&target), "target").unwrap_or_default();
+    og_core::facing::look_2d(position.truncate(), target.truncate())
+}
+
+pub fn og_transform_forward2d(quaternion: String) -> glam::Vec3 {
+    og_core::facing::forward_2d(rotation_arg(&quaternion, "quaternion"))
+}
+
+pub fn og_transform_heading2d(quaternion: String) -> f64 {
+    let forward = og_core::facing::forward_2d(rotation_arg(&quaternion, "quaternion"));
+    og_core::facing::heading_2d(forward.truncate()) as f64
+}
+
+pub fn og_transform_from_heading2d(heading: f64) -> glam::Quat {
+    og_core::facing::from_heading_2d(heading as f32)
+}
+
 pub fn og_transform_from_axis_angle(axis: String, angle: f64) -> glam::Quat {
     let axis: glam::Vec3 = wire::arg(Some(&axis), "axis").unwrap_or_default();
     og_core::math::quat_from_axis_angle(axis, angle as f32)
