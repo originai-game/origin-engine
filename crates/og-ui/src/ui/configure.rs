@@ -129,6 +129,7 @@ impl Ui {
                 theme_read: None,
                 part_commits: Default::default(),
                 document_part_rules: Default::default(),
+                part_styles: Default::default(),
                 part_index: Default::default(),
                 css_sounds: Default::default(),
                 timelines: Default::default(),

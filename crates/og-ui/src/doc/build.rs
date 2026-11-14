@@ -1432,7 +1432,7 @@ pub(crate) mod media;
 pub(crate) mod mount;
 pub(crate) mod nodes;
 mod parts;
-pub(crate) use parts::PartIndex;
+pub(crate) use parts::{PartIndex, PartStyles};
 pub(crate) mod popover;
 pub(crate) mod retained;
 pub(crate) mod state;

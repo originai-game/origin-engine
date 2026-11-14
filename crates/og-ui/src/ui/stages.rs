@@ -227,6 +227,10 @@ pub struct Style {
     /// merged from. Derived from those two alone: a write of either clears it.
     pub(crate) document_part_rules:
         std::cell::RefCell<std::collections::BTreeMap<String, DocumentPartRules>>,
+    /// Each part's style from one tick to the next
+    /// ([`crate::doc::build::PartStyles`]). Derived from the part rules
+    /// and the root inputs: a write of either clears it.
+    pub(crate) part_styles: std::cell::RefCell<crate::doc::build::PartStyles>,
     pub(crate) css_sounds: std::collections::BTreeMap<String, u64>,
     /// Timelines by name hash (`define_timeline`): configuration, like the theme.
     pub(crate) timelines: std::collections::BTreeMap<u64, (String, Timeline)>,
@@ -250,6 +254,7 @@ impl Style {
     pub(crate) fn part_rules_changed(&mut self) {
         self.part_index.take();
         self.document_part_rules.take();
+        self.part_styles.get_mut().clear();
     }
     pub fn css_sounds_mut(&mut self) -> &mut std::collections::BTreeMap<String, u64> {
         &mut self.css_sounds
@@ -276,6 +281,7 @@ impl Style {
     pub fn root_inputs_changed(&mut self) {
         *self.root_cascade.get_mut() = None;
         self.theme_read = None;
+        self.part_styles.get_mut().clear();
     }
 }
 

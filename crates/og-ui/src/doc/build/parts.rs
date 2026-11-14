@@ -130,6 +130,97 @@ impl PartIndex {
     }
 }
 
+/// Parts' resolved styles kept from one tick to the next
+/// ([`Ui::part_values`]): a part resolved from what it was last resolved
+/// from is not cascaded again. They hold for one context (the
+/// presentation epoch, the media context, the direction and the theme)
+/// and are cleared with the part rules and root inputs they derive from;
+/// a node's leave with it.
+#[derive(Clone, Default)]
+pub(crate) struct PartStyles {
+    context: Option<PartContext>,
+    tick: u64,
+    styles: std::collections::HashMap<(Option<u64>, &'static str), Vec<PartStyle>>,
+}
+
+impl std::fmt::Debug for PartStyles {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartStyles")
+            .field("styles", &self.styles.len())
+            .finish()
+    }
+}
+
+#[derive(Clone, PartialEq)]
+struct PartContext {
+    epoch: u64,
+    media: crate::doc::media::Context,
+    direction: og_i18n::Direction,
+    theme: crate::Theme,
+}
+
+/// One part's style and what it was resolved from: its reference, its
+/// host and its document (held, so neither address is reused while it is
+/// kept), the theme of the element painted around it, if any.
+#[derive(Clone)]
+struct PartStyle {
+    part: crate::dress::PartRef,
+    host: Option<Arc<PartHost>>,
+    document: Option<Arc<UiDocument>>,
+    theme: Option<crate::Theme>,
+    values: Arc<Resolved>,
+}
+
+/// The variants of one part kept at once (its hover, focus and press).
+const PART_VARIANTS: usize = 8;
+
+impl PartStyles {
+    /// Starts tick `tick` under `context`: a new context keeps nothing,
+    /// and a new tick drops the styles of nodes no longer in the tree.
+    fn turn(&mut self, tick: u64, context: PartContext, alive: impl Fn(u64) -> bool) {
+        if self.context.as_ref() != Some(&context) {
+            *self = PartStyles {
+                context: Some(context),
+                tick,
+                ..PartStyles::default()
+            };
+        } else if self.tick != tick {
+            self.styles.retain(|(key, _), _| key.is_none_or(&alive));
+            self.tick = tick;
+        }
+    }
+
+    fn find(
+        &self,
+        slot: (Option<u64>, &'static str),
+        same: impl Fn(&PartStyle) -> bool,
+    ) -> Option<Arc<Resolved>> {
+        let kept = self.styles.get(&slot)?.iter().find(|s| same(s))?;
+        Some(kept.values.clone())
+    }
+
+    fn keep(&mut self, slot: (Option<u64>, &'static str), style: PartStyle) {
+        let kept = self.styles.entry(slot).or_default();
+        if kept.len() == PART_VARIANTS {
+            kept.remove(0);
+        }
+        kept.push(style);
+    }
+
+    /// Drops every kept style: what they derive from changed.
+    pub(crate) fn clear(&mut self) {
+        *self = PartStyles::default();
+    }
+}
+
+fn same_arc<T>(kept: &Option<Arc<T>>, now: Option<&Arc<T>>) -> bool {
+    match (kept, now) {
+        (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+        (None, None) => true,
+        _ => false,
+    }
+}
+
 impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
         self.tree.rewrite(i);
@@ -261,7 +352,7 @@ impl Ui {
                     .iter()
                     .rfind(|n| n.key == k)
                     .and_then(|n| n.part())
-                    .map(|p| Arc::new(self.part_values(&p, Some(k)).cascade))
+                    .map(|p| Arc::new(self.part_values(&p, Some(k)).cascade.clone()))
             })
             .unwrap_or_else(|| self.css_root_cascade());
         let root = self.css_root_cascade();
@@ -465,7 +556,63 @@ impl Ui {
         merged
     }
 
-    pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
+    /// Part `part`'s style on the node `key` (on none for a style's own
+    /// samples), kept ([`PartStyles`]) where it is resolved from the same
+    /// part, host, document and painting theme and its transitions stand
+    /// where its kept style left them. A part whose transition or
+    /// animation still runs is resolved every time.
+    pub(crate) fn part_values(
+        &self,
+        part: &crate::dress::PartRef,
+        key: Option<u64>,
+    ) -> Arc<Resolved> {
+        let host = key.and_then(|k| self.tree.part_host(k));
+        let document = host.and_then(|h| self.docs.library.documents.get(&h.document));
+        let theme = self.paint.ctx.as_ref().map(|c| c.theme);
+        let state = key
+            .and_then(|k| self.interaction.state.motion.part_styles.get(&k))
+            .and_then(|s| s.get(part.part));
+        let slot = (key, part.part);
+        let same = |kept: &PartStyle| {
+            kept.part == *part
+                && same_arc(&kept.host, host)
+                && same_arc(&kept.document, document)
+                && kept.theme == theme
+                && kept.values.style.as_ref().and_then(|c| c.state.as_ref()) == state
+        };
+        {
+            let mut styles = self.style.part_styles.borrow_mut();
+            styles.turn(
+                self.tick(),
+                PartContext {
+                    epoch: self.tree.invalidation.epoch,
+                    media: self.media_context(),
+                    direction: self.env.direction,
+                    theme: self.env.theme,
+                },
+                |key| self.tree.index.find(key).is_some(),
+            );
+            if let Some(values) = styles.find(slot, same) {
+                return values;
+            }
+        }
+        let values = Arc::new(self.resolve_part_values(part, key));
+        if !values.style.as_ref().is_some_and(|c| c.running) {
+            self.style.part_styles.borrow_mut().keep(
+                slot,
+                PartStyle {
+                    part: *part,
+                    host: host.cloned(),
+                    document: document.cloned(),
+                    theme,
+                    values: values.clone(),
+                },
+            );
+        }
+        values
+    }
+
+    fn resolve_part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
         let host = key.and_then(|k| self.tree.part_host(k));
         let document = host.and_then(|h| self.docs.library.documents.get(&h.document));
         // A document's own part rules laid into the global ones: merged
@@ -760,7 +907,7 @@ impl Ui {
 }
 
 impl crate::ui::Tree {
-    fn part_host(&self, key: u64) -> Option<&PartHost> {
+    fn part_host(&self, key: u64) -> Option<&Arc<PartHost>> {
         let mut i = self
             .index
             .find(key)

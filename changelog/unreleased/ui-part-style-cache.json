@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"A tick of UI that did not change costs a fraction of what it did, with the same values: an element that sets a custom property no longer copies its style's whole token table (an element's custom properties are the shared table and a small layer of what it sets over it), and a part's style is kept from tick to tick while its part, host, document, theme and transition state are the ones it was resolved from, instead of being cascaded again each time it is drawn. A part whose transition or animation runs is still resolved every tick."}
+  ]
+}

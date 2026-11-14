@@ -1643,6 +1643,43 @@ fn part_transitions_retarget_and_restore_the_rendered_value() {
     }
 }
 
+/// A part's style is kept from tick to tick while nothing it is resolved
+/// from changes; a transition that ran in between is one such thing. Left
+/// the tick after it was entered, the part runs back from where its hover
+/// transition got to instead of taking its unhovered style as it was kept.
+#[test]
+fn a_part_left_right_after_it_is_entered_transitions_back() {
+    use og_ui::dress::PartRef;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css("button::part(base) { opacity: 0.2; background: #000; transition: opacity 200ms linear; } button::part(base):hover { opacity: 1; }").unwrap();
+    let mut step = |hovered| {
+        ui.begin(InputFrame::default(), Viewport::new(100.0, 100.0));
+        ui.column(
+            "owner",
+            Element {
+                width: Size::px(80.0),
+                height: Size::px(40.0),
+                part: Some(PartRef::of("Button", "base", None).flag_if(hovered, "hover")),
+                ..Element::column()
+            },
+            |_| {},
+        );
+        ui.end();
+        ui.frame()
+            .items
+            .iter()
+            .find_map(|item| item.cmd.filled().map(|(_, color)| color[3]))
+            .expect("the part's painted box")
+    };
+    for _ in 0..3 {
+        assert_eq!(step(false), 0.2);
+    }
+    // The hover transition starts from 0.2 and moves one tick.
+    step(true);
+    let back = step(false);
+    assert!(back > 0.2 && back < 0.6, "{back}");
+}
+
 #[test]
 fn document_part_css_is_scoped_and_inherits_authored_host_facts() {
     use og_ui::reactive::SourceId;
