@@ -4,7 +4,10 @@
 //! window sits in the world ([`window`]: the wind field, the grass
 //! trample, the sea's foam, wakes and caustics, the weather's shelter)
 //! and which ticks a frame steps it through ([`catch_up`]: the wind
-//! field, the trample, the visual bodies and fluids). Two maps keep a
+//! field, the trample, the visual bodies and fluids). The scene's
+//! colliders as a compute kernel reads them ([`scene_colliders`]) are
+//! shared by every GPU visual simulation: particles, debris, visual
+//! bodies and fluids. Two maps keep a
 //! schedule of their own because their steps are not the world's ticks:
 //! the foam steps the tick's time at 30 Hz and holds on a step back
 //! (`ocean_fft::foam::schedule`), and the wakes step the ticks the world
@@ -18,6 +21,7 @@
 
 pub(crate) mod catch_up;
 pub(crate) mod ground;
+pub(crate) mod scene_colliders;
 pub mod trample;
 pub(crate) mod wind;
 pub mod wind_field;
