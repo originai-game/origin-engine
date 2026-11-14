@@ -150,6 +150,18 @@ EOF_LANES
   done
 }
 
+# The crates that compile only for wasm32 type-checked there: natively they
+# are empty, so the workspace's check and clippy never see them
+# (og-tests-web once stopped compiling for weeks while quick passed). The
+# single-threaded wasm32 target directory wasm-build uses; without sccache,
+# as a check makes only metadata.
+step_wasm_check() {
+  skip_unchanged wasm-check "wasm-check" "$(python3 scripts/gate/inputs.py crates og-tests-web)" && return $SKIP
+  export RUSTC_WRAPPER=
+  og_say "wasm check: og-tests-web ($WASM_TRIPLE)"
+  cargo check --profile "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" --target "$WASM_TRIPLE" -p og-tests-web --lib
+}
+
 # OG_WASM_VARIANTS picks the modules beside the development one, which every
 # build makes: `all` (the default: release packing, release-wasm.sh, and a
 # gate run with the browser step) adds every publish and lanes variant;
