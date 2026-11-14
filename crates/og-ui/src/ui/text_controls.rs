@@ -280,16 +280,6 @@ impl Ui {
                 .flag_if(desc.readonly, "disabled"),
             );
             let part = self.tree.nodes[i].el.part.unwrap();
-            self.tree.shapes_mut(i).push(Shape::Rect {
-                frame: crate::layout::Frame::centered(
-                    -width / 2.0,
-                    0.0,
-                    1.0,
-                    (height - 2.0 * inset).max(1.0),
-                ),
-                radius: 0.0,
-                color: self.env.theme.palette.ink_muted,
-            });
             for side in [-1.0, 1.0] {
                 self.tree.shapes_mut(i).push(Shape::Bar {
                     part,

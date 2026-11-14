@@ -580,6 +580,10 @@ const FALLBACKS: &str = r#"
   button:disabled { color: var(--ink-faint); }
   button::part(base) { background: var(--control); }
   button::part(base):hover, button::part(base):active { background: var(--control-strong); }
+  input[type=number]::part(button) { background: var(--control); }
+  input[type=number]::part(button):hover, input[type=number]::part(button):active {
+    background: var(--control-strong);
+  }
   button.primary::part(base) { background: var(--primary); }
   button.primary::part(base):hover { background: var(--primary-hover); }
   button.primary::part(base):active { background: var(--primary-active); }
@@ -602,8 +606,8 @@ const FALLBACKS: &str = r#"
   }
   /* Hover/press values are supplied by the widget, blended by the cascade. */
   button::part(base), input[type=checkbox]::part(row), input[type=radio]::part(option),
-  select::part(option), stepper::part(button), details::part(summary),
-  keyboard::part(key), keyboard::part(candidate), input::part(frame),
+  select::part(option), stepper::part(button), input[type=number]::part(button),
+  details::part(summary), keyboard::part(key), keyboard::part(candidate), input::part(frame),
   textarea::part(frame), select::part(trigger), input[type=checkbox]::part(box),
   input[type=radio]::part(ring), input[type=radio]::part(card), slot::part(frame),
   tabs::part(tab), input[type=range]::part(knob),
@@ -635,18 +639,20 @@ const FALLBACKS: &str = r#"
   /* Button: untouched token defaults also serve secondary controls. */
   button::part(base), input[type=checkbox]::part(row),
   input[type=radio]::part(option), select::part(option),
-  stepper::part(button), details::part(summary),
+  stepper::part(button), input[type=number]::part(button), details::part(summary),
   keyboard::part(key), keyboard::part(candidate) {
     box-sizing: border-box;
     border: var(--button-border-width) solid var(--line);
     border-radius: var(--button-radius);
     box-shadow: var(--button-shadow);
   }
-  stepper::part(button):active, details::part(summary):active,
+  stepper::part(button):active, input[type=number]::part(button):active,
+  details::part(summary):active,
   keyboard::part(key):active, keyboard::part(candidate):active {
     box-shadow: var(--button-pressed-shadow);
   }
-  stepper::part(button):disabled, details::part(summary):disabled,
+  stepper::part(button):disabled, input[type=number]::part(button):disabled,
+  details::part(summary):disabled,
   keyboard::part(key):disabled, keyboard::part(candidate):disabled {
     border: none; box-shadow: none;
   }
