@@ -299,17 +299,24 @@ fn particle_effect_color(in: ParticleOut, shape: f32, normal: vec3<f32>) -> vec4
   return effect_shade(f, sprite_tex);
 }
 
+// The system's hue turn (og.Vfx.hue) on the colour it draws, before light
+// and fog; none at 0, so an unturned system draws exactly as it did.
+fn particle_hue(c: vec4<f32>) -> vec4<f32> {
+  if (emitter.counts.w == 0.0) { return c; }
+  return vec4<f32>(hue_rotate(c.rgb, emitter.counts.w), c.a);
+}
+
 @fragment
 fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
   if (effect_on()) {
-    var c = particle_effect_color(in, 1.0, in.normal);
+    var c = particle_hue(particle_effect_color(in, 1.0, in.normal));
     c.a *= particle_soft(in);
     c = vec4<f32>(apply_fog(c.rgb, in.world), c.a);
     if (c.a <= 0.0) { discard; }
     if (frame.light_color.w > 0.5) { return debug_unsupported(in.clip.xy); }
     return c;
   }
-  var c = in.color;
+  var c = particle_hue(in.color);
   if (emitter.look.x > 0.5 && emitter.look.w < 1.0) {
     c = particle_gloss(in.clip.xy, in.world, normalize(in.normal), c, emitter.look.w);
   } else if (emitter.look.x > 0.5) {
@@ -401,6 +408,7 @@ fn particle_fragment(in: ParticleOut) -> vec4<f32> {
   } else {
     c.a *= dot_d * dot_d;
   }
+  c = particle_hue(c);
   if (emitter.look.x > 0.5) {
     c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, ball_normal(in.facing)), c.a);
   }

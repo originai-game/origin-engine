@@ -47,6 +47,7 @@ fn draw(mesh: MeshData, material: EffectMaterial, scale: Vec3, color: f32) -> (V
         color: [color, color, color, 1.0],
         blend: ParticleBlend::Additive,
         layers: 1,
+        hue: 0.0,
     });
     let desc = scenes::base_desc();
     let (img, _) = frame(&desc, &scene, 1);

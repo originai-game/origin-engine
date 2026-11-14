@@ -349,6 +349,9 @@ pub struct EffectMesh {
     pub blend: ParticleBlend,
     /// Three.js layers, as [`crate::RenderScene::particle_layers`].
     pub layers: u32,
+    /// Radians it turns the hue of what it draws (as
+    /// [`crate::ParticleSystem::hue`]); 0 draws it as it is.
+    pub hue: f32,
 }
 
 /// An effect ring with its own shape (a `type vfx` mesh element's `mesh

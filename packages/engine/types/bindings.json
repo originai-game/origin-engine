@@ -8182,6 +8182,11 @@
           "default": 1
         },
         {
+          "name": "hue",
+          "column": "f32",
+          "default": 0
+        },
+        {
           "name": "despawn",
           "column": "bool",
           "default": true

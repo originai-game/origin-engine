@@ -32805,6 +32805,12 @@ export interface Vfx {
    */
   emission: number;
   /**
+   * Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3).
+   *
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  hue: number;
+  /**
    * Despawn the entity on the tick after a non-looping effect ends.
    *
    * @default true
@@ -32890,6 +32896,13 @@ export interface VfxSpawnDesc {
    * @range 0..1
    */
   readonly emission?: number;
+  /**
+   * Its hue turn (og.Vfx.hue).
+   *
+   * @default 0
+   * @unit rad (radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle)
+   */
+  readonly hue?: number;
   /**
    * Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it.
    *
@@ -37836,7 +37849,7 @@ export declare namespace og {
   /**
    * Plays a composed effect at the entity's MatrixWorld from startTick (og.vfx.spawn makes one in a call).
    */
-  const Vfx: ComponentType<{ readonly asset: FieldSpec<"VfxAsset">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly emission: FieldSpec<"f32">; readonly despawn: FieldSpec<"bool">; readonly ran: FieldSpec<"u32"> }, Vfx>;
+  const Vfx: ComponentType<{ readonly asset: FieldSpec<"VfxAsset">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly emission: FieldSpec<"f32">; readonly hue: FieldSpec<"f32">; readonly despawn: FieldSpec<"bool">; readonly ran: FieldSpec<"u32"> }, Vfx>;
   /**
    * A composed effect reached one of its `event` lines (an `impact` line included, named `impact`): the frame a fireball lands, a slash connects, a spell resolves. Read in the tick after, like every event; a replay sends the same.
    */

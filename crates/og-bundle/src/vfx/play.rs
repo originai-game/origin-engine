@@ -30,6 +30,26 @@ fn tinted(c: [f32; 4], t: Vec3) -> [f32; 4] {
     [c[0] * t.x, c[1] * t.y, c[2] * t.z, c[3]]
 }
 
+/// `rgb` turned `a` radians about the grey axis: the WGSL library's
+/// `hue_rotate`, for the colours drawn without a shader of the effect's
+/// own to turn them (trails, beams, lights, decals).
+pub fn hue_rotated(rgb: Vec3, a: f32) -> Vec3 {
+    if a == 0.0 {
+        return rgb;
+    }
+    let k = Vec3::splat(0.57735);
+    let (s, c) = og_core::math::sin_cos(a);
+    rgb * c + k.cross(rgb) * s + k * k.dot(rgb) * (1.0 - c)
+}
+
+/// `c` tinted, then its hue turned `hue` radians.
+fn shaded(c: [f32; 4], t: Vec3, hue: f32) -> [f32; 4] {
+    let c = tinted(c, t);
+    hue_rotated(Vec3::new(c[0], c[1], c[2]), hue)
+        .extend(c[3])
+        .to_array()
+}
+
 fn euler(deg: Vec3) -> Quat {
     let r = deg * (std::f32::consts::PI / 180.0);
     use og_core::math::quat_from_axis_angle as turn;
@@ -50,6 +70,10 @@ pub struct VfxInstance {
     pub scale: f32,
     /// Multiplies the colour of everything it draws (linear).
     pub tint: Vec3,
+    /// Radians it turns the hue of everything it draws. Its trails',
+    /// beams', lights' and decals' colours come turned; its emitters and
+    /// meshes take it as theirs and turn their drawn colour.
+    pub hue: f32,
 }
 
 /// One thing an instance draws at a tick.
@@ -247,7 +271,7 @@ impl Vfx {
         let Some(cycle) = self.cycle_start(start, tick, rate) else {
             return Vec::new();
         };
-        let (seed, scale, tint, m) = (at.seed, at.scale, at.tint, at.transform);
+        let (seed, scale, tint, hue, m) = (at.seed, at.scale, at.tint, at.hue, at.transform);
         let t = (tick - cycle) as f32 / rate;
         let mut out = Vec::new();
         for (i, el) in self.elements.iter().enumerate() {
@@ -309,7 +333,7 @@ impl Vfx {
                         lifetime: *lifetime,
                         min_distance: 0.02 * scale,
                         width: [width[0] * scale, width[1] * scale],
-                        color: tinted(*color, tint),
+                        color: shaded(*color, tint, hue),
                     }
                 }
                 VfxKind::Beam {
@@ -323,7 +347,7 @@ impl Vfx {
                     start: local.transform_point3(Vec3::ZERO),
                     end: local.transform_point3(*to),
                     width: width * scale,
-                    color: tinted(*color, tint),
+                    color: shaded(*color, tint, hue),
                     segments: *segments,
                     jitter: jitter * scale,
                     seed: u64::from(seed) ^ i as u64,
@@ -334,7 +358,7 @@ impl Vfx {
                     distance,
                 } if alive => VfxDrawKind::Light {
                     position: local.transform_point3(Vec3::ZERO),
-                    color: Vec3::from_array(*color) * tint,
+                    color: hue_rotated(Vec3::from_array(*color) * tint, hue),
                     intensity: intensity.eval(x, rnd).max(0.0),
                     range: distance * scale,
                 },
@@ -349,7 +373,7 @@ impl Vfx {
                     } else {
                         1.0
                     };
-                    let c = tinted(*color, tint);
+                    let c = shaded(*color, tint, hue);
                     // Its unit box projects along its -z: turned down the
                     // element's -y, y the depth.
                     VfxDrawKind::Decal {
@@ -393,6 +417,53 @@ mod tests {
         assert_eq!(vfx(false).cycle_start(100, 161, 60.0), None);
         assert_eq!(vfx(true).cycle_start(100, 161, 60.0), Some(160));
         assert_eq!(vfx(true).cycle_start(100, 280, 60.0), Some(280));
+    }
+
+    /// A third of a turn carries red to green to blue: the colours drawn
+    /// without a shader of the effect's own (a light's, a decal's, a
+    /// trail's, a beam's) come with their channels permuted, grey stays
+    /// grey, and a mesh's colour comes as written, its shader turning it.
+    #[test]
+    fn a_hue_turns_the_colours_the_shaders_do_not() {
+        let fx = crate::vfx::parse_vfx(
+            "type vfx\nversion 2\n---\nduration 1\nlight {\n  life 1\n  color 1 0.5 0\n}\ndecal {\n  life 1\n  color 0.6 0.6 0.6 1\n}\ntrail {\n  life 1\n  color 0.2 0.4 0.9 1\n}\nbeam {\n  life 1\n  to 0 1 0\n  color 0.9 0.1 0.3 1\n}\nglow {\n  life 1\n  color 1 0.5 0 1\n}\n",
+        )
+        .expect("parses");
+        let at = |hue| VfxInstance {
+            id: 1,
+            seed: 1,
+            transform: Mat4::IDENTITY,
+            scale: 1.0,
+            tint: Vec3::ONE,
+            hue,
+        };
+        let colours = |hue| -> Vec<[f32; 4]> {
+            fx.draws(&at(hue), 0, 6, 60.0)
+                .into_iter()
+                .map(|d| match d.kind {
+                    VfxDrawKind::Light { color, .. } => color.extend(1.0).to_array(),
+                    VfxDrawKind::Decal { color, .. }
+                    | VfxDrawKind::Trail { color, .. }
+                    | VfxDrawKind::Beam { color, .. }
+                    | VfxDrawKind::Mesh { color, .. } => color,
+                    other => panic!("{other:?}"),
+                })
+                .collect()
+        };
+        let plain = colours(0.0);
+        let turned = colours(std::f32::consts::TAU / 3.0);
+        assert_eq!(plain.len(), 5);
+        let permuted = |c: [f32; 4]| [c[2], c[0], c[1], c[3]];
+        for (i, (p, t)) in plain.iter().zip(&turned).enumerate() {
+            // The glow (last) is turned by its shader, not here.
+            let want = if i == 4 { *p } else { permuted(*p) };
+            for k in 0..4 {
+                assert!(
+                    (t[k] - want[k]).abs() < 1e-5,
+                    "element {i}: {t:?}, not {want:?}"
+                );
+            }
+        }
     }
 
     #[test]

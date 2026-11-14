@@ -32,6 +32,9 @@ module vfx {
       min 0
       max 1
     }
+    field hue f32 "Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3)." {
+      unit rad
+    }
     field despawn bool "Despawn the entity on the tick after a non-looping effect ends." {
       default true
     }
@@ -71,6 +74,9 @@ module vfx {
       default 1
       min 0
       max 1
+    }
+    field hue f32 "Its hue turn (og.Vfx.hue)." {
+      unit rad
     }
     field seed u32 "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it."
   }

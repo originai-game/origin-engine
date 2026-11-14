@@ -298,6 +298,9 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
         if given("emission") {
             v["emission"] = json!(d.emission);
         }
+        if given("hue") {
+            v["hue"] = json!(d.hue);
+        }
         crate::host::api::og_world_insert(
             world,
             bits as f64,

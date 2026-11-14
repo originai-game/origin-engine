@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"og.Vfx.hue, VfxSpawnDesc.hue","summary":"Turns the hue of everything a composed effect instance draws, in radians about the grey axis, after its tint (default 0): the same fire drawn blue for ice (about 3.1) or green for poison, white, grey and black unchanged. Its particles and meshes turn their whole drawn colour, textures included; its trails', beams', lights' and decals' colours turn, and a coloured trail, beam or decal texture keeps its own colours."}
+  ]
+}

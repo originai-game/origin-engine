@@ -28,6 +28,7 @@ impl ParticleRenderer {
         // the box their particles can reach.
         let mut colliding: Vec<(std::ops::Range<u32>, (Vec3, Vec3))> = Vec::new();
         for (i, sys) in scene.effects.particles.iter().enumerate() {
+            let sys_entries = entries.len();
             let layers = crate::views::layer_of(&scene.effects.particle_layers, i);
             let history = scene.effects.particle_history.get(&sys.id).map(|h| &**h);
             let e = scene.emitters().get(sys.emitter.index()).ok_or_else(|| {
@@ -570,6 +571,10 @@ impl ParticleRenderer {
                     look,
                 });
             }
+            // Its hue, on every entry it drew with (its children's too).
+            for g in &mut entries[sys_entries..] {
+                g.counts[3] = sys.hue;
+            }
         }
         self.effect_meshes(
             device,
@@ -965,6 +970,7 @@ impl ParticleRenderer {
             let first_entry = entries.len() as u32;
             let mut entry = emitter_gpu(&look, m.transform, None, dt, seed, 0, false, false, soft);
             entry.look[2] = 2.0;
+            entry.counts[3] = m.hue;
             entries.push(entry);
             out.systems.push(FrameSystem {
                 id: key,

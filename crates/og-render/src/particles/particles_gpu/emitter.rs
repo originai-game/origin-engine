@@ -161,6 +161,7 @@ pub(super) fn emitter_gpu(
             e.size_over_life.keys.len().min(MAX_CURVE_KEYS) as f32,
             e.color_over_life.keys.len().min(MAX_CURVE_KEYS) as f32,
             e.emission,
+            // The system's hue turn: written per system (`prepare`).
             0.0,
         ],
         spawn: [first as u32, count, (first % max as u64) as u32, bursts],

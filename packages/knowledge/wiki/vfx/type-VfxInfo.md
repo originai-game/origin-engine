@@ -33,4 +33,4 @@ struct VfxInfo {
 }
 ```
 
-<sub>Module `vfx` line 78</sub>
+<sub>Module `vfx` line 84</sub>

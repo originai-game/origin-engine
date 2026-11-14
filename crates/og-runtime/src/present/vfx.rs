@@ -50,12 +50,14 @@ pub(crate) fn extract(
         let tint = Vec3::new(row.tint.r, row.tint.g, row.tint.b);
         let scale = row.scale.max(0.0);
         let emission = row.emission;
+        let hue = if row.hue.is_finite() { row.hue } else { 0.0 };
         let instance = VfxInstance {
             id: e,
             seed: row.seed,
             transform: h.world_of(e) * Mat4::from_scale(Vec3::splat(scale)),
             scale,
             tint,
+            hue,
         };
         for d in l.vfx.draws(&instance, start, tick, rate) {
             let id = d.id;
@@ -77,6 +79,7 @@ pub(crate) fn extract(
                         air: air.at(transform.w_axis.truncate()),
                         tint,
                         emission,
+                        hue,
                         ..ParticleSystem::new(id, *handle, transform, seed, tick)
                     });
                 }
@@ -100,6 +103,7 @@ pub(crate) fn extract(
                         color,
                         blend,
                         layers: 1,
+                        hue,
                     });
                 }
                 (

@@ -104,6 +104,87 @@ fn a_systems_tint_and_emission_draw_as_its_emitters() {
     }
 }
 
+/// Two additive systems with coloured curves, one with the white spark
+/// texture and one a soft dot; with `permute`, every colour they carry
+/// (the emitter's and its curve's keys) has its channels turned
+/// (r, g, b) -> (b, r, g).
+fn hue_scene(permute: bool) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let turn = |c: [f32; 4]| if permute { [c[2], c[0], c[1], c[3]] } else { c };
+    let spark = fx::spark_texture(&mut scene);
+    for (k, texture) in [Some(spark), None].into_iter().enumerate() {
+        let e = scene.add_emitter(ParticleEmitter {
+            max_particles: 256,
+            rate: 90.0,
+            lifetime: [0.8, 1.2],
+            speed: [1.5, 2.5],
+            size: [0.12, 0.2],
+            color_over_life: og_render::ColorCurve::new(&[
+                (0.0, turn([1.0, 0.8, 0.3, 1.0])),
+                (1.0, turn([0.9, 0.2, 0.05, 0.0])),
+            ]),
+            color: turn([3.0, 1.2, 0.4, 1.0]),
+            texture,
+            ..Default::default()
+        });
+        let at = Mat4::from_translation(Vec3::new(k as f32 * 2.0 - 1.0, 0.0, 0.0));
+        scene
+            .effects
+            .particles
+            .push(ParticleSystem::new(k as u64 + 1, e, at, 5 + k as u64, 0));
+    }
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 1.0, 5.0),
+        target: Vec3::new(0.0, 0.8, 0.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// A system's hue turns the colour it draws about the grey axis: a third
+/// of a turn carries red to green to blue, so the systems turned 2π/3 draw
+/// what they draw with their colours' channels permuted, to within a step
+/// of the 8-bit frame, on both simulation paths; unturned, they draw the
+/// colours as written.
+#[test]
+#[ignore = "requires GPU"]
+fn a_systems_hue_turns_the_colour_it_draws() {
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let frame =
+            |scene: &mut RenderScene| run(&desc, scene, 40, |s, f| fx::tick_all(s, f as u64)).0;
+        let plain = frame(&mut hue_scene(false));
+        let mut turned = hue_scene(false);
+        for sys in &mut turned.effects.particles {
+            sys.hue = std::f32::consts::TAU / 3.0;
+        }
+        let turned = frame(&mut turned);
+        let permuted = frame(&mut hue_scene(true));
+        let worst = turned
+            .pixels
+            .iter()
+            .zip(&permuted.pixels)
+            .map(|(a, b)| a.abs_diff(*b))
+            .max()
+            .unwrap_or(0);
+        let moved = plain
+            .pixels
+            .iter()
+            .zip(&turned.pixels)
+            .filter(|(a, b)| a.abs_diff(**b) > 8)
+            .count();
+        save(&format!("hue-turned-{path:?}"), &turned);
+        assert!(moved > 500, "{path:?}: the hue moved only {moved} channels");
+        assert!(
+            worst <= 1,
+            "{path:?}: turned and permuted differ by {worst} in a channel"
+        );
+    }
+}
+
 /// Compute particles meet the scene's colliders where the emitter names
 /// them (`collision ... colliders`), and always in sprite mode, with
 /// nothing read back to the CPU: with no ground drawn (so no depth to

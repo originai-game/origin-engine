@@ -26562,6 +26562,7 @@ pub struct VfxSpawnDesc {
     pub scale: f32,
     pub tint: Color,
     pub emission: f32,
+    pub hue: f32,
     pub seed: u32,
 }
 
@@ -26575,6 +26576,7 @@ impl Default for VfxSpawnDesc {
             scale: 1.0_f32,
             tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
             emission: 1.0_f32,
+            hue: Default::default(),
             seed: Default::default(),
         }
     }
@@ -26594,6 +26596,7 @@ impl FromJson for VfxSpawnDesc {
             scale: field(o, "scale", d.scale)?,
             tint: field(o, "tint", d.tint)?,
             emission: field(o, "emission", d.emission)?,
+            hue: field(o, "hue", d.hue)?,
             seed: field(o, "seed", d.seed)?,
         })
     }
@@ -26609,6 +26612,7 @@ impl ToJson for VfxSpawnDesc {
         o.insert("scale".into(), self.scale.to_json());
         o.insert("tint".into(), self.tint.to_json());
         o.insert("emission".into(), self.emission.to_json());
+        o.insert("hue".into(), self.hue.to_json());
         o.insert("seed".into(), self.seed.to_json());
         Value::Object(o)
     }
@@ -37281,6 +37285,7 @@ pub mod record {
         pub scale: f32,
         pub tint: Color,
         pub emission: f32,
+        pub hue: f32,
         pub despawn: bool,
         pub ran: u32,
     }
@@ -37294,6 +37299,7 @@ pub mod record {
                 scale: 1.0_f32,
                 tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 emission: 1.0_f32,
+                hue: Default::default(),
                 despawn: true,
                 ran: 4294967295,
             }
@@ -37313,6 +37319,7 @@ pub mod record {
                 scale: field(o, "scale", d.scale)?,
                 tint: field(o, "tint", d.tint)?,
                 emission: field(o, "emission", d.emission)?,
+                hue: field(o, "hue", d.hue)?,
                 despawn: field(o, "despawn", d.despawn)?,
                 ran: field(o, "ran", d.ran)?,
             })

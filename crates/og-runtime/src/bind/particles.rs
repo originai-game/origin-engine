@@ -283,6 +283,7 @@ fn system(
             air: air.at(transform.w_axis.truncate()),
             tint: glam::Vec3::ONE,
             emission: 1.0,
+            hue: 0.0,
         };
         let colliders: &[SceneCollider] =
             if em.collision.is_some() && em.space == SimulationSpace::World {

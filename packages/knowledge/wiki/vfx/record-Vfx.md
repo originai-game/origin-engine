@@ -18,6 +18,7 @@ Token `og.Vfx`, registered under the schema name `og.Vfx`; its value type is `Vf
 | `scale` | `number` | `1` | ≥ 0 | — | — | Its size: offsets, meshes, trails, beams, lights' reach, decals and glows scale with it; its emitters are placed and shaped by the scaled transform. |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Multiplies the colour of everything it draws (linear; above 1 brightens). |
 | `emission` | `number` | `1` | 0 … 1 | — | — | The share of its emitters' particles that are born (0 to 1): 0.5 draws half the sparks and smoke of the same effect, each emitter thinned by its own pick, so a smaller fire or a distant one costs less. |
+| `hue` | `number` | `0` | — | `rad` | — | Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3). |
 | `despawn` | `boolean` | `true` | — | — | — | Despawn the entity on the tick after a non-looping effect ends. |
 | `ran` | `number` | `4294967295` | — | — | read only | Written by og.vfx: the last tick it ran this effect through (its events, shakes and sounds up to there are sent). Writing startTick again plays it from the start. |
 
@@ -40,6 +41,9 @@ component Vfx {
     default 1
     min 0
     max 1
+  }
+  field hue f32 "Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3)." {
+    unit rad
   }
   field despawn bool "Despawn the entity on the tick after a non-looping effect ends." {
     default true

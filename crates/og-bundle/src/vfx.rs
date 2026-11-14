@@ -23,7 +23,7 @@
 
 mod play;
 
-pub use play::{VfxCue, VfxDraw, VfxDrawKind, VfxInstance, element_id, random};
+pub use play::{VfxCue, VfxDraw, VfxDrawKind, VfxInstance, element_id, hue_rotated, random};
 
 use crate::effect::{flag, nums, one, value};
 use crate::grammar::{Line, find, keys};

@@ -147,6 +147,12 @@ must(og.vfx.spawn(world, { asset: hit, position: at }));
 - Additive blending is order independent and never darkens; alpha
   blending is for smoke, dust and solid chips (`render mesh` that is
   `lit`).
+- One effect, several variants: spawn the same file with `hue` (a fire
+  turned blue for ice, about 3.1), `tint` (darker, brighter) and
+  `emission` (fewer particles), not a copy of it per colour. The hue
+  turns the whole drawn colour of particles, meshes and glows, textures
+  included; a trail's, beam's or decal's colour turns, but a coloured
+  texture on one keeps its colours, so give those greyscale textures.
 
 ## 4. Budget
 
