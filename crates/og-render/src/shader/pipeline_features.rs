@@ -506,8 +506,9 @@ mod tests {
 
     /// The weather on surfaces left out leaves its text too: each module
     /// that carries it (the standard, physical, grass and terrain lit
-    /// modules) has the stub in its place, which declares the override
-    /// false, so no pipeline sets it. Another feature left out keeps it.
+    /// modules) has the stub in its place and the override, which the
+    /// rain's part before it declares (weather_rain.wgsl), false, so no
+    /// pipeline sets it. Another feature left out keeps it.
     #[test]
     fn the_weather_left_out_leaves_the_module_text() {
         let hooks = crate::hooks::default_hooks();
@@ -528,8 +529,9 @@ mod tests {
             assert!(!lean.contains(crate::WEATHER_SURFACE_WGSL));
             assert!(!lean.contains("fn weather_streaks("));
             assert!(lean.contains("override OG_WEATHER: bool = false;"));
+            // (`true` to `false` in the override is one character more.)
             assert_eq!(
-                source.len() - lean.len(),
+                source.len() + 1 - lean.len(),
                 crate::WEATHER_SURFACE_WGSL.len() - crate::WEATHER_SURFACE_STUB.len()
             );
             assert!(!Features::declared(&lean).contains(Features::WEATHER));

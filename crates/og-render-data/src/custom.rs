@@ -87,6 +87,7 @@ pub fn lit_source(shader: &MaterialShader, lit: bool) -> String {
             crate::MATERIAL_DISSOLVE_WGSL,
             &crate::skin::palette_wgsl(3),
             crate::LIGHTING_WGSL,
+            crate::WEATHER_RAIN_WGSL,
             crate::WEATHER_SURFACE_WGSL,
             &crate::lightmap::probe_wgsl(),
             crate::AREA_WGSL,

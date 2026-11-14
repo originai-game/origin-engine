@@ -96,6 +96,7 @@ pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> S
             frame,
             tables,
             lighting,
+            crate::WEATHER_RAIN_WGSL,
             crate::WEATHER_SURFACE_WGSL,
             &og_render_data::lightmap::probe_wgsl(),
             crate::AREA_WGSL,

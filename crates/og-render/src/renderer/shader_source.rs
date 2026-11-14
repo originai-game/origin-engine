@@ -37,6 +37,7 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
             MATERIAL_DISSOLVE_WGSL,
             hooks,
             LIGHTING_WGSL,
+            crate::WEATHER_RAIN_WGSL,
             crate::WEATHER_SURFACE_WGSL,
             &og_render_data::lightmap::probe_wgsl(),
             AREA_WGSL,
