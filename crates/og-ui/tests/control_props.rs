@@ -1437,6 +1437,57 @@ fn a_button_holds_its_content_in_a_row() {
     });
 }
 
+/// A primary button's text takes the style's `button.primary` colour
+/// over the colour it inherits from its document, and its document's own
+/// `color` for it over both, as CSS weighs a rule for an element against
+/// an inherited value. Ways it could fail: the frame's ink, which the
+/// button only inherits, drawn on the primary plate (a document with a
+/// `style:` binding carries it into the button's part), or the document's
+/// own colour lost to the style's.
+#[test]
+fn a_primary_button_takes_the_style_colour_over_an_inherited_one() {
+    let text = r#"<meta name="component" content="t">
+<meta name="prop:marks" content="list">
+<meta name="parts" content="T.frame">
+<div id="Page">
+  <div id="Frame" part="T.frame">
+    <button id="Save" variant="primary">Save</button>
+    <button id="Own" class="own" variant="primary">Own</button>
+  </div>
+  {#each marks as m (m.id)}<div id="Mark" style:left={m.x + "px"}></div>{/each}
+</div>
+<style>
+.own { color: var(--warn); }
+</style>"#;
+    let mut d = Doc::with_font(text, &[], crate::support::test_font());
+    d.step(InputFrame::default());
+    {
+        let ink = |label: &str| {
+            d.ui.frame()
+                .items
+                .iter()
+                .find_map(|item| match &item.cmd {
+                    DrawCmd::Text { text, color, .. } if text == label => Some(*color),
+                    _ => None,
+                })
+                .unwrap_or_else(|| panic!("the text {label}"))
+        };
+        let p = d.ui.theme().palette;
+        let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(a, b)| (a - b).abs() < 0.01);
+        assert!(
+            near(ink("Save"), p.on_primary.linear()),
+            "on the primary plate: {:?}, not the inherited {:?}",
+            ink("Save"),
+            p.ink.linear()
+        );
+        assert!(
+            near(ink("Own"), p.warn.linear()),
+            "its document's own colour: {:?}",
+            ink("Own")
+        );
+    }
+}
+
 /// A `<button>` whose content stands taller than its control height (a
 /// loadout row: a name over its detail) grows to hold it, as an HTML
 /// button does; its control height stays the least it takes, and an

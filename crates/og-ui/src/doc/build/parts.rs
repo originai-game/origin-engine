@@ -570,7 +570,29 @@ impl Ui {
             });
             inherited = (*global.computed).clone();
             if let Some(host) = host {
+                // The host's document declarations win over the style's
+                // rules for it; what the host only inherits does not.
+                let declared: Vec<&String> = global
+                    .values
+                    .iter()
+                    .map(|(name, ..)| name)
+                    .chain(global.text.iter().map(|(name, _)| name))
+                    .chain(&global.local_names)
+                    .filter(|name| !host.own.contains(*name))
+                    .collect();
+                let styled = inherited.clone();
                 inherited = inherited.under(&host.computed);
+                for name in declared {
+                    // Text properties carry under their text key too.
+                    for name in [name.clone(), super::super::text_css::key(name)] {
+                        if let Some(value) = styled.properties.get(&name) {
+                            inherited.properties.insert(name, value.clone());
+                        }
+                    }
+                    if let Some(value) = styled.get(name) {
+                        inherited.insert(name.clone(), value.clone());
+                    }
+                }
             }
             let attr = |name: &str| facts.attributes.get(name).map(crate::bind::text);
             let options = cascade::Options {

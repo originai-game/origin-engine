@@ -93,7 +93,13 @@ pub struct PartHost {
     pub document: String,
     pub tag: String,
     pub attributes: BTreeMap<String, Value>,
+    /// Its computed values: what its document declares on it and what it
+    /// inherits from its document's elements.
     pub computed: Arc<super::variables::Computed>,
+    /// The properties its document declares on it itself (custom ones
+    /// too): over the style's rules for it, where what it only inherits
+    /// is under them, as on an HTML element.
+    own: BTreeSet<String>,
     /// A button's own plate ([`plate_prop`]) as its author declared it: its
     /// plate part takes these over the style's, and the host draws none.
     plate: Vec<(usize, V)>,
@@ -1254,11 +1260,19 @@ impl Ui {
                     }
                 }
             }
+            let c = &r.cascade;
+            let own = c.values.iter().map(|(name, ..)| name);
+            let own = own
+                .chain(c.text.iter().map(|(name, _)| name))
+                .chain(&c.local_names)
+                .cloned()
+                .collect();
             Arc::new(PartHost {
                 document: b.doc.name.clone(),
                 tag: tag.clone(),
                 attributes: structure::selector_facts(n, |e| b.eval(e)),
                 computed: Arc::new(computed),
+                own,
                 plate,
             })
         });

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui documents",
+      "summary": "A control's parts weigh the style's rules for the control over what the control only inherits from its document, as CSS weighs a rule for an element over an inherited value: a primary button in a frame (or any element whose role sets the ink) draws its text in --on-primary where it drew the frame's ink on the primary plate, in a document with a style: binding. What a document declares on the control itself (.buy { color: … }) still wins over the style."
+    }
+  ]
+}
