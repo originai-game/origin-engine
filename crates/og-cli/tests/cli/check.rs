@@ -401,3 +401,63 @@ fn run_test_and_build_stop_on_a_type_error_before_bundling() {
     );
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn check_names_what_a_material_shaders_surface_does_not_take() {
+    let (dir, game) = check_project();
+    std::fs::write(game.join("tsconfig.json"), r#"{"include":["src/**/*.ts"]}"#).unwrap();
+    let shaders = game.join("assets/shaders");
+    std::fs::create_dir_all(&shaders).unwrap();
+    std::fs::write(
+        shaders.join("own.wgsl"),
+        "fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput { return standard_surface(f); }\n",
+    )
+    .unwrap();
+    let shader = |name: &str, mode: &str| {
+        std::fs::write(
+            shaders.join(format!("{name}.ogt")),
+            format!("type shader\nversion 1\n---\n{mode}source \"shaders/own.wgsl\"\n"),
+        )
+        .unwrap();
+    };
+    shader("unlit", "mode full unlit\n");
+    shader("lit", "mode full lit\n");
+    std::fs::write(
+        shaders.join("hooks.ogt"),
+        "type shader\nversion 1\n---\ncode \"fn surface_color(h: Hook, p: Params, c: vec4<f32>) -> vec4<f32> { return c; }\"\n",
+    )
+    .unwrap();
+    let out = og().args(["check", "--json"]).arg(&game).output().unwrap();
+    assert!(out.status.success(), "{}", text(&out));
+    let event = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .find(|event| event["event"] == "shader-capabilities")
+        .unwrap_or_else(|| panic!("no shader-capabilities event: {}", text(&out)));
+    let lacks = |file: &str| {
+        event["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|w| w["file"] == file)
+            .map(|w| w["lacks"].clone())
+    };
+    // The unlit shader's colour is its own: no light, weather or decal
+    // reaches it. The lit one is the custom row of og-render's table.
+    assert_eq!(
+        lacks("assets/shaders/unlit.ogt").unwrap(),
+        serde_json::json!([
+            "local lights",
+            "weather",
+            "decals",
+            "planar reflection",
+            "lightmap"
+        ])
+    );
+    assert_eq!(
+        lacks("assets/shaders/lit.ogt").unwrap(),
+        serde_json::json!(["planar reflection", "lightmap"])
+    );
+    assert_eq!(lacks("assets/shaders/hooks.ogt"), None);
+    std::fs::remove_dir_all(dir).unwrap();
+}

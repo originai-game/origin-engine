@@ -35,6 +35,9 @@
 //! error of the check (OG9102) with the cook's own message, since the cook
 //! refuses the same file.
 //!
+//! A material shader whose mesh surface does not take one of what a scene
+//! can put on it (og-render's capability table) is a warning (OG9103).
+//!
 //! `og run`, `og test` and `og build` check before they bundle (`gate`),
 //! and stop on a type error unless `--no-check`; `og dev` checks each
 //! rebuild beside the bundle and reports without refusing the reload.
@@ -942,6 +945,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     }
     lockstep_lint(p, json, true);
     locale_fonts_lint(p, json, true);
+    shader_capabilities_lint(p, json, true);
     Ok(report)
 }
 
@@ -1110,6 +1114,120 @@ fn lockstep_lint(p: &Project, json: bool, to_stderr: bool) {
     }
 }
 
+/// `og check`'s code for a material shader whose surface does not take
+/// some of what a scene can ask of it (`shader_capabilities_lint`).
+pub const SHADER_CAPABILITY_CODE: u32 = 9103;
+
+/// Every material shader under `assets/` (`.ogt` of `type shader`) whose
+/// mesh surface does not take a capability a game sees, read from its lit
+/// module as the renderer builds it (`og_render_data::reach::material_shader_lacks`,
+/// the check of og-render's capability table): printed as warnings, or
+/// with `json` as one `shader-capabilities` event. Never fails a check; a
+/// shader the cook would refuse is the cook's to report.
+fn shader_capabilities_lint(p: &Project, json: bool, to_stderr: bool) {
+    let assets = p.root.join("assets");
+    let mut found = Vec::new();
+    let mut dirs = vec![assets.clone()];
+    while let Some(dir) = dirs.pop() {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            continue;
+        };
+        let mut entries: Vec<_> = entries.flatten().collect();
+        entries.sort_by_key(|e| e.path());
+        for entry in entries {
+            let Ok(ty) = entry.file_type() else { continue };
+            let path = entry.path();
+            if ty.is_dir() {
+                if !path.file_name().is_some_and(|n| {
+                    n == ".og" || n == "cooked" || n == "og-out" || n == "node_modules"
+                }) {
+                    dirs.push(path);
+                }
+                continue;
+            }
+            if !ty.is_file() || path.extension().is_none_or(|e| e != "ogt") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            if og_core::ogt::parse(&text)
+                .ok()
+                .is_none_or(|d| d.ty != og_cook::shader::SHADER_TYPE)
+            {
+                continue;
+            }
+            let file = path
+                .strip_prefix(&p.root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .replace('\\', "/");
+            let name = path.file_stem().unwrap_or_default().to_string_lossy();
+            let mut read = |rel: &str| {
+                if rel.split('/').any(|c| c == ".." || c.is_empty()) {
+                    return Err(format!("'{rel}' is not a path under assets/"));
+                }
+                std::fs::read_to_string(assets.join(rel)).map_err(|e| e.to_string())
+            };
+            let Ok(shader) = og_cook::shader::parse_shader(&name, &text, &mut read) else {
+                continue;
+            };
+            let Ok(lacks) = og_render_data::reach::material_shader_lacks(&shader) else {
+                continue;
+            };
+            if !lacks.is_empty() {
+                found.push((file, shader.mode, lacks));
+            }
+        }
+    }
+    if found.is_empty() {
+        return;
+    }
+    let mode = |m: og_render_data::ShaderMode| match m {
+        og_render_data::ShaderMode::Hooks => "hooks",
+        og_render_data::ShaderMode::Full { lit: true } => "full lit",
+        og_render_data::ShaderMode::Full { lit: false } => "full unlit",
+        og_render_data::ShaderMode::Sprite => "sprite",
+    };
+    let message = |m: og_render_data::ShaderMode, lacks: &[og_render_data::Capability]| {
+        let names: Vec<_> = lacks.iter().map(|c| c.name()).collect();
+        format!(
+            "a mesh drawn with this shader (mode {}) does not take: {}; in a scene that has them, they leave its surface as it is (`og api show render`, §6)",
+            mode(m),
+            names.join(", ")
+        )
+    };
+    let text = if json {
+        serde_json::json!({
+            "event": "shader-capabilities",
+            "warnings": found.iter().map(|(file, m, lacks)| serde_json::json!({
+                "file": file,
+                "code": SHADER_CAPABILITY_CODE,
+                "mode": mode(*m),
+                "lacks": lacks.iter().map(|c| c.name()).collect::<Vec<_>>(),
+                "message": message(*m, lacks),
+            })).collect::<Vec<_>>(),
+        })
+        .to_string()
+    } else {
+        found
+            .iter()
+            .map(|(file, m, lacks)| {
+                format!(
+                    "{file}(1,1): warning OG{SHADER_CAPABILITY_CODE}: {}",
+                    message(*m, lacks)
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    if to_stderr && !json {
+        eprintln!("{text}");
+    } else {
+        println!("{text}");
+    }
+}
+
 /// The UI documents that do not parse (`Target::untyped`): each an error of
 /// the report, so `og check` fails where the cook would refuse the document.
 fn untyped_documents(target: &Target, report: &mut Report) {
@@ -1265,6 +1383,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     if let Some(p) = &project {
         lockstep_lint(p, json, false);
         locale_fonts_lint(p, json, false);
+        shader_capabilities_lint(p, json, false);
     }
     if report.ok() {
         ExitCode::SUCCESS

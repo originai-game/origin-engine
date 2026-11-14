@@ -1,0 +1,5 @@
+{
+  "added": [
+    {"member":"og check (OG9103)","summary":"`og check` names each material shader under assets/ whose mesh surface does not take something a scene can put on it: local lights, weather, decals, blending, the planar reflection, the screen AO or a lightmap. It reads the shader's lit module as the renderer builds it, the way the engine's own surface table is checked, so a `mode full unlit` shader lists the lights, weather and decals, and a `mode full lit` one the planar reflection and the lightmap. A warning (`--json`: a `shader-capabilities` event); the check still passes."}
+  ]
+}
