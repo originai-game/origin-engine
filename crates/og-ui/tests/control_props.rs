@@ -2172,7 +2172,8 @@ fn core_controls_choose_step_hold_and_report() {
 /// `og-spotlight` dims the page but for its target, and `<input
 /// type="color">` opens a picker whose hex writes `#rrggbb` back.
 ///
-/// Ways it could fail: a count that jumps or never arrives, a percent rounded to a whole on its
+/// Ways it could fail: a count that jumps or never arrives, a counter that
+/// shows nothing under a CSS text style, a percent rounded to a whole on its
 /// way, a large value written inexactly, a reveal shown
 /// whole at once or firing every tick, a cycler that does not wrap or skips
 /// the bound value, a spotlight without its callout, or a colour input that
@@ -2212,6 +2213,7 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
 </div>
 <style>
 #Page { gap: 8px; padding: 8px; }
+#Total { letter-spacing: 1px; }
 </style>"#;
     let stores = [
         ("score", json!(0)),
@@ -2228,6 +2230,7 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
         d.get("Line").text.len() < "Hello there".len(),
         "typed out, not whole"
     );
+    // Under a CSS text style too: the number it wrote is its text.
     let first: f64 = d.get("Total").text.parse().unwrap_or(-1.0);
     assert!(
         (0.0..40.0).contains(&first),

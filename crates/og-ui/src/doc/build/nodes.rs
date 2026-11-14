@@ -503,8 +503,13 @@ impl Ui {
             let mut fields =
                 fields::RenderFields::capture(self, key, last, Some(kind), resp, props, texture);
             // A text keeps its source: settlement shows it in its new style.
-            // A typewriter's is the part it shows.
-            if kind == Kind::Label && styled.text.is_some() && styled.generated.is_none() {
+            // A typewriter's is the part it shows; a counter has none, and
+            // keeps the number it wrote.
+            if kind == Kind::Label
+                && styled.text.is_some()
+                && styled.generated.is_none()
+                && !styled.has("count")
+            {
                 fields.text = self.revealed(key, raw_of(&styled, b));
             }
             self.apply_document_fields(&doc, n, &styled, &fields);

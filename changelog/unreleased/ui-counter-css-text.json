@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<og-counter>",
+      "summary": "A counter styled with a CSS text property (font, letter-spacing and the like, its own or inherited) or named as a part shows its number; it showed nothing."
+    }
+  ]
+}
