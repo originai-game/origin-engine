@@ -11,6 +11,11 @@
       "fix": "Give each row of an iterated list a unique string in the field the each keys it by."
     },
     {
+      "member": "og.ui.push",
+      "change": "A pushed screen whose component instance leaves out a prop the component declares with no default is refused with \"<file>:<line>: <Component> leaves out its prop '<name>'; pass it, or give it a default in the component\", as a mounted document already was; the push used to build it with the prop unset.",
+      "fix": "Pass every prop the component declares without a default (the built-in components declare none, so a built-in instance passes all its props, as the built-in screens do), or give your own component's prop a default with data-default on its <meta name=\"prop:…\">."
+    },
+    {
       "member": "document",
       "change": "A document whose root is a block ({#if}, {#each}) is refused with \"a document's root is one element; put the block inside it\".",
       "fix": "Wrap the block in one root element."

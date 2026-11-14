@@ -85,7 +85,7 @@ fn project() -> &'static Path {
         write(
             "ui/vitals.svelte",
             br#"<meta name="screen" content="Vitals" />
-<div id="Vitals"><StatBar value={50} max={100} /></div>"#,
+<div id="Vitals"><StatBar value={50} max={100} kind="health" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label="" icon="" showValue={false} valueInside={false} valueText="" low={0.3} critical={0.15} bare={false} name="" /></div>"#,
         );
         // The game's code names a built-in screen by its id, which bundles it.
         std::fs::write(
