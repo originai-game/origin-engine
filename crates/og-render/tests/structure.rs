@@ -37,11 +37,9 @@ const MECHANISMS: &[&str] = &[
 const KNOWN: &[(&str, &str)] = &[
     ("debug/id_pass.rs", "systems/terrain"),
     ("debug/id_pass.rs", "systems/vegetation"),
-    ("frame/mod.rs", "systems/environment"),
     ("shader/pipeline_features.rs", "systems/terrain"),
     ("shader/pipeline_features.rs", "systems/vegetation"),
     ("shader/pipeline_features.rs", "systems/water"),
-    ("shading/ibl.rs", "systems/environment"),
     ("shading/probes.rs", "systems/fluids"),
     ("systems/terrain/mod.rs", "systems/vegetation"),
     ("systems/terrain/renderer/prepare.rs", "systems/vegetation"),

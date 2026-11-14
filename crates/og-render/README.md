@@ -19,13 +19,13 @@ the world → scene extraction belongs to the layer above.
 | `visibility/` | Instances, GPU culling, LOD, meshlets |
 | `mesh/` | Geometry that is drawn: lines, shapes, compaction |
 | `shading/` | Materials, lights and clusters, shadows, indirect light, reflections, decals, transparency |
-| `media/` | Fog, volumetric light, cloud marching |
+| `media/` | The air and what is in it: fog, the sky, clouds, volumetric light, the aurora, the weather |
 | `fields/` | What a camera-centred, tick-stepped map shares: its window snapped to world cells, the ticks a frame steps |
 | `post/` | Full-screen stages, the HDR targets, tonemapping |
 | `particles/` | Particles, ribbons, effect materials |
 | `sprites/` | The 2D batch: sprites, MSDF text, tiles, 2D lights, as the world, particles and the UI's overlay draw them |
 | `debug/` | Debug views, capture, the id pass |
-| `systems/<name>/` | A world system: environment, water, terrain, vegetation, crowd, destruction, fluids, softbody, stylise, ui (its shapes and the overlay pass) |
+| `systems/<name>/` | A world system: water, terrain, vegetation, crowd, destruction, fluids, softbody, stylise, ui (its shapes and the overlay pass) |
 | `scene/` | `RenderScene`, the crate's whole input |
 | `renderer/` | The composition root: it owns the resources and runs the frame |
 
