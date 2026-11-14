@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.CrowdAnimation",
+      "summary": "A large crowd costs the frame's render call less CPU: its members are read once a frame instead of twice, their tables reuse the last frame's memory, and their previous transforms upload straight from their table instead of being copied into the joint palette first (fifty thousand members: about 3 ms less a frame on a server CPU)."
+    }
+  ]
+}

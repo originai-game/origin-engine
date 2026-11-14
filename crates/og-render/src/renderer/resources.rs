@@ -842,6 +842,9 @@ pub(crate) struct WorldRenderers {
     /// with a first instance), and their culling once a frame used it.
     pub(crate) crowd_indirect: bool,
     pub(crate) crowd_gpu: Option<crowd_gpu::CrowdCulling>,
+    /// The last frame's crowd tables, refilled each frame (crowd.rs
+    /// `build`): fifty thousand members' tables are megabytes.
+    pub(crate) crowd_tables: crate::crowd::CrowdFrame,
     /// Crowd impostors' atlases (`crowd_impostor.rs`), made when a crowd
     /// with an impostor is first drawn.
     pub(crate) crowd_impostors: Option<crowd_impostor::CrowdImpostors>,

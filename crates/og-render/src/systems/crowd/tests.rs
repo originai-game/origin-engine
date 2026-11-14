@@ -36,7 +36,21 @@ fn joints() -> Vec<JointBox> {
 }
 
 fn frame_of(crowds: &[Crowd], clips: &[BakedClip], boxes: &[JointBox], motion: bool) -> CrowdFrame {
+    let mut f = CrowdFrame::default();
+    refill(&mut f, crowds, clips, boxes, motion);
+    f
+}
+
+/// [`build`] into `f`, each clip `c` placed at baked slot `100 c + 7`.
+fn refill(
+    f: &mut CrowdFrame,
+    crowds: &[Crowd],
+    clips: &[BakedClip],
+    boxes: &[JointBox],
+    motion: bool,
+) {
     build(
+        f,
         crowds,
         clips,
         &|_| {
@@ -48,11 +62,11 @@ fn frame_of(crowds: &[Crowd], clips: &[BakedClip], boxes: &[JointBox], motion: b
         },
         1,
         &|_| false,
-        &|c| 100 * c as usize + 7,
         motion,
         1.0,
     )
-    .expect("a valid crowd")
+    .expect("a valid crowd");
+    f.place_clips(&|c| 100 * c as usize + 7);
 }
 
 #[test]
@@ -159,12 +173,12 @@ fn a_crowd_box_holds_every_frame_and_a_missing_clip_is_an_error() {
     assert_eq!(c.info, [7, 2, 5, 0]);
     let bad = vec![crowd_of(vec![CrowdMember::new(Mat4::IDENTITY, 3, 0.0)], 1)];
     let err = build(
+        &mut CrowdFrame::default(),
         &bad,
         &[lift_clip(5)],
         &|_| None,
         1,
         &|_| false,
-        &|_| 0,
         false,
         1.0,
     );
@@ -172,6 +186,40 @@ fn a_crowd_box_holds_every_frame_and_a_missing_clip_is_an_error() {
     // An empty crowd has no row.
     let f = frame_of(&[crowd_of(Vec::new(), 1)], &[lift_clip(2)], &boxes, false);
     assert!(f.crowds.is_empty() && f.draws.is_empty());
+}
+
+#[test]
+fn a_refilled_frame_holds_only_this_frame_s_crowds_and_clips() {
+    let boxes = joints();
+    let clips = [lift_clip(5), lift_clip(3), lift_clip(4)];
+    let member = |clip| CrowdMember::new(Mat4::IDENTITY, clip, 0.0);
+    let mut f = CrowdFrame::default();
+    refill(
+        &mut f,
+        &[
+            crowd_of(vec![member(0); 3], 1),
+            crowd_of(vec![member(2)], 1),
+        ],
+        &clips,
+        &boxes,
+        true,
+    );
+    assert_eq!(f.played, [true, false, true]);
+    // The second crowd's rows follow the first's: its clip 2 at row 3 + 2.
+    assert_eq!(f.clips[5].info, [207, 2, 4, 0]);
+    // A frame later one crowd plays clip 1: nothing of the last frame stays.
+    refill(
+        &mut f,
+        &[crowd_of(vec![member(1); 2], 1)],
+        &clips,
+        &boxes,
+        true,
+    );
+    assert_eq!((f.len(), f.previous.len(), f.crowds.len()), (2, 2, 1));
+    assert_eq!(f.played, [false, true, false]);
+    assert_eq!(f.clips.len(), 3);
+    assert_eq!(f.clips[1].info, [107, 2, 3, 0]);
+    assert_eq!(f.clips[0].info, [0; 4]);
 }
 
 #[test]

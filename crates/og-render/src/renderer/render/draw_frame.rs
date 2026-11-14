@@ -77,7 +77,15 @@ impl Renderer {
         }
         let mut origins = submission.clone();
         self.prepare_full_meshes(scene, &batches);
-        let mut skinned = self.build_skinned(scene, &probe_boxes)?;
+        // Crowds (crowd.rs): their members as the crowd cull's tables, the
+        // one pass over them, before the skinned palette, which holds the
+        // clips they play. Their previous transforms go with them under
+        // TAA or motion blur.
+        let crowd_motion = self.info.antialias.temporal() || scene.look.post.motion_blur.is_some();
+        let mut crowd_frame = self.build_crowds(scene, crowd_motion)?;
+        let mut skinned = self.build_skinned(scene, &probe_boxes, &crowd_frame.played)?;
+        let palette = &self.instances.palette;
+        crowd_frame.place_clips(&|c| palette.baked_offset(c));
         // The planar water this frame draws: none where the 3D world is
         // not built in (WORLD_3D).
         let scene_water: &[Water] = if WORLD_3D { &scene.world.water } else { &[] };
@@ -94,14 +102,20 @@ impl Renderer {
             &aspect,
         );
         let reflection = reflections.first();
-        // Crowds (crowd.rs): their members, and the path that draws them.
+        // The crowds' batches, and the path that draws them.
         let batches::CrowdPlan {
             frame: crowd_frame,
             batches: crowd_batches,
             previous: crowd_previous,
             gpu: crowd_gpu,
             cpu_cards,
-        } = self.plan_crowds(scene, temporal, probe_frame.due.is_empty(), &mut skinned)?;
+        } = self.plan_crowds(
+            scene,
+            crowd_frame,
+            crowd_motion,
+            probe_frame.due.is_empty(),
+            &mut skinned,
+        )?;
         skinned.baked_moved |= crowd_frame.moved;
         let (view_plans, mut view_skinned) =
             self.prepare_view_culling(scene, &camera, &mut skinned);
@@ -134,11 +148,9 @@ impl Renderer {
         } else {
             None
         };
-        // The crowd members' previous transforms, after every other slot.
-        if let Some(at) = crowd_previous {
-            debug_assert_eq!(at as usize, joint_matrices.len());
-            joint_matrices.extend_from_slice(&crowd_frame.previous);
-        }
+        // The crowd members' previous transforms follow every other slot:
+        // uploaded from their table (`upload_frame`), not copied here.
+        debug_assert!(crowd_previous.is_none_or(|at| at as usize == joint_matrices.len()));
 
         // Effects this frame.
         let post_fx = &scene.look.post;
@@ -1286,6 +1298,8 @@ impl Renderer {
             t: frame_uniforms.time,
             stats: &mut stats,
         });
+        // Its tables' memory for the next frame's crowds.
+        self.world.crowd_tables = crowd_frame;
         Ok(stats)
     }
 }

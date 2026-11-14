@@ -6,11 +6,14 @@ use crate::instances::mirrors;
 impl Renderer {
     /// The skinned instances as (mesh, material) batches over the skinned
     /// instance buffer, their instance data, and the frame's joint matrices.
+    /// `crowd_clips`: per baked clip, whether a crowd member plays it
+    /// ([`crate::crowd::CrowdFrame::played`]), which the palette holds too.
     #[allow(clippy::type_complexity)]
     pub(crate) fn build_skinned(
         &mut self,
         scene: &RenderScene,
         probes: &[(Vec3, Vec3)],
+        crowd_clips: &[bool],
     ) -> Result<SkinnedFrame, RenderError> {
         let mut offsets = Vec::with_capacity(scene.objects.joint_palettes.len());
         let mut matrices = Vec::new();
@@ -70,10 +73,11 @@ impl Renderer {
             }
         }
         // The clips the skinned instances and the crowds play, now or the
-        // frame before (a crowd's members mostly share one: marked, not
-        // inserted one by one).
-        let mut marked = vec![false; scene.objects.baked_clips.len()];
-        let mut mark = |b: &skin::BakedPose| {
+        // frame before (marked, not inserted one by one); the crowds'
+        // members were read once, by their tables.
+        let mut marked = crowd_clips.to_vec();
+        marked.resize(scene.objects.baked_clips.len(), false);
+        let mark = |b: &skin::BakedPose| {
             for c in [b.clip, b.previous_clip] {
                 if let Some(m) = marked.get_mut(c as usize) {
                     *m = true;
@@ -85,13 +89,7 @@ impl Renderer {
             .skinned_instances
             .iter()
             .filter_map(|s| s.baked.as_ref())
-            .for_each(&mut mark);
-        scene
-            .objects
-            .crowds
-            .iter()
-            .flat_map(|c| &c.members)
-            .for_each(|m| mark(&m.pose));
+            .for_each(mark);
         // And the clips crowds' impostors are baked from.
         for i in scene
             .objects
