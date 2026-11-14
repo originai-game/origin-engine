@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "part",
+      "summary": "An element named a part keeps the flex-wrap: wrap-reverse, row-gap, column-gap, align-content, justify-items, column-count, contain, resize and safe alignment its document declares. The part's values cleared whichever of them they did not set, so a wrap-reverse part stacked its lines from the top with no gap between them."
+    }
+  ]
+}

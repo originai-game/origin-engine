@@ -1747,3 +1747,34 @@ p {{ margin: 0; }}
         "{drawn:?}"
     );
 }
+
+/// Naming an element a part leaves the layout its document wrote: the
+/// part's values are laid over the element, and what they do not declare
+/// stays. Fails when the part's values clear the element's `wrap-reverse`,
+/// its `row-gap` and `column-gap` or its `align-content` (its lines then
+/// stack from the top, touching).
+#[test]
+fn a_named_part_keeps_the_flex_lines_and_gaps_its_document_wrote() {
+    let text = r#"<meta name="component" content="t">
+<meta name="parts" content="t.tray">
+<div id="Page">
+  <div id="Plain" class="tray"><div id="P1" class="a"></div><div id="P2" class="b"></div><div id="P3" class="b"></div><div id="P4" class="b"></div></div>
+  <div id="Named" class="tray" part="t.tray"><div id="N1" class="a"></div><div id="N2" class="b"></div><div id="N3" class="b"></div><div id="N4" class="b"></div></div>
+</div>
+<style>
+.tray { display: flex; flex-flow: row wrap-reverse; width: 100px; height: 80px; column-gap: 4px; row-gap: 10px; align-content: center; }
+.a { width: 60px; height: 20px; }
+.b { width: 40px; height: 10px; }
+</style>"#;
+    both(text, &[], |d| {
+        let at = |id: &str, parent: &str| {
+            let (e, p) = (d.get(id), d.get(parent));
+            (e.x - p.x, e.y - p.y)
+        };
+        let plain = ["P1", "P2", "P3", "P4"].map(|id| at(id, "Plain"));
+        // Three lines of 20, 10 and 10 with 10 between, centred in 80,
+        // the first at the bottom; 4 between the two on the middle line.
+        assert_eq!(plain, [(0.0, 50.0), (0.0, 30.0), (44.0, 30.0), (0.0, 10.0)]);
+        assert_eq!(["N1", "N2", "N3", "N4"].map(|id| at(id, "Named")), plain);
+    });
+}

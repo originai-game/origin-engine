@@ -4,7 +4,8 @@ use crate::element::{DragSpec, DropSpec};
 
 impl Ui {
     /// The box of an element from its props, over `base`; `em` sizes its
-    /// em margins.
+    /// em margins. What `r` does not declare stays as `el` has it: a part's
+    /// values are laid over the element its document already styled.
     pub fn box_of(r: &Resolved, mut el: Element, em: f32) -> Element {
         for (name, edge) in ["marginTop", "marginRight", "marginBottom", "marginLeft"]
             .into_iter()
@@ -57,10 +58,20 @@ impl Ui {
         if r.has("wrap") {
             el.wrap = r.flag("wrap");
         }
-        el.wrap_reverse = r.flag("wrapReverse");
-        el.align_content = r.str("alignContent").map(align_of);
-        el.justify_items = r.str("justifyItems").map(cross_of);
-        el.gaps = [r.num("columnGap"), r.num("rowGap")];
+        if r.has("wrapReverse") {
+            el.wrap_reverse = r.flag("wrapReverse");
+        }
+        if let Some(a) = r.str("alignContent") {
+            el.align_content = Some(align_of(a));
+        }
+        if let Some(j) = r.str("justifyItems") {
+            el.justify_items = Some(cross_of(j));
+        }
+        for (gap, name) in el.gaps.iter_mut().zip(["columnGap", "rowGap"]) {
+            if let Some(g) = r.num(name) {
+                *gap = Some(g);
+            }
+        }
         // CSS Multi-column: a column count or width makes it a
         // multi-column container; its gap is the column gap (`normal`: 1em).
         let px = |v: &str| match v {
@@ -74,7 +85,7 @@ impl Ui {
             .and_then(|v| v.parse::<u16>().ok())
             .unwrap_or(0);
         let width = r.str("columnWidth").and_then(px).unwrap_or(0.0);
-        el.multicol = (count > 0 || width > 0.0).then(|| {
+        let columns = (count > 0 || width > 0.0).then(|| {
             let rule = r
                 .str("columnRuleStyle")
                 .and_then(crate::decor::LineStyle::from_css)
@@ -101,6 +112,9 @@ impl Ui {
                 current,
             }
         });
+        if r.has("columnCount") || r.has("columnWidth") {
+            el.multicol = columns;
+        }
         if let Some(v) = r.str("columnSpan") {
             el.span_all = v == "all";
         }
@@ -133,7 +147,17 @@ impl Ui {
         }
         // CSS Containment: layout and paint containment start a formatting
         // context of their own (CSS Containment 2 §3.2, §3.4).
-        el.contain = crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned));
+        if [
+            "contain",
+            "contentVisibility",
+            "containIntrinsicWidth",
+            "containIntrinsicHeight",
+        ]
+        .iter()
+        .any(|p| r.has(p))
+        {
+            el.contain = crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned));
+        }
         if el
             .contain
             .has(crate::layout::Contain::LAYOUT | crate::layout::Contain::PAINT)
@@ -145,11 +169,21 @@ impl Ui {
         let clips = ["overflowX", "overflowY"]
             .iter()
             .any(|p| r.str(p).is_some_and(|v| v != "visible"));
-        el.resize = match r.str("resize").map(crate::doc::contain_css::resize) {
-            Some(Ok([x, y])) if clips => u8::from(x) | u8::from(y) << 1,
-            _ => 0,
-        };
-        el.safe = u8::from(r.flag("safeJustify")) | u8::from(r.flag("safeAlign")) << 1;
+        if r.has("resize") {
+            el.resize = match r.str("resize").map(crate::doc::contain_css::resize) {
+                Some(Ok([x, y])) if clips => u8::from(x) | u8::from(y) << 1,
+                _ => 0,
+            };
+        }
+        for (bit, name) in [(1, "safeJustify"), (2, "safeAlign")] {
+            if r.has(name) {
+                el.safe = if r.flag(name) {
+                    el.safe | bit
+                } else {
+                    el.safe & !bit
+                };
+            }
+        }
         if let Some(c) = r.color("background") {
             el.background = Some(c);
         }
