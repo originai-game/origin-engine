@@ -1,6 +1,6 @@
 //! CSS box decorations in documents: `border` and its longhands,
-//! `outline`, `box-shadow`, `overflow` and `scrollbar-width`, built both
-//! ways a document is (immediate and mounted).
+//! `outline`, `box-shadow`, `overflow` and `scrollbar-width`, built as a
+//! document is (mounted).
 //!
 //! Ways these could fail, each covered below:
 //! - a `border-radius` on a dressed control (a `<button>`) ignored for the
@@ -31,7 +31,7 @@
 //!   or `scrollbar-color` not inherited →
 //!   `a_wheel_stops_at_snap_stop_always_and_scrollbar_color_inherits`
 
-use crate::support::{Doc, both};
+use crate::support::{Doc, with_doc};
 use og_core::glam::Vec2;
 use og_draw::{UiAlign, UiMode};
 use og_ui::*;
@@ -63,7 +63,7 @@ fn borders_pad_the_box_and_outlines_take_no_room() {
 #D { border-width: 9px; }
 #E { border-inline: 1px solid; border-inline-end-width: 7px; border-block-start: 3px solid; border-block-style: solid none; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let off = |id: &str, kid: &str| {
             let (a, k) = (d.get(id), d.get(kid));
             (k.x - a.x, k.y - a.y, a.height)
@@ -116,7 +116,7 @@ fn decorations_paint_in_css_order_over_any_draw() {
 #S { width: 40px; height: 40px; background: #3366ff; box-shadow: 0 4px 12px #000000, inset 0 0 0 2px #ffffff; }
 #Btn::part(base) { border: 2px solid #ffff00; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let s = shapes(&d.ui);
         let at = |id: &str| {
             let e = d.get(id);
@@ -220,7 +220,7 @@ fn border_radius_rounds_a_dressed_button() {
 #Root { width: 400px; gap: 20px; }
 #Round::part(base) { border-radius: 20px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let s = shapes(&d.ui);
         let radii = |id: &str| {
             let e = d.get(id);
@@ -265,7 +265,7 @@ fn corners_take_css_radii_and_shapes() {
   border-bottom-right-radius: 10%; corner-shape: round round bevel bevel; }
 #Pill { width: 200px; height: 100px; background: #224466; border-radius: 50% / 20px 10px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let s = shapes(&d.ui);
         let geo = |id: &str, fill: bool| {
             let e = d.get(id);
@@ -317,7 +317,7 @@ fn overscroll_contains_and_scroll_padding_insets_snaps() {
 #Snap div {{ height: 60px; scroll-snap-align: start; }}
 </style>"#
         );
-        both(&text, &[], |d| {
+        with_doc(&text, &[], |d| {
             // The inner box's range is 70: a wheel of 100 leaves 30.
             let b = d.get("In");
             d.step(InputFrame {
@@ -354,7 +354,7 @@ fn a_wheel_stops_at_snap_stop_always_and_scrollbar_color_inherits() {
 #Snap div { height: 60px; scroll-snap-align: start; }
 .stop { scroll-snap-stop: always; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         // Snap positions 0, 60, 120…: a wheel of 150 in three ticks would
         // settle on 120, but it may not pass the area at 60, even though
         // the wheel has carried it past that area by the time it settles.
@@ -393,7 +393,7 @@ fn overflow_scrolls_and_clips() {
 #Box { height: 50px; overflow: hidden auto; scrollbar-width: none; }
 #Box div { height: 40px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let b = d.get("Box");
         for wheel in [Vec2::new(0.0, 30.0), Vec2::new(30.0, 0.0)] {
             d.step(InputFrame {
@@ -491,7 +491,7 @@ fn a_buttons_own_box_styles_are_its_plate() {
     let is = |paint: &(f32, Option<[f32; 4]>), radius: f32, hex: &str| {
         paint.0 == radius && paint.1.is_some_and(|c| close(c, lin(hex)))
     };
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         // One plate, the author's: no style plate over it and no second
         // box under it.
         let (fills, strokes) = paints(d, "Own");

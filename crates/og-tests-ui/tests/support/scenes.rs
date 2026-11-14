@@ -343,10 +343,18 @@ panel { width: 120px; height: 120px; }
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
     ui.define_document(UiDocument::parse("ui/chips.svelte", doc).expect("chips parse"));
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "chips",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .expect("chips mounts");
     let vp = Viewport::new(width as f32, height as f32);
     for _ in 0..2 {
         ui.begin(InputFrame::default(), vp);
-        ui.component("T", "chips", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).expect("builds");
         ui.end();
     }
     let mut overlay = og_render::Overlay::new(vp.width, vp.height, 1.0);
@@ -373,6 +381,14 @@ pub fn user_select_scene(font: &FontFiles, width: u32, height: u32) -> (RenderSc
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
     ui.define_document(UiDocument::parse("ui/sel.svelte", USER_SELECT_DOC).expect("sel parses"));
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "sel",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .expect("sel mounts");
     let vp = Viewport::new(width as f32, height as f32);
     let step = |ui: &mut Ui, p: Vec2, down: bool, pressed: bool, released: bool| {
         ui.begin(
@@ -386,7 +402,7 @@ pub fn user_select_scene(font: &FontFiles, width: u32, height: u32) -> (RenderSc
             },
             vp,
         );
-        ui.component("T", "sel", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).expect("builds");
         ui.end();
     };
     step(&mut ui, Vec2::ZERO, false, false, false);
@@ -435,10 +451,18 @@ pub fn text_path_scene(font: &FontFiles, width: u32, height: u32) -> (RenderScen
     let font = add_font(&mut scene, font);
     let mut ui = ui_with_font(font);
     ui.define_document(UiDocument::parse("ui/tp.svelte", TEXT_PATH_DOC).expect("tp parses"));
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "tp",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .expect("tp mounts");
     let vp = Viewport::new(width as f32, height as f32);
     for _ in 0..2 {
         ui.begin(InputFrame::default(), vp);
-        ui.component("T", "tp", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).expect("builds");
         ui.end();
     }
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);

@@ -1,6 +1,6 @@
 //! CSS Containment 2 in documents (docs/ui.md §2): `contain`,
 //! `content-visibility` and `contain-intrinsic-size`, and CSS UI 4's
-//! `resize`, built both ways.
+//! `resize`, built mounted.
 //!
 //! Ways these could fail, each covered below:
 //! - size containment sizing by the contents anyway, or ignoring
@@ -16,7 +16,7 @@
 //!   resize moved, `max-width` ignored, or `resize` applied with overflow
 //!   visible → `a_resize_handle_drags_the_size_onto_the_element`
 
-use crate::support::{Doc, both};
+use crate::support::{Doc, with_doc};
 use og_ui::InputFrame;
 use serde_json::json;
 
@@ -35,7 +35,7 @@ fn size_containment_sizes_as_if_empty() {
 #Given { contain: strict; contain-intrinsic-size: 30px 40px; }
 #Inline { contain: inline-size; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         d.step(InputFrame::default());
         let wh = |d: &Doc, id: &str| {
             let e = d.get(id);
@@ -71,7 +71,7 @@ fn content_visibility_skips_contents_off_screen() {
 .away { position: relative; top: -5000px; }
 #FarIn, #KeptIn { width: 200px; height: 150px; }
 </style>"#;
-    both(text, &[("where", json!("away"))], |d| {
+    with_doc(text, &[("where", json!("away"))], |d| {
         for _ in 0..3 {
             d.step(InputFrame::default());
         }
@@ -116,7 +116,7 @@ fn a_resize_handle_drags_the_size_onto_the_element() {
 #Across { width: 100px; height: 60px; overflow: hidden; resize: horizontal; }
 #Visible { width: 100px; height: 60px; resize: both; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         d.step(InputFrame::default());
         let corner = |d: &Doc, id: &str| {
             let e = d.get(id);

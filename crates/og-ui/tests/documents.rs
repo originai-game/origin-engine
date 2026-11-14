@@ -12,6 +12,7 @@
 
 use crate::support;
 
+use og_ui::reactive::SourceId;
 use og_ui::*;
 use serde_json::{Value, json};
 use support::*;
@@ -88,7 +89,7 @@ fn transition_variables_substitute_after_longhands_win() {
             "timing.svelte",
             r#"
 <meta name="component" content="timing">
-<column id="Target" class:expanded={expanded}/>
+<column id="Target" class:expanded={$expanded}/>
 <style>
 @layer engine-default {
   column { --duration: 2s; --curve: linear; width: 20px; height: 40px;
@@ -100,25 +101,27 @@ column { transition-duration: 200ms; }
         )
         .unwrap(),
     );
-    let step = |ui: &mut Ui, expanded| {
+    mount_stores(
+        &mut ui,
+        SourceId::new("test", "timing"),
+        "timing",
+        &[("expanded", json!(false))],
+    );
+    let step = |ui: &mut Ui, expanded: bool| {
+        set_store(ui, "expanded", json!(expanded));
         ui.begin(InputFrame::default(), viewport());
-        ui.component(
-            "timing",
-            "timing",
-            &mut json!({"expanded": expanded}),
-            &bind::NoEnv,
-        );
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
     };
     for _ in 0..30 {
         step(&mut ui, false);
     }
-    let target = ui.element("timing").unwrap();
+    let target = ui.element("test:timing").unwrap();
     assert_eq!(target.width, 20.0);
     for _ in 0..7 {
         step(&mut ui, true);
     }
-    let width = ui.element("timing").unwrap().width;
+    let width = ui.element("test:timing").unwrap().width;
     assert!(
         width > 30.0 && width < 70.0,
         "200ms transition, not 2s or instant: {width}"
@@ -126,7 +129,7 @@ column { transition-duration: 200ms; }
     for _ in 0..30 {
         step(&mut ui, true);
     }
-    assert_eq!(ui.element("timing").unwrap().width, 80.0);
+    assert_eq!(ui.element("test:timing").unwrap().width, 80.0);
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
@@ -149,6 +152,7 @@ panel { width: 10px; height: 10px; }
     .unwrap();
     let mut ui = ui_with_font(test_font_metrics());
     ui.define_document(doc);
+    mount_stores(&mut ui, SourceId::new("test", "media"), "media", &[]);
     for (w, h, reduced, expected) in [
         (299.5, 240.0, false, [10.0, 10.0, 10.0, 10.0]),
         (300.0, 240.0, false, [31.0, 10.0, 10.0, 10.0]),
@@ -162,7 +166,7 @@ panel { width: 10px; height: 10px; }
         theme.reduced_motion = reduced;
         ui.set_theme(theme);
         ui.begin(InputFrame::default(), Viewport::new(w, h));
-        ui.component("Test", "media", &mut json!({}), &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
         for (id, width) in ["Range", "Ratio", "Nested", "Motion"]
             .into_iter()
@@ -204,34 +208,28 @@ div { width: 10px; height: 10px; }
 @media (hover: none) { #Hover { width: 32px; } }
 @media (-og-input: pad) { #Pad { width: 43px; } }
 </style>"#;
-    for mounted in [false, true] {
-        let mut doc = Doc::new(source, &[], mounted);
-        for (density, coarse, pointer, hover, pad) in [
-            (DensityMode::Auto, false, 10.0, 10.0, 10.0),
-            (DensityMode::Touch, false, 21.0, 32.0, 10.0),
-            (DensityMode::Mouse, true, 10.0, 10.0, 10.0),
-            (DensityMode::Mouse, false, 10.0, 10.0, 10.0),
-            (DensityMode::Mouse, true, 10.0, 10.0, 10.0),
-            (DensityMode::Auto, true, 21.0, 32.0, 10.0),
-            (DensityMode::Pad, true, 21.0, 32.0, 43.0),
-            (DensityMode::Auto, true, 21.0, 32.0, 10.0),
-        ] {
-            let mut theme = *doc.ui.theme();
-            if theme.density != density {
-                theme.density = density;
-                doc.ui.set_theme(theme);
-            }
-            doc.viewport.coarse_pointer = coarse;
-            doc.step(InputFrame::default());
-            for (id, width) in [("Pointer", pointer), ("Hover", hover), ("Pad", pad)] {
-                assert_eq!(
-                    doc.get(id).width,
-                    width,
-                    "{density:?} {id}, mounted={mounted}"
-                );
-            }
-            assert_eq!(doc.get("Increment").width, if coarse { 44.0 } else { 24.0 });
+    let mut doc = Doc::new(source, &[]);
+    for (density, coarse, pointer, hover, pad) in [
+        (DensityMode::Auto, false, 10.0, 10.0, 10.0),
+        (DensityMode::Touch, false, 21.0, 32.0, 10.0),
+        (DensityMode::Mouse, true, 10.0, 10.0, 10.0),
+        (DensityMode::Mouse, false, 10.0, 10.0, 10.0),
+        (DensityMode::Mouse, true, 10.0, 10.0, 10.0),
+        (DensityMode::Auto, true, 21.0, 32.0, 10.0),
+        (DensityMode::Pad, true, 21.0, 32.0, 43.0),
+        (DensityMode::Auto, true, 21.0, 32.0, 10.0),
+    ] {
+        let mut theme = *doc.ui.theme();
+        if theme.density != density {
+            theme.density = density;
+            doc.ui.set_theme(theme);
         }
+        doc.viewport.coarse_pointer = coarse;
+        doc.step(InputFrame::default());
+        for (id, width) in [("Pointer", pointer), ("Hover", hover), ("Pad", pad)] {
+            assert_eq!(doc.get(id).width, width, "{density:?} {id}");
+        }
+        assert_eq!(doc.get("Increment").width, if coarse { 44.0 } else { 24.0 });
     }
     assert!(
         UiDocument::parse(
@@ -577,7 +575,7 @@ fn boolean_attribute_selectors_follow_svelte_presence() {
 #Checked { height: 24px; min-height: 0; }
 #Checked:default { height: 40px; }
 </style>"#;
-    crate::support::both(source, &[("on", json!(false))], |d| {
+    crate::support::with_doc(source, &[("on", json!(false))], |d| {
         assert!(d.el("Shown").is_some(), "false hidden is absent");
         assert!(d.el("Hidden").is_none(), "true hidden is present");
         assert_eq!(
@@ -594,13 +592,11 @@ fn boolean_attribute_selectors_follow_svelte_presence() {
                     "{id}, on={on}"
                 );
             }
-            if d.mounted {
-                assert_eq!(
-                    d.get("Checked").height,
-                    if on { 40.0 } else { 24.0 },
-                    ":default on={on}"
-                );
-            }
+            assert_eq!(
+                d.get("Checked").height,
+                if on { 40.0 } else { 24.0 },
+                ":default on={on}"
+            );
         }
     });
 }
@@ -685,59 +681,6 @@ fn inline_bindings_and_inheritance_are_isolated_from_author_variables() {
             assert_eq!(actual, Some(expected), "{label}");
         }
         assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-    }
-}
-
-#[test]
-fn ancestor_selectors_read_the_matched_nodes_state() {
-    use og_ui::bind::{Env, InteractionState};
-    struct States(usize, InteractionState);
-    impl Env for States {
-        fn interaction(&self, _: InteractionState) -> bool {
-            true
-        }
-        fn interaction_at(&self, node: usize, state: InteractionState) -> bool {
-            node == self.0 && state == self.1
-        }
-    }
-    for (name, state) in [
-        ("hover", InteractionState::Hover),
-        ("active", InteractionState::Active),
-        ("focus", InteractionState::Focus),
-        ("focus-visible", InteractionState::FocusVisible),
-        ("focus-within", InteractionState::FocusWithin),
-        ("disabled", InteractionState::Disabled),
-        ("checked", InteractionState::Checked),
-        ("selected", InteractionState::Selected),
-        ("invalid", InteractionState::Invalid),
-        ("placeholder-shown", InteractionState::PlaceholderShown),
-    ] {
-        let source = format!(
-            r#"<meta name="component" content="states">
-<column id="Card" class="card"><text id="Title">Title</text></column>
-<style>text {{ width: 22px; }} .card:{name} > text:not(:where(.excluded)) {{ width: 44px; }}</style>"#
-        );
-        let doc = UiDocument::parse("states.svelte", &source).unwrap();
-        let card = doc.nodes.iter().position(|node| node.id == "Card").unwrap();
-        let title = doc
-            .nodes
-            .iter()
-            .position(|node| node.id == "Title")
-            .unwrap();
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.define_document(doc);
-        for (node, expected) in [(card, 44.0), (title, 22.0)] {
-            for _ in 0..2 {
-                ui.begin(InputFrame::default(), viewport());
-                ui.component("Card", "states", &mut Value::Null, &States(node, state));
-                ui.end();
-            }
-            assert_eq!(
-                ui.element("Card/Title").unwrap().width,
-                expected,
-                "{name}, node {node}"
-            );
-        }
     }
 }
 
@@ -1917,7 +1860,7 @@ fn view_timelines_follow_the_subject_through_its_scroller() {
 #Card { height: 50px; width: 100px; animation: slide linear both; animation-timeline: view(); }
 @keyframes slide { from { translate: 0 0; width: 20px; } to { translate: 150px 0; width: 170px; } }
 </style>"#;
-    crate::support::both(text, &[], |d| {
+    crate::support::with_doc(text, &[], |d| {
         let b = d.get("Box");
         let settle = |d: &mut crate::support::Doc| {
             for _ in 0..40 {
@@ -1938,12 +1881,10 @@ fn view_timelines_follow_the_subject_through_its_scroller() {
         let c = d.get("Card");
         assert!((c.x - b.x - 75.0).abs() < 0.01, "{c:?}");
         assert!((c.width - 95.0).abs() < 0.01, "{c:?}");
-        if d.mounted {
-            // The pointer leaves; then nothing changes.
-            d.step(InputFrame::default());
-            d.step(InputFrame::default());
-            let idle = d.ui.frame().stats;
-            assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
-        }
+        // The pointer leaves; then nothing changes.
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        let idle = d.ui.frame().stats;
+        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
     });
 }

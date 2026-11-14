@@ -12,7 +12,7 @@ mod stores;
 
 // Not every binary that includes this support mounts documents.
 #[allow(unused_imports)]
-pub(crate) use doc::{Doc, both, id_text};
+pub(crate) use doc::{Doc, id_text, with_doc};
 #[allow(unused_imports)]
 pub use engine_documents::*;
 use og_ui::*;

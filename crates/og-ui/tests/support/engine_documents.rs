@@ -125,8 +125,12 @@ pub fn view(width: f32, height: f32) -> WorldView {
     )
 }
 
-/// `doc` built from `props` in a UI that knows every document of `all`,
-/// four frames (its transitions settled), at `width` × `height`.
+/// `doc` mounted as `test:preview` with its `props` as its stores, in a UI
+/// that knows every document of `all`, four frames (its transitions
+/// settled), at `width` × `height`. Answers the warnings of those frames,
+/// each once (an element warns in the frame it resolves). A document that
+/// does not mount or build from its props fails the test, named by its
+/// path.
 pub fn preview(
     ui: &mut Ui,
     all: &[EngineDocument],
@@ -134,15 +138,28 @@ pub fn preview(
     messages: &Messages,
     width: f32,
     height: f32,
-) {
+) -> Vec<String> {
     for d in all {
         ui.define_document(d.doc.clone());
     }
     ui.set_world_view(Some(view(width, height)));
-    let mut props = doc.props.clone();
+    ui.mount_with_values(
+        reactive::SourceId::new("test", "preview"),
+        &doc.doc.name,
+        &doc.props,
+    )
+    .unwrap_or_else(|e| panic!("{}: {e}", doc.path));
+    let mut warnings: Vec<String> = Vec::new();
     for _ in 0..4 {
         ui.begin(InputFrame::default(), Viewport::new(width, height));
-        ui.component("Preview", &doc.doc.name, &mut props, messages);
+        ui.build_retained_documents(messages)
+            .unwrap_or_else(|e| panic!("{}: {e}", doc.path));
         ui.end();
+        for warning in &ui.frame().warnings {
+            if !warnings.contains(warning) {
+                warnings.push(warning.clone());
+            }
+        }
     }
+    warnings
 }

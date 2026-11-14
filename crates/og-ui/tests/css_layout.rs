@@ -1,7 +1,6 @@
 //! Standard CSS layout in documents (docs/ui.md §2, HTML blocks and
 //! lists): the box model, flex, grid, positioning, display, multi-column
-//! and writing modes, each built both ways a document is (immediate and
-//! mounted, retained).
+//! and writing modes, each built as a document is (mounted, retained).
 //!
 //! Ways these could fail, each covered below:
 //! - `width: auto` refused or shrink-wrapping a block, a bound alone
@@ -72,7 +71,7 @@
 //!   floats not mirrored whole in a right-to-left block →
 //!   `floats_take_their_sides_from_the_direction`
 
-use crate::support::{Doc, both};
+use crate::support::{Doc, with_doc};
 use og_core::glam::Vec2;
 use og_ui::{ImageAlpha, InputFrame};
 
@@ -83,50 +82,48 @@ fn wh(d: &Doc, id: &str) -> (f32, f32) {
 
 #[test]
 fn skew_migration_preserves_composition() {
-    for mounted in [false, true] {
-        for (x, y) in [(17.0_f32, -9.0_f32), (0.0, 23.0)] {
-            let draw = |css: &str| {
-                let source = format!(
-                    r#"<meta name="component" content="t"><div id="Box"></div><style>#Box {{ width: 91px; height: 37px; margin: 43px 0 0 29px; background: #397ace; translate: 11px -7px; {css} }}</style>"#
-                );
-                let mut d = Doc::new(&source, &[], mounted);
-                d.step(InputFrame::default());
-                assert!(d.ui.frame().warnings.is_empty());
-                let frame = d.ui.frame();
-                assert_eq!(frame.items.len(), 1);
-                let item = &frame.items[0];
-                let og_ui::DrawCmd::Quad { rect, .. } = item.cmd else {
-                    panic!("expected a quad")
-                };
-                [
-                    (rect.x, rect.y),
-                    (rect.right(), rect.y),
-                    (rect.x, rect.bottom()),
-                    (rect.right(), rect.bottom()),
-                ]
-                .map(|(x, y)| item.transform.apply(x, y))
-            };
-            let before =
-                [(-45.5, -18.5), (45.5, -18.5), (-45.5, 18.5), (45.5, 18.5)].map(|(dx, dy)| {
-                    let (sx, sy) = (dx * 1.4, dy * 0.7);
-                    let (kx, ky) = (
-                        sx + x.to_radians().tan() * sy,
-                        sy + y.to_radians().tan() * sx,
-                    );
-                    let (sin, cos) = 31.0_f32.to_radians().sin_cos();
-                    (85.5 + cos * kx - sin * ky, 54.5 + sin * kx + cos * ky)
-                });
-            let after = draw(&format!(
-                "transform: rotate(31deg) skew({x}deg, {y}deg) scale(1.4, 0.7);"
-            ));
-            assert!(
-                before
-                    .iter()
-                    .zip(after)
-                    .all(|((x, y), (nx, ny))| (x - nx).abs() < 0.0001 && (y - ny).abs() < 0.0001),
-                "mounted={mounted}: {before:?} != {after:?}"
+    for (x, y) in [(17.0_f32, -9.0_f32), (0.0, 23.0)] {
+        let draw = |css: &str| {
+            let source = format!(
+                r#"<meta name="component" content="t"><div id="Box"></div><style>#Box {{ width: 91px; height: 37px; margin: 43px 0 0 29px; background: #397ace; translate: 11px -7px; {css} }}</style>"#
             );
-        }
+            let mut d = Doc::new(&source, &[]);
+            d.step(InputFrame::default());
+            assert!(d.ui.frame().warnings.is_empty());
+            let frame = d.ui.frame();
+            assert_eq!(frame.items.len(), 1);
+            let item = &frame.items[0];
+            let og_ui::DrawCmd::Quad { rect, .. } = item.cmd else {
+                panic!("expected a quad")
+            };
+            [
+                (rect.x, rect.y),
+                (rect.right(), rect.y),
+                (rect.x, rect.bottom()),
+                (rect.right(), rect.bottom()),
+            ]
+            .map(|(x, y)| item.transform.apply(x, y))
+        };
+        let before =
+            [(-45.5, -18.5), (45.5, -18.5), (-45.5, 18.5), (45.5, 18.5)].map(|(dx, dy)| {
+                let (sx, sy) = (dx * 1.4, dy * 0.7);
+                let (kx, ky) = (
+                    sx + x.to_radians().tan() * sy,
+                    sy + y.to_radians().tan() * sx,
+                );
+                let (sin, cos) = 31.0_f32.to_radians().sin_cos();
+                (85.5 + cos * kx - sin * ky, 54.5 + sin * kx + cos * ky)
+            });
+        let after = draw(&format!(
+            "transform: rotate(31deg) skew({x}deg, {y}deg) scale(1.4, 0.7);"
+        ));
+        assert!(
+            before
+                .iter()
+                .zip(after)
+                .all(|((x, y), (nx, ny))| (x - nx).abs() < 0.0001 && (y - ny).abs() < 0.0001),
+            "{before:?} != {after:?}"
+        );
     }
     for markup in [
         "<div style=\"-og-skew: 17deg -9deg\"></div>",
@@ -145,69 +142,67 @@ fn skew_migration_preserves_composition() {
 
 #[test]
 fn centering_and_asymmetric_anchors_preserve_transforms() {
-    for mounted in [false, true] {
-        for width in [390.0, 1280.0] {
-            let center_x = (width * 0.8 - 62.0) / 2.0;
-            for (standard, x, y) in [
-                ("left: 50%; translate: -50% 0; top: 17px;", center_x, 17.0),
-                ("top: 50%; translate: 0 -50%; left: 23px;", 23.0, 106.0),
-                (
-                    "left: 50%; top: 50%; translate: -50% -50%;",
-                    center_x,
-                    106.0,
-                ),
-                (
-                    "position-anchor: --target; left: anchor(right); top: anchor(bottom);",
-                    140.0,
-                    102.0,
-                ),
-                (
-                    "position-anchor: --target; left: anchor(left); top: anchor(top); translate: -100% -100%;",
-                    31.0,
-                    43.0,
-                ),
-            ] {
-                let draw = |css: &str| {
-                    let source = format!(
-                        r#"<meta name="component" content="t">
+    for width in [390.0, 1280.0] {
+        let center_x = (width * 0.8 - 62.0) / 2.0;
+        for (standard, x, y) in [
+            ("left: 50%; translate: -50% 0; top: 17px;", center_x, 17.0),
+            ("top: 50%; translate: 0 -50%; left: 23px;", 23.0, 106.0),
+            (
+                "left: 50%; top: 50%; translate: -50% -50%;",
+                center_x,
+                106.0,
+            ),
+            (
+                "position-anchor: --target; left: anchor(right); top: anchor(bottom);",
+                140.0,
+                102.0,
+            ),
+            (
+                "position-anchor: --target; left: anchor(left); top: anchor(top); translate: -100% -100%;",
+                31.0,
+                43.0,
+            ),
+        ] {
+            let draw = |css: &str| {
+                let source = format!(
+                    r#"<meta name="component" content="t">
 <div id="Stage"><div id="Anchor"></div><div id="Placed"></div></div>
 <style>
 #Stage {{ width: 80%; height: 240px; }}
 #Anchor {{ anchor-name: --target; margin: 71px 0 0 93px; width: 47px; height: 31px; }}
 #Placed {{ position: absolute; width: 62px; height: 28px; background: #397ace; rotate: 13deg; scale: 1.2 0.8; {css} }}
 </style>"#
-                    );
-                    let mut d = Doc::new(&source, &[], mounted);
-                    d.viewport = og_ui::Viewport::new(width, 600.0);
-                    d.step(InputFrame::default());
-                    assert!(
-                        d.ui.frame().warnings.is_empty(),
-                        "{:?}",
-                        d.ui.frame().warnings
-                    );
-                    let frame = d.ui.frame();
-                    assert_eq!(frame.items.len(), 1);
-                    let item = &frame.items[0];
-                    let og_ui::DrawCmd::Quad { rect, .. } = item.cmd else {
-                        panic!("expected a quad")
-                    };
-                    [
-                        (rect.x, rect.y),
-                        (rect.right(), rect.y),
-                        (rect.x, rect.bottom()),
-                        (rect.right(), rect.bottom()),
-                    ]
-                    .map(|(x, y)| item.transform.apply(x, y))
-                };
-                let (expected, actual) =
-                    (draw(&format!("left: {x}px; top: {y}px;")), draw(standard));
-                assert!(
-                    expected.iter().zip(actual).all(
-                        |((x, y), (nx, ny))| (x - nx).abs() < 0.0001 && (y - ny).abs() < 0.0001
-                    ),
-                    "{standard}; mounted={mounted}, width={width}: {expected:?} != {actual:?}"
                 );
-            }
+                let mut d = Doc::new(&source, &[]);
+                d.viewport = og_ui::Viewport::new(width, 600.0);
+                d.step(InputFrame::default());
+                assert!(
+                    d.ui.frame().warnings.is_empty(),
+                    "{:?}",
+                    d.ui.frame().warnings
+                );
+                let frame = d.ui.frame();
+                assert_eq!(frame.items.len(), 1);
+                let item = &frame.items[0];
+                let og_ui::DrawCmd::Quad { rect, .. } = item.cmd else {
+                    panic!("expected a quad")
+                };
+                [
+                    (rect.x, rect.y),
+                    (rect.right(), rect.y),
+                    (rect.x, rect.bottom()),
+                    (rect.right(), rect.bottom()),
+                ]
+                .map(|(x, y)| item.transform.apply(x, y))
+            };
+            let (expected, actual) = (draw(&format!("left: {x}px; top: {y}px;")), draw(standard));
+            assert!(
+                expected
+                    .iter()
+                    .zip(actual)
+                    .all(|((x, y), (nx, ny))| (x - nx).abs() < 0.0001 && (y - ny).abs() < 0.0001),
+                "{standard}; width={width}: {expected:?} != {actual:?}"
+            );
         }
     }
     for declaration in [
@@ -242,7 +237,7 @@ fn flex_resolves_an_auto_cross_size_from_the_final_aspect_ratio() {
 #Second { aspect-ratio: 2; }
 #Child { width: 100%; height: 100%; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         assert_eq!(wh(d, "First"), (80.0, 80.0));
         assert_eq!(wh(d, "Second"), (100.0, 80.0));
         assert_eq!(wh(d, "Child"), (80.0, 80.0));
@@ -262,7 +257,7 @@ fn absolute_insets_place_a_fade_over_overflowing_flex_children() {
 .box { flex: none; height: 400px; background: #3060c0; }
 #Fade { position: absolute; left: 0; right: 0; bottom: 0; height: 200px; background: linear-gradient(180deg, #ff000000, #ff0000); }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let fade = d.get("Fade");
         assert_eq!(
             (fade.x, fade.y, fade.width, fade.height),
@@ -303,7 +298,7 @@ fn the_box_model_sizes_as_css_does() {
 #MinC { width: min-content; }
 #MaxC { width: max-content; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         assert_eq!(wh(d, "Auto"), (300.0, 4.0), "auto fills a block's width");
         assert_eq!(
             d.get("AutoMax").width,
@@ -375,7 +370,7 @@ fn flex_lays_out_as_css_flexbox_does() {
 #Col { flex-flow: column wrap; height: 50px; column-gap: 8px; }
 #C1, #C2, #C3 { width: 30px; height: 20px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let at = |id: &str, parent: &str| {
             let (e, p) = (d.get(id), d.get(parent));
             (e.x - p.x, e.y - p.y)
@@ -455,7 +450,7 @@ fn grid_lays_out_as_css_grid_does() {
 #Items { width: 100px; grid-template-columns: 100px; justify-items: center; }
 #I1 { width: 20px; height: 5px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let at = |id: &str, of: &str| {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
@@ -528,7 +523,7 @@ fn display_lays_out_as_css_display_does() {
 #D2 { width: 40px; height: 10px; }
 #Cap { display: table-caption; caption-side: bottom; height: 8px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let at = |id: &str, of: &str| {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
@@ -573,7 +568,7 @@ fn html_tables_lay_out_without_author_css() {
 #A { width: 60px; height: 10px; }
 #B, #C { width: 20px; height: 10px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let (h1, h2, b, c, a, cap) = (
             d.get("H1"),
             d.get("H2"),
@@ -633,7 +628,7 @@ fn positioning_places_as_css_positioning_does() {
 #Head { position: sticky; top: 0; height: 10px; }
 #Body { height: 100px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let at = |id: &str, of: &str| {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
@@ -741,7 +736,7 @@ fn a_fixed_box_keeps_its_static_position_on_an_axis_with_no_inset() {
 #End { position: fixed; top: 5px; width: 20px; height: 10px; }
 #Pinned { position: fixed; left: 7px; top: 9px; width: 10px; height: 10px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let at = |id: &str| {
             let e = d.get(id);
             (e.x, e.y)
@@ -779,7 +774,7 @@ fn the_root_element_fills_its_viewport() {
     // content box and its aspect ratio follows the clamped width.
     let text = r#"<meta name="component" content="t">
 <div><div id="Pad" style="padding:16px"><div id="Card" style="width:1000px;max-width:100%"><div id="Media" style="aspect-ratio:16/9"></div></div></div></div>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         assert_eq!(d.get("Pad").width, 800.0);
         assert_eq!(wh(d, "Media"), (768.0, 432.0));
     });
@@ -810,7 +805,7 @@ fn multi_column_lays_out_as_css_multicol_does() {
 #Tx { columns: 2; column-gap: 0; width: 160px; }
 p { margin: 0; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let at = |id: &str, of: &str| {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
@@ -877,101 +872,98 @@ fn vertical_align_places_inline_boxes_as_css_does() {
 #Big { vertical-align: 30px; }
 #Part::part(lift) { vertical-align: 6px; }
 </style>"#;
-    for mounted in [false, true] {
-        let font = crate::support::test_font();
-        let d = Doc::with_font(text, &[], mounted, font);
-        let base = |t: &str| {
-            d.ui.frame()
-                .items
-                .iter()
-                .find_map(|i| match &i.cmd {
-                    og_ui::DrawCmd::Text {
-                        text,
-                        baseline,
-                        size,
-                        ..
-                    } if text == t => Some((*baseline, *size)),
-                    _ => None,
-                })
-                .unwrap_or_else(|| panic!("no text {t}"))
-        };
-        // Against the parent's size (14px), not the smaller sup's own.
-        assert_eq!(base("x").1, 14.0);
-        let rise = |t: &str, parent: &str| {
-            let p = d.get(parent);
-            let x =
-                d.ui.frame()
-                    .items
-                    .iter()
-                    .find_map(|i| match &i.cmd {
-                        og_ui::DrawCmd::Text { text, baseline, .. }
-                            if text == "x" && *baseline > p.y && *baseline < p.y + p.height =>
-                        {
-                            Some(*baseline)
-                        }
-                        _ => None,
-                    })
-                    .expect("its x");
-            x - base(t).0
-        };
-        assert!(
-            (rise("2", "Sup") - 14.0 / 3.0).abs() <= 0.5,
-            "super: a third up"
-        );
-        assert!(
-            (rise("i", "Sub") + 14.0 / 5.0).abs() <= 0.5,
-            "sub: a fifth down"
-        );
-        assert_eq!(rise("y", "Part"), 6.0, "::part's length");
-        assert!(base("2").1 < 14.0, "a sup is smaller");
-        let line = d.get("Plain").height;
-        assert!(d.get("Sup").height > line, "the line grows to hold the sup");
-        assert_eq!(d.get("Part").height, line + 6.0);
-        // Inline-blocks against the line's baseline: their bottom edge is
-        // their baseline, having no text.
-        let b = base("ab").0;
-        let bottom = |id: &str| d.get(id).y + d.get(id).height;
-        assert!((bottom("Up") - (b - 4.0)).abs() <= 0.5, "4px up");
-        assert!(
-            (bottom("Pc") - (b + line / 2.0)).abs() <= 0.5,
-            "-50% of the line height"
-        );
-        let mid = d.get("Mid").y + 5.0;
-        assert!(
-            (b - mid) > 0.15 * 14.0 && (b - mid) < 0.35 * 14.0,
-            "middle: half an x-height over the baseline ({})",
-            b - mid
-        );
-        assert_eq!(d.get("Tp").y, d.get("Line").y, "top: the line's top");
-        // A box raised past the line's top grows its line box (CSS 2.1
-        // §10.8): its top is the line's, the text's baseline 30px under
-        // its bottom edge.
-        let (grow, big) = (d.get("Grow"), d.get("Big"));
-        assert_eq!(big.y, grow.y, "the raised box tops its line");
-        assert!(
-            grow.height >= 40.0 && grow.height > line + 20.0,
-            "{}",
-            grow.height
-        );
-        let ab =
+    let font = crate::support::test_font();
+    let d = Doc::with_font(text, &[], font);
+    let base = |t: &str| {
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|i| match &i.cmd {
+                og_ui::DrawCmd::Text {
+                    text,
+                    baseline,
+                    size,
+                    ..
+                } if text == t => Some((*baseline, *size)),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no text {t}"))
+    };
+    // Against the parent's size (14px), not the smaller sup's own.
+    assert_eq!(base("x").1, 14.0);
+    let rise = |t: &str, parent: &str| {
+        let p = d.get(parent);
+        let x =
             d.ui.frame()
                 .items
                 .iter()
                 .find_map(|i| match &i.cmd {
                     og_ui::DrawCmd::Text { text, baseline, .. }
-                        if text == "ab" && *baseline > grow.y =>
+                        if text == "x" && *baseline > p.y && *baseline < p.y + p.height =>
                     {
                         Some(*baseline)
                     }
                     _ => None,
                 })
-                .expect("its ab");
-        assert!(
-            (ab - (big.y + 10.0 + 30.0)).abs() <= 0.5,
-            "{ab} vs {}",
-            big.y
-        );
-    }
+                .expect("its x");
+        x - base(t).0
+    };
+    assert!(
+        (rise("2", "Sup") - 14.0 / 3.0).abs() <= 0.5,
+        "super: a third up"
+    );
+    assert!(
+        (rise("i", "Sub") + 14.0 / 5.0).abs() <= 0.5,
+        "sub: a fifth down"
+    );
+    assert_eq!(rise("y", "Part"), 6.0, "::part's length");
+    assert!(base("2").1 < 14.0, "a sup is smaller");
+    let line = d.get("Plain").height;
+    assert!(d.get("Sup").height > line, "the line grows to hold the sup");
+    assert_eq!(d.get("Part").height, line + 6.0);
+    // Inline-blocks against the line's baseline: their bottom edge is
+    // their baseline, having no text.
+    let b = base("ab").0;
+    let bottom = |id: &str| d.get(id).y + d.get(id).height;
+    assert!((bottom("Up") - (b - 4.0)).abs() <= 0.5, "4px up");
+    assert!(
+        (bottom("Pc") - (b + line / 2.0)).abs() <= 0.5,
+        "-50% of the line height"
+    );
+    let mid = d.get("Mid").y + 5.0;
+    assert!(
+        (b - mid) > 0.15 * 14.0 && (b - mid) < 0.35 * 14.0,
+        "middle: half an x-height over the baseline ({})",
+        b - mid
+    );
+    assert_eq!(d.get("Tp").y, d.get("Line").y, "top: the line's top");
+    // A box raised past the line's top grows its line box (CSS 2.1
+    // §10.8): its top is the line's, the text's baseline 30px under
+    // its bottom edge.
+    let (grow, big) = (d.get("Grow"), d.get("Big"));
+    assert_eq!(big.y, grow.y, "the raised box tops its line");
+    assert!(
+        grow.height >= 40.0 && grow.height > line + 20.0,
+        "{}",
+        grow.height
+    );
+    let ab = d
+        .ui
+        .frame()
+        .items
+        .iter()
+        .find_map(|i| match &i.cmd {
+            og_ui::DrawCmd::Text { text, baseline, .. } if text == "ab" && *baseline > grow.y => {
+                Some(*baseline)
+            }
+            _ => None,
+        })
+        .expect("its ab");
+    assert!(
+        (ab - (big.y + 10.0 + 30.0)).abs() <= 0.5,
+        "{ab} vs {}",
+        big.y
+    );
 }
 
 #[test]
@@ -1000,7 +992,7 @@ fn direction_lays_out_as_css_writing_modes_does() {
 #B1 { width: 40px; height: 10px; }
 </style>"#;
     let at = |d: &Doc, id: &str, of: &str| d.get(id).x - d.get(of).x;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         for rtl_surface in [false, true] {
             if rtl_surface {
                 d.ui.set_direction(og_i18n::Direction::Rtl);
@@ -1073,7 +1065,7 @@ p {{ margin: 0; }}
 #Holds {{ display: flow-root; }}
 </style>"#
     );
-    both(&text, &[], |d| {
+    with_doc(&text, &[], |d| {
         let at = |id: &str, of: &str| {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
@@ -1129,7 +1121,7 @@ span { display: inline-block; width: 300px; height: 20px; }
 #Bfc { display: flow-root; height: 10px; }
 #Clear { clear: both; height: 10px; }
 </style>"#;
-    both(source, &[("mode", serde_json::json!("on"))], |d| {
+    with_doc(source, &[("mode", serde_json::json!("on"))], |d| {
         let root = d.get("Root");
         for (id, x, y) in [("A", 20.0, 0.0), ("B", 40.0, 20.0), ("C", 60.0, 40.0)] {
             let p = d.get(id);
@@ -1183,7 +1175,7 @@ fn shape_outside_uses_the_whole_line_band_and_reference_box() {
 #A {{ display: inline-block; width: {width}px; height: 20px; }}
 </style>"#
         );
-        both(&source, &[], |d| {
+        with_doc(&source, &[], |d| {
             let (a, root) = (d.get("A"), d.get("Root"));
             assert!(
                 (a.x - root.x - x).abs() <= 1.0 && (a.y - root.y - y).abs() <= 1.0,
@@ -1208,7 +1200,7 @@ fn shape_margin_expands_by_distance_and_clips_to_the_float_box() {
 #Line { font-size: 0; }
 #A { display: inline-block; width: 280px; height: 20px; }
 </style>"#;
-    both(source, &[("mode", serde_json::json!("initial"))], |d| {
+    with_doc(source, &[("mode", serde_json::json!("initial"))], |d| {
         let x = |d: &Doc| d.get("A").x - d.get("Root").x;
         // y=x dilated by 10px intersects the line's bottom at
         // x=20+sqrt(2)*10, not x=20+10 (axis-aligned expansion).
@@ -1239,7 +1231,7 @@ fn shape_images_wrap_lines_around_their_alpha() {
 #Line { font-size: 0; }
 #A, #B { display: inline-block; width: 280px; height: 20px; }
 </style>"#;
-    both(source, &[("mode", serde_json::json!(""))], |d| {
+    with_doc(source, &[("mode", serde_json::json!(""))], |d| {
         let x = |d: &Doc, id: &str| d.get(id).x - d.get("Root").x;
         // Without the image's alpha the float's box is its shape.
         assert_eq!((x(d, "A"), x(d, "B")), (100.0, 100.0));
@@ -1311,7 +1303,7 @@ p {{ margin: 0; }}
 #Ref {{ width: 200px; }}
 </style>"#
     );
-    both(&text, &[], |d| {
+    with_doc(&text, &[], |d| {
         let at = |id: &str, of: &str| {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
@@ -1394,7 +1386,7 @@ p {{ margin: 0; }}
         boxes(21, 26),
         boxes(27, 28),
     );
-    both(&text, &[], |d| {
+    with_doc(&text, &[], |d| {
         let at = |id: &str, of: &str| {
             let (e, p) = (d.get(id), d.get(of));
             (e.x - p.x, e.y - p.y)
@@ -1448,12 +1440,12 @@ fn vi_and_vb_follow_the_roots_writing_mode() {
         )
     };
     // The viewport is 800 × 900.
-    both(&doc("horizontal-tb"), &[], |d| {
+    with_doc(&doc("horizontal-tb"), &[], |d| {
         assert_eq!(wh(d, "In"), (80.0, 90.0));
         assert_eq!(wh(d, "A"), (80.0, 90.0));
         assert_eq!(wh(d, "B"), (45.0, 40.0));
     });
-    both(&doc("vertical-rl"), &[], |d| {
+    with_doc(&doc("vertical-rl"), &[], |d| {
         assert_eq!(wh(d, "In"), (90.0, 80.0));
         assert_eq!(wh(d, "A"), (90.0, 80.0));
         assert_eq!(wh(d, "B"), (40.0, 45.0));
@@ -1474,7 +1466,7 @@ p { margin: 0; }
 </style>"#;
     let mut font = crate::features::font("Inter-Display.ttf");
     font.handle = crate::support::test_font().handle;
-    let mut d = Doc::with_font(text, &[], false, font);
+    let mut d = Doc::with_font(text, &[], font);
     d.step(InputFrame::default());
     let texts: Vec<String> =
         d.ui.frame()
@@ -1505,7 +1497,7 @@ p { margin: 0; }
 #S, #S2 { float: inline-start; width: 30px; height: 20px; }
 #F2 { display: flow-root; height: 10px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         for rtl in [false, true] {
             if rtl {
                 d.ui.set_direction(og_i18n::Direction::Rtl);
@@ -1576,7 +1568,7 @@ fn writing_modes_lay_out_as_css_writing_modes_does() {
         let (e, o) = (d.get(id), d.get(of));
         (e.x - o.x, e.y - o.y)
     };
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         // vertical-rl: blocks stack from the right and fill the height (the
         // inline axis); the box is as wide as its blocks.
         assert_eq!(wh(d, "V"), (50.0, 200.0));
@@ -1631,7 +1623,7 @@ p { margin: 0; }
 </style>"#;
     let mut font = crate::features::font("Inter-Display.ttf");
     font.handle = crate::support::test_font().handle;
-    let mut d = Doc::with_font(text, &[], false, font);
+    let mut d = Doc::with_font(text, &[], font);
     d.step(InputFrame::default());
     let p = d.get("P");
     assert_eq!(p.kind, "richtext");
@@ -1675,7 +1667,7 @@ p { margin: 0; }
 </style>"#;
     let mut font = crate::features::font("Inter-Display.ttf");
     font.handle = crate::support::test_font().handle;
-    let mut d = Doc::with_font(text, &[], false, font);
+    let mut d = Doc::with_font(text, &[], font);
     d.step(InputFrame::default());
     let p = d.get("P");
     assert_eq!(p.kind, "richtext");
@@ -1716,7 +1708,7 @@ p {{ margin: 0; }}
     );
     let mut font = crate::features::font("NotoSansHebrew-subset.ttf");
     font.handle = crate::support::test_font().handle;
-    let mut d = Doc::with_font(&text, &[], false, font);
+    let mut d = Doc::with_font(&text, &[], font);
     d.step(InputFrame::default());
     let p = d.get("P");
     let drawn: Vec<(String, og_ui::Rect)> =
@@ -1766,7 +1758,7 @@ fn a_named_part_keeps_the_flex_lines_and_gaps_its_document_wrote() {
 .a { width: 60px; height: 20px; }
 .b { width: 40px; height: 10px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let at = |id: &str, parent: &str| {
             let (e, p) = (d.get(id), d.get(parent));
             (e.x - p.x, e.y - p.y)

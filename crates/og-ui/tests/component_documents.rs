@@ -20,14 +20,36 @@ fn component_documents_build_from_their_fixtures() {
         for (width, height) in [(1280.0, 720.0), (390.0, 844.0)] {
             let mut ui = ui_with_font(test_font_metrics());
             ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
-            preview(&mut ui, &docs, doc, &messages, width, height);
-            let frame = ui.frame();
-            if !frame.warnings.is_empty() {
-                failures.push(format!("{} at {width}: {:?}", doc.path, frame.warnings));
+            let warnings = preview(&mut ui, &docs, doc, &messages, width, height);
+            if !warnings.is_empty() {
+                failures.push(format!("{} at {width}: {warnings:?}", doc.path));
             }
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// Every built-in document, the screens and the groups' among them,
+/// mounts and builds from its `fixture:default` alone: the values a
+/// fixture leaves out are read as unset, not refused.
+///
+/// Ways it could fail: a document reading a store or prop its fixture
+/// leaves out (the mount has no such store), or iterating a fixture's
+/// list by a key other than `id` (the list is held as one value).
+#[test]
+fn every_built_in_document_mounts_from_its_fixture() {
+    let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens"]);
+    assert!(docs.len() > 100, "{} documents", docs.len());
+    for doc in &docs {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+        assert!(
+            !ui.probe_elements().is_empty(),
+            "{}: draws no element",
+            doc.path
+        );
+    }
 }
 
 /// The ground marks drape over the scene (c8e4b7a8c): each document's

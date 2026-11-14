@@ -19,8 +19,8 @@
 use crate::support;
 
 use og_core::glam::Vec2;
+use og_ui::reactive::SourceId;
 use og_ui::*;
-use serde_json::json;
 use support::*;
 
 const DOC: &str = r#"<meta name="component" content="ix">
@@ -39,6 +39,15 @@ const DOC: &str = r#"<meta name="component" content="ix">
 #Shown { width: 100px; height: 40px; visibility: visible; cursor: url(grip.svg), auto; }
 </style>"#;
 
+/// A UI with `text` (the component `ix`) mounted.
+fn mounted(source: &str, text: &str) -> Ui {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse(source, text).expect("parses"));
+    mount_stores(&mut ui, SourceId::new("test", "t"), "ix", &[]);
+    ui
+}
+
+/// One frame of the mounted document with the pointer at `p`.
 fn frame(ui: &mut Ui, p: Vec2) -> Cursor {
     ui.begin(
         InputFrame {
@@ -48,7 +57,7 @@ fn frame(ui: &mut Ui, p: Vec2) -> Cursor {
         },
         Viewport::new(800.0, 600.0),
     );
-    ui.component("T", "ix", &mut json!({}), &bind::NoEnv);
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
     ui.end();
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     ui.frame().cursor
@@ -56,8 +65,7 @@ fn frame(ui: &mut Ui, p: Vec2) -> Cursor {
 
 #[test]
 fn the_pointer_passes_through_none_and_hidden() {
-    let mut ui = ui_with_font(test_font_metrics());
-    ui.define_document(UiDocument::parse("ui/ix.svelte", DOC).expect("parses"));
+    let mut ui = mounted("ui/ix.svelte", DOC);
     frame(&mut ui, Vec2::ZERO);
     let el = |ui: &Ui, id: &str| {
         let e = ui
@@ -134,62 +142,43 @@ fn plain_boxes_choose_cursors_in_clipped_transformed_paint_order() {
 #Hidden { left: 20px; }
 #Inherit { position: absolute; left: 200px; top: 150px; width: 20px; height: 20px; }
 </style>"#;
-    for retained in [false, true] {
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.define_document(UiDocument::parse("ui/cursors.svelte", doc).unwrap());
-        if retained {
-            ui.mount_document(
-                reactive::SourceId::new("test", "cursor"),
-                "cursors",
-                Default::default(),
-                Default::default(),
-                &bind::NoEnv,
-            )
-            .unwrap();
-        }
-        for (x, y, expected) in [
-            (20.0, 20.0, Cursor::Wait),
-            (130.0, 20.0, Cursor::Grab),
-            (175.0, 20.0, Cursor::Help),
-            (90.0, 130.0, Cursor::Copy),
-            (125.0, 105.0, Cursor::Help),
-            (195.0, 55.0, Cursor::ZoomIn),
-            (225.0, 55.0, Cursor::Help),
-            (205.0, 155.0, Cursor::Help),
-            (230.0, 190.0, Cursor::Help),
-            (260.0, 190.0, Cursor::Default),
-        ] {
-            for _ in 0..2 {
-                ui.begin(
-                    InputFrame {
-                        pointer: Vec2::new(x, y),
-                        pointer_inside: true,
-                        ..Default::default()
-                    },
-                    Viewport::new(300.0, 240.0),
-                );
-                if retained {
-                    ui.build_retained_documents(&bind::NoEnv).unwrap();
-                } else {
-                    ui.component("T", "cursors", &mut json!({}), &bind::NoEnv);
-                }
-                ui.end();
-            }
-            assert_eq!(
-                ui.frame().cursor,
-                expected,
-                "retained={retained}, ({x}, {y})"
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/cursors.svelte", doc).unwrap());
+    mount_stores(&mut ui, SourceId::new("test", "cursor"), "cursors", &[]);
+    for (x, y, expected) in [
+        (20.0, 20.0, Cursor::Wait),
+        (130.0, 20.0, Cursor::Grab),
+        (175.0, 20.0, Cursor::Help),
+        (90.0, 130.0, Cursor::Copy),
+        (125.0, 105.0, Cursor::Help),
+        (195.0, 55.0, Cursor::ZoomIn),
+        (225.0, 55.0, Cursor::Help),
+        (205.0, 155.0, Cursor::Help),
+        (230.0, 190.0, Cursor::Help),
+        (260.0, 190.0, Cursor::Default),
+    ] {
+        for _ in 0..2 {
+            ui.begin(
+                InputFrame {
+                    pointer: Vec2::new(x, y),
+                    pointer_inside: true,
+                    ..Default::default()
+                },
+                Viewport::new(300.0, 240.0),
             );
-            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-            if expected == Cursor::Wait {
-                assert_eq!(
-                    ui.frame().cursor_images,
-                    [CursorImage {
-                        url: "/ui/hand.svg".into(),
-                        hotspot: Some([2.0, 3.0])
-                    }]
-                );
-            }
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+            ui.end();
+        }
+        assert_eq!(ui.frame().cursor, expected, "({x}, {y})");
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+        if expected == Cursor::Wait {
+            assert_eq!(
+                ui.frame().cursor_images,
+                [CursorImage {
+                    url: "/ui/hand.svg".into(),
+                    hotspot: Some([2.0, 3.0])
+                }]
+            );
         }
     }
 }
@@ -226,63 +215,44 @@ fn cursors_apply_only_inside_clip_paths() {
   clip-path: inset(0 40px 0 0); }
 #Child { width: 80px; height: 80px; cursor: progress; }
 </style>"##;
-    for retained in [false, true] {
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.define_document(UiDocument::parse("ui/cuts.svelte", doc).unwrap());
-        if retained {
-            ui.mount_document(
-                reactive::SourceId::new("test", "cuts"),
-                "cuts",
-                Default::default(),
-                Default::default(),
-                &bind::NoEnv,
-            )
-            .unwrap();
-        }
-        for (x, y, expected) in [
-            // circle(): inside it the overlay's, in the box's corner the
-            // button under it.
-            (40.0, 40.0, Cursor::Wait),
-            (4.0, 4.0, Cursor::Crosshair),
-            // polygon(): the top-left triangle only.
-            (110.0, 10.0, Cursor::Grab),
-            (170.0, 70.0, Cursor::Help),
-            // path() with evenodd: the ring, not its hole.
-            (205.0, 5.0, Cursor::Copy),
-            (240.0, 40.0, Cursor::Help),
-            // shape(): the left half.
-            (20.0, 140.0, Cursor::Move),
-            (60.0, 140.0, Cursor::Help),
-            // url(#id) in objectBoundingBox units: the top-left triangle.
-            (110.0, 110.0, Cursor::ZoomIn),
-            (170.0, 170.0, Cursor::Help),
-            // An ancestor's clip cuts its child's cursor too.
-            (220.0, 140.0, Cursor::Progress),
-            (260.0, 140.0, Cursor::Help),
-        ] {
-            for _ in 0..2 {
-                ui.begin(
-                    InputFrame {
-                        pointer: Vec2::new(x, y),
-                        pointer_inside: true,
-                        ..Default::default()
-                    },
-                    Viewport::new(320.0, 220.0),
-                );
-                if retained {
-                    ui.build_retained_documents(&bind::NoEnv).unwrap();
-                } else {
-                    ui.component("T", "cuts", &mut json!({}), &bind::NoEnv);
-                }
-                ui.end();
-            }
-            assert_eq!(
-                ui.frame().cursor,
-                expected,
-                "retained={retained}, ({x}, {y})"
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/cuts.svelte", doc).unwrap());
+    mount_stores(&mut ui, SourceId::new("test", "cuts"), "cuts", &[]);
+    for (x, y, expected) in [
+        // circle(): inside it the overlay's, in the box's corner the
+        // button under it.
+        (40.0, 40.0, Cursor::Wait),
+        (4.0, 4.0, Cursor::Crosshair),
+        // polygon(): the top-left triangle only.
+        (110.0, 10.0, Cursor::Grab),
+        (170.0, 70.0, Cursor::Help),
+        // path() with evenodd: the ring, not its hole.
+        (205.0, 5.0, Cursor::Copy),
+        (240.0, 40.0, Cursor::Help),
+        // shape(): the left half.
+        (20.0, 140.0, Cursor::Move),
+        (60.0, 140.0, Cursor::Help),
+        // url(#id) in objectBoundingBox units: the top-left triangle.
+        (110.0, 110.0, Cursor::ZoomIn),
+        (170.0, 170.0, Cursor::Help),
+        // An ancestor's clip cuts its child's cursor too.
+        (220.0, 140.0, Cursor::Progress),
+        (260.0, 140.0, Cursor::Help),
+    ] {
+        for _ in 0..2 {
+            ui.begin(
+                InputFrame {
+                    pointer: Vec2::new(x, y),
+                    pointer_inside: true,
+                    ..Default::default()
+                },
+                Viewport::new(320.0, 220.0),
             );
-            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+            ui.end();
         }
+        assert_eq!(ui.frame().cursor, expected, "({x}, {y})");
+        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
     }
 }
 
@@ -305,9 +275,17 @@ fn images_take_object_fit_position_and_inherited_image_rendering() {
 </style>"#;
     let mut ui = ui_with_font(test_font_metrics());
     ui.define_document(UiDocument::parse("ui/im.svelte", doc).expect("parses"));
+    ui.mount_document(
+        SourceId::new("test", "t"),
+        "im",
+        Default::default(),
+        Default::default(),
+        &Env(t),
+    )
+    .unwrap();
     for _ in 0..2 {
         ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
-        ui.component("T", "im", &mut json!({}), &Env(t));
+        ui.build_retained_documents(&Env(t)).unwrap();
         ui.end();
     }
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
@@ -354,8 +332,7 @@ fn translate_percentages_move_by_the_elements_own_box() {
 .centred { translate: -50% -50%; }
 #Back { position: absolute; left: 100px; top: 300px; width: 80px; height: 40px; translate: 10px 0; }
 </style>"#;
-    let mut ui = ui_with_font(test_font_metrics());
-    ui.define_document(UiDocument::parse("ui/ix.svelte", PIN).expect("parses"));
+    let mut ui = mounted("ui/ix.svelte", PIN);
     frame(&mut ui, Vec2::ZERO);
     let pin = ui
         .probe_elements()
@@ -393,39 +370,20 @@ fn translate_none_clears_percentage_and_length_offsets_in_kits() {
 #Length { translate: 12px -24px; }
 #Percent, #Length { translate: none; }
 </style>"#;
-    for retained in [false, true] {
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.define_document(UiDocument::parse("@ui/test/ix.svelte", text).unwrap());
-        if retained {
-            ui.mount_document(
-                reactive::SourceId::new("test", "none"),
-                "ix",
-                Default::default(),
-                Default::default(),
-                &bind::NoEnv,
-            )
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("@ui/test/ix.svelte", text).unwrap());
+    mount_stores(&mut ui, SourceId::new("test", "none"), "ix", &[]);
+    ui.begin(InputFrame::default(), Viewport::new(400.0, 400.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    for id in ["Percent", "Length"] {
+        let node = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.id == id)
             .unwrap();
-        }
-        ui.begin(InputFrame::default(), Viewport::new(400.0, 400.0));
-        if retained {
-            ui.build_retained_documents(&bind::NoEnv).unwrap();
-        } else {
-            ui.component("T", "ix", &mut json!({}), &bind::NoEnv);
-        }
-        ui.end();
-        assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-        for id in ["Percent", "Length"] {
-            let node = ui
-                .probe_elements()
-                .into_iter()
-                .find(|e| e.id == id)
-                .unwrap();
-            assert_eq!(
-                (node.x, node.y),
-                (100.0, 150.0),
-                "{id}, retained={retained}"
-            );
-        }
+        assert_eq!((node.x, node.y), (100.0, 150.0), "{id}");
     }
 }
 
@@ -445,7 +403,7 @@ fn focus_within_follows_real_focus_between_retained_ancestors() {
 #Nested:focus-within { width: 160px; }
 button { width: 80px; height: 40px; }
 </style>"#;
-    let mut d = crate::support::Doc::new(text, &[], true);
+    let mut d = crate::support::Doc::new(text, &[]);
     let widths = |d: &crate::support::Doc| {
         [
             d.get("Left").width,

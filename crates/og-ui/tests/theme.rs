@@ -436,9 +436,17 @@ fn css_tokens_and_theme_writes_share_the_same_values() {
         )
         .unwrap(),
     );
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "tokens",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
     for (width, height) in [(1280.0, 720.0), (390.0, 844.0)] {
         ui.begin(InputFrame::default(), Viewport::new(width, height));
-        ui.component("Test", "tokens", &mut serde_json::json!({}), &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
         let box_ = ui.element("Box").unwrap();
         assert_eq!((box_.width, box_.height), (21.0, 23.0));

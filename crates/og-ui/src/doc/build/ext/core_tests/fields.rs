@@ -2,6 +2,7 @@ use crate::Ui;
 use crate::UiDocument;
 use crate::doc::build::Build;
 use crate::doc::build::Built;
+use crate::reactive::SourceId;
 use serde_json::json;
 use std::sync::Arc;
 
@@ -16,6 +17,8 @@ fn document(styled: bool) -> UiDocument {
         &format!(
             r#"
 <meta name="component" content="fields">
+<meta name="prop:checked" content="bool">
+<meta name="prop:amount" content="number">
 <column id="Root">
   <text id="Title">Mixed Case</text>
   <button id="Action" variant="primary">Apply</button>
@@ -34,6 +37,10 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
     let env = crate::bind::NoEnv;
     let mut patched = Ui::default();
     let mut direct = Ui::default();
+    // Both mount the document once, holding its props' values; each round
+    // below replaces the document they show.
+    let mount = SourceId::new("test", "fields");
+    let vm = json!({"checked": true, "amount": 0.37});
     for ui in [&mut patched, &mut direct] {
         ui.set_fonts(crate::Fonts {
             body: crate::UiFont {
@@ -42,10 +49,11 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
             },
             ..Default::default()
         });
+        ui.define_document(document(false));
+        ui.mount_with_values(mount.clone(), "fields", &vm).unwrap();
     }
     for styled in [true, false, true] {
         let target = Arc::new(document(styled));
-        let mut vm = json!({"checked": true, "amount": 0.37});
         for (ui, doc) in [
             (&mut patched, document(!styled)),
             (&mut direct, (*target).clone()),
@@ -55,11 +63,11 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
                 crate::InputFrame::default(),
                 crate::Viewport::new(640.0, 480.0),
             );
-            ui.component("Root", "fields", &mut vm, &env);
+            ui.build_retained_documents(&env).unwrap();
         }
         let build = Build {
             doc: target.clone(),
-            mount: "Root".into(),
+            mount: mount.id.clone(),
             vm: &vm,
             env: &env,
             locals: Vec::new(),
@@ -71,11 +79,10 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
             recording: Default::default(),
         };
         // Resolve before settlement; the callback has only evaluated values
-        // and the existing controls, not a viewmodel or a second build.
+        // and the existing controls, not a viewmodel or a second build. The
+        // elements are the mount's, as it recorded them when it emitted them.
         let replacements: Vec<_> = patched
-            .docs
-            .state()
-            .built
+            .doc_built()
             .iter()
             .map(|node| {
                 let key = crate::id::key_of_path(&node.path);

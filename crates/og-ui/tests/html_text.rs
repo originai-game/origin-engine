@@ -1,8 +1,7 @@
 //! Ordinary HTML in a document (docs/ui.md §2): text, generic blocks and
 //! landmarks, lists with CSS markers, `<a href>` links, and checkboxes
-//! joined to their labels by `for`. Each is built both ways a document is:
-//! immediately (`Ui::component`, a viewmodel) and mounted (`mount_document`,
-//! named stores, retained).
+//! joined to their labels by `for`. Each is built as a document is: mounted
+//! (`mount_document`, named stores, retained).
 //!
 //! Ways these could fail, each covered below:
 //! - a text tag kept out of the text kind, a heading's level lost on its way
@@ -72,7 +71,7 @@ p { padding: 0 0 0 30px; }
 span#Gone { display: none; }
 text { padding: 0 0 0 50px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         for id in ["Title", "Sub", "Para", "Note", "Core"] {
             assert_eq!(d.get(id).kind, "label", "{id}");
             assert_eq!(d.get(id).text, id_text(id), "{id}");
@@ -115,7 +114,7 @@ nav { display: flex; gap: 10px; }
 #Grid { display: grid; grid-template-columns: 100px 100px; }
 div#Hidden { display: none; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         // Block by default: children top to bottom.
         let (h1, h2) = (d.get("H1"), d.get("H2"));
         assert!(
@@ -205,7 +204,7 @@ fn block_margins_follow_the_ua_stylesheet_and_collapse() {
 #Reset { margin: 0; }
 </style>"#;
     let items = json!([{"id": "a"}, {"id": "c"}]);
-    both(text, &[("items", items)], |d| {
+    with_doc(text, &[("items", items)], |d| {
         let em = d.ui.theme().type_ramp.body.size;
         let h1_em = d.ui.theme().type_ramp.xl3.size;
         let bottom = |e: &UiElement| e.y + e.height;
@@ -255,7 +254,6 @@ fn block_margins_follow_the_ua_stylesheet_and_collapse() {
         d.edit(
             "items",
             json!({"op": "insert", "row": {"id": "b"}, "before": "c"}),
-            json!([{"id": "a"}, {"id": "b"}, {"id": "c"}]),
         );
         let p = paras(d);
         assert_eq!(
@@ -318,7 +316,7 @@ fn horizontal_margins_and_mixed_unit_lengths_resolve_at_layout() {
 #G1 { width: 100px; margin: 0 auto; }
 #G2 { margin-left: 30px; }
 </style>"#;
-    both(text, &[("frac", json!(0.5))], |d| {
+    with_doc(text, &[("frac", json!(0.5))], |d| {
         let x0 = d.get("Root").x;
         assert_eq!(x0, 40.0);
         let at = |d: &Doc, id: &str| {
@@ -390,7 +388,7 @@ fn an_empty_block_collapses_through_itself() {
 #B { margin-top: 5px; }
 #Kept { margin: 30px 0 10px; padding: 1px 0 0 0; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let em = d.ui.theme().type_ramp.body.size;
         let gap = |a: &str, b: &str| d.get(b).y - (d.get(a).y + d.get(a).height);
         // A, an empty block and B: one set of margins, max(20, 30, 10, 5).
@@ -439,7 +437,7 @@ fn list_markers_follow_css_and_renumber_on_reorder() {
 #Bare { list-style: none; }
 #In { list-style-position: inside; }
 </style>"#;
-    both(text, &[("steps", steps(&["x", "y", "z"]))], |d| {
+    with_doc(text, &[("steps", steps(&["x", "y", "z"]))], |d| {
         assert_eq!(
             d.markers("Bullets"),
             ["disc", "disc", "circle", "circle", "square"]
@@ -481,17 +479,12 @@ fn list_markers_follow_css_and_renumber_on_reorder() {
             items.sort_by(|a, b| a.y.total_cmp(&b.y));
             items.into_iter().map(|e| e.text).collect()
         };
-        d.edit(
-            "steps",
-            json!({"op": "move", "key": "z", "before": "x"}),
-            steps(&["z", "x", "y"]),
-        );
+        d.edit("steps", json!({"op": "move", "key": "z", "before": "x"}));
         assert_eq!(texts(d), ["z", "x", "y"]);
         assert_eq!(d.markers("Steps"), ["1.", "2.", "3."]);
         d.edit(
             "steps",
             json!({"op": "insert", "row": {"id": "w"}, "before": "x"}),
-            steps(&["z", "w", "x", "y"]),
         );
         assert_eq!(texts(d), ["z", "w", "x", "y"]);
         assert_eq!(d.markers("Steps"), ["1.", "2.", "3.", "4."]);
@@ -524,7 +517,7 @@ fn an_each_index_alias_is_the_rows_position_and_follows_a_reorder() {
 <div><ol id="Steps">
   {#each $steps as s, i (s.id)}<li>{s.id}{i}</li>{/each}
 </ol></div>"#;
-    both(text, &[("steps", steps(&["x", "y", "z"]))], |d| {
+    with_doc(text, &[("steps", steps(&["x", "y", "z"]))], |d| {
         let texts = |d: &Doc| -> Vec<String> {
             let mut items: Vec<_> =
                 d.ui.probe_elements()
@@ -534,19 +527,11 @@ fn an_each_index_alias_is_the_rows_position_and_follows_a_reorder() {
             items.sort_by(|a, b| a.y.total_cmp(&b.y));
             items.into_iter().map(|e| e.text).collect()
         };
-        assert_eq!(texts(d), ["x0", "y1", "z2"], "mounted: {}", d.mounted);
-        d.edit(
-            "steps",
-            json!({"op": "move", "key": "z", "before": "x"}),
-            steps(&["z", "x", "y"]),
-        );
-        assert_eq!(texts(d), ["z0", "x1", "y2"], "mounted: {}", d.mounted);
-        d.edit(
-            "steps",
-            json!({"op": "remove", "key": "x"}),
-            steps(&["z", "y"]),
-        );
-        assert_eq!(texts(d), ["z0", "y1"], "mounted: {}", d.mounted);
+        assert_eq!(texts(d), ["x0", "y1", "z2"]);
+        d.edit("steps", json!({"op": "move", "key": "z", "before": "x"}));
+        assert_eq!(texts(d), ["z0", "x1", "y2"]);
+        d.edit("steps", json!({"op": "remove", "key": "x"}));
+        assert_eq!(texts(d), ["z0", "y1"]);
     });
     for (each, why) in [
         ("$steps as s, i (i)", "a position is not a key"),
@@ -574,7 +559,7 @@ fn links_send_their_href() {
 <style>
 a { padding: 0 0 0 40px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let shop = d.get("Shop");
         assert_eq!(shop.kind, "richtext");
         assert_eq!(shop.text, "Open the shop");
@@ -622,7 +607,7 @@ fn checkboxes_and_labels_join_by_for() {
 <style>
 input[type="checkbox"] { width: 300px; }
 </style>"#;
-    both(text, &[("mute", json!(false)), ("nick", json!(""))], |d| {
+    with_doc(text, &[("mute", json!(false)), ("nick", json!(""))], |d| {
         let mute = d.a11y("Mute");
         assert_eq!(
             (mute.role.as_str(), mute.name.as_str()),
@@ -647,16 +632,11 @@ input[type="checkbox"] { width: 300px; }
                 .any(|e| e.kind == "changed" && e.name == "checked" && e.value == json!(true)),
             "{events:?}"
         );
-        if d.mounted {
-            let reply = wire::decode(
-                &d.ui.apply_reactive(
-                    &wire::encode(&json!([{"op":"read","source":SourceId::new("test","mute")}]))
-                        .unwrap(),
-                ),
-            )
-            .unwrap();
-            assert_eq!(reply[0]["value"]["value"], json!(true), "{reply}");
-        }
+        let reply = wire::decode(&d.ui.apply_reactive(
+            &wire::encode(&json!([{"op":"read","source":SourceId::new("test","mute")}])).unwrap(),
+        ))
+        .unwrap();
+        assert_eq!(reply[0]["value"]["value"], json!(true), "{reply}");
     });
     for (doc, why) in [
         (
@@ -694,7 +674,7 @@ fn a_form_submits_only_when_its_fields_are_valid() {
         ("off", json!("")),
     ];
     let saved = |events: &[DocEvent]| events.iter().any(|e| e.kind == "emit" && e.name == "save");
-    both(text, &stores, |d| {
+    with_doc(text, &stores, |d| {
         // The first invalid field takes the focus and nothing is sent; a
         // disabled one is barred from validation.
         let events = d.click("Save");
@@ -732,7 +712,7 @@ fn enter_in_a_forms_field_submits_it_as_its_button_does() {
         ("muted", json!(false)),
         ("loose", json!("x")),
     ];
-    both(text, &stores, |d| {
+    with_doc(text, &stores, |d| {
         let enter = |d: &mut Doc, id: &str| -> usize {
             d.click(id);
             d.events.clear();
@@ -772,9 +752,8 @@ fn date_and_time_inputs_step_their_parts_within_min_max_and_step() {
         ("at", json!("09:00")),
         ("wk", json!("")),
     ];
-    both(text, &stores, |d| {
-        // A press on a part's +: the value it writes back (an immediate
-        // build's viewmodel takes it as its game would).
+    with_doc(text, &stores, |d| {
+        // A press on a part's +: the value it writes back to its store.
         let step = |d: &mut Doc, part: &str, store: &str| -> Value {
             let events = d.click(part);
             let Some(v) = events
@@ -784,11 +763,7 @@ fn date_and_time_inputs_step_their_parts_within_min_max_and_step() {
             else {
                 return d.read(store);
             };
-            if d.mounted {
-                assert_eq!(d.read(store), v);
-            } else {
-                d.set(store, v.clone());
-            }
+            assert_eq!(d.read(store), v);
             v
         };
         assert_eq!(step(d, "When/Day/Frame/Inc", "day"), json!("2024-02-29"));
@@ -817,7 +792,7 @@ fn date_and_time_inputs_step_their_parts_within_min_max_and_step() {
 fn a_file_input_builds_only_where_the_host_has_a_picker() {
     let text = r#"<meta name="component" content="t">
 <div>{#if $show}<input type="file" id="Pick" accept=".png" multiple bind:value={$files}>{/if}</div>"#;
-    both(text, &[("files", json!("")), ("show", json!(true))], |d| {
+    with_doc(text, &[("files", json!("")), ("show", json!(true))], |d| {
         assert!(d.el("Pick").is_none(), "no picker, no input");
         assert!(
             d.ui.frame()
@@ -850,38 +825,46 @@ fn a_video_drives_its_player_and_reads_it_back() {
         }
     }
     let text = r#"<meta name="component" content="t">
-<div><video id="Clip" src={player} bind:paused={paused} bind:currentTime={t}
-  bind:duration={len} bind:ended={done} bind:muted={mute} controls></video></div>"#;
+<div><video id="Clip" src={$player} bind:paused={$paused} bind:currentTime={$t}
+  bind:duration={$len} bind:ended={$done} bind:muted={$mute} controls></video></div>"#;
     let mut ui = ui_with_font(test_font_metrics());
     ui.define_document(UiDocument::parse("ui/t.svelte", text).unwrap());
-    let mut vm =
-        json!({"player": 7, "paused": true, "t": 0, "len": 0, "done": false, "mute": false});
+    mount_stores(
+        &mut ui,
+        SourceId::new("test", "t"),
+        "t",
+        &[
+            ("player", json!(7)),
+            ("paused", json!(true)),
+            ("t", json!(0)),
+            ("len", json!(0)),
+            ("done", json!(false)),
+            ("mute", json!(false)),
+        ],
+    );
     let env = Player(std::cell::Cell::new(MediaState {
         duration: 90.0,
         ..MediaState::default()
     }));
-    let frame = |ui: &mut Ui, vm: &mut Value| {
+    // A mounted build's writes are its stores'.
+    let frame = |ui: &mut Ui| {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        let r = ui.component("T", "t", vm, &env);
+        ui.build_retained_documents(&env).expect("builds");
         ui.end();
-        // An immediate build's writes are its viewmodel's.
-        for e in &r.events {
-            if e.kind == "set" {
-                vm[&e.name] = e.value.clone();
-            }
-        }
         ui.take_media_ops()
     };
     // Paused and paused: nothing to ask but its sound's first gain.
-    let ops = frame(&mut ui, &mut vm);
+    let ops = frame(&mut ui);
     assert_eq!(ops.len(), 1, "{ops:?}");
     assert_eq!((ops[0].playing, ops[0].gain), (None, Some(1.0)));
-    assert_eq!(vm["len"], json!(90.0));
-    assert!(frame(&mut ui, &mut vm).is_empty(), "idle asks nothing");
+    // (A store's whole number reads back over the host protocol as an
+    // integer.)
+    assert_eq!(read_store(&mut ui, "len"), json!(90));
+    assert!(frame(&mut ui).is_empty(), "idle asks nothing");
     // Unpaused: play, until the player says it plays.
-    vm["paused"] = json!(false);
-    vm["mute"] = json!(true);
-    let ops = frame(&mut ui, &mut vm);
+    set_store(&mut ui, "paused", json!(false));
+    set_store(&mut ui, "mute", json!(true));
+    let ops = frame(&mut ui);
     assert_eq!((ops[0].playing, ops[0].gain), (Some(true), Some(0.0)));
     env.0.set(MediaState {
         playing: true,
@@ -889,11 +872,11 @@ fn a_video_drives_its_player_and_reads_it_back() {
         duration: 90.0,
         ..MediaState::default()
     });
-    assert!(frame(&mut ui, &mut vm).is_empty());
-    assert_eq!(vm["t"], json!(12.5));
+    assert!(frame(&mut ui).is_empty());
+    assert_eq!(read_store(&mut ui, "t"), json!(12.5));
     // A store seek.
-    vm["t"] = json!(60);
-    assert_eq!(frame(&mut ui, &mut vm)[0].seek, Some(60.0));
+    set_store(&mut ui, "t", json!(60));
+    assert_eq!(frame(&mut ui)[0].seek, Some(60.0));
     // Its end pauses it and says so.
     env.0.set(MediaState {
         time: 90.0,
@@ -901,16 +884,16 @@ fn a_video_drives_its_player_and_reads_it_back() {
         ended: true,
         ..MediaState::default()
     });
-    frame(&mut ui, &mut vm);
+    frame(&mut ui);
     assert_eq!(
-        (vm["done"].clone(), vm["paused"].clone()),
+        (read_store(&mut ui, "done"), read_store(&mut ui, "paused")),
         (json!(true), json!(true))
     );
 }
 
 /// `text-wrap: balance` and `pretty` (CSS Text 4 §6.2) and `text-overflow:
 /// <string>` (CSS UI 4 §5.2), as the lines drawn. Ways it could fail: the
-/// style not reaching the label in one build path, balance adding a line
+/// style not reaching the label, balance adding a line
 /// or leaving the greedy first line, pretty leaving a one-word last line
 /// or moving more words down than balance would, the string not used for
 /// the cut or "…" drawn as well.
@@ -930,13 +913,11 @@ p { margin: 0; }
 #Pre { text-wrap: pretty; }
 #Cut { width: 120px; white-space: nowrap; overflow: hidden; text-overflow: " >>"; }
 </style>"#;
-    for mounted in [false, true] {
-        let d = &mut Doc::with_font(text, &[], mounted, test_font());
-        let lines = |id: &str| -> Vec<(String, f32)> {
-            let r = d.get(id);
-            let mut out: Vec<(f32, String, f32)> = d
-                .ui
-                .frame()
+    let d = &mut Doc::with_font(text, &[], test_font());
+    let lines = |id: &str| -> Vec<(String, f32)> {
+        let r = d.get(id);
+        let mut out: Vec<(f32, String, f32)> =
+            d.ui.frame()
                 .items
                 .iter()
                 .filter_map(|it| match &it.cmd {
@@ -949,29 +930,28 @@ p { margin: 0; }
                     _ => None,
                 })
                 .collect();
-            out.sort_by(|a, b| a.0.total_cmp(&b.0));
-            out.into_iter().map(|(_, t, w)| (t, w)).collect()
-        };
-        let greedy = lines("Auto");
-        assert!(greedy.len() >= 2, "{greedy:?}");
-        let words = |l: &[(String, f32)]| l.last().unwrap().0.split_whitespace().count();
-        let bal = lines("Bal");
-        assert_eq!(bal.len(), greedy.len(), "{bal:?}");
-        let widest = |l: &[(String, f32)]| l.iter().map(|x| x.1).fold(0.0, f32::max);
-        let narrowest = |l: &[(String, f32)]| l.iter().map(|x| x.1).fold(f32::MAX, f32::min);
-        assert!(
-            widest(&bal) - narrowest(&bal) < widest(&greedy) - narrowest(&greedy),
-            "{bal:?} vs {greedy:?}"
-        );
-        // Greedy, at 300px, this leaves "theta" alone on the second line.
-        let pre = lines("Pre");
-        assert_eq!(pre.len(), 2, "{pre:?}");
-        assert!(words(&pre) >= 2, "{pre:?}");
-        let cut = lines("Cut");
-        assert_eq!(cut.len(), 1);
-        assert!(
-            cut[0].0.ends_with(">>") && !cut[0].0.contains('…'),
-            "{cut:?}"
-        );
-    }
+        out.sort_by(|a, b| a.0.total_cmp(&b.0));
+        out.into_iter().map(|(_, t, w)| (t, w)).collect()
+    };
+    let greedy = lines("Auto");
+    assert!(greedy.len() >= 2, "{greedy:?}");
+    let words = |l: &[(String, f32)]| l.last().unwrap().0.split_whitespace().count();
+    let bal = lines("Bal");
+    assert_eq!(bal.len(), greedy.len(), "{bal:?}");
+    let widest = |l: &[(String, f32)]| l.iter().map(|x| x.1).fold(0.0, f32::max);
+    let narrowest = |l: &[(String, f32)]| l.iter().map(|x| x.1).fold(f32::MAX, f32::min);
+    assert!(
+        widest(&bal) - narrowest(&bal) < widest(&greedy) - narrowest(&greedy),
+        "{bal:?} vs {greedy:?}"
+    );
+    // Greedy, at 300px, this leaves "theta" alone on the second line.
+    let pre = lines("Pre");
+    assert_eq!(pre.len(), 2, "{pre:?}");
+    assert!(words(&pre) >= 2, "{pre:?}");
+    let cut = lines("Cut");
+    assert_eq!(cut.len(), 1);
+    assert!(
+        cut[0].0.ends_with(">>") && !cut[0].0.contains('…'),
+        "{cut:?}"
+    );
 }

@@ -1,6 +1,6 @@
 //! Bound CSS custom properties (`style:--name={…}`) and the math functions
-//! that read them (`calc()`, `min()`, `max()`, `clamp()`), built both ways
-//! a document is (immediate and mounted, retained).
+//! that read them (`calc()`, `min()`, `max()`, `clamp()`), built as a
+//! document is (mounted, retained).
 //!
 //! Ways these could fail, each covered below:
 //! - a bound value not reaching var(), read once and never again when its
@@ -16,7 +16,7 @@
 //!   to the HUD band on an ultrawide (or narrowing a 16:9 surface), or not
 //!   following UiDesc.hudMaxAspect → `safe_area_insets_clear_the_hosts_covered_control`
 
-use crate::support::{Doc, both};
+use crate::support::{Doc, with_doc};
 use og_ui::*;
 use serde_json::json;
 
@@ -39,7 +39,7 @@ fn bound_custom_properties_feed_the_cascade() {
 .star { width: 10px; height: calc(var(--rank) * 4px + 2px); }
 </style>"#;
     let stars = json!([{"id": "a", "rank": 1}, {"id": "c", "rank": 3}]);
-    both(
+    with_doc(
         text,
         &[
             ("hp", json!(50)),
@@ -71,16 +71,15 @@ fn bound_custom_properties_feed_the_cascade() {
             d.edit(
                 "stars",
                 json!({"op": "insert", "row": {"id": "b", "rank": 2}, "before": "c"}),
-                json!([{"id": "a", "rank": 1}, {"id": "b", "rank": 2}, {"id": "c", "rank": 3}]),
             );
             assert_eq!(heights(d), [6.0, 10.0, 14.0]);
         },
     );
 }
 
-/// Sets signal store `name` (a viewmodel entry when immediate).
+/// Sets signal store `name`.
 fn set(d: &mut Doc, name: &str, value: serde_json::Value) {
-    d.edit(name, json!({"op": "set", "value": value}), value.clone());
+    d.edit(name, json!({"op": "set", "value": value}));
 }
 
 #[test]
@@ -97,7 +96,7 @@ fn calc_reduces_once_its_variables_are_known() {
 #B { width: calc((10px + 6px) / 2); height: min(9px, 7px); }
 #C { width: calc(var(--n) * 100%); height: 3px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         assert_eq!((d.get("A").width, d.get("A").height), (30.0, 4.0));
         assert_eq!((d.get("B").width, d.get("B").height), (8.0, 7.0));
         assert_eq!(d.get("C").width, 150.0);
@@ -121,7 +120,7 @@ fn calc_reduces_once_its_variables_are_known() {
 #E { width: round(down, 50%, 40px); height: calc(1in / 8); }
 #F { font: var(--text-caption); width: 2em; height: calc(3pt * 4); }
 </style>"#;
-    both(text, &[("w", json!(2))], |d| {
+    with_doc(text, &[("w", json!(2))], |d| {
         assert_eq!((d.get("D").width, d.get("D").height), (42.0, 2.0));
         assert_eq!(d.get("G").width, 5.0, "not a number: the fallback");
         assert_eq!(d.get("G").height, 20.0, "1lh is the body step's line");
@@ -163,7 +162,7 @@ fn safe_area_insets_clear_the_hosts_covered_control() {
 #HR { position: fixed; right: calc(env(-og-hud-inset-right) + 24px); top: env(-og-hud-inset-top); width: 10px; height: 10px; }
 </style>"#;
     let back = Rect::new(12.0, 12.0, 40.0, 40.0);
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         assert_eq!(
             (d.get("TL").x, d.get("TL").y),
             (0.0, 0.0),

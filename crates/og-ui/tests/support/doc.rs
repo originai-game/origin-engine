@@ -1,6 +1,5 @@
-//! One document built either way a document is: immediately
-//! (`Ui::component`, a viewmodel) or mounted (`mount_document`, named
-//! stores, retained). The document tests share it.
+//! One document, mounted with named stores (`mount_document`) and stepped
+//! frame by frame. The document tests share it.
 
 use super::{test_font_metrics, ui_with_font};
 use og_core::glam::Vec2;
@@ -9,14 +8,10 @@ use og_ui::*;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 
-/// One document, built either way (other document tests share it).
+/// One mounted document (other document tests share it).
 pub(crate) struct Doc {
     pub(crate) ui: Ui,
-    name: String,
-    /// Mounted with these stores; `None`: built immediately from `vm`.
-    pub(crate) mounted: bool,
-    vm: Value,
-    /// An immediate build's events, collected tick by tick.
+    /// The document's events, collected step by step.
     pub(crate) events: Vec<DocEvent>,
     /// The viewport each step lays out in (800 × 900 unless a test resizes it).
     pub(crate) viewport: Viewport,
@@ -25,52 +20,36 @@ pub(crate) struct Doc {
 }
 
 impl Doc {
-    pub(crate) fn new(text: &str, stores: &[(&str, Value)], mounted: bool) -> Doc {
-        Doc::with_font(text, stores, mounted, test_font_metrics())
+    pub(crate) fn new(text: &str, stores: &[(&str, Value)]) -> Doc {
+        Doc::with_font(text, stores, test_font_metrics())
     }
 
     /// [`Doc::new`] with `font` (one with a handle draws its text).
-    pub(crate) fn with_font(
-        text: &str,
-        stores: &[(&str, Value)],
-        mounted: bool,
-        font: UiFont,
-    ) -> Doc {
+    pub(crate) fn with_font(text: &str, stores: &[(&str, Value)], font: UiFont) -> Doc {
         let mut ui = ui_with_font(font);
         let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
         let name = doc.name.clone();
         ui.define_document(doc);
         let mut d = Doc {
             ui,
-            name,
-            mounted,
             events: Vec::new(),
             viewport: Viewport::new(800.0, 900.0),
             focus: None,
-            // An immediate build reads the stores as `$name` from its viewmodel.
-            vm: Value::Object(
-                stores
-                    .iter()
-                    .map(|(k, v)| (format!("${k}"), v.clone()))
-                    .collect(),
-            ),
         };
-        if mounted {
-            let mut inputs = BTreeMap::new();
-            for (k, v) in stores {
-                let source = SourceId::new("test", k);
-                d.store(k, v.clone());
-                inputs.insert(k.to_string(), source);
-            }
-            d.ui.mount_document(
-                SourceId::new("test", "t"),
-                &d.name.clone(),
-                inputs,
-                Default::default(),
-                &bind::NoEnv,
-            )
-            .unwrap_or_else(|e| panic!("mounts: {e}"));
+        let mut inputs = BTreeMap::new();
+        for (k, v) in stores {
+            let source = SourceId::new("test", k);
+            d.store(k, v.clone());
+            inputs.insert(k.to_string(), source);
         }
+        d.ui.mount_document(
+            SourceId::new("test", "t"),
+            &name,
+            inputs,
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap_or_else(|e| panic!("mounts: {e}"));
         d.step(InputFrame::default());
         d
     }
@@ -88,19 +67,14 @@ impl Doc {
 
     /// Store `name`'s value now: what a control wrote back to it.
     pub(crate) fn read(&mut self, name: &str) -> Value {
-        if self.mounted {
-            self.apply(json!({"op": "read", "source": SourceId::new("test", name)}))["value"]
-                .clone()
-        } else {
-            self.vm[format!("${name}")].clone()
-        }
+        self.apply(json!({"op": "read", "source": SourceId::new("test", name)}))["value"].clone()
     }
 
     /// A store: a list is a keyed collection (by `id`).
     pub(crate) fn store(&mut self, name: &str, value: Value) {
         let source = SourceId::new("test", name);
         self.apply(match &value {
-            Value::Array(items) => {
+            Value::Array(items) if items.iter().all(Value::is_object) => {
                 json!({"op": "collection", "source": source, "key": "id", "items": items})
             }
             _ => json!({"op": "signal", "source": source, "initial": value}),
@@ -109,39 +83,25 @@ impl Doc {
 
     /// A new value for scalar store `name`, then two steps.
     pub(crate) fn set(&mut self, name: &str, value: Value) {
-        if self.mounted {
-            self.apply(json!({"op": "set", "source": SourceId::new("test", name), "value": value}));
-        } else {
-            self.vm[format!("${name}")] = value;
-        }
+        self.apply(json!({"op": "set", "source": SourceId::new("test", name), "value": value}));
         self.step(InputFrame::default());
         self.step(InputFrame::default());
     }
 
-    /// A keyed edit of list store `name`: `op` on a mounted collection,
-    /// the whole list `after` in an immediate viewmodel.
-    pub(crate) fn edit(&mut self, name: &str, mut op: Value, after: Value) {
-        if self.mounted {
-            op["source"] = json!(SourceId::new("test", name));
-            self.apply(op);
-        } else {
-            self.vm[format!("${name}")] = after;
-        }
+    /// A keyed edit `op` (`insert`, `remove`, `move`, `patch`) of list
+    /// store `name`, then two steps.
+    pub(crate) fn edit(&mut self, name: &str, mut op: Value) {
+        op["source"] = json!(SourceId::new("test", name));
+        self.apply(op);
         self.step(InputFrame::default());
         self.step(InputFrame::default());
     }
 
     pub(crate) fn step(&mut self, input: InputFrame) {
         self.ui.begin(input, self.viewport);
-        if self.mounted {
-            self.ui
-                .build_retained_documents(&bind::NoEnv)
-                .expect("builds");
-        } else {
-            let name = self.name.clone();
-            let r = self.ui.component("T", &name, &mut self.vm, &bind::NoEnv);
-            self.events.extend(r.events);
-        }
+        self.ui
+            .build_retained_documents(&bind::NoEnv)
+            .expect("builds");
         if let Some(path) = self.focus.take() {
             self.ui.set_focus(&path);
         }
@@ -157,8 +117,7 @@ impl Doc {
     }
 
     pub(crate) fn get(&self, id: &str) -> UiElement {
-        self.el(id)
-            .unwrap_or_else(|| panic!("no {id} (mounted: {})", self.mounted))
+        self.el(id).unwrap_or_else(|| panic!("no {id}"))
     }
 
     pub(crate) fn a11y(&self, path_end: &str) -> A11yNode {
@@ -229,8 +188,7 @@ pub(crate) fn id_text(id: &str) -> &str {
     }
 }
 
-pub(crate) fn both(text: &str, stores: &[(&str, Value)], check: impl Fn(&mut Doc)) {
-    for mounted in [false, true] {
-        check(&mut Doc::new(text, stores, mounted));
-    }
+/// Mounts `text` with `stores` and runs `check` on it.
+pub(crate) fn with_doc(text: &str, stores: &[(&str, Value)], check: impl Fn(&mut Doc)) {
+    check(&mut Doc::new(text, stores));
 }

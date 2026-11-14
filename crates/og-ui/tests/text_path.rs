@@ -23,8 +23,8 @@
 
 use crate::support;
 
+use og_ui::reactive::SourceId;
 use og_ui::*;
-use serde_json::json;
 use support::*;
 
 /// Each glyph command of the frame: its pen, size, advance (from its
@@ -62,9 +62,10 @@ fn frame(css: &str, text: &str) -> Ui {
     // A font with a handle: glyphs are drawn, not only measured.
     let mut ui = ui_with_font(test_font());
     ui.define_document(UiDocument::parse("ui/tp.svelte", &doc).expect("parses"));
+    mount_stores(&mut ui, SourceId::new("test", "t"), "tp", &[]);
     for _ in 0..2 {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        ui.component("T", "tp", &mut json!({}), &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
     }
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
@@ -118,8 +119,9 @@ fn each_glyph_sits_on_the_circle_turned_to_it() {
     let doc = "<meta name=\"component\" content=\"tp\">\n<column id=\"Root\"><p id=\"Ring\">ABCDEFGH</p></column>\n<style>\n#Root { width: 600px; }\n#Ring { -og-text-path: circle(100px); text-align: center; }\n</style>";
     let mut ui = ui_with_font(test_font());
     ui.define_document(UiDocument::parse("ui/tp.svelte", doc).expect("parses"));
+    mount_stores(&mut ui, SourceId::new("test", "t"), "tp", &[]);
     ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-    ui.component("T", "tp", &mut json!({}), &bind::NoEnv);
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
     ui.end();
     let e = ring(&ui);
     assert_eq!((e.width, e.height), (200.0, 200.0));
@@ -209,7 +211,7 @@ fn an_unchanged_path_text_is_not_painted_again() {
     let mut ui = frame("-og-text-path: circle(80px);", "Around the world");
     for _ in 0..3 {
         ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-        ui.component("T", "tp", &mut json!({}), &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
     }
     assert_eq!(ui.frame().stats.painted, 0);

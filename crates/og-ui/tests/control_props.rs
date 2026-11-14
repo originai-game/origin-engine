@@ -4,8 +4,8 @@
 //! `disabled`; tabs' size and `disabled`; a dialog's `closedby` and
 //! `appearance: none`; a select's `aria-invalid` and
 //! `::picker(select) { max-height }`; an image's `object-view-box`; and
-//! `data-og-instant`. Each is built both ways a document is (immediate and
-//! mounted; a dialog's closing writes back to a mounted store).
+//! `data-og-instant`. Each document is mounted with its stores (a dialog's
+//! closing writes back to its store).
 //!
 //! Ways these could fail, each covered below:
 //! - a `<datalist>` drawn as content, its options' ticks missing or at the
@@ -32,7 +32,7 @@
 //!   inheriting its parent's `text-align` (HTML's sheet centres it), or a
 //!   `<menu>` item's label centred → `a_button_label_takes_text_align`
 
-use crate::support::{Doc, both};
+use crate::support::{Doc, with_doc};
 
 use og_core::glam::Vec2;
 use og_ui::*;
@@ -89,7 +89,7 @@ input, textarea { padding: 4px; }
 #Area, #Height { width: 100px; }
 #Height { height: 60px; }
 </style>"#;
-    both(
+    with_doc(
         source,
         &[("value", json!("Hi")), ("mode", json!("content"))],
         |d| {
@@ -147,7 +147,6 @@ input, textarea { padding: 4px; }
 <div><textarea id="Area" bind:value={$value}></textarea><input id="Other" /></div>
 <style>#Area { field-sizing: content; width: 100px; padding: 4px; }</style>"#,
         &[("value", json!(""))],
-        true,
     );
     let one = d.get("Area").height;
     d.click("Area");
@@ -189,7 +188,7 @@ fn data_hit_slop_extends_reach_without_changing_boxes_or_priority() {
 #A { left: 100px; }
 #B { left: 126px; }
 </style>"#;
-    both(source, &[], |d| {
+    with_doc(source, &[], |d| {
         for (x, y, expected) in [
             (110.0, 94.0, "a"),
             (121.0, 110.0, "a"),
@@ -227,110 +226,104 @@ fn data_hit_slop_extends_reach_without_changing_boxes_or_priority() {
 
 #[test]
 fn root_relative_text_sizes_follow_the_root_not_the_parent() {
-    for mounted in [false, true] {
-        for scale in [1.0, 1.5] {
-            let source = r#"<meta name="component" content="t"><div><p id="Root">Root</p><p id="Parent">Parent</p><p id="Short">Short</p></div><style>div { font-size: 10px; } p { margin: 0; } #Root { font-size: 1.75rem; } #Parent { font-size: 1.75em; } #Short { font: 1.75rem/2 sans-serif; }</style>"#;
-            let mut d = Doc::with_font(source, &[], mounted, crate::support::test_font());
-            let mut theme = *d.ui.theme();
-            theme.type_ramp.body.size = 14.0;
-            theme.text_scale = scale;
-            d.ui.set_theme(theme);
-            d.step(InputFrame::default());
-            let sizes: Vec<_> =
-                d.ui.frame()
-                    .items
-                    .iter()
-                    .filter_map(|i| match &i.cmd {
-                        DrawCmd::Text { text, size, .. } => Some((text.as_str(), *size)),
-                        _ => None,
-                    })
-                    .collect();
-            assert!(sizes.contains(&("Root", 1.75 * 14.0 * scale)), "{sizes:?}");
-            assert!(sizes.contains(&("Parent", 17.5)), "{sizes:?}");
-            assert!(sizes.contains(&("Short", 1.75 * 14.0 * scale)), "{sizes:?}");
-        }
+    for scale in [1.0, 1.5] {
+        let source = r#"<meta name="component" content="t"><div><p id="Root">Root</p><p id="Parent">Parent</p><p id="Short">Short</p></div><style>div { font-size: 10px; } p { margin: 0; } #Root { font-size: 1.75rem; } #Parent { font-size: 1.75em; } #Short { font: 1.75rem/2 sans-serif; }</style>"#;
+        let mut d = Doc::with_font(source, &[], crate::support::test_font());
+        let mut theme = *d.ui.theme();
+        theme.type_ramp.body.size = 14.0;
+        theme.text_scale = scale;
+        d.ui.set_theme(theme);
+        d.step(InputFrame::default());
+        let sizes: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| match &i.cmd {
+                    DrawCmd::Text { text, size, .. } => Some((text.as_str(), *size)),
+                    _ => None,
+                })
+                .collect();
+        assert!(sizes.contains(&("Root", 1.75 * 14.0 * scale)), "{sizes:?}");
+        assert!(sizes.contains(&("Parent", 17.5)), "{sizes:?}");
+        assert!(sizes.contains(&("Short", 1.75 * 14.0 * scale)), "{sizes:?}");
     }
 }
 
 #[test]
 fn scene_text_shadows_follow_the_font_size() {
-    for mounted in [false, true] {
-        for (font, size, line, offset, blur) in [
-            ("font: 12px/1.5 sans-serif", 12.0, 18.0, 1.0, 1.0),
-            ("font: 20px/1.5 sans-serif", 20.0, 30.0, 1.0, 1.6),
-            ("font: 48px/1.5 sans-serif", 48.0, 72.0, 1.92, 3.84),
-            ("font-size: 2em", 20.0, 40.0, 1.0, 1.6),
-            ("font-size: 2em; line-height: inherit", 20.0, 40.0, 1.0, 1.6),
-            ("font-size: 200%; line-height: 1.5", 20.0, 30.0, 1.0, 1.6),
-            (
-                "font: var(--case-font); font-size: 20px",
-                20.0,
-                30.0,
-                1.0,
-                1.6,
-            ),
-        ] {
-            let draw = |style: &str| {
-                let source = format!(
-                    r#"<meta name="component" content="t"><div><p id="Ink">Scene ink</p></div><style>div {{ font: 10px/2 sans-serif; --case-font: 12px/1.5 sans-serif; }} #Ink {{ margin: 0; {font}; color: #f5f5f7; {style} }}</style>"#
-                );
-                let mut handles = crate::support::Handles::default();
-                let d = Doc::with_font(&source, &[], mounted, handles.test_font());
-                assert!(
-                    d.ui.frame().warnings.is_empty(),
-                    "{:?}",
-                    d.ui.frame().warnings
-                );
-                let items =
-                    d.ui.frame()
-                        .items
-                        .iter()
-                        .map(|i| (i.cmd.clone(), i.transform))
-                        .collect::<Vec<_>>();
-                assert!(!items.is_empty());
-                items
-            };
-            let expected = draw(&format!("text-shadow: 0 {offset}px {blur}px #000000;"));
-            let actual = draw("text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000;");
-            assert_ne!(actual, draw("text-shadow: none;"));
-            assert_eq!(expected, actual, "size {size}, mounted {mounted}");
-            assert!(actual.iter().any(|(cmd, _)| matches!(cmd, DrawCmd::StyledText { text, .. } if matches!(text.as_ref(), DrawCmd::Text { size: s, .. } if *s == size))));
-            assert_eq!(
-                draw("text-shadow: 0 0.1lh 1px #000000;"),
-                draw(&format!("text-shadow: 0 {}px 1px #000000;", line * 0.1)),
-                "{font}, mounted {mounted}"
+    for (font, size, line, offset, blur) in [
+        ("font: 12px/1.5 sans-serif", 12.0, 18.0, 1.0, 1.0),
+        ("font: 20px/1.5 sans-serif", 20.0, 30.0, 1.0, 1.6),
+        ("font: 48px/1.5 sans-serif", 48.0, 72.0, 1.92, 3.84),
+        ("font-size: 2em", 20.0, 40.0, 1.0, 1.6),
+        ("font-size: 2em; line-height: inherit", 20.0, 40.0, 1.0, 1.6),
+        ("font-size: 200%; line-height: 1.5", 20.0, 30.0, 1.0, 1.6),
+        (
+            "font: var(--case-font); font-size: 20px",
+            20.0,
+            30.0,
+            1.0,
+            1.6,
+        ),
+    ] {
+        let draw = |style: &str| {
+            let source = format!(
+                r#"<meta name="component" content="t"><div><p id="Ink">Scene ink</p></div><style>div {{ font: 10px/2 sans-serif; --case-font: 12px/1.5 sans-serif; }} #Ink {{ margin: 0; {font}; color: #f5f5f7; {style} }}</style>"#
             );
-        }
+            let mut handles = crate::support::Handles::default();
+            let d = Doc::with_font(&source, &[], handles.test_font());
+            assert!(
+                d.ui.frame().warnings.is_empty(),
+                "{:?}",
+                d.ui.frame().warnings
+            );
+            let items =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .map(|i| (i.cmd.clone(), i.transform))
+                    .collect::<Vec<_>>();
+            assert!(!items.is_empty());
+            items
+        };
+        let expected = draw(&format!("text-shadow: 0 {offset}px {blur}px #000000;"));
+        let actual = draw("text-shadow: 0 max(1px, 0.04em) max(1px, 0.08em) #000000;");
+        assert_ne!(actual, draw("text-shadow: none;"));
+        assert_eq!(expected, actual, "size {size}");
+        assert!(actual.iter().any(|(cmd, _)| matches!(cmd, DrawCmd::StyledText { text, .. } if matches!(text.as_ref(), DrawCmd::Text { size: s, .. } if *s == size))));
+        assert_eq!(
+            draw("text-shadow: 0 0.1lh 1px #000000;"),
+            draw(&format!("text-shadow: 0 {}px 1px #000000;", line * 0.1)),
+            "{font}"
+        );
     }
     assert!(refused(r#"<meta name="component" content="t"><span>Text</span><style>span { -og-on-handles: true; }</style>"#).contains("-og-on-handles"));
 }
 
 #[test]
 fn fit_min_measures_text_with_a_literal_or_authored_step() {
-    for mounted in [false, true] {
-        let draw = |minimum: &str| {
-            let source = format!(
-                r#"<meta name="component" content="t"><p id="Title">The hidden treasures of the drowned bell tower</p><style>#Title {{ width: 100px; margin: 0; font: 48px/1.2 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; --floor: caption; {minimum} }}</style>"#
-            );
-            let mut d = Doc::with_font(&source, &[], mounted, crate::support::test_font());
-            d.step(InputFrame::default());
-            let text: Vec<_> =
-                d.ui.frame()
-                    .items
-                    .iter()
-                    .filter_map(|i| match &i.cmd {
-                        DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
-                        _ => None,
-                    })
-                    .collect();
-            assert_eq!(text.len(), 1);
-            (text, d.ui.theme().type_ramp.caption.size)
-        };
-        let (literal, minimum) = draw("-og-fit-min: caption;");
-        assert_eq!(literal[0].1, minimum);
-        assert_eq!(literal, draw("-og-fit-min: var(--floor);").0);
-        assert_eq!(draw("").0[0].1, 48.0);
-    }
+    let draw = |minimum: &str| {
+        let source = format!(
+            r#"<meta name="component" content="t"><p id="Title">The hidden treasures of the drowned bell tower</p><style>#Title {{ width: 100px; margin: 0; font: 48px/1.2 sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; --floor: caption; {minimum} }}</style>"#
+        );
+        let mut d = Doc::with_font(&source, &[], crate::support::test_font());
+        d.step(InputFrame::default());
+        let text: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| match &i.cmd {
+                    DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
+                    _ => None,
+                })
+                .collect();
+        assert_eq!(text.len(), 1);
+        (text, d.ui.theme().type_ramp.caption.size)
+    };
+    let (literal, minimum) = draw("-og-fit-min: caption;");
+    assert_eq!(literal[0].1, minimum);
+    assert_eq!(literal, draw("-og-fit-min: var(--floor);").0);
+    assert_eq!(draw("").0[0].1, 48.0);
     refused(
         r#"<meta name="component" content="t"><p>Text</p><style>p { -og-fit-min: mystery; }</style>"#,
     );
@@ -369,7 +362,7 @@ fn a_range_with_low_and_high_is_two_knobs() {
             d.read("hi").as_f64().unwrap(),
         )
     };
-    let d = &mut Doc::new(text, &[("lo", json!(20)), ("hi", json!(80))], true);
+    let d = &mut Doc::new(text, &[("lo", json!(20)), ("hi", json!(80))]);
     {
         d.step(InputFrame::default());
         assert_eq!(under(d, "Price", "Value").text, "20 – 80");
@@ -421,7 +414,7 @@ fn a_text_input_list_suggests_from_its_datalist() {
             .map(|e| e.text)
             .collect()
     };
-    let d = &mut Doc::new(text, &[("q", json!(""))], true);
+    let d = &mut Doc::new(text, &[("q", json!(""))]);
     assert!(
         options(d).is_empty(),
         "closed until the field has the focus"
@@ -457,7 +450,6 @@ fn a_text_input_list_suggests_from_its_datalist() {
     let d = &mut Doc::new(
         bound,
         &[("q", json!("")), ("names", json!(["Silk", "Salt"]))],
-        false,
     );
     d.click("Q");
     d.step(InputFrame::default());
@@ -481,7 +473,7 @@ fn a_pad_focus_opens_the_on_screen_keyboard() {
             .into_iter()
             .find(|e| e.path.ends_with(&format!("Keys/Row#{row}/Key#{k}")))
     };
-    let d = &mut Doc::new(text, &[("name", json!(""))], true);
+    let d = &mut Doc::new(text, &[("name", json!(""))]);
     d.click("Name");
     d.step(InputFrame::default());
     assert!(key(d, 0, 0).is_none(), "no keyboard for the pointer");
@@ -542,7 +534,7 @@ fn a_pad_focus_opens_the_on_screen_keyboard() {
     assert_eq!(d.read("name"), json!("qq"));
 
     let number = text.replace("<input id=\"Name\"", "<input type=\"number\" id=\"Name\"");
-    let d = &mut Doc::new(&number, &[("name", json!(""))], true);
+    let d = &mut Doc::new(&number, &[("name", json!(""))]);
     d.step(InputFrame {
         gamepad: GamepadFrame {
             pressed: 1 << 13,
@@ -582,7 +574,7 @@ fn a_range_takes_its_datalist_origin_and_disabled() {
 #Page { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
 input { width: 400px; }
 </style>"#;
-    both(text, &[("bal", json!(-0.5)), ("vol", json!(0.25))], |d| {
+    with_doc(text, &[("bal", json!(-0.5)), ("vol", json!(0.25))], |d| {
         // A range places its ticks from its last laid-out width.
         d.step(InputFrame::default());
         assert!(d.el("Steps").is_none(), "a datalist draws nothing");
@@ -657,7 +649,7 @@ fn switch_parts_drive_knob_mark_and_travel_after_resize() {
 #Switch.large::part(track) { width: 50%; height: 75%; }
 #Switch.large::part(knob) { width: 40%; height: 80%; }
 </style>"#;
-    both(
+    with_doc(
         source,
         &[("large", json!(false)), ("on", json!(false))],
         |d| {
@@ -696,11 +688,7 @@ fn switch_parts_drive_knob_mark_and_travel_after_resize() {
             d.ui.restore_state(&saved).unwrap();
             d.step(InputFrame::default());
             assert_eq!(geometry(d), expected, "same-instance restore");
-            let mut fresh = Doc::new(
-                source,
-                &[("large", json!(true)), ("on", json!(false))],
-                d.mounted,
-            );
+            let mut fresh = Doc::new(source, &[("large", json!(true)), ("on", json!(false))]);
             fresh.ui.set_theme(*d.ui.theme());
             fresh.ui.restore_state(&saved).unwrap();
             fresh.step(InputFrame::default());
@@ -710,11 +698,7 @@ fn switch_parts_drive_knob_mark_and_travel_after_resize() {
                 .filter(|line| !line.contains("::part(knob)"))
                 .collect::<Vec<_>>()
                 .join("\n");
-            let automatic = Doc::new(
-                &automatic,
-                &[("large", json!(true)), ("on", json!(true))],
-                d.mounted,
-            );
+            let automatic = Doc::new(&automatic, &[("large", json!(true)), ("on", json!(true))]);
             let knob = under(&automatic, "Switch", "Knob");
             let tick = under(&automatic, "Switch", "Tick");
             assert_eq!(
@@ -743,7 +727,7 @@ fn a_checkbox_follows_its_label_order_size_and_description() {
 .rev { flex-direction: row-reverse; }
 .big::part(track) { width: 55px; height: 32px; }
 </style>"#;
-    both(text, &[("a", json!(false))], |d| {
+    with_doc(text, &[("a", json!(false))], |d| {
         let side = |d: &Doc, id: &str| {
             let label = under(d, id, "Label");
             let track = under(d, id, "Track");
@@ -789,7 +773,7 @@ fn button_dimensions_follow_media_and_text_scale() {
 @media (pointer: coarse) { #Action, #Action::part(base) { height: calc(22rem / 7); } }
 @media (-og-input: pad) { #Action, #Action::part(base) { height: calc(20rem / 7); } }
 </style>"#;
-    both(source, &[], |d| {
+    with_doc(source, &[], |d| {
         let original = *d.ui.theme();
         for (density, scale, height) in [
             (DensityMode::Mouse, 1.0, 28.0),
@@ -849,7 +833,7 @@ fn dialogs_close_as_closedby_says() {
     ];
     // Closing writes `open` back to its store: a mounted document's.
     {
-        let d = &mut Doc::new(text, &stores, true);
+        let d = &mut Doc::new(text, &stores);
         let corner = Vec2::new(6.0, 6.0);
         // HTML's default for a modal: closerequest. The backdrop keeps it.
         d.set("std", json!(true));
@@ -934,44 +918,32 @@ fn datalist_filter_uses_translated_labels() {
     let text = r#"<meta name="component" content="t">
 <div><input id="Q" list="Maps" value="bai" placeholder="Find a map" />
 <datalist id="Maps"><option value="map-17" i18n="map.bay">Bay</option><option value="map-82">Fort</option></datalist></div>"#;
-    for mounted in [false, true] {
-        let mut ui = crate::support::ui_with_font(crate::support::test_font_metrics());
-        ui.define_document(UiDocument::parse("ui/t.svelte", text).unwrap());
-        if mounted {
-            ui.mount_document(
-                reactive::SourceId::new("test", "t"),
-                "t",
-                Default::default(),
-                Default::default(),
-                &Env,
-            )
-            .unwrap();
+    let mut ui = crate::support::ui_with_font(crate::support::test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/t.svelte", text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "t",
+        Default::default(),
+        Default::default(),
+        &Env,
+    )
+    .unwrap();
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), Viewport::new(800.0, 900.0));
+        ui.build_retained_documents(&Env).unwrap();
+        let field = ui.probe_elements().into_iter().find(|e| e.id == "Q");
+        if let Some(field) = field {
+            ui.set_focus(&field.path);
         }
-        for _ in 0..3 {
-            ui.begin(InputFrame::default(), Viewport::new(800.0, 900.0));
-            if mounted {
-                ui.build_retained_documents(&Env).unwrap();
-            } else {
-                ui.component("T", "t", &mut json!({}), &Env);
-            }
-            let field = ui.probe_elements().into_iter().find(|e| e.id == "Q");
-            if let Some(field) = field {
-                ui.set_focus(&field.path);
-            }
-            ui.end();
-        }
-        let options: Vec<_> = ui
-            .probe_elements()
-            .into_iter()
-            .filter(|e| e.path.contains("~list/Option#") && !e.text.is_empty())
-            .map(|e| e.text)
-            .collect();
-        assert_eq!(
-            options,
-            ["Baie"],
-            "filter matches translated labels, mounted={mounted}"
-        );
+        ui.end();
     }
+    let options: Vec<_> = ui
+        .probe_elements()
+        .into_iter()
+        .filter(|e| e.path.contains("~list/Option#") && !e.text.is_empty())
+        .map(|e| e.text)
+        .collect();
+    assert_eq!(options, ["Baie"], "filter matches translated labels");
 }
 
 #[test]
@@ -991,7 +963,7 @@ select {{ width: 260px; }}
 select::picker(select) {{ max-height: 150px; padding: 9px; }}
 </style>"#
     );
-    both(&text, &[("bad", json!(true)), ("v", Value::Null)], |d| {
+    with_doc(&text, &[("bad", json!(true)), ("v", Value::Null)], |d| {
         let parts: Vec<String> =
             d.ui.parts()
                 .iter()
@@ -1055,7 +1027,7 @@ img { width: 64px; height: 64px; }
 #Crop { object-view-box: inset(calc(var(--v0) * 100%) calc((1 - var(--u1)) * 100%) calc((1 - var(--v1)) * 100%) calc(var(--u0) * 100%)); }
 #Raw { object-view-box: inset(0% 50% 0% 0%); }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let rect_of = |d: &Doc, id: &str| {
             let e = d.get(id);
             d.ui.frame()
@@ -1104,7 +1076,7 @@ fn data_og_instant_settles_only_the_first_entrance() {
 .in { opacity: 1; transition: opacity 400ms, width 400ms; width: 100px; height: 40px; background: #ffffff; }
 @starting-style { .in { opacity: 0; width: 10px; } }
 </style>"#;
-    both(text, &[("shown", json!(true))], |d| {
+    with_doc(text, &[("shown", json!(true))], |d| {
         // Built at the first frame: a frame on, the instant one is settled
         // and the plain one is still fading in.
         d.step(InputFrame::default());
@@ -1184,45 +1156,35 @@ fn reduced_motion_transitions_follow_the_media_query() {
     let keep =
         format!("@media (prefers-reduced-motion: reduce) {{ #Card {{ transition: {all}; }} }}");
     let none = "@media (prefers-reduced-motion: reduce) { #Card { transition: none; } }";
-    for mounted in [false, true] {
-        let run = |rule: &str, reduced: bool| {
-            let mut d = Doc::new(&doc(rule), &[("mode", json!("off"))], mounted);
-            let mut theme = *d.ui.theme();
-            theme.reduced_motion = reduced;
-            d.ui.set_theme(theme);
-            d.step(InputFrame::default());
-            let mut frames = Vec::new();
-            for mode in ["on", "off"] {
-                d.set("mode", json!(mode));
-                for _ in 0..30 {
-                    d.step(InputFrame::default());
-                    frames.push(d.ui.frame().items.clone());
-                }
+    let run = |rule: &str, reduced: bool| {
+        let mut d = Doc::new(&doc(rule), &[("mode", json!("off"))]);
+        let mut theme = *d.ui.theme();
+        theme.reduced_motion = reduced;
+        d.ui.set_theme(theme);
+        d.step(InputFrame::default());
+        let mut frames = Vec::new();
+        for mode in ["on", "off"] {
+            d.set("mode", json!(mode));
+            for _ in 0..30 {
+                d.step(InputFrame::default());
+                frames.push(d.ui.frame().items.clone());
             }
-            frames
-        };
-        let distinct = |f: &[Vec<_>]| f.windows(2).filter(|w| w[0] != w[1]).count();
-        let authored = run("", false);
-        assert_eq!(
-            run(&keep, true),
-            authored,
-            "mounted {mounted}: kept as written"
-        );
-        assert_eq!(
-            run(&keep, false),
-            authored,
-            "mounted {mounted}: the block is inert"
-        );
-        let jumped = run(none, true);
-        assert_eq!(distinct(&jumped), 1, "mounted {mounted}: none jumps");
-        let fallback = run("", true);
-        let moves = distinct(&fallback);
-        assert!(
-            moves > 1 && moves < distinct(&authored),
-            "mounted {mounted}: the fallback fades quickly ({moves} vs {})",
-            distinct(&authored)
-        );
-    }
+        }
+        frames
+    };
+    let distinct = |f: &[Vec<_>]| f.windows(2).filter(|w| w[0] != w[1]).count();
+    let authored = run("", false);
+    assert_eq!(run(&keep, true), authored, "kept as written");
+    assert_eq!(run(&keep, false), authored, "the block is inert");
+    let jumped = run(none, true);
+    assert_eq!(distinct(&jumped), 1, "none jumps");
+    let fallback = run("", true);
+    let moves = distinct(&fallback);
+    assert!(
+        moves > 1 && moves < distinct(&authored),
+        "the fallback fades quickly ({moves} vs {})",
+        distinct(&authored)
+    );
     // A display exit written for reduced motion keeps its length (200 ms,
     // 12 ticks) instead of the fallback's 120 ms.
     let exit = r#"<meta name="component" content="t">
@@ -1236,7 +1198,7 @@ fn reduced_motion_transitions_follow_the_media_query() {
 }
 </style>"#;
     for (shown, gone, held) in [("shown", "gone", false), ("kept", "kept gone", true)] {
-        both(exit, &[("mode", json!(shown))], |d| {
+        with_doc(exit, &[("mode", json!(shown))], |d| {
             let mut theme = *d.ui.theme();
             theme.reduced_motion = true;
             d.ui.set_theme(theme);
@@ -1255,10 +1217,10 @@ fn reduced_motion_transitions_follow_the_media_query() {
 }
 
 /// An overlap is a diagnostic (`og.ui.overlaps`), not a style: a gem
-/// placed over its card's art is reported in both builders, and the
-/// removed `-og-overlaps` is refused naming where overlaps are read. Ways
-/// it could fail: the declaration still accepted (and hiding the pair), or
-/// a document overlap no longer reported.
+/// placed over its card's art is reported, and the removed `-og-overlaps`
+/// is refused naming where overlaps are read. Ways it could fail: the
+/// declaration still accepted (and hiding the pair), or a document overlap
+/// no longer reported.
 #[test]
 fn overlaps_are_reported_not_declared() {
     let error = refused(
@@ -1275,7 +1237,7 @@ fn overlaps_are_reported_not_declared() {
 #Art { width: 120px; height: 160px; background: #334455; }
 #Gem { position: absolute; left: -8px; top: -8px; width: 24px; height: 24px; background: #ffd166; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let pairs: Vec<_> =
             d.ui.overlaps()
                 .iter()
@@ -1318,7 +1280,7 @@ fn og_overlay_draws_a_screen_overlay_at_its_opacity() {
         )
     };
     let frame = |effect: &str, mode: &str| {
-        let mut d = Doc::new(&doc(effect), &[("mode", json!(mode))], true);
+        let mut d = Doc::new(&doc(effect), &[("mode", json!(mode))]);
         d.step(InputFrame::default());
         d.ui.frame().items.clone()
     };
@@ -1337,7 +1299,7 @@ fn og_overlay_draws_a_screen_overlay_at_its_opacity() {
     // A material parameter from a store, through the attribute.
     let bound = r#"<meta name="component" content="t">
 <div id="Page"><og-overlay id="Hurt" effect={$fx}></og-overlay></div>"#;
-    let mut d = Doc::new(bound, &[("fx", json!("material ripple(6 48 60)"))], true);
+    let mut d = Doc::new(bound, &[("fx", json!("material ripple(6 48 60)"))]);
     let param = |d: &Doc| {
         d.ui.frame().items.iter().find_map(|it| match &it.cmd {
             DrawCmd::BeginLayer { params, .. } => Some(params[0][0]),
@@ -1373,7 +1335,7 @@ fn discrete_display_exit_finishes_before_removing_content() {
   background: #ffffff; transition: opacity 200ms linear, display 200ms allow-discrete; }
 #Card.gone { display: none; opacity: 0; }
 </style>"#;
-    both(text, &[("mode", json!("shown"))], |d| {
+    with_doc(text, &[("mode", json!("shown"))], |d| {
         d.set("mode", json!("gone"));
         assert!(d.el("Child").is_some(), "content remains during its exit");
         for _ in 0..7 {
@@ -1393,7 +1355,7 @@ fn discrete_display_exit_finishes_before_removing_content() {
             expected,
             "exit checkpoint replays exactly"
         );
-        let mut fresh = Doc::new(text, &[("mode", json!("gone"))], d.mounted);
+        let mut fresh = Doc::new(text, &[("mode", json!("gone"))]);
         fresh.ui.restore_state(&saved).unwrap();
         fresh.step(InputFrame::default());
         assert_eq!(
@@ -1442,7 +1404,7 @@ fn a_button_holds_its_content_in_a_row() {
   <button id="Buy" variant="primary" onclick={buy}><og-icon id="Coin" icon="coin" />Buy<badge id="N">3</badge></button>
   <button id="Plain">Plain</button>
 </div>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let (buy, coin, n) = (d.get("Buy"), d.get("Coin"), d.get("N"));
         let words =
             d.ui.probe_elements()
@@ -1494,7 +1456,7 @@ fn a_button_grows_to_hold_tall_content() {
 #Name, #Detail { font-size: 40px; }
 #Given { height: 30px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let (row, col) = (d.get("Row"), d.get("Col"));
         assert!(
             col.height >= 60.0 && col.y >= row.y && col.y + col.height <= row.y + row.height + 0.5,
@@ -1530,7 +1492,7 @@ fn row_action_handlers_take_the_action_for_the_focused_row() {
   <button id="Back" onback={back}>Back</button>
 </div>"#;
     let rows = json!([{"id": "a"}, {"id": "b/2"}, {"id": "c"}]);
-    both(text, &[("rows", rows.clone())], |d| {
+    with_doc(text, &[("rows", rows.clone())], |d| {
         let fire = |d: &mut Doc, focus: &str, action: &str| -> Vec<(String, String)> {
             let path =
                 d.ui.probe_elements()
@@ -1586,11 +1548,7 @@ fn tabs_take_icons_and_badges() {
 <div id="Page">
   <tabs id="Tabs" items="Gear Quests" icons="sword shield" badges={$badges} bind:selected={$tab}></tabs>
 </div>"#;
-    let d = &mut Doc::new(
-        text,
-        &[("tab", json!(0)), ("badges", json!(["", "3"]))],
-        false,
-    );
+    let d = &mut Doc::new(text, &[("tab", json!(0)), ("badges", json!(["", "3"]))]);
     let el = |d: &Doc, end: &str| {
         d.ui.probe_elements()
             .into_iter()
@@ -1608,7 +1566,7 @@ fn tabs_take_icons_and_badges() {
         "the tab holds its badge: {badge:?} in {tab:?}"
     );
     // The bumpers: tabNext steps, wrapping past the last; tabPrev back.
-    let d = &mut Doc::new(text, &[("tab", json!(0)), ("badges", Value::Null)], true);
+    let d = &mut Doc::new(text, &[("tab", json!(0)), ("badges", Value::Null)]);
     let press = |d: &mut Doc, key: &'static str| {
         d.step(InputFrame {
             keys_held: vec![key],
@@ -1645,7 +1603,7 @@ fn aria_attributes_reach_the_accessibility_tree() {
   <div id="Bar" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow={$n} aria-valuetext="3 of 10">x</div>
   <div id="Sep" role="separator" aria-expanded="false">Or</div>
 </div>"#;
-    both(
+    with_doc(
         text,
         &[
             ("title", json!("Modes")),
@@ -1708,8 +1666,8 @@ fn aria_attributes_reach_the_accessibility_tree() {
 /// changes; `$ui` carries the device, the coarse pointer and the action
 /// bar; `data-og-rebind` captures the next key into its bound value.
 /// Ways it could fail: a glyph stuck on the device it was built for, `$ui`
-/// not reaching a mounted or an immediate document, the capture writing
-/// Escape or never ending.
+/// not reaching a mounted document, the capture writing Escape or never
+/// ending.
 #[test]
 fn kbd_glyphs_follow_the_device_and_rebind() {
     let text = r#"<meta name="component" content="t">
@@ -1720,7 +1678,7 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
   <p id="Count">{$ui.coarsePointer ? "touch" : "fine"}</p>
   <kbd id="R" data-action="jump" data-og-rebind bind:value={$key}></kbd>
 </div>"#;
-    both(text, &[("key", json!("KeyE"))], |d| {
+    with_doc(text, &[("key", json!("KeyE"))], |d| {
         d.ui.define_action(ActionDesc {
             name: "jump".into(),
             keys: vec!["KeyE".into()],
@@ -1749,18 +1707,14 @@ fn kbd_glyphs_follow_the_device_and_rebind() {
             ..InputFrame::default()
         });
         d.step(InputFrame::default());
-        if d.mounted {
-            assert_eq!(d.read("key"), json!("KeyQ"), "the next key is its binding");
-        }
+        assert_eq!(d.read("key"), json!("KeyQ"), "the next key is its binding");
         d.click("R");
         d.step(InputFrame {
             keys_pressed: vec!["Escape"],
             ..InputFrame::default()
         });
         d.step(InputFrame::default());
-        if d.mounted {
-            assert_eq!(d.read("key"), json!("KeyQ"), "Escape cancels");
-        }
+        assert_eq!(d.read("key"), json!("KeyQ"), "Escape cancels");
     });
 }
 
@@ -1787,7 +1741,7 @@ p::part(big) { font-size: 40px; line-height: 48px; letter-spacing: 0.1em; }
         1,
         "p::part(big) styles the paragraph's span"
     );
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let line = d.get("Line");
         assert!(line.text.starts_with("Press "), "{}", line.text);
         assert!(!line.text.contains('<'), "no markup as text: {}", line.text);
@@ -1828,7 +1782,7 @@ fn titles_and_popovers_show_against_their_controls() {
 <style>
 #Page { padding: 40px; gap: 40px; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         let hover = |d: &mut Doc, id: &str, ticks: usize| {
             let e = d.get(id);
             let at = Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0);
@@ -1939,7 +1893,7 @@ fn popovers_take_their_area_offset_fallback_arrow_and_point() {
 #Flip { position-area: bottom; position-try-fallbacks: flip-block; }
 #Ctx::-og-arrow { width: 10px; background: #ff0000; }
 </style>"#;
-    both(text, &[], |d| {
+    with_doc(text, &[], |d| {
         for _ in 0..3 {
             d.step(InputFrame::default());
         }
@@ -2055,7 +2009,7 @@ fn core_controls_choose_step_hold_and_report() {
         ("qty", json!("2")),
         ("lv", json!("20")),
     ];
-    let d = &mut Doc::with_font(text, &stores, true, crate::support::test_font());
+    let d = &mut Doc::with_font(text, &stores, crate::support::test_font());
     for _ in 0..5 {
         d.step(InputFrame::default());
     }
@@ -2224,7 +2178,7 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
         ("tint", json!("#3366cc")),
         ("tour", json!(false)),
     ];
-    let d = &mut Doc::new(text, &stores, true);
+    let d = &mut Doc::new(text, &stores);
     d.step(InputFrame::default());
     assert!(
         d.get("Line").text.len() < "Hello there".len(),
@@ -2301,42 +2255,40 @@ fn counters_reveals_cyclers_spotlights_and_colours() {
 fn typewriter_reveals_whole_graphemes_and_replays_completion() {
     let text = r#"<meta name="component" content="t">
 <div><og-typewriter id="Line" rate="60" onrevealed={done}>{$words}</og-typewriter></div>"#;
-    for mounted in [false, true] {
-        let mut d = Doc::new(text, &[("words", json!("Á👩‍🚀Z"))], mounted);
-        assert_eq!(d.get("Line").text, "");
-        d.step(InputFrame::default());
-        assert_eq!(d.get("Line").text, "Á", "the accent stays with its base");
-        let whole = d.read("words");
-        assert_eq!(
-            d.a11y("Line").name,
-            whole.as_str().unwrap(),
-            "named by the whole line while it shows a part"
-        );
-        let saved = d.ui.save_state();
-        for replay in 0..2 {
-            if replay == 1 {
-                d.ui.restore_state(&saved).unwrap();
-            }
-            d.events.clear();
-            d.step(InputFrame::default());
-            assert_eq!(d.get("Line").text, "Á👩‍🚀", "the joined emoji is indivisible");
-            assert!(!d.events.iter().any(|event| event.name == "done"));
-            d.step(InputFrame::default());
-            assert_eq!(d.get("Line").text, "Á👩‍🚀Z");
-            d.step(InputFrame::default());
-            assert_eq!(
-                d.events.iter().filter(|event| event.name == "done").count(),
-                1
-            );
+    let mut d = Doc::new(text, &[("words", json!("Á👩‍🚀Z"))]);
+    assert_eq!(d.get("Line").text, "");
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Line").text, "Á", "the accent stays with its base");
+    let whole = d.read("words");
+    assert_eq!(
+        d.a11y("Line").name,
+        whole.as_str().unwrap(),
+        "named by the whole line while it shows a part"
+    );
+    let saved = d.ui.save_state();
+    for replay in 0..2 {
+        if replay == 1 {
+            d.ui.restore_state(&saved).unwrap();
         }
-        d.set("words", json!("🇳🇿BC"));
-        assert_eq!(d.get("Line").text, "🇳🇿", "new content restarts the reveal");
-        let mut theme = *d.ui.theme();
-        theme.reduced_motion = true;
-        d.ui.set_theme(theme);
+        d.events.clear();
         d.step(InputFrame::default());
-        assert_eq!(d.get("Line").text, "🇳🇿BC");
+        assert_eq!(d.get("Line").text, "Á👩‍🚀", "the joined emoji is indivisible");
+        assert!(!d.events.iter().any(|event| event.name == "done"));
+        d.step(InputFrame::default());
+        assert_eq!(d.get("Line").text, "Á👩‍🚀Z");
+        d.step(InputFrame::default());
+        assert_eq!(
+            d.events.iter().filter(|event| event.name == "done").count(),
+            1
+        );
     }
+    d.set("words", json!("🇳🇿BC"));
+    assert_eq!(d.get("Line").text, "🇳🇿", "new content restarts the reveal");
+    let mut theme = *d.ui.theme();
+    theme.reduced_motion = true;
+    d.ui.set_theme(theme);
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Line").text, "🇳🇿BC");
 }
 
 /// A typewriter cuts its source and CSS transforms the part: the reveal
@@ -2347,23 +2299,21 @@ fn typewriter_reveals_under_a_text_transform() {
     let text = r#"<meta name="component" content="t">
 <div><og-typewriter id="Line" rate="60" onrevealed={done}>{$words}</og-typewriter></div>
 <style>#Line { text-transform: uppercase; }</style>"#;
-    for mounted in [false, true] {
-        let mut d = Doc::new(text, &[("words", json!("aßc"))], mounted);
-        assert_eq!(d.get("Line").text, "");
-        d.step(InputFrame::default());
-        assert_eq!(d.get("Line").text, "A");
-        assert_eq!(d.a11y("Line").name, "ASSC", "named by the whole line");
-        d.step(InputFrame::default());
-        assert_eq!(d.get("Line").text, "ASS", "ß is whole in capitals");
-        assert!(!d.events.iter().any(|event| event.name == "done"));
-        d.step(InputFrame::default());
-        assert_eq!(d.get("Line").text, "ASSC");
-        d.step(InputFrame::default());
-        assert_eq!(
-            d.events.iter().filter(|event| event.name == "done").count(),
-            1
-        );
-    }
+    let mut d = Doc::new(text, &[("words", json!("aßc"))]);
+    assert_eq!(d.get("Line").text, "");
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Line").text, "A");
+    assert_eq!(d.a11y("Line").name, "ASSC", "named by the whole line");
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Line").text, "ASS", "ß is whole in capitals");
+    assert!(!d.events.iter().any(|event| event.name == "done"));
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Line").text, "ASSC");
+    d.step(InputFrame::default());
+    assert_eq!(
+        d.events.iter().filter(|event| event.name == "done").count(),
+        1
+    );
 }
 
 /// The settings screen's tree from data: pages as tabs, each entry's
@@ -2398,7 +2348,7 @@ fn the_settings_tree_is_data() {
         ("page", json!("audio")),
         ("pending", json!(false)),
     ];
-    let d = &mut Doc::new(&text, &stores, true);
+    let d = &mut Doc::new(&text, &stores);
     for _ in 0..5 {
         d.step(InputFrame::default());
     }
@@ -2440,7 +2390,7 @@ fn rows_leaving_with_their_changed_children_restyle_cleanly() {
         ),
         ("page", json!("1")),
     ];
-    let d = &mut Doc::new(text, &stores, true);
+    let d = &mut Doc::new(text, &stores);
     d.set("page", json!("2"));
     let shown: Vec<_> =
         d.ui.probe_elements()
@@ -2452,8 +2402,8 @@ fn rows_leaving_with_their_changed_children_restyle_cleanly() {
 }
 
 /// Every component document the engine ships in place of a TS builder
-/// (B-port) builds from its default fixture, both ways a document is built,
-/// and its keyed lists show their rows.
+/// (B-port) builds from its default fixture, mounted with the fixture's
+/// values as its stores, and its keyed lists show their rows.
 ///
 /// Ways it could fail: a document that no longer parses after a tag or CSS
 /// change, a fixture list that builds no rows (a nested `{#each}` a retained
@@ -2496,14 +2446,14 @@ fn shipped_component_documents_build_from_their_fixtures() {
             .iter()
             .map(|(k, v)| (k.as_str(), v.clone()))
             .collect();
-        both(&text, &stores, |d| {
+        with_doc(&text, &stores, |d| {
             let elements = d.ui.probe_elements();
             let shown = if row.is_empty() {
                 elements.iter().filter(|e| e.kind == "icon").count() == 3
             } else {
                 elements.iter().any(|e| e.text.contains(row))
             };
-            assert!(shown, "{name} (mounted: {}): no {row}", d.mounted);
+            assert!(shown, "{name}: no {row}");
         });
     }
 }
@@ -2531,7 +2481,7 @@ fn search_clears_and_field_adornments_compose() {
 .frame { flex-direction: row; align-items: center; gap: 4px; padding: 0 8px; }
 .bare { appearance: none; }
 </style>"#;
-    let d = &mut Doc::new(text, &[("q", json!("ore")), ("name", json!("Ash"))], true);
+    let d = &mut Doc::new(text, &[("q", json!("ore")), ("name", json!("Ash"))]);
     assert!(
         d.el("Find/Clear").is_some(),
         "a search box with text has its clear button"
@@ -2566,7 +2516,7 @@ fn details_name_is_an_exclusive_accordion() {
   <details id="Other" summary="Other" open><p id="OtherBody">z</p></details>
 </div>
 <style>#Page { gap: 8px; padding: 8px; }</style>"#;
-    let d = &mut Doc::new(text, &[("rules", json!(true))], true);
+    let d = &mut Doc::new(text, &[("rules", json!(true))]);
     assert!(d.el("RulesBody").is_some() && d.el("ScoreBody").is_none());
     assert_ne!(
         d.a11y("Score").name,
@@ -2627,26 +2577,24 @@ button { width: 200px; }
 #Menu { width: 300px; padding: 0; margin: 0; }
 #Menu > button { width: stretch; }
 </style>"#;
-    for mounted in [false, true] {
-        let d = &Doc::with_font(text, &[], mounted, crate::support::test_font());
-        let mid = label_x(d, "Mid", "Mid");
-        let start = label_x(d, "Start", "Start");
-        assert!(mid > 60.0, "centred by default: {mid}");
-        assert!(start < 30.0, "text-align: start: {start}");
-        assert!(
-            label_x(d, "Kept", "Kept") > 60.0,
-            "a button does not inherit its parent's text-align"
-        );
-        let (copy, paste) = (
-            label_x(d, "Copy", "Copy"),
-            label_x(d, "PasteAll", "Paste all"),
-        );
-        assert_eq!(d.get("Copy").width, 300.0);
-        assert!(
-            copy < 30.0 && copy == paste,
-            "menu items start their labels: {copy} {paste}"
-        );
-    }
+    let d = &Doc::with_font(text, &[], crate::support::test_font());
+    let mid = label_x(d, "Mid", "Mid");
+    let start = label_x(d, "Start", "Start");
+    assert!(mid > 60.0, "centred by default: {mid}");
+    assert!(start < 30.0, "text-align: start: {start}");
+    assert!(
+        label_x(d, "Kept", "Kept") > 60.0,
+        "a button does not inherit its parent's text-align"
+    );
+    let (copy, paste) = (
+        label_x(d, "Copy", "Copy"),
+        label_x(d, "PasteAll", "Paste all"),
+    );
+    assert_eq!(d.get("Copy").width, 300.0);
+    assert!(
+        copy < 30.0 && copy == paste,
+        "menu items start their labels: {copy} {paste}"
+    );
 }
 
 #[test]
@@ -2670,7 +2618,7 @@ input, textarea { padding: 4px; }
 #SelWidth { width: 150px; }
 #VArea { height: 100px; }
 </style>"#;
-    both(
+    with_doc(
         source,
         &[
             ("value", json!("Hi")),

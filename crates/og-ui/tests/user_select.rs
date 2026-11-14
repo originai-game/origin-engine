@@ -27,48 +27,42 @@ use crate::support;
 use og_core::glam::Vec2;
 use og_ui::reactive::SourceId;
 use og_ui::*;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::collections::BTreeMap;
 use support::*;
 
 const DOC: &str = USER_SELECT_DOC;
 
+/// The document `sel`, mounted, and the viewport its frames lay out in.
 struct Rig {
     ui: Ui,
     vp: Viewport,
-    mounted: bool,
 }
 
 impl Rig {
-    fn new(vp: Viewport, mounted: bool, font: UiFont) -> Rig {
-        Rig::with(DOC, vp, mounted, font)
+    fn new(vp: Viewport, font: UiFont) -> Rig {
+        Rig::with(DOC, vp, font)
     }
 
-    fn with(doc: &str, vp: Viewport, mounted: bool, font: UiFont) -> Rig {
+    fn with(doc: &str, vp: Viewport, font: UiFont) -> Rig {
         let mut ui = ui_with_font(font);
         ui.define_document(UiDocument::parse("ui/sel.svelte", doc).expect("parses"));
-        if mounted {
-            ui.mount_document(
-                SourceId::new("test", "sel"),
-                "sel",
-                BTreeMap::new(),
-                BTreeMap::new(),
-                &bind::NoEnv,
-            )
-            .expect("mounts");
-        }
-        let mut rig = Rig { ui, vp, mounted };
+        ui.mount_document(
+            SourceId::new("test", "sel"),
+            "sel",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &bind::NoEnv,
+        )
+        .expect("mounts");
+        let mut rig = Rig { ui, vp };
         rig.idle(2);
         rig
     }
 
     fn step(&mut self, input: InputFrame) {
         self.ui.begin(input, self.vp);
-        if self.mounted {
-            self.ui.build_retained_documents(&bind::NoEnv).unwrap();
-        } else {
-            self.ui.component("T", "sel", &mut json!({}), &bind::NoEnv);
-        }
+        self.ui.build_retained_documents(&bind::NoEnv).unwrap();
         self.ui.end();
         assert!(
             self.ui.frame().warnings.is_empty(),
@@ -150,53 +144,50 @@ fn desktop() -> Viewport {
 
 #[test]
 fn a_drag_selects_across_paragraphs_and_copies_their_source_text() {
-    for mounted in [false, true] {
-        let mut rig = Rig::new(desktop(), mounted, test_font_metrics());
-        // The narrow paragraph wraps: its lines are its words.
-        let wrap = rig.el("Wrap");
-        let second = rig.el("Second");
-        assert!(wrap.height > second.height * 3.0, "{wrap:?}");
-        // From before its first glyph to past the second's last, down
-        // through both: every character of both, the wraps' spaces back.
-        rig.drag(rig.point("Wrap", 0.0, 0.1), rig.point("Second", 1.0, 0.5));
-        assert_eq!(
-            rig.selected(),
-            "The quick brown fox jumps over the lazy dog\nSecond paragraph",
-            "mounted {mounted}"
-        );
-        assert_eq!(rig.selection()["anchor"]["at"], 0);
-        assert!(
-            rig.selection()["focus"]["path"]
-                .as_str()
-                .is_some_and(|p| p.ends_with("Second")),
-            "{}",
-            rig.selection()
-        );
-        assert_eq!(rig.copy().as_deref(), Some(rig.selected().as_str()));
-        // Back up from the second's middle to the first's: the same
-        // order, whichever way the drag went; part of each.
-        let p = rig.point("Second", 0.5, 0.5);
-        rig.drag(p, rig.point("Wrap", 0.5, 0.95));
-        let text = rig.selected();
-        let (head, tail) = text.split_once('\n').expect("two paragraphs");
-        assert!(
-            !head.is_empty() && "The quick brown fox jumps over the lazy dog".ends_with(head),
-            "{text:?}"
-        );
-        assert!(
-            !tail.is_empty() && tail.len() < "Second paragraph".len(),
-            "{text:?}"
-        );
-        assert!("Second paragraph".starts_with(tail), "{text:?}");
-        // The selection survives the drag's end and a frame with no input.
-        rig.idle(2);
-        assert_eq!(rig.selected(), text);
-    }
+    let mut rig = Rig::new(desktop(), test_font_metrics());
+    // The narrow paragraph wraps: its lines are its words.
+    let wrap = rig.el("Wrap");
+    let second = rig.el("Second");
+    assert!(wrap.height > second.height * 3.0, "{wrap:?}");
+    // From before its first glyph to past the second's last, down
+    // through both: every character of both, the wraps' spaces back.
+    rig.drag(rig.point("Wrap", 0.0, 0.1), rig.point("Second", 1.0, 0.5));
+    assert_eq!(
+        rig.selected(),
+        "The quick brown fox jumps over the lazy dog\nSecond paragraph"
+    );
+    assert_eq!(rig.selection()["anchor"]["at"], 0);
+    assert!(
+        rig.selection()["focus"]["path"]
+            .as_str()
+            .is_some_and(|p| p.ends_with("Second")),
+        "{}",
+        rig.selection()
+    );
+    assert_eq!(rig.copy().as_deref(), Some(rig.selected().as_str()));
+    // Back up from the second's middle to the first's: the same
+    // order, whichever way the drag went; part of each.
+    let p = rig.point("Second", 0.5, 0.5);
+    rig.drag(p, rig.point("Wrap", 0.5, 0.95));
+    let text = rig.selected();
+    let (head, tail) = text.split_once('\n').expect("two paragraphs");
+    assert!(
+        !head.is_empty() && "The quick brown fox jumps over the lazy dog".ends_with(head),
+        "{text:?}"
+    );
+    assert!(
+        !tail.is_empty() && tail.len() < "Second paragraph".len(),
+        "{text:?}"
+    );
+    assert!("Second paragraph".starts_with(tail), "{text:?}");
+    // The selection survives the drag's end and a frame with no input.
+    rig.idle(2);
+    assert_eq!(rig.selected(), text);
 }
 
 #[test]
 fn presses_select_words_lines_and_whole_elements_where_allowed() {
-    let mut rig = Rig::new(desktop(), true, test_font_metrics());
+    let mut rig = Rig::new(desktop(), test_font_metrics());
     // A double press in the second paragraph's first word.
     let p = rig.point("Second", 0.05, 0.5);
     rig.presses(p, 2);
@@ -233,7 +224,7 @@ fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
         "</style>",
         "p::selection { color: #ff0000; text-decoration: underline #00ff00; text-shadow: 2px 2px #0000ff; }\n</style>",
     );
-    let mut rig = Rig::with(&doc, desktop(), true, test_font());
+    let mut rig = Rig::with(&doc, desktop(), test_font());
     rig.presses(rig.point("Second", 0.05, 0.5), 2);
     assert_eq!(rig.selected(), "Second");
     let e = rig.el("Second");
@@ -308,7 +299,7 @@ p { writing-mode: vertical-rl; height: 200px; margin: 0; }
 #J { text-align: justify; }
 p::selection { color: #ff0000; }
 </style>"#;
-    let mut rig = Rig::with(doc, desktop(), true, test_font());
+    let mut rig = Rig::with(doc, desktop(), test_font());
     let e = rig.el("V");
     assert!(e.width > e.height / 10.0, "wraps into columns: {e:?}");
     // Its first line is its rightmost column; a press a little down it
@@ -392,7 +383,7 @@ fn a_vertical_rich_paragraph_selects_down_its_columns() {
 p { writing-mode: vertical-rl; height: 200px; margin: 0; }
 p::selection { color: #ff0000; text-decoration: underline #00ff00; text-shadow: 2px 2px #0000ff; }
 </style>"#;
-    let mut rig = Rig::with(doc, desktop(), true, test_font());
+    let mut rig = Rig::with(doc, desktop(), test_font());
     let e = rig.el("V");
     assert_eq!(e.kind, "richtext");
     rig.presses(rig.point("V", 0.9, 0.02), 2);
@@ -475,7 +466,7 @@ fn a_long_touch_selects_a_word() {
         coarse_pointer: true,
         ..desktop()
     };
-    let mut rig = Rig::new(vp, true, test_font_metrics());
+    let mut rig = Rig::new(vp, test_font_metrics());
     let p = rig.point("Second", 0.05, 0.5);
     // A tap selects nothing.
     rig.presses(p, 1);
@@ -506,12 +497,7 @@ fn a_selection_repaints_only_what_it_moved_and_survives_a_restore() {
     let doc = format!(
         "<meta name=\"component\" content=\"sel\">\n<column id=\"Doc\">{paras}</column>\n<style>\n#Doc {{ user-select: text; padding: 8px; }}\n</style>"
     );
-    let mut rig = Rig::with(
-        &doc,
-        Viewport::new(800.0, 6000.0),
-        true,
-        test_font_metrics(),
-    );
+    let mut rig = Rig::with(&doc, Viewport::new(800.0, 6000.0), test_font_metrics());
     let (a, b) = (rig.point("P3", 0.0, 0.5), rig.point("P3", 0.9, 0.5));
     rig.at(a, true, true, false);
     let mut painted = Vec::new();
@@ -528,12 +514,7 @@ fn a_selection_repaints_only_what_it_moved_and_survives_a_restore() {
     rig.at(rig.point("P4", 0.5, 0.5), false, false, true);
     let before = rig.selection();
     let bytes = rig.ui.save_state();
-    let mut again = Rig::with(
-        &doc,
-        Viewport::new(800.0, 6000.0),
-        true,
-        test_font_metrics(),
-    );
+    let mut again = Rig::with(&doc, Viewport::new(800.0, 6000.0), test_font_metrics());
     again.ui.restore_state(&bytes).expect("restores");
     again.idle(1);
     assert_eq!(again.selection(), before);

@@ -18,7 +18,6 @@ use crate::support;
 use og_draw::ColorVision;
 use og_ui::reactive::SourceId;
 use og_ui::*;
-use serde_json::json;
 use std::collections::BTreeMap;
 use support::*;
 
@@ -38,40 +37,32 @@ fn widths(ui: &Ui) -> [f32; 3] {
 
 #[test]
 fn the_media_feature_follows_the_setting() {
-    for mounted in [false, true] {
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.define_document(UiDocument::parse("ui/cv.svelte", MEDIA).unwrap());
-        if mounted {
-            ui.mount_document(
-                SourceId::new("test", "cv"),
-                "cv",
-                BTreeMap::new(),
-                BTreeMap::new(),
-                &bind::NoEnv,
-            )
-            .unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(UiDocument::parse("ui/cv.svelte", MEDIA).unwrap());
+    ui.mount_document(
+        SourceId::new("test", "cv"),
+        "cv",
+        BTreeMap::new(),
+        BTreeMap::new(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    for (vision, expected) in [
+        (ColorVision::Typical, [10.0, 10.0, 40.0]),
+        (ColorVision::Deuteranopia, [20.0, 10.0, 10.0]),
+        (ColorVision::Tritanopia, [20.0, 30.0, 10.0]),
+        (ColorVision::Typical, [10.0, 10.0, 40.0]),
+    ] {
+        let mut theme = *ui.theme();
+        theme.unit_pin = 1.0;
+        theme.color_vision = vision;
+        ui.set_theme(theme);
+        for _ in 0..2 {
+            ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
+            ui.end();
         }
-        for (vision, expected) in [
-            (ColorVision::Typical, [10.0, 10.0, 40.0]),
-            (ColorVision::Deuteranopia, [20.0, 10.0, 10.0]),
-            (ColorVision::Tritanopia, [20.0, 30.0, 10.0]),
-            (ColorVision::Typical, [10.0, 10.0, 40.0]),
-        ] {
-            let mut theme = *ui.theme();
-            theme.unit_pin = 1.0;
-            theme.color_vision = vision;
-            ui.set_theme(theme);
-            for _ in 0..2 {
-                ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-                if mounted {
-                    ui.build_retained_documents(&bind::NoEnv).unwrap();
-                } else {
-                    ui.component("T", "cv", &mut json!({}), &bind::NoEnv);
-                }
-                ui.end();
-            }
-            assert_eq!(widths(&ui), expected, "{vision:?}, mounted {mounted}");
-        }
+        assert_eq!(widths(&ui), expected, "{vision:?}");
     }
     let err = UiDocument::parse(
         "ui/bad.svelte",
@@ -106,8 +97,9 @@ fn a_cue_draws_the_tokens_icon_from_the_styles_names() {
     });
     ui.set_cue_icons(["check", "alert"].map(String::from).to_vec());
     ui.define_document(UiDocument::parse("ui/cues.svelte", doc).unwrap());
+    mount_stores(&mut ui, SourceId::new("test", "cues"), "cues", &[]);
     ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
-    ui.component("T", "cues", &mut json!({}), &bind::NoEnv);
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
     ui.end();
     let els = ui.probe_elements();
     let text = |id: &str| els.iter().find(|e| e.id == id).unwrap().text.clone();
@@ -137,51 +129,43 @@ fn icon_layers_keep_independent_colors() {
 og-icon::part(image) { color: #c0392b; }
 og-icon::part(secondary) { color: #2980b9; }
 </style>"##;
-    for mounted in [false, true] {
-        let mut handles = Handles::default();
-        let texture = handles.texture();
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.set_icons(IconAtlas {
-            texture: Some(texture),
-            columns: 2,
-            rows: 1,
-            names: vec!["base".into(), "accent".into()],
-            ..Default::default()
-        });
-        ui.define_document(UiDocument::parse("ui/layers.svelte", source).unwrap());
-        if mounted {
-            ui.mount_document(
-                SourceId::new("test", "layers"),
-                "layers",
-                BTreeMap::new(),
-                BTreeMap::new(),
-                &bind::NoEnv,
-            )
-            .unwrap();
-        }
-        ui.begin(InputFrame::default(), Viewport::new(160.0, 100.0));
-        if mounted {
-            ui.build_retained_documents(&bind::NoEnv).unwrap();
-        } else {
-            ui.component("T", "layers", &mut json!({}), &bind::NoEnv);
-        }
-        ui.end();
-        let images: Vec<_> = ui
-            .frame()
-            .items
-            .iter()
-            .filter_map(|item| match &item.cmd {
-                DrawCmd::Image { color, uv, .. } => Some((*color, *uv)),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(
-            images,
-            vec![
-                (Srgba::rgb(192, 57, 43).linear(), [0.0, 0.0, 0.5, 1.0]),
-                (Srgba::rgb(41, 128, 185).linear(), [0.5, 0.0, 1.0, 1.0]),
-            ],
-            "mounted={mounted}: each atlas layer keeps its own ink"
-        );
-    }
+    let mut handles = Handles::default();
+    let texture = handles.texture();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_icons(IconAtlas {
+        texture: Some(texture),
+        columns: 2,
+        rows: 1,
+        names: vec!["base".into(), "accent".into()],
+        ..Default::default()
+    });
+    ui.define_document(UiDocument::parse("ui/layers.svelte", source).unwrap());
+    ui.mount_document(
+        SourceId::new("test", "layers"),
+        "layers",
+        BTreeMap::new(),
+        BTreeMap::new(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(160.0, 100.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let images: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|item| match &item.cmd {
+            DrawCmd::Image { color, uv, .. } => Some((*color, *uv)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        images,
+        vec![
+            (Srgba::rgb(192, 57, 43).linear(), [0.0, 0.0, 0.5, 1.0]),
+            (Srgba::rgb(41, 128, 185).linear(), [0.5, 0.0, 1.0, 1.0]),
+        ],
+        "each atlas layer keeps its own ink"
+    );
 }

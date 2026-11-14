@@ -201,7 +201,7 @@ fn document_spans_cascade_by_name_property_and_active_theme() {
         "line.svelte",
         r#"
 <meta name="component" content="line">
-<text id="Line" spans={spans} class:urgent={urgent}>{body}</text>
+<text id="Line" spans={$spans} class:urgent={$urgent}>{$body}</text>
 <style>
 text::part(speaker) { color: var(--ink-muted); }
 #Line::part(speaker)[name="Ada"] { color: var(--highlight); font-weight: bold; }
@@ -214,16 +214,33 @@ text::part(emphasis) { text-decoration-line: underline; }
     .unwrap();
     let mut ui = rich_ui();
     ui.define_document(document);
-    let mut values = json!({"body": "Ada 😀 Bo", "urgent": true, "spans": [
+    let mut spans = json!([
         {"name":"speaker", "position":0, "length":3, "properties":{"name":"Ada"}},
         {"name":"speaker", "position":6, "length":2, "properties":{"name":"Bo"}}
-    ]});
-    let render = |ui: &mut Ui, values: &mut serde_json::Value| {
+    ]);
+    // The spans are one value, not rows keyed by an id: a signal.
+    apply(
+        &mut ui,
+        json!({"op": "signal", "source": source("spans"), "initial": spans}),
+    );
+    store(&mut ui, "body", json!("Ada 😀 Bo"));
+    store(&mut ui, "urgent", json!(true));
+    ui.mount_document(
+        reactive::SourceId::new("test", "t"),
+        "line",
+        ["body", "urgent", "spans"]
+            .map(|name| (name.to_string(), source(name)))
+            .into(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let render = |ui: &mut Ui| {
         ui.begin(InputFrame::default(), Viewport::new(600.0, 400.0));
-        ui.component("Paragraph", "line", values, &bind::NoEnv);
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
         ui.end();
     };
-    render(&mut ui, &mut values);
+    render(&mut ui);
     let drawn = texts(&ui);
     let ada = drawn
         .iter()
@@ -234,8 +251,8 @@ text::part(emphasis) { text-decoration-line: underline; }
     assert!(ada.5 > 0.0);
     assert!(near(bo.3, ui.theme().palette.danger));
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
-    values["urgent"] = json!(false);
-    render(&mut ui, &mut values);
+    set_store(&mut ui, "urgent", json!(false));
+    render(&mut ui);
     assert!(near(
         texts(&ui).iter().find(|s| s.0 == "Ada").unwrap().3,
         ui.theme().palette.highlight
@@ -243,20 +260,21 @@ text::part(emphasis) { text-decoration-line: underline; }
     let mut theme = *ui.theme();
     theme.palette.highlight = Srgba::rgb(18, 127, 57);
     ui.set_theme(theme);
-    render(&mut ui, &mut values);
+    render(&mut ui);
     assert!(near(
         texts(&ui).iter().find(|s| s.0 == "Ada").unwrap().3,
         theme.palette.highlight
     ));
 
-    values["spans"][0]["position"] = json!("not a scalar index");
-    render(&mut ui, &mut values);
+    spans[0]["position"] = json!("not a scalar index");
+    set_store(&mut ui, "spans", spans);
+    render(&mut ui);
     assert!(
         ui.frame()
             .warnings
             .iter()
             .any(|w| w.contains("line.svelte:")
-                && w.contains("Paragraph.spans")
+                && w.contains("test:t.spans")
                 && w.contains("TextSpan[]"))
     );
     assert!(!ui.elements().iter().any(|e| e.text == "Ada 😀 Bo"));

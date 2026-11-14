@@ -1761,6 +1761,71 @@ mod tests {
         assert_eq!(seen[39], (None, Some(([0.0; 2], 0.0))));
     }
 
+    /// A rule's ancestor compound reads its state on the element it
+    /// matches, not on the rule's subject: `.card:hover > text` follows
+    /// the card's hover, for each state a selector names.
+    ///
+    /// Ways it could fail: the state read on the subject (the title's own
+    /// state restyles it), a state's name bound to another state, the
+    /// title not resolved again when the card's state changes.
+    #[test]
+    fn ancestor_selectors_read_the_matched_element_s_state() {
+        use crate::bind::InteractionState;
+        for (name, state) in [
+            ("hover", InteractionState::Hover),
+            ("active", InteractionState::Active),
+            ("focus", InteractionState::Focus),
+            ("focus-visible", InteractionState::FocusVisible),
+            ("focus-within", InteractionState::FocusWithin),
+            ("disabled", InteractionState::Disabled),
+            ("checked", InteractionState::Checked),
+            ("selected", InteractionState::Selected),
+            ("invalid", InteractionState::Invalid),
+            ("placeholder-shown", InteractionState::PlaceholderShown),
+        ] {
+            let source = format!(
+                r#"<meta name="component" content="states">
+<column id="Card" class="card"><text id="Title">Title</text></column>
+<style>text {{ width: 22px; }} .card:{name} > text:not(:where(.excluded)) {{ width: 44px; }}</style>"#
+            );
+            let mut ui = Ui::new(UiDesc::default());
+            ui.define_document(UiDocument::parse("states.svelte", &source).unwrap());
+            ui.mount_document(
+                SourceId::new("test", "states"),
+                "states",
+                BTreeMap::new(),
+                Default::default(),
+                &crate::bind::NoEnv,
+            )
+            .unwrap();
+            // The element at `path` enters or leaves the state.
+            let set = |ui: &mut Ui, path: &str, enabled: bool| {
+                let memory = &mut ui.docs.state_mut().memory;
+                let node = memory.retained.by_key[&crate::id::key_of_path(path)].clone();
+                memory
+                    .retained
+                    .topology
+                    .set_state(&node, state, enabled)
+                    .unwrap();
+                memory.reactive.graph.interaction_changed(&node, state);
+            };
+            let title = |ui: &mut Ui| {
+                ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+                ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+                ui.end();
+                let elements = ui.probe_elements();
+                let title = elements.iter().find(|e| e.path == "test:states/Title");
+                title.unwrap().width
+            };
+            assert_eq!(title(&mut ui), 22.0, "{name}: on neither");
+            set(&mut ui, "test:states", true);
+            assert_eq!(title(&mut ui), 44.0, "{name}: on the card");
+            set(&mut ui, "test:states", false);
+            set(&mut ui, "test:states/Title", true);
+            assert_eq!(title(&mut ui), 22.0, "{name}: on the title");
+        }
+    }
+
     /// A rule that sets a prop by a binding (`top: bind(y)`) places its
     /// element by the bound value, and follows it.
     ///

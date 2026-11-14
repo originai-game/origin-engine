@@ -16,16 +16,10 @@ use support::*;
 
 #[test]
 #[ignore = "requires GPU"]
-fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
+fn mounted_documents_keep_their_pixels_through_updates_and_restore() {
     use og_ui::reactive::{SourceId, wire};
     use serde_json::{Value, json};
     use std::collections::BTreeMap;
-    struct Env(Value);
-    impl bind::Env for Env {
-        fn lookup(&self, name: &str) -> Option<Value> {
-            self.0.get(name.trim_start_matches('$')).cloned()
-        }
-    }
     let apply = |ui: &mut Ui, command: Value| {
         let reply =
             wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
@@ -55,10 +49,8 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
         let mut scene = RenderScene::new();
         scene.lighting.environment.background = Background::Color(Vec3::splat(0.008));
         let font = add_test_font(&mut scene);
-        let mut retained = ui_with_font(font.clone());
-        let mut immediate = ui_with_font(font);
+        let mut retained = ui_with_font(font);
         retained.define_document(document.clone());
-        immediate.define_document(document.clone());
         let title = SourceId::new("test", "title");
         let enabled = SourceId::new("test", "enabled");
         for (source, initial) in [
@@ -88,15 +80,15 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
             ..Default::default()
         })
         .unwrap();
-        let mut saved = (Vec::new(), Vec::new());
+        let mut saved = Vec::new();
+        let mut shown = BTreeMap::new();
         for (state, label, checked) in [
             ("default", "Caption settings", false),
             ("updated", "Captions enabled", true),
             ("restored", "Caption settings", false),
         ] {
             if state == "restored" {
-                retained.restore_state(&saved.0).unwrap();
-                immediate.restore_state(&saved.1).unwrap();
+                retained.restore_state(&saved).unwrap();
             } else {
                 for (source, value) in [
                     (title.clone(), json!(label)),
@@ -108,46 +100,41 @@ fn retained_documents_match_immediate_pixels_after_updates_and_restore() {
                     );
                 }
             }
-            let env = Env(json!({"title":label,"enabled":checked}));
             for _ in 0..30 {
                 retained.begin(
                     InputFrame::default(),
                     Viewport::new(width as f32, height as f32),
                 );
-                retained.build_retained_documents(&env).unwrap();
+                retained.build_retained_documents(&bind::NoEnv).unwrap();
                 retained.end();
-                immediate.begin(
-                    InputFrame::default(),
-                    Viewport::new(width as f32, height as f32),
-                );
-                immediate.component("test:screen", "retained", &mut Value::Null, &env);
-                immediate.end();
             }
-            let mut pixels = Vec::new();
-            for ui in [&immediate, &retained] {
-                let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
-                ui.frame().emit(&EmitDesc::default(), &mut overlay);
-                scene.ui.overlay = Some(overlay);
-                scene.look.post.tonemap = Tonemap::None;
-                renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
-                pixels.push(renderer.read_offscreen().unwrap().pixels);
-            }
+            let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
+            retained.frame().emit(&EmitDesc::default(), &mut overlay);
+            scene.ui.overlay = Some(overlay);
+            scene.look.post.tonemap = Tonemap::None;
+            renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+            let pixels = renderer.read_offscreen().unwrap().pixels;
             image::save_buffer(
                 out_dir().join(format!("retained-{state}-{width}.png")),
-                &pixels[1],
+                &pixels,
                 width,
                 height,
                 image::ColorType::Rgba8,
             )
             .unwrap();
-            assert!(
-                pixels[0] == pixels[1],
-                "pixel difference: {state} {width}x{height}"
-            );
+            shown.insert(state, pixels);
             if state == "default" {
-                saved = (retained.save_state(), immediate.save_state());
+                saved = retained.save_state();
             }
         }
+        assert!(
+            shown["updated"] != shown["default"],
+            "the update draws nothing new: {width}x{height}"
+        );
+        assert!(
+            shown["restored"] == shown["default"],
+            "pixel difference after the restore: {width}x{height}"
+        );
     }
 }
 
@@ -478,18 +465,21 @@ fn document_spans_match_core_pixels_and_restore_motion() {
     let vp = Viewport::new(640.0, 180.0);
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
-    let mut ui = ui_with_font(font);
+    // The document in one UI, the widget in another, stepped alike.
+    let mut ui = ui_with_font(font.clone());
+    let mut core = ui_with_font(font);
     let mut theme = *ui.theme();
     theme.unit_pin = 1.0;
     theme.type_ramp.body.size = 26.0;
     theme.type_ramp.body.line_height = 36.0;
     ui.set_theme(theme);
+    core.set_theme(theme);
     ui.define_document(
         UiDocument::parse(
             "dialogue.svelte",
             r#"
 <meta name="component" content="dialogue">
-<text id="Line" spans={spans}>{body}</text>
+<text id="Line" spans={$spans}>{$body}</text>
 <style>
 text { width: 560px; }
 text::part(speaker) { color: var(--highlight); font-weight: bold; }
@@ -514,15 +504,16 @@ text::part(motion) { color: var(--danger); -og-text-motion: wave; }
         },
     ];
     let body = "Ada: Keep moving slowly. [b] remains plain text.";
+    ui.mount_with_values(
+        reactive::SourceId::new("test", "line"),
+        "dialogue",
+        &serde_json::json!({"body": body, "spans": spans}),
+    )
+    .unwrap();
     let draw = |ui: &mut Ui, document: bool| {
         ui.begin(InputFrame::default(), vp);
         if document {
-            ui.component(
-                "Line",
-                "dialogue",
-                &mut serde_json::json!({"body": body, "spans": spans}),
-                &bind::NoEnv,
-            );
+            ui.build_retained_documents(&bind::NoEnv).unwrap();
         } else {
             ui.rich_text_spans(
                 "Line",
@@ -566,15 +557,15 @@ text::part(motion) { color: var(--danger); -og-text-motion: wave; }
     };
     for _ in 0..13 {
         draw(&mut ui, true);
+        draw(&mut core, false);
     }
     let saved = ui.save_state();
     draw(&mut ui, true);
+    draw(&mut core, false);
     let document = capture(&ui);
-    ui.restore_state(&saved).unwrap();
-    draw(&mut ui, false);
     assert_eq!(
         document.pixels,
-        capture(&ui).pixels,
+        capture(&core).pixels,
         "document cascade must match core rendering, RMSE 0"
     );
     ui.restore_state(&saved).unwrap();

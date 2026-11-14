@@ -8,77 +8,63 @@ fn pack_selectors_cross_components_but_document_selectors_stay_local() {
         reactive::{SourceId, wire},
     };
     use serde_json::json;
-    for mounted in [false, true] {
-        let mut ui = Ui::new(UiDesc::default());
-        for (path, text) in [
-            (
-                "@ui/test/child.svelte",
-                r#"<meta name="component" content="Child"><div><div id="Target"></div></div><style>#Target { width: 21px; height: 20px; }</style>"#,
-            ),
-            (
-                "@ui/test/parent.svelte",
-                r#"<meta name="component" content="Parent"><div class:active={$on}><Child/></div><style>.active #Target { height: 99px; }</style>"#,
-            ),
-        ] {
-            ui.define_document(UiDocument::parse(path, text).unwrap());
-        }
-        ui.set_style_pack(
-            &StylePack::parse(
-                "styles/test",
-                vec![(
-                    "styles/test/main.css".into(),
-                    ".active #Target { width: 73px; }".into(),
-                )],
-            )
-            .unwrap(),
+    let mut ui = Ui::new(UiDesc::default());
+    for (path, text) in [
+        (
+            "@ui/test/child.svelte",
+            r#"<meta name="component" content="Child"><div><div id="Target"></div></div><style>#Target { width: 21px; height: 20px; }</style>"#,
+        ),
+        (
+            "@ui/test/parent.svelte",
+            r#"<meta name="component" content="Parent"><div class:active={$on}><Child/></div><style>.active #Target { height: 99px; }</style>"#,
+        ),
+    ] {
+        ui.define_document(UiDocument::parse(path, text).unwrap());
+    }
+    ui.set_style_pack(
+        &StylePack::parse(
+            "styles/test",
+            vec![(
+                "styles/test/main.css".into(),
+                ".active #Target { width: 73px; }".into(),
+            )],
         )
-        .unwrap();
-        let source = SourceId::new("test", "on");
-        let apply = |ui: &mut Ui, command| {
-            let reply = wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap()))
-                .unwrap();
-            assert_eq!(reply[0]["ok"], true, "{reply}");
-        };
-        if mounted {
-            apply(
-                &mut ui,
-                json!({"op":"signal", "source":source, "initial":false}),
-            );
-            ui.mount_document(
-                SourceId::new("test", "parent"),
-                "Parent",
-                [("on".into(), source.clone())].into(),
-                Default::default(),
-                &NoEnv,
-            )
+        .unwrap(),
+    )
+    .unwrap();
+    let source = SourceId::new("test", "on");
+    let apply = |ui: &mut Ui, command| {
+        let reply =
+            wire::decode(&ui.apply_reactive(&wire::encode(&json!([command])).unwrap())).unwrap();
+        assert_eq!(reply[0]["ok"], true, "{reply}");
+    };
+    apply(
+        &mut ui,
+        json!({"op":"signal", "source":source, "initial":false}),
+    );
+    ui.mount_document(
+        SourceId::new("test", "parent"),
+        "Parent",
+        [("on".into(), source.clone())].into(),
+        Default::default(),
+        &NoEnv,
+    )
+    .unwrap();
+    for on in [false, true, false] {
+        apply(&mut ui, json!({"op":"set", "source":source, "value":on}));
+        ui.begin(Default::default(), Viewport::new(300.0, 300.0));
+        ui.build_retained_documents(&NoEnv).unwrap();
+        ui.end();
+        let target = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Target"))
             .unwrap();
-        }
-        for on in [false, true, false] {
-            if mounted {
-                apply(&mut ui, json!({"op":"set", "source":source, "value":on}));
-            }
-            ui.begin(Default::default(), Viewport::new(300.0, 300.0));
-            if mounted {
-                ui.build_retained_documents(&NoEnv).unwrap();
-            } else {
-                ui.component("parent", "Parent", &mut json!({"$on":on}), &NoEnv);
-            }
-            ui.end();
-            let target = ui
-                .probe_elements()
-                .into_iter()
-                .find(|e| e.path.ends_with("/Target"))
-                .unwrap();
-            assert_eq!(
-                target.width,
-                if on { 73.0 } else { 21.0 },
-                "mounted={mounted}, on={on}"
-            );
-            assert_eq!(
-                target.height, 20.0,
-                "document selector must not cross component boundaries"
-            );
-        }
+        assert_eq!(target.width, if on { 73.0 } else { 21.0 }, "on={on}");
+        assert_eq!(
+            target.height, 20.0,
+            "document selector must not cross component boundaries"
+        );
     }
 }
 

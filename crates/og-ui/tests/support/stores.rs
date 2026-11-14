@@ -26,7 +26,7 @@ pub fn store(ui: &mut Ui, name: &str, value: Value) {
     apply(
         ui,
         match &value {
-            Value::Array(items) => {
+            Value::Array(items) if items.iter().all(Value::is_object) => {
                 json!({"op": "collection", "source": source, "key": "id", "items": items})
             }
             _ => json!({"op": "signal", "source": source, "initial": value}),
