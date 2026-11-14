@@ -1,9 +1,9 @@
 //! The immediate-mode context: build a tree every tick, read responses back.
 
+#[cfg(debug_assertions)]
 pub(crate) mod bounded;
 mod build;
 pub(crate) mod commands;
-#[cfg(debug_assertions)]
 #[doc(hidden)]
 pub mod layer_stack;
 pub(crate) mod stages;
