@@ -100,7 +100,7 @@ pub(crate) fn plan(input: &PlaceInput) -> Option<Plan> {
     if n > MAX_LAYERS || (reads_water && input.waters.len() > MAX_WATERS) {
         return None;
     }
-    let along = crate::terrain::horizontal_scale(input.model).max(1e-6);
+    let along = crate::ground::horizontal_scale(input.model).max(1e-6);
     let half = input.size * 0.5;
     let me = input.layers[n - 1];
     let cell = me.cell();
@@ -212,12 +212,12 @@ pub(crate) fn source(arrayed: bool) -> String {
         "{}{}{}{}{}",
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
-        crate::terrain::GRASS_COMMON_WGSL,
-        crate::terrain::TERRAIN_WGSL,
+        crate::ground::GRASS_COMMON_WGSL,
+        crate::ground::TERRAIN_WGSL,
         wgsl3d!("scatter_place.wgsl"),
     );
     if arrayed {
-        crate::terrain::terrain_array_declarations(&s)
+        crate::ground::terrain_array_declarations(&s)
     } else {
         s
     }

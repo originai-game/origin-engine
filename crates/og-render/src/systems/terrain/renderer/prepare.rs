@@ -488,17 +488,6 @@ impl TerrainRenderer {
     }
 }
 
-/// How far one metre along the terrain's x and z reaches in the world (the
-/// larger of the two): what the far plane is divided by in its own space.
-pub(crate) fn horizontal_scale(model: Mat4) -> f32 {
-    model
-        .x_axis
-        .truncate()
-        .length()
-        .max(model.z_axis.truncate().length())
-        .max(1e-6)
-}
-
 /// Every resident tile's square in the terrain's space (grown by one of
 /// its level's samples: its border) and its height range.
 pub(super) fn resident_boxes(data: &GpuData) -> Vec<(Vec2, Vec2, (f32, f32))> {

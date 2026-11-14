@@ -118,7 +118,7 @@ pub struct RenderScene {
     /// How each texture array is sampled by sprites (by array index).
     texture_array_filters: Vec<TextureFilter>,
     trail_styles: Vec<TrailStyle>,
-    terrain_data: Vec<crate::terrain::TerrainSource>,
+    terrain_data: Vec<crate::ground::TerrainSource>,
     /// Per terrain: how many times [`RenderScene::set_terrain`] replaced it.
     terrain_revisions: Vec<u64>,
     /// Per terrain: the regions [`RenderScene::edit_terrain`] changed in

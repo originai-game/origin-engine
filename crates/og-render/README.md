@@ -20,7 +20,7 @@ the world → scene extraction belongs to the layer above.
 | `mesh/` | Geometry that is drawn: lines, shapes, compaction |
 | `shading/` | Materials, lights and clusters, shadows, indirect light, reflections, decals, transparency |
 | `media/` | The air and what is in it: fog, the sky, clouds, volumetric light, the aurora, the weather |
-| `fields/` | What a camera-centred, tick-stepped map shares: its window snapped to world cells, the ticks a frame steps |
+| `fields/` | What is read at a place in the world: the wind, the ground (the height field the terrain draws and the grass, the scattered copies and the id pass read), and what a camera-centred, tick-stepped map shares (its window snapped to world cells, the ticks a frame steps) |
 | `post/` | Full-screen stages, the HDR targets, tonemapping |
 | `particles/` | Particles, ribbons, effect materials |
 | `sprites/` | The 2D batch: sprites, MSDF text, tiles, 2D lights, as the world, particles and the UI's overlay draw them |

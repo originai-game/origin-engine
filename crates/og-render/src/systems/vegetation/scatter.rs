@@ -37,12 +37,14 @@
 //! sways as smoothly as its first minute, and the previous frame's are
 //! kept for the motion vectors. A chunk's bounds grow by the furthest lean.
 
+use crate::ground::{
+    Ground, MAX_TERRAIN_LAYERS, Terrain, TerrainData, TerrainSource, TileGround, horizontal_scale,
+    smoothstep,
+};
 use crate::material::Side;
 use crate::scene::{MaterialHandle, MeshHandle};
-use crate::terrain::{MAX_TERRAIN_LAYERS, Terrain, TerrainData, TerrainSource, horizontal_scale};
-use crate::terrain_tiles::{TerrainLayout, TerrainTile};
+use crate::terrain_tiles::TerrainLayout;
 use glam::{Mat3, Mat4, Vec2, Vec3};
-use og_core::IdMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 

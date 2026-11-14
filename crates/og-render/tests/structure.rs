@@ -35,18 +35,11 @@ const MECHANISMS: &[&str] = &[
 
 /// `(file under src/, the directory it names)`.
 const KNOWN: &[(&str, &str)] = &[
-    ("debug/id_pass.rs", "systems/terrain"),
-    ("debug/id_pass.rs", "systems/vegetation"),
-    ("systems/terrain/mod.rs", "systems/vegetation"),
     ("systems/terrain/renderer/prepare.rs", "systems/vegetation"),
-    ("systems/vegetation/grass.rs", "systems/terrain"),
     ("systems/vegetation/grass/draw.rs", "systems/terrain"),
     ("systems/vegetation/grass/prepare.rs", "systems/terrain"),
-    ("systems/vegetation/grass/renderer.rs", "systems/terrain"),
     ("systems/vegetation/scatter.rs", "systems/crowd"),
-    ("systems/vegetation/scatter.rs", "systems/terrain"),
     ("systems/vegetation/scatter/draw.rs", "systems/terrain"),
-    ("systems/vegetation/scatter/placement.rs", "systems/terrain"),
     ("systems/vegetation/scatter/prepare.rs", "systems/terrain"),
     ("systems/vegetation/scatter_place.rs", "systems/terrain"),
 ];

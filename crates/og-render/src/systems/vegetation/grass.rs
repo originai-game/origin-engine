@@ -53,7 +53,7 @@
 //! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 //! DEALINGS IN THE SOFTWARE.
 
-use crate::terrain::horizontal_scale;
+use crate::ground::horizontal_scale;
 use crate::wind::WindFieldGpu;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use std::sync::OnceLock;
@@ -376,6 +376,7 @@ pub(crate) struct GrassRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ground::FarGpu;
 
     /// grass_common.wgsl GRASS_LOD_STRIDE: vertex indices between levels.
     const LOD_STRIDE: u32 = 64;

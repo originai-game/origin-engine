@@ -123,7 +123,7 @@ pub(crate) fn in_hole(n: u32, hole: Option<(u32, u32)>, x: u32, z: u32) -> bool 
 
 impl RingRanges {
     /// These ranges `by` indices further on.
-    pub(super) fn shifted(&self, by: u32) -> RingRanges {
+    pub(crate) fn shifted(&self, by: u32) -> RingRanges {
         let s = |r: &std::ops::Range<u32>| r.start + by..r.end + by;
         RingRanges {
             variants: self.variants.clone().map(|v| RingRange {
@@ -139,7 +139,7 @@ impl RingRanges {
 /// the hole at each of its four offsets, each laid out block by block
 /// (`n / BLOCKS` quads a side) so a block's quads are one range, then the
 /// skirt. Returns the indices and the ranges.
-pub(super) fn ring_indices(n: u32) -> (Vec<u32>, RingRanges) {
+pub(crate) fn ring_indices(n: u32) -> (Vec<u32>, RingRanges) {
     let mut idx = Vec::new();
     let mut ranges: Vec<RingRange> = Vec::new();
     let q = n / BLOCKS;

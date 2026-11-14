@@ -1,19 +1,7 @@
 //! The grass's uniforms: what its generate and draw shaders read of a field.
 
 use super::*;
-
-/// `TerrainGrass` in terrain.wgsl: the far colour of a field.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub(crate) struct FarGpu {
-    pub(super) color: [f32; 4],
-    pub(super) fade: [f32; 4],
-    pub(super) clump: [f32; 4],
-    pub(super) dry: [f32; 4],
-    pub(super) root: [f32; 4],
-    pub(super) canopy: [f32; 4],
-    pub(super) wind: WindFieldGpu,
-}
+use crate::ground::FarGpu;
 
 /// A field's canopy as the shaders hold it (grass.wgsl `grass_canopy`,
 /// grass_common.wgsl `grass_mean`): its extinction per metre of a ray
