@@ -97,7 +97,8 @@ pub(crate) fn fluid_shared_source() -> String {
         og_render_data::lightmap::probe_wgsl()
     )
 }
-pub(crate) const SKY_WGSL: &str = wgsl!("sky.wgsl");
+/// The clouds' shape, then the sky.
+pub(crate) const SKY_WGSL: &str = concat!(wgsl!("clouds_shape.wgsl"), wgsl!("sky.wgsl"));
 /// The physical sky's scattering (`sky_physical.rs`), its block named
 /// `SCATTER` until [`sky_scatter_wgsl`] names it.
 const SKY_SCATTER_WGSL: &str = wgsl!("sky_scatter.wgsl");
