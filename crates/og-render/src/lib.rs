@@ -313,6 +313,8 @@ use systems::vegetation::scatter_cull;
 use systems::vegetation::scatter_place;
 mod scene;
 pub use caps::{Caps, Tier};
+use fields::ground;
+use fields::ground::terrain_tiles;
 use fields::wind;
 use frame::timing;
 use frame::views;
@@ -356,7 +358,6 @@ use systems::softbody::visual_sim;
 use systems::stylise;
 use systems::stylise::stylise_object;
 use systems::terrain;
-use systems::terrain::terrain_tiles;
 use systems::vegetation::scatter::{scatter_lit_source, scatter_shadow_source};
 use systems::water;
 pub use systems::water::ocean_fft;
@@ -447,6 +448,12 @@ pub mod impostors {
 pub use crowd::{
     Crowd, CrowdImpostor, CrowdMember, CrowdPart, MAX_CROWD_LEVELS, drawn_level, member_level,
 };
+pub use ground::{
+    DEFAULT_TERRAIN_BUDGET, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS, TERRAIN_TEXTURED_LAYERS,
+    Terrain, TerrainClipmap, TerrainControl, TerrainData, TerrainLayer, TerrainLayerArrays,
+    TerrainLevel, TerrainLod, TerrainSampler,
+};
+pub use scatter::{MAX_SCATTER_INSTANCES, TerrainScatter};
 pub use scene::*;
 pub use shadows::PointShadows;
 pub use skin::{
@@ -463,11 +470,7 @@ pub use stylise::{
     PixelScale, PosterizeMode, Quantize, Retro3d, STYLISE_DRAWN, Stylise, StyliseSpace, Watercolor,
 };
 pub use targets::{RenderTargetDesc, RenderTargetHandle, TargetFormat, TargetKind, TargetTexture};
-pub use terrain::{
-    DEFAULT_TERRAIN_BUDGET, MAX_SCATTER_INSTANCES, MAX_TERRAIN_LAYERS, MAX_TERRAIN_LEVELS,
-    TERRAIN_TEXTURED_LAYERS, Terrain, TerrainClipmap, TerrainControl, TerrainData, TerrainLayer,
-    TerrainLayerArrays, TerrainLevel, TerrainLod, TerrainSampler, TerrainScatter, TerrainStampDraw,
-};
+pub use terrain::TerrainStampDraw;
 pub use terrain_tiles::{
     ControlPyramid, HeightPyramid, HoleCounts, MAX_TERRAIN_PYRAMID, MAX_TERRAIN_TILES,
     TERRAIN_TILE, TerrainLayout, TerrainTile, TerrainView, hole_bit, mark_holes,

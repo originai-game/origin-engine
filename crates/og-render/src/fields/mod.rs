@@ -1,4 +1,6 @@
-//! What every camera-centred map shares (the wind field, the grass
+//! What is read at a place in the world. The wind ([`wind`]) and the
+//! ground ([`ground`]: the height field the terrain draws and what grows
+//! on it reads), and what every camera-centred map shares (the wind field, the grass
 //! trample, the sea's foam, the visual bodies and fluids): where its
 //! window sits in the world ([`window`]) and which ticks a frame steps it
 //! through ([`catch_up`]).
@@ -10,6 +12,7 @@
 //! that follows a move shifts the map by whole cells.
 
 pub(crate) mod catch_up;
+pub(crate) mod ground;
 pub(crate) mod wind;
 pub mod wind_field;
 pub(crate) mod window;

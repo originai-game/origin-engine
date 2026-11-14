@@ -6,7 +6,7 @@ impl RenderScene {
     /// its first frame ([`crate::RenderError::InvalidData`]).
     pub fn add_terrain(&mut self, data: crate::TerrainData) -> TerrainHandle {
         self.terrain_data
-            .push(crate::terrain::TerrainSource::data(data));
+            .push(crate::ground::TerrainSource::data(data));
         self.terrain_revisions.push(0);
         self.terrain_edits.push(Vec::new());
         TerrainHandle(self.terrain_data.len() as u32 - 1)
@@ -22,7 +22,7 @@ impl RenderScene {
         range: (f32, f32),
     ) -> TerrainHandle {
         self.terrain_data
-            .push(crate::terrain::TerrainSource::Stream {
+            .push(crate::ground::TerrainSource::Stream {
                 layout,
                 range,
                 tiles: Default::default(),
@@ -43,7 +43,7 @@ impl RenderScene {
     ) -> bool {
         match self.terrain_data.get_mut(handle.index()) {
             Some(d) => {
-                *d = crate::terrain::TerrainSource::Stream {
+                *d = crate::ground::TerrainSource::Stream {
                     layout,
                     range,
                     tiles: Default::default(),
@@ -68,7 +68,7 @@ impl RenderScene {
         tile: Option<std::sync::Arc<crate::TerrainTile>>,
     ) -> bool {
         match self.terrain_data.get_mut(handle.index()) {
-            Some(crate::terrain::TerrainSource::Stream { layout, tiles, .. })
+            Some(crate::ground::TerrainSource::Stream { layout, tiles, .. })
                 if index < layout.tile_count() =>
             {
                 match tile {
@@ -93,8 +93,8 @@ impl RenderScene {
         handle: TerrainHandle,
     ) -> Option<&og_core::IdMap<u32, std::sync::Arc<crate::TerrainTile>>> {
         match self.terrain_data.get(handle.index())? {
-            crate::terrain::TerrainSource::Stream { tiles, .. } => Some(tiles),
-            crate::terrain::TerrainSource::Data(..) => None,
+            crate::ground::TerrainSource::Stream { tiles, .. } => Some(tiles),
+            crate::ground::TerrainSource::Data(..) => None,
         }
     }
 
@@ -117,7 +117,7 @@ impl RenderScene {
         let source = self.terrain_data.get(t.terrain.index())?;
         let layout = source.layout().ok()?;
         let model = t.transform;
-        let along = crate::terrain::horizontal_scale(model);
+        let along = crate::ground::horizontal_scale(model);
         let up = model.transform_vector3(glam::Vec3::Y).length();
         let eye = model.inverse().transform_point3(view.camera);
         let reach = crate::terrain_error::error_reach(
@@ -138,7 +138,7 @@ impl RenderScene {
     pub fn set_terrain(&mut self, handle: TerrainHandle, data: crate::TerrainData) -> bool {
         match self.terrain_data.get_mut(handle.index()) {
             Some(d) => {
-                *d = crate::terrain::TerrainSource::data(data);
+                *d = crate::ground::TerrainSource::data(data);
                 self.terrain_revisions[handle.index()] += 1;
                 self.terrain_edits[handle.index()].clear();
                 true
@@ -150,8 +150,8 @@ impl RenderScene {
     /// A terrain's field in memory (`None` for a streamed one).
     pub fn terrain(&self, handle: TerrainHandle) -> Option<&crate::TerrainData> {
         match self.terrain_data.get(handle.index())? {
-            crate::terrain::TerrainSource::Data(d, ..) => Some(d),
-            crate::terrain::TerrainSource::Stream { .. } => None,
+            crate::ground::TerrainSource::Data(d, ..) => Some(d),
+            crate::ground::TerrainSource::Stream { .. } => None,
         }
     }
 
@@ -182,11 +182,11 @@ impl RenderScene {
         let in_place = match self.terrain_data.get_mut(i) {
             Some(s) => {
                 // A field streamed until now, or of another shape, is new.
-                let same = matches!(&*s, crate::terrain::TerrainSource::Data(d, ..) if shape(d) == shape(&data));
+                let same = matches!(&*s, crate::ground::TerrainSource::Data(d, ..) if shape(d) == shape(&data));
                 *s = if same {
                     s.edited(data, lo, hi)
                 } else {
-                    crate::terrain::TerrainSource::data(data)
+                    crate::ground::TerrainSource::data(data)
                 };
                 same
             }
@@ -205,7 +205,7 @@ impl RenderScene {
         true
     }
 
-    pub(crate) fn terrain_sources(&self) -> (&[crate::terrain::TerrainSource], &[u64]) {
+    pub(crate) fn terrain_sources(&self) -> (&[crate::ground::TerrainSource], &[u64]) {
         (&self.terrain_data, &self.terrain_revisions)
     }
 

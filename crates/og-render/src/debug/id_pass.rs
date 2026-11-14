@@ -441,10 +441,10 @@ pub fn render_ids_from(
             // streamed terrain's resident level-0 tiles (none resident
             // there: no blades, as on the GPU).
             let tiles;
-            let ground: &dyn crate::scatter::Ground = match source {
-                crate::terrain::TerrainSource::Data(d, ..) => d,
-                crate::terrain::TerrainSource::Stream { tiles: t, .. } => {
-                    tiles = crate::scatter::TileGround { layout, tiles: t };
+            let ground: &dyn crate::ground::Ground = match source {
+                crate::ground::TerrainSource::Data(d, ..) => d,
+                crate::ground::TerrainSource::Stream { tiles: t, .. } => {
+                    tiles = crate::ground::TileGround { layout, tiles: t };
                     &tiles
                 }
             };
@@ -683,12 +683,12 @@ fn terrain_mesh(
         let (c1, r1) = ((c0 + 1).min(cols - 1), (r0 + 1).min(rows - 1));
         let (h00, h10) = (raw(c0, r0)?, raw(c1, r0)?);
         let (h01, h11) = (raw(c0, r1)?, raw(c1, r1)?);
-        Some(crate::terrain::split_height([h00, h10, h01, h11], f))
+        Some(crate::ground::split_height([h00, h10, h01, h11], f))
     };
     let n = clipmap.ring;
     let (mut positions, mut locals, mut indices) = (Vec::new(), Vec::new(), Vec::new());
     for level in &clipmap.levels {
-        let corners = crate::terrain::level_vertices(clipmap, level, layout, &height)?;
+        let corners = crate::ground::level_vertices(clipmap, level, layout, &height)?;
         let world: Vec<Vec3> = corners
             .iter()
             .map(|p| t.transform.transform_point3(*p) + Vec3::Y * lift)
@@ -696,7 +696,7 @@ fn terrain_mesh(
         let at = |x: u32, z: u32| (z * (n + 1) + x) as usize;
         for z in 0..n {
             for x in 0..n {
-                if crate::terrain::in_hole(n, level.hole, x, z) {
+                if crate::ground::in_hole(n, level.hole, x, z) {
                     continue;
                 }
                 let k = [at(x, z), at(x + 1, z), at(x, z + 1), at(x + 1, z + 1)];
@@ -708,7 +708,7 @@ fn terrain_mesh(
                 }
                 // The vertex shader's fan: four triangles to the centre,
                 // whose height carries the cell's diagonal.
-                for i in crate::terrain::cell_fan(n, x, z) {
+                for i in crate::ground::cell_fan(n, x, z) {
                     let i = i as usize;
                     indices.push(positions.len() as u32);
                     positions.push(world[i]);

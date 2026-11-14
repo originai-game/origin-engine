@@ -1,4 +1,4 @@
-use crate::terrain::{Terrain, horizontal_scale};
+use crate::ground::{Terrain, horizontal_scale};
 use glam::{Vec2, Vec3};
 pub use og_render_data::terrain_tiles::*;
 

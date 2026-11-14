@@ -19,7 +19,7 @@ pub(crate) fn lit_source() -> String {
             crate::SCREEN_AO_WGSL,
             crate::SURFACE_SHADE_WGSL,
             crate::wind::WIND_COMMON_WGSL,
-            crate::terrain::GRASS_COMMON_WGSL,
+            crate::ground::GRASS_COMMON_WGSL,
             wgsl3d!("grass_blade.wgsl"),
             wgsl3d!("grass.wgsl"),
         ],
@@ -34,7 +34,7 @@ pub(crate) fn shadow_source() -> String {
         crate::LIBRARY_WGSL,
         crate::SHADOW_PASS_WGSL,
         crate::wind::WIND_COMMON_WGSL,
-        crate::terrain::GRASS_COMMON_WGSL,
+        crate::ground::GRASS_COMMON_WGSL,
         wgsl3d!("grass_blade.wgsl"),
         wgsl3d!("grass_shadow.wgsl"),
     )
@@ -48,12 +48,12 @@ pub(crate) fn generate_source(arrayed: bool) -> String {
         crate::LIBRARY_WGSL,
         crate::wind::WIND_COMMON_WGSL,
         crate::wind::WIND_LEAN_WGSL,
-        crate::terrain::GRASS_COMMON_WGSL,
-        crate::terrain::TERRAIN_WGSL,
+        crate::ground::GRASS_COMMON_WGSL,
+        crate::ground::TERRAIN_WGSL,
         wgsl3d!("grass_generate.wgsl"),
     );
     if arrayed {
-        crate::terrain::terrain_array_declarations(&s)
+        crate::ground::terrain_array_declarations(&s)
     } else {
         s
     }
