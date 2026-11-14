@@ -60,6 +60,9 @@ impl Ui {
     }
 
     pub fn build_retained_documents(&mut self, env: &dyn Env) -> Result<(), String> {
+        // The engine's toasts as of this tick, so a screen shows a toast
+        // the tick it is queued.
+        self.update_toasts();
         let mut host = std::mem::take(&mut self.docs.state_mut().memory.retained);
         if host.built_tick == Some(self.tick()) {
             self.docs.state_mut().memory.retained = host;
@@ -124,6 +127,7 @@ impl Ui {
             self.docs.state_mut().memory.retained = std::mem::take(&mut host);
             self.keep_world_anchors();
             host = std::mem::take(&mut self.docs.state_mut().memory.retained);
+            self.answer_dismiss_toast(&mut events);
             self.docs.state_mut().queued.extend(events);
             for (context, path, value) in writes {
                 if let Err(error) =

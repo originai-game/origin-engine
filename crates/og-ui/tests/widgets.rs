@@ -14,7 +14,6 @@
 //! - a select does not open, choose, or close on a press outside;
 //! - a virtualised list builds rows out of view, cannot reach its last row,
 //!   or does not scroll a keyboard-focused row into view;
-//! - toasts pile up past three, never leave, or differ after a restore;
 //! - transitions advance by anything but ticks, take input while moving, or
 //!   keep drawing once gone;
 //! - a meter's trail jumps instead of following, or differs between runs;

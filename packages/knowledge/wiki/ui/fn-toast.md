@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.toast`
 
-Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
+Queue a toast: a row of the UI's $toasts store ({ id, text, tone, leaving }) for its time, then leaving for a fast duration; at most three are up (older ones leave first). It draws nothing itself: the built-in notifications screen shows $toasts after its own items, so load and push it once (og.load.document(world, "@ui/screens/notifications.svelte"), then og.ui.push(world, "notifications", { items: [] })), and a press on one dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.
 
 Also known as: snackbar, transient notification, popup message, auto-dismissing message
 
@@ -26,7 +26,7 @@ Binding symbol `og_ui_toast` · publish builds: kept
 
 ```ogt
 fn toast {
-  doc "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
+  doc "Queue a toast: a row of the UI's $toasts store ({ id, text, tone, leaving }) for its time, then leaving for a fast duration; at most three are up (older ones leave first). It draws nothing itself: the built-in notifications screen shows $toasts after its own items, so load and push it once (og.load.document(world, \"@ui/screens/notifications.svelte\"), then og.ui.push(world, \"notifications\", { items: [] })), and a press on one dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it."
   aliases "snackbar, transient notification, popup message, auto-dismissing message"
   param world World "The world whose UI shows it."
   param text String "The message: a few words."
@@ -35,4 +35,4 @@ fn toast {
 }
 ```
 
-<sub>Module `ui` line 546</sub>
+<sub>Module `ui` line 545</sub>

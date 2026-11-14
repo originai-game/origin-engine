@@ -431,7 +431,7 @@ loads it. An og.Timeline component plays it on its entity.
 | `animation "<entity>"` | clip, speed, blendIn, loop; `model` names the glTF whose clips they are, else the entity's og.Model |
 | `audio` | sound, volume, playbackRate, bus |
 | `music` | sound, volume, fadeIn, fadeOut, end, loop, bus |
-| `caption` | text from `key` to `end`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`. A caption track draws nothing: the keys showing are the UI's `$captions` store, each `{ id, text }`, which the built-in `subtitles` screen shows after the game's own lines (`og.ui.push("subtitles", { lines: [] })`) and any document can iterate; where and how they are drawn is that screen's and the style pack's |
+| `caption` | text from `key` to `end`; `captions "narration.srt" [offset]` imports a SubRip file or word timestamps `.json`. A caption track draws nothing: the keys showing are the UI's `$captions` store, each `{ id, text }`, which the built-in `subtitles` screen shows after the game's own lines (`og.load.document(world, "@ui/screens/subtitles.svelte")`, then `og.ui.push(world, "subtitles", { lines: [] })`) and any document can iterate; where and how they are drawn is that screen's and the style pack's |
 | `event` | `do "<command-channel action>"`: teleport, set, a game's registered command; `retroactive true` runs it when a seek passes it |
 | `transition` | kind cut, fade, wipe, dissolve, iris or slide; mode through, in or out; duration, color, from; over og.ui's screen cover |
 | `marker` | `name`, sending og.TimelineMarker when played past |

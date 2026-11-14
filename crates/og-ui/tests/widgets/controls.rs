@@ -143,47 +143,6 @@ fn keyed_grid_uses_tallest_cells_and_reaches_unbuilt_end() {
     assert_eq!(rig.ui.focus_path(0), "Cells/Cell#0");
 }
 
-#[test]
-fn toasts_stack_three_leave_on_time_and_replay_after_a_restore() {
-    let mut rig = Rig::new(());
-    let b = &mut |_: &mut Ui, _: &mut ()| {};
-    rig.idle(1, b);
-    for n in 0..5 {
-        rig.ui.toast(&format!("Saved {n}"), ToastDesc::default());
-    }
-    rig.idle(30, b);
-    let up: Vec<String> = rig
-        .ui
-        .elements()
-        .iter()
-        .filter(|e| e.parent == "Toasts")
-        .map(|e| e.text.clone())
-        .collect();
-    assert_eq!(
-        up,
-        ["Saved 2", "Saved 3", "Saved 4"],
-        "three at most; the oldest left"
-    );
-    let saved = rig.ui.save_state();
-    rig.idle(200, b);
-    let after: Vec<String> = rig.ui.elements().iter().map(|e| e.id.clone()).collect();
-    assert!(
-        after.iter().all(|id| !id.starts_with("Toast")),
-        "they left after 3.2 s: {after:?}"
-    );
-    rig.ui.restore_state(&saved).expect("restore");
-    rig.idle(1, b);
-    assert_eq!(
-        rig.ui
-            .elements()
-            .iter()
-            .filter(|e| e.parent == "Toasts")
-            .count(),
-        3,
-        "the restored state brings them back"
-    );
-}
-
 /// A grid below a scroll view's fold builds the rows of its own box, not a
 /// screenful: out of view it has no hit, so it reads last frame's layout for
 /// its height and width (it guessed the viewport's: a dozen columns of rows,

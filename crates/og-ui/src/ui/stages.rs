@@ -35,7 +35,6 @@ pub struct Env {
     /// The host opens a file picker for `<input type="file">`
     /// ([`Ui::set_file_picker`]).
     pub(crate) file_picker: bool,
-    pub(crate) toast_anchor: Anchor,
 }
 
 /// The fields of configuration the documents (og-ui) reach.

@@ -67,7 +67,7 @@ module ui {
 | [`og.ui.bounds`](ui/fn-bounds.md) | function | `(path: string): UiRect \| null` | Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it. |
 | [`ScrollState`](ui/type-ScrollState.md) | struct |  | A scroll container as the last frame laid it out (og.ui.scrollState). |
 | [`og.ui.scrollState`](ui/fn-scrollState.md) | function | `(path: string): ScrollState \| null` | A scroll container's offset, view and whole content, by its full path (as the probe's dump names it): what a component virtualises its rows by, since og.ui.bounds is cut to the view and a row scrolle… |
-| [`og.ui.toast`](ui/fn-toast.md) | function | `(world: World, text: string, desc?: ToastDesc): number` | Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. |
+| [`og.ui.toast`](ui/fn-toast.md) | function | `(world: World, text: string, desc?: ToastDesc): number` | Queue a toast: a row of the UI's $toasts store ({ id, text, tone, leaving }) for its time, then leaving for a fast duration; at most three are up (older ones leave first). |
 | [`og.ui.dismissToast`](ui/fn-dismissToast.md) | function | `(world: World, toastId: number): void` | Start a toast's exit. |
 | [`og.ui.navigate`](ui/fn-navigate.md) | function | `(world: World, intent: NavIntent): void` | Queue a navigation intent for the next tick: a gamepad og.Input does not read yet, a custom binding, a command. |
 | [`og.ui.back`](ui/fn-back.md) | function | `(): boolean` | Escape or gamepad B this tick, not taken by a dialog or menu: true once, then taken. |
@@ -220,7 +220,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1297</sub>
+<sub>Module `ui` line 1296</sub>
 
 ```ogt
 column UiMaterial {
@@ -231,4 +231,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1304</sub>
+<sub>Module `ui` line 1303</sub>

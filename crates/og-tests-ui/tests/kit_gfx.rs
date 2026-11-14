@@ -2,7 +2,7 @@
 //! `references/<tier>/widget-set.png` (og-tests' tolerance, as `tests/gfx.rs`;
 //! `OG_UI_CAPTURE=1` records). Covers what only drawing shows: checkbox
 //! ticks and chevrons as rotated bars; badges; focus rings with their gap;
-//! the d-pad and stick; an open select menu over the panel; a toast.
+//! the d-pad and stick; an open select menu over the panel.
 
 use crate::support;
 
@@ -20,10 +20,6 @@ fn the_widget_set_matches_its_reference_frame() {
     assert!(
         shot.ui.element("Difficulty.list/List/Option#2").is_some(),
         "the menu is open"
-    );
-    assert!(
-        shot.ui.element("Toasts/Toast#1").is_some(),
-        "the toast is up"
     );
 
     let rendered = render_frame(&shot.scene, &shot.desc);

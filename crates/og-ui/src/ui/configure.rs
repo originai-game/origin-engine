@@ -36,7 +36,6 @@ impl Ui {
                 haptics: 1.0,
                 hud_max_aspect: HUD_MAX_ASPECT,
                 file_picker: false,
-                toast_anchor: Anchor::Bottom,
             },
             interaction: Interaction {
                 input: InputFrame::default(),
@@ -191,11 +190,6 @@ impl Ui {
 
     pub fn images(&self) -> &std::collections::BTreeMap<String, InlineImage> {
         &self.env.images
-    }
-
-    /// Where toasts stack (default: bottom centre of the safe area).
-    pub fn set_toast_anchor(&mut self, anchor: Anchor) {
-        self.env.toast_anchor = anchor;
     }
 
     /// The widest the HUD band is, over its height (UiDesc.hudMaxAspect;

@@ -835,7 +835,6 @@ pub enum Float {
     /// Under (or over) its anchor node, at least as wide.
     Popover,
     /// The toast stack, at an anchor.
-    Toasts { anchor: Anchor, margin: f32 },
     /// Under (or over) its anchor node.
     Tooltip,
     /// Placed by [`crate::world`]: an element anchored in the world, a
@@ -853,7 +852,6 @@ impl Float {
             Float::Anchored { over: true, .. } => 3,
             Float::Modal => 2,
             Float::Popover => 3,
-            Float::Toasts { .. } => 4,
             Float::Tooltip => 5,
             Float::World => 0,
         }

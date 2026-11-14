@@ -15971,7 +15971,6 @@ pub struct UiDesc {
     pub icons: Option<IconAtlasDesc>,
     pub fallback_icons: Option<IconAtlasDesc>,
     pub images: Vec<UiInlineImage>,
-    pub toast_anchor: Option<Anchor>,
     pub hud_max_aspect: f32,
     pub style: Option<u64>,
     pub sounds: Option<UiSounds>,
@@ -15999,7 +15998,6 @@ impl Default for UiDesc {
             icons: Default::default(),
             fallback_icons: Default::default(),
             images: Default::default(),
-            toast_anchor: Default::default(),
             hud_max_aspect: 2.3333333_f32,
             style: Default::default(),
             sounds: Default::default(),
@@ -16033,7 +16031,6 @@ impl FromJson for UiDesc {
             icons: field(o, "icons", d.icons)?,
             fallback_icons: field(o, "fallbackIcons", d.fallback_icons)?,
             images: field(o, "images", d.images)?,
-            toast_anchor: field(o, "toastAnchor", d.toast_anchor)?,
             hud_max_aspect: field(o, "hudMaxAspect", d.hud_max_aspect)?,
             style: field(o, "style", d.style)?,
             sounds: field(o, "sounds", d.sounds)?,
@@ -16063,7 +16060,6 @@ impl ToJson for UiDesc {
         o.insert("icons".into(), self.icons.to_json());
         o.insert("fallbackIcons".into(), self.fallback_icons.to_json());
         o.insert("images".into(), self.images.to_json());
-        o.insert("toastAnchor".into(), self.toast_anchor.to_json());
         o.insert("hudMaxAspect".into(), self.hud_max_aspect.to_json());
         o.insert("style".into(), self.style.to_json());
         o.insert("sounds".into(), self.sounds.to_json());
@@ -16390,51 +16386,6 @@ impl ToJson for TextSpan {
         o.insert("length".into(), self.length.to_json());
         o.insert("properties".into(), self.properties.to_json());
         Value::Object(o)
-    }
-}
-
-/// `Anchor`: packages/knowledge/wiki/ui.md.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Anchor {
-    #[default]
-    TopLeft,
-    Top,
-    TopRight,
-    Left,
-    Center,
-    Right,
-    BottomLeft,
-    Bottom,
-    BottomRight,
-}
-
-impl Anchor {
-    /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["topLeft", "top", "topRight", "left", "center", "right", "bottomLeft", "bottom", "bottomRight"];
-    /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::TopLeft, Self::Top, Self::TopRight, Self::Left, Self::Center, Self::Right, Self::BottomLeft, Self::Bottom, Self::BottomRight];
-    /// The IDL name.
-    pub fn as_str(self) -> &'static str {
-        Self::NAMES[self as usize]
-    }
-    /// The variant named `s`, or a refusal naming them all.
-    pub fn parse(s: &str) -> Result<Self, String> {
-        match Self::NAMES.iter().position(|n| *n == s) {
-            Some(i) => Ok(Self::ALL[i]),
-            None => Err(unknown_variant("Anchor", s, Self::NAMES)),
-        }
-    }
-}
-
-impl FromJson for Anchor {
-    fn from_json(v: &Value) -> Result<Self, String> {
-        Self::parse(variant(v, "Anchor", Self::NAMES)?)
-    }
-}
-
-impl ToJson for Anchor {
-    fn to_json(&self) -> Value {
-        Value::String(self.as_str().into())
     }
 }
 

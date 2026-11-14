@@ -126,7 +126,6 @@ panel::part(frame), dialog::part(panel) {
 dialog::part(backdrop) { background: var(--scrim); }
 tooltip::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--fantasy-tooltip); box-shadow: var(--fantasy-tooltip-shadow); backdrop-filter: none; }
 hud::part(frame) { border: var(--stroke-hairline) solid var(--line-strong); background: var(--hud); backdrop-filter: none; }
-toast::part(indicator) { background: var(--gold); }
 popover::part(arrow) { background: var(--panel); }
 og-spotlight::part(edge) { border: var(--stroke-regular) solid var(--gold); }
 

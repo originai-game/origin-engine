@@ -3,7 +3,7 @@
     {
       "member": "timeline caption track",
       "change": "A caption track draws nothing. The engine used to draw the showing key itself, white on a black plate over everything, at the track's anchor and type step. The keys showing are now the UI's $captions store, and the track's and keys' style and anchor entries are refused: a caption is text only.",
-      "fix": "Push the built-in subtitles screen once (og.ui.push(\"subtitles\", { lines: [] })): it shows $captions after the game's own lines, dressed by the style pack. Delete style and anchor from caption tracks; to place or size captions differently, iterate $captions in a document of your own."
+      "fix": "Load and push the built-in subtitles screen once (og.load.document(world, \"@ui/screens/subtitles.svelte\"), then og.ui.push(world, \"subtitles\", { lines: [] })): it shows $captions after the game's own lines, dressed by the style pack. Delete style and anchor from caption tracks; to place or size captions differently, iterate $captions in a document of your own."
     }
   ],
   "added": [

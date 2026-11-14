@@ -384,9 +384,11 @@ impl Ui {
         }
     }
 
-    /// Queues a toast: it stacks at the toast anchor, enters, stays for its
-    /// duration and leaves; at most three are up (older ones leave first).
-    /// A press on one dismisses it. Callable between ticks. Returns its id.
+    /// Queues a toast: a row of `$toasts` for its duration, then `leaving`
+    /// for a fast duration; at most three are up (older ones leave first).
+    /// It draws nothing itself: the built-in `notifications` screen shows
+    /// `$toasts`, and its `dismissToast` handler dismisses one. Callable
+    /// between ticks. Returns its id.
     pub fn toast(&mut self, text: &str, desc: ToastDesc) -> u32 {
         let (m, table) = (self.env.theme.art.motion, crate::theme::TIMING);
         let ms = if desc.duration_ms > 0.0 {
@@ -432,12 +434,12 @@ impl Ui {
         }
     }
 
-    /// Builds the toast stack (called by `end`).
-    pub(crate) fn build_toasts(&mut self) {
+    /// Ages the toasts: one past its time starts leaving, at most three
+    /// stay up (older ones leave first), and one gone a fast duration is
+    /// dropped. Then `$toasts` becomes them (docs/ui.md §2).
+    pub(crate) fn update_toasts(&mut self) {
         let now = self.interaction.state.tick;
         let exit = u64::from(self.ticks_for(self.env.theme.durations_ms.fast));
-        let enter = self.ticks_for(self.env.theme.durations_ms.base);
-        // Expire, cap at three, drop the ones whose exit finished.
         let mut up: Vec<usize> = Vec::new();
         for (k, t) in self.interaction.state.toasts.iter_mut().enumerate() {
             if t.leaving == 0 && now >= t.born + u64::from(t.ticks) {
@@ -456,112 +458,7 @@ impl Ui {
             .state
             .toasts
             .retain(|t| t.leaving == 0 || now < t.leaving + exit);
-        if self.interaction.state.toasts.is_empty() {
-            return;
-        }
-        let t = self.env.theme;
-        let top = matches!(
-            self.env.toast_anchor,
-            Anchor::Top | Anchor::TopLeft | Anchor::TopRight
-        );
-        let margin = self.sizes().gutter;
-        self.open_layer(
-            "toasts",
-            Id::from("Toasts"),
-            Element {
-                direction: Direction::Column,
-                gap: t.space.sm,
-                cross: Cross::Center,
-                ..Element::default()
-            },
-            Float::Toasts {
-                anchor: self.env.toast_anchor,
-                margin,
-            },
-            NONE,
-        );
-        let toasts = self.interaction.state.toasts.clone();
-        let mut dismiss = Vec::new();
-        for toast in toasts {
-            let age = now.saturating_sub(toast.born) as f32;
-            let p = if toast.leaving != 0 {
-                1.0 - ((now - toast.leaving) as f32 / exit as f32).min(1.0)
-            } else {
-                ((age + 1.0) / enter as f32).min(1.0)
-            };
-            let e = if toast.leaving != 0 {
-                1.0 - t.tokens.ease(EaseRole::WidgetExit).apply(1.0 - p)
-            } else {
-                t.tokens.ease(EaseRole::WidgetEnter).apply(p)
-            };
-            let kind = t.art.motion.toast.unwrap_or(if top {
-                TransitionKind::SlideDown
-            } else {
-                TransitionKind::SlideUp
-            });
-            let distance = match kind {
-                TransitionKind::SlideLeft | TransitionKind::SlideRight => 4.0 * t.space.xxl,
-                _ => t.space.lg,
-            };
-            let i = self.push(
-                "toast",
-                crate::ui_idi("Toast", toast.id),
-                Element {
-                    direction: Direction::Row,
-                    height: Size::Fixed(self.sizes().control_lg),
-                    padding: Insets::xy(t.space.lg, 0.0),
-                    gap: t.space.sm,
-                    cross: Cross::Center,
-                    background: Some(t.palette.panel_raised),
-                    radius: t.radius.control,
-                    interactive: true,
-                    frame: Some(crate::style_file::StylePart::Hud),
-                    ..Element::default()
-                },
-            );
-            self.tree.stack.push(i);
-            self.tree.nodes[i].a11y.notify = true;
-            let mut f = fx(kind, e, distance, t.reduced_motion);
-            f.inert = toast.leaving != 0;
-            self.tree.nodes[i].fx = Some(f);
-            if self.respond(self.tree.nodes[i].key).clicked {
-                dismiss.push(toast.id);
-            }
-            let tone = Tone::from_index(toast.tone);
-            if tone != Tone::Neutral {
-                let dot = t.space.sm;
-                let c = self.tone_dot(tone);
-                self.tree.shapes_mut(i).push(Shape::DressedRect {
-                    part: crate::dress::PartRef::of("Toast", "indicator", None)
-                        .attr("tone", tone.name()),
-                    frame: Frame {
-                        fy: 0.5,
-                        x: t.space.lg,
-                        y: -dot / 2.0,
-                        w: dot,
-                        h: dot,
-                        ..Frame::default()
-                    },
-                    radius: dot,
-                    color: c,
-                });
-                self.tree.el_mut(i).padding.left = t.space.lg + dot + t.space.sm;
-            }
-            self.label(
-                "Text",
-                &toast.text,
-                crate::LabelDesc {
-                    nowrap: true,
-                    ..Default::default()
-                },
-            );
-            self.tree.nodes[i].probe_text = toast.text.clone();
-            self.close();
-        }
-        self.close();
-        for id in dismiss {
-            self.dismiss_toast(id);
-        }
+        self.publish_toasts();
     }
 
     pub(super) fn tone_dot(&self, tone: Tone) -> Srgba {

@@ -303,11 +303,6 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             ui.set_css_sounds(Default::default());
             ui.set_style_name("");
         }
-        ui.set_toast_anchor(
-            u.toast_anchor
-                .and_then(|a| anchor_of(&Value::from(a.as_str())))
-                .unwrap_or(Anchor::Bottom),
-        );
         ui.set_hud_max_aspect(u.hud_max_aspect);
         drop(ui);
         let mut st = eng.state.borrow_mut();

@@ -548,21 +548,6 @@ fn tokens_json(t: &og_ui::StyleTokens) -> Value {
     })
 }
 
-pub(crate) fn anchor_of(v: &Value) -> Option<Anchor> {
-    Some(match v.as_str()? {
-        "topLeft" => Anchor::TopLeft,
-        "top" => Anchor::Top,
-        "topRight" => Anchor::TopRight,
-        "left" => Anchor::Left,
-        "center" => Anchor::Center,
-        "right" => Anchor::Right,
-        "bottomLeft" => Anchor::BottomLeft,
-        "bottom" => Anchor::Bottom,
-        "bottomRight" => Anchor::BottomRight,
-        _ => return None,
-    })
-}
-
 /// A rectangle as the IDL's `UiRect`.
 pub(super) fn rect_wire(r: &og_ui::Rect) -> crate::host::wire::UiRect {
     wire::UiRect {

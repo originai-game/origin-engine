@@ -12359,7 +12359,7 @@
         },
         {
           "name": "toast",
-          "doc": "Queue a toast: it stacks at UiDesc.toastAnchor, enters, stays its time and leaves; at most three are up (older ones leave first); a press dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.",
+          "doc": "Queue a toast: a row of the UI's $toasts store ({ id, text, tone, leaving }) for its time, then leaving for a fast duration; at most three are up (older ones leave first). It draws nothing itself: the built-in notifications screen shows $toasts after its own items, so load and push it once (og.load.document(world, \"@ui/screens/notifications.svelte\"), then og.ui.push(world, \"notifications\", { items: [] })), and a press on one dismisses it. Callable anywhere (systems, commands, start); it is world state, so snapshots carry it.",
           "params": [
             {
               "name": "world",
@@ -44849,21 +44849,9 @@
           "description": "Pictures rich text draws inline by name ([img=<name>]): a portrait in a line of dialogue, an item's art in a tooltip. Any texture, not only the icon atlas's cells; each one em tall at its aspect, in its own colours.",
           "default": []
         },
-        "toastAnchor": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Anchor"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Where toasts stack; null is the bottom centre.",
-          "default": null
-        },
         "hudMaxAspect": {
           "type": "number",
-          "description": "The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) the toasts and a HUD document placed at its CSS env(-og-hud-inset-*) (`right: calc(env(-og-hud-inset-right) + 24px)`) lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect.",
+          "description": "The widest the HUD band is, over its height: on a wider surface (a 21:9 or 32:9 ultrawide monitor) a HUD document placed at its CSS env(-og-hud-inset-*) (`right: calc(env(-og-hud-inset-right) + 24px)`) lay out in a band this wide, centred in the safe area, so the player's eyes stay near the play; og.ui.viewport's hud is that band. 16/9 keeps a 16:9 game's HUD where it was designed; 0 is the whole safe area (a HUD at the screen's edges). Full-screen layers (dialogs, menus, scrims, world-space markers and their edge clamping) keep the whole surface. The UI itself never stretches: it lays out in CSS pixels at every aspect.",
           "default": 2.3333333,
           "minimum": 0
         },

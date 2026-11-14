@@ -30,6 +30,10 @@ export default og.game({
   start(world) {
     const loaded = og.load.document(world, "ui/a11y.svelte");
     if (!loaded.ok) throw new Error(loaded.reason);
+    // The toasts' screen: og.ui.toast draws through it.
+    const toasts = og.load.document(world, "@ui/screens/notifications.svelte");
+    if (!toasts.ok) throw new Error(toasts.reason);
+    og.ui.push(world, "notifications", { items: [] });
   },
   ui(world) {
     const scope = og.ui.scope(world, "a11y");

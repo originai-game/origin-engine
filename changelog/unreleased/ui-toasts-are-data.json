@@ -1,0 +1,19 @@
+{
+  "breaking": [
+    {
+      "member": "og.ui.toast",
+      "change": "A toast draws nothing itself. The engine used to stack its own toast plates at UiDesc.toastAnchor; the toasts up are now the UI's $toasts store, shown by the built-in notifications screen. UiDesc.toastAnchor is removed, and so is the style pack's toast::part(indicator).",
+      "fix": "Load and push the notifications screen once: og.load.document(world, \"@ui/screens/notifications.svelte\"), then og.ui.push(world, \"notifications\", { items: [] }). To place or dress toasts, style [part=\"notifications.frame\"] in the style pack or iterate $toasts in a document of your own. og.ui.toast and og.ui.dismissToast keep their signatures."
+    }
+  ],
+  "added": [
+    {
+      "member": "ui documents",
+      "summary": "$toasts, read by every document like $ui: the toasts up, oldest first, each { id, text, tone, leaving }. In a row of it, onclick={dismissToast} dismisses that toast; the engine answers it and the game never sees the event."
+    },
+    {
+      "member": "notifications",
+      "summary": "The built-in notifications screen shows $toasts after its own items: each arrives and leaves with the motion tokens, takes its tone's stripe, and a press dismisses it."
+    }
+  ]
+}

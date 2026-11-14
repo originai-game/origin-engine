@@ -231,7 +231,12 @@ collection of `{ id, text }` keyed by `id`, in the order of the timelines
 playing and of their caption tracks. A timeline's caption track draws
 nothing itself; the built-in `subtitles` screen shows `$captions` after
 the game's own `$lines`, and any document may iterate it. A line that
-stays keeps its row.
+stays keeps its row. `$toasts` is the toasts up (`og.ui.toast`), oldest
+first, each `{ id, text, tone, leaving }`: it stays its time, then is
+`leaving` for a fast duration while its exit plays; at most three stay up.
+The built-in `notifications` screen shows them after its own `$items`; a
+document's `onclick={dismissToast}` in a row of `$toasts` dismisses that
+toast, answered by the engine and never sent to the game.
 
 #### ARIA
 
@@ -971,7 +976,8 @@ follow ARIA with the default `aria-relevant` (`additions text`): entering
 nodes and changed names or values announce; removals, emptied text, a
 region arriving with content, a hidden ancestor, the first tree a host
 reads and the update after a restore announce nothing. A toast
-(`og.ui.toast`, marked `notify`) announces as it appears. Each change
+(`og.ui.toast`, a row of the `notifications` screen's log) announces as it
+appears. Each change
 announces once from the tree the host last read. Natively the AccessKit
 bridge (`native_a11y::Bridge`) speaks through two polite and two assertive
 hidden live nodes, alternating so repeats are heard; `take_announcements`

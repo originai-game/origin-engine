@@ -158,8 +158,8 @@ impl Ui {
                 self.tree.path_of(i)
             ));
         }
+        self.update_toasts();
         self.build_layers(&crate::bind::NoEnv);
-        self.build_toasts();
         self.tree.retire_nodes();
         self.tree.building = false;
         // A retained node placement resized last frame lays out from its
@@ -538,7 +538,7 @@ impl Ui {
                     continue;
                 }
                 let area = match float {
-                    Float::Anchored { margin, .. } | Float::Toasts { margin, .. } => Rect::new(
+                    Float::Anchored { margin, .. } => Rect::new(
                         hud.x + margin,
                         hud.y + margin,
                         (hud.width - 2.0 * margin).max(0.0),
@@ -564,13 +564,6 @@ impl Ui {
                         (
                             area.x + (area.width - w) * ax + dx,
                             area.y + (area.height - h) * ay + dy,
-                        )
-                    }
-                    Float::Toasts { anchor, .. } => {
-                        let (ax, ay) = anchor.fractions();
-                        (
-                            area.x + (area.width - w) * ax,
-                            area.y + (area.height - h) * ay,
                         )
                     }
                     _ => {

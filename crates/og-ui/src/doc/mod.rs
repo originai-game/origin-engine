@@ -73,8 +73,14 @@ pub static UI_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
 pub static CAPTIONS_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
     std::sync::LazyLock::new(|| crate::reactive::SourceId::new("og", "captions"));
 
+/// The engine's `$toasts` store, read like `$ui`: the toasts up
+/// ([`crate::Ui::toast`]), a collection of `{ id, text, tone, leaving }`
+/// keyed by `id`, oldest first.
+pub static TOASTS_STORE: std::sync::LazyLock<crate::reactive::SourceId> =
+    std::sync::LazyLock::new(|| crate::reactive::SourceId::new("og", "toasts"));
+
 /// The names every mounted document reads the engine's stores under.
-pub const ENGINE_STORES: [&str; 2] = ["ui", "captions"];
+pub const ENGINE_STORES: [&str; 3] = ["ui", "captions", "toasts"];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DocKind {

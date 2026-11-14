@@ -310,8 +310,6 @@ pub struct StyleMotion {
     pub enter: Option<TransitionKind>,
     /// Delay between the entrances of a panel's controls, ms (0: together).
     pub stagger_ms: f32,
-    /// How toasts arrive (`None`: slide from their edge).
-    pub toast: Option<TransitionKind>,
     /// Progress bars ease to a new value over this many ms (0: at once).
     pub progress_ms: f32,
     /// A press on a disabled button shakes it this far, CSS px (0: still).

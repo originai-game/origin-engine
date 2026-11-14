@@ -141,13 +141,6 @@ pub fn widget_set_shot(font: &FontFiles) -> Shot {
             ..InputFrame::hover(p.x, p.y)
         },
     );
-    ui.toast(
-        "Achievement unlocked",
-        ToastDesc {
-            tone: Tone::Success,
-            ..ToastDesc::default()
-        },
-    );
     for _ in 0..20 {
         step(&mut ui, &mut s, InputFrame::hover(p.x, p.y));
     }
