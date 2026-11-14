@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Clouds",
+      "summary": "Clouds drift the way `wind` and og.Wind blow, as rain, grass and cloth go. Before, they drifted the opposite way."
+    }
+  ]
+}
