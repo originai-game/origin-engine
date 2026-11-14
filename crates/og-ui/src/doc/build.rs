@@ -160,6 +160,15 @@ impl Resolved {
             _ => None,
         }
     }
+    /// A number prop as bound, every bit kept: a number input's bounds and
+    /// steps, whose decimals its value is written with (`0.1` read through
+    /// f32 steps to `0.30000000447`).
+    pub fn num64(&self, name: &str) -> Option<f64> {
+        match self.get(name)? {
+            V::Num(n) => Some(*n),
+            _ => None,
+        }
+    }
     /// A handle prop (a texture's) as bound, every bit kept.
     pub fn handle(&self, name: &str) -> Option<f64> {
         match self.get(name)? {
@@ -286,7 +295,9 @@ pub fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
 
 fn lit(ui: &Ui, l: &Lit) -> Option<V> {
     Some(match l {
-        Lit::Num(n) => V::Num(f64::from(*n)),
+        // A literal is kept as f32; widened through its shortest decimal it
+        // is the number written (`0.1`, not 0.10000000149).
+        Lit::Num(n) => V::Num(n.to_string().parse().unwrap_or(f64::from(*n))),
         Lit::Nums(n) => V::Nums(n.clone()),
         Lit::Bool(b) => V::Bool(*b),
         Lit::Str(s) => V::Str(s.clone()),

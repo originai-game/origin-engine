@@ -1388,7 +1388,7 @@ pub struct NumberInputOptions {
     /// Wrap between min and the last valid step at or below max.
     pub wrap: bool,
     /// Shift-click step; zero uses ten ordinary steps.
-    pub large_step: f32,
+    pub large_step: f64,
     pub format: crate::widgets::ValueFormat,
 }
 

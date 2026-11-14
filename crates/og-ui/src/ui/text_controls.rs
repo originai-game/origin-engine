@@ -336,7 +336,7 @@ impl Ui {
         let options = desc.number.as_ref();
         let amount = if accelerated {
             options
-                .map(|o| f64::from(o.large_step))
+                .map(|o| o.large_step)
                 .filter(|s| *s > 0.0)
                 .unwrap_or(step * 10.0)
         } else {

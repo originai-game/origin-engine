@@ -1497,9 +1497,9 @@ impl Ui {
             required: r.flag("required"),
             min_chars: r.num("minChars").unwrap_or(0.0) as u32,
             pattern: r.str("pattern").map(str::to_string),
-            min: r.num("min").map(f64::from),
-            max: r.num("max").map(f64::from),
-            step: r.num("stepBy").map(f64::from),
+            min: r.num64("min"),
+            max: r.num64("max"),
+            step: r.num64("stepBy"),
         };
         resp = if r.flag("multiline") {
             self.docs.state_mut().placeholder_ink = self.pseudo_ink(styled);
@@ -1544,7 +1544,7 @@ impl Ui {
                         || r.str("dataFormat").is_some())
                     .then(|| crate::NumberInputOptions {
                         wrap: r.flag("dataWrap"),
-                        large_step: r.num("dataLargeStep").unwrap_or(0.0),
+                        large_step: r.num64("dataLargeStep").unwrap_or(0.0),
                         format: crate::widgets::ValueFormat {
                             message: r
                                 .str("dataFormat")

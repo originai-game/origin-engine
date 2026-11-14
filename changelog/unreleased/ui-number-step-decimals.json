@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"A document's number input steps by the decimals written: with step=\"0.1\" and data-large-step=\"0.3\" a shift-press writes \"0.3\", not \"0.30000000447034836\". A number written in a document's markup keeps its decimal value where the engine reads it at full precision (a number input's min, max, step and large step)."}
+  ]
+}
