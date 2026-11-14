@@ -473,7 +473,10 @@ pub(crate) struct Inputs<'a> {
 /// The filter pipeline, its result targets and parameters, and the
 /// turbulence lattices by seed.
 pub(crate) struct FilterRunner {
-    pipeline: wgpu::RenderPipeline,
+    /// Made the first time a layer's filter runs (deferred.rs): most UIs
+    /// have none, and the module with every primitive took 0.4 s of a cold
+    /// first frame on Metal.
+    pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
     layout: wgpu::BindGroupLayout,
     pool: Vec<Pooled>,
     used: Vec<bool>,
@@ -523,30 +526,33 @@ impl FilterRunner {
             label: Some("ui filter"),
             source: wgpu::ShaderSource::Wgsl(source().into()),
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("ui filter"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs_filter"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_filter"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: super::pass::LAYER_FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
+        let device = device.clone();
+        let pipeline = crate::deferred::Deferred::new(move || {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("ui filter"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &module,
+                    entry_point: Some("vs_filter"),
+                    compilation_options: Default::default(),
+                    buffers: &[],
+                },
+                primitive: Default::default(),
+                depth_stencil: None,
+                multisample: Default::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &module,
+                    entry_point: Some("fs_filter"),
+                    compilation_options: Default::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: super::pass::LAYER_FORMAT,
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
         });
         FilterRunner {
             pipeline,
