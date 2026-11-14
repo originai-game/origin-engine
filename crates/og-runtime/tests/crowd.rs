@@ -6,7 +6,10 @@
 //! Ways this could fail: a clip baked per entity (the scene's baked clips
 //! grow with the crowd); every member at the same frame (`offset` unread);
 //! the frame never advancing with the world's time; the previous frame
-//! not the one drawn before; a crowd member posed by og-anim instead.
+//! not the one drawn before; a crowd member posed by og-anim instead; a
+//! crowd of full meshes only (the model's cooked levels unused, every far
+//! member at full cost), or a coarse level skinned by the wrong vertices'
+//! joints (limbs torn off far away).
 
 use og_render::RenderScene;
 use og_runtime::{
@@ -65,6 +68,10 @@ struct Seen {
     clips: Vec<(u32, usize)>,
     poses: Vec<Option<(u32, f32, u32, f32)>>,
     crowds: Vec<usize>,
+    /// Per crowd: its first part's levels' index counts, its errors, its
+    /// sphere's radius, and whether every coarse level's vertex has the
+    /// joints and weights of the full mesh's vertex at its place.
+    levels: Vec<(Vec<usize>, Vec<f32>, f32, bool)>,
     skinned: usize,
     palettes: usize,
 }
@@ -97,6 +104,38 @@ impl RenderBackend for Recorder {
                 })
                 .collect(),
             crowds: scene.objects.crowds.iter().map(|c| c.parts.len()).collect(),
+            levels: scene
+                .objects
+                .crowds
+                .iter()
+                .map(|c| {
+                    let levels = &c.parts[0].levels;
+                    let of = |h| {
+                        (
+                            scene.mesh(h).expect("a mesh"),
+                            scene.skin(h).expect("a skin"),
+                        )
+                    };
+                    let (full, skin) = of(levels[0]);
+                    let carried = levels[1..].iter().all(|&h| {
+                        let (m, s) = of(h);
+                        m.vertices.len() == s.joints.len()
+                            && m.vertices.iter().enumerate().all(|(i, v)| {
+                                full.vertices.iter().enumerate().any(|(j, f)| {
+                                    f.position == v.position
+                                        && f.normal == v.normal
+                                        && skin.joints[j] == s.joints[i]
+                                        && skin.weights[j] == s.weights[i]
+                                })
+                            })
+                    });
+                    let counts = levels
+                        .iter()
+                        .map(|&h| scene.mesh(h).expect("a mesh").indices.len())
+                        .collect();
+                    (counts, c.errors.clone(), c.radius, carried)
+                })
+                .collect(),
             skinned: scene.objects.skinned_instances.len(),
             palettes: scene.objects.joint_palettes.len(),
         });
@@ -174,6 +213,17 @@ fn a_crowd_shares_one_baked_clip_at_its_own_frames() {
     assert_eq!(last.skinned, 0);
     assert_eq!(last.crowds.len(), 1, "{:?}", last.crowds);
     assert!(last.crowds[0] >= 1);
+    // The crowd draws the model's cooked levels: fewer triangles each,
+    // their errors rising from 0, measured from the model's sphere, and
+    // every level skinned as the full mesh is.
+    let (counts, errors, radius, carried) = &last.levels[0];
+    println!("walker's levels: {counts:?} indices, errors {errors:?}, radius {radius}");
+    assert!(counts.len() >= 2, "a crowd of full meshes: {counts:?}");
+    assert!(counts.windows(2).all(|w| w[1] < w[0]), "{counts:?}");
+    assert_eq!(errors.len(), counts.len());
+    assert!(errors[0] == 0.0 && errors.windows(2).all(|w| w[1] >= w[0] && w[1] > 0.0));
+    assert!(*radius > 0.5, "radius {radius}");
+    assert!(carried, "a coarse level's skin is not its vertices'");
     let poses: Vec<_> = last.poses.iter().map(|p| p.expect("baked")).collect();
     assert_eq!(poses.len(), MEMBERS, "{} members", poses.len());
     let mut distinct: Vec<u32> = poses.iter().map(|p| p.1.to_bits()).collect();

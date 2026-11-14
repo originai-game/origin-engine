@@ -315,7 +315,8 @@ pub(super) fn models(
         }
         if let Some(crowd) = crowds.get(&e) {
             let seconds = crowd_time(h.blend_alpha(e));
-            if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, look, keys) {
+            let lods = model_lods.get(&asset);
+            if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, lods, look, keys) {
                 continue;
             }
         }

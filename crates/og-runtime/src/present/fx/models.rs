@@ -14,11 +14,37 @@ fn skinned_meshes(
         return m.clone();
     }
     let mut out = vec![None; prims];
+    let mut levels = vec![Vec::new(); prims];
     for (p, slot) in out.iter_mut().enumerate() {
         let stream = skin.streams.iter().find(|s| s.primitive == p);
         let morph = skin.morphs.iter().find(|m| m.primitive == p);
         if stream.is_none() && morph.is_none() {
             continue;
+        }
+        // Its coarser levels' skinned copies: each vertex skinned as the
+        // full mesh's vertex it is (no blendshapes: only crowds draw them).
+        for (level, sources) in info.lod_sources.get(p).into_iter().flatten() {
+            let Some(mesh) = scene.mesh(*level).cloned() else {
+                break;
+            };
+            let full = info.meshes.get(p).and_then(|h| scene.mesh(*h));
+            let data = match stream {
+                Some(s)
+                    if sources.len() == mesh.vertices.len()
+                        && full.is_some_and(|f| f.vertices.len() == s.joints.len()) =>
+                {
+                    SkinData {
+                        joints: sources.iter().map(|&v| s.joints[v as usize]).collect(),
+                        weights: sources.iter().map(|&v| s.weights[v as usize]).collect(),
+                    }
+                }
+                Some(_) => break,
+                None => SkinData {
+                    joints: vec![[0; 4]; mesh.vertices.len()],
+                    weights: vec![[1.0, 0.0, 0.0, 0.0]; mesh.vertices.len()],
+                },
+            };
+            levels[p].push(scene.add_skinned_mesh(mesh, data));
         }
         let Some(mesh) = info.meshes.get(p).and_then(|h| scene.mesh(*h)).cloned() else {
             continue;
@@ -50,6 +76,7 @@ fn skinned_meshes(
         *slot = Some(h);
     }
     skin.meshes = Some(out.clone());
+    skin.levels = levels;
     out
 }
 
@@ -338,6 +365,7 @@ pub(crate) fn crowd_model(
     seconds: f64,
     crowd: &CrowdPlay,
     parts: &[(MeshHandle, og_render::MaterialHandle, Mat4)],
+    lods: Option<&crate::present::extract::ModelLods>,
     look: ModelLook,
     keys: &mut Vec<(u64, u32)>,
 ) -> bool {
@@ -387,18 +415,24 @@ pub(crate) fn crowd_model(
         previous_transform,
     };
     // Its skinned parts draw as a member of the frame's crowd of the same
-    // parts (og-render's crowd.rs: culled, compacted and drawn on the GPU);
-    // its rigid parts as instances.
+    // parts (og-render's crowd.rs: culled, compacted and drawn on the GPU),
+    // each with the model's coarser levels, drawn where their error shows
+    // under a pixel; its rigid parts as instances.
+    let most = og_render::MAX_CROWD_LEVELS;
     let skinned: Vec<og_render::CrowdPart> = parts
         .iter()
         .filter_map(|&(mesh, material, _)| {
             let p = info.primitive(mesh);
+            let coarser = skin.levels.get(p).map_or(&[][..], |l| l.as_slice());
             meshes
                 .get(p)
                 .copied()
                 .flatten()
                 .map(|m| og_render::CrowdPart {
-                    levels: vec![m],
+                    levels: std::iter::once(m)
+                        .chain(coarser.iter().copied())
+                        .take(if lods.is_some() { most } else { 1 })
+                        .collect(),
                     material,
                 })
         })
@@ -416,8 +450,22 @@ pub(crate) fn crowd_model(
         let row = match at {
             Some(i) => &mut scene.objects.crowds[i],
             None => {
+                // The levels' errors and the sphere they are measured
+                // from: the model's, as its unposed instances draw by.
+                let levels = skinned.iter().map(|p| p.levels.len()).max().unwrap_or(1);
+                let (errors, center, radius) = match lods {
+                    Some(l) if levels > 1 => (
+                        (0..levels).map(|k| l.mesh_error(k)).collect(),
+                        l.center,
+                        l.radius,
+                    ),
+                    _ => (vec![0.0], Vec3::ZERO, 0.0),
+                };
                 scene.objects.crowds.push(og_render::Crowd {
                     parts: skinned,
+                    errors,
+                    center,
+                    radius,
                     cast_shadows: look.cast,
                     ..Default::default()
                 });

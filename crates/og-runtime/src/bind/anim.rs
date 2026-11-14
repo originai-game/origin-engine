@@ -154,6 +154,7 @@ pub(crate) fn load_animation(eng: &Engine, path: &str) -> Result<Value, String> 
             streams: cooked.skin_streams.clone(),
             morphs: cooked.morphs.clone(),
             meshes: None,
+            levels: Vec::new(),
         },
     );
     let sys = system(eng)?;

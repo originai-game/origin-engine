@@ -232,9 +232,11 @@ are not retroactive on seek unless authored that way.
   inverse yourself.
 - og.CrowdAnimation draws thousands of walkers at no CPU animation cost.
   Give each member its own `offset` to keep them out of step. Use it for
-  background characters only: nothing reads its pose, a clip change cuts,
-  and crowds do not go through GPU culling or the meshlet path yet (the
-  camera culls each by its bounds on the CPU, as a model og.anim poses).
+  background characters only: nothing reads its pose and a clip change
+  cuts. Members are culled and drawn on the GPU (RenderCapabilities.gpuCrowds), each at
+  the model's cooked level of detail for its distance: keep the model's
+  `lods` (the default cooks three), since a crowd of full meshes costs
+  several times as much far away.
 
 ## 8. Procedural bones: foot locks and springs
 
