@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui components","summary":"Menu's entry labels start at the row's start, after the icon or check, instead of centring between it and the shortcut as a button's text does."}
+  ]
+}

@@ -50,7 +50,7 @@
 .danger [part="Menu.icon"] { color: var(--danger); }
 [part="Menu.check"] { width: 75%; height: 75%; fill: none; stroke: var(--primary); stroke-width: var(--stroke-regular); }
 [part="Menu.dot"] { width: 50%; height: 50%; border-radius: var(--radius-capsule); background: var(--primary); }
-.name { width: stretch; font: var(--text-base); white-space: nowrap; text-overflow: ellipsis; }
+.name { width: stretch; font: var(--text-base); text-align: start; white-space: nowrap; text-overflow: ellipsis; }
 [part="Menu.shortcut"] { font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; }
 [part="Menu.chevron"] { width: var(--font-step-2xs); height: var(--font-step-2xs); fill: none; stroke: var(--ink-muted); stroke-width: var(--stroke-thin); }
 .back .name { color: var(--ink-muted); }
