@@ -54,7 +54,11 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
     for (e, v) in kept_rows(world, layouts.rope.as_ref()) {
         // The hand read's colour default (black), not the IDL's brown.
         let base = record::Rope {
-            color: Vec3::ZERO,
+            color: crate::host::wire::Color {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0,
+            },
             ..Default::default()
         };
         let Ok(v) = record::Rope::from_json_over(&v, base) else {
@@ -66,7 +70,6 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
         let Some(points) = physics.rope_points(Entity::from_bits(e)) else {
             continue;
         };
-        // Rope.color is a Vector3 (x, y, z are r, g, b).
         let c = v.color;
         let width = v.width;
         if orthographic {
@@ -77,7 +80,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
                     position: ((a + b) * 0.5).truncate().extend(a.z),
                     size: Vec2::new(d.truncate().length() + width, width),
                     rotation: d.y.atan2(d.x),
-                    color: [c.x, c.y, c.z, 1.0],
+                    color: [c.r, c.g, c.b, 1.0],
                     ..Default::default()
                 });
             }
@@ -88,7 +91,7 @@ pub(super) fn extract(world: &World, rs: &mut RenderState) -> Vec<(u64, u32)> {
                     .map(|&position| RibbonPoint {
                         position,
                         width: width * 1.6,
-                        color: [c.x, c.y, c.z, 1.0],
+                        color: [c.r, c.g, c.b, 1.0],
                     })
                     .collect(),
                 texture: None,

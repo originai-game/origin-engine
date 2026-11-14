@@ -54,7 +54,7 @@
       min 0
       unit m
     }
-    field color Vector3 "The drawn linear colour." {
+    field color Color "The drawn colour." {
       default 0.55 0.42 0.28
     }
     field visible bool "Whether the renderer draws it." {
@@ -424,7 +424,7 @@
       max 8
     }
     field seed u32 "The seed of the spawn jitter."
-    field color Vector3 "The surface's linear colour." {
+    field color Color "The surface's colour." {
       default 0.15 0.45 0.95
     }
     field opacity f32 "The surface's opacity." {
@@ -543,7 +543,7 @@
     field sinkSize Vector3 "The sink box: particles that enter it are removed (0 0 0: no sink)." {
       unit m
     }
-    field color Vector3 "The fluid's linear colour (what light passing through it keeps)." {
+    field color Color "The fluid's colour (what light passing through it keeps)." {
       default 0.2 0.55 0.9
     }
     field opacity f32 "How opaque a metre of it is (0: clear as glass, 1: opaque)." {

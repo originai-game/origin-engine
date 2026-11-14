@@ -3768,11 +3768,11 @@
         },
         {
           "name": "color",
-          "column": "Vector3",
+          "column": "Color",
           "default": {
-            "x": 0.55,
-            "y": 0.42,
-            "z": 0.28
+            "r": 0.55,
+            "g": 0.42,
+            "b": 0.28
           }
         },
         {
@@ -4201,11 +4201,11 @@
         },
         {
           "name": "color",
-          "column": "Vector3",
+          "column": "Color",
           "default": {
-            "x": 0.15,
-            "y": 0.45,
-            "z": 0.95
+            "r": 0.15,
+            "g": 0.45,
+            "b": 0.95
           }
         },
         {
@@ -4383,11 +4383,11 @@
         },
         {
           "name": "color",
-          "column": "Vector3",
+          "column": "Color",
           "default": {
-            "x": 0.2,
-            "y": 0.55,
-            "z": 0.9
+            "r": 0.2,
+            "g": 0.55,
+            "b": 0.9
           }
         },
         {

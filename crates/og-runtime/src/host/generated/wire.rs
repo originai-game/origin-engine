@@ -31397,7 +31397,7 @@ pub mod record {
         pub wind: Vec3,
         pub radius: f32,
         pub width: f32,
-        pub color: Vec3,
+        pub color: Color,
         pub visible: bool,
     }
 
@@ -31415,7 +31415,7 @@ pub mod record {
                 wind: Default::default(),
                 radius: 0.05_f32,
                 width: 0.08_f32,
-                color: Vec3::new(0.55_f32, 0.42_f32, 0.28_f32),
+                color: Color { r: 0.55_f32, g: 0.42_f32, b: 0.28_f32 },
                 visible: true,
             }
         }
@@ -31684,7 +31684,7 @@ pub mod record {
         pub gravity_scale: f32,
         pub substeps: u32,
         pub seed: u32,
-        pub color: Vec3,
+        pub color: Color,
         pub opacity: f32,
         pub blob_scale: f32,
         pub threshold: f32,
@@ -31709,7 +31709,7 @@ pub mod record {
                 gravity_scale: 1.0_f32,
                 substeps: 2,
                 seed: Default::default(),
-                color: Vec3::new(0.15_f32, 0.45_f32, 0.95_f32),
+                color: Color { r: 0.15_f32, g: 0.45_f32, b: 0.95_f32 },
                 opacity: 0.9_f32,
                 blob_scale: 1.6_f32,
                 threshold: 0.45_f32,
@@ -31774,7 +31774,7 @@ pub mod record {
         pub emit_radius: f32,
         pub sink_offset: Vec3,
         pub sink_size: Vec3,
-        pub color: Vec3,
+        pub color: Color,
         pub opacity: f32,
         pub reflectivity: f32,
         pub refraction: f32,
@@ -31808,7 +31808,7 @@ pub mod record {
                 emit_radius: 0.1_f32,
                 sink_offset: Default::default(),
                 sink_size: Default::default(),
-                color: Vec3::new(0.2_f32, 0.55_f32, 0.9_f32),
+                color: Color { r: 0.2_f32, g: 0.55_f32, b: 0.9_f32 },
                 opacity: 0.6_f32,
                 reflectivity: 1.0_f32,
                 refraction: 1.0_f32,
