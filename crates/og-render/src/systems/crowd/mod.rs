@@ -371,7 +371,9 @@ pub(crate) struct CrowdCard {
     pub radius: f32,
 }
 
-/// The frame's crowds as tables (`build`).
+/// The frame's crowds as tables (`build`). The renderer keeps one from
+/// frame to frame, so a crowd's tables reuse the memory the last frame's
+/// filled.
 #[derive(Default)]
 pub(crate) struct CrowdFrame {
     pub members: Vec<MemberGpu>,
@@ -386,11 +388,26 @@ pub(crate) struct CrowdFrame {
     pub previous: Vec<[[f32; 4]; 4]>,
     /// Whether any member moved or played on since the frame before.
     pub moved: bool,
+    /// Per baked clip of the scene, whether a member plays it now or the
+    /// frame before: the bakes the palette holds for the crowds.
+    pub played: Vec<bool>,
 }
 
 impl CrowdFrame {
     pub fn len(&self) -> u32 {
         self.members.len() as u32
+    }
+
+    /// Writes each clip box row's first slot in the baked buffer
+    /// (`ClipGpu::info.x`), once the palette has placed the clips
+    /// [`Self::played`] names (`offset`). A row no member plays stays empty.
+    pub fn place_clips(&mut self, offset: &dyn Fn(u32) -> usize) {
+        let n = self.played.len().max(1);
+        for (row, c) in self.clips.iter_mut().enumerate() {
+            if c.info[1] > 0 {
+                c.info[0] = offset((row % n) as u32) as u32;
+            }
+        }
     }
 
     /// The draw of card `k` in the cull's draw table (after the meshes').
@@ -417,31 +434,43 @@ pub(crate) struct MeshInfo<'a> {
     pub joints: &'a [JointBox],
 }
 
-/// Checks the scene's crowds and lays them out as tables: their members'
-/// records (TAA's previous transforms with them, when `motion`), each
-/// (crowd, clip)'s box over its parts and levels, and each (crowd, part,
-/// level) draw, at the scene's `lod_bias`. `offset` is a clip's first slot
-/// in the baked buffer;
-/// `hooked`, whether a material moves its vertices (a vertex hook: its
+/// Checks the scene's crowds and lays them out as tables in `f` (its
+/// last contents cleared): their members' records (TAA's previous
+/// transforms with them, when `motion`), each (crowd, clip)'s box over its
+/// parts and levels, each (crowd, part, level) draw, at the scene's
+/// `lod_bias`, and the clips the members play ([`CrowdFrame::played`]).
+/// The one pass a frame over the members. Each clip box row's first slot
+/// in the baked buffer is written afterwards ([`CrowdFrame::place_clips`]).
+/// `hooked`: whether a material moves its vertices (a vertex hook: its
 /// members may draw outside their boxes, so nothing occludes them).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build<'m>(
+    f: &mut CrowdFrame,
     crowds: &[Crowd],
     clips: &[BakedClip],
     mesh: &dyn Fn(usize) -> Option<MeshInfo<'m>>,
     materials: usize,
     hooked: &dyn Fn(usize) -> bool,
-    offset: &dyn Fn(u32) -> usize,
     motion: bool,
     lod_bias: f32,
-) -> Result<CrowdFrame, crate::RenderError> {
+) -> Result<(), crate::RenderError> {
     use crate::RenderError;
-    let mut f = CrowdFrame::default();
+    f.members.clear();
+    f.crowds.clear();
+    f.clips.clear();
+    f.draws.clear();
+    f.cards.clear();
+    f.previous.clear();
+    f.moved = false;
+    f.played.clear();
+    f.played.resize(clips.len(), false);
     let n: usize = crowds.iter().map(|c| c.members.len()).sum();
     f.members.reserve(n);
     if motion {
         f.previous.reserve(n);
     }
+    // A member without a look of its own (most) takes these bits.
+    let no_look = crate::instances::fx_bits(&crate::InstanceFx::NONE);
     for (ci, c) in crowds.iter().enumerate() {
         // A crowd with nothing to draw has no row (its draws would be
         // written by its first member).
@@ -485,7 +514,7 @@ pub(crate) fn build<'m>(
         let clip_base = f.clips.len() as u32;
         f.clips
             .resize(f.clips.len() + clips.len(), ClipGpu::default());
-        let mut boxed = vec![false; clips.len()];
+        let boxed = &mut f.clips[clip_base as usize..];
         let first = f.members.len() as u32;
         let mut last_clip = u32::MAX;
         for (mi, m) in c.members.iter().enumerate() {
@@ -502,18 +531,23 @@ pub(crate) fn build<'m>(
                         clips.len()
                     )));
                 };
-                if !boxed[clip as usize] {
-                    boxed[clip as usize] = true;
+                // A row is boxed once (its joints, at least one, mark it).
+                if boxed[clip as usize].info[1] == 0 {
+                    f.played[clip as usize] = true;
                     let (lo, hi) = crowd_clip_box(c, k, mesh).unwrap_or((Vec3::ZERO, Vec3::ZERO));
-                    f.clips[(clip_base + clip) as usize] = ClipGpu {
-                        info: [offset(clip) as u32, k.joints, k.frame_count() as u32, 0],
+                    boxed[clip as usize] = ClipGpu {
+                        info: [0, k.joints, k.frame_count() as u32, 0],
                         lo: lo.extend(0.0).to_array(),
                         hi: hi.extend(0.0).to_array(),
                     };
                 }
             }
             last_clip = b.clip;
-            let [flash, color, tint] = crate::instances::fx_bits(&m.fx);
+            let [flash, color, tint] = if m.fx == crate::InstanceFx::NONE {
+                no_look
+            } else {
+                crate::instances::fx_bits(&m.fx)
+            };
             f.members.push(MemberGpu {
                 columns: crate::instances::gpu_columns(&m.transform),
                 pose: [
@@ -591,7 +625,7 @@ pub(crate) fn build<'m>(
             g.layers[1] += meshes;
         }
     }
-    Ok(f)
+    Ok(())
 }
 
 /// The box (min, max) of every vertex of `crowd`'s meshes posed by any

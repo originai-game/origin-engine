@@ -301,6 +301,7 @@ impl WorldRenderers {
             visual,
             crowd_indirect,
             crowd_gpu: None,
+            crowd_tables: Default::default(),
             crowd_impostors: None,
         }
     }

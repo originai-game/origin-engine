@@ -4,14 +4,18 @@ use super::*;
 
 impl Renderer {
     /// The scene's crowds as the crowd cull's tables (crowd.rs `build`),
-    /// their previous transforms with them when `motion`.
+    /// their previous transforms with them when `motion`, in the tables
+    /// the last frame filled. Their clip rows' baked slots are placed once
+    /// the palette holds the clips they play (`CrowdFrame::place_clips`).
     pub(crate) fn build_crowds(
-        &self,
+        &mut self,
         scene: &RenderScene,
         motion: bool,
     ) -> Result<crate::crowd::CrowdFrame, RenderError> {
+        let mut frame = std::mem::take(&mut self.world.crowd_tables);
         let cache = &self.cache;
         crate::crowd::build(
+            &mut frame,
             &scene.objects.crowds,
             &scene.objects.baked_clips,
             &|m| {
@@ -23,10 +27,10 @@ impl Renderer {
             },
             cache.materials.len(),
             &|m| cache.materials[m].shader.is_some(),
-            &|c| self.instances.palette.baked_offset(c),
             motion,
             scene.objects.lod_bias,
-        )
+        )?;
+        Ok(frame)
     }
 
     /// One skinned batch per crowd draw (a part at a level): no instances
@@ -137,22 +141,21 @@ pub(crate) struct CrowdPlan {
 }
 
 impl Renderer {
-    /// The frame's crowds: their tables and batches, where their previous
-    /// transforms go, and which path draws them. On the CPU path their
-    /// members are appended to `skinned` here. `no_probe_due`: no probe
-    /// face is drawn this frame.
+    /// The frame's crowds from their tables (`build_crowds`, the previous
+    /// transforms with them when `crowd_motion`): their batches, where
+    /// their previous transforms go, and which path draws them. On the CPU
+    /// path their members are appended to `skinned` here. `no_probe_due`:
+    /// no probe face is drawn this frame.
     pub(crate) fn plan_crowds(
         &mut self,
         scene: &RenderScene,
-        temporal: bool,
+        crowd_frame: crate::crowd::CrowdFrame,
+        crowd_motion: bool,
         no_probe_due: bool,
         skinned: &mut SkinnedFrame,
     ) -> Result<CrowdPlan, RenderError> {
-        // Crowds (crowd.rs): their members as the crowd cull's tables, and
-        // where each member's previous transform goes under TAA (after the
+        // Where each member's previous transform goes under TAA (after the
         // palette's previous section, skin.rs).
-        let crowd_motion = temporal || scene.look.post.motion_blur.is_some();
-        let crowd_frame = self.build_crowds(scene, crowd_motion)?;
         let crowd_batches = self.crowd_batches(scene, &crowd_frame);
         let crowd_previous = crowd_motion.then(|| {
             (skinned.matrices.len()

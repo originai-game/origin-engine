@@ -56,7 +56,7 @@ impl Renderer {
                 &self.device,
                 &self.queue,
                 &self.palette_layout,
-                joint_matrices,
+                [joint_matrices, &crowd_frame.previous],
                 &self.cache.morph_data,
                 morphs_changed,
             );

@@ -521,16 +521,16 @@ impl Vec4Array {
         true
     }
 
-    /// Writes `data` from the start.
-    fn upload(&self, queue: &wgpu::Queue, data: &[[f32; 4]]) {
-        if data.is_empty() {
-            return;
+    /// Writes `data` from the start, then `after` right after it.
+    fn upload(&self, queue: &wgpu::Queue, data: &[[f32; 4]], after: &[[f32; 4]]) {
+        let buffer = self.buffer.as_ref().expect("made");
+        if !data.is_empty() {
+            queue.write_buffer(buffer, 0, bytemuck::cast_slice(data));
         }
-        queue.write_buffer(
-            self.buffer.as_ref().expect("made"),
-            0,
-            bytemuck::cast_slice(data),
-        );
+        if !after.is_empty() {
+            let at = data.len() as u64 * 16;
+            queue.write_buffer(buffer, at, bytemuck::cast_slice(after));
+        }
     }
 
     fn resource(&self) -> wgpu::BindingResource<'_> {
@@ -615,7 +615,8 @@ impl GpuPalette {
             if self.baked.reserve(device, matrices.len() * 4) {
                 self.bind_group = None;
             }
-            self.baked.upload(queue, bytemuck::cast_slice(&matrices));
+            self.baked
+                .upload(queue, bytemuck::cast_slice(&matrices), &[]);
         }
         if self.baked.reserve(device, 0) {
             self.bind_group = None;
@@ -630,7 +631,9 @@ impl GpuPalette {
         self.bakes.len
     }
 
-    /// Uploads the joint matrices (four columns each) and, when
+    /// Uploads the joint matrices (four columns each), `matrices` one run
+    /// after the other (the frame's slots, then the crowd members'
+    /// previous transforms from their own table), and, when
     /// `morphs_changed` (or their storage was recreated), the scene's morph
     /// deltas; rebinds when a resource was recreated.
     pub fn write(
@@ -638,16 +641,16 @@ impl GpuPalette {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         layout: &wgpu::BindGroupLayout,
-        matrices: &[[[f32; 4]; 4]],
+        matrices: [&[[[f32; 4]; 4]]; 2],
         morphs: &[[f32; 4]],
         morphs_changed: bool,
     ) {
-        let columns: &[[f32; 4]] = bytemuck::cast_slice(matrices);
-        let mut rebind = self.palette.reserve(device, columns.len());
-        self.palette.upload(queue, columns);
+        let [slots, after] = matrices.map(bytemuck::cast_slice::<_, [f32; 4]>);
+        let mut rebind = self.palette.reserve(device, slots.len() + after.len());
+        self.palette.upload(queue, slots, after);
         let morphs_grew = self.morphs.reserve(device, morphs.len());
         if morphs_changed || morphs_grew {
-            self.morphs.upload(queue, morphs);
+            self.morphs.upload(queue, morphs, &[]);
         }
         rebind |= morphs_grew;
         if rebind || self.bind_group.is_none() {
