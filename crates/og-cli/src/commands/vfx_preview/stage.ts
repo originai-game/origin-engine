@@ -9,7 +9,8 @@
 //   lift:<metres>   how far above the origin the next effects play (one whose
 //                   origin is its centre is raised to stand on the ground)
 //   play:<asset id> the effect at the origin, replacing the last
-//   clear           despawns it
+//   add:x:z:<asset id>  another effect at (x, 0, z), keeping the others
+//   clear           despawns them
 import { og, defineSystem } from "@origingame/engine";
 import type { Entity, World } from "@origingame/engine";
 
@@ -119,6 +120,10 @@ export default og.game({
       lift = Number(args[0]);
     },
     play: (world, args) => play(world, args.map(String).join(":")),
+    add: (world, args) => {
+      const asset = must(og.load.vfx(world, args.slice(2).map(String).join(":")));
+      shown.push(must(og.vfx.spawn(world, { asset, position: { x: Number(args[0]), y: 0, z: Number(args[1]) } })));
+    },
     clear: (world) => clear(world),
   },
   facts: () => ({ starts, log }),

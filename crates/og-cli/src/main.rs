@@ -187,7 +187,7 @@ commands:
                       nearest assets/ above <out-dir>), listing what did not convert; an
                       Effekseer file in assets/ is converted the same way by og cook
   vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>]
-              [--no-cost | --cost-only] [--keep] [--json]
+              [--no-cost | --cost-only | --together] [--keep] [--json]
                       play each effect (type vfx, or type vfx2d in a 2D project) alone on a
                       dark stage and report it: six frames in time order tiled into
                       <out>/<effect>.png (default out: og-out/vfx-preview), the camera placed
@@ -195,7 +195,8 @@ commands:
                       measured size and anchor, draw calls, particle slots and its peak GPU
                       milliseconds over an empty frame (--no-cost skips the timed run,
                       --cost-only adds it to an earlier preview in --out), also written to
-                      <out>/<effect>.json
+                      <out>/<effect>.json; --together plays them all at once on a grid and
+                      reports the frame's and each pass's GPU milliseconds (together.json)
   style list [project] [--json]
                       list bundled and installed CSS style directories
   style add <directory> [project]

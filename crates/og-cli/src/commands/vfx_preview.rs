@@ -1,5 +1,5 @@
 //! `og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH]
-//! [--decal-atlas <texture>] [--no-cost | --cost-only] [--keep] [--json]`: what an effect looks like, how big
+//! [--decal-atlas <texture>] [--no-cost | --cost-only | --together] [--keep] [--json]`: what an effect looks like, how big
 //! it is and what it costs, without writing a scene for it.
 //!
 //! Each effect (an asset id of the project, `fx/hit.ogt`, or a file under
@@ -39,6 +39,14 @@
 //!    earlier preview in `--out` (a pack's previews take their shots
 //!    holding one GPU slot and their timings holding all of them).
 //!
+//! `--together` plays every effect named at once instead, on a grid
+//! [`SPACING`] metres apart (a fight with many effects on screen), in one
+//! traced run framed to show the whole grid: the frame's and each render
+//! pass's GPU milliseconds over the empty stage, at the run's peak (90th
+//! percentile) and typical (median) frame, and three frames of it tiled into
+//! `<out>/together.png`, written to `<out>/together.json`. Each effect starts
+//! at its origin on the ground, whatever its anchor.
+//!
 //! `--decal-atlas textures/atlas.png` is the texture the stage sets as
 //! og.RenderSettings.decalAtlas, as the game does, for effects with `decal`
 //! elements (without one a decal draws white). `--keep` leaves the stage's
@@ -55,7 +63,7 @@ use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>] [--no-cost | --cost-only] [--keep] [--json]";
+const USAGE: &str = "usage: og vfx preview <effect.ogt>... [--project DIR] [--out DIR] [--size WxH] [--decal-atlas <texture>] [--no-cost | --cost-only | --together] [--keep] [--json]";
 
 const STAGE: &str = include_str!("vfx_preview/stage.ts");
 const TICK: f64 = 60.0;
@@ -99,6 +107,8 @@ const VIEW_FOV: f64 = 50.0;
 const BASE_FROM: f64 = 0.4;
 const GAP: f64 = 0.8;
 const WARM: f64 = 5.0;
+/// Metres between the effects of `--together`.
+const SPACING: f64 = 4.0;
 
 struct Args {
     effects: Vec<String>,
@@ -110,6 +120,7 @@ struct Args {
     json: bool,
     decal_atlas: String,
     keep: bool,
+    together: bool,
 }
 
 fn parse(args: &[&str]) -> Result<Args, String> {
@@ -123,6 +134,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         json: false,
         decal_atlas: String::new(),
         keep: false,
+        together: false,
     };
     let mut i = 0;
     while i < args.len() {
@@ -131,6 +143,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
             "--no-cost" => a.cost = false,
             "--cost-only" => a.cost_only = true,
             "--keep" => a.keep = true,
+            "--together" => a.together = true,
             flag @ ("--project" | "--out" | "--size" | "--decal-atlas") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
@@ -156,7 +169,8 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         }
         i += 1;
     }
-    if a.effects.is_empty() || (a.cost_only && !a.cost) {
+    if a.effects.is_empty() || (a.cost_only && !a.cost) || (a.together && (a.cost_only || !a.cost))
+    {
         return Err(USAGE.into());
     }
     Ok(a)
@@ -854,6 +868,115 @@ fn cost(
     }))
 }
 
+/// `--together`: every effect at once on a grid, one traced run.
+fn together(
+    stage: &Stage,
+    bundle: &Path,
+    size: (u32, u32),
+    effects: &[Effect],
+    timing: &[Timing],
+    out: &Path,
+) -> Result<Value, String> {
+    let n = effects.len();
+    let cols = (n as f64).sqrt().ceil() as usize;
+    let rows = n.div_ceil(cols);
+    let place = |i: usize| {
+        (
+            ((i % cols) as f64 - (cols - 1) as f64 / 2.0) * SPACING,
+            ((i / cols) as f64 - (rows - 1) as f64 / 2.0) * SPACING,
+        )
+    };
+    let half = [cols as f64 * SPACING / 2.0, rows as f64 * SPACING / 2.0];
+    let grid = Bounds {
+        min: [-half[0], 0.0, -half[1]],
+        max: [half[0], 2.0, half[1]],
+        clipped: false,
+    };
+    let start = BASE_FROM + GAP;
+    let show = timing.iter().map(|t| t.show).fold(0.2, f64::max);
+    let end = start + show;
+    let shots = [0.1, 0.4, 1.0].map(|t: f64| t.min(show));
+    let mut commands = vec![
+        "0:stage:show".to_string(),
+        format!("0.1:{}", view_command(Some(grid), 0.0)),
+    ];
+    for (i, e) in effects.iter().enumerate() {
+        let (x, z) = place(i);
+        commands.push(format!("{start:.3}:add:{x}:{z}:{}", e.id));
+    }
+    for (k, t) in shots.iter().enumerate() {
+        commands.push(format!("{:.3}:screenshot:together-{k}.png", start + t));
+    }
+    commands.push(format!("{end:.3}:clear"));
+    let trace = stage.scratch.join("trace.json");
+    let _ = std::fs::remove_file(&trace);
+    let trace_arg = trace.to_string_lossy().into_owned();
+    let (summary, dir) = stage.run(bundle, size, commands, end + 0.1, &["--trace", &trace_arg])?;
+    let mut sheet = RgbaImage::new(size.0 * 3, size.1);
+    for k in 0..shots.len() {
+        let frame = open(&dir.join(format!("together-{k}.png")))?;
+        image::imageops::overlay(&mut sheet, &frame, i64::from(k as u32 * size.0), 0);
+    }
+    let sheet_path = out.join("together.png");
+    image::DynamicImage::ImageRgba8(sheet)
+        .to_rgb8()
+        .save(&sheet_path)
+        .map_err(|e| format!("{}: {e}", sheet_path.display()))?;
+    stage.done(&dir);
+    let frames = gpu_frames(&trace)?;
+    let _ = std::fs::remove_file(&trace);
+    let base: Vec<_> = frames
+        .iter()
+        .filter(|f| f.0 >= BASE_FROM * TICK && f.0 < start * TICK)
+        .collect();
+    let window: Vec<_> = frames
+        .iter()
+        .filter(|f| f.0 >= start * TICK + WARM && f.0 <= end * TICK)
+        .collect();
+    if base.is_empty() || window.is_empty() {
+        return Err(format!(
+            "the trace has no GPU times (the renderer `{}` reports none)",
+            summary["renderer"].as_str().unwrap_or("?")
+        ));
+    }
+    let pass = |f: &GpuFrame, name: &str| f.2.iter().find(|p| p.0 == name).map_or(0.0, |p| p.1);
+    let mut names: Vec<String> = Vec::new();
+    for f in base.iter().chain(&window) {
+        for (name, _) in &f.2 {
+            if !names.contains(name) {
+                names.push(name.clone());
+            }
+        }
+    }
+    // The frame, then each pass the effects grew by a microsecond or more.
+    let row = |of: &dyn Fn(&GpuFrame) -> f64| {
+        let was = median(base.iter().map(|f| of(f)).collect());
+        let all: Vec<f64> = window.iter().map(|f| of(f)).collect();
+        json!({
+            "emptyMs": round3(was),
+            "peakMs": round3((p90(all.clone(), was) - was).max(0.0)),
+            "typicalMs": round3((median(all) - was).max(0.0)),
+        })
+    };
+    let mut passes = serde_json::Map::new();
+    for name in &names {
+        let r = row(&|f: &GpuFrame| pass(f, name));
+        if r["peakMs"].as_f64().unwrap_or(0.0) >= 0.001 {
+            passes.insert(name.clone(), r);
+        }
+    }
+    Ok(json!({
+        "effects": effects.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(),
+        "spacing": SPACING,
+        "renderer": summary["renderer"],
+        "size": format!("{}x{}", size.0, size.1),
+        "shownSeconds": round3(show),
+        "sheet": sheet_path,
+        "frame": row(&|f: &GpuFrame| f.1),
+        "passes": passes,
+    }))
+}
+
 fn round2(v: [f64; 3]) -> [f64; 3] {
     v.map(|x| (x * 100.0).round() / 100.0)
 }
@@ -935,6 +1058,50 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
         keep: a.keep,
     };
     let show = stage.bundle(dim, &pixel, a.size, "tier").map_err(fail)?;
+    if a.together {
+        if dim == "2d" {
+            return Err((
+                2,
+                "--together places 3D effects (type vfx) on a grid".into(),
+            ));
+        }
+        let timing = timings(&stage, &show, &effects).map_err(fail)?;
+        let record = together(&stage, &show, a.size, &effects, &timing, &out).map_err(fail)?;
+        let path = out.join("together.json");
+        std::fs::write(
+            &path,
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(&record).unwrap_or_default()
+            ),
+        )
+        .map_err(|e| fail(format!("{}: {e}", path.display())))?;
+        drop(show);
+        if !a.keep {
+            let _ = std::fs::remove_dir_all(&scratch);
+        }
+        if !a.json {
+            let f = &record["frame"];
+            println!(
+                "{} effects at once, {} m apart, at {} on {}: GPU +{} ms at the peak, +{} ms typical, over an empty frame of {} ms",
+                effects.len(),
+                SPACING,
+                record["size"].as_str().unwrap_or_default(),
+                record["renderer"].as_str().unwrap_or("?"),
+                f["peakMs"],
+                f["typicalMs"],
+                f["emptyMs"]
+            );
+            for (name, r) in record["passes"].as_object().into_iter().flatten() {
+                println!(
+                    "  {name}: +{} ms peak, +{} ms typical (empty {} ms)",
+                    r["peakMs"], r["typicalMs"], r["emptyMs"]
+                );
+            }
+            println!("  sheet {}", record["sheet"].as_str().unwrap_or_default());
+        }
+        return Ok(vec![record]);
+    }
     let mut records: Vec<Value> = Vec::new();
     if a.cost_only {
         for e in &effects {
