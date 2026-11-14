@@ -11,6 +11,7 @@ use crate::host::codec::Layout;
 use crate::host::wire::{FromJson, record};
 use glam::Vec3;
 use og_ecs::{SchemaId, SystemContext, SystemDesc, World};
+use og_env::weather::{Ground, Rates, disc, step};
 use serde_json::json;
 use std::collections::BTreeMap;
 
@@ -21,79 +22,17 @@ const WEATHER: &str = "og.Weather";
 /// og.WeatherState and its event, registered together (crate::engine::lazy).
 pub(crate) const RECORDS: [&str; 2] = [STATE, STRIKE];
 
-/// The kinds og.Weather.kind names (og-render's WEATHER_*).
-const RAIN: u64 = 1;
-const SNOW: u64 = 2;
-const DUST: u64 = 3;
-
-/// The inputs a tick of the state reads (og.Weather and og.WeatherState's
-/// own fields), the numbers it writes back.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct Step {
-    pub wetness: f32,
-    pub puddles: f32,
-    pub snow_depth: f32,
-    pub dust: f32,
-}
-
-/// The rules: rain soaks the ground over soakTime and, once it is more than
-/// half soaked, fills the puddles over puddleTime; without rain both dry
-/// (dryTime, drainTime). Snow settles at snowfall per minute and melts at
-/// melt per minute when none falls, three times as fast in rain; snow
-/// keeps the ground under it from drying no faster than it would. A dust
-/// storm settles dust over dustTime; it stays until rain washes it off
-/// over washTime.
-pub(crate) fn step(
-    s: Step,
-    state: &record::WeatherState,
-    kind: u64,
-    intensity: f32,
-    dt: f32,
-) -> Step {
-    let rain = if kind == RAIN {
-        intensity.clamp(0.0, 2.0)
-    } else {
-        0.0
-    };
-    let snowing = if kind == SNOW {
-        intensity.clamp(0.0, 2.0)
-    } else {
-        0.0
-    };
-    let mut o = s;
-    if rain > 0.0 {
-        o.wetness += dt * rain / state.soak_time.max(0.1);
-        if s.wetness > 0.5 {
-            o.puddles += dt * rain / state.puddle_time.max(0.1);
-        }
-    } else {
-        o.wetness -= dt / state.dry_time.max(0.1);
-        o.puddles -= dt / state.drain_time.max(0.1);
-    }
-    if snowing > 0.0 {
-        o.snow_depth += dt * snowing * state.snowfall.max(0.0) / 60.0;
-    } else {
-        o.snow_depth -= dt * state.melt.max(0.0) / 60.0 * (1.0 + 2.0 * rain);
-    }
-    if kind == DUST {
-        o.dust += dt * intensity.clamp(0.0, 2.0) / state.dust_time.max(0.1);
-    }
-    o.dust -= dt * rain / state.wash_time.max(0.1);
-    o.dust = o.dust.clamp(0.0, 1.0);
-    o.wetness = o.wetness.clamp(0.0, 1.0);
-    o.puddles = o.puddles.clamp(0.0, 1.0);
-    o.snow_depth = o.snow_depth.max(0.0);
-    o
-}
-
-/// A strike's offset in the unit disc: rejection sampling, no trig.
-pub(crate) fn disc(rng: &mut og_core::Rng) -> (f32, f32) {
-    loop {
-        let x = rng.range_f32(-1.0, 1.0);
-        let z = rng.range_f32(-1.0, 1.0);
-        if x * x + z * z <= 1.0 {
-            return (x, z);
-        }
+/// og.WeatherState's settings as the ground's rates.
+fn rates(state: &record::WeatherState) -> Rates {
+    Rates {
+        soak_time: state.soak_time,
+        puddle_time: state.puddle_time,
+        dry_time: state.dry_time,
+        drain_time: state.drain_time,
+        snowfall: state.snowfall,
+        melt: state.melt,
+        dust_time: state.dust_time,
+        wash_time: state.wash_time,
     }
 }
 
@@ -149,14 +88,14 @@ fn run(
         .map_err(invalid)?;
     let time = ctx.time();
     let next = step(
-        Step {
+        Ground {
             wetness: row.wetness,
             puddles: row.puddles,
             snow_depth: row.snow_depth,
             dust: row.dust,
         },
-        &row,
-        u64::from(w.kind),
+        &rates(&row),
+        w.kind,
         w.intensity,
         time.dt,
     );
@@ -200,10 +139,12 @@ fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use og_env::weather::{DUST, RAIN, SNOW};
 
-    fn run_for(s: Step, kind: u64, intensity: f32, seconds: u32) -> Step {
-        let state = record::WeatherState::default();
-        (0..seconds * 60).fold(s, |s, _| step(s, &state, kind, intensity, 1.0 / 60.0))
+    /// The ground under og.WeatherState's default settings.
+    fn run_for(s: Ground, kind: u32, intensity: f32, seconds: u32) -> Ground {
+        let rates = rates(&record::WeatherState::default());
+        (0..seconds * 60).fold(s, |s, _| step(s, &rates, kind, intensity, 1.0 / 60.0))
     }
 
     /// A minute of rain soaks the ground; the puddles wait for it to be
@@ -212,12 +153,12 @@ mod tests {
     /// melts it three times as fast.
     #[test]
     fn rain_soaks_and_fills_then_dries_and_snow_lies_then_melts() {
-        let half = run_for(Step::default(), RAIN, 1.0, 30);
+        let half = run_for(Ground::default(), RAIN, 1.0, 30);
         assert!(
             (half.wetness - 0.5).abs() < 0.01 && half.puddles == 0.0,
             "{half:?}"
         );
-        let soaked = run_for(Step::default(), RAIN, 1.0, 60);
+        let soaked = run_for(Ground::default(), RAIN, 1.0, 60);
         assert!(soaked.wetness > 0.999 && soaked.puddles > 0.2 && soaked.puddles < 0.3);
         let full = run_for(soaked, RAIN, 1.0, 120);
         assert!(full.puddles > 0.999);
@@ -226,7 +167,7 @@ mod tests {
             dry.wetness < 1e-3 && (dry.puddles - 0.5).abs() < 0.01,
             "{dry:?}"
         );
-        let snow = run_for(Step::default(), SNOW, 1.0, 120);
+        let snow = run_for(Ground::default(), SNOW, 1.0, 120);
         assert!((snow.snow_depth - 0.02).abs() < 1e-4 && snow.wetness == 0.0);
         let thawed = run_for(snow, 0, 1.0, 120);
         assert!((thawed.snow_depth - 0.012).abs() < 1e-4, "{thawed:?}");
@@ -239,9 +180,9 @@ mod tests {
     /// half of rain washes it off, half of it in 45 s.
     #[test]
     fn a_dust_storm_settles_dust_that_stays_until_rain_washes_it() {
-        let half = run_for(Step::default(), DUST, 1.0, 300);
+        let half = run_for(Ground::default(), DUST, 1.0, 300);
         assert!((half.dust - 0.5).abs() < 0.01, "{half:?}");
-        let full = run_for(Step::default(), DUST, 2.0, 300);
+        let full = run_for(Ground::default(), DUST, 2.0, 300);
         assert!(full.dust > 0.999 && full.wetness == 0.0, "{full:?}");
         let kept = run_for(run_for(full, 0, 1.0, 600), SNOW, 1.0, 60);
         assert!(kept.dust > 0.999, "{kept:?}");

@@ -10,13 +10,17 @@
 //! | [`river`] | a river's course and its surface along it |
 //! | [`air`] | [`air::Air`], the world's wind and the local pushes on it, as one function of a point |
 //! | [`volume`] | [`volume::Volume`], the one shape of a region: a box or a sphere on its entity, with a fade |
+//! | [`weather`] | the kinds of weather and what they leave on the ground: wetness, puddles, snow and dust |
+//! | [`day`] | the time of day at a tick |
 //!
 //! Invariants are og-core's: no global mutable state, no wall clock, and
 //! the transcendentals are [`og_core::math`]'s, so every host computes the
 //! same field.
 
 pub mod air;
+pub mod day;
 pub mod ocean;
 pub mod river;
 pub mod shore;
 pub mod volume;
+pub mod weather;

@@ -20,12 +20,7 @@ use std::collections::BTreeMap;
 
 /// The DayNight clock at `tick` (hours, 0..24), from its row.
 fn hours(d: &record::DayNight, tick: u64, dt: f32) -> f32 {
-    let start = f64::from(d.start);
-    if !d.enabled {
-        return start.rem_euclid(24.0) as f32;
-    }
-    let speed = f64::from(d.speed);
-    (start + tick as f64 * f64::from(dt) * speed).rem_euclid(24.0) as f32
+    og_env::day::hours(d.start, d.speed, d.enabled, tick, dt)
 }
 
 /// An enabled og.DayNight at the world's tick: its row, the clock, the

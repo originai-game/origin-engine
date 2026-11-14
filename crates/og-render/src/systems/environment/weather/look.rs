@@ -11,16 +11,10 @@ use crate::{
 };
 use glam::Vec3;
 
-/// Clear weather.
-pub const WEATHER_NONE: u32 = 0;
-/// Rain streaks falling with the wind, dimmed light, a grey distance fog.
-pub const WEATHER_RAIN: u32 = 1;
-/// Flakes drifting down on gusts, a pale fog.
-pub const WEATHER_SNOW: u32 = 2;
-/// Dust blowing along the wind near the ground, a warm thick fog.
-pub const WEATHER_DUST: u32 = 3;
-/// No particles, a dense low height fog.
-pub const WEATHER_MIST: u32 = 4;
+pub use og_env::weather::{
+    DUST as WEATHER_DUST, MIST as WEATHER_MIST, NONE as WEATHER_NONE, RAIN as WEATHER_RAIN,
+    SNOW as WEATHER_SNOW,
+};
 
 /// What a weather preset adds to a frame.
 #[derive(Clone, Debug, PartialEq)]
