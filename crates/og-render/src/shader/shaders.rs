@@ -71,6 +71,7 @@ pub(crate) fn mechanism_sources(out: &mut Vec<ShaderSource>) {
     add("shadow", crate::shadow_source(&hooks));
     // The vegetation's simulated wind field (G2).
     add("wind field", crate::wind_field::source());
+    add("grass trample", crate::trample::source());
     add("meshlet lit", crate::meshlet_gpu::lit_source(false));
     add("meshlet lit (planar)", crate::meshlet_gpu::lit_source(true));
     add("meshlet shadow", crate::meshlet_gpu::shadow_source());
