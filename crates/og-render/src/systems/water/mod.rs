@@ -638,6 +638,28 @@ pub(crate) struct WaterDraw {
 #[cfg(test)]
 mod tests;
 
+/// The lit features the scene's water asks for (`pipeline_features.rs`):
+/// the surf's wetness on the shore, caustics, the sea's waves, a flow and
+/// the ripples' heights.
+pub(crate) fn features(scene: &crate::RenderScene) -> crate::pipeline_features::Features {
+    use crate::pipeline_features::Features;
+    let water = &scene.world.water;
+    Features::NONE
+        .with(
+            Features::WEATHER,
+            water.iter().any(|w| w.mesh.is_none() && w.shore.is_some()),
+        )
+        .with(Features::CAUSTICS, water.iter().any(|w| w.caustics > 0.0))
+        .with(Features::SEA, water.iter().any(|w| ocean(w).is_some()))
+        .with(
+            Features::FLOW,
+            water.iter().any(|w| {
+                w.flow.length_squared() >= 1e-12 || w.flow_map.is_some() || w.river.is_some()
+            }),
+        )
+        .with(Features::RIPPLES, water.iter().any(|w| w.heights.is_some()))
+}
+
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add(

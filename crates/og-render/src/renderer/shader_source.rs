@@ -47,6 +47,7 @@ pub(crate) const SHADOW_SLOT_STRIDE: u64 = 256;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pipeline_features::{Features, LitFeatures};
 
     /// The sampled textures of a bind group layout's entries.
     fn textures(entries: &[wgpu::BindGroupLayoutEntry]) -> usize {
@@ -82,6 +83,76 @@ mod tests {
             let source = lit_source_with(&hooks, planar_slot(count));
             assert_eq!(source.contains("var planar_tex"), slot, "{at}");
             assert!(source.contains("fn planar_reflection("), "{at}");
+        }
+    }
+
+    /// The weather on surfaces left out leaves its text too: each module
+    /// that carries it (the standard, physical, grass and terrain lit
+    /// modules) has the stub in its place and the override, which the
+    /// rain's part before it declares (weather_rain.wgsl), false, so no
+    /// pipeline sets it. Another feature left out keeps it.
+    #[test]
+    fn the_weather_left_out_leaves_the_module_text() {
+        let hooks = crate::hooks::default_hooks();
+        for source in [
+            crate::lit_source_with(&hooks, false),
+            crate::physical_source(&hooks),
+            crate::grass::lit_source(),
+            crate::terrain::terrain_lit_source("", "", ""),
+        ] {
+            assert!(source.contains(crate::WEATHER_SURFACE_WGSL));
+            let others = Features::GI | Features::AREA | Features::DECALS | Features::CAUSTICS;
+            assert!(
+                others
+                    .leave_out(source.clone())
+                    .contains(crate::WEATHER_SURFACE_WGSL)
+            );
+            let lean = Features::WEATHER.leave_out(source.clone());
+            assert!(!lean.contains(crate::WEATHER_SURFACE_WGSL));
+            assert!(!lean.contains("fn weather_streaks("));
+            assert!(lean.contains("override OG_WEATHER: bool = false;"));
+            // (`true` to `false` in the override is one character more.)
+            assert_eq!(
+                source.len() + 1 - lean.len(),
+                crate::WEATHER_SURFACE_WGSL.len() - crate::WEATHER_SURFACE_STUB.len()
+            );
+            assert!(!Features::declared(&lean).contains(Features::WEATHER));
+        }
+    }
+
+    /// Each listed feature is an override the lit modules declare (a
+    /// renamed constant or a feature whose code is not behind one would
+    /// leave its code in every pipeline), and leaving every one out leaves
+    /// none of them declared in any of those modules.
+    #[test]
+    fn every_lit_feature_is_an_override_of_the_lit_modules() {
+        let all = LitFeatures::NAMED
+            .iter()
+            .fold(LitFeatures::NONE, |a, (f, _)| a | *f);
+        let hooks = crate::hooks::default_hooks();
+        let modules = [
+            crate::lit_source_with(&hooks, false),
+            crate::physical_source(&hooks),
+            crate::grass::lit_source(),
+        ];
+        for source in &modules {
+            let declared = Features::declared(source);
+            let lean = Features::declared(&all.features().leave_out(source.clone()));
+            for (f, name) in LitFeatures::NAMED {
+                // Grass carries no decals (and nothing else it lacks is
+                // declared there either).
+                if source.contains(&format!("override {}", f.override_name())) {
+                    assert!(declared.contains(f.features()), "{name}");
+                    assert!(!lean.contains(f.features()), "{name} left out");
+                }
+            }
+        }
+        let standard = Features::declared(&modules[0]);
+        for (f, name) in LitFeatures::NAMED {
+            assert!(
+                standard.contains(f.features()),
+                "the standard lit module lacks {name}"
+            );
         }
     }
 }

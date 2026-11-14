@@ -22,7 +22,7 @@ impl Renderer {
         self.frame_features = if self.capturing {
             crate::pipeline_features::Features::ALL
         } else {
-            crate::pipeline_features::Features::of(scene)
+            super::setup::scene_features(scene)
         };
         self.world.terrain.features = self.frame_features;
         // Match the surface's two-frame latency. Wait for the oldest frame,
