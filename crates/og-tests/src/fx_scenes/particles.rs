@@ -628,7 +628,7 @@ pub fn trails_scene() -> RenderScene {
         width: 0.22,
         color: [0.5, 1.4, 2.8, 1.0],
         texture: Some(beam_tex),
-        tile: 1.2,
+        uv: RibbonUv::Tile { length: 1.0 / 1.2 },
         scroll: 2.0,
         ..Default::default()
     });

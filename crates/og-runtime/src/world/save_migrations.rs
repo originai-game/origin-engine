@@ -559,7 +559,49 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
         note: "one Blend for effects: blend is a Blend, alpha 0 and additive 1 as a sprite's (StripBlend had additive 0), each saved value kept by its name",
         run: Some(|e| revariant(e, "og.Beam", 2, "blend", BLEND)),
     },
+    Migration {
+        target: Target::Record,
+        name: "og.Beam",
+        from: 2,
+        to: 3,
+        note: "one tiling for strips: tile (repeats per metre) is uvTile (metres per repeat, as og.Trail's), the saved value its reciprocal",
+        run: Some(beam_2_to_3),
+    },
 ];
+
+/// The uvTile a saved og.Beam `tile` of 0 becomes: version 2 repeated the
+/// texture every 1e6 m (its first column along the whole beam), where a
+/// uvTile of 0 now stretches it once.
+const BEAM_UNTILED: f32 = 1.0e6;
+
+/// og.Beam 2 -> 3: `tile`, repeats per metre, is `uvTile`, metres per
+/// repeat; the saved value becomes its reciprocal, so the beam draws as it
+/// did.
+fn beam_2_to_3(edit: &mut SnapshotEdit) -> Result<(), String> {
+    use og_core::reflect::FieldType;
+    let name = "og.Beam";
+    let Some(old) = edit.schema(name).cloned() else {
+        return Ok(());
+    };
+    let i = old
+        .fields
+        .iter()
+        .position(|f| f.name == "tile" && f.ty == FieldType::F32)
+        .ok_or("the saved og.Beam has no f32 tile")?;
+    let start: usize = old.fields[..i].iter().map(|f| f.ty.size()).sum();
+    let mut schema = old;
+    schema.version = 3;
+    schema.fields[i].name = "uvTile".to_string();
+    edit.map_type(name, schema, &mut |v| {
+        let mut out = v.to_vec();
+        let at = start..start + 4;
+        let tile = f32::from_le_bytes(out[at.clone()].try_into().expect("an f32"));
+        let length = if tile > 0.0 { 1.0 / tile } else { BEAM_UNTILED };
+        out[at].copy_from_slice(&length.to_le_bytes());
+        Ok(out)
+    })
+    .map_err(|e| e.reason().to_string())
+}
 
 /// Blend's variants in code order (og.Trail, og.Beam 2).
 const BLEND: &[&str] = &["alpha", "additive"];
@@ -1253,36 +1295,57 @@ mod tests {
 
     /// A world's save holding og.Wind as version 1 or 2 declared it.
     /// A trail and a beam saved before Blend (StripBlend: additive 0,
-    /// alpha 1) restore as this build lays them out, each blend the one it
-    /// was saved with: an alpha smoke trail stays alpha.
+    /// alpha 1) and, for the beam, before uvTile (tile, repeats per metre)
+    /// restore as this build lays them out, each with the blend it was
+    /// saved with and the beam tiled as it was: an alpha smoke trail stays
+    /// alpha, a beam of 2 repeats a metre repeats every 0.5 m, one of 0 (the
+    /// texture's first column along it) every 1e6 m.
     #[test]
-    fn a_saved_strip_keeps_its_blend_under_the_one_blend_enum() {
-        for name in ["og.Trail", "og.Beam"] {
+    fn a_saved_strip_keeps_its_blend_and_its_tiling() {
+        for (name, steps) in [("og.Trail", 1), ("og.Beam", 2)] {
             let decl = og_api::host::RECORDS
                 .iter()
                 .find(|d| d.schema == name)
                 .unwrap();
             let layout = crate::host::codec::Layout::from_decl(decl).unwrap();
             let now = crate::engine::versioned(layout.schema());
-            assert_eq!(now.version, 2, "{name}");
-            let i = now.fields.iter().position(|f| f.name == "blend").unwrap();
-            let at: usize = now.fields[..i].iter().map(|f| f.ty.size()).sum();
+            let offset = |field: &str| {
+                let i = now.fields.iter().position(|f| f.name == field)?;
+                Some((
+                    i,
+                    now.fields[..i].iter().map(|f| f.ty.size()).sum::<usize>(),
+                ))
+            };
+            let (blend, at) = offset("blend").unwrap();
+            // Only the beam's tiling moved (og.Trail has had uvTile all along).
+            let tile = offset("uvTile").filter(|_| name == "og.Beam");
             let mut old = now.clone();
             old.version = 1;
-            old.fields[i].variants = vec!["additive".into(), "alpha".into()];
+            old.fields[blend].variants = vec!["additive".into(), "alpha".into()];
+            if let Some((i, _)) = tile {
+                old.fields[i].name = "tile".into();
+            }
             let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
             let id = world.register_schema(old).unwrap();
             let mut saved = Vec::new();
-            for (old_code, blend) in [(1u32, "alpha"), (0, "additive")] {
-                let want = layout
-                    .encode(None, Some(&serde_json::json!({ "blend": blend })))
-                    .unwrap();
+            for (old_code, value, old_tile, uv_tile) in [
+                (1u32, "alpha", 2.0f32, 0.5f32),
+                (0, "additive", 0.0, BEAM_UNTILED),
+            ] {
+                let mut want = serde_json::json!({ "blend": value });
+                if tile.is_some() {
+                    want["uvTile"] = serde_json::json!(uv_tile);
+                }
+                let want = layout.encode(None, Some(&want)).unwrap();
                 let mut bytes = want.clone();
                 bytes[at..at + 4].copy_from_slice(&old_code.to_le_bytes());
+                if let Some((_, t)) = tile {
+                    bytes[t..t + 4].copy_from_slice(&old_tile.to_le_bytes());
+                }
                 saved.push((world.spawn_bytes(vec![(id, bytes)]).unwrap(), want));
             }
-            let (upgraded, steps) = upgrade(&world.snapshot()).unwrap().expect("a step ran");
-            assert_eq!(steps.len(), 1, "{name}: {steps:?}");
+            let (upgraded, ran) = upgrade(&world.snapshot()).unwrap().expect("a step ran");
+            assert_eq!(ran.len(), steps, "{name}: {ran:?}");
             let edit = SnapshotEdit::from_bytes(&upgraded).unwrap();
             assert_eq!(
                 edit.schema(name).unwrap().layout_hash(),

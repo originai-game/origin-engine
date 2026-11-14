@@ -26270,15 +26270,16 @@
           "description": "A texture along the beam; 0 is solid.",
           "default": 0
         },
-        "tile": {
+        "uvTile": {
           "type": "number",
-          "description": "Texture repeats per world unit along the beam.",
+          "description": "The texture repeats every this many world units along the beam, as a trail's; 0 stretches it once from the entity to `end`.",
           "default": 1,
-          "minimum": 0
+          "minimum": 0,
+          "x-og-unit": "m"
         },
         "scroll": {
           "type": "number",
-          "description": "Texture scroll in repeats per second.",
+          "description": "Texture scroll in repeats per second (a whole beam is one repeat when uvTile is 0).",
           "default": 0,
           "x-og-tunable": true
         },

@@ -19,8 +19,8 @@ Token `og.Beam`, registered under the schema name `og.Beam`; its value type is `
 | `color` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The linear colour; above 1 blooms. |
 | `opacity` | `number` | `1` | 0 … 1 | — | — | The alpha. |
 | `texture` | `Texture` | `0` | — | — | — | A texture along the beam; 0 is solid. |
-| `tile` | `number` | `1` | ≥ 0 | — | — | Texture repeats per world unit along the beam. |
-| `scroll` | `number` | `0` | — | — | tunable | Texture scroll in repeats per second. |
+| `uvTile` | `number` | `1` | ≥ 0 | `m` | — | The texture repeats every this many world units along the beam, as a trail's; 0 stretches it once from the entity to `end`. |
+| `scroll` | `number` | `0` | — | — | tunable | Texture scroll in repeats per second (a whole beam is one repeat when uvTile is 0). |
 | `segments` | `number` | `1` | 1 … 64 | — | — | Segments: 1 is straight, more let jitter bend it. |
 | `jitter` | `number` | `0` | ≥ 0 | `m` | — | Sideways jitter in world units, new every tick (lightning). |
 | `seed` | `number` | `0` | — | — | — | The jitter's seed. |
@@ -49,11 +49,12 @@ component Beam {
     max 1
   }
   field texture Texture "A texture along the beam; 0 is solid."
-  field tile f32 "Texture repeats per world unit along the beam." {
+  field uvTile f32 "The texture repeats every this many world units along the beam, as a trail's; 0 stretches it once from the entity to `end`." {
     default 1
     min 0
+    unit m
   }
-  field scroll f32 "Texture scroll in repeats per second." {
+  field scroll f32 "Texture scroll in repeats per second (a whole beam is one repeat when uvTile is 0)." {
     tunable true
   }
   field segments u32 "Segments: 1 is straight, more let jitter bend it." {

@@ -55,7 +55,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         width: 0.18,
         color: [0.8, 2.4, 5.0, 1.0],
         texture: Some(beam_tex),
-        tile: 0.8,
+        uv: RibbonUv::Tile { length: 1.0 / 0.8 },
         scroll: 1.5,
         ..Default::default()
     });

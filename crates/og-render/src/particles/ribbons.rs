@@ -112,8 +112,9 @@ pub struct Beam {
     /// Linear RGBA (above 1 blooms).
     pub color: [f32; 4],
     pub texture: Option<TextureHandle>,
-    /// Texture repeats per world unit along the beam.
-    pub tile: f32,
+    /// How the texture runs along the beam: repeated every `length` metres,
+    /// as a trail's, or stretched once from start to end.
+    pub uv: RibbonUv,
     /// Texture scroll in repeats per second (by the scene's tick).
     pub scroll: f32,
     /// Segments (1 straight; more to jitter).
@@ -135,7 +136,7 @@ impl Default for Beam {
             width: 0.1,
             color: [1.0; 4],
             texture: None,
-            tile: 1.0,
+            uv: RibbonUv::Tile { length: 1.0 },
             scroll: 0.0,
             segments: 1,
             jitter: 0.0,
@@ -538,9 +539,7 @@ pub(crate) fn fixed_strips(
             layer: None,
             texture: b.texture,
             blend: b.blend,
-            uv: RibbonUv::Tile {
-                length: 1.0 / b.tile.max(1e-6),
-            },
+            uv: b.uv,
             points,
             u_offset: -time * b.scroll,
             effect: b.effect,

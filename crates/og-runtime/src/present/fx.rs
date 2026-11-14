@@ -587,7 +587,11 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             width: v.width,
             color: [c.r, c.g, c.b, v.opacity],
             texture: texture(v.texture),
-            tile: v.tile,
+            uv: if v.uv_tile > 0.0 {
+                RibbonUv::Tile { length: v.uv_tile }
+            } else {
+                RibbonUv::Stretch
+            },
             scroll: v.scroll,
             segments: v.segments.max(1),
             jitter: v.jitter,

@@ -9658,14 +9658,15 @@ export interface Beam {
   /** A texture along the beam; 0 is solid. */
   texture: Texture;
   /**
-   * Texture repeats per world unit along the beam.
+   * The texture repeats every this many world units along the beam, as a trail's; 0 stretches it once from the entity to `end`.
    *
    * @default 1
    * @range 0..
+   * @unit m (metres)
    */
-  tile: number;
+  uvTile: number;
   /**
-   * Texture scroll in repeats per second.
+   * Texture scroll in repeats per second (a whole beam is one repeat when uvTile is 0).
    *
    * @tunable
    */
@@ -33759,7 +33760,7 @@ export declare namespace og {
   /**
    * A strip from the entity's position to `end` whose texture scrolls with the tick: lasers, tethers, lightning (jitter).
    */
-  const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly tile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend"> }, Beam>;
+  const Beam: ComponentType<{ readonly end: FieldSpec<"Vector3">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly texture: FieldSpec<"Texture">; readonly uvTile: FieldSpec<"f32">; readonly scroll: FieldSpec<"f32">; readonly segments: FieldSpec<"u32">; readonly jitter: FieldSpec<"f32">; readonly seed: FieldSpec<"u32">; readonly blend: FieldSpec<"Blend"> }, Beam>;
   /**
    * A sprite drawn every frame at the entity's MatrixWorld (its xy and z, its rotation about z, in the xy plane or turned to the camera by `facing`; its scale multiplies width and height, so squash and stretch is a tween of og.Transform.scale). With an og.Flipbook on the entity, the texture (or an `array true` sheet's texture array layer), region and anchor come from the flipbook's current frame.
    * Sorted with the immediate sprites and text by layer, then (sortY) by y, then texture: one draw per run of one texture. Tile layers draw before the sprites of their layer.

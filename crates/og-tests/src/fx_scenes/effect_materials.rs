@@ -343,7 +343,7 @@ pub fn effect_materials_scene() -> RenderScene {
         start: Vec3::new(4.6, 0.3, 0.0),
         end: Vec3::new(4.6, 2.8, 0.0),
         width: 0.5,
-        tile: 1.0,
+        uv: RibbonUv::Tile { length: 1.0 },
         segments: 8,
         effect: Some(core),
         ..Default::default()

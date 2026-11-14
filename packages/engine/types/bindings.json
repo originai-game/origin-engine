@@ -1814,7 +1814,7 @@
           "default": 0
         },
         {
-          "name": "tile",
+          "name": "uvTile",
           "column": "f32",
           "default": 1
         },
