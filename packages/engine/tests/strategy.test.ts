@@ -69,7 +69,8 @@ afterAll(() => {
   if (styles) rmSync(styles, { recursive: true, force: true });
 });
 
-const DOCUMENTS = () => Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`);
+// Only the host page an engine mounts: each load reads the whole style pack again.
+const DOCUMENTS = (component: string) => Object.keys(MEMBERS).filter((m) => MEMBERS[m]!.component === component).map((m) => `ui/host-${m}.svelte`);
 
 type View = { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean; breakpoint: string };
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
@@ -86,7 +87,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
       const style = og.load.style(world, "@styles/fantasy");
       if (!style.ok) throw new Error(style.reason);
       og.ui.configure(world, { style: style.value, textScale: o.textScale ?? 1 });
-      for (const path of DOCUMENTS()) {
+      for (const path of DOCUMENTS(component)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
       }
@@ -225,8 +226,8 @@ test("StrategyWave: wave n of m, the countdown, the enemies by kind, and Call ea
   run(member("wave", "done"), (e) => expect(texts(e)).toContain("all waves cleared"));
 });
 
-test("on a phone at 100 % and 150 % text, long names and reasons never push a row's or a command's button off the screen", () => {
-  for (const textScale of [1, 1.5]) {
+for (const textScale of [1, 1.5]) {
+  test(`on a phone at ${textScale * 100} % text, long names and reasons never push a row's or a command's button off the screen`, () => {
     for (const [name, list] of [["queue", "items"], ["tower", "paths"], ["selection", "commands"]] as const) {
       run(member(name, "overflow", { view: PHONE, textScale }), (e) => {
         for (const { id } of MEMBERS[name]!.fixtures.overflow![list] as { id: string }[]) {
@@ -241,8 +242,8 @@ test("on a phone at 100 % and 150 % text, long names and reasons never push a ro
         }
       });
     }
-  }
-}, 240_000);
+  }, 120_000);
+}
 
 test("StrategyWave and StrategyTower: the keyboard reaches Call early and Sell and confirms them", () => {
   for (const [name, target, intent] of [["wave", /\/CallEarly$/, "callEarly:"], ["tower", /\/Sell$/, "sell:"]] as const) {

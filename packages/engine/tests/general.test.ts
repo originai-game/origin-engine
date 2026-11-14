@@ -65,7 +65,8 @@ afterAll(() => {
   if (root) rmSync(root, { recursive: true, force: true });
 });
 
-const DOCUMENTS = () => Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`);
+// Only the host page an engine mounts: each load reads the whole style pack again.
+const DOCUMENTS = (component: string) => Object.keys(MEMBERS).filter((m) => MEMBERS[m]!.component === component).map((m) => `ui/host-${m}.svelte`);
 
 type View = { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean; breakpoint: string };
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
@@ -83,7 +84,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
       const style = og.load.style(world, "@styles/fantasy");
       if (!style.ok) throw new Error(style.reason);
       og.ui.configure(world, { style: style.value });
-      for (const path of DOCUMENTS()) {
+      for (const path of DOCUMENTS(component)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
       }
@@ -390,10 +391,11 @@ test("keyboard focus walks the shop's tiles from the first, Enter and the pad's 
   });
 });
 
+// One test per member and view: each fixture boots its own engine.
 for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  test(`every member mounts from every fixture on a ${view}, dressed by the pack, inside the screen's width`, () => {
-    for (const [name, m] of Object.entries(MEMBERS)) {
-      for (const fixture of Object.keys(m.fixtures)) {
+  for (const name of readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""))) {
+    test(`${name} mounts from every fixture on a ${view}, dressed by the pack, inside the screen's width`, () => {
+      for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
         run(member(name, fixture, {}, { view: viewport }), (e) => {
           e.advance(3);
           expect(`${name}/${fixture}: ${errors(e).join("; ")}`).toBe(`${name}/${fixture}: `);
@@ -401,6 +403,6 @@ for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const
           expect(`${name}/${fixture} ${box.x + box.width <= viewport.width + 0.5}`).toBe(`${name}/${fixture} true`);
         });
       }
-    }
-  }, 300_000);
+    }, 120_000);
+  }
 }

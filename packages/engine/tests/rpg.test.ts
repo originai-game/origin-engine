@@ -75,7 +75,8 @@ afterAll(() => {
   if (styles) rmSync(styles, { recursive: true, force: true });
 });
 
-const DOCUMENTS = () => Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`);
+// Only the host page an engine mounts: each load reads the whole style pack again.
+const DOCUMENTS = (component: string) => Object.keys(MEMBERS).filter((m) => MEMBERS[m]!.component === component).map((m) => `ui/host-${m}.svelte`);
 
 type View = { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean; breakpoint: string };
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
@@ -95,7 +96,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
         if (!style.ok) throw new Error(style.reason);
         og.ui.configure(world, { style: style.value });
       }
-      for (const path of DOCUMENTS()) {
+      for (const path of DOCUMENTS(component)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
       }
@@ -143,17 +144,22 @@ const pad = (e: Engine, spec: string): void => {
 const errors = (e: Engine): readonly string[] => og.ui.scope(e.world, "t").takeErrors();
 const row = (e: Engine, k: string): El => find(e, new RegExp(`#${k}$`))!;
 
+// One test per view and a third of the members, so none runs long.
 for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  test(`every member mounts from its fixture on a ${view}, dressed by the pack, inside the screen's width`, () => {
-    for (const name of Object.keys(MEMBERS)) {
-      run(member(name, {}, { view: viewport }), (e) => {
-        e.advance(3);
-        expect(`${name}: ${errors(e).join("; ")}`).toBe(`${name}: `);
-        const box = find(e, /^t:page\/[^/]+$/)!;
-        expect(`${name} ${box.x + box.width <= viewport.width + 0.5}`).toBe(`${name} true`);
-      });
-    }
-  }, 180_000);
+  const names = readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""));
+  for (let third = 0; third < 3; third++) {
+    const some = names.filter((_, i) => i % 3 === third);
+    test(`${some.join(", ")} mount from their fixtures on a ${view}, dressed by the pack, inside the screen's width`, () => {
+      for (const name of some) {
+        run(member(name, {}, { view: viewport }), (e) => {
+          e.advance(3);
+          expect(`${name}: ${errors(e).join("; ")}`).toBe(`${name}: `);
+          const box = find(e, /^t:page\/[^/]+$/)!;
+          expect(`${name} ${box.x + box.width <= viewport.width + 0.5}`).toBe(`${name} true`);
+        });
+      }
+    }, 120_000);
+  }
 }
 
 test("the pack beats a component rule of equal specificity (og-components < og-pack), and the component rule holds without the pack", () => {

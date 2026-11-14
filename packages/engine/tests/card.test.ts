@@ -70,7 +70,8 @@ afterAll(() => {
   if (styles) rmSync(styles, { recursive: true, force: true });
 });
 
-const DOCUMENTS = () => Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`);
+// Only the host page an engine mounts: each load reads the whole style pack again.
+const DOCUMENTS = (component: string) => Object.keys(MEMBERS).filter((m) => MEMBERS[m]!.component === component).map((m) => `ui/host-${m}.svelte`);
 
 type View = { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean; breakpoint: string };
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
@@ -88,7 +89,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
       const style = og.load.style(world, "@styles/fantasy");
       if (!style.ok) throw new Error(style.reason);
       og.ui.configure(world, { style: style.value });
-      for (const path of DOCUMENTS()) {
+      for (const path of DOCUMENTS(component)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
       }
@@ -148,22 +149,24 @@ const focusRow = (e: Engine, k: string, arrows: string[]): void => {
   expect(`focus in ${k}: ${there()}`).toBe(`focus in ${k}: true`);
 };
 
+// One test per member and view: each fixture boots its own engine.
 for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  test(`every member mounts from every fixture on a ${view}, dressed by the pack, inside the screen's width`, () => {
-    for (const [name, m] of Object.entries(MEMBERS)) {
-      for (const fixture of Object.keys(m.fixtures)) {
+  for (const name of readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""))) {
+    test(`${name} mounts from every fixture on a ${view}, dressed by the pack, inside the screen's width`, () => {
+      for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
         run(member(name, {}, { view: viewport }, fixture), (e) => {
           expect(`${name}/${fixture}: ${errors(e).join("; ")}`).toBe(`${name}/${fixture}: `);
           const box = find(e, /^t:page\/[^/]+$/)!;
           expect(`${name}/${fixture} ${box.x + box.width <= viewport.width + 0.5}`).toBe(`${name}/${fixture} true`);
         });
       }
-    }
-  }, 300_000);
+    }, 120_000);
+  }
 }
 
-test("every part a member names is drawn by one of its fixtures", () => {
-  for (const [name, m] of Object.entries(MEMBERS)) {
+for (const name of readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""))) {
+  test(`every part ${name} names is drawn by one of its fixtures`, () => {
+    const m = MEMBERS[name]!;
     const drawn = new Set<string>();
     for (const fixture of Object.keys(m.fixtures)) {
       run(member(name, {}, {}, fixture), (e) => {
@@ -171,8 +174,8 @@ test("every part a member names is drawn by one of its fixtures", () => {
       });
     }
     expect(`${name}: ${m.parts.filter((p) => !drawn.has(p)).join(" ")}`).toBe(`${name}: `);
-  }
-}, 180_000);
+  }, 120_000);
+}
 
 test("CardHand: a tap selects by key, unplayable cards too; Play on the selected card and the pad's Y play by key", () => {
   // Nothing picked up, so no raised card covers its neighbours' edges.

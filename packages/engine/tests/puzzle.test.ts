@@ -70,7 +70,8 @@ afterAll(() => {
   if (styles) rmSync(styles, { recursive: true, force: true });
 });
 
-const DOCUMENTS = () => Object.keys(MEMBERS).map((m) => `ui/host-${m}.svelte`);
+// Only the host page an engine mounts: each load reads the whole style pack again.
+const DOCUMENTS = (component: string) => Object.keys(MEMBERS).filter((m) => MEMBERS[m]!.component === component).map((m) => `ui/host-${m}.svelte`);
 
 type View = { width: number; height: number; dpr: number; safeArea: { left: number; top: number; right: number; bottom: number }; coarsePointer: boolean; breakpoint: string };
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
@@ -87,7 +88,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
       const style = og.load.style(world, "@styles/fantasy");
       if (!style.ok) throw new Error(style.reason);
       og.ui.configure(world, { style: style.value });
-      for (const path of DOCUMENTS()) {
+      for (const path of DOCUMENTS(component)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
       }
@@ -204,8 +205,8 @@ test("PuzzleLevelPath: X and pad Y on the focused node report details with its k
   }
 });
 
-test("PuzzleLevelPath: X and pad Y never report details for a locked level, wherever the focus goes", () => {
-  for (const [device, press] of [["keyboard", "key_down:KeyX;0.05:key_up:KeyX"], ["pad", "gamepad:y;0.05:gamepad:-"]] as const) {
+for (const [device, press] of [["keyboard", "key_down:KeyX;0.05:key_up:KeyX"], ["pad", "gamepad:y;0.05:gamepad:-"]] as const) {
+  test(`PuzzleLevelPath: ${device === "keyboard" ? "X" : "pad Y"} never reports details for a locked level, wherever the focus goes`, () => {
     // All locked: nothing to report from, whatever holds the focus.
     const locked: Event[] = [];
     run(member("level-path", "locked", {}, { events: locked }), (e) => {
@@ -228,9 +229,8 @@ test("PuzzleLevelPath: X and pad Y never report details for a locked level, wher
       expect(`${device} ${sent.length > 0}`).toBe(`${device} true`);
       expect(`${device} ${sent.filter((x) => x === "details:l5")}`).toBe(`${device} `);
     });
-  }
-  // Four engines, each walking the focus round.
-}, 300_000);
+  }, 120_000);
+}
 
 test("PuzzleGoals: moves, goals left and score as the game counts them; a met goal and a low counter say so in words", () => {
   run(member("goals"), (e) => {
