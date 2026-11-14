@@ -637,3 +637,20 @@ pub(crate) struct WaterDraw {
 
 #[cfg(test)]
 mod tests;
+
+/// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
+pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
+    add(
+        "water",
+        crate::water::water_source(crate::pipeline_features::Features::NONE),
+    );
+    for (label, wgsl) in crate::ocean_fft::sources() {
+        add(label, wgsl);
+    }
+    {
+        let (label, wgsl) = crate::water::caustics_source();
+        add(label, wgsl);
+    }
+    add("water ripples", crate::water_ripples::WGSL.to_string());
+    add("sea wakes", crate::sea_wakes::WGSL.to_string());
+}

@@ -548,3 +548,39 @@ fn bent_shadow(
 
 #[cfg(test)]
 mod tests;
+
+/// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
+pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
+    add("sprite", crate::sprite_source());
+    // A sprite drawn with a material shader: every hook, parameters and
+    // the sprite-only `sprite_texel` (sprite_hooks.rs).
+    let example = crate::sprite_hooks::example();
+    add("sprite hooks", crate::sprite_hooks::source(&example));
+    // Without vertex_offset: the built-in one fills in.
+    let colour_only = crate::MaterialShader {
+        code: example
+            .code
+            .split("fn surface_color")
+            .nth(1)
+            .map_or_else(String::new, |rest| format!("fn surface_color{rest}")),
+        ..example
+    };
+    add(
+        "sprite hooks (colour only)",
+        crate::sprite_hooks::source(&colour_only),
+    );
+    add("sprite array", crate::sprite_array::source());
+    add("sprite mesh", crate::sprite_mesh::source());
+    add("sprite skin", crate::sprite_skin::source());
+    add("tiles", crate::tiles_gpu::source());
+    add("overlay", crate::overlay::overlay_source());
+    add(
+        "overlay array",
+        crate::sprite_array::OVERLAY_ARRAY_WGSL.to_string(),
+    );
+    add("lights 2d", crate::light2d::LIGHT2D_WGSL.to_string());
+    add(
+        "lights 2d shadows",
+        crate::light2d::LIGHT2D_SHADOW_WGSL.to_string(),
+    );
+}
