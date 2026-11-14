@@ -578,7 +578,7 @@ pub(crate) struct CardBatch {
 #[derive(Clone, Copy)]
 pub(crate) enum CardSource<'a> {
     None,
-    Gpu(&'a crate::crowd_gpu::CrowdCulling, u32),
+    Gpu(&'a dyn crate::cull_gpu::CulledRows, u32),
     Cpu,
 }
 

@@ -54,10 +54,22 @@ mod setup;
 
 pub(crate) use pyramid::*;
 
+/// A GPU cull's rows as a pass draws them (the crowd cull's, read by the
+/// pass that draws the crowds' cards): one row per culled view, the row's
+/// compacted records and each of its draws' indirect arguments.
+pub(crate) trait CulledRows {
+    /// Row `row`'s records, a vertex buffer's slice.
+    fn row_records(&self, row: u32) -> wgpu::BufferSlice<'_>;
+    /// The buffer and byte offset row `row`'s draw `draw` reads its
+    /// indirect arguments from.
+    fn draw_args(&self, row: u32, draw: u32) -> (&wgpu::Buffer, u64);
+}
+
 pub(crate) const CULL_WGSL: &str = concat!(
     wgsl!("instance.wgsl"),
     wgsl!("cull.wgsl"),
     wgsl!("cull_scan.wgsl"),
+    wgsl!("cull_plane.wgsl"),
     wgsl!("cull_box.wgsl"),
     wgsl!("cull_hiz.wgsl")
 );

@@ -48,9 +48,10 @@ const ITEM_SLOT: u64 = 256;
 
 pub(crate) fn source() -> String {
     format!(
-        "{}{}{}",
+        "{}{}{}{}",
         crate::LIBRARY_WGSL,
         wgsl3d!("scatter_cull.wgsl"),
+        wgsl3d!("cull_plane.wgsl"),
         wgsl3d!("cull_hiz.wgsl")
     )
 }

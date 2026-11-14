@@ -32,8 +32,7 @@ the world → scene extraction belongs to the layer above.
 The first twelve are mechanisms. A mechanism names no world system and not
 the renderer; a world system names no other system and not the renderer,
 and what two systems need is a mechanism. `tests/structure.rs` holds the
-direction, with the list of what does not follow it yet; that list only
-shrinks. `lib.rs` keeps each module's name at the root (`use
+direction; nothing is excepted from it. `lib.rs` keeps each module's name at the root (`use
 shading::ibl;`), so a path is `crate::ibl` wherever the file lives.
 
 ## Public types

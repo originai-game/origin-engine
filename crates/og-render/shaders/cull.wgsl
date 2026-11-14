@@ -178,7 +178,7 @@ fn visibility(@builtin(global_invocation_id) gid: vec3<u32>,
           + abs(dot(plane.xyz, m[1].xyz)) * b.extent.y
           + abs(dot(plane.xyz, m[2].xyz)) * b.extent.z) * (1.0 + 1e-5);
       }
-      inside = dot(plane.xyz, center) + plane.w >= -reach;
+      inside = plane_keeps(plane, center, reach);
     }
     if (inside) { atomicAdd(&shared_inside, 1u); }
     let occluder = (b.flags & OCCLUDER) != 0u && scan[k] != 0u;
