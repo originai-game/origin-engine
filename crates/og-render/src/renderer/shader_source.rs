@@ -1,7 +1,6 @@
 //! Shared shader sources and effect layouts.
 
 use super::*;
-use crate::oit::{ARENA_WGSL, OIT_WGSL};
 pub use og_render_data::shader_source::*;
 pub use og_render_data::{WEATHER_SURFACE_STUB, assemble};
 
@@ -21,110 +20,6 @@ pub(crate) fn fx_layout_entries(planar: bool) -> Vec<wgpu::BindGroupLayoutEntry>
     }
     entries.extend(crate::fx::decal_layout_entries());
     entries
-}
-
-/// The scattered copies' lit module with a material shader's `hooks`
-/// (vertex_offset, surface_color, surface_normal and surface_emissive run
-/// on the copies as on meshes).
-pub(crate) fn scatter_lit_source(hooks: &str) -> String {
-    assemble(
-        &[
-            FRAME_WGSL,
-            &clusters::wgsl(),
-            particles_gpu::NOISE_WGSL,
-            MATERIAL_WGSL,
-            MATERIAL_MAPS_WGSL,
-            MATERIAL_DISSOLVE_WGSL,
-            hooks,
-            LIGHTING_WGSL,
-            crate::WEATHER_RAIN_WGSL,
-            crate::WEATHER_SURFACE_WGSL,
-            &og_render_data::lightmap::probe_wgsl(),
-            AREA_WGSL,
-            INSTANCE_WGSL,
-            crate::wind::WIND_COMMON_WGSL,
-            crate::wind::WIND_LEAN_WGSL,
-            crate::foliage::WGSL,
-            &fx_wgsl(3),
-            wgsl3d!("decals.wgsl"),
-            SCREEN_AO_WGSL,
-            SURFACE_SHADE_WGSL,
-            wgsl3d!("scatter_common.wgsl"),
-            wgsl3d!("scatter.wgsl"),
-            wgsl3d!("impostor_common.wgsl"),
-            wgsl3d!("impostor.wgsl"),
-            wgsl3d!("crowd_card_common.wgsl"),
-            wgsl3d!("crowd_card.wgsl"),
-        ],
-        &Capability::OPAQUE_SURFACE,
-    )
-}
-
-/// The scattered copies' shadow module.
-pub(crate) fn scatter_shadow_source() -> String {
-    format!(
-        "{LIBRARY_WGSL}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{MATERIAL_DISSOLVE_WGSL}{}{SHADOW_PASS_WGSL}{INSTANCE_WGSL}{}{}{}{}{}{}{}",
-        particles_gpu::NOISE_WGSL,
-        crate::wind::WIND_COMMON_WGSL,
-        crate::wind::WIND_LEAN_WGSL,
-        wgsl3d!("scatter_common.wgsl"),
-        wgsl3d!("scatter_shadow.wgsl"),
-        wgsl3d!("impostor_common.wgsl"),
-        wgsl3d!("impostor_shadow.wgsl"),
-        wgsl3d!("crowd_card_common.wgsl"),
-        wgsl3d!("crowd_card_shadow.wgsl")
-    )
-}
-
-/// A crowd impostor's bake (`crowd_impostor.rs`): a part's material
-/// (group 1) and the palette (group 2) under `crowd_bake.wgsl`.
-pub(crate) fn crowd_bake_source() -> String {
-    format!(
-        "{LIBRARY_WGSL}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{}{}",
-        particles_gpu::NOISE_WGSL,
-        skin::palette_wgsl(2),
-        wgsl3d!("crowd_bake.wgsl")
-    )
-}
-
-/// What the 3D fluid's and the particles' modules start with: the frame
-/// group, the light tables, the lighting, the light volumes' hook, the
-/// area lights (area.wgsl) and the shared shading.
-pub(crate) fn fluid_shared_source() -> String {
-    format!(
-        "{FRAME_WGSL}{}{LIGHTING_WGSL}{}{AREA_WGSL}{SURFACE_SHADE_WGSL}",
-        clusters::wgsl(),
-        og_render_data::lightmap::probe_wgsl()
-    )
-}
-/// The clouds' shape, then the sky.
-pub(crate) const SKY_WGSL: &str = concat!(wgsl!("clouds_shape.wgsl"), wgsl!("sky.wgsl"));
-/// The physical sky's scattering (`sky_physical.rs`), its block named
-/// `SCATTER` until [`sky_scatter_wgsl`] names it.
-const SKY_SCATTER_WGSL: &str = wgsl!("sky_scatter.wgsl");
-
-/// The physical sky's functions reading their block from `block` (the
-/// frame's `frame.sky_scatter`, the image-based light's `params.scatter`).
-pub(crate) fn sky_scatter_wgsl(block: &str) -> String {
-    SKY_SCATTER_WGSL.replace("SCATTER[", &format!("{block}["))
-}
-
-/// The sky pass's module: the frame, the physical sky, the sky pass.
-pub(crate) fn sky_source() -> String {
-    format!(
-        "{FRAME_WGSL}{}{SKY_WGSL}",
-        sky_scatter_wgsl("frame.sky_scatter")
-    )
-}
-pub(crate) const RIBBON_WGSL: &str = wgsl!("ribbon.wgsl");
-
-/// The strips' module (alpha strips join the order-independent passes).
-pub(crate) fn ribbon_source() -> String {
-    format!(
-        "{FRAME_WGSL}{OIT_WGSL}{ARENA_WGSL}{}{}{RIBBON_WGSL}",
-        crate::effect::EFFECT_WGSL,
-        crate::effect::hooks_source(None)
-    )
 }
 
 /// The shadow pass slot of the weather occlusion map (weather.rs

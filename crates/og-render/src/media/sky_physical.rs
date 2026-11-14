@@ -431,6 +431,16 @@ fn smoothstep(e0: f32, e1: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// The physical sky's scattering (`sky_physical.rs`), its block named
+/// `SCATTER` until [`sky_scatter_wgsl`] names it.
+const SKY_SCATTER_WGSL: &str = wgsl!("sky_scatter.wgsl");
+
+/// The physical sky's functions reading their block from `block` (the
+/// frame's `frame.sky_scatter`, the image-based light's `params.scatter`).
+pub(crate) fn sky_scatter_wgsl(block: &str) -> String {
+    SKY_SCATTER_WGSL.replace("SCATTER[", &format!("{block}["))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

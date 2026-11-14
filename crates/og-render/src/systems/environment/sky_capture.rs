@@ -97,7 +97,7 @@ impl SkyCapture {
     ) -> SkyCapture {
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("live sky"),
-            source: wgpu::ShaderSource::Wgsl(off.leave_out(crate::renderer::sky_source()).into()),
+            source: wgpu::ShaderSource::Wgsl(off.leave_out(super::sky::sky_source()).into()),
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("live sky"),

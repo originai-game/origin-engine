@@ -60,7 +60,7 @@ pub(crate) fn ibl_source() -> String {
         "{}{}{IBL_WGSL}{SHEEN_WGSL}{}",
         crate::LIBRARY_WGSL,
         crate::GGX_WGSL,
-        crate::renderer::sky_scatter_wgsl("params.scatter")
+        crate::sky_physical::sky_scatter_wgsl("params.scatter")
     )
 }
 

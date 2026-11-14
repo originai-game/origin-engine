@@ -10,6 +10,8 @@
 //! that follows a move shifts the map by whole cells.
 
 pub(crate) mod catch_up;
+pub(crate) mod wind;
+pub mod wind_field;
 pub(crate) mod window;
 
 pub use catch_up::MAX_CATCH_UP;

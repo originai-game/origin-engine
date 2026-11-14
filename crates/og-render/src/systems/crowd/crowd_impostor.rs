@@ -13,6 +13,8 @@
 //! (`mips.rs`, a box filter) average them as coverage does. The bake is
 //! one instanced draw per part, an instance per tile.
 
+use crate::{particles_gpu, skin};
+use og_render_data::shader_source::{LIBRARY_WGSL, MATERIAL_MAPS_WGSL, MATERIAL_WGSL};
 use std::collections::HashMap;
 
 /// Samples a texel of the bake.
@@ -98,7 +100,7 @@ impl CrowdImpostors {
         });
         let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("crowd bake"),
-            source: wgpu::ShaderSource::Wgsl(crate::crowd_bake_source().into()),
+            source: wgpu::ShaderSource::Wgsl(crowd_bake_source().into()),
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("crowd bake"),
@@ -339,4 +341,15 @@ impl CrowdImpostors {
             groups: HashMap::new(),
         }
     }
+}
+
+/// A crowd impostor's bake (`crowd_impostor.rs`): a part's material
+/// (group 1) and the palette (group 2) under `crowd_bake.wgsl`.
+pub(crate) fn crowd_bake_source() -> String {
+    format!(
+        "{LIBRARY_WGSL}{}{MATERIAL_WGSL}{MATERIAL_MAPS_WGSL}{}{}",
+        particles_gpu::NOISE_WGSL,
+        skin::palette_wgsl(2),
+        wgsl3d!("crowd_bake.wgsl")
+    )
 }
