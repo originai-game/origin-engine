@@ -200,7 +200,7 @@ impl Renderer {
                     None,
                 );
                 if let Some(indices) = terrain_indices {
-                    pass.set_bind_group(3, self.world.terrain.decals.group(false), &[]);
+                    pass.set_bind_group(3, self.world.terrain.fx.group(false), &[]);
                     stats.draw_calls += terrain::draw_levels(
                         &mut pass,
                         terrain_draws,

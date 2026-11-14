@@ -23,7 +23,7 @@ impl Renderer {
             let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
                 &self.cache.textures[t.index()].view
             });
-            self.world.terrain.decals.bind(
+            self.world.terrain.fx.bind(
                 &self.device,
                 atlas_view,
                 &self.trilinear_sampler,

@@ -38,6 +38,9 @@ pub struct GrassPusher {
     pub strength: f32,
 }
 
+/// trample_read.wgsl: what a reader of the map includes.
+pub(crate) const READ_WGSL: &str = wgsl3d!("trample_read.wgsl");
+
 pub(crate) fn source() -> String {
     wgsl3d!("grass_trample.wgsl").to_string()
 }

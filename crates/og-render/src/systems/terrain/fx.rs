@@ -1,11 +1,11 @@
 //! A terrain's decal-only group: one texture slot, shared records and clusters.
-pub(crate) struct TerrainDecals {
+pub(crate) struct TerrainFx {
     pub layout: wgpu::BindGroupLayout,
     uniforms: [wgpu::Buffer; 2],
     groups: Option<[wgpu::BindGroup; 2]>,
 }
 
-impl TerrainDecals {
+impl TerrainFx {
     pub fn new(device: &wgpu::Device) -> Self {
         let records = crate::fx::decal_layout_entries();
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
