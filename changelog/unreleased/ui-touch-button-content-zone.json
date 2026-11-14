@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<button data-og-touch>",
+      "summary": "A touch button with elements inside it (a face, an icon, as the built-in ActionButton has) feeds its own action where it stands. Its zone was taken from the element before it, so in a row of such buttons each fed the next one's action and the first fed none."
+    }
+  ]
+}

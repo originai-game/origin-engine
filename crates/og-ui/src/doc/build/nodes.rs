@@ -515,7 +515,7 @@ impl Ui {
             self.apply_document_fields(&doc, n, &styled, &fields);
             self.docs.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {
-                self.tree.note_touch_button(&styled, &mut self.docs);
+                self.tree.note_touch_button(last, &styled, &mut self.docs);
             }
             if styled.has("emitter")
                 || styled.has("meta")
@@ -902,9 +902,12 @@ impl Ui {
         );
         self.apply_document_fields(doc, n, r, &fields);
         self.docs.note_render_fields(key, fields);
-        // A content button feeds og-input's action as a text one does.
+        // A content button feeds og-input's action as a text one does. It
+        // is still open here: the zone is its own, not the last element's
+        // closed before it.
         if kind == Kind::Button && r.has("dataOgTouch") {
-            self.tree.note_touch_button(r, &mut self.docs);
+            let open = self.tree.parent();
+            self.tree.note_touch_button(open, r, &mut self.docs);
         }
         if kind == Kind::Box
             && n.selector_tag.as_deref() == Some("li")

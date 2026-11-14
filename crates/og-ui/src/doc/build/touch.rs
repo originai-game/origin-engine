@@ -120,10 +120,16 @@ impl Ui {
 }
 
 impl crate::ui::Tree {
-    /// A touch `<button data-og-touch="jump">`'s zone (any element's).
-    pub(crate) fn note_touch_button(&mut self, r: &Resolved, docs: &mut crate::ui::Docs) {
-        if self.last_closed() != NONE && self.last_closed() < self.nodes().len() {
-            let key = self.nodes()[self.last_closed()].key;
+    /// A touch `<button data-og-touch="jump">`'s zone (any element's):
+    /// `node` is the element, closed or still open over its content.
+    pub(crate) fn note_touch_button(
+        &mut self,
+        node: usize,
+        r: &Resolved,
+        docs: &mut crate::ui::Docs,
+    ) {
+        if node != NONE && node < self.nodes().len() {
+            let key = self.nodes()[node].key;
             let action = r.str("dataOgTouch");
             docs.note_zone(key, action, ZoneKind::Button, 0.0, r.flag("disabled"));
         }
@@ -419,5 +425,52 @@ mod tests {
             "{m:?}"
         );
         assert!(map.state("jump").unwrap().down);
+    }
+
+    /// A touch button with elements inside (a face, an icon) is the zone
+    /// of its own action, where it stands. Fails when the zone is taken
+    /// from the element closed before the button, which was still open:
+    /// each button then fed the next one's action and the first fed none.
+    #[test]
+    fn a_touch_button_with_content_is_its_own_zone() {
+        const PAD: &str = r#"
+<meta name="component" content="pad">
+<div id="Root">
+  <button id="Jump" data-og-touch="jump"><div id="Face"><span id="J">J</span></div></button>
+  <button id="Dash" data-og-touch="dash"><div id="Disc"><span id="D">D</span></div></button>
+</div>
+<style>
+  #Root { padding: 0; width: 100%; height: 100%; }
+  #Jump { position: absolute; left: 600px; top: 300px; width: 96px; height: 96px; padding: 0; }
+  #Dash { position: absolute; left: 400px; top: 320px; width: 64px; height: 64px; padding: 0; }
+</style>
+"#;
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("pad.svelte", PAD).unwrap());
+        ui.mount_document(
+            SourceId::new("test", "pad"),
+            "pad",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        let mut zones = None;
+        for _ in 0..4 {
+            zones = frame(&mut ui, Pointers::default()).or(zones);
+        }
+        let mut zones: Vec<_> = zones
+            .expect("zones handed over")
+            .into_iter()
+            .map(|z| (z.action, [z.x, z.y, z.width, z.height]))
+            .collect();
+        zones.sort_by(|a, b| a.0.cmp(&b.0));
+        assert_eq!(
+            zones,
+            [
+                ("dash".to_string(), [400.0, 320.0, 64.0, 64.0]),
+                ("jump".to_string(), [600.0, 300.0, 96.0, 96.0]),
+            ]
+        );
     }
 }
