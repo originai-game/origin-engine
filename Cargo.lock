@@ -2866,6 +2866,7 @@ dependencies = [
  "og-net",
  "og-probe",
  "og-render",
+ "og-render-data",
  "og-ui",
  "oxc_allocator",
  "oxc_ast",
@@ -3195,6 +3196,7 @@ dependencies = [
  "bytemuck",
  "glam 0.34.1",
  "gltf",
+ "naga",
  "og-core",
  "og-draw",
 ]

@@ -50,6 +50,8 @@ pub mod oit;
 pub mod particles;
 pub mod particles_gpu;
 pub mod post_custom;
+#[cfg(feature = "reach")]
+pub mod reach;
 pub mod scene;
 pub mod shader_capability;
 pub mod shader_source;

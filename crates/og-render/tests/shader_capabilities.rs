@@ -20,57 +20,7 @@
 //! what stands on the ground darkens no ground around its foot.
 #![cfg(not(feature = "profile2d"))]
 
-use naga::Statement as St;
-use og_render::{Capability, Holds};
-use std::collections::HashSet;
-
-/// Calls `f` with every statement of a block, nested ones too.
-fn each<'a>(block: &'a naga::Block, f: &mut dyn FnMut(&'a St)) {
-    for s in block.iter() {
-        f(s);
-        match s {
-            St::Block(b) => each(b, f),
-            St::If { accept, reject, .. } => {
-                each(accept, f);
-                each(reject, f);
-            }
-            St::Switch { cases, .. } => cases.iter().for_each(|c| each(&c.body, f)),
-            St::Loop {
-                body, continuing, ..
-            } => {
-                each(body, f);
-                each(continuing, f);
-            }
-            _ => {}
-        }
-    }
-}
-
-/// The names of the functions `wgsl`'s entry points reach.
-fn reached(label: &str, wgsl: &str) -> HashSet<String> {
-    let module = naga::front::wgsl::parse_str(wgsl)
-        .unwrap_or_else(|e| panic!("{label}: {}", e.emit_to_string(wgsl)));
-    let mut seen = HashSet::new();
-    let mut open = Vec::new();
-    let calls = |body: &naga::Block, open: &mut Vec<naga::Handle<naga::Function>>| {
-        each(body, &mut |s| {
-            if let St::Call { function, .. } = s {
-                open.push(*function);
-            }
-        });
-    };
-    for ep in &module.entry_points {
-        calls(&ep.function.body, &mut open);
-    }
-    while let Some(f) = open.pop() {
-        if seen.insert(f) {
-            calls(&module.functions[f].body, &mut open);
-        }
-    }
-    seen.into_iter()
-        .filter_map(|f| module.functions[f].name.clone())
-        .collect()
-}
+use og_render::Capability;
 
 /// Every module with the direct light (`brdf`), without the variants the
 /// list derives from another entry and without the unlit full shader (the
@@ -90,18 +40,10 @@ fn table() -> String {
             continue;
         }
         out.push_str(&format!("{:<40}", s.label));
-        let reached = reached(&s.label, &s.wgsl);
+        let reach = og_render_data::reach::Reach::new(&s.wgsl)
+            .unwrap_or_else(|e| panic!("{}: {e}", s.label));
         for c in Capability::ALL {
-            let held = match c.held_by(&s.wgsl) {
-                Holds::Full
-                    if !Capability::HOOKS_CALL.contains(&c) && !reached.contains(c.function()) =>
-                {
-                    "idle"
-                }
-                Holds::Full => "full",
-                Holds::Stub => "stub",
-                Holds::None => "-",
-            };
+            let held = reach.cell(c).name();
             out.push_str(&format!(" | {held:<width$}", width = c.name().len().max(4)));
         }
         out.truncate(out.trim_end().len());

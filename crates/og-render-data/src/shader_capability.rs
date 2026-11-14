@@ -132,6 +132,24 @@ impl Capability {
         }
     }
 
+    /// Whether a game sees it: a light, the weather, a decal, a blend, a
+    /// mirror, the AO or a lightmap acts on a surface that takes it and
+    /// not on one that does not (`og check` names the ones a material
+    /// shader's surface lacks). The shared shading is how a surface is
+    /// built, not something a game asks for.
+    pub fn seen_by_a_game(self) -> bool {
+        match self {
+            Capability::LocalLights
+            | Capability::Weather
+            | Capability::Decals
+            | Capability::Oit
+            | Capability::PlanarReflection
+            | Capability::ScreenAo
+            | Capability::Lightmap => true,
+            Capability::SharedShade => false,
+        }
+    }
+
     /// The function every use of it goes through: a module that defines
     /// it carries the capability, and a surface whose entry points reach
     /// it uses it.

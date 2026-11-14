@@ -46,6 +46,8 @@ miniz_oxide = "0.8"
 gltf = { workspace = true, optional = true }
 
 [dev-dependencies]
+# tests/shader_capabilities.rs reads the table through reach.rs.
+og-render-data = { path = "../og-render-data", features = ["reach"] }
 # tests/png.rs decodes what png_best writes and the committed references.
 image = { workspace = true }
 # tests/shaders.rs: every module translated as the Metal, Vulkan and DX12
