@@ -116,6 +116,9 @@ pub(crate) struct DrawLayouts {
     /// (`crate::present::probes::extract_light_volumes`).
     pub light_volume: Option<Layout>,
     pub realtime_volume: Option<Layout>,
+    /// og.Volume: the box of a reflection probe or light volume on its
+    /// entity.
+    pub volume: Option<Layout>,
     /// og.Interpolation (`crate::present::interpolate`).
     pub interpolation: Option<Layout>,
     /// og.WorldOrigin (R12): the render origin's grid is in the absolute world.

@@ -17736,7 +17736,7 @@
     "Volume": {
       "x-og-kind": "component",
       "x-og-module": "transform",
-      "description": "The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard) and og.StreamCell (the box its anchors approach). So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.",
+      "description": "The shape of a region of the world: a box along the entity's axes, or a sphere about it, with a fade past its surface. A region component on the same entity takes its extent from it: og.ReverbZone (where the room is heard), og.StreamCell (the box its anchors approach), og.ForceField, og.FogVolume, og.ReflectionProbe and og.LightVolume. So every region is placed, turned, scaled and faded the same way, and one entity can be several regions of one shape. Alone it does nothing.",
       "type": "object",
       "properties": {
         "size": {
@@ -27542,18 +27542,9 @@
     "ReflectionProbe": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity) and blended with the environment map over blendDistance at the box's faces. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.\nSee `looks §15`.",
+      "description": "A local reflection: a cube of what is around the entity's position, sampled by every lit surface inside its box with box projection (a room's walls reflect where they are, not at infinity), fading into the environment map over og.Volume.fade past the box's faces. The box is the og.Volume on its entity, as the world's axes bound it; none: everywhere, as at infinity. Overlapping probes: the smallest wins. The cube is rendered from the probe's position without it and without the probes' own reflections, and holds the light as it reaches surfaces.\nSee `looks §15`.",
       "type": "object",
       "properties": {
-        "size": {
-          "$ref": "#/$defs/Vector3",
-          "description": "The box's full extents in world units, centred on the entity (its rotation is ignored: the box is axis-aligned).",
-          "default": {
-            "x": 10,
-            "y": 10,
-            "z": 10
-          }
-        },
         "resolution": {
           "type": "integer",
           "minimum": 0,
@@ -27583,13 +27574,6 @@
           "default": 1,
           "minimum": 0,
           "x-og-tunable": true
-        },
-        "blendDistance": {
-          "type": "number",
-          "description": "The distance inside the box's faces over which the probe fades into the environment map.",
-          "default": 1,
-          "minimum": 0,
-          "x-og-unit": "m"
         },
         "visible": {
           "type": "boolean",
@@ -29835,19 +29819,9 @@
     "LightVolume": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene (off static models, the sky, emissive surfaces) at a grid of points spacing metres apart inside it, as first-order spherical harmonics. Every surface drawn inside it without a lightmap of its own takes its ambient light from the probes instead of the sky's, blended at the box's edge over one spacing.\nThe box is size metres centred on the entity, axis-aligned in world space (its rotation and scale are ignored). Unbaked, it lights nothing and og doctor --project names the scene.\nSee `render §4`.",
+      "description": "A box of baked light probes (an irradiance volume): og bake lightmaps traces the light arriving from the scene at a grid of points spacing metres apart inside it. Every surface drawn inside it without a lightmap takes its ambient light from the probes instead of the sky's, fading out over og.Volume.fade past the box's faces.\nThe box is the og.Volume on its entity, as the world's axes bound it; without one it has no box and nothing is baked. Unbaked, it lights nothing and og doctor --project names the scene.\nSee `render §4`.",
       "type": "object",
       "properties": {
-        "size": {
-          "$ref": "#/$defs/Vector3",
-          "description": "The box's extent along world x, y and z.",
-          "default": {
-            "x": 4,
-            "y": 4,
-            "z": 4
-          },
-          "x-og-unit": "m"
-        },
         "spacing": {
           "type": "number",
           "description": "The most distance between neighbouring probes (the box is divided evenly, with probes on its faces; at most 64 a side).",

@@ -123,7 +123,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
     if probe {
         let mut p = ReflectionProbe::new(1, Vec3::new(0.0, 1.6, 0.0), Vec3::new(10.0, 4.2, 10.0));
         p.mode = ProbeMode::Baked;
-        p.blend_distance = 0.5;
+        p.fade = 0.5;
         scene.lighting.reflection_probes.push(p);
     }
     scene

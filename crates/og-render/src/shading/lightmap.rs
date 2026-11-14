@@ -25,7 +25,8 @@
 //! - [`ProbeVolume`]s: one storage buffer at frame binding 10 (a volume
 //!   larger than the buffer holds is resampled to fit), read by `ambient_irradiance` for
 //!   every lit fragment without a lightmap: trilinear between the eight
-//!   probes around it, faded in over one spacing inside the box.
+//!   probes around it, whole inside the box and fading out over the
+//!   volume's fade past its faces.
 //!
 //! The data is renderer state that outlives frames: a render snapshot's
 //! restore (`Renderer::restore_state`) keeps it, as it keeps every upload.
@@ -58,6 +59,9 @@ pub struct LightmapUvs {
 pub struct ProbeVolume {
     pub min: Vec3,
     pub max: Vec3,
+    /// How far past the box's faces its light fades out (m; 0: a hard
+    /// edge).
+    pub fade: f32,
     pub counts: [u32; 3],
     pub probes: Arc<Vec<[[f32; 4]; 3]>>,
 }
@@ -85,8 +89,10 @@ pub struct BakedLighting {
     pub volumes: Vec<ProbeVolume>,
 }
 
-/// The light volumes' header: two vec4 per volume.
-const VOLUME_HEADER: usize = 2 * PROBE_VOLUMES;
+/// A light volume's header rows ([`header`]).
+pub(crate) const VOLUME_ROWS: usize = 3;
+/// The light volumes' header.
+pub(crate) const VOLUME_HEADER: usize = VOLUME_ROWS * PROBE_VOLUMES;
 /// The probe buffer's header: the volumes', then the probe GI's rows
 /// (gi_probes.rs, written each frame after the volumes').
 const HEADER: usize = VOLUME_HEADER + crate::gi_probes::HEADER_ROWS;
@@ -109,19 +115,23 @@ pub(crate) fn probe_layout_entry() -> wgpu::BindGroupLayoutEntry {
 }
 
 /// The probe buffer's contents for `volumes` in `capacity` vec4: the
-/// header (per volume its min and first probe, its max and packed counts;
-/// first -1 ends the list), then the probes. A volume that does not fit
+/// header (per volume its min and first probe, its max and packed counts,
+/// its fade; first -1 ends the list), then the probes. A volume that does not fit
 /// what is left is resampled to fewer probes; one that cannot fit two a
 /// side is left out.
 pub(crate) fn pack_probes(volumes: &[ProbeVolume], capacity: usize) -> Vec<[f32; 4]> {
-    let mut out = vec![[0.0, 0.0, 0.0, -1.0]; VOLUME_HEADER];
+    let mut out = vec![[0.0; 4]; VOLUME_HEADER];
+    for row in out.iter_mut().step_by(VOLUME_ROWS) {
+        row[3] = -1.0;
+    }
     out.resize(HEADER, [0.0; 4]);
     for (i, v) in volumes.iter().take(PROBE_VOLUMES).enumerate() {
         let left = capacity.saturating_sub(out.len()) / 3;
         let Some((counts, probes)) = fit(v, left) else {
             break;
         };
-        [out[2 * i], out[2 * i + 1]] = header(v.min, v.max, out.len(), counts, false);
+        let rows = header(v.min, v.max, v.fade, out.len(), counts, false);
+        out[VOLUME_ROWS * i..VOLUME_ROWS * (i + 1)].copy_from_slice(&rows);
         for p in probes {
             out.extend(p);
         }
@@ -129,19 +139,21 @@ pub(crate) fn pack_probes(volumes: &[ProbeVolume], capacity: usize) -> Vec<[f32;
     out
 }
 
-/// A volume's two header rows: its min and first probe (in vec4), its max
-/// and packed counts (7 bits a side, bit 21 on a realtime volume).
+/// A volume's header rows: its min and first probe (in vec4), its max and
+/// packed counts (7 bits a side, bit 21 on a realtime volume), its fade.
 pub(crate) fn header(
     min: Vec3,
     max: Vec3,
+    fade: f32,
     first: usize,
     counts: [u32; 3],
     realtime: bool,
-) -> [[f32; 4]; 2] {
+) -> [[f32; 4]; VOLUME_ROWS] {
     let packed = counts[0] + (counts[1] << 7) + (counts[2] << 14) + ((realtime as u32) << 21);
     [
         min.extend(first as f32).to_array(),
         max.extend(packed as f32).to_array(),
+        [fade.max(0.0), 0.0, 0.0, 0.0],
     ]
 }
 
@@ -545,14 +557,14 @@ impl Lightmaps {
         let baked_volumes = self
             .baked_header
             .iter()
-            .step_by(2)
+            .step_by(VOLUME_ROWS)
             .take_while(|h| h[3] >= 0.0)
             .count();
         let (rows, captures) = self.grid.plan(realtime, self.baked_end, baked_volumes);
         let mut header = self.baked_header.clone();
         for (k, row) in rows.into_iter().enumerate() {
             let i = baked_volumes + k;
-            [header[2 * i], header[2 * i + 1]] = row;
+            header[VOLUME_ROWS * i..VOLUME_ROWS * (i + 1)].copy_from_slice(&row);
         }
         if header != self.header {
             queue.write_buffer(&self.probe_buffer, 0, bytemuck::cast_slice(&header));
@@ -723,6 +735,7 @@ mod tests {
         ProbeVolume {
             min: Vec3::ZERO,
             max: Vec3::splat(4.0),
+            fade: 0.0,
             counts,
             probes: Arc::new(probes),
         }
@@ -730,11 +743,15 @@ mod tests {
 
     #[test]
     fn packs_header_and_probes() {
-        let v = volume([2, 3, 4], |x, y, z| (x + 2 * y + 6 * z) as f32);
+        let v = ProbeVolume {
+            fade: 0.5,
+            ..volume([2, 3, 4], |x, y, z| (x + 2 * y + 6 * z) as f32)
+        };
         let out = pack_probes(std::slice::from_ref(&v), 1024);
         assert_eq!(out[0][3], HEADER as f32);
         assert_eq!(out[1][3], (2 + (3 << 7) + (4 << 14)) as f32);
-        assert_eq!(out[2][3], -1.0);
+        assert_eq!(out[2][0], 0.5, "its fade");
+        assert_eq!(out[VOLUME_ROWS][3], -1.0, "the list ends");
         // Probe (1, 2, 3) is index 23: its red c0.
         assert_eq!(out[HEADER + 23 * 3][3], 23.0);
         assert_eq!(out.len(), HEADER + 24 * 3);

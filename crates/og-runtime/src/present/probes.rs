@@ -3,6 +3,11 @@
 //! the cook cache, and the `bake_probes` dump that command reads the
 //! captures back with.
 //!
+//! A probe's box is the og.Volume on its entity, as the world's axes bound
+//! it (`og_env::volume::Volume::bounds`); a probe without one reaches
+//! everywhere ([`EVERYWHERE`]). A light volume's box is its og.Volume's
+//! the same way, and without one it has none.
+//!
 //! A probe's bake is keyed by what it would capture: its position (to the
 //! millimetre), box and face size, and its room's content
 //! (`og_render::ProbeContent`: the meshes, materials, textures, terrain,
@@ -21,6 +26,28 @@ use og_ecs::World;
 use og_render::{MAX_REFLECTION_PROBES, ProbeMode, ReflectionProbe};
 use serde_json::json;
 use std::collections::BTreeMap;
+
+/// The box of a probe without an og.Volume (m a side): everywhere a game
+/// draws, its reflections as good as at infinity.
+const EVERYWHERE: f32 = 1e6;
+
+/// Where `e` puts a region and the og.Volume on it, if any.
+fn region(
+    world: &World,
+    volume: Option<&crate::host::codec::Layout>,
+    h: &mut Hierarchy,
+    e: u64,
+) -> (og_env::volume::Placement, Option<og_env::volume::Volume>) {
+    let (scale, quaternion, position) = h.world_of(e).to_scale_rotation_translation();
+    (
+        og_env::volume::Placement {
+            position,
+            quaternion,
+            scale,
+        },
+        crate::world::region::volume_of(world, volume, og_ecs::Entity::from_bits(e)),
+    )
+}
 
 /// The baked captures tried, by key: the map once loaded (`None`: not in
 /// the bundle, or not loadable).
@@ -46,12 +73,14 @@ pub(crate) fn key(p: &ReflectionProbe, room: u64) -> String {
 
 /// og.ReflectionProbe rows into `rs.scene.reflection_probes`: the visible
 /// ones nearest the camera first (at most [`MAX_REFLECTION_PROBES`]), each
-/// baked one with its loaded bake.
+/// with the box and fade of the og.Volume on its entity and each baked one
+/// with its loaded bake.
 pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.lighting.reflection_probes.clear();
     let Some(layout) = rs.draw.probe.clone() else {
         return;
     };
+    let volume = rs.draw.volume.clone();
     let mut probes: Vec<ReflectionProbe> = Vec::new();
     for (e, v) in crate::present::extract::rows(world, &layout) {
         let Ok(v) = record::ReflectionProbe::from_json(&v) else {
@@ -60,8 +89,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         if !v.visible {
             continue;
         }
-        let m = h.world_of(e);
-        let mut p = ReflectionProbe::new(e, m.transform_point3(glam::Vec3::ZERO), v.size);
+        let (at, shape) = region(world, volume.as_ref(), h, e);
+        let (size, fade) = shape.map_or((glam::Vec3::splat(EVERYWHERE), 0.0), |s| {
+            let (lo, hi) = s.bounds(&at);
+            (hi - lo, s.fade.max(0.0))
+        });
+        let mut p = ReflectionProbe::new(e, at.position, size);
+        p.fade = fade;
         p.resolution = v.resolution;
         // `mode` decodes as its variant's name, which the former hand read
         // (`as_u64`) never matched: every probe has drawn as baked. Kept so
@@ -69,7 +103,6 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         p.mode = ProbeMode::Baked;
         p.interval = v.interval.max(1);
         p.intensity = v.intensity.max(0.0);
-        p.blend_distance = v.blend_distance.max(0.0);
         probes.push(p);
     }
     let eye = rs.scene.frame.camera.position;
@@ -88,7 +121,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
 pub(crate) const REALTIME_LIGHT_VOLUME: &str = "og.RealtimeLightVolume";
 
 /// og.RealtimeLightVolume rows, each with the og.LightVolume of its entity
-/// (its box and spacing), into `rs.scene.light_volumes`: the nearest the
+/// (its spacing) and the og.Volume there (its box and fade; none: no box,
+/// so nothing), into `rs.scene.light_volumes`: the nearest the
 /// camera first, at most [`og_render::PROBE_VOLUMES`].
 pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
     rs.scene.lighting.light_volumes.clear();
@@ -102,6 +136,7 @@ pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut
     if live.is_empty() {
         return;
     }
+    let shape_layout = rs.draw.volume.clone();
     let boxes: BTreeMap<u64, record::LightVolume> = crate::present::extract::rows(world, &volume)
         .into_iter()
         .filter_map(|(e, v)| Some((e, record::LightVolume::from_json(&v).ok()?)))
@@ -114,12 +149,15 @@ pub(crate) fn extract_light_volumes(world: &World, rs: &mut RenderState, h: &mut
         let Ok(v) = record::RealtimeLightVolume::from_json(&v) else {
             continue;
         };
-        let centre = h.world_of(e).transform_point3(glam::Vec3::ZERO);
-        let half = b.size.abs() * 0.5;
+        let (at, Some(shape)) = region(world, shape_layout.as_ref(), h, e) else {
+            continue;
+        };
+        let (min, max) = shape.bounds(&at);
         volumes.push(og_render::RealtimeLightVolume {
             id: e,
-            min: centre - half,
-            max: centre + half,
+            min,
+            max,
+            fade: shape.fade.max(0.0),
             spacing: b.spacing.max(0.1),
             updates_per_frame: v.updates_per_frame,
             intensity: v.intensity.max(0.0),

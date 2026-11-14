@@ -430,7 +430,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         // at about its own pixels' sharpness.
         probe.resolution = 256;
         probe.interval = 8;
-        probe.blend_distance = 0.3;
+        probe.fade = 0.3;
         scene.lighting.reflection_probes.push(probe);
     }
     scene.lighting.light = DirectionalLight {
@@ -469,6 +469,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
                 id: 1,
                 min: Vec3::new(-2.7, 0.15, -2.7),
                 max: Vec3::new(2.7, 2.75, 2.7),
+                fade: 1.35,
                 spacing: 1.35,
                 updates_per_frame: 8,
                 intensity: 1.0,

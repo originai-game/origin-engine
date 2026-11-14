@@ -750,6 +750,7 @@ fn cornell_box(
     scene.lighting.baked.volumes.push(ProbeVolume {
         min: volume.min,
         max: volume.max,
+        fade: 0.0,
         counts: volume.counts,
         probes: Arc::new(volume.probes),
     });

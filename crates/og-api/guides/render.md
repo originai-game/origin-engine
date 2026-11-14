@@ -107,8 +107,12 @@ feeds back into the simulation.
 
 - Baked: static models use lightmaps; everything else inside a LightVolume
   (meshes, models, skinned characters, lit particles) takes the probes, so
-  a ball rolling past a red wall turns red on that side. A volume added,
-  moved or resized is unbaked until the next bake. `bakedLighting false`
+  a ball rolling past a red wall turns red on that side. Its box is the
+  og.Volume on its entity, as the world's axes bound it: a turned box
+  takes the box around it, a radius the cube around the sphere, and the
+  entity's scale stretches it. Without an og.Volume it has no box and
+  `og bake lightmaps` names the entity. A volume added, moved or resized
+  is unbaked until the next bake. `bakedLighting false`
   compares the bake against the realtime lights alone.
 - RealtimeLightVolume: each capture draws every light, the sky and
   lights' shadows, emissive surfaces and lightmapped models, and sees the
@@ -116,9 +120,10 @@ feeds back into the simulation.
   sweeps. Its probes are used once all are relit (a few frames after it is
   added or resized), and the low preset falls back to the bake. Up to
   eight volumes draw: baked first, then realtime ones nearest the camera.
-  Keep the box's faces a little inside the walls: its light reaches one
-  spacing beyond them, and a probe on a wall sees into it (so does the far
-  side of a wall thinner than a spacing). Its reflections are a soft image
+  Keep the box's faces a little inside the walls: a probe on a wall sees
+  into it (so does the far side of a wall thinner than a spacing). Its
+  light is whole up to the faces and reaches og.Volume.fade beyond them;
+  give it a spacing of fade so the walls, floor and ceiling take it. Its reflections are a soft image
   of the room, too soft for a mirror: put a ReflectionProbe there. It gives
   no contact shadow: pair it with PostEffects.ao or GlobalIllumination.
 - Screen GI: rays over each pixel's hemisphere take the light the previous

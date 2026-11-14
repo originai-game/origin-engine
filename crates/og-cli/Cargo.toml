@@ -19,6 +19,7 @@ og-i18n = { path = "../og-i18n" }
 og-core = { path = "../og-core" }
 og-cook = { path = "../og-cook" }
 og-bake = { path = "../og-bake" }
+og-env = { path = "../og-env" }
 og-render = { path = "../og-render" }
 # `og check`'s material shader findings (og_render_data::reach).
 og-render-data = { path = "../og-render-data", features = ["reach"] }

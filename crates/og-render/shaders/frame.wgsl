@@ -80,7 +80,7 @@ struct Frame {
   // environment's prefiltered cube and prefiltered_map the probe's.
   probe_min: vec4<f32>,       // xyz: the box's min corner, w: 1 with a probe
   probe_max: vec4<f32>,       // xyz: the box's max corner, w: the probe's intensity
-  probe_pos: vec4<f32>,       // xyz: the capture point, w: the blend distance
+  probe_pos: vec4<f32>,       // xyz: the capture point, w: the fade past the box's faces (m; 0: a hard edge)
   // The camera's axes in the world: billboards face the camera of the
   // group they are drawn with (sprite.wgsl face_axes).
   view_right: vec4<f32>,      // xyz: right
@@ -152,11 +152,23 @@ fn ssr_reflected(prefiltered: vec3<f32>, p: vec3<f32>, clip: vec2<f32>) -> vec3<
   return prefiltered * (1.0 - s.a * k) + s.rgb * k;
 }
 
-// How much of the probe's light reaches `p`: 1 inside its box farther
-// than the blend distance from every face, falling to 0 at the faces.
+// How much of a region reaches a point `outside` metres past its surface
+// (0 inside it): whole inside, falling linearly to 0 over `fade` (0: a
+// hard edge), as og_env's `Volume::weight`. A millimetre of slack keeps a
+// surface lying on the region's face (a room's wall on its box) inside.
+fn region_weight(outside: f32, fade: f32) -> f32 {
+  return clamp(1.0 - (outside - 1e-3) / max(fade, 1e-3), 0.0, 1.0);
+}
+
+// How far `p` lies outside the box `lo`..`hi` (0 inside and on it).
+fn box_outside(p: vec3<f32>, lo: vec3<f32>, hi: vec3<f32>) -> f32 {
+  return length(max(max(lo - p, p - hi), vec3<f32>(0.0)));
+}
+
+// How much of the probe's light reaches `p`: whole inside its box, fading
+// out over its fade past the faces.
 fn probe_weight(p: vec3<f32>) -> f32 {
-  let d = min(p - frame.probe_min.xyz, frame.probe_max.xyz - p);
-  return clamp(min(d.x, min(d.y, d.z)) / max(frame.probe_pos.w, 1e-3), 0.0, 1.0);
+  return region_weight(box_outside(p, frame.probe_min.xyz, frame.probe_max.xyz), frame.probe_pos.w);
 }
 
 // The probe's cube direction for a ray from `p` along `r`: where the ray

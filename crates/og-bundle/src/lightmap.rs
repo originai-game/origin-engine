@@ -25,6 +25,7 @@
 //! volume "probes" {               # a LightVolume entity, by name
 //!   min -2 0 -2
 //!   max 2 4 2
+//!   fade 0.5                      # its og.Volume's fade past the box
 //!   counts 5 5 5
 //!   probes …                      # 12 numbers a probe, x fastest
 //! }
@@ -101,6 +102,8 @@ pub struct BakedVolume {
     pub entity: String,
     pub min: [f32; 3],
     pub max: [f32; 3],
+    /// How far past the box its light fades out (its og.Volume's fade).
+    pub fade: f32,
     pub counts: [u32; 3],
     /// Per probe, red, green and blue as `[c1.x, c1.y, c1.z, c0]`.
     pub probes: Vec<[[f32; 4]; 3]>,
@@ -174,6 +177,7 @@ impl LightmapFile {
             o.push_str(&format!("volume {} {{\n", quote(&v.entity)));
             numbers(&mut o, "  ", "min", &v.min);
             numbers(&mut o, "  ", "max", &v.max);
+            numbers(&mut o, "  ", "fade", &[v.fade]);
             numbers(&mut o, "  ", "counts", &v.counts);
             let p: Vec<f32> = v.probes.iter().flatten().flatten().copied().collect();
             numbers(&mut o, "  ", "probes", &p);
@@ -300,6 +304,7 @@ impl LightmapFile {
                     .to_string(),
                 min: v3("min")?,
                 max: v3("max")?,
+                fade: nums(&vb, "fade")?.first().copied().unwrap_or(0.0) as f32,
                 counts: c,
                 probes,
             });
@@ -466,6 +471,7 @@ mod tests {
                 entity: "probes".into(),
                 min: [-1.0, 0.0, -1.0],
                 max: [1.0, 2.0, 1.0],
+                fade: 0.5,
                 counts: [2, 2, 2],
                 probes: (0..8).map(|i| [[i as f32, 0.5, -0.25, 1.0]; 3]).collect(),
             }],

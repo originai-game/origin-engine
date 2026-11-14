@@ -67,7 +67,8 @@ pub enum ProbeMode {
 }
 
 /// A reflection probe of a [`crate::RenderScene`]: an axis-aligned box
-/// centred on `position` whose surfaces reflect the cube captured there.
+/// centred on `position` whose surfaces reflect the cube captured there,
+/// fading into the environment past its faces.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReflectionProbe {
     /// Who it is across frames (an entity id): its cube is kept by it.
@@ -84,8 +85,9 @@ pub struct ReflectionProbe {
     pub interval: u32,
     /// Scales what it reflects.
     pub intensity: f32,
-    /// How far inside the box the probe blends into the environment map.
-    pub blend_distance: f32,
+    /// How far past the box's faces the probe fades into the environment
+    /// map (m; 0: a hard edge).
+    pub fade: f32,
     /// A baked capture to sample instead of drawing one (an environment map
     /// asset of the probe's face size: `og bake probes`).
     pub baked: Option<EnvironmentMapHandle>,
@@ -93,7 +95,7 @@ pub struct ReflectionProbe {
 
 impl ReflectionProbe {
     /// A baked probe at `position` with a box of `size`: 128² faces,
-    /// intensity 1, a metre of blending.
+    /// intensity 1, a hard edge.
     pub fn new(id: u64, position: Vec3, size: Vec3) -> ReflectionProbe {
         ReflectionProbe {
             id,
@@ -103,7 +105,7 @@ impl ReflectionProbe {
             mode: ProbeMode::Baked,
             interval: 30,
             intensity: 1.0,
-            blend_distance: 1.0,
+            fade: 0.0,
             baked: None,
         }
     }
@@ -121,15 +123,20 @@ impl ReflectionProbe {
         (self.position - h, self.position + h)
     }
 
+    /// The box its light reaches: its own grown by its fade.
+    pub fn reach(&self) -> (Vec3, Vec3) {
+        let (lo, hi) = self.bounds();
+        let fade = Vec3::splat(self.fade.max(0.0));
+        (lo - fade, hi + fade)
+    }
+
     /// The frame uniform's probe rows (`FrameUniform::probe`).
     fn rows(&self) -> [[f32; 4]; 3] {
         let (lo, hi) = self.bounds();
         [
             lo.extend(1.0).to_array(),
             hi.extend(self.intensity.max(0.0)).to_array(),
-            self.position
-                .extend(self.blend_distance.max(0.0))
-                .to_array(),
+            self.position.extend(self.fade.max(0.0)).to_array(),
         ]
     }
 }

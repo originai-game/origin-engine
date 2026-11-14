@@ -215,7 +215,7 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
             let mut p =
                 ReflectionProbe::new(1 + k as u64, at(0.0, 1.6, 0.0), Vec3::new(6.0, 4.2, 6.0));
             p.mode = ProbeMode::Baked;
-            p.blend_distance = 0.3;
+            p.fade = 0.3;
             scene.lighting.reflection_probes.push(p);
         }
     }
@@ -299,7 +299,7 @@ pub fn outdoor_scene(o: Outdoor) -> RenderScene {
         let mut r = ReflectionProbe::new(7, p, Vec3::new(8.0, 5.0, 8.0));
         r.mode = ProbeMode::Baked;
         r.intensity = intensity;
-        r.blend_distance = 0.5;
+        r.fade = 0.5;
         scene.lighting.reflection_probes.push(r);
     }
     scene
