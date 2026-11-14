@@ -11,8 +11,8 @@ use glam::{Mat4, Vec3};
 use og_bundle::vfx::{VfxDrawKind, VfxInstance};
 use og_ecs::World;
 use og_render::{
-    Beam, ColorCurve, Curve, Decal, EffectMesh, EmitterHandle, Light, LightKind, ParticleBlend,
-    ParticleSystem, RibbonUv, Trail, TrailStyle,
+    Beam, ColorCurve, Curve, Decal, EffectMesh, Light, LightKind, ParticleBlend, ParticleSystem,
+    RibbonUv, Trail, TrailStyle,
 };
 
 /// Every playing og.Vfx expanded into the scene's systems, meshes, trails,
@@ -68,14 +68,14 @@ pub(crate) fn extract(
                     },
                     Link::Emitter(handle),
                 ) => {
-                    let emitter = tinted_emitter(rs, *handle, tint);
                     // The frame's air, read once for the first emitter it carries.
                     let air = air.get_or_insert_with(|| rs.draw.atmo.air(world, h));
                     rs.scene.effects.particles.push(ParticleSystem {
                         stop_tick,
                         start_tick,
                         air: air.at(transform.w_axis.truncate()),
-                        ..ParticleSystem::new(id, emitter, transform, seed, tick)
+                        tint,
+                        ..ParticleSystem::new(id, *handle, transform, seed, tick)
                     });
                 }
                 (
@@ -209,28 +209,4 @@ pub(crate) fn extract(
             }
         }
     }
-}
-
-/// `handle` drawn with its colour times `tint`: a copy of the emitter per
-/// tint, made once.
-fn tinted_emitter(rs: &mut RenderState, handle: EmitterHandle, tint: Vec3) -> EmitterHandle {
-    if tint == Vec3::ONE {
-        return handle;
-    }
-    let key = (handle, tint.to_array().map(f32::to_bits));
-    if let Some(&h) = rs.effects.tinted.get(&key) {
-        return h;
-    }
-    let Some(mut e) = rs.scene.emitter(handle).cloned() else {
-        return handle;
-    };
-    e.color = [
-        e.color[0] * tint.x,
-        e.color[1] * tint.y,
-        e.color[2] * tint.z,
-        e.color[3],
-    ];
-    let h = rs.scene.add_emitter(e);
-    rs.effects.tinted.insert(key, h);
-    h
 }

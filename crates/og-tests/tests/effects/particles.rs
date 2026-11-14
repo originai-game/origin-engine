@@ -57,6 +57,50 @@ fn a_600_tick_cpu_particle_run_is_deterministic() {
     particles_are_deterministic(ParticleSimulation::Cpu);
 }
 
+/// A system's tint multiplies its emitter's colour on both simulation
+/// paths: the particles scene with every system tinted draws, pixel for
+/// pixel, what it draws with each emitter's colour multiplied by the same
+/// tint, and not what it draws untinted.
+#[test]
+#[ignore = "requires GPU"]
+fn a_system_tint_draws_as_its_emitter_tinted() {
+    let tint = Vec3::new(1.0, 0.45, 0.2);
+    for path in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let desc = RenderDesc {
+            particles: path,
+            ..small()
+        };
+        let frame =
+            |scene: &mut RenderScene| run(&desc, scene, 40, |s, f| fx::tick_all(s, f as u64)).0;
+        let plain = frame(&mut fx::particles_scene());
+        let mut tinted = fx::particles_scene();
+        for sys in &mut tinted.effects.particles {
+            sys.tint = tint;
+        }
+        let tinted = frame(&mut tinted);
+        let mut copied = fx::particles_scene();
+        for i in 0..copied.effects.particles.len() {
+            let mut e = copied
+                .emitter(copied.effects.particles[i].emitter)
+                .expect("emitter")
+                .clone();
+            for (c, t) in e.color.iter_mut().zip(tint.to_array()) {
+                *c *= t;
+            }
+            copied.effects.particles[i].emitter = copied.add_emitter(e);
+        }
+        let copied = frame(&mut copied);
+        assert_ne!(
+            plain.pixels, tinted.pixels,
+            "{path:?}: the tint drew nothing"
+        );
+        assert_eq!(
+            tinted.pixels, copied.pixels,
+            "{path:?}: a tinted system differs from its emitter tinted"
+        );
+    }
+}
+
 /// Compute particles meet the scene's colliders where the emitter names
 /// them (`collision ... colliders`), and always in sprite mode, with
 /// nothing read back to the CPU: with no ground drawn (so no depth to

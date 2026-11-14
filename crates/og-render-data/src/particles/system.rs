@@ -25,6 +25,9 @@ pub struct ParticleSystem {
     /// m/s): og.Wind and the og.WindMotors reaching it. An emitter with
     /// `wind` above 0 is carried by it ([`ParticleEmitter::wind`]).
     pub air: Vec3,
+    /// Multiplies its emitter's colour (linear): a composed effect
+    /// instance's tint. 1 draws the emitter as it is.
+    pub tint: Vec3,
 }
 
 impl ParticleSystem {
@@ -39,6 +42,7 @@ impl ParticleSystem {
             tick,
             time_scale: 1.0,
             air: Vec3::ZERO,
+            tint: Vec3::ONE,
         }
     }
 }

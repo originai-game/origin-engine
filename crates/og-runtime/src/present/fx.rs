@@ -528,6 +528,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             time_scale: groups
                 .as_ref()
                 .map_or(1.0, |g| world.group_scale(g, og_ecs::Entity::from_bits(e))),
+            tint: Vec3::ONE,
         });
     }
     for (e, v) in rows(world, layouts.trail.as_ref()) {

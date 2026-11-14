@@ -13,8 +13,6 @@ pub(crate) struct EffectState {
     pub vfx: Option<crate::bind::vfx::Registry>,
     /// The vfx flash's material, made once.
     pub flash: Option<og_render::EffectMaterialHandle>,
-    /// Emitters copied with a vfx instance's tint, by emitter and tint.
-    pub tinted: BTreeMap<(og_render::EmitterHandle, [u32; 3]), og_render::EmitterHandle>,
 }
 
 /// An effect material's renderer handle, loaded once per path.

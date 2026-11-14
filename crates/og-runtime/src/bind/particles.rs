@@ -281,6 +281,7 @@ fn system(
             time_scale: ctx.group_dt(groups.as_ref(), e, 1.0),
             // The tick's air where the system is (`wind::before_tick`).
             air: air.at(transform.w_axis.truncate()),
+            tint: glam::Vec3::ONE,
         };
         let colliders: &[SceneCollider] =
             if em.collision.is_some() && em.space == SimulationSpace::World {
