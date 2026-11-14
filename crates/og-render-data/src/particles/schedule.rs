@@ -6,7 +6,7 @@ use super::*;
 
 /// What one tick of a system does.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct TickStep {
+pub struct TickStep {
     pub tick: u64,
     /// Seconds since the system started, at the end of this tick.
     pub time: f32,
@@ -77,7 +77,7 @@ pub(super) fn spawned_before(e: &ParticleEmitter, elapsed: f64, stop: f64) -> (u
 }
 
 /// The spawns of `tick` for a system.
-pub(crate) fn tick_step(
+pub fn tick_step(
     e: &ParticleEmitter,
     sys: &ParticleSystem,
     tick: u64,
@@ -127,7 +127,7 @@ pub(crate) fn tick_step(
 /// from the first tick not yet stepped, and a moving emitter spawns along
 /// the path between the frames.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn plan_ticks(
+pub fn plan_ticks(
     e: &ParticleEmitter,
     sys: &ParticleSystem,
     last_tick: Option<u64>,

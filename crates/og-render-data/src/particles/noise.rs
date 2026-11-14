@@ -7,12 +7,12 @@ use super::*;
 pub(crate) use og_core::hash::pcg;
 
 #[inline]
-pub(crate) fn hash_unit(v: u32) -> f32 {
+pub fn hash_unit(v: u32) -> f32 {
     og_core::hash::unit24(pcg(v))
 }
 
 /// A 32-bit seed from a 64-bit one.
-pub(crate) fn hash_seed(seed: u64) -> u32 {
+pub fn hash_seed(seed: u64) -> u32 {
     pcg(seed as u32 ^ pcg((seed >> 32) as u32))
 }
 
@@ -25,14 +25,14 @@ fn lattice3(x: i32, y: i32, z: i32, seed: u32) -> f32 {
 }
 
 /// Trilinear value noise in [0, 1) with a smoothstep fade.
-pub(crate) fn value_noise3(p: Vec3, seed: u32) -> f32 {
+pub fn value_noise3(p: Vec3, seed: u32) -> f32 {
     value_noise3_at(p, [0; 3], seed)
 }
 
 /// [`value_noise3`] at `p` plus the whole lattice cells `whole`: the noise
 /// of a point far from the world's zero, taken from its place relative to
 /// the render origin and the origin's whole cells (`origin.rs`).
-pub(crate) fn value_noise3_at(p: Vec3, whole: [i32; 3], seed: u32) -> f32 {
+pub fn value_noise3_at(p: Vec3, whole: [i32; 3], seed: u32) -> f32 {
     let fl = p.floor();
     let (ix, iy, iz) = (
         fl.x as i32 + whole[0],
@@ -52,7 +52,7 @@ pub(crate) fn value_noise3_at(p: Vec3, whole: [i32; 3], seed: u32) -> f32 {
 }
 
 /// Smooth 1D noise in -1..1 (camera shake).
-pub(crate) fn noise1(t: f32, seed: u32) -> f32 {
+pub fn noise1(t: f32, seed: u32) -> f32 {
     value_noise3(Vec3::new(t, 0.37, 0.71), seed) * 2.0 - 1.0
 }
 

@@ -1,4 +1,5 @@
 use super::*;
+use glam::{Mat4, Vec3};
 
 /// The area under a curve, against the trapezoids by hand: before the
 /// first key it holds the first value, after the last the last.
