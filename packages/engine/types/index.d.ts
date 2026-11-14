@@ -14206,7 +14206,7 @@ export interface Joint {
  */
 export interface CharacterController {
   /**
-   * The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick.
+   * The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick.
    *
    * @unit mps (metres per second)
    */
@@ -14301,6 +14301,16 @@ export interface CharacterController {
    * @tunable
    */
   pushStrength: number;
+  /**
+   * The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under.
+   * See `physics §8`.
+   *
+   * @default 0.5
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  waterSpeed: number;
   /**
    * Written: standing on walkable ground after the step.
    *
@@ -34481,7 +34491,7 @@ export declare namespace og {
    * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
    */
-  const CharacterController: ComponentType<{ readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
+  const CharacterController: ComponentType<{ readonly move: FieldSpec<"Vector3">; readonly jump: FieldSpec<"bool">; readonly jumpSpeed: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly maxSlope: FieldSpec<"f32">; readonly stepHeight: FieldSpec<"f32">; readonly snapDistance: FieldSpec<"f32">; readonly skin: FieldSpec<"f32">; readonly coyoteTime: FieldSpec<"f32">; readonly maxFallSpeed: FieldSpec<"f32">; readonly pushBodies: FieldSpec<"bool">; readonly pushStrength: FieldSpec<"f32">; readonly waterSpeed: FieldSpec<"f32">; readonly grounded: FieldSpec<"bool">; readonly sliding: FieldSpec<"bool">; readonly velocity: FieldSpec<"Vector3">; readonly groundNormal: FieldSpec<"Vector3">; readonly coyote: FieldSpec<"f32">; readonly jumpWasHeld: FieldSpec<"bool">; readonly ground: FieldSpec<"Entity"> }, CharacterController>;
   /**
    * A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps, wall slide and wall jump, one-way platforms (`oneWayLayers`; hold `down` to drop through), moving platforms and corner correction. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider (a box or capsule); it becomes a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.

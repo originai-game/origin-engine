@@ -31488,7 +31488,7 @@
       "properties": {
         "move": {
           "$ref": "#/$defs/Vector3",
-          "description": "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick.",
+          "description": "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick.",
           "default": {
             "x": 0,
             "y": 0,
@@ -31576,6 +31576,15 @@
           "default": 1000,
           "minimum": 0,
           "x-og-unit": "newton",
+          "x-og-tunable": true
+        },
+        "waterSpeed": {
+          "type": "number",
+          "description": "The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under.\nSee `physics §8`.",
+          "default": 0.5,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
           "x-og-tunable": true
         },
         "grounded": {

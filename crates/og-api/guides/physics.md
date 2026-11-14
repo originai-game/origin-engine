@@ -353,12 +353,32 @@ entity its bones float while it is limp, so a body knocked into a river
 drifts off face down instead of sinking through the bed. On an
 og.CharacterController's entity the character is lifted and slowed as far
 as it is under and carried by the water's flow. Both count as density 1:
-`waterDensity` 2 floats them half under, under 1 they sink. A character
-afloat is not grounded, so it cannot jump; read `submerged` and swim it
-yourself, for example above 0.6 set `gravityScale` 0 and drive `move` in
-three dimensions (a stroke up, a dive down), and give the gravity back
-when it drops. With no og.Buoyancy a character walks the bed and a ragdoll
-sinks, as before.
+`waterDensity` 2 floats them half under, under 1 they sink. With no
+og.Buoyancy a character walks the bed and a ragdoll sinks, as before.
+
+**Wading and swimming.** A character with og.Buoyancy needs no mode
+switch: keep setting `move`.
+
+- Wading: on the bed it walks at `move` slowed towards `waterSpeed` (0.5)
+  of itself by how much of it is under: knee deep a little, chest deep
+  nearly half. It still jumps.
+- Afloat: where the lift carries it off the bed it is not grounded, so it
+  cannot jump; `move`'s x and z swim it along, at `waterSpeed` when fully
+  under.
+- `move`'s y is its stroke in the water. Down, it dives at that speed
+  (times the same share) against any lift, as deep as the water goes. Up,
+  it rises to where it floats and no higher; where it sinks
+  (`waterDensity` under 1) a stroke up treads water with its head out, and
+  it sinks again when the stroke stops. Out of the water y is ignored as
+  ever.
+- `waterDensity` chooses the swimmer: 2 bobs back up like cork the moment
+  a dive stops; 1.05 to 1.2 hangs where it is left and drifts up slowly,
+  as a person does; under 1 is armour.
+- What it is doing is two written fields: wading is `grounded` with
+  og.Buoyancy's `submerged` above 0; swimming is not `grounded` with
+  `submerged` above 0; under water is `submerged` 1. Pick the clip, the
+  splash (og.Splash) and the camera's underwater look from them.
+- With `gravityScale` 0 `move` goes any way, slowed by the water the same.
 
 **Water.** Every water answers the same three things, whichever component
 draws or simulates it: an og.Water (a lake at its level, a sea with a

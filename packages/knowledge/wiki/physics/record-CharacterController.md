@@ -16,7 +16,7 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `move` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick. |
+| `move` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | — | The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick. |
 | `jump` | `boolean` | `false` | — | — | — | Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time). |
 | `jumpSpeed` | `number` | `6` | ≥ 0 | `mps` | tunable | The upward speed of a jump. |
 | `gravityScale` | `number` | `1` | 0 … 10 | — | tunable | Multiplies og.Physics.gravity; 0 for top-down movement in any direction. |
@@ -28,6 +28,7 @@ Token `og.CharacterController`, registered under the schema name `og.CharacterCo
 | `maxFallSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The fastest fall. |
 | `pushBodies` | `boolean` | `true` | — | — | — | Push dynamic bodies it walks into, with at most `pushStrength`. |
 | `pushStrength` | `number` | `1000` | ≥ 0 | `newton` | tunable | The most force it pushes with: each tick the bodies it walks into share an impulse of at most this times the tick's length (mass times the speed it asks of them, capped). 0 leaves every body where it is, as `pushBodies` false does. See `physics §6`. |
+| `waterSpeed` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under. See `physics §8`. |
 | `grounded` | `boolean` | `false` | — | — | read only | Written: standing on walkable ground after the step. |
 | `sliding` | `boolean` | `false` | — | — | read only | Written: sliding down a slope steeper than maxSlope. |
 | `velocity` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | read only | Written: the velocity it moved at this tick (the platform's carry included). |
@@ -41,7 +42,7 @@ component CharacterController {
   doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
   guide "physics §6"
   aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
-  field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick." {
+  field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick." {
     unit mps
   }
   field jump bool "Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time)."
@@ -101,6 +102,14 @@ component CharacterController {
     default 1000
     min 0
     unit newton
+    tunable true
+  }
+  field waterSpeed f32 "The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under." {
+    guide "physics §8"
+    default 0.5
+    min 0
+    max 1
+    unit ratio
     tunable true
   }
   field grounded bool "Written: standing on walkable ground after the step." {

@@ -3075,6 +3075,12 @@
           "tunable": true
         },
         {
+          "name": "waterSpeed",
+          "column": "f32",
+          "default": 0.5,
+          "tunable": true
+        },
+        {
           "name": "grounded",
           "column": "bool",
           "default": false,

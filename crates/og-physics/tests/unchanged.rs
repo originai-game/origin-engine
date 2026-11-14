@@ -81,6 +81,8 @@ const ADDED_FIELDS: &[(&str, &str)] = &[
     ("og.Fluid3D", "simulation"),
     // The air on bodies (0: not carried).
     ("og.RigidBody", "airDrag"),
+    // A character's speed in water (read only with an og.Buoyancy on it).
+    ("og.CharacterController", "waterSpeed"),
 ];
 
 fn table(snapshot: &og_net::Snapshot) -> BTreeMap<String, Vec<String>> {

@@ -403,118 +403,118 @@ const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
 ```
 
-<sub>Module `physics` line 720</sub>
+<sub>Module `physics` line 728</sub>
 
 ```ogt
 const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
-<sub>Module `physics` line 721</sub>
+<sub>Module `physics` line 729</sub>
 
 ```ogt
 const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
-<sub>Module `physics` line 722</sub>
+<sub>Module `physics` line 730</sub>
 
 ```ogt
 const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
-<sub>Module `physics` line 723</sub>
+<sub>Module `physics` line 731</sub>
 
 ```ogt
 const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
-<sub>Module `physics` line 724</sub>
+<sub>Module `physics` line 732</sub>
 
 ```ogt
 const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
 ```
 
-<sub>Module `physics` line 725</sub>
+<sub>Module `physics` line 733</sub>
 
 ```ogt
 const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
-<sub>Module `physics` line 739</sub>
+<sub>Module `physics` line 747</sub>
 
 ```ogt
 const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
 ```
 
-<sub>Module `physics` line 740</sub>
+<sub>Module `physics` line 748</sub>
 
 ```ogt
 const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
 ```
 
-<sub>Module `physics` line 741</sub>
+<sub>Module `physics` line 749</sub>
 
 ```ogt
 const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
 ```
 
-<sub>Module `physics` line 742</sub>
+<sub>Module `physics` line 750</sub>
 
 ```ogt
 const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
 ```
 
-<sub>Module `physics` line 743</sub>
+<sub>Module `physics` line 751</sub>
 
 ```ogt
 const SIMULATION_GAMEPLAY u32 0 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated in the physics step on the CPU, deterministic: its points are world state that snapshots, replays, lockstep and the hash carry, and that og.physics.clothPoints, softBodyPoints and garmentPoints read. The default."
 ```
 
-<sub>Module `physics` line 1052</sub>
+<sub>Module `physics` line 1060</sub>
 
 ```ogt
 const SIMULATION_VISUAL u32 1 "`Cloth.simulation`, `SoftBody.simulation`, `Garment.simulation`: simulated by the renderer on the GPU for looks only, never read back. The tick's points are the rest shape carried rigidly by the entity (a garment's: the skinned pose). Without RenderCapabilities.visualSimulation it draws that shape."
 ```
 
-<sub>Module `physics` line 1053</sub>
+<sub>Module `physics` line 1061</sub>
 
 ```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1054</sub>
+<sub>Module `physics` line 1062</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1055</sub>
+<sub>Module `physics` line 1063</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1056</sub>
+<sub>Module `physics` line 1064</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1057</sub>
+<sub>Module `physics` line 1065</sub>
 
 ```ogt
 const SOFT_SPHERE u32 0 "`SoftBody.shape`: a sphere of `radius` (an icosphere; 2D a ring)."
 ```
 
-<sub>Module `physics` line 1226</sub>
+<sub>Module `physics` line 1234</sub>
 
 ```ogt
 const SOFT_BOX u32 1 "`SoftBody.shape`: a box of `size` (each face a grid of `detail` + 1 cells; 2D a rectangle)."
 ```
 
-<sub>Module `physics` line 1227</sub>
+<sub>Module `physics` line 1235</sub>
 
 ```ogt
 const SOFT_MESH u32 2 "`SoftBody.shape`: the closed surface of geometry `mesh` (3D only)."
 ```
 
-<sub>Module `physics` line 1228</sub>
+<sub>Module `physics` line 1236</sub>
