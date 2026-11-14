@@ -176,7 +176,7 @@ module camera {
       min 0.01
       unit m
     }
-    field azimuth f32 "The horizontal angle about +Y; 0 puts the camera on the +Z side of the point." {
+    field azimuth f32 "The heading of the camera from the orbited point: about +Y from +Z towards +X, so 0 puts the camera on the +Z side of the point and half pi on its +X side." {
       unit rad
       tunable true
     }

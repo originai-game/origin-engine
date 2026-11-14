@@ -18,7 +18,7 @@ Token `og.Aurora`, registered under the schema name `og.Aurora`; its value type 
 | `intensity` | `number` | `1` | 0 … 20 | — | tunable | How bright the display is: 1 a bright display against a night sky, 0.3 a faint one. |
 | `activity` | `number` | `0.4` | 0 … 1 | `ratio` | tunable | 0 quiet, smooth arcs; 0.5 folding, rayed curtains; 1 a substorm's breakup, curled and fragmented, moving fast. |
 | `curtains` | `number` | `3` | 1 … 6 | — | — | How many arcs, one behind another. |
-| `direction` | `number` | `90` | — | `deg` | tunable | Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth). |
+| `direction` | `number` | `180` | — | `deg` | tunable | The heading the arcs lie at from the world's origin: about +Y from +Z towards +X (as og.DayNight's azimuth), so 180 puts them towards -Z. |
 | `distance` | `number` | `150000` | 0 … 1500000 | `m` | tunable | How far the first arc is from the world's origin over the ground (0: overhead). |
 | `spread` | `number` | `70000` | ≥ 0 | `m` | tunable | The distance between successive arcs. |
 | `energy` | `number` | `2` | 0.3 … 20 | — | tunable | The falling electrons' characteristic energy in keV: about 2 for a typical display; under 1 a high, red-topped aurora; over 5 a low one with a pink-violet lower border. |
@@ -51,8 +51,8 @@ resource Aurora {
     min 1
     max 6
   }
-  field direction f32 "Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth)." {
-    default 90
+  field direction f32 "The heading the arcs lie at from the world's origin: about +Y from +Z towards +X (as og.DayNight's azimuth), so 180 puts them towards -Z." {
+    default 180
     unit deg
     tunable true
   }
@@ -94,4 +94,4 @@ resource Aurora {
 }
 ```
 
-<sub>Module `atmosphere` line 366</sub>
+<sub>Module `atmosphere` line 367</sub>

@@ -120,6 +120,8 @@ mod seabed;
 mod shadow_flags;
 #[path = "../shared_models.rs"]
 mod shared_models;
+#[path = "../sky_directions.rs"]
+mod sky_directions;
 #[path = "../sky_off.rs"]
 mod sky_off;
 #[path = "../sprite_arrays.rs"]

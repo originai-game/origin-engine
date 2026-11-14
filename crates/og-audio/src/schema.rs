@@ -2,6 +2,11 @@
 //! types are the layout (`og_core::reflect`); `crates/og-audio/README.md`
 //! lists them for the IDL (`crates/og-api/api/audio.ogt`).
 
+// The cone angles' default and bound are pi and a hair above it (the IDL's,
+// og.AudioSource); the derive writes them into generated code an item
+// attribute does not reach.
+#![allow(clippy::approx_constant)]
+
 use og_core::glam::Vec3;
 use og_core::{List, Reflect};
 
@@ -38,7 +43,7 @@ impl Bus {
 /// plays; setting `playing` to false stops it; a one-shot that reaches its
 /// end sets `playing` back to false and emits `og.SoundEnded`.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect)]
-#[reflect(name = "og.AudioSource", version = 3)]
+#[reflect(name = "og.AudioSource", version = 4)]
 pub struct AudioSource {
     /// The sound to play (a Sound handle); 0 plays nothing. A handle not yet in the bank waits and starts on the first tick it is there.
     pub sound: u64,
@@ -100,29 +105,29 @@ pub struct AudioSource {
     /// Doppler: how much a spatial source's and the listener's motion along the line between them shifts its pitch (their tick velocities, from world positions down og.Parent); 1 is physical, 0 is off. Times og.AudioListener.dopplerFactor, against og.Audio.speedOfSound.
     #[reflect(name = "dopplerFactor", min = 0, max = 10, default = 1, tunable)]
     pub doppler_factor: f32,
-    /// Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z; 360 (with coneOuterAngle 360) is omnidirectional.
+    /// Directivity: a spatial source plays at full volume while the listener is within this half-angle of the source's +Z; pi (with outerAngle pi) is omnidirectional. Half of Web Audio's coneInnerAngle, in radians.
     #[reflect(
-        name = "coneInnerAngle",
+        name = "innerAngle",
         min = 0,
-        max = 360,
-        default = 360,
-        unit = "deg",
+        max = 3.1416,
+        default = 3.1415927,
+        unit = "rad",
         tunable
     )]
-    pub cone_inner_angle: f32,
-    /// Past this full angle about the source's +Z it plays at coneOuterGain; between the two angles the gain falls linearly.
+    pub inner_angle: f32,
+    /// Past this half-angle from the source's +Z it plays at outerGain; between the two angles the gain falls linearly.
     #[reflect(
-        name = "coneOuterAngle",
+        name = "outerAngle",
         min = 0,
-        max = 360,
-        default = 360,
-        unit = "deg",
+        max = 3.1416,
+        default = 3.1415927,
+        unit = "rad",
         tunable
     )]
-    pub cone_outer_angle: f32,
-    /// The gain outside coneOuterAngle.
-    #[reflect(name = "coneOuterGain", min = 0, max = 1, tunable)]
-    pub cone_outer_gain: f32,
+    pub outer_angle: f32,
+    /// The gain outside outerAngle.
+    #[reflect(name = "outerGain", min = 0, max = 1, tunable)]
+    pub outer_gain: f32,
     /// Past og.Audio.maxVoices it goes virtual instead of being culled: silent, its playhead running on, and heard again from where it would be once it stands within the cap (a one-shot that ends while virtual ends on its tick).
     pub virtualize: bool,
     /// Set true to start the sound again from the top (its startOffset, its startAt) this tick, playing or not, without touching `playing`; the engine sets it back to false (and `playing` true). The voice it replaces ends with SoundEnded reason SOUND_RETRIGGERED.
@@ -156,9 +161,9 @@ impl Default for AudioSource {
             start_offset: 0.0,
             fade: 0.0,
             doppler_factor: 1.0,
-            cone_inner_angle: 360.0,
-            cone_outer_angle: 360.0,
-            cone_outer_gain: 0.0,
+            inner_angle: std::f32::consts::PI,
+            outer_angle: std::f32::consts::PI,
+            outer_gain: 0.0,
             virtualize: false,
             retrigger: false,
             user_bus: 0,

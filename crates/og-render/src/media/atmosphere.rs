@@ -479,15 +479,18 @@ fn ramp(e0: f32, e1: f32, x: f32) -> f32 {
 }
 
 /// The look of `hours` (0..24; 6 sunrise, 12 noon, 18 sunset) for a sun
-/// whose path is tilted `tilt` degrees from overhead towards -z and turned
-/// `azimuth` degrees about +y (0: it rises in +x). A pure function of its
+/// that rises at the heading `azimuth` (degrees about +y from +z towards
+/// +x, `og_core::facing`'s: 90 rises in +x) and whose path is tilted `tilt`
+/// degrees from overhead towards the heading `azimuth` + 90. A pure function of its
 /// inputs, so a day-night clock driven by the tick looks the same on every
 /// run and after a restore.
 pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
     let a = (hours.rem_euclid(24.0) - 6.0) / 24.0 * std::f32::consts::TAU;
-    let (tilt, azimuth) = (tilt.to_radians(), azimuth.to_radians());
+    let tilt = tilt.to_radians();
+    // The path of a sun rising in +x; a heading counts from +z, a quarter
+    // turn before it.
     let path = Vec3::new(a.cos(), a.sin() * tilt.cos(), -a.sin() * tilt.sin());
-    let sun = glam::Quat::from_rotation_y(azimuth) * path;
+    let sun = glam::Quat::from_rotation_y((azimuth - 90.0).to_radians()) * path;
     let e = sun.y;
     // Palettes by the sun's elevation: night, twilight, golden hour, day.
     let day = ramp(0.05, 0.45, e);
@@ -585,12 +588,12 @@ mod tests {
             );
         }
         let air = crate::PhysicalAtmosphere::EARTH;
-        let dusk = day_night(17.7, 25.0, -20.0).with_atmosphere(&air);
+        let dusk = day_night(17.7, 25.0, 70.0).with_atmosphere(&air);
         let [_, toward, away, _] = clear_sky_light(&dusk.sky, dusk.sun_direction, dusk.sun_color);
         let luma = |v: Vec3| v.dot(Vec3::new(0.2126, 0.7152, 0.0722));
         println!("dusk: toward {toward}, away {away}");
         assert!(luma(toward) > 1.2 * luma(away), "{toward} vs {away}");
-        let noon = day_night(12.5, 25.0, -20.0).with_atmosphere(&air);
+        let noon = day_night(12.5, 25.0, 70.0).with_atmosphere(&air);
         let [up, ..] = clear_sky_light(&noon.sky, noon.sun_direction, noon.sun_color);
         println!("noon overhead {up}");
         assert!(luma(up) > 0.05, "{up}");
@@ -610,9 +613,9 @@ mod tests {
     /// whatever the tilt, which only lowers the noon sun.
     #[test]
     fn the_dusk_hours_keep_sun_shadows() {
-        let elevation = |h: f32| day_night(h, 25.0, 0.0).sun_direction.y.asin().to_degrees();
+        let elevation = |h: f32| day_night(h, 25.0, 90.0).sun_direction.y.asin().to_degrees();
         for h in [16.5, 17.0, 17.25] {
-            let look = day_night(h, 25.0, 0.0);
+            let look = day_night(h, 25.0, 90.0);
             assert!(
                 ground_contrast(&look) >= 0.5,
                 "{h} h: {}",
@@ -625,17 +628,17 @@ mod tests {
             );
         }
         for h in [17.0, 17.25] {
-            let c = day_night(h, 25.0, 0.0).light_color;
+            let c = day_night(h, 25.0, 90.0).light_color;
             assert!(c.z < 0.75 * c.x, "{h} h: the sun is warm, {c}");
         }
-        assert!(ground_contrast(&day_night(17.5, 25.0, 0.0)) < 0.4);
+        assert!(ground_contrast(&day_night(17.5, 25.0, 90.0)) < 0.4);
         assert!(elevation(17.5) < 7.0);
         assert!(elevation(18.0).abs() < 0.01);
         // Tilt lowers the path, never the hour of sunset.
-        assert!(day_night(18.0, 0.0, 0.0).sun_direction.y.abs() < 1e-4);
+        assert!(day_night(18.0, 0.0, 90.0).sun_direction.y.abs() < 1e-4);
         assert!(
             elevation(17.0)
-                < day_night(17.0, 0.0, 0.0)
+                < day_night(17.0, 0.0, 90.0)
                     .sun_direction
                     .y
                     .asin()
@@ -650,7 +653,7 @@ mod tests {
     #[test]
     fn the_physical_day_night_light_crosses_the_air() {
         let air = crate::PhysicalAtmosphere::EARTH;
-        let at = |h: f32| day_night(h, 25.0, 0.0).with_atmosphere(&air);
+        let at = |h: f32| day_night(h, 25.0, 90.0).with_atmosphere(&air);
         let (noon, dusk, set) = (at(12.0), at(17.5), at(18.3));
         assert!(noon.sky.physical.is_some() && noon.ambient == 1.0);
         let lum = |c: Vec3| c.dot(Vec3::new(0.2126, 0.7152, 0.0722));

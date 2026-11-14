@@ -60,7 +60,7 @@ pub(crate) fn colonnade_camera() -> Camera {
 pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
     let mut scene = RenderScene::new();
     colonnade(&mut scene);
-    let look = day_night(hours, 25.0, -20.0);
+    let look = day_night(hours, 25.0, 70.0);
     scene.lighting.light = DirectionalLight {
         direction_to_light: look.light_direction,
         color: look.light_color,

@@ -363,9 +363,9 @@ fn walk(restore_at: Option<u64>) -> (u64, u64, u64) {
                 .spawn((
                     Transform::at(Vec3::new(k as f32 * 4.0 - 4.0, 0.0, -6.0)),
                     AudioSource {
-                        cone_inner_angle: 90.0,
-                        cone_outer_angle: 240.0,
-                        cone_outer_gain: 0.1,
+                        inner_angle: 45.0f32.to_radians(),
+                        outer_angle: 120.0f32.to_radians(),
+                        outer_gain: 0.1,
                         doppler_factor: 1.0 + k as f32 * 0.5,
                         pitch: 0.9 + 0.1 * k as f32,
                         ..looping_spatial(if k == 1 { hiss } else { sound })

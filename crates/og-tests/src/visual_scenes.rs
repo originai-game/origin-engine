@@ -160,7 +160,7 @@ fn body(
 /// An empty scene in the courtyard's afternoon light, at 60 ticks a second.
 fn daylight() -> RenderScene {
     let mut scene = RenderScene::new();
-    let look = day_night(15.5, 35.0, -35.0);
+    let look = day_night(15.5, 35.0, 55.0);
     scene.lighting.light = DirectionalLight {
         direction_to_light: look.light_direction,
         color: look.light_color,

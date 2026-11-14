@@ -8,8 +8,8 @@
     "m": "metres",
     "s": "seconds of simulation time",
     "ms": "milliseconds",
-    "rad": "radians",
-    "deg": "degrees",
+    "rad": "radians: every rotation, heading, yaw, joint or steering limit, arc, uv rotation and cone; a cone is given as its half-angle",
+    "deg": "degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract",
     "hz": "ticks or cycles per second",
     "ticks": "fixed simulation steps",
     "cssPx": "CSS pixels of the play surface, origin at the top left",
@@ -21436,7 +21436,7 @@
         },
         "azimuth": {
           "type": "number",
-          "description": "The horizontal angle about +Y; 0 puts the camera on the +Z side of the point.",
+          "description": "The heading of the camera from the orbited point: about +Y from +Z towards +X, so 0 puts the camera on the +Z side of the point and half pi on its +X side.",
           "default": 0,
           "x-og-unit": "rad",
           "x-og-tunable": true
@@ -23949,7 +23949,7 @@
           "type": "number",
           "description": "Turns the map about +Y, as three.js scene.environmentRotation.y: positive turns what was at +X towards -Z. The light and the background turn together.",
           "default": 0,
-          "x-og-unit": "deg",
+          "x-og-unit": "rad",
           "x-og-tunable": true
         },
         "background": {
@@ -34887,8 +34887,8 @@
         },
         "azimuth": {
           "type": "number",
-          "description": "Where the sun rises, turned about +y from +x.",
-          "default": 0,
+          "description": "The heading the sun rises at: about +Y from +Z towards +X, so 0 rises in +Z and 90 in +X. Its path leans by tilt towards the heading azimuth + 90.",
+          "default": 90,
           "x-og-unit": "deg",
           "x-og-tunable": true
         },
@@ -35158,8 +35158,8 @@
         },
         "direction": {
           "type": "number",
-          "description": "Where the arcs lie, turned about +y from +x (the convention of og.DayNight's azimuth).",
-          "default": 90,
+          "description": "The heading the arcs lie at from the world's origin: about +Y from +Z towards +X (as og.DayNight's azimuth), so 180 puts them towards -Z.",
+          "default": 180,
           "x-og-unit": "deg",
           "x-og-tunable": true
         },
@@ -39581,27 +39581,27 @@
           "maximum": 10,
           "x-og-tunable": true
         },
-        "coneInnerAngle": {
+        "innerAngle": {
           "type": "number",
-          "description": "Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z; 360 with coneOuterAngle 360 is omnidirectional.",
-          "default": 360,
+          "description": "Directivity: a spatial source plays at full volume while the listener is within this half-angle of the source's +Z, as SpotLight.angle counts a cone; pi with outerAngle pi is omnidirectional. Half of Web Audio's and three.js PositionalAudio's coneInnerAngle, in radians.",
+          "default": 3.1415927,
           "minimum": 0,
-          "maximum": 360,
-          "x-og-unit": "deg",
+          "maximum": 3.1416,
+          "x-og-unit": "rad",
           "x-og-tunable": true
         },
-        "coneOuterAngle": {
+        "outerAngle": {
           "type": "number",
-          "description": "Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle.",
-          "default": 360,
+          "description": "Past this half-angle from the source's +Z it plays at outerGain; between innerAngle and this the gain falls linearly with the angle.",
+          "default": 3.1415927,
           "minimum": 0,
-          "maximum": 360,
-          "x-og-unit": "deg",
+          "maximum": 3.1416,
+          "x-og-unit": "rad",
           "x-og-tunable": true
         },
-        "coneOuterGain": {
+        "outerGain": {
           "type": "number",
-          "description": "The gain outside coneOuterAngle.",
+          "description": "The gain outside outerAngle.",
           "default": 0,
           "minimum": 0,
           "maximum": 1,

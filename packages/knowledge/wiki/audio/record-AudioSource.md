@@ -64,9 +64,9 @@ Token `og.AudioSource`, registered under the schema name `og.AudioSource`; its v
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `dopplerFactor` | `number` | `1` | 0 … 10 | — | tunable | Doppler: how much the source's and listener's tick velocities along the line between them shift a spatial source's pitch: times (c - DF * vListener) / (c - DF * vSource), c Audio.speedOfSound, DF this times AudioListener.dopplerFactor (OpenAL's). 1 is physical, 0 off; DF * v is held within c/2. See `audio §2`. |
-| `coneInnerAngle` | `number` | `360` | 0 … 360 | `deg` | tunable | Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z; 360 with coneOuterAngle 360 is omnidirectional. |
-| `coneOuterAngle` | `number` | `360` | 0 … 360 | `deg` | tunable | Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle. |
-| `coneOuterGain` | `number` | `0` | 0 … 1 | — | tunable | The gain outside coneOuterAngle. |
+| `innerAngle` | `number` | `3.1415927` | 0 … 3.1416 | `rad` | tunable | Directivity: a spatial source plays at full volume while the listener is within this half-angle of the source's +Z, as SpotLight.angle counts a cone; pi with outerAngle pi is omnidirectional. Half of Web Audio's and three.js PositionalAudio's coneInnerAngle, in radians. |
+| `outerAngle` | `number` | `3.1415927` | 0 … 3.1416 | `rad` | tunable | Past this half-angle from the source's +Z it plays at outerGain; between innerAngle and this the gain falls linearly with the angle. |
+| `outerGain` | `number` | `0` | 0 … 1 | — | tunable | The gain outside outerAngle. |
 
 #### Voice and routing
 
@@ -177,21 +177,21 @@ component AudioSource {
     max 10
     tunable true
   }
-  field coneInnerAngle f32 "Directivity, as three.js PositionalAudio.setDirectionalCone and Web Audio's PannerNode: a spatial source plays at full volume while the listener is within this full angle about the source's +Z; 360 with coneOuterAngle 360 is omnidirectional." {
-    default 360
+  field innerAngle f32 "Directivity: a spatial source plays at full volume while the listener is within this half-angle of the source's +Z, as SpotLight.angle counts a cone; pi with outerAngle pi is omnidirectional. Half of Web Audio's and three.js PositionalAudio's coneInnerAngle, in radians." {
+    default 3.1415927
     min 0
-    max 360
-    unit deg
+    max 3.1416
+    unit rad
     tunable true
   }
-  field coneOuterAngle f32 "Past this full angle about the source's +Z it plays at coneOuterGain; between coneInnerAngle and this the gain falls linearly with the angle." {
-    default 360
+  field outerAngle f32 "Past this half-angle from the source's +Z it plays at outerGain; between innerAngle and this the gain falls linearly with the angle." {
+    default 3.1415927
     min 0
-    max 360
-    unit deg
+    max 3.1416
+    unit rad
     tunable true
   }
-  field coneOuterGain f32 "The gain outside coneOuterAngle." {
+  field outerGain f32 "The gain outside outerAngle." {
     min 0
     max 1
     tunable true
