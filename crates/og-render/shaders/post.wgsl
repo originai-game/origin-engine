@@ -30,15 +30,7 @@ struct Post {
 @group(0) @binding(7) var flare_tex: texture_2d<f32>;
 
 fn exposure() -> f32 {
-  if (post.exposure.y > 1.5) {
-    return exp2(textureLoad(luminance, vec2<i32>(0), 0).r);
-  }
-  if (post.exposure.y > 0.5) {
-    let avg = textureLoad(luminance, vec2<i32>(0), 0).r;
-    let ev = clamp(log2(0.18) - avg + post.bloom.w, post.exposure.z, post.exposure.w);
-    return exp2(ev);
-  }
-  return exp2(post.exposure.x);
+  return exposure_from(post.exposure, post.bloom.w, luminance);
 }
 
 fn tonemapped(uv: vec2<f32>) -> vec3<f32> {

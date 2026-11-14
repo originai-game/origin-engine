@@ -25,3 +25,20 @@ fn sample_exact(t: texture_2d<f32>, s: sampler, uv: vec2<f32>) -> vec4<f32> {
   }
   return textureSampleLevel(t, s, uv, 0.0);
 }
+
+// The exposure EV the meter asks for: middle grey at the scene's mean
+// log2 luminance `avg`, moved by `compensation` EV, within `lo`..`hi`.
+fn metered_ev(avg: f32, compensation: f32, lo: f32, hi: f32) -> f32 {
+  return clamp(log2(0.18) - avg + compensation, lo, hi);
+}
+
+// The exposure multiplier of a pass's Post rows: `e` is post.exposure (x:
+// manual EV, y: 0 manual, 1 metered, 2 adapted, zw: the EV range),
+// `compensation` its EV compensation, `luminance` the 1x1 meter (metered:
+// the mean log2 luminance; adapted: the adapted EV, exposure.wgsl).
+fn exposure_from(e: vec4<f32>, compensation: f32, luminance: texture_2d<f32>) -> f32 {
+  let l = textureLoad(luminance, vec2<i32>(0), 0).r;
+  if (e.y > 1.5) { return exp2(l); }
+  if (e.y > 0.5) { return exp2(metered_ev(l, compensation, e.z, e.w)); }
+  return exp2(e.x);
+}

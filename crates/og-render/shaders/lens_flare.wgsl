@@ -58,14 +58,7 @@ struct Flare {
 
 // post.wgsl `exposure`, from this pass's copy of the Post rows.
 fn flare_exposure() -> f32 {
-  if (flare.exposure.y > 1.5) {
-    return exp2(textureLoad(flare_luminance, vec2<i32>(0), 0).r);
-  }
-  if (flare.exposure.y > 0.5) {
-    let avg = textureLoad(flare_luminance, vec2<i32>(0), 0).r;
-    return exp2(clamp(log2(0.18) - avg + flare.meter.x, flare.exposure.z, flare.exposure.w));
-  }
-  return exp2(flare.exposure.x);
+  return exposure_from(flare.exposure, flare.meter.x, flare_luminance);
 }
 
 fn flare_is_sky(d: f32) -> bool {

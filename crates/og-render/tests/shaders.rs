@@ -199,6 +199,7 @@ fn a_mechanisms_shader_code_is_written_once() {
             ],
         ),
         (&["frame.wgsl"], &["fn toward_eye("]),
+        (&["fullscreen.wgsl"], &["log2(0.18)"]),
         (
             &["tonemap.wgsl"],
             &["fn aces(", "fn agx(", "fn neutral(", "fn tone_curve("],
