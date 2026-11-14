@@ -1,0 +1,14 @@
+{
+  "breaking": [
+    {
+      "member": "og.nav.gridFromTilemap, og.nav.setCost, og.nav.cellAt, NavCell",
+      "change": "A grid made by og.nav.gridFromTilemap names its cells as its map does: row 0 at the top, as og.tilemap's TileCell. og.nav.cellAt answers the cell og.tilemap.cellAt answers for the same point, and og.nav.setCost takes a tile's x and y. Before, the grid counted rows up from the bottom, so both named the mirrored row. A grid from og.nav.grid is unchanged: row 0 at the bottom, rows running up from its origin. The choice is the grid's and is saved with the world (the og.nav state block, whose bytes and so the world hash change for a world with such a grid).",
+      "fix": "Where code converted between the two (height - 1 - y) before calling og.nav.setCost on a tilemap grid, or after og.nav.cellAt, remove the conversion and pass the tile's row. Code that passed a tile's row unconverted was blocking the wrong row and is now right.",
+      "find": [
+        "gridFromTilemap",
+        "nav.setCost",
+        "nav.cellAt"
+      ]
+    }
+  ]
+}

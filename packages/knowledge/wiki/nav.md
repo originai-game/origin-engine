@@ -44,9 +44,9 @@ module nav {
 | [`NavShapeKind`](nav/type-NavShapeKind.md) | enum |  | What a NavShape is. |
 | [`NavShape`](nav/type-NavShape.md) | desc struct |  | A volume over a navmesh's floor: an obstacle (og.nav.carve) or an area (og.nav.setArea). |
 | [`NavAreaDesc`](nav/type-NavAreaDesc.md) | desc struct |  | A run-time area: the spans under `shape` (their floors from the agent's climb below its bottom to its top) take area `area`, over the baked areas and over run-time areas of lower ids. |
-| [`NavGridDesc`](nav/type-NavGridDesc.md) | desc struct |  | A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up. |
+| [`NavGridDesc`](nav/type-NavGridDesc.md) | desc struct |  | A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up (row 0 at the bottom). |
 | [`TilemapGridDesc`](nav/type-TilemapGridDesc.md) | desc struct |  | A grid over a placed og.Tilemap: one cell per map cell, blocked where a collision layer has a solid tile. |
-| [`NavCell`](nav/type-NavCell.md) | struct |  | A grid cell. |
+| [`NavCell`](nav/type-NavCell.md) | struct |  | A grid cell, counted as the grid counts: a grid from og.nav.grid has row 0 at the bottom, rows running up from its origin; a grid from og.nav.gridFromTilemap has row 0 at the top, as og.tilemap's Til… |
 | [`PathDesc`](nav/type-PathDesc.md) | desc struct |  | A path query. |
 | [`NavPath`](nav/type-NavPath.md) | struct |  | A path. |
 | [`FlowDesc`](nav/type-FlowDesc.md) | desc struct |  | A flow field over a grid. |
@@ -57,7 +57,7 @@ module nav {
 | [`og.nav.grid`](nav/fn-grid.md) | function | `(world: World, desc?: NavGridDesc): Result<Navigation>` | A grid agents and path queries plan on. |
 | [`og.nav.gridFromTilemap`](nav/fn-gridFromTilemap.md) | function | `(world: World, desc?: TilemapGridDesc): Result<Navigation>` | A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. |
 | [`og.nav.setCost`](nav/fn-setCost.md) | function | `(world: World, grid: Navigation, x: number, y: number, cost: number): Result<void>` | Change a grid cell's cost (0 blocks it): agents on the grid re-plan, flow fields over it rebuild. |
-| [`og.nav.cellAt`](nav/fn-cellAt.md) | function | `(world: World, grid: Navigation, point: Vector3): NavCell` | The grid cell under a world point. |
+| [`og.nav.cellAt`](nav/fn-cellAt.md) | function | `(world: World, grid: Navigation, point: Vector3): NavCell` | The grid cell under a world point, counted as the grid counts its rows (NavCell). |
 | [`og.nav.findPath`](nav/fn-findPath.md) | function | `(world: World, desc?: PathDesc): Result<NavPath>` | A path between two points on a grid or a navmesh, now: corners, length and whether it reaches the end. |
 | [`og.nav.flowField`](nav/fn-flowField.md) | function | `(world: World, desc?: FlowDesc): Result<Navigation>` | A flow field towards targets over a grid: one Dijkstra pass gives every cell a direction, so any number of agents (NavAgent.nav = the field) steer by a lookup. |
 | [`og.nav.setFlowTargets`](nav/fn-setFlowTargets.md) | function | `(world: World, field: Navigation, targets: readonly Vector3[]): Result<void>` | Move a flow field's targets (rebuilds it). |

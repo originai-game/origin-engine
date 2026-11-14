@@ -324,8 +324,15 @@ from og.load.scene) is a cell.
   for a flat procedural level, with funnel paths and box obstacles that
   rebuild only the tiles they touch.
 - Paths, grid edits, obstacles and flow targets are in snapshots.
-- Agents move on the profile's plane: x and y in 2D (a grid's rows run
-  up), x and z in 3D (y kept on grids, from the surface on a navmesh).
+- Agents move on the profile's plane: x and y in 2D, x and z in 3D (y
+  kept on grids, from the surface on a navmesh).
+- A grid's cells (NavCell, og.nav.setCost, og.nav.cellAt) count as the
+  grid was made. One from og.nav.grid has row 0 at the bottom, its rows
+  running up from `origin`, and NavGridDesc.costs lists them in that
+  order. One from og.nav.gridFromTilemap counts as its map does, row 0 at
+  the top: a tile's `x` and `y` name the same cell in og.tilemap and
+  og.nav, so a door opened with og.tilemap.setTile is unblocked with
+  og.nav.setCost at the same pair.
 - og.Crowd adds reciprocal avoidance (ORCA): each tick an agent takes the
   velocity nearest what its path wants that keeps it clear of its nearest
   agents for `horizon` seconds and of walls for `obstacleHorizon`. Agents

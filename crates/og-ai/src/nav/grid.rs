@@ -50,6 +50,11 @@ pub struct Grid {
     pub height: u32,
     pub cell_size: f32,
     pub origin: Vec2,
+    /// How game code counts its rows ([`Grid::game_row`]): false, up from
+    /// `origin` as they are stored; true, down from its top edge, as the
+    /// tilemap it was made over counts its own. The storage, the searches
+    /// and everything in this crate count up either way.
+    pub rows_down: bool,
     costs: Vec<u8>,
     /// Cells whose cost is not 0 or 1; jump point search needs none.
     weighted: u32,
@@ -114,9 +119,22 @@ impl Grid {
             height,
             cell_size: if cell_size > 0.0 { cell_size } else { 1.0 },
             origin,
+            rows_down: false,
             costs: vec![1; (width as usize) * (height as usize)],
             weighted: 0,
             version: 1,
+        }
+    }
+
+    /// The row game code calls a stored row, and the stored row of one game
+    /// code names: the same row unless the grid counts down from its top
+    /// ([`Grid::rows_down`]), then its mirror. Its own inverse; a row
+    /// outside the grid stays outside.
+    pub fn game_row(&self, y: u32) -> u32 {
+        if self.rows_down && y < self.height {
+            self.height - 1 - y
+        } else {
+            y
         }
     }
 
@@ -137,6 +155,7 @@ impl Grid {
             height,
             cell_size: if cell_size > 0.0 { cell_size } else { 1.0 },
             origin,
+            rows_down: false,
             costs,
             weighted,
             version: 1,

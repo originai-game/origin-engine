@@ -17,7 +17,7 @@ og.nav.setCost(world: World, grid: Navigation, x: number, y: number, cost: numbe
 | `world` | `World` | no | The world. |
 | `grid` | `Navigation` | no | The grid. |
 | `x` | `number` | no | The column. |
-| `y` | `number` | no | The row (0 is the bottom). |
+| `y` | `number` | no | The row, as NavCell.y: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap (a tile's row). |
 | `cost` | `number` | no | 0 blocked, 1 normal, up to 255. |
 
 **Returns** `Result<void>`: Refused for an unknown grid or a cell outside it.
@@ -30,10 +30,10 @@ fn setCost {
   param world World "The world."
   param grid Navigation "The grid."
   param x u32 "The column."
-  param y u32 "The row (0 is the bottom)."
+  param y u32 "The row, as NavCell.y: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap (a tile's row)."
   param cost u32 "0 blocked, 1 normal, up to 255."
   returns Result.Void "Refused for an unknown grid or a cell outside it."
 }
 ```
 
-<sub>Module `nav` line 517</sub>
+<sub>Module `nav` line 518</sub>

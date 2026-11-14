@@ -75,6 +75,8 @@ mod motion_performance;
 #[cfg(feature = "nav")]
 #[path = "../nav_profiles.rs"]
 mod nav_profiles;
+#[path = "../nav_tilemap_rows.rs"]
+mod nav_tilemap_rows;
 #[path = "../no_renderer.rs"]
 mod no_renderer;
 #[path = "../painted_2d.rs"]

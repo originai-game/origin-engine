@@ -17,6 +17,11 @@ struct Saved {
     versions: BTreeMap<u64, u64>,
     /// [`State::origin`] (the trailer's, when not zero).
     origin: Vec3,
+    /// The grids whose rows game code counts down from the top
+    /// ([`Grid::rows_down`]); `None` when the save holds no such list (no
+    /// grid counted down, or it was written before grids could): each
+    /// grid then keeps the way it was made.
+    rows_down: Option<Vec<u64>>,
 }
 
 /// The edit count each grid or navmesh had when its newest path was
@@ -46,6 +51,9 @@ mod tag {
     pub const VERSIONS: u16 = 4;
     /// The world's nav origin (R12), when og.WorldOrigin has moved it.
     pub const ORIGIN: u16 = 5;
+    /// The grids whose rows game code counts down from the top (a grid
+    /// made over a tilemap), when there is one.
+    pub const ROWS_DOWN: u16 = 6;
 }
 
 fn put_traverse(o: &mut Vec<u8>, t: &Traverse) {
@@ -336,6 +344,20 @@ impl StateBlock for NavBlock {
             Writer(&mut b).v3(st.origin);
             sections.push((tag::ORIGIN, b));
         }
+        let down: Vec<u64> = navs
+            .entries
+            .iter()
+            .filter_map(|(h, n)| matches!(n, Nav::Grid(g) if g.rows_down).then_some(*h))
+            .collect();
+        if !down.is_empty() {
+            let mut b = Vec::new();
+            let mut x = Writer(&mut b);
+            x.u32(down.len() as u32);
+            for h in down {
+                x.u64(h);
+            }
+            sections.push((tag::ROWS_DOWN, b));
+        }
         og_ecs::trailer::write(out, &sections);
     }
 
@@ -398,10 +420,18 @@ impl StateBlock for NavBlock {
         let mut crossing = IdMap::new();
         let mut versions = BTreeMap::new();
         let mut origin = Vec3::ZERO;
+        let mut rows_down = None;
         for (t, body) in og_ecs::trailer::read(SYSTEM_NAME, &bytes[r.at..])? {
             let mut r = Reader { b: body, at: 0 };
             if t == tag::ORIGIN {
                 origin = r.v3()?;
+            }
+            if t == tag::ROWS_DOWN {
+                let mut list = Vec::new();
+                for _ in 0..r.u32()? {
+                    list.push(r.u64()?);
+                }
+                rows_down = Some(list);
             }
             if t == tag::LINKS {
                 for _ in 0..r.u32()? {
@@ -477,6 +507,7 @@ impl StateBlock for NavBlock {
             crossing,
             versions,
             origin,
+            rows_down,
         }))
     }
 
@@ -499,6 +530,13 @@ impl StateBlock for NavBlock {
         }
         let mut navs = lock(&self.0.navs);
         let mut saved_links = saved.links;
+        if let Some(down) = &saved.rows_down {
+            for (h, n) in navs.entries.iter_mut() {
+                if let Nav::Grid(g) = n {
+                    g.rows_down = down.contains(h);
+                }
+            }
+        }
         for (h, costs) in saved.grids {
             if let Some(Nav::Grid(g)) = navs.get_mut(h)
                 && g.costs() != costs.as_slice()

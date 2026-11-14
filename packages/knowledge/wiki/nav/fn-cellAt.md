@@ -6,7 +6,7 @@ Module [`nav`](../nav.md) · [index](../index.md)
 
 ### `og.nav.cellAt`
 
-The grid cell under a world point.
+The grid cell under a world point, counted as the grid counts its rows (NavCell).
 
 ```ts
 og.nav.cellAt(world: World, grid: Navigation, point: Vector3): NavCell
@@ -24,7 +24,7 @@ Binding symbol `og_nav_cell_at` · publish builds: kept
 
 ```ogt
 fn cellAt {
-  doc "The grid cell under a world point."
+  doc "The grid cell under a world point, counted as the grid counts its rows (NavCell)."
   param world World "The world."
   param grid Navigation "The grid."
   param point Vector3 "A world point."
@@ -32,4 +32,4 @@ fn cellAt {
 }
 ```
 
-<sub>Module `nav` line 527</sub>
+<sub>Module `nav` line 528</sub>
