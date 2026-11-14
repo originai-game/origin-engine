@@ -85,25 +85,24 @@ const TERRAIN_LAYERS_WGSL: &str = wgsl3d!("terrain_layers.wgsl");
 /// The clipmap's mesh with its displacement (after [`TERRAIN_LAYERS_WGSL`]):
 /// the lit and shadow modules' `terrain_local_vertex`.
 const TERRAIN_VERTEX_WGSL: &str = wgsl3d!("terrain_vertex.wgsl");
-/// The terrain's lit module after the frame group, the light tables and the lighting.
-pub(crate) fn terrain_lit_source(frame: &str, tables: &str, lighting: &str) -> String {
+/// What the ground takes of the shared shading: the weather, and the
+/// decals over its own bindings (terrain_lit.wgsl declares them; it has no
+/// effect group, so no screen AO).
+const SHADING: crate::Shading = crate::Shading::lit().weather().decals();
+
+/// The terrain's lit module: the frame, the shared shading, then the
+/// ground.
+pub(crate) fn terrain_lit_source() -> String {
     crate::assemble(
         &[
-            frame,
-            tables,
-            lighting,
-            crate::WEATHER_RAIN_WGSL,
-            crate::WEATHER_SURFACE_WGSL,
-            &og_render_data::lightmap::probe_wgsl(),
-            crate::AREA_WGSL,
-            crate::SURFACE_SHADE_WGSL,
+            crate::FRAME_WGSL,
+            &SHADING.text(),
             crate::wind::WIND_COMMON_WGSL,
             GRASS_COMMON_WGSL,
             TERRAIN_WGSL,
             TERRAIN_LAYERS_WGSL,
             TERRAIN_VERTEX_WGSL,
             wgsl3d!("terrain_lit.wgsl"),
-            wgsl3d!("decals.wgsl"),
         ],
         &crate::Capability::OPAQUE_SURFACE,
     )

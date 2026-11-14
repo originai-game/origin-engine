@@ -425,10 +425,6 @@ const TABLE_BYTES: u64 = MAX_TERRAIN_TILES as u64 * 4;
 pub(crate) struct TerrainPipelines<'a> {
     pub frame_layout: &'a wgpu::BindGroupLayout,
     pub shadow_layout: &'a wgpu::BindGroupLayout,
-    pub frame_wgsl: &'a str,
-    pub lighting_wgsl: &'a str,
-    /// The local lights' cluster tables (`clusters.rs`), after the frame.
-    pub light_tables_wgsl: &'a str,
     /// The lit features the renderer is made without (pipeline_features.rs):
     /// out of the lit source.
     pub off: crate::pipeline_features::Features,
@@ -521,20 +517,9 @@ mod tests;
 
 /// The system's modules for [`crate::shader_sources`]: a label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
-    add(
-        "terrain",
-        crate::terrain::terrain_lit_source(
-            crate::FRAME_WGSL,
-            &crate::clusters::wgsl(),
-            crate::LIGHTING_WGSL,
-        ),
-    );
+    add("terrain", crate::terrain::terrain_lit_source());
     add("terrain shadow", crate::terrain::terrain_shadow_source());
-    let terrain = crate::terrain::terrain_lit_source(
-        crate::FRAME_WGSL,
-        &crate::clusters::wgsl(),
-        crate::LIGHTING_WGSL,
-    );
+    let terrain = crate::terrain::terrain_lit_source();
     add(
         "terrain (layer arrays)",
         crate::terrain::terrain_array_source(&terrain),

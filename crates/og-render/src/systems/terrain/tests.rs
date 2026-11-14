@@ -29,16 +29,19 @@ fn a_diagonal_ridge_keeps_its_height_between_samples() {
 /// reads taking the layer from slope.w and altitude.w; nothing else.
 #[test]
 fn the_layer_array_variant_reads_two_arrays() {
-    let standard = terrain_lit_source("", "", "");
+    let standard = terrain_lit_source();
     let array = terrain_array_source(&standard);
     for gone in ["albedo0", "albedo3", "normal1", "normal3"] {
         assert!(standard.contains(gone));
         assert!(!array.contains(gone), "{gone}");
     }
-    // Normals, control, layer albedo and layer normals; the decal atlas
-    // remains the one 2D texture shared with the standard variant.
-    assert_eq!(array.matches("texture_2d_array<f32>;").count(), 4);
-    assert_eq!(array.matches("texture_2d<f32>;").count(), 1);
+    // The eight layer textures become the layer albedo and layer normal
+    // arrays; every other texture (the frame's, the decal atlas) is the
+    // standard variant's.
+    let count = |s: &str, ty: &str| s.matches(ty).count();
+    let (arrays, flat) = ("texture_2d_array<f32>;", "texture_2d<f32>;");
+    assert_eq!(count(&array, arrays), count(&standard, arrays) + 2);
+    assert_eq!(count(&array, flat) + 8, count(&standard, flat));
     assert!(array.contains("i32(terrain.layers[i].slope.w)"));
     assert!(array.contains("i32(terrain.layers[i].altitude.w)"));
     let tail = |s: &str| s[s.find("fn band(").unwrap()..].to_string();

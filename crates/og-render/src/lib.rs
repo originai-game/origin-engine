@@ -331,7 +331,7 @@ use media::weather;
 use mesh::skin;
 pub use og_render_data::shapes;
 use og_render_data::terrain_error;
-pub use og_render_data::{Capability, Holds};
+pub use og_render_data::{Capability, Holds, Shading};
 use particles::ribbons_gpu::ribbon_source;
 use particles::scene_colliders;
 use shader::shaders;

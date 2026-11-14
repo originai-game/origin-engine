@@ -1,8 +1,12 @@
 //! The scattered copies' modules.
 
-use crate::{Capability, clusters, particles_gpu};
+use crate::{Capability, particles_gpu};
 use og_render_data::assemble;
 use og_render_data::shader_source::*;
+
+/// What a scattered copy takes of the shared shading: the weather, the
+/// effect group (at group 3 here) with the screen AO, and the decals.
+const SHADING: crate::Shading = crate::Shading::lit().weather().effects(3).decals();
 
 /// The scattered copies' lit module with a material shader's `hooks`
 /// (vertex_offset, surface_color, surface_normal and surface_emissive run
@@ -11,25 +15,16 @@ pub(crate) fn scatter_lit_source(hooks: &str) -> String {
     assemble(
         &[
             FRAME_WGSL,
-            &clusters::wgsl(),
             particles_gpu::NOISE_WGSL,
             MATERIAL_WGSL,
             MATERIAL_MAPS_WGSL,
             MATERIAL_DISSOLVE_WGSL,
             hooks,
-            LIGHTING_WGSL,
-            crate::WEATHER_RAIN_WGSL,
-            crate::WEATHER_SURFACE_WGSL,
-            &og_render_data::lightmap::probe_wgsl(),
-            AREA_WGSL,
+            &SHADING.text(),
             INSTANCE_WGSL,
             crate::wind::WIND_COMMON_WGSL,
             crate::wind::WIND_LEAN_WGSL,
             crate::foliage::WGSL,
-            &fx_wgsl(3),
-            wgsl3d!("decals.wgsl"),
-            SCREEN_AO_WGSL,
-            SURFACE_SHADE_WGSL,
             wgsl3d!("scatter_common.wgsl"),
             wgsl3d!("scatter.wgsl"),
             wgsl3d!("impostor_common.wgsl"),
