@@ -3,12 +3,69 @@
 //! A surface that gains or loses a capability changes its row here in the
 //! same commit, so a gap between two kinds of surface is a line in a
 //! review and not an order of parts somewhere.
+//!
+//! A cell says what the surface does, not what its module contains: a
+//! capability whose code no entry point reaches is `idle`, and no module
+//! may hold one (the part is dead weight and the row would claim what the
+//! surface does not do). The two a material shader's hooks may call
+//! (`Capability::HOOKS_CALL`) are there for the hooks.
 #![cfg(not(feature = "profile2d"))]
 
+use naga::Statement as St;
 use og_render::{Capability, Holds};
+use std::collections::HashSet;
+
+/// Calls `f` with every statement of a block, nested ones too.
+fn each<'a>(block: &'a naga::Block, f: &mut dyn FnMut(&'a St)) {
+    for s in block.iter() {
+        f(s);
+        match s {
+            St::Block(b) => each(b, f),
+            St::If { accept, reject, .. } => {
+                each(accept, f);
+                each(reject, f);
+            }
+            St::Switch { cases, .. } => cases.iter().for_each(|c| each(&c.body, f)),
+            St::Loop {
+                body, continuing, ..
+            } => {
+                each(body, f);
+                each(continuing, f);
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The names of the functions `wgsl`'s entry points reach.
+fn reached(label: &str, wgsl: &str) -> HashSet<String> {
+    let module = naga::front::wgsl::parse_str(wgsl)
+        .unwrap_or_else(|e| panic!("{label}: {}", e.emit_to_string(wgsl)));
+    let mut seen = HashSet::new();
+    let mut open = Vec::new();
+    let calls = |body: &naga::Block, open: &mut Vec<naga::Handle<naga::Function>>| {
+        each(body, &mut |s| {
+            if let St::Call { function, .. } = s {
+                open.push(*function);
+            }
+        });
+    };
+    for ep in &module.entry_points {
+        calls(&ep.function.body, &mut open);
+    }
+    while let Some(f) = open.pop() {
+        if seen.insert(f) {
+            calls(&module.functions[f].body, &mut open);
+        }
+    }
+    seen.into_iter()
+        .filter_map(|f| module.functions[f].name.clone())
+        .collect()
+}
 
 /// Every module with the direct light (`brdf`), without the variants the
-/// list derives from another entry.
+/// list derives from another entry and without the unlit full shader (the
+/// lit one's module, whose lit path it never takes: its colour is its own).
 fn table() -> String {
     let mut out = format!("{:<40}", "module");
     for c in Capability::ALL {
@@ -16,13 +73,22 @@ fn table() -> String {
     }
     out.push('\n');
     for s in og_render::shader_sources() {
-        if !s.wgsl.contains("fn brdf(") || s.label.ends_with(" off)") || s.label.ends_with(" out)")
+        if !s.wgsl.contains("fn brdf(")
+            || s.label.ends_with(" off)")
+            || s.label.ends_with(" out)")
+            || s.label.ends_with(" lit=false")
         {
             continue;
         }
         out.push_str(&format!("{:<40}", s.label));
+        let reached = reached(&s.label, &s.wgsl);
         for c in Capability::ALL {
             let held = match c.held_by(&s.wgsl) {
+                Holds::Full
+                    if !Capability::HOOKS_CALL.contains(&c) && !reached.contains(c.function()) =>
+                {
+                    "idle"
+                }
                 Holds::Full => "full",
                 Holds::Stub => "stub",
                 Holds::None => "-",
@@ -48,8 +114,7 @@ wind                                     | full         | full    | full   | ful
 meshlet lit                              | full         | full    | full   | full | stub              | full      | full     | full
 meshlet lit (planar)                     | full         | full    | full   | full | full              | full      | full     | full
 stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
-custom full lit=true                     | full         | -       | full   | full | -                 | full      | -        | full
-custom full lit=false                    | full         | -       | full   | full | -                 | full      | -        | full
+custom full lit=true                     | full         | full    | full   | full | -                 | full      | -        | full
 sprite                                   | -            | -       | -      | full | -                 | -         | -        | -
 sprite hooks                             | -            | -       | -      | full | -                 | -         | -        | -
 sprite hooks (colour only)               | -            | -       | -      | full | -                 | -         | -        | -
@@ -72,6 +137,10 @@ volumetric (water)                       | full         | -       | -      | -  
 volumetric raymarch (water)              | full         | -       | -      | -    | -                 | -         | -        | -
 ";
     let table = table();
+    assert!(
+        !table.contains("idle"),
+        "a module holds a capability's code that none of its entry points reaches:\n{table}"
+    );
     assert!(
         table == expected,
         "the lit modules' capabilities moved; the table is now:\n{table}"

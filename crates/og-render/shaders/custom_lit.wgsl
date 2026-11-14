@@ -66,6 +66,9 @@ fn fs_oit_mark(in: CustomOut) {
 }
 
 fn custom_fragment(in: CustomOut) -> vec4<f32> {
+  // Before the shader's code, whose branches derivatives may not follow.
+  let dpx = dpdx(in.world);
+  let dpy = dpdy(in.world);
   let v = custom_view(in.world);
   let out = custom_surface(in, v);
   if (custom_cut(out)) { discard; }
@@ -88,6 +91,22 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   s.coat_roughness = 1.0;
   var n = normalize(out.normal);
   if (dot(n, v) < 0.0) { n = -n; }
+  // The decals over it, then the rain, snow and dust on it, as on every
+  // lit mesh (decals.wgsl, weather_surface.wgsl; pbr_fs.wgsl): they land
+  // by the mesh's own normal, and the material's weathering scales the
+  // weather.
+  var n_geo = normalize(in.normal);
+  if (dot(n_geo, v) < 0.0) { n_geo = -n_geo; }
+  var emissive = out.emissive;
+  if (EFFECTS) {
+    let decaled = surface_decals(s, n, n_geo, in.clip.xy, in.world, dpx, dpy);
+    s = decaled.s;
+    n = decaled.n;
+    emissive += decaled.emissive;
+  }
+  let weathered = weather_surface_at(s, n, n_geo, in.world, 0.5, material.uv[3].w, WEATHER_STANDS);
+  s = weathered.s;
+  n = weathered.n;
   s.coat_normal = n;
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
@@ -99,7 +118,7 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   // style: the shader's colour is its own. Blended, it lies over the
   // surface the screen's reflections were traced for.
   let at = ShadeAt(in.world, n, v, in.clip.xy, EFFECTS, !oit_pass && (mode & 4u) == 0u, false);
-  let lit = surface_shade(s, at, sun, n_dot_l * shadow, out.emissive, material.flags.z, 1.0);
+  let lit = surface_shade(s, at, sun, n_dot_l * shadow, emissive, material.flags.z, 1.0);
   if (view > 3u) { return vec4<f32>(shaded_debug(lit, s.albedo, view), alpha); }
   return vec4<f32>(apply_fog(shaded_color(lit), in.world), alpha);
 }
@@ -174,11 +193,22 @@ fn fs_prepass(in: CustomPrepassOut) -> CustomPrepassTargets {
   if (custom_cut(out)) { discard; }
   var n = normalize(out.normal);
   if (dot(n, v) < 0.0) { n = -n; }
+  // The reflectivity screen-space reflections read (pbr_prepass.wgsl): a
+  // lit shader's gloss and metalness as its lit pass shades them, wet and
+  // rippled where the weather lies; none for an unlit shader.
+  var reflectivity = 0.0;
+  if (CUSTOM_LIT) {
+    var n_geo = normalize(in.normal);
+    if (dot(n_geo, v) < 0.0) { n_geo = -n_geo; }
+    let g = weather_gloss(clamp(out.roughness, 0.04, 1.0), clamp(out.metallic, 0.0, 1.0), n, n_geo, in.world, 0.5, material.uv[3].w, WEATHER_STANDS);
+    n = g.n;
+    reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);
+  }
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var t: CustomPrepassTargets;
   t.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  t.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), 0.0, 0.0, 1.0);
+  t.depth = vec4<f32>(dot(in.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // No outline of its own (the scene's outline still lines it).
   t.outline = vec4<f32>(0.0);
   return t;

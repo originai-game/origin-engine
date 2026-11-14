@@ -189,3 +189,70 @@ fn a_mesh_moved_by_the_wind_in_its_hooks_draws_shadows_and_occludes_where_it_mov
     println!("{off} pixels more than 8 apart, RMSE {rmse:.5}");
     assert!(off < 40 && rmse < 0.002, "{off} pixels, RMSE {rmse:.5}");
 }
+
+/// Every material of `scene` drawn by a full lit shader that keeps the
+/// standard entries (`custom_lit.wgsl`).
+fn full_lit(scene: &mut RenderScene) {
+    let shader = scene.add_shader(MaterialShader {
+        name: "standard-full".into(),
+        code: String::new(),
+        params: Vec::new(),
+        mode: og_render::ShaderMode::Full { lit: true },
+    });
+    let drawn: Vec<_> = scene.objects.instances.iter().map(|i| i.material).collect();
+    for m in drawn {
+        assert!(scene.set_material_shader(m, Some(shader)));
+    }
+}
+
+/// A full lit shader's surface takes the frame's decals and the weather
+/// as the standard material's does: a scorch mark on the stage's ground
+/// and the snow lying on it move as many of its pixels through either.
+/// Its module held the decals' code and never called it, and had no
+/// weather, so both left such a surface clean and dry.
+#[test]
+#[ignore = "requires GPU"]
+fn a_full_lit_shader_takes_decals_and_weather_as_the_standard_material() {
+    fn scorched(s: &mut RenderScene) {
+        s.effects.decal_atlas = Some(fx_scenes::decal_atlas(s));
+        s.effects.decals = vec![og_render::Decal {
+            uv_rect: fx_scenes::DECAL_SCORCH,
+            ..og_render::Decal::on_surface(Vec3::ZERO, Vec3::Y, glam::Vec2::splat(4.0), 0.6, 0.3)
+        }];
+    }
+    fn snowed(s: &mut RenderScene) {
+        s.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
+            snow: 0.75,
+            snow_depth: 0.06,
+            ..Default::default()
+        });
+    }
+    type Add = fn(&mut RenderScene);
+    for (name, add) in [("decal", scorched as Add), ("snow", snowed)] {
+        let moved = |custom: bool| {
+            let draw = |with: bool| {
+                let mut scene = stage();
+                if with {
+                    add(&mut scene);
+                }
+                if custom {
+                    full_lit(&mut scene);
+                }
+                frame(&scene)
+            };
+            diff(&draw(true), &draw(false)).0
+        };
+        let (standard, custom) = (moved(false), moved(true));
+        println!(
+            "{name}: moves {standard} pixels of the standard ground, {custom} of the full shader's"
+        );
+        assert!(
+            standard > 2000,
+            "{name}: it moves {standard} pixels of the standard ground"
+        );
+        assert!(
+            custom * 10 > standard * 9 && custom * 9 < standard * 10,
+            "{name}: it moves {custom} pixels of the full shader's ground, {standard} of the standard one"
+        );
+    }
+}

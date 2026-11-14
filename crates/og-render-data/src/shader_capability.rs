@@ -133,18 +133,19 @@ impl Capability {
         }
     }
 
-    /// The function a surface calls for it, as its definition starts: a
-    /// module that defines it carries the capability.
-    fn defines(self) -> &'static str {
+    /// The function every use of it goes through: a module that defines
+    /// it carries the capability, and a surface whose entry points reach
+    /// it uses it.
+    pub fn function(self) -> &'static str {
         match self {
-            Capability::LocalLights => "fn surface_local_lights(",
-            Capability::Weather => "fn weather_surface(",
-            Capability::Decals => "fn apply_decals(",
-            Capability::Oit => "fn oit_front(",
-            Capability::PlanarReflection => "fn planar_reflection(",
-            Capability::ScreenAo => "fn screen_ao(",
-            Capability::Lightmap => "fn lightmap_texel(",
-            Capability::SharedShade => "fn surface_shade(",
+            Capability::LocalLights => "light_cookie",
+            Capability::Weather => "weather_surface_at",
+            Capability::Decals => "apply_decals",
+            Capability::Oit => "oit_weighted",
+            Capability::PlanarReflection => "planar_reflection",
+            Capability::ScreenAo => "screen_ao",
+            Capability::Lightmap => "lightmap_texel",
+            Capability::SharedShade => "surface_irradiance",
         }
     }
 
@@ -162,7 +163,7 @@ impl Capability {
 
     /// How `source` (a WGSL module) carries it.
     pub fn held_by(self, source: &str) -> Holds {
-        if !source.contains(self.defines()) {
+        if !source.contains(&format!("fn {}(", self.function())) {
             Holds::None
         } else if self.stub().is_some_and(|stub| source.contains(stub)) {
             Holds::Stub

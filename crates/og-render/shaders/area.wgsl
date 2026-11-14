@@ -346,14 +346,3 @@ fn local_lights_on(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: v
   }
   return color;
 }
-
-// Those lights as lit (particles, the 3D fluid, a custom lit shader).
-fn surface_local_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
-  return local_lights_on(frag, s, p, n, v, false);
-}
-
-// Those lights under the frame's material style (the terrain, the grass,
-// scattered copies, impostors, crowd cards).
-fn styled_local_lights(frag: vec2<f32>, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
-  return local_lights_on(frag, s, p, n, v, true);
-}
