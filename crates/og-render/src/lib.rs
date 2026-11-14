@@ -483,7 +483,7 @@ pub use weather::{
 pub use wgpu;
 
 use deferred::{AsModule, Deferred, Sampled};
-use frame::{CASCADES, Frustum};
+use frame::{CASCADES, FrameGroupParts, Frustum};
 use glam::{Mat4, Vec2, Vec3};
 use material::MaterialUniform;
 use post::FramePass;

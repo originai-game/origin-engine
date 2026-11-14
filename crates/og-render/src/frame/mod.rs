@@ -5,6 +5,8 @@
 pub(crate) mod auto_quality;
 pub(crate) mod fx;
 pub mod graph;
+mod group;
+pub(crate) use group::FrameGroupParts;
 pub(crate) mod origin;
 pub(crate) mod quality;
 pub(crate) mod timing;
