@@ -1,4 +1,11 @@
 {
+  "breaking": [
+    {
+      "member": "og.ui.screenVm",
+      "change": "A screen pushed without a prop now holds that prop's default (its <meta name=\"prop:…\"> data-default, or its type's zero value), so og.ui.screenVm answers every prop where it answered null for one the push left out, and ScreenValues<S>'s fields are all present. A {#each} over a list prop left out iterates no rows instead of failing.",
+      "fix": "Code that tested a screen value for null to learn the push left it out: give the prop a data-default the game never passes (such as -1 or \"\") and test for that, or pass the value explicitly. A prop every user must pass gets data-required, and a mount or push leaving it out is then refused with an error naming the instance and the prop."
+    }
+  ],
   "added": [
     {
       "member": "document",
