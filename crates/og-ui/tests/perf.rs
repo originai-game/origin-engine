@@ -220,6 +220,11 @@ fn perf_every_library_and_kit_screen() {
     let mut rows = Vec::new();
     for (id, text) in screens() {
         let doc = UiDocument::parse(&id, &text).unwrap_or_else(|e| panic!("{}", e.join("\n")));
+        // A component is measured where a screen mounts it; only a screen
+        // is pushed.
+        if doc.kind != og_ui::doc::DocKind::Screen {
+            continue;
+        }
         let name = doc.name.clone();
         let vm = doc
             .fixtures
