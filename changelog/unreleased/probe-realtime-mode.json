@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ReflectionProbe.mode",
+      "summary": "A probe with mode realtime is captured again every interval ticks. Every probe drew as baked whatever its mode: a realtime one was captured once and never again, so what moved in its room never showed in it. A realtime probe costs six faces per update; raise interval before adding probes."
+    }
+  ]
+}

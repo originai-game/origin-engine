@@ -311,7 +311,11 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
         "og.Volume",
         json!({ "size": { "x": 2, "y": 2, "z": 8 } }),
     );
-    insert(turned, "og.ReflectionProbe", json!({}));
+    insert(
+        turned,
+        "og.ReflectionProbe",
+        json!({ "mode": "realtime", "interval": 4 }),
+    );
     answer(og_engine_frame(engine, 1000.0 / 60.0));
     let (volumes, gi, probes) = seen.borrow().clone();
     let probe = |x: f32| {
@@ -326,6 +330,12 @@ fn a_realtime_light_volume_reaches_the_renderer_with_its_light_volume() {
         (glam::Vec3::new(4.0, 2.0, 6.0), 0.25)
     );
     assert!(probe(40.0).size.min_element() >= 1e6, "{:?}", probe(40.0));
+    // A probe is baked unless it says realtime.
+    assert_eq!(probe(1.0).mode, og_render::ProbeMode::Baked);
+    assert_eq!(
+        (probe(60.0).mode, probe(60.0).interval),
+        (og_render::ProbeMode::Realtime, 4)
+    );
     assert!(
         (probe(60.0).size - glam::Vec3::new(8.0, 2.0, 2.0))
             .abs()
