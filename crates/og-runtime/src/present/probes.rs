@@ -18,7 +18,7 @@
 //! frame, as a realtime probe does every `interval` ticks.
 
 use crate::engine::Engine;
-use crate::host::wire::{FromJson, record};
+use crate::host::wire::{FromJson, ReflectionProbeMode, record};
 use crate::present::extract::{Hierarchy, RenderState};
 use og_core::IdMap;
 use og_core::hash::StableHasher;
@@ -97,10 +97,10 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
         let mut p = ReflectionProbe::new(e, at.position, size);
         p.fade = fade;
         p.resolution = v.resolution;
-        // `mode` decodes as its variant's name, which the former hand read
-        // (`as_u64`) never matched: every probe has drawn as baked. Kept so
-        // until that is fixed on purpose (`v.mode` is the field).
-        p.mode = ProbeMode::Baked;
+        p.mode = match v.mode {
+            ReflectionProbeMode::Baked => ProbeMode::Baked,
+            ReflectionProbeMode::Realtime => ProbeMode::Realtime,
+        };
         p.interval = v.interval.max(1);
         p.intensity = v.intensity.max(0.0);
         probes.push(p);
