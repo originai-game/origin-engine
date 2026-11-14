@@ -137,7 +137,7 @@ pub fn rive() -> Result<RenderScene, String> {
             for d in p.draw(*rect, 1.0) {
                 if let og_ui::rive::Drawn::Shape(mut s) = d {
                     s.clip = Some(clip);
-                    o.ui.shapes.push(s);
+                    o.ui.shapes.push(*s);
                 }
             }
         }

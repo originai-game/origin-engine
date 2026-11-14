@@ -215,7 +215,7 @@ fn drawn_shapes(
     p.draw(rect, opacity)
         .into_iter()
         .filter_map(|d| match d {
-            og_ui::rive::Drawn::Shape(s) => Some(s),
+            og_ui::rive::Drawn::Shape(s) => Some(*s),
             _ => None,
         })
         .collect()

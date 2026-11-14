@@ -936,10 +936,7 @@ impl ElementDraw {
 fn rive_cmd(d: crate::rive::Drawn, clip: Rect) -> DrawCmd {
     use crate::rive::Drawn;
     match d {
-        Drawn::Shape(shape) => DrawCmd::Shape {
-            shape: Box::new(shape),
-            clip,
-        },
+        Drawn::Shape(shape) => DrawCmd::Shape { shape, clip },
         Drawn::Clip(path) => {
             let (lo, hi) = path.bounds().unwrap_or_default();
             let c = (lo + hi) * 0.5;

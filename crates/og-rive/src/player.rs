@@ -15,7 +15,9 @@ use std::sync::Arc;
 /// What a playing artboard draws, bottom to top, in screen space.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Drawn {
-    Shape(UiShape),
+    /// A shape, boxed: it is most of an artboard's draws and over twice a
+    /// text piece's size, and og-ui's draw list keeps it boxed.
+    Shape(Box<UiShape>),
     /// A piece of a text in one font and paint.
     Text(TextDraw),
     /// Cuts what follows, until its [`Drawn::Unclip`], to this outline.
@@ -315,7 +317,7 @@ impl Player {
                 .close();
             for &p in paints {
                 for s in paint_path(a, &pose, &frame, p, screen, &Affine::IDENTITY, alpha[0]) {
-                    emit(Some(Drawn::Shape(s)), None);
+                    emit(Some(Drawn::Shape(Box::new(s))), None);
                 }
             }
         }
@@ -364,7 +366,7 @@ impl Player {
                             s.blend = *blend;
                             let (lo, hi) = (s.center - s.half, s.center + s.half);
                             bounds = Some(bounds.map_or((lo, hi), |(a, b)| (a.min(lo), b.max(hi))));
-                            emit(Some(Drawn::Shape(s)), None);
+                            emit(Some(Drawn::Shape(Box::new(s))), None);
                         }
                     }
                     if let Some((lo, hi)) = bounds {
@@ -403,7 +405,7 @@ impl Player {
                     let (x, y) = m.apply(lo.x + img.size.x / 2.0, lo.y + img.size.y / 2.0);
                     if let Some(texture) = img.texture {
                         emit(
-                            Some(Drawn::Shape(UiShape {
+                            Some(Drawn::Shape(Box::new(UiShape {
                                 geometry: UiGeometry::Rect {
                                     radii: [0.0; 4],
                                     corner: og_draw::UiCorner::Round,
@@ -428,7 +430,7 @@ impl Player {
                                 blend: UiBlend::Normal,
                                 layer: 0,
                                 clip: None,
-                            })),
+                            }))),
                             None,
                         );
                     }
