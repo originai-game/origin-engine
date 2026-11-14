@@ -35,7 +35,7 @@ module terrain {
 | [`og.TerrainScatter`](terrain/record-TerrainScatter.md) | component |  | Scatters copies of a mesh (grass, flowers, stones) over a loaded terrain near the camera, where one of its layers shows: on a jittered grid fixed to the terrain, each cell growing one with the probab… |
 | [`og.Grass`](terrain/record-Grass.md) | component |  | A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the… |
 | [`og.GrassType`](terrain/record-GrassType.md) | component |  | Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is… |
-| [`og.GrassPusher`](terrain/record-GrassPusher.md) | component |  | Presses og.Grass blades and og.TerrainScatter copies where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. |
+| [`og.GrassPusher`](terrain/record-GrassPusher.md) | component |  | Presses what covers the ground where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. |
 | [`TerrainInfo`](terrain/type-TerrainInfo.md) | struct |  | A loaded terrain. |
 | [`TerrainSampleDesc`](terrain/type-TerrainSampleDesc.md) | desc struct |  | Where og.terrain.sample looks. |
 | [`TerrainSample`](terrain/type-TerrainSample.md) | struct |  | The terrain under a point. |

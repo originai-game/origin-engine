@@ -98,6 +98,7 @@ pub(crate) fn terrain_lit_source() -> String {
             crate::FRAME_WGSL,
             &SHADING.text(),
             crate::wind::WIND_COMMON_WGSL,
+            crate::trample::READ_WGSL,
             GRASS_COMMON_WGSL,
             TERRAIN_WGSL,
             TERRAIN_LAYERS_WGSL,
