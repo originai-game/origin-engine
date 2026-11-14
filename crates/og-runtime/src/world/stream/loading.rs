@@ -299,8 +299,9 @@ fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
     out
 }
 
-/// The streaming reads, in order: the sound chunks a playhead needs
-/// soonest first, then the loading groups' packs by priority and name; at
+/// The streaming reads, in order: the sound and video chunks a playhead or
+/// player needs soonest first, then the loading groups' packs by priority
+/// and name; at
 /// most [`MAX_FETCHES`] in flight (a read the host answers `Pending` holds
 /// its slot until it lands). A chunk no playhead wants any more is still
 /// asked after until it lands (then dropped), so its slot comes back; a
@@ -308,22 +309,26 @@ fn wanted_chunks(eng: &Engine) -> Vec<Wanted> {
 /// when it lands).
 pub(crate) fn fetch(eng: &Engine) {
     let mut wants = wanted_chunks(eng);
-    og_core::sort::sort_by(&mut wants, |a, b| match (&a.need, &b.need) {
-        (
-            Need::Chunk {
-                id: ia,
-                n: na,
-                seconds: sa,
-                ..
-            },
-            Need::Chunk {
-                id: ib,
-                n: nb,
-                seconds: sb,
-                ..
-            },
-        ) => sa.total_cmp(sb).then(ia.cmp(ib)).then(na.cmp(nb)),
-        _ => std::cmp::Ordering::Equal,
+    wants.extend(
+        crate::bind::video::wanted_chunks(eng)
+            .into_iter()
+            .map(|w| Wanted {
+                path: w.path,
+                need: Need::Video {
+                    video: w.video,
+                    stream: w.stream,
+                    n: w.n,
+                    seconds: w.seconds,
+                },
+            }),
+    );
+    // The soonest needed first; a tie by file, so the order is the same
+    // on every run.
+    og_core::sort::sort_by(&mut wants, |a, b| {
+        let (sa, sb) = (a.need.seconds(), b.need.seconds());
+        sa.unwrap_or(f64::INFINITY)
+            .total_cmp(&sb.unwrap_or(f64::INFINITY))
+            .then(a.path.cmp(&b.path))
     });
     {
         let a = eng.assets.borrow();
@@ -443,6 +448,7 @@ fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
             }
         }
         Need::Mips { id, handle } => super::mips::deliver(eng, id, *handle, bytes),
+        Need::Video { video, n, .. } => crate::bind::video::deliver_chunk(eng, *video, *n, bytes),
         Need::Pack { group, .. } => {
             let tick = tick_of(eng);
             {

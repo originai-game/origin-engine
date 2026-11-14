@@ -21,6 +21,7 @@ Token `og.VideoPlayer`, registered under the schema name `og.VideoPlayer`; its v
 | `time` | `number` | `0` | ≥ 0 | `s` | — | Seconds into the video; written every tick, set it to seek. Double precision, as the sound's playhead: summed in f32, an hour at 60 Hz would fall 2.8 s behind its sound. |
 | `speed` | `number` | `1` | 0 … 4 | — | tunable | The playback rate: 1 as cooked, 0.5 half speed (the sound's pitch follows). |
 | `loop` | `boolean` | `false` | — | — | — | Start again at 0 past the end; otherwise hold the last frame and set finished. |
+| `wait` | `boolean` | `false` | — | — | — | A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game. See `audio §8`. |
 | `frame` | `number` | `0` | — | — | read only | Written: the frame shown, floor(time * fps). |
 | `finished` | `boolean` | `false` | — | — | read only | Written: a player without loop reached the end. |
 | `texture` | `Texture` | `0` | — | — | read only | Written: this player's texture (VideoInfo.texture for the video's first player, a texture of its own for each further one), for a material, sprite or UI image set up from the player. It keeps it while it lives. |
@@ -45,6 +46,9 @@ component VideoPlayer {
     tunable true
   }
   field loop bool "Start again at 0 past the end; otherwise hold the last frame and set finished."
+  field wait bool "A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game." {
+    guide "audio §8"
+  }
   field frame u32 "Written: the frame shown, floor(time * fps)." {
     readonly true
   }

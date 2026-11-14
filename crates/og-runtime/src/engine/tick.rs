@@ -84,7 +84,11 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
     if eng.stepping.get() {
         return refuse("frame was called from inside a system");
     }
-    let paused = eng.probe.borrow().paused();
+    // A playing video player with `wait` whose frame the last frame could
+    // not show holds the clock as a pause does: no tick runs and no time is
+    // owed, so the world (and its sound, rendered up to its tick) waits for
+    // the footage instead of running ahead of it.
+    let paused = eng.probe.borrow().paused() || eng.render.borrow().video_stalled;
     let (due, before, tick_ms) = {
         let mut st = eng.state.borrow_mut();
         let tick_ms = 1000.0 / f64::from(st.rate);

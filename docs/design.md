@@ -675,7 +675,9 @@ tick, exact seeking by snapshot, headless runs and the offline mixer.
 - **Footage.** A `type video` asset cooks to frames in a texture array or, with
   `stream true`, an AV1 stream decoded by rav1d natively and WebCodecs (or
   rav1d in its own Worker) on the web; a stream is never in the startup
-  bundle. The cook adds HEVC (and on request H.264) renditions of the same
+  bundle. It is cooked as an index and chunks from a key frame on, fetched
+  through the streaming queue ahead of the players that need them and let
+  go after, never at load. The cook adds HEVC (and on request H.264) renditions of the same
   frames and key frames, which a browser whose WebCodecs decodes no AV1
   plays instead (Safari without AV1 hardware); executors decode the AV1,
   so captures do not depend on them. `og.VideoPlayer.time` is world state (f64) advanced by the tick,
@@ -683,7 +685,8 @@ tick, exact seeking by snapshot, headless runs and the offline mixer.
   the one clock; the time scale and hit stop leave footage alone. Decoding
   is presentation: an executor waits for each player's exact frame before
   drawing, so captures are deterministic; a browser shows the newest frame
-  decoded.
+  decoded, or, for a player with `wait`, holds the clock until it is (the
+  world ticks later; nothing decoded reaches it).
 - `og render` and its capture members are development members, absent from
   `publish`.
 

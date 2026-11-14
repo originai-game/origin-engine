@@ -30143,6 +30143,11 @@ export interface VideoPlayer {
   /** Start again at 0 past the end; otherwise hold the last frame and set finished. */
   loop: boolean;
   /**
+   * A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game.
+   * See `audio §8`.
+   */
+  wait: boolean;
+  /**
    * Written: the frame shown, floor(time * fps).
    *
    * @readonly written by the engine
@@ -34566,7 +34571,7 @@ export declare namespace og {
      */
     function tilemap(world: World, path: string): Result<TilemapInfo>;
     /**
-     * Load cooked footage (an `.ogt` of `type video`), which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. Load it in GameDesc.start. Loading the same path again answers the same handles.
+     * Load cooked footage (an `.ogt` of `type video`), which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here (loading §9). Loading the same path again answers the same handles.
      * See `loading §9`.
      *
      * @param world The world whose renderer and audio own it.
@@ -37204,7 +37209,7 @@ export declare namespace og {
    * Plays a loaded video: its texture shows its current frame (frame n is the source at n / fps seconds; a stream's once decoded), and when the entity has an og.AudioSource the og.video system sets its sound, playing, pitch, loop and loop region each tick so the sound plays in step; a seek or a restart starts the sound again at the new time on the next tick. Each player has a texture of its own (written to `texture`): the first takes VideoInfo.texture, each further one its own over the same decoded frames.
    * See `audio §8`.
    */
-  const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f64">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
+  const VideoPlayer: ComponentType<{ readonly video: FieldSpec<"Video">; readonly playing: FieldSpec<"bool">; readonly time: FieldSpec<"f64">; readonly speed: FieldSpec<"f32">; readonly loop: FieldSpec<"bool">; readonly wait: FieldSpec<"bool">; readonly frame: FieldSpec<"u32">; readonly finished: FieldSpec<"bool">; readonly texture: FieldSpec<"Texture"> }, VideoPlayer>;
   /**
    * Footage in a game (docs/design.md §2.9): a `type video` asset cooked by ffmpeg, loaded with og.load.video and played by og.VideoPlayer. A clip (the default: at most 256 frames) is cooked into a texture array; a stream (`stream true`: any length) is cooked to AV1 and decoded as it plays. The frame is a Texture; the sound plays on the entity's og.AudioSource in step with it.
    * Playback is simulation, decoding is presentation: og.video advances VideoPlayer.time each tick, so a player's frame on a tick is the same on both hosts and after a restore; nothing the decoder has finished reaches the world.

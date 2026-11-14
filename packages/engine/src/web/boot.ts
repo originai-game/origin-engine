@@ -186,8 +186,9 @@ export async function installVideo(glue: WebExtras, av1: string | undefined): Pr
   const choice = await chooseDecoder();
   const streams = new VideoStreams(choice, av1 ?? FALLBACK_URL);
   glue.og_web_install_video(
-    (key, width, height, codec, config, table, data) => streams.stream(key, width, height, 0, table, data, codec, config),
+    (key, width, height, codec, config, table, chunkFrames) => streams.stream(key, width, height, 0, table, chunkFrames, codec, config),
     (stream, player, frame, looped) => streams.want(player, stream, frame, looped),
+    (stream, n, data) => streams.chunk(stream, n, data),
     choice.name,
     choice.hardware,
     choice.maxWidth,
@@ -216,8 +217,9 @@ export interface Fetched {
  * group's outputs are not fetched: the engine reads its pack
  * (`cooked/stream/<name>.ogb`) through the fetcher when the group loads;
  * nor are the chunks of a sound cooked in chunks, which the engine reads
- * through the fetcher ahead of the playheads, nor a streamed video's units
- * (og.VideoStream), which og.load.video asks the fetcher for, nor a
+ * through the fetcher ahead of the playheads, nor a streamed video's index
+ * (og.VideoStream) and chunks (og.VideoChunk), which its players ask the
+ * fetcher for ahead of their playheads, nor a
  * font pack's faces, which the locale's chain asks the fetcher for, nor a
  * streamed texture's whole chain (`<id>#mips`, `texture { stream true }`):
  * the bundle carries its mip tail as `<id>`, and the engine reads `#mips`
@@ -248,7 +250,7 @@ export async function preloadBundle(
   // them, a streamed texture's whole chain (`#mips`) when it is big on screen.
   // A font pack's faces (`<id>.face.ogb`, docs/ui.md §3.4) when the
   // locale's chain or a frame's text first needs them.
-  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && !o.id.endsWith("#mips") && !o.file.endsWith(".face.ogb"));
+  const listed = all.filter((o) => o.group === undefined && o.type !== "og.SoundChunk" && o.type !== "og.VideoStream" && o.type !== "og.VideoChunk" && !o.id.endsWith("#mips") && !o.file.endsWith(".face.ogb"));
   const files = [...new Set(listed.map((o) => o.file))];
   let fetched = 0;
   let failed = 0;

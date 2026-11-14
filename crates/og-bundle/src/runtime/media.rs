@@ -367,9 +367,11 @@ pub fn sound_chunk_of(bytes: &[u8], path: &str, stamp: u64) -> Result<(u32, Vec<
     Ok((meta.chunk, blob.raw("qoa")?.to_vec()))
 }
 
-/// A video stream blob (`<id>#stream`) read from its file's bytes without a
-/// bundle (they land after `og.load.video`, fetched on the web), its type
-/// and cook `stamp` checked.
+/// A video stream's index (`<id>#stream`) read from its file's bytes
+/// without a bundle (they land after a player first wants a frame, fetched
+/// on the web), its type and cook `stamp` checked: its shape, its codec's
+/// configuration and each frame's place in its chunk. Every chunk starts on
+/// a key frame.
 pub fn video_stream_of(
     bytes: &[u8],
     path: &str,
@@ -384,23 +386,20 @@ pub fn video_stream_of(
     };
     let blob = Blob::open(aligned.as_slice(), path, &expect)?;
     let meta = one::<format::VideoStreamMeta>(&blob)?;
-    let rows = table::<format::VideoUnitRow>(&blob, "units")?;
-    let data = blob.raw("data")?;
-    if rows.len() != meta.frames as usize || rows.is_empty() || rows[0].key == 0 {
+    let units = table::<format::VideoUnitRow>(&blob, "units")?.to_vec();
+    let chunked = meta.chunk_frames > 0
+        && meta.chunks == meta.frames.div_ceil(meta.chunk_frames)
+        && (0..meta.chunks).all(|n| {
+            units
+                .get((n * meta.chunk_frames) as usize)
+                .is_some_and(|u| u.key != 0)
+        });
+    if units.len() != meta.frames as usize || units.is_empty() || !chunked {
         return Err(invalid(
             &blob,
-            "a stream's units disagree with its meta row, or it starts on no key frame",
+            "a stream's units disagree with its meta row, or a chunk starts on no key frame",
         ));
     }
-    let units = rows
-        .iter()
-        .map(|r| {
-            let end = r.offset as usize + r.size as usize;
-            data.get(r.offset as usize..end)
-                .map(|d| (r.key != 0, d.to_vec()))
-                .ok_or_else(|| invalid(&blob, "a unit past the stream's data"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
     Ok(CookedVideoStream {
         id: asset_id(id).to_string(),
         meta,
@@ -409,14 +408,69 @@ pub fn video_stream_of(
     })
 }
 
-/// A cooked video stream ([`Bundle::video_stream`]): its shape, its codec's
-/// configuration and each frame's unit (whether it is a key frame, its bytes).
+/// A cooked video stream's index ([`Bundle::video_stream`]): its shape,
+/// its codec's configuration and each frame's unit (its place in its
+/// chunk, whether it is a key frame).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CookedVideoStream {
     pub id: String,
     pub meta: crate::format::VideoStreamMeta,
     pub config: Vec<u8>,
-    pub units: Vec<(bool, Vec<u8>)>,
+    pub units: Vec<crate::format::VideoUnitRow>,
+}
+
+impl CookedVideoStream {
+    /// The units of frames `first .. first + frames` of chunk `data`, each
+    /// with whether it is a key frame; refused past the chunk's bytes.
+    pub fn split<'a>(&self, chunk: &'a CookedVideoChunk) -> Result<Vec<(bool, &'a [u8])>, String> {
+        let rows = self
+            .units
+            .get(chunk.first as usize..(chunk.first + chunk.frames) as usize)
+            .ok_or_else(|| format!("{}: chunk {} is past its frames", self.id, chunk.chunk))?;
+        rows.iter()
+            .map(|r| {
+                chunk
+                    .data
+                    .get(r.offset as usize..r.offset as usize + r.size as usize)
+                    .map(|d| (r.key != 0, d))
+                    .ok_or_else(|| format!("{}: a unit past chunk {}'s data", self.id, chunk.chunk))
+            })
+            .collect()
+    }
+}
+
+/// A video chunk blob (`<stream id>.<n>`) read from its file's bytes
+/// without a bundle, its type and cook `stamp` checked.
+pub fn video_chunk_of(bytes: &[u8], path: &str, stamp: u64) -> Result<CookedVideoChunk, LoadError> {
+    let aligned = og_blob::AlignedBytes::from_slice(bytes);
+    let expect = Expect {
+        type_hash: format::VideoChunk::type_hash(),
+        schema_version: format::VideoChunk::schema_version(),
+        stamp: Some(stamp),
+    };
+    let blob = Blob::open(aligned.as_slice(), path, &expect)?;
+    let meta = one::<format::VideoChunkMeta>(&blob)?;
+    Ok(CookedVideoChunk {
+        chunk: meta.chunk,
+        first: meta.first,
+        frames: meta.frames,
+        data: blob.raw("data")?.to_vec(),
+    })
+}
+
+/// A cooked video chunk: frames `first .. first + frames` of its stream.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CookedVideoChunk {
+    pub chunk: u32,
+    pub first: u32,
+    pub frames: u32,
+    pub data: Vec<u8>,
+}
+
+/// The id of chunk `n` of a video stream (`clips/intro.ogt#stream.3`, the
+/// file `clips/intro.ogt.stream.3.ogb`).
+pub fn video_chunk_id(stream: &str, n: u32) -> String {
+    format!("{stream}.{n}")
 }
 
 /// A cooked texture array: its shape and its layers' texture ids, in

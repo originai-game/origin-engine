@@ -196,6 +196,18 @@ og.AudioSource in step with the picture.
   exactly its tick's frame; a game on the web keeps the last decoded frame
   until then, and nothing the decoder has or has not finished reaches the
   world.
+- A stream is fetched in chunks (`chunk`, 6 s by default, each from a key
+  frame), never at og.load.video: a player fetches the chunk it is in, and
+  while it plays the next ones up to 4 s ahead of it; a chunk no player is
+  in or near is let go. A paused player fetches and decodes only its own
+  chunk, so a player paused at 0 has the first frame ready before it
+  plays: the way to make a cut to the next clip seamless. dump_stream's
+  `videos` lists each stream's chunks and those held now.
+- With `wait` set, a playing player whose frame is not decoded yet (its
+  chunk still downloading) holds the engine's clock on the web, as a pause
+  does: the world, and its sound, wait for the picture instead of running
+  ahead of it. Set it on footage the game is built around (an interactive
+  film); leave it off for a screen in the world, and in a lockstep game.
 
 | Decoder (og.video.capabilities) | Real-time size at 30 fps |
 |---|---|

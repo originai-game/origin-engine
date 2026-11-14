@@ -20,7 +20,8 @@
 //! | texture (`og.Texture`; a PNG, JPEG, KTX2, WebP, TGA, PSD or DDS source, a glTF's image, a texture array's layer) | [`TextureMeta`] | `ktx2` (a KTX2 file) |
 //! | texture array (`og.TextureArray`, an `.ogt` of `type texture-array`) | [`TextureArrayMeta`] | `layers` [`ArrayLayerRow`] (each layer's `og.Texture` id, `<id>#layer<n>`), `strings` |
 //! | video (`og.Video`, an `.ogt` of `type video` cooked by ffmpeg) | [`VideoMeta`] | none: a clip's frames are the texture array `<id>#frames`, a stream's the `og.VideoStream` `<id>#stream` with its poster `<id>#poster`; its sound `<id>#audio` |
-//! | video stream (`og.VideoStream`, `<id>#stream` of a streamed video, fetched when it loads; its renditions `<id>#stream720`, `<id>#streamhevc` and `<id>#streamh264` the same) | [`VideoStreamMeta`] | `config` (AV1's sequence header OBU, H.264's `avcC` or HEVC's `hvcC` record), `units` [`VideoUnitRow`], `data` (the AV1 temporal units, or the H.264 or HEVC samples as MP4 holds them) |
+//! | video stream (`og.VideoStream`, `<id>#stream` of a streamed video: its index, fetched when a player first wants a frame; its renditions `<id>#stream720`, `<id>#streamhevc` and `<id>#streamh264` the same) | [`VideoStreamMeta`] | `config` (AV1's sequence header OBU, H.264's `avcC` or HEVC's `hvcC` record), `units` [`VideoUnitRow`] (each frame's place in its chunk) |
+//! | video chunk (`og.VideoChunk`, `<stream id>.<n>`: a stream's frames from key frame `n · chunk_frames` on, fetched ahead of its players) | [`VideoChunkMeta`] | `data` (the AV1 temporal units, or the H.264 or HEVC samples as MP4 holds them) |
 //! | sound (`og.Sound`; a `.wav`, `.mp3`, `.ogg` (Vorbis), `.flac` or `.opus`, or a procedural preset: an `.ogt` of `type sfx` synthesised by the cook) | [`SoundMeta`] | `qoa` (`codec` QOA: a QOA file; of a sound cooked in chunks, the header and the first chunk's frames) or `opus` (`codec` Opus: an Opus sound, `crate::opus`) |
 //! | sound chunk (`og.SoundChunk`, `<id>#chunk<n>` of a sound cooked in chunks) | [`SoundChunkMeta`] | `qoa` (the chunk's QOA frames) |
 //! | font (`og.Font`) | [`FontMeta`] | `glyphs` [`GlyphRow`], `kerning` [`KernRow`] (sorted by left, right), `atlas.<n>` (KTX2 RGBA8, zlib), `ttf` (the font file, when shaped or `runtime`) |
@@ -109,6 +110,7 @@ pub fn expected_header(name: &str) -> Option<(u64, u32)> {
         TextureArray,
         Video,
         VideoStream,
+        VideoChunk,
         Texture,
         Sound,
         SoundChunk,
@@ -724,11 +726,14 @@ impl BlobKind for Video {
 
 row!(
     /// The root of a video stream blob (`<id>#stream` of a streamed
-    /// `type video`, or one of its renditions): the `config` section is the
-    /// codec's configuration (AV1: the sequence header OBU; H.264 and HEVC:
-    /// the `avcC` or `hvcC` record), `units` one [`VideoUnitRow`] per
-    /// frame (frame n is unit n, shown at n / fps), `data` the units' bytes.
-    VideoStreamMeta, "og.VideoStream", 1 {
+    /// `type video`, or one of its renditions): its index. The `config`
+    /// section is the codec's configuration (AV1: the sequence header OBU;
+    /// H.264 and HEVC: the `avcC` or `hvcC` record), `units` one
+    /// [`VideoUnitRow`] per frame (frame n is unit n, shown at n / fps). The
+    /// units' bytes are in its chunks (`<stream id>.<n>`, [`VideoChunkMeta`]),
+    /// each `chunk_frames` frames from a key frame on, so a player fetches
+    /// only the part it plays.
+    VideoStreamMeta, "og.VideoStream", 2 {
         /// [`video_codec`].
         codec: u32,
         width: u32,
@@ -737,12 +742,18 @@ row!(
         fps: u32,
         /// Frames from one key frame to the next (the longest a seek decodes).
         key_interval: u32,
+        /// Frames in each chunk but the last (a multiple of the key frame
+        /// interval: chunk n starts on the key frame `n · chunk_frames`).
+        chunk_frames: u32,
+        /// Its chunks: `ceil(frames / chunk_frames)`.
+        chunks: u32,
     }
 );
 
 row!(
-    /// One frame's unit in a stream's `data`.
-    VideoUnitRow, "og.VideoUnit", 1 {
+    /// One frame's unit: where it is in its chunk's `data`.
+    VideoUnitRow, "og.VideoUnit", 2 {
+        /// From the start of its chunk's `data`.
         offset: u32,
         size: u32,
         /// 1: a key frame, where decoding may start.
@@ -756,6 +767,28 @@ impl BlobKind for VideoStream {
     const NAME: &'static str = "og.VideoStream";
     fn schemas() -> Vec<Schema> {
         vec![VideoStreamMeta::schema(), VideoUnitRow::schema()]
+    }
+}
+
+row!(
+    /// The root of a video chunk blob (`<stream id>.<n>`): its `data`
+    /// section is the units of frames `first .. first + frames`, as the
+    /// stream's [`VideoUnitRow`]s place them.
+    VideoChunkMeta, "og.VideoChunk", 1 {
+        /// Its index in the stream.
+        chunk: u32,
+        /// Its first frame (a key frame) and how many it holds.
+        first: u32,
+        frames: u32,
+    }
+);
+
+/// A chunk of a video stream.
+pub struct VideoChunk;
+impl BlobKind for VideoChunk {
+    const NAME: &'static str = "og.VideoChunk";
+    fn schemas() -> Vec<Schema> {
+        vec![VideoChunkMeta::schema()]
     }
 }
 

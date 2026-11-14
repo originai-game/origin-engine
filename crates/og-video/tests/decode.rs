@@ -153,8 +153,19 @@ fn rav1d_decodes_the_cooks_av1_and_a_seek_matches_decoding_through() {
         assert!(other > e, "frame {n} nearer frame {}", (n + 7) % 90);
     }
 
-    // Through the decode thread: a seek to 70 (key 60) and back to 10 (key 0).
-    let player = Player::new(Arc::new(Units::new(file.units)), 2).unwrap();
+    // Through the decode thread, in chunks of 30 frames of which the last
+    // lands only once a player wants it: a seek to 70 (key 60) waits for
+    // it and goes on when it lands, then back to 10 (key 0).
+    let units = Arc::new(Units::new(file.units.iter().map(|u| u.key).collect(), 30));
+    let chunk = |n: usize| {
+        file.units[n * 30..(n + 1) * 30]
+            .iter()
+            .map(|u| u.data.clone())
+            .collect()
+    };
+    units.put(0, chunk(0));
+    units.put(1, chunk(1));
+    let player = Player::new(units.clone(), 2).unwrap();
     for (frame, looped) in [
         (0, false),
         (70, false),
@@ -164,6 +175,10 @@ fn rav1d_decodes_the_cooks_av1_and_a_seek_matches_decoding_through() {
         (0, true),
     ] {
         player.want(frame, looped);
+        if !units.resident(2) && frame >= 60 {
+            units.put(2, chunk(2));
+            player.wake();
+        }
         let p = player.take(frame, true).unwrap().unwrap();
         assert!(
             *p.rgba == ours[frame as usize],

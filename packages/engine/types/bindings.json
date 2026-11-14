@@ -7684,6 +7684,11 @@
           "default": false
         },
         {
+          "name": "wait",
+          "column": "bool",
+          "default": false
+        },
+        {
           "name": "frame",
           "column": "u32",
           "default": 0,

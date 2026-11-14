@@ -26,7 +26,7 @@ pub(crate) const VIDEO_SYSTEM: &str = "og.video";
 pub(crate) const PLAYER: &str = "og.VideoPlayer";
 /// og.VideoPlayer's schema version (the full module's: the engine's type
 /// table is the same in both builds).
-pub(crate) const PLAYER_VERSION: u32 = 2;
+pub(crate) const PLAYER_VERSION: u32 = 3;
 const AUDIO: &str = "og.AudioSource";
 pub(crate) const MEDIA_INTENT: &str = "og.MediaIntent";
 
@@ -77,6 +77,27 @@ pub(crate) fn install(
 }
 
 pub(crate) fn extract(_world: &World, _rs: &mut RenderState) {}
+
+/// `dump_stream`'s `videos`: none here.
+pub(crate) fn stream_json(_eng: &crate::engine::Engine) -> serde_json::Value {
+    serde_json::json!([])
+}
+
+/// No stream wants a chunk here.
+pub(crate) fn wanted_chunks(
+    _eng: &crate::engine::Engine,
+) -> Vec<crate::world::stream::VideoChunkWant> {
+    Vec::new()
+}
+
+/// Never reached: nothing here wants a chunk.
+pub(crate) fn deliver_chunk(
+    _eng: &crate::engine::Engine,
+    _video: usize,
+    _n: u32,
+    _bytes: Result<Vec<u8>, String>,
+) {
+}
 
 /// `og.load.video`.
 pub fn og_load_video(_world: u32, _path: String) -> Result<crate::host::wire::VideoInfo, String> {

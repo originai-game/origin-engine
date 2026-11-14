@@ -26,16 +26,21 @@
 //!
 //! - `<id>`: the `og.Video` blob, `streamed` 1, `codec` AV1;
 //! - `<id>#stream`: an `og.VideoStream` ([`format::VideoStreamMeta`]): the
-//!   source encoded by ffmpeg to AV1 (8-bit 4:2:0, BT.709 limited range,
-//!   one temporal unit per frame, a key frame every `keyframe` seconds),
-//!   read from the IVF ffmpeg writes ([`og_video::ivf`]) into the engine's
-//!   own blob, so no container is read at run time; the runtime fetches it
-//!   when `og.load.video` runs, not with the startup bundle;
-//! - `<id>#stream720`, beside a stream larger than 1280x720 (720x1280 portrait): the same at
+//!   index of the source encoded by ffmpeg to AV1 (8-bit 4:2:0, BT.709
+//!   limited range, one temporal unit per frame, a key frame every
+//!   `keyframe` seconds), read from the IVF ffmpeg writes
+//!   ([`og_video::ivf`]) into the engine's own blobs, so no container is
+//!   read at run time: each frame's place in its chunk and the codec's
+//!   configuration. Its units are in its chunks `<id>#stream.<n>`
+//!   (`og.VideoChunk`, [`format::VideoChunkMeta`]), each `chunk` seconds
+//!   from a key frame on. Neither is in the startup bundle: the runtime
+//!   fetches the index when a player first wants a frame, and each chunk
+//!   ahead of the players that need it;
+//! - `<id>#stream720`, beside a stream larger than 1280x720 (720x1280 portrait), with its chunks: the same at
 //!   that size or less (its aspect kept), which the web's software
 //!   fallback decoder plays instead (it holds 30 fps at 720p, not 1080p);
-//! - `<id>#streamhevc` and `<id>#streamh264`, as `renditions` names them
-//!   (HEVC by default): the same frames in HEVC (ffmpeg's `libx265`) or
+//! - `<id>#streamhevc` and `<id>#streamh264` with their chunks, as
+//!   `renditions` names them (HEVC by default): the same frames and chunks in HEVC (ffmpeg's `libx265`) or
 //!   H.264 (`libx264`), with no B-frames, read from the MP4 ffmpeg writes
 //!   ([`og_video::mp4`]), for a browser whose WebCodecs decodes no AV1 but
 //!   decodes these (Safari on devices without AV1 hardware). Only the web
@@ -50,6 +55,7 @@
 //! maxSeconds 600             # default: the whole source
 //! size 1280 720              # default the source's, at most 1920 wide
 //! keyframe 1                 # seconds between key frames (default 1): a seek decodes at most this much
+//! chunk 6                    # seconds per chunk (default 6, whole key frame intervals): what a player fetches at a time
 //! crf 32                     # AV1 quality, 0 (best) to 63 (default 32)
 //! crf720 38                  # the 720p rendition's (default crf + 6, at most 63)
 //! renditions hevc h264       # beside the AV1: hevc, h264, both, or none (default hevc)
@@ -113,6 +119,9 @@ pub struct VideoDecl {
     pub stream: bool,
     /// A stream's seconds from one key frame to the next.
     pub keyframe: f64,
+    /// A stream's seconds per chunk (`chunk`, rounded to whole key frame
+    /// intervals): what a player fetches at a time.
+    pub chunk: f64,
     /// A stream's AV1 constant rate factor, 0..=63.
     pub crf: u32,
     /// Its 720p rendition's (`crf720`); `None`: [`RENDITION_CRF`] more than
@@ -240,6 +249,9 @@ impl VideoPlan {
                 self.decl.rendition_crf()
             ));
         }
+        if self.decl.stream {
+            d.push_str(&format!(" chunk {}", self.chunk_frames()));
+        }
         d
     }
 
@@ -247,7 +259,25 @@ impl VideoPlan {
     pub fn key_interval(&self) -> u32 {
         ((self.decl.keyframe * f64::from(self.decl.fps)).round() as u32).max(1)
     }
+
+    /// Frames in each of a stream's chunks but the last: whole key
+    /// intervals, about `chunk` seconds of footage.
+    pub fn chunk_frames(&self) -> u32 {
+        let k = self.key_interval();
+        let per = (self.decl.chunk * f64::from(self.decl.fps) / f64::from(k)).round() as u32;
+        k * per.max(1)
+    }
+
+    /// A stream's chunks (`<stream id>.<n>`).
+    pub fn chunks(&self) -> u32 {
+        self.frames.div_ceil(self.chunk_frames())
+    }
 }
+
+/// Seconds of footage in a stream's chunk by default (`chunk`): what a
+/// player fetches at a time, ahead of where it plays (og-video's
+/// `stream::LEAD`).
+pub const CHUNK_SECONDS: f64 = 6.0;
 
 /// Parses a video file; `exists(rel)` says whether a path under `assets/`
 /// is a file (the source is looked for beside the file first).
@@ -272,6 +302,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         audio: true,
         stream: false,
         keyframe: 1.0,
+        chunk: CHUNK_SECONDS,
         crf: 32,
         crf720: None,
         renditions: None,
@@ -333,6 +364,13 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
                     return Err(format!("line {line}: keyframe is 0.1 to 10 seconds"));
                 }
                 out.keyframe = v;
+            }
+            "chunk" => {
+                let v = e.number(0).map_err(err)?.as_f64();
+                if !(0.5..=60.0).contains(&v) {
+                    return Err(format!("line {line}: chunk is 0.5 to 60 seconds"));
+                }
+                out.chunk = v;
             }
             "crf" => {
                 let v = e.number(0).map_err(err)?.as_f64();
@@ -399,7 +437,7 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
             }
             k => {
                 return Err(format!(
-                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, stream, keyframe, crf, crf720, renditions)"
+                    "line {line}: unknown key '{k}' (source, fps, maxSeconds, size, kind, audio, stream, keyframe, chunk, crf, crf720, renditions)"
                 ));
             }
         }
@@ -411,13 +449,16 @@ pub fn parse(rel: &str, text: &str, exists: &dyn Fn(&str) -> bool) -> Result<Vid
         out.max_seconds = f64::INFINITY;
     }
     if !out.stream
-        && doc
-            .body
-            .entries
-            .iter()
-            .any(|e| matches!(e.key.as_str(), "keyframe" | "crf" | "crf720" | "renditions"))
+        && doc.body.entries.iter().any(|e| {
+            matches!(
+                e.key.as_str(),
+                "keyframe" | "chunk" | "crf" | "crf720" | "renditions"
+            )
+        })
     {
-        return Err("keyframe, crf, crf720 and renditions are a stream's (`stream true`)".into());
+        return Err(
+            "keyframe, chunk, crf, crf720 and renditions are a stream's (`stream true`)".into(),
+        );
     }
     Ok(out)
 }
@@ -1039,23 +1080,38 @@ pub fn cook_stream(
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let e = encoded(path, hash, plan)?;
-    let mut data = Vec::new();
+    let chunk_frames = plan.chunk_frames();
+    if e.units.len() != plan.frames as usize {
+        return Err(CookError(format!(
+            "{}: ffmpeg wrote {} frames of {}, not the {} planned",
+            path.display(),
+            e.units.len(),
+            codec_name(e.codec),
+            plan.frames
+        )));
+    }
     let mut rows = Vec::with_capacity(e.units.len());
-    for u in &e.units {
+    let mut offset = 0u32;
+    let mut bytes = 0u64;
+    for (i, u) in e.units.iter().enumerate() {
+        if (i as u32).is_multiple_of(chunk_frames) {
+            if !u.key {
+                return Err(CookError(format!(
+                    "{}: ffmpeg's {} has no key frame at frame {i}, where chunk {} starts",
+                    path.display(),
+                    codec_name(e.codec),
+                    i as u32 / chunk_frames
+                )));
+            }
+            offset = 0;
+        }
         rows.push(format::VideoUnitRow {
-            offset: data.len() as u32,
+            offset,
             size: u.data.len() as u32,
             key: u32::from(u.key),
         });
-        data.extend_from_slice(&u.data);
-    }
-    if data.len() > u32::MAX as usize {
-        return Err(CookError(format!(
-            "{}: {} bytes of {}, past the 4 GiB a stream holds: raise crf or lower size",
-            path.display(),
-            data.len(),
-            codec_name(e.codec)
-        )));
+        offset += u.data.len() as u32;
+        bytes += u.data.len() as u64;
     }
     let keys = rows.iter().filter(|r| r.key != 0).count();
     let longest = {
@@ -1076,6 +1132,8 @@ pub fn cook_stream(
         frames: rows.len() as u32,
         fps: plan.decl.fps,
         key_interval: longest,
+        chunk_frames,
+        chunks: plan.chunks(),
     };
     let mut w = BlobWriter::new(
         format::VideoStream::type_hash(),
@@ -1085,15 +1143,56 @@ pub fn cook_stream(
     w.table("meta", &[meta], row_hash::<format::VideoStreamMeta>());
     w.table("units", &rows, row_hash::<format::VideoUnitRow>());
     w.raw("config", e.config.clone(), 4);
-    let kbps =
-        data.len() as f64 * 8.0 / 1000.0 / (f64::from(plan.frames) / f64::from(plan.decl.fps));
+    let kbps = bytes as f64 * 8.0 / 1000.0 / (f64::from(plan.frames) / f64::from(plan.decl.fps));
     let note = format!(
-        "the video's {}: {:.1} MiB ({kbps:.0} kb/s), {keys} key frame(s)",
+        "the video's {}: {:.1} MiB ({kbps:.0} kb/s) in {} chunk(s) of {chunk_frames} frames, {keys} key frame(s)",
         codec_name(e.codec),
-        data.len() as f64 / f64::from(1u32 << 20)
+        bytes as f64 / f64::from(1u32 << 20),
+        plan.chunks()
     );
-    w.raw("data", data, 16);
     Ok((w.finish(), vec![note]))
+}
+
+/// Chunk `n` of a stream: the units of its frames, from the key frame
+/// `n · chunk_frames` on, in the order its index places them.
+pub fn cook_chunk(
+    path: &Path,
+    hash: u64,
+    plan: &VideoPlan,
+    n: u32,
+    stamp: u64,
+) -> Result<(Vec<u8>, Vec<String>), CookError> {
+    let e = encoded(path, hash, plan)?;
+    let cf = plan.chunk_frames() as usize;
+    let first = n as usize * cf;
+    let units = e
+        .units
+        .get(first..(first + cf).min(e.units.len()))
+        .unwrap_or_default();
+    if units.is_empty() {
+        return Err(CookError(format!(
+            "{}: chunk {n} is past the {} frames ffmpeg wrote",
+            path.display(),
+            e.units.len()
+        )));
+    }
+    let mut data = Vec::new();
+    for u in units {
+        data.extend_from_slice(&u.data);
+    }
+    let mut w = BlobWriter::new(
+        format::VideoChunk::type_hash(),
+        format::VideoChunk::schema_version(),
+        stamp,
+    );
+    let meta = format::VideoChunkMeta {
+        chunk: n,
+        first: first as u32,
+        frames: units.len() as u32,
+    };
+    w.table("meta", &[meta], row_hash::<format::VideoChunkMeta>());
+    w.raw("data", data, 16);
+    Ok((w.finish(), Vec::new()))
 }
 
 /// A [`format::video_codec`]'s name in notes and errors.
@@ -1178,33 +1277,44 @@ fn plan_video<'a>(
                 Box::new(VideoMetaJob(plan.clone())),
             ));
             if plan.decl.stream {
-                outs.push((
+                // Each stream (the AV1, its 720p rendition, its HEVC and
+                // H.264 ones): its index and its chunks.
+                let mut streams = vec![(
                     stream_id(&s.rel),
-                    format::VideoStream::NAME,
                     stamp(&[&base[..], &[b"stream".as_slice()]].concat()),
-                    Box::new(VideoStreamJob(src.clone(), src_hash, plan.clone())),
-                ));
+                    plan.clone(),
+                )];
                 if let Some(size) = og_video::stream::fallback_size(plan.size) {
-                    outs.push((
+                    streams.push((
                         stream_fallback_id(&s.rel),
-                        format::VideoStream::NAME,
                         stamp(&[&base[..], &[b"stream720".as_slice()]].concat()),
-                        Box::new(VideoStreamJob(
-                            src.clone(),
-                            src_hash,
-                            Box::new(fallback_plan(&plan, size)),
-                        )),
+                        Box::new(fallback_plan(&plan, size)),
                     ));
                 }
                 for &r in &plan.renditions {
                     let rp = rendition_plan(&plan, r);
-                    outs.push((
+                    streams.push((
                         rendition_id(&s.rel, r),
-                        format::VideoStream::NAME,
                         stamp(
                             &[&base[..], &[r.word().as_bytes(), rp.describe().as_bytes()]].concat(),
                         ),
-                        Box::new(VideoStreamJob(src.clone(), src_hash, Box::new(rp))),
+                        Box::new(rp),
+                    ));
+                }
+                for (id, st, sp) in streams {
+                    for n in 0..sp.chunks() {
+                        outs.push((
+                            og_bundle::runtime::video_chunk_id(&id, n),
+                            format::VideoChunk::NAME,
+                            stamp(&[&st.to_le_bytes()[..], &n.to_le_bytes()[..]]),
+                            Box::new(VideoChunkJob(src.clone(), src_hash, sp.clone(), n)),
+                        ));
+                    }
+                    outs.push((
+                        id,
+                        format::VideoStream::NAME,
+                        st,
+                        Box::new(VideoStreamJob(src.clone(), src_hash, sp)),
                     ));
                 }
                 outs.push((
@@ -1319,7 +1429,22 @@ impl Job for VideoAudioJob {
     }
 }
 
-/// A long video's stream.
+/// A chunk of a long video's stream.
+struct VideoChunkJob(PathBuf, u64, Box<VideoPlan>, u32);
+
+impl Job for VideoChunkJob {
+    fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let VideoChunkJob(src, h, plan, n) = self;
+        cook_chunk(src, *h, plan, *n, p.stamp)
+    }
+
+    /// A video's outputs are cooked from the file each time.
+    fn action(&self) -> Action<'_> {
+        Action::Never
+    }
+}
+
+/// A long video's stream: its index.
 struct VideoStreamJob(PathBuf, u64, Box<VideoPlan>);
 
 impl Job for VideoStreamJob {
@@ -1394,6 +1519,7 @@ mod tests {
             audio: true,
             stream: false,
             keyframe: 1.0,
+            chunk: CHUNK_SECONDS,
             crf: 32,
             crf720: None,
             renditions: None,

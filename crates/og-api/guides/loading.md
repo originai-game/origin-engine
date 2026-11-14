@@ -322,16 +322,19 @@ each one moves.
 An `.ogt` of `type video` names `source` (an .mp4, .webm or .mov beside
 it or under assets/), `fps`, `maxSeconds`, `size W H`, `kind
 color|pixel` and `audio`. A stream adds `stream true`, `keyframe`,
-`crf` and `renditions` (`hevc`, the default; `h264`; both; or `none`).
+`chunk` (seconds per chunk, 6 by default), `crf` and `renditions`
+(`hevc`, the default; `h264`; both; or `none`).
 The cook needs ffmpeg (`og doctor` checks it and its encoders).
 
 | Kind | Cooked as | Plays |
 |---|---|---|
 | clip | a texture array of its frames | uploaded whole |
-| stream | AV1 units, and HEVC or H.264 renditions of the same frames | fetched when og.load.video runs (on the web, not in the startup bundle; one copy: the AV1, or the rendition a browser without AV1 decodes) and decoded ahead of its players |
+| stream | an index and chunks of AV1 units, and HEVC or H.264 renditions of the same frames and chunks | never in the startup bundle; each chunk fetched ahead of the players that need it and let go after (one copy: the AV1, or the rendition a browser without AV1 decodes), and decoded ahead of its players |
 
-Load videos in GameDesc.start. Every process of an `og render --jobs`
-run then loads them the same way, so their handles agree.
+Load videos in GameDesc.start, all of them: a stream's load fetches
+nothing, so a game with hundreds of clips pays only for the ones that play.
+Every process of an `og render --jobs` run then loads them the same way, so
+their handles agree.
 
 ## 10. Uncooked loads
 

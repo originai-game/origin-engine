@@ -1,18 +1,23 @@
-//! Which stream file `og.load.video` reads (G3-2): the main stream, unless
-//! the host's AV1 decoder is the web's rav1d-wasm fallback. Then a browser
-//! whose WebCodecs decodes HEVC or H.264 reads that rendition, the first of
-//! its codecs the cook made; otherwise a stream larger than 720p reads the
-//! 720p rendition the cook made beside it; never two of them. A stream that
-//! fits has no 720p rendition and the fallback reads the main one.
+//! Which stream a video plays (G3-2, F0): `og.load.video` reads no stream
+//! file at all (a game loads all its footage at start and pays only for
+//! what plays); the stream it will read once a player wants it is the main
+//! one, unless the host's AV1 decoder is the web's rav1d-wasm fallback.
+//! Then a browser whose WebCodecs decodes HEVC or H.264 reads that
+//! rendition, the first of its codecs the cook made; otherwise a stream
+//! larger than 720p reads the 720p rendition the cook made beside it;
+//! never two of them. A stream that fits has no 720p rendition and the
+//! fallback reads the main one. dump_stream names the file.
 //!
-//! Ways this could fail: a rendition read beside the main stream (the
-//! browser pays for two downloads); a rendition asked for on a host with a
-//! full AV1 decoder; a codec the browser decodes but the cook did not make
-//! (the video fails to load instead of falling back); the cook's order
-//! winning over the browser's; VideoInfo.codec saying av1 for H.264 units.
+//! Ways this could fail: a stream file read at load (a 200-segment film
+//! fetches it all at boot); a rendition chosen beside the main stream; a
+//! rendition asked for on a host with a full AV1 decoder; a codec the
+//! browser decodes but the cook did not make (the video fails to load
+//! instead of falling back); the cook's order winning over the browser's;
+//! VideoInfo.codec saying av1 for H.264 units.
 
 use og_runtime::{
-    Dispatch, Fetch, Hooks, VideoDecoder, og_engine_create, og_game_game, og_host_begin_bundle,
+    Dispatch, Fetch, Hooks, VideoDecoder, og_engine_create, og_engine_frame,
+    og_engine_probe_commands, og_engine_take_outputs, og_game_game, og_host_begin_bundle,
     og_load_video, set_hooks,
 };
 use serde_json::{Value, json};
@@ -101,8 +106,9 @@ impl Hooks for Host {
     }
 }
 
-/// The stream files `og.load.video` of `clip` read under `decoder` and
-/// `codecs`, and the codec its VideoInfo names.
+/// The stream file `og.load.video` of `clip` chose under `decoder` and
+/// `codecs` (dump_stream's), and the codec its VideoInfo names; refused
+/// when the load read any stream file.
 fn streams_read(
     root: &Path,
     decoder: &'static str,
@@ -126,11 +132,37 @@ fn streams_read(
     )))
     .unwrap();
     assert_eq!(loaded["ok"], json!(true), "{loaded}");
-    let files = reads
+    let read: Vec<String> = reads
         .borrow()
         .iter()
         .filter(|p| p.contains(".stream"))
-        .map(|p| p.rsplit('/').next().unwrap().to_string())
+        .cloned()
+        .collect();
+    assert!(read.is_empty(), "og.load.video read {read:?}");
+    let scheduled: Value =
+        serde_json::from_str(&og_engine_probe_commands(world, "0:dump_stream".into())).unwrap();
+    assert_eq!(scheduled["scheduled"], json!(1), "{scheduled}");
+    og_engine_frame(world, 1000.0 / 60.0);
+    let outputs: Value = serde_json::from_str(&og_engine_take_outputs(world)).unwrap();
+    let dump: Value = outputs
+        .as_array()
+        .and_then(|a| a.iter().rev().find(|o| o["action"] == json!("dump_stream")))
+        .and_then(|o| o["data"].as_str())
+        .map(|d| serde_json::from_str(d).unwrap())
+        .unwrap_or_else(|| panic!("no dump_stream output: {outputs}"));
+    let files = dump["videos"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| {
+            v["file"]
+                .as_str()
+                .unwrap()
+                .rsplit('/')
+                .next()
+                .unwrap()
+                .to_string()
+        })
         .collect();
     (
         files,

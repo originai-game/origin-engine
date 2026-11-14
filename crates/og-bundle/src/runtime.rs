@@ -946,11 +946,19 @@ impl Bundle {
         Ok(meta)
     }
 
-    /// Reads a video stream blob: its shape, its codec configuration and
-    /// each frame's unit ([`video_stream_of`] with this bundle's stamp).
+    /// Reads a video stream's index: its shape, its codec configuration
+    /// and each frame's place in its chunk ([`video_stream_of`] with this
+    /// bundle's stamp).
     pub fn video_stream(&self, id: &str, bytes: &[u8]) -> Result<CookedVideoStream, LoadError> {
         let o = self.output(id)?;
         video_stream_of(bytes, &o.file, o.stamp, id)
+    }
+
+    /// Reads chunk `id` of a video stream ([`video_chunk_of`] with this
+    /// bundle's stamp).
+    pub fn video_chunk(&self, id: &str, bytes: &[u8]) -> Result<CookedVideoChunk, LoadError> {
+        let o = self.output(id)?;
+        video_chunk_of(bytes, &o.file, o.stamp)
     }
 
     /// Decodes a texture array blob: its shape and its layers' texture ids

@@ -155,6 +155,10 @@ pub(crate) struct RenderState {
     pub videos: Vec<crate::bind::video::LoadedVideo>,
     #[cfg(feature = "video")]
     pub video_player: Option<Layout>,
+    /// A video player with `wait` is playing and its frame is not shown
+    /// yet (set by extraction): the next display frame runs no tick, so the
+    /// world waits for the footage (crate::engine::tick's `frame`).
+    pub video_stalled: bool,
     /// Layouts of the engine records extraction reads.
     pub camera: Option<Layout>,
     pub settings: Option<Layout>,
@@ -272,6 +276,7 @@ impl RenderState {
             videos: Vec::new(),
             #[cfg(feature = "video")]
             video_player: None,
+            video_stalled: false,
             camera: None,
             settings: None,
             draw: DrawLayouts::default(),

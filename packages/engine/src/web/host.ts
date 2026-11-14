@@ -183,8 +183,9 @@ export interface WebExtras {
   og_web_set_fetcher(fetch: (path: string) => void): void;
   /** Streamed video's decoders (video.ts); absent in an older engine module. */
   og_web_install_video?(
-    stream: (key: number, width: number, height: number, codec: string, config: Uint8Array, table: Uint32Array, data: Uint8Array) => boolean,
+    stream: (key: number, width: number, height: number, codec: string, config: Uint8Array, table: Uint32Array, chunkFrames: number) => boolean,
     frame: (stream: number, player: number, frame: number, looped: boolean) => VideoFrame | null,
+    chunk: (stream: number, n: number, data: Uint8Array | null) => void,
     decoder: string,
     hardware: boolean,
     maxWidth: number,

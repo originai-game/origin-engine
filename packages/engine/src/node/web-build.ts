@@ -352,7 +352,7 @@ export interface Downloads {
     readonly fonts: DownloadSum;
     /** The AudioWorklet, fetched on the first gesture. */
     readonly worklet: DownloadSum;
-    /** Streamed videos' units (`<id>#stream` and its renditions), fetched by og.load.video. */
+    /** Streamed videos' indexes and chunks (`<id>#stream`, its renditions and their chunks), fetched as players need them. */
     readonly videos: DownloadSum;
     /** The AV1 fallback decoder (av1/og-av1.wasm), fetched only where WebCodecs cannot decode AV1. */
     readonly av1: DownloadSum;
@@ -409,9 +409,10 @@ export function downloadsOf(files: readonly SizeRow[]): Downloads {
  * build's file paths: `files`, precached at install, and each engine
  * variant's; `lazy`, cached when the engine first fetches them: the
  * streaming groups' packs, a long sound's chunks, a streamed texture's
- * whole chain (`<id>#mips`, read when it is big on screen), a streamed video's units
- * (a page fetches the main stream or one rendition: HEVC or H.264 where
- * WebCodecs decodes no AV1, else the 720p one on the AV1 fallback) and the
+ * whole chain (`<id>#mips`, read when it is big on screen), a streamed video's index
+ * and chunks (a page fetches the main stream or one rendition: HEVC or H.264
+ * where WebCodecs decodes no AV1, else the 720p one on the AV1 fallback; of
+ * it only the chunks its players reach) and the
  * fallback decoder.
  */
 export function serviceWorkerLists(paths: readonly string[], packs: ReadonlySet<string>): { files: string[]; lazy: string[]; single: string[]; lanes: string[] } {
@@ -765,8 +766,8 @@ const NOT_PRECACHED = /(^|\/)(LICENSE|NOTICE|README\.md|_headers|origingame\.run
 const LANES_FILES = ["origin-engine-lanes.js", "origin-engine-lanes_bg.wasm", "snippets"] as const;
 /** Each engine variant's own files: the service worker precaches the one its page boots. */
 const SINGLE_ENGINE = /^origin-engine(\.[0-9a-f]{12})?(\.js|_bg(\.[0-9a-f]{12})?\.wasm)$/;
-/** A streamed video's units (og-cook's output files of `<id>#stream` and its renditions `<id>#stream720`, `<id>#streamhevc` and `<id>#streamh264`). */
-const VIDEO_STREAM = /\.stream(720|hevc|h264)?\.ogb$/;
+/** A streamed video's index and chunks (og-cook's output files of `<id>#stream`, its renditions `<id>#stream720`, `<id>#streamhevc` and `<id>#streamh264`, and each one's chunks `<stream>.<n>`). */
+const VIDEO_STREAM = /\.stream(720|hevc|h264)?(\.\d+)?\.ogb$/;
 const LANES_ENGINE = /^(origin-engine-lanes(\.[0-9a-f]{12})?(\.js|_bg(\.[0-9a-f]{12})?\.wasm)|snippets\/.*)$/;
 
 /**

@@ -92,9 +92,10 @@ thread_local! {
     static TRANSCODING: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     static UNTRANSCODED: RefCell<BTreeMap<String, String>> = const { RefCell::new(BTreeMap::new()) };
     /// The Worker's streamed-video decoders (`og_web_install_video`): its
-    /// `stream(key, width, height, table, data)` and `frame(stream, player,
-    /// frame, looped)`, and the decoder it chose.
-    static VIDEO: RefCell<Option<(js_sys::Function, js_sys::Function, og_runtime::VideoDecoder)>> = const { RefCell::new(None) };
+    /// `stream(key, width, height, codec, config, table, chunkFrames)`,
+    /// `frame(stream, player, frame, looped)` and `chunk(stream, n, data)`,
+    /// and the decoder it chose.
+    static VIDEO: RefCell<Option<crate::assets::VideoHost>> = const { RefCell::new(None) };
     /// The Worker's `inflate(key, bytes)` (DecompressionStream), and what it answered by key.
     static INFLATER: RefCell<Option<js_sys::Function>> = const { RefCell::new(None) };
     static INFLATED: RefCell<IdMap<u64, Result<Vec<u8>, String>>> = const { RefCell::new(IdMap::new()) };

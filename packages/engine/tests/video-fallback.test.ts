@@ -6,7 +6,8 @@
 // Ways this could fail: a WASI import missing from the shim (the module
 // refuses to instantiate); planes copied at the wrong length (U and V of a
 // size not a multiple of two rounded down); the plan seeking to the wanted
-// frame instead of its key frame, or never wrapping a loop.
+// frame instead of its key frame, or never wrapping a loop; a decoder
+// stepping into a chunk that has not landed.
 import { expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -42,6 +43,13 @@ test("the plan decodes on, seeks to key frames and wraps a loop", () => {
   expect(planStep(100, keys, 100, has([99]), 1, 99, false, 4)).toBe("idle");
   expect(planStep(100, keys, 100, has([99]), 1, 99, true, 4)).toBe(0);
   expect(planStep(100, keys, 100, has([99]), 1, 500, false, 4)).toBe("idle");
+  // Chunks of 60 frames, only the first here: a step into the second waits.
+  const first = (f: number) => f < 60;
+  expect(planStep(100, keys, 12, has([]), 0, 20, false, 4, first)).toBe("decode");
+  expect(planStep(100, keys, 50, has([]), 0, 40, false, 4, first)).toBe(30);
+  expect(planStep(100, keys, 12, has([]), 0, 75, false, 4, first)).toBe("idle");
+  expect(planStep(100, keys, 60, has([59]), 1, 59, false, 4, first)).toBe("idle");
+  expect(planStep(100, keys, 100, has([99]), 1, 99, true, 4, (f) => f >= 60)).toBe("idle");
 });
 
 test.skipIf(!encoder || !existsSync(module))("rav1d's wasm module decodes the cook's AV1 as ffmpeg does", async () => {

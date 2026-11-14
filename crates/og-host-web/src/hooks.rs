@@ -173,7 +173,7 @@ impl Hooks for WebHooks {
 
     fn video_decoder(&self) -> og_runtime::VideoDecoder {
         VIDEO
-            .with(|v| v.borrow().as_ref().map(|(_, _, d)| d.clone()))
+            .with(|v| v.borrow().as_ref().map(|h| h.decoder.clone()))
             .unwrap_or_default()
     }
 
@@ -185,10 +185,10 @@ impl Hooks for WebHooks {
         codec: &str,
         config: &[u8],
         table: &[u32],
-        data: &[u8],
+        chunk_frames: u32,
     ) -> bool {
         VIDEO.with(|v| {
-            let Some((put, _, _)) = &*v.borrow() else {
+            let Some(h) = &*v.borrow() else {
                 return false;
             };
             let args = js_sys::Array::new();
@@ -198,11 +198,29 @@ impl Hooks for WebHooks {
             args.push(&JsValue::from_str(codec));
             args.push(&js_sys::Uint8Array::from(config));
             args.push(&js_sys::Uint32Array::from(table));
-            args.push(&js_sys::Uint8Array::from(data));
-            put.apply(&JsValue::NULL, &args)
+            args.push(&JsValue::from(chunk_frames));
+            h.stream
+                .apply(&JsValue::NULL, &args)
                 .ok()
                 .and_then(|r| r.as_bool())
                 .unwrap_or(false)
+        })
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn video_chunk(&self, stream: u64, n: u32, data: Option<&[u8]>) {
+        VIDEO.with(|v| {
+            let Some(h) = &*v.borrow() else { return };
+            let data = match data {
+                Some(d) => JsValue::from(js_sys::Uint8Array::from(d)),
+                None => JsValue::NULL,
+            };
+            let _ = h.chunk.call3(
+                &JsValue::NULL,
+                &JsValue::from_f64(stream as f64),
+                &JsValue::from(n),
+                &data,
+            );
         })
     }
 
@@ -215,14 +233,14 @@ impl Hooks for WebHooks {
         looped: bool,
     ) -> Option<og_render::wgpu::web_sys::VideoFrame> {
         VIDEO.with(|v| {
-            let (_, get, _) = v.borrow().as_ref().cloned()?;
+            let h = v.borrow().as_ref().cloned()?;
             let args = js_sys::Array::of4(
                 &JsValue::from_f64(stream as f64),
                 &JsValue::from_f64(player as f64),
                 &JsValue::from(frame),
                 &JsValue::from_bool(looped),
             );
-            let f = get.apply(&JsValue::NULL, &args).ok()?;
+            let f = h.frame.apply(&JsValue::NULL, &args).ok()?;
             (!f.is_null() && !f.is_undefined()).then(|| f.unchecked_into())
         })
     }

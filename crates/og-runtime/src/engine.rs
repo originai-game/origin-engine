@@ -200,8 +200,9 @@ pub trait Hooks {
     fn video_decoder(&self) -> VideoDecoder {
         VideoDecoder::default()
     }
-    /// On the web: a stream's units handed to the host's decoder once
-    /// (`table`: offset, size and key per frame into `data`). `codec` is
+    /// On the web: a stream's index handed to the host's decoder once
+    /// (`table`: offset, size and key per frame, the offset into its
+    /// chunk's data; chunk n is frames `n · chunk_frames ..`). `codec` is
     /// WebCodecs' codec string of an H.264 or HEVC rendition and `config`
     /// its `avcC` or `hvcC` record (the decoder's description); both empty
     /// for AV1. False: this host has no decoder.
@@ -213,10 +214,17 @@ pub trait Hooks {
         codec: &str,
         config: &[u8],
         table: &[u32],
-        data: &[u8],
+        chunk_frames: u32,
     ) -> bool {
-        let _ = (stream, size, codec, config, table, data);
+        let _ = (stream, size, codec, config, table, chunk_frames);
         false
+    }
+    /// On the web: chunk `n` of `stream` landed (`data`, its units as the
+    /// index places them) or, with `None`, is let go: no player needs it.
+    /// A decoder waits for a unit whose chunk it has not got.
+    #[cfg(target_arch = "wasm32")]
+    fn video_chunk(&self, stream: u64, n: u32, data: Option<&[u8]>) {
+        let _ = (stream, n, data);
     }
     /// On the web: the frame player `player` of `stream` should show now
     /// (it is at `frame`), once newer than the one it shows; `None` keeps

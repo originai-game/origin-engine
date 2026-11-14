@@ -37,6 +37,10 @@ test("bundle preload fetches a shared file once but retains every texture id, an
         { id: "a.png#mips", file: "a.png.mips.ogb", type: "og.Texture" },
         { id: "fonts/japanese/extension.json", file: "fonts/japanese/extension.json.ogb", type: "og.FontPack" },
         { id: "fonts/japanese/NotoSansJP-Regular.ttf", file: "fonts/japanese/NotoSansJP-Regular.ttf.face.ogb", type: "og.Font" },
+        // A streamed video's index and chunks: its players fetch them.
+        { id: "clips/intro.ogt#stream", file: "clips/intro.ogt.stream.ogb", type: "og.VideoStream" },
+        { id: "clips/intro.ogt#stream.0", file: "clips/intro.ogt.stream.0.ogb", type: "og.VideoChunk" },
+        { id: "clips/intro.ogt#streamhevc.0", file: "clips/intro.ogt.streamhevc.0.ogb", type: "og.VideoChunk" },
       ]),
       og_web_put_file: (path) => { stored.push(path); },
       og_web_fail_file: (path, reason) => { throw new Error(`${path}: ${reason}`); },
@@ -46,7 +50,7 @@ test("bundle preload fetches a shared file once but retains every texture id, an
     expect(stored).toEqual(fetched);
     expect(result.files).toBe(2);
     expect(result.failed).toBe(0);
-    expect(result.streamed).toBe(3);
+    expect(result.streamed).toBe(6);
     expect(result.textures.map((t) => t.id)).toEqual(["z.png", "a.png"]);
     expect(result.textures[0]!.bytes).toBe(result.textures[1]!.bytes);
   } finally {
@@ -70,7 +74,7 @@ test("a font pack's faces are cached when fetched, never precached nor counted i
 test("a streamed video's units and every rendition are cached when fetched, never precached nor counted in the boot", () => {
   const meta = "cooked/clips/intro.ogt.ogb";
   const poster = "cooked/clips/intro.ogt.poster.ogb";
-  const streams = ["stream", "stream720", "streamhevc", "streamh264"].map((s) => `cooked/clips/intro.ogt.${s}.ogb`);
+  const streams = ["stream", "stream.0", "stream.12", "stream720", "stream720.0", "streamhevc", "streamhevc.3", "streamh264", "streamh264.0"].map((s) => `cooked/clips/intro.ogt.${s}.ogb`);
   const lists = serviceWorkerLists(["cooked/.cook.ogt", meta, poster, ...streams], new Set());
   expect(lists.lazy).toEqual([...streams].sort());
   expect(lists.files).toEqual(["./", "cooked/.cook.ogt", meta, poster]);

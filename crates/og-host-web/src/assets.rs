@@ -225,32 +225,54 @@ pub fn og_web_fail_inflated(key: f64, reason: String) {
     INFLATED.with(|m| m.borrow_mut().insert(key as u64, Err(reason)));
 }
 
+/// The Worker's streamed-video decoders and the decoder it chose (read by
+/// the wasm32 hooks only).
+#[derive(Clone)]
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+pub(crate) struct VideoHost {
+    pub stream: js_sys::Function,
+    pub frame: js_sys::Function,
+    pub chunk: js_sys::Function,
+    pub decoder: og_runtime::VideoDecoder,
+}
+
 /// The Worker's streamed-video decoders (packages/engine/src/web/video.ts):
-/// `stream(key, width, height, codec, config, table, data)` takes a
-/// stream's units once (`codec` and `config` empty for AV1, else an H.264
-/// or HEVC rendition's codec string and record), `frame(stream, player,
-/// frame, looped)` answers the VideoFrame a player shows now or null;
-/// `decoder` is what og.video.capabilities reports (`webcodecs`,
-/// `rav1d-wasm` or `none`), and `codecs` the other codecs WebCodecs decodes
-/// (`hevc`, `h264`), preferred first.
+/// `stream(key, width, height, codec, config, table, chunkFrames)` takes a
+/// stream's index once (`codec` and `config` empty for AV1, else an H.264
+/// or HEVC rendition's codec string and record; `table` each frame's
+/// offset in its chunk, size and key), `chunk(stream, n, data)` a chunk's
+/// units as they land (`data` null: let go), `frame(stream, player, frame,
+/// looped)` answers the VideoFrame a player shows now or null; `decoder`
+/// is what og.video.capabilities reports (`webcodecs`, `rav1d-wasm` or
+/// `none`), and `codecs` the other codecs WebCodecs decodes (`hevc`,
+/// `h264`), preferred first.
 #[wasm_bindgen]
+#[allow(clippy::too_many_arguments)]
 pub fn og_web_install_video(
     stream: js_sys::Function,
     frame: js_sys::Function,
+    chunk: js_sys::Function,
     decoder: String,
     hardware: bool,
     max_width: u32,
     max_height: u32,
     codecs: Vec<String>,
 ) {
-    let d = og_runtime::VideoDecoder {
+    let decoder = og_runtime::VideoDecoder {
         name: decoder,
         hardware,
         max_width,
         max_height,
         codecs,
     };
-    VIDEO.with(|v| *v.borrow_mut() = Some((stream, frame, d)));
+    VIDEO.with(|v| {
+        *v.borrow_mut() = Some(VideoHost {
+            stream,
+            frame,
+            chunk,
+            decoder,
+        })
+    });
 }
 
 /// The Worker's `decodeImage(key, bytes)`, called to decode an uncooked

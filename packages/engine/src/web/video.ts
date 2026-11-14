@@ -1,6 +1,9 @@
 // Streamed video on the web host (G3-2, docs/design.md §2.9): the engine
 // Worker's side of every stream's decoders. The runtime hands each stream's
-// AV1 units over once (`og_web_video_stream`'s hook) and asks, for every
+// index over once (`og_web_video_stream`'s hook: each frame's place in its
+// chunk), then each chunk of AV1 units as it lands and lets it go once no
+// player needs it (`chunk`; a decoder waits for a unit whose chunk is not
+// here), and asks, for every
 // player each frame, for the frame its player is at (`want`); the answer is
 // a VideoFrame the renderer copies into the player's stream texture on the
 // GPU (copyExternalImageToTexture) and closes, or null while nothing newer
@@ -30,20 +33,21 @@ export const AHEAD = 4;
 /**
  * The decode plan, og-video's `stream::plan`: `"decode"` unit `pos` next,
  * `"idle"`, or a key frame to start again at. `has(f)`: frame f is decoded
- * or being decoded; `count`: how many are. Self-contained: the fallback
- * decoder Worker's source includes it.
+ * or being decoded; `count`: how many are; `present(f)`: unit f's chunk is
+ * here (a step whose unit is not waits: `"idle"`). Self-contained: the
+ * fallback decoder Worker's source includes it.
  */
-export function planStep(n: number, keys: ArrayLike<number>, pos: number, has: (f: number) => boolean, count: number, want: number, looped: boolean, ahead: number): "decode" | "idle" | number {
+export function planStep(n: number, keys: ArrayLike<number>, pos: number, has: (f: number) => boolean, count: number, want: number, looped: boolean, ahead: number, present: (f: number) => boolean = () => true): "decode" | "idle" | number {
   want = Math.min(want, n - 1);
   if (has(want)) {
     if (count >= ahead || (pos >= n && !looped)) return "idle";
-    if (pos >= n) return 0;
-    return "decode";
+    if (pos >= n) return present(0) ? 0 : "idle";
+    return present(pos) ? "decode" : "idle";
   }
   let key = keys[0]!;
   for (let i = 0; i < keys.length && keys[i]! <= want; i++) key = keys[i]!;
-  if (want < pos || key > pos) return key;
-  return "decode";
+  if (want < pos || key > pos) return present(key) ? key : "idle";
+  return present(pos) ? "decode" : "idle";
 }
 
 /**
@@ -110,7 +114,11 @@ export async function av1Module(bytes: BufferSource) {
   };
 }
 
-/** A stream's units: frame n is `data[offset[n] .. offset[n] + size[n]]`, key frames ascending in `keys`. */
+/**
+ * A stream's units, held by chunk: frame n is in chunk `floor(n /
+ * chunkFrames)` at `offset[n] .. offset[n] + size[n]` of its data, key
+ * frames ascending in `keys`. Chunks land and go while it plays.
+ */
 export interface StreamUnits {
   readonly width: number;
   readonly height: number;
@@ -120,18 +128,21 @@ export interface StreamUnits {
   readonly codec: string;
   /** Its avcC or hvcC record, WebCodecs' `description`; empty for AV1. */
   readonly config: Uint8Array;
-  /** offset, size, key (1 or 0) per frame. */
+  /** offset (in its chunk), size, key (1 or 0) per frame. */
   readonly table: Uint32Array;
-  readonly data: Uint8Array;
+  /** Frames in each chunk but the last. */
+  readonly chunkFrames: number;
+  /** The chunks here, by index. */
+  readonly chunks: Map<number, Uint8Array>;
   readonly keys: Uint32Array;
 }
 
-/** A stream's units from its table and bytes (as `og_web_video_stream`'s hook hands them over). */
-export function streamUnits(width: number, height: number, fps: number, table: Uint32Array, data: Uint8Array, codec = "", config: Uint8Array = new Uint8Array(0)): StreamUnits {
+/** A stream's units from its index, no chunk here yet (as `og_web_video_stream`'s hook hands it over). */
+export function streamUnits(width: number, height: number, fps: number, table: Uint32Array, chunkFrames: number, codec = "", config: Uint8Array = new Uint8Array(0)): StreamUnits {
   const frames = table.length / 3;
   const keys: number[] = [];
   for (let i = 0; i < frames; i++) if (table[i * 3 + 2]) keys.push(i);
-  return { width, height, fps, frames, codec, config, table, data, keys: Uint32Array.from(keys) };
+  return { width, height, fps, frames, codec, config, table, chunkFrames: Math.max(1, chunkFrames), chunks: new Map(), keys: Uint32Array.from(keys) };
 }
 
 /** WebCodecs' configuration for a stream: AV1, or its rendition's codec with its record. */
@@ -150,9 +161,12 @@ const RENDITION_PROBES = [
   ["h264", "avc1.640029"],
 ] as const;
 
-function unitOf(s: StreamUnits, n: number): { data: Uint8Array; key: boolean } {
+/** Unit n while its chunk is here. */
+function unitOf(s: StreamUnits, n: number): { data: Uint8Array; key: boolean } | null {
+  const chunk = s.chunks.get(Math.floor(n / s.chunkFrames));
+  if (!chunk) return null;
   const o = s.table[n * 3]!;
-  return { data: s.data.subarray(o, o + s.table[n * 3 + 1]!), key: s.table[n * 3 + 2] === 1 };
+  return { data: chunk.subarray(o, o + s.table[n * 3 + 1]!), key: s.table[n * 3 + 2] === 1 };
 }
 
 /** WebCodecs' codec string for a stream: AV1 main profile, 8-bit, a level its size fits. */
@@ -301,7 +315,8 @@ class WebCodecsPlayer implements Player {
     for (;;) {
       if (this.#broken || this.#want < 0) return;
       const has = (f: number) => this.#ready.has(f) || this.#pending.has(f);
-      const step = planStep(s.frames, s.keys, this.#pos, has, this.#ready.items.length + this.#pending.size, this.#want, this.#looped, AHEAD);
+      const present = (f: number) => s.chunks.has(Math.floor(f / s.chunkFrames));
+      const step = planStep(s.frames, s.keys, this.#pos, has, this.#ready.items.length + this.#pending.size, this.#want, this.#looped, AHEAD, present);
       if (step === "idle") return;
       if (typeof step === "number") {
         // A wrap goes on from frame 0 with what is ready; a seek starts over.
@@ -316,8 +331,9 @@ class WebCodecsPlayer implements Player {
         }
         this.#pos = step;
       }
+      const u = unitOf(s, this.#pos);
+      if (!u) return;
       const n = this.#pos++;
-      const u = unitOf(s, n);
       this.#pending.add(n);
       try {
         this.#decoder.decode(new EncodedVideoChunk({ type: u.key ? "key" : "delta", timestamp: n, data: u.data }));
@@ -358,7 +374,7 @@ function av1WorkerMain(): void {
   const ctx = self as unknown as Ctx;
   const g = globalThis as unknown as { av1Module: typeof av1Module; planStep: typeof planStep; AHEAD: number };
   let mod: Awaited<ReturnType<typeof av1Module>> | null = null;
-  const streams = new Map<number, { frames: number; table: Uint32Array; data: Uint8Array; keys: Uint32Array }>();
+  const streams = new Map<number, { frames: number; table: Uint32Array; chunkFrames: number; chunks: Map<number, Uint8Array>; keys: Uint32Array }>();
   interface P {
     stream: number;
     h: number;
@@ -382,7 +398,8 @@ function av1WorkerMain(): void {
     for (const [id, p] of players) {
       const s = streams.get(p.stream);
       if (!s || !mod || p.want < 0) continue;
-      const st = g.planStep(s.frames, s.keys, p.pos, (f) => p.sent.includes(f), p.sent.length, p.want, p.looped, g.AHEAD);
+      const present = (f: number) => s.chunks.has(Math.floor(f / s.chunkFrames));
+      const st = g.planStep(s.frames, s.keys, p.pos, (f) => p.sent.includes(f), p.sent.length, p.want, p.looped, g.AHEAD, present);
       if (st === "idle") continue;
       if (typeof st === "number") {
         if (p.pos < s.frames || st !== 0) {
@@ -394,10 +411,12 @@ function av1WorkerMain(): void {
         }
         p.pos = st;
       }
+      const chunk = s.chunks.get(Math.floor(p.pos / s.chunkFrames));
+      if (!chunk) continue;
       const n = p.pos++;
       const o = s.table[n * 3]!;
       try {
-        const pic = mod.decode(p.h, s.data.subarray(o, o + s.table[n * 3 + 1]!));
+        const pic = mod.decode(p.h, chunk.subarray(o, o + s.table[n * 3 + 1]!));
         if (pic && n >= p.keepFrom) {
           p.sent.push(n);
           ctx.postMessage({ type: "frame", player: id, frame: n, width: pic.width, height: pic.height, i420: pic.i420.buffer }, [pic.i420.buffer]);
@@ -425,7 +444,12 @@ function av1WorkerMain(): void {
       const table = new Uint32Array(m.table);
       const keys: number[] = [];
       for (let i = 0; i < table.length / 3; i++) if (table[i * 3 + 2]) keys.push(i);
-      streams.set(m.stream, { frames: table.length / 3, table, data: new Uint8Array(m.data), keys: Uint32Array.from(keys) });
+      streams.set(m.stream, { frames: table.length / 3, table, chunkFrames: m.chunkFrames, chunks: new Map(), keys: Uint32Array.from(keys) });
+    } else if (m.type === "chunk") {
+      const s = streams.get(m.stream);
+      if (s && m.data) s.chunks.set(m.n, new Uint8Array(m.data));
+      else if (s) s.chunks.delete(m.n);
+      schedule();
     } else if (m.type === "want") {
       let p = players.get(m.player);
       if (!p && mod) {
@@ -532,22 +556,35 @@ export class VideoStreams {
     this.fallbackUrl = fallbackUrl;
   }
 
-  /** A stream's units, handed over once by the runtime: AV1, or an H.264 or HEVC rendition (`codec`, `config`) WebCodecs decodes. */
-  stream(key: number, width: number, height: number, fps: number, table: Uint32Array, data: Uint8Array, codec = "", config: Uint8Array = new Uint8Array(0)): boolean {
+  /** A stream's index, handed over once by the runtime: AV1, or an H.264 or HEVC rendition (`codec`, `config`) WebCodecs decodes. */
+  stream(key: number, width: number, height: number, fps: number, table: Uint32Array, chunkFrames: number, codec = "", config: Uint8Array = new Uint8Array(0)): boolean {
     if (codec) {
-      this.#streams.set(key, streamUnits(width, height, fps, table.slice(), data.slice(), codec, config.slice()));
+      this.#streams.set(key, streamUnits(width, height, fps, table.slice(), chunkFrames, codec, config.slice()));
       return true;
     }
     if (this.choice.name === "none") return false;
-    const s = streamUnits(width, height, fps, table.slice(), data.slice());
+    const s = streamUnits(width, height, fps, table.slice(), chunkFrames);
     this.#streams.set(key, s);
     if (this.choice.name === "rav1d-wasm") {
       this.#startWorker();
-      this.#worker?.postMessage({ type: "stream", stream: key, table: s.table.buffer, data: s.data.buffer }, [s.table.buffer, s.data.buffer]);
-      // The engine Worker keeps the shape only; the fallback Worker has the units.
-      this.#streams.set(key, { ...s, table: new Uint32Array(0), data: new Uint8Array(0) });
+      const sent = s.table.slice();
+      this.#worker?.postMessage({ type: "stream", stream: key, table: sent.buffer, chunkFrames: s.chunkFrames }, [sent.buffer]);
     }
     return true;
+  }
+
+  /** Chunk `n` of stream `key` landed (its units' bytes) or, with null, is let go. */
+  chunk(key: number, n: number, data: Uint8Array | null): void {
+    const s = this.#streams.get(key);
+    if (!s) return;
+    if (this.choice.name === "rav1d-wasm" && !s.codec) {
+      // The fallback Worker holds the units; the engine Worker only the shape.
+      const copy = data ? data.slice() : null;
+      this.#worker?.postMessage({ type: "chunk", stream: key, n, data: copy?.buffer ?? null }, copy ? [copy.buffer] : []);
+      return;
+    }
+    if (data) s.chunks.set(n, data.slice());
+    else s.chunks.delete(n);
   }
 
   #startWorker(): void {

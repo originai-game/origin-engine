@@ -95,6 +95,9 @@ module video {
       tunable true
     }
     field loop bool "Start again at 0 past the end; otherwise hold the last frame and set finished."
+    field wait bool "A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game." {
+      guide "audio §8"
+    }
     field frame u32 "Written: the frame shown, floor(time * fps)." {
       readonly true
     }

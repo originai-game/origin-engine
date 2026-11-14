@@ -2,18 +2,46 @@
 //! `og.VideoStream` blob (skipped without an ffmpeg with an AV1 encoder):
 //! one unit per frame with a key frame every `keyframe` seconds, its poster
 //! (frame 0 as rav1d decodes it) as an ordinary texture, its sound as Opus,
-//! and no texture array; every unit decodes, and the stream file is its own
-//! output, not one the bundle loads at boot with the clips.
+//! and no texture array; its index (`<id>#stream`) and each chunk
+//! (`<id>#stream.<n>`, from a key frame on) are outputs of their own, not
+//! ones the bundle loads at boot with the clips, and every unit read
+//! through them decodes.
 //!
 //! Ways it could fail: ffmpeg's scene cuts or a dropped `-g` putting key
 //! frames elsewhere (a seek decodes from the wrong place); a unit count off
 //! by the last frame; the frames cut at 256 as a clip's are; the stream's
-//! sound cooked as QOA.
+//! sound cooked as QOA; a chunk starting off a key frame (its player could
+//! not start there), or its units placed from the stream's start instead
+//! of the chunk's.
 
 use og_cook::cook::{CookOptions, cook_project};
 use og_cook::format;
-use og_cook::runtime::Bundle;
+use og_cook::runtime::{Bundle, CookedVideoStream};
 use std::path::{Path, PathBuf};
+
+/// A stream's index and its units read through every chunk, in frame order.
+fn read_stream(b: &Bundle, id: &str) -> (CookedVideoStream, Vec<(bool, Vec<u8>)>) {
+    assert_eq!(b.output(id).unwrap().ty, "og.VideoStream");
+    let s = b.video_stream(id, b.read(id).unwrap().as_slice()).unwrap();
+    let mut units = Vec::new();
+    for n in 0..s.meta.chunks {
+        let c = og_cook::runtime::video_chunk_id(id, n);
+        assert_eq!(b.output(&c).unwrap().ty, "og.VideoChunk");
+        let chunk = b.video_chunk(&c, b.read(&c).unwrap().as_slice()).unwrap();
+        assert_eq!((chunk.chunk, chunk.first), (n, n * s.meta.chunk_frames));
+        units.extend(
+            s.split(&chunk)
+                .unwrap()
+                .into_iter()
+                .map(|(k, d)| (k, d.to_vec())),
+        );
+    }
+    assert!(
+        b.output(&og_cook::runtime::video_chunk_id(id, s.meta.chunks))
+            .is_err()
+    );
+    (s, units)
+}
 
 fn fixture() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -30,10 +58,10 @@ fn a_stream_cooks_to_av1_units_with_its_key_frames_poster_and_opus_sound() {
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/clips")).unwrap();
     std::fs::copy(fixture(), root.join("assets/clips/count.mp4")).unwrap();
-    // 4 s at 60 fps: 240 frames, a key frame every 0.5 s.
+    // 4 s at 60 fps: 240 frames, a key frame every 0.5 s, chunks of 1 s.
     std::fs::write(
         root.join("assets/clips/count.ogt"),
-        "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 60\nsize 128 72\nkeyframe 0.5\n",
+        "type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 60\nsize 128 72\nkeyframe 0.5\nchunk 1\n",
     )
     .unwrap();
     let report = cook_project(&root, &CookOptions::default()).unwrap();
@@ -60,12 +88,10 @@ fn a_stream_cooks_to_av1_units_with_its_key_frames_poster_and_opus_sound() {
         b.output("clips/count.ogt#frames").is_err(),
         "a stream has no texture array"
     );
-    let id = "clips/count.ogt#stream";
-    assert_eq!(b.output(id).unwrap().ty, "og.VideoStream");
-    let s = b.video_stream(id, b.read(id).unwrap().as_slice()).unwrap();
-    assert_eq!(s.units.len(), 240);
-    let keys: Vec<usize> = s
-        .units
+    let (s, units) = read_stream(&b, "clips/count.ogt#stream");
+    assert_eq!((s.meta.chunk_frames, s.meta.chunks), (60, 4));
+    assert_eq!(units.len(), 240);
+    let keys: Vec<usize> = units
         .iter()
         .enumerate()
         .filter(|(_, u)| u.0)
@@ -76,7 +102,7 @@ fn a_stream_cooks_to_av1_units_with_its_key_frames_poster_and_opus_sound() {
     // Every unit decodes to a frame of the stream's size.
     let mut d = og_video::decode::Decoder::new(1).unwrap();
     let mut first = None;
-    for (n, (_, unit)) in s.units.iter().enumerate() {
+    for (n, (_, unit)) in units.iter().enumerate() {
         let p = d
             .decode(unit)
             .unwrap()
@@ -149,7 +175,8 @@ fn a_stream_cooks_hevc_and_h264_renditions_frame_for_frame_with_its_key_frames()
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("assets/clips")).unwrap();
     std::fs::copy(fixture(), root.join("assets/clips/count.mp4")).unwrap();
-    // 2 s at 30 fps, a key frame every half second; the default (HEVC), both, and none.
+    // 2 s at 30 fps, a key frame every half second, chunks of 1 s; the
+    // default (HEVC), both, and none.
     for (name, line) in [
         ("default", ""),
         ("both", "renditions h264 hevc\n"),
@@ -157,24 +184,24 @@ fn a_stream_cooks_hevc_and_h264_renditions_frame_for_frame_with_its_key_frames()
     ] {
         std::fs::write(
             root.join(format!("assets/clips/{name}.ogt")),
-            format!("type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 30\nmaxSeconds 2\nsize 192 108\nkeyframe 0.5\naudio false\n{line}"),
+            format!("type video\nversion 1\n---\nsource \"count.mp4\"\nstream true\nfps 30\nmaxSeconds 2\nsize 192 108\nkeyframe 0.5\nchunk 1\naudio false\n{line}"),
         )
         .unwrap();
     }
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     let b = Bundle::open(&root.join("cooked")).unwrap();
-    let stream = |id: &str| b.video_stream(id, b.read(id).unwrap().as_slice()).unwrap();
+    let stream = |id: &str| read_stream(&b, id);
     let av1 = stream("clips/both.ogt#stream");
-    let keys = |s: &og_cook::runtime::CookedVideoStream| {
-        s.units
-            .iter()
+    let keys = |s: &(CookedVideoStream, Vec<(bool, Vec<u8>)>)| {
+        s.1.iter()
             .enumerate()
             .filter(|(_, u)| u.0)
             .map(|(i, _)| i)
             .collect::<Vec<_>>()
     };
     assert_eq!(keys(&av1), [0, 15, 30, 45]);
+    assert_eq!((av1.0.meta.chunk_frames, av1.0.meta.chunks), (30, 2));
     for (id, codec, record) in [
         (
             "clips/both.ogt#streamhevc",
@@ -192,21 +219,24 @@ fn a_stream_cooks_hevc_and_h264_renditions_frame_for_frame_with_its_key_frames()
             "hvc1",
         ),
     ] {
-        let s = stream(id);
+        let r = stream(id);
+        let s = &r.0;
         assert_eq!(
             (
                 s.meta.codec,
                 s.meta.width,
                 s.meta.height,
                 s.meta.fps,
-                s.units.len()
+                r.1.len()
             ),
             (codec, 192, 108, 30, 60),
             "{id}"
         );
-        // The AV1's key frames exactly: a seek starts at the same frame on every decoder.
-        assert_eq!(keys(&s), keys(&av1), "{id}");
+        // The AV1's key frames and chunks exactly: a seek starts at the
+        // same frame on every decoder, and a player fetches the same span.
+        assert_eq!(keys(&r), keys(&av1), "{id}");
         assert_eq!(s.meta.key_interval, 15, "{id}");
+        assert_eq!((s.meta.chunk_frames, s.meta.chunks), (30, 2), "{id}");
         let kind = if codec == format::video_codec::HEVC {
             og_video::mp4::Codec::Hevc
         } else {
@@ -225,9 +255,9 @@ fn a_stream_cooks_hevc_and_h264_renditions_frame_for_frame_with_its_key_frames()
     );
 
     // ffmpeg decodes the H.264 units, in order, to all 60 frames.
-    let h264 = stream("clips/both.ogt#streamh264");
+    let (h264, units) = stream("clips/both.ogt#streamh264");
     let file = root.join("units.h264");
-    std::fs::write(&file, annex_b(&h264.config, &h264.units)).unwrap();
+    std::fs::write(&file, annex_b(&h264.config, &units)).unwrap();
     let out = std::process::Command::new(og_cook::cook::video::ffprobe_bin())
         .args([
             "-v",
@@ -275,12 +305,9 @@ fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
     assert!(report.ok(), "{:?}", report.errors());
     let b = Bundle::open(&root.join("cooked")).unwrap();
     let id = "clips/wide.ogt#stream720";
-    let s = b.video_stream(id, b.read(id).unwrap().as_slice()).unwrap();
-    assert_eq!(
-        (s.meta.width, s.meta.height, s.units.len()),
-        (1280, 720, 10)
-    );
-    let keys: Vec<bool> = s.units.iter().map(|u| u.0).collect();
+    let (s, units) = read_stream(&b, id);
+    assert_eq!((s.meta.width, s.meta.height, units.len()), (1280, 720, 10));
+    let keys: Vec<bool> = units.iter().map(|u| u.0).collect();
     assert_eq!(
         keys.iter().filter(|k| **k).count(),
         2,
@@ -288,7 +315,7 @@ fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
     );
     assert!(keys[0] && keys[5]);
     let mut d = og_video::decode::Decoder::new(1).unwrap();
-    let p = d.decode(&s.units[0].1).unwrap().unwrap();
+    let p = d.decode(&units[0].1).unwrap().unwrap();
     assert_eq!((p.width, p.height), (1280, 720));
     assert!(
         b.output("clips/small.ogt#stream720").is_err(),
@@ -296,7 +323,7 @@ fn a_stream_wider_than_720p_gets_a_720p_rendition_for_the_webs_fallback() {
     );
     // The rendition is coarser than its stream by default (crf + 6), and
     // crf720 overrides that.
-    let bytes = |id: &str| b.read(id).unwrap().len();
+    let bytes = |id: &str| -> usize { read_stream(&b, id).1.iter().map(|u| u.1.len()).sum() };
     assert!(
         bytes(id) < bytes("clips/same.ogt#stream720"),
         "default {} bytes, at the stream's crf {}",

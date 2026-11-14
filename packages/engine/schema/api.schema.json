@@ -7149,7 +7149,7 @@
         },
         {
           "name": "video",
-          "doc": "Load cooked footage (an `.ogt` of `type video`), which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. Load it in GameDesc.start. Loading the same path again answers the same handles.\nSee `loading §9`.",
+          "doc": "Load cooked footage (an `.ogt` of `type video`), which og cook turns with ffmpeg into a clip (a texture array of its frames) or a stream (AV1, decoded as it plays) and its sound track. Either way it makes the video's Texture (VideoInfo.texture), which shows the frame its og.VideoPlayer is at, drawn like any texture by a material, an og.Sprite or a UI image. A stream fetches nothing here (loading §9). Loading the same path again answers the same handles.\nSee `loading §9`.",
           "params": [
             {
               "name": "world",
@@ -53184,6 +53184,11 @@
         "loop": {
           "type": "boolean",
           "description": "Start again at 0 past the end; otherwise hold the last frame and set finished.",
+          "default": false
+        },
+        "wait": {
+          "type": "boolean",
+          "description": "A stream on the web: while this player plays and its frame is not decoded yet, the engine's clock holds, so picture and sound never part (the world ticks later). Off: the clock runs on and the last frame stays. Not for a lockstep game.\nSee `audio §8`.",
           "default": false
         },
         "frame": {

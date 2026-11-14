@@ -37,8 +37,9 @@
 //! each keeps with its bytes.
 //!
 //! What streams is read through one queue ([`fetch`]): the chunks of the
-//! sounds cooked in chunks first, the one a playhead needs soonest first
-//! (`og_audio::chunk_distances`), then the loading groups' packs by
+//! sounds cooked in chunks and of the streamed videos first, the one a
+//! playhead or a player needs soonest first (`og_audio::chunk_distances`,
+//! og-video's `chunks_wanted`), then the loading groups' packs by
 //! priority (then name). At most [`MAX_FETCHES`] reads are in flight: a
 //! read the host answers `Pending` (the web host's fetch) holds a slot
 //! until it lands, and what does not get a slot waits in order. Natively a
@@ -210,6 +211,36 @@ enum Need {
     /// A streamed texture's whole mip chain (`mips`), for the scene
     /// texture of that slot.
     Mips { id: String, handle: u32 },
+    /// Chunk `n` (`stream`, its id) of the stream of video `video` (by
+    /// index), which a player reaches in `seconds` (0: it shows it now).
+    Video {
+        video: usize,
+        stream: String,
+        n: u32,
+        seconds: f64,
+    },
+}
+
+impl Need {
+    /// How soon a chunk is needed (sound and video chunks, read soonest
+    /// first); `None` for what is read after them.
+    fn seconds(&self) -> Option<f64> {
+        match self {
+            Need::Chunk { seconds, .. } | Need::Video { seconds, .. } => Some(*seconds),
+            Need::Pack { .. } | Need::Mips { .. } => None,
+        }
+    }
+}
+
+/// A chunk of a streamed video a player wants (crate::bind::video's
+/// `wanted_chunks`): its file, the video's index, the chunk's id and
+/// index, and the seconds until a player reaches it.
+pub(crate) struct VideoChunkWant {
+    pub path: String,
+    pub video: usize,
+    pub stream: String,
+    pub n: u32,
+    pub seconds: f64,
 }
 
 /// A read wanted now: the file under the bundle and what it is for.
@@ -230,6 +261,11 @@ impl Wanted {
             }),
             Need::Mips { id, .. } => json!({
                 "path": self.path, "kind": "mips", "texture": id,
+            }),
+            Need::Video {
+                stream, n, seconds, ..
+            } => json!({
+                "path": self.path, "kind": "video", "chunk": stream, "n": n, "seconds": seconds,
             }),
         }
     }
@@ -520,8 +556,8 @@ pub(crate) fn memory(eng: &Engine) -> Value {
 }
 
 /// `dump_stream`'s JSON: the budget, the memory used and its peak, every
-/// group (its trigger, state, why and since when), the recent events and
-/// the terrain streamer's tiles.
+/// group (its trigger, state, why and since when), the recent events, the
+/// terrain streamer's tiles and the streamed videos' chunks.
 pub(crate) fn dump(engine_id: u32) -> Value {
     let Ok(eng) = engine(engine_id) else {
         return json!({ "error": "no engine" });
@@ -554,6 +590,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
     v["mips"] = mips::dump(&s.mips);
     drop(a);
     v["terrain"] = crate::bind::terrain::stream_json(engine_id);
+    v["videos"] = crate::bind::video::stream_json(&eng);
     v["cells"] = cells::dump(&eng);
     let (hold, holds) =
         cell_groups::dump(&eng.assets.borrow().stream, crate::author::probe::now_ms());

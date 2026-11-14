@@ -7,7 +7,10 @@
 //! from the key frame at or before the wanted frame when that is behind it
 //! or past the next key frame, and keeps up to [`AHEAD`] frames ready. An
 //! executor ([`Player::take`] with `wait`) blocks until the wanted frame is
-//! ready, so a capture shows exactly the frame of its tick.
+//! ready, so a capture shows exactly the frame of its tick. A stream's
+//! units are held by chunk ([`Units`]): [`chunks_wanted`] names the chunks
+//! a player needs, the same on every host, and the plan waits for a unit
+//! whose chunk has not landed.
 
 use crate::ivf::Unit;
 
@@ -38,23 +41,60 @@ pub fn fallback_size((w, h): (u32, u32)) -> Option<(u32, u32)> {
     Some((side(w), side(h)))
 }
 
-/// A stream's units, frame `n` its unit `n`.
+/// Seconds of footage a playing player's next chunks are fetched ahead of
+/// it (as a chunked sound's are, og-audio's `chunks_wanted`).
+pub const LEAD: f64 = 4.0;
+
+/// One chunk's units, its first frame's first.
+type Chunk = std::sync::Arc<Vec<Vec<u8>>>;
+
+/// A stream's units, frame `n` its unit `n`, held by chunk: chunk `c` is
+/// frames `c · chunk_frames ..` and starts on a key frame. Its chunks land
+/// and go while it plays ([`Units::put`], [`Units::drop_chunk`]); the decode
+/// plan waits for a unit whose chunk is not here.
 #[derive(Debug)]
 pub struct Units {
-    pub units: Vec<Unit>,
+    /// Per frame: whether it is a key frame.
+    key: Vec<bool>,
     /// The key frames, ascending (frame 0 first).
     pub keys: Vec<u32>,
+    /// Frames in each chunk but the last.
+    pub chunk_frames: u32,
+    /// Per chunk, its frames' units while it is here.
+    chunks: std::sync::Mutex<Vec<Option<Chunk>>>,
 }
 
 impl Units {
-    pub fn new(units: Vec<Unit>) -> Units {
-        let keys = units
+    /// A stream's shape, no chunk here yet: `key` per frame, its chunks
+    /// `chunk_frames` frames each (every one starting on a key frame).
+    pub fn new(key: Vec<bool>, chunk_frames: u32) -> Units {
+        let keys = key
             .iter()
             .enumerate()
-            .filter(|(_, u)| u.key)
+            .filter(|(_, k)| **k)
             .map(|(i, _)| i as u32)
             .collect();
-        Units { units, keys }
+        let chunk_frames = chunk_frames.max(1);
+        let n = (key.len() as u32).div_ceil(chunk_frames) as usize;
+        Units {
+            key,
+            keys,
+            chunk_frames,
+            chunks: std::sync::Mutex::new(vec![None; n]),
+        }
+    }
+
+    /// Every unit at once, as one chunk (a stream read whole: tests, tools).
+    pub fn whole(units: Vec<Unit>) -> Units {
+        let u = Units::new(units.iter().map(|u| u.key).collect(), units.len() as u32);
+        if !units.is_empty() {
+            u.put(0, units.into_iter().map(|u| u.data).collect());
+        }
+        u
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, Vec<Option<Chunk>>> {
+        self.chunks.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// The key frame at or before `frame`.
@@ -64,12 +104,102 @@ impl Units {
     }
 
     pub fn len(&self) -> u32 {
-        self.units.len() as u32
+        self.key.len() as u32
     }
 
     pub fn is_empty(&self) -> bool {
-        self.units.is_empty()
+        self.key.is_empty()
     }
+
+    /// Its chunks.
+    pub fn chunks(&self) -> u32 {
+        self.len().div_ceil(self.chunk_frames)
+    }
+
+    /// The chunk that holds `frame`.
+    pub fn chunk_of(&self, frame: u32) -> u32 {
+        frame / self.chunk_frames
+    }
+
+    /// Chunk `n` landed: its frames' units, in order.
+    pub fn put(&self, n: u32, units: Vec<Vec<u8>>) {
+        if let Some(c) = self.lock().get_mut(n as usize) {
+            *c = Some(std::sync::Arc::new(units));
+        }
+    }
+
+    /// Chunk `n` is let go (no player wants it).
+    pub fn drop_chunk(&self, n: u32) {
+        if let Some(c) = self.lock().get_mut(n as usize) {
+            *c = None;
+        }
+    }
+
+    /// Whether chunk `n` is here.
+    pub fn resident(&self, n: u32) -> bool {
+        self.lock().get(n as usize).is_some_and(Option::is_some)
+    }
+
+    /// Whether `frame`'s unit is here.
+    pub fn has(&self, frame: u32) -> bool {
+        frame < self.len() && self.resident(self.chunk_of(frame))
+    }
+
+    /// `frame`'s unit while its chunk is here: the chunk and its place in it.
+    pub fn unit(&self, frame: u32) -> Option<(std::sync::Arc<Vec<Vec<u8>>>, usize)> {
+        let c = self.chunk_of(frame);
+        let chunk = self.lock().get(c as usize)?.clone()?;
+        let at = (frame - c * self.chunk_frames) as usize;
+        (at < chunk.len()).then_some((chunk, at))
+    }
+}
+
+/// The chunks a player at `frame` needs, each with the seconds until it
+/// does (0: now): its own chunk, and while it plays the next ones that
+/// start within [`LEAD`] seconds of it (past the last frame, a looping
+/// player's go on from chunk 0). A paused player needs only its own: a
+/// player paused at a segment's start is how its first frame is decoded
+/// before it plays.
+pub fn chunks_wanted(
+    units: &Units,
+    fps: u32,
+    frame: u32,
+    playing: bool,
+    speed: f32,
+    looped: bool,
+) -> Vec<(u32, f64)> {
+    let n = units.len();
+    if n == 0 {
+        return Vec::new();
+    }
+    let frame = frame.min(n - 1);
+    let mut out = vec![(units.chunk_of(frame), 0.0)];
+    if !playing || speed <= 0.0 || fps == 0 {
+        return out;
+    }
+    let rate = f64::from(fps) * f64::from(speed);
+    let mut start = (units.chunk_of(frame) + 1) * units.chunk_frames;
+    let mut offset = 0u32;
+    while out.len() < units.chunks() as usize {
+        if start >= n {
+            if !looped {
+                break;
+            }
+            offset += n;
+            start = 0;
+        }
+        let seconds = f64::from(start + offset - frame) / rate;
+        if seconds > LEAD {
+            break;
+        }
+        let c = units.chunk_of(start);
+        if out.iter().any(|(k, _)| *k == c) {
+            break;
+        }
+        out.push((c, seconds));
+        start = (c + 1) * units.chunk_frames;
+    }
+    out
 }
 
 /// What the decoder does next.
@@ -85,7 +215,8 @@ pub enum Step {
 
 /// The next step for a decoder whose next unit is `pos`, holding `ready`
 /// frames from `first` on (in decode order), when `want` is wanted.
-/// `looped`: past the last frame the stream goes on at frame 0.
+/// `looped`: past the last frame the stream goes on at frame 0. A step
+/// whose unit's chunk has not landed waits ([`Step::Idle`]).
 pub fn plan(units: &Units, pos: u32, ready: &[u32], want: u32, looped: bool) -> Step {
     let n = units.len();
     let want = want.min(n - 1);
@@ -94,17 +225,22 @@ pub fn plan(units: &Units, pos: u32, ready: &[u32], want: u32, looped: bool) -> 
             return Step::Idle;
         }
         if pos >= n {
-            return Step::Seek(0);
+            return wait_for(units, 0, Step::Seek(0));
         }
-        return Step::Decode;
+        return wait_for(units, pos, Step::Decode);
     }
     // Behind the decoder, or a key frame between it and the wanted frame:
     // start at that key frame.
     let key = units.key_at(want);
     if want < pos || key > pos {
-        return Step::Seek(key);
+        return wait_for(units, key, Step::Seek(key));
     }
-    Step::Decode
+    wait_for(units, pos, Step::Decode)
+}
+
+/// `step`, or [`Step::Idle`] while unit `frame`'s chunk has not landed.
+fn wait_for(units: &Units, frame: u32, step: Step) -> Step {
+    if units.has(frame) { step } else { Step::Idle }
 }
 
 #[cfg(all(feature = "decode", not(target_arch = "wasm32")))]
@@ -163,6 +299,13 @@ mod native {
                 shared,
                 thread: Some(thread),
             })
+        }
+
+        /// A chunk landed: a decoder waiting for it goes on.
+        pub fn wake(&self) {
+            let (m, cv) = &*self.shared;
+            drop(m.lock().unwrap_or_else(|e| e.into_inner()));
+            cv.notify_all();
         }
 
         /// The frame the player is at (each tick); `looped` decodes on into
@@ -256,7 +399,11 @@ mod native {
                 pos = k;
             }
             let frame = pos;
-            let result = decoder.decode(&units.units[frame as usize].data);
+            // Let go of between the plan and here: wait for it again.
+            let Some((chunk, at)) = units.unit(frame) else {
+                continue;
+            };
+            let result = decoder.decode(&chunk[at]);
             pos += 1;
             let mut s = m.lock().unwrap_or_else(|e| e.into_inner());
             match result {
@@ -276,7 +423,7 @@ mod tests {
     use super::*;
 
     fn units(n: u32, every: u32) -> Units {
-        Units::new(
+        Units::whole(
             (0..n)
                 .map(|i| Unit {
                     pts: u64::from(i),
@@ -285,6 +432,77 @@ mod tests {
                 })
                 .collect(),
         )
+    }
+
+    /// 300 frames at 30 fps, a key frame every 30, chunks of 60 (2 s),
+    /// none landed.
+    fn chunked() -> Units {
+        Units::new((0..300).map(|i| i % 30 == 0).collect(), 60)
+    }
+
+    #[test]
+    fn the_plan_waits_for_a_units_chunk_and_goes_on_once_it_lands() {
+        let u = chunked();
+        u.put(0, vec![vec![1]; 60]);
+        // Inside the landed chunk: decode, or seek to its key frame.
+        assert_eq!(plan(&u, 12, &[], 20, false), Step::Decode);
+        assert_eq!(plan(&u, 50, &[], 40, false), Step::Seek(30));
+        // The key frame to seek to is in chunk 1, not landed: wait.
+        assert_eq!(plan(&u, 12, &[], 75, false), Step::Idle);
+        // Decoding on into chunk 1 from the last frame of chunk 0: wait.
+        assert_eq!(plan(&u, 60, &[59], 59, false), Step::Idle);
+        u.put(1, vec![vec![1]; 60]);
+        assert_eq!(plan(&u, 12, &[], 75, false), Step::Seek(60));
+        assert_eq!(plan(&u, 60, &[59], 59, false), Step::Decode);
+        // A chunk let go is waited for again; a looping wrap waits for chunk 0.
+        u.drop_chunk(0);
+        assert_eq!(plan(&u, 50, &[], 40, false), Step::Idle);
+        assert!(u.unit(10).is_none() && u.unit(70).is_some_and(|(_, at)| at == 10));
+    }
+
+    #[test]
+    fn a_player_wants_its_chunk_and_those_starting_within_the_lead() {
+        let u = chunked();
+        let at = |w: Vec<(u32, f64)>| -> Vec<(u32, i64)> {
+            w.into_iter()
+                .map(|(c, s)| (c, (s * 1000.0).round() as i64))
+                .collect()
+        };
+        // Frame 50 at 1x: chunk 1 in 10 frames, chunk 2 in 70; chunk 3 is
+        // 130 frames (4.33 s) away, past the lead.
+        assert_eq!(
+            at(chunks_wanted(&u, 30, 50, true, 1.0, false)),
+            vec![(0, 0), (1, 333), (2, 2333)]
+        );
+        // At 2x the same footage is half as far: up to the last chunk.
+        assert_eq!(
+            at(chunks_wanted(&u, 30, 50, true, 2.0, false)),
+            vec![(0, 0), (1, 167), (2, 1167), (3, 2167), (4, 3167)]
+        );
+        // Near the end a looping player goes on from chunk 0; one that
+        // does not loop wants nothing past its last.
+        assert_eq!(
+            at(chunks_wanted(&u, 30, 290, true, 1.0, true)),
+            vec![(4, 0), (0, 333), (1, 2333)]
+        );
+        assert_eq!(
+            at(chunks_wanted(&u, 30, 290, true, 1.0, false)),
+            vec![(4, 0)]
+        );
+        // Paused (or at speed 0): only its own, the frame it shows.
+        assert_eq!(
+            at(chunks_wanted(&u, 30, 130, false, 1.0, true)),
+            vec![(2, 0)]
+        );
+        assert_eq!(
+            at(chunks_wanted(&u, 30, 130, true, 0.0, false)),
+            vec![(2, 0)]
+        );
+        // A time past the end wants the last frame's chunk.
+        assert_eq!(
+            at(chunks_wanted(&u, 30, 900, false, 1.0, false)),
+            vec![(4, 0)]
+        );
     }
 
     #[test]

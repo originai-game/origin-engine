@@ -190,6 +190,14 @@ pub(crate) const MIGRATIONS: &[Migration] = &[
     },
     Migration {
         target: Target::Record,
+        name: "og.VideoPlayer",
+        from: 2,
+        to: 3,
+        note: "0.7.7 and earlier: gained wait (a stream holding the clock until its frame is shown); the restore takes it off, a player that never waits",
+        run: None,
+    },
+    Migration {
+        target: Target::Record,
         name: "og.Lighting2D",
         from: 1,
         to: 2,
