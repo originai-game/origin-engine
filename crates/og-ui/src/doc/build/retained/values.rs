@@ -30,8 +30,9 @@ fn rows(items: &[Value], key: &str) -> Option<Vec<serde_json::Map<String, Value>
         .collect()
 }
 
-/// What a mount of `document` reads by name: its props, and the stores it
-/// and the components it uses read (`$name`). Each has the field its rows
+/// What a mount of `document` reads by name: the names it reads bare (its
+/// props), and the stores it and the components it uses read (`$name`).
+/// Each has the field its rows
 /// are keyed by where an `{#each}` iterates it.
 fn names(
     documents: &BTreeMap<String, Arc<UiDocument>>,
@@ -44,11 +45,11 @@ fn names(
         let Some(doc) = documents.get(&name).filter(|_| seen.insert(name.clone())) else {
             continue;
         };
-        let props = doc
-            .props
-            .iter()
-            .filter(|p| name == document && p.ty != "content")
-            .map(|p| (p.name.clone(), doc.each_key(&p.name)));
+        let root = name == document;
+        let props = doc.bare_names().into_iter().filter(|_| root).map(|prop| {
+            let key = doc.each_key(&prop);
+            (prop, key)
+        });
         let stores = doc.stores().into_iter().map(|store| {
             let key = doc.each_key(&format!("${store}"));
             (store, key)

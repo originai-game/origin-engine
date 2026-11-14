@@ -251,6 +251,30 @@ impl UiDocument {
         out
     }
 
+    /// The names it reads bare (`{gold}`) from whoever shows it: its
+    /// declared props, or, where it declares none, every bare name it
+    /// reads that is not an item variable or a resource (Capitalised).
+    pub fn bare_names(&self) -> std::collections::BTreeSet<String> {
+        if !self.props.is_empty() {
+            let props = self.props.iter().filter(|p| p.ty != "content");
+            return props.map(|p| p.name.clone()).collect();
+        }
+        let mut out = std::collections::BTreeSet::new();
+        for (i, n) in self.nodes.iter().enumerate() {
+            let locals = self.locals(i);
+            let mut paths = Vec::new();
+            self.node_paths(n, &mut paths);
+            for path in paths {
+                let root = path.split('.').next().unwrap_or_default();
+                let named = root.starts_with(|c: char| c.is_ascii_lowercase() || c == '_');
+                if named && !locals.iter().any(|local| local == root) {
+                    out.insert(root.to_owned());
+                }
+            }
+        }
+        out
+    }
+
     /// The field an `{#each}` over `list` (as written: `$items`, or a prop
     /// `items`) keys its rows by: `id` for `(item.id)`.
     pub fn each_key(&self, list: &str) -> Option<&str> {

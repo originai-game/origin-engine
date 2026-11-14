@@ -1439,6 +1439,46 @@ fn a_pushed_viewmodel_s_list_is_iterated_by_its_rows_ids() {
     );
 }
 
+/// A screen that declares no props reads its viewmodel's fields bare
+/// (`{title}`), as one that declares them does, and a field the push
+/// leaves out reads nothing.
+///
+/// Ways it could fail: a bare name refused as no row variable (the screen
+/// draws nothing), an item variable or a resource taken for a field, a
+/// field left out refused.
+#[test]
+fn a_screen_without_props_reads_its_viewmodel_s_fields_bare() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "plain.svelte",
+            r#"<meta name="screen" content="plain">
+<column id="Root">
+  <text id="Title">{title}</text>
+  {#if note}<text id="Note">{note}</text>{/if}
+  {#each rows as row (row.id)}<text id="Row">{row.name}</text>{/each}
+</column>
+"#,
+        )
+        .unwrap(),
+    );
+    ui.push_screen(
+        "plain",
+        json!({"title": "Plain", "rows": [{"id": "a", "name": "ash"}]}),
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), viewport());
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let texts: Vec<String> = ui
+        .probe_elements()
+        .iter()
+        .filter(|e| !e.text.is_empty())
+        .map(|e| e.text.clone())
+        .collect();
+    assert_eq!(texts, ["Plain", "ash"]);
+}
+
 /// A pushed screen's viewmodel is read back as it is now: what was
 /// pushed, rows in their order, with what the screen's controls wrote.
 ///

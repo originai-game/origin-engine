@@ -248,10 +248,11 @@ pub(crate) fn check_instances(
     Ok(())
 }
 
-/// What a mount's root reads beyond its stores (`$name`). Its document's
-/// declared props are each the mount's store of that name, as an
-/// instance's are its user's attributes; one the mount leaves out reads
-/// its default. The content it is given, by name, is `document` (its
+/// What a mount's root reads beyond its stores (`$name`). The names its
+/// document reads bare ([`UiDocument::bare_names`]: its props) are each
+/// the mount's store of that name, as an instance's are its user's
+/// attributes; a prop the mount leaves out reads its default. The
+/// content it is given, by name, is `document` (its
 /// root) or `document#snippet` (one of its snippets), rendered with the
 /// mount's stores.
 pub(super) fn mount_lexical(
@@ -262,17 +263,18 @@ pub(super) fn mount_lexical(
 ) -> Result<Lexical, String> {
     let mut lexical = Lexical::default();
     let written = Arc::new(context.clone());
-    for prop in &document.props {
-        let store = format!("${}", prop.name);
-        let (expression, model) = if context.inputs.contains_key(&prop.name) {
+    for name in document.bare_names() {
+        let store = format!("${name}");
+        let default = document.props.iter().find(|p| p.name == name);
+        let (expression, model) = if context.inputs.contains_key(&name) {
             (Expr::Path(store.clone()), Some(store))
-        } else if let Some(default) = &prop.default {
+        } else if let Some(default) = default.and_then(|p| p.default.as_ref()) {
             (Expr::Lit(default.clone()), None)
         } else {
             continue;
         };
         lexical.props.insert(
-            prop.name.clone(),
+            name,
             PropRef {
                 expression: expression.into(),
                 model,

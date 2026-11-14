@@ -2,7 +2,7 @@
   "added": [
     {
       "member": "prop",
-      "summary": "A mounted document reads its declared props bare, as an instance does: with <meta name=\"prop:objective\" content=\"string\">, {objective} at the mount's root is the mount's store of that name, and a prop the mount leaves out reads its default."
+      "summary": "A mounted document reads its props bare, as an instance does: with <meta name=\"prop:objective\" content=\"string\">, {objective} at the mount's root is the mount's store of that name, and a prop the mount leaves out reads its default. A document that declares no props reads every bare name that way, as a pushed screen reads its viewmodel's fields."
     }
   ]
 }
