@@ -412,7 +412,8 @@ fn place(@builtin(local_invocation_index) lane: u32) {
   if (lane == PLACE_LANES - 1u) {
     let total = bitcast<f32>(lane_counts[lane]);
     out[PLACE_TAIL] = vec4<f32>(bitcast<f32>(job.counts.z), total, 0.0, 0.0);
-    out[PLACE_TAIL + 1u] = vec4<f32>(0.0, bitcast<f32>(6u), total, 0.0);
+    // The card's draw: its vertices (scatter.rs IMPOSTOR_CARD_VERTICES).
+    out[PLACE_TAIL + 1u] = vec4<f32>(0.0, bitcast<f32>(24u), total, 0.0);
     out[PLACE_TAIL + 2u] = vec4<f32>(0.0);
   }
 }

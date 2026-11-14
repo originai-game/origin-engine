@@ -158,6 +158,13 @@ plant): 110 m for an oak of 9 m at 720 rows, 28 m for a shrub of 2.3 m.
 A larger `impostorSize` brings that nearer in proportion and multiplies
 the atlas by its square.
 
+The card holds views from the horizon up. Seen from under its horizon
+(a tree on a cliff over the camera, a model hanging or flying) it draws
+the view from the horizon, upright: whole, and flatter the steeper the
+view. Add `impostorBelow true` for a model seen that way: its underside
+is baked too, and the atlas is twice as wide. A card sways as its model
+does (TerrainScatter.sway, Model.sway), bending from its foot.
+
 og.Wind's `strength` is lean per metre of height: 0.05 to 0.1 moves a
 10 m tree as a breeze does, and what suits grass (0.5 and up) lays a tree
 flat. Give trees their own lower `sway` when one wind blows over both.

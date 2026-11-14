@@ -188,7 +188,8 @@ fn cull(@builtin(local_invocation_index) lane: u32) {
         draws[row + l * 5u + 3u] = 0u;
         draws[row + l * 5u + 4u] = 0u;
       }
-      draws[row + 15u] = 6u;
+      // The card's vertices (scatter.rs IMPOSTOR_CARD_VERTICES).
+      draws[row + 15u] = 24u;
       draws[row + 16u] = select(0u, total[count], item.bins.z == 1u && s < item.bins.w);
       draws[row + 17u] = 0u;
       draws[row + 18u] = 0u;

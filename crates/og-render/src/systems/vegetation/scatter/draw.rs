@@ -210,7 +210,7 @@ impl ScatterRenderer {
                         pass.set_vertex_buffer(0, buffer.slice(..));
                         match c.placed {
                             Some(_) => pass.draw_indirect(buffer, crate::scatter_place::TAIL + 20),
-                            None => pass.draw(0..6, 0..c.count),
+                            None => pass.draw(0..IMPOSTOR_CARD_VERTICES, 0..c.count),
                         }
                     }
                 }
@@ -236,7 +236,7 @@ impl ScatterRenderer {
                 }
                 let stride = std::mem::size_of::<crate::instances::GpuTransform>() as u64;
                 pass.set_vertex_buffer(0, buffer.slice(b.first as u64 * stride..));
-                pass.draw(0..6, 0..b.count);
+                pass.draw(0..IMPOSTOR_CARD_VERTICES, 0..b.count);
                 draws += 1;
                 copies += b.count;
             }

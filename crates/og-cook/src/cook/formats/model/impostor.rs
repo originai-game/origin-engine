@@ -1,6 +1,8 @@
 //! Octahedral impostors (`model { impostor true }`, og-render's
 //! `impostor.rs`): the model's default scene rendered on the CPU from
-//! `grid × grid` directions over the upper hemisphere (hemi-octahedral),
+//! `grid × grid` directions over the upper hemisphere (hemi-octahedral;
+//! with `impostorBelow true` the lower one's too, in the atlases' right
+//! half: [`ImpostorBake::below`]),
 //! each frame a square of two atlases: the albedo with its coverage in alpha (sRGB), and the
 //! normal in the frame's basis with the depth towards the viewer (linear,
 //! `n · 0.5 + 0.5`, `0.5 + 0.5 × depth / radius`).
@@ -38,11 +40,14 @@ use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
 use og_render_data::impostor::{frame_basis, frame_direction};
 
 /// How a model's impostor is baked: frames per side (0: by the model,
-/// [`ImpostorBake::resolved`]) and pixels per frame.
+/// [`ImpostorBake::resolved`]), pixels per frame, and whether the lower
+/// hemisphere is baked too (`impostorBelow`: the atlases twice as wide,
+/// for a model seen from below its horizon).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ImpostorBake {
     pub grid: u32,
     pub frame: u32,
+    pub below: bool,
 }
 
 impl Default for ImpostorBake {
@@ -50,7 +55,16 @@ impl Default for ImpostorBake {
         ImpostorBake {
             grid: 0,
             frame: 128,
+            below: false,
         }
+    }
+}
+
+impl ImpostorBake {
+    /// Frames across the atlases: the lower hemisphere's stand right of
+    /// the upper one's.
+    pub fn columns(self) -> u32 {
+        self.grid * if self.below { 2 } else { 1 }
     }
 }
 
@@ -449,6 +463,20 @@ pub fn bake(
     b: ImpostorBake,
 ) -> Result<Baked, String> {
     let b = b.resolved(src);
+    if b.columns() * b.frame > 4096 {
+        return Err(format!(
+            "an impostor of {} × {} frames of {} px makes an atlas {} pixels wide, past 4096: lower impostorSize or impostorGrid{}",
+            b.columns(),
+            b.grid,
+            b.frame,
+            b.columns() * b.frame,
+            if b.below {
+                " (impostorBelow doubles the frames across)"
+            } else {
+                ""
+            }
+        ));
+    }
     let center = (min + max) * 0.5;
     let radius = ((max - min) * 0.5).length().max(1e-3);
     let tris = triangles(src, instanced);
@@ -470,10 +498,11 @@ pub fn bake(
         }
     }
     let grid = b.grid;
-    let size = grid * b.frame;
-    let mut albedo = vec![0u8; (size * size * 4) as usize];
-    let mut normal = vec![0u8; (size * size * 4) as usize];
-    let mut material = vec![0u8; (size * size * 4) as usize];
+    // The atlases' width (their rows' stride) and height.
+    let (size, height) = (b.columns() * b.frame, grid * b.frame);
+    let mut albedo = vec![0u8; (size * height * 4) as usize];
+    let mut normal = vec![0u8; (size * height * 4) as usize];
+    let mut material = vec![0u8; (size * height * 4) as usize];
     let ss = SUPERSAMPLE;
     let fine = b.frame * ss;
     // The model drawn from `d` (from the centre towards the viewer).
@@ -578,7 +607,7 @@ pub fn bake(
         .map(|d| (d, raster(d).depth))
         .collect();
     for j in 0..grid {
-        for i in 0..grid {
+        for i in 0..b.columns() {
             let d = frame_direction(i, j, grid);
             let (right, up) = frame_basis(d);
             let Fine {
@@ -677,7 +706,7 @@ pub fn bake(
     }
     let image = |rgba| Image {
         width: size,
-        height: size,
+        height,
         rgba,
     };
     Ok(Baked {
@@ -840,12 +869,12 @@ pub(crate) mod tests {
     /// Texel (x, y) of frame (i, j) of a `grid`-sided atlas of `frame` px.
     fn texel(
         img: &Image,
-        grid: u32,
+        _grid: u32,
         frame: u32,
         (i, j): (u32, u32),
         (x, y): (u32, u32),
     ) -> [u8; 4] {
-        let at = (((j * frame + y) * grid * frame + i * frame + x) * 4) as usize;
+        let at = (((j * frame + y) * img.width + i * frame + x) * 4) as usize;
         img.rgba[at..at + 4].try_into().unwrap()
     }
 
@@ -858,7 +887,13 @@ pub(crate) mod tests {
     fn frames_show_the_model_from_their_directions() {
         let src = super::super::load(&two_boxes(), std::path::Path::new(".")).unwrap();
         let (grid, frame) = (3, 32);
-        let b = src.impostor(ImpostorBake { grid, frame }).unwrap();
+        let b = src
+            .impostor(ImpostorBake {
+                grid,
+                frame,
+                below: false,
+            })
+            .unwrap();
         assert_eq!((b.albedo.width, b.normal.height), (96, 96));
         // The bounds' sphere: x from -1.5 to 1.5, y and z ±0.5.
         assert!(b.center.length() < 1e-5);
@@ -906,6 +941,73 @@ pub(crate) mod tests {
         assert!(c[3] == 0 && c[0] > 200, "{c:?}");
     }
 
+    /// Ways this could fail: `below` ignored (a square atlas), the upper
+    /// half changed by it, the lower half's frames drawn from above (the
+    /// tops' normals facing the viewer from under the model) or mirrored
+    /// against og-render's basis for a view from below (the boxes
+    /// swapped), or a wider atlas than the limit baked silently.
+    #[test]
+    fn below_adds_the_lower_hemispheres_frames_on_the_right() {
+        // A source bakes once: one of its own per bake.
+        let load = || super::super::load(&two_boxes(), std::path::Path::new(".")).unwrap();
+        let (grid, frame) = (3, 32);
+        let (plain, lower, wide) = (load(), load(), load());
+        let upper = plain
+            .impostor(ImpostorBake {
+                grid,
+                frame,
+                below: false,
+            })
+            .unwrap();
+        let b = lower
+            .impostor(ImpostorBake {
+                grid,
+                frame,
+                below: true,
+            })
+            .unwrap();
+        assert_eq!((b.albedo.width, b.albedo.height), (192, 96));
+        assert_eq!((b.normal.width, b.material.width), (192, 192));
+        for y in 0..96 {
+            let (u, w) = ((y * 96 * 4) as usize, (y * 192 * 4) as usize);
+            assert_eq!(
+                upper.albedo.rgba[u..u + 96 * 4],
+                b.albedo.rgba[w..w + 96 * 4]
+            );
+            assert_eq!(
+                upper.normal.rgba[u..u + 96 * 4],
+                b.normal.rgba[w..w + 96 * 4]
+            );
+        }
+        let red = |c: [u8; 4]| c[0] > 200 && c[1] < 40 && c[2] < 40 && c[3] == 255;
+        let blue = |c: [u8; 4]| c[2] > 200 && c[0] < 40 && c[1] < 40 && c[3] == 255;
+        // Frame (4, 1) looks from -y: right is +x there, so the red box
+        // (at +x) on the right, the faces under the boxes towards the
+        // viewer.
+        assert_eq!(frame_direction(4, 1, grid), -Vec3::Y);
+        let (right, _) = frame_basis(-Vec3::Y);
+        assert!(right.x > 0.99);
+        let off = (frame as f32 / 2.0 / b.radius) as u32;
+        let (left_px, right_px) = ((frame / 2 - off, frame / 2), (frame / 2 + off, frame / 2));
+        assert!(blue(texel(&b.albedo, grid, frame, (4, 1), left_px)));
+        assert!(red(texel(&b.albedo, grid, frame, (4, 1), right_px)));
+        assert!(texel(&b.normal, grid, frame, (4, 1), left_px)[2] > 245);
+        // Frame (5, 2) from +x as (2, 2) is: the horizon is on both
+        // halves' borders.
+        assert_eq!(frame_direction(5, 2, grid), frame_direction(2, 2, grid));
+        let mid = (frame / 2, frame / 2);
+        assert_eq!(
+            texel(&b.albedo, grid, frame, (5, 2), mid),
+            texel(&b.albedo, grid, frame, (2, 2), mid)
+        );
+        let wide = wide.impostor(ImpostorBake {
+            grid: 12,
+            frame: 256,
+            below: true,
+        });
+        assert!(wide.is_err_and(|e| e.contains("past 4096")));
+    }
+
     /// Ways this could fail: no material atlas, translucency left at 0
     /// (the backlight then has nothing to read), the materials' values
     /// swapped between the boxes, roughness or metallic not carried, the
@@ -927,7 +1029,13 @@ pub(crate) mod tests {
         let solid = super::super::load(&two_boxes(), std::path::Path::new(".")).unwrap();
         assert_eq!(ImpostorBake::default().resolved(&solid).grid, GRID);
         let (grid, frame) = (3, 32);
-        let b = src.impostor(ImpostorBake { grid, frame }).unwrap();
+        let b = src
+            .impostor(ImpostorBake {
+                grid,
+                frame,
+                below: false,
+            })
+            .unwrap();
         assert_eq!((b.material.width, b.material.height), (96, 96));
         let mid = (frame / 2, frame / 2);
         let near = |v: u8, f: f32| (v as f32 - f * 255.0).abs() <= 3.0;
@@ -970,7 +1078,13 @@ pub(crate) mod tests {
         // Nine frames a side: the middle one looks straight down, and the
         // suns are a 3 x 3 spread in from the horizon.
         let (grid, frame) = (9, 64);
-        let b = src.impostor(ImpostorBake { grid, frame }).unwrap();
+        let b = src
+            .impostor(ImpostorBake {
+                grid,
+                frame,
+                below: false,
+            })
+            .unwrap();
         assert!((b.center - Vec3::new(0.0, 0.03, 0.0)).length() < 1e-4);
         assert_eq!(frame_direction(4, 4, grid), Vec3::Y);
         let (right, up) = frame_basis(Vec3::Y);
@@ -1014,7 +1128,13 @@ pub(crate) mod tests {
         let glb = textured_box(&png);
         let src = super::super::load(&glb, std::path::Path::new(".")).unwrap();
         let (grid, frame) = (3, 16);
-        let b = src.impostor(ImpostorBake { grid, frame }).unwrap();
+        let b = src
+            .impostor(ImpostorBake {
+                grid,
+                frame,
+                below: false,
+            })
+            .unwrap();
         // The face seen from +y, the frame's centre 6 × 6 texels: the
         // linear mean 0.5 is sRGB 188.
         let mut worst = 0i32;

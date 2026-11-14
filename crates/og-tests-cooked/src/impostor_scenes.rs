@@ -9,6 +9,8 @@
 //!   shadow, and the card's must be in its own: a card inside its sphere
 //!   is shaded by its depth atlas, the cascades only reaching it past the
 //!   sphere (impostor.wgsl `imp_self_shadow`).
+//! - `impostor_scene(below)`: the same, the tree cooked with
+//!   `impostorBelow` or without: the card seen from under its horizon.
 
 use glam::{Mat4, Vec3};
 use og_cook::runtime::Bundle;
@@ -19,12 +21,17 @@ use og_render::{
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-/// The tree cooked with its impostor, once per process (its own project,
-/// so the other cooked scenes' trees stay as they are).
-fn cooked() -> Result<&'static PathBuf, String> {
-    static ROOT: OnceLock<Result<PathBuf, String>> = OnceLock::new();
-    ROOT.get_or_init(|| {
-        let root = std::env::temp_dir().join(format!("og-tests-impostor-{}", std::process::id()));
+/// The tree cooked with its impostor (`below`: the lower hemisphere's
+/// frames too), once per process (its own project, so the other cooked
+/// scenes' trees stay as they are).
+fn cooked(below: bool) -> Result<&'static PathBuf, String> {
+    static ROOTS: [OnceLock<Result<PathBuf, String>>; 2] = [OnceLock::new(), OnceLock::new()];
+    ROOTS[usize::from(below)].get_or_init(|| {
+        let root = std::env::temp_dir().join(format!(
+            "og-tests-impostor-{}-{}",
+            u8::from(below),
+            std::process::id()
+        ));
         let _ = std::fs::remove_dir_all(&root);
         let models = root.join("assets/models");
         std::fs::create_dir_all(&models).map_err(|e| format!("{}: {e}", models.display()))?;
@@ -32,7 +39,9 @@ fn cooked() -> Result<&'static PathBuf, String> {
             .map_err(|e| format!("tree.glb: {e}"))?;
         std::fs::write(
             models.join("tree.glb.ogt"),
-            "type import\nversion 1\n---\nmodel {\n  impostor true\n  impostorSize 256\n}\n",
+            format!(
+                "type import\nversion 1\n---\nmodel {{\n  impostor true\n  impostorSize 256\n  impostorBelow {below}\n}}\n"
+            ),
         )
         .map_err(|e| format!("tree.glb.ogt: {e}"))?;
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default())
@@ -53,7 +62,13 @@ pub const CARD_AT: Vec3 = Vec3::new(2.6, 0.0, 0.0);
 /// The scene ([module docs](self)), and the tree's bounds in its own
 /// space (min, max).
 pub fn impostor_self_shadow_scene() -> Result<(RenderScene, (Vec3, Vec3)), String> {
-    let root = cooked()?;
+    impostor_scene(false)
+}
+
+/// [`impostor_self_shadow_scene`], the tree cooked with `impostorBelow`
+/// when `below`.
+pub fn impostor_scene(below: bool) -> Result<(RenderScene, (Vec3, Vec3)), String> {
+    let root = cooked(below)?;
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
     let model = bundle
         .load_model("models/tree.glb")
@@ -118,9 +133,12 @@ pub fn impostor_self_shadow_scene() -> Result<(RenderScene, (Vec3, Vec3)), Strin
             center: i.center,
             radius: i.radius,
             material_atlas: atlas.is_some(),
+            below: i.below,
         },
         transform: Mat4::from_translation(CARD_AT),
         cast_shadows: true,
+        sway: 0.0,
+        top: 0.0,
     });
     let mid = (model.min + model.max) * 0.5;
     scene.frame.camera = Camera {

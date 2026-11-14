@@ -79,6 +79,7 @@ fn the_impostor_ends_the_level_chain() {
         center: Vec3::ZERO,
         radius: 1.0,
         material_atlas: false,
+        below: false,
     };
     let lods = ModelLods {
         // One part with levels 3 cm and 12 cm off, another with one.

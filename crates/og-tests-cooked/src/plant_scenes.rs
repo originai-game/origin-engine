@@ -158,6 +158,7 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
                 center: i.center,
                 radius: i.radius,
                 material_atlas: atlas.is_some(),
+                below: i.below,
             })
         }
         None => None,
