@@ -38,12 +38,27 @@ const view = og.transform.cameraForward(cameraRotation); // a camera's -Z
 const screenRight = og.transform.cameraRight(cameraRotation);
 
 // A heading about +Y, and the rotation of one.
-const heading = math.atan2(direction.x, direction.z);
-const turned = og.transform.fromAxisAngle({ x: 0, y: 1, z: 0 }, heading);
+const heading = og.transform.heading(heroRotation);      // of a direction: math.atan2(d.x, d.z)
+const turned = og.transform.fromHeading(heading + turnSpeed * dt);
+```
+
+On the 2D plane the calls end in `2d`: a thing faces its +X and turns
+about +Z, so it stays in the plane.
+
+```ts
+// Turn a sprite to face a point, and read the way it faces.
+world.set(ship, og.Transform, { quaternion: og.transform.face2d(shipPosition, point) });
+const ahead2d = og.transform.forward2d(shipRotation);    // a 2D thing's +X; z is 0
+
+// A 2D heading about +Z, and the rotation of one.
+const angle = og.transform.heading2d(shipRotation);      // of a direction: math.atan2(d.y, d.x)
+const spun = og.transform.fromHeading2d(angle + turnSpeed * dt);
 ```
 
 - `og.transform.face` is for objects and `og.transform.lookAt` for cameras
   and lights. Using the wrong one turns the thing to face away.
+- In a 2D game use `og.transform.face2d`, never `og.transform.face`: the
+  3D call points the sprite's +Z at the target and turns it edge-on.
 - `og.transform.right` of a camera's rotation is the camera's left: use
   `og.transform.cameraRight`.
 - What the engine turns for you follows the table: nav's `faceMovement`,
@@ -102,7 +117,9 @@ of its rotation times the action's y.
 | `camera.getWorldDirection(v)` (its -Z) | `og.transform.cameraForward(quaternion)` |
 | `new Vector3(1, 0, 0).applyQuaternion(camera.quaternion)` | `og.transform.cameraRight(quaternion)` |
 | the hand-written "forward = camera direction with y = 0, right = forward × up" block | `og.input.moveRelative(world, action, camera.quaternion)` |
-| `Math.atan2(dx, dz)` for a yaw | `math.atan2(dx, dz)`, the same angle (`determinism §1`) |
+| `Math.atan2(dx, dz)` for a yaw | `math.atan2(dx, dz)`, the same angle (`determinism §1`); of a rotation, `og.transform.heading(quaternion)` |
+| `object.rotation.y = yaw` | `og.transform.fromHeading(yaw)` |
+| `sprite.rotation.z = Math.atan2(dy, dx)` (2D) | `og.transform.face2d(position, target)`, or `og.transform.fromHeading2d(angle)` |
 
 The axes are three.js's, so positions and rotations port unchanged. What
 ports badly is hand-written sign logic: replace it with the calls above

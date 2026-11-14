@@ -585,6 +585,42 @@ pub fn og_transform_camera_right(env: Env, quaternion: String) -> String {
     <Host as TransformApi>::og_transform_camera_right(&Host, quaternion)
 }
 
+#[napi(js_name = "og_transform_heading")]
+pub fn og_transform_heading(env: Env, quaternion: String) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_heading(&Host, quaternion)
+}
+
+#[napi(js_name = "og_transform_from_heading")]
+pub fn og_transform_from_heading(env: Env, heading: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_from_heading(&Host, heading)
+}
+
+#[napi(js_name = "og_transform_face2d")]
+pub fn og_transform_face2d(env: Env, position: String, target: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_face2d(&Host, position, target)
+}
+
+#[napi(js_name = "og_transform_forward2d")]
+pub fn og_transform_forward2d(env: Env, quaternion: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_forward2d(&Host, quaternion)
+}
+
+#[napi(js_name = "og_transform_heading2d")]
+pub fn og_transform_heading2d(env: Env, quaternion: String) -> f64 {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_heading2d(&Host, quaternion)
+}
+
+#[napi(js_name = "og_transform_from_heading2d")]
+pub fn og_transform_from_heading2d(env: Env, heading: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as TransformApi>::og_transform_from_heading2d(&Host, heading)
+}
+
 #[napi(js_name = "og_transform_from_axis_angle")]
 pub fn og_transform_from_axis_angle(env: Env, axis: String, angle: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -2612,6 +2612,12 @@ export interface OriginShifted {
 
 
 
+
+
+
+
+
+
 // ── time ────────────────────────────────────────────────────────
 // Simulation time. Game code never reads the wall clock; it reads Time.
 // Time groups slow or freeze some entities and not others (a bullet-time enemy beside a player at full speed, a frozen boss, a paused UI diorama): put an entity in a group with og.TimeGroup and set the group's scale with og.time.setGroupScale. Physics stays on the global scale, and timelines and the UI keep their own pace.
@@ -33087,6 +33093,51 @@ export declare namespace og {
      * @param quaternion The camera's or the light's rotation (og.Camera.quaternion).
      */
     function cameraRight(quaternion: Quaternion): Vector3;
+    /**
+     * The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. The heading of a direction is math.atan2(x, z).
+     * See `facing`.
+     *
+     * @param quaternion The object's rotation.
+     * @returns The heading in radians, from -π to π.
+     */
+    function heading(quaternion: Quaternion): number;
+    /**
+     * The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X.
+     * See `facing`.
+     *
+     * @param heading The heading in radians.
+     */
+    function fromHeading(heading: number): Quaternion;
+    /**
+     * The rotation that turns a 2D thing at a position to face a target: about +Z, its +X towards it, staying in the xy plane. og.transform.face is the 3D one, and turns a sprite out of the plane.
+     * See `facing`.
+     *
+     * @param position Where the thing is (its xy).
+     * @param target What it faces (its xy); the same point as the position gives no turn.
+     */
+    function face2d(position: Vector3, target: Vector3): Quaternion;
+    /**
+     * The way a 2D thing with this rotation faces: its local +X, as a unit vector. og.transform.forward is the 3D one (+Z).
+     * See `facing`.
+     *
+     * @param quaternion The thing's rotation.
+     */
+    function forward2d(quaternion: Quaternion): Vector3;
+    /**
+     * The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). The heading of a direction is math.atan2(y, x).
+     * See `facing`.
+     *
+     * @param quaternion The thing's rotation.
+     * @returns The heading in radians, from -π to π.
+     */
+    function heading2d(quaternion: Quaternion): number;
+    /**
+     * The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up).
+     * See `facing`.
+     *
+     * @param heading The 2D heading in radians.
+     */
+    function fromHeading2d(heading: number): Quaternion;
     /**
      * A rotation about an axis, as three.js Quaternion.setFromAxisAngle.
      *

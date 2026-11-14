@@ -239,6 +239,18 @@ pub trait TransformApi: Wire {
     fn og_transform_camera_forward(&self, quaternion: String) -> String;
     /// `og.transform.cameraRight`
     fn og_transform_camera_right(&self, quaternion: String) -> String;
+    /// `og.transform.heading`
+    fn og_transform_heading(&self, quaternion: String) -> f64;
+    /// `og.transform.fromHeading`
+    fn og_transform_from_heading(&self, heading: f64) -> String;
+    /// `og.transform.face2d`
+    fn og_transform_face2d(&self, position: String, target: String) -> String;
+    /// `og.transform.forward2d`
+    fn og_transform_forward2d(&self, quaternion: String) -> String;
+    /// `og.transform.heading2d`
+    fn og_transform_heading2d(&self, quaternion: String) -> f64;
+    /// `og.transform.fromHeading2d`
+    fn og_transform_from_heading2d(&self, heading: f64) -> String;
     /// `og.transform.fromAxisAngle`
     fn og_transform_from_axis_angle(&self, axis: String, angle: f64) -> String;
 }
@@ -1545,6 +1557,12 @@ pub const SYMBOLS: &[&str] = &[
     "og_transform_up",
     "og_transform_camera_forward",
     "og_transform_camera_right",
+    "og_transform_heading",
+    "og_transform_from_heading",
+    "og_transform_face2d",
+    "og_transform_forward2d",
+    "og_transform_heading2d",
+    "og_transform_from_heading2d",
     "og_transform_from_axis_angle",
     "og_time_set_scale",
     "og_time_hit_stop",

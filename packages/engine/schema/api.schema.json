@@ -3282,6 +3282,98 @@
           "publish": true
         },
         {
+          "name": "heading",
+          "doc": "The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. The heading of a direction is math.atan2(x, z).\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The object's rotation."
+            }
+          ],
+          "returns": "f32",
+          "returnsDoc": "The heading in radians, from -π to π.",
+          "publish": true
+        },
+        {
+          "name": "fromHeading",
+          "doc": "The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X.\nSee `facing`.",
+          "params": [
+            {
+              "name": "heading",
+              "type": "f32",
+              "optional": false,
+              "doc": "The heading in radians."
+            }
+          ],
+          "returns": "Quaternion",
+          "publish": true
+        },
+        {
+          "name": "face2d",
+          "doc": "The rotation that turns a 2D thing at a position to face a target: about +Z, its +X towards it, staying in the xy plane. og.transform.face is the 3D one, and turns a sprite out of the plane.\nSee `facing`.",
+          "params": [
+            {
+              "name": "position",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Where the thing is (its xy)."
+            },
+            {
+              "name": "target",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "What it faces (its xy); the same point as the position gives no turn."
+            }
+          ],
+          "returns": "Quaternion",
+          "publish": true
+        },
+        {
+          "name": "forward2d",
+          "doc": "The way a 2D thing with this rotation faces: its local +X, as a unit vector. og.transform.forward is the 3D one (+Z).\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The thing's rotation."
+            }
+          ],
+          "returns": "Vector3",
+          "publish": true
+        },
+        {
+          "name": "heading2d",
+          "doc": "The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). The heading of a direction is math.atan2(y, x).\nSee `facing`.",
+          "params": [
+            {
+              "name": "quaternion",
+              "type": "Quaternion",
+              "optional": false,
+              "doc": "The thing's rotation."
+            }
+          ],
+          "returns": "f32",
+          "returnsDoc": "The heading in radians, from -π to π.",
+          "publish": true
+        },
+        {
+          "name": "fromHeading2d",
+          "doc": "The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up).\nSee `facing`.",
+          "params": [
+            {
+              "name": "heading",
+              "type": "f32",
+              "optional": false,
+              "doc": "The 2D heading in radians."
+            }
+          ],
+          "returns": "Quaternion",
+          "publish": true
+        },
+        {
           "name": "fromAxisAngle",
           "doc": "A rotation about an axis, as three.js Quaternion.setFromAxisAngle.",
           "params": [

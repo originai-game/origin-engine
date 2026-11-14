@@ -181,6 +181,55 @@ module transform {
     returns Vector3
   }
 
+  fn heading {
+    doc "The heading an object with this rotation faces: the angle about +Y from +Z towards +X of its forward, so 0 faces +Z and half pi faces +X. The heading of a direction is math.atan2(x, z)."
+    aliases "yaw, facing angle, compass direction, Unity eulerAngles.y, three.js rotation.y"
+    guide "facing"
+    param quaternion Quaternion "The object's rotation."
+    returns f32 "The heading in radians, from -π to π."
+  }
+
+  fn fromHeading {
+    doc "The rotation of an upright object facing a heading: a turn about +Y from +Z towards +X, so 0 faces +Z and half pi faces +X."
+    aliases "yaw to rotation, rotation from an angle, Unity Quaternion.Euler(0, y, 0), three.js rotation.y"
+    guide "facing"
+    param heading f32 "The heading in radians."
+    returns Quaternion
+  }
+
+  fn face2d {
+    doc "The rotation that turns a 2D thing at a position to face a target: about +Z, its +X towards it, staying in the xy plane. og.transform.face is the 3D one, and turns a sprite out of the plane."
+    aliases "2D look at, rotate a sprite towards, aim in 2D, Unity 2D LookAt, Godot Node2D.look_at"
+    guide "facing"
+    param position Vector3 "Where the thing is (its xy)."
+    param target Vector3 "What it faces (its xy); the same point as the position gives no turn."
+    returns Quaternion
+  }
+
+  fn forward2d {
+    doc "The way a 2D thing with this rotation faces: its local +X, as a unit vector. og.transform.forward is the 3D one (+Z)."
+    aliases "2D facing direction, sprite forward, Unity transform.right in 2D, Godot Node2D transform.x"
+    guide "facing"
+    param quaternion Quaternion "The thing's rotation."
+    returns Vector3
+  }
+
+  fn heading2d {
+    doc "The 2D heading a thing with this rotation faces: the angle about +Z from +X towards +Y of its forward, so 0 faces +X and half pi faces +Y (up). The heading of a direction is math.atan2(y, x)."
+    aliases "2D facing angle, sprite rotation angle, Unity eulerAngles.z, Godot Node2D.rotation"
+    guide "facing"
+    param quaternion Quaternion "The thing's rotation."
+    returns f32 "The heading in radians, from -π to π."
+  }
+
+  fn fromHeading2d {
+    doc "The rotation of a 2D thing facing a heading: a turn about +Z from +X towards +Y, so 0 faces +X and half pi faces +Y (up)."
+    aliases "2D angle to rotation, rotate a sprite by an angle, Unity Quaternion.Euler(0, 0, z), Godot Node2D.rotation"
+    guide "facing"
+    param heading f32 "The 2D heading in radians."
+    returns Quaternion
+  }
+
   fn fromAxisAngle {
     doc "A rotation about an axis, as three.js Quaternion.setFromAxisAngle."
     param axis Vector3 "A unit axis."
