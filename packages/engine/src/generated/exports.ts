@@ -77,6 +77,7 @@ export const Style = ((value = 0 as Api.Style, options) => spec("Style", value, 
 
 // physics
 export const RigidBodyType = ((value = "dynamic" as Api.RigidBodyType, options) => spec("RigidBodyType", value, options)) as typeof Api.RigidBodyType;
+export const ForceFieldKind = ((value = "directional" as Api.ForceFieldKind, options) => spec("ForceFieldKind", value, options)) as typeof Api.ForceFieldKind;
 export const MAX_RAYCAST_HITS: typeof Api.MAX_RAYCAST_HITS = 256;
 export const LOCK_TRANSLATION_X: typeof Api.LOCK_TRANSLATION_X = 1;
 export const LOCK_TRANSLATION_Y: typeof Api.LOCK_TRANSLATION_Y = 2;

@@ -14,6 +14,7 @@ pub(super) fn fluid_set(
     taken: &mut [(u64, FluidState)],
     dt: f32,
     g: Vec2,
+    forces: &og_env::force::Forces,
     colliders: &rp::ColliderSet,
 ) {
     let grouped = members.len() > 1;
@@ -49,6 +50,14 @@ pub(super) fn fluid_set(
             state.body(fluid, Vec2::new(position.x, position.y))
         })
         .collect();
+    // The force fields at the middle of the set, with gravity.
+    let field = if min.x > max.x {
+        Vec3::ZERO
+    } else {
+        let middle = (min + max) * 0.5;
+        forces.at(Vec3::new(middle.x, middle.y, z))
+    };
+    let g = g + Vec2::new(field.x, field.y);
     crate::fluid::step(&mut list, dt, g, z, &near);
 }
 
@@ -56,7 +65,13 @@ pub(super) fn fluid_set(
 /// alone or with the others of its group, as the 2D fluids are grouped:
 /// each set from its own particles, side by side on the lanes as
 /// [`soft`] steps the 2D ones.
-pub(super) fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim) {
+pub(super) fn fluids3(
+    scene: &Scene,
+    settings: &Physics,
+    forces: &og_env::force::Forces,
+    dt: f32,
+    sim: &mut Sim,
+) {
     use crate::fluid::Fluid3State;
     if DIM != 3 {
         sim.fluids3.clear();
@@ -187,6 +202,8 @@ pub(super) fn fluids3(scene: &Scene, settings: &Physics, dt: f32, sim: &mut Sim)
                 state.body(fluid, *position)
             })
             .collect();
+        // The force fields at the middle of the set, with gravity.
+        let gravity = gravity + forces.at((min + max) * 0.5);
         crate::fluid::step(&mut list, dt, gravity, 0.0, &near);
         drop(list);
         for ((_, state), &k) in taken.iter_mut().zip(members.iter()) {

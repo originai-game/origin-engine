@@ -126,6 +126,12 @@ impl PhysicsSystem {
         lock(&self.shared).air.at(p)
     }
 
+    /// The force fields' acceleration at `p` as the steps take it (m/s²;
+    /// [`PhysicsSystem::set_forces`]).
+    pub fn force_at(&self, p: Vec3) -> Vec3 {
+        lock(&self.shared).forces.at(p)
+    }
+
     /// The points of the og.Cloth on `entity`.
     pub fn cloth_points(&self, entity: Entity) -> Option<ClothPoints> {
         with_sim!(self.shared, |s| s.cloths.get(&entity.to_bits()).map(|c| {
@@ -403,5 +409,16 @@ impl PhysicsSystem {
     /// own `wind`; a body with og.RigidBody.airDrag is carried towards it.
     pub fn set_air(&self, air: og_env::air::Air) {
         lock(&self.shared).air = air;
+    }
+
+    /// The world's force fields (the host reads the og.ForceFields as
+    /// each tick starts) the next steps accelerate things by, whatever
+    /// their mass. A dynamic body takes the fields where its centre of
+    /// mass is and stays awake while one reaches it; an og.Rope, og.Cloth,
+    /// og.Garment, og.SoftBody and a fluid take them at the middle of
+    /// their points; an og.CharacterController with gravity takes their
+    /// vertical part where it stands.
+    pub fn set_forces(&self, forces: og_env::force::Forces) {
+        lock(&self.shared).forces = forces;
     }
 }

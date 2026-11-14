@@ -315,6 +315,7 @@ fn step_here(
     // A vortex turns about the profile's up.
     shared.air.axis = if sim.flat() { Vec3::Z } else { Vec3::Y };
     ext::air_drag(scene, &shared.air, dt, sim, &handles);
+    ext::force_fields(scene, &shared.forces, dt, sim, &handles);
     laps.lap(Phase::Sync);
     ext::sync_joints(scene, sim, &handles)?;
     super::vehicles(scene, dt, sim, &handles, &mut out)?;
@@ -384,7 +385,7 @@ fn step_here(
     out.moved = moved;
     out.sleep = sleep::report(scene, &sim.world, &handles, &asleep);
     laps.lap(Phase::Readout);
-    ext::characters(scene, settings, dt, &shared.waters, sim, &poses, &mut out)?;
+    ext::characters(scene, settings, dt, shared, sim, &poses, &mut out)?;
     super::platformers(scene, settings, dt, sim, &poses, &mut out)?;
     laps.lap(Phase::Controllers);
     ext::soft(scene, settings, dt, tick, shared, sim, &mut out, &mut laps)?;

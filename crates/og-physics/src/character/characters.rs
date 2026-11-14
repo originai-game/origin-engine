@@ -14,7 +14,7 @@ pub(crate) fn characters(
     scene: &Scene,
     settings: &Physics,
     dt: f32,
-    waters: &[crate::WaterBody],
+    shared: &crate::Shared,
     sim: &mut Sim,
     poses: &BodyPoses,
     out: &mut StepOut,
@@ -49,7 +49,7 @@ pub(crate) fn characters(
             Some(g) if c.grounded => carried(poses, &sim.world, g, foot),
             _ => Vec3::ZERO,
         };
-        let swim = swims(scene, waters, sim, handle, b.entity.to_bits());
+        let swim = swims(scene, &shared.waters, sim, handle, b.entity.to_bits());
         let g = flat(settings.gravity) * c.gravity_scale;
         let mut vertical = if c.gravity_scale > 0.0 {
             c.velocity.y
@@ -68,7 +68,9 @@ pub(crate) fn characters(
             jumped = true;
         }
         if c.gravity_scale > 0.0 {
-            vertical += g.y * dt;
+            // The force fields where it stands add to gravity's pull: an
+            // updraft lifts it, a low-gravity room lets it jump higher.
+            vertical += (g.y + shared.forces.at(foot).y) * dt;
             if let Some((b, under, water)) = swim.filter(|s| s.1 > 0.0) {
                 // Archimedes in moving water, as a hull's cell: ρV(g + a).
                 let held = (-g.y + water.acceleration.y).max(0.0);

@@ -55,6 +55,9 @@ pub(crate) fn soft(
     // the body hangs (the middle of its points).
     let air = shared.air.clone();
     let air = &air;
+    // The force fields accelerate each as gravity does, where it is.
+    let forces = shared.forces.clone();
+    let forces = &forces;
     // Ropes.
     let live: BTreeSet<u64> = og_core::sort::set(scene.ropes.iter().map(|r| r.0.to_bits()));
     sim.ropes.retain(|e, _| live.contains(e));
@@ -88,8 +91,9 @@ pub(crate) fn soft(
         let state = &mut *job.0;
         let (min, max) = bounds(&state.points, rope.length);
         let near = Near::around(colliders, min, max, rope.radius * 2.0 + 0.1);
+        let middle = (min + max) * 0.5;
         let rope = &Rope {
-            wind: rope.wind + flat(air.at((min + max) * 0.5)),
+            wind: rope.wind + flat(air.at(middle) + forces.at(middle)),
             ..*rope
         };
         state.step(rope, dt, gravity, start, end, flat2, &near);
@@ -141,8 +145,9 @@ pub(crate) fn soft(
         let size = cloth.spacing * (cloth.columns.max(cloth.rows)) as f32;
         let (min, max) = bounds(&state.points, size);
         let near = Near::around(colliders, min, max, cloth.radius * 2.0 + 0.1);
+        let middle = (min + max) * 0.5;
         let cloth = &Cloth {
-            wind: cloth.wind + flat(air.at((min + max) * 0.5)),
+            wind: cloth.wind + flat(air.at(middle) + forces.at(middle)),
             ..*cloth
         };
         state.step(cloth, dt, tick, gravity, position, rotation, flat2, &near);
@@ -197,6 +202,7 @@ pub(crate) fn soft(
         let state = &mut *job.0;
         let (min, max) = bounds(&state.points, 0.0);
         let near = Near::around(colliders, min, max, body.thickness * 2.0 + 0.5);
+        let gravity = gravity + flat(forces.at((min + max) * 0.5));
         state.step(body, dt, gravity, position, rotation, &near);
     });
     for (e, _, _, body) in &scene.softs {
@@ -283,8 +289,9 @@ pub(crate) fn soft(
             let state = &mut *job.0;
             let (min, max) = bounds(&state.points, garment.max_distance);
             let near = Near::around(colliders, min, max, garment.radius * 2.0 + 0.1);
+            let middle = (min + max) * 0.5;
             let garment = &Garment {
-                wind: garment.wind + flat(air.at((min + max) * 0.5)),
+                wind: garment.wind + flat(air.at(middle) + forces.at(middle)),
                 ..*garment
             };
             state.step(garment, pose, dt, tick, gravity, &near);
@@ -355,13 +362,13 @@ pub(crate) fn soft(
     let colliders = &sim.world.colliders;
     soft_each(Soft::Fluids, &mut jobs, work, grains.fluid_work, |job| {
         let (members, taken) = (job.0, &mut job.1);
-        fluid_set(scene, members, taken, dt, g, colliders);
+        fluid_set(scene, members, taken, dt, g, forces, colliders);
     });
     for (_, taken) in jobs {
         sim.fluids.extend(taken);
     }
     laps.lap(Phase::Fluids);
-    fluids3(scene, settings, dt, sim);
+    fluids3(scene, settings, forces, dt, sim);
     laps.lap(Phase::Fluids3d);
     Ok(())
 }

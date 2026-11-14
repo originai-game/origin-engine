@@ -10,6 +10,7 @@
 //! | [`river`] | a river's course and its surface along it |
 //! | [`air`] | [`air::Air`], the world's wind and the local pushes on it, as one function of a point |
 //! | [`volume`] | [`volume::Volume`], the one shape of a region: a box or a sphere on its entity, with a fade |
+//! | [`force`] | [`force::Forces`], the world's force fields: an acceleration inside a region, as one function of a point |
 //! | [`weather`] | the kinds of weather and what they leave on the ground: wetness, puddles, snow and dust |
 //! | [`day`] | the time of day at a tick |
 //!
@@ -19,6 +20,7 @@
 
 pub mod air;
 pub mod day;
+pub mod force;
 pub mod ocean;
 pub mod river;
 pub mod shore;

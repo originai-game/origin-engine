@@ -8892,6 +8892,45 @@ impl ToJson for RigidBodyType {
     }
 }
 
+/// `ForceFieldKind`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ForceFieldKind {
+    #[default]
+    Directional,
+    Radial,
+    Vortex,
+}
+
+impl ForceFieldKind {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["directional", "radial", "vortex"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Directional, Self::Radial, Self::Vortex];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("ForceFieldKind", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for ForceFieldKind {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "ForceFieldKind", Self::NAMES)?)
+    }
+}
+
+impl ToJson for ForceFieldKind {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `WaterPoint`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WaterPoint {
@@ -30276,6 +30315,41 @@ pub mod record {
                 sensor: field(o, "sensor", d.sensor)?,
                 layers: field(o, "layers", d.layers)?,
                 mask: field(o, "mask", d.mask)?,
+            })
+        }
+    }
+
+    /// `ForceField`: packages/knowledge/wiki/physics.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ForceField {
+        pub kind: ForceFieldKind,
+        pub direction: Vec3,
+        pub strength: f32,
+        pub enabled: bool,
+    }
+
+    impl Default for ForceField {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+                direction: Vec3::new(0.0_f32, 1.0_f32, 0.0_f32),
+                strength: 10.0_f32,
+                enabled: true,
+            }
+        }
+    }
+
+    impl FromJson for ForceField {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+                direction: field(o, "direction", d.direction)?,
+                strength: field(o, "strength", d.strength)?,
+                enabled: field(o, "enabled", d.enabled)?,
             })
         }
     }

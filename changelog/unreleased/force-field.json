@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ForceField",
+      "summary": "An acceleration on what is inside the og.Volume on its entity, whatever its mass: a low-gravity room, a jump pad, a gravity well, a whirlpool. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it and a character controller takes its vertical part, the same on every run."
+    }
+  ]
+}

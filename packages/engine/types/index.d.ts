@@ -263,6 +263,8 @@ export interface ColumnKinds {
   Style: { readonly array: Uint32Array; readonly stride: 2; readonly value: Style };
   /** A RigidBodyType field: the variant's index. */
   RigidBodyType: { readonly array: Uint32Array; readonly stride: 1; readonly value: RigidBodyType };
+  /** A ForceFieldKind field: the variant's index. */
+  ForceFieldKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: ForceFieldKind };
   /** A WindMotorKind field: the variant's index. */
   WindMotorKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: WindMotorKind };
   /** A SkeletonAsset handle field. */
@@ -13712,6 +13714,54 @@ export interface Collider {
    * @default 4294967295
    */
   mask: number;
+}
+
+/**
+ * How an og.ForceField accelerates.
+ * - `"directional"`: Along its `direction`: an updraft, a jump pad, a low-gravity room (up, against gravity).
+ * - `"radial"`: Away from the entity, or towards it with a negative `strength`: a gravity well, a magnet, a blast.
+ * - `"vortex"`: Around its `direction` through the entity, counter-clockwise seen against it (from above for the default): a whirlpool, a tornado.
+ */
+export type ForceFieldKind = "directional" | "radial" | "vortex";
+
+/**
+ * A ForceFieldKind field: the variant's index.
+ *
+ * A `ForceFieldKind` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function ForceFieldKind(value?: ForceFieldKind, options?: FieldOptions): FieldSpec<"ForceFieldKind">;
+
+/**
+ * An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
+ * See `physics §8`.
+ *
+ * The value of the `ForceField` component (token `og.ForceField`).
+ */
+export interface ForceField {
+  /** How it accelerates. */
+  kind: ForceFieldKind;
+  /**
+   * A directional field's direction and a vortex's axis, in the entity's space (it turns with the entity); its length does not matter.
+   *
+   * @default { x: 0, y: 1, z: 0 }
+   */
+  direction: Vector3;
+  /**
+   * Its acceleration inside the volume, fading with the volume's `fade` past it. Negative reverses it: a radial field pulls in.
+   *
+   * @default 10
+   * @unit mps2 (metres per second squared)
+   * @tunable
+   */
+  strength: number;
+  /**
+   * Whether it acts.
+   *
+   * @default true
+   */
+  enabled: boolean;
 }
 
 /**
@@ -34335,6 +34385,11 @@ export declare namespace og {
    * See `physics §1`.
    */
   const Collider: ComponentType<{ readonly shape: FieldSpec<"u32">; readonly size: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly mesh: FieldSpec<"Geometry">; readonly offset: FieldSpec<"Vector3">; readonly rotation: FieldSpec<"Quaternion">; readonly friction: FieldSpec<"f32">; readonly restitution: FieldSpec<"f32">; readonly density: FieldSpec<"f32">; readonly sensor: FieldSpec<"bool">; readonly layers: FieldSpec<"u32">; readonly mask: FieldSpec<"u32"> }, Collider>;
+  /**
+   * An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.
+   * See `physics §8`.
+   */
+  const ForceField: ComponentType<{ readonly kind: FieldSpec<"ForceFieldKind">; readonly direction: FieldSpec<"Vector3">; readonly strength: FieldSpec<"f32">; readonly enabled: FieldSpec<"bool"> }, ForceField>;
   /**
    * Linear and angular velocity. Written for dynamic bodies every tick (added to them by the step when missing); a kinematic body moves by it each tick (never added, never written). Set it to launch or stop a body; push one with og.physics.applyForce, applyImpulse, applyTorque or applyTorqueImpulse.
    */

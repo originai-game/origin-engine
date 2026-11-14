@@ -7373,6 +7373,9 @@
         "RigidBodyType",
         "RigidBody",
         "Collider",
+        "ForceFieldKind",
+        "ForceFieldKind",
+        "ForceField",
         "Velocity",
         "Physics",
         "CollisionStarted",
@@ -30878,6 +30881,57 @@
           "maximum": 4294967295,
           "description": "The layers it collides with, as bits. Two colliders interact when each one's layers meet the other's mask.",
           "default": 4294967295
+        }
+      },
+      "additionalProperties": false
+    },
+    "ForceFieldKind": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "How an og.ForceField accelerates.",
+      "type": "string",
+      "enum": [
+        "directional",
+        "radial",
+        "vortex"
+      ],
+      "x-og-variants": {
+        "directional": "Along its `direction`: an updraft, a jump pad, a low-gravity room (up, against gravity).",
+        "radial": "Away from the entity, or towards it with a negative `strength`: a gravity well, a magnet, a blast.",
+        "vortex": "Around its `direction` through the entity, counter-clockwise seen against it (from above for the default): a whirlpool, a tornado."
+      }
+    },
+    "ForceField": {
+      "x-og-kind": "component",
+      "x-og-module": "physics",
+      "description": "An acceleration on what is inside the og.Volume on its entity (none: everywhere), whatever its mass, as gravity is. Dynamic bodies, ropes, cloths, garments, soft bodies and fluids take it; a character controller takes its vertical part. The same on every run.\nSee `physics §8`.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ForceFieldKind",
+          "description": "How it accelerates.",
+          "default": "directional"
+        },
+        "direction": {
+          "$ref": "#/$defs/Vector3",
+          "description": "A directional field's direction and a vortex's axis, in the entity's space (it turns with the entity); its length does not matter.",
+          "default": {
+            "x": 0,
+            "y": 1,
+            "z": 0
+          }
+        },
+        "strength": {
+          "type": "number",
+          "description": "Its acceleration inside the volume, fading with the volume's `fade` past it. Negative reverses it: a radial field pulls in.",
+          "default": 10,
+          "x-og-unit": "mps2",
+          "x-og-tunable": true
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether it acts.",
+          "default": true
         }
       },
       "additionalProperties": false
