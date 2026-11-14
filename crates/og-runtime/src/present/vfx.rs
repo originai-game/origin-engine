@@ -16,8 +16,16 @@ use og_render::{
 };
 
 /// Every playing og.Vfx expanded into the scene's systems, meshes, trails,
-/// beams, lights and decals for the frame at `tick`.
-pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, tick: u64) {
+/// beams, lights and decals for the frame at `tick`. A `frame`'s
+/// extraction (not the tick start's, which runs before RenderSettings is
+/// read) also notes a decal drawn from an atlas region with no atlas set.
+pub(crate) fn extract(
+    world: &World,
+    rs: &mut RenderState,
+    h: &mut Hierarchy,
+    tick: u64,
+    frame: bool,
+) {
     let Some(registry) = rs.effects.vfx.clone() else {
         return;
     };
@@ -179,6 +187,17 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy, ti
                     },
                     _,
                 ) => {
+                    // A region of no atlas draws the decal's colour as a square.
+                    if frame
+                        && rs.scene.effects.decal_atlas.is_none()
+                        && uv != [0.0, 0.0, 1.0, 1.0]
+                        && rs.vfx_decals_warned.insert(l.id.clone())
+                    {
+                        rs.notes.push(format!(
+                            "og.vfx: '{}' draws a decal from region {uv:?} of og.RenderSettings.decalAtlas, which is not set, so the decal is a square of its colour; set decalAtlas to the texture its regions are in",
+                            l.id
+                        ));
+                    }
                     rs.scene.effects.decals.push(Decal {
                         transform,
                         uv_rect: uv,

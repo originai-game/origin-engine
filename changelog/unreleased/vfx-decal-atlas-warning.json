@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.vfx",
+      "summary": "A composed effect whose decal draws a region of og.RenderSettings.decalAtlas while no atlas is set (so the decal is a square of its colour) is warned of in the engine's log, once per effect. og vfx preview prints the warnings of its run that name each effect, and its --json records carry them as warnings."
+    }
+  ]
+}

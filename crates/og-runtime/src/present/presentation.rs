@@ -217,7 +217,7 @@ pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
     // the composed effects' emitters (the next frame's extraction
     // rebuilds the lists these fill).
     crate::present::fx::components(world, rs, &mut h, tick);
-    crate::present::vfx::extract(world, rs, &mut h, tick);
+    crate::present::vfx::extract(world, rs, &mut h, tick, false);
     rs.hierarchy = h;
     // The rate a frame's extraction gives the scene (`extract/frame.rs`).
     let dt = world.time().dt;

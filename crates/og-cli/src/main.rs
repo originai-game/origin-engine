@@ -192,7 +192,8 @@ commands:
                       dark stage and report it: six frames in time order tiled into
                       <out>/<effect>.png (default out: og-out/vfx-preview), the camera placed
                       by the box the effect was measured to reach; its length, impact time,
-                      measured size and anchor, draw calls, particle slots and its peak GPU
+                      measured size and anchor, draw calls, particle slots, the engine's
+                      warnings that name it and its peak GPU
                       milliseconds over an empty frame (--no-cost skips the timed run,
                       --cost-only adds it to an earlier preview in --out), also written to
                       <out>/<effect>.json; --together plays them all at once on a grid and

@@ -30,7 +30,8 @@
 //!    draws nothing measurable gets the default view) and an effect
 //!    anchored at its centre raised to stand whole on the ground, each with the
 //!    render dump's draw calls and particle slots, tiled 3 x 2 into
-//!    `<out>/<effect>.png`;
+//!    `<out>/<effect>.png`, and the engine's warnings in that run that
+//!    quote the effect's id;
 //! 4. **cost**, one short traced run per effect: the 90th percentile of its
 //!    frames' GPU time over the empty frames before it in the same run,
 //!    with the simulation pass and the main pass's growth. Framed as the
@@ -49,7 +50,8 @@
 //!
 //! `--decal-atlas textures/atlas.png` is the texture the stage sets as
 //! og.RenderSettings.decalAtlas, as the game does, for effects with `decal`
-//! elements (without one a decal draws white). `--keep` leaves the stage's
+//! elements (without one a decal drawn from a region of the atlas draws a
+//! white square, and the engine warns so). `--keep` leaves the stage's
 //! runs in `.og/vfx-preview/` (the measuring frames among them).
 //!
 //! `<out>/<effect>.json` (default out: `<project>/og-out/vfx-preview`)
@@ -639,6 +641,8 @@ struct Shots {
     sheet: PathBuf,
     draws: u64,
     particles: u64,
+    /// The engine's warnings of the run that name the effect.
+    warnings: Vec<String>,
 }
 
 /// Step 3: the six shots of each effect, tiled into its sheet under `out`.
@@ -689,8 +693,24 @@ fn shots(
             t = start + tm.show;
             commands.push(format!("{t:.3}:clear"));
         }
-        let (_, dir) = stage.run(bundle, size, commands, t + 0.3, &[])?;
+        let (summary, dir) = stage.run(bundle, size, commands, t + 0.3, &[])?;
+        // "WARN tick N: <text>", the run's log; each effect keeps the
+        // texts that quote its id.
+        let logged: Vec<&str> = summary["warnings"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(|l| l.split_once(": ").map_or(l, |(_, text)| text))
+            .collect();
         for &i in chunk {
+            let quoted = format!("'{}'", effects[i].id);
+            let mut warnings: Vec<String> = logged
+                .iter()
+                .filter(|w| w.contains(&quoted))
+                .map(|w| w.to_string())
+                .collect();
+            warnings.dedup();
             let mut sheet = RgbaImage::new(size.0 * 3, size.1 * 2);
             let (mut draws, mut particles) = (0, 0);
             for n in 0..FRACTIONS.len() as u32 {
@@ -724,6 +744,7 @@ fn shots(
                 sheet: path,
                 draws,
                 particles,
+                warnings,
             });
         }
         stage.done(&dir);
@@ -1147,6 +1168,7 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
                 "raised": b.map_or(0.0, |m| (m.lift() * 100.0).round() / 100.0),
                 "draws": s.draws,
                 "peakParticles": s.particles,
+                "warnings": s.warnings,
                 "cost": Value::Null,
             }));
         }
@@ -1236,6 +1258,9 @@ fn go(args: &[&str]) -> Result<Vec<Value>, (u8, String)> {
                     c["size"].as_str().unwrap_or_default(),
                     c["renderer"].as_str().unwrap_or("?")
                 );
+            }
+            for w in r["warnings"].as_array().into_iter().flatten() {
+                println!("  warning: {}", w.as_str().unwrap_or_default());
             }
             println!("  sheet {}", r["sheet"].as_str().unwrap_or_default());
         }

@@ -188,6 +188,10 @@ pub(crate) struct RenderState {
     /// Each (font, character) a text drew, judged once a run: in the
     /// font, or warned of on the tick it was first drawn (`crate::present::glyphs`).
     pub glyphs_judged: std::collections::BTreeSet<(FontHandle, char)>,
+    /// Composed effects (by asset id) warned of drawing a decal region
+    /// without og.RenderSettings.decalAtlas, each once a run
+    /// (`crate::present::vfx`).
+    pub vfx_decals_warned: std::collections::BTreeSet<String>,
     /// The next frame waits for every run-time glyph asked for (a capture
     /// is the frame a build that rendered them on the frame draws).
     pub glyphs_settle: bool,
@@ -280,6 +284,7 @@ impl RenderState {
             runtime_fonts: IdMap::new(),
             notes: Vec::new(),
             glyphs_judged: Default::default(),
+            vfx_decals_warned: Default::default(),
             glyphs_settle: false,
             #[cfg(not(feature = "publish"))]
             inspector: None,
