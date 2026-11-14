@@ -149,9 +149,91 @@ pub fn wind_phases(wind: &Wind, tick: u64, tick_rate: f32) -> [f32; 2] {
     [first, first * WIND_OCTAVE].map(|p| p.rem_euclid(std::f64::consts::TAU) as f32)
 }
 
+/// wind_common.wgsl `wind_noise` on the CPU: value noise in [0, 1],
+/// repeating every [`GUST_PERIOD`] cells.
+fn gust_noise(p: Vec2) -> f32 {
+    let lattice = |x: i32, y: i32| {
+        let m = GUST_PERIOD as i32 - 1;
+        let (a, b) = ((x & m) as u32, (y & m) as u32 ^ 0x9e37_79b9);
+        og_core::hash::unit24(og_core::hash::pcg(a ^ og_core::hash::pcg(b)))
+    };
+    let i = p.floor();
+    let f = p - i;
+    let u = f * f * (Vec2::splat(3.0) - 2.0 * f);
+    let (x, y) = (i.x as i32, i.y as i32);
+    let top = lattice(x, y) + (lattice(x + 1, y) - lattice(x, y)) * u.x;
+    let bottom = lattice(x, y + 1) + (lattice(x + 1, y + 1) - lattice(x, y + 1)) * u.x;
+    top + (bottom - top) * u.y
+}
+
+impl Wind {
+    /// The wind's lean at world point `at` (x, z) and `tick`, as every
+    /// tier without the simulated field takes it (wind_common.wgsl
+    /// `wind_lean_analytic`, here on the CPU for what is moved before it is
+    /// drawn: og.Sprite.sway's parts): downwind by `strength` times one
+    /// plus `gust` times the gusts' share, with the first octave's phase
+    /// of the travelling wave there (radians) for what loops in it.
+    pub fn lean_at(&self, at: Vec2, tick: u64, tick_rate: f32) -> (Vec2, f32) {
+        if self.strength <= 0.0 {
+            return (Vec2::ZERO, 0.0);
+        }
+        let dir = Vec2::new(self.direction.x, self.direction.z).normalize_or(Vec2::X);
+        let (phase, offset, _) = wind_at(self, tick, tick_rate);
+        let x = std::f32::consts::TAU / WIND_WAVELENGTH * at.dot(dir);
+        let wave = ((x - phase[0]).sin() + 0.5 * (2.3 * x + 1.7 - phase[1]).sin()) / 1.5;
+        let p = at / GUST_CELL as f32 - Vec2::from(offset);
+        let patches = 0.65 * gust_noise(p) + 0.35 * gust_noise(p * 2.0 + Vec2::new(37.0, 11.0));
+        let share = (0.5 * wave + 1.4 * (patches - 0.5)).clamp(-1.0, 1.0);
+        let lean = dir * self.strength * (1.0 + self.gust.clamp(0.0, 1.0) * share);
+        (lean, x - phase[0])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Ways this could fail: the wave or the gust patches moving upwind,
+    /// either at another speed than the air's (the second octave's phase
+    /// or the patches' offset scaled wrongly), the gust ignored, or the
+    /// lean not along the wind.
+    #[test]
+    fn the_lean_travels_downwind_at_the_winds_speed() {
+        let w = Wind {
+            strength: 0.2,
+            direction: Vec3::new(0.6, 0.0, 0.8),
+            speed: 4.0,
+            gust: 1.0,
+            ..Wind::default()
+        };
+        let dir = Vec2::new(0.6, 0.8);
+        let (mut least, mut most) = (f32::MAX, f32::MIN);
+        for k in 0..200 {
+            let at = Vec2::new(k as f32 * 1.7 - 90.0, k as f32 * -0.9 + 31.0);
+            // Three seconds on, the air has gone 12 m: what was here is there.
+            let (a, pa) = w.lean_at(at, 600, 60.0);
+            let (b, pb) = w.lean_at(at + dir * 12.0, 780, 60.0);
+            assert!((a - b).length() < 2e-3, "{at}: {a} {b}");
+            let turn = (pa - pb).rem_euclid(std::f32::consts::TAU);
+            assert!(
+                !(1e-2..=std::f32::consts::TAU - 1e-2).contains(&turn),
+                "{at}: {turn}"
+            );
+            // Along the wind, from upright to twice the mean.
+            assert!(a.perp_dot(dir).abs() < 1e-5 && a.dot(dir) >= 0.0);
+            least = least.min(a.length());
+            most = most.max(a.length());
+        }
+        assert!(
+            least < 0.08 && most > 0.3 && most <= 0.4 + 1e-5,
+            "{least} {most}"
+        );
+        // A steady wind (gust 0) leans by its strength everywhere.
+        let steady = Wind { gust: 0.0, ..w };
+        assert!((steady.lean_at(Vec2::new(3.0, 9.0), 77, 60.0).0 - dir * 0.2).length() < 1e-6);
+        let still = Wind { strength: 0.0, ..w };
+        assert_eq!(still.lean_at(Vec2::ONE, 5, 60.0).0, Vec2::ZERO);
+    }
 
     /// The wind's clock and gusts are reduced in f64: a tick a day into a
     /// session lands where its clock says, and the same tick is the same.

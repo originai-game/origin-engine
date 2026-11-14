@@ -440,6 +440,7 @@ pub use post_custom::{MAX_CUSTOM_POSTS, PostHandle, PostShader, example_crt, pos
 pub use quality::{QualityPreset, RenderQuality};
 pub use ribbons::{Beam, Ribbon, RibbonPoint, RibbonUv, Trail, TrailStyle, TrailStyleHandle};
 pub use scatter::{ScatterContext, ScatterDraw, wind_shader};
+pub use sprites::face_axes;
 pub use wind::{WIND_WAVELENGTH, Wind, wind_phases};
 /// The octahedral impostors' frame layout, shared with the cook's bake.
 pub mod impostors {

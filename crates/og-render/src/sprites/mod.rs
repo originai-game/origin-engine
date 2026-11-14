@@ -91,7 +91,7 @@ pub(crate) fn facing_of(list: &[SpriteFacing], i: usize) -> SpriteFacing {
 /// the GPU computes the same way): the xy plane, the view plane, or
 /// upright with x the camera's right laid level (+x when the camera's right
 /// points straight up or down).
-pub(crate) fn face_axes(facing: SpriteFacing, right: Vec3, up: Vec3) -> (Vec3, Vec3) {
+pub fn face_axes(facing: SpriteFacing, right: Vec3, up: Vec3) -> (Vec3, Vec3) {
     match facing {
         SpriteFacing::None => (Vec3::X, Vec3::Y),
         SpriteFacing::Camera => (right, up),
