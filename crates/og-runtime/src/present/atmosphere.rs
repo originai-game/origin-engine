@@ -26,7 +26,7 @@ pub use sky::og_atmosphere_time_of_day;
 pub(crate) use water::{ModuleState, river_of};
 
 use crate::host::codec::Layout;
-use crate::host::wire::Color;
+use crate::host::wire::{Color, FromJson, record};
 use crate::present::extract::{Hierarchy, RenderState};
 use glam::Vec3;
 use og_core::IdMap;
@@ -39,6 +39,8 @@ use std::collections::BTreeMap;
 #[derive(Default)]
 pub(crate) struct AtmoLayouts {
     fog: Option<Layout>,
+    fog_volume: Option<Layout>,
+    volume: Option<Layout>,
     sky: Option<Layout>,
     physical_sky: Option<Layout>,
     clouds: Option<Layout>,
@@ -73,6 +75,8 @@ impl AtmoLayouts {
     ) -> AtmoLayouts {
         AtmoLayouts {
             fog: get("og.Fog"),
+            fog_volume: get("og.FogVolume"),
+            volume: get("og.Volume"),
             sky: get("og.Sky"),
             physical_sky: get("og.PhysicalSky"),
             clouds: get("og.Clouds"),
@@ -132,12 +136,53 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
     );
     let fog_tint = sky::extract(world, scene, layouts, world_wind);
     weather::extract(world, scene, layouts, atmo, world_wind, fog_tint);
+    fog_volumes(world, scene, layouts, h);
 
     // Ragdolls blended into their models' palettes.
     crate::bind::physics_ext::draw_ragdolls(world, rs, &mut |e| h.world_of(e));
     water::extract(world, rs, h);
     fluid::extract(world, rs, h);
     soft::extract(world, rs)
+}
+
+/// og.FogVolume into `scene`: each at its entity's pose with the og.Volume
+/// beside it, in entity order.
+fn fog_volumes(
+    world: &World,
+    scene: &mut og_render::RenderScene,
+    layouts: &AtmoLayouts,
+    h: &mut Hierarchy,
+) {
+    let volume_of = |e: u64| -> Option<og_env::volume::Volume> {
+        let l = layouts.volume.as_ref()?;
+        let id = world.id_by_name(&l.schema).ok()?;
+        let bytes = world.get_bytes(og_ecs::Entity::from_bits(e), id).ok()?;
+        let v: record::Volume = l.read(&bytes).ok()?;
+        Some(og_env::volume::Volume {
+            size: v.size,
+            radius: v.radius,
+            fade: v.fade,
+        })
+    };
+    scene.atmosphere.fog_volumes =
+        crate::present::fx::kept_rows(world, layouts.fog_volume.as_ref())
+            .into_iter()
+            .filter_map(|(e, v)| {
+                let v = record::FogVolume::from_json(&v).ok()?;
+                let (scale, quaternion, position) = h.world_of(e).to_scale_rotation_translation();
+                Some(og_render::FogVolume {
+                    at: og_env::volume::Placement {
+                        position,
+                        quaternion,
+                        scale,
+                    },
+                    volume: volume_of(e),
+                    color: rgb(&v.color),
+                    density: v.density,
+                    scattering: v.scattering,
+                })
+            })
+            .collect();
 }
 
 fn rgb(c: &Color) -> Vec3 {

@@ -164,6 +164,9 @@ impl RenderScene {
         if let Some(f) = &mut self.atmosphere.volumetric_fog {
             f.height += d.y;
         }
+        for v in &mut self.atmosphere.fog_volumes {
+            v.at.position += d;
+        }
         for w in &mut self.world.water {
             moved(&mut w.transform, d);
             if let Some(s) = &mut w.shore {

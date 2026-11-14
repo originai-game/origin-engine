@@ -231,6 +231,7 @@ impl RenderScene {
             atmosphere: SceneAtmosphere {
                 fog: None,
                 volumetric_fog: None,
+                fog_volumes: Vec::new(),
                 clouds: None,
                 aurora: None,
                 adaptation: 1.0,

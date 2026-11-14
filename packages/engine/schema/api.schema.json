@@ -8256,6 +8256,7 @@
       "publish": true,
       "types": [
         "Fog",
+        "FogVolume",
         "Sky",
         "DayNight",
         "PhysicalSky",
@@ -34502,6 +34503,40 @@
           "minimum": 4,
           "maximum": 400,
           "x-og-unit": "m"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FogVolume": {
+      "x-og-kind": "component",
+      "x-og-module": "atmosphere",
+      "description": "Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows and by the point, spot and rect lights: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera.\nSee `render §7`.",
+      "type": "object",
+      "properties": {
+        "color": {
+          "$ref": "#/$defs/Color",
+          "description": "The fog's colour: what it tints the light it scatters.",
+          "default": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          }
+        },
+        "density": {
+          "type": "number",
+          "description": "How much light a metre of it takes (its extinction), inside the volume, fading with the volume's `fade` past it. 0.05 is a haze, 0.3 thick smoke.",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
+        },
+        "scattering": {
+          "type": "number",
+          "description": "How much of the light it takes it sends on: 0 is black smoke that only dims, 1 a white mist, above 1 brightens its shafts for effect.",
+          "default": 0.8,
+          "minimum": 0,
+          "maximum": 4,
+          "x-og-tunable": true
         }
       },
       "additionalProperties": false

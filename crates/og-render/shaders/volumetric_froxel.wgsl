@@ -37,14 +37,14 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
     let f = (f32(id.z) + (f32(t) + jitter) / f32(INJECT_TAPS)) / vol.grid.z;
     let p = frame.view_pos.xyz + dir * slice_depth(f) * stretch;
     let along = slice_depth(f) * stretch;
-    let sigma = vol_density(p);
-    sigma_sum += sigma;
-    if (sigma > 0.0) {
-      light_sum += sigma * medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep));
+    let m = vol_medium(p);
+    sigma_sum += m.a;
+    if (m.a > 0.0) {
+      light_sum += m.rgb * medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep));
     }
   }
   let n = f32(INJECT_TAPS);
-  textureStore(froxel_out, id, vec4<f32>(vol.scatter.rgb * light_sum / n, sigma_sum / n));
+  textureStore(froxel_out, id, vec4<f32>(light_sum / n, sigma_sum / n));
 }
 
 @group(1) @binding(2) var froxel_in: texture_3d<f32>;

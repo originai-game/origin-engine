@@ -16983,6 +16983,37 @@ export interface Fog {
 }
 
 /**
+ * Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows and by the point, spot and rect lights: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera.
+ * See `render §7`.
+ *
+ * The value of the `FogVolume` component (token `og.FogVolume`).
+ */
+export interface FogVolume {
+  /**
+   * The fog's colour: what it tints the light it scatters.
+   *
+   * @default { r: 1, g: 1, b: 1 }
+   */
+  color: Color;
+  /**
+   * How much light a metre of it takes (its extinction), inside the volume, fading with the volume's `fade` past it. 0.05 is a haze, 0.3 thick smoke.
+   *
+   * @default 0.1
+   * @range 0..4
+   * @tunable
+   */
+  density: number;
+  /**
+   * How much of the light it takes it sends on: 0 is black smoke that only dims, 1 a white mist, above 1 brightens its shafts for effect.
+   *
+   * @default 0.8
+   * @range 0..4
+   * @tunable
+   */
+  scattering: number;
+}
+
+/**
  * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
  * See `render §7`.
  *
@@ -34715,6 +34746,11 @@ export declare namespace og {
    * See `render §7`.
    */
   const Fog: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly start: FieldSpec<"f32">; readonly end: FieldSpec<"f32">; readonly heightDensity: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly falloff: FieldSpec<"f32">; readonly sunColor: FieldSpec<"Color">; readonly sunPower: FieldSpec<"f32">; readonly maxOpacity: FieldSpec<"f32">; readonly sky: FieldSpec<"f32">; readonly volumetric: FieldSpec<"bool">; readonly scattering: FieldSpec<"f32">; readonly anisotropy: FieldSpec<"f32">; readonly volumetricDistance: FieldSpec<"f32"> }, Fog>;
+  /**
+   * Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows and by the point, spot and rect lights: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera.
+   * See `render §7`.
+   */
+  const FogVolume: ComponentType<{ readonly color: FieldSpec<"Color">; readonly density: FieldSpec<"f32">; readonly scattering: FieldSpec<"f32"> }, FogVolume>;
   /**
    * A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as drawn, clouds and all, captured from the camera a slice a frame, eight frames to a whole capture. Without it, RenderSettings.sky draws the built-in sky. A DayNight that is enabled sets the sky itself.
    * See `render §7`.

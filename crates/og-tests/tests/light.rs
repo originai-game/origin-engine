@@ -188,3 +188,124 @@ fn a_full_custom_shader_lights_rect_lights_with_their_shadow() {
         "the shadow does not soften toward its tip"
     );
 }
+
+/// Fog inside a region (og.FogVolume, og-render `FogVolume`) lies where its
+/// og.Volume puts it and nowhere else. Seen from straight above, a box 10 m
+/// long, turned 30° about y over a grey floor in a plain fog: black smoke
+/// (scattering 0) darkens the floor under the turned box's end and leaves
+/// the floor where the box's end would lie turned the other way as it was,
+/// plain fog and all; a white mist is brighter than the smoke there; and a
+/// sphere's fog fades over its fade. The shape is og_env's
+/// `Volume::weight`, which the tick's regions read: the test places its
+/// points with it.
+///
+/// Ways this could fail: the shader turns the box by the entity's
+/// quaternion instead of its inverse (the two ends swap); the volumes'
+/// medium replaces the scene's plain fog (the floor outside brightens);
+/// the fog ignores its scattering; a fade is a hard edge.
+#[test]
+#[ignore = "requires GPU"]
+fn fog_in_a_region_lies_where_its_volume_puts_it() {
+    use glam::{Mat4, Quat, Vec3};
+    use og_env::volume::{Placement, Volume};
+    use og_render::{Camera, Fog, FogVolume, RenderScene, RenderTarget, Renderer, shapes};
+    let camera = Camera {
+        position: Vec3::new(0.0, 24.0, 0.0),
+        target: Vec3::ZERO,
+        up: Vec3::NEG_Z,
+        ..Default::default()
+    };
+    let draw = |volumes: &[FogVolume]| {
+        let mut scene = RenderScene::new();
+        let floor = scene.add_mesh(shapes::plane(60.0, 1.0));
+        let grey = scene.add_standard_material(og_render::StandardMaterial {
+            color: Vec3::splat(0.6),
+            roughness: 0.9,
+            ..Default::default()
+        });
+        scene.add_instance(floor, grey, Mat4::IDENTITY);
+        scene.atmosphere.fog = Some(Fog {
+            density: 0.01,
+            ..Default::default()
+        });
+        scene.atmosphere.fog_volumes = volumes.to_vec();
+        scene.frame.camera = camera;
+        let mut renderer =
+            Renderer::new_blocking(&og_tests::scenes::base_desc()).expect("renderer");
+        renderer
+            .render_capture(&scene, &RenderTarget::Offscreen)
+            .expect("render");
+        renderer.read_offscreen().expect("capture")
+    };
+    let luma = |img: &og_render::RgbaImage, p: Vec3| {
+        let (x, y) = project(&camera, p);
+        let c = mean(img, x - 6, y - 6, x + 6, y + 6);
+        0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    };
+    let at = Placement {
+        position: Vec3::new(0.0, 1.0, 0.0),
+        quaternion: Quat::from_rotation_y(30f32.to_radians()),
+        scale: Vec3::ONE,
+    };
+    let bar = Volume {
+        size: Vec3::new(10.0, 2.0, 2.0),
+        radius: 0.0,
+        fade: 0.0,
+    };
+    let fog = |scattering: f32| FogVolume {
+        at,
+        volume: Some(bar),
+        color: Vec3::ONE,
+        density: 0.6,
+        scattering,
+    };
+    // The bar's end, and where it would lie turned the other way.
+    let end = at.quaternion * Vec3::new(4.0, 0.0, 0.0);
+    let other = at.quaternion.inverse() * Vec3::new(4.0, 0.0, 0.0);
+    assert_eq!(bar.weight(&at, end + at.position), 1.0);
+    assert_eq!(bar.weight(&at, other + at.position), 0.0);
+    let (clear, smoke, mist) = (draw(&[]), draw(&[fog(0.0)]), draw(&[fog(1.0)]));
+    let (clear_end, smoke_end, mist_end) = (luma(&clear, end), luma(&smoke, end), luma(&mist, end));
+    let (clear_other, smoke_other) = (luma(&clear, other), luma(&smoke, other));
+    println!(
+        "under the bar's end: clear {clear_end:.1}, smoke {smoke_end:.1}, mist {mist_end:.1}; beside it: clear {clear_other:.1}, smoke {smoke_other:.1}"
+    );
+    assert!(
+        smoke_end < 0.75 * clear_end,
+        "no smoke under the bar's end ({smoke_end:.1} against {clear_end:.1})"
+    );
+    assert!(
+        (smoke_other - clear_other).abs() < 1.5,
+        "the smoke changed the floor outside it ({smoke_other:.1} against {clear_other:.1})"
+    );
+    assert!(
+        mist_end > smoke_end + 8.0,
+        "a white mist is no brighter than black smoke ({mist_end:.1} against {smoke_end:.1})"
+    );
+    // A ball of 3 m fading over 4: halfway through the fade the floor is
+    // darkened, less than under the ball and more than past the fade.
+    let ball_at = Placement::at(Vec3::new(0.0, 0.0, 0.0));
+    let ball = Volume {
+        size: Vec3::ONE,
+        radius: 3.0,
+        fade: 4.0,
+    };
+    let faded = draw(&[FogVolume {
+        at: ball_at,
+        volume: Some(ball),
+        color: Vec3::ONE,
+        density: 0.6,
+        scattering: 0.0,
+    }]);
+    let [inside, half, past] = [0.0, 5.0, 9.0].map(|x| {
+        let p = Vec3::new(x, 0.0, 0.0);
+        luma(&faded, p) / luma(&clear, p)
+    });
+    println!(
+        "a fading ball: {inside:.2} of the clear floor inside, {half:.2} halfway through its fade, {past:.2} past it"
+    );
+    assert!(
+        inside < half - 0.1 && half < past - 0.1 && past > 0.97,
+        "the ball's fog does not fade over its fade ({inside:.2}, {half:.2}, {past:.2})"
+    );
+}

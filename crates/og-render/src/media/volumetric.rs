@@ -71,6 +71,114 @@ impl Default for VolumetricFog {
     }
 }
 
+impl VolumetricFog {
+    /// No fog of the scene's own, lit out to `distance`: the medium the
+    /// frame's [`FogVolume`]s are drawn in where the scene has no
+    /// volumetric fog.
+    pub(crate) fn empty(distance: f32) -> VolumetricFog {
+        VolumetricFog {
+            density: 0.0,
+            height_density: 0.0,
+            distance,
+            ..Default::default()
+        }
+    }
+}
+
+/// Fog inside a region (og.FogVolume): its extinction and colour added to
+/// the frame's volumetric medium where its shape reaches, lit as that
+/// medium is (the sun through its cascades, the local lights through
+/// their shadows).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FogVolume {
+    /// Where its entity puts it (frame coordinates).
+    pub at: og_env::volume::Placement,
+    /// Its shape; `None`: no bounds, the fog is everywhere.
+    pub volume: Option<og_env::volume::Volume>,
+    /// The fog's colour (its albedo's tint).
+    pub color: Vec3,
+    /// Extinction per metre inside the shape.
+    pub density: f32,
+    /// The share of the light a scattering event sends on.
+    pub scattering: f32,
+}
+
+/// The most [`FogVolume`]s one frame draws: the nearest the camera.
+pub const FOG_VOLUMES: usize = 16;
+
+impl FogVolume {
+    /// A radius about the entity that holds all of it, fade included
+    /// (infinite without bounds).
+    pub(crate) fn reach(&self) -> f32 {
+        let scale = self.at.scale.abs();
+        self.volume.map_or(f32::INFINITY, |v| {
+            let body = if v.radius > 0.0 {
+                v.radius * scale.max_element()
+            } else {
+                (v.size.abs() * scale * 0.5).length()
+            };
+            body + v.fade.max(0.0)
+        })
+    }
+
+    /// Its record in the volume's uniform (volumetric.wgsl `FogVolume`):
+    /// the shape as `og_env::volume::Volume::outside` reads it, so the
+    /// shader's weight is that function's.
+    fn record(&self) -> [[f32; 4]; 4] {
+        let scale = self.at.scale.abs();
+        let (radius, half, fade) = match self.volume {
+            None => (-1.0, Vec3::ZERO, 0.0),
+            Some(v) if v.radius > 0.0 => (v.radius * scale.max_element(), Vec3::ZERO, v.fade),
+            Some(v) => (0.0, v.size.abs() * scale * 0.5, v.fade),
+        };
+        [
+            self.at.position.extend(radius).to_array(),
+            self.at.quaternion.normalize().inverse().to_array(),
+            half.extend(fade.max(0.0)).to_array(),
+            (self.color.max(Vec3::ZERO) * self.scattering.max(0.0))
+                .extend(self.density.max(0.0))
+                .to_array(),
+        ]
+    }
+}
+
+/// The volumes of `all` a frame draws from `eye` out to `distance`: those
+/// that reach into it, the nearest [`FOG_VOLUMES`], and how many more did.
+pub(crate) fn nearest_volumes(
+    all: &[FogVolume],
+    eye: Vec3,
+    distance: f32,
+) -> (Vec<FogVolume>, usize) {
+    let mut near: Vec<(f32, &FogVolume)> = all
+        .iter()
+        .filter(|v| v.density > 0.0)
+        .map(|v| (((v.at.position - eye).length() - v.reach()).max(0.0), v))
+        .filter(|(d, _)| *d < distance)
+        .collect();
+    near.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let dropped = near.len().saturating_sub(FOG_VOLUMES);
+    (
+        near.into_iter()
+            .take(FOG_VOLUMES)
+            .map(|(_, v)| *v)
+            .collect(),
+        dropped,
+    )
+}
+
+/// How far the volume must reach from `eye` to hold every one of `all`
+/// (a scene with fog volumes and no volumetric fog of its own): to the far
+/// side of the farthest, within what [`VolumetricFog::distance`] allows.
+pub(crate) fn volumes_distance(all: &[FogVolume], eye: Vec3) -> f32 {
+    all.iter()
+        .map(|v| match v.reach() {
+            r if r.is_finite() => (v.at.position - eye).length() + r,
+            _ => VolumetricFog::default().distance,
+        })
+        .fold(4.0, f32::max)
+        .min(400.0)
+}
+
 /// How a renderer draws volumetric fog, on every backend (WebGPU, Metal,
 /// Vulkan, DX12).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -168,6 +276,9 @@ struct VolUniform {
     medium: [f32; 4],
     extent: [f32; 4],
     grid: [f32; 4],
+    /// x: how many of `volumes` are set.
+    local: [f32; 4],
+    volumes: [[[f32; 4]; 4]; FOG_VOLUMES],
 }
 
 struct Froxels {
@@ -378,6 +489,8 @@ pub(crate) struct Volumetric {
     water: bool,
     /// The lit features the renderer is made without (pipeline_features.rs).
     off: crate::pipeline_features::Features,
+    /// Whether it has said that more fog volumes reach the view than it draws.
+    warned_volumes: bool,
 }
 
 /// A bind group of `(binding, resource)` pairs (layouts whose bindings
@@ -522,6 +635,7 @@ impl Volumetric {
             apply: [None, None],
             water: false,
             off,
+            warned_volumes: false,
         }
     }
 
@@ -568,8 +682,9 @@ impl Volumetric {
         }
     }
 
-    /// Writes the frame's medium; `size`: the HDR target's. Another
-    /// depth of the froxel grid at `quality` makes its volumes again.
+    /// Writes the frame's medium, with the fog volumes of `local` nearest
+    /// `eye` in the scene's fog; `size`: the HDR target's. Another depth
+    /// of the froxel grid at `quality` makes its volumes again.
     #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
@@ -577,6 +692,7 @@ impl Volumetric {
         queue: &wgpu::Queue,
         frame_layout: &wgpu::BindGroupLayout,
         medium: &Medium,
+        (local, eye): (&[FogVolume], Vec3),
         size: (u32, u32),
         tick: u64,
         quality: &crate::RenderQuality,
@@ -592,6 +708,22 @@ impl Volumetric {
             f.slices = slices;
         }
         let (scatter, fog, distance) = medium.uniform();
+        // The water's medium is the water alone.
+        let (near, dropped) = match medium {
+            Medium::Fog(_) => nearest_volumes(local, eye, distance),
+            Medium::Water { .. } => (Vec::new(), 0),
+        };
+        if dropped > 0 && !self.warned_volumes {
+            self.warned_volumes = true;
+            log::warn!(
+                "og-render: {} og.FogVolume regions reach into the view; the nearest {FOG_VOLUMES} are drawn",
+                near.len() + dropped
+            );
+        }
+        let mut volumes = [[[0.0; 4]; 4]; FOG_VOLUMES];
+        for (slot, v) in volumes.iter_mut().zip(&near) {
+            *slot = v.record();
+        }
         let u = VolUniform {
             scatter,
             medium: fog,
@@ -607,6 +739,8 @@ impl Volumetric {
                 slices as f32,
                 (tick % 64) as f32,
             ],
+            local: [near.len() as f32, 0.0, 0.0, 0.0],
+            volumes,
         };
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
     }

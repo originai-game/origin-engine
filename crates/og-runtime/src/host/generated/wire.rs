@@ -32020,6 +32020,38 @@ pub mod record {
         }
     }
 
+    /// `FogVolume`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct FogVolume {
+        pub color: Color,
+        pub density: f32,
+        pub scattering: f32,
+    }
+
+    impl Default for FogVolume {
+        fn default() -> Self {
+            Self {
+                color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
+                density: 0.1_f32,
+                scattering: 0.8_f32,
+            }
+        }
+    }
+
+    impl FromJson for FogVolume {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                color: field(o, "color", d.color)?,
+                density: field(o, "density", d.density)?,
+                scattering: field(o, "scattering", d.scattering)?,
+            })
+        }
+    }
+
     /// `Sky`: packages/knowledge/wiki/atmosphere.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Sky {

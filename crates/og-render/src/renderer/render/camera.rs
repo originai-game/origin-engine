@@ -97,15 +97,28 @@ impl Renderer {
                     density: scene_water[i].underwater_density,
                 })
             }
+            // The scene's lit fog, or with none the medium its fog
+            // volumes are drawn in, out to the farthest of them.
             _ => scene
                 .atmosphere
                 .volumetric_fog
+                .or_else(|| {
+                    let local = &scene.atmosphere.fog_volumes;
+                    (!local.is_empty()).then(|| {
+                        crate::VolumetricFog::empty(crate::volumetric::volumes_distance(
+                            local,
+                            camera.position,
+                        ))
+                    })
+                })
                 .filter(|_| volume)
                 .map(crate::volumetric::Medium::Fog),
         };
+        // The scene's lit fog replaces its plain fog; fog volumes alone
+        // lie over it.
         let frame_fog = match under {
             Some(i) => Some(water::underwater_fog(&scene_water[i])),
-            None if volumetric_fog.is_some() => None,
+            None if volume && scene.atmosphere.volumetric_fog.is_some() => None,
             None => scene.atmosphere.fog,
         };
         // Up to `planar_reflections` surfaces mirror the scene, each in its own pass: slot 0 a grid surface first,

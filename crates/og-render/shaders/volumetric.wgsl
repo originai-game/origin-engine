@@ -22,19 +22,57 @@
 // True in the water's pipelines: each medium compiles its own, so the fog's carries none of the water's code.
 override VOL_WATER: bool = false;
 
+// Fog inside a region (volumetric.rs `FogVolume`, og.FogVolume): its shape as og_env's `Volume::outside` reads it.
+struct FogVolume {
+  at: vec4<f32>,       // xyz: its entity's position (frame coordinates), w: a sphere's radius (0: the box, < 0: no bounds)
+  turn: vec4<f32>,     // the quaternion that turns the frame's axes into its entity's
+  half: vec4<f32>,     // xyz: the box's half size, w: the fade past its surface (m; 0: a hard edge)
+  scatter: vec4<f32>,  // rgb: colour × scattering, w: extinction per metre inside it
+};
+
+const FOG_VOLUMES: u32 = 16u;
+
 struct Vol {
   scatter: vec4<f32>,  // rgb: colour × scattering, w: anisotropy
   medium: vec4<f32>,   // x: density, y: height, z: height density, w: falloff
   extent: vec4<f32>,   // x: distance, y: raymarch steps, zw: the target's size in pixels
   grid: vec4<f32>,     // xyz: froxels across, down and deep, w: the frame's noise seed
+  local: vec4<f32>,    // x: how many of `volumes` are set
+  volumes: array<FogVolume, FOG_VOLUMES>,
 };
 
 @group(1) @binding(0) var<uniform> vol: Vol;
 
-fn vol_density(p: vec3<f32>) -> f32 {
+// How much of a fog volume reaches p: 1 inside, falling linearly to 0 over its fade past its surface
+// (og_env::volume::Volume::weight, term for term).
+fn fog_volume_weight(v: FogVolume, p: vec3<f32>) -> f32 {
+  if (v.at.w < 0.0) { return 1.0; }
+  let d = p - v.at.xyz;
+  var outside = max(length(d) - v.at.w, 0.0);
+  if (v.at.w == 0.0) {
+    let local = d + 2.0 * cross(v.turn.xyz, cross(v.turn.xyz, d) + v.turn.w * d);
+    outside = length(max(abs(local) - v.half.xyz, vec3<f32>(0.0)));
+  }
+  if (outside <= 0.0) { return 1.0; }
+  return select(0.0, max(1.0 - outside / max(v.half.w, 1e-6), 0.0), v.half.w > 0.0);
+}
+
+// The medium at p: what it scatters of the light it is lit by per metre (rgb: colour × scattering × extinction) and
+// its extinction per metre (a). The scene's fog and, added to it, each fog volume that reaches p.
+fn vol_medium(p: vec3<f32>) -> vec4<f32> {
   // The water's: its fog's, below its surface.
-  if (VOL_WATER) { return select(0.0, max(frame.fog_distance.x, 1e-5), p.y < frame.fog_height.x); }
-  return vol.medium.x + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
+  if (VOL_WATER) {
+    let sigma = select(0.0, max(frame.fog_distance.x, 1e-5), p.y < frame.fog_height.x);
+    return vec4<f32>(vol.scatter.rgb * sigma, sigma);
+  }
+  let sigma = vol.medium.x + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
+  var m = vec4<f32>(vol.scatter.rgb * sigma, sigma);
+  let count = min(u32(vol.local.x), FOG_VOLUMES);
+  for (var i = 0u; i < count; i++) {
+    let v = vol.volumes[i];
+    m += vec4<f32>(v.scatter.rgb, 1.0) * (v.scatter.w * fog_volume_weight(v, p));
+  }
+  return m;
 }
 
 fn hg_phase(cos_theta: f32, g: f32) -> f32 {

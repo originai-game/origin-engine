@@ -35,6 +35,7 @@ impl Pass for VolumetricPass {
             &r.queue,
             &r.frame_layout,
             medium,
+            (&scene.atmosphere.fog_volumes, scene.frame.camera.position),
             (r.width, r.height),
             scene.frame.tick,
             &scene.frame.quality,

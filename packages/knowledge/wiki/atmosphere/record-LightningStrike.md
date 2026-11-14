@@ -26,4 +26,4 @@ event LightningStrike {
 }
 ```
 
-<sub>Module `atmosphere` line 522</sub>
+<sub>Module `atmosphere` line 543</sub>
