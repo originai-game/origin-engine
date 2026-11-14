@@ -50,10 +50,17 @@ impl Ui {
         handle: og_draw::UiMaterialHandle,
         defaults: [[f32; 4]; og_draw::UI_MATERIAL_PARAMS],
     ) {
-        self.docs
+        let previous = self
+            .docs
             .library
             .materials
             .insert(path.to_owned(), (handle, defaults));
+        // A mounted element resolved its layer from the old binding
+        // (`Docs::css_material`): a changed one restyles what is mounted,
+        // as a new style pack does.
+        if previous.is_some_and(|p| p != (handle, defaults)) {
+            self.tree.invalidation_mut().epoch += 1;
+        }
     }
 
     /// Events of documents built where code did not see them (screens
