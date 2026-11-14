@@ -372,10 +372,12 @@ fn a_rewrite_that_leaves_the_stat_unchanged_is_still_cooked() {
     let mut raced = 0;
     for round in 0..40 {
         // Start at a tick's edge, so the cook and the rewrite fit in the rest of it.
-        std::fs::write(&tick, "").unwrap();
+        // The probe file holds a byte: NTFS keeps the time of a file written
+        // empty over empty, and this loop would never see the edge.
+        std::fs::write(&tick, ".").unwrap();
         let edge = seen(&tick);
         while seen(&tick) == edge {
-            std::fs::write(&tick, "").unwrap();
+            std::fs::write(&tick, ".").unwrap();
         }
         let (first, second) = if round % 2 == 0 {
             ("one", "two")
