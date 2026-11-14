@@ -347,7 +347,7 @@ module nav {
   }
 
   struct NavGridDesc {
-    doc "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up."
+    doc "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up (row 0 at the bottom). A grid made by og.nav.gridFromTilemap counts its rows as its map does instead."
     desc true
     field width u32 "Cells across." {
       default 32
@@ -382,9 +382,9 @@ module nav {
   }
 
   struct NavCell {
-    doc "A grid cell."
-    field x u32 "The column."
-    field y u32 "The row (0 is the bottom)."
+    doc "A grid cell, counted as the grid counts: a grid from og.nav.grid has row 0 at the bottom, rows running up from its origin; a grid from og.nav.gridFromTilemap has row 0 at the top, as og.tilemap's TileCell, so one cell means one tile in both modules."
+    field x u32 "The column (0 is the left)."
+    field y u32 "The row: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap."
     field inside bool "Whether the point was on the grid."
   }
 
@@ -509,6 +509,7 @@ module nav {
 
   fn gridFromTilemap {
     doc "A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. Edits to the map later do not follow; build another."
+    doc "Its cells are the map's: row 0 at the top, so og.nav.cellAt answers what og.tilemap.cellAt does for a point and og.nav.setCost takes a tile's x and y. The choice is the grid's, saved with the world."
     param world World "The world."
     param desc TilemapGridDesc "The map's entity and the blocking layers."
     returns Result.Navigation "Refused for an entity without an og.Tilemap or a map not loaded."
@@ -519,13 +520,13 @@ module nav {
     param world World "The world."
     param grid Navigation "The grid."
     param x u32 "The column."
-    param y u32 "The row (0 is the bottom)."
+    param y u32 "The row, as NavCell.y: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap (a tile's row)."
     param cost u32 "0 blocked, 1 normal, up to 255."
     returns Result.Void "Refused for an unknown grid or a cell outside it."
   }
 
   fn cellAt {
-    doc "The grid cell under a world point."
+    doc "The grid cell under a world point, counted as the grid counts its rows (NavCell)."
     param world World "The world."
     param grid Navigation "The grid."
     param point Vector3 "A world point."

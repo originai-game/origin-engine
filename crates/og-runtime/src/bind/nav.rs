@@ -242,6 +242,9 @@ fn grid_from_tilemap(eng: &Engine, world: u32, desc: Option<String>) -> Result<V
     // Cell (0, 0) is the map's bottom-left cell; its lower corner is the map's top-left minus its height.
     let gorigin = Vec2::new(origin.x, origin.y - h as f32 * size.y);
     let mut grid = Grid::new(w, h, size.x, gorigin);
+    // Game code names its cells as the map's: row 0 at the top
+    // (og.nav.setCost and og.nav.cellAt convert; the storage runs up).
+    grid.rows_down = true;
     let mut rects = Vec::new();
     for l in layers {
         rects.extend(og_tilemap::collision_rects(&state, l));
@@ -290,7 +293,7 @@ pub fn og_nav_set_cost(world: u32, grid: f64, x: u32, y: u32, cost: u32) -> Resu
         let mut n = lock(&n);
         match n.get_mut(handle(grid)) {
             Some(Nav::Grid(g)) => {
-                if g.set(x, y, cost.min(255) as u8) {
+                if g.set(x, g.game_row(y), cost.min(255) as u8) {
                     Ok(())
                 } else {
                     Err(format!(
@@ -315,7 +318,9 @@ pub fn og_nav_cell_at(world: u32, grid: f64, point: String) -> crate::host::wire
     let cell = navs(world)
         .ok()
         .and_then(|n| match lock(&n).get(handle(grid)) {
-            Some(Nav::Grid(g)) => g.cell_at(plane.to_plane(p)),
+            Some(Nav::Grid(g)) => g
+                .cell_at(plane.to_plane(p))
+                .map(|(x, y)| (x, g.game_row(y))),
             _ => None,
         });
     match cell {

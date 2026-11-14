@@ -6,7 +6,7 @@ Module [`nav`](../nav.md) · [index](../index.md)
 
 ### `NavGridDesc` (desc struct)
 
-A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up.
+A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up (row 0 at the bottom). A grid made by og.nav.gridFromTilemap counts its rows as its map does instead.
 
 A desc: every field may be omitted and takes its default; `{}` is valid.
 
@@ -20,7 +20,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 
 ```ogt
 struct NavGridDesc {
-  doc "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up."
+  doc "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up (row 0 at the bottom). A grid made by og.nav.gridFromTilemap counts its rows as its map does instead."
   desc true
   field width u32 "Cells across." {
     default 32

@@ -9623,7 +9623,7 @@
         },
         {
           "name": "gridFromTilemap",
-          "doc": "A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. Edits to the map later do not follow; build another.",
+          "doc": "A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. Edits to the map later do not follow; build another.\nIts cells are the map's: row 0 at the top, so og.nav.cellAt answers what og.tilemap.cellAt does for a point and og.nav.setCost takes a tile's x and y. The choice is the grid's, saved with the world.",
           "params": [
             {
               "name": "world",
@@ -9668,7 +9668,7 @@
               "name": "y",
               "type": "u32",
               "optional": false,
-              "doc": "The row (0 is the bottom)."
+              "doc": "The row, as NavCell.y: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap (a tile's row)."
             },
             {
               "name": "cost",
@@ -9683,7 +9683,7 @@
         },
         {
           "name": "cellAt",
-          "doc": "The grid cell under a world point.",
+          "doc": "The grid cell under a world point, counted as the grid counts its rows (NavCell).",
           "params": [
             {
               "name": "world",
@@ -41223,7 +41223,7 @@
     "NavGridDesc": {
       "x-og-kind": "desc",
       "x-og-module": "nav",
-      "description": "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up.",
+      "description": "A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up (row 0 at the bottom). A grid made by og.nav.gridFromTilemap counts its rows as its map does instead.",
       "type": "object",
       "properties": {
         "width": {
@@ -41307,20 +41307,20 @@
     "NavCell": {
       "x-og-kind": "struct",
       "x-og-module": "nav",
-      "description": "A grid cell.",
+      "description": "A grid cell, counted as the grid counts: a grid from og.nav.grid has row 0 at the bottom, rows running up from its origin; a grid from og.nav.gridFromTilemap has row 0 at the top, as og.tilemap's TileCell, so one cell means one tile in both modules.",
       "type": "object",
       "properties": {
         "x": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The column."
+          "description": "The column (0 is the left)."
         },
         "y": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The row (0 is the bottom)."
+          "description": "The row: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap."
         },
         "inside": {
           "type": "boolean",

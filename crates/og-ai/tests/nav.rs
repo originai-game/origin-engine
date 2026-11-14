@@ -725,3 +725,42 @@ fn a_game_crossing_waits_for_finish_a_teleport_is_instant_and_a_shut_door_rerout
     assert!(top > 7.9, "round by the corridor: {top}");
     assert_eq!(w.get::<NavAgent>(e).unwrap().status, STATUS_ARRIVED);
 }
+
+/// How game code counts a grid's rows is the grid's, saved with the world:
+/// a save taken with a grid that counts down from its top restores it so
+/// on a grid made the other way, and a save without such a grid (or from
+/// before grids could count down) leaves each grid as it was made.
+#[test]
+fn a_grids_row_direction_is_saved_with_the_world() {
+    let make = |down: bool| {
+        let mut navs = Navs::default();
+        let mut grid = Grid::new(3, 4, 1.0, Vec2::ZERO);
+        grid.rows_down = down;
+        let h = navs.insert(Nav::Grid(grid));
+        let navs = Arc::new(Mutex::new(navs));
+        (world_with(navs.clone(), Plane::Xy), navs, h)
+    };
+    let down = |navs: &Arc<Mutex<Navs>>, h: u64| match navs.lock().unwrap().get(h) {
+        Some(Nav::Grid(g)) => g.rows_down,
+        _ => panic!("the grid"),
+    };
+    // The mirror of a row and back; a row off the grid stays off it.
+    let mut g = Grid::new(3, 4, 1.0, Vec2::ZERO);
+    assert_eq!([g.game_row(0), g.game_row(3)], [0, 3]);
+    g.rows_down = true;
+    assert_eq!([g.game_row(0), g.game_row(3), g.game_row(4)], [3, 0, 4]);
+    assert_eq!(g.game_row(g.game_row(1)), 1);
+
+    let (counting_down, ..) = make(true);
+    let (mut up, up_navs, h) = make(false);
+    up.restore(&counting_down.snapshot()).unwrap();
+    assert!(down(&up_navs, h), "the saved grid counted down");
+    // A save that lists no such grid: the grid keeps how it was made.
+    let (counting_up, ..) = make(false);
+    let (mut tile, tile_navs, h) = make(true);
+    tile.restore(&counting_up.snapshot()).unwrap();
+    assert!(
+        down(&tile_navs, h),
+        "made over a tilemap, it still counts down"
+    );
+}

@@ -22687,7 +22687,7 @@ export interface NavAreaDesc {
 }
 
 /**
- * A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up.
+ * A grid of square cells over the plane: cell (0, 0)'s lower corner at `origin`, rows running up (row 0 at the bottom). A grid made by og.nav.gridFromTilemap counts its rows as its map does instead.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
  */
@@ -22756,11 +22756,15 @@ export interface TilemapGridDesc {
   readonly inflate?: number;
 }
 
-/** A grid cell. */
+/**
+ * A grid cell, counted as the grid counts: a grid from og.nav.grid has row 0 at the bottom, rows running up from its origin; a grid from og.nav.gridFromTilemap has row 0 at the top, as og.tilemap's TileCell, so one cell means one tile in both modules.
+ */
 export interface NavCell {
-  /** The column. */
+  /** The column (0 is the left). */
   readonly x: number;
-  /** The row (0 is the bottom). */
+  /**
+   * The row: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap.
+   */
   readonly y: number;
   /** Whether the point was on the grid. */
   readonly inside: boolean;
@@ -35440,6 +35444,7 @@ export declare namespace og {
     function grid(world: World, desc?: NavGridDesc): Result<Navigation>;
     /**
      * A grid over a placed map: its cells, its world position (the map's top-left corner at the entity), blocked where the collision layers have solid tiles. Edits to the map later do not follow; build another.
+     * Its cells are the map's: row 0 at the top, so og.nav.cellAt answers what og.tilemap.cellAt does for a point and og.nav.setCost takes a tile's x and y. The choice is the grid's, saved with the world.
      *
      * @param world The world.
      * @param desc The map's entity and the blocking layers.
@@ -35452,13 +35457,13 @@ export declare namespace og {
      * @param world The world.
      * @param grid The grid.
      * @param x The column.
-     * @param y The row (0 is the bottom).
+     * @param y The row, as NavCell.y: 0 is the bottom on a grid from og.nav.grid, the top on a grid from og.nav.gridFromTilemap (a tile's row).
      * @param cost 0 blocked, 1 normal, up to 255.
      * @returns Refused for an unknown grid or a cell outside it.
      */
     function setCost(world: World, grid: Navigation, x: number, y: number, cost: number): Result<void>;
     /**
-     * The grid cell under a world point.
+     * The grid cell under a world point, counted as the grid counts its rows (NavCell).
      *
      * @param world The world.
      * @param grid The grid.

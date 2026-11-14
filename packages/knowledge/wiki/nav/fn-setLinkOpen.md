@@ -37,4 +37,4 @@ fn setLinkOpen {
 }
 ```
 
-<sub>Module `nav` line 628</sub>
+<sub>Module `nav` line 629</sub>
