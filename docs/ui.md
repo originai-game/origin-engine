@@ -514,7 +514,8 @@ rules and limits:
   (ui-materials guide), groups of up to four numbers or a colour in the
   material's order; no CSS standard has shader materials.
 - Paint changes repaint only their element; an idle retained element
-  builds nothing.
+  builds nothing. A moving `transform` or `opacity` repaints nothing: the
+  element's and its subtree's commands are kept and placed again.
 
 Overflow and scrolling: `scrollbar-width: thin` is half width with a
 half-width grab strip; `scrollbar-color`'s track runs the whole edge

@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"An element whose transform or opacity animates no longer has its whole subtree painted again each tick: each element's draw commands are kept apart from where the frame places them (its map, opacity and clip) and placed again. A dense menu with 40 cards springing in scale and opacity spends 0.55 ms a tick instead of 1.05 ms on Windows. A faded element's styled text now fades its shadows, outline and gradient fill with it."}
+  ]
+}

@@ -383,6 +383,24 @@ pub(crate) struct DrawSig {
 }
 
 impl DrawSig {
+    /// What a node's own commands are painted from: everything but where
+    /// the frame places them (its map, its opacity and its clip, and the
+    /// transform and opacity that make the first two), which
+    /// `Ui::place_commands` applies to them each frame.
+    pub(crate) fn painted(&self) -> Self {
+        DrawSig {
+            clip: Rect::default(),
+            alpha: 1.0,
+            world: crate::element::Affine::IDENTITY,
+            sampled: crate::layout::node::SampledStyle {
+                transform: crate::element::Transform::IDENTITY,
+                opacity: 1.0,
+                ..self.sampled
+            },
+            ..*self
+        }
+    }
+
     /// How far a node with this signature moved from one with `old`, when
     /// moving is all that changed (its size, clip, map and style as they
     /// were, no transform): its last commands, moved as far, are its own.
@@ -414,18 +432,31 @@ impl DrawSig {
 }
 
 /// Everything an element's own commands are made from is as last frame
-/// (its ancestors' fills are checked by the caller, up the tree).
+/// (its ancestors' fills are checked by the caller, up the tree), and they
+/// are placed where they were.
 pub(crate) fn draw_eq(a: &Node, b: &Node) -> bool {
-    a.placed.rect == b.placed.rect
-        && a.placed.clip == b.placed.clip
+    a.placed.clip == b.placed.clip
         && a.placed.alpha == b.placed.alpha
         && a.placed.world == b.placed.world
+        && a.style.sampled == b.style.sampled
+        && painted_eq(a, b)
+}
+
+/// Everything an element's own commands are painted from is as last frame
+/// ([`DrawSig::painted`]); where they are placed may differ.
+pub(crate) fn painted_eq(a: &Node, b: &Node) -> bool {
+    let unplaced = |n: &Node| crate::layout::node::SampledStyle {
+        transform: crate::element::Transform::IDENTITY,
+        opacity: 1.0,
+        ..n.style.sampled
+    };
+    a.placed.rect == b.placed.rect
         && a.marks.ring == b.marks.ring
         && a.marks.pad_rings == b.marks.pad_rings
         && a.heading == b.heading
         && a.disabled == b.disabled
         && a.placed.scale == b.placed.scale
-        && a.style.sampled == b.style.sampled
+        && unplaced(a) == unplaced(b)
         && a.layout.used == b.layout.used
         && a.content == b.content
         && a.layout.fit_step == b.layout.fit_step

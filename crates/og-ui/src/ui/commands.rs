@@ -445,41 +445,53 @@ impl Ui {
                 let mut local = Vec::new();
                 let mut background = 0;
                 let mut kept_now = false;
-                if reuse.same(i)
+                // Drawn in its layout box: its screen clip taken there.
+                let inverse = if world.is_identity() {
+                    Some(Affine::IDENTITY)
+                } else {
+                    world.invert()
+                };
+                if reuse.painted(i)
                     && let Some((b, c, _)) = self.paint.cache.cmds.get(&n.key)
                 {
                     (background, local) = (*b, c.clone());
                     self.out.stats.kept_commands += 1;
                     kept_now = true;
-                } else {
+                } else if inverse.is_some() {
                     // CSS accent-color: its controls' primary ink.
-                    let mut ink = self.env.theme;
-                    if let Some(a) = self.tree.nearest(i, |n| n.accent) {
-                        ink.palette.primary = a;
-                        ink.palette.primary_hover = a;
-                        ink.palette.primary_active = a;
-                    }
-                    if world.is_identity() {
-                        self.out.stats.painted += 1;
-                        self.paint.ctx = Some(PaintCtx {
-                            node: i,
-                            clip: draw_clip,
-                            map: Affine::IDENTITY,
-                            theme: ink,
-                        });
-                        background = self.node_commands(i, &mut local, &snap);
-                        self.paint.ctx = None;
-                    } else if let Some(inv) = world.invert() {
-                        self.out.stats.painted += 1;
-                        // Drawn in its layout box: its screen clip taken there.
-                        self.paint.ctx = Some(PaintCtx {
-                            node: i,
-                            clip: inv.map_rect(&draw_clip),
-                            map: world,
-                            theme: ink,
-                        });
-                        background = self.node_commands(i, &mut local, &snap);
-                        self.paint.ctx = None;
+                    let accented = self
+                        .paint
+                        .accent(&self.env, self.tree.nearest(i, |n| n.accent));
+                    self.out.stats.painted += 1;
+                    // Painted where nothing places it, at full opacity and
+                    // unclipped: `place_commands` places them, so they are
+                    // kept while only its map, opacity or clip move.
+                    let alpha = std::mem::replace(&mut self.tree.nodes[i].placed.alpha, 1.0);
+                    self.paint.ctx = Some(PaintCtx {
+                        node: i,
+                        clip: unplaced_clip(&self.tree.nodes[i]),
+                        map: Affine::IDENTITY,
+                        accented,
+                    });
+                    background = self.node_commands(i, &mut local, &snap);
+                    self.paint.ctx = None;
+                    self.tree.nodes[i].placed.alpha = alpha;
+                    let key = self.tree.nodes[i].key;
+                    self.paint
+                        .cache
+                        .cmds
+                        .insert(key, (background, local.clone(), sig));
+                }
+                if let Some(inv) = inverse {
+                    let n = &self.tree.nodes[i];
+                    let clip = if world.is_identity() {
+                        draw_clip
+                    } else {
+                        inv.map_rect(&draw_clip)
+                    };
+                    let unplaced = unplaced_clip(n);
+                    for c in &mut local {
+                        place(c, n.placed.alpha, unplaced, clip, &world);
                     }
                 }
                 if let Some(d) = &draw {
@@ -487,13 +499,6 @@ impl Ui {
                         .text()
                         .map_or(0, |t| t.metrics(&self.env.fonts).pixel_grid());
                     d.style_text(&theme, &mut local, grid);
-                }
-                let key = self.tree.nodes[i].key;
-                if !kept_now {
-                    self.paint
-                        .cache
-                        .cmds
-                        .insert(key, (background, local.clone(), sig));
                 }
                 let kept_at = kept_now.then_some(local.len());
                 let mut local = local.into_iter().map(|c| (c, world));
@@ -524,7 +529,7 @@ impl Ui {
                     node: i,
                     clip: draw_clip,
                     map: Affine::IDENTITY,
-                    theme: self.env.theme,
+                    accented: false,
                 });
                 self.focus_ring_commands(i, &mut ring);
                 self.paint.ctx = None;
@@ -533,7 +538,7 @@ impl Ui {
                     node: i,
                     clip: inv.map_rect(&draw_clip),
                     map: world,
-                    theme: self.env.theme,
+                    accented: false,
                 });
                 self.focus_ring_commands(i, &mut ring);
                 self.paint.ctx = None;
@@ -606,12 +611,11 @@ impl Ui {
         rings: &mut Vec<(usize, Vec<(DrawCmd, Affine)>)>,
         frozen: &mut IdMap<u64, crate::motion::state::Frozen>,
     ) {
-        let theme = self.env.theme;
         let marked = |n: &crate::layout::Node| {
             n.part()
                 .is_some_and(|p| p.has("selected") || p.has("focused"))
         };
-        let press_scale = theme.press_scale;
+        let press_scale = self.env.theme.press_scale;
         let placed = |n: &crate::layout::Node| crate::paint::Placed {
             rect: part_rect(n, press_scale),
             radius: n.style.sampled.radius,
@@ -663,10 +667,11 @@ impl Ui {
                     let at = placed(&self.tree.nodes[j]);
                     let hidden = self.tree.orders.hidden_of.get(j) == Some(&true)
                         || self.tree.orders.skip_of.get(j).is_some_and(|&s| s != 0);
+                    let theme = &self.env.theme;
                     let mut leave = if marked(&self.tree.nodes[j]) && !hidden {
-                        d.leave(&theme, &at)
+                        d.leave(theme, &at)
                     } else {
-                        d.leave_stroked(&theme, &at)
+                        d.leave_stroked(theme, &at)
                     };
                     undraw(&mut leave, self.tree.nodes[j].style.sampled.draw);
                     cmds.extend(leave.into_iter().map(|c| (c, w)));
@@ -730,7 +735,7 @@ impl Ui {
                 // to its last.
                 if let Some(g) = self.tree.nodes[j].fx.map(|f| f.glitch).filter(|&g| g > 0.0) {
                     let nj = &self.tree.nodes[j];
-                    let strength = match theme.art.motion.glitch {
+                    let strength = match self.env.theme.art.motion.glitch {
                         s if s > 0.0 => s,
                         _ => 1.0,
                     };
@@ -902,24 +907,33 @@ impl Ui {
             let i = order[q];
             let node = &self.tree.nodes[i];
             let up = node.parent;
-            let own = !volatile.contains(&i)
+            // `painted`: its own commands are painted from the same inputs
+            // (their kept ones are placed again where the frame puts them);
+            // `own`: and placed where they were.
+            let kept = !volatile.contains(&i)
                 && !self.tree.draws.contains_key(&i)
-                && !matches!(*node.content, Content::Rich(_))
-                && if written(i) {
-                    // A node written again: as it was drawn last frame.
-                    self.tree.replaced.get(&i).is_some_and(|b| {
-                        crate::layout::draw_eq(node, b)
-                            && Some(&self.tree.kinds[i]) == prev_kinds.get(&i)
-                    })
-                } else {
-                    // A retained node not written again: its own inputs are
-                    // as they were; what the frame moves is in its signature.
-                    self.paint.cache.sigs.get(i).is_some_and(|s| {
-                        s.is_some_and(|(k, sig)| {
-                            k == node.key && sig == crate::layout::DrawSig::of(node)
-                        })
-                    })
-                };
+                && !matches!(*node.content, Content::Rich(_));
+            let (painted, own) = if !kept {
+                (false, false)
+            } else if written(i) {
+                // A node written again: as it was drawn last frame.
+                self.tree.replaced.get(&i).map_or((false, false), |b| {
+                    let kind = Some(&self.tree.kinds[i]) == prev_kinds.get(&i);
+                    let painted = kind && crate::layout::painted_eq(node, b);
+                    (painted, painted && crate::layout::draw_eq(node, b))
+                })
+            } else {
+                // A retained node not written again: its own inputs are as
+                // they were; what the frame moves is in its signature.
+                match self.paint.cache.sigs.get(i) {
+                    Some(&Some((k, sig))) if k == node.key => {
+                        let now = crate::layout::DrawSig::of(node);
+                        (sig.painted() == now.painted(), sig == now)
+                    }
+                    _ => (false, false),
+                }
+            };
+            let painted = painted && (up == NONE || r.painted(up));
             let same = own && (up == NONE || r.same(up));
             let parent = (up != NONE).then(|| r.delta(up));
             let delta = if same {
@@ -950,6 +964,7 @@ impl Ui {
             }
             let clean = !delta.0.is_nan() && !own_volatile && !volatile.contains(&i);
             r.set(i, same, clean, delta);
+            r.painted[i] = painted;
             judged.push(i);
             if !same {
                 cover = cover.max(ends[q]);
@@ -1386,6 +1401,43 @@ impl crate::ui::Tree {
     }
 }
 
+/// The clip a node's commands are painted under before the frame places
+/// them: its box grown far past anything it draws, not an unbounded rect,
+/// so bands cut from it (a vertical selection's) keep their precision.
+fn unplaced_clip(n: &crate::layout::Node) -> Rect {
+    n.placed.rect.outset(1e4)
+}
+
+/// A node's command painted unplaced (at full opacity, under `unplaced`,
+/// in its layout box) placed by the frame: faded by its opacity `alpha` (a
+/// layer's composite keeps its own: what it composites is faded) and cut
+/// to `clip`, its clip in its layout box. A UI-pass command's clip is the
+/// screen's ([`bake`] leaves it), so it is taken through its map `world`.
+fn place(c: &mut DrawCmd, alpha: f32, unplaced: Rect, clip: Rect, world: &Affine) {
+    if alpha != 1.0 && !matches!(c, DrawCmd::EndLayer { .. }) {
+        fade_cmd(c, alpha);
+    }
+    let screen = matches!(
+        c,
+        DrawCmd::Shape { .. }
+            | DrawCmd::Vector { .. }
+            | DrawCmd::EndLayer { .. }
+            | DrawCmd::World(_)
+    );
+    if let Some(own) = c.clip_mut() {
+        let cut = if *own == unplaced {
+            clip
+        } else {
+            own.intersect(&clip)
+        };
+        *own = if screen && !world.is_identity() {
+            world.map_rect(&cut)
+        } else {
+            cut
+        };
+    }
+}
+
 /// A command's colours faded by `k` (a leaving element's opacity).
 pub(crate) fn fade_cmd(c: &mut DrawCmd, k: f32) {
     match c {
@@ -1400,7 +1452,20 @@ pub(crate) fn fade_cmd(c: &mut DrawCmd, k: f32) {
             }
         }
         // The UI pass's commands (crate::paint).
-        DrawCmd::StyledText { text, .. } => fade_cmd(text, k),
+        DrawCmd::StyledText { text, effects } => {
+            fade_cmd(text, k);
+            for s in &mut effects.shadows {
+                s.color[3] *= k;
+            }
+            if let Some(o) = &mut effects.outline {
+                o.color[3] *= k;
+            }
+            if let Some(g) = &mut effects.fill {
+                for stop in &mut g.stops {
+                    stop.color[3] *= k;
+                }
+            }
+        }
         DrawCmd::Shape { shape, .. } => shape.opacity *= k,
         DrawCmd::Vector { tint, .. } => tint[3] *= k,
         DrawCmd::EndLayer { opacity, .. } => *opacity *= k,
@@ -1772,6 +1837,8 @@ pub(crate) struct Reuse {
     stamp: u32,
     at: Vec<u32>,
     same: Vec<bool>,
+    /// Its kept commands are its own, placed again ([`Ui::place_commands`]).
+    painted: Vec<bool>,
     clean: Vec<bool>,
     delta: Vec<(f32, f32)>,
     /// The nodes painted anew (`None`: the whole frame is).
@@ -1788,6 +1855,7 @@ impl Reuse {
         if self.at.len() < n {
             self.at.resize(n, 0);
             self.same.resize(n, false);
+            self.painted.resize(n, false);
             self.clean.resize(n, false);
             self.delta.resize(n, (0.0, 0.0));
         }
@@ -1796,6 +1864,7 @@ impl Reuse {
     fn set(&mut self, i: usize, same: bool, clean: bool, delta: (f32, f32)) {
         self.at[i] = self.stamp;
         (self.same[i], self.clean[i], self.delta[i]) = (same, clean, delta);
+        self.painted[i] = same;
     }
 
     fn judged(&self, i: usize) -> bool {
@@ -1804,6 +1873,10 @@ impl Reuse {
 
     fn same(&self, i: usize) -> bool {
         !self.judged(i) || self.same[i]
+    }
+
+    fn painted(&self, i: usize) -> bool {
+        !self.judged(i) || self.painted[i]
     }
 
     fn clean(&self, i: usize) -> bool {

@@ -161,14 +161,16 @@ struct PartContext {
 
 /// One part's style and what it was resolved from: its reference, its
 /// host and its document (held, so neither address is reused while it is
-/// kept), and the theme it is painted with (the environment's outside
-/// paint), so a part built and then painted under one theme resolves once.
+/// kept), and the primary inks it is painted with (the environment's,
+/// or its element's `accent-color`: the paint theme differs from the
+/// environment's by them alone, and a new environment theme starts a new
+/// context), so a part built and then painted resolves once.
 #[derive(Clone)]
 struct PartStyle {
     part: crate::dress::PartRef,
     host: Option<Arc<PartHost>>,
     document: Option<Arc<UiDocument>>,
-    theme: crate::Theme,
+    ink: [crate::Srgba; 3],
     /// The part's transition state it was resolved from: until the build
     /// commits the one it leaves (`values`), the same inputs ask again.
     from: Option<crate::motion::css::StyleState>,
@@ -590,7 +592,10 @@ impl Ui {
     ) -> Arc<Resolved> {
         let host = key.and_then(|k| self.tree.part_host(k));
         let document = host.and_then(|h| self.docs.library.documents.get(&h.document));
-        let theme = *self.paint_theme();
+        let ink = {
+            let p = &self.paint_theme().palette;
+            [p.primary, p.primary_hover, p.primary_active]
+        };
         let state = key
             .and_then(|k| self.interaction.state.motion.part_styles.get(&k))
             .and_then(|s| s.get(part.part));
@@ -599,7 +604,7 @@ impl Ui {
             kept.part == *part
                 && same_arc(&kept.host, host)
                 && same_arc(&kept.document, document)
-                && kept.theme == theme
+                && kept.ink == ink
                 && (kept.values.style.as_ref().and_then(|c| c.state.as_ref()) == state
                     || kept.from.as_ref() == state)
         };
@@ -628,7 +633,7 @@ impl Ui {
                     part: *part,
                     host: host.cloned(),
                     document: document.cloned(),
-                    theme,
+                    ink,
                     from: state.cloned(),
                     values: values.clone(),
                 },

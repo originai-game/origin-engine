@@ -288,12 +288,29 @@ impl Style {
 impl Paint {
     /// The map of the element whose commands are being made.
     pub(crate) fn map(&self) -> Affine {
-        self.ctx.map_or(Affine::IDENTITY, |c| c.map)
+        self.ctx.as_ref().map_or(Affine::IDENTITY, |c| c.map)
     }
 
     /// The theme the element being painted draws with.
     pub(crate) fn theme<'a>(&'a self, env: &'a Env) -> &'a Theme {
-        self.ctx.as_ref().map_or(&env.theme, |c| &c.theme)
+        match &self.ctx {
+            Some(c) if c.accented => &self.accented,
+            _ => &env.theme,
+        }
+    }
+
+    /// Readies the environment's theme with `accent` (CSS `accent-color`)
+    /// as its primary ink for the element about to be painted; whether it
+    /// has one ([`PaintCtx::accented`]). Only an accented element copies
+    /// the theme.
+    pub(crate) fn accent(&mut self, env: &Env, accent: Option<Srgba>) -> bool {
+        let Some(a) = accent else { return false };
+        let t = &mut *self.accented;
+        *t = env.theme;
+        t.palette.primary = a;
+        t.palette.primary_hover = a;
+        t.palette.primary_active = a;
+        true
     }
 }
 
@@ -317,15 +334,15 @@ impl crate::ui::Ui {
 /// What paint draws one element with, set around its commands: its clip
 /// where they draw (a 3D plane's in its layer, mapped back to its layout
 /// box under a map), the map (a nine-slice is cut at its size on the
-/// screen, its corners kept crisp) and the theme with its CSS
-/// `accent-color` as the primary ink. Paint reads it in place of the
+/// screen, its corners kept crisp) and whether its CSS `accent-color` is
+/// the primary ink ([`Paint::accent`]). Paint reads it in place of the
 /// node's clip and the environment's theme, which it no longer writes.
 #[derive(Clone, Copy, Debug)]
 pub struct PaintCtx {
     pub(crate) node: usize,
     pub(crate) clip: Rect,
     pub(crate) map: Affine,
-    pub(crate) theme: Theme,
+    pub(crate) accented: bool,
 }
 
 /// Paint: its reuse cache, the part and decoration draws, the element
@@ -345,6 +362,9 @@ pub struct Paint {
     /// The element whose commands are being made (`None` between
     /// elements): its clip, map and theme as paint draws it.
     pub(crate) ctx: Option<PaintCtx>,
+    /// The environment's theme with the painted element's accent
+    /// ([`Paint::accent`]).
+    pub(crate) accented: Box<Theme>,
     pub(crate) prev_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
     /// The last frame's inspection, made when asked for (`inspect`).
     pub(crate) inspection: inspect::Inspection,

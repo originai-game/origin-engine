@@ -108,6 +108,7 @@ impl Ui {
                 part_changed: Default::default(),
                 decor_draws: Default::default(),
                 ctx: None,
+                accented: Default::default(),
                 prev_draws: Default::default(),
                 inspection: Default::default(),
                 cache: Default::default(),

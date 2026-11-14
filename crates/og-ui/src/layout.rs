@@ -30,7 +30,7 @@ mod writing;
 
 pub(crate) use cache::{
     DrawSig, Invalidation, LayoutCache, Measure, Metrics, MotionCache, PaintCache, TextCache,
-    draw_eq, input_changes, layout,
+    draw_eq, input_changes, layout, painted_eq,
 };
 use flex::*;
 pub(crate) use flex::{on_screen, text_preferred};
