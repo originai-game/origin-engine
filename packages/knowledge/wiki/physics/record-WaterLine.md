@@ -16,7 +16,7 @@ Token `og.WaterLine`, registered under the schema name `og.WaterLine`; its value
 | `depth` | `number` | `3` | ≥ 0 | `m` | tunable | The pool's depth below the surface. |
 | `columns` | `number` | `96` | 4 … 512 | — | — | Springs along the surface. |
 | `tension` | `number` | `60` | ≥ 0 | — | tunable | How hard each spring pulls back to rest. |
-| `damping` | `number` | `2.5` | ≥ 0 | — | tunable | How fast a spring's motion dies. |
+| `damping` | `number` | `2.5` | ≥ 0 | `perSecond` | tunable | How fast a spring's motion dies (0: never). |
 | `spread` | `number` | `0.25` | 0 … 0.5 | — | tunable | How much of a spring's height its neighbours feel each pass (waves travel). |
 | `splash` | `number` | `0.04` | ≥ 0 | — | tunable | How strongly crossing bodies splash. |
 | `buoyancy` | `number` | `12` | ≥ 0 | — | tunable | The upward force on a submerged body per square metre of its box under water (0: bodies sink). |
@@ -47,9 +47,10 @@ component WaterLine {
     min 0
     tunable true
   }
-  field damping f32 "How fast a spring's motion dies." {
+  field damping f32 "How fast a spring's motion dies (0: never)." {
     default 2.5
     min 0
+    unit perSecond
     tunable true
   }
   field spread f32 "How much of a spring's height its neighbours feel each pass (waves travel)." {
@@ -77,4 +78,4 @@ component WaterLine {
 }
 ```
 
-<sub>Module `physics` line 1651</sub>
+<sub>Module `physics` line 1656</sub>

@@ -356,6 +356,7 @@ pub(crate) fn deformed(
                 .and_then(|p| p.gravity())
                 .unwrap_or(Vec3::new(0.0, -9.81, 0.0)),
             physics.map_or(Vec3::ZERO, |p| p.wind()),
+            1.0 / scene.frame.tick_rate.max(1e-3),
         );
         (targets.clone(), targets, Some(std::sync::Arc::new(body)))
     } else {
@@ -414,6 +415,7 @@ fn visual_body(
     normals: Vec<Vec3>,
     gravity: Vec3,
     wind: Vec3,
+    dt: f32,
 ) -> og_render::VisualBody {
     let top = w.rig.rest.iter().fold(f32::MIN, |m, p| m.max(p.y));
     let pin = g.pin_top.max(0.0);
@@ -446,7 +448,7 @@ fn visual_body(
         reach: reach.into(),
         backstop: g.backstop.max(0.0),
         substeps: (2 * g.substeps.clamp(1, 16) * g.iterations.clamp(1, 64)).clamp(4, 96),
-        damping: g.damping,
+        keep: og_core::math::damping_keep(g.damping, dt),
         gravity: gravity * g.gravity_scale,
         wind: g.wind + wind,
         gust: g.gust,

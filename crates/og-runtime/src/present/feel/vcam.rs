@@ -226,11 +226,11 @@ fn evaluate(
             };
             let want = dist - clear;
             let held = row.pull.max(0.0);
-            // In at once, out over damping.
+            // In at once, out over recoverTime.
             pull = if snap || want >= held {
                 want
             } else {
-                approach(held, want, dt, row.damping.max(0.0))
+                approach(held, want, dt, row.recover_time.max(0.0))
             };
             pull = pull.clamp(0.0, dist);
             position = o + dir * (dist - pull);

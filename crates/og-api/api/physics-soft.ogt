@@ -26,10 +26,11 @@
       max 64
       tunable true
     }
-    field damping f32 "How much of its velocity each point keeps per tick (1: none lost)." {
-      default 0.99
+    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+      default 0.6
       min 0
-      max 1
+      max 100
+      unit perSecond
       tunable true
     }
     field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -96,10 +97,11 @@
       max 64
       tunable true
     }
-    field damping f32 "How much of its velocity each point keeps per tick." {
-      default 0.985
+    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+      default 0.9
       min 0
-      max 1
+      max 100
+      unit perSecond
       tunable true
     }
     field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -195,10 +197,11 @@
       min 1
       max 16
     }
-    field damping f32 "How much of its velocity each point keeps per tick." {
-      default 0.97
+    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+      default 1.85
       min 0
-      max 1
+      max 100
+      unit perSecond
       tunable true
     }
     field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -292,10 +295,11 @@
       min 1
       max 16
     }
-    field damping f32 "How much of its velocity each point keeps per tick." {
-      default 0.995
+    field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+      default 0.3
       min 0
-      max 1
+      max 100
+      unit perSecond
       tunable true
     }
     field gravityScale f32 "Multiplies og.Physics.gravity." {

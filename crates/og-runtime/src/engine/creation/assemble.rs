@@ -136,7 +136,6 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         | "og.Perception"
         | "og.PlatformerController"
         | "og.Lockstep"
-        | "og.VirtualCamera"
         | "og.CameraView"
         | "og.Mirror"
         | "og.Afterimage"
@@ -144,6 +143,11 @@ pub(crate) fn versioned(mut schema: og_core::Schema) -> og_core::Schema {
         // G2: turbulence and gustSize, the simulated field's (2); the
         // world's wind, `strength` gone into `speed` (3).
         "og.Wind" => 3,
+        // damping is a decay rate everywhere: the soft things' above, and
+        // the water surface's; the camera's time is recoverTime.
+        "og.Rope" => og_physics::Rope::schema().version,
+        "og.WaterSurface" => og_physics::WaterSurface::schema().version,
+        "og.VirtualCamera" => 3,
         _ => return schema,
     };
     schema

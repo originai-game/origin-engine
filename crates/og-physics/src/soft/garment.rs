@@ -173,12 +173,7 @@ impl GarmentState {
         let n = self.points.len();
         let substeps = garment.substeps.clamp(1, 16);
         let ds = dt / substeps as f32;
-        let damping = garment.damping.clamp(0.0, 1.0);
-        let keep = if substeps == 1 {
-            damping
-        } else {
-            og_core::math::pow(damping, 1.0 / substeps as f32)
-        };
+        let keep = crate::verlet::keep_per_substep(garment.damping, dt, substeps);
         let g = gravity * garment.gravity_scale;
         let wind = garment.wind;
         let windy = wind.length_squared() > 0.0;

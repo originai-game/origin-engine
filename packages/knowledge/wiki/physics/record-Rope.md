@@ -20,7 +20,7 @@ Token `og.Rope`, registered under the schema name `og.Rope`; its value type is `
 | `end` | `Entity` | `0` | — | — | — | The entity the far end is tied to; 0 leaves it free. |
 | `endOffset` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `none` | The far end's offset from `end`'s position. |
 | `iterations` | `number` | `12` | 1 … 64 | — | tunable | Constraint passes per step: more is stiffer, at more cost. |
-| `damping` | `number` | `0.99` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick (1: none lost). |
+| `damping` | `number` | `0.6` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second). |
 | `radius` | `number` | `0.05` | ≥ 0 | `m` | tunable | The thickness it collides at (0: no collision). |
@@ -57,10 +57,11 @@ component Rope {
     max 64
     tunable true
   }
-  field damping f32 "How much of its velocity each point keeps per tick (1: none lost)." {
-    default 0.99
+  field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    default 0.6
     min 0
-    max 1
+    max 100
+    unit perSecond
     tunable true
   }
   field gravityScale f32 "Multiplies og.Physics.gravity." {

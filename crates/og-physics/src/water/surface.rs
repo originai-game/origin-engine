@@ -1,6 +1,6 @@
 //! og.WaterSurface: its height field, splashed by and pushing the bodies in it.
 
-use super::{Crossing, Floater, WaterForce, per_tick};
+use super::{Crossing, Floater, WaterForce};
 use crate::schema::WaterSurface;
 use og_core::IdMap;
 use og_core::glam::Vec3;
@@ -145,7 +145,7 @@ impl SurfaceState {
         // The wave equation, with the speed held under the grid's limit.
         let c = w.wave_speed.min(0.5 * cell / dt);
         let k = c * c / (cell * cell) * dt;
-        let keep = per_tick(w.damping, dt);
+        let keep = og_core::math::damping_keep(w.damping, dt);
         let h = &self.heights;
         let mut next_v = self.velocities.clone();
         for j in 0..n {

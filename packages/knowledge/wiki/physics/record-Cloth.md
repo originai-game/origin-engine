@@ -19,7 +19,7 @@ Token `og.Cloth`, registered under the schema name `og.Cloth`; its value type is
 | `spacing` | `number` | `0.15` | ≥ 0.001 | `m` | tunable | The rest distance between neighbouring points. |
 | `pins` | `number` | `1` | — | — | — | Which points are pinned, a sum of PIN_* bits (1 top row, 2 top corners, 4 left column, 8 top rings). |
 | `iterations` | `number` | `8` | 1 … 64 | — | tunable | Constraint passes per step. |
-| `damping` | `number` | `0.985` | 0 … 1 | — | tunable | How much of its velocity each point keeps per tick. |
+| `damping` | `number` | `0.9` | 0 … 100 | `perSecond` | tunable | How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping. |
 | `gravityScale` | `number` | `1` | -10 … 10 | — | tunable | Multiplies og.Physics.gravity. |
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps2` | tunable | A steady acceleration of its own, added to og.Wind's push (its velocity as an acceleration, per second); the cloth flutters with both. A visual cloth (SIMULATION_VISUAL) takes the sum as air moving at its magnitude in m/s. See `physics §8`. |
 | `gust` | `number` | `0.6` | 0 … 2 | — | tunable | How much the wind varies over the cloth and the tick (0: steady). |
@@ -60,10 +60,11 @@ component Cloth {
     max 64
     tunable true
   }
-  field damping f32 "How much of its velocity each point keeps per tick." {
-    default 0.985
+  field damping f32 "How fast its points' velocity decays (0: none lost): each tick a point keeps 1 / (1 + damping * dt) of it, as RigidBody.linearDamping." {
+    default 0.9
     min 0
-    max 1
+    max 100
+    unit perSecond
     tunable true
   }
   field gravityScale f32 "Multiplies og.Physics.gravity." {
@@ -116,4 +117,4 @@ component Cloth {
 }
 ```
 
-<sub>Module `physics` line 1067</sub>
+<sub>Module `physics` line 1068</sub>

@@ -1144,7 +1144,7 @@
           "default": 0.2
         },
         {
-          "name": "damping",
+          "name": "recoverTime",
           "column": "f32",
           "default": 0.4,
           "tunable": true
@@ -3718,7 +3718,7 @@
         {
           "name": "damping",
           "column": "f32",
-          "default": 0.99,
+          "default": 0.6,
           "tunable": true
         },
         {
@@ -3800,7 +3800,7 @@
         {
           "name": "damping",
           "column": "f32",
-          "default": 0.985,
+          "default": 0.9,
           "tunable": true
         },
         {
@@ -3920,7 +3920,7 @@
         {
           "name": "damping",
           "column": "f32",
-          "default": 0.97,
+          "default": 1.85,
           "tunable": true
         },
         {
@@ -4032,7 +4032,7 @@
         {
           "name": "damping",
           "column": "f32",
-          "default": 0.995,
+          "default": 0.3,
           "tunable": true
         },
         {
@@ -4494,7 +4494,7 @@
         {
           "name": "damping",
           "column": "f32",
-          "default": 0.4,
+          "default": 0.9,
           "tunable": true
         },
         {

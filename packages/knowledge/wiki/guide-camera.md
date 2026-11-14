@@ -72,7 +72,7 @@ if (brain.ok) brain.value.solo = talking ? closeUp : 0;   // 0 releases it
 - `focus` drives og.PostEffects' depth of field while the shot is live and
   hands the old values back when no live shot has focus.
 - `collide` pulls the shot in at once when a collider comes between it and
-  the look point and eases back out over `damping`. It queries the
+  the look point and eases back out over `recoverTime`. It queries the
   colliders as the tick started and never moves a body.
 
 | Blend | Value | Source |

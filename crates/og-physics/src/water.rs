@@ -18,8 +18,8 @@
 //! block.
 //!
 //! Determinism: the fields are `+ - * /` on f32 in index order, no
-//! transcendental functions (damping per tick is precomputed from
-//! per-second factors with og-core's deterministic `pow`); a sea is
+//! transcendental functions (what a wave keeps a tick is
+//! `og_core::math::damping_keep` of the surface's rate); a sea is
 //! og-core's own deterministic function.
 
 use og_core::glam::Vec3;
@@ -69,8 +69,4 @@ pub(crate) struct Crossing {
     pub entity: u64,
     pub point: Vec3,
     pub speed: f32,
-}
-
-fn per_tick(per_second: f32, dt: f32) -> f32 {
-    og_core::math::pow(per_second.clamp(0.0, 1.0), dt)
 }

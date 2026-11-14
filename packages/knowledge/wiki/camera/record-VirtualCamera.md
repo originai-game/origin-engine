@@ -57,9 +57,9 @@ Token `og.VirtualCamera`, registered under the schema name `og.VirtualCamera`; i
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `collide` | `boolean` | `false` | — | — | — | Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body. |
+| `collide` | `boolean` | `false` | — | — | — | Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over recoverTime. Against the colliders as the tick started (og.physics' query view): it never moves a body. |
 | `radius` | `number` | `0.2` | ≥ 0 | `m` | — | The sphere collision keeps clear. |
-| `damping` | `number` | `0.4` | ≥ 0 | `s` | tunable | Roughly how long it takes to ease back out once the way is clear; 0 snaps. |
+| `recoverTime` | `number` | `0.4` | ≥ 0 | `s` | tunable | Roughly how long it takes to ease back out once the way is clear; 0 snaps. |
 | `collisionMask` | `number` | `0` | — | — | — | The physics layers collision considers (a collider counts when its layers meet these); 0 every layer. |
 
 #### Controller state
@@ -136,13 +136,13 @@ component VirtualCamera {
     default power2.inOut
   }
   group "Collision"
-  field collide bool "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over damping. Against the colliders as the tick started (og.physics' query view): it never moves a body."
+  field collide bool "Keep a sphere of `radius` clear of colliders between the look point and where it sits: it pulls in towards the look point at once and eases back out over recoverTime. Against the colliders as the tick started (og.physics' query view): it never moves a body."
   field radius f32 "The sphere collision keeps clear." {
     default 0.2
     min 0
     unit m
   }
-  field damping f32 "Roughly how long it takes to ease back out once the way is clear; 0 snaps." {
+  field recoverTime f32 "Roughly how long it takes to ease back out once the way is clear; 0 snaps." {
     default 0.4
     min 0
     unit s

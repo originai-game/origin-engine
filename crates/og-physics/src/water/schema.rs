@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 /// `buoyancy`. The heights are world state; an og.Water on the same entity
 /// draws them.
 #[derive(Clone, Copy, Debug, PartialEq, Reflect, Serialize, Deserialize)]
-#[reflect(name = "og.WaterSurface")]
+#[reflect(name = "og.WaterSurface", version = 2)]
 pub struct WaterSurface {
     /// Grid points along each side.
     #[reflect(min = 8, max = 256, default = 64)]
@@ -23,8 +23,8 @@ pub struct WaterSurface {
     /// How fast waves travel.
     #[reflect(name = "waveSpeed", min = 0, unit = "m/s", default = 3, tunable)]
     pub wave_speed: f32,
-    /// How much of a wave survives a second (1: no loss).
-    #[reflect(min = 0, max = 1, default = 0.4, tunable)]
+    /// How fast waves die (0: no loss).
+    #[reflect(min = 0, max = 100, unit = "1/s", default = 0.9, tunable)]
     pub damping: f32,
     /// How strongly bodies push waves.
     #[reflect(min = 0, default = 1, tunable)]
@@ -43,7 +43,7 @@ impl Default for WaterSurface {
             resolution: 64,
             size: 16.0,
             wave_speed: 3.0,
-            damping: 0.4,
+            damping: 0.9,
             splash: 1.0,
             buoyancy: 9.81,
             drag: 1.5,

@@ -408,12 +408,7 @@ impl SoftState {
         let planar = |p: Vec3| if flat { Vec3::new(p.x, p.y, z) } else { p };
         let substeps = soft.substeps.clamp(1, 16);
         let ds = dt / substeps as f32;
-        let damping = soft.damping.clamp(0.0, 1.0);
-        let keep = if substeps == 1 {
-            damping
-        } else {
-            og_core::math::pow(damping, 1.0 / substeps as f32)
-        };
+        let keep = crate::verlet::keep_per_substep(soft.damping, dt, substeps);
         let g = gravity * soft.gravity_scale;
         let stiffness = soft.stiffness.clamp(0.0, 1.0);
         let target = self.rest_volume * soft.pressure.clamp(0.0, 4.0);
