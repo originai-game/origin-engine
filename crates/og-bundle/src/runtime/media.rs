@@ -52,6 +52,93 @@ pub fn is_shared_texture(id: &str) -> bool {
 
 const SHARED_TEXTURES: &str = "_gltf/";
 
+/// The output holding the parts og.Wind moves of 2D texture `id`
+/// (`texture { sway ... }` in its import settings): a texture of the parts
+/// packed side by side, with [`SwayParts`] in its `sway` section.
+pub fn sway_id(id: &str) -> String {
+    format!("{id}#sway")
+}
+
+/// A 2D texture cut into the parts the wind moves (og-cook's sway2d.rs):
+/// drawn in order at rest they are the texture, texel for texel.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SwayParts {
+    /// The texture's size (texels): the canvas the parts lie on.
+    pub size: [u32; 2],
+    /// The parts, in the order they draw: what stands still first.
+    pub parts: Vec<SwayPart>,
+}
+
+/// One part of [`SwayParts`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SwayPart {
+    /// Where its top-left texel lies in the `#sway` texture, and its
+    /// width and height (texels).
+    pub atlas: [u32; 2],
+    pub size: [u32; 2],
+    /// Where its top-left texel lies on the canvas (from the top left).
+    pub at: [u32; 2],
+    /// Its centre on the canvas (texels, from the top left): where it
+    /// reads the wind.
+    pub centre: [f32; 2],
+    /// How much of the plant's lean it takes (0: it stands still): a
+    /// clump of leaves more the farther it is from the crown's centre, the
+    /// crown's dark copy a little more than its loosest clump, a row of a
+    /// bending trunk and what rides it by its height squared.
+    pub lean: f32,
+    /// How much of the gusts' loop it walks (0: none; the wood and the
+    /// dark copy).
+    pub flutter: f32,
+}
+
+impl SwayParts {
+    /// Bytes of one part in the blob section.
+    const PART: usize = 40;
+
+    /// The blob section `sway`: the canvas's size and the count, then each
+    /// part's six u32s and four f32s, little-endian.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut b = Vec::with_capacity(12 + self.parts.len() * Self::PART);
+        for v in [self.size[0], self.size[1], self.parts.len() as u32] {
+            b.extend(v.to_le_bytes());
+        }
+        for p in &self.parts {
+            for v in [p.atlas, p.size, p.at].as_flattened() {
+                b.extend(v.to_le_bytes());
+            }
+            for v in [p.centre[0], p.centre[1], p.lean, p.flutter] {
+                b.extend(v.to_le_bytes());
+            }
+        }
+        b
+    }
+
+    pub fn from_bytes(b: &[u8]) -> Option<SwayParts> {
+        let word = |i: usize| -> Option<[u8; 4]> { b.get(i..i + 4)?.try_into().ok() };
+        let u = |i: usize| word(i).map(u32::from_le_bytes);
+        let f = |i: usize| word(i).map(f32::from_le_bytes);
+        let count = u(8)? as usize;
+        (b.len() == 12 + count.checked_mul(Self::PART)?).then_some(())?;
+        let parts = (0..count)
+            .map(|k| {
+                let at = 12 + k * Self::PART;
+                Some(SwayPart {
+                    atlas: [u(at)?, u(at + 4)?],
+                    size: [u(at + 8)?, u(at + 12)?],
+                    at: [u(at + 16)?, u(at + 20)?],
+                    centre: [f(at + 24)?, f(at + 28)?],
+                    lean: f(at + 32)?,
+                    flutter: f(at + 36)?,
+                })
+            })
+            .collect::<Option<Vec<_>>>()?;
+        Some(SwayParts {
+            size: [u(0)?, u(4)?],
+            parts,
+        })
+    }
+}
+
 impl MipChain {
     /// The blob section `mips` (three little-endian u32s), as the cook
     /// writes it.

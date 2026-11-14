@@ -651,6 +651,18 @@ impl Bundle {
         })
     }
 
+    /// The parts of a `#sway` texture blob ([`sway_id`]); `None` for a
+    /// texture without them.
+    pub fn sway(&self, id: &str, bytes: &[u8]) -> Result<Option<SwayParts>, LoadError> {
+        let blob = self.blob::<format::Texture>(id, bytes)?;
+        match blob.raw_opt("sway") {
+            Some(b) => SwayParts::from_bytes(b)
+                .map(Some)
+                .ok_or_else(|| invalid(&blob, "its `sway` section is not whole parts")),
+            None => Ok(None),
+        }
+    }
+
     /// Decodes a colour LUT blob.
     pub fn lut(&self, id: &str, bytes: &[u8]) -> Result<og_render_data::ColorLut, LoadError> {
         let blob = self.blob::<format::Lut>(id, bytes)?;
