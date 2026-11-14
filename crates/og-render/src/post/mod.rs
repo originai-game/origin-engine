@@ -15,6 +15,7 @@ pub(crate) mod hdr;
 mod passes;
 mod plan;
 pub(crate) mod post_custom;
+pub(crate) mod sight;
 mod smaa;
 mod targets;
 pub(crate) use flare::*;
@@ -183,6 +184,8 @@ pub(crate) struct FxPostUniform {
     /// Screen-space global illumination
     /// (`ScreenSpaceGlobalIllumination::rows`).
     pub gi: [[f32; 4]; 3],
+    /// Fog of war (`sight::FogOfWar::rows`; zero: none).
+    pub sight: [[f32; 4]; 3],
     /// Screen-space contact shadows (contact.wgsl): rows 0 to 2 the
     /// contact lights' view-space positions (w 1: drawn), row 3 Bend's
     /// surface thickness, bilinear threshold, shadow contrast and sample
@@ -455,6 +458,8 @@ pub(crate) struct PostPasses {
     nearest_sampler: wgpu::Sampler,
     /// Black and clear: also the 2D light directions' placeholder (none).
     pub(crate) black: wgpu::TextureView,
+    /// The fog of war's cells (`sight.rs`).
+    pub(crate) sight: sight::SightTexture,
     /// The identity 32³ grading LUT (bound when no grading is set).
     pub identity_lut: wgpu::TextureView,
     /// The table the tonemap samples while [`crate::ColorAdjust`] is on:
@@ -601,6 +606,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_godrays_mask", HDR_FORMAT),
     ("fs_godrays_blur", HDR_FORMAT),
     ("fs_depth_bands", HDR_FORMAT),
+    ("fs_sight", HDR_FORMAT),
     ("fs_ssgi", crate::ssgi::GI_FORMAT),
     ("fs_gi_blur", crate::ssgi::GI_FORMAT),
     ("fs_gi_upsample", crate::ssgi::GI_FORMAT),

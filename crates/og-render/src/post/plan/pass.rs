@@ -133,6 +133,8 @@ pub(crate) enum FramePass {
     FlareBlurY,
     /// Flat colour bands by depth over the lit image (`stylise.rs`).
     DepthBands,
+    /// Fog of war over the lit image (`sight.rs`), after the bands.
+    FogOfWar,
     Tonemap,
     /// The passes after the tonemap ([`chain_passes`]), each from one LDR
     /// target into the next, the last into the output: painterly
@@ -348,6 +350,7 @@ impl FramePass {
             FramePass::FlareBlurY => "flare-blur-y".into(),
             FramePass::Tonemap => "tonemap".into(),
             FramePass::DepthBands => "depth-bands".into(),
+            FramePass::FogOfWar => "fog-of-war".into(),
             FramePass::Paint => "paint".into(),
             FramePass::Watercolor => "watercolor".into(),
             FramePass::Lines => "lines".into(),

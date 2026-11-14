@@ -278,6 +278,9 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
     if has(FramePass::DepthBands) {
         g.transient("hdr.bands", desc(w, h, HDR_FORMAT, 1, ATTACH_BIND));
     }
+    if has(FramePass::FogOfWar) {
+        g.transient("hdr.sight", desc(w, h, HDR_FORMAT, 1, ATTACH_BIND));
+    }
     if has(FramePass::OutlineSeed) {
         g.transient("outline-jfa.a", desc(w, h, JFA_FORMAT, 1, ATTACH_BIND))
             .transient("outline-jfa.b", desc(w, h, JFA_FORMAT, 1, ATTACH_BIND));

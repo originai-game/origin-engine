@@ -92,6 +92,7 @@ impl Renderer {
                 ssr: effects.ssr.is_some(),
                 clouds,
                 depth_bands: effects.depth_bands.is_some(),
+                fog_of_war: effects.fog_of_war,
                 glow,
                 outline: effects.outline,
                 outline_outside: scene.look.stylise.material.outline_place

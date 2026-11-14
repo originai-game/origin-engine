@@ -22,6 +22,8 @@ pub struct SceneLook {
     /// The player's colour vision filter over the finished frame, scene and
     /// overlay alike (`None`: none; crate::ColorFilter).
     pub color_filter: Option<crate::ColorFilter>,
+    /// The fog of war over the lit image (`post/sight.rs`; `None`: none).
+    pub fog_of_war: Option<crate::FogOfWar>,
 }
 
 /// The overlay (its UI tree and canvases) and the UI's vector paths and

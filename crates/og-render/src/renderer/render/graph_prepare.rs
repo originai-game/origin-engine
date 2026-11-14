@@ -61,6 +61,10 @@ impl Renderer {
             prepass,
             ..
         } = *effects;
+        // The fog of war's cells, before the graph binds their texture.
+        if let Some(fog) = scene.look.fog_of_war.as_ref().filter(|f| f.drawn()) {
+            self.post.sight.update(&self.device, &self.queue, fog);
+        }
         // The grading table bound: the adjusted one, the scene's, or none.
         let (lut_key, lut_view) = match (self.post.adjusted_lut().filter(|_| adjusted), lut_index) {
             (Some(view), _) => (Some((0, 0)), view),

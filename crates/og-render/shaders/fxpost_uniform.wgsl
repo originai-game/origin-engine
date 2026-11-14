@@ -25,6 +25,11 @@ struct FxPost {
   gi0: vec4<f32>,             // screen-space GI (ssgi.wgsl): x max distance, y thickness, z intensity (0: off), w steps
   gi1: vec4<f32>,             // x: rays, y: the noise's frame offset (px), z: 1 with last frame's lit image (tex_a), w: the occlusion from 0 the rays, 1 GTAO, 2 SSAO
   gi2: vec4<f32>,             // x: how much the rays' hits occlude the ambient light
+  // Fog of war (post/sight.rs): row 0 the map's min corner in its plane
+  // (from the frame's origin) and 1 over its extent, row 1 the unseen's
+  // colour and how much of the scene shows where it is only explored, row
+  // 2 x: 1 drawn, y: 1 the x, y plane (0: the ground, x and z).
+  sight: array<vec4<f32>, 3>,
   // Screen-space contact shadows (contact.wgsl): rows 0 to 2 the contact
   // lights' view-space positions (w the frame's tag in the masks' keys,
   // 0: not drawn), row 3 Bend's x surface

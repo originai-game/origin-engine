@@ -77,6 +77,8 @@ pub(crate) struct FrameGraph {
     pool: Vec<(TargetDesc, wgpu::TextureView)>,
     views: HashMap<String, wgpu::TextureView>,
     bindings: Option<Bindings>,
+    /// The fog of war texture the bindings hold (`SightTexture::generation`).
+    sight_key: u64,
     /// Bumped whenever the targets are realized anew (views change).
     pub generation: u64,
 }
@@ -202,6 +204,7 @@ impl FrameGraph {
             && self.cfg.as_ref() == Some(cfg)
             && self.lut_key == lut.0
             && self.stylise_key == stylise.3
+            && self.sight_key == post.sight.generation
         {
             return Ok(());
         }
@@ -261,6 +264,7 @@ impl FrameGraph {
         self.cfg = Some(*cfg);
         self.lut_key = lut.0;
         self.stylise_key = stylise.3;
+        self.sight_key = post.sight.generation;
         self.plan = Some(plan);
         Ok(())
     }
