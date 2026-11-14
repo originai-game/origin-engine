@@ -29,4 +29,4 @@ event VfxEvent {
 }
 ```
 
-<sub>Module `vfx` line 47</sub>
+<sub>Module `vfx` line 48</sub>

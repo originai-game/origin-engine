@@ -20,6 +20,7 @@ A desc: every field may be omitted and takes its default; `{}` is valid.
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Its tint (og.Vfx.tint). |
 | `emission` | `number` | `1` | 0 … 1 | — | — | The share of its particles born (og.Vfx.emission). |
 | `hue` | `number` | `0` | — | `rad` | — | Its hue turn (og.Vfx.hue). |
+| `params` | `readonly number[]` | `[]` | — | — | — | Its params' values (og.Vfx.params; at most 4). |
 | `seed` | `number` | `0` | — | — | — | Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it. |
 
 ```ogt
@@ -47,8 +48,9 @@ struct VfxSpawnDesc {
   field hue f32 "Its hue turn (og.Vfx.hue)." {
     unit rad
   }
+  field params List.f32 "Its params' values (og.Vfx.params; at most 4)."
   field seed u32 "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it."
 }
 ```
 
-<sub>Module `vfx` line 57</sub>
+<sub>Module `vfx` line 58</sub>

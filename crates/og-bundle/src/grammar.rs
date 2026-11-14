@@ -195,7 +195,8 @@ mod tests {
         parse_vfx(&format!("type vfx\nversion 2\n---\n{body}\n"))
     }
 
-    /// A vfx body holding `line` inside an element labelled `label`.
+    /// A vfx body holding `line` inside an element labelled `label`, with
+    /// a param `power`.
     fn element(label: &str, line: &str) -> String {
         let key = line.split_whitespace().next().unwrap_or("");
         let life = if matches!(key, "life" | "until") {
@@ -212,7 +213,8 @@ mod tests {
             "flipbook" => "flipbook \"fx/f.ogt\" {\n".to_string(),
             kind => format!("{kind} {{\n{life}"),
         };
-        format!("duration 2\n{head}  {line}\n}}")
+        // A param for `when` and `amount` to name.
+        format!("duration 2\nparam power 1\n{head}  {line}\n}}")
     }
 
     fn labels(l: &Line) -> Vec<&'static str> {

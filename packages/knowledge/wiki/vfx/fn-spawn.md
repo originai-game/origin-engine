@@ -19,7 +19,7 @@ og.vfx.spawn(world: World, desc?: VfxSpawnDesc): Result<Entity>
 | `world` | `World` | no | The world. |
 | `desc` | `VfxSpawnDesc` | yes | The effect and where. |
 
-**Returns** `Result<Entity>`: Refused for an asset not loaded in this world or a dead parent.
+**Returns** `Result<Entity>`: Refused for an asset not loaded in this world, a dead parent or more than 4 params.
 
 Binding symbol `og_vfx_spawn` · publish builds: kept
 
@@ -29,8 +29,8 @@ fn spawn {
   aliases "play effect, spawn particle effect, play vfx, spawn effect at, Unity Instantiate particle prefab, Unreal SpawnSystemAtLocation, SpawnSystemAttached, Godot GPUParticles3D restart, Effekseer play"
   param world World "The world."
   param desc VfxSpawnDesc "The effect and where."
-  returns Result.Entity "Refused for an asset not loaded in this world or a dead parent."
+  returns Result.Entity "Refused for an asset not loaded in this world, a dead parent or more than 4 params."
 }
 ```
 
-<sub>Module `vfx` line 98</sub>
+<sub>Module `vfx` line 101</sub>

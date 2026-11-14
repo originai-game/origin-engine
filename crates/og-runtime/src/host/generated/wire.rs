@@ -26563,6 +26563,7 @@ pub struct VfxSpawnDesc {
     pub tint: Color,
     pub emission: f32,
     pub hue: f32,
+    pub params: Vec<f32>,
     pub seed: u32,
 }
 
@@ -26577,6 +26578,7 @@ impl Default for VfxSpawnDesc {
             tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
             emission: 1.0_f32,
             hue: Default::default(),
+            params: Default::default(),
             seed: Default::default(),
         }
     }
@@ -26597,6 +26599,7 @@ impl FromJson for VfxSpawnDesc {
             tint: field(o, "tint", d.tint)?,
             emission: field(o, "emission", d.emission)?,
             hue: field(o, "hue", d.hue)?,
+            params: field(o, "params", d.params)?,
             seed: field(o, "seed", d.seed)?,
         })
     }
@@ -26613,6 +26616,7 @@ impl ToJson for VfxSpawnDesc {
         o.insert("tint".into(), self.tint.to_json());
         o.insert("emission".into(), self.emission.to_json());
         o.insert("hue".into(), self.hue.to_json());
+        o.insert("params".into(), self.params.to_json());
         o.insert("seed".into(), self.seed.to_json());
         Value::Object(o)
     }
@@ -26627,6 +26631,7 @@ pub struct VfxInfo {
     pub events: Vec<String>,
     pub impact: f32,
     pub elements: Vec<String>,
+    pub params: Vec<String>,
 }
 
 impl Default for VfxInfo {
@@ -26638,6 +26643,7 @@ impl Default for VfxInfo {
             events: Default::default(),
             impact: Default::default(),
             elements: Default::default(),
+            params: Default::default(),
         }
     }
 }
@@ -26655,6 +26661,7 @@ impl FromJson for VfxInfo {
             events: field(o, "events", d.events)?,
             impact: field(o, "impact", d.impact)?,
             elements: field(o, "elements", d.elements)?,
+            params: field(o, "params", d.params)?,
         })
     }
 }
@@ -26668,6 +26675,7 @@ impl ToJson for VfxInfo {
         o.insert("events".into(), self.events.to_json());
         o.insert("impact".into(), self.impact.to_json());
         o.insert("elements".into(), self.elements.to_json());
+        o.insert("params".into(), self.params.to_json());
         Value::Object(o)
     }
 }
@@ -37286,6 +37294,7 @@ pub mod record {
         pub tint: Color,
         pub emission: f32,
         pub hue: f32,
+        pub params: Vec<f32>,
         pub despawn: bool,
         pub ran: u32,
     }
@@ -37300,6 +37309,7 @@ pub mod record {
                 tint: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 emission: 1.0_f32,
                 hue: Default::default(),
+                params: Default::default(),
                 despawn: true,
                 ran: 4294967295,
             }
@@ -37320,6 +37330,7 @@ pub mod record {
                 tint: field(o, "tint", d.tint)?,
                 emission: field(o, "emission", d.emission)?,
                 hue: field(o, "hue", d.hue)?,
+                params: field(o, "params", d.params)?,
                 despawn: field(o, "despawn", d.despawn)?,
                 ran: field(o, "ran", d.ran)?,
             })

@@ -149,7 +149,10 @@ must(og.vfx.spawn(world, { asset: hit, position: at }));
   `lit`).
 - One effect, several variants: spawn the same file with `hue` (a fire
   turned blue for ice, about 3.1), `tint` (darker, brighter) and
-  `emission` (fewer particles), not a copy of it per colour. The hue
+  `emission` (fewer particles), not a copy of it per colour. What the
+  variants add or remove is a `param`: `param crit 0` in the file, `when
+  crit` on the extra burst, `amount power` on the light and the shake,
+  and og.vfx.spawn's `params: [1, 1.5]` picks them per instance. The hue
   turns the whole drawn colour of particles, meshes and glows, textures
   included; a trail's, beam's or decal's colour turns, but a coloured
   texture on one keeps its colours, so give those greyscale textures.

@@ -8187,6 +8187,12 @@
           "default": 0
         },
         {
+          "name": "params",
+          "column": "f32",
+          "list": 4,
+          "default": []
+        },
+        {
           "name": "despawn",
           "column": "bool",
           "default": true

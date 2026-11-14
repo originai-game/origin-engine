@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"type vfx, og.Vfx.params, VfxSpawnDesc.params, VfxInfo.params","summary":"A composed effect declares up to 4 numbers the game sets per instance (`param <name> <default>`), and an element reads one with `when <param>` (it plays only while the value is above 0: a critical hit's extra burst) or `amount <param>` (it multiplies an emitter's share of particles born, a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma or a sound's volume). og.Vfx.params and og.vfx.spawn's params give the values in the order declared, a value left out taking its default; og.vfx.info lists the names, and a spawn with more than 4 is refused."}
+  ],
+  "fixed": [
+    {"member":"og.Vfx.hue","summary":"A composed effect's flipbook sprite turns with the instance's hue, as its other elements do; it took only the tint."}
+  ]
+}

@@ -16,6 +16,7 @@ A loaded composed effect.
 | `events` | `readonly string[]` | `[]` | — | — | — | Its events' names in time order, `impact` included. |
 | `impact` | `number` | `0` | — | `s` | — | Its impact's time, or -1 without one. |
 | `elements` | `readonly string[]` | `[]` | — | — | — | Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, glow, flipbook, shake, sound). |
+| `params` | `readonly string[]` | `[]` | — | — | — | Its `param` lines' names, in file order: og.Vfx.params' order. |
 
 ```ogt
 struct VfxInfo {
@@ -30,7 +31,8 @@ struct VfxInfo {
     unit s
   }
   field elements List.String "Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, glow, flipbook, shake, sound)."
+  field params List.String "Its `param` lines' names, in file order: og.Vfx.params' order."
 }
 ```
 
-<sub>Module `vfx` line 84</sub>
+<sub>Module `vfx` line 86</sub>

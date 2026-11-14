@@ -251,6 +251,7 @@ pub fn og_vfx_info(world: u32, asset: f64) -> Result<crate::host::wire::VfxInfo,
                 .iter()
                 .map(|e| e.kind.name().to_string())
                 .collect(),
+            params: v.params.iter().map(|p| p.name.clone()).collect(),
         })
     })()
 }
@@ -262,6 +263,13 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
         let given = |k: &str| raw.get(k).is_some_and(|v| !v.is_null());
         let asset = d.asset as f64;
         loaded(world, asset)?;
+        if d.params.len() > og_bundle::vfx::MAX_PARAMS {
+            return Err(format!(
+                "desc.params has {} values; an effect has at most {} params",
+                d.params.len(),
+                og_bundle::vfx::MAX_PARAMS
+            ));
+        }
         let mut spawn = serde_json::Map::new();
         if given("position") {
             let p = d.position;
@@ -300,6 +308,9 @@ pub fn og_vfx_spawn(world: u32, desc: Option<String>) -> Result<Value, String> {
         }
         if given("hue") {
             v["hue"] = json!(d.hue);
+        }
+        if given("params") {
+            v["params"] = json!(d.params);
         }
         crate::host::api::og_world_insert(
             world,
@@ -468,7 +479,8 @@ fn system(
             continue;
         };
         let scale = row.scale;
-        for cue in fx.cues(row.seed, start, from, tick, rate, &l.clips) {
+        let values = fx.values(&row.params);
+        for cue in fx.cues(row.seed, &values, start, from..=tick, rate, &l.clips) {
             match cue {
                 VfxCue::Event(ev) => {
                     let value = json!({ "entity": e.to_bits(), "asset": row.asset, "name": ev.name, "time": ev.time });
@@ -513,6 +525,7 @@ fn system(
                         continue;
                     };
                     let o = el.offset * scale;
+                    let volume = volume * fx.amount(element, &values);
                     let src = json!({
                         "sound": sound, "volume": volume, "playbackRate": playback_rate,
                         "playing": true, "spatial": true,
@@ -554,12 +567,19 @@ fn system(
                     };
                     let o = el.offset * scale;
                     let tint = Vec3::new(row.tint.r, row.tint.g, row.tint.b);
+                    // Its colour tinted and turned as the drawn elements' are.
+                    let hue = if row.hue.is_finite() { row.hue } else { 0.0 };
+                    let c = og_bundle::vfx::hue_rotated(
+                        Vec3::new(color[0], color[1], color[2]) * tint,
+                        hue,
+                    );
+                    let size = size * scale * fx.amount(element, &values);
                     let sprite = json!({
                         "texture": texture,
-                        "width": size * aspect * scale,
-                        "height": size * scale,
+                        "width": size * aspect,
+                        "height": size,
                         "facing": "camera",
-                        "color": { "r": color[0] * tint.x, "g": color[1] * tint.y, "b": color[2] * tint.z },
+                        "color": { "r": c.x, "g": c.y, "b": c.z },
                         "opacity": color[3],
                         "blend": if *blend == ParticleBlend::Additive { "additive" } else { "alpha" },
                     });

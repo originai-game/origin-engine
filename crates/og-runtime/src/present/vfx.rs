@@ -58,6 +58,7 @@ pub(crate) fn extract(
             scale,
             tint,
             hue,
+            params: l.vfx.values(&row.params),
         };
         for d in l.vfx.draws(&instance, start, tick, rate) {
             let id = d.id;
@@ -68,6 +69,7 @@ pub(crate) fn extract(
                         start_tick,
                         stop_tick,
                         seed,
+                        emission: amount,
                     },
                     Link::Emitter(handle),
                 ) => {
@@ -78,7 +80,7 @@ pub(crate) fn extract(
                         start_tick,
                         air: air.at(transform.w_axis.truncate()),
                         tint,
-                        emission,
+                        emission: emission * amount,
                         hue,
                         ..ParticleSystem::new(id, *handle, transform, seed, tick)
                     });

@@ -62,6 +62,13 @@ pub const VFX_LINES: &[Line] = &[
         "event 0.8 \"linger\"",
     ),
     Line::new(
+        "param",
+        "<name> <default>",
+        "",
+        "A number the game sets per instance (og.Vfx.params, in the order declared; at most 4): elements read it with `when` and `amount`.",
+        "param power 1",
+    ),
+    Line::new(
         "emitter",
         "\"<id>\" { ... }",
         "",
@@ -197,6 +204,22 @@ pub const ELEMENT_LINES: &[Line] = &[
         "0 0 0",
         "Metres per second squared.",
         "accelerate 0 -1 0",
+    ),
+    Line::of(
+        &[],
+        "when",
+        "<param>",
+        "",
+        "Plays only in an instance whose value of the param is above 0 (a critical hit's extra burst, a decal only on the ground).",
+        "when power",
+    ),
+    Line::of(
+        &[],
+        "amount",
+        "<param>",
+        "",
+        "Multiplies how much of it there is by the param (at least 0): an emitter's share of particles born (at most 1), a mesh's, glow's, decal's or flipbook's size, a trail's or beam's width, a light's intensity, a shake's trauma, a sound's volume.",
+        "amount power",
     ),
     Line::of(
         &["emitter"],
@@ -456,6 +479,8 @@ pub const MAX_ELEMENTS: usize = 64;
 pub const MAX_EVENTS: usize = 16;
 /// An event name's bytes at most (og.VfxEvent.name).
 pub const MAX_EVENT_NAME: usize = 63;
+/// Named parameters in one effect at most (og.Vfx.params).
+pub const MAX_PARAMS: usize = 4;
 
 /// A composed effect: its length, events and elements.
 #[derive(Clone, Debug, PartialEq)]
@@ -465,6 +490,15 @@ pub struct Vfx {
     /// By time, then as written.
     pub events: Vec<VfxEventKey>,
     pub elements: Vec<VfxElement>,
+    /// Its `param` lines, in file order: og.Vfx.params' order.
+    pub params: Vec<VfxParam>,
+}
+
+/// A number the game sets per instance (`param <name> <default>`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct VfxParam {
+    pub name: String,
+    pub default: f32,
 }
 
 /// A named event at a time (`event`, `impact`).
@@ -491,6 +525,10 @@ pub struct VfxElement {
     pub velocity: glam::Vec3,
     /// Metres per second squared (`accelerate`).
     pub acceleration: glam::Vec3,
+    /// The param it plays only above 0 (`when`), by index.
+    pub when: Option<usize>,
+    /// The param that multiplies how much of it there is (`amount`).
+    pub amount: Option<usize>,
     pub kind: VfxKind,
 }
 
@@ -709,11 +747,41 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
         looping: false,
         events: Vec::new(),
         elements: Vec::new(),
+        params: Vec::new(),
     };
+    // The params first, so an element may name one declared below it.
+    for e in doc.body.entries.iter().filter(|e| e.key == "param") {
+        let line = e.line;
+        let (Some(Value::Word(name)), Some(default), 2) = (
+            e.values.first(),
+            e.values.get(1).and_then(Value::as_number),
+            e.values.len(),
+        ) else {
+            return Err(format!("line {line}: param <name> <default>"));
+        };
+        let default = default.as_f32();
+        if !default.is_finite() {
+            return Err(format!("line {line}: param {name} {default}"));
+        }
+        if vfx.params.iter().any(|p| &p.name == name) {
+            return Err(format!("line {line}: param `{name}` is declared twice"));
+        }
+        vfx.params.push(VfxParam {
+            name: name.clone(),
+            default,
+        });
+    }
+    if vfx.params.len() > MAX_PARAMS {
+        return Err(format!(
+            "{} params (at most {MAX_PARAMS})",
+            vfx.params.len()
+        ));
+    }
     let mut impact = false;
     for e in &doc.body.entries {
         let line = e.line;
         match e.key.as_str() {
+            "param" => {}
             "duration" => vfx.duration = time(e)?,
             "loop" => vfx.looping = flag(e)?,
             "impact" => {
@@ -747,7 +815,7 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
                     name: name.into(),
                 });
             }
-            _ => vfx.elements.push(element(e, doc.version)?),
+            _ => vfx.elements.push(element(e, doc.version, &vfx.params)?),
         }
     }
     if vfx.duration < 0.0 {
@@ -777,7 +845,7 @@ pub fn parse_vfx(text: &str) -> Result<Vfx, String> {
     Ok(vfx)
 }
 
-fn element(e: &Entry, version: u32) -> Result<VfxElement, String> {
+fn element(e: &Entry, version: u32, params: &[VfxParam]) -> Result<VfxElement, String> {
     let line = e.line;
     let kinds = keys(VFX_LINES, &[]);
     if e.key != "flash" && find(VFX_LINES, &e.key, &[]).is_none() {
@@ -793,6 +861,8 @@ fn element(e: &Entry, version: u32) -> Result<VfxElement, String> {
         rotate: glam::Vec3::ZERO,
         velocity: glam::Vec3::ZERO,
         acceleration: glam::Vec3::ZERO,
+        when: None,
+        amount: None,
         kind: match e.key.as_str() {
             "emitter" => VfxKind::Emitter {
                 id: id(e, "emitter")?,
@@ -920,6 +990,28 @@ fn element(e: &Entry, version: u32) -> Result<VfxElement, String> {
             ("rotate", _) => el.rotate = vec3(k)?,
             ("move", _) => el.velocity = vec3(k)?,
             ("accelerate", _) => el.acceleration = vec3(k)?,
+            (key @ ("when" | "amount"), _) => {
+                let name = match &k.values[..] {
+                    [Value::Word(w)] => w,
+                    _ => return Err(format!("line {kl}: {key} <param>")),
+                };
+                let i = params.iter().position(|p| &p.name == name).ok_or_else(|| {
+                    let names: Vec<_> = params.iter().map(|p| p.name.as_str()).collect();
+                    format!(
+                        "line {kl}: {key} `{name}`, which no param line declares (declared: {})",
+                        if names.is_empty() {
+                            "none".to_string()
+                        } else {
+                            names.join(", ")
+                        }
+                    )
+                })?;
+                *if key == "when" {
+                    &mut el.when
+                } else {
+                    &mut el.amount
+                } = Some(i);
+            }
             ("seed", VfxKind::Emitter { seed, .. }) => {
                 *seed = k
                     .values

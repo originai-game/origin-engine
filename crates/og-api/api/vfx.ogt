@@ -35,6 +35,7 @@ module vfx {
     field hue f32 "Turns the hue of everything it draws, about the grey axis after its tint: the same fire blue for ice (about 3.1) or green for poison; white, grey and black stay. Trails', beams' and decals' textures keep their colours (`effects` §3)." {
       unit rad
     }
+    field params List.f32.4 "Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (`effect-files`): one file, a critical hit or a weaker cast."
     field despawn bool "Despawn the entity on the tick after a non-looping effect ends." {
       default true
     }
@@ -78,6 +79,7 @@ module vfx {
     field hue f32 "Its hue turn (og.Vfx.hue)." {
       unit rad
     }
+    field params List.f32 "Its params' values (og.Vfx.params; at most 4)."
     field seed u32 "Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it."
   }
 
@@ -93,6 +95,7 @@ module vfx {
       unit s
     }
     field elements List.String "Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, glow, flipbook, shake, sound)."
+    field params List.String "Its `param` lines' names, in file order: og.Vfx.params' order."
   }
 
   fn spawn {
@@ -100,7 +103,7 @@ module vfx {
     aliases "play effect, spawn particle effect, play vfx, spawn effect at, Unity Instantiate particle prefab, Unreal SpawnSystemAtLocation, SpawnSystemAttached, Godot GPUParticles3D restart, Effekseer play"
     param world World "The world."
     param desc VfxSpawnDesc "The effect and where."
-    returns Result.Entity "Refused for an asset not loaded in this world or a dead parent."
+    returns Result.Entity "Refused for an asset not loaded in this world, a dead parent or more than 4 params."
   }
 
   fn info {

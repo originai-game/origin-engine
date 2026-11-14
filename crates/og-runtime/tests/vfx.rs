@@ -68,6 +68,13 @@ fn project() -> &'static Path {
             "fx/loud.ogt",
             "type vfx\nversion 1\n---\nduration 0.4\nsound \"sfx/blip.wav\" {\n  at 0.1\n  volume 0.8\n  playbackRate 0.9 1.1\n}\n",
         );
+        // A ring only in a critical instance (its param above 0).
+        write(
+            "fx/crit.ogt",
+            "type vfx\nversion 2\n---\nduration 0.4\nparam crit 0\n\
+             mesh ring {\n  life 0.4\n  effect \"fx/shock.ogt\"\n  when crit\n}\n\
+             light {\n  life 0.4\n}\n",
+        );
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
         root
@@ -416,4 +423,45 @@ fn a_sound_element_plays_on_a_source_that_ends_with_the_effect() {
         0,
         "gone with the effect"
     );
+}
+
+/// og.vfx.spawn's params reach the frame: of two instances of an effect
+/// whose ring plays `when crit`, only the one spawned with crit 1 draws
+/// it, while both draw their light; og.vfx.info names the param, and a
+/// desc with more values than an effect can have is refused.
+#[test]
+fn a_params_value_given_at_spawn_gates_the_element_that_names_it() {
+    set_hooks(Rc::new(Game(Seen::default())));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(json!({ "seed": 5 }).to_string()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let drawn = Drawn::default();
+    set_render_backend(
+        engine,
+        Some(Box::new(Recorder(drawn.clone(), Default::default()))),
+    )
+    .unwrap();
+    ticks(engine, 1);
+    let crit = value(og_runtime::host_impl::answer(og_load_vfx(
+        engine,
+        "fx/crit.ogt".into(),
+    )));
+    let info = value(og_runtime::host_impl::answer(og_vfx_info(
+        engine,
+        crit.as_f64().unwrap(),
+    )));
+    assert_eq!(info["params"], json!(["crit"]));
+    let spawn =
+        |desc: Value| og_runtime::host_impl::answer(og_vfx_spawn(engine, Some(desc.to_string())));
+    value(spawn(json!({ "asset": crit })));
+    value(spawn(json!({ "asset": crit, "params": [1] })));
+    let refused: Value =
+        serde_json::from_str(&spawn(json!({ "asset": crit, "params": [1, 1, 1, 1, 1] }))).unwrap();
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    drawn.borrow_mut().clear();
+    ticks(engine, 6);
+    let d = drawn.borrow().clone();
+    let last = d.last().expect("a frame");
+    assert_eq!((last.2, last.3), (1, 2), "one ring, two lights: {d:?}");
 }

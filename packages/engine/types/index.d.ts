@@ -32811,6 +32811,12 @@ export interface Vfx {
    */
   hue: number;
   /**
+   * Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (`effect-files`): one file, a critical hit or a weaker cast.
+   *
+   * @capacity 4 elements (List.f32.4): reading answers a frozen copy (push throws); write a whole array, refused over the capacity, never truncated
+   */
+  params: readonly number[];
+  /**
    * Despawn the entity on the tick after a non-looping effect ends.
    *
    * @default true
@@ -32904,6 +32910,12 @@ export interface VfxSpawnDesc {
    */
   readonly hue?: number;
   /**
+   * Its params' values (og.Vfx.params; at most 4).
+   *
+   * @default []
+   */
+  readonly params?: readonly number[];
+  /**
    * Its seed (og.Vfx.seed); 0 takes one from the new entity's id, so each instance differs and a replay repeats it.
    *
    * @default 0
@@ -32935,6 +32947,8 @@ export interface VfxInfo {
    * Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, glow, flipbook, shake, sound).
    */
   readonly elements: readonly string[];
+  /** Its `param` lines' names, in file order: og.Vfx.params' order. */
+  readonly params: readonly string[];
 }
 
 
@@ -37849,7 +37863,7 @@ export declare namespace og {
   /**
    * Plays a composed effect at the entity's MatrixWorld from startTick (og.vfx.spawn makes one in a call).
    */
-  const Vfx: ComponentType<{ readonly asset: FieldSpec<"VfxAsset">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly emission: FieldSpec<"f32">; readonly hue: FieldSpec<"f32">; readonly despawn: FieldSpec<"bool">; readonly ran: FieldSpec<"u32"> }, Vfx>;
+  const Vfx: ComponentType<{ readonly asset: FieldSpec<"VfxAsset">; readonly seed: FieldSpec<"u32">; readonly startTick: FieldSpec<"u32">; readonly scale: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly emission: FieldSpec<"f32">; readonly hue: FieldSpec<"f32">; readonly params: ListSpec<"f32">; readonly despawn: FieldSpec<"bool">; readonly ran: FieldSpec<"u32"> }, Vfx>;
   /**
    * A composed effect reached one of its `event` lines (an `impact` line included, named `impact`): the frame a fireball lands, a slash connects, a spell resolves. Read in the tick after, like every event; a replay sends the same.
    */
@@ -37865,7 +37879,7 @@ export declare namespace og {
      *
      * @param world The world.
      * @param desc The effect and where.
-     * @returns Refused for an asset not loaded in this world or a dead parent.
+     * @returns Refused for an asset not loaded in this world, a dead parent or more than 4 params.
      */
     function spawn(world: World, desc?: VfxSpawnDesc): Result<Entity>;
     /**

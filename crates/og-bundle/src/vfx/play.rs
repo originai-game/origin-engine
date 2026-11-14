@@ -7,7 +7,7 @@
 //! the draws into the renderer's systems, meshes, trails, beams, lights
 //! and decals with the handles it linked at load, and plays the cues.
 
-use super::{Vfx, VfxEventKey, VfxKind};
+use super::{MAX_PARAMS, Vfx, VfxEventKey, VfxKind};
 use glam::{Mat4, Quat, Vec3};
 use og_core::hash::splitmix64 as splitmix;
 use og_render_data::ParticleBlend;
@@ -74,6 +74,8 @@ pub struct VfxInstance {
     /// beams', lights' and decals' colours come turned; its emitters and
     /// meshes take it as theirs and turn their drawn colour.
     pub hue: f32,
+    /// Its params' values ([`Vfx::values`]).
+    pub params: [f32; MAX_PARAMS],
 }
 
 /// One thing an instance draws at a tick.
@@ -95,6 +97,8 @@ pub enum VfxDrawKind {
         start_tick: u64,
         stop_tick: Option<u64>,
         seed: u64,
+        /// Its share of the particles born (its `amount`), 0 to 1.
+        emission: f32,
     },
     /// An effect mesh: a `mesh` element with its effect material, or a
     /// `glow` (the glow sphere, additive).
@@ -165,6 +169,26 @@ pub enum VfxCue<'a> {
 }
 
 impl Vfx {
+    /// An instance's params' values: `given` by declaration order, each
+    /// past `given`'s length its default (0 past the declared ones).
+    pub fn values(&self, given: &[f32]) -> [f32; MAX_PARAMS] {
+        std::array::from_fn(|i| match (given.get(i), self.params.get(i)) {
+            (Some(v), Some(_)) if v.is_finite() => *v,
+            (_, Some(p)) => p.default,
+            _ => 0.0,
+        })
+    }
+
+    /// Whether element `i` plays with these values (its `when` above 0).
+    pub fn plays(&self, i: usize, values: &[f32; MAX_PARAMS]) -> bool {
+        self.elements[i].when.is_none_or(|p| values[p] > 0.0)
+    }
+
+    /// What element `i`'s `amount` multiplies it by with these values.
+    pub fn amount(&self, i: usize, values: &[f32; MAX_PARAMS]) -> f32 {
+        self.elements[i].amount.map_or(1.0, |p| values[p].max(0.0))
+    }
+
     /// Its length in ticks, at least one.
     pub fn length_ticks(&self, rate: f32) -> u64 {
         ticks(self.duration, rate).max(1)
@@ -211,16 +235,19 @@ impl Vfx {
         Some(from.max(tick.saturating_sub(self.length_ticks(rate))))
     }
 
-    /// What an instance cues on the ticks `from` to `tick`: its events in
+    /// What an instance cues on the ticks `run`: its events in
     /// time order, then per element in file order its flipbook's end and
     /// its start. `clips` is, per element, the length in seconds of a
     /// flipbook element's first clip (what ends one without a `life`).
+    /// An element whose `when` is off with `values` starts nothing; a
+    /// shake's trauma comes multiplied by its `amount` (a sound's volume
+    /// and a flipbook's size are the caller's, [`Vfx::amount`]).
     pub fn cues(
         &self,
         seed: u32,
+        values: &[f32; MAX_PARAMS],
         start: u64,
-        from: u64,
-        tick: u64,
+        run: std::ops::RangeInclusive<u64>,
         rate: f32,
         clips: &[f32],
     ) -> Vec<VfxCue<'_>> {
@@ -230,7 +257,7 @@ impl Vfx {
         let due = |at: f32| -> bool {
             let k = ticks(at, rate).min(len);
             let k = if self.looping { k % len } else { k };
-            (from..=tick).any(|t| {
+            run.clone().any(|t| {
                 let since = t - start;
                 k == if self.looping { since % len } else { since }
             })
@@ -249,11 +276,13 @@ impl Vfx {
                     out.push(VfxCue::FlipbookEnd { element: i });
                 }
             }
-            if !due(el.at) {
+            if !due(el.at) || !self.plays(i, values) {
                 continue;
             }
             match &el.kind {
-                VfxKind::Shake { trauma } => out.push(VfxCue::Shake { trauma: *trauma }),
+                VfxKind::Shake { trauma } => out.push(VfxCue::Shake {
+                    trauma: (trauma * self.amount(i, values)).min(1.0),
+                }),
                 VfxKind::Sound { pitch, .. } => out.push(VfxCue::Sound {
                     element: i,
                     playback_rate: pitch[0] + (pitch[1] - pitch[0]) * random(seed, i),
@@ -276,9 +305,10 @@ impl Vfx {
         let mut out = Vec::new();
         for (i, el) in self.elements.iter().enumerate() {
             let te = t - el.at;
-            if te < 0.0 {
+            if te < 0.0 || !self.plays(i, &at.params) {
                 continue;
             }
+            let amount = self.amount(i, &at.params);
             let local = m * el.local_at(te);
             let life = el.life.max(1e-4);
             let x = (te / life).clamp(0.0, 1.0);
@@ -292,6 +322,7 @@ impl Vfx {
                         start_tick: begin,
                         stop_tick: (el.life > 0.0).then(|| begin + ticks(el.life, rate).max(1)),
                         seed: u64::from(seed.wrapping_add(*s)),
+                        emission: amount.min(1.0),
                     }
                 }
                 VfxKind::Mesh {
@@ -303,14 +334,14 @@ impl Vfx {
                 } if alive => VfxDrawKind::Mesh {
                     transform: local
                         * Mat4::from_quat(euler(*spin * te))
-                        * Mat4::from_scale(Vec3::splat(size.eval(x, rnd))),
+                        * Mat4::from_scale(Vec3::splat(size.eval(x, rnd) * amount)),
                     life: x,
                     seed: u64::from(seed) ^ i as u64,
                     color: tinted(*color, tint),
                     blend: *blend,
                 },
                 VfxKind::Glow { size, color } if alive => VfxDrawKind::Mesh {
-                    transform: local * Mat4::from_scale(Vec3::splat(size.eval(x, rnd))),
+                    transform: local * Mat4::from_scale(Vec3::splat(size.eval(x, rnd) * amount)),
                     life: x,
                     seed: u64::from(seed) ^ i as u64,
                     color: tinted(*color, tint),
@@ -332,7 +363,7 @@ impl Vfx {
                         position: local.transform_point3(p),
                         lifetime: *lifetime,
                         min_distance: 0.02 * scale,
-                        width: [width[0] * scale, width[1] * scale],
+                        width: [width[0] * scale * amount, width[1] * scale * amount],
                         color: shaded(*color, tint, hue),
                     }
                 }
@@ -346,7 +377,7 @@ impl Vfx {
                 } if alive => VfxDrawKind::Beam {
                     start: local.transform_point3(Vec3::ZERO),
                     end: local.transform_point3(*to),
-                    width: width * scale,
+                    width: width * scale * amount,
                     color: shaded(*color, tint, hue),
                     segments: *segments,
                     jitter: jitter * scale,
@@ -359,7 +390,7 @@ impl Vfx {
                 } if alive => VfxDrawKind::Light {
                     position: local.transform_point3(Vec3::ZERO),
                     color: hue_rotated(Vec3::from_array(*color) * tint, hue),
-                    intensity: intensity.eval(x, rnd).max(0.0),
+                    intensity: intensity.eval(x, rnd).max(0.0) * amount,
                     range: distance * scale,
                 },
                 VfxKind::Decal {
@@ -379,7 +410,7 @@ impl Vfx {
                     VfxDrawKind::Decal {
                         transform: local
                             * Mat4::from_rotation_x(-std::f32::consts::FRAC_PI_2)
-                            * Mat4::from_scale(Vec3::new(size.x, size.z, size.y)),
+                            * Mat4::from_scale(Vec3::new(size.x * amount, size.z * amount, size.y)),
                         uv: *uv,
                         color: [c[0], c[1], c[2], c[3] * a],
                     }
@@ -406,6 +437,7 @@ mod tests {
             looping,
             events: Vec::new(),
             elements: Vec::new(),
+            params: Vec::new(),
         }
     }
 
@@ -436,6 +468,7 @@ mod tests {
             scale: 1.0,
             tint: Vec3::ONE,
             hue,
+            params: [0.0; MAX_PARAMS],
         };
         let colours = |hue| -> Vec<[f32; 4]> {
             fx.draws(&at(hue), 0, 6, 60.0)
@@ -464,6 +497,59 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// An instance's params: a value not given is the param's default; an
+    /// element `when` a param is 0 neither draws nor cues; `amount`
+    /// multiplies a light's intensity and a shake's trauma (at most 1).
+    #[test]
+    fn params_gate_and_scale_the_elements_that_name_them() {
+        let fx = crate::vfx::parse_vfx(
+            "type vfx\nversion 2\n---\nduration 1\nlight {\n  life 1\n  intensity 4\n  amount power\n}\nglow {\n  life 1\n  when crit\n}\nshake {\n  trauma 0.5\n  when crit\n  amount power\n}\nparam crit 0\nparam power 1\n",
+        )
+        .expect("parses");
+        assert_eq!(fx.values(&[]), [0.0, 1.0, 0.0, 0.0]);
+        assert_eq!(fx.values(&[1.0]), [1.0, 1.0, 0.0, 0.0]);
+        assert_eq!(fx.values(&[1.0, 0.5, 9.0]), [1.0, 0.5, 0.0, 0.0]);
+        let drawn = |given: &[f32]| -> (Vec<f32>, usize) {
+            let at = VfxInstance {
+                id: 1,
+                seed: 1,
+                transform: Mat4::IDENTITY,
+                scale: 1.0,
+                tint: Vec3::ONE,
+                hue: 0.0,
+                params: fx.values(given),
+            };
+            let d = fx.draws(&at, 0, 6, 60.0);
+            let lights = d
+                .iter()
+                .filter_map(|d| match d.kind {
+                    VfxDrawKind::Light { intensity, .. } => Some(intensity),
+                    _ => None,
+                })
+                .collect();
+            (lights, d.len())
+        };
+        assert_eq!(drawn(&[]), (vec![4.0], 1));
+        assert_eq!(drawn(&[1.0, 0.5]), (vec![2.0], 2));
+        let shakes = |given: &[f32]| -> Vec<f32> {
+            fx.cues(1, &fx.values(given), 0, 0..=0, 60.0, &[0.0; 3])
+                .into_iter()
+                .filter_map(|c| match c {
+                    VfxCue::Shake { trauma } => Some(trauma),
+                    _ => None,
+                })
+                .collect()
+        };
+        assert_eq!(shakes(&[0.0, 2.0]), Vec::<f32>::new());
+        assert_eq!(shakes(&[1.0, 0.5]), vec![0.25]);
+        assert_eq!(shakes(&[1.0, 3.0]), vec![1.0]);
+        let e = crate::vfx::parse_vfx(
+            "type vfx\nversion 2\n---\nduration 1\nparam crit 0\nglow {\n  life 1\n  when power\n}\n",
+        )
+        .unwrap_err();
+        assert!(e.contains("`power`") && e.contains("declared: crit"), "{e}");
     }
 
     #[test]

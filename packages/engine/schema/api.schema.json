@@ -16445,7 +16445,7 @@
             }
           ],
           "returns": "Result<Entity>",
-          "returnsDoc": "Refused for an asset not loaded in this world or a dead parent.",
+          "returnsDoc": "Refused for an asset not loaded in this world, a dead parent or more than 4 params.",
           "publish": true
         },
         {
@@ -56744,6 +56744,15 @@
           "default": 0,
           "x-og-unit": "rad"
         },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 4,
+          "description": "Its values of the effect's `param` lines, in the order declared (og.vfx.info's params); past the list's length a param's default. Elements read them with `when` and `amount` (`effect-files`): one file, a critical hit or a weaker cast.",
+          "default": []
+        },
         "despawn": {
           "type": "boolean",
           "description": "Despawn the entity on the tick after a non-looping effect ends.",
@@ -56863,6 +56872,14 @@
           "default": 0,
           "x-og-unit": "rad"
         },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "Its params' values (og.Vfx.params; at most 4).",
+          "default": []
+        },
         "seed": {
           "type": "integer",
           "minimum": 0,
@@ -56910,6 +56927,13 @@
             "type": "string"
           },
           "description": "Its elements' kinds, in file order (emitter, mesh, trail, beam, light, decal, glow, flipbook, shake, sound)."
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Its `param` lines' names, in file order: og.Vfx.params' order."
         }
       },
       "required": [
@@ -56918,7 +56942,8 @@
         "loop",
         "events",
         "impact",
-        "elements"
+        "elements",
+        "params"
       ],
       "additionalProperties": false
     },
