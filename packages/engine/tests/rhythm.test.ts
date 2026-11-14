@@ -209,11 +209,15 @@ test("RhythmSongSelect: a row chooses by key, Preview reports the selected song'
 test("RhythmSongSelect: X never previews a locked row, by focus or under the pointer", () => {
   const events: Event[] = [];
   run(member("song-select", "default", {}, { events }), (e) => {
-    // The pointer rests on the locked row: X there sends nothing.
+    // The pointer rests on the locked row: X is the focused row's action
+    // (a pointer does not move the focus), so it previews that row, never
+    // the locked one under the pointer.
     e.probe.commands(`0:touch_move:${centre(option(e, "vault"))}`);
     e.advance(4);
+    const row = focused(e).split("#").pop();
+    expect(row).not.toBe("vault");
     key(e, "KeyX");
-    expect(intents(events, ["choose", "preview"])).toEqual([]);
+    expect(intents(events, ["choose", "preview"])).toEqual([`preview:${row}`]);
     // X at every focus stop: the playable rows preview, the locked one is never reached.
     const stops: string[] = [];
     for (let i = 0; i < 12; i++) {
