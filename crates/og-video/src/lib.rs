@@ -3,6 +3,9 @@
 //!
 //! - [`ivf`]: the IVF the cook has ffmpeg write, read into temporal units
 //!   with their key frames marked (cook side, no decoder needed).
+//! - [`mp4`]: the MP4 the cook has ffmpeg write a stream's H.264 or HEVC
+//!   rendition to (for browsers without an AV1 decoder), read the same way,
+//!   with its decoder configuration record and codec string.
 //! - [`yuv`]: 8-bit 4:2:0 to RGBA8 in fixed point.
 //! - [`decode`] (feature `decode`): rav1d, BSD-2-Clause, the memory-safe
 //!   Rust port of dav1d, through its dav1d C ABI.
@@ -15,5 +18,6 @@
 #[cfg(feature = "decode")]
 pub mod decode;
 pub mod ivf;
+pub mod mp4;
 pub mod stream;
 pub mod yuv;
