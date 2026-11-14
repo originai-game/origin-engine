@@ -8,7 +8,7 @@ import { beforeAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { og, defineComponent, defineResource, defineSystem, f32, u32, VEHICLE_DRIVETRAIN } from "@origingame/engine";
+import { og, defineComponent, defineResource, defineSystem, f32, u32 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
 import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
@@ -162,7 +162,7 @@ test("a conveyor hook carries a box, and a joint past its breakForce breaks once
         const heavy = must(world.spawn({ name: "heavy", position: { x: 10, y: 4, z: 0 } }));
         world.insert(heavy, og.RigidBody, { mass: 30 });
         world.insert(heavy, og.Collider, { shape: "sphere", radius: 0.2 });
-        world.insert(heavy, og.Joint, { kind: 5, anchor: { x: 0, y: 1, z: 0 }, otherAnchor: { x: 10, y: 5, z: 0 }, breakForce: 200 });
+        world.insert(heavy, og.Joint, { kind: "ball", anchor: { x: 0, y: 1, z: 0 }, otherAnchor: { x: 10, y: 5, z: 0 }, breakForce: 200 });
       },
     }),
   );
@@ -182,7 +182,7 @@ test("a drivetrain truck on six wheel children shifts up through its gears", () 
         const truck = must(world.spawn({ name: "truck", position: { x: 0, y: 1.2, z: 0 } }));
         world.insert(truck, og.RigidBody, { mass: 1500 });
         world.insert(truck, og.Collider, { shape: "box", size: { x: 1.8, y: 0.6, z: 5 } });
-        world.insert(truck, og.Vehicle, { model: VEHICLE_DRIVETRAIN });
+        world.insert(truck, og.Vehicle, { model: "drivetrain" });
         let n = 0;
         for (const z of [2, 0, -2]) {
           for (const x of [0.8, -0.8]) {

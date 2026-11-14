@@ -8996,6 +8996,164 @@ impl ToJson for ForceFieldKind {
     }
 }
 
+/// `JointType`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum JointType {
+    #[default]
+    Fixed,
+    Revolute,
+    Prismatic,
+    Spring,
+    Rope,
+    Ball,
+}
+
+impl JointType {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["fixed", "revolute", "prismatic", "spring", "rope", "ball"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Fixed, Self::Revolute, Self::Prismatic, Self::Spring, Self::Rope, Self::Ball];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("JointType", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for JointType {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "JointType", Self::NAMES)?)
+    }
+}
+
+impl ToJson for JointType {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `JointMotor`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum JointMotor {
+    #[default]
+    None,
+    Velocity,
+    Position,
+}
+
+impl JointMotor {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["none", "velocity", "position"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::None, Self::Velocity, Self::Position];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("JointMotor", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for JointMotor {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "JointMotor", Self::NAMES)?)
+    }
+}
+
+impl ToJson for JointMotor {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `VehicleDrive`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum VehicleDrive {
+    #[default]
+    Rear,
+    Front,
+    All,
+}
+
+impl VehicleDrive {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["rear", "front", "all"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Rear, Self::Front, Self::All];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("VehicleDrive", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for VehicleDrive {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "VehicleDrive", Self::NAMES)?)
+    }
+}
+
+impl ToJson for VehicleDrive {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `VehicleModel`: packages/knowledge/wiki/physics.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum VehicleModel {
+    #[default]
+    Arcade,
+    Drivetrain,
+}
+
+impl VehicleModel {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["arcade", "drivetrain"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Arcade, Self::Drivetrain];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("VehicleModel", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for VehicleModel {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "VehicleModel", Self::NAMES)?)
+    }
+}
+
+impl ToJson for VehicleModel {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `Simulation`: packages/knowledge/wiki/physics.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Simulation {
@@ -30840,7 +30998,7 @@ pub mod record {
     /// `Joint`: packages/knowledge/wiki/physics.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct Joint {
-        pub kind: u32,
+        pub kind: JointType,
         pub body: u64,
         pub other: u64,
         pub anchor: Vec3,
@@ -30849,7 +31007,7 @@ pub mod record {
         pub limits: bool,
         pub min: f32,
         pub max: f32,
-        pub motor: u32,
+        pub motor: JointMotor,
         pub motor_target: f32,
         pub motor_stiffness: f32,
         pub motor_damping: f32,
@@ -31212,13 +31370,13 @@ pub mod record {
         pub max_speed: f32,
         pub brake_force: f32,
         pub max_steer: f32,
-        pub drive: u32,
+        pub drive: VehicleDrive,
         pub wheel_mass: f32,
         pub roll_influence: f32,
         pub speed: f32,
         pub contacts: u32,
         pub slip: f32,
-        pub model: u32,
+        pub model: VehicleModel,
         pub handbrake: f32,
         pub handbrake_grip: f32,
         pub drift_grip: f32,

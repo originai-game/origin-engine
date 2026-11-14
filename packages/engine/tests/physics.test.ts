@@ -12,8 +12,6 @@ import {
   defineSystem,
   u32,
   CHARACTER_JUMPED,
-  JOINT_REVOLUTE,
-  MOTOR_VELOCITY,
   PIN_TOP,
 } from "@origingame/engine";
 import type { World } from "@origingame/engine";
@@ -50,7 +48,7 @@ function world3d(world: World): void {
   const door = must(world.spawn({ name: "door", position: { x: -5, y: 1, z: 3 } }));
   world.insert(door, og.RigidBody);
   world.insert(door, og.Collider, { shape: "box", size: { x: 1, y: 2, z: 0.1 } });
-  world.insert(door, og.Joint, { kind: JOINT_REVOLUTE, anchor: { x: -0.5, y: 0, z: 0 }, otherAnchor: { x: -5.5, y: 1, z: 3 }, axis: { x: 0, y: 1, z: 0 }, motor: MOTOR_VELOCITY, motorTarget: 1 });
+  world.insert(door, og.Joint, { kind: "revolute", anchor: { x: -0.5, y: 0, z: 0 }, otherAnchor: { x: -5.5, y: 1, z: 3 }, axis: { x: 0, y: 1, z: 0 }, motor: "velocity", motorTarget: 1 });
   const car = must(world.spawn({ name: "car", position: { x: 10, y: 1, z: 10 } }));
   world.insert(car, og.RigidBody, { mass: 800 });
   world.insert(car, og.Collider, { shape: "box", size: { x: 1.8, y: 0.6, z: 4 } });

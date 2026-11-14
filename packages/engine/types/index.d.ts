@@ -269,6 +269,14 @@ export interface ColumnKinds {
   ColliderShape: { readonly array: Uint32Array; readonly stride: 1; readonly value: ColliderShape };
   /** A ForceFieldKind field: the variant's index. */
   ForceFieldKind: { readonly array: Uint32Array; readonly stride: 1; readonly value: ForceFieldKind };
+  /** A JointType field: the variant's index. */
+  JointType: { readonly array: Uint32Array; readonly stride: 1; readonly value: JointType };
+  /** A JointMotor field: the variant's index. */
+  JointMotor: { readonly array: Uint32Array; readonly stride: 1; readonly value: JointMotor };
+  /** A VehicleDrive field: the variant's index. */
+  VehicleDrive: { readonly array: Uint32Array; readonly stride: 1; readonly value: VehicleDrive };
+  /** A VehicleModel field: the variant's index. */
+  VehicleModel: { readonly array: Uint32Array; readonly stride: 1; readonly value: VehicleModel };
   /** A Simulation field: the variant's index. */
   Simulation: { readonly array: Uint32Array; readonly stride: 1; readonly value: Simulation };
   /** A SoftBodyShape field: the variant's index. */
@@ -14056,32 +14064,44 @@ export interface Contact {
   readonly sensor: number;
 }
 
-/** `Joint.kind`: the two bodies move as one. */
-export declare const JOINT_FIXED: 0;
+/**
+ * How a joint holds its two bodies: Joint.kind.
+ * See `physics §1`.
+ * - `"fixed"`: The two bodies move as one.
+ * - `"revolute"`: A hinge about `axis` (2D: about z), with optional limits and a motor.
+ * - `"prismatic"`: A slider along `axis`, with optional limits and a motor.
+ * - `"spring"`: A damped spring pulling the anchors to `restLength` apart.
+ * - `"rope"`: A rope: the anchors stay at most `length` apart, free inside it.
+ * - `"ball"`: A ball and socket (3D; the 2D profile treats it as a hinge).
+ */
+export type JointType = "fixed" | "revolute" | "prismatic" | "spring" | "rope" | "ball";
 
-/** `Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor. */
-export declare const JOINT_REVOLUTE: 1;
+/**
+ * A JointType field: the variant's index.
+ *
+ * A `JointType` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function JointType(value?: JointType, options?: FieldOptions): FieldSpec<"JointType">;
 
-/** `Joint.kind`: a slider along `axis`, with optional limits and a motor. */
-export declare const JOINT_PRISMATIC: 2;
+/**
+ * What drives a joint: Joint.motor.
+ * See `physics §1`.
+ * - `"none"`: No motor.
+ * - `"velocity"`: Drive towards `motorTarget` speed (rad/s or m/s).
+ * - `"position"`: Spring towards `motorTarget` angle or position (a servo).
+ */
+export type JointMotor = "none" | "velocity" | "position";
 
-/** `Joint.kind`: a damped spring pulling the anchors to `restLength` apart. */
-export declare const JOINT_SPRING: 3;
-
-/** `Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it. */
-export declare const JOINT_ROPE: 4;
-
-/** `Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge). */
-export declare const JOINT_BALL: 5;
-
-/** `Joint.motor`: no motor. */
-export declare const MOTOR_NONE: 0;
-
-/** `Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s). */
-export declare const MOTOR_VELOCITY: 1;
-
-/** `Joint.motor`: spring towards `motorTarget` angle or position (a servo). */
-export declare const MOTOR_POSITION: 2;
+/**
+ * A JointMotor field: the variant's index.
+ *
+ * A `JointMotor` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function JointMotor(value?: JointMotor, options?: FieldOptions): FieldSpec<"JointMotor">;
 
 /**
  * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
@@ -14091,12 +14111,11 @@ export declare const MOTOR_POSITION: 2;
  */
 export interface Joint {
   /**
-   * JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5.
+   * fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball.
    *
-   * @range 0..5
    * @label Kind
    */
-  kind: number;
+  kind: JointType;
   /** The first body; 0 is this entity. */
   body: Entity;
   /** The second body; 0 joins the first one to the world at `otherAnchor`. */
@@ -14127,12 +14146,8 @@ export interface Joint {
   min: number;
   /** The upper limit. */
   max: number;
-  /**
-   * MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget).
-   *
-   * @range 0..2
-   */
-  motor: number;
+  /** none, velocity (drive at motorTarget speed) or position (spring to motorTarget). */
+  motor: JointMotor;
   /**
    * The motor's target speed (rad/s, m/s) or angle or position (rad, m).
    *
@@ -14740,20 +14755,38 @@ export interface CharacterEvent {
   readonly speed: number;
 }
 
-/** `Vehicle.drive`: the rear wheels drive. */
-export declare const DRIVE_REAR: 0;
+/**
+ * Which wheels the engine drives: Vehicle.drive.
+ * - `"rear"`: The rear wheels drive.
+ * - `"front"`: The front wheels drive.
+ * - `"all"`: Every wheel drives.
+ */
+export type VehicleDrive = "rear" | "front" | "all";
 
-/** `Vehicle.drive`: the front wheels drive. */
-export declare const DRIVE_FRONT: 1;
+/**
+ * A VehicleDrive field: the variant's index.
+ *
+ * A `VehicleDrive` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function VehicleDrive(value?: VehicleDrive, options?: FieldOptions): FieldSpec<"VehicleDrive">;
 
-/** `Vehicle.drive`: every wheel drives. */
-export declare const DRIVE_ALL: 2;
+/**
+ * How a vehicle's engine is modelled: Vehicle.model.
+ * - `"arcade"`: The arcade car: engineForce, faded out towards maxSpeed.
+ * - `"drivetrain"`: An engine with a torque curve driving through a gearbox.
+ */
+export type VehicleModel = "arcade" | "drivetrain";
 
-/** `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed. */
-export declare const VEHICLE_ARCADE: 0;
-
-/** `Vehicle.model`: an engine with a torque curve driving through a gearbox. */
-export declare const VEHICLE_DRIVETRAIN: 1;
+/**
+ * A VehicleModel field: the variant's index.
+ *
+ * A `VehicleModel` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function VehicleModel(value?: VehicleModel, options?: FieldOptions): FieldSpec<"VehicleModel">;
 
 /**
  * A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z. 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. og.physics.vehicleWheels gives the wheels' poses and slip.
@@ -14896,12 +14929,8 @@ export interface Vehicle {
    * @tunable
    */
   maxSteer: number;
-  /**
-   * DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2.
-   *
-   * @range 0..2
-   */
-  drive: number;
+  /** Which wheels drive: rear, front or all. */
+  drive: VehicleDrive;
   /**
    * The wheels' mass (2D: the wheel bodies; 3D ignores it).
    *
@@ -14940,11 +14969,9 @@ export interface Vehicle {
    */
   readonly slip: number;
   /**
-   * VEHICLE_ARCADE 0 (engineForce, faded towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in.
-   *
-   * @range 0..1
+   * arcade (engineForce, faded towards maxSpeed) or drivetrain (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in.
    */
-  model: number;
+  model: VehicleModel;
   /**
    * The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip.
    * See `physics §7`.
@@ -15139,7 +15166,7 @@ export interface VehicleWheel {
 }
 
 /**
- * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+ * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
  *
  * The value of the `Rope` component (token `og.Rope`).
  */
@@ -34670,7 +34697,7 @@ export declare namespace og {
    * A joint between two bodies (or a body and a point of the world). The component may sit on one of the bodies (`body` 0) or on an entity of its own, so one body can have several joints. Anchors are in each body's frame (rotated and moved with it, not scaled); without `other` the second anchor is a world point. A joint whose bodies are not both `og.RigidBody` entities does nothing until they are.
    * See `physics §1`.
    */
-  const Joint: ComponentType<{ readonly kind: FieldSpec<"u32">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"u32">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32">; readonly breakForce: FieldSpec<"f32">; readonly breakTorque: FieldSpec<"f32">; readonly broken: FieldSpec<"bool"> }, Joint>;
+  const Joint: ComponentType<{ readonly kind: FieldSpec<"JointType">; readonly body: FieldSpec<"Entity">; readonly other: FieldSpec<"Entity">; readonly anchor: FieldSpec<"Vector3">; readonly otherAnchor: FieldSpec<"Vector3">; readonly axis: FieldSpec<"Vector3">; readonly limits: FieldSpec<"bool">; readonly min: FieldSpec<"f32">; readonly max: FieldSpec<"f32">; readonly motor: FieldSpec<"JointMotor">; readonly motorTarget: FieldSpec<"f32">; readonly motorStiffness: FieldSpec<"f32">; readonly motorDamping: FieldSpec<"f32">; readonly motorMaxForce: FieldSpec<"f32">; readonly restLength: FieldSpec<"f32">; readonly stiffness: FieldSpec<"f32">; readonly damping: FieldSpec<"f32">; readonly length: FieldSpec<"f32">; readonly collide: FieldSpec<"bool">; readonly value: FieldSpec<"f32">; readonly breakForce: FieldSpec<"f32">; readonly breakTorque: FieldSpec<"f32">; readonly broken: FieldSpec<"bool"> }, Joint>;
   /**
    * A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`).
    * See `physics §6`.
@@ -34691,13 +34718,13 @@ export declare namespace og {
    * The wheel rays meet what the chassis's collider would.
    * See `physics §7`.
    */
-  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"u32">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32">; readonly model: FieldSpec<"u32">; readonly handbrake: FieldSpec<"f32">; readonly handbrakeGrip: FieldSpec<"f32">; readonly driftGrip: FieldSpec<"f32">; readonly gears: ListSpec<"f32">; readonly reverseRatio: FieldSpec<"f32">; readonly finalDrive: FieldSpec<"f32">; readonly idleRpm: FieldSpec<"f32">; readonly maxRpm: FieldSpec<"f32">; readonly torqueCurve: ListSpec<"f32">; readonly automatic: FieldSpec<"bool">; readonly shiftUpRpm: FieldSpec<"f32">; readonly shiftDownRpm: FieldSpec<"f32">; readonly clutchTime: FieldSpec<"f32">; readonly gear: FieldSpec<"i32">; readonly rpm: FieldSpec<"f32"> }, Vehicle>;
+  const Vehicle: ComponentType<{ readonly throttle: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly brake: FieldSpec<"f32">; readonly wheelBase: FieldSpec<"f32">; readonly track: FieldSpec<"f32">; readonly wheelRadius: FieldSpec<"f32">; readonly mountHeight: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly engineForce: FieldSpec<"f32">; readonly maxSpeed: FieldSpec<"f32">; readonly brakeForce: FieldSpec<"f32">; readonly maxSteer: FieldSpec<"f32">; readonly drive: FieldSpec<"VehicleDrive">; readonly wheelMass: FieldSpec<"f32">; readonly rollInfluence: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly contacts: FieldSpec<"u32">; readonly slip: FieldSpec<"f32">; readonly model: FieldSpec<"VehicleModel">; readonly handbrake: FieldSpec<"f32">; readonly handbrakeGrip: FieldSpec<"f32">; readonly driftGrip: FieldSpec<"f32">; readonly gears: ListSpec<"f32">; readonly reverseRatio: FieldSpec<"f32">; readonly finalDrive: FieldSpec<"f32">; readonly idleRpm: FieldSpec<"f32">; readonly maxRpm: FieldSpec<"f32">; readonly torqueCurve: ListSpec<"f32">; readonly automatic: FieldSpec<"bool">; readonly shiftUpRpm: FieldSpec<"f32">; readonly shiftDownRpm: FieldSpec<"f32">; readonly clutchTime: FieldSpec<"f32">; readonly gear: FieldSpec<"i32">; readonly rpm: FieldSpec<"f32"> }, Vehicle>;
   /**
    * A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. A vehicle with og.VehicleWheel children (up to 16, in entity order) has those wheels in place of its four implicit ones, and og.physics.vehicleWheels lists them in that order: six-wheeled trucks, trikes, rear-wheel steering. 3D only; the 2D vehicle keeps its two wheels.
    */
   const VehicleWheel: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly suspensionRest: FieldSpec<"f32">; readonly suspensionTravel: FieldSpec<"f32">; readonly suspensionStiffness: FieldSpec<"f32">; readonly suspensionDamping: FieldSpec<"f32">; readonly grip: FieldSpec<"f32">; readonly steer: FieldSpec<"f32">; readonly drive: FieldSpec<"bool">; readonly brake: FieldSpec<"bool">; readonly handbrake: FieldSpec<"bool"> }, VehicleWheel>;
   /**
-   * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
+   * A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.
    */
   const Rope: ComponentType<{ readonly segments: FieldSpec<"u32">; readonly length: FieldSpec<"f32">; readonly offset: FieldSpec<"Vector3">; readonly end: FieldSpec<"Entity">; readonly endOffset: FieldSpec<"Vector3">; readonly iterations: FieldSpec<"u32">; readonly damping: FieldSpec<"f32">; readonly gravityScale: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly width: FieldSpec<"f32">; readonly color: FieldSpec<"Color">; readonly visible: FieldSpec<"bool"> }, Rope>;
   /**

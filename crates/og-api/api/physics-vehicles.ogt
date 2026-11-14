@@ -1,9 +1,30 @@
 
-  const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
-  const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
-  const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
-  const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
-  const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
+  enum VehicleDrive {
+    doc "Which wheels the engine drives: Vehicle.drive."
+    variant rear "The rear wheels drive."
+    variant front "The front wheels drive."
+    variant all "Every wheel drives."
+  }
+
+  column VehicleDrive {
+    doc "A VehicleDrive field: the variant's index."
+    array Uint32Array
+    stride 1
+    value VehicleDrive
+  }
+
+  enum VehicleModel {
+    doc "How a vehicle's engine is modelled: Vehicle.model."
+    variant arcade "The arcade car: engineForce, faded out towards maxSpeed."
+    variant drivetrain "An engine with a torque curve driving through a gearbox."
+  }
+
+  column VehicleModel {
+    doc "A VehicleModel field: the variant's index."
+    array Uint32Array
+    stride 1
+    value VehicleModel
+  }
 
   component Vehicle {
     doc "A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). 3D: a raycast car with four wheels (suspension, grip, steering on the front axle), or with the og.VehicleWheel children it has; its forward is the chassis's local +z. 2D: two wheel bodies on sprung wheel joints (front at +x), driven by a motor. og.physics.vehicleWheels gives the wheels' poses and slip."
@@ -98,9 +119,7 @@
       unit rad
       tunable true
     }
-    field drive u32 "DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2." {
-      min 0
-      max 2
+    field drive VehicleDrive "Which wheels drive: rear, front or all." {
     }
     field wheelMass f32 "The wheels' mass (2D: the wheel bodies; 3D ignores it)." {
       default 20
@@ -126,9 +145,7 @@
       max 1
       readonly true
     }
-    field model u32 "VEHICLE_ARCADE 0 (engineForce, faded towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in." {
-      min 0
-      max 1
+    field model VehicleModel "arcade (engineForce, faded towards maxSpeed) or drivetrain (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in." {
     }
     field handbrake f32 "The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip." {
       guide "physics §7"

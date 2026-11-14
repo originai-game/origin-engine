@@ -34,13 +34,13 @@ Token `og.Vehicle`, registered under the schema name `og.Vehicle`; its value typ
 | `maxSpeed` | `number` | `40` | ≥ 0 | `mps` | tunable | The top speed: the engine's force fades out towards it (throttle against the motion brakes first). |
 | `brakeForce` | `number` | `2000` | ≥ 0 | — | tunable | The brakes' force at full brake (3D: per wheel, in newtons, every wheel braking; 2D: the wheels' braking torque). See `physics §7`. |
 | `maxSteer` | `number` | `0.55` | 0 … 1.2 | `rad` | tunable | The front wheels' largest steering angle (3D). |
-| `drive` | `number` | `0` | 0 … 2 | — | — | DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2. |
+| `drive` | `VehicleDrive` | `"rear"` | — | — | — | Which wheels drive: rear, front or all. |
 | `wheelMass` | `number` | `20` | ≥ 0.01 | `kg` | tunable | The wheels' mass (2D: the wheel bodies; 3D ignores it). |
 | `rollInfluence` | `number` | `0` | 0 … 1 | — | tunable | How much the tyres' sideways grip rolls the chassis in a bend (3D): 0 pushes at the centre of mass's height, so the car corners flat and never tips over from steering; towards 1 at the road, the roll that tips a tall car over. See `physics §7`. |
 | `speed` | `number` | `0` | — | `mps` | read only | Written: the forward speed (m/s; negative reversing). |
 | `contacts` | `number` | `0` | — | — | read only | Written: how many wheels touch the ground. |
 | `slip` | `number` | `0` | 0 … 1 | — | read only | Written: the largest slip of its wheels (og.physics.vehicleWheels' `slip`): 0 every tyre grips, towards 1 one slides; for a squeal's volume or smoke without reading the wheels (3D; 0 in 2D). |
-| `model` | `number` | `0` | 0 … 1 | — | — | VEHICLE_ARCADE 0 (engineForce, faded towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in. |
+| `model` | `VehicleModel` | `"arcade"` | — | — | — | arcade (engineForce, faded towards maxSpeed) or drivetrain (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in. |
 | `handbrake` | `number` | `0` | 0 … 1 | — | — | The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip. See `physics §7`. |
 | `handbrakeGrip` | `number` | `0.2` | 0 … 1 | — | tunable | The handbrake wheels' grip at full handbrake, sideways and in all, as a share of their own (3D); 1 keeps it. |
 | `driftGrip` | `number` | `1` | 0 … 1 | — | tunable | Drift tuning: the handbrake wheels' sideways grip while the car drifts (the handbrake is on, or one of them slid last step), as a share of their own (3D). 1 is off. |
@@ -151,9 +151,7 @@ component Vehicle {
     unit rad
     tunable true
   }
-  field drive u32 "DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2." {
-    min 0
-    max 2
+  field drive VehicleDrive "Which wheels drive: rear, front or all." {
   }
   field wheelMass f32 "The wheels' mass (2D: the wheel bodies; 3D ignores it)." {
     default 20
@@ -179,9 +177,7 @@ component Vehicle {
     max 1
     readonly true
   }
-  field model u32 "VEHICLE_ARCADE 0 (engineForce, faded towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in." {
-    min 0
-    max 1
+  field model VehicleModel "arcade (engineForce, faded towards maxSpeed) or drivetrain (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in." {
   }
   field handbrake f32 "The handbrake, 0 to 1: it brakes the handbrake wheels (3D: the rear pair, or the og.VehicleWheel children flagged `handbrake`; 2D: the rear wheel) with that share of brakeForce, takes their drive and loosens their grip, sideways and in all, towards handbrakeGrip." {
     guide "physics §7"
@@ -256,4 +252,4 @@ component Vehicle {
 }
 ```
 
-<sub>Module `physics` line 763</sub>
+<sub>Module `physics` line 803</sub>

@@ -7481,10 +7481,18 @@
         "BodySlept",
         "BodyWoke",
         "Contact",
+        "JointType",
+        "JointType",
+        "JointMotor",
+        "JointMotor",
         "Joint",
         "CharacterController",
         "PlatformerController",
         "CharacterEvent",
+        "VehicleDrive",
+        "VehicleDrive",
+        "VehicleModel",
+        "VehicleModel",
         "Vehicle",
         "VehicleWheel",
         "Rope",
@@ -7578,60 +7586,6 @@
           "doc": "Physics.profile: rapier3d."
         },
         {
-          "name": "JOINT_FIXED",
-          "type": "u32",
-          "value": 0,
-          "doc": "`Joint.kind`: the two bodies move as one."
-        },
-        {
-          "name": "JOINT_REVOLUTE",
-          "type": "u32",
-          "value": 1,
-          "doc": "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
-        },
-        {
-          "name": "JOINT_PRISMATIC",
-          "type": "u32",
-          "value": 2,
-          "doc": "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
-        },
-        {
-          "name": "JOINT_SPRING",
-          "type": "u32",
-          "value": 3,
-          "doc": "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
-        },
-        {
-          "name": "JOINT_ROPE",
-          "type": "u32",
-          "value": 4,
-          "doc": "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
-        },
-        {
-          "name": "JOINT_BALL",
-          "type": "u32",
-          "value": 5,
-          "doc": "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
-        },
-        {
-          "name": "MOTOR_NONE",
-          "type": "u32",
-          "value": 0,
-          "doc": "`Joint.motor`: no motor."
-        },
-        {
-          "name": "MOTOR_VELOCITY",
-          "type": "u32",
-          "value": 1,
-          "doc": "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
-        },
-        {
-          "name": "MOTOR_POSITION",
-          "type": "u32",
-          "value": 2,
-          "doc": "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
-        },
-        {
           "name": "CHARACTER_JUMPED",
           "type": "u32",
           "value": 1,
@@ -7666,36 +7620,6 @@
           "type": "u32",
           "value": 6,
           "doc": "`CharacterEvent.kind`: hit a ceiling while rising."
-        },
-        {
-          "name": "DRIVE_REAR",
-          "type": "u32",
-          "value": 0,
-          "doc": "`Vehicle.drive`: the rear wheels drive."
-        },
-        {
-          "name": "DRIVE_FRONT",
-          "type": "u32",
-          "value": 1,
-          "doc": "`Vehicle.drive`: the front wheels drive."
-        },
-        {
-          "name": "DRIVE_ALL",
-          "type": "u32",
-          "value": 2,
-          "doc": "`Vehicle.drive`: every wheel drives."
-        },
-        {
-          "name": "VEHICLE_ARCADE",
-          "type": "u32",
-          "value": 0,
-          "doc": "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
-        },
-        {
-          "name": "VEHICLE_DRIVETRAIN",
-          "type": "u32",
-          "value": 1,
-          "doc": "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
         },
         {
           "name": "PIN_TOP",
@@ -31490,6 +31414,44 @@
       ],
       "additionalProperties": false
     },
+    "JointType": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "How a joint holds its two bodies: Joint.kind.\nSee `physics §1`.",
+      "type": "string",
+      "enum": [
+        "fixed",
+        "revolute",
+        "prismatic",
+        "spring",
+        "rope",
+        "ball"
+      ],
+      "x-og-variants": {
+        "fixed": "The two bodies move as one.",
+        "revolute": "A hinge about `axis` (2D: about z), with optional limits and a motor.",
+        "prismatic": "A slider along `axis`, with optional limits and a motor.",
+        "spring": "A damped spring pulling the anchors to `restLength` apart.",
+        "rope": "A rope: the anchors stay at most `length` apart, free inside it.",
+        "ball": "A ball and socket (3D; the 2D profile treats it as a hinge)."
+      }
+    },
+    "JointMotor": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "What drives a joint: Joint.motor.\nSee `physics §1`.",
+      "type": "string",
+      "enum": [
+        "none",
+        "velocity",
+        "position"
+      ],
+      "x-og-variants": {
+        "none": "No motor.",
+        "velocity": "Drive towards `motorTarget` speed (rad/s or m/s).",
+        "position": "Spring towards `motorTarget` angle or position (a servo)."
+      }
+    },
     "Joint": {
       "x-og-kind": "component",
       "x-og-module": "physics",
@@ -31497,13 +31459,9 @@
       "type": "object",
       "properties": {
         "kind": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "JOINT_FIXED 0, JOINT_REVOLUTE 1 (hinge), JOINT_PRISMATIC 2 (slider), JOINT_SPRING 3, JOINT_ROPE 4, JOINT_BALL 5.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 5,
+          "$ref": "#/$defs/JointType",
+          "description": "fixed, revolute (a hinge), prismatic (a slider), spring, rope or ball.",
+          "default": "fixed",
           "x-og-label": "Kind"
         },
         "body": {
@@ -31563,13 +31521,9 @@
           "default": 0
         },
         "motor": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "MOTOR_NONE 0, MOTOR_VELOCITY 1 (drive at motorTarget speed), MOTOR_POSITION 2 (spring to motorTarget).",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 2
+          "$ref": "#/$defs/JointMotor",
+          "description": "none, velocity (drive at motorTarget speed) or position (spring to motorTarget).",
+          "default": "none"
         },
         "motorTarget": {
           "type": "number",
@@ -32179,6 +32133,36 @@
       ],
       "additionalProperties": false
     },
+    "VehicleDrive": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "Which wheels the engine drives: Vehicle.drive.",
+      "type": "string",
+      "enum": [
+        "rear",
+        "front",
+        "all"
+      ],
+      "x-og-variants": {
+        "rear": "The rear wheels drive.",
+        "front": "The front wheels drive.",
+        "all": "Every wheel drives."
+      }
+    },
+    "VehicleModel": {
+      "x-og-kind": "enum",
+      "x-og-module": "physics",
+      "description": "How a vehicle's engine is modelled: Vehicle.model.",
+      "type": "string",
+      "enum": [
+        "arcade",
+        "drivetrain"
+      ],
+      "x-og-variants": {
+        "arcade": "The arcade car: engineForce, faded out towards maxSpeed.",
+        "drivetrain": "An engine with a torque curve driving through a gearbox."
+      }
+    },
     "Vehicle": {
       "x-og-kind": "component",
       "x-og-module": "physics",
@@ -32306,13 +32290,9 @@
           "x-og-tunable": true
         },
         "drive": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "DRIVE_REAR 0, DRIVE_FRONT 1, DRIVE_ALL 2.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 2
+          "$ref": "#/$defs/VehicleDrive",
+          "description": "Which wheels drive: rear, front or all.",
+          "default": "rear"
         },
         "wheelMass": {
           "type": "number",
@@ -32354,13 +32334,9 @@
           "readOnly": true
         },
         "model": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 4294967295,
-          "description": "VEHICLE_ARCADE 0 (engineForce, faded towards maxSpeed) or VEHICLE_DRIVETRAIN 1 (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in.",
-          "default": 0,
-          "minimum": 0,
-          "maximum": 1
+          "$ref": "#/$defs/VehicleModel",
+          "description": "arcade (engineForce, faded towards maxSpeed) or drivetrain (the Drivetrain fields; engineForce and maxSpeed unused). The driven wheels' torque is torqueCurve's at the engine's speed × throttle × the gear's ratio × finalDrive; engine speed follows the wheels while a gear is in.",
+          "default": "arcade"
         },
         "handbrake": {
           "type": "number",
@@ -32561,7 +32537,7 @@
     "Rope": {
       "x-og-kind": "component",
       "x-og-module": "physics",
-      "description": "A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint JOINT_ROPE). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.",
+      "description": "A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind, colliding with every solid collider at `radius`. It moves nothing (one-way: a rope joint ties bodies together, og.Joint of kind rope). Its points are world state (the og.physics state block); og.physics.ropePoints reads them and the renderer draws the rope as a strip of `width` and `color`.",
       "type": "object",
       "properties": {
         "segments": {

@@ -1,0 +1,164 @@
+{
+  "breaking": [
+    {
+      "member": "og.Joint.kind, og.Joint.motor, og.Vehicle.drive, og.Vehicle.model",
+      "change": "Each is a string enum, no longer a u32 code: JointType (fixed, revolute, prismatic, spring, rope, ball), JointMotor (none, velocity, position), VehicleDrive (rear, front, all) and VehicleModel (arcade, drivetrain). Reading the field gives the name. The stored codes are the variants' indices, so saved worlds and cooked rows keep their meaning; scene text takes the variant's name, as RigidBody.kind does.",
+      "fix": "Write the variant's name where a number or a constant was: kind: \"revolute\", motor: \"velocity\", drive: \"all\", model: \"drivetrain\". Drop the JOINT_*, MOTOR_*, DRIVE_* and VEHICLE_* names from imports of @origingame/engine (the codemods below rewrite the og.-qualified ones), and compare a read value with the name, not a number.",
+      "find": [
+        "JOINT_",
+        "MOTOR_",
+        "DRIVE_",
+        "VEHICLE_ARCADE",
+        "VEHICLE_DRIVETRAIN",
+        "kind:",
+        "motor:",
+        "drive:",
+        "model:"
+      ]
+    },
+    {
+      "member": "og.JOINT_FIXED",
+      "change": "Removed: og.Joint.kind is the enum JointType, and this code is its variant \"fixed\".",
+      "fix": "Write \"fixed\" where og.JOINT_FIXED was; a bare imported JOINT_FIXED takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.JOINT_FIXED",
+        "to": "\"fixed\""
+      }
+    },
+    {
+      "member": "og.JOINT_REVOLUTE",
+      "change": "Removed: og.Joint.kind is the enum JointType, and this code is its variant \"revolute\".",
+      "fix": "Write \"revolute\" where og.JOINT_REVOLUTE was; a bare imported JOINT_REVOLUTE takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.JOINT_REVOLUTE",
+        "to": "\"revolute\""
+      }
+    },
+    {
+      "member": "og.JOINT_PRISMATIC",
+      "change": "Removed: og.Joint.kind is the enum JointType, and this code is its variant \"prismatic\".",
+      "fix": "Write \"prismatic\" where og.JOINT_PRISMATIC was; a bare imported JOINT_PRISMATIC takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.JOINT_PRISMATIC",
+        "to": "\"prismatic\""
+      }
+    },
+    {
+      "member": "og.JOINT_SPRING",
+      "change": "Removed: og.Joint.kind is the enum JointType, and this code is its variant \"spring\".",
+      "fix": "Write \"spring\" where og.JOINT_SPRING was; a bare imported JOINT_SPRING takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.JOINT_SPRING",
+        "to": "\"spring\""
+      }
+    },
+    {
+      "member": "og.JOINT_ROPE",
+      "change": "Removed: og.Joint.kind is the enum JointType, and this code is its variant \"rope\".",
+      "fix": "Write \"rope\" where og.JOINT_ROPE was; a bare imported JOINT_ROPE takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.JOINT_ROPE",
+        "to": "\"rope\""
+      }
+    },
+    {
+      "member": "og.JOINT_BALL",
+      "change": "Removed: og.Joint.kind is the enum JointType, and this code is its variant \"ball\".",
+      "fix": "Write \"ball\" where og.JOINT_BALL was; a bare imported JOINT_BALL takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.JOINT_BALL",
+        "to": "\"ball\""
+      }
+    },
+    {
+      "member": "og.MOTOR_NONE",
+      "change": "Removed: og.Joint.motor is the enum JointMotor, and this code is its variant \"none\".",
+      "fix": "Write \"none\" where og.MOTOR_NONE was; a bare imported MOTOR_NONE takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.MOTOR_NONE",
+        "to": "\"none\""
+      }
+    },
+    {
+      "member": "og.MOTOR_VELOCITY",
+      "change": "Removed: og.Joint.motor is the enum JointMotor, and this code is its variant \"velocity\".",
+      "fix": "Write \"velocity\" where og.MOTOR_VELOCITY was; a bare imported MOTOR_VELOCITY takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.MOTOR_VELOCITY",
+        "to": "\"velocity\""
+      }
+    },
+    {
+      "member": "og.MOTOR_POSITION",
+      "change": "Removed: og.Joint.motor is the enum JointMotor, and this code is its variant \"position\".",
+      "fix": "Write \"position\" where og.MOTOR_POSITION was; a bare imported MOTOR_POSITION takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.MOTOR_POSITION",
+        "to": "\"position\""
+      }
+    },
+    {
+      "member": "og.DRIVE_REAR",
+      "change": "Removed: og.Vehicle.drive is the enum VehicleDrive, and this code is its variant \"rear\".",
+      "fix": "Write \"rear\" where og.DRIVE_REAR was; a bare imported DRIVE_REAR takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.DRIVE_REAR",
+        "to": "\"rear\""
+      }
+    },
+    {
+      "member": "og.DRIVE_FRONT",
+      "change": "Removed: og.Vehicle.drive is the enum VehicleDrive, and this code is its variant \"front\".",
+      "fix": "Write \"front\" where og.DRIVE_FRONT was; a bare imported DRIVE_FRONT takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.DRIVE_FRONT",
+        "to": "\"front\""
+      }
+    },
+    {
+      "member": "og.DRIVE_ALL",
+      "change": "Removed: og.Vehicle.drive is the enum VehicleDrive, and this code is its variant \"all\".",
+      "fix": "Write \"all\" where og.DRIVE_ALL was; a bare imported DRIVE_ALL takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.DRIVE_ALL",
+        "to": "\"all\""
+      }
+    },
+    {
+      "member": "og.VEHICLE_ARCADE",
+      "change": "Removed: og.Vehicle.model is the enum VehicleModel, and this code is its variant \"arcade\".",
+      "fix": "Write \"arcade\" where og.VEHICLE_ARCADE was; a bare imported VEHICLE_ARCADE takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.VEHICLE_ARCADE",
+        "to": "\"arcade\""
+      }
+    },
+    {
+      "member": "og.VEHICLE_DRIVETRAIN",
+      "change": "Removed: og.Vehicle.model is the enum VehicleModel, and this code is its variant \"drivetrain\".",
+      "fix": "Write \"drivetrain\" where og.VEHICLE_DRIVETRAIN was; a bare imported VEHICLE_DRIVETRAIN takes the same string and leaves the import.",
+      "codemod": {
+        "from": "og.VEHICLE_DRIVETRAIN",
+        "to": "\"drivetrain\""
+      }
+    }
+  ],
+  "added": [
+    {
+      "member": "JointType",
+      "summary": "The enum of og.Joint.kind: fixed, revolute, prismatic, spring, rope, ball."
+    },
+    {
+      "member": "JointMotor",
+      "summary": "The enum of og.Joint.motor: none, velocity, position."
+    },
+    {
+      "member": "VehicleDrive",
+      "summary": "The enum of og.Vehicle.drive: rear, front, all."
+    },
+    {
+      "member": "VehicleModel",
+      "summary": "The enum of og.Vehicle.model: arcade, drivetrain."
+    }
+  ]
+}

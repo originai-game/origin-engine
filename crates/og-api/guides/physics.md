@@ -248,7 +248,7 @@ A handbrake turn is a pull and a release: held, the car slows and the slide
 dies with its speed. `driftGrip` applies while the handbrake is on or a
 handbrake wheel slid last step.
 
-The drivetrain model (`VEHICLE_DRIVETRAIN`) replaces `engineForce` and
+The drivetrain model (`model: "drivetrain"`) replaces `engineForce` and
 `maxSpeed` with a torque curve, gears and an automatic or manual gearbox;
 `rpm` drives the engine sound and the tachometer.
 

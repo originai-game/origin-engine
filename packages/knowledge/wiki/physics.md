@@ -12,7 +12,7 @@ See `physics`.
 
 - **TypeScript**: functions are the namespace `og.physics`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 109 more are advanced (`og api show physics --all`).
+- **Core** (what most games use): `og.RigidBody`, `ColliderShape`, `ColliderShape()`, `og.Collider`, `og.Velocity`, `og.CharacterController`, `og.Vehicle`; 103 more are advanced (`og api show physics --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -58,15 +58,10 @@ module physics {
 | [`og.BodySlept`](physics/record-BodySlept.md) | event |  | A body fell asleep during the tick (Physics.sleepTicks), with every dynamic body it touches; sent in entity order. |
 | [`og.BodyWoke`](physics/record-BodyWoke.md) | event |  | A sleeping body woke during the tick: something touched, pushed or moved it, game code wrote to it, or sleep was turned off; sent in entity order. |
 | [`og.Contact`](physics/record-Contact.md) | event |  | One pair in contact at the end of a step, sent every tick for every touching pair: how a game asks what is touching what right now. |
-| [`JOINT_FIXED`](#const-JOINT_FIXED) | constant |  | `Joint.kind`: the two bodies move as one. |
-| [`JOINT_REVOLUTE`](#const-JOINT_REVOLUTE) | constant |  | `Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor. |
-| [`JOINT_PRISMATIC`](#const-JOINT_PRISMATIC) | constant |  | `Joint.kind`: a slider along `axis`, with optional limits and a motor. |
-| [`JOINT_SPRING`](#const-JOINT_SPRING) | constant |  | `Joint.kind`: a damped spring pulling the anchors to `restLength` apart. |
-| [`JOINT_ROPE`](#const-JOINT_ROPE) | constant |  | `Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it. |
-| [`JOINT_BALL`](#const-JOINT_BALL) | constant |  | `Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge). |
-| [`MOTOR_NONE`](#const-MOTOR_NONE) | constant |  | `Joint.motor`: no motor. |
-| [`MOTOR_VELOCITY`](#const-MOTOR_VELOCITY) | constant |  | `Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s). |
-| [`MOTOR_POSITION`](#const-MOTOR_POSITION) | constant |  | `Joint.motor`: spring towards `motorTarget` angle or position (a servo). |
+| [`JointType`](physics/type-JointType.md) | enum |  | How a joint holds its two bodies: Joint.kind. |
+| [`JointType()`](#column-JointType) | column kind |  | A JointType field: the variant's index. |
+| [`JointMotor`](physics/type-JointMotor.md) | enum |  | What drives a joint: Joint.motor. |
+| [`JointMotor()`](#column-JointMotor) | column kind |  | A JointMotor field: the variant's index. |
 | [`og.Joint`](physics/record-Joint.md) | component |  | A joint between two bodies (or a body and a point of the world). |
 | [`og.CharacterController`](physics/record-CharacterController.md) | component |  | A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, sn… |
 | [`og.PlatformerController`](physics/record-PlatformerController.md) | component |  | A 2D platformer character (the 2D profile): run, jump and fall with designer units (jump height and time to apex, not gravity), coyote time, jump buffering, variable jump height, apex hang, air jumps… |
@@ -77,11 +72,10 @@ module physics {
 | [`CHARACTER_LEFT_GROUND`](#const-CHARACTER_LEFT_GROUND) | constant |  | `CharacterEvent.kind`: left the ground without jumping (ran off an edge). |
 | [`CHARACTER_BUMPED`](#const-CHARACTER_BUMPED) | constant |  | `CharacterEvent.kind`: hit a ceiling while rising. |
 | [`og.CharacterEvent`](physics/record-CharacterEvent.md) | event |  | Something a CharacterController or PlatformerController did this step: the hooks for dust, squash, sounds and camera kicks. |
-| [`DRIVE_REAR`](#const-DRIVE_REAR) | constant |  | `Vehicle.drive`: the rear wheels drive. |
-| [`DRIVE_FRONT`](#const-DRIVE_FRONT) | constant |  | `Vehicle.drive`: the front wheels drive. |
-| [`DRIVE_ALL`](#const-DRIVE_ALL) | constant |  | `Vehicle.drive`: every wheel drives. |
-| [`VEHICLE_ARCADE`](#const-VEHICLE_ARCADE) | constant |  | `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed. |
-| [`VEHICLE_DRIVETRAIN`](#const-VEHICLE_DRIVETRAIN) | constant |  | `Vehicle.model`: an engine with a torque curve driving through a gearbox. |
+| [`VehicleDrive`](physics/type-VehicleDrive.md) | enum |  | Which wheels the engine drives: Vehicle.drive. |
+| [`VehicleDrive()`](#column-VehicleDrive) | column kind |  | A VehicleDrive field: the variant's index. |
+| [`VehicleModel`](physics/type-VehicleModel.md) | enum |  | How a vehicle's engine is modelled: Vehicle.model. |
+| [`VehicleModel()`](#column-VehicleModel) | column kind |  | A VehicleModel field: the variant's index. |
 | [`og.Vehicle`](physics/record-Vehicle.md) | component |  | A car on a dynamic chassis (the entity's og.RigidBody and og.Collider). |
 | [`og.VehicleWheel`](physics/record-VehicleWheel.md) | component |  | A wheel of the og.Vehicle it is a child of (down its og.Parent chain), at its og.Transform relative to the chassis: the hard point its suspension hangs from. |
 | [`og.Rope`](physics/record-Rope.md) | component |  | A Verlet rope: `segments` links from the entity's world position (its og.Transform after its parents'; plus `offset`) to `end` (an entity, plus `endOffset`) or hanging free, swung by gravity and wind… |
@@ -155,6 +149,10 @@ Each is a factory, `RigidBodyType(value?, options?)`, that makes one field of a 
 | <a id="column-RigidBodyType"></a>`RigidBodyType` | `RigidBodyType` | `Uint32Array` | 1 | A RigidBodyType field: the variant's index. |
 | <a id="column-ColliderShape"></a>`ColliderShape` | `ColliderShape` | `Uint32Array` | 1 | A ColliderShape field: the variant's index. |
 | <a id="column-ForceFieldKind"></a>`ForceFieldKind` | `ForceFieldKind` | `Uint32Array` | 1 | A ForceFieldKind field: the variant's index. |
+| <a id="column-JointType"></a>`JointType` | `JointType` | `Uint32Array` | 1 | A JointType field: the variant's index. |
+| <a id="column-JointMotor"></a>`JointMotor` | `JointMotor` | `Uint32Array` | 1 | A JointMotor field: the variant's index. |
+| <a id="column-VehicleDrive"></a>`VehicleDrive` | `VehicleDrive` | `Uint32Array` | 1 | A VehicleDrive field: the variant's index. |
+| <a id="column-VehicleModel"></a>`VehicleModel` | `VehicleModel` | `Uint32Array` | 1 | A VehicleModel field: the variant's index. |
 | <a id="column-Simulation"></a>`Simulation` | `Simulation` | `Uint32Array` | 1 | A Simulation field: the variant's index. |
 | <a id="column-SoftBodyShape"></a>`SoftBodyShape` | `SoftBodyShape` | `Uint32Array` | 1 | A SoftBodyShape field: the variant's index. |
 
@@ -192,6 +190,50 @@ column ForceFieldKind {
 <sub>Module `physics` line 172</sub>
 
 ```ogt
+column JointType {
+  doc "A JointType field: the variant's index."
+  array Uint32Array
+  stride 1
+  value JointType
+}
+```
+
+<sub>Module `physics` line 359</sub>
+
+```ogt
+column JointMotor {
+  doc "A JointMotor field: the variant's index."
+  array Uint32Array
+  stride 1
+  value JointMotor
+}
+```
+
+<sub>Module `physics` line 374</sub>
+
+```ogt
+column VehicleDrive {
+  doc "A VehicleDrive field: the variant's index."
+  array Uint32Array
+  stride 1
+  value VehicleDrive
+}
+```
+
+<sub>Module `physics` line 783</sub>
+
+```ogt
+column VehicleModel {
+  doc "A VehicleModel field: the variant's index."
+  array Uint32Array
+  stride 1
+  value VehicleModel
+}
+```
+
+<sub>Module `physics` line 796</sub>
+
+```ogt
 column Simulation {
   doc "A Simulation field: the variant's index."
   array Uint32Array
@@ -200,7 +242,7 @@ column Simulation {
 }
 ```
 
-<sub>Module `physics` line 1078</sub>
+<sub>Module `physics` line 1114</sub>
 
 ```ogt
 column SoftBodyShape {
@@ -211,7 +253,7 @@ column SoftBodyShape {
 }
 ```
 
-<sub>Module `physics` line 1263</sub>
+<sub>Module `physics` line 1299</sub>
 
 ## Constants
 
@@ -226,26 +268,12 @@ column SoftBodyShape {
 | <a id="const-LOCK_ROTATION_Z"></a>`LOCK_ROTATION_Z` | `number` | `32` | RigidBody.lock bit: no rotation about z (the 2D profile's only rotation). |
 | <a id="const-PROFILE_2D"></a>`PROFILE_2D` | `number` | `2` | Physics.profile: rapier2d, bodies in the xy plane rotating about z. |
 | <a id="const-PROFILE_3D"></a>`PROFILE_3D` | `number` | `3` | Physics.profile: rapier3d. |
-| <a id="const-JOINT_FIXED"></a>`JOINT_FIXED` | `number` | `0` | `Joint.kind`: the two bodies move as one. |
-| <a id="const-JOINT_REVOLUTE"></a>`JOINT_REVOLUTE` | `number` | `1` | `Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor. |
-| <a id="const-JOINT_PRISMATIC"></a>`JOINT_PRISMATIC` | `number` | `2` | `Joint.kind`: a slider along `axis`, with optional limits and a motor. |
-| <a id="const-JOINT_SPRING"></a>`JOINT_SPRING` | `number` | `3` | `Joint.kind`: a damped spring pulling the anchors to `restLength` apart. |
-| <a id="const-JOINT_ROPE"></a>`JOINT_ROPE` | `number` | `4` | `Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it. |
-| <a id="const-JOINT_BALL"></a>`JOINT_BALL` | `number` | `5` | `Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge). |
-| <a id="const-MOTOR_NONE"></a>`MOTOR_NONE` | `number` | `0` | `Joint.motor`: no motor. |
-| <a id="const-MOTOR_VELOCITY"></a>`MOTOR_VELOCITY` | `number` | `1` | `Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s). |
-| <a id="const-MOTOR_POSITION"></a>`MOTOR_POSITION` | `number` | `2` | `Joint.motor`: spring towards `motorTarget` angle or position (a servo). |
 | <a id="const-CHARACTER_JUMPED"></a>`CHARACTER_JUMPED` | `number` | `1` | `CharacterEvent.kind`: a jump from the ground (or in coyote time). |
 | <a id="const-CHARACTER_LANDED"></a>`CHARACTER_LANDED` | `number` | `2` | `CharacterEvent.kind`: touched the ground after being in the air. |
 | <a id="const-CHARACTER_WALL_JUMPED"></a>`CHARACTER_WALL_JUMPED` | `number` | `3` | `CharacterEvent.kind`: a jump off a wall. |
 | <a id="const-CHARACTER_AIR_JUMPED"></a>`CHARACTER_AIR_JUMPED` | `number` | `4` | `CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps). |
 | <a id="const-CHARACTER_LEFT_GROUND"></a>`CHARACTER_LEFT_GROUND` | `number` | `5` | `CharacterEvent.kind`: left the ground without jumping (ran off an edge). |
 | <a id="const-CHARACTER_BUMPED"></a>`CHARACTER_BUMPED` | `number` | `6` | `CharacterEvent.kind`: hit a ceiling while rising. |
-| <a id="const-DRIVE_REAR"></a>`DRIVE_REAR` | `number` | `0` | `Vehicle.drive`: the rear wheels drive. |
-| <a id="const-DRIVE_FRONT"></a>`DRIVE_FRONT` | `number` | `1` | `Vehicle.drive`: the front wheels drive. |
-| <a id="const-DRIVE_ALL"></a>`DRIVE_ALL` | `number` | `2` | `Vehicle.drive`: every wheel drives. |
-| <a id="const-VEHICLE_ARCADE"></a>`VEHICLE_ARCADE` | `number` | `0` | `Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed. |
-| <a id="const-VEHICLE_DRIVETRAIN"></a>`VEHICLE_DRIVETRAIN` | `number` | `1` | `Vehicle.model`: an engine with a torque curve driving through a gearbox. |
 | <a id="const-PIN_TOP"></a>`PIN_TOP` | `number` | `1` | `Cloth.pins` bit: the whole top row is pinned. |
 | <a id="const-PIN_TOP_CORNERS"></a>`PIN_TOP_CORNERS` | `number` | `2` | `Cloth.pins` bit: the top-left and top-right corners are pinned. |
 | <a id="const-PIN_LEFT"></a>`PIN_LEFT` | `number` | `4` | `Cloth.pins` bit: the whole left column is pinned (a flag on a pole). |
@@ -306,145 +334,61 @@ const PROFILE_3D u32 3 "Physics.profile: rapier3d."
 <sub>Module `physics` line 16</sub>
 
 ```ogt
-const JOINT_FIXED u32 0 "`Joint.kind`: the two bodies move as one."
-```
-
-<sub>Module `physics` line 348</sub>
-
-```ogt
-const JOINT_REVOLUTE u32 1 "`Joint.kind`: a hinge about `axis` (2D: about z), with optional limits and a motor."
-```
-
-<sub>Module `physics` line 349</sub>
-
-```ogt
-const JOINT_PRISMATIC u32 2 "`Joint.kind`: a slider along `axis`, with optional limits and a motor."
-```
-
-<sub>Module `physics` line 350</sub>
-
-```ogt
-const JOINT_SPRING u32 3 "`Joint.kind`: a damped spring pulling the anchors to `restLength` apart."
-```
-
-<sub>Module `physics` line 351</sub>
-
-```ogt
-const JOINT_ROPE u32 4 "`Joint.kind`: a rope: the anchors stay at most `length` apart, free inside it."
-```
-
-<sub>Module `physics` line 352</sub>
-
-```ogt
-const JOINT_BALL u32 5 "`Joint.kind`: a ball and socket (3D; the 2D profile treats it as a hinge)."
-```
-
-<sub>Module `physics` line 353</sub>
-
-```ogt
-const MOTOR_NONE u32 0 "`Joint.motor`: no motor."
-```
-
-<sub>Module `physics` line 354</sub>
-
-```ogt
-const MOTOR_VELOCITY u32 1 "`Joint.motor`: drive towards `motorTarget` speed (rad/s or m/s)."
-```
-
-<sub>Module `physics` line 355</sub>
-
-```ogt
-const MOTOR_POSITION u32 2 "`Joint.motor`: spring towards `motorTarget` angle or position (a servo)."
-```
-
-<sub>Module `physics` line 356</sub>
-
-```ogt
 const CHARACTER_JUMPED u32 1 "`CharacterEvent.kind`: a jump from the ground (or in coyote time)."
-```
-
-<sub>Module `physics` line 738</sub>
-
-```ogt
-const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
-```
-
-<sub>Module `physics` line 739</sub>
-
-```ogt
-const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
-```
-
-<sub>Module `physics` line 740</sub>
-
-```ogt
-const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
-```
-
-<sub>Module `physics` line 741</sub>
-
-```ogt
-const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
-```
-
-<sub>Module `physics` line 742</sub>
-
-```ogt
-const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
-```
-
-<sub>Module `physics` line 743</sub>
-
-```ogt
-const DRIVE_REAR u32 0 "`Vehicle.drive`: the rear wheels drive."
 ```
 
 <sub>Module `physics` line 757</sub>
 
 ```ogt
-const DRIVE_FRONT u32 1 "`Vehicle.drive`: the front wheels drive."
+const CHARACTER_LANDED u32 2 "`CharacterEvent.kind`: touched the ground after being in the air."
 ```
 
 <sub>Module `physics` line 758</sub>
 
 ```ogt
-const DRIVE_ALL u32 2 "`Vehicle.drive`: every wheel drives."
+const CHARACTER_WALL_JUMPED u32 3 "`CharacterEvent.kind`: a jump off a wall."
 ```
 
 <sub>Module `physics` line 759</sub>
 
 ```ogt
-const VEHICLE_ARCADE u32 0 "`Vehicle.model`: the arcade car: engineForce, faded out towards maxSpeed."
+const CHARACTER_AIR_JUMPED u32 4 "`CharacterEvent.kind`: a jump in the air (PlatformerController.airJumps)."
 ```
 
 <sub>Module `physics` line 760</sub>
 
 ```ogt
-const VEHICLE_DRIVETRAIN u32 1 "`Vehicle.model`: an engine with a torque curve driving through a gearbox."
+const CHARACTER_LEFT_GROUND u32 5 "`CharacterEvent.kind`: left the ground without jumping (ran off an edge)."
 ```
 
 <sub>Module `physics` line 761</sub>
 
 ```ogt
+const CHARACTER_BUMPED u32 6 "`CharacterEvent.kind`: hit a ceiling while rising."
+```
+
+<sub>Module `physics` line 762</sub>
+
+```ogt
 const PIN_TOP u32 1 "`Cloth.pins` bit: the whole top row is pinned."
 ```
 
-<sub>Module `physics` line 1085</sub>
+<sub>Module `physics` line 1121</sub>
 
 ```ogt
 const PIN_TOP_CORNERS u32 2 "`Cloth.pins` bit: the top-left and top-right corners are pinned."
 ```
 
-<sub>Module `physics` line 1086</sub>
+<sub>Module `physics` line 1122</sub>
 
 ```ogt
 const PIN_LEFT u32 4 "`Cloth.pins` bit: the whole left column is pinned (a flag on a pole)."
 ```
 
-<sub>Module `physics` line 1087</sub>
+<sub>Module `physics` line 1123</sub>
 
 ```ogt
 const PIN_TOP_RINGS u32 8 "`Cloth.pins` bit: every fourth point of the top row (curtain rings)."
 ```
 
-<sub>Module `physics` line 1088</sub>
+<sub>Module `physics` line 1124</sub>
