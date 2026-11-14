@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"og.ui","summary":"A frame of documents styled by a style pack costs a fraction of what it did, with the same values: a component's part rules are merged with the pack's once per document instead of for every part each frame, a part looks only at the rules that can match it, an element no longer copies its inherited custom properties to carry an unchanged value, and the second frame after a mount no longer restyles every element the first frame styled."}
+  ]
+}

@@ -163,8 +163,10 @@ pub(crate) struct Options<'a> {
     pub carry: bool,
 }
 
-pub(crate) fn values_with(
-    rules: &[StyleRule],
+/// `rules` in cascade order; a subset in that order (rules `applies`
+/// would refuse left out) cascades the same.
+pub(crate) fn values_with<'r>(
+    rules: impl IntoIterator<Item = &'r StyleRule>,
     o: &Options<'_>,
     mut applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
@@ -180,6 +182,7 @@ pub(crate) fn values_with(
         u32,
     );
     let mut candidates: BTreeMap<&str, Vec<Candidate<'_>>> = BTreeMap::new();
+    let rules: Vec<&StyleRule> = rules.into_iter().collect();
     for (order, rule) in rules.iter().enumerate() {
         if (rule.starting && !o.starting) || !applies(rule) {
             continue;

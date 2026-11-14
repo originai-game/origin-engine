@@ -405,6 +405,11 @@ impl RetainedRefreshRetainedHost for RetainedHost {
                     .cloned()
                     .collect(),
             };
+            // An element resolved since the interval was invalidated (a new
+            // child, resolved after its parent) already reads its position.
+            let stale = stale
+                .into_iter()
+                .filter(|identity| self.topology.style_is_stale(identity) != Some(false));
             self.dirty.extend(stale);
         }
     }
@@ -664,15 +669,8 @@ impl RetainedRefreshRetainedHost for RetainedHost {
             }
         }
         if let Some(previous) = previous {
-            let names: BTreeSet<_> = previous
-                .computed
-                .dependency_names()
-                .chain(values.cascade.computed.dependency_names())
-                .collect();
-            for name in names {
-                if previous.computed.dependency(name) != values.cascade.computed.dependency(name)
-                    && let Some(readers) = self.inherited.get(&(identity.clone(), name.clone()))
-                {
+            for name in previous.computed.changed(&values.cascade.computed) {
+                if let Some(readers) = self.inherited.get(&(identity.clone(), name.clone())) {
                     self.dirty.extend(readers.iter().cloned());
                 }
             }

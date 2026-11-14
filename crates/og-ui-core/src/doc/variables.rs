@@ -43,6 +43,11 @@ impl Computed {
         if name.starts_with("--og-") {
             return None;
         }
+        // The map is shared with the parent's: an unchanged value (a
+        // child's carried flow, most often) must not copy it.
+        if self.custom.get(&name) == Some(&value) {
+            return Some(value);
+        }
         Arc::make_mut(&mut self.custom).insert(name, value)
     }
 
@@ -59,8 +64,46 @@ impl Computed {
         }
     }
 
+    /// These values with `over`'s laid on top: every name `over` holds with
+    /// its value, the rest with these. Starts from `over`'s map (shared, not
+    /// copied) and adds only the names it lacks, so an `over` that already
+    /// holds nearly all of them, such as a host's computed values over the
+    /// root tokens, costs a lookup a name instead of an insert.
+    pub fn under(self, over: &Computed) -> Computed {
+        let mut custom = over.custom.clone();
+        for (name, value) in self.custom.iter() {
+            if !custom.contains_key(name) {
+                Arc::make_mut(&mut custom).insert(name.clone(), value.clone());
+            }
+        }
+        let mut properties = self.properties;
+        properties.extend(over.properties.iter().map(|(k, v)| (k.clone(), v.clone())));
+        Computed { custom, properties }
+    }
+
     pub fn dependency_names(&self) -> impl Iterator<Item = &String> {
         self.custom.keys().chain(self.properties.keys())
+    }
+
+    /// The names whose [`Self::dependency`] differs between these values
+    /// and `other`, in order. A custom map both share (an element's,
+    /// carried from its parent unchanged) is not walked.
+    pub fn changed<'a>(&'a self, other: &'a Computed) -> Vec<&'a String> {
+        let names: std::collections::BTreeSet<&String> = if Arc::ptr_eq(&self.custom, &other.custom)
+        {
+            self.properties
+                .keys()
+                .chain(other.properties.keys())
+                .collect()
+        } else {
+            self.dependency_names()
+                .chain(other.dependency_names())
+                .collect()
+        };
+        names
+            .into_iter()
+            .filter(|name| self.dependency(name) != other.dependency(name))
+            .collect()
     }
 
     pub fn dependency(&self, name: &str) -> Option<&str> {

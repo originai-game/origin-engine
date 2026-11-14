@@ -193,6 +193,20 @@ impl Docs {
     }
 }
 
+/// A document's part rules laid into the global ones, and the sheet they
+/// merge into.
+pub(crate) type MergedPartRules = (
+    Vec<crate::doc::StyleRule>,
+    crate::doc::at_rules::Sheet,
+    crate::doc::build::PartIndex,
+);
+
+/// A document and its rules merged into the global ones ([`MergedPartRules`]).
+pub(crate) type DocumentPartRules = (
+    std::sync::Arc<crate::doc::UiDocument>,
+    std::sync::Arc<MergedPartRules>,
+);
+
 /// Style: the part rules and tokens, the motion pass's memory, timelines and the plays asked for.
 #[derive(Clone, Debug)]
 pub struct Style {
@@ -222,6 +236,14 @@ pub struct Style {
             std::sync::Arc<crate::doc::build::StyleCommit>,
         >,
     >,
+    /// [`crate::doc::build::PartIndex`] of `part_rules`, made on first use.
+    /// Derived from it alone: a write of it clears this.
+    pub(crate) part_index: std::cell::RefCell<Option<std::sync::Arc<crate::doc::build::PartIndex>>>,
+    /// Each document's part rules laid into `part_rules` and `part_sheet`
+    /// (`Ui::document_part_rules`), by its name and the document they were
+    /// merged from. Derived from those two alone: a write of either clears it.
+    pub(crate) document_part_rules:
+        std::cell::RefCell<std::collections::BTreeMap<String, DocumentPartRules>>,
     pub(crate) css_sounds: std::collections::BTreeMap<String, u64>,
     /// Timelines by name hash (`define_timeline`): configuration, like the theme.
     pub(crate) timelines: std::collections::BTreeMap<u64, (String, Timeline)>,
@@ -234,10 +256,17 @@ pub struct Style {
 /// The fields of style the documents (og-ui) reach.
 impl Style {
     pub fn part_rules_mut(&mut self) -> &mut Vec<crate::doc::StyleRule> {
+        self.part_rules_changed();
         &mut self.part_rules
     }
     pub fn part_sheet_mut(&mut self) -> &mut crate::doc::at_rules::Sheet {
+        self.part_rules_changed();
         &mut self.part_sheet
+    }
+    /// Drops what is derived from `part_rules` and `part_sheet`.
+    pub(crate) fn part_rules_changed(&mut self) {
+        self.part_index.take();
+        self.document_part_rules.take();
     }
     pub fn css_sounds_mut(&mut self) -> &mut std::collections::BTreeMap<String, u64> {
         &mut self.css_sounds

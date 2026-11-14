@@ -853,7 +853,7 @@ impl Ui {
                     .collect();
             }
         }
-        r.cascade = cascade::values_with(&rules, &options, &mut rule_applies);
+        r.cascade = cascade::values_with(rules.iter(), &options, &mut rule_applies);
         // The root's own `vi` and `vb` follow the writing mode it declares.
         let (basis, options) = if cascade::root_vertical(inherited).is_none()
             && cascade::declares_vertical(&r.cascade.values)
@@ -866,7 +866,7 @@ impl Ui {
                 basis: Some(basis),
                 ..options
             };
-            r.cascade = cascade::values_with(&rules, &options, &mut rule_applies);
+            r.cascade = cascade::values_with(rules.iter(), &options, &mut rule_applies);
             (basis, options)
         } else {
             (basis, options)
@@ -891,7 +891,7 @@ impl Ui {
             && n.rules.iter().any(|rule| rule.starting)
         {
             let start = cascade::values_with(
-                &rules,
+                rules.iter(),
                 &cascade::Options {
                     starting: true,
                     carry: false,
@@ -1472,6 +1472,7 @@ pub mod host;
 pub mod instances;
 mod layout_props;
 mod parts;
+pub(crate) use parts::PartIndex;
 #[doc(hidden)]
 pub mod structure;
 #[doc(hidden)]

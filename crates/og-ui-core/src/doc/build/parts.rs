@@ -26,6 +26,109 @@ impl Resolved {
     }
 }
 
+/// A part rule list grouped by what [`Ui::part_matches`] requires of a
+/// part, so a part's cascade reads only the rules that can match it. A rule
+/// naming a part in its subject compound can match only that part; one
+/// naming a part elsewhere, any part; one naming none, only the host (the
+/// `part: None` pass), and those are kept by the id, class or tag their
+/// subject compound requires, as a browser's rule hash keeps them. Each
+/// candidate is still tested in full.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct PartIndex {
+    host: BTreeMap<Subject, Vec<usize>>,
+    named: BTreeMap<String, Vec<usize>>,
+    loose: Vec<usize>,
+}
+
+/// What a host rule's subject compound requires of the host first.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Subject {
+    Any,
+    Id(String),
+    Class(String),
+    Tag(String),
+}
+
+impl PartIndex {
+    pub(crate) fn new(rules: &[crate::doc::StyleRule]) -> Self {
+        use super::super::selectors::Simple;
+        let mut index = Self::default();
+        for (i, rule) in rules.iter().enumerate() {
+            let Some(s) = &rule.structure else { continue };
+            let part = |c: &super::super::selectors::Compound| {
+                c.0.iter().find_map(|simple| match simple {
+                    Simple::Part(name) => Some(name.clone()),
+                    _ => None,
+                })
+            };
+            let subject = s.compounds.first();
+            if let Some(name) = subject.and_then(part) {
+                index.named.entry(name).or_default().push(i);
+            } else if s.compounds.iter().any(|c| part(c).is_some()) {
+                index.loose.push(i);
+            } else {
+                let simples = subject.map_or(&[][..], |c| &c.0);
+                let find = |f: fn(&Simple) -> Option<Subject>| simples.iter().find_map(f);
+                let key = find(|x| match x {
+                    Simple::Id(n) => Some(Subject::Id(n.clone())),
+                    _ => None,
+                })
+                .or_else(|| {
+                    find(|x| match x {
+                        Simple::Class(n) => Some(Subject::Class(n.clone())),
+                        _ => None,
+                    })
+                })
+                .or_else(|| {
+                    find(|x| match x {
+                        Simple::Type(n) => Some(Subject::Tag(n.clone())),
+                        _ => None,
+                    })
+                })
+                .unwrap_or(Subject::Any);
+                index.host.entry(key).or_default().push(i);
+            }
+        }
+        index
+    }
+
+    /// The rules of `rules` (the list this was made from) that can match
+    /// what `facts` describe, in cascade order.
+    pub(crate) fn candidates<'r>(
+        &self,
+        rules: &'r [crate::doc::StyleRule],
+        facts: &Facts<'_>,
+    ) -> impl Iterator<Item = &'r crate::doc::StyleRule> {
+        let mut at: Vec<usize> = Vec::new();
+        match facts.part {
+            None => {
+                let text = |name: &str| facts.attributes.get(name).and_then(|v| v.as_str());
+                let keys = [Subject::Any, Subject::Tag(facts.tag.to_string())]
+                    .into_iter()
+                    .chain(text("id").map(|id| Subject::Id(id.to_string())))
+                    .chain(
+                        text("class")
+                            .into_iter()
+                            .flat_map(str::split_ascii_whitespace)
+                            .map(|c| Subject::Class(c.to_string())),
+                    );
+                for key in keys {
+                    at.extend(self.host.get(&key).into_iter().flatten());
+                }
+            }
+            Some(part) => {
+                at.extend(&self.loose);
+                for name in std::iter::once(part).chain(facts.own_part.filter(|o| *o != part)) {
+                    at.extend(self.named.get(name).into_iter().flatten());
+                }
+            }
+        }
+        at.sort_unstable();
+        at.dedup();
+        at.into_iter().map(move |i| &rules[i])
+    }
+}
+
 impl Ui {
     pub(super) fn apply_part_box(&mut self, i: usize) {
         self.tree.rewrite(i);
@@ -247,6 +350,7 @@ impl Ui {
         let (rules, sheet) = crate::doc::stylesheet::part_rules(css)?;
         self.style.part_rules = rules;
         self.style.part_sheet = sheet;
+        self.style.part_rules_changed();
         self.style.root_inputs_changed();
         self.read_theme_tokens();
         self.tree.invalidation.epoch += 1;
@@ -303,48 +407,89 @@ impl Ui {
         })
     }
 
+    /// The global part rules and sheet with a document's own laid in (its
+    /// layers ordered among the global ones, its rules in cascade order),
+    /// cached by the document until the global sheet changes.
+    fn document_part_rules(
+        &self,
+        name: &str,
+        doc: &Arc<UiDocument>,
+    ) -> Arc<crate::ui::MergedPartRules> {
+        if let Some((d, m)) = self.style.document_part_rules.borrow().get(name)
+            && Arc::ptr_eq(d, doc)
+        {
+            return m.clone();
+        }
+        let mut rules = self.style.part_rules.clone();
+        let mut sheet = self.style.part_sheet.clone();
+        let global_layers = sheet.layers.clone();
+        for layer in &doc.sheet.layers {
+            if !sheet.layers.contains(layer) {
+                sheet.layers.push(layer.clone());
+            }
+        }
+        sheet.layers = crate::doc::stylesheet::order_layers(&sheet.layers);
+        let remap = |rule: &mut crate::doc::StyleRule, old: &[String]| {
+            if rule.layer != u32::MAX && rule.layer > 0 {
+                let name = &old[(rule.layer - 1) as usize];
+                rule.layer = sheet.layers.iter().position(|n| n == name).unwrap() as u32 + 1;
+            }
+        };
+        for rule in rules.iter_mut() {
+            remap(rule, &global_layers);
+        }
+        for rule in &doc.part_rules {
+            let mut rule = rule.clone();
+            remap(&mut rule, &doc.sheet.layers);
+            rules.push(rule);
+        }
+        rules.sort_by_key(|r| (r.layer, r.structure.as_ref().map(|s| s.specificity())));
+        for (name, property) in &doc.sheet.properties {
+            sheet.properties.retain(|(n, _)| n != name);
+            sheet.properties.push((name.clone(), property.clone()));
+        }
+        for (name, frames) in &doc.sheet.keyframes {
+            sheet.keyframes.retain(|(n, _)| n != name);
+            sheet.keyframes.push((name.clone(), frames.clone()));
+        }
+        sheet
+            .keyframe_rules
+            .extend(doc.sheet.keyframe_rules.clone());
+        let index = PartIndex::new(&rules);
+        let merged = Arc::new((rules, sheet, index));
+        self.style
+            .document_part_rules
+            .borrow_mut()
+            .insert(name.to_string(), (doc.clone(), merged.clone()));
+        merged
+    }
+
     pub(crate) fn part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
         let host = key.and_then(|k| self.tree.part_host(k));
         let document = host.and_then(|h| self.docs.host.docs.get(&h.document));
-        let mut rules = std::borrow::Cow::Borrowed(&self.style.part_rules);
-        let mut sheet = std::borrow::Cow::Borrowed(&self.style.part_sheet);
-        if let Some(doc) = document.filter(|d| !d.part_rules.is_empty()) {
-            let rules = rules.to_mut();
-            let sheet = sheet.to_mut();
-            let global_layers = sheet.layers.clone();
-            for layer in &doc.sheet.layers {
-                if !sheet.layers.contains(layer) {
-                    sheet.layers.push(layer.clone());
-                }
+        // A document's own part rules laid into the global ones: merged
+        // once per document and global sheet, not for every part each tick.
+        let merged = host
+            .zip(document)
+            .filter(|(_, d)| !d.part_rules.is_empty())
+            .map(|(h, d)| self.document_part_rules(&h.document, d));
+        let global_index;
+        let (rules, sheet, index) = match &merged {
+            Some(m) => (&m.0, &m.1, &m.2),
+            None => {
+                global_index = self
+                    .style
+                    .part_index
+                    .borrow_mut()
+                    .get_or_insert_with(|| Arc::new(PartIndex::new(&self.style.part_rules)))
+                    .clone();
+                (
+                    &self.style.part_rules,
+                    &self.style.part_sheet,
+                    &*global_index,
+                )
             }
-            sheet.layers = crate::doc::stylesheet::order_layers(&sheet.layers);
-            let remap = |rule: &mut crate::doc::StyleRule, old: &[String]| {
-                if rule.layer != u32::MAX && rule.layer > 0 {
-                    let name = &old[(rule.layer - 1) as usize];
-                    rule.layer = sheet.layers.iter().position(|n| n == name).unwrap() as u32 + 1;
-                }
-            };
-            for rule in rules.iter_mut() {
-                remap(rule, &global_layers);
-            }
-            for rule in &doc.part_rules {
-                let mut rule = rule.clone();
-                remap(&mut rule, &doc.sheet.layers);
-                rules.push(rule);
-            }
-            rules.sort_by_key(|r| (r.layer, r.structure.as_ref().map(|s| s.specificity())));
-            for (name, property) in &doc.sheet.properties {
-                sheet.properties.retain(|(n, _)| n != name);
-                sheet.properties.push((name.clone(), property.clone()));
-            }
-            for (name, frames) in &doc.sheet.keyframes {
-                sheet.keyframes.retain(|(n, _)| n != name);
-                sheet.keyframes.push((name.clone(), frames.clone()));
-            }
-            sheet
-                .keyframe_rules
-                .extend(doc.sheet.keyframe_rules.clone());
-        }
+        };
         part.with_facts(|facts| {
             let mut attributes = facts.attributes.clone();
             if let Some(host) = host {
@@ -383,13 +528,18 @@ impl Ui {
                     ..Default::default()
                 }),
                 attr: &|_| None,
-                sheet: Some(&sheet),
+                sheet: Some(sheet),
                 starting: false,
                 carry: false,
             };
             let mut inherited = (*self.css_root_variables()).clone();
+            let host_facts = Facts {
+                part: None,
+                own_part: None,
+                ..facts
+            };
             let mut global = cascade::values_with(
-                &rules,
+                index.candidates(rules, &host_facts),
                 &cascade::Options {
                     inherited: &inherited,
                     carry: true,
@@ -419,10 +569,7 @@ impl Ui {
             });
             inherited = (*global.computed).clone();
             if let Some(host) = host {
-                inherited.extend(host.computed.iter().map(|(k, v)| (k.clone(), v.clone())));
-                inherited
-                    .properties
-                    .extend(host.computed.properties.clone());
+                inherited = inherited.under(&host.computed);
             }
             let attr = |name: &str| facts.attributes.get(name).map(crate::bind::text);
             let options = cascade::Options {
@@ -430,8 +577,9 @@ impl Ui {
                 attr: &attr,
                 ..options
             };
-            let mut values =
-                cascade::values_with(&rules, &options, |r| self.part_matches(r, &facts));
+            let mut values = cascade::values_with(index.candidates(rules, &facts), &options, |r| {
+                self.part_matches(r, &facts)
+            });
             // The host's `font` shorthand is not carried over: its
             // longhands come computed with the host's own (`h2 { font: … }`
             // under `font-size: 2em`), and expanded again here it would
@@ -475,7 +623,7 @@ impl Ui {
                     &transitions,
                     &animations,
                     options.basis.expect("part CSS has viewport units"),
-                    Some(&sheet),
+                    Some(sheet),
                 )
             });
             if let (Some(key), Some(commit)) = (key, &style) {
