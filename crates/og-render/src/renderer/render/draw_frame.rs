@@ -15,6 +15,8 @@ impl Renderer {
         if let Some(stale) = scene.stale_handle() {
             return Err(RenderError::InvalidHandle(stale));
         }
+        // Where the call's time goes, with a clock (frame_stages.rs).
+        let mut stages = Stages::start(self.clock);
         // What this frame waits for compiles (FrameStats::compile_wait_us).
         crate::deferred::take_waited_us();
         // A capture draws with the full variants (pipeline_features.rs):
@@ -39,7 +41,9 @@ impl Renderer {
                 })?;
             self.offscreen_submissions.pop_front();
         }
+        stages.end("wait for frame N-2");
         self.sync(scene)?;
+        stages.end("sync");
         // What the frame keeps for each of its passes from their plan
         // steps to their encode, and what they encode from (pass.rs).
         let mut frames = PassFrames::default();
@@ -77,15 +81,18 @@ impl Renderer {
         }
         let mut origins = submission.clone();
         self.prepare_full_meshes(scene, &batches);
+        stages.end("batches");
         // Crowds (crowd.rs): their members as the crowd cull's tables, the
         // one pass over them, before the skinned palette, which holds the
         // clips they play. Their previous transforms go with them under
         // TAA or motion blur.
         let crowd_motion = self.info.antialias.temporal() || scene.look.post.motion_blur.is_some();
         let mut crowd_frame = self.build_crowds(scene, crowd_motion)?;
+        stages.end("crowd tables");
         let mut skinned = self.build_skinned(scene, &probe_boxes, &crowd_frame.played)?;
         let palette = &self.instances.palette;
         crowd_frame.place_clips(&|c| palette.baked_offset(c));
+        stages.end("skinned");
         // The planar water this frame draws: none where the 3D world is
         // not built in (WORLD_3D).
         let scene_water: &[Water] = if WORLD_3D { &scene.world.water } else { &[] };
@@ -152,6 +159,7 @@ impl Renderer {
         // uploaded from their table (`upload_frame`), not copied here.
         debug_assert!(crowd_previous.is_none_or(|at| at as usize == joint_matrices.len()));
 
+        stages.end("camera, crowd plan, skinned culling");
         // Effects this frame.
         let post_fx = &scene.look.post;
         let particle_frame = self.particles.gpu.prepare(
@@ -354,6 +362,7 @@ impl Renderer {
         }
         let glow = post_fx.glow.is_some() && !arenas.sprite_frame.glow_runs.is_empty();
 
+        stages.end("effects, pipelines, sprites");
         // GPU-driven culling (cull_gpu.rs): each pass's list is indirect
         // draws the compute fills; the CPU sorts the transparent instances
         // and culls the skinned ones as before.
@@ -486,6 +495,7 @@ impl Renderer {
                 particle_frame: &particle_frame,
             },
         );
+        stages.end("culling plans");
         // Terrains, scattered copies and grass (world_prepare.rs).
         let mut world_frame = self.prepare_world(PrepareWorldInputs {
             scene,
@@ -563,6 +573,7 @@ impl Renderer {
         // copy through.
         CascadePass::upload(self, &mut frames.cascade, shadow_size);
         LocalFacePass::upload(self, &mut frames.local_face, ());
+        stages.end("world, lights, shadows");
         // The GPU culling's encode and the instance records (instances_stage.rs).
         let instance_uploads = self.upload_instances(UploadInstancesInputs {
             scene,
@@ -587,6 +598,7 @@ impl Renderer {
             skinned: &skinned,
             blended_list: &mut camera_lists.blended_list,
         });
+        stages.end("instance records");
         // The CPU-culled lists of the passes after the camera, moved where
         // the records put their instances (their upload steps).
         let moved = ListsMoved {
@@ -610,6 +622,7 @@ impl Renderer {
             overlay_frame: &overlay_frame,
             light_slots: &arenas.light_slots,
         });
+        stages.end("skinned and sprite uploads");
         // The particles' and the 2D lights' upload steps
         // (pass_particles.rs, pass_light_2d.rs).
         ParticlesPass::upload(
@@ -902,6 +915,7 @@ impl Renderer {
         // The frame's encoder, and the compute nodes the graph begins with
         // (pre_graph_stage.rs, execute.rs). Each graph pass owns the GPU
         // queries of the render and compute passes it opened (`timing.rs`).
+        stages.end("uniforms and binds");
         let mut encoder = self.open_frame_encoder();
         let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = Vec::new();
         let pre_graph = PreGraphInputs {
@@ -920,6 +934,7 @@ impl Renderer {
             grass_frame: &world_frame.grass_frame,
         };
         self.execute_pre_graph(&mut encoder, &pre_graph, &mut pass_queries);
+        stages.end("compute before the graph");
         let transmission_view = self
             .transmission
             .as_ref()
@@ -1130,6 +1145,7 @@ impl Renderer {
         );
         let terrain_indices = ctx.terrain_indices;
 
+        stages.end("draw lists and binds");
         // Per-pass CPU encode time, with a clock (`Renderer::set_clock`),
         // and GPU time where the device has timestamps (`timing.rs`).
         let mut pass_ms: Vec<PassTiming> = Vec::new();
@@ -1276,6 +1292,7 @@ impl Renderer {
             pass_ms: &mut pass_ms,
             pass_queries: &mut pass_queries,
         });
+        stages.end("graph encode");
         encoder.expect(self.info.caps, self.info.caps);
         for &(slot, _) in &probe_frame.due {
             self.probes.slots[slot].captured = Some(scene.frame.tick);
@@ -1300,6 +1317,8 @@ impl Renderer {
         });
         // Its tables' memory for the next frame's crowds.
         self.world.crowd_tables = crowd_frame;
+        stages.end("submit");
+        self.stage_ms = stages.done;
         Ok(stats)
     }
 }

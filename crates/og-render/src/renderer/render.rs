@@ -148,6 +148,8 @@ use skinned_pipelines::SkinnedPipelines;
 mod execute;
 use execute::GraphRun;
 mod draw_frame;
+mod frame_stages;
+use frame_stages::Stages;
 mod setup;
 
 /// A shadow pass into one layer, cleared (depth 1, and distance / range 1:

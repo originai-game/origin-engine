@@ -33,6 +33,7 @@ impl Renderer {
         self.clock = clock;
         if clock.is_none() {
             self.pass_ms.clear();
+            self.stage_ms.clear();
             self.gpu_timer = None;
         } else if self.gpu_timer.is_none() && self.info.caps.contains(Caps::TIMESTAMPS) {
             self.gpu_timer = timing::GpuTimer::new(&self.device, &self.queue);
@@ -44,6 +45,15 @@ impl Renderer {
     /// took; empty without a clock.
     pub fn pass_timings(&self) -> &[PassTiming] {
         &self.pass_ms
+    }
+
+    /// The last frame's `render` call as its CPU stages in order (the
+    /// crowds' tables, the skinned palette, the uploads, the graph's
+    /// encoding, the submit), each with the clock's reading when it began
+    /// and the milliseconds it took; together they cover the whole call.
+    /// Empty without a clock.
+    pub fn stage_timings(&self) -> &[PassTiming] {
+        &self.stage_ms
     }
 
     /// What this device said when it refused the visibility buffer's
@@ -588,6 +598,7 @@ impl Renderer {
             graph: post::FrameGraph::default(),
             clock: None,
             pass_ms: Vec::new(),
+            stage_ms: Vec::new(),
             gpu_timer: None,
             visibility: Visibility::new(desc.culling, indirect),
             shadows: Shadows::new(
