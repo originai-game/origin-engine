@@ -592,8 +592,8 @@ pub(crate) struct Lights {
     )>,
     /// The frame's decal records and their clusters (`fx.rs`), and the CPU
     /// vectors they are packed in, kept between frames.
-    pub(crate) decal_buffers: fx::DecalBuffers,
-    pub(crate) decal_records: Vec<fx::DecalGpu>,
+    pub(crate) decal_buffers: crate::decals::DecalBuffers,
+    pub(crate) decal_records: Vec<crate::decals::DecalGpu>,
     pub(crate) decal_spheres: Vec<(glam::Vec3, f32)>,
     pub(crate) decal_bins: clusters::DecalBins,
     pub(crate) fx_buffer: wgpu::Buffer,
@@ -687,7 +687,7 @@ impl Lights {
         view: &clusters::ClusterView,
         total: u32,
     ) -> (u32, u32) {
-        fx::pack_decals(decals, &mut self.decal_records, &mut self.decal_spheres);
+        crate::decals::pack_decals(decals, &mut self.decal_records, &mut self.decal_spheres);
         let drawn = self.decal_records.len() as u32;
         if drawn > 0 {
             self.clusters

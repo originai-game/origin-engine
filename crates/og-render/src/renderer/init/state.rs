@@ -181,7 +181,7 @@ impl Lights {
         (ltc, caustic_grid): (wgpu::Buffer, wgpu::Buffer),
         lightmaps: lightmap::Lightmaps,
         ibl: ibl::IblGenerator,
-        (fx_buffer, decal_buffers): (wgpu::Buffer, fx::DecalBuffers),
+        (fx_buffer, decal_buffers): (wgpu::Buffer, crate::decals::DecalBuffers),
         off: pipeline_features::Features,
     ) -> Lights {
         Lights {

@@ -301,7 +301,7 @@ impl PhysicalPipelines {
                 uniform_entry(7, wgpu::ShaderStages::FRAGMENT),
             ],
         });
-        let decals = crate::fx::decal_layout_entries();
+        let decals = crate::decals::decal_layout_entries();
         let fx_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("physical fx"),
             entries: &[

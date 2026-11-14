@@ -459,7 +459,7 @@ impl Renderer {
             })
         };
         let fx_buffer = uniform_buffer("fx", std::mem::size_of::<fx::FxUniform>());
-        let decal_buffers = fx::DecalBuffers::new(&device);
+        let decal_buffers = crate::decals::DecalBuffers::new(&device);
         let sprite_fx_buffer = uniform_buffer("sprite fx", 32);
 
         let hdr = surface
