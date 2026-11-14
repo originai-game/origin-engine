@@ -36,22 +36,12 @@ impl Pass for LiveSkyPass {
                 &r.device,
                 "frame (live sky)",
                 &r.frame_layout,
-                &[
+                &r.frame_entries(FrameGroupParts {
                     uniform,
-                    wgpu::BindingResource::TextureView(&r.shadows.cascade_map.array_view),
-                    wgpu::BindingResource::TextureView(&r.shadows.local_map.array_view),
-                    wgpu::BindingResource::TextureView(&ibl.irradiance),
-                    wgpu::BindingResource::TextureView(&ibl.prefiltered),
-                    wgpu::BindingResource::TextureView(&ibl.brdf_lut),
-                    wgpu::BindingResource::Sampler(&ibl.sampler),
-                    r.lights.light_buffers[0].as_entire_binding(),
-                    r.lights.light_buffers[1].as_entire_binding(),
-                    r.lights.light_buffers[2].as_entire_binding(),
-                    r.lights.lightmaps.probe_buffer.as_entire_binding(),
-                    r.lights.ltc.as_entire_binding(),
-                    r.lights.caustic_grid.as_entire_binding(),
-                    wgpu::BindingResource::TextureView(r.ssr.off_view()),
-                ],
+                    clusters: [&r.lights.light_buffers[1], &r.lights.light_buffers[2]],
+                    cubes: [&ibl.irradiance, &ibl.prefiltered],
+                    ssr: r.ssr.off_view(),
+                }),
             )
         };
         c.record(cx.encoder, &r.lights.ibl, frame, cx.sky_group);

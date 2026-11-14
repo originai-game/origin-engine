@@ -215,22 +215,12 @@ impl crate::Renderer {
                     &self.device,
                     "frame (view)",
                     &self.frame_layout,
-                    &[
-                        slot.frame_buffer.as_entire_binding(),
-                        wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
-                        wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
-                        wgpu::BindingResource::TextureView(&ibl.irradiance),
-                        wgpu::BindingResource::TextureView(&ibl.prefiltered),
-                        wgpu::BindingResource::TextureView(&ibl.brdf_lut),
-                        wgpu::BindingResource::Sampler(&ibl.sampler),
-                        self.lights.light_buffers[0].as_entire_binding(),
-                        slot.light_buffers[1].as_entire_binding(),
-                        slot.light_buffers[2].as_entire_binding(),
-                        self.lights.lightmaps.probe_buffer.as_entire_binding(),
-                        self.lights.ltc.as_entire_binding(),
-                        self.lights.caustic_grid.as_entire_binding(),
-                        wgpu::BindingResource::TextureView(self.ssr.off_view()),
-                    ],
+                    &self.frame_entries(super::FrameGroupParts {
+                        uniform: slot.frame_buffer.as_entire_binding(),
+                        clusters: [&slot.light_buffers[1], &slot.light_buffers[2]],
+                        cubes: [&ibl.irradiance, &ibl.prefiltered],
+                        ssr: self.ssr.off_view(),
+                    }),
                 );
                 let fx = crate::fx::fx_group(
                     &self.device,

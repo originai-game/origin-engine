@@ -238,30 +238,23 @@ impl Renderer {
             c.restart();
         }
         let ibl = self.lights.ibl.views();
-        let entries = [
-            self.lights.frame_buffer.as_entire_binding(),
-            wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
-            wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
-            wgpu::BindingResource::TextureView(&ibl.irradiance),
-            wgpu::BindingResource::TextureView(&ibl.prefiltered),
-            wgpu::BindingResource::TextureView(&ibl.brdf_lut),
-            wgpu::BindingResource::Sampler(&ibl.sampler),
-            self.lights.light_buffers[0].as_entire_binding(),
-            self.lights.light_buffers[1].as_entire_binding(),
-            self.lights.light_buffers[2].as_entire_binding(),
-            self.lights.lightmaps.probe_buffer.as_entire_binding(),
-            self.lights.ltc.as_entire_binding(),
-            self.lights.caustic_grid.as_entire_binding(),
+        let entries = self.frame_entries(FrameGroupParts {
+            uniform: self.lights.frame_buffer.as_entire_binding(),
+            clusters: [&self.lights.light_buffers[1], &self.lights.light_buffers[2]],
+            cubes: [&ibl.irradiance, &ibl.prefiltered],
             // The main camera's reflections (ssr.rs; `Frame.ssr` switches
             // them, off in the planar reflections' uniforms).
-            wgpu::BindingResource::TextureView(self.ssr.frame_view()),
-        ];
+            ssr: self.ssr.frame_view(),
+        });
         let group = bind_group(&self.device, "frame", &self.frame_layout, &entries);
         let reflection_group = (0..self.reflections.reflection_buffer.len()).map(|k| {
-            let mut reflected = entries.clone();
-            reflected[0] = self.reflections.reflection_buffer[k].as_entire_binding();
-            reflected[8] = self.reflections.reflection_light_buffers[k][1].as_entire_binding();
-            reflected[9] = self.reflections.reflection_light_buffers[k][2].as_entire_binding();
+            let clusters = &self.reflections.reflection_light_buffers[k];
+            let reflected = self.frame_entries(FrameGroupParts {
+                uniform: self.reflections.reflection_buffer[k].as_entire_binding(),
+                clusters: [&clusters[1], &clusters[2]],
+                cubes: [&ibl.irradiance, &ibl.prefiltered],
+                ssr: self.ssr.frame_view(),
+            });
             bind_group(
                 &self.device,
                 "frame (planar reflection)",

@@ -76,28 +76,19 @@ impl Renderer {
             // The reflections' read (frame.wgsl ssr_tex), whose rows the
             // uniforms switch: on in the main camera's and its probes'.
             let ssr_view = self.ssr.frame_view();
+            let clusters = [&self.lights.light_buffers[1], &self.lights.light_buffers[2]];
             let group_in = |layout: &wgpu::BindGroupLayout,
                             arena: Option<&wgpu::Buffer>,
                             label: &str,
                             uniform: wgpu::BindingResource,
                             a: &wgpu::TextureView,
                             b: &wgpu::TextureView| {
-                let mut entries = vec![
+                let mut entries = self.frame_entries(FrameGroupParts {
                     uniform,
-                    wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
-                    wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
-                    wgpu::BindingResource::TextureView(a),
-                    wgpu::BindingResource::TextureView(b),
-                    wgpu::BindingResource::TextureView(&ibl.brdf_lut),
-                    wgpu::BindingResource::Sampler(&ibl.sampler),
-                    self.lights.light_buffers[0].as_entire_binding(),
-                    self.lights.light_buffers[1].as_entire_binding(),
-                    self.lights.light_buffers[2].as_entire_binding(),
-                    self.lights.lightmaps.probe_buffer.as_entire_binding(),
-                    self.lights.ltc.as_entire_binding(),
-                    self.lights.caustic_grid.as_entire_binding(),
-                    wgpu::BindingResource::TextureView(ssr_view),
-                ];
+                    clusters,
+                    cubes: [a, b],
+                    ssr: ssr_view,
+                });
                 entries.extend(arena.map(|a| a.as_entire_binding()));
                 bind_group(&self.device, label, layout, &entries)
             };
@@ -117,22 +108,12 @@ impl Renderer {
                     &self.device,
                     "frame (reflection probe)",
                     &self.frame_layout,
-                    &[
-                        self.probes.binding(k),
-                        wgpu::BindingResource::TextureView(&self.shadows.cascade_map.array_view),
-                        wgpu::BindingResource::TextureView(&self.shadows.local_map.array_view),
-                        wgpu::BindingResource::TextureView(a),
-                        wgpu::BindingResource::TextureView(b),
-                        wgpu::BindingResource::TextureView(&ibl.brdf_lut),
-                        wgpu::BindingResource::Sampler(&ibl.sampler),
-                        self.lights.light_buffers[0].as_entire_binding(),
-                        self.lights.light_buffers[1].as_entire_binding(),
-                        self.lights.light_buffers[2].as_entire_binding(),
-                        self.lights.lightmaps.probe_buffer.as_entire_binding(),
-                        self.lights.ltc.as_entire_binding(),
-                        self.lights.caustic_grid.as_entire_binding(),
-                        wgpu::BindingResource::TextureView(ssr_view),
-                    ],
+                    &self.frame_entries(FrameGroupParts {
+                        uniform: self.probes.binding(k),
+                        clusters,
+                        cubes: [a, b],
+                        ssr: ssr_view,
+                    }),
                 )
             };
             let probe_groups: Vec<wgpu::BindGroup> = probe_frame.active[..probe_frame.sampled]
