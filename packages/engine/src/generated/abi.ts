@@ -790,6 +790,8 @@ export interface HostAbi<A, V> {
   og_story_start(world: number, desc: string | undefined): string;
   /** `og.story.view` */
   og_story_view(world: number, conversation: number): string;
+  /** `og.story.graph` */
+  og_story_graph(world: number, dialogue: string): string;
   /** `og.story.history` */
   og_story_history(world: number, conversation: number): string;
   /** `og.story.conversations` */
@@ -1678,6 +1680,7 @@ export const SYMBOLS: readonly string[] = [
   "og_story_parse",
   "og_story_start",
   "og_story_view",
+  "og_story_graph",
   "og_story_history",
   "og_story_conversations",
   "og_story_advance",

@@ -23,6 +23,7 @@ A choice the node offers (hidden ones are left out).
 | `visited` | `boolean` | `false` | — | — | — | Chosen before in this conversation (drawn muted). |
 | `kind` | `string` | `""` | — | — | — | The game's word for its icon: leave, trade, attack, lie... |
 | `check` | `CheckView \| null` | `null` | — | — | — | Its check, if it has one. |
+| `tags` | `unknown` | `null` | — | — | — | Its hashtags by name: `#hotspot:knife` is `{ hotspot: "knife" }`, `#default` is `{ default: "" }` (the line's own `#line` included). |
 
 ```ogt
 struct ChoiceView {
@@ -40,7 +41,8 @@ struct ChoiceView {
   field visited bool "Chosen before in this conversation (drawn muted)."
   field kind String "The game's word for its icon: leave, trade, attack, lie..."
   field check Option.CheckView "Its check, if it has one."
+  field tags Json "Its hashtags by name: `#hotspot:knife` is `{ hotspot: \"knife\" }`, `#default` is `{ default: \"\" }` (the line's own `#line` included)."
 }
 ```
 
-<sub>Module `story` line 112</sub>
+<sub>Module `story` line 115</sub>

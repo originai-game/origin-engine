@@ -21700,6 +21700,28 @@
     {
       "id": 360,
       "kind": "fn",
+      "path": "og.story.graph",
+      "symbol": "og_story_graph",
+      "module": "story",
+      "name": "graph",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "dialogue",
+          "type": "String",
+          "optional": false
+        }
+      ],
+      "returns": "Result<List<GraphNode>>",
+      "publish": true
+    },
+    {
+      "id": 360,
+      "kind": "fn",
       "path": "og.story.history",
       "symbol": "og_story_history",
       "module": "story",

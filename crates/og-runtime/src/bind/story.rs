@@ -450,7 +450,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
             let l = c.history.last();
             json!({
                 "conversation": id, "dialogue": c.dialogue, "node": c.node, "step": c.pc,
-                "wait": match c.wait { Wait::Line => "line", Wait::Choices => "choices", Wait::Ended => "ended" },
+                "wait": match c.wait { Wait::Line => "line", Wait::Choices => "choices", Wait::Held => "held", Wait::Ended => "ended" },
                 "line": l.map(|l| json!({ "seq": l.seq, "key": l.key, "args": args_json(&l.args), "voice": l.voice,
                     "voiceLeft": l.voice_left(s.tick), "seen": l.seen })),
                 "locals": c.locals.iter().map(|(k, v)| (k.clone(), val_json(v))).collect::<Map<_, _>>(),

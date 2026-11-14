@@ -30,6 +30,9 @@ macro_rules! __og_host_bindings_story {
             fn og_story_view(&self, world: u32, conversation: u32) -> String {
                 $crate::host_impl::json($crate::og_story_view(world, conversation))
             }
+            fn og_story_graph(&self, world: u32, dialogue: String) -> String {
+                $crate::host_impl::answer($crate::og_story_graph(world, dialogue))
+            }
             fn og_story_history(&self, world: u32, conversation: u32) -> String {
                 $crate::host_impl::json($crate::og_story_history(world, conversation))
             }

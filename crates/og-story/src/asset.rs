@@ -168,6 +168,10 @@ pub struct Choice {
     pub goto: Option<String>,
     /// Where an active check's miss goes.
     pub fail: Option<String>,
+    /// Its hashtags (`#hotspot:knife` is `hotspot` → `knife`, `#default`
+    /// `default` → empty), for the game or a module that reads them.
+    #[serde(default)]
+    pub tags: std::collections::BTreeMap<String, String>,
     pub line: usize,
 }
 

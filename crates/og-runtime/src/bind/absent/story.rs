@@ -81,6 +81,13 @@ pub fn og_story_view(_world: u32, _conversation: u32) -> Option<crate::host::wir
     None
 }
 
+pub fn og_story_graph(
+    _world: u32,
+    _dialogue: String,
+) -> Result<Vec<crate::host::wire::GraphNode>, String> {
+    Err(ABSENT.into())
+}
+
 pub fn og_story_history(_world: u32, _conversation: u32) -> Vec<crate::host::wire::StoryLine> {
     Vec::new()
 }

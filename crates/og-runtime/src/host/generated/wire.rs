@@ -13438,6 +13438,7 @@ pub struct StartDesc {
     pub node: String,
     pub cast: Value,
     pub vars: Value,
+    pub hold: String,
 }
 
 impl Default for StartDesc {
@@ -13447,6 +13448,7 @@ impl Default for StartDesc {
             node: Default::default(),
             cast: Default::default(),
             vars: Default::default(),
+            hold: Default::default(),
         }
     }
 }
@@ -13462,6 +13464,7 @@ impl FromJson for StartDesc {
             node: field(o, "node", d.node)?,
             cast: field(o, "cast", d.cast)?,
             vars: field(o, "vars", d.vars)?,
+            hold: field(o, "hold", d.hold)?,
         })
     }
 }
@@ -13473,6 +13476,7 @@ impl ToJson for StartDesc {
         o.insert("node".into(), self.node.to_json());
         o.insert("cast".into(), self.cast.to_json());
         o.insert("vars".into(), self.vars.to_json());
+        o.insert("hold".into(), self.hold.to_json());
         Value::Object(o)
     }
 }
@@ -13593,6 +13597,7 @@ pub struct ChoiceView {
     pub visited: bool,
     pub kind: String,
     pub check: Option<CheckView>,
+    pub tags: Value,
 }
 
 impl Default for ChoiceView {
@@ -13611,6 +13616,7 @@ impl Default for ChoiceView {
             visited: Default::default(),
             kind: Default::default(),
             check: Default::default(),
+            tags: Default::default(),
         }
     }
 }
@@ -13635,6 +13641,7 @@ impl FromJson for ChoiceView {
             visited: field(o, "visited", d.visited)?,
             kind: field(o, "kind", d.kind)?,
             check: field(o, "check", d.check)?,
+            tags: field(o, "tags", d.tags)?,
         })
     }
 }
@@ -13655,6 +13662,7 @@ impl ToJson for ChoiceView {
         o.insert("visited".into(), self.visited.to_json());
         o.insert("kind".into(), self.kind.to_json());
         o.insert("check".into(), self.check.to_json());
+        o.insert("tags".into(), self.tags.to_json());
         Value::Object(o)
     }
 }
@@ -13766,6 +13774,7 @@ pub struct DialogueView {
     pub choices: Vec<ChoiceView>,
     pub timer: Option<TimerView>,
     pub last_check: Option<RollView>,
+    pub held: bool,
     pub ended: bool,
 }
 
@@ -13788,6 +13797,7 @@ impl Default for DialogueView {
             choices: Default::default(),
             timer: Default::default(),
             last_check: Default::default(),
+            held: Default::default(),
             ended: Default::default(),
         }
     }
@@ -13816,6 +13826,7 @@ impl FromJson for DialogueView {
             choices: field(o, "choices", d.choices)?,
             timer: field(o, "timer", d.timer)?,
             last_check: field(o, "lastCheck", d.last_check)?,
+            held: field(o, "held", d.held)?,
             ended: field(o, "ended", d.ended)?,
         })
     }
@@ -13840,6 +13851,7 @@ impl ToJson for DialogueView {
         o.insert("choices".into(), self.choices.to_json());
         o.insert("timer".into(), self.timer.to_json());
         o.insert("lastCheck".into(), self.last_check.to_json());
+        o.insert("held".into(), self.held.to_json());
         o.insert("ended".into(), self.ended.to_json());
         Value::Object(o)
     }
@@ -13883,6 +13895,102 @@ impl ToJson for ChosenView {
         o.insert("index".into(), self.index.to_json());
         o.insert("text".into(), self.text.to_json());
         o.insert("spans".into(), self.spans.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `GraphChoice`: packages/knowledge/wiki/story.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GraphChoice {
+    pub index: u32,
+    pub id: String,
+    pub key: String,
+    pub tags: Value,
+    pub to: Vec<String>,
+}
+
+impl Default for GraphChoice {
+    fn default() -> Self {
+        Self {
+            index: Default::default(),
+            id: Default::default(),
+            key: Default::default(),
+            tags: Default::default(),
+            to: Default::default(),
+        }
+    }
+}
+
+impl FromJson for GraphChoice {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            index: field(o, "index", d.index)?,
+            id: field(o, "id", d.id)?,
+            key: field(o, "key", d.key)?,
+            tags: field(o, "tags", d.tags)?,
+            to: field(o, "to", d.to)?,
+        })
+    }
+}
+
+impl ToJson for GraphChoice {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("index".into(), self.index.to_json());
+        o.insert("id".into(), self.id.to_json());
+        o.insert("key".into(), self.key.to_json());
+        o.insert("tags".into(), self.tags.to_json());
+        o.insert("to".into(), self.to.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `GraphNode`: packages/knowledge/wiki/story.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GraphNode {
+    pub title: String,
+    pub headers: Value,
+    pub choices: Vec<GraphChoice>,
+    pub to: Vec<String>,
+}
+
+impl Default for GraphNode {
+    fn default() -> Self {
+        Self {
+            title: Default::default(),
+            headers: Default::default(),
+            choices: Default::default(),
+            to: Default::default(),
+        }
+    }
+}
+
+impl FromJson for GraphNode {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            title: field(o, "title", d.title)?,
+            headers: field(o, "headers", d.headers)?,
+            choices: field(o, "choices", d.choices)?,
+            to: field(o, "to", d.to)?,
+        })
+    }
+}
+
+impl ToJson for GraphNode {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("title".into(), self.title.to_json());
+        o.insert("headers".into(), self.headers.to_json());
+        o.insert("choices".into(), self.choices.to_json());
+        o.insert("to".into(), self.to.to_json());
         Value::Object(o)
     }
 }

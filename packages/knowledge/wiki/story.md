@@ -43,6 +43,8 @@ module story {
 | [`RollView`](story/type-RollView.md) | struct |  | An active check's roll. |
 | [`DialogueView`](story/type-DialogueView.md) | struct |  | What a conversation shows now: the line in full (the dialogue box paces its own reveal), its speaker and the choices, if it waits on them. |
 | [`ChosenView`](story/type-ChosenView.md) | struct |  | The choice made while a line was shown. |
+| [`GraphChoice`](story/type-GraphChoice.md) | struct |  | A choice in a dialogue's graph. |
+| [`GraphNode`](story/type-GraphNode.md) | struct |  | A node in a dialogue's graph. |
 | [`StoryLine`](story/type-StoryLine.md) | struct |  | A line of a conversation's backlog. |
 | [`BarkDesc`](story/type-BarkDesc.md) | desc struct |  | A bark to ask for. |
 | [`AmbientDesc`](story/type-AmbientDesc.md) | desc struct |  | An entity that barks on its own. |
@@ -56,6 +58,7 @@ module story {
 | [`og.story.parse`](story/fn-parse.md) | function | `(world: World, text: string): Result<StoryAsset>` | A dialogue or quest from text, now (tests and generated content; assets go through og cook). |
 | [`og.story.start`](story/fn-start.md) | function | `(world: World, desc?: StartDesc): Result<number>` | Start a conversation: it runs to its first line (or its choices) now, and og.DialogueShown is sent the next tick. |
 | [`og.story.view`](story/fn-view.md) | function | `(world: World, conversation: number): DialogueView \| null` | The current dialogue line and choices, with text and markup spans resolved in the active locale. |
+| [`og.story.graph`](story/fn-graph.md) | function | `(world: World, dialogue: string): Result<readonly GraphNode[]>` | A loaded dialogue's nodes and where each may lead, read from the dialogue, not a conversation: a flowchart, a check that every ending is reachable, the segments to warm before a choice. |
 | [`og.story.history`](story/fn-history.md) | function | `(world: World, conversation: number): readonly StoryLine[]` | A conversation's lines so far, oldest first, with the choice made on each (a VN backlog). |
 | [`og.story.conversations`](story/fn-conversations.md) | function | `(world: World): readonly number[]` | The conversations that exist (started and not stopped), oldest first. |
 | [`og.story.advance`](story/fn-advance.md) | function | `(world: World, conversation: number): Result<void>` | Move a conversation past its line: it runs to the next line, its choices or its end. |

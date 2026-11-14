@@ -10324,6 +10324,8 @@
         "RollView",
         "DialogueView",
         "ChosenView",
+        "GraphChoice",
+        "GraphNode",
         "StoryLine",
         "BarkDesc",
         "AmbientDesc",
@@ -10439,6 +10441,27 @@
           ],
           "returns": "Option<DialogueView>",
           "returnsDoc": "Null for a conversation that does not exist (never started, or stopped).",
+          "publish": true
+        },
+        {
+          "name": "graph",
+          "doc": "A loaded dialogue's nodes and where each may lead, read from the dialogue, not a conversation: a flowchart, a check that every ending is reachable, the segments to warm before a choice.\nSee `yarn §9`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "dialogue",
+              "type": "String",
+              "optional": false,
+              "doc": "The dialogue's name (StoryAsset.name)."
+            }
+          ],
+          "returns": "Result<List<GraphNode>>",
+          "returnsDoc": "Refused for a dialogue that is not loaded.",
           "publish": true
         },
         {
@@ -42537,6 +42560,11 @@
         "vars": {
           "description": "Starting values for #og-local variables, `{ mood: 2 }`.",
           "default": null
+        },
+        "hold": {
+          "type": "string",
+          "description": "A node header, such as `og-film`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.film starts its conversation with `og-film`.\nSee `yarn §9`.",
+          "default": ""
         }
       },
       "additionalProperties": false
@@ -42680,6 +42708,9 @@
             }
           ],
           "description": "Its check, if it has one."
+        },
+        "tags": {
+          "description": "Its hashtags by name: `#hotspot:knife` is `{ hotspot: \"knife\" }`, `#default` is `{ default: \"\" }` (the line's own `#line` included)."
         }
       },
       "required": [
@@ -42695,7 +42726,8 @@
         "reasonArgs",
         "visited",
         "kind",
-        "check"
+        "check",
+        "tags"
       ],
       "additionalProperties": false
     },
@@ -42861,6 +42893,10 @@
           ],
           "description": "The last active check this conversation rolled."
         },
+        "held": {
+          "type": "boolean",
+          "description": "It holds on entering its node (StartDesc.hold): og.story.advance runs the node; no line and no choices are shown until then.\nSee `yarn §9`."
+        },
         "ended": {
           "type": "boolean",
           "description": "The conversation has ended (the view keeps its last line)."
@@ -42883,6 +42919,7 @@
         "choices",
         "timer",
         "lastCheck",
+        "held",
         "ended"
       ],
       "additionalProperties": false
@@ -42915,6 +42952,82 @@
         "index",
         "text",
         "spans"
+      ],
+      "additionalProperties": false
+    },
+    "GraphChoice": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A choice in a dialogue's graph.",
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its ChoiceView.index."
+        },
+        "id": {
+          "type": "string",
+          "description": "Its id within the node."
+        },
+        "key": {
+          "type": "string",
+          "description": "Its i18n key."
+        },
+        "tags": {
+          "description": "Its hashtags, as ChoiceView.tags."
+        },
+        "to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The nodes it may lead to: every node its body may jump to, through a check's #fail too."
+        }
+      },
+      "required": [
+        "index",
+        "id",
+        "key",
+        "tags",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "GraphNode": {
+      "x-og-kind": "struct",
+      "x-og-module": "story",
+      "description": "A node in a dialogue's graph.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Its title."
+        },
+        "headers": {
+          "description": "Its header lines, `{ title: \"kitchen\", \"og-film\": \"segments/kitchen.ogt\" }`."
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphChoice"
+          },
+          "description": "Its choices, in order (hidden ones too)."
+        },
+        "to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The nodes its own steps may jump to, every branch of its conditions counted (a choice's leads are its own)."
+        }
+      },
+      "required": [
+        "title",
+        "headers",
+        "choices",
+        "to"
       ],
       "additionalProperties": false
     },

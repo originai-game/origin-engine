@@ -12,11 +12,13 @@
 //! | [`asset`] | [`Dialogue`], [`Quest`]: parsing and validation |
 //! | [`story`] | [`Story`], [`Library`]: conversations, quests, variables, event-counted objectives |
 //! | [`bark`] | barks and ambient lines: requests, cooldowns, priority |
+//! | [`graph`] | [`Dialogue::graph`]: its nodes and where each may lead |
 //! | [`save`] | [`Story::save`], [`Story::load`] |
 
 pub mod asset;
 pub mod bark;
 pub mod expr;
+pub mod graph;
 pub mod save;
 pub mod story;
 pub mod yarn;

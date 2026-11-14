@@ -1964,6 +1964,11 @@ pub fn og_story_view(world: u32, conversation: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_story_graph(world: u32, dialogue: String) -> String {
+    <Host as StoryApi>::og_story_graph(&Host, world, dialogue)
+}
+
+#[wasm_bindgen]
 pub fn og_story_history(world: u32, conversation: u32) -> String {
     <Host as StoryApi>::og_story_history(&Host, world, conversation)
 }

@@ -266,3 +266,24 @@ else if (v) og.story.choose(world, c.value, v.choices[0].index);
   stages themselves; og.story.quests lists them for a quest log.
 - Choice timers, bark durations and cooldowns count ticks, never wall time.
 - A world without loaded stories keeps its existing saves and hash.
+
+## 9. Hold at nodes, read hashtags and the graph
+
+Another module can pace a conversation by node instead of by line, as
+og.film paces one by its footage (`film`):
+
+- `StartDesc.hold` names a header. Entering a node that has that header
+  holds the conversation there: `DialogueView.held` is true, and no line
+  or choice shows until og.story.advance runs the node. A logic node
+  without the header runs through as before, so its `<<if>>` branches
+  and `<<jump>>`s cost no tick.
+- `ChoiceView.tags` holds every hashtag of a choice by name
+  (`#hotspot:knife` is `{ hotspot: "knife" }`, `#default` is
+  `{ default: "" }`). og.story reads only its own tags (`#check`, `#fail`,
+  `#timer`, `#reason`, `#hide`, `#kind`); the rest are for the game.
+- og.story.graph lists a loaded dialogue's nodes with their headers,
+  their choices and where each choice and each node's own steps may jump.
+  Every branch of a condition counts, so the graph is a superset of the
+  routes a playthrough can take. Use it for a flowchart, for a test that
+  walks every route to every ending, or to warm the segments a choice may
+  lead to.

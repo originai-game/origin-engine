@@ -50,6 +50,9 @@ pub enum Wait {
     Line,
     /// On a node's choices: `choose` picks one.
     Choices,
+    /// Entering a node with the conversation's `hold` header: `advance`
+    /// runs it.
+    Held,
     Ended,
 }
 
@@ -137,6 +140,11 @@ pub struct Conv {
     /// holds both the group and its selected member; both exit together.
     pub active_nodes: Vec<Vec<String>>,
     pub choice_values: BTreeMap<String, ChoiceValues>,
+    /// A node header: entering a node that has it holds the conversation
+    /// there ([`Wait::Held`]) until `advance` (empty: never).
+    pub hold: String,
+    /// The node it is in was let go from its hold.
+    pub released: bool,
 }
 
 /// A quest's state.
@@ -346,6 +354,20 @@ impl Story {
         vars: BTreeMap<String, Val>,
         node: Option<&str>,
     ) -> Result<u32, String> {
+        self.start_held(lib, dialogue, cast, vars, node, "")
+    }
+
+    /// [`Story::start`], holding on entering each node with header `hold`
+    /// ([`Wait::Held`]; empty: never).
+    pub fn start_held(
+        &mut self,
+        lib: &Library,
+        dialogue: &str,
+        cast: BTreeMap<String, u64>,
+        vars: BTreeMap<String, Val>,
+        node: Option<&str>,
+        hold: &str,
+    ) -> Result<u32, String> {
         let d = lib.dialogues.get(dialogue).cloned().ok_or_else(|| {
             format!("no dialogue '{dialogue}' is loaded (og.story.load it first)")
         })?;
@@ -391,6 +413,8 @@ impl Story {
                 last_roll: None,
                 stack: Vec::new(),
                 choice_values: BTreeMap::new(),
+                hold: hold.to_string(),
+                released: false,
                 active_nodes: vec![if d.untracked.contains(&at) {
                     Vec::new()
                 } else {
@@ -407,13 +431,14 @@ impl Story {
     /// Moves a conversation past its line.
     pub fn advance(&mut self, lib: &Library, id: u32) -> Result<(), String> {
         let d = self.resolve(lib, id)?;
-        let c = &self.convs[&id];
+        let c = self.convs.get_mut(&id).unwrap();
         match c.wait {
-            Wait::Line => {}
+            Wait::Line => c.pc += 1,
+            // Runs the node it holds at, from its first step.
+            Wait::Held => c.released = true,
             Wait::Choices => return Err("the conversation waits for a choice: choose one".into()),
             Wait::Ended => return Err("the conversation has ended".into()),
         }
-        self.convs.get_mut(&id).unwrap().pc += 1;
         self.run(lib, &d, id);
         self.settle(lib);
         Ok(())
@@ -426,6 +451,8 @@ impl Story {
         if c.wait != Wait::Choices {
             return Err(if c.wait == Wait::Ended {
                 "the conversation has ended".into()
+            } else if c.wait == Wait::Held {
+                "the conversation holds at a node: advance it".into()
             } else {
                 "the conversation shows a line, not choices: advance it".into()
             });
@@ -655,6 +682,7 @@ impl Story {
         let c = self.convs.get_mut(&id).unwrap();
         c.node = to.to_string();
         c.pc = 0;
+        c.released = false;
         self.enter(d, id, to);
     }
 
@@ -668,6 +696,17 @@ impl Story {
                 return;
             };
             let pc = c.pc as usize;
+            if pc == 0
+                && !c.released
+                && !c.hold.is_empty()
+                && node.id == node.title
+                && d.headers
+                    .get(&node.title)
+                    .is_some_and(|h| h.contains_key(&c.hold))
+            {
+                self.convs.get_mut(&id).unwrap().wait = Wait::Held;
+                return;
+            }
             let Some(step) = node.steps.get(pc) else {
                 if node.choices.is_empty() {
                     self.end(id);

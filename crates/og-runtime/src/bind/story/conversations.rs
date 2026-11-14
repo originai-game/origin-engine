@@ -29,7 +29,11 @@ pub fn og_story_start(world: u32, desc: Option<String>) -> Result<serde_json::Va
                 vars.insert(k.clone(), v);
             }
         }
-        story(world, |lib, s| s.start(lib, &dialogue, cast, vars, node))?.map(|c| json!(c))
+        let hold = d.hold;
+        story(world, |lib, s| {
+            s.start_held(lib, &dialogue, cast, vars, node, &hold)
+        })?
+        .map(|c| json!(c))
     })()
 }
 
@@ -155,6 +159,7 @@ pub fn og_story_view(world: u32, conversation: u32) -> Option<crate::host::wire:
                     visited: c.visited.contains(&format!("{}/{}", node.id, ch.id)),
                     kind: ch.kind.clone(),
                     check,
+                    tags: json!(ch.tags),
                 });
             }
             if let (Some((left, total)), Some((_, t))) = (c.timer, &node.timer) {
@@ -214,11 +219,43 @@ pub fn og_story_view(world: u32, conversation: u32) -> Option<crate::host::wire:
                 roll: r.roll,
                 passed: r.passed,
             }),
+            held: c.wait == Wait::Held,
             ended: c.wait == Wait::Ended,
         })
     })
     .ok()
     .flatten()
+}
+
+pub fn og_story_graph(
+    world: u32,
+    dialogue: String,
+) -> Result<Vec<crate::host::wire::GraphNode>, String> {
+    use crate::host::wire::{GraphChoice, GraphNode};
+    story(world, |lib, _| {
+        let d = lib.dialogues.get(&dialogue).ok_or_else(|| {
+            format!("no dialogue '{dialogue}' is loaded (og.story.load it first)")
+        })?;
+        Ok(d.graph()
+            .into_iter()
+            .map(|n| GraphNode {
+                title: n.title,
+                headers: json!(n.headers),
+                choices: n
+                    .choices
+                    .into_iter()
+                    .map(|c| GraphChoice {
+                        index: c.index,
+                        id: c.id,
+                        key: c.key,
+                        tags: json!(c.tags),
+                        to: c.to,
+                    })
+                    .collect(),
+                to: n.to,
+            })
+            .collect())
+    })?
 }
 
 pub fn og_story_history(world: u32, conversation: u32) -> Vec<crate::host::wire::StoryLine> {

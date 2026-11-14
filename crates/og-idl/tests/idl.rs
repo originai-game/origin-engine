@@ -381,6 +381,7 @@ fn the_repository_idl_is_valid_and_covers_the_design() {
             "parse",
             "start",
             "view",
+            "graph",
             "history",
             "conversations",
             "advance",

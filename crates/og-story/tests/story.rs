@@ -191,3 +191,84 @@ fn a_removed_line_refuses_to_replay_commands_and_quest_stage_migration_is_unchan
     );
     assert_eq!(qr.quest("rescue").unwrap().stage, "hunt");
 }
+
+/// og.film's pacing (StartDesc.hold): a node with the hold header holds
+/// on entry, before its first step runs; a logic node without it runs
+/// through; a held conversation saves and loads as held, and the loaded
+/// one goes on the same way.
+#[test]
+fn a_hold_header_holds_each_node_that_has_it_and_survives_a_save() {
+    const FILM: &str = r#"#og-profile:yarn-spinner-3.2.2
+#og-name:film
+title: kitchen
+og-film: segments/kitchen.ogt
+---
+<<declare $brave = false>>
+<<declare $count = 0>>
+<<set $count = $count + 1>>
+-> Take the knife #line:kitchen.knife
+    <<set $brave = true>>
+    <<jump branch>>
+-> Open the door #line:kitchen.door #default
+    <<jump branch>>
+===
+title: branch
+---
+<<if $brave>>
+    <<jump hall>>
+<<else>>
+    <<jump yard>>
+<<endif>>
+===
+title: hall
+og-film: segments/hall.ogt
+---
+<<set $count = $count + 10>>
+===
+title: yard
+og-film: segments/yard.ogt
+---
+===
+"#;
+    let mut l = Library::default();
+    let d = Dialogue::parse(FILM).unwrap();
+    l.dialogues.insert(d.name.clone(), Arc::new(d));
+    let mut s = Story::new(Rng::new(3).fork("story"));
+    let c = s
+        .start_held(
+            &l,
+            "film",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            None,
+            "og-film",
+        )
+        .unwrap();
+    let d = l.dialogues["film"].clone();
+    let at = |s: &Story| {
+        let block = d.node(&s.convs[&c].node).unwrap();
+        (block.title.clone(), s.convs[&c].wait)
+    };
+    assert_eq!(at(&s), ("kitchen".into(), Wait::Held));
+    assert_eq!(
+        s.get(&l, "count"),
+        Some(Val::Num(0.0)),
+        "nothing in the node runs before it is let go"
+    );
+    assert!(s.choose(&l, c, 0).is_err(), "no choice while it holds");
+    s.advance(&l, c).unwrap();
+    assert_eq!(at(&s), ("kitchen".into(), Wait::Choices));
+    assert_eq!(s.get(&l, "count"), Some(Val::Num(1.0)));
+    s.choose(&l, c, 0).unwrap();
+    // `branch` has no og-film header: it runs through to hall, which holds.
+    assert_eq!(at(&s), ("hall".into(), Wait::Held));
+    let mut a = Vec::new();
+    s.save(&mut a);
+    let mut back = Story::load(&a).unwrap();
+    assert_eq!(at(&back), ("hall".into(), Wait::Held));
+    for st in [&mut s, &mut back] {
+        st.advance(&l, c).unwrap();
+        assert_eq!(st.convs[&c].wait, Wait::Ended);
+        assert_eq!(st.get(&l, "count"), Some(Val::Num(11.0)));
+    }
+}

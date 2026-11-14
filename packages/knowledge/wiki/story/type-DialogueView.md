@@ -26,6 +26,7 @@ What a conversation shows now: the line in full (the dialogue box paces its own 
 | `choices` | `readonly ChoiceView[]` | `[]` | — | — | — | The choices, when it waits on them; empty while a line waits for og.story.advance. |
 | `timer` | `TimerView \| null` | `null` | — | — | — | The choice timer, while it runs. |
 | `lastCheck` | `RollView \| null` | `null` | — | — | — | The last active check this conversation rolled. |
+| `held` | `boolean` | `false` | — | — | — | It holds on entering its node (StartDesc.hold): og.story.advance runs the node; no line and no choices are shown until then. See `yarn §9`. |
 | `ended` | `boolean` | `false` | — | — | — | The conversation has ended (the view keeps its last line). |
 
 ```ogt
@@ -49,8 +50,11 @@ struct DialogueView {
   field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
   field timer Option.TimerView "The choice timer, while it runs."
   field lastCheck Option.RollView "The last active check this conversation rolled."
+  field held bool "It holds on entering its node (StartDesc.hold): og.story.advance runs the node; no line and no choices are shown until then." {
+    guide "yarn §9"
+  }
   field ended bool "The conversation has ended (the view keeps its last line)."
 }
 ```
 
-<sub>Module `story` line 144</sub>
+<sub>Module `story` line 148</sub>

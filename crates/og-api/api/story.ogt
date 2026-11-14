@@ -89,6 +89,9 @@ module story {
     field node String "The node to start at (empty: the first non-bark Yarn node)."
     field cast Json "Speaker ids to the entities playing them, `{ smith: entity }`: SpeakerView.entity (for a speech bubble or a camera)."
     field vars Json "Starting values for #og-local variables, `{ mood: 2 }`."
+    field hold String "A node header, such as `og-film`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.film starts its conversation with `og-film`." {
+      guide "yarn §9"
+    }
   }
 
   struct SpeakerView {
@@ -124,6 +127,7 @@ module story {
     field visited bool "Chosen before in this conversation (drawn muted)."
     field kind String "The game's word for its icon: leave, trade, attack, lie..."
     field check Option.CheckView "Its check, if it has one."
+    field tags Json "Its hashtags by name: `#hotspot:knife` is `{ hotspot: \"knife\" }`, `#default` is `{ default: \"\" }` (the line's own `#line` included)."
   }
 
   struct TimerView {
@@ -161,6 +165,9 @@ module story {
     field choices List.ChoiceView "The choices, when it waits on them; empty while a line waits for og.story.advance."
     field timer Option.TimerView "The choice timer, while it runs."
     field lastCheck Option.RollView "The last active check this conversation rolled."
+    field held bool "It holds on entering its node (StartDesc.hold): og.story.advance runs the node; no line and no choices are shown until then." {
+      guide "yarn §9"
+    }
     field ended bool "The conversation has ended (the view keeps its last line)."
   }
 
@@ -169,6 +176,23 @@ module story {
     field index u32 "Its ChoiceView.index."
     field text String "Its text, resolved in the active locale."
     field spans List.TextSpan "Localized Yarn attributes in Unicode scalar offsets."
+  }
+
+  struct GraphChoice {
+    doc "A choice in a dialogue's graph."
+    field index u32 "Its ChoiceView.index."
+    field id String "Its id within the node."
+    field key String "Its i18n key."
+    field tags Json "Its hashtags, as ChoiceView.tags."
+    field to List.String "The nodes it may lead to: every node its body may jump to, through a check's #fail too."
+  }
+
+  struct GraphNode {
+    doc "A node in a dialogue's graph."
+    field title String "Its title."
+    field headers Json "Its header lines, `{ title: \"kitchen\", \"og-film\": \"segments/kitchen.ogt\" }`."
+    field choices List.GraphChoice "Its choices, in order (hidden ones too)."
+    field to List.String "The nodes its own steps may jump to, every branch of its conditions counted (a choice's leads are its own)."
   }
 
   struct StoryLine {
@@ -305,6 +329,15 @@ module story {
     param world World "The world."
     param conversation u32 "The conversation."
     returns Option.DialogueView "Null for a conversation that does not exist (never started, or stopped)."
+  }
+
+  fn graph {
+    doc "A loaded dialogue's nodes and where each may lead, read from the dialogue, not a conversation: a flowchart, a check that every ending is reachable, the segments to warm before a choice."
+    aliases "flowchart, story graph, branching map, node graph, route map"
+    param world World "The world."
+    param dialogue String "The dialogue's name (StoryAsset.name)."
+    returns Result.List.GraphNode "Refused for a dialogue that is not loaded."
+    guide "yarn §9"
   }
 
   fn history {

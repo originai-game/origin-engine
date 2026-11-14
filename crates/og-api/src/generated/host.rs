@@ -893,6 +893,8 @@ pub trait StoryApi: Wire {
     fn og_story_start(&self, world: u32, desc: Option<String>) -> String;
     /// `og.story.view`
     fn og_story_view(&self, world: u32, conversation: u32) -> String;
+    /// `og.story.graph`
+    fn og_story_graph(&self, world: u32, dialogue: String) -> String;
     /// `og.story.history`
     fn og_story_history(&self, world: u32, conversation: u32) -> String;
     /// `og.story.conversations`
@@ -1854,6 +1856,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_story_parse",
     "og_story_start",
     "og_story_view",
+    "og_story_graph",
     "og_story_history",
     "og_story_conversations",
     "og_story_advance",

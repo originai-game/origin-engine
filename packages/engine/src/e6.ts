@@ -54,6 +54,7 @@ export const story = Object.freeze({
   parse: (world: W, text: string) => parse(abi().og_story_parse(world.id, text)),
   start: (world: W, desc?: unknown) => parse(abi().og_story_start(world.id, json(desc))),
   view: (world: W, conversation: number) => parse(abi().og_story_view(world.id, conversation)),
+  graph: (world: W, dialogue: string) => parse(abi().og_story_graph(world.id, dialogue)),
   history: (world: W, conversation: number) => parse(abi().og_story_history(world.id, conversation)),
   conversations: (world: W) => parse(abi().og_story_conversations(world.id)),
   advance: (world: W, conversation: number) => parse(abi().og_story_advance(world.id, conversation)),

@@ -2355,6 +2355,12 @@ pub fn og_story_view(env: Env, world: u32, conversation: u32) -> String {
     <Host as StoryApi>::og_story_view(&Host, world, conversation)
 }
 
+#[napi(js_name = "og_story_graph")]
+pub fn og_story_graph(env: Env, world: u32, dialogue: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as StoryApi>::og_story_graph(&Host, world, dialogue)
+}
+
 #[napi(js_name = "og_story_history")]
 pub fn og_story_history(env: Env, world: u32, conversation: u32) -> String {
     let _env = crate::EnvScope::enter(&env);

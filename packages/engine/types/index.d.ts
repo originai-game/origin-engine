@@ -23619,6 +23619,13 @@ export interface StartDesc {
    * @default null
    */
   readonly vars?: unknown;
+  /**
+   * A node header, such as `og-film`: entering a node that has it holds the conversation there (DialogueView.held) until og.story.advance runs the node. Empty: never. og.film starts its conversation with `og-film`.
+   * See `yarn §9`.
+   *
+   * @default ""
+   */
+  readonly hold?: string;
 }
 
 /** Who speaks a line. */
@@ -23681,6 +23688,10 @@ export interface ChoiceView {
   readonly kind: string;
   /** Its check, if it has one. */
   readonly check: CheckView | null;
+  /**
+   * Its hashtags by name: `#hotspot:knife` is `{ hotspot: "knife" }`, `#default` is `{ default: "" }` (the line's own `#line` included).
+   */
+  readonly tags: unknown;
 }
 
 /** A node's choice timer. */
@@ -23754,6 +23765,11 @@ export interface DialogueView {
   readonly timer: TimerView | null;
   /** The last active check this conversation rolled. */
   readonly lastCheck: RollView | null;
+  /**
+   * It holds on entering its node (StartDesc.hold): og.story.advance runs the node; no line and no choices are shown until then.
+   * See `yarn §9`.
+   */
+  readonly held: boolean;
   /** The conversation has ended (the view keeps its last line). */
   readonly ended: boolean;
 }
@@ -23766,6 +23782,34 @@ export interface ChosenView {
   readonly text: string;
   /** Localized Yarn attributes in Unicode scalar offsets. */
   readonly spans: readonly TextSpan[];
+}
+
+/** A choice in a dialogue's graph. */
+export interface GraphChoice {
+  /** Its ChoiceView.index. */
+  readonly index: number;
+  /** Its id within the node. */
+  readonly id: string;
+  /** Its i18n key. */
+  readonly key: string;
+  /** Its hashtags, as ChoiceView.tags. */
+  readonly tags: unknown;
+  /** The nodes it may lead to: every node its body may jump to, through a check's #fail too. */
+  readonly to: readonly string[];
+}
+
+/** A node in a dialogue's graph. */
+export interface GraphNode {
+  /** Its title. */
+  readonly title: string;
+  /** Its header lines, `{ title: "kitchen", "og-film": "segments/kitchen.ogt" }`. */
+  readonly headers: unknown;
+  /** Its choices, in order (hidden ones too). */
+  readonly choices: readonly GraphChoice[];
+  /**
+   * The nodes its own steps may jump to, every branch of its conditions counted (a choice's leads are its own).
+   */
+  readonly to: readonly string[];
 }
 
 /** A line of a conversation's backlog. */
@@ -23988,6 +24032,7 @@ export interface QuestView {
   /** The current stage's objectives. */
   readonly objectives: readonly ObjectiveView[];
 }
+
 
 
 
@@ -35979,6 +36024,15 @@ export declare namespace og {
      * @returns Null for a conversation that does not exist (never started, or stopped).
      */
     function view(world: World, conversation: number): DialogueView | null;
+    /**
+     * A loaded dialogue's nodes and where each may lead, read from the dialogue, not a conversation: a flowchart, a check that every ending is reachable, the segments to warm before a choice.
+     * See `yarn §9`.
+     *
+     * @param world The world.
+     * @param dialogue The dialogue's name (StoryAsset.name).
+     * @returns Refused for a dialogue that is not loaded.
+     */
+    function graph(world: World, dialogue: string): Result<readonly GraphNode[]>;
     /**
      * A conversation's lines so far, oldest first, with the choice made on each (a VN backlog).
      *

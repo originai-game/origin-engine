@@ -115,6 +115,11 @@ pub fn without_comment(s: &str) -> &str {
     s
 }
 
+/// The `og-` headers a dialogue node may carry: og.story's `og-speaker`,
+/// og.film's segment, chapter and ending (the other `og-` headers are a
+/// bark's).
+const NODE_HEADERS: [&str; 4] = ["og-speaker", "og-film", "og-film-chapter", "og-film-ending"];
+
 fn split_tags(s: &str, line: usize) -> Result<(&str, BTreeMap<&str, &str>), String> {
     let mut escaped = false;
     let mut quoted = false;
@@ -806,6 +811,7 @@ impl Compiler {
                                 steps: Vec::new(),
                                 goto: Some(target),
                                 fail,
+                                tags: tags.clone(),
                                 line: line.line,
                             });
                         }
@@ -1233,11 +1239,14 @@ pub fn compile_with_functions(
         } else {
             if let Some(key) = headers
                 .keys()
-                .find(|k| k.starts_with("og-") && **k != "og-speaker")
+                .find(|k| k.starts_with("og-") && !NODE_HEADERS.contains(*k))
             {
                 return Err(error(
                     first,
-                    format!("{key} requires an og-topic bark node"),
+                    format!(
+                        "{key} requires an og-topic bark node (a dialogue node takes {})",
+                        NODE_HEADERS.join(", ")
+                    ),
                 ));
             }
             if c.dialogue.start.is_empty() {

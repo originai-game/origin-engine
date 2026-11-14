@@ -22,7 +22,9 @@ const MAGIC: &[u8; 4] = b"OGST";
 /// Version 6 checkpoints offered option values, including random arguments.
 /// Version 7 retains the chosen option's arguments in dialogue history.
 /// Version 8 checkpoints option reason arguments and check targets.
-pub const SAVE_VERSION: u8 = 8;
+/// Version 9 adds a conversation's hold header and whether its node was
+/// let go from it (og.story's StartDesc.hold), and the held wait.
+pub const SAVE_VERSION: u8 = 9;
 
 struct W<'a>(&'a mut Vec<u8>);
 
@@ -239,6 +241,7 @@ impl Story {
                 Wait::Line => 0,
                 Wait::Choices => 1,
                 Wait::Ended => 2,
+                Wait::Held => 3,
             });
             w.vars(&c.locals);
             w.u32(c.choice_values.len() as u32);
@@ -298,6 +301,8 @@ impl Story {
                 }
                 None => w.u8(0),
             }
+            w.str(&c.hold);
+            w.u8(u8::from(c.released));
         }
         w.u32(self.quests.len() as u32);
         for q in &self.quests {
@@ -500,6 +505,7 @@ impl Story {
                 0 => Wait::Line,
                 1 => Wait::Choices,
                 2 => Wait::Ended,
+                3 if v >= 9 => Wait::Held,
                 w => return Err(format!("the story's saved state has a wait of kind {w}")),
             };
             let locals = r.vars()?;
@@ -576,6 +582,11 @@ impl Story {
                 None
             };
             let last_roll = if r.bool()? { Some(r.roll()?) } else { None };
+            let (hold, released) = if v >= 9 {
+                (r.str()?, r.bool()?)
+            } else {
+                (String::new(), false)
+            };
             s.convs.insert(
                 id,
                 Conv {
@@ -592,6 +603,8 @@ impl Story {
                     last_roll,
                     stack,
                     active_nodes,
+                    hold,
+                    released,
                 },
             );
         }
