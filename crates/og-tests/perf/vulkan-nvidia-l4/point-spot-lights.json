@@ -1,0 +1,11 @@
+{
+  "scene": "point-spot-lights",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [1.042, 1.109, 1.110, 1.116, 1.116, 1.117, 1.118],
+  "frame_ms": 1.042,
+  "passes_ms": {"local-shadow.0": 0.000, "local-shadow.1": 0.000, "local-shadow.2": 0.000, "local-shadow.3": 0.000, "local-shadow.4": 0.000, "local-shadow.5": 0.000, "local-shadow.6": 0.000, "prepass": 0.045, "contact": 0.452, "main": 0.521, "tonemap": 0.027}
+}

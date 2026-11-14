@@ -1,0 +1,11 @@
+{
+  "scene": "showcase-capture",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [14.262, 14.316, 16.174, 17.156, 17.931, 18.633, 19.243],
+  "frame_ms": 14.262,
+  "passes_ms": {"cascade.0": 0.000, "cascade.1": 0.000, "cascade.2": 0.000, "local-shadow.0": 0.000, "local-shadow.1": 0.000, "local-shadow.2": 0.000, "local-shadow.3": 0.000, "local-shadow.4": 0.000, "local-shadow.5": 0.000, "local-shadow.6": 0.000, "prepass": 0.238, "ao": 1.196, "ao-blur": 0.134, "contact": 1.511, "particles": 0.030, "main": 2.959, "taa": 0.198, "meter": 0.037, "meter-reduce.0": 0.054, "meter-reduce.1": 0.049, "bloom-prefilter": 0.069, "bloom-down.0": 0.032, "bloom-down.1": 0.022, "bloom-down.2": 0.020, "bloom-down.3": 0.020, "bloom-down.4": 0.020, "bloom-up.4": 0.017, "bloom-up.3": 0.017, "bloom-up.2": 0.018, "bloom-up.1": 0.024, "bloom-up.0": 0.042, "tonemap": 0.142}
+}

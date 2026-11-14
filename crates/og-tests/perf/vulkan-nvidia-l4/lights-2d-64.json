@@ -1,0 +1,11 @@
+{
+  "scene": "lights-2d-64",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [0.849, 0.850, 0.850, 0.852, 0.852, 0.853, 0.855],
+  "frame_ms": 0.849,
+  "passes_ms": {"lights-2d": 0.355, "main": 0.033, "tonemap": 0.025}
+}

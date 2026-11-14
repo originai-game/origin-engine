@@ -1,0 +1,6 @@
+{
+  "scene": "raycast-record-20k",
+  "cpu": "intel-r-xeon-r-cpu-2-20ghz",
+  "meshes": 20000,
+  "read_ms": 2.140
+}

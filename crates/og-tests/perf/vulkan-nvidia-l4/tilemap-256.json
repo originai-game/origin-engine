@@ -1,0 +1,11 @@
+{
+  "scene": "tilemap-256",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [0.317, 0.318, 0.319, 0.321, 0.321, 0.322, 0.326],
+  "frame_ms": 0.317,
+  "passes_ms": {"main": 0.047, "tonemap": 0.023}
+}

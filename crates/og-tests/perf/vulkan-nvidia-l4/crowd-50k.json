@@ -1,0 +1,11 @@
+{
+  "scene": "crowd-50k",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [9.220, 9.246, 9.249, 9.260, 9.321, 9.389, 9.428],
+  "frame_ms": 9.220,
+  "passes_ms": {"cull: crowds": 0.299, "cascade.0": 0.023, "cascade.1": 0.078, "cascade.2": 0.667, "prepass": 1.939, "main": 2.527, "taa": 0.066, "tonemap": 0.026}
+}

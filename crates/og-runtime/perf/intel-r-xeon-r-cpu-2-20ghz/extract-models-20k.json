@@ -1,0 +1,6 @@
+{
+  "scene": "extract-models-20k",
+  "cpu": "intel-r-xeon-r-cpu-2-20ghz",
+  "instances": 20000,
+  "frame_ms": 2.693
+}

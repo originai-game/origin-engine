@@ -1,0 +1,11 @@
+{
+  "scene": "sprites-20k",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [6.021, 6.094, 6.113, 6.145, 6.441, 6.486, 6.687],
+  "frame_ms": 6.021,
+  "passes_ms": {"main": 0.384, "tonemap": 0.105}
+}

@@ -1,0 +1,11 @@
+{
+  "scene": "spheres-20k-moving",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [3.403, 3.416, 3.419, 3.436, 3.457, 3.460, 3.468],
+  "frame_ms": 3.403,
+  "passes_ms": {"cascade.0": 0.007, "cascade.1": 0.015, "cascade.2": 0.560, "main": 1.724, "tonemap": 0.026}
+}

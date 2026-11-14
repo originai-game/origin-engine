@@ -1,0 +1,11 @@
+{
+  "scene": "gltf-reference",
+  "tier": "vulkan",
+  "adapter": "NVIDIA L4",
+  "width": 1280,
+  "height": 720,
+  "frames_per_run": 100,
+  "runs_ms": [0.411, 0.468, 0.476, 0.476, 0.477, 0.478, 0.482],
+  "frame_ms": 0.411,
+  "passes_ms": {"cascade.0": 0.000, "cascade.1": 0.000, "cascade.2": 0.000, "main": 0.410, "tonemap": 0.028}
+}
