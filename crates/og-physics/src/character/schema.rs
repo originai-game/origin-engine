@@ -63,6 +63,10 @@ pub struct CharacterController {
     /// whose friction holds more (a heavy crate) does not move.
     #[reflect(name = "pushStrength", min = 0, unit = "N", default = 1000, tunable)]
     pub push_strength: f32,
+    /// The share of `move` it makes fully under water, with og.Buoyancy
+    /// beside it: wading and swimming slow it by how much of it is under.
+    #[reflect(name = "waterSpeed", min = 0, max = 1, default = 0.5, tunable)]
+    pub water_speed: f32,
     /// Written: standing on walkable ground after the step.
     pub grounded: bool,
     /// Written: sliding down a slope steeper than maxSlope.
@@ -97,6 +101,7 @@ impl Default for CharacterController {
             max_fall_speed: 40.0,
             push_bodies: true,
             push_strength: DEFAULT_PUSH_STRENGTH,
+            water_speed: 0.5,
             grounded: false,
             sliding: false,
             velocity: Vec3::ZERO,

@@ -2,7 +2,7 @@
     doc "A kinematic character (3D, or top-down 2D): the entity's capsule (or any og.Collider) moved by `move` each tick, sliding along walls, climbing slopes up to `maxSlope` and steps up to `stepHeight`, snapped to the ground, carried by the moving platform it stands on and falling by gravity. It keeps `skin` off every surface. What blocks it is every solid collider its og.Collider's `layers` and `mask` interact with, as for bodies. It needs an og.Transform and an og.Collider; the step makes it a kinematic body that pushes dynamic bodies (`pushBodies`, `pushStrength`)."
     guide "physics §6"
     aliases "player controller, kinematic character, Unity CharacterController, Godot CharacterBody3D"
-    field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0). Set it every tick." {
+    field move Vector3 "The wanted velocity across the ground (m/s, world space; y is ignored unless gravityScale is 0, or it is in water with og.Buoyancy, where y is its stroke down or up). Set it every tick." {
       unit mps
     }
     field jump bool "Held to jump: a jump starts on the tick it becomes true while grounded (or in coyote time)."
@@ -62,6 +62,14 @@
       default 1000
       min 0
       unit newton
+      tunable true
+    }
+    field waterSpeed f32 "The share of `move` it makes fully under water, with og.Buoyancy beside it: wading and swimming slow it by how much of it is under." {
+      guide "physics §8"
+      default 0.5
+      min 0
+      max 1
+      unit ratio
       tunable true
     }
     field grounded bool "Written: standing on walkable ground after the step." {

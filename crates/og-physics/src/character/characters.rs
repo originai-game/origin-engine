@@ -9,7 +9,10 @@ use super::*;
 /// water it displaces (it counts as density 1, the colliders' default),
 /// its rise and fall slowed against the water's, and carried by the
 /// water's flow, each by how much of it is under; its `submerged` is
-/// written unless its limp ragdoll's bones wrote it.
+/// written unless its limp ragdoll's bones wrote it. It wades and swims:
+/// its `move` is slowed to `waterSpeed` of itself by how much of it is
+/// under, and `move`'s y is its stroke, down as deep as the water goes and
+/// up as far as it floats ([`stroke`]).
 pub(crate) fn characters(
     scene: &Scene,
     settings: &Physics,
@@ -50,6 +53,8 @@ pub(crate) fn characters(
             _ => Vec3::ZERO,
         };
         let swim = swims(scene, &shared.waters, sim, handle, b.entity.to_bits());
+        // The share of its `move` it makes through the water it is in.
+        let pace = swim.map_or(1.0, |s| 1.0 - (1.0 - c.water_speed.clamp(0.0, 1.0)) * s.1);
         let g = flat(settings.gravity) * c.gravity_scale;
         let mut vertical = if c.gravity_scale > 0.0 {
             c.velocity.y
@@ -76,6 +81,7 @@ pub(crate) fn characters(
                 let held = (-g.y + water.acceleration.y).max(0.0);
                 vertical += b.water_density * under * held * dt;
                 vertical -= (vertical - water.velocity.y) * (b.drag * dt).min(1.0) * under;
+                vertical = stroke(vertical, c.movement.y * pace, &b, under, water.velocity.y);
             }
             vertical = vertical.max(-c.max_fall_speed);
             if c.grounded && !jumped && vertical < 0.0 {
@@ -83,11 +89,12 @@ pub(crate) fn characters(
                 vertical = vertical.max(g.y * dt);
             }
         }
-        let across = if c.gravity_scale > 0.0 {
-            Vec3::new(c.movement.x, 0.0, c.movement.z)
-        } else {
-            c.movement
-        };
+        let across = pace
+            * if c.gravity_scale > 0.0 {
+                Vec3::new(c.movement.x, 0.0, c.movement.z)
+            } else {
+                c.movement
+            };
         // The water's flow carries it (a river's current, a wave's orbit):
         // afloat with the water, as a floating body's drag leaves it; on
         // the ground by how much of it is under, the ground holding the rest.
@@ -198,4 +205,28 @@ pub(crate) fn characters(
         }
     }
     Ok(())
+}
+
+/// How much of a swimmer stays under when it treads water it would sink
+/// in: its head is out.
+const HEAD_OUT: f32 = 0.9;
+
+/// A character's vertical speed in the water with its stroke, `wanted`
+/// (m/s: `move`'s y at the pace the water leaves it), where `vertical` is
+/// what gravity, the lift and the drag gave it: a stroke down dives at
+/// that speed against any lift; a stroke up rises at it while the
+/// character is deeper than it floats (or, where it sinks, than its head
+/// out of the water) and fades to nothing there, so it comes up to the
+/// surface and never out of it. Both are speeds through the water, which
+/// rises and falls at `water`. No stroke leaves `vertical` as it is.
+fn stroke(vertical: f32, wanted: f32, b: &Buoyancy, under: f32, water: f32) -> f32 {
+    if wanted < 0.0 {
+        vertical.min(water + wanted)
+    } else if wanted > 0.0 {
+        let floats = (1.0 / b.water_density.max(1e-3)).min(HEAD_OUT);
+        let reach = ((under - floats) / (1.0 - floats)).clamp(0.0, 1.0);
+        vertical.max(water + wanted * reach)
+    } else {
+        vertical
+    }
 }

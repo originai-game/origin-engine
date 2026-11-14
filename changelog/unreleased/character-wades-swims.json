@@ -1,0 +1,9 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "og.CharacterController.waterSpeed",
+      "summary": "A character with og.Buoyancy wades and swims without a mode switch. Its `move` is slowed towards `waterSpeed` (0.5) of itself by how much of it is under, and `move`'s y is its stroke in the water: down it dives at that speed against any lift, up it rises to where it floats (or, where it sinks, to its head out of the water) and no higher. Wading is `grounded` with og.Buoyancy `submerged` above 0; swimming is not `grounded` with it above 0. A character with og.Buoyancy therefore moves slower in water than before: set `waterSpeed: 1` for the speed it had; a game that swam it with `gravityScale` 0 can leave gravity on and set `move`'s y instead."
+    }
+  ]
+}

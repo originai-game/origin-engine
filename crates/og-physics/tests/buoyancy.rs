@@ -432,6 +432,159 @@ fn a_character_with_buoyancy_floats_sinks_by_its_density_and_drifts_with_a_river
     assert!(y(&w, drifts).abs() < 0.04);
 }
 
+fn set_swimmer(w: &mut World, e: Entity, f: impl FnOnce(&mut CharacterController)) {
+    let mut c = w.get::<CharacterController>(e).unwrap();
+    f(&mut c);
+    w.insert(e, c).unwrap();
+}
+
+/// A static bed 80 m across whose top is at `top`.
+fn bed(w: &mut World, top: f32) {
+    spawn_static(
+        w,
+        at(0.0, top - 0.5, 0.0),
+        Collider::cuboid(Vec3::new(80.0, 1.0, 80.0)),
+    );
+}
+
+/// Wading slows a character by how much of it is under, towards its
+/// `waterSpeed`: on a bed 0.9 m down the 1.8 m capsule is half under and
+/// makes three quarters of its `move`; one whose `waterSpeed` is 0.2 makes
+/// six tenths; one with no og.Buoyancy is not in the water and walks at
+/// `move`. Each is grounded, in water lighter than cork's so the lift
+/// leaves it on the bed.
+#[test]
+fn a_wading_character_is_slowed_by_how_much_of_it_is_under() {
+    let (mut w, p) = world(3);
+    p.set_waters(vec![lake()]);
+    bed(&mut w, -0.9);
+    let still = Buoyancy {
+        water_density: 1.0,
+        ..Buoyancy::default()
+    };
+    let wades = swimmer(&mut w, 0.0, 0.2, Some(still));
+    let slow = swimmer(&mut w, 0.0, 0.2, Some(still));
+    let dry = swimmer(&mut w, 0.0, 0.2, None);
+    for (k, e) in [wades, slow, dry].into_iter().enumerate() {
+        let mut t = transform(&w, e);
+        t.position.z = 4.0 * k as f32;
+        w.insert(e, t).unwrap();
+    }
+    set_swimmer(&mut w, slow, |c| c.water_speed = 0.2);
+    run(&mut w, 60);
+    let x0 = [wades, slow, dry].map(|e| transform(&w, e).position.x);
+    for e in [wades, slow, dry] {
+        set_swimmer(&mut w, e, |c| c.movement = Vec3::new(2.0, -1.0, 0.0));
+    }
+    run(&mut w, 120);
+    let went = |k: usize, e: Entity| transform(&w, e).position.x - x0[k];
+    let under = w.get::<Buoyancy>(wades).unwrap().submerged;
+    assert!((under - 0.5).abs() < 0.03, "half under: {under}");
+    for e in [wades, slow, dry] {
+        assert!(w.get::<CharacterController>(e).unwrap().grounded);
+    }
+    // 2 m/s for 2 s, at 1 - (1 - waterSpeed) x under of it.
+    let (a, b, c) = (went(0, wades), went(1, slow), went(2, dry));
+    assert!((a - 4.0 * (1.0 - 0.5 * under)).abs() < 0.05, "wading {a}");
+    assert!((b - 4.0 * (1.0 - 0.8 * under)).abs() < 0.05, "slow {b}");
+    assert!((c - 4.0).abs() < 0.05, "dry {c}");
+    let v = w.get::<CharacterController>(wades).unwrap().velocity;
+    assert!((v.x - 2.0 * (1.0 - 0.5 * under)).abs() < 0.02, "{v}");
+}
+
+/// `move`'s y is a swimmer's stroke:
+/// - one floating half under dives at its stroke against cork's lift, at
+///   `waterSpeed` of it once fully under;
+/// - one a little lighter than the water, left under, drifts up at the
+///   lift's pace, and a stroke up brings it up at the stroke's, to where
+///   it floats and no higher;
+/// - one that sinks stands on the bed, rises on a stroke up to tread water
+///   with its head out, and sinks again when the stroke stops;
+/// - out of the water y is ignored, as ever.
+#[test]
+fn a_swimmer_dives_and_rises_on_its_stroke_and_never_leaves_the_water() {
+    let (mut w, p) = world(5);
+    p.set_waters(vec![lake()]);
+    bed(&mut w, -6.0);
+    let cork = swimmer(&mut w, 0.0, 0.5, Some(Buoyancy::default()));
+    let light = Buoyancy {
+        water_density: 1.1,
+        ..Buoyancy::default()
+    };
+    let strokes = swimmer(&mut w, 3.0, 0.0, Some(light));
+    let drifts = swimmer(&mut w, -3.0, 0.0, Some(light));
+    let lead = swimmer(
+        &mut w,
+        6.0,
+        0.5,
+        Some(Buoyancy {
+            water_density: 0.5,
+            ..Buoyancy::default()
+        }),
+    );
+    run(&mut w, 600);
+    let y = |w: &World, e: Entity| transform(w, e).position.y;
+    let under = |w: &World, e: Entity| w.get::<Buoyancy>(e).unwrap().submerged;
+    let controller = |w: &World, e: Entity| w.get::<CharacterController>(e).unwrap();
+    assert!(y(&w, cork).abs() < 0.04 && controller(&w, lead).grounded);
+    // Water 1.1 times its density floats it ten elevenths under: its
+    // middle 0.74 m down.
+    let floats = y(&w, strokes);
+    assert!((floats + 0.736).abs() < 0.03, "floating at {floats}");
+    // A dive: 1.5 m/s wanted, 0.75 of it half under and half of it under.
+    for e in [cork, strokes, drifts] {
+        set_swimmer(&mut w, e, |c| c.movement.y = -1.5);
+    }
+    run(&mut w, 180);
+    let v = controller(&w, cork).velocity.y;
+    assert!((v + 0.75).abs() < 0.02, "diving at {v}");
+    // Under after at most 0.9 m at 1.125 m/s, then 0.75 m/s: 2.3 to 2.6 m down.
+    let deep = y(&w, cork);
+    assert!(deep < -2.2 && deep > -2.7, "dived to {deep}");
+    assert_eq!(under(&w, cork), 1.0);
+    // Left there, the lighter one drifts up at the lift's pace (a tenth of
+    // gravity against a drag of 4 a second: 0.25 m/s); on a stroke up it
+    // rises at the stroke's 0.75 m/s.
+    let from = [y(&w, strokes), y(&w, drifts)];
+    set_swimmer(&mut w, strokes, |c| c.movement.y = 1.5);
+    set_swimmer(&mut w, drifts, |c| c.movement.y = 0.0);
+    run(&mut w, 120);
+    let rose = [y(&w, strokes) - from[0], y(&w, drifts) - from[1]];
+    assert!((rose[0] - 1.5).abs() < 0.1, "the stroke rose {}", rose[0]);
+    // (0.49 m in 2 s, less the 0.25 m its dive's 0.75 m/s carries it on.)
+    assert!((rose[1] - 0.24).abs() < 0.06, "the lift rose {}", rose[1]);
+    // The stroke held: up to where it floats, its head out, and no higher.
+    let mut highest = f32::MIN;
+    for _ in 0..900 {
+        run(&mut w, 1);
+        highest = highest.max(y(&w, strokes));
+    }
+    assert!(highest < floats + 0.05, "{highest} over {floats}");
+    assert!((y(&w, strokes) - floats).abs() < 0.05);
+    assert!((y(&w, drifts) - floats).abs() < 0.05);
+    // The one that sinks: off the bed on a stroke up, treading with its
+    // head out (nine tenths under), and down again without it.
+    assert!((y(&w, lead) + 5.1).abs() < 0.05, "{}", y(&w, lead));
+    set_swimmer(&mut w, lead, |c| c.movement.y = 2.0);
+    run(&mut w, 900);
+    let (at, share) = (y(&w, lead), under(&w, lead));
+    assert!((share - 0.9).abs() < 0.02, "treading {share} under");
+    // 1.8 m tall: nine tenths under puts its middle 0.72 m down.
+    assert!((at + 0.72).abs() < 0.05, "treading at {at}");
+    assert!(!controller(&w, lead).grounded);
+    set_swimmer(&mut w, lead, |c| c.movement.y = 0.0);
+    run(&mut w, 900);
+    assert!(controller(&w, lead).grounded && y(&w, lead) < -5.0);
+    // Out of the water a stroke is nothing: it falls as it would.
+    let (mut dry, _) = world(5);
+    let falls = swimmer(&mut dry, 0.0, 10.0, Some(Buoyancy::default()));
+    set_swimmer(&mut dry, falls, |c| c.movement.y = 5.0);
+    run(&mut dry, 30);
+    // 0.5 s of free fall: 1.2 m.
+    let fell = 10.0 - y(&dry, falls);
+    assert!((fell - 1.25).abs() < 0.1, "fell {fell}");
+}
+
 #[test]
 fn a_swimmer_and_a_floating_ragdoll_run_the_same_twice_and_through_a_restore() {
     let build = || {
