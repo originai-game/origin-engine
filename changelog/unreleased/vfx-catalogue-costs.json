@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "guides",
+      "summary": "The effect-packs guide lists each effect's measured size (metres), anchor (ground or centre), peak GPU milliseconds and draw calls beside its length, with the device they were measured on, so `og api find` answers what an effect looks like in size and what it costs before it is installed."
+    }
+  ]
+}

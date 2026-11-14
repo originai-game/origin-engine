@@ -125,9 +125,12 @@ Bundled: `pixel-scenario` (the Pixel VFX Forge library, `vfx2d`) and
 Downloadable: `effekseer-<contributor>`, every sample of one contributor.
 A bundled pack's `preview/` stays in Git for the library and out of the
 engine package (`!extensions/*/preview` in its `files`). `og api gen`
-writes every pack's description, tags, keywords and effects into the
+writes every pack's description, tags, keywords and effects, and each
+effect's measured size, anchor, GPU milliseconds and draws from its
+`preview/<effect>.cost.json` with the device they were measured on, into the
 `effect-packs` guide (`crates/og-api/guides/effect-packs.md`, generated and
-drift-checked), so `og api find heal` names the packs and effects that have one.
+drift-checked), so `og api find heal` names the packs and effects that have
+one and what each costs.
 
 A pack is one or the other: `scripts/release-dist.ts` refuses an engine
 archive with an `engine/extensions/<pack>` of a downloadable pack's name, or
